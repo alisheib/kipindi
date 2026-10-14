@@ -1,7 +1,7 @@
 # S11 — How to Play complete, and the copy ready for the flip: build plan (drafted 2026-10-14)
 
 > The working plan for VODACOM-PLAN S11, "How to Play complete: §3.8 auto-open rules, plus the flip-ready copy: FAQ,
-> chat intents, rules page, terms, tagline, OG re-renders" (`docs/VODACOM-PLAN.md` :4992-4993; the board row :3881,
+> chat intents, rules page, terms, tagline, OG re-renders" (`docs/VODACOM-PLAN.md` :5038-5039; the board row :3927,
 > done when "Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip."). Drafted
 > read-only on 2026-10-14 by one planner on OMEGA-COMPILE01, in `C:\50pick-ssd\kipindi-s11` (branch
 > `codex/vodacom-s11-plan`) at live main `f830a091c`. Every file:line below was re-read at that commit; none is copied
@@ -14,6 +14,10 @@
 > **Base.** S8 is in progress (§0k) and edits `app-shell.tsx`, `shell-lazy.tsx`, `i18n-dict.ts`, the privacy page and
 > the journey home, each a file S11 edits too; S9 and S10 may edit some of them. So WP0 re-reads every number here at
 > S11's real base before any package starts (S7-PLAN A24's method, S8-PLAN A1's).
+>
+> **Re-read at the build base `c14cb403e` (2026-10-14), by the build session:** 402 citations, four readers; 295 exact,
+> 98 moved by the base's own edits and 9 wrong at drafting, all corrected in place. The Amendments (B1-B13) at the end
+> override the body; § Build record holds the build's progress, results and the text proposed for the trackers.
 
 ## Summary
 
@@ -21,13 +25,13 @@
 
 For a journey reader only until the S15 flip, except the two items marked "every player":
 
-1. **How to Play, complete (§3.8, :4743-4771).** S7 built the How-to card and the static sheet, which opens on a tap
+1. **How to Play, complete (§3.8, :4789-4817).** S7 built the How-to card and the static sheet, which opens on a tap
    only (S7 WP6; S7-PLAN Open points 18-19, :1426-1430). S11 adds what §3.8 still asks:
    - **auto-open**, once per browser, on `/`, `/live`, `/results` and `/watchlist` only, 700 ms after landing; never
      with `bet` or `side` in the address, over another dialog, or during a break; the automation block kept (and
      widened, Open point 6);
    - **the seen key** `50pick-howto-seen`, written by every exit of the sheet, whether a tap or the auto-open opened it,
-     and named in Privacy §7 in the same commit as the first write (§3.10, :4822-4823);
+     and named in Privacy §7 in the same commit as the first write (§3.10, :4868-4869);
    - **the deep link** `/?howto=1`;
    - **consent waits**: the analytics card stays hidden while the sheet is open;
    - **`primer-keys.ts`**: the primer's path rules, seen key and opt-ins move to `src/lib/onboarding/primer-keys.ts`,
@@ -114,59 +118,59 @@ Named in §0l under "Served bytes for a classic viewer", each with its proof:
 
 ### Corrections to the maps, verified in the files
 
-1. **§3.8's "24 QA drivers" (:4748) is stale**, as S7-PLAN Correction 14 (:164-167) found at 32 on 2026-10-04.
+1. **§3.8's "24 QA drivers" (:4794) is stale**, as S7-PLAN Correction 14 (:164-167) found at 32 on 2026-10-04.
    - At `f830a091c`, 46 scripts name `50pick-primer-seen`: 45 seed it (qa-journey-shell.mjs:210, :936 through a
      constant) and `verify-s1-visual.mjs` removes it.
    - Four use `?primer=1`: marketing-u8-optout-drive, support-surface-shots, qa-lost-chunk and qa/landing-ten.
-   - One uses `kp-primer-force` (qa-lost-chunk).
-2. **§3.8's sizing line (:4762) is superseded by S7's build.** It reads `max-h-[calc(100dvh-48px)] overflow-y-auto`,
+   - One names `kp-primer-force` (qa-lost-chunk), as its marker for the primer's CHUNK, not as the opt-in (qa-lost-chunk.mjs:89, :105-112; Amendment B4).
+2. **§3.8's sizing line (:4808) is superseded by S7's build.** It reads `max-h-[calc(100dvh-48px)] overflow-y-auto`,
    which scrolls the whole panel. S7-PLAN Open point 20 built instead:
    - a cap in CSS, `.kp-howto { max-height: calc(100dvh - var(--sp-12)) }` (globals.css:7652);
    - only the steps and MFANO scroll, under a fade; the title, the CTA and Weka mipaka stay pinned
      (how-to-play-sheet.tsx:20-26, :133-162).
 
-   §3.8's "built with `fillNodes`" (:4760) is `fill` plus `keepRanges`/`noticeBody` (:114-123, :209-223). Both are
+   §3.8's "built with `fillNodes`" (:4806) is `fill` plus `keepRanges`/`noticeBody` (:114-123, :209-223). Both are
    records of what was built, not defects.
 3. **The plan's helpline lines are struck, but one compliance entry still says the opposite.**
-   COMPLIANCE-DECISIONS 2026-09-29 §5 still says "the helpline is in How to Play and the footer" (:1490). The
-   2026-10-06 entry's "Supersedes" list (:1015-1017) names other entries but not this one. WP4's compliance entry
-   records the supersession; the log's rule is never to edit an old entry (:779).
-4. **The zh How-to words carry a false sentence.** The §3 table's zh drafts (VODACOM-PLAN.md:3950, :3951, :3954,
-   :3956) shipped verbatim in S7 WP4 (i18n-dict.ts:8091, :8092, :8095, :8097).
+   COMPLIANCE-DECISIONS 2026-09-29 §5 still says "the helpline is in How to Play and the footer" (:1550). The
+   2026-10-06 entry's "Supersedes" list (:1075-1077) names other entries but not this one. WP4's compliance entry
+   records the supersession; the log never edits an old entry (its practice, stated where an entry supersedes others, e.g. :839).
+4. **The zh How-to words carry a false sentence.** The §3 table's zh drafts (VODACOM-PLAN.md:3996, :3997, :4000,
+   :4002) shipped verbatim in S7 WP4 (i18n-dict.ts:8095, :8096, :8099, :8101).
    - howStep3Body says 赢家平分奖池, "winners split the pool equally". Payouts are pro rata (COMPLIANCE-DECISIONS
-     :1537-1545 states step 3 must be literally true).
+     :1597-1605 states step 3 must be literally true).
    - The side words are unquoted in running text.
    - S4-COPY-AUDIT.md:140 recorded both corrections, and the zh board `s4-canvas/s4-7-howto-zh.dc.html` draws them
      (「是」或「否」; 赢家按投注比例分享奖池).
    - S7-PLAN Open point 22 (:1442-1443), "the §3 table wins where the canvas's en/zh differ", was not meant to keep a
      draft the audit had found false. WP3 corrects it.
-5. **§4's ripple row for How to Play (:4838) names the wrong surfaces**, as "slogan on ~12 surfaces (… `public/og/*.png`)".
+5. **§4's ripple row for How to Play (:4884) names the wrong surfaces**, as "slogan on ~12 surfaces (… `public/og/*.png`)".
    - `public/og/og-1200x630.png` and `twitter-1200x600.png` do not carry the retired slogan. They read "The wisdom of
      YES & NO." and "Pesa kidogo, ukweli mkubwa.".
    - `twitter-1200x600.png` has the Next.js dev-tools "N" badge (bottom left) and our gilt chat bubble (bottom right)
-     captured into it. layout.tsx:173 serves it as every page's `twitter:image`. This is a live defect.
+     captured into it. layout.tsx:173 serves it as the default `twitter:image`, on every page but the five that set their own (markets/[id], leaderboard, results, proposals, auth/register). This is a live defect.
    - Missing from the row: `/api/og/page`'s own line "The wisdom of YES & NO" (route.tsx:59-61); register/page.tsx:31
      and page.tsx:32, two more readers of the slogan key; and `primer.card1Title`, a second, differently translated zh
-     slogan (i18n-dict.ts:7373 预测事件。不是碰运气。 against :6145 预测事件，而非运气。).
+     slogan (i18n-dict.ts:7377 预测事件。不是碰运气。 against :6149 预测事件，而非运气。).
 6. **The ~12 slogan surfaces, verified** (the full table is under "The tagline" below).
    - **Root metadata:** layout.tsx:103, :120, :171.
-   - **Readers of `auth.railTagline`** (en :507, sw :3662, zh :6145): auth-shell.tsx:50-51, page.tsx:32 and
+   - **Readers of `auth.railTagline`** (en :507, sw :3666, zh :6149): auth-shell.tsx:50-51, page.tsx:32 and
      register/page.tsx:31.
    - **Literals elsewhere:** the market share card (route.tsx:122, :236); `reports/brand.ts:47` (read by pdf.ts:119 and
      xlsx.ts:140); the rules page's subtitle (rules/yes-no/page.tsx:40-44); and manifest.json:2 and :71 (the second a
      variant, "Predict events, not chance").
-   - **Every literal equals the key's value** in its language. So one home is a byte-identical refactor (WP7).
-7. **SJ-20's zh tagline does not exist.** INHERIT-MANIFEST:72 says "(sw and zh drafted)", VODACOM-PLAN.md:4268 says "zh
+   - **Every literal equals the key's value** in its language, or "50pick — " plus the en value (layout.tsx, manifest.json:2); manifest.json:71 is the named variant. So one home is a byte-identical refactor (WP7).
+7. **SJ-20's zh tagline does not exist.** INHERIT-MANIFEST:72 says "(sw and zh drafted)", VODACOM-PLAN.md:4314 says "zh
    draft", and no zh text exists anywhere. WP3 drafts it.
-8. **§3.9's guard list is incomplete for zh and sw** ("dial / kidhibiti / 转盘 / conviction / imani", :4791).
-   - The dictionary also names the dial as 刻度盘 and the conviction as 信念 in zh, and as kipima (i18n-dict.ts:4190)
-     and kipimo (:4985) in sw; the Terms say kipima-dau (terms/page.tsx:371).
-   - "kipimo" is also ordinary Swahili for a unit or a timer (i18n-dict.ts:3632, :3704), so a word list alone either
+8. **§3.9's guard list is incomplete for zh and sw** ("dial / kidhibiti / 转盘 / conviction / imani", :4837).
+   - The dictionary also names the dial as 刻度盘 and the conviction as 信念 in zh, and as kipima (i18n-dict.ts:4194)
+     and kipimo (:4989) in sw; the Terms say kipima-dau (terms/page.tsx:371).
+   - "kipimo" is also ordinary Swahili for a unit (i18n-dict.ts:3636), and "kipima" for a gauge ("kipima muda", a timer, :3708), so a word list alone either
      misses or over-matches.
    - Census at `f830a091c`: 23 en, 16 sw and 17 zh entries name the dial, all under the same 23 keys. `lipa.ussdLabel`
      ("Can't scan? Dial") is the verb, a false positive.
    - Judged by key, that is 22 keys. The guard judges by key (Open point 23).
-9. **§3.9's four other flip rewrites (:4785-4790) sit on surfaces a journey reader no longer meets.**
+9. **§3.9's four other flip rewrites (:4831-4836) sit on surfaces a journey reader no longer meets.**
    - `market.noBetYet`: the classic question page's holder block, [id]/page.tsx:1032.
    - `positions.noOpenBody` and `positions.headlineBody`: classic /positions, positions/page.tsx:261, :326 and
      positions-ghost.tsx:81.
@@ -175,7 +179,7 @@ Named in §0l under "Served bytes for a classic viewer", each with its proof:
    - The census lists them rather than rewriting them (Open point 24).
 10. **The legal texts need more than §3.9 names.**
     - Rules sw §1 types "NDIYO/HAPANA" (_content-yes-no.tsx:259), though the file's own note says the side words are
-      "now one lookup" (:41-52).
+      "now one lookup" (:42-55, the phrase at :54).
     - Rules sw §2 and §4 say "nafasi" (:280, :322) and "dau zote" (:315).
     - Terms sw §4 says "Dau zote — NDIYO na HAPANA — zinakusanywa" (terms/page.tsx:351), "Dau za … zinarudishwa zote na
       haziguswi" (:355-356) and "Kama dau zote ziko" (:361). It also says "Wakati dau bado liko wazi" and "Mara dau
@@ -183,7 +187,7 @@ Named in §0l under "Served bytes for a classic viewer", each with its proof:
     - Terms §7's six links are still gold (:247-248, :414-415, :537-538). They are DESIGN_AUTHORITY §B4c's held
       exception (:373-376), moving "with the next Terms version", and `test:visual-pass-r8a` 5.2 holds them
       (HELD :604-607).
-    - SJ-19's "7 NDIYO strings" (§2, :3897) counts dictionary strings only.
+    - SJ-19's "7 NDIYO strings" (§2, :3943) counts dictionary strings only.
 11. **Every dictionary and legal edit reads red on a branch by construction.**
     - `test:house-bot-disclosure` 5.1 pins every tracked file under `src/app/legal/`, `terms-version.ts` and
       `i18n-dict.ts` to `origin/main` (house-bot-absence-cases.mts:167-191). Only S8's exact additions are exempt
@@ -192,7 +196,7 @@ Named in §0l under "Served bytes for a classic viewer", each with its proof:
     - Three checks pin the prompt's call shape exactly: `test:privacy-notice` §2c (:196-198),
       `test:house-bot-disclosure`'s 6.5b (house-bot-chatbot-cases.mts:283) and `test:visual-pass-r8d` 8.5 (:541-544).
     - Each goes green once the change is on main (S7 WP4's precedent). Record it; do not fix it.
-12. **"The HeadlessChrome block is kept" (§3.8 :4769) covers headless Chromium only.** Measured on this machine:
+12. **"The HeadlessChrome block is kept" (§3.8 :4815) covers headless Chromium only.** Measured on this machine:
     - Playwright's Firefox (148) and WebKit (26.4) user agents carry neither "HeadlessChrome" nor "Playwright";
     - `navigator.webdriver` is `true` in all three engines.
     - The primer is kept off Firefox and WebKit drives only by the 45 scripts that seed its key. Under `ENGINE=webkit`
@@ -206,29 +210,29 @@ Named in §0l under "Served bytes for a classic viewer", each with its proof:
     locale and one global setting alone". A per-reader journey prompt would tell Anthropic that a reader holds a staff
     preview pass. So the live prompt keys on the global rollout (Open point 15).
 15. **The chat panel's own words name the dial**, and the plan never listed them: `chat.helpline` "Ask me about
-    deposits, the dial, payouts…" (i18n-dict.ts:2120, sw :4882, zh :7352; a misleading key name, not a helpline) and
-    `chat.starterDial` "What's the conviction dial?" (:2122, :4884, :7354), the starter chip EmptyState.tsx:22-27 sends.
+    deposits, the dial, payouts…" (i18n-dict.ts:2124, sw :4886, zh :7356; a misleading key name, not a helpline) and
+    `chat.starterDial` "What's the conviction dial?" (:2126, :4888, :7358), the starter chip EmptyState.tsx:22-27 sends.
 
 ## §3.8 — what S7 built, and what S11 builds
 
 | §3.8 item | At `f830a091c` | S11 |
 |---|---|---|
-| `how-to-play-sheet.tsx` (:4746) | Built (S7 WP6): `HowToPlaySheet` (:165-237), the kit Modal sheet 440 wide (:172-180) | Every exit writes the seen key; claims the bottom zone while open (WP4) |
-| The primer shelved intact; keys to `primer-keys.ts` (:4747-4748) | Shelved for a journey reader by one term (first-visit-primer.tsx:278, :319, :377; SHELVED.md:43); keys and opt-ins still in the file (:24, :27, :32, :42-50) | WP2 moves them, behaviour unchanged |
+| `how-to-play-sheet.tsx` (:4792) | Built (S7 WP6): `HowToPlaySheet` (:165-237), the kit Modal sheet 440 wide (:172-180) | Every exit writes the seen key; claims the bottom zone while open (WP4) |
+| The primer shelved intact; keys to `primer-keys.ts` (:4793-4794) | Shelved for a journey reader by one term (first-visit-primer.tsx:278, :319, :377; SHELVED.md:43); keys and opt-ins still in the file (first-visit-primer.tsx:24, :27, :32, :42-50) | WP2 moves them, behaviour unchanged |
 | `?primer=1`, `kp-primer-force` keep working | `primerForced()` (:42-50), the UA line (:328) | Shared through `primer-keys.ts`; the host honours them for its auto-open |
-| Seen key `50pick-howto-seen` (:4749) | Absent by design (S7 Open point 18); `test:journey-home` 5.storage pins "nothing writes" (:1418-1423) | WP4, with Privacy §7 |
-| Order: title + ✕ → steps → MFANO → CTA → Weka mipaka (:4750-4752) | Built, no helpline (A6) (:181-234) | — |
-| Weka mipaka: signed in → `/profile/responsible-gambling`, else `/legal/responsible-gambling` (:4755) | Built (:83, :230) | — |
-| "Every exit persists the seen flag" (:4758) | No key yet | WP4 |
-| "Links close the sheet, then navigate" (:4758) | Built (`onClick={onClose}` on the link, :230) | The close now writes the key first |
-| Side words from `sideWord()`; MFANO from `HOW_TO_EXAMPLE` (:4760) | Built (:168, :75-80, :213-221) | zh corrections (WP3) |
-| Sizing (:4762) | Built differently and better (Correction 2) | — |
-| Auto-open only on `/`, `/live`, `/results`, `/watchlist` (:4765) | Not built | WP4 |
-| HIDE_ON and SUPPRESS_ON kept (:4766) | In the primer (:27, :32) | Shared; the host tests both in its effect AND its render (the `test:stacking` 8.1 lesson, stacking-contract.test.mts:858-875) |
-| Never on wallet, RG, Up & Down, a question, `?bet=`, `?side=`, an open sheet, a break (:4767-4768) | — | WP4: an allowlist of four routes, plus `bet`/`side`, an open dialog and `promoSuppressed` |
-| HeadlessChrome block kept (:4769) | The primer's UA test (:328) | Kept, plus `navigator.webdriver` (Open point 6) |
-| Consent waits until the sheet closes (:4770) | Not built: the consent card's mount is ungated (consent-prompt.tsx:61-62; S6-PLAN.md:602; S8-PLAN Correction 5) | WP4, through the invitation slot (Open point 7) |
-| Deep link `/?howto=1` (:4771) | Not built (S7 Open point 19) | WP4 |
+| Seen key `50pick-howto-seen` (:4795) | Absent by design (S7 Open point 18); `test:journey-home` 5.storage pins "nothing writes" (:1418-1423) | WP4, with Privacy §7 |
+| Order: title + ✕ → steps → MFANO → CTA → Weka mipaka (:4796-4798) | Built, no helpline (A6) (:181-234) | — |
+| Weka mipaka: signed in → `/profile/responsible-gambling`, else `/legal/responsible-gambling` (:4801) | Built (:83, :230) | — |
+| "Every exit persists the seen flag" (:4804) | No key yet | WP4 |
+| "Links close the sheet, then navigate" (:4804) | Built (`onClick={onClose}` on the link, :230) | The close now writes the key first |
+| Side words from `sideWord()`; MFANO from `HOW_TO_EXAMPLE` (:4806) | Built (:168, :75-80, :213-221) | zh corrections (WP3) |
+| Sizing (:4808) | Built differently and better (Correction 2) | — |
+| Auto-open only on `/`, `/live`, `/results`, `/watchlist` (:4811) | Not built | WP4 |
+| HIDE_ON and SUPPRESS_ON kept (:4812) | In the primer (:27, :32) | Shared; the host tests both in its effect AND its render (the `test:stacking` 8.1 lesson, stacking-contract.test.mts:858-875) |
+| Never on wallet, RG, Up & Down, a question, `?bet=`, `?side=`, an open sheet, a break (:4813-4814) | — | WP4: an allowlist of four routes, plus `bet`/`side`, an open dialog and `promoSuppressed` |
+| HeadlessChrome block kept (:4815) | The primer's UA test (:328) | Kept, plus `navigator.webdriver` (Open point 6) |
+| Consent waits until the sheet closes (:4816) | Not built: the consent card's mount is ungated (consent-prompt.tsx:61-62; S6-PLAN.md:602; S8-PLAN Correction 5) | WP4, through the invitation slot (Open point 7) |
+| Deep link `/?howto=1` (:4817) | Not built (S7 Open point 19) | WP4 |
 
 ## The flip copy, surface by surface
 
@@ -240,11 +244,11 @@ proven on `vodacom-s15-copy` and published by the S15 commit.
 
 | Item | Today (en; sw, zh) | Target | When |
 |---|---|---|---|
-| faq2 question | "Will my odds change after I place?" (i18n-dict.ts:2252; :4984, :7451). "Odds" is the word the deck replaces ("users see reward, not odds", slide 3) | `journey.faq2q` | Now |
-| faq2 answer | Names "the dial" and "The bet-confirm popup holds the quote for 10 seconds", both shelved at the flip (:2253; :4985, :7452) | `journey.faq2a` | Now |
-| faq3 answer | "Open Wallet → Withdraw…", with "TZS 5,000,000" typed (:2257; :4987, :7454) | `journey.faq3a`, the journey's two withdraw doors (the capsule's sheet, SJ-15; Akaunti's row, hub-rows.ts:219); `{max}` from `WITHDRAW_MAX_TZS` | Now |
-| faq5 answer | "Open Profile → Responsible gambling" (:2267; :4991, :7458) | `journey.faq5a`, "Account → Set limits" (hub-rows.ts:188). The at-risk answer gets the shortest true path | Now (Open point 14) |
-| faq6 answer | "a Sell-now button on any open position … 5 minutes" (:2269; :4993, :7460) | `journey.faq6a`, in the journey Sell look's words (`journey.sellFreeCta`, `sellFreeUntil`), no typed number: each ticket shows its own end | Now |
+| faq2 question | "Will my odds change after I place?" (i18n-dict.ts:2256; :4988, :7455). "Odds" is the word the deck replaces ("users see reward, not odds", slide 3) | `journey.faq2q` | Now |
+| faq2 answer | Names "the dial" and "The bet-confirm popup holds the quote for 10 seconds", both shelved at the flip (:2257; :4989, :7456) | `journey.faq2a` | Now |
+| faq3 answer | "Open Wallet → Withdraw…", with "TZS 5,000,000" typed (:2261; :4991, :7458) | `journey.faq3a`, the journey's two withdraw doors (the capsule's sheet, SJ-15; Akaunti's row, hub-rows.ts:219); `{max}` from `WITHDRAW_MAX_TZS` | Now |
+| faq5 answer | "Open Profile → Responsible gambling" (:2271; :4995, :7462) | `journey.faq5a`, "Account → Set limits" (hub-rows.ts:188). The at-risk answer gets the shortest true path | Now (Open point 14) |
+| faq6 answer | "a Sell-now button on any open position … 5 minutes" (:2273; :4997, :7464) | `journey.faq6a`, in the journey Sell look's words (`journey.sellFreeCta`, `sellFreeUntil`), no typed number: each ticket shows its own end | Now |
 | faq1, faq4, faq7, faq8 | Unchanged. faq1's sw "NDIYO" and "Dau za" are S12's sweep | — | — |
 
 ### The chat
@@ -253,7 +257,7 @@ proven on `vodacom-s15-copy` and published by the S15 commit.
 |---|---|---|---|
 | Offline answers (`send-message.ts`) | The dial intent (:247-263); "deposits, the dial, payouts" (:218-219); "Open your **Wallet** and tap **Deposit**" (:230); "**Wallet → Withdraw**" (:278); "**Profile → Verify identity**" (:350, :358); "Profile → Invite friends" (:402-403); a zh hand-off with no How-to (:189-197); the intents index in the header (:20-29) | A journey branch per reader: a how-to-play intent (it also answers "dial") citing `/?howto=1`; the journey's doors in the other answers | Now |
 | Panel words (EmptyState.tsx:22-27, :38) | `chat.helpline` and `chat.starterDial` (Correction 15) | `journey.chatIntro`, `journey.chatStarterHowTo` | Now |
-| Live prompt (`_actions/chat.ts`, `buildSystemPrompt` :137-187) | "the conviction dial" (:156, :158, :161); the deposit example "Open **Wallet → Deposit**" (:148); "The exact payout is not knowable…" (:164); "FREE for 5 minutes" (:171); KEY PAGES with `/markets` (:181) | The journey prompt: the named lines swapped (WP6 step 3), every money, RG, identity and email line verbatim | Prepared now; switches itself when the rollout is ACTIVE (Open point 15) |
+| Live prompt (`_actions/chat.ts`, `buildSystemPrompt` :137-187) | "the conviction dial" (:156, :161) and "the dial" (:158); the deposit example "Open **Wallet → Deposit**" (:148); "The exact payout is not knowable…" (:164); "FREE for 5 minutes" (:171); KEY PAGES with `/markets` (:181) | The journey prompt: the named lines swapped (WP6 step 3), every money, RG, identity and email line verbatim | Prepared now; switches itself when the rollout is ACTIVE (Open point 15) |
 
 ### The rules page (`/legal/rules/yes-no`)
 
@@ -265,7 +269,7 @@ precedent, "written so it is TRUE IN EVERY FEATURE STATE" (_content-yes-no.tsx:1
 | §2, stake bounds | en "… per position." (:105); sw "kwa kila nafasi." (:280) | "… per bet."; "kwa kila dau." |
 | §3, the indicator | en "The conviction indicator shows where the crowd's money sits. It is information, not advice." (:127); sw (:301); zh (:458) | en "What a market shows before you bet — where the money sits, or an estimate of what a bet would return — is information, not advice." sw "Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri." zh "市场在您下注前显示的内容——资金分布，或某笔投注可获回报的预估——仅供参考，不构成建议。" |
 | §4, new paragraph after the commission paragraph (en :140-144, sw :313-317, zh :470-472) | — | en "**Estimates shown before you bet.** Before you bet, a market may show an estimate of what a bet would return if its side wins. An estimate is information, not a promise: it changes as other players bet, and what a winning bet is paid is fixed only when betting closes, from the final pools and after our commission." sw "**Makadirio yanayoonyeshwa kabla ya kuweka dau.** Kabla hujaweka dau, soko linaweza kuonyesha makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Makadirio ni taarifa, si ahadi: hubadilika wachezaji wengine wanapoweka dau, na kiasi ambacho dau lililoshinda hulipwa huamuliwa tu uwekaji dau unapofungwa, kutoka kwa mabwawa ya mwisho na baada ya kamisheni yetu." zh "**下注前显示的预估。**下注前，市场可能会显示若所选一方获胜时某笔投注可获回报的预估。预估仅供参考，并非承诺：它会随其他玩家下注而变化；获胜投注的实际派彩仅在投注关闭时，依据最终资金池并扣除我们的佣金后确定。" |
-| sw §1, §4 | "soko la NDIYO/HAPANA" (:259); "Kama dau zote zipo" (:315); "ikiwa nafasi hiyo haikugharamiwa" (:322) | `soko la {w.sw.yes}/{w.sw.no}`; "Kama madau yote yapo"; "ikiwa dau hilo halikugharamiwa" |
+| sw §1, §4 | "soko la NDIYO/HAPANA" (:259); "Kama dau zote zipo" (:315); "ikiwa nafasi hiyo haikugharamiwa" (:322-323) | `soko la {w.sw.yes}/{w.sw.no}`; "Kama madau yote yapo"; "ikiwa dau hilo halikugharamiwa" |
 | Version | META "Version 2026-10-12 · Effective on entering a market." (yes-no/page.tsx:52-56) | The S15 publication date, set in the S15 commit |
 | Subtitle | `SUBTITLE` (:40-44), the retired slogan | Reads `t.auth.railTagline` now (WP7, the same words); takes the tagline at S15 |
 
@@ -285,10 +289,10 @@ All of this is parked. The Terms §4 paragraph is true in both looks.
 ### The tagline
 
 The retired slogan "Tabiri matukio. Si bahati." is replaced by the deck's tagline (SJ-20, INHERIT-MANIFEST:72;
-COMPLIANCE-DECISIONS 2026-09-29 §5, :1493-1494).
+COMPLIANCE-DECISIONS 2026-09-29 §5, :1553-1554).
 - **en (deck slide 1, binding):** "Pick. See what you win. Play."
 - **sw:** SJ-20's draft is "Chagua. Ona unachoshinda. Cheza.". The recommended form is "Chagua. Ona unachoweza kushinda.
-  Cheza.", How-to step 2's own words (i18n-dict.ts:5629), because an estimate is what you could win. Review 9 decides
+  Cheza.", How-to step 2's own words (i18n-dict.ts:5633), because an estimate is what you could win. Review 9 decides
   (Open point 18).
 - **zh (drafted here):** "选择。看看您能赢多少。开始玩。"
 
@@ -298,13 +302,13 @@ COMPLIANCE-DECISIONS 2026-09-29 §5, :1493-1494).
 | 4 | The auth rail (from 1024) | auth-shell.tsx:50-51, `t.auth.railTagline` | Already the key | Follows |
 | 5 | `/`'s tab title | page.tsx:32 | Already the key | Follows |
 | 6 | The sign-up share card's sub-line | register/page.tsx:31 | Already the key | Follows |
-| 7 | The market share card's footer, twice | og/market/[id]/route.tsx:122, :236 (literals) | `dict.en.auth.railTagline` (`dict` is already imported, :25) | Follows |
+| 7 | The market share card's footer, twice | og/market/[id]/route.tsx:122, :236 (literals) | `dict.en.auth.railTagline` (`dict` is already imported, :26) | Follows |
 | 8 | The officers' PDF and XLSX reports | reports/brand.ts:47 (pdf.ts:119, xlsx.ts:140) | Reads the key | Follows |
 | 9 | The rules page's subtitle | rules/yes-no/page.tsx:40-44, :67 | `t.auth.railTagline` | Follows |
 | 10-11 | The manifest's name and its wide screenshot's label | manifest.json:2, :71 (static) | Stays literal; the census holds :2 equal to "50pick — " + the en value, and :71 as a named variant | Edited in the parked commit |
 | 12 | The two share pictures | "The wisdom of YES & NO." / "Pesa kidogo, ukweli mkubwa." (Correction 5) | WP1 fixes the X card's overlay (the same words) | Regenerated (Point for Ali 1) |
 | 13 | The generic share card | og/page/route.tsx:59-61 "The wisdom of YES & NO" | — | Point for Ali 1 |
-| 14 | The shelved primer's card 1 and the landing band | `primer.card1Title` (i18n-dict.ts:2162, :4903, :7373), read by first-visit-primer.tsx:290 and how-it-works.tsx:43 | Left: nobody reads it after the flip (Open point 17) | Left |
+| 14 | The shelved primer's card 1 and the landing band | `primer.card1Title` (i18n-dict.ts:2166, :4907, :7377), read by first-visit-primer.tsx:290 and how-it-works.tsx:43 | Left: nobody reads it after the flip (Open point 17) | Left |
 
 ### The share pictures
 
@@ -331,8 +335,8 @@ corrected before anyone builds from it.
   - §0 RESUME and a new §0l, "S11 — How to Play complete and the copy for the flip";
   - §1's S11 row to 🔨, with this file's link and Open point 2's done-when;
   - §2's pre-flip list gains WP4's privacy line and WP1's X card;
-  - the annotations Corrections 1, 2, 4, 5, 8 and 9 name, where they stand (§3.8 :4748, :4760, :4762; §3's zh rows
-    :3950-3956; §3.9 :4785-4791; §4 :4838), never rewritten;
+  - the annotations Corrections 1, 2, 4, 5, 8 and 9 name, where they stand (§3.8 :4794, :4806, :4808; §3's zh rows
+    :3996-4002; §3.9 :4831-4837; §4 :4884), never rewritten;
   - §5 S11 gains "the X share-picture fix (every player)";
   - the §0h points for this plan's Open points.
 - This file: an amendment if the re-read changes a package.
@@ -398,14 +402,14 @@ How-to host both read. The primer behaves as today, line for line.
   - `seenOrUnreadable(key)` and `markSeen(key)`, which try and catch as the primer does (:329-336, :350-352). Storage
     that throws counts as seen, so nothing auto-opens there, as today.
 - src/components/onboarding/first-visit-primer.tsx imports them, with `PRIMER_SEEN_KEY as STORAGE_KEY`, so every line
-  that reads them stays byte-identical. Only the five declarations leave (:24, :27, :32, :42-50).
+  that reads them stays byte-identical. Only the four declarations leave (:24, :27, :32, :42-50).
 - docs/SHELVED.md:43: the Files cell says the keys and opt-ins now live in `primer-keys.ts`.
 - scripts/stacking-contract.test.mts: 8.3 (:881-882) is re-pinned in the open. The declarations are now in
   `primer-keys.ts`, and the primer imports both; the plant is a second, local `HIDE_ON` in the primer. 8.1, 8.2, 8.4
   and 8.5 are unchanged and must read as before.
 - scripts/marketing-optout.test.mts: the overlay check (:996-1010) reads the primer's `HIDE_ON` from `primer-keys.ts` and
   requires the primer to import it. Its plant (:1388-1389) is re-anchored on `primer-keys.ts`.
-- scripts/journey-shell.test.mts: the comment at OVERLAY_PRIMER (:950-959) updated. 11.primer.* (:961-966,
+- scripts/journey-shell.test.mts: the comment at OVERLAY_PRIMER (:951-960) updated. 11.primer.* (:961-966,
   :1021-1044) read as before.
 
 **Gates.**
@@ -413,7 +417,7 @@ How-to host both read. The primer behaves as today, line for line.
   test:popup-fit; test:design-frozen; test:client-graph-safe (the new module is pure); typecheck.
 - The suites that read the primer, each as before: visual-pass-r5a, r5b, r5c, r5i, r5j, r6c, r7c, r8b, r9a, r9c and
   social-panel.
-- qa:lost-chunk: its `?primer=1` cells still force the primer.
+- qa:lost-chunk: its `?primer=1` cells still force the primer; its primer marker moves to the primer's own `primer-no-fill` (Amendment B4).
 
 **Served bytes for a classic viewer.** JS: the primer's lazy chunk, output unchanged. HTML and RSC: none (the primer
 renders in the browser only, lazy-overlays.tsx:38).
@@ -426,11 +430,11 @@ qa:lost-chunk's primer cells pass.
 **Goal.** Every word S11 shows comes from a key; no existing value changes before S15 (§3.9).
 
 **Files.**
-- src/lib/i18n-dict.ts, the journey namespace (en :2987-3229, sw :5552-5713, zh :8016-8177):
+- src/lib/i18n-dict.ts, the journey namespace (en :2991-3233, sw :5556-5717, zh :8020-8181):
   - the keys in "New dictionary keys" below;
-  - the four zh How-to values corrected (:8091, :8092, :8095, :8097; Correction 4). These are journey keys no player
+  - the four zh How-to values corrected (:8095, :8096, :8099, :8101; Correction 4). These are journey keys no player
     sees yet.
-- docs/VODACOM-PLAN.md §3: an "S11 keys" note and table (as S7's, :3975-3997); the four zh rows corrected.
+- docs/VODACOM-PLAN.md §3: an "S11 keys" note and table (as S7's, :4021-4043); the four zh rows corrected.
 - docs/design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md: "S11 drafts", and "Swahili review" 9, signed.
   The review also signs the chat's journey strings (WP6), the legal sw and zh in "The flip copy" above, and the
   tagline's sw and zh (WP9 carries the last two).
@@ -441,7 +445,7 @@ qa:lost-chunk's primer cells pass.
 2. Draft sw by the rules S4-COPY-AUDIT already applies (agreement, dau class 5/6, "swali hili" for the journey,
    "Uchezaji salama" for the limits page by name). zh uses formal 您, 充值, 投注 and 注单.
 3. Run hero-copy's overclaim pattern (hero-copy.test.mts:134) over the new keys and the tagline draft. The ripple map
-   asks this (:4838, "test:hero-copy §5 moved to new surfaces"), and `test:flip-copy` §4 runs it from WP7 on.
+   asks this (:4884, "test:hero-copy §5 moved to new surfaces"), and `test:flip-copy` §4 runs it from WP7 on.
 
 **Gates.**
 - test:i18n (parity, placeholders); test:translation-safety; test:labels + red:labels (alone; NDIO, and no ASCII side
@@ -465,7 +469,7 @@ exactly what they were.
   `dialogOpen`, `automated` and `forced`. Step 1 gives the rules.
 - src/components/onboarding/how-to-host.tsx (new, "use client"):
   - it reads `usePathname()` and `useSearchParams()`, inside the Suspense boundary AppShell gives it, as BetSheetHost
-    does (bet-sheet-host.tsx:53-54), and edits the address with `window.history.replaceState` as it does (:110);
+    does (bet-sheet-host.tsx:54-55), and edits the address with `window.history.replaceState` as it does (:111);
   - it arms one 700 ms timer per landing on an eligible route (the primer's beat, first-visit-primer.tsx:332);
   - it decides through `howToDecision` and renders its own `<HowToPlaySheet open signedIn onClose>`;
   - it takes `signedIn` and `onBreak` as props from AppShell.
@@ -491,7 +495,7 @@ exactly what they were.
   - its plant (:1575-1576) re-aimed at a write on open and at a second key;
   - 5.lazy (:1467-1486): the sheet's importers are the card and the host.
 - scripts/journey-shell.test.mts:
-  - 5.mount (:868) re-pinned to the fragment;
+  - 5.mount (:868) and 12.shell.flag (:2518-2520, its arm built from `BARE_FLAG`, :287) re-pinned to the fragment (Amendment B5);
   - §12's parts table (12.parts.table, 12.parts.client) gains `LazyHowToHost`;
   - the plants at :2785 and :2793 re-anchored.
 - scripts/visual-pass-r5h.test.mts: `flagBare` (:399) and its plant (:409) re-pinned. The flag stays outside every
@@ -601,7 +605,7 @@ itself at the flip, telling the AI vendor nothing about who is reading.
   - `buildSystemPrompt(locale, objectionHours, journey)`;
   - at :245 the third argument is `(await simpleJourneyStateNow()) === "ACTIVE"`, the global rollout (a ≤10 s snapshot,
     simple-journey-switch.ts:60), never the reader's pass.
-- The three pins of the call's shape (Correction 11), re-pinned in the open, each with a plant that passes a per-reader
+- The four pins of the call's shape (Correction 11; the fourth, the red anchor, is Amendment B6), re-pinned in the open, each with a plant that passes a per-reader
   value (the session, the pass) and must fail: scripts/privacy-notice.test.mts §2c (:196-198);
   scripts/lib/house-bot-chatbot-cases.mts 6.5b (:283); scripts/visual-pass-r8d.test.mts 8.5 (:543).
 - scripts/flip-copy.test.mts §6 (WP7's suite):
@@ -641,7 +645,7 @@ itself at the flip, telling the AI vendor nothing about who is reading.
      How to play opens on a first visit and at `/?howto=1`;
    - KEY PAGES (:181) drops `/markets` and adds `/` (the questions), `/account` and `/?howto=1`.
 
-   Every other line is verbatim, so rate-copy 3.4-3.7 (:216-230), money-minimums 2.3, kyc-copy-truth and
+   Every other line is verbatim, so rate-copy 3.4-3.7 (:216-226), money-minimums 2.3, kyc-copy-truth and
    withdraw-email-gate read both prompts the same.
 
 **Gates.**
@@ -678,7 +682,7 @@ flip must still change.
   the same three strings.
 - scripts/visual-pass-r4h.test.mts: 10.1 and 10.2′ (:476-489) re-pinned. The layout default is the key's composition,
   so 10.2′'s "took the layout's English default" stays provable.
-- scripts/visual-pass-r5g.test.mts: 4.13 (:768-772) measures the key's value, not a literal.
+- scripts/visual-pass-r5g.test.mts: 4.13 (:768-773) measures the key's value, not a literal.
 - scripts/flip-copy.test.mts (new); package.json `test:flip-copy` (test:all; run at each S11 push) and `red:flip-copy`
   (in process; Open point 22). Its sections:
   - **§1 The dial words.**
@@ -690,7 +694,7 @@ flip must still change.
     - `chat.helpline`, `chat.starterDial` and `help.faq2a` (Correction 15; §3.9), the three a journey reader still
       meets today, are read only in their classic arms.
   - **§2 The retired slogan.**
-    - In `src/` and `public/`, read decommented (page.tsx:28-30 and not-found.tsx:13 spell it in comments), no file
+    - In `src/` and `public/`, read decommented (page.tsx:28-30 and not-found.tsx:13-14 spell it in comments), no file
       spells it outside the dictionary but `public/manifest.json` (:2, and :71's variant), each named.
     - Every surface in "The tagline" table reads `auth.railTagline`, from the exact reader list.
     - manifest.json:2 equals "50pick — " + the en value.
@@ -706,7 +710,7 @@ flip must still change.
   (the OG market route); test:labels.
 - test:house-bot-disclosure 5.1: red by construction (the rules page). Record it.
 - qa:report-renderers (local: the PDF and XLSX through the real route, the tagline unchanged).
-- qa:classic-shell-parity v4 (the book's `/` head holds og:title, qa-classic-shell-parity.mjs:1787); qa:served-skeleton
+- qa:classic-shell-parity v4 (the book's `/` head holds og:title: `headOf`, qa-classic-shell-parity.mjs:1045-1065; :1787 is the `--prove-red` book's synthetic head); qa:served-skeleton
   `--main` (the head's title); typecheck; `next build`.
 
 **Served bytes for a classic viewer.** None: server code, every string identical.
@@ -768,7 +772,7 @@ the tagline's values, the manifest and the pictures.
 - test:terms-binding (2.1 with the new hash; 1.x at S15); test:terms-cancellation (§4's cash-out anchors untouched);
   test:rules-copy (rates still read; side words from the product).
 - test:labels + red:labels (alone); test:rate-copy + red:rate-copy (alone; "13%" and "1.5%" counts unchanged);
-  test:kyc-copy-truth; test:withdraw-email-gate; test:support-contact; test:visual-pass-r8a (5.2 at 9).
+  test:kyc-copy-truth; test:withdraw-email-gate; test:support-contact; test:visual-pass-r8a (5.2′ at 9).
 - test:visual-pass-r5c, r5g and r7a (the Terms' pins); test:flip-copy (flipped) + red; test:brand-assets;
   test:static-cache-scope.
 - test:house-bot-disclosure 5.1 and 5.2: 5.1 red until S15's merge, 5.2 with no house word printed.
@@ -818,7 +822,7 @@ matrix; Firefox and WebKit run the automation and opt-in cells.
 
 ### WP11 — Proof, records, merge, deploy (M; depends on all)
 
-**Goal.** S11 lands under the session law (§0, :389-422).
+**Goal.** S11 lands under the session law (§0, :392-425).
 
 **Steps.**
 1. **Each push:** typecheck, `next build`, local qa:live, then the production read-back: `?dpl=` on both hosts, health,
@@ -914,10 +918,10 @@ The live prompt's journey lines (English instructions; the model answers in the 
 
 | Key (zh line) | Today | Corrected |
 |---|---|---|
-| `howStep1Body` (:8091) | 每个问题都是一个真实事件，只有一个答案：{yes}或{no}。 | 每个问题都是一个真实事件，只有一个答案：「{yes}」或「{no}」。 |
-| `howStep2Title` (:8092) | 点击{yes}或{no} | 点击「{yes}」或「{no}」 |
-| `howStep3Body` (:8095) | 赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。 | 赢家按投注比例分享奖池。奖金进入您的余额，可通过手机钱包提现。 |
-| `howExampleBody` (:8097) | 在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。 | 在「{side}」一方（显示 ≈{mult}×）投注 {stake} → 若赢，约可获得 {payout}。若猜错，您将输掉这笔投注。 |
+| `howStep1Body` (:8095) | 每个问题都是一个真实事件，只有一个答案：{yes}或{no}。 | 每个问题都是一个真实事件，只有一个答案：「{yes}」或「{no}」。 |
+| `howStep2Title` (:8096) | 点击{yes}或{no} | 点击「{yes}」或「{no}」 |
+| `howStep3Body` (:8099) | 赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。 | 赢家按投注比例分享奖池。奖金进入您的余额，可通过手机钱包提现。 |
+| `howExampleBody` (:8101) | 在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。 | 在「{side}」一方（显示 ≈{mult}×）投注 {stake} → 若赢，约可获得 {payout}。若猜错，您将输掉这笔投注。 |
 
 The sheet's `multUnit` (how-to-play-sheet.tsx:86-89) still finds "≈{mult}×" in the corrected example.
 
@@ -925,7 +929,7 @@ The sheet's `multUnit` (how-to-play-sheet.tsx:86-89) still finds "≈{mult}×" i
 
 | Language | Today | Becomes |
 |---|---|---|
-| en (:214) | Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser's own storage on your device. | Some display choices, such as hiding your balance, dismissing a prompt or having seen How to play (50pick-howto-seen, so the guide opens by itself only once), are kept in your browser's own storage on your device. |
+| en (:214; the source spells `browser&apos;s`, and the new sentence keeps it) | Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser's own storage on your device. | Some display choices, such as hiding your balance, dismissing a prompt or having seen How to play (50pick-howto-seen, so the guide opens by itself only once), are kept in your browser's own storage on your device. |
 | sw (:344) | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako, kufunga ujumbe au kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, ili mwongozo ujifungue wenyewe mara moja tu), huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. |
 | zh (in :466) | 部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。 | 部分显示选择（例如隐藏余额、关闭提示，或已看过「玩法说明」——50pick-howto-seen，使该指南只会自动打开一次）保存在您设备上的浏览器存储中。 |
 
@@ -1027,7 +1031,7 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
     list (Correction 8). Overrule: §3.9's literal list.
 24. **§3.9's four other keys are not rewritten.** Their surfaces are shelved for a journey reader or belong to the
     registry (Correction 9); the census names them. Overrule: rewrite them at S15 anyway.
-25. **The up-down rulebook's two "nafasi"** (_content-up-down.tsx:375, :386) stay for S12. Overrule: fold them into the
+25. **The up-down rulebook's three "nafasi"** (_content-up-down.tsx:380, and :391 twice) stay for S12. Overrule: fold them into the
     parked commit.
 26. **The X card is fixed now, for every player, in its own release (WP1).** The flip's words wait for WP9. Overrule:
     leave the X card until S15 (Point for Ali 2).
@@ -1059,3 +1063,64 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
    from ever being told who is previewing. Overrule: switch earlier, with a change to the privacy notice.
 7. **For the agency (optional).** `50pick.tz/?howto=1` opens How to Play directly. Do you want it in their campaign
    links?
+## Amendments at the build base (`c14cb403e`, 2026-10-14) — they override the body
+
+Re-read by the build session on OMEGA-COMPILE01 (branch `codex/vodacom-s11-build`, worktree
+`C:\50pick-ssd\kipindi-s11b`), four independent readers over the four parts of this file: **402 citations, 295 exactly
+right; 98 moved by the base's own edits** (VODACOM-PLAN.md +46 past its old line 3562 and +3 for the session law,
+COMPLIANCE-DECISIONS.md +60, i18n-dict.ts +4 past line 1041, bet-sheet-host.tsx +1, _content-up-down.tsx +5); **9 were
+already wrong at `f830a091c`**. All 107 are corrected in place above (81 line edits). What changes a package:
+
+- **B1 · The precondition (Open point 1) does not hold.** S8 is 🔨 at `c14cb403e` (VODACOM-PLAN §1). S11 is built in
+  parallel on the coordinating session's instruction (Ali, 2026-10-14: maximum parallel work); landing on main is the
+  coordinator's alone, after S8's close and re-reading on each rebase as Open point 1 says.
+- **B2 · One source of truth for the records (Ali, 2026-10-14, through the coordinator).** This branch edits none of
+  `docs/VODACOM-PLAN.md`, `docs/NEXT-PLAN.md` and `docs/qa/claude-vodacom-continuation-20261014.md`. Everything WP0 and
+  WP3 would write there — §0l, §1's row, §2's two rows, the annotations, §5 S11/S15, the §0h points, §3's "S11 keys" —
+  is written as exact proposed text in § Build record below, for the coordinator to apply when it lands this work.
+- **B3 · The visual bar (Ali, 2026-10-14, through the coordinator):** every surface S11 touches is read at
+  **320, 360, 390, 768, 1280 and 1920** in sw, en and zh — WP10's H takes six widths, not four.
+- **B4 · qa:lost-chunk's primer marker (WP2).** Correction 1's "one uses `kp-primer-force`" is qa-lost-chunk's marker
+  for the primer's CHUNK (qa-lost-chunk.mjs:89, its rule :105-112, enforced at :179-180 and :225-229), not an opt-in. WP2
+  moves that literal into `primer-keys.ts`, which the host imports too, so it can no longer find the primer's chunk: the
+  marker becomes the primer's own SVG gradient id `primer-no-fill` (self-test S1 holds it to one file).
+- **B5 · journey-shell 12.shell.flag (WP4).** :2518-2520 counts `{journeyShown && <LazyJourneyFlag />}` (built from
+  `BARE_FLAG`, :287), which the fragment mount ends: it is re-pinned with 5.mount.
+- **B6 · A fourth exact pin of chat.ts's call (WP6):** `scripts/anchors/house-bot-chatbot.anchors.mjs:167`
+  (`system: buildSystemPrompt(locale, (await getGlobalConfig()).objectionWindowHours),`; its plant at :168 appends a
+  per-reader value). `test:red-anchors` §3 requires it to resolve exactly once; it is re-aimed with the other three.
+- **B7 · The journey prompt is the one template with lines swapped, never a second copy (WP6).** The red anchors on
+  chat.ts must each resolve once — house-bot-chatbot.anchors.mjs :69 (`RULES:` / `1. NEVER…`), :120 (`WHAT YOU KNOW`),
+  :140, :216, and support-contact.anchors.mjs:61 (the `- 18+ only…` line).
+- **B8 · The privacy page's en source spells `browser&apos;s`** (:214): the new sentence keeps the entity (WP4).
+- **B9 · "kipima" is the dial's sw word (:4194) and ordinary Swahili too** ("kipima muda", a timer, :3708): the census's
+  sw backstop stays `kipima-dau`, never bare "kipima" (Correction 8, corrected).
+- **B10 · Four declarations leave the primer, not five** (STORAGE_KEY, HIDE_ON, SUPPRESS_ON, `primerForced`). Its UA test
+  stays inline on its line (`test:stacking` 8.4 reads that line for the `primerForced()` call); `primer-keys.ts` exports the
+  same pattern as `AUTOMATION_UA` for the host, and `test:howto` §2 holds the two spellings equal.
+- **B11 · test:visual-pass-r8a:** the held total is 5.2′ (:667, "fifteen links"); 5.2 (:665) is per file (WP9).
+- **B12 · The up-down rulebook holds three "nafasi"** (:380, :391 twice), not two (Open point 25).
+- **B13 · The X card is the DEFAULT `twitter:image`** (layout.tsx:173): markets/[id], leaderboard, results, proposals and
+  auth/register set their own, from their OG routes, which WP1 does not touch.
+
+## § Build record
+
+The build's own record (B2): progress, results, the reds and their causes, Ali's points with the defaults built, what is
+NOT MEASURED, and the exact text proposed for the trackers this branch does not edit. Newest last.
+
+### Progress
+
+| Package | State | Commit |
+|---|---|---|
+| WP0 · start line | Citations re-read and corrected (Amendments above); precondition does not hold (B1); records proposed below (B2) | this commit |
+| WP1 · the X card | — | — |
+| WP2 · `primer-keys.ts` | — | — |
+| WP3 · S11's words | — | — |
+| WP4 · the How-to host | — | — |
+| WP5 · the FAQ | — | — |
+| WP6 · the chat | — | — |
+| WP7 · the tagline and `test:flip-copy` | — | — |
+| WP8 · the share-picture generator | — | — |
+| WP9 · the parked S15 commit | — | — |
+| WP10 · the drives | — | — |
+| WP11 · proof, records, merge, deploy | The coordinator's | — |
