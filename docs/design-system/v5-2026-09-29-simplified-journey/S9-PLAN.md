@@ -801,3 +801,57 @@ refund-arrived, browser, release or LIVE claim follows from these local proofs.
 Queued publication remains the existing process-local best-effort side-effect mechanism; this packet adds no durable
 outbox and does not claim notices survive a crash after money commits. Sweep totals are not evidence that an outbound
 refund reached its recipient. Funding UI/controller work does not begin in this handoff packet.
+
+### §5l · Root review fixes — landability pass (2026-10-14)
+
+Input: the independent root review of `9869dd701` (findings H1–H3, M1–M4, L1–L8). Branch `codex/vodacom-s9-fixes`,
+three commits stacked on `codex/vodacom-s9`; not main, not pushed, not deployed, not S9 completion — the coordinator
+decides what lands. No production, Railway or production credential was touched; every PostgreSQL run used this
+checkout's own disposable 18.3 cluster on port 5448 (`.pgscratch`), a fresh database with all 103 migrations per suite.
+
+- **H1 · one row never stalls the sweep.** `reconcileStalePayments` isolates each stale row (`for … try … catch`). A row
+  whose settle throws moves no money, stays PROCESSING, counts in `leftPending` and is put before an officer once
+  (`reconcile settle error — left PROCESSING, not auto-settled`, the message in the payload); the next row settles.
+  `maybePaymentSweeps` gives the reconcile and the still-pending notices their own catch, as the escalation had. The
+  background suite no longer scores a thrown lane as a pass, and a new control runs the REAL `listByStatus` with
+  poisoned rows (ambiguous reference; a hold short of the payout) immediately ahead of valid rows of every arm: the valid
+  deposit is credited and the valid FAILED payout's hold released, on both stores, with the visiting order asserted.
+- **H2 · a Decimal(18,2) wallet is a valid wallet.** The credit, payout confirm/refund and the two readers require a
+  finite, non-negative balance (and a hold covering the payout); identity, wallet id and the exact `TZS` unit are
+  unchanged. Negative, NaN and infinite stay refused; a REAL stored 1,000.50 settles exactly on every arm.
+- **H3 · the four red guards.** `test:aml-dispatch-window` 3.2 and `test:payout-callback-identity` 3.2 are re-derived to
+  the bound two-hop shape, scanning whole functions, with positive controls; `test:cert-c3` asserts the ruling's label
+  and the held-for-return body; `test:kyc-copy-truth`'s P3 plant lands inside `notifyWithdraw`.
+- **M1 · migration lock order.** `"Position"` before `"Transaction"` (the bet path's order); `deadlock_detected` retried
+  like a lock timeout; the recovery line in the header.
+- **M2 · the 2026-10-07 ruling.** A held deposit's LABEL is "Reversed" on every player surface (COMPLIANCE-DECISIONS,
+  item 6). The bell title, the email eyebrow/heading/Status row and the card-return title are restored in the status
+  lexicon's words; the bodies keep the truthful held-for-return wording, which the ruling does not govern and whose old
+  delivered-return claim the same entry records as untrue. No new ruling is recorded here.
+- **M3** each store is held to its truth for an in-transaction review-marker fault (memory REVIEW; PostgreSQL rolls the
+  claim back: UNKNOWN), and an answer-lost-after-commit control is REVIEW on both. **M4** stored funding keys are opaque
+  (bounded printable text, compared by equality); the posted recheck capsule keeps UUID-or-null; `deposit()` refuses a
+  key the binding could not carry. **L1** an ambiguous Selcom-callback reference is an audited 500. **L2** both payout
+  lanes compare the stored trail form. **L3** the sweep's verified FAILED keeps `reconcile-verified-failed`. **L8** the
+  owned probe's signed-FAILED exception to the sweep-only rule is stated at its site. L4–L7 are left as the review
+  records them (latent, a copy decision, or pre-existing policy).
+
+Measured (this checkout, 2026-10-14). Typecheck clean. Memory: payment-background **141/141, red 23/23** (11 new plants);
+ordinary status **141/141, red 52/52** (9 new); recheck **173/173, red 51/51** (2 new); persistence **34/34, red 19/19**
+(2 new); replay **39/39, red 12/12**; state **168/168, red 38/38**. PostgreSQL 18.3: status **149/149** (was 137/138);
+recheck **180/180** with **4/4** actual-PG plants; background **176/176** with **5/5**; replay **39/39**; persistence
+**37/37** (a real loss-limit deadlock that the migration loses is retried and both commit); migration re-run clean;
+`e2e:money` **64/64**; `e2e:fault` **34/34**; `e2e:card` **100/100** on PostgreSQL and on memory (was 99/100); backup gate
+**13/13** (`scripts/backup-schema-gate.mts`, the gate `verify:backup-schema` runs). Lock probe, three interleavings: the
+old file lost case 1 (migration 40P01) and case 2 (bet 40P01); the new order without the deadlock retry lost case 3
+(migration 40P01); the shipped file commits all three. Guards: `aml-dispatch-window` **18/18**, `payout-callback-identity`
+**18/18**, `cert-c3` **1649/1649**, `kyc-copy-truth` **495/495**, `deposit-notifications` 73, `payments` 77, `cert-c1`
+1246, `red-anchors` 5716, `dal-parity` 2324, and 65 further money, journey, copy and guard suites green. The review's own
+reproduction, re-run on this tree on both stores: no wrong-wallet credit after a reference move; a fractional-wallet
+deposit and payout settle; an ambiguous row is left for review while the valid row behind it is credited.
+
+OPEN: `test:house-bot-disclosure` 5.1 (and its two controls) is red at `9869dd701` and here alike: it compares against
+`origin/main`, whose `ee518f52a` changed `src/app/legal/privacy/page.tsx` after this stack's merge base; it clears when
+the stack is merged with main. A withdrawal stored under a key the withdrawal tuple cannot carry (over 256 characters
+or control characters, which a tampered form can send) is still left for review by both payout lanes; the deposit door
+now refuses such keys, the withdrawal door does not yet.
