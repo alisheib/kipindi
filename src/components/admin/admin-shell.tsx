@@ -672,7 +672,7 @@ export function AdminCard({
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   const isFlush = padding === "p-0";
   return (
-    <div {...rest} className={["glass-panel", padding, className ?? ""].join(" ")}>
+    <div {...rest} data-empty-state-scope="" className={["glass-panel", padding, className ?? ""].join(" ")}>
       {/* ⛔ G-5 (2026-08-02) — the G-4 shape again, in the card header. The action side
             is `shrink-0` and the title side was `min-w-0`, so on a narrow screen the title
             absorbed ALL the shortfall: measured at 360, `/admin/finance`'s "Settlement fees
@@ -687,7 +687,7 @@ export function AdminCard({
       {(title || action) && (
                 <div className={`flex flex-wrap items-start justify-between gap-3 ${isFlush ? "px-4 pt-4 pb-3" : "mb-3"}`}>
           <div className="min-w-0 basis-[14rem] grow">
-            {title && <p className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
+            {title && <p data-section-heading="" className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
             {sw && (
               <p className="text-caption text-text-tertiary italic leading-tight mt-0.5">{sw}</p>
             )}

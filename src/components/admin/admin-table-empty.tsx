@@ -15,15 +15,22 @@ export function AdminTableEmpty({
   colSpan,
   kind = "admin",
   title,
+  titleSw,
   body,
+  bodySw,
   action,
+  fill,
   className = "px-4 py-8",
 }: {
   colSpan: number;
   kind?: ComponentProps<typeof EmptyState>["kind"];
   title: string;
+  titleSw?: string;
   body?: string;
+  bodySw?: string;
   action?: ReactNode;
+  /** Opt in for a table that forms a named full-width section; narrow tables keep the boxed atom. */
+  fill?: boolean;
   className?: string;
 }) {
   return (
@@ -48,7 +55,7 @@ export function AdminTableEmpty({
             page at 360, 20px of card to its left and 62px to its right. globals.css lifts the cap on this marker
             for exactly that table; a table without the class keeps it. */}
         <div data-table-empty-pin className="sticky left-0 max-w-[calc(100vw-122px)] lg:max-w-none">
-          <EmptyState kind={kind} title={title} body={body} action={action} />
+          <EmptyState kind={kind} title={title} titleSw={titleSw} body={body} bodySw={bodySw} action={action} fill={fill} />
         </div>
       </td>
     </tr>

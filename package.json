@@ -686,6 +686,8 @@
     "qa:bet-sheet-prod-serve": "node --import tsx --import ./scripts/live/bet-sheet-prod-bootstrap.mts ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3044",
     "qa:bet-sheet-production": "node scripts/qa-bet-sheet-production.mjs",
     "qa:admin-kpi": "node scripts/qa-admin-kpi.mjs",
+    "qa:empty-state-alignment": "node scripts/empty-state-alignment.test.mjs",
+    "qa:normal-empty-state": "node scripts/qa-normal-empty-state.mjs",
     "test:bet-sheet-observe": "tsx scripts/bet-sheet-observe.test.mts",
     "test:journey-question": "tsx scripts/journey-question.test.mts",
     "red:journey-question": "tsx scripts/journey-question.test.mts --prove-red",

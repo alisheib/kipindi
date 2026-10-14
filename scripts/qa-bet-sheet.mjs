@@ -56,14 +56,15 @@ await post(admin, "reset-rate-limits");
 if (!catalogue?.ids?.length) { console.error("REFUSED: seeded board has no market"); await browser.close(); process.exit(2); }
 let SESSION = await demoSession(browser, BASE);
 const contexts = new Set();
-async function context(locale = "en", viewport = { width: 390, height: 844 }, { preview = true, signedIn = true } = {}) {
-  const ctx = await browser.newContext({ viewport }); contexts.add(ctx);
+async function context(locale = "en", viewport = { width: 390, height: 844 }, { preview = true, signedIn = true, controlledNetwork = false } = {}) {
+  const ctx = await browser.newContext({ viewport, ...(controlledNetwork ? { serviceWorkers: "block" } : {}) }); contexts.add(ctx);
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...(preview ? [asCookie(PASS)] : []), ...(signedIn ? [asCookie(SESSION)] : [])]);
   return ctx;
 }
 async function pageIn(ctx, route = "/") {
   const page = await ctx.newPage();
   await readyProbe(page);
+  await page.bringToFront();
   page.on("console", m => {
     if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() });
     if (/hydrated but|hydration failed|server rendered HTML didn't match/i.test(m.text())) result(`${route}: hydration mismatch`, "FAIL", "Full console text, attribute and element retained in evidence.json");
@@ -108,6 +109,22 @@ async function readyProbe(page) {
   }, process.env.KP_TRACE === "1");
 }
 async function tile(page, label) {
+  const receipt = await page.locator(`${S.root}[data-frame="receipt"]`).count() > 0;
+  await page.evaluate(async selector => {
+    await document.fonts.ready;
+    const root=document.querySelector(selector),dialog=root?.closest('[role="dialog"]');
+    const finite=(dialog?.getAnimations({subtree:true})??[]).filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity);
+    await Promise.all(finite.map(animation=>animation.finished.catch(()=>{})));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  },S.root);
+  if(receipt){
+    await page.waitForFunction(selector=>{
+      const root=document.querySelector(selector),panel=root?.closest('.kp-bsheet'),dialog=root?.closest('[role="dialog"]');
+      if(root?.getAttribute('data-frame')!=='receipt'||!panel||dialog?.getAttribute('aria-hidden')==='true')return false;
+      let opacity=1;for(let node=panel;node&&node!==document.body;node=node.parentElement)opacity*=Number(getComputedStyle(node).opacity);
+      return opacity>=.999 && !(dialog?.getAnimations({subtree:true})??[]).some(animation=>animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
+    },S.root);
+  }
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
   await page.screenshot({ path: join(OUT, filename), fullPage: false });
   results.push({ label, state: "TILE", file: filename });
@@ -150,8 +167,8 @@ async function observed(ctx, marketId) {
 }
 // Persistent RG changes use isolated local seeded PLAYER accounts so one hour's cooling-off cannot poison the demo
 // player's later cells. The actual limits/cooling/freeze forms and services still make every decision.
-async function freshPlayer(balance = 100000, {locale="en",viewport={width:390,height:844}}={}) {
-  const ctx = await context(locale, viewport, { signedIn: false });
+async function freshPlayer(balance = 100000, {locale="en",viewport={width:390,height:844},controlledNetwork=false}={}) {
+  const ctx = await context(locale, viewport, { signedIn: false, controlledNetwork });
   const phone = `+25571${String(parseInt(crypto.randomUUID().replaceAll("-", "").slice(0, 10), 16) % 10_000_000).padStart(7, "0")}`;
   const seeded = await post(ctx, "seed-admin", { role: "PLAYER", phone, name: "Local Sheet Matrix", balance });
   if (seeded.note) throw new Error("Synthetic account already existed: invalid fresh-player premise");
@@ -578,14 +595,26 @@ try {
 
   if (run("lifecycle")) {
     {
-      const {ctx}=await freshPlayer(),page=await pageIn(ctx),seed=await open(page),before=await observed(ctx,seed.id),watch=actionWatch(page);
+      // Only this fault-injection context blocks SW interception, so the controlled429 reaches the actual Host fetch.
+      // Core/IME/reload contexts keep the real application's service worker.
+      const {ctx}=await freshPlayer(100000,{controlledNetwork:true}),page=await pageIn(ctx),seed=await open(page),before=await observed(ctx,seed.id),watch=actionWatch(page);
+      ok("controlled fresh-read premise has no service-worker controller",await page.evaluate(()=>!navigator.serviceWorker?.controller));
       const balance=page.locator(`${S.root} .kp-bsheet__balance`);
       await balance.getByText("TZS 100,000",{exact:true}).waitFor();
+      await page.bringToFront();
+      await page.waitForFunction(()=>document.visibilityState==="visible");
       const heading=await page.locator(`${S.root} h2`).innerText();
-      let failing=true;
-      await page.route("**/api/markets/*/sheet?**",route=>failing?route.fulfill({status:429,contentType:"application/json",body:'{"error":"controlled fresh private read refusal"}'}):route.fallback());
+      let failing=true,refusedReads=0;
+      await page.route("**/api/markets/*/sheet?**",route=>{if(failing){refusedReads++;return route.fulfill({status:429,contentType:"application/json",body:'{"error":"controlled fresh private read refusal"}'});}return route.fallback();});
       await page.evaluate(()=>window.dispatchEvent(new Event("focus")));
-      await page.locator(`${S.root} .kp-bsheet__balance-unknown`).waitFor();
+      try{await page.locator(`${S.root} .kp-bsheet__balance-unknown`).waitFor();}
+      catch{
+        const diagnostic=await page.evaluate(selector=>({visibility:document.visibilityState,hasFocus:document.hasFocus(),frame:document.querySelector(selector)?.getAttribute('data-frame'),balance:document.querySelector(`${selector} .kp-bsheet__balance`)?.textContent,trace:window.__sheetTrace??[]}),S.root);
+        observations.push({label:"lifecycle-fresh-refusal-diagnostic",refusedReads,...diagnostic});
+        await tile(page,"lifecycle-fresh-refusal-diagnostic");
+        throw new Error(`Controlled429 did not reach unknown balance; matchedReads=${refusedReads}, visibility=${diagnostic.visibility}, hasFocus=${diagnostic.hasFocus}, frame=${diagnostic.frame}`);
+      }
+      ok("controlled fresh refusal reached the actual read on a visible page",refusedReads>0);
       const unknown=await balance.innerText(),p=(await probe(page)).got;
       ok("successful wallet read then fresh429: unknown dash, no fake0/old wallet/options, public heading preserved",unknown.includes("—")&&/unavailable/i.test(unknown)&&! /TZS\s*(?:0\b|100,000)/.test(unknown)&&!p.visibleDeposit&&!p.visibleInstead&&await page.locator(`${S.root} h2`).innerText()===heading,unknown);
       await tile(page,"lifecycle-failed-private-after-known");
