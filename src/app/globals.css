@@ -8602,6 +8602,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__lines p { margin: 0; }
 .kp-bsheet__placing { margin: 0; font-size: var(--type-small); color: var(--text-muted); }
 .kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); }
+/* The placing status and the refusal line stand above the CTA they explain, at the sheet's row rhythm (gap + 4px = 12px). */
+.kp-bsheet__footer > :is(.kp-bsheet__placing, .kp-bsheet__lines) { margin-bottom: var(--sp-1); }
 .kp-bsheet__commit { white-space: normal; height: auto; min-height: var(--h-control-xl); padding-block: var(--sp-2); }
 .kp-bsheet__receipt-rows { margin: 0; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
 .kp-bsheet__receipt-rows > div { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-3); }

@@ -123,17 +123,23 @@ export function BetSheetBody(props: BodyProps) {
         {low?.depositRefusal === "deposit_limit" && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
         {instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />}
         {frame.showEstimate && <BalanceRow t={t} frame={frame} />}
-        {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}
-        {frame.lines.length > 0 && <div id={lineId} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>}
       </>}
     </div>
+    {/* ⭐ The placing status and the inline refusal line stand in the footer, directly above the CTA they explain
+        (S8-PLAN's refusal matrix: "one line in the sheet's last rows, above the CTA", s4-4-inline-refusals). As the last
+        rows of the scrolling middle they fell below the fold on a 360×640 phone while the CTA stayed pinned: the player
+        saw "Try again" without its reason (S8 BUSY and row-23 drives, 2026-10-14). */}
     <div className="kp-bsheet__footer">
       {receipt ? <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__continue" onClick={onClose}>{t.market.udRcKeepPlaying}</Button>
         : terminal ? <>
           {frame.block?.actions.includes("setLimits") && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}</Link>}
           {frame.block?.actions.includes("contactSupport") && <Link className="kp-bsheet__link" href="/help" onClick={onClose}>{t.kycGate.frozenCta}</Link>}
           <Button type="button" variant="ghost" size="xl" fullWidth onClick={onClose}>{t.common.gotIt}</Button>
-        </> : footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
+        </> : <>
+          {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}
+          {frame.lines.length > 0 && <div id={lineId} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>}
+          {footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
+        </>}
     </div>
   </>;
 }

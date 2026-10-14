@@ -569,8 +569,19 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
   const footerBranches = (s: string) => {
     const start = s.indexOf('<div className="kp-bsheet__footer">');
     if (start < 0) return false;
-    const footer = s.slice(start, s.indexOf("</div>", start));
-    return (footer.match(/<Button\b/g) ?? []).length === 3 && /\{receipt \? <Button\b[\s\S]*: terminal \? <>[\s\S]*<Button\b[\s\S]*<\/> : footerLine && <Button\b/.test(footer);
+    // The footer's own extent, by its balanced <div>s: since 2026-10-14 the editable branch holds the refusal line's
+    // <div> above the CTA, so the first </div> after the footer is no longer the footer's.
+    let depth = 0, end = -1;
+    for (const m of s.slice(start).matchAll(/<div\b|<\/div>/g)) {
+      depth += m[0] === "</div>" ? -1 : 1;
+      if (depth === 0) { end = start + (m.index ?? 0); break; }
+    }
+    if (end < 0) return false;
+    const footer = s.slice(start, end);
+    // Exactly one Button per branch: receipt → continue, terminal → "Got it" (its links stack), editable → the commit,
+    // with only non-button status rows (placing, the refusal line) above it.
+    return (footer.match(/<Button\b/g) ?? []).length === 3
+      && /\{receipt \? <Button\b[\s\S]*: terminal \? <>[\s\S]*<Button\b[\s\S]*<\/> : <>(?:(?!<Button\b)[\s\S])*\{footerLine && <Button\b[\s\S]*<\/>\}/.test(footer);
   };
   const kept = (p: { f: string; cls: string }) => KEEP_PAIR.some(([f, cls]) => f === p.f && cls === p.cls)
     && (p.f !== "src/components/journey/bet-sheet/bet-sheet.tsx" || p.cls !== "kp-bsheet__footer" || footerBranches(code(p.f)));
@@ -584,7 +595,8 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
   const sheetSource = code("src/components/journey/bet-sheet/bet-sheet.tsx");
   ok("5.2‴ CONTROL · S8's named footer permits only its mutually exclusive action; an added button or lost receipt condition is rejected",
     footerBranches(sheetSource) && !footerBranches(sheetSource.replace('<div className="kp-bsheet__footer">', '<div className="kp-bsheet__footer"><Button>extra</Button>'))
-      && !footerBranches(sheetSource.replace('{receipt ? <Button', '{receipt && <Button')));
+      && !footerBranches(sheetSource.replace('{receipt ? <Button', '{receipt && <Button'))
+      && !footerBranches(sheetSource.replace("{footerLine && <Button", "<Button>beside</Button>{footerLine && <Button")));
 
   // 5.3 · the labels at 320, by the fonts' own advances (no kerning: Inter's kerning only tightens these pairs, so this is
   // an upper bound), every character's tracking counted (a browser adds it after the last one too).
