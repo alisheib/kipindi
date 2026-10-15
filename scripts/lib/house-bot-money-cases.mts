@@ -671,6 +671,7 @@ if (w.onPostgres) {
   const trigger: Any = await w.svc.buyPosition(player, { marketId: market.id, side: "YES",
     stake: 5_000, idempotencyKey: crypto.randomUUID() });
   if (!trigger.ok) throw new Error(`5n6b trigger failed: ${show(trigger)}`);
+  await w.backdate(trigger.data.positionId, 10_000); // A15's no-grace player money is certainly locked.
   const intent = await w.intent(second, market.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
     triggerPositionId: trigger.data.positionId, triggerUserId: player });
   const before = await w.bal(second.userId);
