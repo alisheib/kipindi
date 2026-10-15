@@ -51,6 +51,7 @@ import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { parseSavedDepositBet, sameDepositFunding, type SavedDepositBet } from "@/lib/journey/deposit-state";
+import { activeCardCheckoutUrl, trustedCardCheckoutUrl } from "@/lib/card-checkout-url";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -78,7 +79,7 @@ export async function deposit(
   /** S9's private server handoff. The page/action must establish chosen-stake trust before supplying this envelope;
    * an incoming URL claim is never this argument. Existing four-argument callers retain a null intent. */
   savedBet?: SavedDepositBet | null,
-): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string }>> {
+): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string; recoveryRequired?: boolean }>> {
   const rl = await rateCheckAsync(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
@@ -101,7 +102,8 @@ export async function deposit(
     if (existing) {
       if (!matchesFunding(existing)) return keyConflict();
       const w = await db.wallet.findByUserId(userId);
-      return { ok: true, data: { txnId: existing.id, status: depositResultStatus(existing), balance: w?.balance ?? 0 } };
+      return { ok: true, data: { txnId: existing.id, status: depositResultStatus(existing), balance: w?.balance ?? 0,
+        redirectUrl: activeCardCheckoutUrl(userId, existing) ?? undefined, recoveryRequired: existing.status === "PROCESSING" } };
     }
   }
 
@@ -310,7 +312,8 @@ export async function deposit(
   if (reservation.reused) {
     // Idempotent replay — the deposit was already initiated; don't dispatch again.
     const w = await db.wallet.findByUserId(userId);
-    return { ok: true, data: { txnId, status: depositResultStatus(txn), balance: w?.balance ?? 0 } };
+    return { ok: true, data: { txnId, status: depositResultStatus(txn), balance: w?.balance ?? 0,
+      redirectUrl: activeCardCheckoutUrl(userId, txn) ?? undefined, recoveryRequired: txn.status === "PROCESSING" } };
   }
   // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATES: the account's identity standing (2026-09-13) and
   // its email standing (2026-10-07), as fields on the row every deposit already writes. Stamped on
@@ -348,7 +351,25 @@ export async function deposit(
     // something they were just told, and have very likely already retried, is
     // noise. The gap G2 closed was the ASYNCHRONOUS failure, where the player is
     // no longer looking. Don't "make this consistent" — the two are different.
-    await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` });
+    // A signed callback can arrive while dispatch is in flight. Claim failure under the SAME wallet lock as
+    // confirmation, and only while this exact referenced row remains PROCESSING. Never turn credited money FAILED.
+    let claim: { row: StoredTxn; failedHere: boolean } | null = null;
+    try {
+      claim = await withLock(`wallet:${userId}`, async (tx) => {
+        const fresh = await db.txn.findById(txnId, tx);
+        if (!fresh || fresh.userId !== userId || fresh.type !== "DEPOSIT") return null;
+        if (fresh.status !== "PROCESSING" || fresh.providerRef !== correlationId) return { row: fresh, failedHere: false };
+        const failed = await db.txn.update(txnId,
+          { status: "FAILED", description: `${friendlyProvider(parse.data.provider)} deposit failed: ${result.reason}` }, tx);
+        if (!failed || failed.status !== "FAILED") throw new Error("Deposit failure could not be committed");
+        return { row: failed, failedHere: true };
+      });
+    } catch { /* A lost write answer cannot authorize another charge. Recover the reserved order. */ }
+    if (!claim || !claim.failedHere) {
+      const w = await db.wallet.findByUserId(userId);
+      return { ok: true, data: { txnId, status: claim ? depositResultStatus(claim.row) : "PROCESSING",
+        balance: w?.balance ?? wallet.balance, recoveryRequired: true } };
+    }
     // `detail` carries the provider's own explanation (HTTP status, result code,
     // message). Without it a failed real-money deposit is undiagnosable once the
     // container's logs rotate — which is exactly what happened to the 5,000 TZS
@@ -361,10 +382,17 @@ export async function deposit(
   // write above guarantees SOME reference exists even if we crash here; this write
   // makes it the authoritative one, because the mock and AML branches return a
   // different value from the correlation id we minted. Keep both writes.
-  const returnedReference = await db.txn.update(txnId, { providerRef: result.providerRef });
-  if (returnedReference?.providerRef !== result.providerRef) {
+  const cardCheckoutUrl = parse.data.provider === "CARD" && result.status === "PENDING"
+    ? trustedCardCheckoutUrl(result.redirectUrl) : null;
+  if (parse.data.provider === "CARD" && result.status === "PENDING" && !cardCheckoutUrl) {
+    auditNeedsReviewOnce(txnId, "provider accepted card order without a trusted checkout URL", { correlationId });
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: wallet.balance, recoveryRequired: true } };
+  }
+  const returnedReference = await db.txn.update(txnId, { providerRef: result.providerRef,
+    ...(cardCheckoutUrl ? { cardCheckoutUrl } : {}) });
+  if (returnedReference?.providerRef !== result.providerRef || (cardCheckoutUrl && returnedReference.cardCheckoutUrl !== cardCheckoutUrl)) {
     auditNeedsReviewOnce(txnId, "provider accepted deposit but its returned reference could not be persisted", { correlationId, providerRef: result.providerRef });
-    return { ok: false, error: "Payment is being checked. Do not pay again; use this deposit's status page.", code: "INVALID" };
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: wallet.balance, recoveryRequired: true } };
   }
 
   if (result.status === "PENDING") {
@@ -388,10 +416,9 @@ export async function deposit(
     notifyDeposit(userId, { status: "PROCESSING", amount: parse.data.amount, provider: friendlyProvider(parse.data.provider), txnId,
       savedReturn: !!pendingBet });
     const cur = await db.wallet.findByUserId(userId);
-    // `redirectUrl` (card/hosted checkout) is passed straight through for the
-    // caller to send the buyer to. It carries NO money meaning — the txn is
-    // PROCESSING either way, and only the signed order-status re-query credits.
-    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0, redirectUrl: result.redirectUrl } };
+    // Use the stored, validated capability so a lost response and a replay can reach the SAME hosted order.
+    // It carries no money meaning; only the signed order-status re-query credits.
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0, redirectUrl: cardCheckoutUrl ?? undefined } };
   }
 
   // Synchronous provider (or the dev mock): the collection already settled, so

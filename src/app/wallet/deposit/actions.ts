@@ -87,9 +87,8 @@ export async function depositAction(formData: FormData) {
     redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
 
   if (requestedFlow === "journey" && !journey) fail(t.error.somethingDidntWork);
-  // Focused and direct Card forms are recoverable payment flows. A missing/malformed key cannot fall
-  // through to deposit() as an unkeyed charge when hydration or a browser form guard fails.
-  if ((journeyFlow || cardFlow) && (!idempotencyKey
+  // Every rail needs a recoverable funding identity. A missing key must never dispatch an unkeyed charge.
+  if ((!idempotencyKey
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)))
     fail(t.error.somethingDidntWork);
   if (journeyFlow && !isMobileMoneyMethodId(provider)) fail(t.error.somethingDidntWork);
@@ -190,6 +189,9 @@ export async function depositAction(formData: FormData) {
   // providerRef stored, so whatever happens next (they pay, cancel, or close the
   // tab) the return leg and the reconcile sweep can both resolve it.
   if (data.redirectUrl) redirect(data.redirectUrl as never);
+
+  // A provider may already hold this order after an uncertain dispatch answer. Keep this exact key.
+  if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);
 
   if (journeyFlow) redirect(`/wallet/deposit/wait/${data.txnId}` as never);
 

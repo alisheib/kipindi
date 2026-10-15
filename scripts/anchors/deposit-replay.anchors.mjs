@@ -14,6 +14,10 @@ export const MUTATIONS = [
   { name: "prisma-relabels-foreign-currency", file: "src/lib/server/prisma-dal.ts", from: "currency: t.currency,\n    provider: t.provider", to: 'currency: "TZS",\n    provider: t.provider', expect: "dal.currency" },
   mutation("reservation-loses-chosen-bet", "origin: (parse.data as { origin?: \"low_balance\" }).origin ?? null,\n        pendingBet,", "origin: (parse.data as { origin?: \"low_balance\" }).origin ?? null,", "metadata.saved-before-dispatch"),
   mutation("malformed-intent-dispatches", 'if (savedBet != null && !pendingBet) return { ok: false, error: "The saved question selection is invalid.", code: "INVALID" };', "", "metadata.malformed-before-send"),
+  mutation("card-url-not-persisted", "...(cardCheckoutUrl ? { cardCheckoutUrl } : {})", "", "card.replay-url"),
+  mutation("card-replay-loses-url", "redirectUrl: activeCardCheckoutUrl(userId, existing) ?? undefined", "redirectUrl: undefined", "card.replay-url"),
+  { name: "card-checkout-route-loses-owner", file: "src/app/wallet/deposit/checkout/[id]/route.ts",
+    from: 'row.userId !== session.userId || ', to: '', expect: "card.route-foreign" },
   // S9 RC (Ali, 2026-10-14): withdraw() refuses a key the payout binding cannot carry before anything is read or reserved.
   mutation("withdraw-key-door-removed", 'if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };', "", "withdraw.key-door.control"),
   mutation("withdraw-key-door-refuses-absent", 'if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };', 'if (!isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };', "withdraw.key-door-passes.absent"),

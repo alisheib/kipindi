@@ -948,3 +948,29 @@ money settlement; they do not claim a live provider payment, a browser visual pa
 Before integration: rerun the read-only production preflight, then run the full WP8 gate and local/browser
 release review on the exact integrated tip. After the
 root-controlled deployment, repeat production read-back and owner-visible visual and logical checks.
+
+### §5p · Dispatch recovery and Card checkout candidate (2026-10-15)
+
+The next isolated S9 checkpoint repairs three release findings. Every deposit form must submit its original
+UUID before dispatch, including the classic form. If an accepted provider order cannot save its returned
+reference, `deposit()` reports `recoveryRequired` with the reserved transaction id; the action takes the
+owner to the funding-key waiting page before any error redirect can mint another UUID. A replay of a still
+processing order also enters owned recovery. A dispatch-time failure claims FAILED only under the same wallet
+lock as confirmation, after checking the fresh PROCESSING row and original reference. A confirmed callback
+that won the lock remains CONFIRMED and credited.
+
+Selcom Card's validated HTTPS checkout URL is stored in the new nullable `Transaction.cardCheckoutUrl`
+column in the same write as the returned reference, before the first redirect. The exact accepted hosts are
+`checkout.selcommobile.com`, `checkout.selcom.net`, and `selcompay.me`; an unexpected provider host requires
+review before it may be added. A matching same-key Card replay returns that existing URL without creating
+another order. The waiting page offers a deliberate continuation link only while the owned Card transaction
+is PROCESSING and not marked for review. Its server route repeats owner, rail, currency, status, review and
+host checks before redirecting; neither status JSON nor audit records contain the URL.
+
+Focused memory proof on this checkpoint: typecheck, deposit replay **57/57** with **17/17** red plants,
+provider-reference **29/29** with **3/3** red plants, and deposit-return **28/28** including its ambiguity
+plant. The race test runs the signed CONFIRMED callback between provider dispatch and the synchronous
+failure arm, then checks one credit, CONFIRMED status and no failure audit. The Card test checks the
+persisted URL, same-key no-dispatch replay, foreign and terminal denial, owned route and exact-host
+validation. The new nullable migration is `20261015123000_card_checkout_url`. Its actual PostgreSQL race,
+migration/backup-schema proof and integrated browser/release gates remain required before merge or deployment.

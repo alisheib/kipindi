@@ -87,11 +87,16 @@ check("a pre-dispatch refusal cannot release an unresolved same-key funding iden
   fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource));
 if (red) check("plant: an early tab-key release is caught",
   !fundingUnlockGuard(depositActionSource, `${mobileFormSource}\nbox.removeItem(slot);`, cardBridgeSource));
-const keyedActionGuard = (source: string) => source.includes("(journeyFlow || cardFlow) && (!idempotencyKey")
-  && source.indexOf("(journeyFlow || cardFlow) && (!idempotencyKey") < source.indexOf("const result = await deposit(");
-check("focused and Card actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));
+const keyedActionGuard = (source: string) => source.includes("if ((!idempotencyKey")
+  && source.indexOf("if ((!idempotencyKey") < source.indexOf("const result = await deposit(");
+check("all deposit actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));
 if (red) check("plant: an unkeyed charge path is caught",
-  !keyedActionGuard(depositActionSource.replace("(journeyFlow || cardFlow) && (!idempotencyKey", "false && (!idempotencyKey")));
+  !keyedActionGuard(depositActionSource.replace("if ((!idempotencyKey", "if (false && (!idempotencyKey")));
+const ambiguousActionGuard = (source: string) => source.includes("if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);")
+  && source.indexOf("if (data.redirectUrl)") < source.indexOf("if (data.recoveryRequired)")
+  && source.indexOf("if (data.recoveryRequired)") < source.indexOf("if (journeyFlow) redirect");
+check("ambiguous classic and focused outcomes keep the original key in owned recovery", ambiguousActionGuard(depositActionSource));
+if (red) check("plant: reminting after an ambiguous answer is caught", !ambiguousActionGuard(depositActionSource.replace("if (data.recoveryRequired)", "if (false)")));
 const cardRecoveryGuard = (source: string) => source.includes("gate.inert = true;")
   && source.includes("if (gate.inert || window.sessionStorage.getItem(fundingKey(ownerId)))")
   && source.includes('form.addEventListener("submit", submit, true)');

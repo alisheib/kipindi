@@ -6,11 +6,12 @@ import { verifyDepositStatus } from "./payments";
 import { settlePaymentWebhook } from "./wallet-service";
 import { canonicalDepositFunding, canProbeDeposit, depositProjection, ownedDeposit, type DepositProjection } from "@/lib/journey/deposit-state";
 import { depositRecheckBinding, matchesDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
+import { activeCardCheckoutUrl } from "@/lib/card-checkout-url";
 
 export type DepositLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
 export type DepositStatusView =
   | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number }
-  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable: number; retryAfterSec: number };
+  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable: number; retryAfterSec: number; checkoutAvailable?: boolean };
 export type DepositStatusRead = { view: DepositStatusView; rateLimited: boolean; txn?: StoredTxn };
 
 function validLookup(lookup: DepositLookup): boolean {
@@ -100,6 +101,7 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
     const bonus = wallet?.bonusBalance ?? 0;
     if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0
       || !Number.isFinite(bonus) || bonus < 0) return unknown(retryAfterSec);
-    return { view: { ...projection, balance: wallet.balance, spendable: wallet.balance + bonus, retryAfterSec }, rateLimited: false, txn };
+    return { view: { ...projection, balance: wallet.balance, spendable: wallet.balance + bonus, retryAfterSec,
+      checkoutAvailable: !!activeCardCheckoutUrl(userId, txn) }, rateLimited: false, txn };
   } catch { return unknown(); }
 }

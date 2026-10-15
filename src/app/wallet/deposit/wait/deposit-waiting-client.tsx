@@ -18,7 +18,8 @@ import { fundingStorageKey, parseStoredFunding } from "@/lib/journey/funding-sto
 
 type WaitingView =
   | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number }
-  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable?: number; retryAfterSec: number; failureAuthority?: "signed-recheck" };
+  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable?: number; retryAfterSec: number;
+    checkoutAvailable?: boolean; failureAuthority?: "signed-recheck" };
 
 const fundingKey = fundingStorageKey;
 
@@ -223,6 +224,10 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     <PageHero><PageHeader icon={view.state === "PAID" ? <I.checkCircle s={14} className="text-success-fg" /> : <I.clock s={14} className="text-brand-300" />}
       eyebrow={t.journey.depositWaitEyebrow} title={title} subtitle={body} /></PageHero>
     {view.state === "PENDING" && <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>{t.wallet.returnPendingWarnBody}</Callout>}
+    {view.state === "PENDING" && view.provider === "CARD" && view.checkoutAvailable &&
+      <a href={`/wallet/deposit/checkout/${encodeURIComponent(view.txnId)}`} className="btn btn-primary btn-lg flex w-full justify-center">
+        {t.journey.depositContinueCardCheckout}
+      </a>}
     {existingMoneyChoice && <button type="button" onClick={returnToChoice} className="btn btn-ghost btn-lg w-full">
       {t.journey.depositUseExistingMoney}
     </button>}

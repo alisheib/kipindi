@@ -1575,6 +1575,8 @@ export type StoredTxn = {
   currency: "TZS";
   provider: "MPESA" | "TIGO_PESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "TTCL_PESA" | "CARD" | "BANK_TRANSFER" | "INTERNAL" | null;
   providerRef: string | null;
+  /** Selcom-hosted Card URL, owner/status scoped before use. Null on other rails and legacy orders. */
+  cardCheckoutUrl?: string | null;
   /**
    * What the payment gateway ACTUALLY said, in its own words — HTTP status,
    * resultcode, result and message (see `describeSelcom`).

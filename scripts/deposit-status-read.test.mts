@@ -17,6 +17,7 @@ import * as QueryWindows from "../src/lib/query/windows.ts";
 import * as ResultPhase from "../src/lib/wallet/result-phase.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
+import { activeCardCheckoutUrl, trustedCardCheckoutUrl } from "../src/lib/card-checkout-url.ts";
 import { MUTATIONS } from "./anchors/deposit-status-read.anchors.mjs";
 import { MUTATIONS as RECHECK_MUTATIONS, PG_MUTATIONS as RECHECK_PG_MUTATIONS } from "./anchors/deposit-recheck.anchors.mjs";
 import { MUTATIONS as BACKGROUND_MUTATIONS, PG_MUTATIONS as BACKGROUND_PG_MUTATIONS } from "./anchors/payment-background.anchors.mjs";
@@ -131,6 +132,7 @@ function system(src = sources, data = db) {
     /** M3: the reader's own settle COMMITS and then its answer is lost (a dropped reply after commit, on either store). */
     loseSettleAnswer: false, dispatches: 0 };
   let verify: (ref: string) => Promise<any> = async () => ({ status: "PENDING" });
+  let dispatch: (opts: any) => Promise<any> = async ({ correlationId }: any) => ({ ok: true, status: "CONFIRMED", providerRef: correlationId });
   let core: any;
   const audit = (entry: any) => { seen.audits.push(entry); return Promise.resolve({ recorded: true }); };
   const requireFixture = (id: string) => {
@@ -156,6 +158,7 @@ function system(src = sources, data = db) {
     parseDepositRecheckBinding: bindingModule.parseDepositRecheckBinding, matchesDepositRecheckBinding: bindingModule.matchesDepositRecheckBinding,
     depositRecheckBinding: bindingModule.depositRecheckBinding, withdrawalProbeBinding: probeModule.withdrawalProbeBinding,
     isStoredFundingKey: bindingModule.isStoredFundingKey,
+    activeCardCheckoutUrl, trustedCardCheckoutUrl,
     parseProcessingProbeBinding: probeModule.parseProcessingProbeBinding, matchesProcessingProbeBinding: probeModule.matchesProcessingProbeBinding,
     verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); },
     verifyWithdrawalStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); }, isLiveMoneyMode: () => true,
@@ -163,7 +166,7 @@ function system(src = sources, data = db) {
     isMaintenanceMode: async () => false, maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
     checkDepositLimit: async () => ({ allowed: true }), SOF_SINGLE_TXN_TZS: 1_000_000, SOF_ROLLING_30D_TZS: 5_000_000,
     readIdentityStanding: async () => ({ kycStatus: "NOT_STARTED", everApproved: false }),
-    dispatchDeposit: async ({ correlationId }: any) => { seen.dispatches++; if (seen.lockAtDispatch) seen.locked = true; return { ok: true, status: "CONFIRMED", providerRef: correlationId }; },
+    dispatchDeposit: async (opts: any) => { seen.dispatches++; if (seen.lockAtDispatch) seen.locked = true; return dispatch(opts); },
     emit: () => {}, notifyDeposit: (ownerId: string, notice: any) => seen.notices.push({ ownerId, ...notice }),
     sendEmailToUser: async () => {}, depositConfirmedHtml: () => "", depositReversedHtml: () => "", depositFailedHtml: () => "",
     require: requireFixture,
@@ -180,6 +183,7 @@ function system(src = sources, data = db) {
   };
   core = compile(src[files[0]], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
+    "@/lib/card-checkout-url": { activeCardCheckoutUrl },
     "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any, original: any) => {
       seen.settles++;
       const answer = await money.settlePaymentWebhook(input, restriction, original);
@@ -207,7 +211,7 @@ function system(src = sources, data = db) {
     return recheckRaw(id, txnId, expected.length ? expected[0] : binding);
   };
   return { read: core.readDepositStatus as (id: string, lookup: DLookup) => Promise<any>, recheck: recheckFixture, recheckRaw, bindingModule, probeModule, money, seen, reviewModule, receiptsModule,
-    verify: (next: typeof verify) => { verify = next; } };
+    verify: (next: typeof verify) => { verify = next; }, dispatch: (next: typeof dispatch) => { dispatch = next; } };
 }
 type DLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
 async function player() {
@@ -589,8 +593,28 @@ async function referenceControls(src: Record<string, string> = sources): Promise
   const returnedKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
   const returnedDeposit = await returned.money.deposit(returnedOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" }, returnedKey);
   const returnedRow = await db.txn.findByIdempotencyKey(returnedKey);
-  ok("reference.post-dispatch-failure-remains-pending", !returnedDeposit.ok && returned.seen.dispatches === 1
+  ok("reference.post-dispatch-failure-remains-pending", returnedDeposit.ok && returnedDeposit.data.recoveryRequired === true
+    && returnedDeposit.data.txnId === returnedRow?.id && returned.seen.dispatches === 1
     && referenceWrites === 2 && returnedRow?.status === "PROCESSING" && (await db.wallet.findByUserId(returnedOwner))?.balance === 0);
+  const raceOwner = await player(), dispatchRace = system(src);
+  let callbackHandled = false;
+  dispatchRace.dispatch(async ({ correlationId }: { correlationId: string }) => {
+    callbackHandled = (await dispatchRace.money.settlePaymentWebhook({ providerRef: correlationId, status: "CONFIRMED", amount: 5000 })).handled;
+    return { ok: false, reason: "PROVIDER_DOWN", correlationId };
+  });
+  const raceKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const racedReply = await dispatchRace.money.deposit(raceOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" }, raceKey);
+  const racedRow = await db.txn.findByIdempotencyKey(raceKey), racedWallet = await db.wallet.findByUserId(raceOwner);
+  ok("dispatch.race.confirmed-not-failed", callbackHandled && racedReply.ok && racedReply.data.recoveryRequired
+    && racedReply.data.status === "CONFIRMED" && racedRow?.status === "CONFIRMED" && racedWallet?.balance === 5000
+    && dispatchRace.seen.groups.length === 1 && !dispatchRace.seen.audits.some(a => a.action === "deposit.failed"));
+  const failedOwner = await player(), failed = system(src);
+  failed.dispatch(async ({ correlationId }: { correlationId: string }) => ({ ok: false, reason: "PROVIDER_DOWN", correlationId }));
+  const failedKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const failedReply = await failed.money.deposit(failedOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" }, failedKey);
+  const failedRow = await db.txn.findByIdempotencyKey(failedKey);
+  ok("dispatch.sync-failure-claims-processing", !failedReply.ok && failedRow?.status === "FAILED"
+    && (await db.wallet.findByUserId(failedOwner))?.balance === 0 && failed.seen.audits.some(a => a.action === "deposit.failed"));
   const selector = referenceData(src);
   const unique = await txn(await player());
   ok("reference.unique-and-missing", (await selector.txn.findByProviderRef(unique.providerRef!))?.id === unique.id
