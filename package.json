@@ -686,6 +686,7 @@
     "qa:visitor-path": "node scripts/qa-visitor-path.mjs",
     "red:pending-bet": "tsx scripts/pending-bet.test.mts --prove-red",
     "test:guest-sheet": "tsx scripts/guest-sheet.test.mts",
+    "test:visitor-cells": "node scripts/visitor-cells.test.mjs",
     "red:guest-sheet": "tsx scripts/guest-sheet.test.mts --prove-red",
     "test:shortfall": "tsx scripts/shortfall.test.mts",
     "red:shortfall": "tsx scripts/shortfall.test.mts --prove-red",

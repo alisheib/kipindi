@@ -94,6 +94,43 @@ async function screenshot(page, label) {
   await page.screenshot({ path: join(OUT, file), fullPage: false });
   results.push({ label, state: "TILE", file });
 }
+/** Page-only red plants: alter rendered DOM, re-read the same browser facts, then restore before navigation. */
+async function renderedPageControls(page, expected) {
+  await page.evaluate(() => document.fonts.ready);
+  const baseline = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+  if (baseline.length) return [{ name: "clean baseline", caught: false, detail: baseline.join(", ") }];
+  const signUp = page.getByTestId("journey-sheet-signup");
+  const original = await signUp.getAttribute("href");
+  if (!original) return [{ name: "sign-up href exists", caught: false }];
+  const controls = [];
+  for (const key of ["next", ...(expected.ref ? ["ref"] : [])]) {
+    try {
+      await signUp.evaluate((node, removed) => {
+        const url = new URL(node.href);
+        url.searchParams.delete(removed);
+        node.setAttribute("href", url.pathname + url.search);
+      }, key);
+      const errors = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+      controls.push({ name: `drop ${key} from rendered door`, caught: errors.includes("guest.doors") });
+    } finally {
+      await signUp.evaluate((node, href) => node.setAttribute("href", href), original);
+    }
+  }
+  try {
+    await page.evaluate(() => {
+      const sheet = document.querySelector('[data-testid="journey-bet-sheet"]');
+      if (!sheet) throw new Error("no guest sheet to duplicate");
+      const clone = sheet.cloneNode(true);
+      clone.setAttribute("data-qa-duplicate-sheet", "");
+      sheet.after(clone);
+    });
+    const errors = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+    controls.push({ name: "duplicate rendered sheet", caught: errors.includes("guest.one-sheet") });
+  } finally {
+    await page.evaluate(() => document.querySelector('[data-qa-duplicate-sheet]')?.remove());
+  }
+  return controls;
+}
 async function fillRegister(page, local, email, password) {
   await page.locator("#phone").fill(local);
   await page.locator("#email").fill(email);
@@ -131,7 +168,12 @@ try {
     const faceErrors = visitorFaceErrors(plain, expected);
     record("A guest sheet, two doors and minimum", faceErrors.length === 0, faceErrors.join(", "));
     evidence.faces.push({ label: "core-open", ...summary(plain) });
-    record("A page-only mutation controls", visitorPageControls(plain, expected).every(control => control.caught));
+    const factControls = visitorPageControls(plain, expected);
+    record("A exact fact mutation controls", factControls.every(control => control.caught),
+      factControls.filter(control => !control.caught).map(control => control.name).join(", "));
+    const renderedControls = await renderedPageControls(page, expected);
+    record("A rendered page red controls", renderedControls.every(control => control.caught),
+      renderedControls.filter(control => !control.caught).map(control => `${control.name}${control.detail ? ` (${control.detail})` : ""}`).join(", "));
     record("A tap opens in place", new URL(page.url()).pathname === "/" && plain.guest && new URL(page.url()).searchParams.has("bet"));
     await screenshot(page, "core-guest-open-sw-390");
     await page.locator('[data-testid="journey-bet-sheet"] .kp-bsheet__close').click();
@@ -146,6 +188,20 @@ try {
     const forwardPage = await pageIn(forwarded, `/?bet=${seed.id}.YES.50000`);
     await forwardPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
     record("A forwarded URL cannot set the stake", await forwardPage.getByTestId("journey-sheet-stake").inputValue() === String(seed.min));
+    await forwardPage.evaluate(() => document.fonts.ready);
+    const forwardExpected = { min: seed.min, next: `/?bet=${seed.id}.YES.${seed.min}` };
+    const forwardBaseline = visitorFaceErrors(await forwardPage.evaluate(visitorFaceFacts), forwardExpected);
+    const forwardStake = forwardPage.getByTestId("journey-sheet-stake");
+    const originalStake = await forwardStake.inputValue();
+    let caughtForwardStake = false;
+    try {
+      await forwardStake.evaluate((node, value) => { node.value = value; }, String(seed.min + 1));
+      caughtForwardStake = visitorFaceErrors(await forwardPage.evaluate(visitorFaceFacts), forwardExpected).includes("guest.minimum");
+    } finally {
+      await forwardStake.evaluate((node, value) => { node.value = value; }, originalStake);
+    }
+    record("A rendered forwarded-stake red control", forwardBaseline.length === 0 && caughtForwardStake,
+      forwardBaseline.join(", "));
     await forwarded.close(); contexts.delete(forwarded);
     const campaign = await context("sw");
     const campaignPage = await pageIn(campaign, `/markets/${seed.id}?side=YES&utm_source=a&utm_campaign=b`);

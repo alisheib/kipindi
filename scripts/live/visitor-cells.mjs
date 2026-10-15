@@ -120,12 +120,16 @@ export function visitorPageControls(facts, expected) {
     return url.pathname + url.search;
   };
   const plants = [
-    ['drop next on a door', { ...facts, signUp: without(facts.signUp, 'next') }],
-    ...(expected.ref ? [['drop referral on a door', { ...facts, signUp: without(facts.signUp, 'ref') }]] : []),
-    ['show a money action to a guest', { ...facts, place: true }],
-    ['clip a door on the phone', { ...facts, signUpRect: facts.signUpRect && { ...facts.signUpRect, right: facts.dialog?.right + 12 } }],
-    ['copy a forwarded stake', { ...facts, stake: String((expected.min ?? 500) + 1) }],
-    ['open a second sheet', { ...facts, sheetCount: 2 }],
+    ['drop next on a door', { ...facts, signUp: without(facts.signUp, 'next') }, 'guest.doors'],
+    ...(expected.ref ? [['drop referral on a door', { ...facts, signUp: without(facts.signUp, 'ref') }, 'guest.doors']] : []),
+    ['show a money action to a guest', { ...facts, place: true }, 'guest.no-money'],
+    ['clip a door on the phone', { ...facts, signUpRect: facts.signUpRect && { ...facts.signUpRect, right: facts.dialog?.right + 12 } }, 'visual.doors-fit'],
+    ['copy a forwarded stake', { ...facts, stake: String((expected.min ?? 500) + 1) }, 'guest.minimum'],
+    ['open a second sheet', { ...facts, sheetCount: 2 }, 'guest.one-sheet'],
   ];
-  return plants.map(([name, altered]) => ({ name, caught: visitorFaceErrors(altered, expected).length > 0 }));
+  // A broken baseline must never let unrelated defects make every red plant appear caught.
+  const baseline = visitorFaceErrors(facts, expected);
+  return plants.map(([name, altered, error]) => ({
+    name, caught: baseline.length === 0 && visitorFaceErrors(altered, expected).includes(error),
+  }));
 }
