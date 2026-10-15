@@ -16,6 +16,7 @@ import * as WalletLedger from "../src/lib/wallet/ledger.ts";
 import * as QueryWindows from "../src/lib/query/windows.ts";
 import * as ResultPhase from "../src/lib/wallet/result-phase.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
+import { noticeBody } from "../src/components/ui/empty-state-text.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/deposit-status-read.anchors.mjs";
 import { MUTATIONS as RECHECK_MUTATIONS, PG_MUTATIONS as RECHECK_PG_MUTATIONS } from "./anchors/deposit-recheck.anchors.mjs";
@@ -1063,13 +1064,16 @@ async function run(src = sources): Promise<Check[]> {
         "@/lib/wallet/ledger": WalletLedger, "@/lib/wallet/receipts": s.receiptsModule,
         "@/components/ui/refresh-poller": { RefreshPoller: ({ enabled }: any) => ReactRuntime.jsx("span", { "data-refresh": String(enabled) }) },
         "@/components/ui/cash": { Cash: leaf }, "@/components/ui/keep-words": { keepIdRuns: (id: string) => id },
+        "@/components/ui/empty-state-text": { noticeBody },
         "@/components/layout/page-container": { PageContainer: leaf }, "@/components/ui/callout": { Callout: leaf },
         "@/lib/journey/deposit-state": { parseSavedDepositBet: D.parseSavedDepositBet },
       });
       const html = renderToStaticMarkup(await receipt.default({ params: Promise.resolve({ id: row.id }) }));
       const shown = name === "rg-rejected-held" ? "REVERSED" : "AML_REVIEW";
       const expectedBody = name === "rg-rejected-held" ? t.wallet.returnReversedBody : t.wallet.returnReviewBody;
-      const containsText = (text: string) => html.includes(renderToStaticMarkup(ReactRuntime.jsx("span", { children: text })).slice(6, -7));
+      // NoticeBody can split kept phrases across spans; compare the rendered text, not its markup boundaries.
+      const visibleText = html.replace(/<[^>]*>/g, "");
+      const containsText = (text: string) => visibleText.includes(renderToStaticMarkup(ReactRuntime.jsx("span", { children: text })).slice(6, -7));
       ok(`receipt.${name}.${locale}`, html.includes(`data-status="${shown}"`) && containsText(expectedBody)
         && html.includes('data-refresh="false"') && !containsText(t.wallet.receiptPendingNote)
         && !containsText(t.wallet.receiptCompletedAt) && !containsText(t.wallet.balanceAfter));

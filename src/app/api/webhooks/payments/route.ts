@@ -7,9 +7,9 @@
  *    body carrying `order_id`/`transid` + `payment_status`. Detected by the auth
  *    scheme (Selcom does not send our `X-Provider` header). DEPOSITS are settled
  *    from an AUTHORITATIVE, signed order-status re-query (we never credit on the
- *    callback body alone); WITHDRAWALS (wallet-cashin, no status endpoint) settle
- *    only on a signature-verified callback, else stay PROCESSING for the reconcile
- *    sweep. See src/lib/server/selcom.ts + docs/SELCOM-API-DIGEST.md.
+ *    callback body alone); WITHDRAWALS settle only after a signature-verified
+ *    callback and a query of the stored payout rail, else stay PROCESSING for
+ *    the reconcile sweep. See src/lib/server/selcom.ts + docs/SELCOM-API-DIGEST.md.
  *
  *  • Generic (Azampay, Mixx by Yas) — `X-Provider`/`X-Signature`/`X-Timestamp`
  *    with HMAC-SHA-256 over `${timestamp}.${body}`, per-provider secret, 5-minute
@@ -52,11 +52,10 @@ export const runtime = "nodejs";
  * that handler: the authoritative signed order-status re-query, and the re-queried
  * amount that feeds the tamper check. The generic lane has none of them.
  *
- * ⛔ The exploit needs only `SELCOM_WEBHOOK_SECRET` — a value we share with the vendor
- * and keep in a deployment variable — plus a deposit the attacker initiated themselves
- * and never paid: POST a signed `{reference, status: "COMPLETED", amount}` and the
- * wallet is credited up to the initiated amount. A secret is a barrier, not the
- * authority the header comment promises.
+ * ⛔ If a Selcom HMAC secret had been wired into that generic map, a caller with
+ * it and an unpaid deposit could have posted a signed `{reference, status:
+ * "COMPLETED", amount}`. The body would then have credited the wallet without
+ * the authoritative Selcom order query. The dedicated handler prevents this.
  *
  * Selcom now has exactly ONE door. A callback naming it here is refused, loudly.
  * ⚠️ This costs nothing operationally: Selcom signs with `digest` / `signed-fields`,

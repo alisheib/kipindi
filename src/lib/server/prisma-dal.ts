@@ -2452,6 +2452,8 @@ export const prismaDb = {
           currency: t.currency,
           provider: t.provider,
           providerRef: t.providerRef,
+          providerStatus: t.providerStatus ?? null,
+          payoutRail: t.payoutRail ?? null,
           msisdn: t.msisdn,
           description: t.description,
           positionId: t.positionId,
