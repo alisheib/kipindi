@@ -191,9 +191,15 @@ try {
     const local = `71${String(BigInt(`0x${suffix}`) % 10_000_000n).padStart(7, "0")}`;
     const phone = `+255${local}`, email = `visitor-${suffix}@example.com`, password = `Voda2026!${suffix}Aa`;
     await fillRegister(page, local, email, password);
-    await Promise.all([page.waitForURL(url => url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
-      page.locator('button[type="submit"]').click()]);
-    const landing = new URL(page.url());
+    // AuthFlash removes `welcome` with replaceState after showing the toast. Capture the arrival at the URL event,
+    // before Playwright's click finishes waiting for its navigation and the app cleans that query.
+    let landing = null;
+    const registerArrival = page.waitForURL(url => {
+      if (url.searchParams.get("welcome") !== "new") return false;
+      landing = new URL(url); return true;
+    }, { timeout: 120_000 });
+    await Promise.all([registerArrival, page.locator('button[type="submit"]').click()]);
+    if (!landing) throw new Error("register arrival with welcome was not captured");
     record("C real registration returns to chosen page", landing.pathname === "/" && landing.searchParams.get("bet") === `${seed.id}.YES.${chosen}`
       && landing.searchParams.get("welcome") === "new");
     await page.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
@@ -261,9 +267,13 @@ try {
     await loginPage.waitForURL(url => url.pathname === "/auth/login", { timeout: 60_000 });
     await loginPage.locator("#identifier").fill(loginLocal);
     await loginPage.locator("#password").fill(loginPassword);
-    await Promise.all([loginPage.waitForURL(url => url.searchParams.get("welcome") === "back", { timeout: 120_000 }),
-      loginPage.locator('form:has(input[name="identifier"]) button[type="submit"]').click()]);
-    const signedIn = new URL(loginPage.url());
+    let signedIn = null;
+    const loginArrival = loginPage.waitForURL(url => {
+      if (url.searchParams.get("welcome") !== "back") return false;
+      signedIn = new URL(url); return true;
+    }, { timeout: 120_000 });
+    await Promise.all([loginArrival, loginPage.locator('form:has(input[name="identifier"]) button[type="submit"]').click()]);
+    if (!signedIn) throw new Error("login arrival with welcome was not captured");
     record("E real password sign-in returns to the guest's choice", signedIn.pathname === "/"
       && signedIn.searchParams.get("bet") === `${seed.id}.YES.${seed.min}` && signedIn.searchParams.get("welcome") === "back");
     await loginPage.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
