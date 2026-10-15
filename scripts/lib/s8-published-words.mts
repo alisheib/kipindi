@@ -20,6 +20,12 @@ const KEYS = [
 const WORD_HASH: Record<string, string> = { en: "c5a78e0f5c5a", sw: "7c5f547f68a6", zh: "53863b4a6af3" };
 const NOTICE_HASH: Record<string, string> = { en: "fb825bd6a8a3", sw: "8b4d6871dca3", zh: "6e4b8029bd17" };
 const NOTICE = /\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/g;
+// The privacy page's approved versions: S8's (2026-10-14), then the Vodacom plan S11's (2026-10-15 — Privacy §7 names How to
+// play's seen note; S11-PLAN WP4, accepted by Ali 2026-10-14). Pinned to S8's alone, every later approved bump would read
+// as an unapproved edit for ever, on main too (test:house-bot-disclosure 5.1, test:visual-pass-r5g 4.14′,
+// test:sheet-owner-recovery). ⚠️ A later privacy version adds itself here in the same commit as its META.
+const PRIVACY_VERSIONS = ["2026-10-14", "2026-10-15"] as const;
+const VERSION_LABEL = "(?:en: \"Version |sw: \"Toleo |zh: \"版本 )";
 
 export type S8Published = { legacy: string; accepted: boolean; hashes: Record<string, string>; count: number };
 export const S8_PUBLICATION_FILES = ["src/app/legal/privacy/page.tsx", "src/lib/i18n-dict.ts"] as const;
@@ -36,8 +42,8 @@ export function s8PublishedWords(rel: string, source: string, requireAdditions =
     const hashes = Object.fromEntries(LOCALES.map((loc, i) => [loc, sha((paragraphs[i]?.[0] ?? "").replace(/\s+/g, " ").trim())]));
     const accepted = (!requireAdditions && paragraphs.length === 0) || (paragraphs.length === 3
       && LOCALES.every((loc) => hashes[loc] === NOTICE_HASH[loc])
-      && (text.match(/(?:en: "Version |sw: "Toleo |zh: "版本 )2026-10-14/g) ?? []).length === 3);
-    const legacy = text.replace(NOTICE, "").replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14)/g, "$1S8-version");
+      && PRIVACY_VERSIONS.some((v) => (text.match(new RegExp(`${VERSION_LABEL}${v}`, "g")) ?? []).length === 3));
+    const legacy = text.replace(NOTICE, "").replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14|15)/g, "$1S8-version");
     return { legacy, accepted, hashes, count: paragraphs.length };
   }
   if (rel !== "src/lib/i18n-dict.ts") return { legacy: text, accepted: true, hashes: {}, count: 0 };
