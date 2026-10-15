@@ -16,11 +16,11 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-15):** At 11:05 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
+**State (2026-10-15):** At 11:36 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
 `c8a982cd755553bcc7ba52c018910dc5e85ee637` fixes the home hydration mismatch and the demo-seed guard scanner. Its
 local build, typecheck and `qa:live` 376/0 passed; Railway deployed that exact SHA; all three hosts serve it with healthy,
 migrated DB and `STAFF_PREVIEW`; public chunk gates pass 6/6 on www and apex; signed-out production `qa:live` passes 352/0;
-20 production visual route/width cells pass. Exact-tip CI run 38723925475 is in progress. **[E3] is measured:** Ali
+20 production visual route/width cells pass. Exact-tip CI run 38723925475 passed every step. **[E3] is measured:** Ali
 authorized one `mobile01` sign-in attempt; production QA on the preceding live `50b586d50` passed 385/0, including the
 signed-in seven-page read. The account will not be signed in again without a new authorization. S8 still owes V1's visual
 fix release, A21 re-measure at that release tip, classic parity v4, the closing battery and its close record. S2 is ✅
@@ -1090,7 +1090,8 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   `323618599bdb3b3b3e19ad104fc330c58af30b2c2d687f7f6d51a3d2c7b870d1`), and all three root pages return
   private/no-store. The 20-cell production visual sweep at 360/1280 returned HTTP 200, no overflow
   or browser errors; `/` and `/live` en/sw screenshots were read at both widths
-  (`C:\50pick-ssd\logs\visual-c8-production`). Exact-tip CI run 38723925475 remains in progress at this writing.
+  (`C:\50pick-ssd\logs\visual-c8-production`). Exact-tip CI run 38723925475 passed every step, including its browser
+  gates and PostgreSQL cross-instance proofs.
   This is a repair release, **not S8 acceptance**: V1, A21 re-measure, parity v4 and the closing battery remain.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).

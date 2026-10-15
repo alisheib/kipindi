@@ -2,10 +2,10 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
-**CURRENT CODEX READ (2026-10-15 11:05 UTC; supersedes older status lines below):** `main` is live at
+**CURRENT CODEX READ (2026-10-15 11:36 UTC; supersedes older status lines below):** `main` is live at
 `c8a982cd755553bcc7ba52c018910dc5e85ee637` with the seed-clock and home-hydration repairs. All three hosts
 serve that SHA with healthy, migrated DB and `STAFF_PREVIEW`; www/apex chunk gates are 6/6, signed-out production
-`qa:live` 352/0, visual 20/20 cells. Exact-tip CI run 38723925475 is still in progress. Ali authorized one
+`qa:live` 352/0, visual 20/20 cells. Exact-tip CI run 38723925475 passed every step. Ali authorized one
 `mobile01` production sign-in on preceding live `50b586d50`; [E3] passed 385/0 including the seven-page signed-in read.
 That one attempt is consumed: do not repeat it without fresh explicit authorization. S8 still owes V1's release,
 A21 re-measure, parity v4 and the closing battery. The live-fix candidate is next; S9, S10, S11 and later lanes stay on
