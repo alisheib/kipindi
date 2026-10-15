@@ -683,6 +683,7 @@
     "red:auth-carry": "tsx scripts/auth-carry.test.mts --prove-red",
     "test:post-register-landing": "tsx scripts/post-register-landing.test.mts",
     "red:post-register-landing": "tsx scripts/post-register-landing.test.mts --prove-red",
+    "qa:visitor-path": "node scripts/qa-visitor-path.mjs",
     "red:pending-bet": "tsx scripts/pending-bet.test.mts --prove-red",
     "test:guest-sheet": "tsx scripts/guest-sheet.test.mts",
     "red:guest-sheet": "tsx scripts/guest-sheet.test.mts --prove-red",
