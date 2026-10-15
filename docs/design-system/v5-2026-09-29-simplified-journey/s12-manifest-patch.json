@@ -2,7 +2,7 @@
   "status": "PREPARED BY S12 (WP14, the Vodacom plan), NOT APPLIED. S15 writes `manifest` below over public/manifest.json in the flip's commit, with the sw.js CACHE_NAME bump, after replacing every placeholder and drawing every file listed in `toBeDrawn`. Until then public/manifest.json is unchanged: one file for every visitor, so it cannot change before the flip. Guarded by test:install-invite §10.",
   "decisions": [
     "Point for Ali 10 — ACCEPTED BY ALI, 2026-10-14: the phone's home-screen shortcuts (Maswali, Tiketi zangu) and the app's name change at launch, with a new screenshot after launch.",
-    "S12 Open point 24: the shortcuts are Maswali (/) and Tiketi zangu (/positions), and Weka pesa (/wallet/deposit) is kept; the Wallet shortcut goes. Their names are the journey's own words, read from the dictionary (journey.tabQuestions, journey.tabTickets, journey.depositAction), never written here."
+    "S12 Open point 24: the shortcuts are Maswali (/) and Tiketi zangu (/positions), and Weka pesa (/wallet/deposit) is kept; the Wallet shortcut goes. Their names are the journey's own words, never invented here: the Swahili dictionary's journey.tabQuestions, journey.tabTickets and journey.depositAction, which test:install-invite 10.2 holds them equal to."
   ],
   "placeholders": {
     "{{S11_TAGLINE}}": "S11 (SJ-20) owns the tagline the app's name carries. It is never invented here: S15 replaces this token with S11's approved words, and the guard refuses a manifest that still holds it once applied."
