@@ -907,8 +907,15 @@ try {
         if (!wasOn) { await asyncSwitch.click(); await officer.locator('[aria-label="Demo async (test): on"]').waitFor(); }
         const { ctx: player } = await freshPlayer(0), deposit = await pageIn(player, "/wallet/deposit?amount=1000");
         await deposit.locator('label:has(input#provider-MPESA)').click();
-        await deposit.getByRole("button", { name: "Confirm deposit", exact: true }).click();
-        await deposit.getByRole("alertdialog").getByRole("button", { name: "Deposit", exact: true }).click();
+        // The preview journey's Lipa button is its explicit final action. The legacy
+        // deposit form still has a separate confirmation dialog.
+        if (await deposit.locator('[data-testid="journey-deposit-form"]').count()) {
+          await deposit.locator('#msisdn').fill('712345678');
+          await deposit.locator('[data-testid="journey-deposit-form"] button[type="submit"]').click();
+        } else {
+          await deposit.getByRole("button", { name: "Confirm deposit", exact: true }).click();
+          await deposit.getByRole("alertdialog").getByRole("button", { name: "Deposit", exact: true }).click();
+        }
         await deposit.waitForURL(url => url.pathname !== "/wallet/deposit", { timeout: 90_000 });
         await deposit.goto(BASE, { waitUntil: "domcontentloaded" }); await deposit.waitForTimeout(1200); await open(deposit); await waitFrame(deposit, "pending");
         const p = await probe(deposit, { frame: "pending" });
