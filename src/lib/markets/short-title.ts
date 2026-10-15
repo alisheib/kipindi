@@ -32,7 +32,7 @@
  * zero-import). Pinned in `test:client-graph-safe`.
  */
 import type { Locale } from "@/lib/i18n-dict";
-import { pickLocalized } from "@/lib/localized";
+import { pickLocalized, type LocalizedText } from "@/lib/localized";
 import { encodingFor, foldToGsm7, offendingChars } from "@/lib/sms-compose";
 
 /** The ONE budget. ⛔ Written nowhere else — the generator's prompt, the admin counter and the fit test read it. */
@@ -243,6 +243,39 @@ export function cardTitle(
 ): { text: string; short: boolean } {
   const short = shortTitleFor(locale, m);
   return short ? { text: short, short: true } : { text: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), short: false };
+}
+
+/* ─── THE TITLE A MESSAGE CARRIES (the Vodacom plan's S12, WP12 and WP13) ──────────────────────────────────────────────
+ * The emails, the bell and its push, the share picture and the share preview carry a market's name outside the site,
+ * where no request says who will read it.
+ * ⭐ ONE DEFINITION OF THE TITLE SHOWN IN PLACE OF THE FULL QUESTION, AND IT IS `cardTitle` ABOVE. At the S15 flip a
+ * message carries exactly what a card shows: the officer-approved short title in the reader's own language
+ * (`shortTitleFor`, never another language's), else that language's full title by the full titles' one rule
+ * (`pickLocalized`: a blank translation reads the English question, which is what every message's `localizedText`
+ * already does). Until the flip — and on any failure — `full`, the title the message carries today, untouched.
+ * WHETHER is the server's question, read once per send (`shortTitlesInMessagesNow`, lib/server/message-titles.ts, false
+ * on any failure); WHAT is `cardTitle`. `test:message-titles` holds both, on both stores.
+ * ⭐ "APPROVED" IS STRUCTURAL: a market's short title is non-null only through an officer's act — the wizard, the edit,
+ * an approved AI poll, an approved backfill draft. A draft still waiting for review (`shortTitle.draft.<id>`) is not on
+ * the market, and nothing here derives one from the full title. An Up & Down round has none (`createMarket`), so a
+ * round's message keeps its round title.
+ */
+
+/** What a message's title is read from: `cardTitle`'s own input, the full titles beside the short-title fields. */
+export type MessageTitleSource = ShortTitleFields & { titleEn: string; titleSw: string | null; titleZh: string | null };
+
+/** ⭐ ONE LANGUAGE. `on` exactly `true` → `cardTitle(locale, m).text`; anything else → `full` itself, byte for byte. */
+export function messageTitle(on: boolean, locale: Locale, full: string, m: MessageTitleSource): string {
+  return on === true ? cardTitle(locale, m).text : full;
+}
+
+/**
+ * ⭐ ALL THREE AT ONCE — the shape the bell's emitters take (`localizedText`), `cardTitle` language by language.
+ * ⛔ `on` anything but `true` → `full` itself: the very object the caller passed, so nothing it builds can differ.
+ */
+export function messageTitles(on: boolean, full: LocalizedText, m: MessageTitleSource): LocalizedText {
+  if (on !== true) return full;
+  return { en: cardTitle("en", m).text, sw: cardTitle("sw", m).text, zh: cardTitle("zh", m).text };
 }
 
 /* ─── THE WORDS — one wording for every surface ─────────────────────────────────────────────────────────────────────

@@ -18,7 +18,10 @@ import { JourneyCard } from "@/components/journey/cards/journey-card";
 import { JourneyBetButtons } from "@/components/journey/question/journey-bet-buttons";
 import { JourneyHolder } from "@/components/journey/question/journey-holder";
 import { journeyCardState } from "@/lib/server/journey-sheet";
-import { cardTitle } from "@/lib/markets/short-title";
+import { cardTitle, messageTitle } from "@/lib/markets/short-title";
+// S12 WP13 (the Vodacom plan): a share preview's question is the officer-approved English short title once the new journey
+// is ACTIVE for everyone (S15), and the full English question until then and on any failure.
+import { shortTitlesInMessagesNow } from "@/lib/server/message-titles";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
@@ -113,9 +116,11 @@ export async function generateMetadata(
   let win: Awaited<ReturnType<typeof resolveWinShareToken>> = null;
   if (w) { try { win = await resolveWinShareToken(w); } catch { /* graceful */ } }
   const isWin = !!win && win.marketId === id;
+  // S12 WP13 · the question this preview carries — one read of the title switch, which never rejects (`message-titles.ts`).
+  const shareTitleEn = messageTitle(await shortTitlesInMessagesNow(), "en", m.titleEn, m);
 
   const desc = isWin
-    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
+    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${shareTitleEn}`
     : sharePreviewDescription(preview, settled);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
@@ -132,13 +137,13 @@ export async function generateMetadata(
     // og:url would fetch the plain market page and lose the win card.
     openGraph: {
       ...ROOT_OPEN_GRAPH,
-      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : shareTitleEn,
       description: desc,
       images: [{ url: ogImage, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : shareTitleEn,
       description: desc,
       images: [ogImage],
     },

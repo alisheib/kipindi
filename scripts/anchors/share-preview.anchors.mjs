@@ -57,4 +57,33 @@ export const MUTATIONS = [
     to: `  if (!outcome) return { ...base, tone: "YES", word: dict.en.common.yes };`,
     expect: "4.4",
   },
+  // ── the Vodacom plan's S12 WP13 (2026-10-14) — no multiple and no estimate on a share card or in share text ──────────
+  {
+    name: "S12-WP13 · the win card prints a multiple beside its settled figures",
+    file: "src/app/api/og/market/[id]/route.tsx",
+    from: `              <span style={{ marginLeft: 10, opacity: 0.75 }}>· staked {tzs(win.stake)} · net +{tzs(win.net)}</span>`,
+    to: `              <span style={{ marginLeft: 10, opacity: 0.75 }}>· staked {tzs(win.stake)} · net +{tzs(win.net)} · ≈{(win.payout / win.stake).toFixed(1)}×</span>`,
+    expect: "5.1",
+  },
+  {
+    name: "S12-WP13 · the share picture reaches for the estimate (the projected return the bet sheet prints)",
+    file: "src/app/api/og/market/[id]/route.tsx",
+    from: `import { shownPredictors } from "@/lib/markets/predictors";`,
+    to: `import { shownPredictors } from "@/lib/markets/predictors";\nimport { estimateFor } from "@/lib/markets/estimate";\nvoid estimateFor;`,
+    expect: "5.1",
+  },
+  {
+    name: "S12-WP13 · the share preview's words quote a multiple on a priced market",
+    file: "src/lib/markets/share-preview.ts",
+    from: "  if (p.kind === \"priced\") return `YES ${p.yesPct}% · NO ${p.noPct}%. Predict on 50pick.`;",
+    to: "  if (p.kind === \"priced\") return `YES ${p.yesPct}% · NO ${p.noPct}% · YES pays ≈${(100 / p.yesPct).toFixed(1)}×. Predict on 50pick.`;",
+    expect: "5.1",
+  },
+  {
+    name: "S12-WP13 · a share text names the odds",
+    file: "src/lib/i18n-dict.ts",
+    from: `      pickedText: "I picked {side} on “{title}” — 50pick",`,
+    to: `      pickedText: "I picked {side} on “{title}” at odds of 1.9 — 50pick",`,
+    expect: "5.2",
+  },
 ];

@@ -41,10 +41,13 @@ const MUTATIONS = [
     // notification carries all three market titles (§7.2c). The MUTATION is unchanged — the
     // refund emitter comes out from behind `perEventNotificationsSuppressed`, which is E-43
     // exactly as it shipped.
+    // ⚠️ RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the title goes through `messageTitles` now — the switch
+    // that carries the approved short title from the S15 flip. The mutation is unchanged: the refund comes out from
+    // behind the gate.
     from: `      if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
       } else {`,
-    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+    to: `      notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
       if (false) {
       } else {`,
   },

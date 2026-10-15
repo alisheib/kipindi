@@ -305,8 +305,14 @@ section("6 · F10 a title quoted in a notice is cut at a word, with \"…\" (til
   ok("6.6′ PLANT · one `.slice(0, 70)` put back is reported", CUT.test(ns.replace("${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.", "${opts.marketTitle.en.slice(0, 70)} · your side didn't win.")));
   const ms = read("src/lib/server/market-service.ts");
   const subjects = [...ms.matchAll(/subject: `[^`\n]*`/g)].map((m) => m[0]);
-  ok("6.7 · the email subjects that quote a title cut it the same way (bet placed, betting closed, awaiting resolution, cancelled)",
-    subjects.filter((s) => /clipQuote\((?:market|m)\.titleEn, \d+\)/.test(s)).length === 4 && !subjects.some((s) => /titleEn\.slice\(0, \d+\)/.test(s))
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP12): the two PLAYER subjects (bet placed, betting closed)
+  // now quote their title through `messageTitle` — the switch that carries the approved English short title from the S15
+  // flip, and the full English question until then — and still cut it with `clipQuote` at the same room (40). The two
+  // officer subjects (awaiting resolution, cancelled) keep the full English question. Four subjects, one cut, as before.
+  const CLIPPED = /clipQuote\((?:(?:market|m)\.titleEn|messageTitle\(shortTitles, "en", (?:market|m)\.titleEn, (?:market|m)\)), \d+\)/;
+  ok("6.7 · the email subjects that quote a title cut it the same way (bet placed, betting closed, awaiting resolution, cancelled) — the two player subjects through the title switch",
+    subjects.filter((s) => CLIPPED.test(s)).length === 4 && subjects.filter((s) => /clipQuote\(messageTitle\(shortTitles, "en", (?:market|m)\.titleEn, (?:market|m)\), 40\)/.test(s)).length === 2
+      && !subjects.some((s) => /titleEn\.slice\(0, \d+\)/.test(s))
       && /bodySw: `\$\{clipQuote\(market\.titleSw, 60\)\} — uko kwenye raundi hii\.`/.test(ms), subjects.filter((s) => /titleEn/.test(s)).join(" | "));
   ok("6.7′ CONTROL · the ledger's own descriptions keep their pinned shape (`red:updown-void-copy`): money records, not notices",
     ms.includes('description: `${refundDescription ?? "Refund"} · "${m.titleEn.slice(0, 60)}"${refundDescription ? "" : " voided"}`,'));

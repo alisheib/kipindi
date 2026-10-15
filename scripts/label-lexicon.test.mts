@@ -446,8 +446,10 @@ const playerJsx = files.filter(
  * ("a guard pinned to a path") would hide.
  */
 const SIDE_ARM_OK = new Map<string, { n: number; why: string }>([
+  // ⭐ RE-WORDED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP13): the card's question is the English one through the
+  // title switch (`messageTitle`: the approved English short title from the S15 flip, `m.titleEn` until then). Still 2.
   ["src/app/api/og/market/[id]/route.tsx",
-   { n: 2, why: "the OG social card is English BY CONSTRUCTION — it renders beside `m.titleEn` for a link preview that has no reader locale (both poles, YES and NO)" }],
+   { n: 2, why: "the OG social card is English BY CONSTRUCTION — it renders beside the English question (`m.titleEn`, or its English short title from the S15 flip) for a link preview that has no reader locale (both poles, YES and NO)" }],
   // 2026-09-14 — the Chinese Terms entry is gone: §4 now reads “是”与“否” (Terms v2026-09-14, same-day amendment,
   // COMPLIANCE-DECISIONS.md), so the file has no ASCII side enum left to exempt.
 ]);
