@@ -668,6 +668,7 @@
     "qa:journey-header-fit": "node scripts/qa-journey-header-fit.mjs",
     "qa:journey-above-fold": "node scripts/qa-journey-above-fold.mjs",
     "qa:journey-home": "node scripts/qa-journey-home.mjs",
+    "qa:s14-frame-matrix": "node scripts/s14-frame-matrix.mjs",
     "qa:journey-updown": "node scripts/qa-journey-updown.mjs",
     "qa:bet-sheet": "node scripts/qa-bet-sheet.mjs",
     "qa:bet-sheet-busy": "node scripts/live/bet-sheet-busy-drive.mjs",
