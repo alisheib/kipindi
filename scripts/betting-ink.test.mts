@@ -16,7 +16,8 @@
  *     reds stacked on one field, and the betting NO pair spent on an app state. A form error is the danger ink.
  *   · AN OFFICER'S VERDICT (§8, 2026-10-14, the Vodacom plan S12 WP6) — the console's Reject, Debit, Suspend and Remove
  *     wore the NO side's button or tint and its Approve, Credit, Restore and Reopen the YES side's. A verdict is the
- *     console's `primary` / `danger` (Ali accepted it, 2026-10-14); the restoring actions' family is ONE constant
+ *     console's `primary` / `danger` (accepted by Ali, 2026-10-14 — Points for Ali 13, relayed by the coordinator); the
+ *     restoring actions' family is ONE constant
  *     (`RESTORING_FAMILY`) over one named list (`RESTORING`).
  *
  * ⛔ SCOPED TO THE NAMED SITES, and the scope is the point: these files use the betting pair correctly elsewhere
@@ -313,9 +314,8 @@ const SPELL: Record<Fam, { variant: string; cls: string; tint: string[] }> = {
 };
 /** ⭐ THE RESTORING ACTIONS' FAMILY — DECIDED, AND WRITTEN IN ONE PLACE. Credit, Restore and Reopen wear the brand ink, the
  *  console's `primary` (Reject, Debit, Suspend and Remove the danger red; Resolve YES/NO stays a side): S12-PLAN's Open
- *  point 30 / Point for Ali 13, accepted by Ali, 2026-10-14 (COMPLIANCE-DECISIONS, "The owner's answers to the open
- *  points", item 9: every recommended answer in S12-PLAN's "Points for Ali" accepted). The list below stays named because
- *  it documents the decision: a later change of mind (the plan's overrule, "the success family for the restoring
+ *  point 30, accepted by Ali, 2026-10-14 (Points for Ali 13, relayed by the coordinator). The list below stays named
+ *  because it documents the decision: a later change of mind (the plan's overrule, "the success family for the restoring
  *  actions") is this constant plus re-classing the six arms of `RESTORING`; §8f proves the constant reaches exactly
  *  those six arms and nothing else. */
 const RESTORING_FAMILY: Fam = "brand";

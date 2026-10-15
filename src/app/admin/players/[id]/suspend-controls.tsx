@@ -90,8 +90,9 @@ export function SuspendControls({
   // green), and this note said the tone must not move here because DG-A-21 owned that palette; DG-A-21 closed
   // (b00980fce) without moving them. An officer's verdict is not a side (DESIGN_AUTHORITY §B2a), so the Vodacom
   // plan's S12 WP6 (2026-10-14) swapped the classes only: Suspend wears the danger tint, Restore and Reopen the
-  // brand tint, the console's primary (S12-PLAN Open point 30, accepted by Ali 2026-10-14; the guard names the
-  // restoring sites in one list). `test:betting-ink` §8 holds all three off the betting pair.
+  // brand tint, the console's primary (S12-PLAN Open point 30; accepted by Ali, 2026-10-14, Points for Ali 13,
+  // relayed by the coordinator; the guard names the restoring sites in one list). `test:betting-ink` §8 holds all
+  // three off the betting pair.
   // 32px (10px line box + py-1.5 + border) was under §A2's 40px floor. The class is legal
   // because none of these is a `.btn` — §K1 forbids a height utility only on the kit's own
   // button. It sits on the SHARED base so the self-exclusion status pill below, which can
