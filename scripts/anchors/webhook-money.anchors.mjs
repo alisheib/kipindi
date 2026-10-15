@@ -27,7 +27,7 @@ export const MUTATIONS = [
     file: "src/lib/server/wallet-service.ts",
     from: `    const contradicted =
       (txn.status === "CONFIRMED" && input.status === "FAILED") ||
-      ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");`,
+      ((txn.status === "FAILED" || txn.status === "REVERSED" || (txn.type === "DEPOSIT" && txn.status === "CANCELLED")) && input.status === "CONFIRMED");`,
     to: `    const contradicted = false;`,
   },
   {
