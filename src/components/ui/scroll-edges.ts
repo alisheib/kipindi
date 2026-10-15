@@ -22,6 +22,9 @@
  * tap's task). It marks again on every scroll, on any change of the box's size or a child's, and when a child comes or
  * goes (a MutationObserver re-observes the children: a child added to a box held at its cap changes what it hides without
  * changing any observed size). A mark only writes an attribute, and only when it changed — a paint, never a layout.
+ * The optional gutter variable is also written from the size report. This lets the bet sheet's pinned footer align to
+ * its scroller in engines whose scrollbar is 8px at some widths and an overlay (0px) at others, without a layout read in
+ * the opening tap or a fixed 8px inset that misaligns WebKit.
  */
 import { useLayoutEffect, type RefObject } from "react";
 
@@ -43,18 +46,26 @@ export function markBlockEdges(box: HTMLElement): ScrollEdges {
 }
 
 /** Keeps `data-edges` on the box `ref` holds for as long as it is mounted (see the header). */
-export function useBlockScrollEdges(ref: RefObject<HTMLElement | null>): void {
+export function useBlockScrollEdges(ref: RefObject<HTMLElement | null>, gutterVar?: string): void {
   useLayoutEffect(() => {
     const box = ref.current;
     if (!box) return;
     const markScrollEdges = () => { markBlockEdges(box); };
+    const markSize = () => {
+      markScrollEdges();
+      if (gutterVar && box.parentElement) {
+        const gutter = Math.max(0, box.offsetWidth - box.clientWidth - box.clientLeft * 2);
+        const value = `${gutter}px`;
+        if (box.parentElement.style.getPropertyValue(gutterVar) !== value) box.parentElement.style.setProperty(gutterVar, value);
+      }
+    };
     box.addEventListener("scroll", markScrollEdges, { passive: true });
     // No observer (an engine older than 2020): one mark now, and the scroll keeps it.
     if (typeof ResizeObserver === "undefined") {
-      markScrollEdges();
+      markSize();
       return () => box.removeEventListener("scroll", markScrollEdges);
     }
-    const sizes = new ResizeObserver(markScrollEdges);
+    const sizes = new ResizeObserver(markSize);
     const watchChildren = () => {
       sizes.disconnect();
       sizes.observe(box);
@@ -68,5 +79,5 @@ export function useBlockScrollEdges(ref: RefObject<HTMLElement | null>): void {
       sizes.disconnect();
       kids?.disconnect();
     };
-  }, [ref]);
+  }, [ref, gutterVar]);
 }

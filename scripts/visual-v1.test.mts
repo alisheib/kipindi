@@ -2,6 +2,7 @@
  * test:visual-v1 — THE VISUAL AUDIT'S LANE V1 (2026-10-14/15), HELD BY WHAT A BROWSER COMPUTES.
  *
  *   npm run test:visual-v1        (test:all)
+ *   V1_ENGINE=webkit npm run test:visual-v1   (the same 90+ browser views on WebKit)
  *   npm run red:visual-v1         (--prove-red: every defect below is planted IN MEMORY — on the stylesheet, a source, or the
  *                                  page a browser drew — and each must be caught by the check that names it)
  *
@@ -17,7 +18,7 @@
  * on one x. So the measured claims are measured: the sheet's real body (`BetSheetBody`, bundled by esbuild with the kit it
  * draws, its hook running) inside a stand-in for the kit Modal whose classes are READ from modal.tsx, under the real
  * stylesheet (globals.css through Tailwind), in the repo's own Inter and JetBrains Mono (src/lib/server/reports/fonts), in
- * headless Chromium — at the audit's viewports, in sw, en and zh. The claims a layout cannot make (no layout read inside
+ * headless Chromium or WebKit — at the audit's viewports, in sw, en and zh. The claims a layout cannot make (no layout read inside
  * the opening tap, S8 A21; one rule for the four states) are held in memory, on the hook's own transpiled source.
  * ⛔ TEST AND RED ARE IN-PROCESS BY CONSTRUCTION: nothing is written to disk (test:red-anchors §4), and no server is
  * needed. Optional --capture writes review images to ignored .qa-shots/visual-v1-candidate-1015. Chromium is required
@@ -209,9 +210,10 @@ type Kit = { browser: Browser; bundle: string; css: string; fonts: string };
 let KIT: Kit | null = null;
 async function kit(): Promise<Kit> {
   if (KIT) return KIT;
-  const { chromium } = req("playwright") as typeof import("playwright");
+  const { chromium, webkit } = req("playwright") as typeof import("playwright");
   const [bundle, css] = await Promise.all([bundleKit(), compileCss(SOURCES.css)]);
-  const browser = await chromium.launch(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {});
+  const browser = process.env.V1_ENGINE === "webkit" ? await webkit.launch()
+    : await chromium.launch(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {});
   KIT = { browser, bundle, css, fonts: fontFaces() };
   return KIT;
 }
@@ -252,19 +254,23 @@ async function openSheet(page: Page, frame: FrameName, locale: Locale, width: Wi
 
 /** The hook's own source, transpiled and run against a stand-in box, observers and React: what it reads, when, and what
  *  it writes. `ro` false runs it in an engine with no ResizeObserver. */
-function hookLife(edgesSource: string, ro = true) {
+function hookLife(edgesSource: string, ro = true, gutter = false) {
   const out = ts.transpileModule(edgesSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
   const cleanups: Array<() => void> = [];
   const React = { useLayoutEffect: (fn: () => void | (() => void)) => { const c = fn(); if (typeof c === "function") cleanups.push(c); } };
   let reads = 0;
   const geometry = { top: 0, height: 900, client: 500 };
   const writes: string[] = [];
+  const gutterWrites: string[] = [];
+  const style = new Map<string, string>();
   const listeners = new Map<string, () => void>();
   const attrs = new Map<string, string>();
   const children: object[] = [{ id: "a" }, { id: "b" }];
   const box = {
     get scrollTop() { reads++; return geometry.top; }, get scrollHeight() { reads++; return geometry.height; }, get clientHeight() { reads++; return geometry.client; },
+    get offsetWidth() { reads++; return 278; }, get clientWidth() { reads++; return 270; }, get clientLeft() { reads++; return 0; },
     get children() { return children; },
+    parentElement: { style: { getPropertyValue: (n: string) => style.get(n) ?? "", setProperty: (n: string, v: string) => { style.set(n, v); gutterWrites.push(v); } } },
     getAttribute: (n: string) => attrs.get(n) ?? null, setAttribute: (n: string, v: string) => { attrs.set(n, v); writes.push(v); },
     addEventListener: (n: string, f: () => void, o?: { passive?: boolean }) => { if (o?.passive) listeners.set(n, f); else listeners.set(`${n}:active`, f); },
     removeEventListener: (n: string) => { listeners.delete(n); listeners.delete(`${n}:active`); },
@@ -278,15 +284,19 @@ function hookLife(edgesSource: string, ro = true) {
   const mod = { exports: {} as Record<string, unknown> };
   new Function("require", "module", "exports", "ResizeObserver", "MutationObserver", out)(
     (id: string) => { if (id === "react") return React; throw new Error(`the hook asked for ${id}`); }, mod, mod.exports, ro ? FakeRO : undefined, FakeMO);
-  const hook = mod.exports.useBlockScrollEdges as (r: { current: unknown }) => void;
+  const hook = mod.exports.useBlockScrollEdges as (r: { current: unknown }, gutterVar?: string) => void;
   const edges = mod.exports.scrollEdges as (o: number, s: number, c: number) => string;
-  hook({ current: box });
+  hook({ current: box }, gutter ? "--bsheet-gutter" : undefined);
   const readsInEffect = reads;
   const writesInEffect = writes.length;
+  const gutterWritesInEffect = gutterWrites.length;
   const roObs = observers[0];
   const observedAtMount = roObs ? roObs.targets.length : 0;
   roObs?.cb();
   const firstMark = writes.at(-1) ?? null;
+  const firstGutter = style.get("--bsheet-gutter") ?? null;
+  roObs?.cb();
+  const quietGutterRepeat = gutterWrites.length === (gutter ? 1 : 0);
   geometry.top = 200; listeners.get("scroll")?.();
   const middle = writes.at(-1) ?? null;
   geometry.top = 400; listeners.get("scroll")?.();
@@ -298,7 +308,7 @@ function hookLife(edgesSource: string, ro = true) {
   const childAdded = !!roObs && roObs.targets.length === 4 && roObs.targets.includes(children[2]) && roObs.targets.includes(box);
   for (const c of cleanups) c();
   const cleaned = listeners.size === 0 && (!roObs || roObs.disconnects >= 2 && roObs.targets.length === 0) && (mutations.length === 0 || mutations.every((m) => m.disconnected));
-  return { readsInEffect, writesInEffect, observedAtMount, firstMark, middle, atEnd, quietRepeat, childAdded, cleaned, edges,
+  return { readsInEffect, writesInEffect, gutterWritesInEffect, firstGutter, quietGutterRepeat, observedAtMount, firstMark, middle, atEnd, quietRepeat, childAdded, cleaned, edges,
     passive: true, mo: mutations[0] ? { on: mutations[0].on === box, opts: mutations[0].opts } : null };
 }
 
@@ -307,7 +317,7 @@ type Ok = (label: string, cond: boolean, extra?: string) => void;
 function staticF50(src: Sources, ok: Ok) {
   const sheet = decomment(src.sheet), howto = decomment(src.howto), strip = decomment(src.strip), edgesCode = decomment(src.edges);
   ok("1.1 · the bet sheet's middle is marked by the kit's hook: one ref on the .kp-bsheet__scroll element, handed to useBlockScrollEdges, imported from the kit",
-    count(sheet, "const scrollRef = useRef<HTMLDivElement>(null);") === 1 && count(sheet, "useBlockScrollEdges(scrollRef);") === 1
+    count(sheet, "const scrollRef = useRef<HTMLDivElement>(null);") === 1 && count(sheet, 'useBlockScrollEdges(scrollRef, "--bsheet-gutter");') === 1
       && sheet.includes(`<div ref={scrollRef} className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">`)
       && /import \{ useBlockScrollEdges \} from "@\/components\/ui\/scroll-edges";/.test(sheet));
   // ONE RULE: the four states are computed in scroll-edges.ts and nowhere else in src/ — the How-to's steps call the same hook
@@ -331,8 +341,8 @@ function staticF50(src: Sources, ok: Ok) {
 }
 
 function lifeF50(src: Sources, ok: Ok) {
-  let life: ReturnType<typeof hookLife> | null = null, bare: ReturnType<typeof hookLife> | null = null, why = "";
-  try { life = hookLife(src.edges); bare = hookLife(src.edges, false); } catch (e) { why = String((e as Error).message); }
+  let life: ReturnType<typeof hookLife> | null = null, bare: ReturnType<typeof hookLife> | null = null, gutter: ReturnType<typeof hookLife> | null = null, why = "";
+  try { life = hookLife(src.edges); bare = hookLife(src.edges, false); gutter = hookLife(src.edges, true, true); } catch (e) { why = String((e as Error).message); }
   ok("1.5 · A21: the hook reads no layout inside the commit — its first mark is the ResizeObserver's first report (after layout, before paint), which marks the box and each child",
     !!life && life.readsInEffect === 0 && life.writesInEffect === 0 && life.observedAtMount === 3 && life.firstMark === "end", why || j(life && { reads: life.readsInEffect, writes: life.writesInEffect, observed: life.observedAtMount, first: life.firstMark }));
   ok("1.6 · it marks on every scroll — both edges mid-way, the start at the end — through a passive listener, and writes nothing when nothing changed",
@@ -341,6 +351,9 @@ function lifeF50(src: Sources, ok: Ok) {
     !!life && life.childAdded && life.cleaned && j(life.mo) === j({ on: true, opts: { childList: true } }), why || j(life && { added: life.childAdded, cleaned: life.cleaned, mo: life.mo }));
   ok("1.8 · an engine with no ResizeObserver still marks once, at mount",
     !!bare && bare.writesInEffect === 1 && bare.firstMark === "end", why || j(bare && { writes: bare.writesInEffect }));
+  ok("1.12 · a sheet's actual 8px gutter is read and written only in the observer's after-layout report, once per changed value, never in the opening tap",
+    !!gutter && gutter.readsInEffect === 0 && gutter.gutterWritesInEffect === 0 && gutter.firstGutter === "8px" && gutter.quietGutterRepeat,
+    why || j(gutter && { reads: gutter.readsInEffect, writes: gutter.gutterWritesInEffect, afterLayout: gutter.firstGutter, quiet: gutter.quietGutterRepeat }));
   const e = life?.edges;
   const table: Array<[number, number, number, string]> = [[0, 900, 500, "end"], [200, 900, 500, "both"], [400, 900, 500, "start"], [0, 500, 500, "none"],
     [0, 501, 500, "none"], [0.5, 902, 500, "end"], [401.5, 902, 500, "start"], [1.5, 902, 500, "both"], [400.5, 902, 500, "both"]];
@@ -375,6 +388,7 @@ type Geo = {
   footer: (Box & { clipRight: number; gutter: number }) | null;
   kids: Array<Box & { cls: string }>;
   commit: Box | null;
+  sheetOverflow: number;
 };
 async function probeGeo(page: Page): Promise<Geo> {
   return page.evaluate(() => {
@@ -384,14 +398,18 @@ async function probeGeo(page: Page): Promise<Geo> {
     const contentLeft = r.left + region.clientLeft + parseFloat(rs.paddingLeft);
     const contentRight = r.left + region.clientLeft + region.clientWidth - parseFloat(rs.paddingRight);
     const foot = document.querySelector<HTMLElement>(".kp-bsheet__footer");
+    const panel = foot?.closest<HTMLElement>(".kp-bsheet");
     let footer = null;
-    if (foot) {
+    if (foot && panel) {
       const gutter = foot.offsetWidth - foot.clientWidth - foot.clientLeft * 2;
-      footer = { ...box(foot), gutter, clipRight: foot.getBoundingClientRect().left + foot.clientLeft + foot.clientWidth };
+      // The footer allows its ink into the panel's padding; the panel is its first clipping ancestor.
+      footer = { ...box(panel), gutter, clipRight: panel.getBoundingClientRect().right };
     }
     const kids = foot ? Array.from(foot.children).filter((k) => k.getBoundingClientRect().height > 0).map((k) => ({ ...box(k), cls: (k.getAttribute("class") || k.tagName).slice(0, 48) })) : [];
     const c = document.querySelector('[data-testid="journey-sheet-place"]');
-    return { region: { contentLeft, contentRight, gutter: region.offsetWidth - region.clientWidth - region.clientLeft * 2 }, footer, kids, commit: c ? box(c) : null };
+    const root = document.querySelector<HTMLElement>('[data-testid="journey-bet-sheet"]')!;
+    return { region: { contentLeft, contentRight, gutter: region.offsetWidth - region.clientWidth - region.clientLeft * 2 }, footer, kids, commit: c ? box(c) : null,
+      sheetOverflow: root.scrollWidth - root.clientWidth };
   });
 }
 
@@ -495,9 +513,9 @@ function spacePx(decls: Decl[], value: string): number[] | null {
   const token = (name: string) => { const v = cv(decls, ":root", name); return v && /^\d+(\.\d+)?px$/.test(v) ? Number.parseFloat(v) : NaN; };
   const one = (part: string): number => {
     const neg = /^calc\(-1 \* var\((--sp-\d+)\)\)$/.exec(part), pos = /^var\((--sp-\d+)\)$/.exec(part);
-    return neg ? -token(neg[1]) : pos ? token(pos[1]) : part === "0" ? 0 : NaN;
+    return neg ? -token(neg[1]) : pos ? token(pos[1]) : part === "0" ? 0 : /^\d+(\.\d+)?px$/.test(part) ? Number.parseFloat(part) : NaN;
   };
-  const parts = value.match(/calc\([^)]*\)\)|var\([^)]*\)|0/g);
+  const parts = value.match(/calc\([^)]*\)\)|var\([^)]*\)|\d+(?:\.\d+)?px|0/g);
   if (!parts) return null;
   const v = parts.map(one);
   if (v.some(Number.isNaN)) return null;
@@ -509,18 +527,21 @@ function spacePx(decls: Decl[], value: string): number[] | null {
 function staticF16(src: Sources, ok: Ok) {
   const decls = cascadeOf(src.css);
   const F = ".kp-bsheet__footer";
-  const margin = spacePx(decls, cv(decls, F, "margin") ?? ""), padding = spacePx(decls, cv(decls, F, "padding") ?? "");
-  ok("2.1 · the footer reserves the middle's own gutter, the same way: a box that clips (overflow hidden) with the middle's scrollbar-gutter keyword — so an engine reserves the two alike, 8px under the kit's scrollbar and nothing under an overlay one",
-    cv(decls, F, "overflow") === "hidden" && cv(decls, F, "scrollbar-gutter") === "stable" && cv(decls, ".kp-bsheet__scroll", "scrollbar-gutter") === "stable");
-  ok("2.2 · its clip moves nothing: each side's margin is minus its padding (a box grown into the gap above and the panel's padding, its content where it was), and the room is the commit's focus ring and raised glow — 12px above, 20px beside and below",
-    !!margin && !!padding && margin.every((m, i) => m === -padding[i]) && j(padding) === j([12, 20, 20, 20]), j({ margin, padding }));
+  const margin = spacePx(decls, cv(decls, F, "margin") ?? ""), padding = cv(decls, F, "padding") ?? "";
+  ok("2.1 · the footer's right inset reads the scroller's measured gutter, and its ink reaches the panel's clip",
+    cv(decls, F, "overflow") === "visible" && cv(decls, ".kp-bsheet__scroll", "scrollbar-gutter") === "stable"
+      && cv(decls, ".kp-bsheet", "overflow") === "hidden" && padding.includes("var(--bsheet-gutter, 0px)")
+      && decomment(src.sheet).includes('useBlockScrollEdges(scrollRef, "--bsheet-gutter");')
+      && decomment(src.edges).includes("box.parentElement.style.setProperty(gutterVar, value)"));
+  ok("2.2 · the footer's vertical margin and padding cancel without horizontal negative margins, leaving its measured right inset to align the content",
+    !!margin && j(margin) === j([-12, 0, -20, 0]) && padding === "var(--sp-3) var(--bsheet-gutter, 0px) var(--sp-5) 0", j({ margin, padding }));
 }
 
 function evalF16(views: View[], ok: Ok) {
   const rest = views.filter((v) => v.step === "rest" && v.geo?.footer);
   const gutters = [...new Set(rest.map((v) => v.geo!.region.gutter))];
-  ok("2.3 · PREMISE · the middle reserves its scrollbar's gutter in every view (the kit's 8px scrollbar, which Blink always draws) — without it this section would measure nothing",
-    rest.length >= 54 && j(gutters) === j([8]), j({ views: rest.length, gutters }));
+  ok("2.3 · PREMISE · the middle reports its actual scrollbar gutter in every view (0px overlay or 8px classic)",
+    rest.length >= 54 && gutters.every((g) => g === 0 || g === 8) && (process.env.V1_ENGINE === "webkit" || gutters.includes(8)), j({ views: rest.length, gutters }));
   const rows: string[] = [];
   let kids = 0;
   for (const v of rest) {
@@ -540,8 +561,11 @@ function evalF16(views: View[], ok: Ok) {
     const r = { above: c.top - f.top, before: c.left - f.left, after: f.clipRight - c.right, below: f.bottom - c.bottom };
     if (r.above < 11 || r.before < 16 || r.after < 16 || r.below < 16) room.push(`${v.width} ${v.locale} ${v.frame}: ${j(r)}`);
   }
-  ok("2.5 · the footer's clip never cuts the commit's focus ring (4px out, and its 4px halo) or its raised glow (11px above, 16px beside and below), in every view",
+  ok("2.5 · the sheet panel's clip leaves the commit's 6px focus halo and 16px raised glow on both sides, in every view",
     room.length === 0, room.slice(0, 3).join(" | "));
+  const overflow = rest.filter((v) => v.geo!.sheetOverflow > 1);
+  ok("2.6 · the footer causes no sheet horizontal overflow in all 54 widths, locales and edit/held/low frames",
+    overflow.length === 0, j(overflow.slice(0, 3).map((v) => ({ width: v.width, locale: v.locale, frame: v.frame, overflow: v.geo!.sheetOverflow }))));
 }
 
 /* ══ §3 · THE REST OF V1: KIT TYPE/SHAPE, LOW-BALANCE WRAP AND TITLES ═══════════════════════════════════════════════ */
@@ -567,13 +591,14 @@ function staticV1(src: Sources, ok: Ok) {
       && cv(decls, ".kp-jsheet__title--lg", "font-size") === "var(--type-h2)");
 }
 function evalV1(views: View[], ok: Ok) {
+  const engine = process.env.V1_ENGINE === "webkit" ? "WebKit" : "Chromium";
   const rest = views.filter((v) => v.step === "rest" && v.extra);
   const notices = rest.flatMap((v) => v.extra!.notice ? [{ v, n: v.extra!.notice! }] : []);
   const noticeBad = notices.filter(({ n }) => n.size !== "13px" || n.radius !== "12px" || n.padTop !== "16px" || n.padLeft !== "20px" || n.gap !== "16px");
-  ok(`3.6 · in Chromium, sm Callouts read at 13px with a 12px radius, 16px vertical/gap and 20px horizontal padding across ${notices.length} sheet frames`,
+  ok(`3.6 · in ${engine}, sm Callouts read at 13px with a 12px radius, 16px vertical/gap and 20px horizontal padding across ${notices.length} sheet frames`,
     notices.length >= 18 && noticeBad.length === 0, j(noticeBad.slice(0, 3)));
   const typeBad = rest.filter((v) => v.extra!.title.size !== "20px" || v.extra!.title.weight !== "700" || v.extra!.xl !== "17px");
-  ok(`3.7 · in Chromium, every ${rest.length} sheet frame has a 20px/700 title and its large action reads at 17px`,
+  ok(`3.7 · in ${engine}, every ${rest.length} sheet frame has a 20px/700 title and its large action reads at 17px`,
     rest.length >= 54 && typeBad.length === 0, j(typeBad.slice(0, 3).map((v) => ({ width: v.width, locale: v.locale, frame: v.frame, title: v.extra!.title, xl: v.extra!.xl }))));
   const low = rest.filter((v) => v.frame === "low");
   const railsBad = low.filter((v) => !v.extra!.rails || v.extra!.rails.items !== 4 || !v.extra!.rails.dotsHidden || !v.extra!.rails.clip.startsWith("inset("));
@@ -635,7 +660,7 @@ const PLANTS: Plant[] = [
   { name: "F50 · the scroll padding dropped (a revealed field stops inside a fade)", expect: /^1\.11 /, measure: true,
     world: withCss("padding-block: var(--sp-1); scroll-padding-block: var(--sp-6); scrollbar-gutter: stable; }", "padding-block: var(--sp-1); scrollbar-gutter: stable; }") },
   { name: "F50 · the bet sheet's body no longer marks its middle", expect: /^1\.1 /,
-    world: withSrc(() => ({ sheet: swap(SOURCES.sheet, "  useBlockScrollEdges(scrollRef);\n", "") })) },
+    world: withSrc(() => ({ sheet: swap(SOURCES.sheet, '  useBlockScrollEdges(scrollRef, "--bsheet-gutter");\n', "") })) },
   { name: "F50 · the strip computes the four states with its own copy again", expect: /^1\.2 /,
     world: withSrc(() => ({ strip: swap(SOURCES.strip, "const edges = scrollEdges(rail.scrollLeft, rail.scrollWidth, rail.clientWidth);",
       `const max = rail.scrollWidth - rail.clientWidth; const before = max > 1 && rail.scrollLeft > 1; const after = max > 1 && rail.scrollLeft < max - 1; const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";`) })) },
@@ -652,11 +677,15 @@ const PLANTS: Plant[] = [
     world: withSrc(() => ({ edges: swap(SOURCES.edges, `    kids?.observe(box, { childList: true });\n`, "") })) },
   { name: "F50 · no slack: a box half a pixel from its end still fades it", expect: /^1\.9 /,
     world: withSrc(() => ({ edges: swap(swap(SOURCES.edges, "const before = max > 1 && offset > 1;", "const before = max > 0 && offset > 0;"), "const after = max > 1 && offset < max - 1;", "const after = max > 0 && offset < max;") })) },
+  { name: "F16 · the size report stops sending the actual gutter to the footer", expect: /^1\.12 /,
+    world: withSrc(() => ({ edges: swap(SOURCES.edges, "box.parentElement.style.setProperty(gutterVar, value);", "void value;") })) },
   { name: "PREMISE · the Modal's tall sheet changes its panel classes under the stand-in", expect: /^0\.1 /,
     world: withSrc(() => ({ modal: swap(SOURCES.modal, `mat-modal relative w-full p-5 lg:p-6 outline-none`, `mat-modal relative w-full p-6 lg:p-8 outline-none`) })) },
-  { name: "F16 · the footer no longer reserves the middle's scrollbar gutter", expect: /^2\.1 /,
-    world: withSrc(() => ({ css: swap(SOURCES.css, ".kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); overflow: hidden; scrollbar-gutter: stable;",
-      ".kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); overflow: hidden;") })) },
+  { name: "F16 · the footer drops the scroller's measured gutter inset", expect: /^2\.1 /,
+    world: withSrc(() => ({ css: swap(SOURCES.css, "padding: var(--sp-3) var(--bsheet-gutter, 0px) var(--sp-5) 0;", "padding: var(--sp-3) 0 var(--sp-5) 0;") })) },
+  { name: "F16 · the footer bleeds 20px outside the sheet again", expect: /^2\.2 /,
+    world: withSrc(() => ({ css: swap(SOURCES.css, "margin: calc(-1 * var(--sp-3)) 0 calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--bsheet-gutter, 0px) var(--sp-5) 0;",
+      "margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--sp-5) var(--sp-5);") })) },
   { name: "F15 · the sm Callout falls back to 11px caption copy", expect: /^3\.1 /,
     world: withSrc(() => ({ callout: swap(SOURCES.callout, 'body: "text-body-sm leading-snug text-text-secondary"', 'body: "text-caption leading-snug text-text-secondary"') })) },
   { name: "F15b · the sm Callout falls back to the legacy radius and private padding", expect: /^3\.1 /,

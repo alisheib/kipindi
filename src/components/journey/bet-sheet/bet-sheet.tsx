@@ -75,7 +75,7 @@ export function BetSheetBody(props: BodyProps) {
   // ⭐ The middle fades only the edge that hides something (`data-edges`, the kit's one rule — scroll-edges.ts): at rest a
   // money figure or a field cut by the header or the commit button reads as more to come, never as a whole (F50, 2026-10-14).
   const scrollRef = useRef<HTMLDivElement>(null);
-  useBlockScrollEdges(scrollRef);
+  useBlockScrollEdges(scrollRef, "--bsheet-gutter");
   return <>
     <div aria-hidden className="kp-wsheet__grab" />
     <div className="kp-bsheet__header">

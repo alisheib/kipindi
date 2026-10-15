@@ -8640,10 +8640,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__terminal, .kp-bsheet__lines { font-size: var(--type-body); line-height: 1.5; color: var(--text-muted); }
 .kp-bsheet__lines p { margin: 0; }
 .kp-bsheet__placing { margin: 0; font-size: var(--type-small); color: var(--text-muted); }
-/* The middle reserves an 8px classic scrollbar gutter. Give its pinned footer the same content edge while keeping the
-   focus ring and raised gold glow inside the footer's clip (F16). Equal negative margins and padding preserve the panel
-   column; the clip provides 12px above and 20px on every other side for the shadow. */
-.kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); overflow: hidden; scrollbar-gutter: stable; margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--sp-5) var(--sp-5); }
+/* The middle's scrollbar gutter is 8px under the kit's custom scrollbar, but WebKit can use a 0px overlay at wider
+   widths. Its ResizeObserver writes the measured width to --bsheet-gutter before paint, so the footer's CTA ends where
+   the middle's blocks do in either engine (F16). The footer lets focus and gold glow reach the panel's 20px padding;
+   vertical margin/padding cancel so the CTA does not move. A negative right margin on a clipped footer made the SHEET
+   scrollWidth 20px too wide with a keyboard open at 320/360. */
+.kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); overflow: visible; margin: calc(-1 * var(--sp-3)) 0 calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--bsheet-gutter, 0px) var(--sp-5) 0; }
 /* The placing status and the refusal line stand above the CTA they explain, at the sheet's row rhythm (gap + 4px = 12px).
    Two plain selectors, not `> :is(…)`: Chrome files a rule under its rightmost compound, and an `:is()` list there is
    tried against every element on every style pass (the tap's selector stats, 2026-10-14); a class is looked up. */
