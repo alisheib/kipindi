@@ -44,7 +44,12 @@
  * ⭐ ITS SENTENCES HOLD THEIR PHRASES as a notice body does (`noticeBody`, round 10's R10-B): a YES/NO pair, a possessive
  * and its noun ("dau lako", "your bet"), a dash with its unit and the last two words break together. The example's two
  * sums are `.amount` (§M4: mono, tabular, whole) and its multiple one mono unit with the ≈ and × the dictionary wraps it
- * in — kept whole, never split at a line's end.
+ * in — kept whole, never split at a line's end. The note's commission is one `.amount` unit too, its % with it (§T5: a
+ * numeral inside a sentence is mono — the audit's F36, 2026-10-14, found "13%" in the body face beside the box's mono
+ * figures; S11).
+ * ⭐ ONE MARKER COLUMN, ONE TEXT EDGE (S11; the audit's F36): MFANO's (i) is centred on the step badges' centre line and its
+ * words start on the steps' text edge. The kit Callout's own row put them 6px right and 9px left; globals.css re-spaces
+ * that row from the badge's two numbers (`--howto-badge`, `--howto-badge-gap`), so the two columns cannot part again.
  * ⛔ NO HELPLINE (the owner's ruling of 2026-10-06, COMPLIANCE-DECISIONS; S7-PLAN A6): the canvas's "Msaada 0800 11 0011"
  * is not built, and nothing stands in its place. `test:support-contact` §15 and `test:journey-home` §5 hold it.
  * ⚠️ Every way out closes the sheet through `close`: the CTA, the ✕, the scrim, Escape — and Weka mipaka as it navigates.
@@ -95,6 +100,12 @@ const LIMITS = { signedIn: "/profile/responsible-gambling", signedOut: "/legal/r
 const MULT_UNIT = /≈?[{]mult[}]×?/;
 function multUnit(template: string, mult: string): string {
   return fill(MULT_UNIT.exec(template)?.[0] ?? "{mult}", { mult });
+}
+
+/** The commission as the dictionary writes it — "{pct}%" — so the note's figure is one mono unit, its sign with it. */
+const PCT_UNIT = /[{]pct[}]%?/;
+function pctUnit(template: string, pct: number): string {
+  return fill(PCT_UNIT.exec(template)?.[0] ?? "{pct}", { pct });
 }
 
 /** A figure in a sentence and the class it is drawn in: a sum `.amount`, the multiple `.kp-howto__mult`. */
@@ -241,7 +252,9 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
                   ],
                 )}
               </p>
-              <p className="kp-howto__note text-body-sm">{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}</p>
+              <p className="kp-howto__note text-body-sm">
+                {sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}
+              </p>
             </Callout>
           )}
         </StepsRegion>

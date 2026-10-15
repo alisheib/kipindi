@@ -1146,6 +1146,7 @@ type HowToWorld = {
   lazy: string;
   guard: string;
   css: string;                   // src/app/globals.css, its comments blanked
+  callout: string;               // src/components/ui/callout.tsx, decommented: the kit row MFANO re-spaces (5.align)
   popupFit: string;              // scripts/popup-fit.test.mts, decommented: the review record the sheet must be on
   naming: Map<string, string>;   // every OTHER file under src/ whose text names one of the three modules: the census's subjects
   rendered: HowToRendered;
@@ -1164,7 +1165,7 @@ function loadHowTo(all: readonly string[]): HowToWorld {
   const { rendered, truth } = renderHowTo();
   return {
     card: read(HT_CARD), sheet: read(HT_SHEET), lazy: read(HT_LAZY), guard: read(HT_GUARD),
-    css: decommentCss(read("src/app/globals.css")), popupFit: decomment(read(HT_POPUP_FIT)), naming, rendered, truth,
+    css: decommentCss(read("src/app/globals.css")), callout: decomment(read("src/components/ui/callout.tsx")), popupFit: decomment(read(HT_POPUP_FIT)), naming, rendered, truth,
   };
 }
 
@@ -1376,8 +1377,10 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const golden = T !== null && T.stake === "TZS 1,000" && T.mult === "2.7" && T.payout === "TZS 2,700" && T.pct === 13;
   const figuresDrawn = T !== null && sheets.every(([, html]) => count(html, `<span class="amount">${T.stake}</span>`) === 1
     && count(html, `<span class="amount">${T.payout}</span>`) === 1 && count(html, `<span class="kp-howto__mult">≈${T.mult}×</span>`) === 2
-    && htText(html.slice(html.indexOf(`class="kp-howto__note`))).includes(`${T.pct}%`));
-  ok("5.figures · every figure is the engine's: HOW_TO_EXAMPLE through estimateFor and {pct} from loserSharePct(HOW_TO_EXAMPLE.rates), none typed in the sheet — SJ-21's TZS 1,000 → ≈2.7× → TZS 2,700 at 13% — drawn with the two sums as .amount spans and the multiple one mono unit with its ≈ and × (step 2 and MFANO), handed only to the step whose words write {mult}",
+    && htText(html.slice(html.indexOf(`class="kp-howto__note`))).includes(`${T.pct}%`)
+    // the note's commission, one mono unit with its sign (§T5; the audit's F36, 2026-10-14: it stood in the body face)
+    && count(html, `<span class="amount">${T.pct}%</span>`) === 1 && count(html.slice(html.indexOf(`class="kp-howto__note`)), `<span class="amount">${T.pct}%</span>`) === 1);
+  ok("5.figures · every figure is the engine's: HOW_TO_EXAMPLE through estimateFor and {pct} from loserSharePct(HOW_TO_EXAMPLE.rates), none typed in the sheet — SJ-21's TZS 1,000 → ≈2.7× → TZS 2,700 at 13% — drawn with the two sums as .amount spans, the multiple one mono unit with its ≈ and × (step 2 and MFANO), handed only to the step whose words write {mult}, and the note's 13% one .amount unit with its sign (S11; the audit's F36)",
     figuresSrc && golden && figuresDrawn, j({ figuresSrc, typed, golden, figuresDrawn, truth: T && { stake: T.stake, mult: T.mult, payout: T.payout, pct: T.pct } }));
 
   // 5.helpline — A6 item 4; A24 item 4.
@@ -1455,7 +1458,8 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // ruling (3) of 2026-10-10 (`test:visual-pass-r8b` §1 holds every eyebrow to it), which the canvas's info-blue predates.
   const mfanoSrc = count(sheet, `<Callout tone="info" className="kp-howto__ex">`) === 1
     && sheet.includes(`<p className="kp-howto__ex-label eyebrow font-mono text-caption font-semibold uppercase text-text-subtle">{t.journey.howExampleLabel}</p>`)
-    && sheet.includes("{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}");
+    && sheetFlat.includes('{sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}')
+    && sheet.includes("const PCT_UNIT = /[{]pct[}]%?/;");
   const mfanoDrawn = T !== null && sheets.every(([l, html]) => {
     const at = html.indexOf(`<div role="note"`), end = at < 0 ? -1 : htCloseOf(html, at);
     const d = T.dict[l].journey;
@@ -1470,6 +1474,23 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const ZH = ".kp-howto__ex-label:lang(zh)", zh = { face: cv(ZH, "font-family"), tracking: cv(ZH, "letter-spacing"), transform: cv(ZH, "text-transform") };
   ok("5.eyebrow.zh · MFANO's label is uppercase and mono for Latin words, and for zh 示例 neither, nor tracked: .kp-howto__ex-label:lang(zh) sets the body face, no letter-spacing and no transform",
     zh.face === "var(--font-body)" && zh.tracking === "0" && zh.transform === "none", j(zh));
+
+  // 5.align — the Vodacom plan S11; the audit's F36 (2026-10-14): ONE MARKER COLUMN, ONE TEXT EDGE. The kit Callout's own row
+  // (a 1px border, 16px padding, a 14px glyph, a 10px gap) put MFANO's (i) 6px right of the step badges' centre line and its
+  // words 9px left of the steps' words. The badge's two numbers are named once, the steps read them, and MFANO's row is
+  // re-spaced from them: the arithmetic here, from the declared values and the kit's own glyph; `qa:howto` measures it drawn.
+  const pxOf = (v: string | null) => (v !== null && /^[0-9.]+px$/.test(v) ? Number(v.slice(0, -2)) : NaN);
+  const badgePx = pxOf(cv(".kp-howto", "--howto-badge")), badgeGap = pxOf(cv(".kp-howto", "--howto-badge-gap")), glyphPx = pxOf(cv(".kp-howto__ex", "--howto-ex-glyph"));
+  const kitGlyph = Number(/sm: [{] box: "gap-2[.]5 rounded-md px-3 py-2[.]5", icon: ([0-9]+),/.exec(hw.callout)?.[1] ?? NaN);
+  const kitBorder = hw.callout.includes(`"flex items-start border",`) && !hw.callout.includes(`"flex items-start border-2",`) ? 1 : NaN;
+  const stepsRead = cv(".kp-howto__step", "gap") === "var(--howto-badge-gap)" && cv(".kp-howto__num", "width") === "var(--howto-badge)" && cv(".kp-howto__num", "height") === "var(--howto-badge)";
+  const rowRead = cv(".kp-howto__ex", "padding-left") === "calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 - 1px)"
+    && cv(".kp-howto__ex", "column-gap") === "calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 + var(--howto-badge-gap))";
+  const padPx = (badgePx - glyphPx) / 2 - 1, colPx = (badgePx - glyphPx) / 2 + badgeGap;
+  const textEdge = kitBorder + padPx + glyphPx + colPx, centre = kitBorder + padPx + glyphPx / 2;
+  ok("5.align · ONE MARKER COLUMN, ONE TEXT EDGE (S11; the audit's F36): the steps read the badge's two numbers (--howto-badge, --howto-badge-gap) and MFANO's row is re-spaced from them — its (i), the kit Callout's own sm glyph, centred on the badges' centre line and its words on the steps' text edge (the kit's row put them 6px right and 9px left)",
+    stepsRead && rowRead && glyphPx === kitGlyph && padPx >= 0 && textEdge === badgePx + badgeGap && centre === badgePx / 2,
+    j({ stepsRead, rowRead, badgePx, badgeGap, glyphPx, kitGlyph, kitBorder, padPx, colPx, textEdge, centre }));
 
   // 5.lazy — WP6 step 2; A13(a); WP7 (its two parts, its one importer, each part named).
   const statics = [...lazy.matchAll(/^[ ]*import[ ]+([^;]*?)[ ]+from[ ]+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
@@ -1601,6 +1622,18 @@ function howToDefects(): HtPlant[] {
       plant: htCss(".kp-howto__scroll { display: flex;", ".kp-howto__scroll { mask-image: linear-gradient(to bottom, #000 80%, transparent); display: flex;") },
     { name: "MFANO a hand-rolled box instead of the kit Callout", expect: /^5[.]mfano /,
       plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Callout tone="info" className="kp-howto__ex">`, `<div className="kp-howto__ex">`), "</Callout>", "</div>") }) },
+    { name: "the note's commission back in the body face (noticeBody, its 13% bare: the audit's F36)", expect: /^5[.]mfano /,
+      plant: htSheet('{sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}', "{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}") },
+    { name: "the Chinese note draws 13% bare", expect: /^5[.]figures /,
+      plant: (w) => htDrawn(w, "sheetIn", "zh", (html) => htSwap(html, `<span class="amount">13%</span>`, "13%")) },
+    { name: "MFANO's row left as the kit draws it (its words 9px left of the steps', its (i) 6px right: F36)", expect: /^5[.]align /,
+      plant: htCss('.kp-howto__ex { --howto-ex-glyph: 14px; padding-left: calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 - 1px); column-gap: calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 + var(--howto-badge-gap)); }', "") },
+    { name: "the steps' gap re-typed as 16px (MFANO's words left on the old edge)", expect: /^5[.]align /,
+      plant: htCss(".kp-howto__step { display: flex; align-items: flex-start; gap: var(--howto-badge-gap); }", ".kp-howto__step { display: flex; align-items: flex-start; gap: 16px; }") },
+    { name: "the kit Callout's glyph grows to 16px (the row's 14 no longer the kit's)", expect: /^5[.]align /,
+      plant: (w) => htWith(w, { callout: htSwap(w.howto.callout, "icon: 14,", "icon: 16,") }) },
+    { name: "the badge grows to 40px without its column (the badge's number typed, not read)", expect: /^5[.]align /,
+      plant: htCss("width: var(--howto-badge); height: var(--howto-badge);", "width: 40px; height: 40px;") },
     { name: "the Chinese label left mono and tracked (示例 spaced apart)", expect: /^5[.]eyebrow[.]zh /,
       plant: htCss(".kp-howto__ex-label:lang(zh) { font-family: var(--font-body); letter-spacing: 0; text-transform: none; }", "") },
     { name: "the How-to card loaded with ssr: false (its HTML leaves the home's first paint)", expect: /^5[.]lazy /,
