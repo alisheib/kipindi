@@ -109,7 +109,7 @@ const CASHOUT: Record<Locale, { label: string; anyOf: string[] }[]> = {
   sw: [
     { label: "the WINDOW", anyOf: ["ndani ya dakika"] },
     { label: "the RUNWAY condition", anyOf: ["kulikuwa bado na angalau"] },
-    { label: "NOT bonus-funded", anyOf: ["haikugharamiwa na bonasi"] },
+    { label: "NOT bonus-funded", anyOf: ["halikugharamiwa na bonasi", "haikugharamiwa na bonasi"] },
   ],
   zh: [
     { label: "the WINDOW", anyOf: ["分钟内"] },
@@ -122,6 +122,9 @@ for (const { name, map } of docs()) {
     const text = plain(map[loc]);
     for (const c of CASHOUT[loc]) {
       ok(`§2 ${name}/${loc} states ${c.label}`, c.anyOf.some((n) => has(text, n)));
+    }
+    if (loc === "sw" && name === "yes-no") {
+      ok("§2 yes-no/sw names the feminine dau in the bonus condition", has(text, "dau hilo halikugharamiwa na bonasi"));
     }
   }
 }
