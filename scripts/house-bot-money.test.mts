@@ -27,5 +27,7 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * guess. The +9 in EACH child is the measurement: §12's nine assertions reaching both stores. A build where they
  * reached only the memory twin would have shown +9 and +0, which is the divergence the pair exists to catch.
  * ⭐ 132/150 → 133/151 (2026-09-27), the counts the integrated tree PRINTED with the phone sort rail and FS-09's roster
- * alerts in it (`@@SUMMARY {"pass":133…"store":"memory"}` and `{"pass":151…"store":"postgres"}`) — +1 in EACH child. */
-await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 133, postgres: 151 }, dbPrefix: "hb_money" });
+ * alerts in it (`@@SUMMARY {"pass":133…"store":"memory"}` and `{"pass":151…"store":"postgres"}`) — +1 in EACH child.
+ * ⭐ 136/166 (2026-10-15, N6), green memory and scratch Postgres counts including the shared second-account
+ * budget refusals, their no-money-moved checks, and the marked placement control. */
+await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 136, postgres: 166 }, dbPrefix: "hb_money" });
