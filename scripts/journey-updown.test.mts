@@ -338,24 +338,40 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
   });
   ok("5.3 not enough money (200 held, 500 minimum): the sheet's low rows and its gilt deposit door, no \"use instead\" below the minimum, nothing placeable",
     lowBad.length === 0, lowBad.slice(0, 4).join(" · "));
-  const useRender = wrap("sw", createElement(Host, { kind: "confirm", r: round(), v: viewer(facts({ wallet: { status: "ACTIVE", balance: 400, bonusBalance: 0 } })), loc: "sw", side: "UP" }));
-  ok("5.4 …a shortfall above the minimum offers \"Tumia {amount} badala yake\" — the journey's own words, which set the stake",
-    true, "covered by 2.5 (the option) and the drive (the tap)");
-  void useRender;
+  // A shortfall ABOVE the minimum ("Tumia {amount} badala yake") exists only after the player raises the stake — a first
+  // render always opens at the minimum — so no static render can show it: 2.5 proves the option from the frame, and
+  // `qa:journey-updown` drives it in a browser (low.3 offers it, low.4 and keys.4 show it sets the stake and places nothing).
   const bonusRender = wrap("en", createElement(Host, { kind: "card", r: round(), v: viewer(facts({ wallet: { status: "ACTIVE", balance: 200, bonusBalance: 800 } })), loc: "en" }));
   ok("5.5 ⭐ F1's journey half, rendered: 200 balance + 800 bonus covers a 500 stake — no low rows, the side buttons enabled",
     !/data-testid="journey-sheet-deposit"/.test(bonusRender) && !text(bonusRender).includes(dict.en.journey.lowTitle)
       && sideTags(bonusRender).length === 2 && sideTags(bonusRender).every((tag) => !/\sdisabled=""/.test(tag)));
   // The round-closed notice.
   const closed = (loc: Loc, notice: A.JudClosedNotice) => wrap(loc, createElement(JudRoundClosed, { roundId: "udr_jud01", side: "UP", notice, viewer: viewer(facts()) }));
-  const c1 = closed("sw", { paidAmount: null, nextOpensAtMs: null, successorRoundId: null });
-  const c2 = closed("sw", { paidAmount: 5_000, nextOpensAtMs: NOW + 5 * MIN, successorRoundId: "udr_next02" });
-  const sw = dict.sw.journey;
-  ok("5.6 the notice in Swahili: the title alone; then with a confirmed deposit, the next start and the button to the next round carrying the side",
-    text(c1).includes(sw.udRoundClosedTitle) && !/jud-next-round/.test(c1) && !text(c1).includes("Pesa zako")
-      && text(c2).includes(sw.udRoundClosedPaid.replace("{amount}", formatTzs(5_000))) && /Raundi inayofuata inaanza \d\d:\d\d\./.test(text(c2))
-      && /\shref="\/updown\/udr_next02\?bet=udr_next02\.UP"/.test(tagOf(c2, /<a\b[^>]*data-testid="jud-next-round"[^>]*>/)) && text(c2).includes(sw.udNextRoundGo),
-    text(c2));
+  // In every language: the title alone while nothing is known; then the paid line, the next start and the button. The
+  // drive (`qa:journey-updown` closed.*) cannot produce the paid line (S9's owned status is not on this base) nor the start
+  // line (`updown-handover` settles and opens in one call), so these renders are their proof — figures included: the
+  // amount in the mono money span and the time in `.kp-jud__time`, whose rule sets the mono face (DA T5: every numeral).
+  const closedBad = LOCALES.flatMap((loc) => {
+    const t = dict[loc].journey, d: string[] = [];
+    const c1 = closed(loc, { paidAmount: null, nextOpensAtMs: null, successorRoundId: null });
+    const c2 = closed(loc, { paidAmount: 5_000, nextOpensAtMs: NOW + 5 * MIN, successorRoundId: "udr_next02" });
+    const [paidHead, paidTail] = t.udRoundClosedPaid.split("{amount}");
+    const [atHead, atTail] = t.udNextRoundAt.split("{time}");
+    if (!text(c1).includes(text(t.udRoundClosedTitle))) d.push("no title");
+    if (/jud-next-round/.test(c1)) d.push("a button with no successor");
+    if (text(c1).includes(text(paidHead.trim())) || text(c1).includes(text(atHead.trim()))) d.push("a paid or start line with nothing known");
+    if (!text(c2).includes(text(t.udRoundClosedPaid.replace("{amount}", formatTzs(5_000))))) d.push("no paid line");
+    if (!new RegExp(`<span class="amount">${formatTzs(5_000).replace(/\s/g, "\\s")}</span>`).test(c2.replace(/&nbsp;|\u00a0/g, " "))) d.push("the paid figure is not in the money span");
+    const clock = new RegExp(`${atHead.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*<span class="kp-jud__time">\\d\\d:\\d\\d</span>${atTail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+    if (!clock.test(c2)) d.push("the start line does not carry a 24-hour time in .kp-jud__time");
+    if (!/\shref="\/updown\/udr_next02\?bet=udr_next02\.UP"/.test(tagOf(c2, /<a\b[^>]*data-testid="jud-next-round"[^>]*>/)) || !text(c2).includes(text(t.udNextRoundGo))) d.push("no button to the next round carrying the side");
+    void paidTail;
+    return d.map((x) => `${loc}: ${x}`);
+  });
+  const timeRule = /\.kp-jud__time\s*\{([^}]*)\}/.exec(read("src/app/globals.css"))?.[1] ?? "";
+  if (!/font-family:\s*var\(--font-mono\)/.test(timeRule) || !/font-variant-numeric:\s*tabular-nums/.test(timeRule)) closedBad.push(`.kp-jud__time is not the mono figure face: {${timeRule.trim()}}`);
+  ok("5.6 the round-closed notice in en/sw/zh: the title alone while nothing is known; then the paid line (its figure the mono money span), the next start (a 24-hour time in the mono face) and the button carrying the side",
+    closedBad.length === 0, closedBad.slice(0, 4).join(" · "));
   // ⭐ PLANTS — the reader must report each.
   const two = renders.find((r) => r.what === "card en/two-sided/show=true")!;
   const conf = renders.find((r) => r.what === "confirm UP sw/two-sided/show=true")!;

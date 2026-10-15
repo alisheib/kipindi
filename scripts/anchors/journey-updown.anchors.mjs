@@ -119,4 +119,12 @@ export const MUTATIONS = [
     to: `      howStep3Body: "赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。",`,
     expect: "8.4 the Chinese How-to says winners share the pool in proportion to their bets (赢家按投注比例分享奖池), never \"equally\" (平分)",
   },
+  {
+    // DA T5: every numeral is the mono figure face, a time inside a sentence included (the visual audit's F18/F55 class).
+    name: "globals.css — the round-closed notice's start time falls back to the body face",
+    file: "src/app/globals.css",
+    from: `.kp-jud__time { white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }`,
+    to: `.kp-jud__time { white-space: nowrap; font-variant-numeric: tabular-nums; }`,
+    expect: "5.6 the round-closed notice in en/sw/zh: the title alone while nothing is known; then the paid line (its figure the mono money span), the next start (a 24-hour time in the mono face) and the button carrying the side",
+  },
 ];

@@ -8650,4 +8650,4 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jud__sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .kp-jud__note { display: flex; align-items: flex-start; gap: var(--sp-1); margin: 0; font-size: var(--type-small); line-height: 1.45; color: var(--text-faint); }
 .kp-jud__projection { color: var(--text-muted); }
-.kp-jud__time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kp-jud__time { white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
