@@ -24,6 +24,13 @@ verification checkpoint, **not** a launch record or approval.
   open bet sheet; money actions are never replayed by a resumption.
 - `gate:s15-release` is a fail-closed predeploy gate. Its publication date is
   `null` in this candidate and **must not be filled early**.
+- `s15-launch-build-gate` also runs before npm builds and starts, and from
+  Next's own config-load path. An ACTIVE commit with missing publication proof
+  therefore cannot build or boot on Railway or a direct main push. For an
+  isolated, in-memory local candidate drive, set `S15_PRELAUNCH_LOCAL=1`;
+  the gate rejects that bypass on Railway, with a database URL, or in a main
+  push. Pull-request CI uses the same review-only bypass and does not confer
+  publication approval.
 
 ## Finish on the actual launch day
 

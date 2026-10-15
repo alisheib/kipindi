@@ -39,6 +39,10 @@ jobs:
       SESSION_SECRET: ci-session-secret-0000000000000000
       AUDIT_CHAIN_SECRET: ci-audit-chain-secret-1111111111
       CI_DB_URL: postgresql://postgres:pw@localhost:5432/kipindi_ci?schema=public
+      # Review the isolated ACTIVE candidate on PRs without pretending to have
+      # S14/sign-off evidence. Pushes to main never receive this bypass; Railway
+      # refuses it even if someone sets it there accidentally.
+      S15_PRELAUNCH_LOCAL: ${{ github.event_name == 'pull_request' && '1' || '' }}
     steps:
       - uses: actions/checkout@v4
         with:

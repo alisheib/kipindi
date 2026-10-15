@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
 // ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
 import { staticSecurityHeaders } from "./src/lib/security-headers";
+
+// Railway may invoke Next directly, bypassing npm's prebuild/start hooks. Keep
+// the ACTIVE publication gate on Next's own config-load path as well.
+execFileSync(process.execPath, [resolve(process.cwd(), "scripts/s15-launch-build-gate.mjs")], { stdio: "inherit" });
 
 /** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
  *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
