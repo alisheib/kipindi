@@ -9,13 +9,18 @@
  */
 import { chromium, request } from "playwright";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3054";
 const OUT = resolve(process.env.KP_CLASSIC_SHOTS ?? ".qa-shots/s14-classic-spot");
 const SHA = process.env.KP_SOURCE_SHA ?? null;
+const SOURCE_TREE = process.env.KP_SOURCE_TREE ? resolve(process.env.KP_SOURCE_TREE) : null;
 if (!/^http:\/\/localhost:\d+$/.test(BASE)) throw new Error("localhost:PORT required");
+if (!SHA || !SOURCE_TREE || !/^[a-f0-9]{40}$/.test(SHA)) throw new Error("KP_SOURCE_SHA and KP_SOURCE_TREE required");
+const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: SOURCE_TREE, encoding: "utf8" }).trim();
+if (head !== SHA) throw new Error(`source tree HEAD ${head} differs from ${SHA}`);
 const health = await fetch(`${BASE}/api/health`).then((r) => r.json());
 if (health.database?.configured !== false || health.simpleJourney?.state !== "STAFF_PREVIEW") {
   throw new Error("Fresh in-memory STAFF_PREVIEW server required");
@@ -23,7 +28,7 @@ if (health.database?.configured !== false || health.simpleJourney?.state !== "ST
 mkdirSync(OUT, { recursive: true });
 
 const report = {
-  kind: "s14-final-classic-spot-shots", sourceCommit: SHA, generatedAt: new Date().toISOString(),
+  kind: "s14-final-classic-spot-shots", sourceCommit: SHA, sourceTree: SOURCE_TREE, generatedAt: new Date().toISOString(),
   premise: "localhost/in-memory STAFF_PREVIEW; synthetic fixtures; no Sell confirmation or payment submitted",
   cells: [], failures: [],
 };
@@ -75,18 +80,31 @@ async function capture(name, jar, locale, width, route, target = null, action = 
     const image = `${name}.png`;
     const path = resolve(OUT, image);
     await page.screenshot({ path, fullPage: false, animations: "disabled", style: "nextjs-portal{display:none!important}" });
+    let crop = null;
+    if (target) {
+      const image = `${name}-crop.png`;
+      const path = resolve(OUT, image);
+      await page.locator(target).first().screenshot({ path, animations: "disabled" });
+      crop = { image, sha256: sha(path) };
+    }
     const read = await page.evaluate((selector) => {
       const target = selector ? document.querySelector(selector) : document.querySelector("main");
       const r = target?.getBoundingClientRect();
+      const cs = target ? getComputedStyle(target) : null;
       return {
         title: document.title, overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         target: r ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height), bottom: Math.round(r.bottom) } : null,
         targetText: target?.textContent?.replace(/\s+/g, " ").trim().slice(0, 180) ?? null,
+        style: cs ? { fontSize: cs.fontSize, borderRadius: cs.borderRadius,
+          padding: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft], gap: cs.gap } : null,
       };
     }, target);
-    const cell = { name, role: jar.length ? "signed" : "guest", locale, width, route, image, sha256: sha(path), ...landed, ...read, pageErrors: errors };
+    const cell = { name, role: jar.length ? "signed" : "guest", locale, width, route, image, sha256: sha(path), crop, ...landed, ...read, pageErrors: errors };
     report.cells.push(cell);
-    if (errors.length || read.overflowX > 1 || !read.target) report.failures.push({ name, errors, overflowX: read.overflowX, target: !!read.target });
+    if (errors.length || read.overflowX > 1 || !read.target
+      || (name.startsWith("admin-tax-") && !read.targetText?.includes("The period in this link could not be read."))) {
+      report.failures.push({ name, errors, overflowX: read.overflowX, target: !!read.target, text: read.targetText });
+    }
     console.log(`${report.failures.at(-1)?.name === name ? "WARN" : "CAPTURE"} ${name} ${cell.landed} overflowX=${read.overflowX}`);
     return cell;
   } catch (e) {
@@ -154,15 +172,28 @@ try {
     await capture(`classic-home-cta-${locale}-${width}`, [], locale, width, "/", ".kp-hero__ctas");
   }
 
+  // The question panel's ordinary small kit Callout, independent of Sell.
+  const seed = await post(player, "seed-markets");
+  const questionId = seed.ids?.[0]?.id ?? seed.ids?.[0];
+  if (typeof questionId !== "string") throw new Error("seed-markets returned no question");
+  for (const locale of ["en", "sw"]) {
+    await capture(`classic-question-callout-${locale}-360`, jar, locale, 360,
+      `/markets/${questionId}?side=YES`, "#main-content [role=note]");
+  }
+
   const adminApi = await request.newContext({ baseURL: BASE });
-  const seeded = await adminApi.post(`${BASE}/api/dev-test/seed-admin`, { data: {} });
+  const seeded = await adminApi.post(`${BASE}/api/dev-test/seed-admin`,
+    { data: { role: "ADMIN", phone: "+255700000097", name: "S14 Visual Admin" } });
   if (!seeded.ok()) throw new Error(`seed-admin: ${seeded.status()}`);
   const adminState = await adminApi.storageState();
   await adminApi.dispose();
   const adminJar = adminState.cookies.filter((c) => c.name === "kp_session");
   if (adminJar.length !== 1) throw new Error("admin session missing");
   for (const width of [320, 1280]) {
-    await capture(`admin-tax-notice-en-${width}`, adminJar, "en", width, "/admin/tax", '[data-testid="tax-status"]');
+    await capture(`admin-tax-notice-en-${width}`, adminJar, "en", width,
+      "/admin/tax?period=not-a-period", 'main [role="note"]', async (page) => {
+        await page.getByText("The period in this link could not be read.", { exact: true }).waitFor({ timeout: 30_000 });
+      });
   }
   await player.close();
 } finally {
