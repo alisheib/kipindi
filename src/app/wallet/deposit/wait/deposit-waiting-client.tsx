@@ -228,7 +228,7 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     : view.state === "PENDING" ? t.wallet.returnPendingTitle : t.journey.depositWaitUnknown;
   const body = view.state === "UNKNOWN" && view.noPayment ? t.journey.depositNoPaymentBody
     : view.state === "PAID" ? (view.pendingBet ? t.journey.depositPaidManual : t.wallet.returnPaidBody)
-    : view.state === "FAILED" ? t.wallet.returnFailedBody
+    : view.state === "FAILED" ? t.journey.depositFailedBody
     : view.state === "HELD" || view.state === "RETURNED" ? t.wallet.returnReversedBody
     : view.state === "REVIEW" ? t.wallet.returnReviewBody
     : view.state === "PENDING" ? pendingText : t.journey.depositUnknownBody;

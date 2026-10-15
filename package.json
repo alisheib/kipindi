@@ -70,6 +70,7 @@
     "test:charged-fee": "tsx scripts/charged-fee.test.mts",
     "test:withdrawal": "tsx scripts/withdrawal-fee.test.mts",
     "e2e:money": "tsx scripts/money-e2e.test.mts",
+    "e2e:journey": "node scripts/e2e-journey.mjs",
     "e2e:report-reads": "tsx scripts/report-reads-pg.e2e.mts",
     "e2e:tax-report": "tsx scripts/tax-report-pg.e2e.mts",
     "e2e:audit-roundtrip": "tsx scripts/audit-roundtrip-pg.e2e.mts",
