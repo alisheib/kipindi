@@ -200,6 +200,7 @@ Two hand-written, re-runnable, expand-only migrations, applied before the releas
 - **Decision:** `side`, `stakeTzs`, `dueAt`, `deadlineAt` (= cutoff − minTimeToCutoff), `status` (PENDING/CLAIMED/PLACED/SKIPPED/EXPIRED/FAILED/CANCELLED), `reasonCode`, `why`, `decision` Json (drawn values + public snapshot).
 - **Execution:** `attempts`, `nextAttemptAt`, `claimedBy`, `claimedUntil`, `positionId` (unique), `idempotencyKey` (unique), `finishedAt`.
 - **Uniqueness:** partial unique `(anchorKey) WHERE kind='COUNTER'`, and partial unique `(kind, anchorKey) WHERE kind<>'COUNTER' AND status<>'CANCELLED'`. A cancelled FILL or OPENER can be planned again while its timing holds; a skipped or expired one is not.
+  ⚠️ **Amended by N3 (2026-10-14, `04-amendments.md` § N3-3):** an automatic FILL or OPENER refused at fire for a reason that belongs to its own account (`HANDOFF_CODES`) now finishes CANCELLED with that code, so this same index lets the next account plan the market; a SKIPPED or EXPIRED row for any other reason is still never planned again.
 - **Indexes:** `(status,dueAt)`, `(houseBotId,createdAt)`, `(triggerUserId,createdAt)`, `(marketId,status)`.
 
 **Store twin and timestamps**
@@ -270,7 +271,7 @@ Two hand-written, re-runnable, expand-only migrations, applied before the releas
 
 **4.4 Decide** (recorded once in `decision`/`why`, never re-decided)
 - **`EngineCode`:** OUTSIDE_SCHEDULE, POOL_BAND, NOT_REACTING, TRIGGER_STAKE_RANGE, NO_REACT_ZONE, EXIT_WINDOW_TOO_LATE, UD_CLOSENESS, UD_NO_PRICE, PENALTY_BOX, MARKET_HELD, NO_ELIGIBLE_BOT, STAKE_BELOW_MIN, MAINTENANCE, CUTOFF, MARKET_NOT_LIVE, MARKET_GONE, MASTER_OFF, BOT_NOT_ACTIVE, TRIGGER_EXITED, CONDITION_GONE, BUSY_TIMEOUT, UNMAPPED, INTERNAL, plus `CAP_<code>`.
-- **Bot choice:** lowest `openExposure/capOpenExposure`, then least recent bet, then id. Markets where another bot holds positions or live intents → MARKET_HELD.
+- **Bot choice:** ~~lowest `openExposure/capOpenExposure`, then least recent bet, then id.~~ ⚠️ **Amended by N3 (2026-10-14, `04-amendments.md` § N3-1):** drawn at random per market, weighted by how long each account has waited; the old order survives only as the tie-break, after least recently busy. Markets where another bot holds positions or live intents → MARKET_HELD.
 - **Held counters carry the reason in `why`**, e.g. "Counter · Player #A3F2K8 UP 10,000 on BTC 10m · delay 20s → held to 5:00 (player's free exit) · 80% → 8,000".
 
 **4.5 Claim**

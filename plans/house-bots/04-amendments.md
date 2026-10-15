@@ -4570,3 +4570,99 @@ Where the rest of the placement lives: the N1/N2 bullet of each commit is in PRO
 11. Also by default, targets are polls only (W13), and a new target reacts to the first stake only, counted from the stake, with no early entry (W14).
 12. The last two defaults: Enter now is refused when one player holds more than 50% of the money it would be matched against (W15), ~~and a monthly alert fires when an officer with at least 10 settled staff-chosen stakes wins 15 percentage points more often than the automatic bots, or nets TZS 100,000 or more (W16)~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** the monthly staff-edge alert is struck, so W16 has nothing to set.
 13. Nothing changes in the release plan: the master switch still ships off, and Enter now and targets stay off for every bot until you turn them on in its rules and set their limits.
+
+---
+
+# House bots: amendment N3 (accounts drawn at random for each market · a market refused by one account's own limits is handed on) — 2026-10-14
+
+**Authority.** Ali, 2026-10-14, in the session: *"find a way to allow as much as we want bots to work with each other …
+so on bot blocks in queue the bot after it … the purpose of bots is adding real traffic on both sides of the game"*,
+and the session's approved plan. Every item below is ENGINEERING — the order the engine offers markets in, and what
+a refusal that belongs to one account does — and amends rulings Claude made under D9, not an owner ruling. No money
+rule, no cap, no I-invariant and no disclosure rule changes. The owner rulings taken the same day (desk-against-desk
+staking within a daily budget, the desk's own price, a roster past 20) are recorded in `docs/COMPLIANCE-DECISIONS.md`
+§ "2026-10-14 · Desk accounts are drawn at random for each market, may stake against each other within a daily budget, may fetch their own
+price, and the roster may pass 20" and are built in later releases, each with its own amendment.
+
+**Measured before (production, read-only, 2026-10-14; `docs/HOUSE-BOTS.md` §12.19):** one account ranked last on
+1,593 of 1,595 opener decisions and placed nothing for fifteen days while switched on and funded; 1,111 rounds in a
+week were planned and then lost at fire, 408 of them to one account's own balance floor or minimum gap; a player who
+staked while a desk opener was still queued had their one reaction spent on MARKET_HELD.
+
+## N3-1 · PLAN §4.4 — the account choice is a weighted random draw, not exposure share
+**Amends** PLAN §4.4 ("the lowest open-exposure share, then the least recent bet, then the id") and C4-SPEC ruling 96.
+Per market, the covering accounts are **drawn at random, weighted by how long each has waited** (Ali, 2026-10-14:
+"prevent anyone from predicting"): an Efraimidis–Spirakis weighted permutation, key = −ln(roll) / weight, smallest
+first, where the weight is the seconds since the account was last busy held to [1, `TURN_WEIGHT_MAX_SEC` = 3,600] —
+busy being the later of its last placed stake and its soonest queued (PENDING or CLAIMED) row's due time when that falls
+within `TURN_BUSY_HORIZON_SEC` (60 s) — a stake about to be placed, never a poll's fill queued far ahead. The caller draws one `turnRoll` per account (the planner per market, the trigger
+once per decision, memoised like the react roll, ruling 164); `orderBots` stays pure. Equal keys, and an order asked
+without rolls (the console's explaining walk), fall back to: least recently busy, then the lowest exposure share, then
+the id. An account with no exposure cap sorts last either way. Each row a pass writes moves its account's busy time
+to that row's due time (weight 1), so a pass shares its markets out. One loader for the planner, the trigger and the
+console's walk: `loadRosterRates` (`botRateUsage({houseBotId: null})` and the new `liveSummaryByBot()`, two
+statements). **Why:** the exposure share barely moves for an account holding old poll stakes, so it starved such an
+account for good; and a fixed rotation would let anyone watching long enough tell which account bets next.
+
+## N3-2 · C4-SPEC ruling 94 — the planning check reads the due time
+**Amends** ruling 94 ("the seam's money caps at the smallest stake"). After `capPrecheck` (unchanged), the planner and
+the trigger call `capAtDue`: the balance floor at the row's OWN stake less what the account already has queued; the
+minimum gap only where the seam would refuse it — the seam DEFERS a row whose gap frees before its `staleAt`, so the
+row is refused only when its earliest free time (after its last placed stake, and after its latest queued stake due no
+later than it) is at or after `staleAt`; the rolling hour and day counting queued rows. The trigger replays each
+account's own draws across a decision's re-run (`decideCounter`'s `randomFor`), so the row it judged is the row it
+writes, and leaves the account's own dead openers on the market out of its facts (`withoutQueued`). A cap that is not set refuses, as in the seam. A refusal is a planning refusal, and the planner
+offers the market to the next account in the same pass. **I6 is untouched:** the seam still decides every stake
+inside its locks; this only keeps a row off an account the seam would refuse.
+
+## N3-3 · PLAN.md:202 — a market refused by one account's own limits is handed on
+**Amends** PLAN.md:202 ("a SKIPPED or EXPIRED FILL/OPENER is never planned again") for one class of refusal. An
+automatic FILL or OPENER (never a COUNTER, never a staff-chosen row) whose fire pre-check or seam answer is a code in
+`HANDOFF_CODES` finishes **CANCELLED with that same code**:
+
+- the account's own caps: `CAP_STAKE_MIN`, `CAP_STAKE_MAX`, `CAP_PER_MARKET`, `CAP_BALANCE_FLOOR`, `CAP_DAILY_STAKE`,
+  `CAP_DAILY_LOSS_PROJECTED`, `CAP_EXPOSURE`, `CAP_MIN_GAP`, `CAP_PER_HOUR`, `CAP_PER_DAY`, `CAP_PER_MARKET_COUNT`;
+- its own rules: `OUTSIDE_SCHEDULE`, `OUT_OF_SCOPE`, `STAKE_BOUNDS_CHANGED`, `UD_CLOSENESS`.
+
+`hbi_fill_opener_anchor_uq` already excludes CANCELLED rows (migration `20260916150000`), and `plannableMarkets`
+already lists a market whose newest row of the kind is a plain CANCELLED one (engine 17.55, dal c04.c), so no
+migration is needed. The next pass skips every account that already tried the market — the chain rides on the newest
+row as `decision.triedBotIds` — and after `HANDOFF_MAX_TRIES` (4) accounts, or when no covering account is left
+untried, one SKIPPED(NO_ELIGIBLE_BOT) row closes the chain so the market leaves the scan. The drawn opener
+side is never re-rolled (`opener-side.ts` returns the persisted draw). **Not handed on**, because every account would
+meet it alike: a stale price, money that moved (`CONDITION_GONE`), a desk-wide cap (`CAP_GLOBAL_*`), the clock
+(`STALE`, `CUTOFF`), the market's own state.
+
+## N3-4 · A15 as built — an Up & Down opener is timed to its price
+`planOpener` draws an Up & Down opener's delay only up to the moment the price it was decided on would turn stale,
+less `UD_PRICE_FIRE_MARGIN_SEC` (10 s). A round whose earliest due time already misses that is refused at planning as
+`UD_STALE_PRICE`, with no row written, so a fresher price can still open it. One draw, as before (only its upper bound
+moves); the refusal keeps its place after CUTOFF and closeness. **A15's no-metered-call rule is untouched here**; the
+owner's ruling to let the desk fetch its own price is a later release with its own amendment.
+
+## N3-5 · N1 §6 refusal 15 b/c — a queued opener on a market with money holds nothing
+`marketHeld` takes `ignoreDeadOpeners`, which the trigger sets when the market already holds money: a queued OPENER
+there can never place (H3 refuses an opener on anything but two empty pools), so it no longer holds the market against
+a player's one reaction — for another account or for its own. Every other live row still holds.
+
+## N3-6 · The console says what happened
+The "why is it not staking?" walk loads the whole roster and counts `rankedBehind` — markets the account could take
+where another account is likelier to be drawn first — and paints "another account is more likely to be drawn first" instead of "would
+stake right now". A handed-on row paints "Passed on" in the slate tone, never the claret "Cancelled" of an officer's
+cancel. The two bet counts' field hints say "Rolling 24 hours." (they were "Resets at 00:00 EAT", which the seam never
+did).
+
+## N3-7 · Recorded, not changed
+`DEFERRABLE_CAP_CODES` lists `PER_HOUR` and `PER_DAY`, but the seam gives those two no `until`, so they never defer;
+and `GLOBAL_BETS_PER_MINUTE` can defer only when the row's `staleAt` is more than a minute away, which an Up & Down row
+(30 s) never is. The list is left as it is (removing names that never fire changes nothing) and the fact is recorded
+in `docs/HOUSE-BOTS.md` §12.19.
+
+## N3 · Owner summary
+1. Each round's bot is now picked at random, the one that has waited longest most likely, so nobody can predict which bot bets next and none is left out.
+2. If the bot chosen for a round cannot bet because of its own limits (its money, its timing, its schedule), the round
+   now goes to the next bot instead of being lost.
+3. A bot no longer plans a first bet it would have to place on an out-of-date price.
+4. A player who bets while a bot's first bet is still waiting is now answered instead of refunded.
+5. The "Why is it not staking?" button now says when another bot is simply ahead in the queue.
+6. Still one bot per round: letting bots bet against each other is the next releases, as you ruled.

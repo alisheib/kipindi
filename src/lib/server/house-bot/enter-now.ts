@@ -179,13 +179,15 @@ export type MarketHeld =
 /**
  * Is this market held for this bot (N1 §4.4)? `ignoreIntentId` is the row being fired, which must not hold its own
  * market. The bot is read fresh; a missing bot throws (every caller checked it first).
+ * `ignoreDeadOpeners` (N3) is for a caller that knows the market already holds money: a queued OPENER there can never
+ * place (H3 refuses an opener on anything but two empty pools), so it holds nothing — for any account, its own included.
  */
-export async function marketHeld(botId: string, marketId: string, opts: { ignoreIntentId?: string | null } = {}): Promise<MarketHeld> {
+export async function marketHeld(botId: string, marketId: string, opts: { ignoreIntentId?: string | null; ignoreDeadOpeners?: boolean } = {}): Promise<MarketHeld> {
   const bot = await houseBotStore.get(botId);
   if (!bot) throw new Error(`marketHeld: no bot ${botId}`);
   // One read at a time, as the loader (pooled connections belong to players' bets first).
   const mine = await positionStore.listForUserAndMarket(bot.userId, marketId);
-  const live = await houseBotIntentStore.listLiveOnMarket(marketId);
+  const live = (await houseBotIntentStore.listLiveOnMarket(marketId)).filter((i) => !(opts.ignoreDeadOpeners && i.kind === "OPENER"));
   const target = await targetStore.activeForMarket(marketId);
   const onMarket = await houseSeamStore.marketUsage({ houseBotId: botId, marketId });
   const usage = await houseSeamStore.botUsage({ houseBotId: botId, marketId });

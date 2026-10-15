@@ -371,7 +371,90 @@ await guard("7", () => {
   ok("7.16 · A11: a stake placed before the bot's Start → no row", DE.decideCounter(ctrIn({ bots: [botOf({ scopeFrom: at(0) })] }), { randomInt: minRand }).row === null);
 
   const bots = [botOf({ botId: "hb_b", openExposure: 500_000 }), botOf({ botId: "hb_c", openExposure: 100_000, lastPlacedAt: at(-10) }), botOf({ botId: "hb_d", openExposure: 100_000, lastPlacedAt: at(-60) })];
-  ok("7.17 · PLAN §4.4 bot choice: lowest exposure share, then least recent bet, then id", j(DE.orderBots(bots).map((b: Any) => b.botId)) === j(["hb_d", "hb_c", "hb_b"]));
+  /* ⭐ N3 (Ali, 2026-10-14) · ACCOUNTS TAKE TURNS. This case pinned the exposure-first order — ["hb_d","hb_c","hb_b"] —
+     under which, measured on production, one account holding six old poll stakes ranked last on 1,593 of 1,595 opener
+     decisions and placed nothing for fifteen days. The order is now: least recently busy, then exposure share, then id. */
+  const ids = (list: Any[]) => j(list.map((b: Any) => b.botId));
+  ok("7.17 · N3 turn order: the account least recently busy goes first — the one that never bet, then the older bet, then the newer",
+    ids(DE.orderBots(bots)) === j(["hb_b", "hb_d", "hb_c"]), ids(DE.orderBots(bots)));
+  ok("7.17a · …and a QUEUED row makes an account busy: the same never-bet account with a stake due in 5 s goes to the back",
+    ids(DE.orderBots([botOf({ botId: "hb_b", openExposure: 500_000, busyUntil: at(5) }), bots[1], bots[2]])) === j(["hb_d", "hb_c", "hb_b"]));
+  ok("7.17b · equally busy → the lower exposure share, then the id (the old order survives as the tie-break)",
+    ids(DE.orderBots([botOf({ botId: "hb_x", openExposure: 300_000, lastPlacedAt: at(-30) }), botOf({ botId: "hb_y", openExposure: 100_000, lastPlacedAt: at(-30) }), botOf({ botId: "hb_w", openExposure: 100_000, lastPlacedAt: at(-30) })]))
+      === j(["hb_w", "hb_y", "hb_x"]));
+  /* The production shape: the starved account has the HIGHEST exposure share and the OLDEST bet. */
+  const starved = [botOf({ botId: "hb_s", openExposure: 10_500, capOpenExposureTzs: 300_000, lastPlacedAt: at(-1_296_000) }),
+    botOf({ botId: "hb_t", openExposure: 0, capOpenExposureTzs: 200_000, lastPlacedAt: at(-30) }),
+    botOf({ botId: "hb_u", openExposure: 1_300, capOpenExposureTzs: 100_000, lastPlacedAt: at(-90) })];
+  ok("7.17c · ⭐ THE STARVED ACCOUNT GOES FIRST: 3.5% exposure but no bet in fifteen days beats 0% exposure and a bet 30 s ago",
+    ids(DE.orderBots(starved)) === j(["hb_s", "hb_u", "hb_t"]), ids(DE.orderBots(starved)));
+  const turn = starved.map((b: Any) => ({ ...b }));
+  DE.markBusy(turn, "hb_s", at(40));
+  ok("7.17d · markBusy moves a winner's turn to its row's due time — the next market goes to the next account",
+    ids(DE.orderBots(turn)) === j(["hb_u", "hb_t", "hb_s"]) && turn[0].busyUntil === at(40), ids(DE.orderBots(turn)));
+  DE.markBusy(turn, "hb_s", at(10));
+  ok("7.17e · …and never moves it BACK: an earlier due time leaves the later one standing",
+    turn[0].busyUntil === at(40));
+
+  /* ⭐ N3 · THE DRAW (Ali, 2026-10-14: "prevent anyone from predicting"). With a turn roll on every account and the
+     instant, the order is drawn at random, weighted by waiting time: key = −ln(roll) / weight, smallest first. */
+  const T0 = Date.parse(at(0));
+  const drawn = (list: Any[]) => ids(DE.orderBots(list, T0));
+  // weights: hb_a waited 10 s → 10 · hb_b never busy → 3,600 · hb_c waited 100 s → 100
+  // keys: −ln 0.9 / 10 = 0.0105 · −ln 0.001 / 3600 = 0.0019 · −ln 0.5 / 100 = 0.0069
+  ok("7.17f · N3 · the draw orders by −ln(roll)/weight: the never-busy account with a small roll first, then the 100 s account, then the 10 s one",
+    drawn([botOf({ botId: "hb_a", lastPlacedAt: at(-10), turnRoll: 0.9 }), botOf({ botId: "hb_b", turnRoll: 0.001 }), botOf({ botId: "hb_c", lastPlacedAt: at(-100), turnRoll: 0.5 })])
+      === j(["hb_b", "hb_c", "hb_a"]));
+  // A roll of 0.99999 gives the 10 s account a key of 1e-6 — chance can still pick the one that waited least.
+  ok("7.17g · N3 · …and it IS chance: a high enough roll draws the account that waited least ahead of one that waited an hour",
+    drawn([botOf({ botId: "hb_a", lastPlacedAt: at(-10), turnRoll: 0.99999 }), botOf({ botId: "hb_b", turnRoll: 0.5 })]) === j(["hb_a", "hb_b"]));
+  ok("7.17h · N3 · the weight: seconds since busy, at least 1 (a row due in the future) and at most 3,600 (never busy, or a week ago)",
+    DE.turnWeight(T0 - 30_000, T0) === 30 && DE.turnWeight(T0 + 40_000, T0) === 1 && DE.turnWeight(Number.NEGATIVE_INFINITY, T0) === 3_600
+      && DE.turnWeight(T0 - 7 * 86_400_000, T0) === 3_600);
+  /* First-pick frequencies over 20,000 draws from a SEEDED generator (mulberry32), so the case cannot flake: with
+     weights 3,600 · 600 · 60 the expected shares are 0.8451 · 0.1408 · 0.0141. */
+  {
+    let seed = 0x5eed_2026;
+    const next = () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const roll = () => Math.max(1e-9, 1 - next());
+    const firsts: Record<string, number> = { hb_x: 0, hb_y: 0, hb_z: 0 };
+    for (let k = 0; k < 20_000; k++) {
+      const pick = DE.orderBots([botOf({ botId: "hb_x", turnRoll: roll() }), botOf({ botId: "hb_y", lastPlacedAt: at(-600), turnRoll: roll() }), botOf({ botId: "hb_z", lastPlacedAt: at(-60), turnRoll: roll() })], T0)[0].botId;
+      firsts[pick] += 1;
+    }
+    const share = (k: string) => firsts[k] / 20_000;
+    ok("7.17i · N3 · over 20,000 seeded draws each account is drawn first in proportion to its weight (±0.015): 3,600 · 600 · 60 → 0.845 · 0.141 · 0.014",
+      Math.abs(share("hb_x") - 0.8451) < 0.015 && Math.abs(share("hb_y") - 0.1408) < 0.015 && Math.abs(share("hb_z") - 0.0141) < 0.015 && firsts.hb_z > 0,
+      j(firsts));
+  }
+  ok("7.17j · N3 · an account with no exposure cap sorts last even with the smallest key — it cannot bet",
+    drawn([botOf({ botId: "hb_a", capOpenExposureTzs: null, turnRoll: 0.000001 }), botOf({ botId: "hb_b", lastPlacedAt: at(-5), turnRoll: 0.9 })]) === j(["hb_b", "hb_a"]));
+  const equalRolls = starved.map((b: Any) => ({ ...b, turnRoll: 0.000001 }));
+  ok("7.17k · N3 · EQUAL rolls (a case's injected minimum) give the deterministic order exactly — so every case that fixes its draws keeps its answer",
+    drawn(equalRolls) === ids(DE.orderBots(starved)), j({ drawn: drawn(equalRolls), rule: ids(DE.orderBots(starved)) }));
+  const mixed = (() => { try { DE.orderBots([botOf({ botId: "hb_a", turnRoll: 0.5 }), botOf({ botId: "hb_b" })], T0); return "no throw"; } catch (e) { return String((e as Error).message); } })();
+  ok("7.17l · N3 · a roll on some accounts and not others is a caller defect and THROWS, never a silent half-random order", /some accounts and not others/.test(mixed), mixed);
+  ok("7.17m · N3 · CONTROL · with rolls but no instant, the order is the deterministic one (the console's explaining walk asks that way)",
+    ids(DE.orderBots(starved.map((b: Any, k: number) => ({ ...b, turnRoll: [0.9, 0.001, 0.5][k] })))) === ids(DE.orderBots(starved)));
+  ok("7.17n · N3 · the DETERMINISTIC order puts an account with no exposure cap last too — even one never busy (review finding 6)",
+    ids(DE.orderBots([botOf({ botId: "hb_a", capOpenExposureTzs: null }), botOf({ botId: "hb_b", lastPlacedAt: at(-5) })])) === j(["hb_b", "hb_a"]));
+  /* ⭐ An account's own draws, replayed (review finding 2): the trigger runs a decision twice, and the row its at-due
+     check judged must be the row written. With `randomFor`, each account draws from its own replaying source. */
+  {
+    const counterBot = botOf({ botId: "hb_r", rules: rulesOf({ counter: { delayMinSec: 10, delayMaxSec: 50 } }) });
+    let tick = 10;
+    const rising = (min: number, max: number) => { tick += 7; return Math.min(max, Math.max(min, tick)); };
+    const seq: number[] = [];
+    const keep = () => { let k = 0; return () => (min: number, max: number) => { if (k < seq.length) return seq[k++]; const v = rising(min, max); seq.push(v); k++; return v; }; };
+    const run1 = DE.decideCounter(ctrIn({ bots: [counterBot] }), { randomInt: rising, randomFor: keep() });
+    const run2 = DE.decideCounter(ctrIn({ bots: [counterBot] }), { randomInt: rising, randomFor: keep() });
+    const bare1 = DE.decideCounter(ctrIn({ bots: [counterBot] }), { randomInt: rising });
+    const bare2 = DE.decideCounter(ctrIn({ bots: [counterBot] }), { randomInt: rising });
+    ok("7.17o · N3 · decideCounter draws an account's delay from `randomFor` when given one: two runs on a replaying source write the SAME row, while the bare source draws a different delay each run (the control)",
+      run1.row?.status === "PENDING" && typeof run1.row.decision?.delaySec === "number" && run1.row.decision.delaySec === run2.row?.decision?.delaySec
+        && bare1.row?.decision?.delaySec !== bare2.row?.decision?.delaySec,
+      j({ run1: run1.row?.decision?.delaySec, run2: run2.row?.decision?.delaySec, bare: [bare1.row?.decision?.delaySec, bare2.row?.decision?.delaySec] }));
+  }
   // Ruling 164 · the react roll is the CALLER's, drawn once per pass per bot. `reactProbabilityPct` defaults to 60.
   const at60 = () => rulesOf({ counter: { reactProbabilityPct: 60 } });
   const rollAt = (roll: Any) => DE.decideCounter(ctrIn({ bots: [botOf({ reactRoll: roll, rules: at60() })] }), { randomInt: minRand });
@@ -640,9 +723,13 @@ await guard("7b", () => {
       && DE.planOpener(udOpen({ bot: botOf({ rules: rulesOf({ updown: { closenessPct: 90 }, opener: { delayUdMinSec: 1, delayUdMaxSec: 1 } }) }) }), { randomInt: minRand }).row !== null, "");
 
   /* ── OPENER: the two delay units and the stake draw ─────────────────────────────────────────── */
-  /* A round opens at T0−60 s, so a 120-second delay is due at T0+60; read as MINUTES it would be past the lock. */
+  /* A round opens at T0−60 s, so a 120-second delay is due at T0+60; read as MINUTES it would be past the lock.
+     ⛔ N3 · ON A PRICE THAT IS STILL FRESH AT T0+60. With `udFresh` — an observation, 60 s at most, already 10 s old —
+     a stake due 60 s ahead would reach fire on a price fire refuses, so `planOpener` now refuses it at planning (7b.25
+     holds that). A vendor bar of the same age has 170 s left, which is what this case's subject — the UNIT — needs. */
+  const udBarFresh = { price: 102, source: "vendor_bar", ageSec: 10 };
   const udOpenRec = recorder("min");
-  const udOpened = DE.planOpener({ ...openIn({ view: udView(), price: udFresh, bot: botOf({ rules: rulesOf({ opener: { delayUdMinSec: 120, delayUdMaxSec: 120 } }) }) }), openerSide: "NO" }, { randomInt: udOpenRec.fn });
+  const udOpened = DE.planOpener({ ...openIn({ view: udView(), price: udBarFresh, bot: botOf({ rules: rulesOf({ opener: { delayUdMinSec: 120, delayUdMaxSec: 120 } }) }) }), openerSide: "NO" }, { randomInt: udOpenRec.fn });
   ok("7b.22 · opener.delayUdMin/MaxSec · the opener's wait on a round is drawn in SECONDS over the two leaves — asked for (120, 120) and due at the round's open + 120 s = T0+60",
     j(udOpenRec.calls[0]) === j([120, 120]) && udOpened.row?.dueAt === at(-60 + 120),
     j({ asked: udOpenRec.calls[0], due: udOpened.row?.dueAt }));
@@ -652,6 +739,27 @@ await guard("7b", () => {
   ok("7b.23 · opener.delayPollsMin/MaxMin · and on a poll it is MINUTES: asked for (7, 7) and due 7 minutes after the poll became bettable at T0−100 s, which is T0+320",
     j(pollOpenRec.calls[0]) === j([7, 7]) && pollOpened.row?.dueAt === at(-100 + 420),
     j({ asked: pollOpenRec.calls[0], due: pollOpened.row?.dueAt }));
+  /* ⭐ N3 · AN UP & DOWN OPENER FIRES WHILE ITS PRICE IS STILL FRESH. 669 rounds in a week were planned on a price that
+     had turned stale by the time fire re-judged it — each one then hidden from every other account. */
+  const udOpenAt = (price: Any, minSec: number, maxSec: number) => {
+    const rec = recorder("max");
+    const res = DE.planOpener({ ...openIn({ view: udView(), price, bot: botOf({ rules: rulesOf({ opener: { delayUdMinSec: minSec, delayUdMaxSec: maxSec } }) }) }), openerSide: "NO" }, { randomInt: rec.fn });
+    return { rec, res };
+  };
+  const stale60 = udOpenAt(udFresh, 120, 120);
+  ok("7b.25 · N3 · a stake due 60 s ahead on an observation already 10 s old (60 s at most) would fire stale → refused at PLANNING as UD_STALE_PRICE, no row",
+    stale60.res.row === null && stale60.res.code === "UD_STALE_PRICE", j(stale60.res));
+  /* A bar 100 s old leaves 180 − 100 − 10 = 70 s, so the latest due time is T0+70: from a round open at T0−60, a delay of 130 s. */
+  const clamped = udOpenAt({ price: 102, source: "vendor_bar", ageSec: 100 }, 20, 400);
+  ok("7b.26 · N3 · …and a delay range that reaches past the price's life is DRAWN only up to it: asked for (20, 130), not (20, 400), and due at T0+70",
+    j(clamped.rec.calls[0]) === j([20, 130]) && clamped.res.row?.dueAt === at(70), j({ asked: clamped.rec.calls[0], due: clamped.res.row?.dueAt }));
+  const roomy = udOpenAt({ price: 102, source: "vendor_bar", ageSec: 5 }, 20, 90);
+  ok("7b.27 · N3 · CONTROL · a fresh bar with room to spare leaves the leaves' own range untouched — asked for (20, 90)",
+    j(roomy.rec.calls[0]) === j([20, 90]) && roomy.res.row != null, j({ asked: roomy.rec.calls[0] }));
+  const pollUntouched = recorder("max");
+  DE.planOpener({ ...openIn({ view: MV.projectMarketView(viewRow({ createdAt: at(-100) })), price: udFresh, bot: botOf({ rules: rulesOf({ opener: { delayPollsMinMin: 5, delayPollsMaxMin: 30 } }) }) }), openerSide: "NO" }, { randomInt: pollUntouched.fn });
+  ok("7b.28 · N3 · CONTROL · a POLL's opener is never held to a price — asked for (5, 30) minutes",
+    j(pollUntouched.calls[0]) === j([5, 30]), j(pollUntouched.calls[0]));
   const stakeRec = recorder("max");
   const openStake = DE.planOpener({ ...openIn({ view: MV.projectMarketView(viewRow({ createdAt: at(-100) })), bot: botOf({ rules: rulesOf({ opener: { stakeMinTzs: 1_500, stakeMaxTzs: 4_700 }, shaping: { roundToTzs: 1_000 } }) }) }), openerSide: "NO" }, { randomInt: stakeRec.fn });
   ok("7b.24 · opener.stakeMin/MaxTzs · the opener's amount is DRAWN between the two leaves and then FLOORED to the step — asked for (1,500, 4,700), drawn 4,700, and stored 4,000",
@@ -1364,13 +1472,38 @@ await guard("13", async () => {
     const rec = recorder();
     const TERMINALS = Object.entries(OM.OUTCOME_TABLE).filter(([, a]: Any) => a.kind === "terminal" && !a.engineFault) as Array<[string, Any]>;
     ok("13.14a · fixture · the table has plain terminal rows to walk", TERMINALS.length >= 15, String(TERMINALS.length));
+    /* ⭐ N3 · THE FIXTURE ROW IS AN AUTOMATIC FILL, SO AN ACCOUNT-OWNED REFUSAL HANDS IT ON. The table's own status is
+       what every other row gets; a FILL or OPENER refused for a code in `HANDOFF_CODES` finishes CANCELLED with that
+       same code, so the market goes to the next account. Read from the LIST, never from `handoffStatus`, so a case
+       cannot agree with the function it measures. 13.14h–j hold the rows that are never handed on. */
+    const handedOn = (code: string) => (K.HANDOFF_CODES as readonly string[]).includes(code);
+    let handedOnSeen = 0;
     for (const [key, action] of TERMINALS) {
       const i = await fresh(b);
       const answer = key.startsWith("code:") ? { ok: false, code: key.slice(5) } : refuse(key);
       const out = await apply(action.penalty ? { ...i, triggerUserId: trig } : i, answer, rec.alerts);
       const r = await row(i.id);
-      ok(`13.14 · ${key} → ${action.status}(${action.reasonCode})`, out.kind === "terminal" && out.written === true && r.status === action.status && r.reasonCode === action.reasonCode && r.finishedAt != null, j(r));
+      const want = action.status === "SKIPPED" && handedOn(action.reasonCode) ? "CANCELLED" : action.status;
+      if (want !== action.status) handedOnSeen++;
+      ok(`13.14 · ${key} → ${want}(${action.reasonCode})${want !== action.status ? " · N3 handed on" : ""}`, out.kind === "terminal" && out.written === true && r.status === want && r.reasonCode === action.reasonCode && r.finishedAt != null, j(r));
     }
+    ok("13.14g · N3 · the walk met account-owned refusals and handed each one on (the balance floor, the stake bounds)", handedOnSeen >= 3, String(handedOnSeen));
+    /* ⛔ THE ROWS THAT ARE NEVER HANDED ON, on the same account-owned answer. */
+    const keep = async (o: Any) => {
+      const i = await fresh(b, o);
+      const out = await apply(i, refuse("balance_insufficient"), rec.alerts);
+      return { out, r: await row(i.id) };
+    };
+    const asCounter = await keep({ kind: "COUNTER", triggerPositionId: `pos_${Math.floor(Math.random() * 1e9)}` });
+    ok("13.14h · N3 · a COUNTER is never handed on — one decision per player stake, for ever (its anchor has no CANCELLED exception)",
+      asCounter.r.status === "SKIPPED" && asCounter.r.reasonCode === "CAP_BALANCE_FLOOR", j(asCounter.r));
+    const asManual = await keep({ kind: "MANUAL" });
+    ok("13.14i · N3 · nor an officer's own Enter now row — it belongs to the officer who chose it", asManual.r.status === "SKIPPED" && asManual.r.reasonCode === "CAP_BALANCE_FLOOR", j(asManual.r));
+    const roundCode = await fresh(b);
+    await apply(roundCode, refuse("house_trigger_gone"), rec.alerts);
+    const roundRow = await row(roundCode.id);
+    ok("13.14j · N3 · CONTROL · a FILL refused for a reason no account could avoid keeps the table's status — handing it on would only spend the round",
+      roundRow.status !== "CANCELLED", j(roundRow));
     ok("13.15 · balance_insufficient and house_cash_only share CAP_BALANCE_FLOOR → ONE alert for the bot today", rec.codes("CAP_BALANCE_FLOOR") === 1
       && rec.calls.some((c) => c.fn === "once" && c.code === "CAP_BALANCE_FLOOR" && c.key.startsWith(`bot:${b.botId}:CAP_BALANCE_FLOOR`)), j(rec.calls));
     ok("13.16 · A7 · stake_not_whole → one STAKE_NOT_WHOLE alert", rec.codes("STAKE_NOT_WHOLE") === 1);
@@ -1642,7 +1775,10 @@ await guard("13", async () => {
     const gap = await cap({ cap: "MIN_GAP", until });
     ok("13.51 · MIN_GAP freeing before staleAt → deferred to the seam's own `until`, attempts handed back", gap.out.kind === "deferred" && gap.r.status === "PENDING" && gap.r.nextAttemptAt === until && gap.r.attempts === 0 && gap.r.transientAttempts === 0, j(gap.r));
     const late = await cap({ cap: "MIN_GAP", until: new Date(Date.now() + 900_000).toISOString() });
-    ok("13.52 · MIN_GAP freeing after staleAt → SKIPPED(CAP_MIN_GAP)", late.r.status === "SKIPPED" && late.r.reasonCode === "CAP_MIN_GAP", j(late.r));
+    // N3 · the fixture is an automatic FILL and MIN_GAP is its own account's limit: the row is handed on, same code.
+    ok("13.52 · MIN_GAP freeing after staleAt → CANCELLED(CAP_MIN_GAP) · N3 handed on to the next account", late.r.status === "CANCELLED" && late.r.reasonCode === "CAP_MIN_GAP", j(late.r));
+    const perMinLateRound = await cap({ cap: "GLOBAL_BETS_PER_MINUTE" }, { staleAt: w.iso(30_000) });
+    ok("13.52a · N3 · CONTROL · a DESK-WIDE cap past staleAt is not handed on — every account would meet it", perMinLateRound.r.status === "SKIPPED", j(perMinLateRound.r));
     const perMin = await cap({ cap: "GLOBAL_BETS_PER_MINUTE" });
     const minWait = Date.parse(perMin.r.nextAttemptAt) - perMin.t0;
     ok("13.53 · ruling 47 · GLOBAL_BETS_PER_MINUTE → deferred one window (≈60 s)", perMin.out.kind === "deferred" && minWait >= 59_000 && minWait <= 61_500, `${minWait} ms`);
@@ -1652,7 +1788,8 @@ await guard("13", async () => {
     const day = await cap({ cap: "PER_DAY" });
     ok("13.55 · ruling 47 · PER_HOUR and PER_DAY carry no free time → SKIPPED", hour.r.reasonCode === "CAP_PER_HOUR" && day.r.reasonCode === "CAP_PER_DAY");
     const terminalCap = await cap({ cap: "PER_MARKET_COUNT", until });
-    ok("13.56 · a cap that does not defer (PER_MARKET_COUNT) skips even with a free time", terminalCap.r.status === "SKIPPED" && terminalCap.r.reasonCode === "CAP_PER_MARKET_COUNT");
+    ok("13.56 · a cap that does not defer (PER_MARKET_COUNT) ends the row even with a free time — handed on (N3), never deferred",
+      terminalCap.out.kind === "terminal" && terminalCap.r.status === "CANCELLED" && terminalCap.r.reasonCode === "CAP_PER_MARKET_COUNT", j(terminalCap.r));
     const bu = await w.bot();
     const iu = await fresh(bu);
     const recU = recorder();
@@ -2473,7 +2610,8 @@ await guard("16", async () => {
     const { m } = await lockedPoll(10_000);
     const i = await w.intent(b, m.id, FILL({ stakeTzs: 25_000 }));
     const out = await fire(i, recorder().alerts);
-    ok("16.9 · A7 · a cut stake under the bot's minimum → SKIPPED(STAKE_BOUNDS_CHANGED), the stake never written back", out.kind === "finished" && (await is(i.id, "SKIPPED", "STAKE_BOUNDS_CHANGED")) && (await row(i.id)).stakeTzs === 25_000, j(out));
+    /* N3 · the minimum it fell under is THIS account's: one with a smaller minimum may still fill it, so it is handed on. */
+    ok("16.9 · A7 · a cut stake under the bot's minimum → CANCELLED(STAKE_BOUNDS_CHANGED) · N3 handed on, the stake never written back", out.kind === "finished" && (await is(i.id, "CANCELLED", "STAKE_BOUNDS_CHANGED")) && (await row(i.id)).stakeTzs === 25_000, j(out));
   }
   {
     const b = await botWith();
@@ -2737,8 +2875,10 @@ await guard("16", async () => {
     const oS = await fire(iS, recorder().alerts);
     const oM = await fire(iM, recorder().alerts);
     const oE = await fire(iE, recorder().alerts);
-    ok("16.22 · ruling 66 · the poll's category no longer listed → SKIPPED(OUT_OF_SCOPE)", await is(iS.id, "SKIPPED", "OUT_OF_SCOPE"), j(oS));
-    ok("16.23 · …the row's mode switched off → SKIPPED(OUT_OF_SCOPE)", await is(iM.id, "SKIPPED", "OUT_OF_SCOPE"), j(oM));
+    /* N3 · an account's own scope refusing an automatic FILL hands the market on (CANCELLED, same code); the MANUAL
+       row beside them is an officer's and keeps SKIPPED — 16.24 is the control that the hand-off is not everywhere. */
+    ok("16.22 · ruling 66 · the poll's category no longer listed → CANCELLED(OUT_OF_SCOPE) · N3 handed on", await is(iS.id, "CANCELLED", "OUT_OF_SCOPE"), j(oS));
+    ok("16.23 · …the row's mode switched off → CANCELLED(OUT_OF_SCOPE) · N3 handed on", await is(iM.id, "CANCELLED", "OUT_OF_SCOPE"), j(oM));
     ok("16.24 · …Enter now switched off for a MANUAL row → SKIPPED(OUT_OF_SCOPE)", await is(iE.id, "SKIPPED", "OUT_OF_SCOPE"), j(oE));
   }
   {
@@ -2779,7 +2919,7 @@ await guard("16", async () => {
     const iM = await w.intent(closed, (await lockedPoll()).m.id, MANUAL());
     const oF = await fire(iF, recorder().alerts);
     const oM = await fire(iM, recorder().alerts);
-    ok("16.29 · a schedule that excludes now → an automatic row SKIPPED(OUTSIDE_SCHEDULE)", await is(iF.id, "SKIPPED", "OUTSIDE_SCHEDULE"), j(oF));
+    ok("16.29 · a schedule that excludes now → an automatic row CANCELLED(OUTSIDE_SCHEDULE) · N3 handed on — another account's schedule may cover now", await is(iF.id, "CANCELLED", "OUTSIDE_SCHEDULE"), j(oF));
     ok("16.30 · W8 · Enter now ignores the schedule: the MANUAL row on the same bot places", await is(iM.id, "PLACED", null), j(oM));
   }
 
@@ -3568,7 +3708,14 @@ await guard("17", async () => {
       /* ⛔ THE ACCOUNT IS STARTED BEFORE THE MARKET EXISTS, or A11 refuses the market for being older than the
          Start and the walk would answer BEFORE_SCOPE — a green pair of assertions below measuring nothing. */
       const b5 = await botWith({}, rules);
+      /* ⛔ N3 · THE ACCOUNT'S OWN SCOPE STARTS AT THIS MARKET'S OWN CREATION, so it is the only one the account may take.
+         An account now queues no second row inside its own minimum gap (`capAtDue`), so with an older empty poll in
+         scope the planner below would — correctly — give the account the earliest of them and refuse it the rest, and
+         17.53c would be measuring a market the walk never judged.
+         🔴 MEASURED: "a second before now" was too wide — §17 creates polls faster than that, and the poll 17.53 made
+         157 ms earlier fell inside it. The market's own `createdAt`, read the way the planner reads it, has no margin. */
       const fresh = await pollAt({ closeInMs: 5 * 3_600_000 });
+      const freshFrom = (await S.houseSeamStore.marketView(fresh.id)).createdAt as string;
       /**
        * ⛔ SCOPE IS A PRECONDITION HERE, NOT THE SUBJECT, SO IT IS SET RATHER THAN INHERITED.
        * 🔴 MEASURED 2026-09-23: run §17 ALONE — which is exactly what a red drive does — and the global scope
@@ -3582,21 +3729,26 @@ await guard("17", async () => {
        */
       const scopeAt = new Date((await dbNow()) - 3_600_000).toISOString();
       await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: scopeAt });
-      await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b5.botId), { scopeFrom: scopeAt });
+      await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b5.botId), { scopeFrom: freshFrom });
       const intentsBefore = (await S.houseBotIntentStore.listLiveOnMarket(fresh.id)).length;
       const seen: Any = await safe(async () => PL.explainBotIdle(b5.botId, { limit: 50 }));
       const drawAfter = await S.houseBotEventStore.findOpenerDraw(fresh.id);
       const intentsAfter = (await S.houseBotIntentStore.listLiveOnMarket(fresh.id)).length;
-      ok("17.53a · the walk reaches the planner's own verdict: it considers the open markets and counts the ones this account WOULD stake on right now",
-        seen != null && seen.considered > 0 && seen.wouldStake > 0,
-        j({ considered: seen?.considered, wouldStake: seen?.wouldStake, looked: seen?.looked, byCode: seen?.byCode }));
+      /* N3 · "would stake" is now split in two: first in the queue (`wouldStake`), or able to but behind another
+         account's turn (`rankedBehind`). Earlier sections leave other ACTIVE accounts covering this poll, so which of
+         the two it lands in depends on their turn — the account's OWN verdict is the sum. */
+      ok("17.53a · the walk reaches the planner's own verdict: it considers the open markets and counts the ones this account WOULD stake on right now — first in the queue or behind another account's turn",
+        seen != null && seen.considered > 0 && seen.wouldStake + seen.rankedBehind > 0,
+        j({ considered: seen?.considered, wouldStake: seen?.wouldStake, rankedBehind: seen?.rankedBehind, looked: seen?.looked, byCode: seen?.byCode }));
       ok("17.53b · ⛔ …AND IT WRITES NOTHING: no intent appears on the market it just judged stakeable, and no OPENER DRAW is minted",
         intentsAfter === intentsBefore && drawAfter == null, j({ intentsBefore, intentsAfter, draw: drawAfter }));
       /* ⛔ AND THE CONTROL, because "wrote nothing" passes just as well on a walk that found NOTHING: the very
          same account over the very same market, walked by the PLANNER, writes both. */
       const r6 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(b5.botId)], { randomInt: minDraw, drawRandomInt: () => 1 }));
+      const anch = await S.houseBotIntentStore.findByAnchor("OPENER", fresh.id);
+      const drw = await S.houseBotEventStore.findOpenerDraw(fresh.id);
       ok("17.53c · CONTROL · the PLANNER over that same account and market writes both the intent and the draw the walk declined to write — so 17.53b is absence, not emptiness",
-        (await S.houseBotIntentStore.findByAnchor("OPENER", fresh.id)) != null && (await S.houseBotEventStore.findOpenerDraw(fresh.id)) != null, j(r6));
+        anch != null && drw != null, j({ r6, anchor: anch?.status ?? null, draw: drw != null }));
     }
 
     await w.switchOff();
@@ -3727,6 +3879,247 @@ await guard("17", async () => {
     ok("17.72 · staff-chosen caps bind only staff-chosen rows", CAPS.capPrecheck(facts({ bot: { capStaffChosenPerDay: null } }), 1_000) === null
       && CAPS.capPrecheck(facts({ bot: { capStaffChosenPerDay: null }, staffChosen: { count: 0, tzs: 0, globalCount: 0, globalTzs: 0 } }), 1_000) === "CAP_STAFF_CHOSEN_PER_DAY");
     ok("17.73 · a COUNTER's trigger account at its daily count → CAP_COUNTERPARTY_COUNT", CAPS.capPrecheck(facts({ counterparty: { count: 3, tzs: 0 } }), 1_000) === "CAP_COUNTERPARTY_COUNT");
+  }
+
+  /* ── 17.80 N3 · `capAtDue` — the account-owned refusals the seam would meet AT THE DUE TIME (Ali, 2026-10-14) ──
+     Measured on production over 7 days: 282 rounds lost at fire to CAP_BALANCE_FLOOR and 126 to CAP_MIN_GAP, each one
+     planned onto an account that was always going to be refused. Every case is a PAIR: the value that refuses and the
+     value one step away that passes, so a check that refused everything would fail as surely as one that refused nothing. */
+  {
+    const T = Date.now();
+    const atS = (s: number) => new Date(T + s * 1_000).toISOString();
+    const bot = { balanceFloorTzs: 1_000, freqMinGapSec: 30, freqMaxPerHour: 6, freqMaxPerDay: 100 };
+    const rates = (o: Any = {}) => ({ lastPlacedAt: null, placedLastHour: 0, placedLastDay: 0, liveCount: 0, liveStakeTzs: 0, minQueuedDueAt: null, maxQueuedDueAt: null, ...o });
+    // A row's `staleAt` defaults to due + 30 s — the Up & Down stale window (STALE_AFTER_SEC.updown).
+    const due = (s: number, stakeTzs = 2_000, staleIn = 30) => ({ stakeTzs, dueAt: atS(s), staleAt: atS(s + staleIn) });
+    const queued = (s: number) => rates({ minQueuedDueAt: atS(s), maxQueuedDueAt: atS(s), liveCount: 1 });
+    const at = (f: Any, r: Any, b: Any = bot) => CAPS.capAtDue(b, f, r);
+    ok("17.80 · N3 · generous facts → nothing refuses", at({ balance: 10_000, rates: rates() }, due(60)) === null);
+    ok("17.81 · N3 · the floor at the row's OWN stake, less what is queued: 10,000 − 7,500 queued − 2,000 = 500 < 1,000 refuses; 6,000 queued leaves 2,000 and passes",
+      at({ balance: 10_000, rates: rates({ liveStakeTzs: 7_500 }) }, due(60)) === "CAP_BALANCE_FLOOR" && at({ balance: 10_000, rates: rates({ liveStakeTzs: 6_000 }) }, due(60)) === null);
+    /* ⭐ THE GAP REFUSES ONLY WHERE THE SEAM WOULD (review finding 1). The seam answers MIN_GAP with an `until` and the
+       mapper DEFERS the row to it when that is before `staleAt` — so the row is refused only when its earliest free
+       time is at or after its own `staleAt`. Placed 10 s ago with a 30 s gap, it is free at +20. */
+    ok("17.82 · N3 · the gap from the last stake refuses only where the seam would: free at +20 and stale at +45 (due +15) → passes, the seam defers it; stale at +19 → CAP_MIN_GAP",
+      at({ balance: 10_000, rates: rates({ lastPlacedAt: atS(-10) }) }, due(15)) === null
+        && at({ balance: 10_000, rates: rates({ lastPlacedAt: atS(-10) }) }, due(15, 2_000, 4)) === "CAP_MIN_GAP");
+    ok("17.83 · N3 · …and from a QUEUED stake due no later than this row: queued at +60, a row due +80 is free at +90 — stale at +110 passes, stale at +85 refuses; a stake queued AFTER the row is that stake's gap to keep (due +40, queued +60 → passes)",
+      at({ balance: 10_000, rates: queued(60) }, due(80)) === null
+        && at({ balance: 10_000, rates: queued(60) }, due(80, 2_000, 5)) === "CAP_MIN_GAP"
+        && at({ balance: 10_000, rates: queued(60) }, due(40, 2_000, 5)) === null);
+    ok("17.83b · N3 · with two queued stakes either side of the row, the earlier one binds: queued +20 and +200, a row due +30 stale at +45 is free at +50 → CAP_MIN_GAP; stale at +60 passes",
+      at({ balance: 10_000, rates: rates({ minQueuedDueAt: atS(20), maxQueuedDueAt: atS(200), liveCount: 2 }) }, due(30, 2_000, 15)) === "CAP_MIN_GAP"
+        && at({ balance: 10_000, rates: rates({ minQueuedDueAt: atS(20), maxQueuedDueAt: atS(200), liveCount: 2 }) }, due(30)) === null);
+    ok("17.84 · N3 · queued rows count toward the rolling hour and day: 5 placed + 1 queued reaches 6 → CAP_PER_HOUR (5 + 0 passes); 99 + 1 → CAP_PER_DAY",
+      at({ balance: 10_000, rates: rates({ placedLastHour: 5, liveCount: 1 }) }, due(60)) === "CAP_PER_HOUR"
+        && at({ balance: 10_000, rates: rates({ placedLastHour: 5 }) }, due(60)) === null
+        && at({ balance: 10_000, rates: rates({ placedLastDay: 99, liveCount: 1 }) }, due(60)) === "CAP_PER_DAY");
+    ok("17.85 · N3 · a cap that is not set refuses, as in the seam — floor, gap, hour and day each",
+      at({ balance: 10_000, rates: rates() }, due(60), { ...bot, balanceFloorTzs: null }) === "CAP_BALANCE_FLOOR"
+        && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMinGapSec: null }) === "CAP_MIN_GAP"
+        && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMaxPerHour: null }) === "CAP_PER_HOUR"
+        && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMaxPerDay: null }) === "CAP_PER_DAY");
+    /* ⛔ BOTH ORDERS (red drive, 2026-10-14). Queued latest-first alone, a LATEST bound written once and never moved
+       still read 70, and `N3-noteQueued-keeps-first` stayed green. A pass queues rows in whatever order it plans its
+       markets, so each bound has to move in both: down-then-up and up-then-down. */
+    const r = rates();
+    CAPS.noteQueued(r, { stakeTzs: 2_000, dueAt: atS(70) });
+    CAPS.noteQueued(r, { stakeTzs: 1_000, dueAt: atS(40) });
+    const rUp = rates();
+    CAPS.noteQueued(rUp, { stakeTzs: 1_000, dueAt: atS(40) });
+    CAPS.noteQueued(rUp, { stakeTzs: 2_000, dueAt: atS(70) });
+    ok("17.86 · N3 · noteQueued counts the row, adds its stake and keeps the SOONEST and the LATEST due time",
+      [r, rUp].every((x) => x.liveCount === 2 && x.liveStakeTzs === 3_000 && x.maxQueuedDueAt === atS(70) && x.minQueuedDueAt === atS(40)),
+      j({ latestFirst: r, earliestFirst: rUp }));
+    /* ⭐ BUSY MEANS ABOUT TO BET (review finding 3): a stake due within TURN_BUSY_HORIZON_SEC of now; a poll's fill queued
+       25 minutes out must not hold the account at the back of every draw until then. */
+    ok("17.86b · N3 · busyAtLoad: a stake due in 30 s makes the account busy until then, one overdue at −5 s too; one due in 25 minutes does not, and nothing queued is not busy",
+      CAPS.busyAtLoad(rates({ minQueuedDueAt: atS(30) }), T) === atS(30) && CAPS.busyAtLoad(rates({ minQueuedDueAt: atS(-5) }), T) === atS(-5)
+        && CAPS.busyAtLoad(rates({ minQueuedDueAt: atS(1_500) }), T) === null && CAPS.busyAtLoad(rates(), T) === null);
+    const two = rates({ liveCount: 2, liveStakeTzs: 5_000, minQueuedDueAt: atS(40), maxQueuedDueAt: atS(600) });
+    const without = CAPS.withoutQueued(two, [{ stakeTzs: 3_000, dueAt: atS(600) }]);
+    ok("17.86c · N3 · withoutQueued takes an account's dead rows out of its facts — count, stake, and a due-time bound they held (review finding 4)",
+      without.liveCount === 1 && without.liveStakeTzs === 2_000 && without.minQueuedDueAt === atS(40) && without.maxQueuedDueAt === null
+        && CAPS.withoutQueued(two, []) === two, j(without));
+  }
+
+  /* ── 17.87 N3 · `liveSummaryByBot` — what each account already has queued, on this store ── */
+  {
+    const b1 = await botWith();
+    const b2 = await botWith();
+    const d1 = w.iso(10_000), d2 = w.iso(40_000), d3 = w.iso(50_000);
+    await insert(rowOf(b1, (await pollAt()).id, { kind: "OPENER", stakeTzs: 2_000, dueAt: d1 }));
+    await insert(rowOf(b1, (await pollAt()).id, { kind: "OPENER", stakeTzs: 3_000, dueAt: d2 }));
+    const gone = await insert(rowOf(b2, (await pollAt()).id, { kind: "OPENER", stakeTzs: 5_000, dueAt: d3 }));
+    await S.houseBotIntentStore.cancelPending(gone.id, "BOT_NOT_ACTIVE");
+    const sum: Any[] = await safe(() => S.houseBotIntentStore.liveSummaryByBot());
+    const s1 = Array.isArray(sum) ? sum.find((x) => x.houseBotId === b1.botId) : null;
+    ok("17.87 · N3 · per account: its queued rows' count, their stake and the LATEST due time",
+      s1?.count === 2 && s1.stakeTzs === 5_000 && Date.parse(s1.maxDueAt) === Date.parse(d2), j(s1));
+    ok("17.87b · N3 · …and the SOONEST due time, the draw's busy term", Date.parse(s1?.minDueAt) === Date.parse(d1), j(s1));
+    ok("17.88 · N3 · a finished row counts for nothing: an account whose only row is cancelled is absent, and the list is in id order",
+      Array.isArray(sum) && !sum.some((x) => x.houseBotId === b2.botId)
+        && sum.every((x, k) => k === 0 || sum[k - 1].houseBotId < x.houseBotId), j(sum));
+    await S.houseBotIntentStore.cancelLive({ houseBotId: b1.botId }, "BOT_NOT_ACTIVE");
+  }
+
+  /* ── 17.89 N3 · one pass shares its markets out, and a market one account's limits refused goes to the next ── */
+  {
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    const control = await S.houseBotControlStore.get();
+    const minDraw = (min: number) => min;
+    /* Openers only, so a fill on some older poll (a fill's scope is judged by cutoff) cannot take a turn in this pass. */
+    const openOnly = planRules({ modes: { polls: { counter: true, fill: false, opener: true } } });
+    const ba = await botWith({}, openOnly), bb = await botWith({}, openOnly);
+    /* ⛔ Both accounts' scope starts at p1's own creation, so these two polls are the only markets either may take
+       (see 17.53: a margin of a second before now caught a poll made 157 ms earlier). */
+    const p1 = await pollAt({ closeInMs: 40 * 3_600_000 });
+    const p2 = await pollAt({ closeInMs: 40 * 3_600_000 + 1_000 });
+    const from = (await S.houseSeamStore.marketView(p1.id)).createdAt as string;
+    for (const b of [ba, bb]) await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b.botId), { scopeFrom: from });
+    const pass = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(ba.botId), await parsedOf(bb.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const o1: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p1.id);
+    const o2: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p2.id);
+    ok("17.89 · N3 · one pass, two empty polls, two accounts → one opener EACH, never both queued on one account",
+      pass?.opener === 2 && o1?.status === "PENDING" && o2?.status === "PENDING" && o1.houseBotId !== o2.houseBotId, j({ pass, o1: o1?.houseBotId, o2: o2?.houseBotId }));
+
+    /* The account holding p1's opener is refused AT FIRE by its own balance floor: the mapper hands the market on. */
+    const loser = o1.houseBotId;
+    // The planned row stands in for the claimed one: one live OPENER per market (`hbi_fill_opener_anchor_uq`).
+    await S.houseBotIntentStore.cancelPending(o1.id, "BOT_NOT_ACTIVE");
+    const claimed: Any = await insert(rowOf({ botId: loser, userId: o1.botUserId }, p1.id, { kind: "OPENER", status: "CLAIMED", claimedBy: "world", claimedUntil: w.iso(120_000), dueAt: w.iso(-1_000) }));
+    const mapped = await safe(() => OC.applyOutcome({ intent: claimed, me: "world", answer: { ok: false, code: "REFUSED", reason: "house_cap_reached", detail: { cap: "BALANCE_FLOOR" } }, alerts: recorder().alerts }));
+    const handed: Any = await row(claimed.id);
+    ok("17.90 · N3 · fire's CAP_BALANCE_FLOOR on an automatic OPENER → CANCELLED(CAP_BALANCE_FLOOR): the market is handed on, not lost",
+      mapped?.kind === "terminal" && handed?.status === "CANCELLED" && handed.reasonCode === "CAP_BALANCE_FLOOR", j({ mapped, handed: handed?.status }));
+    const relisted = await safe(() => S.houseSeamStore.plannableMarkets({ kind: "OPENER", productLine: "MARKET", fromIso: new Date(Date.parse(p1.selectionClosedAt) - 1).toISOString(), toIso: p1.selectionClosedAt, after: null, limit: 10 }));
+    ok("17.91 · N3 · …and the scan lists that market again", Array.isArray(relisted) && relisted.some((x: Any) => x.id === p1.id), j(relisted));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    const pass2 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(ba.botId), await parsedOf(bb.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const next: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p1.id);
+    ok("17.92 · N3 · the next pass gives it to the OTHER account — the one refused is skipped — and the row carries the chain it was handed down",
+      next?.status === "PENDING" && next.houseBotId !== loser && j(next.decision?.triedBotIds) === j([loser]), j({ pass2, next: next?.houseBotId, tried: next?.decision?.triedBotIds }));
+    const draw: Any = await S.houseBotEventStore.findOpenerDraw(p1.id);
+    ok("17.92b · N3 · …on the side drawn ONCE for that market: the hand-off never re-rolls it", next?.side === draw?.payload?.side, j({ side: next?.side, draw: draw?.payload }));
+
+    /* Both accounts have now tried p1: the next refusal leaves it alone. */
+    await S.houseBotIntentStore.cancelPending(next.id, "BOT_NOT_ACTIVE");
+    const second: Any = await insert(rowOf({ botId: next.houseBotId, userId: next.botUserId }, p1.id, { kind: "OPENER", status: "CLAIMED", claimedBy: "world", claimedUntil: w.iso(120_000), dueAt: w.iso(-1_000), decision: next.decision }));
+    await OC.applyOutcome({ intent: second, me: "world", answer: { ok: false, code: "REFUSED", reason: "house_cap_reached", detail: { cap: "BALANCE_FLOOR" } }, alerts: recorder().alerts });
+    const pass3 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(ba.botId), await parsedOf(bb.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const after3: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p1.id);
+    /* ⭐ …and the chain is CLOSED, not re-read every pass (review finding 5): one SKIPPED(NO_ELIGIBLE_BOT) row takes the
+       anchor, carrying the whole chain, and the market leaves the scan. */
+    const relisted3 = await safe(() => S.houseSeamStore.plannableMarkets({ kind: "OPENER", productLine: "MARKET", fromIso: new Date(Date.parse(p1.selectionClosedAt) - 1).toISOString(), toIso: p1.selectionClosedAt, after: null, limit: 10 }));
+    ok("17.93 · N3 · every covering account has tried it → nothing more is planned there: the chain is closed by ONE SKIPPED(NO_ELIGIBLE_BOT) row carrying both accounts, and the scan no longer lists the market",
+      after3?.id !== second.id && after3?.status === "SKIPPED" && after3.reasonCode === "NO_ELIGIBLE_BOT" && (after3.decision?.triedBotIds ?? []).length === 2
+        && Array.isArray(relisted3) && !relisted3.some((x: Any) => x.id === p1.id),
+      j({ pass3, newest: after3?.status, code: after3?.reasonCode, tried: after3?.decision?.triedBotIds, relisted: relisted3 }));
+
+    /* HANDOFF_MAX_TRIES: a chain already four accounts long refuses even a fresh account. */
+    const bc = await botWith({}, openOnly);
+    /* bc's scope starts at p3, so p1 and p2 (still live above) are not its to take — the two cases below see p3 and p4 only. */
+    const p3 = await pollAt({ closeInMs: 41 * 3_600_000 });
+    const fromC = (await S.houseSeamStore.marketView(p3.id)).createdAt as string;
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(bc.botId), { scopeFrom: fromC });
+    const chain = await insert(rowOf(ba, p3.id, { kind: "OPENER", status: "CANCELLED", reasonCode: "CAP_MIN_GAP", finishedAt: w.iso(), decision: { triedBotIds: ["hb_t1", "hb_t2", "hb_t3"] } }));
+    const pass4 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(bc.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const end4: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p3.id);
+    ok(`17.94 · N3 · a market already tried by ${K.HANDOFF_MAX_TRIES} accounts is left alone, even for one that has not tried it — closed SKIPPED(NO_ELIGIBLE_BOT), never planned for the fresh account`,
+      !chain.threw && end4?.id !== chain.id && end4?.status === "SKIPPED" && end4.reasonCode === "NO_ELIGIBLE_BOT" && end4.houseBotId !== bc.botId
+        && (end4.decision?.triedBotIds ?? []).length === K.HANDOFF_MAX_TRIES, j({ pass4, end4: end4 && [end4.status, end4.reasonCode, end4.houseBotId] }));
+    /* CONTROL: the same newest row cancelled for a reason that is NOT an account's own starts a fresh chain. */
+    const p4 = await pollAt({ closeInMs: 41 * 3_600_000 + 1_000 });
+    await insert(rowOf(ba, p4.id, { kind: "OPENER", status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE", finishedAt: w.iso(), decision: { triedBotIds: ["hb_t1", "hb_t2", "hb_t3"] } }));
+    await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(bc.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const fresh4: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p4.id);
+    const why4: Any = fresh4?.status === "PENDING" ? null : await safe(() => PL.explainBotIdle(bc.botId, { limit: 50 }));
+    ok("17.95 · N3 · CONTROL · …while a market whose newest row was cancelled for another reason is planned afresh — and writes no chain",
+      fresh4?.status === "PENDING" && fresh4.houseBotId === bc.botId && fresh4.decision?.triedBotIds === undefined, j({ status: fresh4?.status, tried: fresh4?.decision?.triedBotIds, why: why4?.byCode, would: why4?.wouldStake, behind: why4?.rankedBehind }));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  }
+
+  /* ── 17.95b N3 · the account first in turn whose OWN stake would break its floor at the due time is passed over ──
+     `capPrecheck` tests the smallest stake (1,000), which this account can afford; the row's DRAWN stake (5,000) it
+     cannot. Before N3 the planner gave it the market and fire refused it there (CAP_BALANCE_FLOOR, 282 rounds a week). */
+  {
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    const control = await S.houseBotControlStore.get();
+    const fiveK = planRules({ modes: { polls: { counter: true, fill: false, opener: true } }, opener: { stakeMinTzs: 5_000, stakeMaxTzs: 5_000 } });
+    // 5,000,000 − 1,000 clears a 4,998,500 floor; 5,000,000 − 5,000 does not.
+    const tight = await botWith({ balanceFloorTzs: 4_998_500 }, fiveK);
+    const roomy = await botWith({}, fiveK);
+    const elsewhere = await pollAt();
+    // `roomy` has a stake queued a day ahead: busy NOW, so `tight` is first in turn, and far enough off to pass its own gap.
+    const busyRow = await insert(rowOf(roomy, elsewhere.id, { kind: "OPENER", dueAt: w.iso(86_400_000), deadlineAt: w.iso(90_000_000), staleAt: w.iso(90_000_000) }));
+    const p = await pollAt({ closeInMs: 43 * 3_600_000 });
+    const from = (await S.houseSeamStore.marketView(p.id)).createdAt as string;
+    for (const b of [tight, roomy]) await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b.botId), { scopeFrom: from });
+    const pass = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(tight.botId), await parsedOf(roomy.botId)], { randomInt: (min: number) => min, drawRandomInt: () => 0 }));
+    const got: Any = await S.houseBotIntentStore.findByAnchor("OPENER", p.id);
+    ok("17.95b · N3 · the account first in turn whose DRAWN stake would break its balance floor is passed over at planning, and the next account takes the market",
+      !busyRow.threw && got?.status === "PENDING" && got.houseBotId === roomy.botId && got.stakeTzs === 5_000, j({ pass, got: got?.houseBotId, tight: tight.botId, roomy: roomy.botId }));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  }
+
+  /* ── 17.96 N3 · a queued OPENER on a market that already holds money holds nothing ── */
+  {
+    const opener = await botWith(), other = await botWith();
+    const m = await pollAt();
+    const q = await insert(rowOf(opener, m.id, { kind: "OPENER", dueAt: w.iso(60_000) }));
+    const fill = await botWith();
+    const held = await ENL.marketHeld(other.botId, m.id);
+    const freed = await ENL.marketHeld(other.botId, m.id, { ignoreDeadOpeners: true });
+    const ownFreed = await ENL.marketHeld(opener.botId, m.id, { ignoreDeadOpeners: true });
+    ok("17.96 · N3 · without the market's money in view, another account's queued opener holds the market (OTHER_BOT), as before", !q.threw && held.held === true && held.code === "OTHER_BOT", j(held));
+    ok("17.97 · N3 · …told the market holds money, that opener can never place, so it holds nothing — for another account and for its own",
+      freed.held === false && ownFreed.held === false, j({ freed, ownFreed }));
+    const f = await insert(rowOf(fill, m.id, { kind: "FILL", dueAt: w.iso(60_000) }));
+    const stillHeld = await ENL.marketHeld(other.botId, m.id, { ignoreDeadOpeners: true });
+    ok("17.98 · N3 · CONTROL · a queued FILL still holds the market with the option set — only an opener is dead on a market with money",
+      !f.threw && stillHeld.held === true && stillHeld.code === "OTHER_BOT", j(stillHeld));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  }
+
+  /* ── 17.99 N3 · the "why is it not staking?" walk says when another account is ahead in the queue ── */
+  {
+    /* Openers only: a fill's scope is judged by CUTOFF, so with fill on every older poll holding locked money would be in
+       both accounts' sample, and the walk would rightly share those out in turn — measuring rotation, not this case. */
+    const openOnly = planRules({ modes: { polls: { counter: true, fill: false, opener: true } } });
+    const rival = await botWith({}, openOnly);
+    const asked = await botWith({}, openOnly);
+    /* ⛔ THE QUEUE IS THE WHOLE ROSTER, so every other running account from earlier cases is paused for the length of
+       this case and restored after it: otherwise an idle account with an earlier id would be ahead of BOTH of these,
+       and the control below would measure that account instead of the turn order. */
+    const paused: string[] = [];
+    for (const b of await S.houseBotStore.listNonRemoved()) {
+      if (b.status !== "ACTIVE" || b.id === rival.botId || b.id === asked.botId) continue;
+      if (await S.houseBotStore.setStatus(b.id, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null })) paused.push(b.id);
+    }
+    const m = await pollAt({ closeInMs: 42 * 3_600_000 });
+    const from = (await S.houseSeamStore.marketView(m.id)).createdAt as string;
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(asked.botId), { scopeFrom: from });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(rival.botId), { scopeFrom: from });
+    /* The asked account has a stake queued a day ahead: busy now, yet far enough away that its own limits let it stake. */
+    const busy = await insert(rowOf(asked, (await pollAt()).id, { kind: "OPENER", dueAt: w.iso(86_400_000), deadlineAt: w.iso(90_000_000), staleAt: w.iso(90_000_000) }));
+    const behind: Any = await safe(() => PL.explainBotIdle(asked.botId, { limit: 50 }));
+    const ahead: Any = await safe(() => PL.explainBotIdle(rival.botId, { limit: 50 }));
+    ok("17.99 · N3 · an account that could stake but is behind another's turn is counted as such — not as \"would stake right now\"",
+      !busy.threw && behind?.rankedBehind >= 1 && behind.wouldStake === 0, j({ m: m.id, behind: { wouldStake: behind?.wouldStake, rankedBehind: behind?.rankedBehind, byCode: behind?.byCode } }));
+    ok("17.100 · N3 · CONTROL · the account whose turn it is reads \"would stake\", with nothing behind",
+      ahead?.wouldStake >= 1 && ahead.rankedBehind === 0, j({ wouldStake: ahead?.wouldStake, rankedBehind: ahead?.rankedBehind, byCode: ahead?.byCode }));
+    /* …and the console door says it in the officer's words: the account behind is told another is likelier to be
+       drawn first (and nothing is wrong); the one ahead is told it is working. */
+    const CR: Any = await import("../../src/lib/server/house-console-read.ts");
+    const behindWords: Any = await safe(() => CR.houseWhyIdleForConsole(WORLD_OFFICER, "/admin/desk", asked.botId));
+    const aheadWords: Any = await safe(() => CR.houseWhyIdleForConsole(WORLD_OFFICER, "/admin/desk", rival.botId));
+    ok("17.101 · N3 · the panel tells the officer the account behind is waiting for the draw — \"more likely to be drawn first\", \"nothing needs changing\" — and counts it in the scanned sentence",
+      /more likely to be drawn first/.test(behindWords?.headline ?? "") && /nothing needs changing/.test(behindWords?.headline ?? "")
+        && /more likely to be drawn first/.test(behindWords?.scanned ?? ""), j(behindWords));
+    ok("17.102 · N3 · CONTROL · the account ahead is told it is working, with no queue sentence",
+      /would stake right now/.test(aheadWords?.headline ?? "") && !/drawn first/.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`), j(aheadWords));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    for (const id of paused) await S.houseBotStore.setStatus(id, { from: ["PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
   }
 
   /* ── 17.74 the consent void's TARGET_ENDED payload (ruling 76) and fire with limits from a newer build (ruling 100) ── */
@@ -4357,6 +4750,68 @@ await guard("18", async () => {
     await sweep(recorder().alerts);
     const r = await counterOf(trig.positionId);
     ok("18.54 · TGT-25 · a penalty-boxed stake on a targeted poll → ONE SKIPPED(PENALTY_BOX) row naming the target", r?.status === "SKIPPED" && r.reasonCode === "PENALTY_BOX" && r.targetId === t.id, j(r));
+  }
+  /* ── 18.54n · N3 · A QUEUED OPENER NO LONGER SPENDS A PLAYER'S ONE REACTION ──
+     A player stakes into a poll whose desk opener is still waiting out its delay. Before N3 the queued opener held the
+     market (OWN_INTENT for its account, OTHER_BOT for every other), so the player's ONE decision
+     (`hbi_counter_anchor_uq`) was written SKIPPED(MARKET_HELD) and the opener then died at fire on the money the player
+     had put in: no opponent, and a refund. With money in the market that opener can never place, so it holds nothing. */
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const opener = await safe(() => S.houseBotIntentStore.insert({
+      id: S.newHouseId("intent"), houseBotId: b.botId, botUserId: b.userId, kind: "OPENER", marketId: m.id, productLine: "MARKET", anchorKey: m.id,
+      triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "NO", stakeTzs: 1_000,
+      dueAt: w.iso(600_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(1_200_000), status: "PENDING", reasonCode: null, why: null,
+      decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+    }));
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    await sweep(recorder().alerts);
+    const r = await counterOf(trig.positionId);
+    ok("18.54n · N3 · a player staking while the desk's opener is still queued is ANSWERED — a PENDING COUNTER, not SKIPPED(MARKET_HELD)",
+      !opener?.threw && r?.status === "PENDING" && r.kind === "COUNTER" && r.side === "NO", j({ opener: opener?.threw ?? opener?.status, r }));
+    if (opener?.id) await S.houseBotIntentStore.cancelPending(opener.id, "BOT_NOT_ACTIVE");
+    if (r?.id && r.status === "PENDING") await S.houseBotIntentStore.cancelPending(r.id, "BOT_NOT_ACTIVE");
+  }
+  /* ── 18.54p · N3 · AN ACCOUNT'S OWN DEAD OPENER DOES NOT COUNT AGAINST IT (review finding 4) ──
+     Its queued opener on this poll can never place once the player's money is in, so its 8,000 must not be held back
+     from the wallet when the at-due floor judges the reaction: 20,000 − 5,000 clears a 10,000 floor; 20,000 − 8,000 −
+     5,000 would not. */
+  {
+    const b = await soloBot({ balance: 20_000, caps: { balanceFloorTzs: 10_000 } });
+    const m = await w.poll();
+    const opener = await safe(() => S.houseBotIntentStore.insert({ ...rowFor(b, m.id), kind: "OPENER", stakeTzs: 8_000 }));
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    await sweep(recorder().alerts);
+    const r = await counterOf(trig.positionId);
+    ok("18.54p · N3 · the account's own DEAD opener is taken out of its facts: the reaction clears the at-due balance floor and is queued (20,000 − 5,000 ≥ 10,000)",
+      !opener?.threw && r?.status === "PENDING" && r.houseBotId === b.botId && r.stakeTzs === 5_000, j({ opener: opener?.threw ?? opener?.status, r: r && [r.status, r.reasonCode, r.stakeTzs] }));
+    if (opener?.id) await S.houseBotIntentStore.cancelPending(opener.id, "BOT_NOT_ACTIVE");
+    if (r?.id && r.status === "PENDING") await S.houseBotIntentStore.cancelPending(r.id, "BOT_NOT_ACTIVE");
+  }
+  /* ── 18.54r · N3 · THE TURN ROLL IS DRAWN ONCE PER ACCOUNT PER DECISION ──
+     A decision always runs twice — again once the named account's flags load (ruling 93) — and a fresh draw on the
+     second run would reshuffle the order mid-decision. Counted through the injected RNG: two accounts, one decision,
+     exactly two turn draws. */
+  {
+    const a = await soloBot();
+    const b2 = await w.bot({});
+    const cur2: Any = await S.houseBotStore.get(b2.botId);
+    await S.houseBotStore.saveRules(b2.botId, cur2.rulesVersion, { rules: trigRules() });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b2.botId), { scopeFrom: T0iso });
+    const m = await w.poll();
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    let turnDraws = 0;
+    const rng = (min: number, max: number) => { if (min === 1 && max === K.TURN_ROLL_SCALE) turnDraws++; return min; };
+    const facts: Any = await safe(async () => TG.loadPassFacts(await dbNow(), { targets: true }));
+    const p = await pos(trig.positionId);
+    const row = { id: trig.positionId, userId: trig.userId, marketId: m.id, side: "YES", stake: 10_000, placedAt: new Date(Date.parse(p.placedAt)).toISOString(), status: "OPEN" };
+    const out = await safe(() => TG.decideTrigger(row, facts, { alerts: recorder().alerts, randomInt: rng }));
+    const r = await counterOf(trig.positionId);
+    ok("18.54r · N3 · the turn roll is drawn ONCE per account per decision — the re-run after the flags load reuses it: two accounts, two draws",
+      facts?.bots?.length === 2 && out === "inserted" && r?.status === "PENDING" && turnDraws === 2 && [a.botId, b2.botId].includes(r.houseBotId),
+      j({ bots: facts?.bots?.length, out, turnDraws, r: r?.houseBotId }));
+    if (r?.id && r.status === "PENDING") await S.houseBotIntentStore.cancelPending(r.id, "BOT_NOT_ACTIVE");
   }
 
   /* ── 18.55 once-only scope alerts (ruling 90) ── */

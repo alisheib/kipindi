@@ -824,6 +824,13 @@ if (w.onPostgres) {
     // 780,000 unmarked + 20,000 house-marked positions on top of the 200,000 above: 1,000,000 positions, 20,000 marked,
     // spread over 30 days. Four bot ids; bots 1 and 3 hold OPEN stakes, bots 2 and 4 settled ones.
     const markets = [hot, ...cold].map((m: Any) => m.id);
+    /* ⛔ THE INSTANT THE FIXTURE IS STAMPED, kept for 7.19 (2026-10-14). Each row below is placed `g × 3.3 s` before the
+       moment the INSERT reaches it, so a window ending 5 s and starting 90 s before NOW holds a row only while fewer
+       than ~87 s have passed since the insert. On a loaded machine the EXPLAIN pins between here and 7.19 took longer
+       than that (measured: minutes, with three gate lanes running beside it), and the control read an empty page off a
+       healthy fixture. 7.19 now reads the same 85 s window measured from THIS instant, which the rows are in whatever
+       the clock does afterwards; the EXPLAIN pins keep NOW, because a plan needs no rows. */
+    const seededAtMs = Date.now();
     await pc.$executeRawUnsafe(
       `INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "bonusStakeTzs", "potentialPayout", "status", "placedAt")`
       + ` SELECT 'pos_x1m_u_' || g, $1, ($2::text[])[1 + (g % 10)], (CASE WHEN g % 2 = 0 THEN 'YES' ELSE 'NO' END)::"MarketSide", 1000, 0, 2000,`
@@ -873,7 +880,7 @@ if (w.onPostgres) {
       JSON.stringify(openAll.map((r: Any) => [r.houseBotId, r.openStakeTzs])) === JSON.stringify([["hb_x1m_1", 5_000_000], ["hb_x1m_3", 5_000_000]]), JSON.stringify(openAll));
     const usage = await houseSeamStore.botUsage({ houseBotId: "hb_x1m_1", marketId: hot.id });
     const g = await houseSeamStore.globalUsage();
-    const page = await houseSeamStore.triggerPage({ fromIso: new Date(Date.now() - 90_000).toISOString(), beforeIso: new Date(Date.now() - 5_000).toISOString(), after: null, limit: 200 });
+    const page = await houseSeamStore.triggerPage({ fromIso: new Date(seededAtMs - 90_000).toISOString(), beforeIso: new Date(seededAtMs - 5_000).toISOString(), after: null, limit: 200 });
     ok("7.19 · CONTROL · botUsage, globalUsage and triggerPage read real rows from the fixture",
       usage.placedLastDay > 100 && usage.lastPlacedAt != null && g.betsLastDay > 600 && page.length > 0 && page.length <= 200,
       JSON.stringify({ usage, g, page: page.length }));

@@ -207,7 +207,7 @@ const STAKES = [1_000, 7_500, 25_000, 140_000, 1_250_000];
 let seq = 0;
 const made: { id: string; ageMs: number }[] = [];
 
-async function intent(bot: Any, kind: string, status: string, product: string, ageMs: number, marketId: string) {
+async function intent(bot: Any, kind: string, status: string, product: string, ageMs: number, marketId: string, code?: string) {
   const i = seq++;
   const id = `${constants.HOUSE_ID_PREFIX.intent}${randomUUID().replace(/-/g, "").slice(0, 18)}`;
   const isManual = kind === "MANUAL";
@@ -232,8 +232,8 @@ async function intent(bot: Any, kind: string, status: string, product: string, a
        this fixture made ever carried a note, and the activity ledger's note line (RESUME-HERE §0c decision 2) could not
        be seen in any served run. A skip is now production's most common one, a stale price; a failure is the one that
        failed three times, which is what `attempts: 3` below already says. */
-    reasonCode: status === "FAILED" ? "POISON" : status === "SKIPPED" ? "UD_STALE_PRICE"
-      : status === "EXPIRED" ? "DEADLINE_PASSED" : status === "CANCELLED" ? "STAFF_CANCELLED" : null,
+    reasonCode: code ?? (status === "FAILED" ? "POISON" : status === "SKIPPED" ? "UD_STALE_PRICE"
+      : status === "EXPIRED" ? "DEADLINE_PASSED" : status === "CANCELLED" ? "STAFF_CANCELLED" : null),
     /* ⭐ THE SNAPSHOT THE ENGINE REALLY WRITES (2026-09-24). `decide.ts` puts `{ titleEn, category, cutoff,
        roundNumber }` on every intent it plans, and the Activity row now lifts the title out of it to name WHICH
        game a stake was on. With a bare mark here the browser gates only ever saw the NO-NAME fallback, so the one
@@ -282,8 +282,12 @@ for (const b of others) await feedFor(b, 7, 2, 1);
 for (let m = 0; m < mk.length; m += 1) {
   await intent(active, "FILL", m === 0 ? "PLACED" : "SKIPPED", "MARKET", AGES[m], mk[m]);
   await intent(active, "OPENER", m === 0 ? "PLACED" : "FAILED", "UPDOWN", AGES[m + 1], mk[m]);
-  await intent(active, "FILL", "CANCELLED", "MARKET", AGES[m + 2], mk[m]);
-  await intent(active, "OPENER", "CANCELLED", "UPDOWN", AGES[m + 3], mk[m]);
+  /* ⭐ N3 (2026-10-14): an automatic FILL or OPENER refused at fire by its own account's limit ends CANCELLED with that
+     code, and the console calls it "Passed on" — the market went on to another account. Odd markets carry one, even
+     markets keep an officer's cancel, so both chips are in the same shot. */
+  const handedOn = m % 2 === 1;
+  await intent(active, "FILL", "CANCELLED", "MARKET", AGES[m + 2], mk[m], handedOn ? "CAP_BALANCE_FLOOR" : undefined);
+  await intent(active, "OPENER", "CANCELLED", "UPDOWN", AGES[m + 3], mk[m], handedOn ? "CAP_MIN_GAP" : undefined);
 }
 
 /* ⛔ THE BACKDATING, said out loud. `createdAt` is stamped by the database on insert; the window control
@@ -331,6 +335,8 @@ for (const r of evMade) {
  * Everything here goes through the services the product itself uses; only TIME is moved (see the header). */
 type DayRead = { day: string; bets: number; open: number; settled: number; result: number };
 let resultsRead: { days: DayRead[]; secondStatus: string; switchedOnHere: boolean; switchOnNow: boolean } | null = null;
+/** The second account once it is REMOVED — handed to the browser gate's removed-account routes through the fixture file. */
+let removedBotId: string | null = null;
 if (resultsWorld) {
   const { w, running, officer } = resultsWorld;
   let switchedOnHere = false;
@@ -439,6 +445,7 @@ if (resultsWorld) {
     if (!paused?.ok || !removed?.ok || removed.status !== "REMOVED") {
       throw new Error(`the second account could not be paused and removed: ${JSON.stringify({ paused, removed })}`);
     }
+    removedBotId = secondId;
 
     /* ── READ BACK from the day book the tab reads, never from what this script believes it wrote ── */
     const read: DayRead[] = [];
@@ -585,7 +592,7 @@ const OUT_DIR = new URL("./.out/", import.meta.url);
 const fsp: Any = await import("node:fs/promises");
 await fsp.mkdir(OUT_DIR, { recursive: true });
 await fsp.writeFile(new URL("house-bot-visual-fixture.json", OUT_DIR),
-  `${JSON.stringify({ botId: active.id, targets: madeT.length, writtenAt: new Date().toISOString() }, null, 2)}
+  `${JSON.stringify({ botId: active.id, removedBotId, targets: madeT.length, writtenAt: new Date().toISOString() }, null, 2)}
 `, "utf8");
 
 const q = async (sql: string) => (await pg.query(sql)).rows[0].n as number;

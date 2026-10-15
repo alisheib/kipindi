@@ -24,7 +24,7 @@
  *
  * ⛔ LOCAL ONLY: it refuses any base that is not a loopback address, for `qa:house-bots-visual`'s own reason.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
 
@@ -38,8 +38,15 @@ const WIDTHS = (process.env.KP_WIDTHS ?? "360,640,768,1024,1280,1920").split(","
 const ONLY = process.env.KP_ONLY ? process.env.KP_ONLY.split(",").map((s) => s.trim()) : null;
 const PHONE = "+255700000000";
 const PASSWORD = process.env.KP_ADMIN_PASSWORD ?? "QaAdmin2026!";
-const ACTIVE = process.env.KP_ACTIVE_ID ?? "";
-const REMOVED = process.env.KP_REMOVED_ID ?? "";
+/* ⭐ THE ACCOUNT IDS DEFAULT TO THE SEED'S OWN FIXTURE FILE (2026-10-14). `seed-house-bot-panels-local.mts` writes
+   `scripts/.out/house-bot-visual-fixture.json` for exactly this hand-off, and when the two variables were not exported
+   every account-bound state was dropped by the filter below without a word: a run printed 216 passed over the desk's
+   own views alone, and §H0 failed for a reason nothing named. A state that still has no id is now reported (§N0). */
+const FIXTURE = (() => {
+  try { return JSON.parse(readFileSync("scripts/.out/house-bot-visual-fixture.json", "utf8")); } catch { return {}; }
+})();
+const ACTIVE = process.env.KP_ACTIVE_ID ?? FIXTURE.botId ?? "";
+const REMOVED = process.env.KP_REMOVED_ID ?? FIXTURE.removedBotId ?? "";
 mkdirSync(SHOTS, { recursive: true });
 
 /** The states. `q` is appended to the route; `note` says what the tile is FOR. */
@@ -69,7 +76,10 @@ const STATES = [
   ["R-W1", `/admin/desk/${REMOVED}?why=1`, "REMOVED account · the idle explanation is NOT offered"],
   ["R-A1", `/admin/desk/${REMOVED}?tab=activity`, "REMOVED account · activity"],
   ["R-H1", `/admin/desk/${REMOVED}?tab=history`, "REMOVED account · history"],
-].filter(([id, route]) => (!ONLY || ONLY.includes(id)) && !/\/undefined|\/\?/.test(route));
+].filter(([id]) => !ONLY || ONLY.includes(id));
+/** Account-bound states with no account id to fill them — never dropped in silence (§N0 below). */
+const UNREACHED = STATES.filter(([, route]) => /\/undefined|\/\?/.test(route)).map(([id]) => id);
+for (let i = STATES.length - 1; i >= 0; i--) if (UNREACHED.includes(STATES[i][0])) STATES.splice(i, 1);
 
 /** Everything read out of ONE render, in the page, rather than guessed from the picture. */
 const PROBE = `() => {
@@ -110,7 +120,9 @@ const PROBE = `() => {
      0 > 1 for an inline non-replaced span and therefore always false. FOUND 2026-09-21: every When cell on all
      four new panels broke "20 Sep 22:33:59" onto two line boxes at 360-1024, while the Stake cell beside it was
      nowrap / tabular-nums — one table, two treatments of the same kind of value. */
-  const whenIdx = heads.findIndex((h) => h.t === "When");
+  /* The heading reads "When (EAT)" and carries its sort arrow since every desk table sorts (step 9); an exact "When"
+     found no column at all and §W0 failed on every run. The column is the one whose heading BEGINS with the word. */
+  const whenIdx = heads.findIndex((h) => /^When\\b/.test(h.t));
   let whenWrapped = 0, whenWs = null, whenFvn = null;
   if (whenIdx >= 0) {
     for (const tr of rows) {
@@ -287,6 +299,7 @@ for (const r of report) {
   ok(`§H2 ${r.id} @${r.width} · a status CHANGE stays on one line, arrow and both ends together`,
     r.changeMaxLines <= 1, `worst cell took ${r.changeMaxLines} line boxes (white-space: ${r.changeWs})`);
 }
+for (const id of UNREACHED) ok(`§N0 ${id} · NOT MEASURED — an account-bound state with no account id (KP_ACTIVE_ID / KP_REMOVED_ID, or the seed's fixture file)`, false);
 ok("§H0 CONTROL · a Who column was actually reached, on both history panels",
   new Set(report.filter((r) => r.whoRows > 0).map((r) => r.id.slice(0, 1))).size >= 2,
   `${report.filter((r) => r.whoRows > 0).length} renders carried a Who column`);

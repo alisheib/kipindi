@@ -318,7 +318,9 @@ await runTwoStores({
    * ⭐ → 1105/804 (2026-09-27), the counts the INTEGRATED tree printed — the phone sort rail's 1.s9p and the lead's
    * tightened 2.fs09.8 controls (a spread, a .js specifier, an unfollowable binding, an unbound announcer) together.
    * ⭐ → 1123/822 (2026-10-11), what `test:house-bot-console` PRINTED with "Counts as" in it — §2j's eighteen 2.ca cases
-   * on both stores (`0.mem` 1123 passed, `0.pg` 822 passed, ALL PASS). */
-  minPass: { memory: 1123, postgres: 822 },
+   * on both stores (`0.mem` 1123 passed, `0.pg` 822 passed, ALL PASS).
+   * ⭐ → 1125/824 (2026-10-14, N3), what it PRINTED with 1.N3a–b in it — a handed-on row reads "Passed on" in the slate
+   * tone, an officer's cancel still "Cancelled" (`0.mem` 1125 passed, `0.pg` 824 passed, ALL PASS). */
+  minPass: { memory: 1125, postgres: 824 },
   dbPrefix: "hb_console",
 });

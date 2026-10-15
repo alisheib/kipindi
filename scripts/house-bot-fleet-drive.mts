@@ -199,11 +199,18 @@ try {
      result is written to a durable `OPENER_SIDE_DRAWN` row. `() => 0` is YES. Every OTHER draw keeps the
      engine's real `crypto.randomInt`, which is what lets lane A2 measure real jitter. */
   const drawRandomInt = () => 0;
+  /* ⛔ N3 (2026-10-14) · THE TURN DRAW IS THE SECOND DRAW CONFIGURATION CANNOT PIN. `orderBots` orders the accounts by a
+     weighted random draw (key = −ln(roll) / weight, the weight being the seconds since the account was last busy), and
+     no rule leaf removes it. A lane that asserts WHICH account takes a trigger sets this for its own window through
+     `laneEnv.setSweepRandom` — equal rolls, so the order is the draw's deterministic limit: the longest-waiting account
+     first — and clears it after. Every other lane keeps the engine's real `crypto.randomInt`, so lane A2's jitter is
+     still real. (The sweep decides every trigger in this drive: lane F's own pass ledger asserts it inserted every row.) */
+  let sweepRandom: ((min: number, max: number) => number) | undefined;
   const TICKS = {
     hookAlerts: alerts,
     pollerTick: async (ctx: Any) => { passes.poller.push(await pollerPass(ctx, alerts)); },
     plannerTick: async (ctx: Any) => { passes.planner.push(await plannerPass(ctx, { alerts, drawRandomInt })); },
-    sweepTick: async (ctx: Any) => { passes.sweep.push(await sweepPass(ctx, { alerts })); },
+    sweepTick: async (ctx: Any) => { passes.sweep.push(await sweepPass(ctx, { alerts, randomInt: sweepRandom })); },
     requeueMine: async (id: string, excl: string[]) => (await S.houseBotIntentStore.releaseClaims(id, excl)).length,
   };
 
@@ -333,7 +340,9 @@ try {
   /* ⛔ The snapshot that lets the meta-mutation JUDGE ITSELF — see `fleet.silent` below. */
   const beforeLanes = { count, fail };
   const { runCounterLanes, runPoolTrapLane }: Any = await import("./lib/house-bot-fleet-lanes.mts");
-  const laneEnv = { ok, section, until, j, w, S, fleet, stake, EXPECT: EXPECT_ALL, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep, FLEET, TICKS, ENG, C, RULES, D, RCTX, CTX, OFFICER, alerts };
+  const laneEnv = { ok, section, until, j, w, S, fleet, stake, EXPECT: EXPECT_ALL, COUNTER_CUTOFF_MIN, laneWanted, passes, calls, seen, sleep, FLEET, TICKS, ENG, C, RULES, D, RCTX, CTX, OFFICER, alerts,
+    /** N3 · a lane that names WHICH account takes a trigger fixes the sweep's draws for its own window, then clears them. */
+    setSweepRandom: (fn: ((min: number, max: number) => number) | undefined) => { sweepRandom = fn; } };
   const laneOut = await runCounterLanes(laneEnv);
   const poolOut = await runPoolTrapLane(laneEnv);
   /* Every placement the lanes recorded, for the money lane — the lanes before it append to this list. */

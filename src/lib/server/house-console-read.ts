@@ -47,7 +47,7 @@ import { BY_HAND_SCREENS, CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIR
 import { EAT_LABEL, WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, eatWeekday, formatEat, formatMinutes, priorEatDays, type Weekday } from "@/lib/house-bot/clock";
 /* ⭐ C7 step 5 (the account half) · the closed lists the two panels' word maps are TOTAL over. Pure copy module,
  * no read, no client directive — the same folder `console-routes.ts` and `rules.ts` already live in. */
-import { BOT_STATUSES, INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
+import { BOT_STATUSES, INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, isHandoffCode, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { parseEatLocal, resolveRange } from "./date-range";
 import { CAP_FIELDS, countsAsOf, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, migrateRules, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
@@ -2026,7 +2026,9 @@ const CONSOLE_CAP_HELP: Readonly<Record<CapField, string>> = {
   balanceFloorTzs: "The balance the holder's wallet must stay above. The account stops placing bets rather than take it below this.",
   freqMinGapSec: "The shortest time allowed between two bets from this account, measured from the last one it actually placed.",
   freqMaxPerHour: "How many bets this account may place in any rolling 60 minutes.",
-  freqMaxPerDay: "How many bets this account may place in one day, restarting at midnight EAT.",
+  /* ⚠️ N3 (2026-10-14) · it said "in one day, restarting at midnight EAT"; the seam counts `placedLastDay`, a ROLLING
+     24 hours, and the usage row under it (`countRow("freqMaxPerDay", …)`) already read that same rolling figure. */
+  freqMaxPerDay: "How many bets this account may place in any rolling 24 hours.",
   freqMaxPerMarket: "How many separate bets this account may place on the same market.",
   capStaffChosenPerDay: "How many bets an officer may direct from this account in one day, on top of what it does by itself.",
   capStaffChosenDailyTzs: "The most an officer may stake from this account in one day by directing it.",
@@ -3728,6 +3730,19 @@ const CONSOLE_INTENT_STATUS = {
 } as const satisfies Record<IntentStatus, { word: string; chip: StatusChipVariant }>;
 
 /**
+ * ⭐ N3 · A HANDED-ON ROW IS NOT A CANCELLATION. The engine now finishes an automatic stake CANCELLED when its own
+ * account's limits refused it, so the market goes to the next account (`handoffStatus`, outcomes.ts). Painted with
+ * the claret "Cancelled" chip — the tone of an officer's cancel and a veto — hundreds of automatic hand-offs a week
+ * would read as officer actions. It says what happened, in the slate tone of every other row that did not place.
+ */
+const CONSOLE_HANDED_ON = { word: "Passed on", chip: TONE_CHIP.slate } as const satisfies { word: string; chip: StatusChipVariant };
+
+function consoleIntentStatus(i: Pick<StoredHouseBotIntent, "status" | "kind" | "targetId" | "reasonCode">): { word: string; chip: StatusChipVariant } {
+  if (i.status === "CANCELLED" && (i.kind === "FILL" || i.kind === "OPENER") && i.targetId == null && isHandoffCode(i.reasonCode ?? "")) return CONSOLE_HANDED_ON;
+  return CONSOLE_INTENT_STATUS[i.status];
+}
+
+/**
  * ⭐ HOW THE STAKE ACTUALLY ENDED — won, lost or voided (owner, 2026-09-25).
  *
  * The Outcome chip said whether the ENGINE got the stake down ("Placed"), which is the intent's own story and
@@ -4999,7 +5014,7 @@ function consoleFeedRow(i: StoredHouseBotIntent, anchorId: string | null, nowMs:
   /* 🔴 SECONDS, AND THAT WAS READ OFF A SERVED PAGE. With `HH:MM` every row of a busy account reads the same
      instant — twenty rows on one screen all saying "20 Sep 15:10" — so the ONE column that states the order could
      not be used to check it. The targets grid keeps minutes: a target is a rare, deliberate act. A stake is not. */
-  const status = CONSOLE_INTENT_STATUS[i.status];
+  const status = consoleIntentStatus(i);
   const code = i.reasonCode;
   /* Resolved ONCE: `opening` is derived from it, and two calls could not disagree but would read as if they might. */
   const closingCell = remaining(i);
@@ -8339,6 +8354,9 @@ const WHY_IDLE_COPY = {
   reactsOnly: "This account only stakes when a player does — it waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Nothing is wrong, and there is nothing here to count.",
   nothingOpen: "No market was open in the window this account looks at. Between rounds that is normal and nothing is wrong.",
   working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
+  /* ⭐ N3 · THE ANSWER THIS PANEL COULD NOT GIVE. It walked the account alone, so an account that never reached the
+     front of the queue was told it "would stake right now" while it placed nothing for fifteen days. */
+  waitingTurn: "This account could stake right now, but another account is more likely to be drawn first on each of these markets. Accounts are drawn at random, the one that has waited longest most likely, so it gets its share of the next markets — nothing needs changing.",
   refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
   /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the engine —
      and this panel returned nothing at all — the officer clicked and the page did not change. */
@@ -8353,7 +8371,7 @@ const WHY_IDLE_COPY = {
  * to know the desk considered both opening and filling. Four numbers where two will do is noise.
  * ⛔ NEUTRAL WORDS ONLY (453): "to open" and "to fill", never the mechanism's own name.
  */
-function scannedSentence(seen: { considered: number; wouldStake: number; looked: ReadonlyArray<{ kind: "FILL" | "OPENER"; markets: number }> }): string {
+function scannedSentence(seen: { considered: number; wouldStake: number; rankedBehind: number; looked: ReadonlyArray<{ kind: "FILL" | "OPENER"; markets: number }> }): string {
   const sum = (k: "FILL" | "OPENER") => seen.looked.reduce((t, l) => t + (l.kind === k ? l.markets : 0), 0);
   const split = [
     sum("OPENER") > 0 ? `${formatNumber(sum("OPENER"))} to open` : null,
@@ -8362,8 +8380,13 @@ function scannedSentence(seen: { considered: number; wouldStake: number; looked:
   const head = `${formatNumber(seen.considered)} ${seen.considered === 1 ? "market" : "markets"} looked at${split ? ` (${split})` : ""}`;
   const stakeable = seen.wouldStake > 0
     ? `this account would stake on ${formatNumber(seen.wouldStake)} of them right now`
-    : seen.considered === 1 ? "it could not be staked right now" : "not one of them could be staked right now";
-  return `${head}, and ${stakeable}. That is a sample of what is open now, never the whole book.`;
+    : seen.rankedBehind > 0 ? "this account would stake on none of them first"
+      : seen.considered === 1 ? "it could not be staked right now" : "not one of them could be staked right now";
+  // N3 · the markets it could take where another account is likelier to be drawn first — a count, never a fault.
+  const behind = seen.rankedBehind > 0
+    ? ` On ${formatNumber(seen.rankedBehind)} more it could stake, but another account is more likely to be drawn first.`
+    : "";
+  return `${head}, and ${stakeable}.${behind} That is a sample of what is open now, never the whole book.`;
 }
 
 export async function houseWhyIdleForConsole(
@@ -8403,7 +8426,7 @@ export async function houseWhyIdleForConsole(
   if (seen.considered === 0) return only(WHY_IDLE_COPY.nothingOpen);
 
   return {
-    headline: seen.wouldStake > 0 ? WHY_IDLE_COPY.working : WHY_IDLE_COPY.refused,
+    headline: seen.wouldStake > 0 ? WHY_IDLE_COPY.working : seen.rankedBehind > 0 ? WHY_IDLE_COPY.waitingTurn : WHY_IDLE_COPY.refused,
     reasons: seen.byCode.map((r) => ({ text: CONSOLE_SKIP_SENTENCE[r.code], markets: r.markets })),
     /* ⚠️ IT SAYS IT IS A SAMPLE. A panel that prints "12 markets" beside a book of four hundred reads as
        the whole book, and an officer would then believe the desk had run out of markets.
