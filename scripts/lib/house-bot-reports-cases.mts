@@ -951,8 +951,13 @@ if (STORE === "memory") {
      */
     // 2026-10-14: 9c5a8fd80 moves all seven writes by 16 lines above the first. Each nine-line
     // write was matched and SHA256 compared with 1b93e44c5, byte-identical; all money markers remain.
+    // 2026-10-15 (the Vodacom plan's S12 WP12, the title switch): +3 for all seven (the switch's import), +12 from the
+    // second (the bet receipt's, the close's, the verdict's and closing-soon's reads), +18 from the fourth (the sale's and
+    // the settlement's), +22 for the last (the cancellation's). Re-derived from the tree, never added by hand: each nine-line
+    // write SHA256-compared with c14cb403e, byte-identical; all money markers remain. The controls' :3049/:1774 move to
+    // :3061/:1777.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1774", "market-service.ts:3049", "market-service.ts:3520", "market-service.ts:3989", "market-service.ts:4121", "market-service.ts:4262", "market-service.ts:4859"]), j(marked));
+      j(marked) === j(["market-service.ts:1777", "market-service.ts:3061", "market-service.ts:3532", "market-service.ts:4007", "market-service.ts:4139", "market-service.ts:4280", "market-service.ts:4881"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -1008,7 +1013,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:3049` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:3061` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -1029,11 +1034,11 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3049` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3061` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3049` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3061` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -1041,7 +1046,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3049` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3061` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1050,7 +1055,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1774` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1777` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
@@ -2084,11 +2089,17 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // controls read the bell after the notices and can fail again (`red:officer-hold` 13/13; 10/13 since R5-B's `instantIn`).
   // Not a word of any notice moved; the same measure reproduces 84c86d46… on the function before the change.
   //   was · notifyVerdictRecordedForMarket 84c86d46…
+  // ⭐ RE-MEASURED 2026-10-15, THE CHANGE REVIEWED AS ONE (the Vodacom plan's S12 WP12, the title switch, 4c7198e5c):
+  // `notifyVerdictRecordedForMarket` reads the switch once (`shortTitlesInMessagesNow`) and names the market through
+  // `messageTitles` — the officer-approved short title only once the new journey is ACTIVE for everyone, and today's full
+  // title, byte for byte, until then and on any failure (`test:message-titles` §C). No house reader, no house word, not a
+  // word of any notice moved today; the same measure reproduces 70065688… on the function before the change.
+  //   was · notifyVerdictRecordedForMarket 70065688…
   notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
-  notifyVerdictRecordedForMarket: "70065688df40f2c4a6ed766158098dc121241ac3ede2b564dca3e45dc505ac03",
+  notifyVerdictRecordedForMarket: "abd5e1f6a346fa8c1d5ab9210f6512ac07d78c991da73ed0d3b6f662fc04fa6d",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
 export function functionDeclarationText(file: string, code: string, name: string): string {

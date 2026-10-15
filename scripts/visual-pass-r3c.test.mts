@@ -388,8 +388,11 @@ section("8 · notifications: never \"..\", and no raw position id in a sentence 
   ok("8.8 · every officer reason that a template ends with a stop goes through endClause (cancelled and declined, three languages each)",
     raw.length === 0 && reasons.filter((r) => r.startsWith("${endClause(")).length >= 6, `raw: ${raw.join(" ")}`);
   const ms = code(read("src/lib/server/market-service.ts"));
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-15 (the Vodacom plan's S12 WP12): the label goes through `messageTitles` — the title
+  // switch, the market's officer-approved short title from the S15 flip, its full title until then. Still the market's name
+  // alone, and still the position's permalink.
   ok("8.9 · a win's label is the market's name alone (its link is the position's permalink)",
-    /notifyWin\(p\.userId, payout, localizedText\(m\.titleEn, m\.titleSw, m\.titleZh\), positionPermalinkHref\(p\.id\)\)/.test(ms) && !/· \$\{p\.id\}/.test(ms));
+    /notifyWin\(p\.userId, payout, messageTitles\(shortTitles, localizedText\(m\.titleEn, m\.titleSw, m\.titleZh\), m\), positionPermalinkHref\(p\.id\)\)/.test(ms) && !/· \$\{p\.id\}/.test(ms));
   const panel = read("src/components/layout/notifications-panel.tsx");
   const page = read("src/app/notifications/page.tsx");
   ok("8.10 · the bell and /notifications read every body through readableNotificationBody",
