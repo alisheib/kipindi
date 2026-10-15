@@ -242,8 +242,8 @@ const exists = (root, rel) => Boolean(rel) && fs.existsSync(path.join(root, rel)
  * The table's own check (A9: "the script fails if any marker is not unique in src/"). Reads every file under
  * `root`/src. Returns { ok, lines, rows: Map(id → { landed, judged, holders }) }.
  */
-/** The stages whose rows wait for their WP to add their file (PENDING until then): S7's and S8's, and S11's (WP4's host). */
-const waitsForItsWp = (stage) => stage === "S7" || stage === "S8" || stage === "S11";
+/** Stages whose rows wait for their WP to add their file (PENDING until then). */
+const waitsForItsWp = (stage) => stage === "S7" || stage === "S8" || stage === "S10" || stage === "S11";
 export function checkMarkerTable(root, table = [...CONTROLS, ...MARKERS]) {
   const files = listFiles(root, "src");
   const texts = files.map((f) => [f, fs.readFileSync(path.join(root, f), "latin1")]);
