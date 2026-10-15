@@ -295,7 +295,12 @@ baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS
 `10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
 quotes that line byte-for-byte — both move in the same commit as the flag.
 
-## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · ✅ PHASE 1 LIVE `8cb4bff0c` 2026-10-14 22:24 EAT (read back: `docs/HOUSE-BOTS.md` §12.19) · PHASE 2 HELD (Ali) · PHASE 3 NEXT — board row ▶ 0h
+## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · ✅ PHASE 1 LIVE `8cb4bff0c` 2026-10-14 22:24 EAT (read back: `docs/HOUSE-BOTS.md` §12.19) · PHASE 2 HELD (Ali) · PHASE 3 BUILT, GATE RUNNING (`house-bots-n5` `fd9034e25`) · PHASE 4 DESIGNED — board row ▶ 0h
+
+> ⭐ **2026-10-15 — HANDED TO A CODEX SESSION (Ali): start at [`HANDOFF-CODEX-2026-10-15.md`](HANDOFF-CODEX-2026-10-15.md).**
+> It holds the N5 release steps (the gate, the read-only production preflight, the ONE migration apply with its
+> line-ending checksum trap and its P3009 recovery, the push, the live checks) and the N6 design with every place it
+> plugs in. Where it and the text below disagree, the handoff is newer.
 
 **Ali's words, verbatim:** *"lets analye it and fid a way to allow as much as we wnat bots to work with each othr, eve
 et agasint eac hother … so on bot blcks in queu th ebot afetr it etc whast do u reocmmed for full workign expeirence.
