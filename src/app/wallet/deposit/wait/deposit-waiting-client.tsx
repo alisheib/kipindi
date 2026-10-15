@@ -242,7 +242,9 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     {readError && <Callout tone="neutral" title={t.journey.depositCheckDelayed}>{t.journey.depositUnknownBody}</Callout>}
     {view.state !== "UNKNOWN" && <div className="rounded-xl glass-panel divide-y divide-border">
       <div className="flex justify-between gap-4 px-4 py-3 text-body-sm"><span className="text-text-muted">{t.wallet.amount}</span><span className="amount text-text"><Cash>{formatTzs(view.amount)}</Cash></span></div>
-      <div className="flex justify-between gap-4 px-4 py-3 text-body-sm"><span className="text-text-muted">{t.wallet.transactionId}</span><span className="font-mono text-text break-all text-right">{view.txnId}</span></div>
+      {/* A provider reference is useful only if the whole string is legible. On a phone the two-column row left
+          one trailing character alone; give the reference its own line until the card is wide enough. */}
+      <div className="flex flex-col gap-1 px-4 py-3 text-body-sm sm:flex-row sm:justify-between sm:gap-4"><span className="text-text-muted">{t.wallet.transactionId}</span><span data-testid="deposit-transaction-id" className="font-mono text-text break-all sm:text-right">{view.txnId}</span></div>
     </div>}
     {view.state === "PAID" && returnBlocked && <Callout tone="neutral" title={t.journey.depositReturnNeedsTab}>{t.journey.depositReturnNeedsTabBody}</Callout>}
     {view.state === "PAID" && returnTapReason === "new-tab" && !returnBlocked && <Callout tone="info" title={t.journey.depositNewTabTitle}>{t.journey.depositNewTabBody}</Callout>}

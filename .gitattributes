@@ -1,2 +1,4 @@
 # Shell scripts run under bash on every machine, including Windows (Git Bash): CRLF breaks them.
 *.sh text eol=lf
+# Generated PDF byte offsets must survive checkout unchanged on Windows.
+*.pdf -text -diff

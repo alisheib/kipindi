@@ -5,11 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AmountField } from "@/components/wallet/amount-field";
 import { ProviderRadioGrid, type ProviderOption } from "@/components/wallet/provider-radio-grid";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { Chip } from "@/components/ui/chip";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
-import { PENDING_BET_KEY } from "@/lib/journey/pending-bet";
+import { parseBetParam, PENDING_BET_KEY } from "@/lib/journey/pending-bet";
+import { sideWord } from "@/lib/side-label";
 import { trustedDepositBet, type SavedDepositBet } from "@/lib/journey/deposit-state-client";
 import { DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 import { depositAction } from "./actions";
@@ -85,7 +87,8 @@ export function JourneyDepositForm({
     if (chosenBet) { p.set("bet", chosenBet.bet); p.set("returnPath", chosenBet.returnPath); }
     return `/wallet/deposit/card${p.size ? `?${p}` : ""}`;
   }, [amount, fromLowBalance, chosenBet]);
-  const selectedStake = chosenBet ? Number(chosenBet.bet.split(".").at(-1)) : null;
+  const selectedBet = chosenBet ? parseBetParam(chosenBet.bet) : null;
+  const selectedStake = selectedBet?.stake ?? null;
   const remaining = selectedStake !== null && spendable !== null && amount !== null
     ? Math.max(0, selectedStake - spendable - amount) : null;
   const canPay = providers.some((p) => p.id === selectedProvider && !p.unavailable)
@@ -157,16 +160,21 @@ export function JourneyDepositForm({
         <input type="hidden" hidden name="idempotencyKey" defaultValue="" />
         <input type="hidden" hidden name="pendingBet" defaultValue="" />
         {fromLowBalance && <input type="hidden" hidden name="origin" value="low_balance" />}
-        {chosenBet && selectedStake !== null && <div className="rounded-lg border border-border bg-bg-inset px-4 py-3 text-body-sm text-text-muted">
-          <p className="font-semibold text-text">{t.journey.depositChosenBet}: <span className="amount">{formatTzs(selectedStake)}</span></p>
+        {selectedBet && selectedStake !== null && <div data-testid="journey-deposit-bet-strip" className="rounded-lg border border-border bg-bg-inset px-4 py-3 text-body-sm text-text-muted">
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip data-testid="journey-deposit-side" variant={selectedBet.side === "YES" || selectedBet.side === "UP" ? "yes" : "no"}>
+              {sideWord(t, selectedBet.side, selectedBet.kind === "round" ? "UPDOWN" : "MARKET")}
+            </Chip>
+            <p className="font-semibold text-text">{t.journey.depositChosenBet}: <span className="amount">{formatTzs(selectedStake)}</span></p>
+          </div>
           {remaining !== null && remaining > 0 && <p className="mt-1">{t.journey.depositStillShort.replace("{amount}", formatTzs(remaining))}</p>}
         </div>}
+        <AmountField label={t.common.depositAmountLabel} quickAmounts={quickAmounts} min={DEPOSIT_MIN_TZS} max={maxAmount}
+          defaultValue={initialAmount} fullFigures onValueChange={setAmount} />
         <fieldset>
           <FieldLegend as="legend" className="mb-2">{t.wallet.choosePaymentMethod}</FieldLegend>
           <ProviderRadioGrid providers={providers} defaultProvider={initialProvider} unavailableLabel={t.common.temporarilyUnavailable} layout="rows" noDefault />
         </fieldset>
-        <AmountField label={t.common.depositAmountLabel} quickAmounts={quickAmounts} min={DEPOSIT_MIN_TZS} max={maxAmount}
-          defaultValue={initialAmount} fullFigures onValueChange={setAmount} />
         <div>
           <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">{t.wallet.mobileMoneyNumber}</FieldLegend>
           <PhoneInput id="msisdn" name="msisdn" placeholder="712 345 678" defaultValue={initialPhone}

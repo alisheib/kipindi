@@ -7666,7 +7666,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    its sums `.amount` and its multiple bold, as the board sets them; the estimate's note in the subtle ink. */
 .kp-howto { display: flex; flex-direction: column; max-height: calc(100dvh - var(--sp-12)); }
 .kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); min-height: 0; }
-.kp-howto__sheet > * { flex-shrink: 0; }
+.kp-howto__sheet > :not(.kp-howto__scroll) { flex-shrink: 0; }
 .kp-howto__scroll { display: flex; flex-direction: column; gap: var(--sp-4); flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* ⭐ ONE BLOCK-AXIS FADE, TWO SCROLLERS: the steps here and the bet sheet's middle (F50, 2026-10-14), both marked by the
    kit's `useBlockScrollEdges` (`scroll-edges.ts`). A second copy of these ramps is how two sheets start fading apart. */
