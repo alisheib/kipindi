@@ -916,8 +916,10 @@ extra rows and zero cross-provider groups. Only the non-unique `Transaction_prov
 must be rerun immediately before migration. Webhook, signed return and reconciliation reads all select
 by **bare reference**, so `prisma/migrations/20261015111500_provider_ref_global_unique/migration.sql`
 installs one global unique index for non-null references. Prisma schema now declares `providerRef @unique`;
-null internal/unreferenced transactions remain valid. A 3-second lock timeout makes a busy live migration
-fail visibly rather than wait indefinitely on money writes. No speculative provider-scoped identity is used.
+null internal/unreferenced transactions remain valid. The migration explicitly wraps `SET LOCAL`, the
+unique-index statement and `COMMIT` in one PostgreSQL transaction, so its 3-second lock timeout makes
+a busy live migration fail visibly rather than wait indefinitely on money writes. No speculative
+provider-scoped identity is used.
 
 The writer audit covered deposit pre-dispatch correlation and post-dispatch adapter references; ordinary and
 AML-approved payout post-dispatch references; inside-money-transaction deposit settlement; officer reconcile
