@@ -13,7 +13,9 @@
  *
  *  • Generic (Azampay, Mixx by Yas) — `X-Provider`/`X-Signature`/`X-Timestamp`
  *    with HMAC-SHA-256 over `${timestamp}.${body}`, per-provider secret, 5-minute
- *    replay window, timing-safe, fails closed. Unchanged (audit C5).
+ *    replay window, timing-safe. No generic adapter currently writes a trusted
+ *    aggregator binding on a transaction, so valid signatures are audited but
+ *    cannot settle money until that binding and a scoped lookup are implemented.
  *
  * On success the audit log records `webhook.payment.received` under WALLET.
  * Replay/verify rejections are logged under SYSTEM. Settlement itself
@@ -39,8 +41,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * The GENERIC lane's providers — the ones with no status endpoint, which therefore
- * settle from the callback body.
+ * Names accepted for generic HMAC verification. Settlement stays disabled until
+ * a transaction records its actual aggregator and reference lookup is scoped to it.
  *
  * 🔴 `selcom` USED TO BE IN THIS MAP, AND THAT UNDID THE ONE RULE THIS FILE OPENS WITH.
  * Routing is decided by the `Authorization: SELCOM …` scheme, so a caller who simply
@@ -74,7 +76,7 @@ export async function POST(req: Request) {
   const body = await req.text();
 
   // Selcom's signed callback uses `Authorization: SELCOM …`, not our X-Provider
-  // scheme — route it to the dedicated handler. The generic path below is unchanged.
+  // scheme — route it to the dedicated handler.
   if (/^SELCOM\s+/i.test(authHeader)) {
     return handleSelcomCallback(req, body);
   }
@@ -136,11 +138,6 @@ export async function POST(req: Request) {
     ?? (parsed as { providerRef?: string })?.providerRef
     ?? "";
   const status = normalizeStatus((parsed as { status?: string })?.status);
-  // M4 — the provider-reported amount, verified against the initiated txn in
-  // settlePaymentWebhook (mismatch → fail closed + SECURITY alert).
-  const rawAmount = (parsed as { amount?: unknown })?.amount;
-  const amount = typeof rawAmount === "number" ? rawAmount : typeof rawAmount === "string" && rawAmount.trim() !== "" && !Number.isNaN(Number(rawAmount)) ? Number(rawAmount) : undefined;
-
   audit({
     category: "WALLET",
     action: "webhook.payment.received",
@@ -150,36 +147,27 @@ export async function POST(req: Request) {
     payload: { provider, reference: ref, status, signaturePrefix: signature.slice(0, 12) },
   });
 
-  // Settle the transaction. This is the SOLE authority that credits a pending
-  // deposit / releases a pending payout. settlePaymentWebhook is idempotent, so
-  // a provider's at-least-once retry is safe. Always 200 on a verified webhook
-  // so the provider stops retrying (the verdict is captured in the audit log).
+  // There is no persisted aggregator identity on Transaction. Its `provider`
+  // field is the player's payment METHOD (MPESA/MIXX/CARD), not the aggregator
+  // (AzamPay/Mixx/Selcom). A valid AzamPay or Mixx signature plus a Selcom
+  // providerRef would otherwise settle that Selcom transaction from the generic
+  // callback body's claimed status, bypassing the dedicated Selcom re-query.
+  // Both generic adapters are currently unwired, so no legitimate live generic
+  // transaction can be bound here. Keep the signature/replay check and audit,
+  // then fail closed until a first-class per-transaction aggregator binding and
+  // provider-scoped reference lookup are persisted at dispatch.
   if (!ref || !status) {
     return NextResponse.json({ ok: true, ignored: true, reason: !ref ? "no-reference" : "non-terminal-status" });
   }
-  let settled: Awaited<ReturnType<typeof settlePaymentWebhook>>;
-  try {
-    settled = await settlePaymentWebhook({ providerRef: ref, status, amount });
-  } catch (err) {
-    audit({
-      category: "WALLET",
-      action: "webhook.payment.settle_error",
-      actorId: null,
-      targetType: "Webhook",
-      targetId: ref,
-      payload: { provider, error: String(err) },
-    });
-    return NextResponse.json({ ok: false, error: "settle-failed" }, { status: 500 });
-  }
   audit({
-    category: "WALLET",
-    action: "webhook.payment.settled",
+    category: "SECURITY",
+    action: "webhook.payment.rejected",
     actorId: null,
     targetType: "Webhook",
     targetId: ref,
-    payload: { provider, ...settled },
+    payload: { provider, reference: ref, status, reason: "provider-unbound" },
   });
-  return NextResponse.json({ ok: true, ...settled });
+  return NextResponse.json({ ok: true, ignored: true, reason: "provider-unbound" });
 }
 
 /**
@@ -191,10 +179,9 @@ export async function POST(req: Request) {
  * credit a wallet, and a genuine one is confirmed against Selcom's own record. The
  * re-queried amount also flows into settlePaymentWebhook's M4 tamper check.
  *
- * WITHDRAWALS (wallet-cashin) have no confirmed status endpoint, so we settle them
- * only on a signature-verified callback; an unverified one is ignored and the hold
- * stays until the reconcile sweep or a manual /admin/payments action resolves it —
- * the wallet is already debited-and-held, so nothing is lost or double-paid.
+ * WITHDRAWALS require a verified callback and a query of the stored payout rail
+ * and reference. Only coherent provider success settles; unverified callbacks and
+ * ambiguous query replies leave the held funds pending provider review.
  *
  * Always returns HTTP 200 on a parseable callback so Selcom stops retrying; the
  * verdict is in the audit log.
@@ -267,10 +254,10 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
     // caller's body, while the transaction being settled was found by `ref`. So a
     // caller could name a real payout in `order_id` and ANY other id in `transid`: we
     // looked up the victim's row, asked Selcom about the attacker's id, and settled the
-    // victim's row with the answer. `envelopeSettlementVerdict` defaults to **FAILED**
-    // for every code that is not 000/111/927/999 — an id Selcom does not recognise is
-    // therefore a FAILED verdict — so the reply refunds a payout that is still in
-    // flight, and the money leaves twice.
+    // victim's row with the answer. Historically an unrecognised query envelope
+    // defaulted to FAILED and refunded a payout still in flight. The payout query
+    // now leaves ambiguous replies pending, but the same-transaction identity here
+    // is still required for trustworthy confirmations.
     //
     // ⛔ Routing here needs no secret: `Authorization: SELCOM <anything>` reaches this
     // handler, and `sigOk` was computed and never read.

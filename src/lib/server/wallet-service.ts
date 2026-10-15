@@ -738,9 +738,9 @@ export async function dispatchApprovedWithdrawal(
    * ALREADY SPENT. The sweep can therefore fire during the dispatch round-trip below, which
    * happens OUTSIDE this lock by design (never hold a lock across network I/O) and can run to
    * the 45s rail timeout. It would call `verifyWithdrawalStatus(phantomRef, null)` — and
-   * `envelopeSettlementVerdict` returns FAILED for every code that is not 000/111/927/999, so
-   * an id the rail does not recognise IS a FAILED verdict. `settleWithdrawalFailed` then
-   * refunds the player while the real payout is in flight. Every AML-approved payout is at or
+   * the payout query historically treated an unrecognised id as FAILED and
+   * `settleWithdrawalFailed` refunded the player while the real payout was in flight.
+   * The query now holds ambiguous answers, but every AML-approved payout is at or
    * above the review threshold by construction, so this is the largest-value path we have.
    *
    * ⚠️ And nothing downstream corrects it: after the round-trip this function writes the REAL
@@ -814,12 +814,9 @@ export async function dispatchApprovedWithdrawal(
 /** Reverse a held withdrawal whose payout failed: return the funds to spendable
  *  balance, release the hold, mark FAILED. Exactly-once under the wallet lock.
  *
- *  Exported for the officer-driven release at `/admin/payments` ("Return to
- *  player"), which is the ONLY way to free a payout the provider refused outright —
- *  a 403 never becomes terminal, so no automatic path can resolve it. That action
- *  re-queries the provider and refuses on a COMPLETED verdict before calling this,
- *  and the idempotency here is what makes a race with the sweep or a late callback
- *  safe. */
+ *  Callers must independently establish definitive non-dispatch for this exact
+ *  transaction. An inconclusive query, missing reference, or staff decision alone
+ *  cannot authorize this money movement. */
 export async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
@@ -1367,13 +1364,12 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       // ⚠️ THE 1,329-ROW SITE. One withdrawal sat here from 2026-08-07 to 2026-08-10 and this
       // line fired on every sweep. The refusal is right; the repetition was not.
       if (!ref) { leftPending++; auditNeedsReviewOnce(t.id, "stale withdrawal has no providerRef — not auto-reversed", {}); continue; }
-      // 🔴 `t.payoutRail` is load-bearing here, not decoration. This is the ONLY path
-      // that can auto-reverse a payout, so querying the wrong rail's endpoint would
-      // read a stranger's envelope as FAILED and refund a player whose money is gone.
+      // Ask the recorded rail so the status trail and review use the right provider.
+      // A generic FAILED query verdict is still not proof of nonpayment.
       const v = await verifyWithdrawalStatus(ref, t.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
-      if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
+      if (v.status !== "FAILED" && v.status !== "PENDING" && v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
         try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
         console.log(`[payments] payout ${t.id} (${ref}) — ${v.status}: ${v.detail}`);
       }
@@ -1381,7 +1377,17 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
         if (r.handled) { withdrawalsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) { withdrawalsReversed++; clearNeedsReview(t.id); }
+        // Selcom's broad FAILED classification can include an unknown result or
+        // reference while an accepted payout is still in flight. Persist an
+        // operator-visible marker on the PROCESSING row and leave the hold intact.
+        const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);
+        if (t.providerStatus !== reviewStatus) {
+          try { await db.txn.update(t.id, { providerStatus: reviewStatus }); } catch { /* audit and continue the sweep */ }
+        }
+        leftPending++;
+        auditNeedsReviewOnce(t.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed", {
+          providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null,
+        });
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
         // reachable with no operator action at all: any PAYMENT_API_* variable
@@ -1396,7 +1402,17 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         leftPending++;
         auditNeedsReviewOnce(t.id, "payout status unavailable — never auto-reversed", { providerRef: ref });
       } else {
-        leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
+        // At the sweep threshold even genuine provider progress is overdue.
+        // Preserve an operator-visible marker on the transaction across restarts;
+        // a later generic/contradictory query must not erase it with PENDING.
+        const reviewStatus = `REVIEW REQUIRED: stale payout still pending${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);
+        if (t.providerStatus !== reviewStatus) {
+          try { await db.txn.update(t.id, { providerStatus: reviewStatus }); } catch { /* audit and continue the sweep */ }
+        }
+        leftPending++; // payout may be in flight; NEVER blind-reverse
+        auditNeedsReviewOnce(t.id, "stale payout remains pending — verify with provider before action", {
+          providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null,
+        });
       }
     }
   }
