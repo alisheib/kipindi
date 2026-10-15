@@ -138,6 +138,8 @@ rule as above: they ship with S12, never earlier.
   HAPANA pamoja").
 
 - `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
+  ⟶ **Shipped on `codex/vodacom-s12-w`** in its own commit — a responsible-gambling sentence, changed on Ali's yes
+  (S12-PLAN Point for Ali 4, accepted by Ali, 2026-10-14). It now reads as `journey.sheetSessionLimit` does.
 - `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
   ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3).
 - ~~`failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".~~

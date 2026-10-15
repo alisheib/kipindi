@@ -5155,7 +5155,7 @@ export const dict = {
       failAccountBlocked: "Akaunti yako haiwezi kuweka dau kwa sasa. Wasiliana na msaada na tutakueleza sababu.",
       failSelfExcluded: "Uko kwenye mapumziko ya kujizuia hadi {until}. Uwekaji dau utabaki umezimwa hadi wakati huo.",
       failCoolingOff: "Uko kwenye mapumziko ya kupoa hadi {until}. Uwekaji dau utabaki umezimwa hadi wakati huo — hakuna kitu unachohitaji kufanya.",
-      failSessionLimit: "Ulijiwekea kikomo cha dakika {limitMin} kwa kipindi kimoja, na kipindi hiki kimefika. Uwekaji dau umezimwa hadi upumzike — rudi baadaye na kitaanza upya.",
+      failSessionLimit: "Ulijiwekea kikomo cha dakika {limitMin} kwa kipindi kimoja, na kipindi hiki kimefikia kikomo hicho. Uwekaji dau umezimwa hadi upumzike — rudi baadaye uanze kipindi kipya.",
       failWalletFrozen: "Pochi yako imegandishwa, kwa hiyo huwezi kuweka dau. Wasiliana na msaada kutatua hili.",
       failWalletMissing: "Hatukuweza kufikia pochi yako. Onyesha upya kisha jaribu tena — hakuna kilichotozwa.",
       failPayoutDestination: "Kwa usalama wako, malipo yanaweza kwenda tu kwenye namba iliyosajiliwa kwenye akaunti hii, inayoishia {last4}. Wasiliana na msaada ikiwa namba hiyo imebadilika.",
