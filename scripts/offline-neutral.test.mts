@@ -228,7 +228,8 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
   log("§2 · every cache that may hold a person's page is deleted, and none is read");
   {
     const name = loadSw(W.sw).get("CACHE_NAME") as string | undefined;
-    ok("2.name · the cache name is past every name that may have cached a page (50pick-v1…v5)", typeof name === "string" && !TAINTED.has(name) && /^50pick-v\d+$/.test(name), String(name));
+    ok("2.name · the S15 worker has a fresh v7 cache, past every name that may have cached a page (v1…v5)",
+      name === "50pick-v7" && !TAINTED.has(name), String(name));
     const sw = loadSw(W.sw, { "50pick-v4": { "/offline": "<PERSON: Salio TZS 100,000>" }, "50pick-v3": { "/offline": "<PERSON>" }, "someone-else": {} });
     await sw.fire("install");
     await sw.fire("activate");

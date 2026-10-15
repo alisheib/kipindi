@@ -34,18 +34,17 @@
   ],
   "shortcuts": [
     {
-      "name": "Markets",
-      "short_name": "Markets",
-      "description": "Browse live prediction markets",
-      "url": "/markets",
+      "name": "Questions",
+      "short_name": "Questions",
+      "description": "Browse questions",
+      "url": "/",
       "icons": [{ "src": "/icons/shortcut-markets.png", "type": "image/png", "sizes": "96x96" }]
     },
     {
-      "name": "Wallet",
-      "short_name": "Wallet",
-      "description": "View your balance and activity",
-      "url": "/wallet",
-      "icons": [{ "src": "/icons/shortcut-wallet.png", "type": "image/png", "sizes": "96x96" }]
+      "name": "My tickets",
+      "short_name": "Tickets",
+      "description": "View your bets and results",
+      "url": "/positions"
     },
     {
       "name": "Deposit",
