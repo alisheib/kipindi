@@ -10,7 +10,7 @@ import { Chip } from "@/components/ui/chip";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
 import { useT } from "@/lib/i18n";
-import { formatTzs } from "@/lib/utils";
+import { fill, formatTzs } from "@/lib/utils";
 import { parseBetParam, PENDING_BET_KEY } from "@/lib/journey/pending-bet";
 import { sideWord } from "@/lib/side-label";
 import { trustedDepositBet, type SavedDepositBet } from "@/lib/journey/deposit-state-client";
@@ -19,19 +19,21 @@ import { depositAction } from "./actions";
 import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStoredFunding, type StoredFundingIdentity } from "@/lib/journey/funding-storage";
 
 export function JourneyDepositForm({
-  ownerId, releaseKey, rawBet, returnPath, initialAmount, initialPhone, registeredPhone, initialProvider,
-  providers, maxAmount, quickAmounts, spendable, fromLowBalance,
+  ownerId, releaseKey, rawBet, returnPath, initialAmount, requestedAmount, initialPhone, registeredPhone, initialProvider,
+  providers, maxAmount, ceilingBinding, quickAmounts, spendable, fromLowBalance,
 }: {
   ownerId: string;
   releaseKey: string | null;
   rawBet: string | null;
   returnPath: string | null;
   initialAmount: string;
+  requestedAmount: number | null;
   initialPhone: string;
   registeredPhone: string;
   initialProvider: string;
   providers: readonly ProviderOption[];
   maxAmount: number;
+  ceilingBinding: "deposit_max" | "deposit_limit" | "sof_required" | "unknown";
   quickAmounts: number[];
   spendable: number | null;
   fromLowBalance: boolean;
@@ -95,6 +97,12 @@ export function JourneyDepositForm({
   const canPay = providers.some((p) => p.id === selectedProvider && !p.unavailable)
     && amount !== null && amount >= DEPOSIT_MIN_TZS && amount <= maxAmount
     && /^[67][0-9]{8}$/.test(phone) && spendable !== null;
+  const ceilingNotice = maxAmount < DEPOSIT_MIN_TZS || (requestedAmount !== null && requestedAmount > maxAmount)
+    ? ceilingBinding === "unknown" ? t.common.temporarilyUnavailable
+      : ceilingBinding === "sof_required" ? t.journey.sheetSofRequired
+        : ceilingBinding === "deposit_limit" ? fill(t.journey.sheetDepositLimit, { amount: formatTzs(requestedAmount ?? DEPOSIT_MIN_TZS) })
+          : fill(t.journey.sheetDepositMax, { max: formatTzs(maxAmount) })
+    : null;
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     if (!ready || blocked || stored || submitting || submittedKey.current || !canPay) { event.preventDefault(); return; }
@@ -172,6 +180,7 @@ export function JourneyDepositForm({
         </div>}
         <AmountField label={t.common.depositAmountLabel} quickAmounts={quickAmounts} min={DEPOSIT_MIN_TZS} max={maxAmount}
           defaultValue={initialAmount} fullFigures onValueChange={setAmount} />
+        {ceilingNotice && <p role="status" className="text-body-sm text-text-muted" data-testid="journey-deposit-ceiling-note">{ceilingNotice}</p>}
         <fieldset>
           <FieldLegend as="legend" className="mb-2">{t.wallet.choosePaymentMethod}</FieldLegend>
           <ProviderRadioGrid providers={providers} defaultProvider={initialProvider} unavailableLabel={t.common.temporarilyUnavailable} layout="rows" noDefault />

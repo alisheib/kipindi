@@ -16,7 +16,7 @@ import { db } from "@/lib/server/store";
 import { getBonusConfig } from "@/lib/server/bonus-config";
 import { getServerT } from "@/lib/i18n-server";
 import { depositAction } from "./actions";
-import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
+import { DEPOSIT_MAX_TZS, DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 import { DepositAmount } from "./deposit-amount";
 import { DepositConfirm } from "./deposit-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
@@ -27,7 +27,8 @@ import { noticeBody } from "@/components/ui/empty-state-text";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
-import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
+import { DEPOSIT_QUICK_AMOUNTS, depositCeilingFor } from "@/lib/journey/shortfall";
+import { viewerFacts } from "@/lib/server/journey-sheet";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { fill } from "@/lib/utils";
 import { formatBreakEnd } from "@/lib/break-end";
@@ -176,6 +177,18 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
+  // The journey's amount chooser must agree with the same personalized ceiling
+  // used by the low-balance sheet and enforced by deposit(). A failed facts read
+  // cannot safely advertise the schema-wide cap, so this form disables payment.
+  const journeyFacts = journey && !cardOnly && !adminTest ? await viewerFacts(session.userId, null) : null;
+  const journeyCeiling = journey && !cardOnly && !adminTest
+    ? journeyFacts ? depositCeilingFor(journeyFacts.deposit) : null
+    : { max: maxAmount, binding: "deposit_max" as const };
+  const journeyMaxAmount = journeyCeiling?.max ?? 0;
+  const requestedJourneyAmount = /^\d+$/.test(prevAmount) ? Number(prevAmount) : null;
+  const journeyInitialAmount = requestedJourneyAmount !== null && Number.isSafeInteger(requestedJourneyAmount)
+    && journeyMaxAmount >= DEPOSIT_MIN_TZS
+    ? String(Math.min(requestedJourneyAmount, journeyMaxAmount)) : "";
   const bonusCfg = getBonusConfig();
   /* ⛔ PRODUCT STATE SITS ABOVE OPERATOR CONFIG, AND BOTH DISPLAY SURFACES MUST SAY SO.
      `/wallet` already gated this on `bonusIsLiveFor()`; this page did not. So an operator
@@ -307,12 +320,14 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
           releaseKey={releaseKey}
           rawBet={sp.bet ?? null}
           returnPath={sp.returnPath ?? null}
-          initialAmount={prevAmount}
+          initialAmount={journeyInitialAmount}
+          requestedAmount={requestedJourneyAmount}
           initialPhone={moneyFormMsisdn(session.phoneE164, errorMsg ? sp.msisdn : journeyHistory?.msisdn ?? undefined, errorMsg != null)}
           registeredPhone={normalizeTzLocalDigits(session.phoneE164)}
           initialProvider={errorMsg ? prevProvider : journeyHistory?.provider ?? ""}
           providers={journeyProviders}
-          maxAmount={maxAmount}
+          maxAmount={journeyMaxAmount}
+          ceilingBinding={journeyCeiling?.binding ?? "unknown"}
           quickAmounts={quickAmounts}
           spendable={spendable}
           fromLowBalance={sp.from === "low-balance"}
