@@ -6,6 +6,11 @@
 record. The S10 build lane may supply part of that drive; inspect its merged result before creating another. No real
 staff payment, agency sign-off, owner override, S15 go, or S16 elapsed period is recorded here.
 
+**Ali's coordination decisions, 2026-10-15:** Ali will arrange the S14 staff operator and the agency's written
+sign-off when the preview is ready. He has deferred production admin TOTP and payment-webhook secret setting changes
+for now. These are decisions about timing and responsibility; they do not complete the real-money journey, supply
+agency approval, clear the production configuration gate, or authorize S15. Their evidence fields remain `null`.
+
 The plan and its dated amendments control behavior. The five agency PNGs control **element order and intended copy**;
 [`DESIGN_AUTHORITY.md`](../DESIGN_AUTHORITY.md) controls 50pick appearance. In particular, use the later NDIO wording in
 the live dictionary, the neutral estimate treatment, the TZS 500 betting minimum, the TZS 1,000 deposit minimum, and
@@ -29,14 +34,16 @@ appearance differs from the old deck's palette or old `NDIYO`/helpline text.
    positions and ledger consequences in local data. Prepare the **predeploy gate census**: each existing guard that
    assumes classic/preview behavior, the S15 replacement assertion, and the person responsible. `qa:live` must be
    dual-mode before the flip.
-5. Arrange the **one real TZS 1,000 staff-preview journey** with Ali. Record the named operator and staff account
-   privately, the production commit and preview state, funding path, stake, time, payment reference if a new deposit
-   is made, bet reference, and before/after balance and ticket result. The pending bet must return and require a
+5. Once the preview is ready, Ali arranges the operator for the **one real TZS 1,000 staff-preview journey**. Record
+   the named operator and staff account privately, the production commit and preview state, funding path, stake,
+   time, bet reference, and before/after balance and ticket result. If a new deposit funds it, record that payment
+   reference too. The pending bet must return and require a
    separate press; no automatic bet. Keep credentials, phone, and unredacted receipts out of Git. This is a real-money
    act and is not inferred from a local mock, a read-only QA login, or an existing player bet.
 6. Prepare the seven-day private agency preview link and a side-by-side PDF using the **real** captured screens. Ali
-   or an explicitly authorized sender shares them. File the agency's written sign-off, or Ali's explicit override, in a
-   redacted record that identifies where the original is retained. A draft reply or an unsent preview is not sign-off.
+   will arrange the agency's written sign-off when the preview is ready; he or an explicitly authorized sender shares
+   the material. File the written sign-off, or Ali's explicit override, in a redacted record that identifies where
+   the original is retained. A draft reply or an unsent preview is not sign-off.
 
 `npm run test:s14-evidence` checks the record's shape and rejects unsupported completion claims. It is green while
 honestly pending. `npm run red:s14-evidence` plants missing checks, fake evidence and premature approvals in memory.
@@ -62,7 +69,8 @@ measures; (2) the integrated S8–S13 exact-tip proof; (3) production configurat
 secrets for each enabled payment webhook; (4) the ready kill/rollback procedure. The separate `ownerGo` record must
 name **Ali**. As observed on 2026-10-15, production had `DISABLE_ADMIN_TOTP=true` and absent or placeholder
 SELCOM/AZAMPAY/MIXX webhook secrets; the owner and ops must resolve which rails are enabled and the safe configuration
-before a public flip. Never put the secret values in the evidence file.
+before a public flip. Ali deferred those settings on 2026-10-15; this checkpoint makes no Railway variable change and
+the production-configuration evidence stays open. Never put the secret values in the evidence file.
 
 Only after those records and the S14 gate pass, prepare the one S15 flip commit (`simpleJourney=ACTIVE` plus all paired
 copy, legal version, redirects, service-worker cache, manifest and gate rewrites in the plan). Verify the exact deployed
@@ -82,10 +90,10 @@ above its own baseline, per the 2026-10-14 owner ruling in
 
 ## Owner/agency acts still open
 
-| Act | Needed record |
+| Act | Ali's 2026-10-15 direction and needed record |
 | --- | --- |
-| Name the staff operator, account and funding path for S14 | Real TZS 1,000 preview journey, with redacted money references |
-| Agency written sign-off, or Ali's explicit override | Original retained privately; redacted decision record committed |
-| Resolve admin TOTP and each enabled provider's webhook-signing configuration | Ops read-back with values masked |
-| Ali's S15 go after reviewing the complete S14 and baseline evidence | Explicit dated approval |
+| Name the staff operator, account and funding path for S14 | Ali will arrange the operator when the preview is ready; then file the real TZS 1,000 preview-journey record with redacted money references. |
+| Agency written sign-off, or Ali's explicit override | Ali will arrange sign-off when the preview is ready; retain the original privately and commit a redacted decision record. No approval exists yet. |
+| Resolve admin TOTP and each enabled provider's webhook-signing configuration | Ali deferred settings for now; before S15, file an ops read-back with values masked. |
+| Ali's S15 go after reviewing the complete S14 and baseline evidence | Still pending; needs explicit dated approval. |
 | At least seven real days after S15, healthy measures and agency acknowledgment | Dated S16 report and `test:shelved` proof |
