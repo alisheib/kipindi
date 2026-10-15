@@ -9,7 +9,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { premise, mintStaffPass, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { localBase, premise, mintStaffPass, LOCALE_COOKIE, SESSION_COOKIE } from "./live/journey-pass.mjs";
 import { visitorFaceFacts, visitorFaceErrors, visitorPageControls, overlaps } from "./live/visitor-cells.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3043";
@@ -17,7 +17,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const sections = ["core", "tiles"];
+const sections = ["core", "tiles", "classic"];
 const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
 const run = s => !only.length || only.includes(s);
@@ -27,7 +27,9 @@ if (locales.some(s => !["sw", "en", "zh"].includes(s)) || widths.some(n => ![320
   console.error("REFUSED: invalid locale or width"); process.exit(2);
 }
 const pre = await premise(BASE);
-if (pre.refuse || pre.health?.security?.adminTotp !== "DISABLED") {
+const withdrawnClassic = pre.health?.simpleJourney?.state === "WITHDRAWN" && only.length === 1 && only[0] === "classic";
+if (!localBase(BASE) || pre.health?.database?.configured !== false || pre.health?.security?.adminTotp !== "DISABLED"
+  || pre.refuse && !withdrawnClassic) {
   console.error(`REFUSED: ${pre.refuse ?? "local preview needs DISABLE_ADMIN_TOTP=true"}`); process.exit(2);
 }
 mkdirSync(OUT, { recursive: true });
@@ -44,13 +46,16 @@ const height = width => width <= 360 ? 640 : width === 390 ? 844 : width === 768
 let preview;
 try { preview = await mintStaffPass(browser, BASE, { phone: "+255700000098", name: "Visitor QA Support" }); }
 catch (error) {
-  console.error(`INVALID staff-pass premise: ${String(error.message).split("Call log:")[0].trim()}`);
-  await browser.close(); process.exit(2);
+  if (withdrawnClassic) missing("I WITHDRAWN classic with a staff pass", `Pass could not be minted while withdrawn: ${String(error.message).split("Call log:")[0].trim()}`);
+  else {
+    console.error(`INVALID staff-pass premise: ${String(error.message).split("Call log:")[0].trim()}`);
+    await browser.close(); process.exit(2);
+  }
 }
 async function context(locale = "sw", width = 390, withPass = true) {
   const ctx = await browser.newContext({ viewport: { width, height: height(width) }, serviceWorkers: "block" });
   contexts.add(ctx);
-  await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...(withPass ? [cookie(preview)] : [])]);
+  await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...(withPass && preview ? [cookie(preview)] : [])]);
   return ctx;
 }
 async function pageIn(ctx, route) {
@@ -141,6 +146,26 @@ try {
     await campaignPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
     record("A campaign question opens at minimum", await campaignPage.getByTestId("journey-sheet-stake").inputValue() === String(seed.min));
     await campaign.close(); contexts.delete(campaign);
+    const live = await context("sw");
+    const livePage = await pageIn(live, "/live");
+    await livePage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await livePage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A live pick opens in place", new URL(livePage.url()).pathname === "/live");
+    await live.close(); contexts.delete(live);
+    const question = await context("sw");
+    const questionPage = await pageIn(question, `/markets/${seed.id}`);
+    await questionPage.locator('[data-testid="journey-bet-buttons"] a[data-bet-side="NO"]').click();
+    await questionPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A question big button opens in place", new URL(questionPage.url()).pathname === `/markets/${seed.id}`);
+    await questionPage.locator('[data-testid="journey-bet-sheet"] .kp-bsheet__close').click();
+    await questionPage.locator('[data-testid="journey-bet-sheet"]').waitFor({ state: "detached", timeout: 30_000 });
+    const similar = questionPage.locator('[data-testid="journey-card"][data-sheet] a[data-bet-side]').first();
+    if (await similar.count()) {
+      await similar.click();
+      await questionPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+      record("A similar-rail pick opens in place", new URL(questionPage.url()).pathname === `/markets/${seed.id}`);
+    } else missing("A similar-rail pick", "The seeded question displayed no bettable similar card");
+    await question.close(); contexts.delete(question);
     const chosen = Math.min(seed.max, Math.max(seed.min, 5000));
     await page.getByTestId("journey-sheet-stake").fill(String(chosen));
     const changed = await page.evaluate(visitorFaceFacts);
@@ -171,14 +196,34 @@ try {
     record("C real registration returns to chosen page", landing.pathname === "/" && landing.searchParams.get("bet") === `${seed.id}.YES.${chosen}`
       && landing.searchParams.get("welcome") === "new");
     await page.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+    await page.locator(".mat-toast").waitFor({ state: "visible", timeout: 4_000 }).catch(() => {});
     const money = await page.evaluate(visitorFaceFacts);
     evidence.faces.push({ label: "registered-low", ...summary(money) });
     record("C money sheet opens at visitor stake", !money.guest && Number(money.stake) === chosen);
+    if (money.toast) record("J greeting clears chip row and close", !overlaps(money.toast, money.chips) && !overlaps(money.toast, money.close));
+    else missing("J greeting beside returned sheet", "The toast was not visible in this 390px Swahili cell");
     record("C low balance offers deposit, no commit", await page.getByTestId("journey-sheet-deposit").count() === 1
       && await page.getByTestId("journey-sheet-place").count() === 0);
     const before = await observe(guest, seed.id);
     record("C no implicit position or BET_PLACED row", before.positionCount === 0 && before.betPlacedCount === 0);
     await screenshot(page, "core-registered-low-sw-390");
+    const accountCookie = (await guest.cookies(BASE)).find(item => item.name === SESSION_COOKIE);
+    if (!accountCookie) throw new Error("registered account session cookie missing");
+    for (const locale of locales) for (const width of widths.filter(n => n <= 390)) {
+      const tileCtx = await context(locale, width);
+      await tileCtx.addCookies([cookie(accountCookie)]);
+      const tilePage = await pageIn(tileCtx, landing.pathname + landing.search);
+      await tilePage.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+      await tilePage.locator(".mat-toast").waitFor({ state: "visible", timeout: 4_000 }).catch(() => {});
+      await tilePage.evaluate(() => document.fonts.ready);
+      const fact = await tilePage.evaluate(visitorFaceFacts);
+      const overlap = overlaps(fact.toast, fact.chips) || overlaps(fact.toast, fact.close);
+      record(`J greeting and money sheet ${locale} ${width}`, !!fact.toast && !overlap && fact.scrollWidth <= width + 1,
+        fact.toast ? overlap ? "toast overlaps chip row or close" : "" : "greeting not visible");
+      evidence.faces.push({ label: `money-greeting-${locale}-${width}`, ...summary(fact) });
+      await screenshot(tilePage, `money-greeting-${locale}-${width}`);
+      await tileCtx.close(); contexts.delete(tileCtx);
+    }
     await page.getByTestId("journey-sheet-deposit").click();
     await page.waitForURL(url => url.pathname === "/wallet/deposit", { timeout: 60_000 });
     const deposit = new URL(page.url());
@@ -228,15 +273,22 @@ try {
     const loginAfter = await observe(returning, seed.id);
     record("E one signed-in tap writes one bet", loginAfter.positionCount === 1 && loginAfter.betPlacedCount === 1);
     await returning.close(); contexts.delete(returning);
-    if (pre.health.simpleJourney?.state === "STAFF_PREVIEW") {
-      const classic = await context("sw", 390, false);
-      const oldPage = await pageIn(classic, `/markets/${seed.id}?side=YES`);
+  }
+  if (run("classic")) {
+    if (pre.health.simpleJourney?.state === "ACTIVE") missing("H classic no-pass control", "ACTIVE shows journey to every guest; run a STAFF_PREVIEW or WITHDRAWN local server");
+    else {
+      const classic = await context("sw", 390, pre.health.simpleJourney?.state === "WITHDRAWN");
+      const oldHome = await pageIn(classic, "/");
+      record("H classic home shows no journey guest host", await oldHome.locator('[data-testid="journey-card"]').count() === 0
+        && await oldHome.locator('[data-testid="journey-bet-sheet"][data-guest]').count() === 0);
+      await screenshot(oldHome, "classic-home-guest-sw-390");
+      const oldPage = await pageIn(classic, `/markets/${catalogue.ids[0].id}?side=YES`);
       record("H classic question has its guest panel and no journey host", await oldPage.locator('[data-testid="journey-bet-buttons"]').count() === 0
         && await oldPage.locator('[data-testid="journey-bet-sheet"][data-guest]').count() === 0
         && await oldPage.locator('[data-testid="side-picker"]').count() === 1);
       await screenshot(oldPage, "classic-question-guest-sw-390");
       await classic.close(); contexts.delete(classic);
-    } else missing("H classic no-pass control", "ACTIVE shows journey to every guest; run a STAFF_PREVIEW or WITHDRAWN local server");
+    }
   }
   if (run("tiles")) for (const locale of locales) for (const width of widths) {
     const ctx = await context(locale, width);
@@ -251,9 +303,11 @@ try {
     await screenshot(page, `guest-${locale}-${width}`);
     await ctx.close(); contexts.delete(ctx);
   }
-  missing("A closed, one-sided, moved-pool and keyboard matrix", "Needs the host's controlled market states and WebKit run");
-  missing("F valid bound codes, G refusals and I second flag state", "Next WP8a package");
-  missing("K ended-session, L focus/keyboard and O production tap frame", "Next WP8a package");
+  if (run("core") || run("tiles")) {
+    missing("A closed, one-sided, moved-pool and keyboard matrix", "Needs the host's controlled market states and WebKit run");
+    missing("F valid bound codes, G refusals and I second flag state", "Next WP8a package");
+    missing("K ended-session, L focus/keyboard and O production tap frame", "Next WP8a package");
+  }
 } catch (error) {
   record("drive exception", false, String(error?.message ?? error).split("Call log:")[0].slice(0, 400));
 } finally {
