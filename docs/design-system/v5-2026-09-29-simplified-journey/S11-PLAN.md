@@ -1116,8 +1116,8 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP1 · the X card | Done, every player, its own release. Proof at its commit: `test:brand-assets` §3 IN SYNC + 3 controls refused (red before: 600/600 rows differ), `test:static-cache-scope` 23/23, typecheck 0, `next build` 0 (186 s, `build.sh` at the exact commit), local `qa:live` 376/376 (port 3101); both pictures read at full size and the corners zoomed: no badge, no bubble. Production read-back is the coordinator's | `0986baa5a` |
 | WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
 | WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | `65ad04b0c` |
-| WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | this commit |
-| WP5 · the FAQ | — | — |
+| WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | `b144a6a93` (+ `3b063f8bb`: the records rule, the version) |
+| WP5 · the FAQ | Done (below) | this commit |
 | WP6 · the chat | — | — |
 | WP7 · the tagline and `test:flip-copy` | — | — |
 | WP8 · the share-picture generator | — | — |
@@ -1234,3 +1234,16 @@ is built as decided, not pending:
 > footer". The owner's ruling of 2026-10-06 took the helpline off every player surface, and its "Supersedes" list did not
 > name that line: How to play shows no helpline (S7-PLAN A6), and the 2026-09-29 entry is left as written — this log never
 > edits an old entry.
+### WP5 — /help for a journey reader (built 2026-10-15)
+
+- **Code:** `src/app/help/page.tsx` — one table (`JOURNEY_FAQ`: faq2 q+a, faq3, faq5, faq6), `own` from the shell's own
+  resolver, the journey arm first in today's two slots and today's expressions the else arms, word for word; `{max}` is
+  `formatTzs(WITHDRAW_MAX_TZS)` held whole by `keepFigures`. `scripts/qa-served-skeleton.mjs` ROUTES gains `help`
+  (self-test 81/81).
+- **Guard:** `test:flip-copy` §5 (new suite; its §6 and §1-§4 come with WP6 and WP7) 4 checks, `red:flip-copy` **8/8**.
+- **Gates:** `test:measure` (760 files), `test:support-contact` 79/0, `test:visual-pass-r6c` 87/0, `test:visual-pass-r10`
+  81/0, `test:journey-shell`, `test:chat-safety`, `test:i18n`, `test:source-bytes`, `test:orphans`, typecheck 0.
+  `test:visual-pass-r9b`: its timing case 1.1‴ (20,000 letters under 80 ms) read 559.6 ms once inside a batch of eleven
+  suites, then 51/0 twice alone — a load timing, not this change (it reads no file WP5 touched); recorded, not waived.
+- **Served bytes:** none for a classic reader (server code, the same markup); `qa:served-skeleton --main` with `/help` runs
+  at the proof stage.

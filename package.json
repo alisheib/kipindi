@@ -745,6 +745,8 @@
     "test:journey-home": "tsx scripts/journey-home.test.mts",
     "test:howto": "tsx scripts/howto.test.mts",
     "red:howto": "tsx scripts/howto.test.mts --prove-red",
+    "test:flip-copy": "tsx scripts/flip-copy.test.mts",
+    "red:flip-copy": "tsx scripts/flip-copy.test.mts --prove-red",
     "red:journey-home": "tsx scripts/journey-home.test.mts --prove-red",
     "test:markets-redirect": "tsx scripts/markets-redirect.test.mts",
     "red:markets-redirect": "tsx scripts/markets-redirect.test.mts --prove-red",
