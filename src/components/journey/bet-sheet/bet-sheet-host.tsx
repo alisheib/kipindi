@@ -13,6 +13,7 @@ import { ownedSheetIntents, quarantineLegacySheet, unresolvedLegacySheet, resolv
 import type { StoredIntent } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
 import { sendFunnel } from "@/lib/journey/funnel-beacon";
+import { countsSheetOpen } from "@/lib/journey/guest-sheet";
 import { answerOf, refusalOutcome, settleRefusal, type Reread } from "@/lib/journey/sheet-refusal";
 import {
   afterKeyRead, afterSettle, clockOffset, estimateMoved, keyReadDelay, nextKey, quoteAt, reopenInDoubt,
@@ -268,7 +269,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     if (received) stripAddress(dropSide);
     show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false });
     setNow(stamp);
-    sendFunnel("sheet_open", origin);
+    if (countsSheetOpen({ tapped: pushed, markerRaw: raw, bet, nowMs: stamp })) sendFunnel("sheet_open", origin);
     void refreshed(true);
     if (remembered?.intent.phase === "inDoubt") void readKey(remembered);
     if (recoveryBlocked({marketId: seed.id, side})) void resolveLegacy({marketId: seed.id, side});

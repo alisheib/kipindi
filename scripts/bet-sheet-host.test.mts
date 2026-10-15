@@ -11,6 +11,7 @@ import { clockOffset, estimateMoved, sheetEstimate, sheetFrame, sheetPreset, wit
 import { dict, type Dict } from "../src/lib/i18n-dict.ts";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { countsSheetOpen } from "../src/lib/journey/guest-sheet.ts";
 import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx";
 import { decomment } from "./lib/decomment.mts";
 
@@ -440,7 +441,7 @@ function hostTapFrame(source: string, seed: ReturnType<typeof parseSheetSeed>, t
     const open = bindHost(source, "open", { Date: { now: () => NOW }, window: { sessionStorage: { getItem: () => null }, location: { pathname: "/", search: "" } },
       PENDING_BET_KEY, pendingBetFrom, pending: { current: new Map() }, identity: (q: { marketId: string; side: string }) => `${q.marketId}.${q.side}`,
       closedReceipts: { current: new Map() }, sheetPreset, stakeFromUrl, viewerId: "usr_host", stripAddress: () => {}, show: (v: Record<string, unknown>) => { shown = v; },
-      clockOffset, serial: { current: 0 }, setNow: () => {}, sendFunnel: () => {}, refreshed: async () => {}, readKey: async () => {}, recoveryBlocked: () => false, resolveLegacy: async () => {} });
+      clockOffset, serial: { current: 0 }, setNow: () => {}, countsSheetOpen, sendFunnel: () => {}, refreshed: async () => {}, readKey: async () => {}, recoveryBlocked: () => false, resolveLegacy: async () => {} });
     open(seed, "YES", title, true, false, "card");
     if (!shown) return null;
     const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -460,6 +461,22 @@ function hostTapFrame(source: string, seed: ReturnType<typeof parseSheetSeed>, t
     const frame = new Function("active", "sheetFrame", "now", "record", "recoveryBlocked", `return ${frameExpression};`)(active, sheetFrame, NOW, null, () => false);
     const drawnTitle = (t: Dict) => new Function("view", "t", `return ${titleExpression};`)({ active }, t) as string;
     return { active, frame, drawnTitle };
+  } catch { return null; }
+}
+/** Execute the host's real open callback: a visitor's returned address continues its counted open. */
+function hostOpenEvents(source: string, pushed: boolean, markerRaw: string | null): string[] | null {
+  try {
+    const events: string[] = [];
+    const open = bindHost(source, "open", {
+      Date: { now: () => NOW },
+      window: { sessionStorage: { getItem: (key: string) => key === PENDING_BET_KEY ? markerRaw : null }, location: { pathname: "/", search: "?bet=mkt_sheet01.YES.500" } },
+      PENDING_BET_KEY, pendingBetFrom, pending: { current: new Map() }, identity: (q: { marketId: string; side: string }) => `${q.marketId}.${q.side}`,
+      closedReceipts: { current: new Map() }, sheetPreset, stakeFromUrl, viewerId: "usr_new", stripAddress: () => {}, show: () => {},
+      clockOffset, serial: { current: 0 }, setNow: () => {}, countsSheetOpen, sendFunnel: (event: string) => { events.push(event); },
+      refreshed: async () => {}, readKey: async () => {}, recoveryBlocked: () => false, resolveLegacy: async () => {},
+    });
+    open(SEED, "YES", "Question", pushed, false, "board");
+    return events;
   } catch { return null; }
 }
 /** A21 · execute the host's REAL warm-up effect with a controlled window and refs: when it draws, and what it cancels. */
@@ -574,6 +591,10 @@ async function checks(x: Impl): Promise<Check[]> {
   ok("host.mounted-commit-control", life?.actionLive === true);
   ok("host.unmounted-close-deposit", life?.directClosed === true);
   ok("host.unmounted-auth-redirect", life?.authClosed === true);
+  const visitorMarker = writeMarker({ kind: "market", id: SEED.id, side: "YES", stake: 500 }, NOW);
+  ok("host.open-once", JSON.stringify(hostOpenEvents(h, true, visitorMarker)) === '["sheet_open"]'
+    && JSON.stringify(hostOpenEvents(h, false, visitorMarker)) === "[]"
+    && JSON.stringify(hostOpenEvents(h, false, null)) === '["sheet_open"]');
   const exit = exitChecks(h);
   ok("host.exit-frozen-drawing", exit?.frozenDrawing === true);
   ok("host.exit-inert-serial", exit?.inert === true && exit?.usable === true);
@@ -765,6 +786,9 @@ if (process.argv.includes("--prove-red")) {
       ["host.taps-armed-at-mount", 'window.addEventListener("click", click, true);', 'window.setTimeout(() => window.addEventListener("click", click, true), 0);'],
     ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, host: REAL.host.replace(from, to) } })),
     { name: "the tap's first frame drifts from the warm one", check: "warmup.public-first-frame", impl: { ...REAL, host: plantCallback(REAL.host, "open", 'viewer: { state: "loading" }', 'viewer: { state: "failed" }') } },
+    { name: "the returned guest sheet is counted a second time", check: "host.open-once", impl: { ...REAL, host: plantCallback(REAL.host, "open",
+      'if (countsSheetOpen({ tapped: pushed, markerRaw: raw, bet, nowMs: stamp })) sendFunnel("sheet_open", origin);',
+      'sendFunnel("sheet_open", origin);') } },
   ];
   for (const m of mutants) {
     const caught = (await checks(m.impl)).some((c) => c.name === m.check && !c.pass);
