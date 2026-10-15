@@ -78,7 +78,8 @@ to /admin himself and Claude reviewed and approved the 40 drafted short titles i
 `qa:short-title-fit` on production: 49 open markets, 0 fall back, 0 break the rules. S8 still owes [E3] (Ali signs in as a
 player), the classic parity compare at the release and the closing battery. A visual audit's 58 findings are filed with
 their owners (`qa/visual-audit-20261015.md`). Building in parallel: S9's release candidate, the live fixes, S10–S13 and
-visual lane V1. Continue from VODACOM-PLAN §0.
+visual lane V1. Continue from VODACOM-PLAN §0. **From 2026-10-15 a Codex session integrates and releases** — its takeover
+prompt is the top block of `qa/claude-vodacom-continuation-20261014.md`.
 
 **2026-10-14 ~12:30 UTC:** release `4946a777d` is LIVE and read back (Claude, OMEGA-COMPILE01): Ali's Up & Down ruling
 (every Up & Down choice says Up/Down only, no multiplier — COMPLIANCE-DECISIONS 2026-10-14) and the A21 first-frame
