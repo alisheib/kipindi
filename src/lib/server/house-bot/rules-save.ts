@@ -148,6 +148,7 @@ export async function saveHouseBotRules(input: {
     modes: { updown: ModeFlagsInput; polls: ModeFlagsInput };
     enterNow: boolean;
     targeting: boolean;
+    otherSide: boolean;
   };
   /**
    * ⛔ THE TWO SCOPE LISTS THE FORM OWNS NOW (prod finding 2026-09-22). Until this parameter existed the save
@@ -322,6 +323,7 @@ export async function saveHouseBotRules(input: {
     modes: { updown: { ...input.flags.modes.updown }, polls: { ...input.flags.modes.polls } },
     enterNow: { ...base.enterNow, enabled: input.flags.enterNow },
     targeting: { ...base.targeting, enabled: input.flags.targeting },
+    share: { ...base.share, otherSide: input.flags.otherSide },
     counter: { ...base.counter, amount: { kind: input.amountKind } },
   };
   /* ⛔ WRITTEN BY PATH, FROM THE VALIDATOR'S OWN IDS — so a leaf added to `RULE_NUMBER_FIELDS` arrives here

@@ -51,7 +51,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import pg from "pg";
 import {
-  EXPECTED, BOT_CAP_BOUNDS, LIMIT_BOUNDS, PAIR_BUDGET_BOUNDS, diffOutcomes, outcomesOf, submitIdFor, type CaseRun,
+  EXPECTED, BOT_CAP_BOUNDS, LIMIT_BOUNDS, diffOutcomes, outcomesOf, submitIdFor, type CaseRun,
 } from "./lib/house-bot-dal-cases.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -718,7 +718,7 @@ async function probeConstraints(url: string): Promise<void> {
     PROBES.push([`bot · ${f} = ${hi}`, botSet(`"${f}" = ${hi}`), "ok"]);
     PROBES.push([`bot · ${f} = ${hi + 1}`, botSet(`"${f}" = ${hi + 1}`), `check:HouseBot_${f}_check`]);
   }
-  for (const [f, lo, hi] of [...LIMIT_BOUNDS, ...PAIR_BUDGET_BOUNDS]) {
+  for (const [f, lo, hi] of LIMIT_BOUNDS) {
     PROBES.push([`control · ${f} = ${lo - 1}`, controlSet(`"${f}" = ${lo - 1}`), `check:HouseBotControl_${f}_check`]);
     PROBES.push([`control · ${f} = ${lo}`, controlSet(`"${f}" = ${lo}`), "ok"]);
     PROBES.push([`control · ${f} = ${hi}`, controlSet(`"${f}" = ${hi}`), "ok"]);

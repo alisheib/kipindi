@@ -19,8 +19,8 @@
  * unique to its case. Case order still matters where a case says so (c06 runs the STALE pass).
  *
  * Two places a fixture is PLANTED differently per store, because the DAL offers no way to write a
- * backdated row (and must not): the old AlertOnce keys in c18. The behaviour under test — the purge —
- * is the DAL's on both sides.
+ * backdated row (and must not): the old AlertOnce keys in c18 and tied anchor timestamps in c04p.m.
+ * The behaviour under test is the DAL's on both sides.
  *
  * Not covered here, on purpose:
  *   · `houseBotSchemaReady()` lands in build commit 4; its cases join this list then.
@@ -75,15 +75,6 @@ export const LIMIT_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
   ["gTargetsMaxActive", 1, 200],
   ["gStaffChosenMaxCounterpartyShare", 10, 100],
-];
-
-/**
- * ⭐ N5 · THE PAIRS' DAILY BUDGET — its CHECKs are probed on Postgres with the rest (`test:house-bot-migrations`), but it is
- * NOT in `LIMIT_FIELDS` yet, so the limits save cannot write it and the c10 save cases above cannot reach it: a form row
- * that changes nothing is the dead control the console refuses. N6 moves these two into `LIMIT_FIELDS` and into
- * `LIMIT_BOUNDS`, in the commit that gives them a form row and a reader.
- */
-export const PAIR_BUDGET_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCapPairRoundsPerDay", 1, 28_800],
   ["gCapPairDailyTzs", 0, 1_000_000_000],
 ];
@@ -145,6 +136,11 @@ function buildExpected(): Record<string, string> {
     "c04p.g re-plan after SKIPPED": "unique:hbi_pair_anchor_uq",
     "c04p.h a FILL and an OPENER on the same round are their own anchors": "PENDING:PENDING",
     "c04p.i a COUNTER clash still names the counter index, never the pair one": "unique:hbi_counter_anchor_uq",
+    "c04p.j PLACED PAIR usage follows the caller's EAT day": "1:1700|0:0",
+    "c04p.k live PAIR reservations follow their due EAT day": "1:2300|0:0",
+    "c04p.l a live PAIR crossing EAT midnight reserves the next day too": "1:1200|0:0",
+    "c04p.m a live PAIR wins a timestamp tie with its cancelled predecessor": "PENDING:true",
+    "c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow": "1:0",
     // c05 · a press id is used once, ever
     "c05.a Enter now queued": "PENDING",
     "c05.b cancel it": "CANCELLED",
@@ -552,6 +548,54 @@ async function runCases(): Promise<void> {
     await rec("c04p.i a COUNTER clash still names the counter index, never the pair one", async () => {
       await intents.insert(counter("hbi_c04ph", "pos_c04p"));
       return (await intents.insert(counter("hbi_c04pi", "pos_c04p"))).status;
+    });
+    await intents.insert(pair("hbi_c04pj", "mkt_c04pj", { status: "PLACED", stakeTzs: 1_700,
+      positionId: "pos_c04pj", finishedAt: "2026-09-14T10:00:00.000Z" }));
+    await rec("c04p.j PLACED PAIR usage follows the caller's EAT day", async () => {
+      const on = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-14" });
+      const off = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-15" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    await intents.insert(pair("hbi_c04pk", "mkt_c04pk", { stakeTzs: 2_300,
+      dueAt: "2099-09-14T10:00:00.000Z", deadlineAt: "2099-09-14T12:00:00.000Z", staleAt: "2099-09-14T12:00:00.000Z" }));
+    await rec("c04p.k live PAIR reservations follow their due EAT day", async () => {
+      const on = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-14" });
+      const off = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-15" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    await intents.insert(pair("hbi_c04pl", "mkt_c04pl", { stakeTzs: 1_200,
+      dueAt: "2099-09-14T20:59:45.000Z", deadlineAt: "2099-09-14T21:00:15.000Z", staleAt: "2099-09-14T21:00:15.000Z" }));
+    await rec("c04p.l a live PAIR crossing EAT midnight reserves the next day too", async () => {
+      const on = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-15" });
+      const off = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-16" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    // Both rows share an exact creation instant; the cancelled id sorts AFTER the
+    // new id. A plain timestamp/id reader would hand the planner the cancelled row.
+    const oldId = "hbi_c04pm_z", newId = "hbi_c04pm_a", anchor = "mkt_c04pm";
+    await intents.insert(pair(oldId, anchor));
+    await intents.cancelPending(oldId, "CASE");
+    await intents.insert(pair(newId, anchor));
+    const tiedAt = "2026-09-14T10:00:00.000Z";
+    if (onPostgres) {
+      await prisma().$executeRawUnsafe(`UPDATE "HouseBotIntent" SET "createdAt" = $1::timestamp WHERE "id" IN ($2::text, $3::text)`,
+        tiedAt, oldId, newId);
+    } else {
+      const map = (globalThis as Any).__50PICK_HB_INTENTS as Map<string, Any>;
+      map.get(oldId).createdAt = tiedAt;
+      map.get(newId).createdAt = tiedAt;
+    }
+    await rec("c04p.m a live PAIR wins a timestamp tie with its cancelled predecessor", async () => {
+      const found = await intents.findByAnchor("PAIR", `pair:${anchor}`);
+      return `${found?.status}:${found?.id === newId && oldId > newId}`;
+    });
+    await intents.insert(pair("hbi_c04pn", "mkt_c04pn", { stakeTzs: 1_000,
+      dueAt: "2099-09-16T20:59:45.000Z", deadlineAt: "2099-09-16T21:00:00.000Z",
+      staleAt: "2099-09-16T21:00:00.000Z" }));
+    await rec("c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow", async () => {
+      const before = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-16" });
+      const after = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-17" });
+      return `${before.count}:${after.count}`;
     });
   });
 

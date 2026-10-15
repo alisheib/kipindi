@@ -25,6 +25,7 @@
 const FIRE = "src/lib/server/house-bot/fire.ts";
 const PLANNER = "src/lib/server/house-bot/planner.ts";
 const DECIDE = "src/lib/server/house-bot/decide.ts";
+const ENTER_NOW = "src/lib/server/house-bot/enter-now.ts";
 const DAL = "src/lib/server/house-bot-dal.ts";
 /* ⭐ C7 step 4b · the poller's own pass, where A24's failure limb finally has a writer (replan ruling 514). */
 const WORKER = "src/lib/server/house-bot/worker.ts";
@@ -1207,8 +1208,8 @@ export const MUTATIONS = [
   {
     name: "N3-no-handoff · an account-owned refusal ends SKIPPED again, and the market is lost to every account",
     file: OUTCOMES,
-    from: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)`,
-    to: `  return false && status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)`,
+    from: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER" || intent.kind === "PAIR") && intent.targetId == null && isHandoffCode(code)`,
+    to: `  return false && status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER" || intent.kind === "PAIR") && intent.targetId == null && isHandoffCode(code)`,
     expect: "17.90 · N3 · fire's CAP_BALANCE_FLOOR on an automatic OPENER",
     suite: "engine-mem",
     sections: "17",
@@ -1216,7 +1217,7 @@ export const MUTATIONS = [
   {
     name: "N3-counter-handed-on · a COUNTER is handed on too — the player's one reaction is cancelled, and can never be decided again",
     file: OUTCOMES,
-    from: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)`,
+    from: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER" || intent.kind === "PAIR") && intent.targetId == null && isHandoffCode(code)`,
     to: `  return status === "SKIPPED" && intent.kind !== "MANUAL" && intent.targetId == null && isHandoffCode(code)`,
     expect: "13.14h · N3 · a COUNTER is never handed on",
     suite: "engine-mem",
@@ -1234,8 +1235,10 @@ export const MUTATIONS = [
   {
     name: "N3-no-max-tries · a market is handed down for ever, past HANDOFF_MAX_TRIES",
     file: PLANNER,
-    from: `  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES || untried.length === 0)) {`,
-    to: `  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES + 100 || untried.length === 0)) {`,
+    from: `  const untried = scoped.filter((b) => !tried.has(b.botId));
+  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES || untried.length === 0)) {`,
+    to: `  const untried = scoped.filter((b) => !tried.has(b.botId));
+  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES + 100 || untried.length === 0)) {`,
     expect: "17.94 · N3 · a market already tried by",
     suite: "engine-mem",
     sections: "17",
@@ -1325,8 +1328,8 @@ export const MUTATIONS = [
   {
     name: "N3-dead-opener-holds · a queued opener on a market with money holds it again",
     file: "src/lib/server/house-bot/enter-now.ts",
-    from: `  const live = (await houseBotIntentStore.listLiveOnMarket(marketId)).filter((i) => !(opts.ignoreDeadOpeners && i.kind === "OPENER"));`,
-    to: `  const live = (await houseBotIntentStore.listLiveOnMarket(marketId)).filter(() => true);`,
+    from: `!(opts.ignoreDeadOpeners && i.kind === "OPENER")`,
+    to: `true`,
     expect: "18.54n · N3 · a player staking while the desk's opener is still queued is ANSWERED",
     suite: "engine-mem",
     sections: "18",
@@ -1334,8 +1337,8 @@ export const MUTATIONS = [
   {
     name: "N3-trigger-no-option · the trigger never tells the holding rule the market holds money",
     file: "src/lib/server/house-bot/trigger.ts",
-    from: `  if ((await marketHeld(bot.botId, s.view.id, { ignoreDeadOpeners: poolsHoldMoney })).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };`,
-    to: `  if ((await marketHeld(bot.botId, s.view.id, { ignoreDeadOpeners: false })).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };`,
+    from: `    ignoreDeadOpeners: poolsHoldMoney,`,
+    to: `    ignoreDeadOpeners: false,`,
     expect: "18.54n · N3 · a player staking while the desk's opener is still queued is ANSWERED",
     suite: "engine-mem",
     sections: "18",
@@ -1429,5 +1432,78 @@ export const MUTATIONS = [
     expect: "17.99 · N3 · an account that could stake but is behind another's turn",
     suite: "engine-mem",
     sections: "17",
+  },
+  {
+    name: "N6-pair-same-side · the second account takes the first account's side",
+    file: DECIDE,
+    from: `  const pairSide = oppositeSide(otherSide);`,
+    to: `  const pairSide = otherSide;`,
+    expect: "7c.1 · one placed side plans PAIR on the opposite side",
+    suite: "engine-mem",
+    sections: "7c",
+  },
+  {
+    name: "N6-pair-player-money · a player stake no longer stops pairing",
+    file: DECIDE,
+    from: `  if (pools.YES.nonHouse !== 0 || pools.NO.nonHouse !== 0 || otherStakeTzs <= 0
+      || pools[otherSide].raw !== otherStakeTzs || pools[pairSide].raw !== 0) {`,
+    to: `  if (otherStakeTzs <= 0) {`,
+    expect: "7c.2 · a player stake on either side prevents a PAIR row",
+    suite: "engine-mem",
+    sections: "7c",
+  },
+  {
+    name: "N6-pair-size · the percent is ignored and the entire first stake is used",
+    file: DECIDE,
+    from: `  const wanted = Math.floor(otherStakeTzs * r.share.matchPct / 100);`,
+    to: `  const wanted = otherStakeTzs;`,
+    expect: "7c.1 · one placed side plans PAIR on the opposite side",
+    suite: "engine-mem",
+    sections: "7c",
+  },
+  {
+    name: "N6-pair-price-window · a delayed second stake is queued past the price's life",
+    file: DECIDE,
+    from: `  const latestDueMs = passNowMs + (maxAge - input.price!.ageSec - UD_PRICE_FIRE_MARGIN_SEC) * 1000;`,
+    to: `  const latestDueMs = Number.POSITIVE_INFINITY;`,
+    expect: "7c.5 · a price that cannot survive the minimum wait makes no row",
+    suite: "engine-mem",
+    sections: "7c",
+  },
+  {
+    name: "N6-pair-holder · the planner offers the second side to the first holder again",
+    file: PLANNER,
+    from: `    if (sameHolder) continue;`,
+    to: `    if (false) continue;`,
+    expect: "17n6.2b · another account of the same holder cannot take the second side",
+    suite: "engine-mem",
+    sections: "17n6",
+  },
+  {
+    name: "N6-pair-handoff · an account-owned PAIR refusal closes the market to every account",
+    file: OUTCOMES,
+    from: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER" || intent.kind === "PAIR") && intent.targetId == null && isHandoffCode(code)`,
+    to: `  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)`,
+    expect: "17n6.2c · an account-owned refusal CANCELS the PAIR row for handoff",
+    suite: "engine-mem",
+    sections: "17n6",
+  },
+  {
+    name: "N6-other-side-position · an opposite-side desk stake blocks opted-in counters again",
+    file: ENTER_NOW,
+    from: `  if (opts.sideAwareSide === "YES" ? onMarket.otherBotYesOpen : opts.sideAwareSide === "NO" ? onMarket.otherBotNoOpen : onMarket.otherBotOpen) {`,
+    to: `  if (onMarket.otherBotOpen) {`,
+    expect: "15.15a · other-side opt-in can use YES opposite a desk NO position",
+    suite: "engine-mem",
+    sections: "15",
+  },
+  {
+    name: "N6-other-side-intent · an opposite-side live intent blocks opted-in counters again",
+    file: ENTER_NOW,
+    from: `  const liveOther = live.find((i) => i.houseBotId !== botId && (opts.sideAwareSide == null || i.side === opts.sideAwareSide));`,
+    to: `  const liveOther = live.find((i) => i.houseBotId !== botId);`,
+    expect: "15.17a · other-side opt-in ignores a live YES intent for NO",
+    suite: "engine-mem",
+    sections: "15",
   },
 ];

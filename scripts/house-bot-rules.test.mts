@@ -462,7 +462,7 @@ section("§2 · bound matrix");
   const NUMERIC = FIELD_ORDER.filter((id) => FIELD_META[id].min !== null && FIELD_META[id].max !== null);
   // 60 → 59 on 2026-09-16 (C4 ruling 153): `holderNoticesPerHour` removed with the holder notices (D19c).
   // 59 → 57 on 2026-09-18 (owner ruling D20, ruling 265): the two staff-edge thresholds are un-built. MEASURED = 57.
-  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 57)", NUMERIC.length >= 57, `saw ${NUMERIC.length}`);
+  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 62)", NUMERIC.length >= 62, `saw ${NUMERIC.length}`);
 
   /** The copy a bound refusal must carry, written from the sealed table rather than the module. */
   const boundCopy = (id: FieldId, which: "BELOW" | "ABOVE", b: { min: number; max: number }): string => {
@@ -589,8 +589,8 @@ section("§2 · bound matrix");
   const limitIds = FIELD_ORDER.filter((id) => FIELD_META[id].group === "limits");
   const limitLists = [...LIMIT_FIELDS, ...NULLABLE_LIMIT_FIELDS, ...COUNT_LIMIT_FIELDS] as readonly string[];
   const staffEdgeNames = [...limitIds, ...Object.keys(FIELD_META), ...CLEAR_EXEMPT, ...limitLists].filter(isStaffEdge);
-  ok("2.d20 · ⛔ D20 · no limits field, no meta row, no clear-exemption and no writable limit list (LIMIT_FIELDS, NULLABLE_LIMIT_FIELDS, COUNT_LIMIT_FIELDS) names a staff edge; the limits tab and the writable list are the SAME sealed 14, and the nullable 12 plus the two counts are exactly them",
-    staffEdgeNames.length === 0 && limitIds.length === 14 && LIMIT_FIELDS.length === 14 && NULLABLE_LIMIT_FIELDS.length === 12 && COUNT_LIMIT_FIELDS.length === 2
+  ok("2.d20 · ⛔ D20 · no limits field, no meta row, no clear-exemption and no writable limit list (LIMIT_FIELDS, NULLABLE_LIMIT_FIELDS, COUNT_LIMIT_FIELDS) names a staff edge; the limits tab and the writable list are the SAME sealed 16, and the nullable 14 plus the two counts are exactly them",
+    staffEdgeNames.length === 0 && limitIds.length === 16 && LIMIT_FIELDS.length === 16 && NULLABLE_LIMIT_FIELDS.length === 14 && COUNT_LIMIT_FIELDS.length === 2
       && same([...limitIds].sort(), [...LIMIT_FIELDS].sort()) && same([...LIMIT_FIELDS].sort(), [...NULLABLE_LIMIT_FIELDS, ...COUNT_LIMIT_FIELDS].sort())
       && !("gStaffEdgeWinRatePts" in FIELD_META) && !("gStaffEdgeNetTzs" in FIELD_META),
     `${limitIds.length} limits · ${LIMIT_FIELDS.length} writable · ${staffEdgeNames.join(", ")}`);
@@ -665,6 +665,15 @@ section("§3 · cross-field rules — the rules form");
       r.modes.updown.counter = false; r.modes.polls.counter = false;
       r.scope.poolTotalMinTzs = 0; r.scope.poolTotalMaxTzs = 0;
     } }));
+
+  refuses("3.R-PAIR-NEEDS-OTHER-SIDE · a positive pair share needs the other-side switch",
+    saveRules({ rules: (r) => { r.share.matchPct = 50; r.share.matchPerDay = 3; } }),
+    "share.matchPct", "R-PAIR-NEEDS-OTHER-SIDE",
+    "Turn on Answer on the other side before setting a share for pair rounds.");
+  saves("3.R-PAIR-NEEDS-OTHER-SIDE · the same pair rules save when the switch is on",
+    saveRules({ rules: (r) => { r.share.otherSide = true; r.share.matchPct = 50; r.share.matchPerDay = 3; } }));
+  saves("3.R-PAIR-NEEDS-OTHER-SIDE · zero pair share saves while the switch is off",
+    saveRules({ rules: (r) => { r.share.matchPct = 0; r.share.matchPerDay = 3; } }));
 
   refuses("3.N2-b · a COUNTER minimum delay above the maximum is refused",
     saveRules({ rules: (r) => { r.counter.delayMinSec = 50; r.counter.delayMaxSec = 45; } }),
@@ -934,6 +943,9 @@ section("§3 · cross-field rules — the limits form, conflicts and clearing");
     saveLimits({ gMaxBetsPerDay: null }, CTX, on), "gMaxBetsPerDay", "X-CLEAR-ON", "Can't clear a limit while bots are on. Switch off first.");
   saves("3.X-CLEAR-ON · the four exempt limits, the counterparty share among them, clear with bots on",
     saveLimits({ gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null, gStaffChosenMaxCounterpartyShare: null }, CTX, on));
+  const pairOn = { masterOn: true, limits: limitsOf({ gCapPairRoundsPerDay: 50, gCapPairDailyTzs: 50_000 }) };
+  saves("3.X-CLEAR-ON · clearing either set pair budget while ON stops pairing without switching the desk off",
+    saveLimits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: null }, CTX, pairOn));
   saves("3.X-CLEAR-ON · with the master OFF the per-market limit clears", saveLimits({ gCapPerMarketTzs: null }, CTX, { ...on, masterOn: false }));
 }
 
@@ -957,10 +969,10 @@ section("§4 · recommended values");
     saves("4.5 · …and with targets on, once a target maximum is chosen (no value is recommended for it)",
       validateHouseBotRules({ rules: onRules, caps: { ...recommendedCaps(ctx), targetsMaxActive: 5 } }, withLimits));
   }
-  ok("4.6 · \"Use recommended values\" never ticks a product, mode, list, All day, Enter now or targets",
+  ok("4.6 · \"Use recommended values\" never ticks a product, mode, list, All day, Enter now, targets or sharing",
     same(rec.scope.products, base.scope.products) && same(rec.modes, base.modes) && same(rec.scope.chains, base.scope.chains) &&
       same(rec.scope.categories, base.scope.categories) && same(rec.schedule, base.schedule) &&
-      rec.enterNow.enabled === base.enterNow.enabled && rec.targeting.enabled === base.targeting.enabled);
+      rec.enterNow.enabled === base.enterNow.enabled && rec.targeting.enabled === base.targeting.enabled && same(rec.share, base.share));
   const caps = recommendedCaps(ctx);
   const limits = recommendedLimits(ctx);
   ok("4.7 · the sealed recommended values (N1 §5): Enter now 10,000 / 2,000; per bot 3 / TZS 30,000; global 10 / TZS 100,000",
@@ -969,6 +981,9 @@ section("§4 · recommended values");
       limits.gCapStaffChosenPerDay === 10 && limits.gCapStaffChosenDailyTzs === 100_000 && limits.gTargetsMaxActive === null);
   ok("4.8 · …counterparty share 50%, and nothing is recommended for a staff edge (D20 un-built it)",
     limits.gStaffChosenMaxCounterpartyShare === 50 && !("gStaffEdgeWinRatePts" in limits) && !("gStaffEdgeNetTzs" in limits), canon(Object.keys(limits)));
+  ok("4.9 · both pair budgets and all account share leaves start off, including after recommending values",
+    limits.gCapPairRoundsPerDay === null && limits.gCapPairDailyTzs === null
+      && rec.share.otherSide === false && rec.share.matchPct === 0 && rec.share.matchPerDay === 0);
   // ⛔ CONTROL — the validator is live: one planted value breaks the recommended set.
   const planted = validateHouseBotRules({ rules: rec, caps: { ...caps, stakeMinTzs: 20_000 } }, ctx);
   ok("4.c1 · CONTROL · the recommended caps with a planted Stake min 20,000 are refused", planted.ok === false);
@@ -1265,7 +1280,7 @@ section("§9 · C14 scope and F4 stored rules");
       (id) => FIELD_META[id].group === "rules" && FIELD_META[id].min !== null && !id.startsWith("enterNow.") && !id.startsWith("counter.amount.")
         /* "Counts as" (2026-10-11) is NOT kept-or-clamped: v0 never had it, so the migration leaves it out and it reads
            as 1 whatever a stray v0 value says — checked on its own below, because a clamp would RAISE 1e20 to 10,000. */
-        && !id.startsWith("display."),
+        && !id.startsWith("display.") && !id.startsWith("share."),
     );
     /** The static bounds a STORED rules JSON is held to: no live stake bounds (F5 is not parse's job). */
     const storedBound = (id: FieldId) => {
@@ -1858,8 +1873,8 @@ section("§10 · timing and Start");
       const importsIt = /import \{[^}]*\brulesCoverTarget\b[^}]*\} from "@\/lib\/house-bot\/rules"/.test(decideSrc);
       const LIST_READ = /scope\.(chains|categories)/;
       const calls = (decideSrc.match(/\brulesCoverTarget\(/g) ?? []).length;
-      ok("10.engine · decide.ts value-imports rulesCoverTarget, calls it at its three sites (the Up & Down and polls halves of rulesCover, the target's scope) and reads NEITHER scope list itself — so the desk and the engine cannot disagree about what a document covers",
-        importsIt && !LIST_READ.test(decideSrc) && calls === 3, `imports ${importsIt} · list reads ${LIST_READ.test(decideSrc)} · calls ${calls}`);
+      ok("10.engine · decide.ts value-imports rulesCoverTarget, calls it at four sites (both ordinary product halves, target and pairing scope), and reads NEITHER scope list itself",
+        importsIt && !LIST_READ.test(decideSrc) && calls === 4, `imports ${importsIt} · list reads ${LIST_READ.test(decideSrc)} · calls ${calls}`);
       ok("10.engine.c1 · CONTROL · the body this pin replaced — a direct .includes over the document's own list — is what the list-read sweep reports, and the delegate is not",
         LIST_READ.test("(r.scope.chains as string[]).includes(view.round.chainKey)") && LIST_READ.test("(targetBot.rules.scope.categories as string[]).includes(view.category)")
           && !LIST_READ.test("rulesCoverTarget(r, { product: \"UPDOWN\", chainKey: view.round.chainKey }, mode)"));
@@ -2321,6 +2336,29 @@ section("§15 · Counts as");
   ok("15.p · population · the validator itself refuses 0 here, so 15.1's \"0\" row is a live answer and not a stub", !(validateField(ID, "0", ctx).ok));
 }
 
+/* ═══ §16 · sharing defaults for old stored documents ═════════════════════════════════════ */
+section("§16 · sharing leaves stay off on old documents");
+{
+  const ctx = ctxWith();
+  const old = DEFAULT_RULES_V1(ctx);
+  old.scope.products.updown = true;
+  old.scope.chains = ["BTC:3"];
+  old.modes.updown.counter = true;
+  delete (old as unknown as Record<string, unknown>).share;
+  const parsed = parseHouseBotRules(old, { chains: CHAINS, categories: MARKET_CATEGORIES, durations: ALLOWED_DURATIONS });
+  ok("16.1 · an old v1 document with an enabled answer mode parses without sharing leaves and keeps them all off",
+    parsed.ok && parsed.rules.share.otherSide === false && parsed.rules.share.matchPct === 0 && parsed.rules.share.matchPerDay === 0,
+    canon(parsed));
+  const bad = parseHouseBotRules({ ...old, share: { otherSide: false, matchPct: 50, matchPerDay: 1 } },
+    { chains: CHAINS, categories: MARKET_CATEGORIES, durations: ALLOWED_DURATIONS });
+  ok("16.2 · a stored positive pair share with the switch off is invalid at that leaf",
+    !bad.ok && bad.code === "RULES_INVALID" && bad.field === "share.matchPct", canon(bad));
+  const active = saveRules({ rules: (r) => { r.share.otherSide = true; r.share.matchPct = 100; r.share.matchPerDay = 2; } });
+  ok("16.3 · the three sharing leaves round-trip through the validator at their chosen values",
+    active.ok && active.rules.share.otherSide && active.rules.share.matchPct === 100 && active.rules.share.matchPerDay === 2,
+    canon(active));
+}
+
 /* ═══ §14 · F1 — a product line with no policy row does not compile ════════════════════════ */
 section("§14 · F1 typecheck");
 {
@@ -2446,7 +2484,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * live account had `poolTotalMaxTzs = 0` saved with every counter on, and `decide.ts:383` refuses POOL_BAND
  * whenever `total > max` — while a COUNTER only ever answers a stake ALREADY in the pool, so the total is
  * never 0 and every counter was refused for ever. The +3 IS the measurement, never an arithmetic guess. */
-const MIN_ASSERTIONS = 577;
+/* N6: 655/0 printed on 2026-10-15 after the sharing defaults, cross-field rule and legacy read cases. */
+const MIN_ASSERTIONS = 655;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

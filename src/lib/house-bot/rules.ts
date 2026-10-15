@@ -295,6 +295,8 @@ export type HouseBotRulesV1 = {
   schedule: { days: Weekday[]; allDay: boolean; windows: ScheduleWindow[] };
   enterNow: { enabled: boolean; thinStakeTzs: number | null; openerStakeTzs: number | null };
   targeting: { enabled: boolean };
+  /** Both sharing routes start off for every existing and newly designated account. */
+  share: { otherSide: boolean; matchPct: number; matchPerDay: number };
   /**
    * Market cards (owner ruling, 2026-10-11 — docs/COMPLIANCE-DECISIONS.md, "A desk account may count as more than
    * one predictor in the count players see"). `countsAs` is how many predictors this account adds to the count
@@ -342,6 +344,8 @@ export const NULLABLE_LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
+  "gCapPairRoundsPerDay",
+  "gCapPairDailyTzs",
 ] as const;
 
 /** `HouseBotControl` limits that are NOT NULL with a seeded default. */
@@ -364,6 +368,8 @@ export const LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
+  "gCapPairRoundsPerDay",
+  "gCapPairDailyTzs",
 ] as const satisfies readonly (
   | (typeof NULLABLE_LIMIT_FIELDS)[number]
   | (typeof COUNT_LIMIT_FIELDS)[number]
@@ -423,6 +429,7 @@ export function DEFAULT_RULES_V1(ctx: Pick<RulesContext, "stakeBounds">): HouseB
     schedule: { days: [...WEEKDAYS], allDay: true, windows: [] },
     enterNow: { enabled: false, thinStakeTzs: null, openerStakeTzs: null },
     targeting: { enabled: false },
+    share: { otherSide: false, matchPct: 0, matchPerDay: 0 },
     display: { countsAs: 1 },
   };
 }
@@ -757,6 +764,10 @@ const RAW_FIELDS = {
     "Targets",
     "Targets use the Counter amount and trigger range below, and the staff-chosen limits.",
   ),
+  // Missing stored leaves take these off defaults; no enabled old mode can make them required.
+  "share.otherSide": toggle("rules", "Pairing", "Answer on the other side"),
+  "share.matchPct": num("rules", "Pairing", "Pair rounds · share of other stake", "%", 0, 100, { default: 0 }),
+  "share.matchPerDay": num("rules", "Pairing", "Pair rounds per day", "count", 0, 28_800, { default: 0 }),
   // Rules · market cards (owner ruling 2026-10-11). Display only: no mode reads it, so it has no `LEAF_USED_BY` entry
   // and a stored document without it reads as 1. Its sentence is the console's `CONSOLE_RULE_HELP` (no `hint` here:
   // the console paints a hint as a second line under the help).
@@ -887,6 +898,14 @@ const RAW_FIELDS = {
     recommended: 50,
     hint: "Enter now refuses when one player holds more than this share of the players' locked money it would add to. Not set = Enter now is off for every bot.",
   }),
+  gCapPairRoundsPerDay: num("limits", "Pairing", "Pair rounds per day", "count", 1, 28_800, {
+    nullable: true,
+    hint: "Empty = no pairing. Counts placed rounds in the EAT day.",
+  }),
+  gCapPairDailyTzs: num("limits", "Pairing", "Pair TZS per day", "TZS", 0, TZS_RAIL_MAX, {
+    nullable: true,
+    hint: "Empty = no pairing. Counts placed stakes in the EAT day.",
+  }),
 } satisfies Record<string, FieldSpec>;
 
 export type FieldId = keyof typeof RAW_FIELDS;
@@ -974,6 +993,9 @@ export const CLEAR_EXEMPT = [
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
 ] as const satisfies readonly FieldId[];
+
+/** Clearing either desk pairing budget is its stop control, even with the desk on. */
+const CLEAR_WHILE_ON_TO_STOP_PAIRING = ["gCapPairRoundsPerDay", "gCapPairDailyTzs"] as const satisfies readonly LimitField[];
 
 export function isClearExempt(field: string): boolean {
   return (CLEAR_EXEMPT as readonly string[]).includes(field);
@@ -1612,6 +1634,15 @@ export const CROSS_FIELD_RULES = [
     messages: ["A pool maximum of 0 stops every counter: a counter answers a stake that is already in the pool, so the total is never 0. Leave it empty for no maximum."],
     source: "prod 2026-09-23",
   },
+  {
+    id: "R-PAIR-NEEDS-OTHER-SIDE",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["share.matchPct", "share.otherSide"],
+    reportOn: "share.matchPct",
+    messages: ["Turn on Answer on the other side before setting a share for pair rounds."],
+    source: "2026-10-14 owner ruling, N6",
+  },
   /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
    * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
    * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
@@ -1925,6 +1956,7 @@ type RulesEvalInput = {
   amountKind: "PCT" | "FIXED";
   enterNow: boolean;
   targeting: boolean;
+  otherSide: boolean;
   limits: HouseBotLimits | null;
   label: string;
   prev: { status: string; caps: HouseBotCaps } | undefined;
@@ -1941,6 +1973,7 @@ const RULES_SCOPE_IDS = [
   "R-DAY-GE-HOUR",
   "R-POOL-BAND",
   "R-COUNTER-POOL-MAX-ZERO",
+  "R-PAIR-NEEDS-OTHER-SIDE",
   "R-PRODUCT-LIST",
   "R-MODE-PRODUCT",
   "N2-b",
@@ -2003,6 +2036,10 @@ const RULES_EVAL: Record<(typeof RULES_SCOPE_IDS)[number], (x: RulesEvalInput) =
   "R-COUNTER-POOL-MAX-ZERO": (x) =>
     x.num("scope.poolTotalMaxTzs") === 0 && (x.modes.updown.counter || x.modes.polls.counter)
       ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-COUNTER-POOL-MAX-ZERO") }]
+      : [],
+  "R-PAIR-NEEDS-OTHER-SIDE": (x) =>
+    (x.num("share.matchPct") ?? 0) > 0 && !x.otherSide
+      ? [{ field: "share.matchPct", message: ruleCopy("R-PAIR-NEEDS-OTHER-SIDE") }]
       : [],
   "R-PRODUCT-LIST": (x) =>
     scopeShapeReasons(scopeDocOf(x), x.ctx)
@@ -2209,7 +2246,9 @@ const LIMITS_EVAL: Record<(typeof LIMITS_SCOPE_IDS)[number], (x: LimitsEvalInput
     const prev = x.prev;
     if (!prev || !prev.masterOn) return [];
     const prevLimits = prev.limits;
-    return NULLABLE_LIMIT_FIELDS.filter((k) => !isClearExempt(k) && prevLimits[k] !== null && x.unset(k)).map((k) => ({
+    return NULLABLE_LIMIT_FIELDS.filter((k) =>
+      !isClearExempt(k) && !(CLEAR_WHILE_ON_TO_STOP_PAIRING as readonly string[]).includes(k) && prevLimits[k] !== null && x.unset(k)
+    ).map((k) => ({
       field: k,
       message: ruleCopy("X-CLEAR-ON"),
     }));
@@ -2384,6 +2423,7 @@ export function validateHouseBotRules(
   };
   const enterNow = flag("enterNow.enabled");
   const targeting = flag("targeting.enabled");
+  const otherSide = flag("share.otherSide");
 
   const pickList = <T extends string>(path: FieldId, allowed: readonly T[]): T[] => {
     const v = getPath(raw, path);
@@ -2431,6 +2471,7 @@ export function validateHouseBotRules(
     amountKind,
     enterNow,
     targeting,
+    otherSide,
     limits: ctx.limits,
     label: input.label ?? prev?.label ?? DEFAULT_BOT_LABEL,
     prev,
@@ -2496,6 +2537,7 @@ export function validateHouseBotRules(
       openerStakeTzs: values.get("enterNow.openerStakeTzs") ?? null,
     },
     targeting: { enabled: targeting },
+    share: { otherSide, matchPct: n("share.matchPct"), matchPerDay: n("share.matchPerDay") },
     display: { countsAs: n("display.countsAs") },
   };
   const caps = {} as HouseBotCaps;
@@ -3124,6 +3166,7 @@ function readStoredRulesV1(
     };
     const enterNowEnabled = bool("enterNow.enabled");
     const targetingEnabled = bool("targeting.enabled");
+    const otherSide = bool("share.otherSide");
     const state: ModeState = { modes, enterNow: enterNowEnabled, targeting: targetingEnabled };
 
     const strings = (path: string): string[] => {
@@ -3250,6 +3293,7 @@ function readStoredRulesV1(
       schedule: { days, allDay: bool("schedule.allDay"), windows },
       enterNow: { enabled: enterNowEnabled, thinStakeTzs: thin, openerStakeTzs: opener },
       targeting: { enabled: targetingEnabled },
+      share: { otherSide, matchPct: number("share.matchPct"), matchPerDay: number("share.matchPerDay") },
       display: { countsAs: number("display.countsAs") },
     };
 
@@ -3261,6 +3305,7 @@ function readStoredRulesV1(
       ["opener.delayPollsMinMin", rules.opener.delayPollsMinMin, rules.opener.delayPollsMaxMin],
       ["opener.stakeMinTzs", rules.opener.stakeMinTzs, rules.opener.stakeMaxTzs],
     ];
+    if (rules.share.matchPct > 0 && !rules.share.otherSide) invalidAt("share.matchPct");
     for (const [field, lo, hi] of ranges) {
       if (lo > hi && LEAF_USED_BY[field]?.(state)) invalidAt(field);
     }
@@ -3350,7 +3395,7 @@ function v0ToV1(json: Record<string, unknown>, ctx: ParseContext): Record<string
   for (const id of RULE_NUMBER_FIELDS) {
     // `display.*` did not exist in v0 and is left out, so it reads as its default (1). Clamping a stray value would
     // move it UP to the bound, and "Counts as" may never be raised by anything but an officer's save.
-    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.") || id.startsWith("display.")) continue;
+    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.") || id.startsWith("display.") || id.startsWith("share.")) continue;
     const fallback = getPath(defaults, id);
     setPath(out, id, clampStored(id, at(id), ctx.durations, typeof fallback === "number" ? fallback : null));
   }

@@ -538,6 +538,115 @@ section("§5 · settlement carries the marker (PLAN §3 propagation, 04 A17)");
     `${playerRefund.length} row(s), marker ${playerRefund[0]?.houseBotId}`);
 }
 
+// ═══ §5n6 · a real Up & Down pair settles through the ordinary pool books ═══════════════════
+if (w.onPostgres) {
+  section("§5n6 · Postgres: two desk holders settle one paired round");
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const uds: Any = await import("../../src/lib/server/updown-service.ts");
+  const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  const { poolFee }: Any = await import("../../src/lib/payout.ts");
+  const { trialBalance }: Any = await import("../../src/lib/server/ledger.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture", addedBy: "system" });
+  await w.limits({ gCapPairRoundsPerDay: 2, gCapPairDailyTzs: 20_000, gMaxBetsPerMinute: 120 });
+  const asset = await cfg.createAsset({ key: `M${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin",
+    iconKey: "crypto", priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2,
+    minMoveTicks: 2 }, OFFICER);
+  if (!asset.ok) throw new Error(`5n6 asset: ${asset.error}`);
+  await cfg.setAssetEnabled(asset.data.id, true, OFFICER);
+  const madeChain = await cfg.createChain({ assetId: asset.data.id, durationMinutes: 15 }, OFFICER);
+  if (!madeChain.ok) throw new Error(`5n6 chain: ${madeChain.error}`);
+  await cfg.setChainState(madeChain.data.id, "RUNNING", OFFICER);
+  const chain = await udd.chainStore.get(madeChain.data.id);
+  // `cleanGridAnchor` CEILS; flooring here keeps the opening boundary at least a minute in the past.
+  const boundary = new Date(Math.floor((Date.now() - 60_000) / (5 * 60_000)) * (5 * 60_000)).toISOString();
+  const openObservation = await udd.observationStore.ensure(asset.data.id, boundary);
+  await udd.observationStore.confirm(openObservation.id, { price: 60_000,
+    sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: new Date().toISOString(),
+    evidence: "BTC quoted 60000", confidence: 96, model: "test-stub", rawHash: `money_pair_${process.pid}` });
+  const opened = await uds.openRound(chain, boundary, openObservation.id, 60_000);
+  if (!opened.ok) throw new Error(`5n6 round: ${opened.error}`);
+  const round = await udd.roundStore.get(opened.data.id);
+  const marketId = round.marketId;
+  const openedMarket = await w.svc.getMarket(marketId);
+  const cutoffMs = Math.min(Date.parse(boundary) + 15 * 60_000,
+    Date.parse(openedMarket.selectionClosedAt ?? openedMarket.resolutionAt));
+  const deadlineAt = new Date(cutoffMs).toISOString();
+  const staleAt = new Date(cutoffMs - 1_000).toISOString();
+  const yes = await w.bot();
+  const no = await w.bot();
+  const identity = async (userId: string, fullName: string, dob: string) => {
+    const now = new Date().toISOString();
+    await w.db.kyc.upsert({ id: `kyc_${userId}`, userId, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
+      idType: null, idNumber: null, idVerifiedAt: null, fullName, dob, documents: [], extraRequests: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now });
+  };
+  await identity(yes.userId, "Fixture Money Holder One", "1990-01-02");
+  await identity(no.userId, "Fixture Money Holder Two", "1991-03-04");
+  await w.setCaps(no.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 2 } } });
+  const yesStart = (await w.bal(yes.userId)).balance;
+  const noStart = (await w.bal(no.userId)).balance;
+  const opener = await w.intent(yes, marketId, { kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 10_000,
+    deadlineAt, staleAt });
+  const yesBet: Any = await w.place(yes, opener);
+  ok("5n6.1 · first holder's opener places 10,000 on YES", yesBet.ok === true, show(yesBet));
+  if (!yesBet.ok) throw new Error("5n6 opener failed; cannot prove settlement");
+  const pair = await w.intent(no, marketId, { kind: "PAIR", anchorKey: `pair:${marketId}`,
+    productLine: "UPDOWN", side: "NO", stakeTzs: 5_000, deadlineAt, staleAt });
+  const noBet: Any = await w.place(no, pair);
+  ok("5n6.2 · second holder's PAIR places 5,000 on NO, half the opposite stake", noBet.ok === true, show(noBet));
+  if (!noBet.ok) throw new Error("5n6 pair failed; cannot prove settlement");
+  ok("5n6.3 · both holders' cash wallets fell by exactly their own stakes",
+    yesStart - (await w.bal(yes.userId)).balance === 10_000
+      && noStart - (await w.bal(no.userId)).balance === 5_000);
+
+  const closePrice = Math.ceil(round.upTarget ?? 60_100) + 100;
+  const closeObservation = await udd.observationStore.ensure(asset.data.id, round.closesAt);
+  await udd.observationStore.confirm(closeObservation.id, { price: closePrice,
+    sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: new Date().toISOString(),
+    evidence: `BTC quoted ${closePrice}`, confidence: 96, model: "test-stub", rawHash: `money_pair_close_${process.pid}` });
+  const settled: Any = await uds.closeRound(round.id, closeObservation.id, closePrice);
+  ok("5n6.4 · the round resolves UP and settles both positions through the normal path",
+    settled.ok === true && settled.data?.outcome === "UP" && settled.data?.settled === true, show(settled));
+  if (!settled.ok || !settled.data?.settled) throw new Error("5n6 round did not settle; cannot prove books");
+  const yesPos = await w.mdal.positionStore.get(yesBet.data.positionId);
+  const noPos = await w.mdal.positionStore.get(noBet.data.positionId);
+  const payout = (await w.txnsFor(yesPos.id)).find((t: Any) => t.type === "BET_PAYOUT");
+  const noPayout = (await w.txnsFor(noPos.id)).find((t: Any) => t.type === "BET_PAYOUT");
+  ok("5n6.5 · YES wins with its marker, NO loses without a payout, and both positions retain their markers",
+    yesPos.status === "WIN" && noPos.status === "LOSS" && yesPos.houseBotId === yes.botId
+      && noPos.houseBotId === no.botId && payout?.houseBotId === yes.botId && noPayout == null);
+
+  const market = await w.svc.getMarket(marketId);
+  const rates = w.svc.ratesFor(market);
+  const fee = poolFee(10_000, 5_000, rates, "YES").fee;
+  const expectedTra = Math.round(fee * rates.traTaxOnCommissionRate);
+  const expectedGbt = Math.round(fee * rates.gbtLevyOnCommissionRate);
+  const booked: Any[] = await w.prisma()!.$queryRawUnsafe(
+    `SELECT coalesce(sum("amount") FILTER (WHERE "account" = $1), 0)::text AS "pool",`
+      + ` coalesce(sum("amount") FILTER (WHERE "account" = 'HOUSE:TRA_LEVY'), 0)::text AS "tra",`
+      + ` coalesce(sum("amount") FILTER (WHERE "account" = 'HOUSE:GBT_LEVY'), 0)::text AS "gbt",`
+      + ` coalesce(sum("amount") FILTER (WHERE "account" = 'HOUSE:COMMISSION'), 0)::text AS "commission"`
+      + ` FROM "LedgerEntry" WHERE "marketId" = $2`, `POOL:${marketId}`, marketId);
+  const line = booked[0];
+  ok("5n6.6 · pool clears and TRA plus GBT are booked on the fee, with the remainder as commission",
+    fee > 0 && expectedTra > 0 && expectedGbt > 0 && Number(line.pool) === 0
+      && Number(line.tra) === expectedTra && Number(line.gbt) === expectedGbt
+      && Number(line.commission) === fee - expectedTra - expectedGbt,
+    JSON.stringify({ fee, expectedTra, expectedGbt, booked: line }));
+  ok("5n6.7 · only the winner receives the net pool; each holder's final wallet equals stakes and payout",
+    payout?.amount === 15_000 - fee && (await w.bal(yes.userId)).balance === yesStart - 10_000 + payout.amount
+      && (await w.bal(no.userId)).balance === noStart - 5_000);
+  const books: Any = await trialBalance();
+  ok("5n6.8 · the paired round leaves global and both holder trial balances clean",
+    books.globalBalanced === true && books.imbalancedGroups.length === 0
+      && !(books.drift as Any[]).some((d) => d.userId === yes.userId || d.userId === no.userId),
+    JSON.stringify({ globalSum: books.globalSum, imbalanced: books.imbalancedGroups.length,
+      pairHolderDrift: (books.drift as Any[]).filter((d) => d.userId === yes.userId || d.userId === no.userId) }));
+}
+
 // ═══ §6 · sanctioned change (b): a key is never someone else's receipt ═════════════════════
 section("§6 · (b) a reused key refuses instead of replaying another account's bet");
 {

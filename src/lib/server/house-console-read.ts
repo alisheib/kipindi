@@ -751,6 +751,7 @@ const CONSOLE_DUTY_PHRASE: Readonly<Record<string, string>> = {
   lossStops: "checking the day's losses against the limits",
   walletMissing: "checking each holder's wallet is still there",
   fillOpener: "planning the next stakes",
+  pair: "planning pair rounds",
   oversight: "the minute-by-minute oversight pass",
   hourly: "the hourly summaries",
 };
@@ -1430,6 +1431,8 @@ const CONSOLE_LIMIT_KEY: Readonly<Record<LimitField, string>> = {
   gCapStaffChosenDailyTzs: "targeted-daily-tzs",
   gTargetsMaxActive: "max-active-targets",
   gStaffChosenMaxCounterpartyShare: "one-player-share",
+  gCapPairRoundsPerDay: "pair-rounds-per-day",
+  gCapPairDailyTzs: "pair-tzs-per-day",
 };
 
 /** Key → column, built from the one table above so the two can never disagree. ⛔ An unknown key is REFUSED. */
@@ -1523,6 +1526,7 @@ export function unsetCaptionFor(field: string, on: boolean): string {
     return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;
   }
   if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";
+  if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no pair rounds can be placed.";
   return "Not set — this account cannot place a bet.";
 }
 
@@ -2066,6 +2070,7 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer. Only polls created after the desk is switched on and after this account is started.",
   enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
   targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
+  otherSide: "Let this account answer a player's stake when another account already holds the opposite side. A pair round also needs this on.",
 };
 
 /**
@@ -2110,7 +2115,7 @@ const CONSOLE_LIST_FIELDS: readonly ConsoleListField[] = ["chains", "categories"
 /** The form's four switch sections, in the order the form draws them. ⛔ Neutral words; "Modes" is `FIELD_META`'s.
  *  ⚠️ IT SITS HERE, ABOVE THE NUMERIC TABLES, because two of them read it at module load — and a `const` read
  *  before its declaration is a temporal-dead-zone throw on IMPORT, which takes every route in the section. */
-const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand" } as const;
+const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand", pairing: "Pairing" } as const;
 
 /**
  * ⛔ THE 33 LEAVES THAT HAD NO CONTROL ON ANY SCREEN, AND WHAT THAT MEANT — measured on 2026-09-22, register A1.
@@ -2175,6 +2180,8 @@ const CONSOLE_RULE_KEY: Readonly<Record<string, string>> = {
   "enterNow.thinStakeTzs": "enter-now-thin-stake",
   "enterNow.openerStakeTzs": "enter-now-first-stake",
   "display.countsAs": "counts-as",
+  "share.matchPct": "pair-round-share",
+  "share.matchPerDay": "pair-rounds-account-per-day",
 };
 
 /** The one choice on the form that is not a number: how a counter-stake's amount is worked out. */
@@ -2242,6 +2249,8 @@ export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
   /* Owner ruling 2026-10-11 ("a desk account may count as more than one predictor"). Display only: no money moves. */
   "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change.",
+  "share.matchPct": "A second account may take the other side of an Up & Down round with no player stakes, at this share of the first account's open stake. Zero turns this off.",
+  "share.matchPerDay": "The most pair rounds this account may place in one EAT day. Zero turns pairing off for this account even when the desk budget is set.",
 };
 
 /**
@@ -2384,6 +2393,7 @@ const CONSOLE_FLAG_KEY = {
   pollsOpener: "polls-opener",
   enterNow: "enter-now",
   targeting: "targeted-stakes",
+  otherSide: "answer-other-side",
 } as const;
 
 const FLAG_KEYS: readonly string[] = Object.values(CONSOLE_FLAG_KEY);
@@ -2408,6 +2418,7 @@ const CONSOLE_RULES_FIELD_KEY: Readonly<Record<string, string>> = {
   ...Object.fromEntries(SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => [`modes.${p}.${m}`, modeFlagKey(p, m)]))),
   "enterNow.enabled": CONSOLE_FLAG_KEY.enterNow,
   "targeting.enabled": CONSOLE_FLAG_KEY.targeting,
+  "share.otherSide": CONSOLE_FLAG_KEY.otherSide,
   /* ⭐ AND SINCE 2026-09-23 EVERY NUMERIC LEAF, THE AMOUNT CHOICE AND THE SCHEDULE — because they all have a
      control now. This map's own docblock says an id outside it "still has no box and is said in `error` alone,
      honestly"; before the editor that was 33 of the 45 leaves, so a refusal on a delay or a window arrived as a
@@ -2756,6 +2767,7 @@ export async function houseRulesSaveForConsole(
       },
       enterNow: input.flags[CONSOLE_FLAG_KEY.enterNow],
       targeting: input.flags[CONSOLE_FLAG_KEY.targeting],
+      otherSide: input.flags[CONSOLE_FLAG_KEY.otherSide],
     },
   });
   if (saved.ok) {
@@ -3847,6 +3859,10 @@ const CONSOLE_SKIP_SENTENCE = {
   CAP_GLOBAL_EXPOSURE: "The desk's open exposure limit was reached",
   CAP_GLOBAL_BETS_PER_MINUTE: "The desk's bets-per-minute limit applied",
   CAP_GLOBAL_BETS_PER_DAY: "The desk's daily bet limit was reached",
+  CAP_PAIR_ROUNDS_PER_DAY: "The desk's pair-round limit for today was reached",
+  CAP_PAIR_DAILY_TZS: "The desk's pair-stake TZS limit for today was reached",
+  CAP_PAIR_ACCOUNT_PER_DAY: "This account's pair-round limit for today was reached",
+  SAME_HOLDER: "Both sides would belong to the same holder",
   CAP_COUNTERPARTY_COUNT: "That player had been met as often as allowed today",
   CAP_COUNTERPARTY_TZS: "The TZS set against that player today reached its limit",
   CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "The desk had used today's manual stakes",
@@ -4576,10 +4592,9 @@ function consoleFeedLink(base: string, params: Record<string, string | undefined
  * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
  */
 export const CONSOLE_FEED_AXES = {
-  /* ⛔ N5 · PAIR is a kind the schema accepts and nothing writes until N6, so the rail does not offer it: a chip that can
-     only ever select nothing is 432(a)'s dead control. N6 drops the filter in the commit that writes the first PAIR row.
-     The feed still has a word for one (`CONSOLE_INTENT_KIND_WORD` is TOTAL), so a row could never render blank. */
-  kind: { label: "Type", all: "Any type", members: INTENT_KINDS.filter((k) => k !== "PAIR") as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
+  /* N6 writes PAIR intents. The rail reads the same closed kind list as the feed, so its Pairing chip
+     remains available whenever a pair row can appear. */
+  kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
   product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
   outcome: {
     label: "Outcome", all: "Any outcome", members: INTENT_STATUSES as readonly string[],
@@ -5208,6 +5223,7 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1, ctx: Pick<ParseCon
     { section: "Scope", name: FIELD_META["scope.categories"].label, value: listWords(rules.scope.categories.map(categoryWord)), unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
+    { section: CONSOLE_FLAG_SECTION.pairing, name: "Answer on the other side", value: rules.share.otherSide ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     /**
      * ⭐ THE SIX ENTRY MODES, EVERY NUMBER AND THE SCHEDULE — THE RECORD SAYS WHAT THE ACCOUNT WAS SET TO DO
      * (2026-09-23 · register A1 item 6).
@@ -6212,6 +6228,7 @@ export async function houseDetailForConsole(
       { key: CONSOLE_FLAG_KEY.pollsOpener, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.opener, on: formSeed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
       { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: formSeed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
       { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: formSeed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
+      { key: CONSOLE_FLAG_KEY.otherSide, section: CONSOLE_FLAG_SECTION.pairing, label: "Answer on the other side", on: formSeed.rules.share.otherSide, help: CONSOLE_FLAG_HELP.otherSide },
     ],
     /**
      * ⭐ EVERY NUMERIC LEAF, IN `FIELD_ORDER`, GROUPED BY ITS OWN SECTION (2026-09-23 · register A1).
@@ -8377,17 +8394,17 @@ const WHY_IDLE_COPY = {
   /* ⛔ NEUTRAL, AND THE LEXICON MEASURED IT (453). This sentence named the three entry modes, and one of
         them IS the mechanism's name — the console may not print it. It names the two switches instead, which
         is also the shorter sentence, and the Rules tab carries each mode's own neutral words. */
-  allModesOff: "This account's rules leave it nothing to stake on: either no product is switched on, or no entry mode is. Its Rules tab is where both are set.",
+  allModesOff: "This account's opening and filling rules leave it nothing in this sample: either no product is switched on, or no entry mode is. Pairing is outside this check. Its Rules tab is where the controls are set.",
   /* ⭐ THE CORRECTLY CONFIGURED ACCOUNT THIS PANEL WOULD OTHERWISE SLANDER. An account whose only entry mode
      is the one a player's own stake triggers offers the planner nothing to walk, which is not a fault and
      must not be reported as one. */
-  reactsOnly: "This account only stakes when a player does — it waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Nothing is wrong, and there is nothing here to count.",
-  nothingOpen: "No market was open in the window this account looks at. Between rounds that is normal and nothing is wrong.",
-  working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
+  reactsOnly: "This account waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Pairing is outside this check and may still be available.",
+  nothingOpen: "No market was open in the opening and filling window this account looks at. Between rounds that is normal. Pairing is outside this check.",
+  working: "This account would place an opening or filling stake right now. The desk plans these stakes each pass; pairing is outside this check.",
   /* ⭐ N3 · THE ANSWER THIS PANEL COULD NOT GIVE. It walked the account alone, so an account that never reached the
      front of the queue was told it "would stake right now" while it placed nothing for fifteen days. */
-  waitingTurn: "This account could stake right now, but another account is more likely to be drawn first on each of these markets. Accounts are drawn at random, the one that has waited longest most likely, so it gets its share of the next markets — nothing needs changing.",
-  refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
+  waitingTurn: "This account could open or fill now, but another account is more likely to be drawn first on these markets. Accounts are drawn at random, weighted by waiting time. Pairing is outside this check.",
+  refused: "None of the opening or filling markets looked at could be staked right now. The reasons are below, commonest first. Pairing is outside this check.",
   /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the engine —
      and this panel returned nothing at all — the officer clicked and the page did not change. */
   rulesUnreadable: "This account's saved rules cannot be read, so nothing is staked from it. Its Rules tab draws the form again, seeded from the closest readable values — open it, check every figure, and save.",
@@ -8416,7 +8433,7 @@ function scannedSentence(seen: { considered: number; wouldStake: number; rankedB
   const behind = seen.rankedBehind > 0
     ? ` On ${formatNumber(seen.rankedBehind)} more it could stake, but another account is more likely to be drawn first.`
     : "";
-  return `${head}, and ${stakeable}.${behind} That is a sample of what is open now, never the whole book.`;
+  return `${head}, and ${stakeable}.${behind} This samples opening and filling now; pairing is outside this check.`;
 }
 
 export async function houseWhyIdleForConsole(

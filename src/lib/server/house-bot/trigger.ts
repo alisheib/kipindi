@@ -334,14 +334,20 @@ async function loadFlags(bot: Candidate, row: DecidedRow, s: DecideScope): Promi
      spent the player's ONE reaction (`hbi_counter_anchor_uq`) on MARKET_HELD, leaving them with no opponent and a
      refund. 15 rounds a week on production went that way. */
   const poolsHoldMoney = s.view.yesPool > 0 || s.view.noPool > 0;
-  if ((await marketHeld(bot.botId, s.view.id, { ignoreDeadOpeners: poolsHoldMoney })).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };
+  const playerHasMoney = s.pools.YES.nonHouse > 0 || s.pools.NO.nonHouse > 0;
+  if ((await marketHeld(bot.botId, s.view.id, {
+    ignoreDeadOpeners: poolsHoldMoney,
+    ignoreDeadPairs: playerHasMoney,
+    sideAwareSide: !staffChosen && bot.rules.share.otherSide ? row.side : undefined,
+  })).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };
   // Ruling 94 · the seam's money caps at the smallest stake the bot could place; the trigger account is the counterparty.
   const facts = await loadCapFacts(bot.stored, s.view.id, { control: s.f.control, nowMs: s.f.nowMs, staffChosen, counterpartyUserId: s.row.userId });
   /* N3 · then the account-owned refusals the seam would meet at the row's due time, with the row's own stake — and
      without this account's own DEAD openers on this market (review finding 4): they can never place, so neither their
      stake, their count nor their due time may refuse the one reaction this player gets. */
   const deadOwn = poolsHoldMoney
-    ? (await houseBotIntentStore.listLiveOnMarket(s.view.id)).filter((i) => i.kind === "OPENER" && i.houseBotId === bot.botId)
+    ? (await houseBotIntentStore.listLiveOnMarket(s.view.id)).filter((i) =>
+        (i.kind === "OPENER" || (playerHasMoney && i.kind === "PAIR")) && i.houseBotId === bot.botId)
     : [];
   const code = capPrecheck(facts, Math.max(bot.stakeMinTzs ?? s.bounds.min, s.bounds.min))
     ?? (row.status === "PENDING" ? capAtDue(bot.stored, { balance: facts.balance, rates: withoutQueued(bot.rates, deadOwn) }, row) : null);

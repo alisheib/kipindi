@@ -8,6 +8,49 @@
 
 ---
 
+## 2026-10-15 · Two-sided desk play under a daily budget (2026-10-14 owner rulings, N6)
+
+**Authority.** Ali answered on 2026-10-14 that desk accounts may stake against each other in an empty round, **“Yes,
+with a daily budget”**, with one control to stop all of it; paired accounts must have **different holders**; and every
+AML flag on two desk accounts that staked against each other must **always be escalated to him** before closure. His
+statement that the Gaming Board has given full authority remains a verbal owner report, with no regulator document
+on file. On 2026-10-15 he authorised final validation and release. This entry amends PLAN I3 and `docs/RULES.md`
+§2.11 in the same commit as the code, under RULES §5.
+
+**I3 amended.** At most one desk account may hold each side of a market, and one account may hold only one side
+(OPPOSITE_SIDE). A second account can participate in two bounded ways:
+
+1. For an untargeted answer to a player, `share.otherSide` lets it take the unheld opposite side even though another
+   desk account holds the player's side. Its amount is still sized against the **player's locked money only**.
+2. In an Up & Down round with no player money, an account may take the opposite side of one placed desk stake at
+   `floor(other open stake × matchPct / 100)`, never above that open stake. Polls are not paired.
+
+A desk stake never triggers another desk account's answer. Openers, fills, Enter now and targets retain their
+whole-market hold. Staff and agent stakes remain excluded as triggers.
+
+**The stop control starts empty.** Two desk-wide Limits fields, pair rounds per EAT day and pair TZS per EAT day,
+both start empty. Either empty field means no pair can place, and clearing either field stops all pairing, including
+queued pairs, without a deploy. Both are checked inside the bet's locks, counting placed pairs today. Each account's
+`matchPct` and `matchPerDay` default to zero, and `otherSide` defaults off. Recommended values never enable them.
+
+**Different holders are mandatory.** The planner omits a second account that belongs to the same person as the
+first, and the bet path refuses such a pair inside its locks. The same-person rule uses verified identity, confirmed
+email, or normalised full name with date of birth. Balance moving between the two holders is squared up outside
+the app, as D3b already provides.
+
+**AML owner escalation.** The existing detector reports stake spikes and high betting frequency, not opposite-side
+pairing as a separate pattern, and its `/admin/aml` list has no stored closure state. A flag on a designated desk
+account is marked for owner review and sends a once-only owner bell. The officer procedure in `docs/HOUSE-BOTS.md`
+§ “Desk pairs and AML flags” requires the officer to check whether two designated accounts were paired, record the
+evidence, and bring every such finding to Ali before closure. The owner then closes or files it. A flag involving a
+player is never dismissed as an authorised pair. A separate pair-pattern detector with a durable owner-only close
+would require a further build and decision.
+
+**Accepted consequences, stated before the ruling.** A paired round settles instead of refunding, so the ordinary
+platform fee and TRA/GBT levies on that fee apply. Ordinary turnover in the Gaming Board pack and tax report includes
+both stakes (D20), and the player-visible count reflects both accounts' `countsAs` values. Accepted risk 21 extends
+to the published collusion language.
+
 ## 2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted
 
 **Authority.** Ali, 2026-10-14, answering the consolidated list (VODACOM-PLAN §0 "WAITING ON ALI") in this session's

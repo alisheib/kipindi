@@ -1915,6 +1915,9 @@ section("§2 · the strip, the band, the roster and every failure");
       REQ.length >= 8 && REQ.every((f) => off(f) === MASTER), j(REQ.filter((f) => off(f) !== MASTER)));
     ok("1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption — the blanket sentence would be a LIE on a staff-chosen cap",
       EXEMPT.length >= 7 && EXEMPT.every((f) => off(f) === TARGETED), j(EXEMPT.filter((f) => off(f) !== TARGETED)));
+    const PAIR_BUDGETS = ["gCapPairRoundsPerDay", "gCapPairDailyTzs"];
+    ok("1.364 · either empty pairing budget says pairing is off, and neither enters CLEAR_EXEMPT",
+      PAIR_BUDGETS.every((f) => !EXEMPT.includes(f) && off(f) === "Not set — no pair rounds can be placed."));
     ok("1.364 · every cap the seam reads UNCONDITIONALLY gets the third caption, and it says `account` — ruling 453 outranks 364's own wording",
       UNCONDITIONAL.every((f) => off(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => off(f))));
     /* ━━ 1.547 · RULING 306's DEFECT, ONE CARD LOWER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2035,14 +2038,20 @@ section("§2 · the strip, the band, the roster and every failure");
         && u2.unsetRequired === 2,
       j({ one: u2one.unsetRequired, two: u2.unsetRequired }));
     /* ⛔ WITH EVERY LIMIT SET, NO ROW CARRIES IT — an anchor that always renders is an anchor that means nothing. */
-    /* ⚠️ `gTargetsMaxActive` is NOT in the world's OPEN_LIMITS, so it is set explicitly here: an "everything set"
-       control that leaves one field null is not the control it claims to be. */
-    await w.limits({ gTargetsMaxActive: 50 });
+    /* These optional limits are intentionally absent from the world's OPEN_LIMITS, so set them
+       explicitly before asserting that every field is filled. */
+    await w.limits({ gTargetsMaxActive: 50, gCapPairRoundsPerDay: 50, gCapPairDailyTzs: 500_000 });
     const u3 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     ok("1.306 · CONTROL · with every limit set no row carries the anchor and no row carries a caption",
       u3.limits.every((l: Any) => l.firstUnset === false && l.unset === false && l.caption === null)
         && u3.limits.length === (R.LIMIT_FIELDS as readonly string[]).length,
       j({ rows: u3.limits.length, want: (R.LIMIT_FIELDS as readonly string[]).length }));
+    const pairLimitRows = u3.limits.filter((l: Any) => l.section === "Pairing");
+    ok("1.pair.limits · both pair budgets are optional Limits controls with neutral keys, useful help and no recommendation",
+      j(pairLimitRows.map((l: Any) => l.key).sort()) === j(["pair-rounds-per-day", "pair-tzs-per-day"].sort())
+        && pairLimitRows.every((l: Any) => l.optional === true && l.recommended === ""
+          && typeof l.hint === "string" && l.hint.includes("Empty = no pairing.")),
+      j(pairLimitRows.map((l: Any) => [l.key, l.optional, l.recommended, l.hint])));
     /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
      * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one
      * ruling 364 requires a USAGE ROW for — is the one 432(f) missed. */
@@ -3354,7 +3363,7 @@ try {
      * added to the document then lands on this card and in this count together, and a card that quietly
      * stopped painting a section would be red here rather than merely smaller.
      */
-    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 5
+    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 6
       + (R.SCOPE_PRODUCTS as readonly string[]).length * (R.ENTRY_MODES as readonly string[]).length
       + (R.RULE_NUMBER_FIELDS as readonly string[]).length + 1;
     ok("1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes, EVERY numeric rule and the schedule, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
@@ -3379,10 +3388,10 @@ try {
      * the save is conditional on, and the reason naming what Start needs. The old sentence is asserted ABSENT,
      * so the read-only state cannot come back green.
      */
-    ok("1.508 · …and the same facts arrive as INPUTS: one named field per cap, the ten switches, the version the save is conditional on, and a reason that says what Start needs",
+    ok("1.508 · …and the same facts arrive as INPUTS: one named field per cap, eleven switches, the version the save is conditional on, and a reason that says what Start needs",
       v.rulesForm !== null
         && v.rulesForm.caps.length === (R.CAP_FIELDS as readonly string[]).length
-        && v.rulesForm.flags.length === 10
+        && v.rulesForm.flags.length === 11
         /* ⛔ THE VERSION IS READ OFF THE ROW, NOT TYPED AS `1`. The save is CONDITIONAL on this number, so the
            claim is that the form carries the account's CURRENT version — a literal would pass on a fixture
            that happens to be unsaved and say nothing about the one property the CAS depends on. */
@@ -4075,20 +4084,18 @@ try {
     /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
-    /* ⛔ N5 · PAIR is a kind the schema accepts and nothing writes until N6, so the Type axis offers every kind BUT it —
-       a chip that can only ever select nothing is 432(a)'s dead control. The feed still has a word for one ("Pairing"),
-       so a PAIR row could never render blank. */
-    const RAIL_KINDS = (K_INTENT_KINDS as string[]).filter((k) => k !== "PAIR");
+    /* N6 writes PAIR rows, so every intent kind now has a Type option. */
+    const RAIL_KINDS = K_INTENT_KINDS as string[];
     ok("1.410 · the rail is THREE axes, each an 'Any …' option plus one per member of its own closed list, with the live one marked",
       groups.length === 3 && all(groups.map((g) => g.param)) === all(["kind", "product", "outcome"])
         && groups[0].options.length === 1 + RAIL_KINDS.length
         && groups[2].options.some((o: Any) => o.on === true && o.key === "failed")
         && groups[0].options.filter((o: Any) => o.on).length === 1,
       j(groups.map((g) => ({ param: g.param, options: g.options.length, on: g.options.filter((o: Any) => o.on).length }))));
-    ok("1.410 · N5 · the Type axis offers no PAIR chip while nothing writes one — and the feed's word for a PAIR row is \"Pairing\", so such a row never renders blank",
-      (K_INTENT_KINDS as string[]).includes("PAIR") && RAIL_KINDS.length === (K_INTENT_KINDS as string[]).length - 1
-        && !groups[0].options.some((o: Any) => o.label === "Pairing" || o.key === "pairing")
-        && GATEM.CONSOLE_FEED_AXES.kind.word.PAIR === "Pairing" && !GATEM.CONSOLE_FEED_AXES.kind.members.includes("PAIR"),
+    ok("1.410 · N6 · the Type axis offers Pairing for the PAIR rows that can now be written",
+      (K_INTENT_KINDS as string[]).includes("PAIR") && RAIL_KINDS.length === (K_INTENT_KINDS as string[]).length
+        && groups[0].options.some((o: Any) => o.label === "Pairing" && o.key === "pairing")
+        && GATEM.CONSOLE_FEED_AXES.kind.word.PAIR === "Pairing" && GATEM.CONSOLE_FEED_AXES.kind.members.includes("PAIR"),
       j({ kinds: K_INTENT_KINDS, options: groups[0].options.map((o: Any) => o.label), word: GATEM.CONSOLE_FEED_AXES.kind.word.PAIR }));
     ok("1.411 · every rail link carries the tab and every OTHER live filter, and DROPS the page — a filter change that kept the page lands on one the narrowed list no longer has",
       groups.every((g) => g.options.every((o: Any) => o.href.includes("tab=activity") && !/[?&]page=/.test(o.href)))
@@ -6812,7 +6819,7 @@ try {
   /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
   {
     const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
-    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes"].map((k) => [k, false]));
+    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes", "answer-other-side"].map((k) => [k, false]));
     /* ⚠️ The world's open caps put `stakeMaxTzs` ABOVE the live maximum stake, which the validator correctly
        refuses — so the form's own values are posted with that one cap brought inside the live bound. */
     /**
@@ -6934,6 +6941,14 @@ try {
         && (formCache.rules as Any[]).every((r: Any) => typeof r.section === "string" && r.section.length > 0)
         && new Set((formCache.rules as Any[]).map((r: Any) => r.key)).size === RULE_IDS.length,
       j({ rows: formCache.rules?.length, leaves: RULE_IDS.length }));
+    const pairFlag = (formCache.flags as Any[]).find((f: Any) => f.key === "answer-other-side");
+    const pairPct = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-round-share");
+    const pairPerDay = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-rounds-account-per-day");
+    ok("2h.pair.model · the switch and both account pairing numbers start off, have separate controls, and explain their effect",
+      pairFlag?.section === "Pairing" && pairFlag?.on === false && pairFlag?.help?.length >= 30
+        && pairPct?.section === "Pairing" && pairPct?.value === "0" && pairPct?.help?.length >= 30
+        && pairPerDay?.section === "Pairing" && pairPerDay?.value === "0" && pairPerDay?.help?.length >= 30,
+      j({ flag: pairFlag, pct: pairPct, perDay: pairPerDay }));
     /* ⛔ THE SECTION HEADINGS ARE THE ONE WORD HOME'S (453 keeps `FIELD_META`'s own words off this screen). */
     ok("2h.model · the section headings are the console's own words — the three entry sections read `ENTRY_MODE_WORDS`, so a heading and the switch above it cannot be two spellings of one control",
       (R.ENTRY_MODES as string[]).every((m: string) => (formCache.rules as Any[]).some((r: Any) => r.section === R.ENTRY_MODE_WORDS[m]))
@@ -7095,6 +7110,20 @@ try {
       [partial, noSchedule, stranger].every((r: Any) => r.ok === false && r.field === undefined
         && r.error === "This form is out of date. Reload the page and make the change again — nothing was saved."),
       j([partial.error, noSchedule.error, stranger.error]));
+    const pairWithoutSwitch = await send({ "pair-round-share": "25", "pair-rounds-account-per-day": "2" });
+    const pairFlags = Object.fromEntries(((await form()).flags as Any[]).map((f: Any) => [f.key, f.on]));
+    const pairSaved = await send({ "pair-round-share": "25", "pair-rounds-account-per-day": "2" },
+      { flags: { ...pairFlags, "answer-other-side": true } });
+    const pairStored: Any = await w.dal.houseBotStore.get(acct.botId);
+    const pairBack: Any = await form();
+    ok("2h.pair.save · a positive pair share requires the other-side switch, then all three leaves round-trip",
+      pairWithoutSwitch.ok === false && pairWithoutSwitch.field === "pair-round-share"
+        && pairSaved.ok === true && pairStored.rules?.share?.otherSide === true
+        && pairStored.rules?.share?.matchPct === 25 && pairStored.rules?.share?.matchPerDay === 2
+        && (pairBack.flags as Any[]).find((f: Any) => f.key === "answer-other-side")?.on === true
+        && (pairBack.rules as Any[]).find((r: Any) => r.key === "pair-round-share")?.value === "25"
+        && (pairBack.rules as Any[]).find((r: Any) => r.key === "pair-rounds-account-per-day")?.value === "2",
+      j({ refused: pairWithoutSwitch, saved: pairSaved, share: pairStored.rules?.share }));
     STATES.push(["rules-form-numeric", await detail(acct.botId)]);
   }
 

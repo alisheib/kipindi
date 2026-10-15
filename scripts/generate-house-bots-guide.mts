@@ -164,13 +164,13 @@ completely healthy — Active, funded, limits set — and never place a bet. Alw
 </table>
 
 <div class="box"><b class="lead">If nothing is happening, check Opener first</b>
-<p>Counter and Fill both need players to have bet already — on a quiet market they correctly do nothing. Opener is
-the mode that starts things off, so an empty desk with only Counter and Fill enabled is working exactly as told.</p></div>
+<p>Counter needs a player to answer, and Fill needs a side to have money already. On a quiet market they correctly do
+nothing. Opener starts things off, so an empty desk with only Counter and Fill enabled is working as told.</p></div>
 
 <h3>How the desk shares markets between accounts</h3>
-<p>Only one account takes part in a market at a time. When several accounts could take the same market, the desk
-<b>draws one at random</b>. The draw is weighted: an account that has waited longer since its last bet is more likely
-to be drawn, so no account is ever left out, and nobody watching the markets can tell which account will bet next.</p>
+<p>For opening or filling a market, the desk <b>draws one account at random</b> from those that could act. The draw
+is weighted: an account that has waited longer since its last bet is more likely to be drawn. The two-sided options
+below can then let a second account take the opposite side under separate limits.</p>
 <table>
   <thead><tr><th style="width:24%">What is random</th><th>How</th></tr></thead>
   <tbody>
@@ -191,6 +191,36 @@ its schedule, or another of its own limits stops it — the market is not lost. 
 that has not tried it yet (up to four accounts in all). The activity tables show the first account's row as
 <b>Passed on</b>. It is normal and needs no action; if one account is passed over often, look at its limits and
 its balance.</p></div>
+
+<h2>2A · Two-sided play starts off</h2>
+<p>Two accounts may take opposite sides, with <b>one account on each side</b> and a different holder for each
+account. A desk stake never triggers another desk account's answer. Opening, filling and stakes entered by an
+officer still keep the whole-market hold.</p>
+<table>
+  <thead><tr><th style="width:25%">Option</th><th>When it can act</th><th style="width:31%">Account setting</th></tr></thead>
+  <tbody>
+    <tr><td><b>Answer a player</b></td><td>A player joins the side that another desk account holds. A second
+      account may answer the player's stake on the unheld side; its amount is based only on the player's money.</td>
+      <td>On that second account's Rules tab, turn on <b>Answer on the other side</b>. Counter and the account's
+      usual scope and limits still apply.</td></tr>
+    <tr><td><b>Pair an empty Up &amp; Down round</b></td><td>One desk account has staked and no player has staked
+      on either side. A second account may take the opposite side. Polls are not paired.</td>
+      <td>On the second account's Rules tab, turn on <b>Answer on the other side</b>, set <b>Pair rounds · share of
+      other stake</b> above 0%, and set <b>Pair rounds per day</b> above zero. The pair amount is the share of the
+      first account's open stake, rounded down and never larger than it.</td></tr>
+  </tbody>
+</table>
+<div class="box stop"><b class="lead">The desk pair budget starts empty</b>
+<p>On Limits, <b>Pair rounds per day</b> and <b>Pair TZS per day</b> must both be set before any empty-round pair
+can place. Either one left empty means no pair rounds. Clearing either one later stops new pairs across the whole
+desk at once, including pairs already queued. The master switch still stops all desk betting.</p></div>
+<div class="box"><b class="lead">When you choose to allow pairs</b>
+<p>Start with a small desk budget, for example <b>50 rounds</b> and <b>TZS 50,000</b> per EAT day. Set the account
+switch and numbers above only for accounts you choose. Allow for the extra stakes in the desk's daily stake and
+bets-per-day limits, and keep pair fees well under its daily loss limit: reaching the realised loss stop turns the
+whole desk off. Review every suspicious-bet flag on a desk account; if the investigation confirms two desk
+accounts paired, send the evidence to the owner before closing it. A flag involving a player is never cleared as an
+authorised desk pair.</p></div>
 
 <h3>Recommended starting settings for Up &amp; Down</h3>
 <p>Up &amp; Down rounds are short, and the price the desk decides on goes stale within a few minutes, so these values
@@ -232,17 +262,17 @@ keep the desk inside the round:</p>
 <h2 class="pb">4 · Every setting, and what to set it to</h2>
 <p>These are on the <b>Rules</b> tab. Each one also shows this explanation, its allowed range and its recommended
 value on screen, under the box. <b>Use starting values</b> fills every empty box with the recommended figure at
-once; it does not save by itself.</p>
+once; it does not save by itself. It leaves the two-sided settings off.</p>
 <p class="sub">${esc(generatedNote)}</p>
 ${settingsTables}
 
 <h2 class="pb">5 · An account is Active but not betting</h2>
 <p><b>Ask the desk first.</b> On the account's own page, beside "Holder's transactions", there is a link that
 reads <b>"Why is it not staking?"</b>. Press it and the desk checks the markets that are open right now, exactly
-the way it does when it decides whether to bet, and tells you in plain words what it found — for example
+the way it does when it plans opening and filling, and tells you in plain words what it found — for example
 "51 markets looked at (25 to open and 26 to fill), and this account would stake on 1 of them right now", or the
 reasons it refused, commonest first. It changes nothing and stakes nothing; it only reports. If you have changed
-a setting, press it again and the answer changes with it.</p>
+a setting, press it again and the answer changes with it. Pairing is outside this sample.</p>
 <p>It may also answer that the account <b>could stake, but another account is more likely to be drawn first</b>.
 That is not a fault: markets are drawn at random between the accounts that can take them, the longest-waiting most
 likely, so this account gets its share of the next markets that open. Nothing needs changing.</p>
@@ -322,8 +352,9 @@ other player.</p></div>
 <p>On the <b>Limits</b> tab, at two levels: limits on one account, and desk-wide limits that no account may exceed
 between them. The tighter of the two always wins.</p>
 <div class="box stop"><b class="lead">An empty limit refuses; it does not permit</b>
-<p>Leaving a money limit blank does not mean "no limit" — the desk treats an unset limit as a reason to refuse the
-bet. Fill every one in. This is deliberate: a limit nobody set should never be a limit nobody has.</p></div>
+<p>Leaving a core money limit blank does not mean "no limit" — the desk refuses the bet until it is set. Fill the
+core limits before starting. The two optional pair budgets are deliberately empty on release; leave either empty
+to keep empty-round pairing off.</p></div>
 
 <div class="box"><b class="lead">How many accounts, and how fast</b>
 <p><b>Max designated bots</b> can be anything from 1 to 100. Set it to the number of accounts you actually run — the

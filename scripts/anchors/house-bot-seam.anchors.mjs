@@ -143,13 +143,44 @@ export const MUTATIONS = [
     suite: "seam",
   },
   {
-    // ⭐ N5 (2026-10-15): the PAIR kind ships its schema alone, so a PAIR row must fail closed inside the locks until N6
-    // writes what makes a pair legal. Waving it through is a bet nothing decided.
-    name: "seam.ts — N5 · a PAIR row passes the condition step instead of failing closed",
+    // N6: a PAIR must still fail closed when its one-sided desk condition is gone.
+    name: "seam.ts — N6 · a PAIR row passes after the condition is gone",
     file: SEAM,
-    from: `    return refuse(conditionGone("PAIR"));`,
-    to: `    return { refusal: null, pool };`,
+    from: `      || stake > Math.floor(market.otherBotOpenStakeTzs * share.matchPct / 100)) return refuse(conditionGone("PAIR"));`,
+    to: `      || stake > Math.floor(market.otherBotOpenStakeTzs * share.matchPct / 100)) return { refusal: null, pool };`,
     expect: "3p.1 · a PAIR row is refused as a lost condition",
+    suite: "seam",
+  },
+  {
+    name: "seam.ts — N6 · the PAIR's in-lock holder check is removed",
+    file: SEAM,
+    from: `    if (await sameHouseHolder(intent.botUserId, market.otherBotUserId, tx)) return refuse(conflict("SAME_HOLDER"));`,
+    to: `    if (false) return refuse(conflict("SAME_HOLDER"));`,
+    expect: "3p2.2 · a second desk account with the opener's KYC name and DOB refuses SAME_HOLDER",
+    suite: "seam",
+  },
+  {
+    name: "seam.ts — N6 · the current share percent no longer binds the PAIR stake",
+    file: SEAM,
+    from: `      || stake > Math.floor(market.otherBotOpenStakeTzs * share.matchPct / 100)) return refuse(conditionGone("PAIR"));`,
+    to: `      || false) return refuse(conditionGone("PAIR"));`,
+    expect: "3p2.5 · a PAIR stake below the opposite 10,000 but above the current 50% share loses its condition in H3",
+    suite: "seam",
+  },
+  {
+    name: "seam.ts — N6 · a reached pair-round budget no longer binds at H4",
+    file: SEAM,
+    from: `    if (allPairs.count >= control.gCapPairRoundsPerDay) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));`,
+    to: `    if (false) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));`,
+    expect: "3b.3 · a newly placed pair exhausts the desk's remaining round budget",
+    suite: "seam",
+  },
+  {
+    name: "seam.ts — N6 · malformed raw pair limit can become effectively unbounded",
+    file: SEAM,
+    from: `Number(s.matchPerDay) <= 28_800`,
+    to: `Number(s.matchPerDay) <= Number.MAX_SAFE_INTEGER`,
+    expect: "3b.6 · a malformed raw daily account limit cannot open the in-lock PAIR gate",
     suite: "seam",
   },
 ];

@@ -55,7 +55,8 @@ import * as LANE_E from "./lib/house-bot-fleet-lane-e.mts";
 import * as LANE_F from "./lib/house-bot-fleet-lane-f.mts";
 import * as LANE_G from "./lib/house-bot-fleet-lane-g.mts";
 import * as LANE_M from "./lib/house-bot-fleet-lane-money.mts";
-const LANE_MODULES = [LANE_D, LANE_E, LANE_F, LANE_G, LANE_M] as const;
+import * as LANE_H from "./lib/house-bot-fleet-lane-h.mts";
+const LANE_MODULES = [LANE_D, LANE_E, LANE_F, LANE_G, LANE_M, LANE_H] as const;
 const ROSTER_ALL = [...ROSTER, ...LANE_MODULES.flatMap((m) => m.roster)];
 const EXPECT_ALL: Record<string, unknown> = Object.assign({}, EXPECT, ...LANE_MODULES.map((m) => m.expect));
 {
