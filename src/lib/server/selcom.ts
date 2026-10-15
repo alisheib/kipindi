@@ -382,17 +382,6 @@ export function selcomInitiateVerdict(json: SelcomEnvelope): "ACCEPTED" | "FAILE
   return "FAILED";
 }
 
-/** Map a Selcom status-query envelope (order-status / walletcashin query) to a
- *  terminal settlement verdict. `000`/SUCCESS = done; a hard-fail code = failed;
- *  INPROGRESS/AMBIGUOUS = null (not terminal — query again later). */
-function envelopeSettlementVerdict(json: SelcomEnvelope): "CONFIRMED" | "FAILED" | null {
-  const code = String(json.resultcode ?? "").trim();
-  const result = String(json.result ?? "").toUpperCase();
-  if (code === "000" || result === "SUCCESS") return "CONFIRMED";
-  if (code === "111" || code === "927" || code === "999" || ["INPROGRESS", "PENDING", "AMBIGOUS", "AMBIGUOUS"].includes(result)) return null;
-  return "FAILED";
-}
-
 // ── Deposit (collection): create-order-minimal → wallet-payment (USSD push) ─────
 // Reason taxonomy is MONEY-SAFETY load-bearing:
 //   PROVIDER_DOWN / DECLINED = DEFINITIVE — the customer was NOT charged (order
@@ -829,8 +818,14 @@ export async function selcomPayout(env: SelcomEnv, rail: PayoutRail, opts: Payou
     return { ok: false, reason: "AMBIGUOUS", detail };                             // other HTTP error — may have been accepted
   }
   if (selcomInitiateVerdict(res.json) === "FAILED") {
-    console.error(`[selcom] ${spec.process} REJECTED (${opts.transid}) — ${detail}`);
-    return { ok: false, reason: "FAILED", detail };                                // definitive reject — safe to reverse
+    // The collection classifier has a broad catch-all. On a payout, an unknown
+    // 2xx envelope is not proof that Selcom refused the transfer: the provider may
+    // have accepted it before returning a novel/malformed reply. Keep the hold and
+    // this rail's transid for a status query. The published wallet-cashin/selcom-
+    // pesa/huduma docs do not identify a 2xx code as definitive non-dispatch;
+    // a code from the separate IMT product cannot authorize a refund here.
+    console.error(`[selcom] ${spec.process} AMBIGUOUS (${opts.transid}) — ${detail}`);
+    return { ok: false, reason: "AMBIGUOUS", detail };
   }
   console.log(`[selcom] ${spec.process} accepted (${opts.transid}) — ${detail}`);
   return { ok: true, detail }; // async (incl. 999/INPROGRESS) — the payout query confirms/reverses
@@ -885,18 +880,19 @@ export async function selcomVerifyOrder(env: SelcomEnv, orderId: string): Promis
  *
  * Every rail has its own status endpoint, and each only knows its own transids. Ask
  * `/walletcashin/query` about a payout that went out on `/selcompesa/cashin` and you
- * get an envelope for a transaction it has never heard of. Any resultcode that is not
- * `000/111/927/999` falls through `envelopeSettlementVerdict` to **FAILED** — and the
- * stale reconcile sweep treats FAILED as "the payout definitively did not happen" and
- * refunds the player. The money is already gone. That is a double payment, caused by
- * nothing but asking the wrong endpoint.
+ * get an envelope for a transaction it has never heard of. This historically
+ * defaulted to FAILED and the stale sweep refunded money already sent. The payout
+ * query now holds ambiguous replies, and the recorded rail remains essential for
+ * correct confirmation and diagnosis.
  *
  * So the rail is threaded from the `Transaction` row (`payoutRail`, defaulted through
  * `railOf()`) all the way here. A missing rail resolves to WALLET_CASHIN, which is
  * true for every row written before rails existed.
  *
- * Returns null while the payout is still in progress or the question could not be
- * asked — the caller must then leave the withdrawal PROCESSING and try again later.
+ * Returns null while the payout is still in progress, the answer is contradictory,
+ * or the question could not be tied to this payout. The published query examples
+ * document 000/SUCCESS as paid but do not give a rail-specific terminal negative
+ * code with transaction identity, so a generic failure cannot release the hold.
  */
 export async function selcomVerifyPayout(env: SelcomEnv, rail: PayoutRail, transid: string): Promise<{ status: "CONFIRMED" | "FAILED" | null; detail: string }> {
   let res: SelcomResponse;
@@ -912,7 +908,21 @@ export async function selcomVerifyPayout(env: SelcomEnv, rail: PayoutRail, trans
   }
   const detail = describeSelcom(res);
   if (!res.ok) return { status: null, detail };
-  return { status: envelopeSettlementVerdict(res.json), detail };
+  // The query response's `reference` is Selcom's gateway receipt, not necessarily
+  // our transid. Its documented SUCCESS sample omits transid entirely, so absence
+  // cannot block a coherent success. An explicit, mismatched transid *can* block it.
+  if ("transid" in res.json && (typeof res.json.transid !== "string" || res.json.transid.trim() !== transid)) {
+    return { status: null, detail: `${detail} · query transid malformed or mismatched` };
+  }
+
+  const code = String(res.json.resultcode ?? "").trim();
+  const result = String(res.json.result ?? "").trim().toUpperCase();
+  if (code === "000" && result === "SUCCESS") return { status: "CONFIRMED", detail };
+
+  // On these payout rails, neither an unknown code nor a
+  // negative response without matching payout identity proves nonpayment. Even
+  // an echoed transid plus a generic code needs a documented terminal meaning.
+  return { status: null, detail: `${detail} · payout outcome needs provider review` };
 }
 
 /**

@@ -1,9 +1,17 @@
 /** S10's auth continuity, executed from the real source in memory. No server, store, storage write or money action.
  * Pages use the real dictionary with inert component exports; actions use a named wrong-password refusal and a
  * throwing redirect seam. Negative controls replace real source, then rerun the identical verdict population.
+ *
+ * ⭐ question.* (live fix, 2026-10-14 — S10-PLAN Point for Ali 4, Open point 15): the CLASSIC question page's guest panel
+ * ("Ingia ili kutabiri", `src/app/markets/[id]/page.tsx`) built its two doors from `next` and `ref` alone, so a campaign
+ * `invite` on the page's address died at its Sign up and Sign in while the header's doors beside it (`authDoorHrefs`,
+ * route audit B3) carried it. The panel's doors are now the header's doors on that page. Executed from the page's own
+ * text — the IIFE right after the panel's `browseForFree` line — with the page's searchParams built by Next's own
+ * `searchParamsToUrlQuery` and the header's doors built by `authDoorHrefs` from the same address.
  */
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { searchParamsToUrlQuery } from "next/dist/shared/lib/router/utils/querystring.js";
 import * as SN from "../src/lib/safe-next.ts";
 import * as RC from "../src/lib/referral-code.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -12,7 +20,7 @@ const files = {
   invite: "src/lib/invite-code.ts", landing: "src/lib/auth-landing.ts", pending: "src/lib/journey/pending-bet.ts",
   loginPage: "src/app/auth/login/page.tsx", loginAction: "src/app/auth/login/actions.ts",
   registerPage: "src/app/auth/register/page.tsx", registerForm: "src/app/auth/register/register-form.tsx",
-  registerAction: "src/app/auth/register/actions.ts",
+  registerAction: "src/app/auth/register/actions.ts", questionPage: "src/app/markets/[id]/page.tsx",
 };
 type World = Record<keyof typeof files, string>;
 const clean = Object.fromEntries(Object.entries(files).map(([k, p]) => [k, readFileSync(p, "utf8")])) as World;
@@ -61,6 +69,34 @@ function carries(href: unknown) {
   const q = queryOf(href);
   return q.get("next") === NEXT && q.get("ref") === ref && q.get("invite") === invite;
 }
+/** The question page's guest panel doors, run from the page's text for the address `?<qs>`: [Sign up, Sign in] as drawn,
+ *  or null when the panel's door block cannot be found (a missing block is a failure, never a pass). */
+const LinkMark = Object.assign(() => null, { displayName: "Link" });
+function questionDoors(page: string, AL: Record<string, any>, qs: string): string[] | null {
+  const at = page.indexOf("{t.market.browseForFree}");
+  const start = at < 0 ? -1 : page.indexOf("{(() => {", at);
+  const end = start < 0 ? -1 : page.indexOf("})()}", start);
+  if (end < 0 || end - start > 6_000) return null;
+  const block = page.slice(start + 1, end + 4);
+  const run = compile(`export default (s: any) => { const { sp, m, side, t, Link, authDoorHrefs, normalizeReferralCode } = s; return ${block}; };`).default;
+  const sp = searchParamsToUrlQuery(new URLSearchParams(qs));
+  const tree = run({ sp, m: { id: M }, side: sp.side, t: dict.en, Link: LinkMark, authDoorHrefs: AL.authDoorHrefs, normalizeReferralCode: RC.normalizeReferralCode });
+  const links: string[] = [];
+  const visit = (n: unknown) => {
+    if (!n || typeof n !== "object") return;
+    if (Array.isArray(n)) { n.forEach(visit); return; }
+    const node = n as Node;
+    if (node.type === LinkMark) links.push(String(node.props?.href));
+    Object.values(n).forEach(visit);
+  };
+  visit(tree);
+  return links;
+}
+/** The classic header's doors on the same address — `authDoorHrefs` over the path and the browser's own search. */
+const headerDoors = (AL: Record<string, any>, qs: string): string[] => {
+  const d = AL.authDoorHrefs(`/markets/${M}`, new URLSearchParams(qs));
+  return [d.signUp, d.signIn];
+};
 async function verdict(w: World): Promise<string[]> {
   const failures: string[] = [];
   const ok = (label: string, cond: unknown) => { if (!cond) failures.push(label); };
@@ -137,10 +173,29 @@ async function verdict(w: World): Promise<string[]> {
   }
   ok("register.action-canonical", inputs.length === 3 && inputs[0].inviteCode === invite && inputs[1].inviteCode === undefined && inputs[2].inviteCode === undefined
     && inputs.every((i) => i.referralCode === ref) && refusals.every((r) => r === "mounted-form-refusal"));
+
+  // The classic question page's guest panel: its doors ARE the header's doors on that address.
+  const campaign = "side=YES&ref=%2050pick-ag-abc123%20&invite=%20inv-9%20&utm_source=friend&utm_source=sms";
+  const panel = questionDoors(w.questionPage, AL, campaign), header = headerDoors(AL, campaign);
+  ok("question.header-doors", !!panel && panel.length === 2 && panel[0] === header[0] && panel[1] === header[1]
+    && header[0].startsWith("/auth/register?") && header[1].startsWith("/auth/login?"));
+  ok("question.invite", !!panel && panel.length === 2 && panel.every((h) => queryOf(h).get("invite") === invite
+    && queryOf(h).get("ref") === ref && queryOf(h).get("next") === `/markets/${M}?side=YES&utm_source=friend&utm_source=sms`));
+  // ⭐ The common addresses keep the bytes they were served before this fix: the page alone, a side, a referral code.
+  const T = `%2Fmarkets%2F${M}`;
+  const kept: Array<[string, string]> = [["", `?next=${T}`], ["side=NO", `?next=${T}%3Fside%3DNO`], ["side=YES&ref=50pick-ag-abc123", `?next=${T}%3Fside%3DYES&ref=50PICK-AG-ABC123`]];
+  ok("question.bytes-kept", kept.every(([qs, tail]) => {
+    const d = questionDoors(w.questionPage, AL, qs);
+    return !!d && d.length === 2 && d[0] === `/auth/register${tail}` && d[1] === `/auth/login${tail}`;
+  }));
+  // Refused, never cut: a malformed referral code, an invite one character too long, an invite holding a control.
+  const hostileQ = ["ref=abc_123&invite=" + "X".repeat(25), "invite=A%00B&side=NO"].map((qs) => questionDoors(w.questionPage, AL, qs));
+  ok("question.hostile", hostileQ.every((d) => !!d && d.length === 2 && d.every((h) => !queryOf(h).has("ref") && !queryOf(h).has("invite")))
+    && hostileQ[1]![0] === `/auth/register?next=${T}%3Fside%3DNO`);
   return failures;
 }
 const initial = await verdict(clean);
-console.log(`auth-carry: ${initial.length ? initial.join(", ") : "all 22 executed verdicts passed"}`);
+console.log(`auth-carry: ${initial.length ? initial.join(", ") : "all 26 executed verdicts passed"}`);
 let bad = initial.length;
 if (process.argv.includes("--prove-red")) {
   const plants: Array<[keyof World, string, string, string]> = [
@@ -164,6 +219,13 @@ if (process.argv.includes("--prove-red")) {
     ["registerForm", 'if (ref) codes.set("ref", ref);', '', "register.panel-email_exists"],
     ["registerAction", 'normalizeInviteCode(String(formData.get("invite") ?? "")) ?? undefined', 'String(formData.get("invite") ?? "").trim().slice(0, 24) || undefined', "register.action-canonical"],
     ["registerAction", 'acceptTerms, acceptAge, referralCode, inviteCode,', 'acceptTerms, acceptAge, referralCode, inviteCode: undefined,', "register.action-canonical"],
+    // The question page's guest panel: its doors leave the one rule, or the rule drops the invite.
+    ["questionPage", 'const doors = authDoorHrefs(`/markets/${m.id}`, query);', 'const doors = authDoorHrefs(`/markets/${m.id}`, new URLSearchParams());', "question.header-doors"],
+    ["questionPage", '<Link href={doors.signUp as never}', '<Link href={`/auth/register?next=${encodeURIComponent("/markets/" + m.id)}${query.get("ref") ? `&ref=${query.get("ref")}` : ""}` as never}', "question.invite"],
+    ["questionPage", '<Link href={doors.signIn as never}', '<Link href={doors.signUp as never}', "question.header-doors"],
+    ["questionPage", 'Array.isArray(v) ? v : typeof v === "string" ? [v] : []', 'typeof v === "string" ? [v] : []', "question.invite"],
+    ["landing", 'if (invite) qs.set("invite", invite);', '', "question.invite"],
+    ["landing", 'const invite = normalizeInviteCode(search.get("invite"));', 'const invite = (search.get("invite") ?? "").trim().toUpperCase().slice(0, 24) || null;', "question.hostile"],
   ];
   for (const [file, before, after, wanted] of plants) {
     const occurrences = clean[file].split(before).length - 1;

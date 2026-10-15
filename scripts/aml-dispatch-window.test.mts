@@ -14,9 +14,9 @@
  * an AML row's createdAt is hours or days old — so the whole 30-minute grace is ALREADY
  * SPENT and the row is sweep-eligible immediately. The dispatch round-trip on the next line
  * happens OUTSIDE the wallet lock by design and can run to the 45s rail timeout. In that
- * window the sweep queries the phantom id, `envelopeSettlementVerdict` returns FAILED for any
- * code that is not 000/111/927/999, and `settleWithdrawalFailed` refunds a payout that is in
- * flight. Every AML-approved payout is at or above the review threshold by construction.
+ * window the sweep can query the phantom id. The historical sweep treated a broad
+ * FAILED query verdict as proof of nonpayment and refunded a payout in flight.
+ * Every AML-approved payout is at or above the review threshold by construction.
  *
  * ⚠️ Nothing downstream corrects it: after the round-trip the REAL ref is written onto the
  * now-FAILED row, `withdraw.approved_dispatched` is audited and the player is told the money
@@ -65,17 +65,21 @@ const functionOf = (src: string, anchor: string) => {
   const next = src.slice(i + anchor.length).search(/\n(?:export )?(?:async )?function /);
   return next < 0 ? src.slice(i) : src.slice(i, i + anchor.length + next);
 };
-/** §3.2's two hops (2026-10-14): the sweep's withdrawal arm snapshots the row, asks the rail, and hands a FAILED verdict to
- *  the bound settle path with its own reason; that path's WITHDRAWAL arm refunds through settleWithdrawalFailed. */
-function routesFailedPayoutToRefund(src: string): boolean {
+/** A generic payout FAILED query cannot prove nonpayment. The stale sweep keeps
+ * the original rail/reference binding, holds the funds and records review. */
+function holdsUnprovenFailedPayout(src: string): boolean {
   const sweep = functionOf(src, "export async function reconcileStalePayments");
   const arm = sweep.slice(Math.max(0, sweep.indexOf('} else if (t.type === "WITHDRAWAL") {')));
   const bound = arm.indexOf("const original = withdrawalProbeBinding(t);");
   const asked = arm.indexOf("const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);");
-  const failed = arm.search(/\} else if \(v\.status === "FAILED"\) \{\s*const r = await settlePaymentWebhook\(\{ providerRef: original\.providerRef, status: "FAILED" \}, undefined, original, "reconcile-verified-failed"\);\s*if \(r\.handled && r\.reason === "withdrawal-failed"\) \{ withdrawalsReversed\+\+;/);
-  const hook = functionOf(src, "export async function settlePaymentWebhook(");
-  const refunds = /if \(txn\.type === "WITHDRAWAL"\) \{\s*if \(input\.status === "CONFIRMED"\) await settleWithdrawalConfirmed\([^\n]*\);\s*else await settleWithdrawalFailed\(txn\.id, failureReason, input\.providerRef, original \?\? undefined\);/.test(hook);
-  return sweep.length > 0 && bound >= 0 && asked > bound && failed > asked && refunds;
+  const failedAt = arm.indexOf('} else if (v.status === "FAILED") {');
+  const nextAt = arm.indexOf('} else if (v.status === "UNSUPPORTED") {', failedAt);
+  const failed = failedAt < 0 || nextAt < 0 ? "" : arm.slice(failedAt, nextAt);
+  return sweep.length > 0 && bound >= 0 && asked > bound && failedAt > asked &&
+    /await recordStatus\(reviewStatus\)/.test(failed) &&
+    /leftPending\+\+/.test(failed) &&
+    /auditNeedsReviewOnce\(t\.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed"/.test(failed) &&
+    !/settlePaymentWebhook|settleWithdrawalFailed|withdrawalsReversed\+\+/.test(failed);
 }
 
 // ── §1 · The premise: the AML branch really does store a never-dispatched id ──
@@ -127,13 +131,8 @@ console.log("\n§3 · the sweep still refuses to auto-reverse a payout with no p
   ok("3.1  the withdrawal arm skips a row with no ref, and moves no money",
     /if \(!ref\) \{ leftPending\+\+; auditNeedsReviewOnce\(t\.id, "stale withdrawal has no providerRef — not auto-reversed"/.test(sweep),
     "the !ref guard moved — clearing providerRef is no longer safe");
-  // ⭐ 3.2 RE-DERIVED 2026-10-14 (S9 root review H3). Since 9869dd701 the sweep's verified FAILED no longer calls
-  // settleWithdrawalFailed directly: it hands the verdict, with the row's ORIGINAL funding tuple (`withdrawalProbeBinding(t)`)
-  // and its own reason, to settlePaymentWebhook — whose WITHDRAWAL arm calls settleWithdrawalFailed with that reason. The
-  // premise this section protects is unchanged (a FAILED verdict on a payout with a reference still REFUNDS it, which is
-  // why a phantom reference must be cleared), so both hops are pinned, and the old one-hop pattern no longer matches anything.
-  ok("3.2  a FAILED verdict still routes to settleWithdrawalFailed (the branch we are avoiding) — through the bound settle path",
-    routesFailedPayoutToRefund(wallet), "the sweep's FAILED payout arm no longer reaches the refund — §2's premise moved");
+  ok("3.2  a generic FAILED payout answer is bound to the original rail and leaves the funds held for review",
+    holdsUnprovenFailedPayout(wallet), "the sweep's FAILED payout arm may refund or lose its frozen binding");
   ok("3.3  selection is still on createdAt — which is why the grace is already spent",
     /listByStatus\("PROCESSING"\)\)\.filter\(\(t\) => Date\.parse\(t\.createdAt\) < cutoff\)/.test(sweep),
     "if selection moved to updatedAt the premise changes and this gate should be re-derived");
@@ -157,23 +156,22 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
   ok("4.3  post-fix: both patterns accept the corrected shape",
     /status: "PROCESSING", providerRef: null/.test(fixed) && /providerRef: null, payoutRail: null/.test(fixed));
 
-  // 3.2's controls (re-derived 2026-10-14): the two-hop predicate can still say NO, so its green above is evidence.
+  // 3.2's controls: the predicate catches refund and unbound-query plants.
   const plant = (from: string, to: string) => {
     if (wallet.split(from).length !== 2) return null;   // the plant must land exactly once, or the control proves nothing
     return wallet.replace(from, to);
   };
-  const armWaits = plant('const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");\n        if (r.handled && r.reason === "withdrawal-failed")',
-    'const r = { handled: false, reason: "left-pending" };\n        if (r.handled && r.reason === "withdrawal-failed")');
-  const pathStops = plant("else await settleWithdrawalFailed(txn.id, failureReason, input.providerRef, original ?? undefined);",
-    'else return { handled: false, reason: "not-refunded" };');
-  const unbound = plant('leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);',
-    'leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(ref, t.payoutRail);');
-  ok("4.4  3.2 accepts the current source", routesFailedPayoutToRefund(wallet));
-  ok("4.5  3.2 rejects a sweep whose FAILED payout arm no longer refunds", armWaits !== null && !routesFailedPayoutToRefund(armWaits));
-  ok("4.6  3.2 rejects a settle path whose WITHDRAWAL FAILED branch no longer calls settleWithdrawalFailed",
-    pathStops !== null && !routesFailedPayoutToRefund(pathStops));
+  const unsafeRefund = plant('const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);\n        await recordStatus(reviewStatus);\n        leftPending++;',
+    'await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);\n        withdrawalsReversed++;');
+  const noReview = plant('auditNeedsReviewOnce(t.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed", {',
+    'auditNeedsReviewOnce(t.id, "payout status unknown", {');
+  const unbound = plant('const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);\n      const recordStatus',
+    'const v = await verifyWithdrawalStatus(ref, t.payoutRail);\n      const recordStatus');
+  ok("4.4  3.2 accepts the current source", holdsUnprovenFailedPayout(wallet));
+  ok("4.5  3.2 rejects a sweep that refunds on generic FAILED", unsafeRefund !== null && !holdsUnprovenFailedPayout(unsafeRefund));
+  ok("4.6  3.2 rejects a sweep that drops the durable review announcement", noReview !== null && !holdsUnprovenFailedPayout(noReview));
   ok("4.7  3.2 rejects a sweep that asks the rail about the live row instead of its frozen snapshot",
-    unbound !== null && !routesFailedPayoutToRefund(unbound));
+    unbound !== null && !holdsUnprovenFailedPayout(unbound));
 }
 
 console.log(`\n${fail === 0 ? "PASS" : "FAILED"} · ${pass} ok, ${fail} failed`);

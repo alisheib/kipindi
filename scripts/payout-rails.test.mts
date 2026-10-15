@@ -4,7 +4,7 @@
  * Two things are proven here, and the second one is the reason this file exists.
  *
  * 1 · THE LADDER ADVANCES ONLY ON A DEFINITIVE REFUSAL.
- *     A payout that is refused at the door (401/403, or a hard-fail resultcode) cannot
+ *     A payout that is refused at the door (401/403) cannot
  *     be in flight, so trying the next rail is safe. A payout that timed out, or died
  *     on a network error, or came back 502 MIGHT have been taken — trying another rail
  *     there pays the player twice. The ladder must stop dead on AMBIGUOUS. That single
@@ -13,10 +13,8 @@
  * 2 · A PAYOUT IS RE-QUERIED ON THE RAIL IT ACTUALLY WENT OUT ON.
  *     Each Selcom rail's status endpoint only knows its own transids. Ask
  *     /walletcashin/query about a payout sent through /selcompesa/cashin and you get an
- *     envelope for a transaction it has never heard of; any resultcode outside
- *     000/111/927/999 resolves to FAILED; the stale reconcile sweep treats FAILED as
- *     "definitively did not happen" and refunds the player. The money is already gone.
- *     A double payment caused by nothing but asking the wrong endpoint.
+ *     envelope for a transaction it has never heard of. A negative reply from the
+ *     wrong endpoint cannot prove nonpayment; keep the hold and investigate.
  *
  * Pure functions + a stubbed `fetch`. No DB, no network.
  */
@@ -45,6 +43,9 @@ function jsonResp(resultcode: string, httpStatus = 200, message = "stub") {
   return new Response(JSON.stringify({ resultcode, result: resultcode === "000" ? "SUCCESS" : "FAIL", message, data: [] }), {
     status: httpStatus, headers: { "content-type": "application/json" },
   });
+}
+function envelopeResp(envelope: Record<string, unknown>, httpStatus = 200) {
+  return new Response(JSON.stringify(envelope), { status: httpStatus, headers: { "content-type": "application/json" } });
 }
 
 /** Swap `fetch`, recording every URL the code under test actually called. */
@@ -110,9 +111,7 @@ ok("isPayoutRail rejects a non-rail", !isPayoutRail("QWIKSEND") && isPayoutRail(
 console.log("\n── 3 · 🔴 THE DOUBLE-PAY REGRESSION ────────────────────────────");
 
 // Settle a payout that went out on SELCOM_PESA. The re-query MUST hit
-// /selcompesa/query. If it ever hits /walletcashin/query again, that endpoint answers
-// about a transid it has never seen, the verdict resolves to FAILED, and
-// reconcileStalePayments refunds a player whose money has already left the float.
+// /selcompesa/query. A reply from the wrong endpoint cannot authorize settlement.
 await withFetch(() => jsonResp("000"), async (calls) => {
   await selcomVerifyPayout(ENV, "SELCOM_PESA", "wdr_pesa_1");
   ok("a SELCOM_PESA payout is re-queried on /selcompesa/query",
@@ -120,7 +119,7 @@ await withFetch(() => jsonResp("000"), async (calls) => {
     calls.join(" · "));
   ok("…and NEVER on /walletcashin/query",
     !calls.some((u) => u.includes("/walletcashin/query")),
-    "asking the wrong rail returns a stranger's envelope → FAILED → refund on top of a completed payout");
+    "asking the wrong rail returns an unrelated envelope");
 });
 
 await withFetch(() => jsonResp("000"), async (calls) => {
@@ -128,6 +127,34 @@ await withFetch(() => jsonResp("000"), async (calls) => {
   ok("a HUDUMA_AGENT payout is re-queried on /hudumacashin/query",
     calls.some((u) => u.includes("/hudumacashin/query")) && !calls.some((u) => u.includes("/walletcashin/query")));
 });
+
+console.log("\n── 3b · A query must give coherent, transaction-bound proof ──────");
+for (const rail of PAYOUT_RAIL_IDS) {
+  const transid = `wdr_query_${rail}`;
+  const query = async (envelope: Record<string, unknown>) => {
+    let status: Awaited<ReturnType<typeof selcomVerifyPayout>>["status"] = null;
+    await withFetch(() => envelopeResp(envelope), async () => { status = (await selcomVerifyPayout(ENV, rail, transid)).status; });
+    return status;
+  };
+  ok(`${rail}: documented 000/SUCCESS with gateway reference and no transid still confirms`,
+    await query({ reference: "gateway_receipt_1", resultcode: "000", result: "SUCCESS" }) === "CONFIRMED");
+  ok(`${rail}: matching transid and coherent success confirms`,
+    await query({ transid, resultcode: "000", result: "SUCCESS" }) === "CONFIRMED");
+  ok(`${rail}: a mismatched transid cannot confirm another payout`,
+    await query({ transid: "some_other_payout", resultcode: "000", result: "SUCCESS" }) === null);
+  ok(`${rail}: a malformed transid cannot masquerade as an absent echo`,
+    await query({ transid: 42, resultcode: "000", result: "SUCCESS" }) === null);
+  ok(`${rail}: 000/FAIL is contradictory and remains pending`,
+    await query({ transid, resultcode: "000", result: "FAIL" }) === null);
+  ok(`${rail}: 111/SUCCESS is contradictory and remains pending`,
+    await query({ transid, resultcode: "111", result: "SUCCESS" }) === null);
+  ok(`${rail}: 010/FAIL without payout identity cannot authorize a refund`,
+    await query({ reference: "gateway_receipt_1", resultcode: "010", result: "FAIL" }) === null);
+  ok(`${rail}: 010/FAIL with matching identity still needs rail-specific proof`,
+    await query({ transid, resultcode: "010", result: "FAIL" }) === null);
+  ok(`${rail}: unknown 2xx code with matching identity remains pending`,
+    await query({ transid, resultcode: "038", result: "FAIL" }) === null);
+}
 
 // The legacy default must still work: a row with no rail is a wallet-cashin payout.
 await withFetch(() => jsonResp("000"), async (calls) => {
@@ -160,7 +187,15 @@ for (const rail of PAYOUT_RAIL_IDS) {
   });
   await withFetch(() => jsonResp("010", 200, "Invalid mobile number or operator not supported"), async () => {
     const r = await selcomPayout(ENV, rail, { transid: "t", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
-    ok(`${rail}: 010 → FAILED (definitive, safe to advance)`, !r.ok && r.reason === "FAILED");
+    ok(`${rail}: IMT 010 does not prove refusal on these rails`, !r.ok && r.reason === "AMBIGUOUS");
+  });
+  await withFetch(() => jsonResp("038", 200, "unexpected provider status"), async () => {
+    const r = await selcomPayout(ENV, rail, { transid: "t", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+    ok(`${rail}: unknown 2xx code → AMBIGUOUS (never advance or refund)`, !r.ok && r.reason === "AMBIGUOUS");
+  });
+  await withFetch(() => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }), async () => {
+    const r = await selcomPayout(ENV, rail, { transid: "t", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
+    ok(`${rail}: malformed 2xx envelope → AMBIGUOUS`, !r.ok && r.reason === "AMBIGUOUS");
   });
 }
 
@@ -239,6 +274,13 @@ await withFetch((u) => u.includes("/walletcashin/process") ? jsonResp("500", 500
   const r = await dispatch("wdr_ladder_3");
   ok("🔴 an HTTP 500 on rail 1 also STOPS the ladder", posted(calls).join(">") === "WALLET_CASHIN");
   ok("…hold kept (PENDING), never reversed", r.ok && r.status === "PENDING");
+});
+
+await withFetch((u) => u.includes("/walletcashin/process") ? jsonResp("038", 200) : jsonResp("000"), async (calls) => {
+  const r = await dispatch("wdr_ladder_unknown");
+  ok("🔴 an unknown 2xx code on rail 1 STOPS the ladder", posted(calls).join(">") === "WALLET_CASHIN");
+  ok("…hold kept (PENDING), never refunded", r.ok && r.status === "PENDING");
+  ok("…review trail records AMBIGUOUS, not FAILED", r.attempts?.[0]?.outcome === "AMBIGUOUS");
 });
 
 // Every rung definitively refused → clean failure, so the caller returns the money.

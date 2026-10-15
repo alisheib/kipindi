@@ -16,6 +16,7 @@
  *                     baseline read them: Yanga = Arusha (+5 d), and BTC $80k = Zanzibar = Brent (+4 d)
  */
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 
 const SRC = "src/lib/server/market-service.ts";
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -46,9 +47,9 @@ function check(src: string): Verdict[] {
   const arr = arrayText(body);
   const out: Verdict[] = [];
 
-  // 1 — one read, a statement, before the array (whole-line comments are not code: this function's own comment names the
-  // old per-row read; a `//` inside a string, e.g. a source URL on a row's line, is left alone)
-  const code = body.replace(/^\s*\/\/.*$/gm, "");
+  // 1 — one read, a statement, before the array. Use the shared scanner so comments
+  // are ignored without hiding code beside a URL or another string literal.
+  const code = decomment(body);
   const reads = (code.match(/Date\.now\(/g) ?? []).length;
   const stmt = /^ {2}const now = Date\.now\(\);$/m.exec(body);
   const before = !!stmt && stmt.index < body.indexOf("const seed: CreateMarketInput[] = [");

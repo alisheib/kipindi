@@ -128,6 +128,12 @@ await marketStore.stamp(marketId, { selectionClosedAt: new Date(Date.now() - 1_0
 // The locked presentation UD-20 is about lives on the round page, which is exactly where
 // `round-action-panel.tsx` renders it. Pointing this suite at `getBoard` returned an EMPTY
 // round list and looked like the feature was broken.
+// ⚠️ CORRECTED 2026-10-14 (S12-PLAN F2): the paragraph above described a DEFECT as design. No next
+// round "takes its place" — a successor is born when this round's close is confirmed, ~91 s AFTER the
+// boundary (UPDOWN-SPEC §3, E-194) — so in the lock window the board had no current round at all,
+// and the EMPTY list this suite met was the defect itself. `getBoard` now keeps every started round
+// that has not settled (`roundIsSettled`), so the locked round IS on the board, with this same pair
+// (`test:updown-lock-window` §1.3). This suite still reads the round page, which is UD-20's own surface.
 const detail = await getRoundDetail(r.data.id, hedger);
 const row = detail!.round;
 ok("0.4 · fixture · the round is LOCKED", row.state === "locked", row.state);

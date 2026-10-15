@@ -9,11 +9,9 @@
  * up the victim's row, asked the rail about the attacker's id, and settled the victim's
  * row with the answer.
  *
- * ⛔ AND THE ANSWER DEFAULTS TO FAILED. `envelopeSettlementVerdict` returns CONFIRMED on
- * 000/SUCCESS, null on 111/927/999/INPROGRESS/PENDING/AMBIGUOUS, and **FAILED on
- * everything else** — so an id the rail does not recognise IS a FAILED verdict. A FAILED
- * verdict on a PROCESSING withdrawal runs `settleWithdrawalFailed`, which refunds the
- * player while the real payout is still in flight. The money leaves twice.
+ * ⛔ At the time of this identity fix, an unrecognised query envelope defaulted to
+ * FAILED, so asking about an id the rail did not recognise refunded a real payout
+ * in flight. The payout query now keeps such answers pending as a second guard.
  *
  * ⛔ Routing needs no secret: `Authorization: SELCOM <anything>` reaches the handler, and
  * `sigOk` was computed and never read — while this file's own header promised
@@ -178,19 +176,13 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
     snapshotsOther !== null && !asksOwnReference(wallet, snapshotsOther));
 }
 
-// ── §5 · The amplifier is still there, and is deliberately NOT changed ───────
-//
-// The default-to-FAILED taxonomy is what turns "an id I don't know" into "that payout
-// failed". Removing the caller's control over the id removes the attack; the taxonomy is
-// load-bearing for the reconcile sweep and is NOT this fix's business. Pinned so the next
-// reader knows it was seen and left alone deliberately, not missed.
-console.log("\n§5 · the default-to-FAILED verdict taxonomy is UNCHANGED, on purpose");
+// ── §5 · The payout query also fails closed on ambiguous responses ─────────────
+console.log("\n§5 · ambiguous payout query envelopes cannot refund");
 {
-  ok("5.1  an unrecognised envelope code still resolves to FAILED",
-    /if \(code === "000" \|\| result === "SUCCESS"\) return "CONFIRMED";/.test(selcom)
-    && /return "FAILED";/.test(selcom));
-  ok("5.2  and the in-progress codes still resolve to null (never auto-reverse)",
-    /code === "111" \|\| code === "927" \|\| code === "999"/.test(selcom));
+  const query = selcom.slice(selcom.indexOf("export async function selcomVerifyPayout"), selcom.indexOf("/**", selcom.indexOf("export async function selcomVerifyPayout")));
+  ok("5.1  payout query has no broad FAILED fallback", !query.includes('status: "FAILED"'));
+  ok("5.2  only coherent 000/SUCCESS can confirm", /code === "000" && result === "SUCCESS"/.test(query));
+  ok("5.3  a mismatched or malformed echoed transid stays pending", /query transid malformed or mismatched/.test(query));
 }
 
 console.log(`\n${fail === 0 ? "PASS" : "FAILED"} · ${pass} ok, ${fail} failed`);

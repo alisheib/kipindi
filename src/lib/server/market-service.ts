@@ -24,6 +24,7 @@ import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
+import { spendableOf } from "@/lib/spendable";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
 import { readIdentityStanding } from "./kyc-gate";
@@ -1610,7 +1611,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
         reason: "balance_insufficient" as const,
         // ⛔ The FIGURES, as numbers. `errorCopy` recovers money from the English sentence
         // with a regex today; a reworded sentence silently drops it off the screen.
-        detail: { balance: realAvail + bonusAvail, needed: opts.stake },
+        // ⭐ `spendableOf` (= realAvail + bonusAvail) — ONE figure, which the Up & Down board's
+        // pre-flight reads too (`walletBalanceOf`), so a gate cannot refuse what this would place.
+        detail: { balance: spendableOf(wallet), needed: opts.stake },
       };
     }
 

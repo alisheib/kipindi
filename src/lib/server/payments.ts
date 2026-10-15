@@ -430,10 +430,10 @@ export type LadderResult = WithdrawResult & { attempts?: RailAttempt[] };
  * Walk the ladder. **The money-safety rule is the whole point of this function:**
  *
  *   ACCEPTED (incl. 999/111/927) → STOP. The payout may be in flight; keep the hold.
- *   AMBIGUOUS (timeout, network, any non-401/403 HTTP error) → **STOP.** We do not
+ *   AMBIGUOUS (timeout, network, non-401/403 HTTP error, or unproven 2xx) → **STOP.** We do not
  *       know whether Selcom took the request. Trying the next rail here is precisely
  *       how you pay a player twice. Keep the hold and let the per-rail re-query settle it.
- *   FAILED (401/403, or 2xx with a hard-fail resultcode) → ADVANCE. "Refused at the
+ *   FAILED (401/403 at the gateway door) → ADVANCE. "Refused at the
  *       door" is the only state in which nothing can be in flight, which is what makes
  *       advancing safe at all.
  *   every rail exhausted → PROVIDER_DOWN, and the caller reverses the hold cleanly.
@@ -537,7 +537,7 @@ export function lastRailProbes(): { at: number; verdicts: Record<PayoutRail, Rai
 // double-pays withdrawals and strands paid deposits). Provider-agnostic: returns
 // UNSUPPORTED when the active adapter has no real gateway (mock/test) or is not
 // configured, PENDING while the movement is still in flight/ambiguous (leave it
-// PROCESSING and re-check later), and only CONFIRMED/FAILED when Selcom is definitive.
+// PROCESSING and re-check later), and CONFIRMED only on coherent payout success.
 export type VerifyStatus = "CONFIRMED" | "FAILED" | "PENDING" | "UNSUPPORTED";
 
 export async function verifyDepositStatus(providerRef: string): Promise<{ status: VerifyStatus; amount?: number }> {
