@@ -22,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../src/lib/server/store.ts";
+import { positionStore } from "../src/lib/server/market-dal.ts";
 import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments, dispatchApprovedWithdrawal } from "../src/lib/server/wallet-service.ts";
 import { WITHDRAWAL_AML_HOLD } from "../src/lib/server/payments.ts";
 import { WITHDRAW_MAX_TZS } from "../src/lib/server/validators.ts";
@@ -122,9 +123,14 @@ const st = async (txnId: string) => (await db.txn.findById(txnId))?.status;
 process.env.PAYMENTS_DEMO_ASYNC = "true";
 await makePlayer("usr_dep");
 
-const d1 = await deposit("usr_dep", { provider: "MPESA", amount: 50_000 });
+const savedBet = { v: 1 as const, bet: "mkt_s14callback.YES.1000", returnPath: "/markets/mkt_s14callback" };
+const noBetFromCallback = async () =>
+  (await positionStore.listForUser("usr_dep", Number.MAX_SAFE_INTEGER)).length === 0
+  && (await db.txn.findByUserTypes("usr_dep", ["BET_PLACED"], Number.MAX_SAFE_INTEGER)).length === 0;
+const d1 = await deposit("usr_dep", { provider: "MPESA", amount: 50_000 }, undefined, undefined, savedBet);
 ok("async deposit returns PROCESSING", d1.ok && d1.data!.status === "PROCESSING");
 ok("async deposit does NOT credit up front", await bal("usr_dep") === 0);
+ok("pending saved-bet deposit leaves zero positions and BET_PLACED rows", await noBetFromCallback());
 const dTxn = d1.ok ? d1.data!.txnId : "";
 ok("pending deposit txn has a providerRef", !!await ref(dTxn));
 ok("pending deposit txn is PROCESSING", await st(dTxn) === "PROCESSING");
@@ -133,22 +139,25 @@ const w1 = await settlePaymentWebhook({ providerRef: await ref(dTxn), status: "C
 ok("webhook CONFIRMED handled", w1.handled);
 ok("webhook credits the wallet", await bal("usr_dep") === 50_000);
 ok("deposit txn now CONFIRMED", await st(dTxn) === "CONFIRMED");
+ok("confirmed callback with saved bet does not place a bet", await noBetFromCallback());
 
 // Retry the SAME webhook (providers deliver at-least-once) → no double credit.
 const w1retry = await settlePaymentWebhook({ providerRef: await ref(dTxn), status: "CONFIRMED" });
 ok("duplicate webhook acked", w1retry.handled && w1retry.reason.startsWith("already"));
 ok("duplicate webhook does NOT double-credit", await bal("usr_dep") === 50_000);
+ok("duplicate callback still leaves zero positions and BET_PLACED rows", await noBetFromCallback());
 
 // Unknown reference → not handled, no effect.
 const wUnknown = await settlePaymentWebhook({ providerRef: "NOPE-XXXXXX", status: "CONFIRMED" });
 ok("unknown reference not handled", !wUnknown.handled);
 
 // ── DEPOSIT: async → webhook FAILED credits nothing ────────────────────────
-const d2 = await deposit("usr_dep", { provider: "MPESA", amount: 9_000 });
+const d2 = await deposit("usr_dep", { provider: "MPESA", amount: 9_000 }, undefined, undefined, savedBet);
 const d2Txn = d2.ok ? d2.data!.txnId : "";
 await settlePaymentWebhook({ providerRef: await ref(d2Txn), status: "FAILED" });
 ok("failed-webhook deposit marked FAILED", await st(d2Txn) === "FAILED");
 ok("failed-webhook deposit credited nothing", await bal("usr_dep") === 50_000);
+ok("failed callback with saved bet leaves zero positions and BET_PLACED rows", await noBetFromCallback());
 
 // ── DEPOSIT: synchronous path still credits immediately (regression) ───────
 delete process.env.PAYMENTS_DEMO_ASYNC;
