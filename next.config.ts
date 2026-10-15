@@ -74,7 +74,9 @@ const config: NextConfig = {
     optimizePackageImports: ["lucide-react", "date-fns"],
     // Keep emitted lazy files aligned with their preload manifests. Default small-chunk merging
     // produced absent files on both Linux CI and Windows; the exact build is checked by qa:first-load.
-    turbopackChunking: { minChunkSize: 0 },
+    // Both merge limits must be disabled together: Next 16.4 divides by a zero-size chunk when
+    // minChunkSize is 0 but maxChunkCountPerGroup keeps its default of 40.
+    turbopackChunking: { minChunkSize: 0, maxChunkCountPerGroup: 0 },
   },
   images: {
     formats: ["image/webp", "image/avif"],
