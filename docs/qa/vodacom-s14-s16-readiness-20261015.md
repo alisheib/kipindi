@@ -1,10 +1,11 @@
 # Vodacom S14–S16 execution record and evidence gate
 
-**Status, 2026-10-15:** S14 has not been performed. The five deck frames have 52 element checks, all still open in
-[`vodacom-s14-evidence.json`](vodacom-s14-evidence.json). `e2e:journey` is specified in
-[`VODACOM-PLAN.md`](../VODACOM-PLAN.md) §5 S14, but no package command by that name exists on the `c8a982cd7` base of this
-record. The S10 build lane may supply part of that drive; inspect its merged result before creating another. No real
-staff payment, agency sign-off, owner override, S15 go, or S16 elapsed period is recorded here.
+**Status, 2026-10-15:** S14 remains open. The five deck frames have 52 element checks, all still open in
+[`vodacom-s14-evidence.json`](vodacom-s14-evidence.json). The integrated `e2e:journey` command passed 44/44 mobile
+and 42/42 desktop assertions on local in-memory mock rails at `4c7327bcdd31a556215d03a486a0d2e3a93e12e0`;
+the final release commit still needs its own exact-tip proof. No real staff payment, agency sign-off, owner override,
+S15 go, or S16 elapsed period is recorded here. The [13-day production counter preflight](vodacom-s15-baseline-preflight-20261015.md)
+found no daily row gap from October 2–14; the required fourteenth complete day ends at 2026-10-16 00:00 EAT.
 The [staff proof and agency decision packet](vodacom-s14-staff-proof-packet-20261015.md) is the operator handoff to use
 after the integrated preview passes its local and production preflight. Its blank fields are not completion evidence.
 
