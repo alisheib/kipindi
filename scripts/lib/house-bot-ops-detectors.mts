@@ -432,6 +432,10 @@ export const MARKER_UPDATE_EXEMPT: ReadonlyArray<{ file: string; why: string }> 
 /** The only files under `scripts/` allowed to name `houseBotId` in an ORM update call, and why. */
 export const ORM_MARKER_EXEMPT: ReadonlyArray<{ file: string; why: string }> = [
   {
+    file: "scripts/deposit-persistence.test.mts",
+    why: "real.intent-update-retained calls db.txn.update with houseBotId to prove an ordinary update cannot rewrite a saved deposit intent or its marker. The test reads the row back and requires houseBotId to remain null.",
+  },
+  {
     file: "scripts/lib/house-bot-dal-cases.mts",
     why: "c21 calls db.txn.update with houseBotId precisely to prove BOTH twins DROP it. Removing this call would remove the proof, not the risk.",
   },
