@@ -187,7 +187,7 @@ export function PublicFooter({
               inserted above the 18+ badge, the Gaming Board sentence, the licence number
               or the copyright — a social link ranks BELOW every regulator disclosure on
               the page, and it sits in the brand column rather than taking a fifth one,
-              so the `md:grid-cols-4` chrome is unchanged on every player page.
+              so the tablet's two columns and the wider four-column chrome gain no fifth column.
               ⛔ A PLAIN DIRECTORY LINE — no badge, no gilt, no follower count, no verb.
               The same shape, and the same reason, as the agent door below: `/legal/
               responsible-gambling` §4 publishes "no marketing to self-excluded players",
@@ -269,14 +269,14 @@ export function PublicFooter({
           {/* Proposals: dropped from the footer entirely when DISABLED; otherwise
               the current state flag rides the link (gilt / amber / none).
               2026-10-08 (WP12's tiles 299, 307) — where the label and its flag cannot share a line (the 216px column
-              at 1024, the 160px one at 768), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
+              at 1024), the line breaks are balanced: "Pendekeza masoko" over "upate pesa
               INAKUJA", where a greedy break had left the flag alone on the second line.
               ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
               greedy break, so its bytes and boxes stay main's (`journeyShown` above). Since round 5 the journey's label
               is the page's own name (below), and the same balance shares its lines with the flag. Round 9: the journey's
-              name is held WHOLE (below), so the balanced break puts the flag under it in the 160px column at 768 and the
-              216px one at 1024 ("Mapendekezo ya Masoko" / its flag), as en's "Market Proposals" / its flag breaks at 768; one
-              line from 1280. */}
+              name is held WHOLE (below), so the balanced break puts the flag under it in the 216px column at 1024
+              ("Mapendekezo ya Masoko" / its flag). The two-column tablet's 352px cells let name and flag share one
+              line at 768; the 280px column at 1280 also holds both. */}
           {/* ⭐ ONE PAGE, ONE NAME IN THE JOURNEY (round 5, F17): its footer names /proposals, /legal/privacy and /help as
               those pages name themselves — "Mapendekezo ya Masoko" (`proposals.title`), "Sera ya faragha / Privacy policy"
               (the privacy page's title, `common.consentMore`), "Msaada / Help" (`common.help`) — the words the journey's hub
@@ -286,9 +286,10 @@ export function PublicFooter({
               {/* ⭐ Round 9's read (reader 8, tile 302, sw 1024): with only its "ya" held the balance still tore the name,
                   "Mapendekezo" / "ya Masoko [INAKUJA]" — narrower than the name whole once the real flag (72px and its 8.4px
                   gap) is counted. The journey's name is the page's own name and is now ONE unit (143.8px in sw at 12px; the
-                  narrowest column is 160px at 768 — `md:grid-cols-4 gap-6` inside `px-3` — and the phones' single column is
-                  288px+), so the balance's only break is before the flag: the whole name over its flag where the two cannot
-                  share a line, one line where they can. The classic footer keeps its words and bytes (frozen chrome). */}
+                  narrowest current column is 216px at 1024 — `lg:grid-cols-4 gap-6` inside `lg:px-6` — and the phones'
+                  single column is 288px+), so the balance's only break is before the flag: the whole name over its flag
+                  where the two cannot share a line, one line where they can. The classic footer keeps its words and bytes
+                  (frozen chrome). */}
               {journeyShown ? <span className="whitespace-nowrap">{t.proposals.title}</span> : t.footer.proposeGetPaid}
               {/* The journey's flag a whole 18px (`kp-flag-xs`, round 7, R7-C); the classic footer's is today's (frozen chrome). */}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className={journeyShown ? "ml-1.5 kp-flag-xs" : "ml-1.5"} />
@@ -391,14 +392,14 @@ function SocialLink({
 
 /** `balance` evens a label that wraps (the proposals link, in the journey's footer alone — without it the class is not
  *  written, and the link is the classic footer's own): its flag rides the end of a balanced last line where the column
- *  leaves it room, and sits under the whole name where it does not (en's at 768; sw's at 768–1024 since `keep`, below).
+ *  leaves it room, and sits under the whole name where it does not (sw at 1024 in the four-column layout).
  *  `keep` — every link of the journey's footer never ends a line on a connective (round 9, R9-B, tile 299: sw 1024 read
  *  "Mapendekezo ya" / "Masoko [INAKUJA]", where the hub's label of the same name is held — R7-A's 3g). Each string the
  *  link draws keeps the space after its connectives (`keepConnectives`); the flag beside it is drawn as it came. With
  *  "ya" held the proposals link has two break candidates, and Chromium's balance then takes its bisection: it reads
- *  "Mapendekezo ya Masoko" with its flag under it in the 160px column at 768 and the 216px one at 1024 (the flag and
- *  its gap, ~85px, are wider than "Mapendekezo ", ~74px) — the hub's stacked tag (R7-C), and what en already draws at
- *  768 ("Market Proposals" / "COMING SOON"); one line from 1280 and in the phones' single column. No other link wraps
+ *  "Mapendekezo ya Masoko" with its flag under it in the 216px column at 1024 (the flag and its gap, ~85px, are wider
+ *  than "Mapendekezo ", ~74px) — the hub's stacked tag (R7-C); one line in the two-column tablet layout from 768 to
+ *  1023, from 1280, and in the phones' single column. No other link wraps
  *  on a connective at any width (`test:visual-pass-r9b` §4). ⛔ The classic footer is frozen chrome and none of ITS links ends a line on a connective
  *  in any column (the same section measures them), so it keeps main's bytes — `journeyShown` passes `keep`. */
 /** A link's label with its connectives held (`keep` above): each string child through `keepConnectives`, an element (the

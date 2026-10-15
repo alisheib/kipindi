@@ -54,14 +54,14 @@ export default function LeaderboardLoading() {
           of defect, found the same way.) */}
       <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
 
-      {/* The ribbon — `PageRibbon`'s box: three stats, each its label beside its figure, wrapping as the page's. */}
-      <div className="rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent" aria-hidden>
+      {/* The ribbon — `PageRibbon`'s two-column phone / three-column larger grid and label-over-figure cells. */}
+      <div className="rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 text-transparent" aria-hidden>
         {[
           [t.leaderboard.topTier, t.leaderboard.tierSilver.split(" ")[0]],
           [t.leaderboard.bestRoi, "+00.0%"],
           [t.leaderboard.predictorsCount, "00"],
         ].map(([label, value], i) => (
-          <div key={i} className="flex items-baseline gap-2 min-w-0">
+          <div key={i} className="flex min-w-0 flex-col items-start gap-1">
             <div className="flex flex-col gap-0.5 min-w-0">
               <p className="font-mono text-micro uppercase eyebrow font-bold whitespace-nowrap"><GhostText>{label}</GhostText></p>
             </div>
@@ -70,8 +70,8 @@ export default function LeaderboardLoading() {
         ))}
       </div>
 
-      {/* The product lens — the page's three pills, their words. */}
-      <div className="flex flex-wrap items-center gap-1.5 -mx-1 px-1" aria-hidden>
+      {/* The product lens — the page's scrollable phone rail, wrapping at lg. */}
+      <div className="kp-thin-scroll kp-strip-fade flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0" aria-hidden>
         <PillGhost label={t.common.all} />
         <PillGhost label={t.common.markets} />
         <PillGhost label={t.market.udTitle} />

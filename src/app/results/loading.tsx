@@ -242,7 +242,7 @@ function NotableGhost() {
           {/* The verdict chip's box: the `resolved` variant's status metrics (`metrics="status"`), not its gold. */}
           <ChipGhost size="sm" metrics="status">{t.market.resolvedOutcome} · {outcomeWord(t, "NO", "MARKET")}</ChipGhost>
           {/* The page's flag, one unbreakable unit as the page draws it (2026-10-10). */}
-          <span className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold">
+          <span className="sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold">
             <span className="h-[13px] w-[13px] shrink-0" /> <span className="kp-track-end kp-track-end--16"><GhostText>{t.results.notableResult}</GhostText></span>
           </span>
         </div>
