@@ -58,6 +58,8 @@ check("exact paid owned target within 30 minutes qualifies", isDepositReturnBet(
 check("a foreign deposit cannot qualify", !isDepositReturnBet("s9_b", pure, { marketId: "mkt_target", side: "YES", stake: 5_000 }, now));
 check("a failed deposit cannot qualify", !isDepositReturnBet("s9_a", { ...pure, status: "FAILED" }, { marketId: "mkt_target", side: "YES", stake: 5_000 }, now));
 check("a changed quote cannot qualify", !isDepositReturnBet("s9_a", pure, { marketId: "mkt_target", side: "NO", stake: 5_000 }, now));
+check("an altered market cannot inherit the deposit return", !isDepositReturnBet("s9_a", pure, { marketId: "mkt_other", side: "YES", stake: 5_000 }, now));
+check("an altered stake cannot inherit the deposit return", !isDepositReturnBet("s9_a", pure, { marketId: "mkt_target", side: "YES", stake: 6_000 }, now));
 check("a house stake cannot qualify", !isDepositReturnBet("s9_a", pure, { marketId: "mkt_target", side: "YES", stake: 5_000, houseBotId: "hb_x" }, now));
 check("30-minute boundary qualifies, one millisecond later does not",
   isDepositReturnBet("s9_a", pure, { marketId: "mkt_target", side: "YES", stake: 5_000 }, Date.parse(pure.completedAt) + 30 * 60_000)
