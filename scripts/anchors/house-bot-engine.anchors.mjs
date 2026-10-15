@@ -1489,6 +1489,19 @@ export const MUTATIONS = [
     sections: "17n6",
   },
   {
+    name: "N6-pair-player-arrival-fire · fire ignores a player stake placed after PAIR was queued",
+    file: FIRE,
+    // Both clauses detect this fixture: the player stakes on PAIR's intended side, so removing only one
+    // would leave the other clause protecting it and the mutation would measure no lost guard.
+    from: `        if (market.playerOpen || market.ownBotOpen || market.otherBotCount !== 1 || sideTaken || !otherSideTaken
+          || ownPool !== 0 || !rules.share.otherSide || rules.share.matchPct <= 0) return finish(intent, deps, "SKIPPED", "CONDITION_GONE");`,
+    to: `        if (market.ownBotOpen || market.otherBotCount !== 1 || sideTaken || !otherSideTaken
+          || !rules.share.otherSide || rules.share.matchPct <= 0) return finish(intent, deps, "SKIPPED", "CONDITION_GONE");`,
+    expect: "17n6.5b · a player's stake arriving after PAIR was queued makes its fire SKIPPED(CONDITION_GONE)",
+    suite: "engine-mem",
+    sections: "17n6",
+  },
+  {
     name: "N6-other-side-position · an opposite-side desk stake blocks opted-in counters again",
     file: ENTER_NOW,
     from: `  if (opts.sideAwareSide === "YES" ? onMarket.otherBotYesOpen : opts.sideAwareSide === "NO" ? onMarket.otherBotNoOpen : onMarket.otherBotOpen) {`,

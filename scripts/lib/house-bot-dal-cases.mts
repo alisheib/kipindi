@@ -143,6 +143,18 @@ function buildExpected(): Record<string, string> {
     "c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow": "1:0",
     "c04p.o the desk budget counts PAIR and marked COUNTER, not ordinary COUNTER, on each EAT day": "2:2200|1:900|1:1700",
     "c04p.p markPlaced keeps the decision and atomically marks a shared COUNTER": "true:PLACED:true:keep",
+    // c04q · N6 · the PAIR seam's exact two-store outputs (not only the planner's eventual result)
+    "c04q.a one-sided live rounds are PAIR candidates on both sides": "mkt_c04q_no:true,mkt_c04q_yes:true",
+    "c04q.b a live PAIR anchor removes only its own round": "mkt_c04q_yes:true",
+    "c04q.c a normally cancelled PAIR makes its round plannable again": "mkt_c04q_no:true,mkt_c04q_yes:true",
+    "c04q.d an admin-cancelled PAIR keeps its round excluded": "mkt_c04q_yes:true",
+    "c04q.e a disabled asset removes every PAIR candidate": "none",
+    "c04q.f a stopped chain removes every PAIR candidate": "none",
+    "c04q.g empty market usage has no marked side": "0:false:false:0:null:null:0:false:false:0",
+    "c04q.h a marked YES stake identifies the other holder and YES side": "1:true:false:1:hb_c04q_first:usr_c04q_first:1000:false:false:1000",
+    "c04q.i a second NO stake by that bot marks both sides but one holder": "1:true:true:1:hb_c04q_first:usr_c04q_first:3000:false:false:3000",
+    "c04q.j a different bot on NO removes the single-holder identity": "1:true:true:2:null:null:7000:false:false:7000",
+    "c04q.k player and own stakes are distinct; closed stakes do not count": "1:true:true:2:null:null:7000:true:true:7600",
     // c05 · a press id is used once, ever
     "c05.a Enter now queued": "PENDING",
     "c05.b cancel it": "CANCELLED",
@@ -358,6 +370,7 @@ async function runCases(): Promise<void> {
   const dal: Any = await import("../../src/lib/server/house-bot-dal.ts");
   const { db }: Any = await import("../../src/lib/server/store.ts");
   const { marketStore, positionStore }: Any = await import("../../src/lib/server/market-dal.ts");
+  const { assetStore, chainStore, roundStore }: Any = await import("../../src/lib/server/updown-dal.ts");
   const book: Any = await import("../../src/lib/server/house-bot/book.ts");
   const { labelKey }: Any = await import("../../src/lib/house-bot/rules.ts");
   const { manualAnchorKey }: Any = await import("../../src/lib/house-bot/constants.ts");
@@ -621,6 +634,77 @@ async function runCases(): Promise<void> {
       const read = await intents.get(marked.id);
       return `${didMark}:${read?.status}:${read?.decision?.twoSidedDesk}:${read?.decision?.note}`;
     });
+  });
+
+  // ── c04q · N6 · PAIR candidate and per-side money reads, same answers on both stores ────
+  await group("c04q", async () => {
+    const now = new Date().toISOString();
+    const opensAt = fromNow(3_600_000);
+    const cutoff = new Date(Date.parse(opensAt) + 15 * 60_000).toISOString();
+    const resolvesAt = new Date(Date.parse(cutoff) + 60_000).toISOString();
+    const asset = {
+      id: "uda_c04q", key: "C04Q", symbol: "C04Q", nameEn: "Case asset", nameSw: "Mali ya jaribio", nameZh: null,
+      iconKey: "gold", priceSourceUrl: "https://example.com/c04q", sourceDomain: "example.com", category: "macro",
+      decimals: 2, minMoveTicks: 1, enabled: true, sortOrder: 0, createdBy: OFFICER, createdAt: now, updatedAt: now,
+    };
+    const chain = {
+      id: "udc_c04q", assetId: asset.id, durationMinutes: 15, state: "RUNNING",
+      gridAnchorAt: opensAt, nextBoundaryAt: cutoff, currentRoundId: null,
+      minStake: null, maxStake: null, rateProfile: null, marginBps: null,
+      createdBy: OFFICER, createdAt: now, updatedAt: now,
+    };
+    await assetStore.upsert(asset);
+    await chainStore.upsert(chain);
+    for (const [roundIndex, [name, yesPool, noPool]] of ([["no", 0, 2_000], ["yes", 1_000, 0], ["both", 1_000, 2_000], ["empty", 0, 0]] as const).entries()) {
+      const marketId = `mkt_c04q_${name}`;
+      await marketStore.set(market(marketId, { productLine: "UPDOWN", yesPool, noPool,
+        selectionClosedAt: cutoff, resolutionAt: resolvesAt }));
+      await roundStore.create({ id: `udr_c04q_${name}`, chainId: chain.id, marketId, roundNumber: roundIndex + 1,
+        opensAt, closesAt: cutoff, boundaryAt: cutoff,
+        openObservationId: null, closeObservationId: null, openPrice: null, closePrice: null,
+        marginBps: null, upTarget: null, downTarget: null, capturedSourceUrl: null, capturedSourceDomain: null,
+        outcome: null, voidReason: null, resolvedAt: null, settledAt: null, createdAt: now, updatedAt: now });
+    }
+    const candidates = async (): Promise<string> => {
+      const rows: Array<{ id: string; cutoff: string }> = await dal.houseSeamStore.plannableMarkets({
+        kind: "PAIR", productLine: "UPDOWN", fromIso: now, toIso: cutoff, after: null, limit: 200,
+      });
+      return rows.length ? rows.map((r) => `${r.id}:${r.cutoff === cutoff}`).join(",") : "none";
+    };
+    await rec("c04q.a one-sided live rounds are PAIR candidates on both sides", candidates);
+    await intents.insert(pair("hbi_c04q_first", "mkt_c04q_no"));
+    await rec("c04q.b a live PAIR anchor removes only its own round", candidates);
+    await intents.cancelPending("hbi_c04q_first", "CASE");
+    await rec("c04q.c a normally cancelled PAIR makes its round plannable again", candidates);
+    await intents.insert(pair("hbi_c04q_admin", "mkt_c04q_no"));
+    await intents.cancelPending("hbi_c04q_admin", "CANCELLED_BY_ADMIN");
+    await rec("c04q.d an admin-cancelled PAIR keeps its round excluded", candidates);
+    await assetStore.upsert({ ...asset, enabled: false });
+    await rec("c04q.e a disabled asset removes every PAIR candidate", candidates);
+    await assetStore.upsert(asset);
+    await chainStore.patch(chain.id, { state: "STOPPED" });
+    await rec("c04q.f a stopped chain removes every PAIR candidate", candidates);
+
+    for (const id of ["usr_c04q_first", "usr_c04q_second", "usr_c04q_player", "usr_c04q_own"]) await mkUser(id);
+    const usageMarket = "mkt_c04q_usage";
+    await marketStore.set(market(usageMarket));
+    const usage = async (): Promise<string> => {
+      const u = await dal.houseSeamStore.marketUsage({ houseBotId: "hb_c04q_own", marketId: usageMarket });
+      return `${Number(u.otherBotOpen)}:${u.otherBotYesOpen}:${u.otherBotNoOpen}:${u.otherBotCount}:${u.otherBotId}:${u.otherBotUserId}:${u.otherBotOpenStakeTzs}:${u.playerOpen}:${u.ownBotOpen}:${u.houseOpenStakeTzs}`;
+    };
+    const addPosition = (id: string, userId: string, side: "YES" | "NO", stake: number, houseBotId: string | null, status = "OPEN") =>
+      positionStore.set({ ...position(id, now, stake, status, houseBotId), userId, marketId: usageMarket, side });
+    await rec("c04q.g empty market usage has no marked side", usage);
+    await addPosition("pos_c04q_yes", "usr_c04q_first", "YES", 1_000, "hb_c04q_first");
+    await rec("c04q.h a marked YES stake identifies the other holder and YES side", usage);
+    await addPosition("pos_c04q_no", "usr_c04q_first", "NO", 2_000, "hb_c04q_first");
+    await rec("c04q.i a second NO stake by that bot marks both sides but one holder", usage);
+    await addPosition("pos_c04q_second", "usr_c04q_second", "NO", 4_000, "hb_c04q_second");
+    await rec("c04q.j a different bot on NO removes the single-holder identity", usage);
+    await addPosition("pos_c04q_player", "usr_c04q_player", "NO", 500, null);
+    await addPosition("pos_c04q_own", "usr_c04q_own", "YES", 600, "hb_c04q_own");
+    await addPosition("pos_c04q_closed", "usr_c04q_second", "NO", 9_000, "hb_c04q_second", "LOSS");
+    await rec("c04q.k player and own stakes are distinct; closed stakes do not count", usage);
   });
 
   // ── c05 · a press id is used once, ever ──────────────────────────────────────────────────
