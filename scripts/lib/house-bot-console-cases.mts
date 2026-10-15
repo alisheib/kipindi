@@ -7133,7 +7133,7 @@ try {
       try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
       catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
     };
-    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 }, label: "Case account" });
     await w.setUserFields(pollsOnly.userId, { passwordSalt: "case-salt-for-2g" });
     await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     /* ⛔ THE PRODUCTION SHAPE ITSELF (review finding 2026-09-22): both products ticked, every automatic mode on, BOTH
@@ -7216,6 +7216,22 @@ try {
         && typeof warned.note === "string" && warned.note.includes(R.START_COPY.allImpossible)
         && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
       j(warned));
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: false };
+      r.scope.chains = [CHAIN_KEY];
+      r.share = { otherSide: true, matchPct: 50, matchPerDay: 1 };
+    }));
+    const pairStarted = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.pair.start · a pair-only account Starts with a budget warning that reaches the console without a forbidden word or an unusable by-hand promise",
+      pairStarted.ok === true && pairStarted.warn === true
+        && typeof pairStarted.note === "string"
+        && pairStarted.note.includes("uses pairing as its only automatic entry")
+        && pairStarted.note.includes("both pair budgets allow")
+        && !NEUTRAL.test(pairStarted.note)
+        && !/press Enter now|target reacts/.test(pairStarted.note)
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
+      j(pairStarted));
   }
 
   /* ━━ THE BY-HAND-ONLY ACCOUNT, ON EVERY SURFACE (review finding 2026-09-22) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

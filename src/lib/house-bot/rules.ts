@@ -2928,11 +2928,7 @@ export const START_COPY = {
  */
 export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; targets: boolean; pair?: boolean }): string | null => {
   if (on.pair) {
-    const manual = on.enterNow && on.targets
-      ? " It may also stake when you press Enter now or a target reacts."
-      : on.enterNow ? " It may also stake when you press Enter now."
-        : on.targets ? " It may also stake when a target reacts." : "";
-    return `${label} has no Counter, Fill or Opener mode: it can pair an empty Up & Down round only when the desk pair budgets allow.${manual}`;
+    return `${label} uses pairing as its only automatic entry: it can pair an empty Up & Down round only when the desk is on and both pair budgets allow.`;
   }
   if (on.enterNow && on.targets) return `${label} has no automatic mode: it bets only when you press Enter now or a target reacts.`;
   if (on.enterNow) return `${label} has no automatic mode: it bets only when you press Enter now.`;

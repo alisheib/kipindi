@@ -1607,12 +1607,15 @@ section("§10 · timing and Start");
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: true, targets: true }) === "Bot A has no automatic mode: it bets only when you press Enter now or a target reacts." &&
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: true }) === "Bot A has no automatic mode: it bets only when a target reacts." &&
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: false }) === null);
-    ok("10.S.pair · a pair-only warning names its automatic route and all extra by-hand routes, rather than saying it can only be pressed by hand",
+    ok("10.S.pair · a pair-only warning names its automatic route and budget, without promising by-hand controls that have no screen on this build",
       NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true }) ===
-        "Account A has no Counter, Fill or Opener mode: it can pair an empty Up & Down round only when the desk pair budgets allow." &&
-      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: false, pair: true })?.endsWith(" It may also stake when you press Enter now.") === true &&
-      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: true, pair: true })?.endsWith(" It may also stake when a target reacts.") === true &&
-      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: true, pair: true })?.endsWith(" It may also stake when you press Enter now or a target reacts.") === true);
+        "Account A uses pairing as its only automatic entry: it can pair an empty Up & Down round only when the desk is on and both pair budgets allow." &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: false, pair: true }) ===
+        NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true }) &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: true, pair: true }) ===
+        NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true }) &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: true, pair: true }) ===
+        NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true }));
     const caps = capsOf({ targetsMaxActive: 5 });
     const NO_SCREENS = { enterNow: false, targeting: false };
     const ALL_SCREENS = { enterNow: true, targeting: true };
