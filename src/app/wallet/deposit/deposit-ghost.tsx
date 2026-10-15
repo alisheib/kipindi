@@ -77,9 +77,9 @@ export function JourneyDepositGhost() {
       eyebrow={names.eyebrow} title={names.heading} subtitle={t.wallet.mobileMoney} /></PageHero>
     <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-5" aria-hidden>
       <div className="h-4 w-2/3 rounded bg-bg-overlay kp-shimmer-track" />
-      <div className="space-y-2">{[0, 1, 2, 3].map((n) => <div key={n} className="h-[60px] rounded-md bg-bg-inset kp-shimmer-track" />)}</div>
       <div className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">{[0, 1, 2, 3, 4, 5].map((n) => <div key={n} className="h-[44px] rounded-pill bg-bg-inset kp-shimmer-track" />)}</div>
+      <div className="space-y-2">{[0, 1, 2, 3].map((n) => <div key={n} className="h-[60px] rounded-md bg-bg-inset kp-shimmer-track" />)}</div>
       <div className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />
       <div className="h-[var(--h-control-lg)] rounded-pill bg-bg-overlay kp-shimmer-track" />
       <div className="h-[var(--h-control-md)] rounded-pill bg-bg-overlay kp-shimmer-track" />

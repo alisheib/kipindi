@@ -15,6 +15,8 @@ import { bodyKey, freshPlayer, observed, openSheet, post, S, pageIn } from "./li
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3048";
 const OUT = resolve(process.env.KP_E2E_OUT ?? ".qa-shots/simple-journey/e2e");
+const VIEWPORT = process.env.KP_E2E_VIEWPORT === "desktop"
+  ? { width: 1280, height: 900 } : { width: 390, height: 844 };
 const checks = [];
 const stamp = () => new Date().toISOString();
 const check = (name, condition, detail = "") => {
@@ -56,7 +58,7 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 let admin, player, controlPage;
 let demoWas = null;
-const evidence = { startedAt, base: BASE, commit: null, checks, images: [], note: "Local in-memory mock rail only; no real payment or production proof." };
+const evidence = { startedAt, base: BASE, viewport: VIEWPORT, commit: null, checks, images: [], note: "Local in-memory mock rail only; no real payment or production proof." };
 const rememberShot = async (page, name) => { await shot(page, name); evidence.images.push(`${name}.png`); };
 
 try {
@@ -65,7 +67,7 @@ try {
   const catalogue = await post(BASE, admin, "seed-markets");
   check("open market fixture", catalogue.ids?.length > 0, `${catalogue.ids?.length ?? 0} markets`);
   controlPage = await admin.newPage();
-  await controlPage.goto(`${BASE}/admin/payments?tab=rails`, { waitUntil: "domcontentloaded" });
+  await controlPage.goto(`${BASE}/admin/payments?tab=rails`, { waitUntil: "domcontentloaded", timeout: 120_000 });
   const mock = controlPage.getByRole("radio", { name: /Mock/ });
   await mock.waitFor({ timeout: 120_000 });
   check("mock payment rail selected", (await mock.getAttribute("aria-checked")) === "true");
@@ -89,8 +91,29 @@ try {
   check("mock starts synchronous", !(await asyncOn()));
 
   const pass = await mintStaffPass(browser, BASE, { phone: phoneFor(37), name: "S14 Preview Support" });
-  player = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block" });
+  player = await browser.newContext({ viewport: VIEWPORT, serviceWorkers: "block" });
   await player.addCookies([cookie(BASE, pass), { name: LOCALE_COOKIE, value: "en", url: BASE }]);
+  const home = await pageIn(BASE, player, "/", []);
+  await home.locator('[data-testid="journey-howto-card"]').waitFor({ state: "visible", timeout: 120_000 });
+  await rememberShot(home, "00-home");
+  await home.locator('[data-testid="journey-howto-card"]').click();
+  await home.locator('[data-testid="journey-howto-sheet"]').last().waitFor({ state: "visible" });
+  await home.locator('.kp-howto:visible').last().evaluate(async (panel) => {
+    await Promise.all(panel.getAnimations().map((animation) => animation.finished.catch(() => {})));
+  });
+  const howToLayout = await home.locator('.kp-howto:visible').last().evaluate((panel) => {
+    const heading = panel.querySelector('h2')?.getBoundingClientRect();
+    const action = panel.querySelector('.kp-wsheet__act')?.getBoundingClientRect();
+    const scroller = panel.querySelector('.kp-howto__scroll');
+    return { headingTop: heading?.top ?? -1, actionBottom: action?.bottom ?? Infinity,
+      scrollSafe: scroller instanceof HTMLElement && (scroller.scrollHeight <= scroller.clientHeight
+        || getComputedStyle(scroller).overflowY === "auto") };
+  });
+  check("how-to heading and action fit the viewport", howToLayout.headingTop >= 0 && howToLayout.actionBottom <= VIEWPORT.height,
+    `title y=${Math.round(howToLayout.headingTop)}, action bottom=${Math.round(howToLayout.actionBottom)}`);
+  if (VIEWPORT.width < 500) check("mobile how-to steps can scroll when needed", howToLayout.scrollSafe);
+  await rememberShot(home, "00-how-to-play");
+  await home.close();
   const page = await pageIn(BASE, player, "/markets", []);
   const betRequests = [];
   player.on("request", (req) => {
@@ -129,6 +152,11 @@ try {
   await waitFrame(page, "low");
   check("new player has short balance", (await page.locator('[data-testid="journey-sheet-deposit"]').isVisible()));
   await noPosition(player, selected.id, "registration does not place a bet");
+  const toastDismiss = page.locator('[data-toaster] [data-toast-dismiss]').first();
+  if (await toastDismiss.isVisible()) {
+    await toastDismiss.click();
+    await toastDismiss.waitFor({ state: "hidden", timeout: 5_000 });
+  }
   await rememberShot(page, "02-short-balance");
 
   const outbox = await player.request.get(`${BASE}/api/dev-test/last-verification-link`, { timeout: 120_000 });
@@ -148,6 +176,12 @@ try {
   await page.locator('label:has(#provider-MPESA)').click();
   await page.locator('input[name="amount"]').fill("1000");
   await page.locator("#msisdn").fill(phone.replace("+255", ""));
+  const betStrip = page.locator('[data-testid="journey-deposit-bet-strip"]');
+  check("deposit carries chosen YES side and TZS 500 stake", (await betStrip.locator('[data-testid="journey-deposit-side"]').innerText()) === "YES"
+    && (await betStrip.innerText()).includes("TZS 500"));
+  const amountTop = (await page.locator('input[name="amount"]').boundingBox())?.y ?? Infinity;
+  const providerTop = (await page.locator('#provider-MPESA').locator('..').boundingBox())?.y ?? -Infinity;
+  check("deposit amount precedes payment methods", amountTop < providerTop, `amount y=${Math.round(amountTop)}, provider y=${Math.round(providerTop)}`);
   await rememberShot(page, "03-deposit-form");
   const depositActions = [];
   player.on("request", (req) => {
@@ -166,6 +200,14 @@ try {
   check("waiting page tells player the deposit arrived and a bet still needs a press",
     (await body(page)).includes("no bet was placed automatically"));
   await rememberShot(page, "04-paid-waiting");
+  if (VIEWPORT.width < 500) {
+    const txnLines = await page.locator('[data-testid="deposit-transaction-id"]').evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return [...range.getClientRects()].filter((r) => r.width > 0).length;
+    });
+    check("mobile transaction ID stays on one line", txnLines === 1, `rendered lines=${txnLines}`);
+  }
   await noPosition(player, selected.id, "confirmed deposit does not auto bet");
   check("no hidden bet action before player press", betRequests.length === 0, `requests=${betRequests.length}`);
 

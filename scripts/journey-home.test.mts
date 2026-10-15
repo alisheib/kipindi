@@ -1436,11 +1436,14 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // 5.cap — WP6 step 4, sizing; Open point 20. The chain the cap runs down is the block's own (the review of 2026-10-12):
   // the panel a flex column itself, never leaning on .kp-wsheet; the sheet in it a flex column that may shrink below its
   // content (min-height: 0 — without it the sheet keeps its content's height and runs out of the capped panel); in that,
-  // the steps region alone gives way. Each value as the cascade leaves it (null: no rule declares it).
+  // the steps region alone gives way. A blanket child selector has higher specificity than `.kp-howto__scroll` and
+  // previously forced the scroller to stay full height, clipping the title above the phone viewport. Each value is
+  // checked as the cascade leaves it (null: no rule declares it).
   const CAP: Array<[string, string, string | null]> = [
     [".kp-howto", "display", "flex"], [".kp-howto", "flex-direction", "column"], [".kp-howto", "max-height", "calc(100dvh - var(--sp-12))"],
     [".kp-howto__sheet", "display", "flex"], [".kp-howto__sheet", "flex-direction", "column"], [".kp-howto__sheet", "min-height", "0"],
-    [".kp-howto__sheet > *", "flex-shrink", "0"],
+    [".kp-howto__sheet > :not(.kp-howto__scroll)", "flex-shrink", "0"],
+    [".kp-howto__sheet > *", "flex-shrink", null],
     [".kp-howto__scroll", "flex-shrink", "1"], [".kp-howto__scroll", "min-height", "0"], [".kp-howto__scroll", "overflow-y", "auto"],
     [".kp-howto__scroll", "overscroll-behavior", "contain"], [".kp-howto__scroll", "mask-image", null], [".kp-howto__scroll", "-webkit-mask-image", null],
     [".kp-howto__scroll:focus-visible", "mask-image", "none"], [".kp-howto__scroll:focus-visible", "-webkit-mask-image", "none"],
