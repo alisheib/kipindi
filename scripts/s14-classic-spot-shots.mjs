@@ -54,7 +54,13 @@ async function open(page, route) {
       await page.waitForTimeout(3000);
       await page.waitForLoadState("load").catch(() => {});
       const now = await page.evaluate(() => performance.timeOrigin);
-      if (now === origin) return { status: res?.status() ?? 0, beats: beat + 1, landed: page.url() };
+      if (now === origin) {
+        const needleRested = await page.waitForFunction(() => {
+          if (!document.getElementById("needle-root")) return true;
+          return !!window.needle && typeof window.needle.resting === "function" && window.needle.resting() === true;
+        }, null, { timeout: 15_000, polling: 100 }).then(() => true, () => false);
+        return { status: res?.status() ?? 0, beats: beat + 1, landed: page.url(), needleRested };
+      }
     } catch {
       // A same-URL Next dev reload can destroy the context mid-read. One new
       // document gets the same main/hydration/settle beat; continuous churn fails.
