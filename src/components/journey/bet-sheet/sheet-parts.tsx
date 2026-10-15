@@ -43,7 +43,9 @@ export function SheetSentence({ t, locale, line, nowMs }: { t: Dict; locale: Loc
       : (key === "until" || key === "untilAt") && typeof value === "string" && Number.isFinite(Date.parse(value))
         ? formatBreakEnd(Date.parse(value), nowMs, t.common.monthsShort, locale) : value;
   }
-  return <>{fillNodes(sheetTemplate(t, line.key), values)}</>;
+  // Keep the em dash with the minimum amount: a wrapped low-balance note must not open a line with punctuation (F35).
+  const template = sheetTemplate(t, line.key);
+  return <>{fillNodes(line.key === "journey.lowMinNote" ? template.replace(" — ", "\u00a0— ") : template, values)}</>;
 }
 
 type Parts = { t: Dict; locale: Locale; seed: SheetSeed; side: SheetSide; frame: SheetFrame; nowMs: number };

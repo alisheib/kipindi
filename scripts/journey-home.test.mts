@@ -1438,9 +1438,13 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const fades = ["end", "start", "both"].map((e) => `.kp-howto__scroll[data-edges=${HT_QUOTE}${e}${HT_QUOTE}]`);
   const fadeDrift = fades.filter((f) => !(cv(f, "mask-image") ?? "").startsWith("linear-gradient(to bottom,") || cv(f, "-webkit-mask-image") !== cv(f, "mask-image"));
   const capCss = capDrift.length === 0 && fadeDrift.length === 0;
+  // ⚠️ Moved 2026-10-15 (the visual audit's F50): the region is marked by the kit's `useBlockScrollEdges` — the one rule the
+  // bet sheet's middle reads too — so the mark and its three reads are asked of scroll-edges.ts, and the sheet's call of it.
+  const edgesKit = decomment(read("src/components/ui/scroll-edges.ts"));
   const capSrc = sheet.includes(`panelClassName="kp-wsheet kp-howto"`) && sheet.includes(`<div className="kp-howto__sheet" data-testid="journey-howto-sheet">`)
     && sheetFlat.includes(`<div ref={ref} role="region" tabIndex={0} aria-label={label} className="kp-howto__scroll">`)
-    && sheet.includes(`el.setAttribute("data-edges", edges)`) && ["el.scrollHeight", "el.clientHeight", "el.scrollTop"].every((x) => sheet.includes(x));
+    && sheet.includes("useBlockScrollEdges(ref);") && htImports(sheet, "scroll-edges")
+    && edgesKit.includes(`box.setAttribute("data-edges", edges)`) && ["box.scrollHeight", "box.clientHeight", "box.scrollTop"].every((x) => edgesKit.includes(x));
   ok("5.cap · the cap is on the panel, in CSS: .kp-howto holds it to the viewport less 48px (calc(100dvh - var(--sp-12)), the first-visit primer's fixed gutter) and is a flex column itself, never leaning on .kp-wsheet; the sheet inside it a flex column that may shrink (.kp-howto__sheet: display flex, flex-direction column, min-height 0); the rest of the sheet never shrinks and the steps region alone gives way and scrolls, its own scroll held; a fade only at an edge that hides something (data-edges, read from the region), none on a region that fits or holds keyboard focus",
     capCss && capSrc, j({ capCss, capSrc, capDrift, fadeDrift }));
 

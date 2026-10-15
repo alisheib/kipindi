@@ -27,6 +27,7 @@
  */
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { centredScrollLeft, stripPeekCut, STRIP_CUT, STRIP_PEEK_REST_MS, type StripItem } from "@/lib/strip-scroll";
+import { scrollEdges } from "./scroll-edges";
 
 /**
  * ⭐ WHICH EDGES HAVE MORE CHIPS BEYOND THEM — 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191].
@@ -39,13 +40,11 @@ import { centredScrollLeft, stripPeekCut, STRIP_CUT, STRIP_PEEK_REST_MS, type St
  * those. ⛔ No attribute (no JavaScript yet, or a skeleton) reads as "end" — the trailing fade alone, which
  * is what a strip at scroll 0 with more to its right needs — so nothing changes when the script lands.
  * ⚠️ 1px of slack each way: `scrollLeft` is fractional on a high-density screen and a strip scrolled to its
- * end can stop half a pixel short of `scrollWidth - clientWidth`.
+ * end can stop half a pixel short of `scrollWidth - clientWidth`. The four states are `scrollEdges`
+ * (`scroll-edges.ts`): one rule for this strip, the How to Play sheet's steps and the bet sheet's middle.
  */
 function markEdges(rail: HTMLElement, scrolling = false) {
-  const max = rail.scrollWidth - rail.clientWidth;
-  const before = max > 1 && rail.scrollLeft > 1;
-  const after = max > 1 && rail.scrollLeft < max - 1;
-  const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";
+  const edges = scrollEdges(rail.scrollLeft, rail.scrollWidth, rail.clientWidth);
   if (rail.getAttribute("data-edges") !== edges) rail.setAttribute("data-edges", edges);
   markPeek(rail, scrolling);
 }
