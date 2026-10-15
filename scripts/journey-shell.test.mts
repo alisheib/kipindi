@@ -264,6 +264,9 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyWinCelebration", "@/components/markets/win-celebration", "WinCelebrationHost"],
   ["LazySellResultHost", "@/components/markets/sell-result-host", "SellResultHost"],
   ["LazyBetSheetHost", "@/components/journey/bet-sheet/bet-sheet-host", "BetSheetHost"],
+  ["LazyGuestSheetHost", "@/components/journey/bet-sheet/guest-sheet-host", "GuestSheetHost"],
+  // S11 WP4: How to Play's host, journey-only, in the flag's slot (JOURNEY_SLOT below).
+  ["LazyHowToHost", "@/components/onboarding/how-to-host", "HowToHost"],
   ["LazyNotifyPoller", "@/components/markets/notify-poller", "NotifyPoller"],
   ["LazyEventStream", "@/components/layout/event-stream-provider", "EventStreamProvider"],
   ["LazyInstallInvite", "@/components/pwa/install-invite", "InstallInvite"],
@@ -285,6 +288,20 @@ const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
  *  switches the journey on mounts it in the commit that first paints them. It is the `journeyShown &&` arm itself — it
  *  has no classic twin — so 12.shell.flag holds it, not 12.shell.bare's ternaries. */
 const BARE_FLAG = "LazyJourneyFlag";
+/** S9 adds a second, early shell arm for journey payments. It is guarded by the resolved journey answer. */
+const FOCUSED_PAYMENT_ARM = "if (isFocusedJourneyPaymentPath(pathname) && (await journeyRead).journey) {";
+function focusedPaymentArm(shell: string): string {
+  const start = shell.indexOf(FOCUSED_PAYMENT_ARM);
+  const end = start < 0 ? -1 : shell.indexOf("\n  let topUser:", start);
+  return start < 0 || end < 0 ? "" : shell.slice(start, end);
+}
+/**
+ * THE JOURNEY'S OWN SLOT, AS APPSHELL WRITES IT (the Vodacom plan S11 WP4; S11-PLAN Open point 3 and Amendment B5). It held
+ * the flag alone until S11; How to Play's host now shares it, in a fragment: the flag first and BARE (12.shell.flag), the host
+ * after it in a Suspense boundary of its own (it reads the address) — so a classic request still renders the slot as one
+ * `false`. 5.mount and 12.shell.flag both read this one string; `test:howto` §5 holds the host's half.
+ */
+const JOURNEY_SLOT = "{journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}";
 /** A part's one line in the shell's lazy module, exactly as it is written there. */
 const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -469,7 +486,9 @@ const EXPECTED: Record<string, Expect> = {
   "/updown": U, "/updown/[roundId]": U,
   "/updown/history": T, "/positions": T, "/positions/[positionId]": T, "/positions/performance": T,
   "/account": A,
-  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A, "/wallet/receipts": A, "/wallet/withdraw": A,
+  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/card": A, "/wallet/deposit/wait": A,
+  "/wallet/deposit/wait/[id]": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A,
+  "/wallet/receipts": A, "/wallet/withdraw": A,
   "/profile": A, "/profile/account": A, "/profile/activity": A, "/profile/invite": A, "/profile/kyc": A,
   "/profile/notifications": A, "/profile/responsible-gambling": A, "/profile/security": A, "/profile/sessions": A,
   "/profile/source-of-funds": A,
@@ -865,13 +884,16 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
   // ⭐ MOUNTED SINCE WP7: once, in AppShell, behind the resolver's own answer, through the shell's lazy binding (§11 holds
   // the binding). Nothing else renders it, so a page the server did not put in the journey never carries the flag.
   // ⚠️ BARE SINCE ROUND 5'S FOLLOW-UP (R5-H, G-3): 12.shell.flag holds why.
-  const flagMount = "{journeyShown && <LazyJourneyFlag />}";
+  // S11 WP4: the flag's mount is the journey's slot, which How to Play's host now shares (JOURNEY_SLOT).
+  const flagMount = JOURNEY_SLOT;
   const shellText = text(W, SHELL);
+  const focused = focusedPaymentArm(shellText);
+  const focusedFlag = focused.includes('data-focused-payment=""') && count(focused, "<LazyJourneyFlag") === 1;
   const direct = [...W.files].filter(([p, s]) => p !== FLAG_COMPONENT && s.includes("<JourneyFlag")).map(([p]) => p);
   const lazyElsewhere = [...W.files].filter(([p, s]) => p !== SHELL && s.includes("<LazyJourneyFlag")).map(([p]) => p);
   const mounted = { once: count(shellText, flagMount), lazy: count(shellText, "<LazyJourneyFlag"), direct, lazyElsewhere };
-  ok("5.mount · JourneyFlag is mounted once, in AppShell, only behind journeyShown (WP7) — nothing renders it otherwise, so a classic page never carries data-journey",
-    mounted.once === 1 && mounted.lazy === 1 && direct.length === 0 && lazyElsewhere.length === 0, show(mounted));
+  ok("5.mount · JourneyFlag is mounted only in the journey shell and S9's resolved focused payment arm; classic pages never carry data-journey",
+    mounted.once === 1 && mounted.lazy === 2 && focusedFlag && direct.length === 0 && lazyElsewhere.length === 0, show({ ...mounted, focusedFlag }));
   // ⭐ THE SHELL'S MARK (WP7's drive, 2026-10-03): the same answer, written into the server's HTML, so the first frame
   // after hydration is already right. Once, in AppShell, behind the resolver's answer; read by the hook; nowhere else.
   const markMount = "{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}";
@@ -884,8 +906,9 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
     markUsers,
     id: MARK.JOURNEY_SHELL_MARK,
   };
-  ok("5.mark.mount · AppShell writes the shell's mark once, only behind journeyShown, as a plain element in the server's HTML, and the hook reads it — nothing else touches it, so a classic page never carries it",
-    marks.once === 1 && marks.rendered === 1 && marks.shellImports && marks.hookReads && markUsers.length === 0 && marks.id === "kp-journey-shell", show(marks));
+  const focusedMark = focused.includes('data-focused-payment=""') && count(focused, "id={JOURNEY_SHELL_MARK}") === 1;
+  ok("5.mark.mount · AppShell writes the shell mark only in the journey shell and S9's resolved focused payment arm",
+    marks.once === 1 && marks.rendered === 2 && focusedMark && marks.shellImports && marks.hookReads && markUsers.length === 0 && marks.id === "kp-journey-shell", show({ ...marks, focusedMark }));
   const markSrc = text(W, MARK_HOME);
   ok("5.mark.pure · shell-mark.ts is pure — no import, no directive — because the server shell and the client hook both load it",
     markSrc.includes("export const JOURNEY_SHELL_MARK") && !markSrc.includes("import") && !isClient(markSrc) && !hasDirective(markSrc, "use server"));
@@ -954,9 +977,11 @@ const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed 
  * sheet replaces the primer for that reader (VODACOM-PLAN §3.8), and S11's auto-open will run on /live, /results and
  * /watchlist too. One term in the open effect, straight after the SUPPRESS_ON line, with the flag among that effect's
  * dependencies; one in the render, straight after the HIDE_ON and SUPPRESS_ON guard, the only place a primer already open
- * when a refresh switches the journey on can be taken down. Nothing moves out of the file in S7: HIDE_ON
- * (`test:marketing-optout`), SUPPRESS_ON and the automation opt-in (`test:stacking` 8.1–8.5) and the seen key stay where
- * their gates read them.
+ * when a refresh switches the journey on can be taken down. Nothing moved out of the file in S7. S11 WP2 (2026-10-14)
+ * moved the DECLARATIONS of HIDE_ON, SUPPRESS_ON, the seen key and the automation opt-in to `src/lib/onboarding/
+ * primer-keys.ts`, shared with the How-to host; the primer imports them under the names it always used, so every line
+ * below that reads them — the two this section pins among them — is unchanged (`test:marketing-optout` S21 and
+ * `test:stacking` 8.1–8.5 read the declarations where they now are).
  */
 const OVERLAY_PRIMER = "src/components/onboarding/first-visit-primer.tsx";
 const PRIMER_EFFECT_PINNED = `if (SUPPRESS_ON.test(pathname ?? "/")) return;`;
@@ -1564,8 +1589,14 @@ function g7Header(W: World, ok: Ok) {
     auth.includes("padding-inline: 14px") && auth.includes("font-size: var(--type-small)") && tokenValue(css, "type-small") === "13px"
       && !css.includes("{ .kp-jhdr__auth {")
       && bar.includes(`className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"`) && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__auth"`)
-      && bar.includes(`href={"/auth/login" as never}`) && bar.includes(`href={"/auth/register" as never}`),
+      && bar.includes(`signIn="/auth/login" signUp="/auth/register"`) && bar.includes(`href={signIn as never}`) && bar.includes(`href={signUp as never}`),
     auth);
+  ok("7.auth.carry · journey header guest pills use the classic page-aware auth rule, with a bare pair while the query resolves",
+    bar.includes(`import { authDoorHrefs } from "@/lib/auth-landing";`)
+      && bar.includes(`const search = useSearchParams();`)
+      && bar.includes(`authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`)
+      && bar.includes(`<Suspense fallback={<JourneyGuestAuthPills signIn="/auth/login" signUp="/auth/register" />}>`)
+      && bar.includes(`<JourneyGuestAuthDoors />`));
   ok("7.state · the bar asks journeyHeaderState once and renders its three answers: the capsule, the pill and the guest pills",
     count(bar, "journeyHeaderState({") === 1 && bar.includes(`{state.capsule !== "none" && (`) && bar.includes("{state.pill && (")
       && bar.includes("{state.authPills && (") && bar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"));
@@ -1797,9 +1828,15 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     isClient(sheet) && count(sheet, "<Modal") === 1 && sheet.includes("labelledBy={titleId}") && sheet.includes(`sheetUntil="lg"`)
       && sheet.includes("maxWidth={440}") && sheet.includes(`panelClassName="kp-wsheet"`) && !sheet.includes("showClose={false}")
       && sheet.includes(`<h2 id={titleId} className="kp-jsheet__title">{t.journey.ticketsGuestTitle}</h2>`)
-      && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) < sheet.indexOf(`"/auth/login?next=%2Fpositions"`)
+      && sheet.indexOf(`signUp="/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`signUp="/auth/register?next=%2Fpositions"`) < sheet.indexOf(`signIn="/auth/login?next=%2Fpositions"`)
       && sheet.includes(`className="btn btn-primary btn-lg kp-wsheet__act"`) && sheet.includes(`className="btn btn-ghost btn-lg kp-wsheet__act"`)
       && count(sheet, "onClick={onClose}") === 2);
+  ok("8.sheet.carry · guest Tiketi doors keep positions as next and carry this page's codes through the shared rule",
+    sheet.includes(`import { doorHrefsFor } from "@/lib/auth-landing";`)
+      && sheet.includes(`const search = useSearchParams();`)
+      && sheet.includes(`doorHrefsFor("/positions", new URLSearchParams(search?.toString() ?? ""))`)
+      && sheet.includes(`<Suspense fallback={<TicketsGuestLinks signUp="/auth/register?next=%2Fpositions" signIn="/auth/login?next=%2Fpositions" onClose={onClose} />}>`)
+      && sheet.includes(`<TicketsGuestDoors onClose={onClose} />`));
   ok("8.sheet.portal · the sheet opens through the kit Modal, which portals to the document body — so it sits on the dialog rung, not sealed in the bar or the rail (A13)",
     rendersSymbol(sheet, "Modal") && portalsOut(text(W, MODAL)) && !portalsOut(sheet) && !sheet.includes("fixed"));
   const journeyPopups = [...W.files.keys()].filter((p) => JOURNEY_POPUP_HOMES.some((home) => p.startsWith(home)) && p.endsWith(".tsx") && IS_POPUP.test(text(W, p))).sort();
@@ -1990,8 +2027,8 @@ const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill
   { href: "/auth/register", when: "authPills" },
   { href: "/notifications", when: "desktop" },
 ];
-/** What a guest's Tiketi zangu opens: the guest sheet's two doors, each returning to the tickets. */
-const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions"];
+/** The guest Tiketi sheet's two auth doors and their named return page. */
+const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions", "/positions"];
 /**
  * The entrances no door on a page can be: a link a player is SENT, or an address the platform answers on its own. Each
  * names the file that generates it and the text there that does; ⛔ an entry EXPIRES the day a journey door reaches its
@@ -2448,7 +2485,9 @@ const WIN_IMPORTERS = ["src/components/layout/away-summary-bar.tsx", "src/compon
  * fails with nothing to catch it takes the whole page to the critical-error screen. The shell's parts took the guard in
  * S6 WP6c; the Tiketi rail, the route ghosts and the journey home's parts in S7 WP6 (A13(a)); the two OLDER loaders — the
  * chat bubble and the first-visit primer, `lazy-overlays.tsx`, on every page, for every player — take it in L1.
- * 12.dynamic.census holds all of them at once, and holds the list: a sixth file that imports `next/dynamic` fails here
+ * ⭐ S12 (WP9–WP11, 2026-10-14) adds the sixth, named in the open: Juu/Chini's journey arm loader (`jud-lazy.tsx`), its three
+ * parts each ending in the guard.
+ * 12.dynamic.census holds all of them at once, and holds the list: a seventh file that imports `next/dynamic` fails here
  * until it is named, so no loader can join the app without the guard, and none can keep a guard of its own beside the
  * app's one.
  */
@@ -2458,6 +2497,7 @@ const DYNAMIC_FILES: readonly string[] = [
   "src/components/journey/tickets/ticket-switch-rail.tsx", // the Maswali | Juu/Chini rail's tabs (S6 WP9; guarded in S7 WP6)
   "src/components/journey/route-ghost-lazy.tsx",           // the journey's route ghosts (R5-D; A24 item 5)
   "src/components/journey/home/home-lazy.tsx",             // the journey home's parts (S7 WP6)
+  "src/components/journey/updown/jud-lazy.tsx",            // Juu/Chini's journey arm (S12 WP9–WP11; named here in the open)
 ];
 /** The overlays' two loaders live in the second of those (L1's file): the red twin plants in it by name. */
 const LAZY_OVERLAYS = DYNAMIC_FILES[1];
@@ -2505,10 +2545,10 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     shell.length > 0 && lazyHit === null && !LAZY_IMPORT.test(shell), show({ lazyHit, imported: LAZY_IMPORT.test(shell) }));
   const imported = importedNames(W, SHELL, SHELL_LAZY);
   const rendered = [...shell.matchAll(LAZY_TAG)].map((m) => m[1]);
-  const notOnce = table.filter((b) => rendered.filter((r) => r === b).length !== 1);
+  const notOnce = table.filter((b) => rendered.filter((r) => r === b).length !== (b === BARE_FLAG ? 2 : 1));
   const stray = [...new Set(rendered.filter((r) => !table.includes(r)))];
   const ownBinding = new RegExp("(?:const|let|var|function|class)[ ]+Lazy[A-Za-z0-9_]*").test(shell);
-  ok(`12.shell.parts · every lazily loaded part AppShell renders is imported from the shell's lazy module under its table name, and rendered once (${table.length})`,
+  ok(`12.shell.parts · every lazy shell part is imported from the one module; S9's flag also mounts in its focused payment arm (${table.length} parts)`,
     show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
     show({ imported, notOnce, stray, ownBinding }));
   const flat = squash(shell);
@@ -2519,9 +2559,11 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
   const emptyBox = count(flat, `className="kp-jhdr"`);
   ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
     chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
-  const flagArm = { arm: count(flat, `{journeyShown && <${BARE_FLAG} />}`), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length, tags: count(flat, `<${BARE_FLAG}`) };
-  ok("12.shell.flag · the journey flag stands in NO Suspense boundary either (round 5's follow-up, R5-H · G-3): the journeyShown arm itself, beside the header and the tabs, so a refresh that switches the journey on waits for its chunk as for theirs and mounts it in the commit that first paints them — and its layout effect raises the flag before that paint",
-    flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 1, show(flagArm));
+  const focused = focusedPaymentArm(shell);
+  const flagArm = { arm: count(flat, JOURNEY_SLOT), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length,
+    tags: count(flat, `<${BARE_FLAG}`), focused: count(focused, `<${BARE_FLAG} />`) };
+  ok("12.shell.flag · the journey flag stays bare beside S11's How-to host and in S9's focused payment arm",
+    flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 2 && flagArm.focused === 1, show(flagArm));
   const offline = {
     imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
     deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
@@ -2612,7 +2654,7 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     };
   });
   const censusOff = censusRows.filter((r) => !r.spelled || r.loaders === 0 || r.unguarded.length > 0 || !r.guard || r.own.length > 0);
-  ok(`12.dynamic.census · every file in src that imports next/dynamic is one of the ${DYNAMIC_FILES.length} the census names — the shell's lazy module, lazy-overlays (the chat bubble and the first-visit primer), the Tiketi switch's rail, the journey's route ghosts and the journey home's lazy module — and each imports it as dynamic, ends EVERY loader's import chain in .catch(nothingIfLost), takes that guard by name from the app's one module (lost-chunk.ts) and defines none of its own: a chunk that never arrives leaves its part out, for every player, instead of the critical-error screen (S7-PLAN A13(b), A24 item 5; live fix L1)`,
+  ok(`12.dynamic.census · every file in src that imports next/dynamic is one of the ${DYNAMIC_FILES.length} the census names — the shell's lazy module, lazy-overlays (the chat bubble and the first-visit primer), the Tiketi switch's rail, the journey's route ghosts, the journey home's lazy module and Juu/Chini's journey arm (S12) — and each imports it as dynamic, ends EVERY loader's import chain in .catch(nothingIfLost), takes that guard by name from the app's one module (lost-chunk.ts) and defines none of its own: a chunk that never arrives leaves its part out, for every player, instead of the critical-error screen (S7-PLAN A13(b), A24 item 5; live fix L1)`,
     show(dynamicUsers) === show([...DYNAMIC_FILES].sort()) && censusOff.length === 0,
     show({ unnamed: dynamicUsers.filter((p) => !DYNAMIC_FILES.includes(p)), gone: DYNAMIC_FILES.filter((p) => !dynamicUsers.includes(p)), off: censusOff }));
   const loaderProbe = dynamicLoaders([
@@ -2786,7 +2828,7 @@ if (!PROVE_RED) {
     const flagClient = withFile(WORLD, FLAG_HOME, (s) => `"use client";\n${s}`);
     const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useLayoutEffect(() => { raiseJourneyFlag(); }, [])"));
     const flagPassive = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useEffect(() => raiseJourneyFlag(), [])").replace("import { useLayoutEffect } from \"react\";", "import { useEffect } from \"react\";"));
-    const flagBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}"));
+    const flagBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "{journeyShown && <><Suspense fallback={null}><LazyJourneyFlag /></Suspense><Suspense"));
     const markForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}", "<span hidden id={JOURNEY_SHELL_MARK} />"));
     const markClient = withFile(WORLD, MARK_HOME, (s) => `"use client";${LF}${s}`);
     const markIgnored: Impl["flag"]["snapshot"] = () => document.documentElement.hasAttribute(FLAG.JOURNEY_FLAG_ATTR);
@@ -2794,7 +2836,7 @@ if (!PROVE_RED) {
 
     // §11 — the overlays (WP7): a stand-down widened to every reader, dropped or misplaced; the flag read another way;
     // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
-    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "<LazyJourneyFlag />"));
+    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "<LazyJourneyFlag />{journeyShown && <><Suspense"));
     const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
     const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn, notFoundShown]);", "}, [hiddenPref, pathname]);"));
     const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));
@@ -3030,6 +3072,9 @@ ${s}`);
     const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`, "<LanguageMenu journey />"));
+    const headerForgetsCodes = withFile(WORLD, JHDR, (s) => s.replace(
+      `authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`,
+      `authDoorHrefs(pathname ?? "/", new URLSearchParams())`));
     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
     const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel journey />"));
     // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
@@ -3050,6 +3095,9 @@ ${s}`);
     const dotOnDesktop = withFile(WORLD, JTABS, (s) => s.replace(" && pollers.dot", ""));
     const sheetHandRolled = withFile(WORLD, GUEST_SHEET, (s) => s.replace("<Modal", `<div role="dialog" className="fixed inset-0"`).replace("</Modal>", "</div>"));
     const sheetForgetsTickets = withFile(WORLD, GUEST_SHEET, (s) => s.replace("/auth/register?next=%2Fpositions", "/auth/register"));
+    const sheetForgetsCodes = withFile(WORLD, GUEST_SHEET, (s) => s.replace(
+      `doorHrefsFor("/positions", new URLSearchParams(search?.toString() ?? ""))`,
+      `doorHrefsFor("/positions", new URLSearchParams())`));
     const classicMountsRail = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}export const leak = <JourneyTabs userId={null} />;${LF}`);
     // §9 — the census (WP6b): pages nothing reaches, a door only in a comment, a door removed, a tab and a hub row
     // gone, an external entrance lost or stale, a classic door unknown to the census or gone from its file, a pin lost.
@@ -3456,6 +3504,8 @@ ${s}`);
         world: homeFlush, landed: cssChanged(homeFlush), landedAs: "the 44px link takes 18px of the row it was lent" },
       { name: "the guest pills pad 20px", expect: at("7.auth ·"),
         world: authPad20, landed: cssChanged(authPad20), landedAs: "Ingia and Jisajili 12px wider at 320 (E-276 measured them at the edge)" },
+      { name: "the journey header drops the page's referral and invite", expect: at("7.auth.carry ·"),
+        world: headerForgetsCodes, landed: changed(headerForgetsCodes, JHDR), landedAs: "a journey guest's codes are absent from both auth doors" },
       { name: "the pill keeps the kit button's 16px padding below 360", expect: at("7.pill ·"),
         world: pillPad16, landed: cssChanged(pillPad16), landedAs: "+ Weka pesa 8px wider on the narrowest phone" },
       { name: "the lockup returns at 1024", expect: at("7.brand ·"),
@@ -3532,6 +3582,8 @@ ${s}`);
         world: sheetHandRolled, landed: changed(sheetHandRolled, GUEST_SHEET), landedAs: "a dialog sealed at the rail's rung, under the Needle" },
       { name: "the guest sheet's Jisajili forgets Tiketi zangu", expect: at("8.sheet ·"),
         world: sheetForgetsTickets, landed: changed(sheetForgetsTickets, GUEST_SHEET), landedAs: "a new player lands on the board, not on the tickets they asked for" },
+      { name: "the guest Tiketi sheet drops the referral and invite", expect: at("8.sheet.carry ·"),
+        world: sheetForgetsCodes, landed: changed(sheetForgetsCodes, GUEST_SHEET), landedAs: "a guest's code disappears before registration" },
       { name: "the guest sheet leaves popup-fit's review record", expect: at("8.popup ·"),
         world: sheetUnreviewed, landed: sheetUnreviewed.popupFit !== WORLD.popupFit, landedAs: "a popup no one has judged against Ali's rule" },
       { name: "the hub's sign-out row leaves popup-fit's review record (A13)", expect: at("8.popup ·"),

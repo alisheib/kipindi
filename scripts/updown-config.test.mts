@@ -427,32 +427,34 @@ let goldId = "";
      c1.id === c2.id && c2.id === c3.id);
 
   /**
-   * ⛔ 6.2b — THE PRISMA HALF, WHICH THIS SUITE CANNOT EXECUTE. `ensure` became an `upsert` on
-   * 2026-08-21 because the losing racer's unique violation was printed as `prisma:error` on
-   * production BEFORE the catch could handle it — a healthy write-once control reading as a
-   * defect, many times a day, on a money product. Same class as the audit-chain verifier that
-   * cried "BROKEN LINK" over an intact chain: a control that cries wolf gets scrolled past.
-   *
-   * 🔴 AND THE `update: {}` MUST STAY EMPTY. On conflict that row may already be CONFIRMED,
-   * holding the price that settled real money — anything in that object overwrites a settled
-   * price, which is precisely what `confirm`'s `state: "PENDING"` guard exists to prevent.
-   * There is no database here, so the shape is READ.
+   * ⛔ 6.2b — THE PRISMA HALF, WHICH THIS SUITE CANNOT EXECUTE. The old `upsert` could
+   * still surface P2002 to Prisma's logger on two production instances (2026-10-15), even
+   * though its catch re-read the winner. `createMany(skipDuplicates)` asks PostgreSQL for
+   * INSERT ... ON CONFLICT DO NOTHING instead. A confirmed price must never be updated.
+   * The two-instance PostgreSQL control lives in test:updown-observation-race; this source
+   * guard prevents changing its insert-only shape without an explicit test update.
    */
   {
     const dal = readFileSync("src/lib/server/updown-dal.ts", "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
-    const upsertBlock = /upDownObservation\.upsert\(\{[\s\S]{0,400}?\}\);/.exec(dal)?.[0] ?? "";
-    ok("6.2b · CONTROL · the observation upsert was located in the DAL", upsertBlock.length > 0,
+    const prismaHalf = dal.slice(dal.indexOf("const prismaObservations:"));
+    const start = prismaHalf.indexOf("async ensure(assetId, boundaryAt) {");
+    const end = prismaHalf.indexOf("async confirm(id, fields) {", start);
+    const ensure = start >= 0 && end > start ? prismaHalf.slice(start, end) : "";
+    const insertOnly = (body: string) =>
+      /upDownObservation\.createMany\(\{/.test(body) &&
+      /data:\s*\[\s*\{\s*assetId,\s*boundaryAt:\s*new Date\(boundaryAt\),\s*state:\s*"PENDING"\s*\}\s*\]/.test(body) &&
+      /skipDuplicates:\s*true/.test(body) &&
+      /const row = await prismaObservations\.find\(assetId, boundaryAt\)/.test(body) &&
+      !/upDownObservation\.(?:upsert|update|updateMany|create)\(/.test(body);
+    ok("6.2b · CONTROL · the Prisma observation ensure was located in the DAL", ensure.length > 0,
        "Without it every assertion below passes over an empty string.");
-    ok("6.2c · 🔴 the losing racer takes the existing row via UPSERT, so a healthy control no " +
-       "longer prints `prisma:error`",
-       /where:\s*\{\s*assetId_boundaryAt/.test(upsertBlock), upsertBlock.slice(0, 120));
-    ok("6.2d · ⛔⛔ and its `update` is EMPTY — anything there overwrites a SETTLED price",
-       /update:\s*\{\s*\}/.test(upsertBlock),
-       "On conflict this row may already be CONFIRMED. `confirm` guards on state PENDING "
-       + "for exactly this reason; an upsert that writes fields walks straight around it.");
-    ok("6.2e · …and the unique-violation recovery is still there as a belt",
-       /isUniqueViolation\(e\)/.test(dal));
+    ok("6.2c · a racing insert skips the duplicate and reads the winner's row", insertOnly(ensure));
+    ok("6.2d · a bare create or missing conflict skip is rejected by the guard",
+       !insertOnly(ensure.replace("createMany", "create")) &&
+       !insertOnly(ensure.replace(/skipDuplicates:\s*true/, "skipDuplicates: false")));
+    ok("6.2e · writing a price on the conflict path is rejected by the guard",
+       !insertOnly(ensure.replace('state: "PENDING"', 'state: "PENDING", price: 0')));
   }
 
   const won = await observationStore.confirm(a.id, {

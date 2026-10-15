@@ -22,6 +22,10 @@ import { getMarket } from "@/lib/server/market-service";
 import { sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { shownPredictors } from "@/lib/markets/predictors";
 import { resolveWinShareToken } from "@/lib/server/share-token";
+// S12 WP13 (the Vodacom plan): the card's question is the officer-approved English short title once the new journey is
+// ACTIVE for everyone (S15), and the full English question until then and on any failure.
+import { shortTitlesInMessagesNow } from "@/lib/server/message-titles";
+import { messageTitle } from "@/lib/markets/short-title";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { dict } from "@/lib/i18n-dict";
 
@@ -119,7 +123,7 @@ export async function GET(
           </div>
 
           <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
-            <span>Predict events. Not chance.</span>
+            <span>{dict.en.auth.railTagline}</span>
             <span>Licensed by the Gaming Board of Tanzania · 18+</span>
           </div>
         </div>
@@ -127,6 +131,9 @@ export async function GET(
       { width: 1200, height: 630 },
     );
   }
+
+  // S12 WP13 · the question this one picture carries — one read of the title switch (`message-titles.ts`).
+  const shareTitleEn = messageTitle(await shortTitlesInMessagesNow(), "en", m.titleEn, m);
 
   return new ImageResponse(
     (
@@ -167,7 +174,7 @@ export async function GET(
 
         {/* Title */}
         <div style={{ marginTop: 48, fontSize: 56, fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.025em", maxWidth: 1080, display: "flex" }}>
-          {m.titleEn}
+          {shareTitleEn}
         </div>
 
         {/* Tipping bar */}
@@ -233,7 +240,7 @@ export async function GET(
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
-            <span>Predict events. Not chance.</span>
+            <span>{dict.en.auth.railTagline}</span>
             {/* 🔴 THIS PRINTED THE CURRENCY TWICE. `tzs()` above already prefixes "TZS ", and the
                 line appended it again, so every shared market card read "TZS 21,000 TZS volume".
                 A share card is the first thing many players ever see of this platform and the only

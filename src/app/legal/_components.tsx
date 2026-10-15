@@ -6,7 +6,7 @@
  * <Breadcrumbs> + <h1> + <Section> triplet that previously lived in each
  * file with 50pick tokens.
  */
-import { type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
@@ -64,6 +64,48 @@ export const LEGAL_BINDING_LANGUAGE: Record<Locale, string> = {
   sw: "Toleo la Kiingereza la waraka huu ndilo lenye nguvu ya kisheria; tafsiri zimetolewa kwa ajili ya urahisi tu.",
   zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
 };
+
+/**
+ * Figures in legal prose use the same mono face as figures elsewhere, and a date
+ * stays on one line. This runs over the rendered React tree rather than editing
+ * the versioned policy strings: the words, copy/paste text and binding-text hash
+ * remain exactly as published. Keep the date alternatives before bare numbers.
+ */
+const LEGAL_FIGURE = /\d{4}-\d{2}-\d{2}(?:\.\d+)?|\d{4}\s+年\s+\d{1,2}\s+月\s+\d{1,2}\s+日|(?:tarehe\s+)?\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba)\s+\d{4}|(?:TZS|USD|KES)\s+\d+(?:[,.]\d+)*|\d+(?:[,.]\d+)*(?:%|\/\d+(?:[,.]\d+)*)?/gu;
+const COMPLETE_DATE = /^(?:\d{4}-\d{2}-\d{2}(?:\.\d+)?|\d{4}\s+年\s+\d{1,2}\s+月\s+\d{1,2}\s+日|(?:tarehe\s+)?\d{1,2}\s+\p{L}+\s+\d{4})$/u;
+
+function legalText(text: string): ReactNode {
+  const pieces: ReactNode[] = [];
+  let from = 0;
+  for (const match of text.matchAll(LEGAL_FIGURE)) {
+    const at = match.index ?? 0;
+    const figure = match[0];
+    // A brand or product identifier such as 50pick is one word, not a figure.
+    if (/^\d/.test(figure) && ((at > 0 && /[\p{L}\p{N}]/u.test(text[at - 1])) || /[\p{L}\p{N}]/u.test(text[at + figure.length] ?? ""))) continue;
+    if (at > from) pieces.push(text.slice(from, at));
+    pieces.push(
+      <span key={at} className={`font-mono tabular-nums${COMPLETE_DATE.test(figure) || /^(?:TZS|USD|KES) /.test(figure) ? " whitespace-nowrap" : ""}`}>
+        {figure}
+      </span>,
+    );
+    from = at + figure.length;
+  }
+  if (pieces.length === 0) return text;
+  if (from < text.length) pieces.push(text.slice(from));
+  return pieces;
+}
+
+function legalFigures(node: ReactNode): ReactNode {
+  return Children.map(node, (child) => {
+    if (typeof child === "string") return legalText(child);
+    if (typeof child === "number") return <span className="font-mono tabular-nums">{child}</span>;
+    if (!isValidElement<{ children?: ReactNode; className?: string }>(child)) return child;
+    // Existing mono runs and links already have their own type and interaction.
+    if (child.props.className?.split(/\s+/).includes("font-mono") || child.type === "a") return child;
+    if (child.props.children === undefined) return child;
+    return cloneElement(child, { children: legalFigures(child.props.children) });
+  });
+}
 
 export function LegalHeader({
   title,
@@ -123,7 +165,7 @@ export function LegalHeader({
             // a line wide enough for both it is the same text, the dot in a 3ch gap ( " · " in the mono face).
             // Round 4 (2026-10-09, tile 210): inside a part a year keeps the word before it (`keepYears`) — the privacy
             // line read "…Personal Data Protection Act" / "2022 na kanuni…", the Act's name split from its year.
-            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance"><DotSeq text={meta} mono renderPart={keepYears} /></p>
+            <p className="font-mono text-body-sm tabular-nums text-text-subtle text-balance"><DotSeq text={meta} mono renderPart={(part) => legalFigures(keepYears(part))} /></p>
           )}
         </div>
       </div>
@@ -149,8 +191,8 @@ export function LegalSection({
       </h2>
       {/* 2026-09-14: text-pretty, inherited by every paragraph and list item, so a zh paragraph does not end
           on one stranded character. Not text-balance: these are long paragraphs. */}
-      <div className="text-[13.5px] text-text-muted leading-relaxed space-y-2.5 text-pretty">
-        {children}
+      <div className="text-body text-text-muted leading-relaxed space-y-2 text-pretty">
+        {legalFigures(children)}
       </div>
     </section>
   );

@@ -136,7 +136,7 @@ export function WalletSheet({
             <div className="kp-wsheet__col">
               <Link
                 href="/wallet/deposit"
-                onClick={onClose}
+                onClick={(event) => { onClose(); if (journey) { event.preventDefault(); window.location.assign("/wallet/deposit"); } }}
                 aria-describedby={depVia}
                 className="btn gilt-metal btn-lg kp-wsheet__act"
                 data-testid="wallet-sheet-deposit"

@@ -27,6 +27,7 @@ type Slot =
   | { kind: "state"; value: unknown }
   | { kind: "ref"; ref: { current: unknown } }
   | { kind: "memo"; deps: readonly unknown[] | undefined; value: unknown }
+  | { kind: "store"; unsubscribe: () => void }
   | EffectSlot;
 
 const sameDeps = (a: readonly unknown[] | undefined, b: readonly unknown[] | undefined): boolean =>
@@ -116,6 +117,19 @@ export function mountHook<P, R>(use: (props: P) => R, initialProps: P, o: HostOp
     useContext: (ctx: { _currentValue?: unknown }) => (o.contexts?.has(ctx) ? o.contexts.get(ctx) : ctx._currentValue),
     useTransition: () => [false, (fn: () => unknown) => { void fn(); }],
     useDebugValue: () => undefined,
+    // Added for `test:howto` (the Vodacom plan S11 WP4): the How-to sheet asks for an id, and the invitation slot it claims
+    // reads a shared store. An id is stable per slot. A store is subscribed once, on the first render, and a change it
+    // announces re-renders as a state change does; every render reads its snapshot; leaving unsubscribes.
+    useId: () => {
+      const i = cursor++;
+      if (slots[i] === undefined) slots[i] = { kind: "ref", ref: { current: `:h${i}:` } };
+      return (slots[i] as { kind: "ref"; ref: { current: unknown } }).ref.current;
+    },
+    useSyncExternalStore: (subscribe: (onChange: () => void) => () => void, getSnapshot: () => unknown) => {
+      const i = cursor++;
+      if (slots[i] === undefined) slots[i] = { kind: "store", unsubscribe: subscribe(() => { if (mounted) schedule(); }) };
+      return getSnapshot();
+    },
   };
 
   const commit = () => {
@@ -168,6 +182,7 @@ export function mountHook<P, R>(use: (props: P) => R, initialProps: P, o: HostOp
       for (const s of slots) {
         if (s.kind === "effect" && typeof s.cleanup === "function") s.cleanup();
         if (s.kind === "effect") s.cleanup = undefined;
+        if (s.kind === "store") s.unsubscribe();
       }
     },
     flush: async () => {

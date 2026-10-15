@@ -65,7 +65,7 @@ export function ChartToggle({
        landmark could not reach the chart, and a guard that checks heading LEVELS cannot see a
        heading that is MISSING, which is why it survived D40.
        ⛔ NO NEW COPY. The heading reuses `market.probOverTime` — the exact string the button
-       already shows ("YES probability over time" / "Uwezekano wa NDIYO kwa muda" / the zh
+       already shows ("YES probability over time" / "Uwezekano wa NDIO kwa muda" / the zh
        equivalent) — because `src/lib/i18n*` belongs to another session today and, more to the
        point, a section should be named by the words already on it.
        ⭐ The `<h2>` wraps the span the button already rendered, so the accessible name of the
@@ -81,9 +81,10 @@ export function ChartToggle({
       >
         <h2 id={HEADING_ID} className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
           <I.chart s={11} edge="start" />
-          {/* No line ends on a connective (round 9, R9-B): sw "Uwezekano wa NDIYO kwa muda" (≈200px) shares the toggle's
-              row with its glyph and the chevron — ≈199px left at 320 — so a sub-pixel decides whether it wraps, and where
-              it does it would end on "kwa". Held, it can only break "…wa NDIYO" / "kwa muda". One flex item. */}
+          {/* No line ends on a connective (round 9, R9-B): sw "Uwezekano wa NDIO kwa muda" shares the toggle's row with
+              its glyph and the chevron — ≈199px left at 320. Misspelt "NDIYO" until S12 WP2 it measured ≈200px and wrapped,
+              ending on "kwa"; spelt right it measures ≈192px and fits one line (r9b 3.8″). Held, a wider face or a longer
+              locale can only break it "…wa NDIO" / "kwa muda". One flex item. */}
           {keepConnectivesItem(t.market.probOverTime)}
         </h2>
         {/* Round 10 (R10-A3): the caret ends the toggle's row, so its ink stands on the row's end edge (`edge`); it turns

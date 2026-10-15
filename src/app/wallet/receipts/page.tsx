@@ -43,6 +43,7 @@ import {
   buildReceiptsHref,
   filterReceipts,
   hasReceipt,
+  isRgHeldDeposit,
   methodLabel,
   parseReceiptParams,
   presentedStatus,
@@ -82,6 +83,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
       amount: Math.abs(x.amount),
       provider: x.provider ?? null,
       createdAtMs: Date.parse(x.createdAt) || 0,
+      held: isRgHeldDeposit(x),
     }));
 
   const matched = filterReceipts(book, state, nowMs);
@@ -157,7 +159,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
                 method={methodLabel(t, r.provider)}
                 when={formatEatDateTime(r.createdAtMs, nowMs, t.common.monthsShort, locale)}
                 amount={formatTzs(r.amount)}
-                statusWord={receiptStatusWord(t, r.status)}
+                statusWord={receiptStatusWord(t, r.status, r.held)}
                 chip={playerStatusChip(r.status) ?? "neutral"}
               />
             ))}
@@ -182,9 +184,9 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
           action={
             cause === "no-rows" ? (
               depositOpen ? (
-                <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+                <a href="/wallet/deposit" className="btn btn-primary btn-md">
                   {journey ? t.journey.depositAction : t.common.depositCta}
-                </Link>
+                </a>
               ) : undefined
             ) : exits.length > 0 ? (
               <div className="flex flex-wrap items-center justify-center gap-2">

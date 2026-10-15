@@ -153,7 +153,10 @@ for (const width of [360, 1280]) {
     await page.locator('input[type="datetime-local"]').fill("2026-09-15T14:30");
   }));
 
-  const swBox = page.getByPlaceholder("Inatatuliwa NDIYO");
+  // The field's placeholder spells the side NDIO since S12 WP2 (2026-10-14). `SW` (and the seeded AI poll's Swahili,
+  // F6c below) are officers' and the model's criterion texts — data, not product words — and keep their own spelling,
+  // so the review echo and the F6c card still read them as written.
+  const swBox = page.getByPlaceholder("Inatatuliwa NDIO");
   const zhBox = page.getByPlaceholder("若坦桑尼亚银行最后一个营业日的中间价");
   ok(`${width}: the step collects all THREE languages`,
      await page.getByPlaceholder("Resolves YES if the BoT").count() === 1 &&

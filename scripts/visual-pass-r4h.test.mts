@@ -478,14 +478,17 @@ section("10 · E5 the home's tab title in the reader's language (38 sw + 37 zh t
 {
   const page = read("src/app/page.tsx");
   const layout = read("src/app/layout.tsx");
-  const def = /default: "([^"]+)",\s*template: "%s · 50pick"/.exec(layout)?.[1];
+  // The layout's default is the tagline's one home composed once (the Vodacom plan S11 WP7: `SITE_TITLE`, "50pick — " + the
+  // English dictionary's `auth.railTagline`), so it is read as the composition, never as a literal the flip would leave behind.
+  const def = /const SITE_TITLE = `50pick — \$\{dict\.en\.auth\.railTagline\}`;/.test(layout) && /default: SITE_TITLE,\s*template: "%s · 50pick"/.test(layout)
+    ? `50pick — ${en.auth.railTagline}` : undefined;
   const shape = /title: \{ absolute: `50pick — \$\{t\.auth\.railTagline\}` \}/.test(page) && /export async function generateMetadata\(\): Promise<Metadata> \{\s*const \{ t \} = await getServerT\(\);/.test(page) && !/export const metadata\b/.test(page);
   const title = (d: typeof sw) => `50pick — ${d.auth.railTagline}`;
-  ok("10.1 · the home's metadata is generated per request: \"50pick — \" + the dictionary's tagline, `absolute` (the layout's template would append \" · 50pick\")",
+  ok("10.1 · the home's metadata is generated per request: \"50pick — \" + the dictionary's tagline, `absolute` (the layout's template would append \" · 50pick\"); the layout's default is the same composition in English (SITE_TITLE)",
     shape && def === title(en), show({ def, en: title(en) }));
   ok("10.2 · en reads exactly as before; sw \"50pick — Tabiri matukio. Si bahati.\"; zh \"50pick — 预测事件，而非运气。\"",
     title(en) === "50pick — Predict events. Not chance." && title(sw) === "50pick — Tabiri matukio. Si bahati." && title(zh) === "50pick — 预测事件，而非运气。");
-  ok("10.2′ CONTROL · without a title of its own the home took the layout's English default in every language", def === "50pick — Predict events. Not chance." && def !== title(sw));
+  ok("10.2′ CONTROL · without a title of its own the home took the layout's English default in every language", def === title(en) && def !== title(sw) && def !== title(zh));
   ok("10.3 · the openGraph spread survives (share-preview §1)", page.includes(`openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },`));
 }
 

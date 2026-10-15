@@ -521,7 +521,8 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
       const footTag = foot.slice(0, foot.indexOf(">"));
       if (!/\btext-body-sm\b/.test(footTag)) d.push("the trust line is not on the kit's 13px");
       if (/text-\[\d/.test(footTag)) d.push("the trust line hand-types a size");
-      if (!/<span class="whitespace-nowrap">· [^<]+ <span class="font-mono tabular-nums">\d\d:\d\d:\d\d EAT<\/span><\/span>/.test(foot)) d.push("the quote stamp is not held whole with its seconds");
+      // DotSeq owns the separator; the quoted label and second-precision EAT time still travel as one span.
+      if (!/<span class="whitespace-nowrap">[^<]+ <span class="font-mono tabular-nums">\d\d:\d\d:\d\d EAT<\/span><\/span>/.test(foot)) d.push("the quote stamp is not held whole with its seconds");
       if (!/<span class="ml-auto whitespace-nowrap">[^<]+ <span class="font-mono tabular-nums">\$85,000\.00<\/span><\/span>/.test(foot)) d.push("the open price in the trust line is not held whole");
       const heading = html.slice(html.indexOf('<div class="ud-prices"'), html.indexOf('<div class="ud-act"'));
       if (/\btruncate\b/.test(heading)) d.push("the win-target heading truncates");
@@ -670,12 +671,16 @@ try {
   const { UpdownBand } = await import("../src/components/home/updown-band.tsx");
   const t = dict.sw as Dict;
   const s8 = renderToStaticMarkup(createElement(UpdownBand, { t, locale: "sw", liveCount: 2, round: null }));
+  // Re-pinned 2026-10-14 (S12, word-ledger row 66; Point for Ali 5 accepted by Ali that day): the live count says
+  // "mubashara" ("raundi 2 mubashara sasa"), where it said "hai". Read from the dictionary, so 13.2's absence check can
+  // never pass on a stale literal.
+  const liveLine = t.home.updownRoundsLive.replace("{n}", "2");
   ok("13.1 S8 is today's band: solo, the live count, the one primary Play link",
-    s8.includes('class="kp-updown kp-updown--solo"') && s8.includes("raundi 2 hai sasa")
+    s8.includes('class="kp-updown kp-updown--solo"') && s8.includes(liveLine) && liveLine === "raundi 2 mubashara sasa"
     && s8.includes('class="btn btn-primary btn-lg max-w-full kp-updown__all"') && s8.includes(t.home.updownCta) && !s8.includes("kp-udmatch"));
   const s1 = renderToStaticMarkup(createElement(UpdownBand, { t, locale: "sw", liveCount: 2, round: S1 }));
   const at = (s: string) => s1.indexOf(s);
-  ok("13.2 a round: no live count beside it (I-12)", !s1.includes("raundi 2 hai sasa"));
+  ok("13.2 a round: no live count beside it (I-12)", !s1.includes(liveLine));
   ok("13.3 DOM order: verdict, then the Up link, then the Down link",
     at("kp-udbug__verdict") > 0 && at("kp-udbug__verdict") < at("kp-udbug__pick--up") && at("kp-udbug__pick--up") < at("kp-udbug__pick--down"));
   ok("13.4 the picks go into THIS round with the side kept", s1.includes('href="/updown/udr_test?side=UP#stake"') && s1.includes('href="/updown/udr_test?side=DOWN#stake"'));

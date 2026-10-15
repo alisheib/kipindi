@@ -9,10 +9,12 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
-import { fill, fmtRate, pctNum } from "@/lib/utils";
+import { fill, fmtRate, formatTzs, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
 import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { fillNodes } from "@/lib/fill-nodes";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -37,6 +39,23 @@ const FAQ_ITEMS = [
 // longer answers keep ordinary Chinese line breaking: keep-all on a paragraph ends each line at the next comma and
 // leaves it half empty, which is the rule `trust-band.tsx` measured.
 const WHOLE_WORD_ANSWERS: ReadonlySet<string> = new Set(["faq5"]);
+
+/**
+ * ⭐ THE JOURNEY'S COPIES (the Vodacom plan S11 WP5; VODACOM-PLAN §3.9; S11-PLAN Open point 14). For a reader the journey is
+ * shown to, faq2 (question and answer), faq3, faq5 and faq6 answer in the journey's words — the estimate before a bet, the
+ * capsule's and Account's withdraw doors, Account → Set limits, the Sell look on a ticket — where the classic answers name
+ * surfaces that reader no longer meets (the dial, the confirm popup, Wallet → Withdraw, Profile → Responsible gambling,
+ * the Sell-now button). Read in the SAME slots as today's keys, whose expressions stay the else arms, so every other reader
+ * is served today's page byte for byte. `{max}` is the per-withdrawal cap, formatted and drawn as money: its own
+ * `.amount` element (`fillNodes`; DESIGN_AUTHORITY §M4 — mono, tabular, untracked, whole), never the answer's body face and
+ * tracking (`test:type-scale` §1/§2 found the first build's nowrap span in both). `test:flip-copy` §5.
+ */
+const JOURNEY_FAQ: Readonly<Partial<Record<(typeof FAQ_ITEMS)[number]["key"], { q?: "faq2q"; a: "faq2a" | "faq3a" | "faq5a" | "faq6a" }>>> = {
+  faq2: { q: "faq2q", a: "faq2a" },
+  faq3: { a: "faq3a" },
+  faq5: { a: "faq5a" },
+  faq6: { a: "faq6a" },
+};
 
 export default async function HelpPage() {
   const { t, locale } = await getServerT();
@@ -115,6 +134,7 @@ export default async function HelpPage() {
         <div>
           {FAQ_ITEMS.map(({ key, glyph }) => {
             const Glyph = I[glyph];
+            const own = journey ? JOURNEY_FAQ[key] : undefined;
             return (
               <details
                 key={key}
@@ -133,7 +153,7 @@ export default async function HelpPage() {
                 <summary className="cursor-pointer list-none flex items-start justify-between gap-3 py-3 font-display text-[13.5px] font-semibold text-text">
                   <span className="flex items-start gap-2.5 min-w-0">
                     <span className="mt-0.5 shrink-0 text-brand-300"><Glyph s={15} /></span>
-                    <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
+                    <span>{own?.q ? t.journey[own.q] : t.help[`${key}q` as keyof typeof t.help]}</span>
                   </span>
                   {/* ⭐ Round 10 (R10-A2, tile 192): every "⌄" ended at x1112.10 against the row's edge, 1115.0 — the caret's
                       box padding. Its ink stands on the edge now (`edge`), and it turns about ITS OWN box (the turn moved
@@ -149,7 +169,7 @@ export default async function HelpPage() {
                 <p className={`mt-2 pb-3 pl-[25px] text-body-sm text-text-muted leading-relaxed${WHOLE_WORD_ANSWERS.has(key) ? " break-keep [overflow-wrap:anywhere]" : ""}`}>
                   {/* The fee FAQ (faq1) is model-specific: loser-share polls charge a
                       % of the losing side, not a capped commission on the pool. */}
-                  {key === "faq1" && cfg.feeModel === "loser-share"
+                  {own ? fillNodes(t.journey[own.a], { max: <span className="amount">{formatTzs(WITHDRAW_MAX_TZS)}</span> }) : key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
                     : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: durationHours(locale, cfg.objectionWindowHours) })}
                   {/* ⭐ faq5 ("I think I have a problem with gambling") answers with the limits, the break and

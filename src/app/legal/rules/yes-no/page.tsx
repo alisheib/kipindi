@@ -37,26 +37,28 @@ const TITLE = (locale: Locale): string => {
     default:   return `${yes}/${no} Market Rules`;
   }
 };
-const SUBTITLE: Record<Locale, string> = {
-  en: "Predict events. Not chance.",
-  sw: "Tabiri matukio. Si bahati.",
-  zh: "预测事件，而非运气。",
-};
 /**
  * ⚠️ DATED, like every other document under `/legal` — not marketing's "Version 1.0". A dated
  * version is the only kind that signals when the binding text last moved, and `/legal/terms:22-25`
  * makes bumping it in the same commit a rule rather than a habit.
  * ⛔ BUMPED 2026-10-12 (owner ruling, docs/COMPLIANCE-DECISIONS.md 2026-10-12): the minimum stake this document quotes
  * from the live config went from TZS 1,000 to TZS 500 — the binding text a player reads moved, so the date moved.
+ * ⛔ BUMPED 2026-10-14 (S12 WP2): the Swahili text moved, so the date moved, in all three languages. §1 spelt the side
+ * "NDIYO" where every screen says "NDIO" — it now reads the product's word (`{w.sw.yes}/{w.sw.no}`) — and §4, §6 and
+ * §7 give "dau" its class-6 plural, "madau" (S4-COPY-AUDIT review 2's rule). Spelling and grammar only: no right, rate
+ * or rule changed, and the English is untouched; the release files its COMPLIANCE-DECISIONS entry. Correcting it now,
+ * with a new version rather than at S11's flip-time one, is S12-PLAN's Point for Ali 6 — accepted by Ali, 2026-10-14.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-12 · Effective on entering a market.",
-  sw: "Toleo 2026-10-12 · Yanaanza kutumika unapoingia sokoni.",
-  zh: "版本 2026-10-12 · 自进入市场时生效。",
+  en: "Version 2026-10-14 · Effective on entering a market.",
+  sw: "Toleo 2026-10-14 · Yanaanza kutumika unapoingia sokoni.",
+  zh: "版本 2026-10-14 · 自进入市场时生效。",
 };
 
 export default async function YesNoRulesPage() {
-  const { locale } = await getServerT();
+  // `t` for the subtitle, the tagline's one home `auth.railTagline` (the Vodacom plan S11 WP7): the three strings this page
+  // typed until then, read from the key, so the S15 flip moves it with every other reader.
+  const { t, locale } = await getServerT();
   const r = ratesFrom(await getGlobalConfig());
 
   return (
@@ -64,7 +66,7 @@ export default async function YesNoRulesPage() {
       <LegalHeader
         eyebrow={EYEBROW[locale]}
         title={TITLE(locale)}
-        subtitle={SUBTITLE[locale]}
+        subtitle={t.auth.railTagline}
         meta={META[locale]}
         glyph="listChecks"
       />

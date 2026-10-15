@@ -8,19 +8,21 @@ import { buyPositionAction } from "@/app/markets/actions";
 import { useT } from "@/lib/i18n";
 import { isActionRedirect } from "@/lib/action-redirect";
 import { playPressPop } from "@/lib/press-feedback";
-import { attributionFrom, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, PENDING_BET_KEY, type PendingBetMarker } from "@/lib/journey/pending-bet";
+import { attributionFrom, parseBetParam, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, PENDING_BET_KEY, type PendingBetMarker } from "@/lib/journey/pending-bet";
 import { ownedSheetIntents, quarantineLegacySheet, unresolvedLegacySheet, resolveLegacySheet, saveOwnedSheet, saveSheetSelection, sheetOwnerKey, type KeyReceipt } from "@/lib/journey/sheet-owned-storage";
 import type { StoredIntent } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
 import { sendFunnel } from "@/lib/journey/funnel-beacon";
+import { countsSheetOpen } from "@/lib/journey/guest-sheet";
 import { answerOf, refusalOutcome, settleRefusal, type Reread } from "@/lib/journey/sheet-refusal";
 import {
   afterKeyRead, afterSettle, clockOffset, estimateMoved, keyReadDelay, nextKey, quoteAt, reopenInDoubt,
-  requestFor, sheetEstimate, sheetFrame, sheetOpensOn, sheetPreset, watchdog, withBet, withoutBet,
+  requestFor, returnedSheetPreset, sheetEstimate, sheetFrame, sheetOpensOn, sheetPreset, watchdog, withBet, withoutBet,
   type Quote, type Settled, type SheetFrame, type SheetIntent, type SheetSeed, type SheetSide, type SheetViewer, type SheetViewerRead,
 } from "@/lib/journey/sheet-state";
 import { BetSheet } from "./bet-sheet";
 import { warmSheet } from "./sheet-warmup";
+import { parseReturnChoice, type ReturnChoice } from "@/lib/journey/return-choice";
 import { VisibleCardRefresh } from "./visible-card-refresh";
 import { useExitPhase } from "@/components/ui/modal";
 
@@ -28,11 +30,21 @@ type Active = {
   seed: SheetSeed; side: SheetSide; title: string; stakeText: string; viewer: SheetViewerRead;
   offset: number; serial: number; pathname: string; pushed: boolean; dropSide: boolean;
   settled: Settled | null; estimateUpdated: boolean; lowCounted: boolean;
+  returnedFromDeposit: boolean; returnBoundsChange: { from: number; to: number } | null;
+  returnContext: ReturnChoice | null;
 };
 type Pending = { intent: SheetIntent; seed: SheetSeed | null; at: number; everDoubt: boolean; lastRead: number; owner: string; epoch: number };
-type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null };
+type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null; bareNotFound?: true };
 const identity = (q: Pick<Quote, "marketId" | "side">) => `${q.marketId}.${q.side}`;
 const activeIdentity = (a: Active) => identity({ marketId: a.seed.id, side: a.side });
+const returnAttribution = (a: Active, marker: PendingBetMarker | null, viewerId: string, search: URLSearchParams) => {
+  const marked = marker && parseBetParam(marker.bet);
+  if (a.returnedFromDeposit && marker && !marker.k && marker.owner === viewerId && marked?.kind === "market"
+    && marked.id === a.seed.id && marked.side === a.side) {
+    return { ref: marker.ref, invite: marker.invite, utm: marker.utm };
+  }
+  return attributionFrom(search);
+};
 
 /** A render failure reports once and closes the dialog; it cannot take the root layout down or replay an action. */
 class SheetBoundary extends Component<{ children: ReactNode; onFailed: () => void }, { failed: boolean }> {
@@ -108,7 +120,10 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   }, [viewerId]);
   const stripAddress = useCallback((dropSide: boolean) => {
     if (!mounted.current) return;
-    window.history.replaceState(null, "", window.location.pathname + withoutBet(window.location.search, dropSide) + window.location.hash);
+    const query = new URLSearchParams(withoutBet(window.location.search, dropSide));
+    query.delete("returnChoiceId"); query.delete("returnDepositId");
+    const suffix = query.toString();
+    window.history.replaceState(null, "", window.location.pathname + (suffix ? `?${suffix}` : "") + window.location.hash);
   }, []);
 
   const readTruth = useCallback(async (quote: Pick<Quote, "marketId" | "side">, options: { key?: string; open?: boolean } = {}): Promise<Truth> => {
@@ -121,7 +136,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       const response = await fetch(`/api/markets/${encodeURIComponent(quote.marketId)}/sheet?${query}`, { cache: "no-store" });
       if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current) return failed;
       // A bare 404 names no authenticated owner. It cannot retire an outstanding key as an owned null receipt.
-      if (response.status === 404) return failed;
+      if (response.status === 404) return options.key ? failed : { ...failed, bareNotFound: true };
       if (response.status === 401) {
         // Known auth loss ends this runtime epoch too; a late A answer cannot revive it after sign-out.
         invalidateOwner();
@@ -159,7 +174,14 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       const parsedStake = Number(after.stakeText);
       const moved = estimateMoved({ stake: parsedStake, estimate: sheetEstimate(after.seed, after.side, parsedStake) }, { stake: parsedStake, estimate: sheetEstimate(truth.seed, after.side, parsedStake) });
       const transient = after.settled && ["lowNoRead", "plan", "lossRoom"].includes(after.settled.view.kind);
+      const legalBefore = Number.isSafeInteger(parsedStake) && parsedStake >= after.seed.min && parsedStake <= after.seed.max;
+      const boundsMoved = truth.seed.min !== after.seed.min || truth.seed.max !== after.seed.max;
+      // A background reread may adjust a previously legal returned choice when the market's bounds move.
+      // It must not rewrite an empty or deliberately out-of-bounds amount while the player is editing.
+      const changedStake = after.returnedFromDeposit && boundsMoved && legalBefore
+        ? Math.min(truth.seed.max, Math.max(truth.seed.min, parsedStake)) : parsedStake;
       show({ ...after, seed: truth.seed, title: truth.title ?? after.title, offset: clockOffset(truth.seed.serverNow, Date.now()), viewer: { state: "read", viewer: truth.viewer }, estimateUpdated: after.estimateUpdated || moved,
+        ...(changedStake !== parsedStake ? { stakeText: String(changedStake), returnBoundsChange: { from: parsedStake, to: changedStake } } : {}),
         ...(transient && truth.viewer.facts ? { settled: null } : {}) });
     } else if (truth.reread.state === "read" && !truth.reread.market.found) {
       show({ ...after, seed: { ...after.seed, bettable: false } });
@@ -259,16 +281,22 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   const open = useCallback((seed: SheetSeed, side: SheetSide, title: string, pushed: boolean, dropSide: boolean, origin: string) => {
     const stamp = Date.now();
     const raw = (() => { try { return window.sessionStorage.getItem(PENDING_BET_KEY); } catch { return null; } })();
-    const bet = { kind: "market" as const, id: seed.id, side, stake: pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search))?.stake ?? null };
+    const query = new URLSearchParams(window.location.search);
+    const bet = { kind: "market" as const, id: seed.id, side, stake: pendingBetFrom(window.location.pathname, query)?.stake ?? null };
+    const returnedFromDeposit = /^[a-z0-9_-]{1,128}$/i.test(query.get("returnChoiceId") ?? "");
     const remembered = pending.current.get(identity({ marketId: seed.id, side }));
     const id = identity({ marketId: seed.id, side });
     const received = closedReceipts.current.get(id) ?? null;
     closedReceipts.current.delete(id);
-    const stake = received?.view.kind === "receipt" ? received.view.quote.stake : remembered?.intent.quote.stake ?? sheetPreset(seed, stakeFromUrl(bet, raw, stamp, viewerId));
+    const selectedStake = stakeFromUrl(bet, raw, stamp, viewerId);
+    const returned = returnedFromDeposit ? returnedSheetPreset(seed, selectedStake) : null;
+    const stake = received?.view.kind === "receipt" ? received.view.quote.stake : remembered?.intent.quote.stake ?? returned?.stake ?? sheetPreset(seed, selectedStake);
+    const returnBoundsChange = returned?.changed ?? null;
     if (received) stripAddress(dropSide);
-    show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false });
+    show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false,
+      returnedFromDeposit, returnBoundsChange, returnContext: null });
     setNow(stamp);
-    sendFunnel("sheet_open", origin);
+    if (countsSheetOpen({ tapped: pushed, markerRaw: raw, bet, nowMs: stamp })) sendFunnel("sheet_open", origin);
     void refreshed(true);
     if (remembered?.intent.phase === "inDoubt") void readKey(remembered);
     if (recoveryBlocked({marketId: seed.id, side})) void resolveLegacy({marketId: seed.id, side});
@@ -305,9 +333,30 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     if (seed) { open(seed, bet.side, element?.dataset.sheetTitle ?? "", false, !q.has("bet"), q.get("from") === "home" ? "home" : "board"); return; }
     const truth = await readTruth({ marketId: bet.id, side: bet.side });
     if (!mounted.current || token !== generation.current || path !== window.location.pathname) return;
-    if (truth.seed && truth.title) open(truth.seed, bet.side, truth.title, false, !q.has("bet"), q.get("from") === "home" ? "home" : "board");
-    else if (truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
-  }, [open, readTruth, stripAddress]);
+    if (truth.seed && truth.title) { open(truth.seed, bet.side, truth.title, false, !q.has("bet"), q.get("from") === "home" ? "home" : "board"); return; }
+    const choiceId = q.get("returnChoiceId");
+    if (choiceId && /^[a-z0-9_-]{1,128}$/i.test(choiceId)) {
+      try {
+        const response = await fetch(`/api/wallet/deposits/${encodeURIComponent(choiceId)}/return-choice?market=${encodeURIComponent(bet.id)}`,
+          { cache: "no-store", credentials: "same-origin" });
+        if (response.status === 401) { invalidateOwner(); return; }
+        if (response.ok) {
+          const context = parseReturnChoice(await response.json(), bet.id);
+          if (!mounted.current || token !== generation.current || path !== window.location.pathname) return;
+          if (context?.state === "closed" && context.seed) {
+            const stamp = Date.now();
+            show({ seed: context.seed, side: bet.side, title: context.title, stakeText: String(context.seed.min),
+              viewer: { state: "failed" }, offset: clockOffset(context.seed.serverNow, stamp), serial: ++serial.current,
+              pathname: path, pushed: false, dropSide: !q.has("bet"), settled: null, estimateUpdated: false, lowCounted: false,
+              returnedFromDeposit: true, returnBoundsChange: null, returnContext: context });
+            setNow(stamp);
+            return;
+          }
+        }
+      } catch { /* keep the address for an explicit retry; no fabricated closed or wallet answer */ }
+    }
+    if (truth.bareNotFound || truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
+  }, [open, readTruth, stripAddress, invalidateOwner, show]);
 
   const commit = useCallback((which: "cta" | "betInstead") => {
     if (!mounted.current) return;
@@ -321,6 +370,8 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     const chosen = nextKey(old?.intent ?? null, quote);
     const fd = requestFor(chosen.quote, chosen.key, viewerId);
     if (!fd) return;
+    const returnDepositId = new URLSearchParams(window.location.search).get("returnDepositId");
+    if (returnDepositId && /^[a-z0-9_-]{1,128}$/i.test(returnDepositId)) fd.set("returnDepositId", returnDepositId);
     const stamp = Date.now();
     const alreadyDoubt = old?.everDoubt === true || old?.intent.phase === "inDoubt";
     const priorSettledAt = alreadyDoubt ? old?.intent.settledAt ?? null : null;
@@ -329,7 +380,8 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     pending.current.set(identity(chosen.quote), record);
     requests.current.add(chosen.key); // synchronous: two taps before React's commit still send one action
     const bet = { kind: "market" as const, id: chosen.quote.marketId, side: chosen.quote.side, stake: chosen.quote.stake };
-    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
+    selected.current = readMarker(writeMarker(bet, stamp,
+      returnAttribution(a, selected.current, viewerId, new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
     if (!save()) {
       requests.current.delete(chosen.key);
       if (old) pending.current.set(identity(chosen.quote), old); else pending.current.delete(identity(chosen.quote));
@@ -387,12 +439,14 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     if (chosen !== offer.amount && !offer.chips?.includes(chosen)) return;
     const bet = { kind: "market" as const, id: a.seed.id, side: a.side, stake: frame.stake };
     const stamp = Date.now();
-    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
+    selected.current = readMarker(writeMarker(bet, stamp,
+      returnAttribution(a, selected.current, viewerId, new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
     window.history.replaceState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
     if (!save()) { show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } }); return; }
     show(null);
-    const query = new URLSearchParams({ amount: String(chosen), bet: `${bet.id}.${bet.side}.${bet.stake}`, from: "low-balance" });
-    router.push(`/wallet/deposit?${query}` as never);
+    const query = new URLSearchParams({ amount: String(chosen), bet: `${bet.id}.${bet.side}.${bet.stake}`, from: "low-balance", returnPath: window.location.pathname });
+    // Payment focus is selected in the root shell on a document request. A soft route would retain the board's chrome.
+    window.location.assign(`/wallet/deposit?${query}`);
   }, [router, save, show, viewerId, recoveryBlocked]);
 
   useEffect(() => {
@@ -521,6 +575,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     {view && <SheetBoundary key={view.active.serial} onFailed={() => { if (current.current?.serial === view.active.serial) { stripAddress(view.active.dropSide); show(null); } }}>
       <BetSheet open={active !== null} seed={view.active.seed} side={view.active.side} title={view.active.title || t.common.temporarilyUnavailable} frame={view.frame}
         stakeText={view.active.stakeText} estimateUpdated={view.active.estimateUpdated}
+        returnContext={view.active.returnContext} returnBoundsChange={view.active.returnBoundsChange}
         railNames={view.active.viewer.state === "read" ? view.active.viewer.viewer.facts?.deposit.railNames ?? [] : []}
         onStakeChange={(value) => { const a = current.current; const intent = a && pending.current.get(activeIdentity(a))?.intent; if (a && !recoveryBlocked({marketId: a.seed.id, side: a.side}) && a.serial === view.active.serial && intent?.phase !== "placing" && intent?.phase !== "inDoubt") show({ ...a, stakeText: value, settled: null, estimateUpdated: false }); }}
         onPlace={() => { if (current.current?.serial === view.active.serial) commit("cta"); }}

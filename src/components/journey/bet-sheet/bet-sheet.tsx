@@ -1,7 +1,7 @@
 "use client";
 
 /** S8 WP6 · the complete flagged stake surface; WP7 owns opening, requests, retries and the address. */
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { Modal, CloseX } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Callout } from "@/components/ui/callout";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { useBlockScrollEdges } from "@/components/ui/scroll-edges";
 import { useT, type Dict, type Locale } from "@/lib/i18n";
 import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -18,7 +20,18 @@ import { DWELL_BET_RECEIPT_MS } from "@/lib/feedback-timing";
 import { sheetEstimate, type SheetFrame, type SheetLine, type SheetSeed, type SheetSide } from "@/lib/journey/sheet-state";
 import { depositLeftAfterFor } from "@/lib/journey/shortfall";
 import { nextSheetFocus, type SheetFocusState } from "@/lib/journey/sheet-focus";
+import type { ReturnChoice } from "@/lib/journey/return-choice";
+import { keepText } from "@/components/ui/keep-run";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
+
+/**
+ * S10 WP3 · THE GUEST FACE (`guest-sheet-host.tsx`, S10-PLAN WP3 and A10): a reader who is NOT signed in sees this same
+ * sheet with no balance row and, in the commit's place, two real links — "Jisajili uweke dau" (brand primary at the
+ * commit's own rung and geometry: sign-up is not money, so never gold) and "Ingia" (the ghost, one rung down). Each carries
+ * the bet and the codes in its href. `onPress` runs on every press (the door's `onClick`); `onLeave` only when Next itself
+ * navigates this tab (the door's `onNavigate`) — so a door opened in a new tab leaves this one as it is.
+ */
+export type BetSheetGuest = { signUp: string; signIn: string; onPress: () => void; onLeave: () => void };
 
 export type BetSheetProps = {
   open?: boolean;
@@ -29,11 +42,15 @@ export type BetSheetProps = {
   stakeText: string;
   estimateUpdated: boolean;
   railNames?: readonly string[];
+  returnContext?: ReturnChoice | null;
+  returnBoundsChange?: { from: number; to: number } | null;
   onStakeChange: (value: string) => void;
   onPlace: () => void;
   onBetInstead: () => void;
   onDeposit: (amount?: number) => void;
   onClose: () => void;
+  /** S10 · the guest face: no balance row, and the two doors in the commit's place (`BetSheetGuest`). */
+  guest?: BetSheetGuest;
 };
 
 type BodyProps = BetSheetProps & {
@@ -50,55 +67,33 @@ type BodyProps = BetSheetProps & {
   onDepositAmount?: (amount: number) => void;
 };
 
-/** A pure body for the three-language frame render proof: Modal's portal is not a substitute for rendering each frame. */
-export function BetSheetBody(props: BodyProps) {
-  const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false,
-    headingRef, closeRef, onStakeChange, onPlace, onBetInstead, onDeposit, onClose, onStakeFocus, onStakeBlur,
-    depositAmount, onDepositAmount } = props;
-  const placing = frame.frame === "placing";
-  const receipt = frame.frame === "receipt";
-  const terminal = frame.frame === "blocked" || frame.frame === "closed";
-  const calloutId = `${id}-callout`, boundsId = `${id}-bounds`, lineId = `${id}-line`, titleId = `${id}-title`;
-  const descriptionId = frame.cta?.describedBy === "callout" ? calloutId : frame.cta?.describedBy === "bounds" ? boundsId : frame.cta?.describedBy === "line" ? lineId : undefined;
+/**
+ * ⭐ THE LOW FRAME'S ROWS — ONE BLOCK, TWO HOSTS (Vodacom S12 WP10, S12-PLAN Open point 32). The sheet draws them between
+ * its estimate and its balance row, and Juu/Chini's journey arm (`components/journey/updown/jud-arm.tsx`) draws the same
+ * rows from the same frame: the low callout, the loss room, a pending deposit by its age, why no deposit is offered, the
+ * gilt deposit door with the open rails' names and its other amounts, the below-minimum note, the two doors out, then the
+ * host's own second option (`instead`: the sheet's "bet instead", which places; Juu/Chini's "use instead", which sets the
+ * stake). Every figure is the frame's. ⛔ It stays in this file, not `sheet-parts.tsx`: `test:bet-sheet` reads this
+ * file's source for the deposit door and plants its copies here, and the sheet's rendered rows are byte-identical to the
+ * ones this block replaced.
+ */
+export function LowBlock({ t, locale, nowMs, frame, calloutId, railNames, depositAmount, onDepositAmount, onDeposit, onClose, instead }: {
+  t: Dict;
+  locale: Locale;
+  nowMs: number;
+  frame: SheetFrame;
+  calloutId: string;
+  railNames: readonly string[];
+  depositAmount?: number | null;
+  onDepositAmount?: (amount: number) => void;
+  onDeposit: (amount?: number) => void;
+  onClose: () => void;
+  instead: ReactNode;
+}) {
   const low = frame.low, pending = frame.pending;
   const options = low?.deposit;
   const selectedDeposit = options && depositAmount !== null && depositAmount !== undefined && options.chips.includes(depositAmount) ? depositAmount : options?.amount;
-  const instead = low?.betInstead ?? pending?.betInstead ?? null;
-  const bound: SheetLine | null = frame.breaks === "below" ? { key: "journey.sheetBelowMin", vars: { min: frame.bounds.min } }
-    : frame.breaks === "above" ? { key: "journey.sheetAboveMax", vars: { max: frame.bounds.max } }
-      : frame.breaks === "notWhole" ? { key: "error.failStakeNotWhole" } : null;
-  const displayedStake = frame.stake === null ? stakeText : String(frame.stake);
-  const parts = { t, locale, seed, side, frame, nowMs };
-  const footerLine = frame.cta?.label;
   return <>
-    <div aria-hidden className="kp-wsheet__grab" />
-    <div className="kp-bsheet__header">
-      {receipt ? <p className="kp-bsheet__eyebrow">{t.common.betPlacedEyebrow}</p> : <ChosenSide t={t} side={side} />}
-      <CloseX ref={closeRef} withheld={placing} onClick={onClose} label={t.common.close} className="kp-bsheet__close" />
-    </div>
-    <div className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">
-      {terminal && <p className="kp-bsheet__question">{title}</p>}
-      <h2 id={titleId} ref={headingRef} tabIndex={-1} className="kp-bsheet__title">
-        {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
-          : frame.frame === "blocked" && frame.block ? sheetTemplate(t, frame.block.title) : frame.frame === "closed" ? t.journey.sheetClosedTitle : title}
-      </h2>
-      {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <div id={calloutId} role="alert" className="kp-bsheet__terminal">
-        {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
-      </div> : <>
-        <HolderNote {...parts} />
-        <div className="kp-bsheet__stake">
-          <label htmlFor={`${id}-stake`}>{t.journey.stakeLabel}</label>
-          <Input id={`${id}-stake`} data-testid="journey-sheet-stake" size="xl" grouped mono attention={frame.attention} prefix="TZS" inputMode="numeric" enterKeyHint="done"
-            value={displayedStake} disabled={frame.stakeLocked || placing} aria-invalid={frame.stakeInvalid || undefined}
-            aria-describedby={bound ? boundsId : frame.attention ? calloutId : undefined}
-            onChange={(event) => onStakeChange(event.target.value)} onFocus={onStakeFocus} onBlur={onStakeBlur} />
-        </div>
-        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} edge="start" text="body-400" /><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></span></p>}
-        {!keyboard && frame.chips && <div role="group" aria-label={t.journey.stakeLabel} className="kp-bsheet__chips">
-          {frame.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={frame.stake === amount} disabled={placing || frame.stakeLocked} onClick={() => onStakeChange(String(amount))}>{formatNumber(amount)}</Button>)}
-        </div>}
-        {estimateUpdated && frame.showEstimate && <p className="kp-bsheet__updated">{t.journey.estimateUpdated}</p>}
-        {(frame.showEstimate || low || pending) && <EstimateBox {...parts} compact={keyboard || !frame.showEstimate} />}
         {low && <div id={calloutId}><Callout tone="info" glyph="alertCircle" title={t.journey.lowTitle}>
           {!low.titleOnly && low.spendable !== null && low.shortfall !== null && <p>{fillNodes(t.journey.lowBody, { have: <Cash className="amount">{formatTzs(low.spendable)}</Cash>, short: <span className="amount">{formatTzs(low.shortfall)}</span> })}</p>}
         </Callout></div>}
@@ -121,8 +116,79 @@ export function BetSheetBody(props: BodyProps) {
         </>}
         {low?.depositRefusal === "sof_required" && <Link className="kp-bsheet__link" href="/profile/source-of-funds" onClick={onClose}>{t.journey.lowSofCta}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
         {low?.depositRefusal === "deposit_limit" && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
-        {instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />}
-        {frame.showEstimate && <BalanceRow t={t} frame={frame} />}
+        {instead}
+  </>;
+}
+
+/** A pure body for the three-language frame render proof: Modal's portal is not a substitute for rendering each frame. */
+export function BetSheetBody(props: BodyProps) {
+  const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false,
+    headingRef, closeRef, onStakeChange, onPlace, onBetInstead, onDeposit, onClose, onStakeFocus, onStakeBlur,
+    depositAmount, onDepositAmount, returnContext, returnBoundsChange, guest } = props;
+  const placing = frame.frame === "placing";
+  const receipt = frame.frame === "receipt";
+  const terminal = frame.frame === "blocked" || frame.frame === "closed";
+  const calloutId = `${id}-callout`, boundsId = `${id}-bounds`, lineId = `${id}-line`, titleId = `${id}-title`;
+  const descriptionId = frame.cta?.describedBy === "callout" ? calloutId : frame.cta?.describedBy === "bounds" ? boundsId : frame.cta?.describedBy === "line" ? lineId : undefined;
+  const low = frame.low, pending = frame.pending;
+  const instead = low?.betInstead ?? pending?.betInstead ?? null;
+  const bound: SheetLine | null = frame.breaks === "below" ? { key: "journey.sheetBelowMin", vars: { min: frame.bounds.min } }
+    : frame.breaks === "above" ? { key: "journey.sheetAboveMax", vars: { max: frame.bounds.max } }
+      : frame.breaks === "notWhole" ? { key: "error.failStakeNotWhole" } : null;
+  const displayedStake = frame.stake === null ? stakeText : String(frame.stake);
+  const parts = { t, locale, seed, side, frame, nowMs };
+  const footerLine = frame.cta?.label;
+  // ⭐ The middle fades only the edge that hides something (`data-edges`, the kit's one rule — scroll-edges.ts): at rest a
+  // money figure or a field cut by the header or the commit button reads as more to come, never as a whole (F50, 2026-10-14).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useBlockScrollEdges(scrollRef, "--bsheet-gutter");
+  return <>
+    <div aria-hidden className="kp-wsheet__grab" />
+    <div className="kp-bsheet__header">
+      {receipt ? <p className="kp-bsheet__eyebrow">{t.common.betPlacedEyebrow}</p> : <ChosenSide t={t} side={side} />}
+      <CloseX ref={closeRef} withheld={placing} onClick={onClose} label={t.common.close} className="kp-bsheet__close" />
+    </div>
+    <div ref={scrollRef} className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">
+      {terminal && <p className="kp-bsheet__question">{title}</p>}
+      <h2 id={titleId} ref={headingRef} tabIndex={-1} className="kp-bsheet__title">
+        {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
+          : frame.frame === "blocked" && frame.block ? sheetTemplate(t, frame.block.title) : frame.frame === "closed" ? t.journey.sheetClosedTitle : title}
+      </h2>
+      {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <>
+        <div id={calloutId} role="alert" className="kp-bsheet__terminal">
+          {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
+        </div>
+        {frame.frame === "closed" && returnContext?.walletBalance !== null && returnContext?.walletBalance !== undefined &&
+          <p role="status" className="mt-4 text-body-sm text-text-muted">{fill(t.journey.depositClosedWallet, { amount: formatTzs(returnContext.walletBalance) })}</p>}
+        {frame.frame === "closed" && returnContext && returnContext.similar.length > 0 && <div className="mt-5 space-y-2">
+          <h3 className="font-display font-semibold text-text">{t.journey.similarTitle}</h3>
+          {returnContext.similar.map((question) => <a key={question.id} href={`/markets/${encodeURIComponent(question.id)}`}
+            className="block rounded-md border border-border bg-bg-inset px-4 py-3 text-body-sm text-text hover:border-border-strong">
+            {question.title}<I.chevronRight s={16} edge="end" text="body-400" />
+          </a>)}
+        </div>}
+      </> : <>
+        <HolderNote {...parts} />
+        {returnBoundsChange && <p role="status" className="text-body-sm text-text-muted">
+          {fill(t.journey.depositStakeChanged, { old: formatTzs(returnBoundsChange.from), amount: formatTzs(returnBoundsChange.to) })}
+        </p>}
+        <div className="kp-bsheet__stake">
+          <label htmlFor={`${id}-stake`}>{t.journey.stakeLabel}</label>
+          <Input id={`${id}-stake`} data-testid="journey-sheet-stake" size="xl" grouped mono attention={frame.attention} prefix="TZS" inputMode="numeric" enterKeyHint="done"
+            value={displayedStake} disabled={frame.stakeLocked || placing} aria-invalid={frame.stakeInvalid || undefined}
+            aria-describedby={bound ? boundsId : frame.attention ? calloutId : undefined}
+            onChange={(event) => onStakeChange(event.target.value)} onFocus={onStakeFocus} onBlur={onStakeBlur} />
+        </div>
+        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} edge="start" text="body-400" /><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></span></p>}
+        {!keyboard && frame.chips && <div role="group" aria-label={t.journey.stakeLabel} className="kp-bsheet__chips">
+          {frame.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={frame.stake === amount} disabled={placing || frame.stakeLocked} onClick={() => onStakeChange(String(amount))}>{formatNumber(amount)}</Button>)}
+        </div>}
+        {estimateUpdated && frame.showEstimate && <p className="kp-bsheet__updated">{t.journey.estimateUpdated}</p>}
+        {(frame.showEstimate || low || pending) && <EstimateBox {...parts} compact={keyboard || !frame.showEstimate} />}
+        <LowBlock t={t} locale={locale} nowMs={nowMs} frame={frame} calloutId={calloutId} railNames={railNames}
+          depositAmount={depositAmount} onDepositAmount={onDepositAmount} onDeposit={onDeposit} onClose={onClose}
+          instead={instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />} />
+        {frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}
       </>}
     </div>
     {/* ⭐ The placing status and the inline refusal line stand in the footer, directly above the CTA they explain
@@ -135,6 +201,9 @@ export function BetSheetBody(props: BodyProps) {
           {frame.block?.actions.includes("setLimits") && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}</Link>}
           {frame.block?.actions.includes("contactSupport") && <Link className="kp-bsheet__link" href="/help" onClick={onClose}>{t.kycGate.frozenCta}</Link>}
           <Button type="button" variant="ghost" size="xl" fullWidth onClick={onClose}>{t.common.gotIt}</Button>
+        </> : guest ? <>
+          <Link href={guest.signUp as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-primary btn-xl w-full kp-bsheet__commit" data-testid="journey-sheet-signup"><span>{keepText(t.journey.sheetSignUp)}</span></Link>
+          <Link href={guest.signIn as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-ghost btn-lg w-full" data-testid="journey-sheet-signin">{t.common.signIn}</Link>
         </> : <>
           {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}
           {frame.lines.length > 0 && <div id={lineId} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>}
@@ -199,8 +268,9 @@ export function BetSheet(props: BetSheetProps) {
     const field = middle?.querySelector<HTMLInputElement>('[data-testid="journey-sheet-stake"]');
     if (!middle || !field || document.activeElement !== field) return;
     const port = middle.getBoundingClientRect(), stake = field.getBoundingClientRect();
-    const padding = getComputedStyle(middle);
-    const top = port.top + parseFloat(padding.paddingTop), bottom = port.bottom - parseFloat(padding.paddingBottom);
+    // The middle's scroll padding is its edge fade's depth (globals.css), so the field is revealed clear of a fade.
+    const inset = getComputedStyle(middle);
+    const top = port.top + parseFloat(inset.scrollPaddingTop), bottom = port.bottom - parseFloat(inset.scrollPaddingBottom);
     // The keyboard can shrink a focused field's scrollport after the browser has already revealed it.
     // Move only this middle region, keeping the chosen side, CloseX and commit fixed.
     if (stake.bottom > bottom) middle.scrollTop += stake.bottom - bottom;
@@ -256,7 +326,7 @@ export function BetSheet(props: BetSheetProps) {
   return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
     sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
     refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
-    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-ptr-skip=""
+    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-guest={props.guest ? "" : undefined} data-ptr-skip=""
       onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
       onBlurCapture={(event) => { if (open && !event.currentTarget.contains(event.relatedTarget)) release("focus"); }}
       onPointerMove={(event) => { if (!open || !receiptId) return; const prior = pointer.current; pointer.current = { x: event.clientX, y: event.clientY }; if (prior && (prior.x !== event.clientX || prior.y !== event.clientY)) hold("pointer"); }}

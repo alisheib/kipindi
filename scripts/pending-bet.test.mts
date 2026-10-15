@@ -14,6 +14,8 @@
  *   6. THE SAME-ORIGIN RULE — `sanitizeNext` refuses "//evil", "/" + backslash + "evil", absolute URLs and `/auth/` pages;
  *      since 2026-10-06 also a control character anywhere ("/\t/evil" is read as "//evil") and a bare `/auth` — and no
  *      file under src/ keeps a private copy of the rule (6.one-rule).
+ *   8. WHERE A CHOSEN BET RETURNS (S10 WP1) - betReturnPath: the home, /live, /watchlist and the bet's own page are kept;
+ *      every other page returns to the bet's own page; a round to its own.
  *   7. THE DOORS KEEP INTENT - boundedNext, returnPathFrom, withWelcome, authDoorHrefs, landingAfterAuth,
  *      accountRefusalPath (route audit 2026-10-06).
  *      The census, src only (route audit B2/B6/B-E1/F2; each check runs its own control, none is planted by --prove-red):
@@ -40,12 +42,14 @@ type Impl = {
   sanitize: typeof SN.sanitizeNext;
   bounded: typeof SN.boundedNext; returnPath: typeof SN.returnPathFrom; welcome: typeof SN.withWelcome;
   doors: typeof AL.authDoorHrefs; landing: typeof AL.landingAfterAuth; refusal: typeof AL.accountRefusalPath;
+  ret: typeof PB.betReturnPath;
 };
 const REAL: Impl = {
   parse: PB.parseBetParam, format: PB.formatBetParam, from: PB.pendingBetFrom, url: PB.pendingBetUrl, stake: PB.stakeFromUrl,
   write: PB.writeMarker, read: PB.readMarker, attribution: PB.attributionFrom, sanitize: SN.sanitizeNext,
   bounded: SN.boundedNext, returnPath: SN.returnPathFrom, welcome: SN.withWelcome,
   doors: AL.authDoorHrefs, landing: AL.landingAfterAuth, refusal: AL.accountRefusalPath,
+  ret: PB.betReturnPath,
 };
 const BS = String.fromCharCode(92);
 const NOW = Date.UTC(2026, 9, 1, 9, 0);
@@ -206,6 +210,17 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       [[undefined, "/wallet"], "/auth/login?error=blocked&next=%2Fwallet"],
       [[undefined, "//evil.example"], "/auth/login?error=blocked"]],
     ([d, n]) => impl.refusal(d, n));
+
+  /* 8 · WHERE A CHOSEN BET RETURNS (S10 WP1; S10-PLAN Correction 8 as its A2 settles it) — the page a guest door's next
+   *     names before the bet is added. Every answer is a page that opens the sheet, so S9's deposit return accepts it. */
+  const O = "mkt_0ther0001";
+  const mb = (id: string) => ({ kind: "market" as const, id, side: "YES" as const, stake: 5000 });
+  table<[string, Parameters<Impl["ret"]>[1]]>("8.return · betReturnPath keeps the home, /live, /watchlist and the bet's own page (a query or fragment dropped); any other page, a trailing slash or question A's similar rail returns to the bet's own page; a round to its own",
+    [[["/", mb(M)], "/"], [["/live", mb(M)], "/live"], [["/watchlist", mb(M)], "/watchlist"], [[`/markets/${M}`, mb(M)], `/markets/${M}`],
+      [[`/markets/${M}?side=YES#top`, mb(M)], `/markets/${M}`], [[`/markets/${O}`, mb(M)], `/markets/${M}`], [["/positions", mb(M)], `/markets/${M}`],
+      [["/live/", mb(M)], `/markets/${M}`], [["//evil.example", mb(M)], `/markets/${M}`],
+      [["/", { kind: "round", id: "udr_4f1c09aa2d", side: "UP", stake: null }], "/updown/udr_4f1c09aa2d"]],
+    ([p, b]) => impl.ret(p, b));
   return failed;
 }
 
@@ -399,6 +414,13 @@ if (!PROVE_RED) {
       } } },
     { name: "a player keeps an /admin next", expect: /^7\.landing /,
       impl: { ...REAL, landing: (o) => SN.withWelcome(o.next || "/", o.kind) } },
+    // 8 · where a chosen bet returns (S10 WP1)
+    { name: "betReturnPath keeps every page (a similar-rail tap stays on question A)", expect: /^8\.return /,
+      impl: { ...REAL, ret: (p) => String(p).split("?")[0].split("#")[0] } },
+    { name: "betReturnPath sends the home's bets to the bet's own page", expect: /^8\.return /,
+      impl: { ...REAL, ret: (p, b) => (p === "/" ? (b.kind === "market" ? `/markets/${b.id}` : `/updown/${b.id}`) : PB.betReturnPath(p, b)) } },
+    { name: "betReturnPath keeps a page that cannot open the sheet (/positions)", expect: /^8\.return /,
+      impl: { ...REAL, ret: (p, b) => (p === "/positions" ? p : PB.betReturnPath(p, b)) } },
     { name: "a CLOSED account is told it is blocked", expect: /^7\.refusal /,
       impl: { ...REAL, refusal: (d, n) => AL.accountRefusalPath(d?.accountClosed ? undefined : d, n) } },
   ];

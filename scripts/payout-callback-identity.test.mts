@@ -49,6 +49,25 @@ const route = read("src/app/api/webhooks/payments/route.ts");
 const payments = read("src/lib/server/payments.ts");
 const selcom = read("src/lib/server/selcom.ts");
 
+/** §3.2 (re-derived 2026-10-14): every payout re-query in the sweep AND the fast lane asks the rail about the row's own
+ *  providerRef on the row's own rail, as snapshotted by `withdrawalProbeBinding(t)` BEFORE the call — one call per lane. */
+function asksOwnReference(wallet: string, binder: string): boolean {
+  const fnText = (src: string, anchor: string) => {
+    const i = src.indexOf(anchor);
+    if (i < 0) return "";
+    const n = src.slice(i + anchor.length).search(/\n(?:export )?(?:async )?function /);
+    return n < 0 ? src.slice(i) : src.slice(i, i + anchor.length + n);
+  };
+  const asks = (body: string) => {
+    const calls = [...body.matchAll(/verifyWithdrawalStatus\(([^)]*)\)/g)].map((m) => m[1]);
+    const bound = body.indexOf("const original = withdrawalProbeBinding(t);");
+    return calls.length === 1 && calls[0] === "original.providerRef, original.payoutRail" && bound >= 0 && body.indexOf("verifyWithdrawalStatus(") > bound;
+  };
+  const snapshot = fnText(binder, "export function withdrawalProbeBinding(");
+  return asks(fnText(wallet, "export async function reconcileStalePayments")) && asks(fnText(wallet, "export async function settleConfirmedWithdrawals"))
+    && /providerRef: row\.providerRef,/.test(snapshot) && /payoutRail: row\.payoutRail \?\? null,/.test(snapshot);
+}
+
 /** The withdrawal branch of handleSelcomCallback. */
 const withdrawalBranch = (() => {
   const i = route.indexOf("if (txn.type === \"DEPOSIT\") {");
@@ -95,8 +114,14 @@ console.log("\n§3 · the webhook and the reconcile sweep ask about the SAME ide
   ok("3.1  verifyWithdrawalStatus queries selcomVerifyPayout on providerRef",
     /selcomVerifyPayout\(env,\s*railOf\(payoutRail\),\s*providerRef\)/.test(payments),
     "the sweep's identifier moved — §1 may now be pinning the wrong one");
-  ok("3.2  and the sweep passes it the transaction's providerRef",
-    /verifyWithdrawalStatus\(t\.providerRef!?,\s*t\.payoutRail\)/.test(read("src/lib/server/wallet-service.ts")));
+  // ⭐ 3.2 RE-DERIVED 2026-10-14 (S9 root review H3). Since 9869dd701 the sweep (and the fast lane) no longer read
+  // `t.providerRef` at the call: they snapshot the stored row with `withdrawalProbeBinding(t)` BEFORE asking the rail and ask
+  // about that snapshot's providerRef on that snapshot's rail. The identifier is still the transaction's OWN providerRef —
+  // now frozen, so a reference that moves while the query is out is refused instead of followed. Pinned at both ends: the
+  // call sites ask about `original.providerRef` on `original.payoutRail`, and the snapshot takes them from the row.
+  ok("3.2  and the sweep passes it the transaction's providerRef — frozen by withdrawalProbeBinding before the query",
+    asksOwnReference(read("src/lib/server/wallet-service.ts"), read("src/lib/server/payment-probe-binding.ts")),
+    "the sweep or the fast lane asks the rail about something other than the row's own snapshotted providerRef/rail");
 }
 
 // ── §4 · POSITIVE CONTROL — the scanner can still say NO ─────────────────────
@@ -128,6 +153,27 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
     !/railOf\(txn\.payoutRail\),\s*transid\s*\|\|/.test(fixed)
     && /txn\.providerRef\s*\?\?/.test(fixed) && /railOf\(txn\.payoutRail\),\s*payoutTransid\)/.test(fixed)
     && /if\s*\(!sigOk\)/.test(fixed));
+
+  // §3.2's controls (re-derived 2026-10-14): the predicate can still say NO at every end it pins.
+  const wallet = read("src/lib/server/wallet-service.ts"), binder = read("src/lib/server/payment-probe-binding.ts");
+  const plant = (src: string, from: string, to: string) => (src.split(from).length === 2 ? src.replace(from, to) : null);
+  const probeCall = 'const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);';
+  const plantProbe = (at: "first" | "last", to: string) => {
+    const first = wallet.indexOf(probeCall), last = wallet.lastIndexOf(probeCall);
+    if (first < 0 || last === first || wallet.split(probeCall).length !== 3) return null;
+    const i = at === "first" ? first : last;
+    return wallet.slice(0, i) + to + wallet.slice(i + probeCall.length);
+  };
+  const sweepAsksOther = plantProbe("last", 'const v = await verifyWithdrawalStatus(t.idempotencyKey!, original.payoutRail);');
+  const laneAsksLive = plantProbe("first", 'const v = await verifyWithdrawalStatus(t.providerRef!, t.payoutRail);');
+  const snapshotsOther = plant(binder, "providerRef: row.providerRef,", "providerRef: row.idempotencyKey,");
+  ok("4.5  3.2 accepts the current sweep, fast lane and snapshot", asksOwnReference(wallet, binder));
+  ok("4.6  3.2 rejects a sweep that asks the rail about another identifier",
+    sweepAsksOther !== null && !asksOwnReference(sweepAsksOther, binder));
+  ok("4.7  3.2 rejects a fast lane that asks about the live row instead of its frozen snapshot",
+    laneAsksLive !== null && !asksOwnReference(laneAsksLive, binder));
+  ok("4.8  3.2 rejects a snapshot that takes its reference from anywhere but the row's providerRef",
+    snapshotsOther !== null && !asksOwnReference(wallet, snapshotsOther));
 }
 
 // ── §5 · The payout query also fails closed on ambiguous responses ─────────────

@@ -121,7 +121,9 @@ try {
   }));
 
   await page.getByPlaceholder("Resolves YES if the BoT").fill(EN);
-  await page.getByPlaceholder("Inatatuliwa NDIYO").fill(SW);
+  // The field's placeholder spells the side NDIO since S12 WP2 (2026-10-14). `SW` above is an officer's typed criterion,
+  // data rather than product words, and keeps its own spelling — so step 4's echo below still reads it as typed.
+  await page.getByPlaceholder("Inatatuliwa NDIO").fill(SW);
   await page.getByPlaceholder("若坦桑尼亚银行最后一个营业日的中间价").fill(ZH);
   ok("3: step 3 — all three criteria accepted (no refusal)",
      await page.locator('[role="alert"]').filter({ hasText: /English text|Too short/ }).count() === 0);

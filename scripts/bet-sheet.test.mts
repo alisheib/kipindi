@@ -19,6 +19,10 @@
  *      pool change, never on a keystroke; the pages whose address opens a sheet (A3 item 1).
  *   §6 THE SOURCE — the two modules import only what WP2 names; no rate, multiple or shilling amount typed; no clock but
  *      the caller's; client-safe.
+ *   §10 THE GUEST FACE (S10 WP3, S10-PLAN WP3 and A10) — S8's sheet drawn for a reader who is not signed in, in sw, en and
+ *      zh, on every frame a guest can reach: no balance row, no commit, no deposit or bet-instead; in the commit's place the
+ *      two doors, in order, as real links with their hrefs and test ids, at the kit's rungs and never gold; the money face
+ *      carries no trace of them.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written, so `test:red-anchors` counts the twin as in-process.
  */
@@ -41,6 +45,7 @@ import type { Dict, Locale } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs } from "../src/lib/utils.ts";
 import { DWELL_BET_RECEIPT_MS } from "../src/lib/feedback-timing.ts";
 import { nextSheetFocus, type SheetFocusState } from "../src/lib/journey/sheet-focus.ts";
+import { guestFrame } from "../src/lib/journey/guest-sheet.ts";
 import ts from "typescript";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -176,6 +181,8 @@ type Impl = {
   plan: typeof SF.shortfallPlan;
   src: Sources;
   draw?: (html: string) => string;
+  /** S10 · applied to the guest face's markup only (§10's plants). */
+  drawGuest?: (html: string) => string;
 };
 const REAL: Impl = {
   focus: nextSheetFocus,
@@ -838,6 +845,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && drawFrame(refusedDeposit, "en").includes(formatTzs(3_000))
       && SF.depositLeftAfterFor({ kind: "deposit", amount: 1_000, chips: [1_000, 5_000], belowDepositMin: true, leftAfter: 700 }, 5_000) === 4_700);
   const sheetSrc = strip(impl.src.sheet), partsSrc = strip(impl.src.parts);
+  /** The rendered text of a markup fragment. */
+  const text = (html: string) => html.replace(/<[^>]+>/g, "").replaceAll("&amp;", "&").replaceAll("&#x27;", "'").replaceAll("&quot;", '"');
   const commitRows = rendered.filter(x => x.html.includes('data-testid="journey-sheet-place"'));
   ok("7.cta-line · the commit's words, separator and money form one inline sentence inside the button, so a long Swahili figure wraps coherently",
     commitRows.length > 0 && commitRows.every(x => /data-testid="journey-sheet-place"[^>]*><span>/.test(x.html))
@@ -926,6 +935,63 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && figure.includes("new ResizeObserver(onEstimateResize)") && figure.includes("if (width === lastWidth) return;")
       && figure.includes('document.fonts.addEventListener("loadingdone", fitEstimateFigure)')
       && /input\[data-input-size="xl"\][^}]*font-size: var\(--type-h2\) !important/.test(impl.src.css));
+
+  /* §10 · S10 WP3: the guest face — S8's sheet drawn for a reader who is not signed in (S10-PLAN WP3 and A10). */
+  const GUEST_DOORS = { signUp: `/auth/register?next=%2F%3Fbet%3D${MKT}.YES.2500&ref=AB12CD`, signIn: `/auth/login?next=%2F%3Fbet%3D${MKT}.YES.2500&ref=AB12CD`, onPress: () => {}, onLeave: () => {} };
+  const drawGuestFrame = (frame: SS.SheetFrame, locale: Locale, theSeed = seed()) => {
+    const html = renderToStaticMarkup(createElement(BetSheetBody, {
+      seed: theSeed, side: "YES", title: locale === "sw" ? "Je, Dodoma itapata mvua?" : locale === "zh" ? "多多马是否会下雨？" : "Will it rain in Dodoma?",
+      frame, stakeText: frame.stake === null ? "" : String(frame.stake), estimateUpdated: false, railNames: ["M-Pesa", "Airtel Money"],
+      t: dict[locale] as unknown as Dict, locale, id: "sheet-proof", nowMs: NOW,
+      onStakeChange: () => {}, onPlace: () => {}, onBetInstead: () => {}, onDeposit: () => {}, onClose: () => {}, guest: GUEST_DOORS,
+    }));
+    return impl.drawGuest ? impl.drawGuest(html) : html;
+  };
+  const guestCases: Array<[string, SS.SheetSeed, string]> = [
+    ["the minimum", seed(), String(MIN)], ["after a chip", seed(), "2500"], ["empty", seed(), ""], ["not whole", seed(), "12.5"],
+    ["below", seed(), "499"], ["above", seed(), String(MAX + 1)], ["an empty pool", seed({ yesPool: 0, noPool: 0 }), String(MIN)],
+    ["one side only", seed({ yesPool: 3_000, noPool: 0 }), String(MIN)], ["first on a side", seed({ yesPool: 0, noPool: 3_000 }), String(MIN)],
+    ["over the cap", seed({ yesPool: 1_000, noPool: 500_000 }), String(MIN)], ["thin", seed({ yesPool: 500_000, noPool: 20_000 }), String(MIN)],
+    ["a legacy fee", seed({ rates: { feeModel: "capped-commission", commissionRate: 0.1, feeCeilingRate: 0.333 } }), String(MIN)],
+    ["closed", seed({ bettable: false }), String(MIN)],
+  ];
+  const guests = (["sw", "en", "zh"] as const).flatMap((locale) => guestCases.map(([name, theSeed, stakeText]) => {
+    const frame = guestFrame({ seed: theSeed, side: "YES", stakeText, nowMs: NOW });
+    return { name, locale, frame, html: drawGuestFrame(frame, locale, theSeed) };
+  }));
+  const door = (html: string, id: string) => new RegExp(`<a [^>]*data-testid="${id}"[^>]*>`).exec(html)?.[0] ?? "";
+  const hrefOf = (tag: string) => (/ href="([^"]*)"/.exec(tag)?.[1] ?? "").replaceAll("&amp;", "&");
+  const classOf = (tag: string) => / class="([^"]*)"/.exec(tag)?.[1] ?? "";
+  const facesBad = guests.filter((g) => {
+    const money = ["kp-bsheet__balance", 'data-testid="journey-sheet-place"', "journey-sheet-deposit", "journey-sheet-bet-instead"].some((m) => g.html.includes(m));
+    const up = g.html.indexOf('data-testid="journey-sheet-signup"'), inn = g.html.indexOf('data-testid="journey-sheet-signin"');
+    if (g.frame.frame === "closed") return money || up >= 0 || inn >= 0 || !g.html.includes(`>${dict[g.locale].common.gotIt}</button>`);
+    return money || g.frame.frame !== "edit" || up < 0 || inn < 0 || up > inn || g.html.indexOf("kp-bsheet__footer") > up
+      || hrefOf(door(g.html, "journey-sheet-signup")) !== GUEST_DOORS.signUp || hrefOf(door(g.html, "journey-sheet-signin")) !== GUEST_DOORS.signIn;
+  });
+  ok("10.guest-face · in sw, en and zh, on all 13 frames a guest reaches (the minimum, a chip, each bounds break, each estimate state, closed): no balance row, no commit, no deposit or bet-instead; the edit frames draw the two doors in order in the footer with their hrefs; the closed frame draws its one Sawa and no door",
+    guests.length === 39 && facesBad.length === 0, j(facesBad.map((g) => `${g.locale}/${g.name}`)));
+  const editGuests = guests.filter((g) => g.frame.frame === "edit");
+  const doorsBad = editGuests.filter((g) => {
+    const up = door(g.html, "journey-sheet-signup"), inn = door(g.html, "journey-sheet-signin");
+    const label = new RegExp(`data-testid="journey-sheet-signup"[^>]*><span>([^]*?)</span></a>`).exec(g.html)?.[1] ?? "";
+    return classOf(up) !== "btn btn-primary btn-xl w-full kp-bsheet__commit" || classOf(inn) !== "btn btn-ghost btn-lg w-full"
+      || /gold|gilt/.test(up + inn) || !label.includes('<span class="whitespace-nowrap">')
+      || text(label) !== dict[g.locale].journey.sheetSignUp || !g.html.includes(`>${dict[g.locale].common.signIn}</a>`);
+  });
+  ok("10.guest-doors · the sign-up door is a link on the commit's own rung and geometry (btn-primary btn-xl kp-bsheet__commit — brand, never gold), its words kept whole (keepText) and exactly journey.sheetSignUp; the sign-in door is the ghost one rung down (btn-lg) reading common.signIn",
+    editGuests.length === 36 && doorsBad.length === 0, j(doorsBad.map((g) => `${g.locale}/${g.name}`)));
+  const moneyMarks = rendered.filter((x) => /data-guest|journey-sheet-signup|journey-sheet-signin/.test(x.html));
+  const moneyKept = rendered.filter((x) => x.frame.frame === "edit").every((x) => x.html.includes("kp-bsheet__balance") && x.html.includes('data-testid="journey-sheet-place"'));
+  ok("10.money-face · the money face carries no trace of the guest's doors and keeps its balance row and commit on every edit frame",
+    moneyMarks.length === 0 && moneyKept, j(moneyMarks.map((x) => `${x.locale}/${x.frame.frame}`)));
+  ok("10.guest-src · the source draws the guest face from the one sheet: the balance row withheld only for a guest, the doors only in the guest arm (onClick = onPress, onNavigate = onLeave), the shell marked data-guest — and no second sheet component",
+    sheetSrc.includes("{frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}")
+      && sheetSrc.includes('<Link href={guest.signUp as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-primary btn-xl w-full kp-bsheet__commit" data-testid="journey-sheet-signup"><span>{keepText(t.journey.sheetSignUp)}</span></Link>')
+      && sheetSrc.includes('<Link href={guest.signIn as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-ghost btn-lg w-full" data-testid="journey-sheet-signin">{t.common.signIn}</Link>')
+      && sheetSrc.includes('data-guest={props.guest ? "" : undefined}')
+      // S12 shares the LowBlock with the Juu/Chini arm; it is not a second sheet.
+      && (sheetSrc.match(/export function \w+\(/g) ?? []).filter((name) => name !== "export function LowBlock(").length === 2);
   return failed;
 }
 
@@ -997,6 +1063,20 @@ if (!PROVE_RED) {
     { name: "an unlifted open writes the keyboard lift onto the panel (a whole-sheet restyle inside the tap)", expect: /^8\.viewport-quiet /, impl: withSrc({ sheet: SOURCES.sheet.replace('} else {\n        panel?.style.removeProperty("--bsheet-keyboard-lift");', '} else {\n        panel?.style.setProperty("--bsheet-keyboard-lift", "0px");') }) },
     { name: "the panel's lift loses its stylesheet fallback", expect: /^8\.viewport-quiet /, impl: withSrc({ css: SOURCES.css.replace("var(--bsheet-keyboard-lift, 0px)", "var(--bsheet-keyboard-lift)") }) },
     { name: "the iOS zoom rule shrinks the xl stake back to sixteen", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace('input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }', '') }) },
+    // §10 · S10 WP3: the guest face
+    { name: "a balance row drawn for a guest", expect: /^10\.guest-face /, impl: { ...REAL, drawGuest: (html) => html.replace('<div class="kp-bsheet__footer">', '<div class="kp-bsheet__balance"></div><div class="kp-bsheet__footer">') } },
+    { name: "the commit drawn beside the doors", expect: /^10\.guest-face /, impl: { ...REAL, drawGuest: (html) => html.replace('<a ', '<button data-testid="journey-sheet-place"></button><a ') } },
+    { name: "the doors swapped", expect: /^10\.guest-face /, impl: { ...REAL, drawGuest: (html) => html.replace('data-testid="journey-sheet-signup"', "data-testid=\"__up\"").replace('data-testid="journey-sheet-signin"', 'data-testid="journey-sheet-signup"').replace("data-testid=\"__up\"", 'data-testid="journey-sheet-signin"') } },
+    { name: "a door that drops the codes (its href rebuilt from next alone)", expect: /^10\.guest-face /, impl: { ...REAL, drawGuest: (html) => html.replaceAll("&amp;ref=AB12CD", "") } },
+    { name: "a door offered on the closed frame", expect: /^10\.guest-face /, impl: { ...REAL, drawGuest: (html) => html.includes("kp-bsheet__terminal") ? html.replace('<div class="kp-bsheet__footer">', '<div class="kp-bsheet__footer"><a data-testid="journey-sheet-signup"></a>') : html } },
+    { name: "a gold sign-up door", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace("btn btn-primary btn-xl", "btn btn-gold btn-xl") } },
+    { name: "the sign-up door on a second geometry class", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace("btn-xl w-full kp-bsheet__commit", "btn-xl w-full kp-bsheet__door") } },
+    { name: "both doors at the same rung", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace("btn btn-ghost btn-lg w-full", "btn btn-ghost btn-xl w-full") } },
+    { name: "the sign-up label drawn without its kept run", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace(/(data-testid="journey-sheet-signup"[^>]*><span>[^]*?)<span class="whitespace-nowrap">([^<]*)<\/span>/, "$1$2") } },
+    { name: "the money face gains the guest's mark", expect: /^10\.money-face /, impl: { ...REAL, draw: (html) => html.replace('class="kp-bsheet__header"', 'class="kp-bsheet__header" data-guest=""') } },
+    { name: "the balance row withheld from everybody", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet.replace("{frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}", "{false && <BalanceRow t={t} frame={frame} />}") }) },
+    { name: "a door that navigates without its address beat (onNavigate dropped)", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet.replaceAll(" onNavigate={guest.onLeave}", "") }) },
+    { name: "a second sheet component for the guest", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet + "\nexport function GuestBetSheet() { return null; }\n" }) },
     // §1
     { name: "the sheet's figure from a second formula (stake × the card's multiple)", expect: /^1\.deck /,
       impl: withSS({ sheetEstimate: (s, side, stake) => { const e = SS.sheetEstimate(s, side, stake); return e && stake ? { ...e, payout: Math.round(stake * 2.8) } : e; } }) },

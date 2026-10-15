@@ -17,6 +17,7 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
+import { isDepositReturnBet } from "@/lib/journey/deposit-state";
 import { randomId } from "./crypto";
 import { withLock, runOutsideLock } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
@@ -35,7 +36,10 @@ import { normaliseCriterionTranslation } from "../localized";
 import { getEffectiveConfig, getEffectiveResolutionMode, snapshotFromConfig, snapshotOrLegacy, type RateConfig } from "./market-config";
 import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
-import { normaliseShortTitleSet } from "@/lib/markets/short-title";
+import { normaliseShortTitleSet, messageTitle, messageTitles } from "@/lib/markets/short-title";
+// S12 WP12 (the Vodacom plan): a player's message carries the officer-approved short title only once the new journey is
+// ACTIVE for everyone — the S15 flip — and the full title until then, and on any failure (`message-titles.ts`).
+import { shortTitlesInMessagesNow } from "./message-titles";
 import { normaliseCompetition } from "@/lib/markets/competitions";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
@@ -379,6 +383,8 @@ export type StoredPosition = {
    * statement, never through positionStore.set.
    */
   houseBotId?: string | null;
+  /** S9 verified manual deposit-return attribution. Null/absent on legacy/direct/house bets; create-only. */
+  origin?: string | null;
 };
 
 
@@ -1027,6 +1033,8 @@ type BuyOpts = {
   side: Side;
   stake: number;
   idempotencyKey?: string;
+  /** Untrusted manual-return hint. The locked owned deposit row alone may authorize create-only attribution. */
+  returnDepositId?: string;
   /**
    * E-235 · ms epoch this PLAY SESSION began, from the signed session cookie. Passed in
    * rather than read here so the service stays callable without a request context — and so
@@ -1616,6 +1624,11 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     const positionId = `pos_${randomId(10)}`;
     const betTxnId = `txn_${randomId(12)}`;
     const placedAt = new Date().toISOString();
+    const returnRow = opts.returnDepositId && /^[a-z0-9_-]{1,128}$/i.test(opts.returnDepositId)
+      ? await db.txn.findById(opts.returnDepositId, lockTx) : null;
+    const depositReturn = isDepositReturnBet(userId, returnRow, {
+      marketId: opts.marketId, side: opts.side, stake: opts.stake, houseBotId: houseIntent?.houseBotId ?? null,
+    }, Date.parse(placedAt));
     const position: StoredPosition = {
       id: positionId,
       userId,
@@ -1629,6 +1642,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       placedAt,
       settledAt: null,
       idempotencyKey: opts.idempotencyKey ?? null,
+      ...(depositReturn ? { origin: "deposit_return" } : {}),
       // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
       // SEAM:marker
       ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
@@ -1974,11 +1988,13 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     if (ctx.kind === "house") {
       // nothing here — see the note above
     } else if (!perEventNotificationsSuppressed(market)) {
+    // S12 WP12 · the title switch is read once for this receipt, and the bet never waits for it (`message-titles.ts`).
+    void shortTitlesInMessagesNow().then((shortTitles) => {
     notifyBetPlaced(userId, {
       side: opts.side,
       stake: opts.stake,
       payoutIfWin: c.payoutIfWin,
-      marketTitle: localizedText(market.titleEn, market.titleSw, market.titleZh),
+      marketTitle: messageTitles(shortTitles, localizedText(market.titleEn, market.titleSw, market.titleZh), market),
       marketId: market.id,
       positionId: c.positionId,
       cashOutFeeRate: betRates.cashOutFeeRate,
@@ -1992,16 +2008,17 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     // pools freeze, where it is a fact rather than a moving projection.
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Bet placed · ${opts.side} on "${clipQuote(market.titleEn, 40)}"`,
+      subject: `Bet placed · ${opts.side} on "${clipQuote(messageTitle(shortTitles, "en", market.titleEn, market), 40)}"`,
       html: betPlacedHtml({
         reference: c.positionId, side: opts.side, stake: opts.stake,
         // R6-A (2026-10-09) · the instant, said on the East Africa clock by the letter's own row formatter — it was the UTC day.
-        marketTitle: market.titleEn, placedAt: c.placedAt, resolvesAt: market.resolutionAt,
+        marketTitle: messageTitle(shortTitles, "en", market.titleEn, market), placedAt: c.placedAt, resolvesAt: market.resolutionAt,
         cashOutFeeRate: betRates.cashOutFeeRate, freeExitGraceMinutes: betRates.freeExitGraceMinutes,
         paidExitWindowMinutes: betRates.paidExitWindowMinutes,
       }),
       tag: "bet-placed",
     }), { confirmedOnly: true }).catch(() => {});
+    }).catch(() => {});
     } else {
       // E-57 · Up & Down PUSHES even though it does not write an inbox row. The player
       // asked for a live signal on their phone; what the digest prevents is forty rows
@@ -2276,6 +2293,8 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   // notification tells him the truth about his own book, not one leg of it.
   const bettors = Array.from(new Set(open.map((p) => p.userId)));
   let bettorsNotified = 0;
+  // S12 WP12 · the title switch, read once for every notice and letter this close sends (`message-titles.ts`).
+  const shortTitles = await shortTitlesInMessagesNow();
   for (const userId of bettors) {
     bettorsNotified++;
     const mine = open.filter((p) => p.userId === userId);
@@ -2283,7 +2302,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
 
     notifySelectionClosed(userId, {
-      marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id,
+      marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id,
       payoutIfYes: ifYes, payoutIfNo: ifNo,
       hasYes: mine.some((p) => p.side === "YES"),
       hasNo: mine.some((p) => p.side === "NO"),
@@ -2294,9 +2313,9 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
     if (mine.every((p) => p.houseBotId != null)) continue;
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${clipQuote(m.titleEn, 40)}`,
+      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${clipQuote(messageTitle(shortTitles, "en", m.titleEn, m), 40)}`,
       html: selectionClosedHtml({
-        marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
+        marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
         payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
         payoutIfNo: mine.some((p) => p.side === "NO") ? ifNo : null,
       }),
@@ -2445,6 +2464,8 @@ export async function notifyVerdictRecordedForMarket(
   // One message per PLAYER, not per position — a hedged holder with six positions on one
   // market gets one notice about one verdict.
   const bettors = Array.from(new Set(open.map((p) => p.userId)));
+  // S12 WP12 · the title switch, read once for every notice this verdict sends (`message-titles.ts`).
+  const shortTitles = await shortTitlesInMessagesNow();
   // ⭐ EACH NOTICE AWAITED (2026-10-10): every caller fires this function and forgets it (`void ….catch`), so waiting here
   // holds up no seal and no ruling — but what it returns now settles once the notices are written. Since R5-B each notice
   // is written after its payout time is put in the reader's words (`instantIn`, an await), and a caller that awaited this
@@ -2452,7 +2473,7 @@ export async function notifyVerdictRecordedForMarket(
   // guards deleted (`red:officer-hold` cases 4, 5 and 7). A failed notice still fails alone, as `.catch` let it.
   await Promise.allSettled(bettors.map((userId) =>
     notifyVerdictRecorded(userId, {
-      marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+      marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m),
       marketId: m.id,
       outcome,
       paysAt,
@@ -2497,7 +2518,9 @@ export async function notifyClosingSoonForMarket(marketId: string): Promise<{ no
   const cutoff = m.selectionClosedAt ? Date.parse(m.selectionClosedAt) : Date.parse(m.resolutionAt);
   const minutes = Math.max(1, Math.round((cutoff - now) / 60_000));
   const { alertWatchersClosingSoon } = await import("./watchlist-service");
-  const watchers = await alertWatchersClosingSoon(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), minutes);
+  // S12 WP12 · the title switch, read once for this alert to every watcher (`message-titles.ts`).
+  const shortTitles = await shortTitlesInMessagesNow();
+  const watchers = await alertWatchersClosingSoon(m.id, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), minutes);
   return { notified: true, watchers };
 }
 
@@ -3551,13 +3574,16 @@ export async function cashOutPosition(
     // thing we should do in that state.
     // The free-exit window comes from THIS poll's frozen snapshot — the receipt
     // must state the rule we actually applied, not a constant.
-    notifyCashout(userId, { amount: paid, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
+    // S12 WP12 · the title switch is read once for this receipt, and the sale never waits for it (`message-titles.ts`).
+    void shortTitlesInMessagesNow().then((shortTitles) => {
+    notifyCashout(userId, { amount: paid, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, inGracePeriod, positionId, freeExitGraceMinutes: ratesFor(m).freeExitGraceMinutes });
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Position sold · ${formatTzs(paid)}`,
-      html: cashOutReceiptHtml({ reference: p.id, value: paid, stake: p.stake, marketTitle: m.titleEn, soldAt: now, gracePeriod: inGracePeriod }),
+      html: cashOutReceiptHtml({ reference: p.id, value: paid, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), soldAt: now, gracePeriod: inGracePeriod }),
       tag: "cashout",
     }), { confirmedOnly: true }).catch(() => {});
+    }).catch(() => {});
 
     audit({
       category: "BET",
@@ -3826,6 +3852,9 @@ export async function settleMarket(
    * settlement to tell a player a number he already has.
    */
   const paidWallets = new Set<string>();
+  // S12 WP12 · the title switch, read once for every notice and letter this settlement sends — and BEFORE the market
+  // lock, so the money's transaction never waits on it (`message-titles.ts`).
+  const shortTitles = await shortTitlesInMessagesNow();
 
   // `lockTx` is the transaction `withLock` opened for this scope. It is threaded to
   // `persistResolution` below so the settledAt stamp commits WITH the payouts —
@@ -4019,12 +4048,12 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
         // SEAM:emailOneSided — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
         if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
-          html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+          html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
           tag: "one-sided-refund",
         }), { confirmedOnly: true }).catch(() => {});
       } else {
@@ -4148,7 +4177,7 @@ export async function settleMarket(
       // outcome reaches the player or none does. The Up & Down arm writes a bell row and
       // pushes it from one copy; the long-form arm keeps its own emitter and its email.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
       } else {
         notifyUpDownRefund(p.userId, {
           stake: p.stake,
@@ -4301,7 +4330,7 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));
+          notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id));
           // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
           // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
           // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
@@ -4310,7 +4339,7 @@ export async function settleMarket(
           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
-            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+            html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "win",
           }), { confirmedOnly: true }).catch(() => {});
         } else {
@@ -4346,12 +4375,12 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
           // SEAM:emailLoss — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
-            html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: m.titleEn, settledAt }),
+            html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "loss",
           }), { confirmedOnly: true }).catch(() => {});
         } else {
@@ -4471,7 +4500,7 @@ export async function settleMarket(
   try {
     const { alertWatchersSettled } = await import("./watchlist-service");
     const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
-    await alertWatchersSettled(m.id, localizedText(m.titleEn, m.titleSw, m.titleZh), opts.outcome, bettorIds);
+    await alertWatchersSettled(m.id, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome, bettorIds);
   } catch { /* watcher alerts must never break settlement */ }
 
   audit({
@@ -4803,6 +4832,10 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
   const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
+  // S12 WP12 · the title switch, read once for every player notice and letter this cancellation sends — and BEFORE the
+  // market lock, so the refunds' transaction never waits on it (`message-titles.ts`). The officers' copies keep the full
+  // English question: the console is English by design.
+  const shortTitles = await shortTitlesInMessagesNow();
   const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
@@ -4883,12 +4916,12 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id });
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id });
       // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
       if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
-        html: marketCancelledRefundHtml({ title: m.titleEn, reason, amount: p.stake, reference: p.id }),
+        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, "en", m.titleEn, m), reason, amount: p.stake, reference: p.id }),
         tag: "market-cancelled-refund",
       }), { confirmedOnly: true }).catch(() => {});
       refundedCount++;

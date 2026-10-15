@@ -29,6 +29,7 @@ import { runRetentionPass } from "./retention";
 import { audit } from "./audit";
 import { acquireLeadership, releaseLeadership } from "./leader";
 import { reapStuckGenerations } from "./ai-poll-generation";
+import { eatDayKey } from "../eat-day";
 
 const TICK_MS = 60_000;       // run the lifecycle sweeps once a minute
 const FIRST_TICK_MS = 8_000;  // first pass shortly after boot (let the app settle)
@@ -231,15 +232,25 @@ async function maybePaymentSweeps(): Promise<void> {
   const { reconcileStalePayments, notifyStillPendingDeposits } = await import("./wallet-service");
   // Settle first, then notify — so a deposit this very sweep just resolved is
   // already terminal and is NOT then emailed "we're still waiting on it".
-  const r = await reconcileStalePayments();
-  if (r.depositsConfirmed || r.depositsFailed || r.withdrawalsConfirmed || r.withdrawalsReversed || r.leftPending) {
-    console.log(
-      `[lifecycle] payment reconcile — deposits +${r.depositsConfirmed}/-${r.depositsFailed}, ` +
-        `withdrawals +${r.withdrawalsConfirmed}/-${r.withdrawalsReversed}, ${r.leftPending} still in flight`,
-    );
+  // ⛔ Each chore has its OWN catch (S9 root review H1): a reconcile that throws must not skip the still-pending notices or
+  // the outage escalation below, and a notice fault must not skip the escalation. The ORDER is unchanged.
+  try {
+    const r = await reconcileStalePayments();
+    if (r.depositsConfirmed || r.depositsFailed || r.withdrawalsConfirmed || r.withdrawalsReversed || r.leftPending) {
+      console.log(
+        `[lifecycle] payment reconcile — deposits +${r.depositsConfirmed}/-${r.depositsFailed}, ` +
+          `withdrawals +${r.withdrawalsConfirmed}/-${r.withdrawalsReversed}, ${r.leftPending} still in flight`,
+      );
+    }
+  } catch (e) {
+    console.error("[lifecycle] payment reconcile failed (the notices and the escalation below still run):", e instanceof Error ? e.message : e);
   }
-  const n = await notifyStillPendingDeposits();
-  if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+  try {
+    const n = await notifyStillPendingDeposits();
+    if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+  } catch (e) {
+    console.error("[lifecycle] still-pending deposit notices failed (the escalation below still runs):", e instanceof Error ? e.message : e);
+  }
   /**
    * ⭐ AND IF THE QUEUE HAS CLOSED WITHDRAWALS FOR EVERYONE, SAY SO (2026-09-24).
    *
@@ -377,6 +388,32 @@ async function maybeSendUpDownDigest(): Promise<void> {
 const KYC_SLA_WATCH_EVERY_MS = 15 * 60 * 1000;
 const KYC_SLA_WATCH_BOOT_GRACE_MS = 5 * 60 * 1000; // let boot settle, as retention and the watchdog do
 let lastKycSlaWatchAt = 0;
+
+/**
+ * The Vodacom plan S13 (WP2, WP3) — OBSERVATION ONLY; nothing here moves or books money.
+ *   · the launch record: what players are shown, observed every pass, every change kept (`journey-launch.ts`);
+ *   · the harm watch: once an EAT day after 03:00, how many accounts carried the two markers small top-ups feed, by
+ *     Player Safety's own detector (`harm-watch.ts`), under a time ceiling so this pass stays on time.
+ * Each has its own catch and runs before the holder sweep, which stays the LAST chore (ruling 129).
+ */
+async function observeJourneyLaunch(): Promise<void> {
+  const { observeJourneyRollout } = await import("./journey-launch");
+  const r = await observeJourneyRollout();
+  if (r.wrote === "created" || r.wrote === "appended") console.log("[lifecycle] journey rollout observed");
+}
+
+/** The EAT day this process last saw counted — so the row is read about once a day, not once a minute. */
+let harmWatchDay = "";
+async function maybeCountHarmWatch(): Promise<void> {
+  const now = Date.now();
+  const today = eatDayKey(now);
+  if (harmWatchDay === today) return;
+  const { snapshotHarmMarkers } = await import("./harm-watch");
+  const r = await snapshotHarmMarkers(now);
+  if (r.wrote === "counted" || r.wrote === "not-counted" || (r.wrote === "skipped" && r.why === "already counted")) harmWatchDay = today;
+  if (r.wrote === "counted") console.log(`[lifecycle] harm watch ${r.day} — ${r.rapidDeposit} rapid-deposit, ${r.chasingLosses} top-up-after-bet, ${r.scanned} scanned`);
+  else if (r.wrote === "not-counted") console.warn(`[lifecycle] harm watch ${r.day} NOT COUNTED — ${r.why}`);
+}
 
 /**
  * L2 · the house-bot holder sweep (04 A2, PLAN §14; C4-SPEC ruling 129). Every non-REMOVED bot's holder account is
@@ -653,6 +690,9 @@ export async function runLifecyclePass(): Promise<void> {
     // The automatic approvals' officer check (2026-10-10), beside the review target and on the same contract: officer
     // bells only, its own catch, and before the holder sweep, which stays the LAST chore (ruling 129).
     await maybeWatchKycPostChecks().catch((e) => console.error("[lifecycle] automatic identity approvals:", e));
+    // S13 (WP2, WP3): observation only, each on its own catch, before the holder sweep — see their block above.
+    await observeJourneyLaunch().catch((e) => console.error("[lifecycle] journey launch record:", e));
+    await maybeCountHarmWatch().catch((e) => console.error("[lifecycle] harm watch:", e));
     await maybeRunHolderSweep().catch((e) => console.error("[lifecycle] house-bot holder sweep:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the

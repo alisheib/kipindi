@@ -90,12 +90,16 @@ const exclOk = (h: string, iso: string) => {
   const en = enLines(h).join(" "), sw = swLines(h).join(" ");
   return en.includes(`disabled until ${endEn(iso)}.`) && sw.includes(` hadi ${endSw(iso)}.`) && rows(h).Unlocks === endEn(iso);
 };
-/** A permanent letter: no date in any line or row, the dictionary's word in the Period row, the sentences otherwise whole. */
+/** A permanent letter: no date in any line or row, the dictionary's word in the Period row, the sentences otherwise whole.
+ *  ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP5, word-ledger row 78; Point for Ali 4, accepted by Ali that day): the
+ *  letter says it is permanent in both lines — "You've locked your account permanently." where it read "…for permanent."
+ *  (the period's name in "for …"), and "Akaunti yako imefungwa kabisa." where the Swahili had no word for it. */
 const permanentOk = (h: string) => {
   const all = [...enLines(h), ...swLines(h), ...Object.values(rows(h))].join(" | ");
   return !/\d{4}|\d{1,2}:\d{2}/.test(all) && !MONTH_WORD.test(all) && !/\buntil\b|\bhadi\b/.test(all)
-    && enLines(h).join(" ").includes("Betting, deposits, and login are disabled. This cannot be reversed.")
-    && swLines(h).join(" ").includes("Akaunti yako imefungwa. Hii haiwezi kubatilishwa.")
+    && enLines(h).join(" ").includes("You've locked your account permanently. Betting, deposits, and login are disabled. This cannot be reversed.")
+    && !/\bfor permanent\b/.test(enLines(h).join(" "))
+    && swLines(h).join(" ").includes("Akaunti yako imefungwa kabisa. Hii haiwezi kubatilishwa.")
     && rows(h).Period === dict.en.common.permanent && !("Unlocks" in rows(h));
 };
 {

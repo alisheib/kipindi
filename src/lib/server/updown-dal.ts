@@ -230,13 +230,6 @@ function pc() {
   return c;
 }
 
-/** True when a Prisma error is a unique-constraint violation. The observation store
- *  races on `@@unique([assetId, boundaryAt])` BY DESIGN, so this is a normal control
- *  path there, not an error. */
-function isUniqueViolation(e: unknown): boolean {
-  return !!e && typeof e === "object" && (e as { code?: string }).code === "P2002";
-}
-
 // ---------------------------------------------------------------------------
 // Store interfaces
 // ---------------------------------------------------------------------------
@@ -349,7 +342,7 @@ export interface ObservationStore {
    *
    * Idempotent and race-safe: two chains hitting the same boundary in the same
    * instant (a 5-min and a 15-min round both closing at 14:30) both call this, and
-   * exactly one row results. The loser of the race catches P2002 and re-reads.
+   * exactly one row results. The loser skips its insert and re-reads.
    */
   ensure(assetId: string, boundaryAt: string): Promise<StoredObservation>;
   /**
@@ -795,7 +788,7 @@ const prismaObservations: ObservationStore = {
   /**
    * Get or create the one observation for this `(asset, boundary)`.
    *
-   * ── 🔴 WHY THIS IS AN `upsert` AND NOT A `create` IN A TRY/CATCH ──────────────
+   * ── 🔴 WHY THIS IS `createMany(skipDuplicates)` ────────────────────────────
    * Two chains on the same asset race to create the same boundary. The unique index makes one
    * lose, which is the write-once guarantee WORKING — and the old code handled it correctly:
    * catch, re-read, share the winner's row.
@@ -811,37 +804,25 @@ const prismaObservations: ObservationStore = {
    * been switched off**, because the operator learns to scroll past `prisma:error`. Fixing the
    * message is not the fix; not producing it is.
    *
-   * An `upsert` compiles to a conflict-tolerant write, so the losing racer takes the existing
-   * row without an exception and without a log line. Same semantics — both callers end up on one
-   * observation — with the noise gone.
+   * An `upsert` with an empty update was meant to be conflict-tolerant, but a two-instance
+   * race on production still raised and logged P2002 before our catch ran (2026-10-15).
+   * PostgreSQL's `INSERT ... ON CONFLICT DO NOTHING` is expressed by Prisma's
+   * `createMany({ skipDuplicates: true })`. The loser then reads the winner's row.
    *
-   * ⛔⛔ `update: {}` IS LOAD-BEARING AND MUST STAY EMPTY. On conflict this row may already be
-   * CONFIRMED, carrying the price that settled real money. Anything in that object would
-   * overwrite a settled price — which is exactly what `confirm`'s `state: "PENDING"` guard below
-   * exists to make impossible. `test:updown-config` §6 asserts it stays empty.
-   * (`UpDownObservation` has no `@updatedAt`, so an empty update touches nothing at all.)
-   *
-   * ⚠️ The try/catch stays as a belt. `upsert` is conflict-tolerant, not conflict-proof under
-   * every driver path, and if a violation does surface the old recovery is still the right one.
+   * ⛔⛔ This path must never UPDATE a row. On conflict it may already be CONFIRMED,
+   * carrying the price that settled real money. `test:updown-config` §6 guards the
+   * insert-only shape; the PostgreSQL race test checks two separate app instances.
    */
   async ensure(assetId, boundaryAt) {
     const found = await prismaObservations.find(assetId, boundaryAt);
     if (found) return found;
-    try {
-      const r = await pc().upDownObservation.upsert({
-        where: { assetId_boundaryAt: { assetId, boundaryAt: new Date(boundaryAt) } },
-        create: { assetId, boundaryAt: new Date(boundaryAt), state: "PENDING" },
-        update: {}, // ⛔ EMPTY, FOR EVER. See the note above — a settled price lives here.
-      });
-      return toObservation(r);
-    } catch (e) {
-      // Lost the race in a way the upsert did not absorb. Still the DESIGNED behaviour of the
-      // unique index, not an error: re-read and use theirs, so both callers share one row.
-      if (!isUniqueViolation(e)) throw e;
-      const again = await prismaObservations.find(assetId, boundaryAt);
-      if (!again) throw e; // genuinely unexpected — do not paper over it
-      return again;
-    }
+    await pc().upDownObservation.createMany({
+      data: [{ assetId, boundaryAt: new Date(boundaryAt), state: "PENDING" }],
+      skipDuplicates: true, // ⛔ INSERT ONLY. A confirmed price is never updated.
+    });
+    const row = await prismaObservations.find(assetId, boundaryAt);
+    if (!row) throw new Error("updown-dal: observation insert yielded no row");
+    return row;
   },
   async confirm(id, fields) {
     // CLAIM THE ROW: `updateMany` with state in the WHERE, so a second confirmation

@@ -280,19 +280,20 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
     `${chatDecommented.length} chars comment-free → ${chatCode.length} chars with literals blanked · call site ${chatCode.includes("messages.create(") ? "found" : "LOST"} · keys [${createKeys.join(", ")}] · tool-ish names found [${toolish.join(", ") || "none"}] of ${TOOLISH.length} swept`,
   );
   const msgShape = /const messages = \[\s*\.\.\.history\.slice\(-10\),\s*\{ role: "user" as const, content: userText \},\s*\];/.test(chatSrc);
-  const systemShape = /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\),/.test(chatSrc);
+  // S11 WP6: the third argument is the GLOBAL rollout's state — a setting, never the reader (privacy-notice §2c).
+  const systemShape = /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\),/.test(chatSrc);
   ok(
-    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare buildSystemPrompt call with no concatenation and no appended context",
+    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare call — `systemPrompt`, today's `buildSystemPrompt` template or (from the S15 flip, by the global rollout) the journey's fixed swaps over it — with no concatenation and no appended context",
     msgShape && systemShape,
     `messages shape ${msgShape ? "pinned" : "MOVED"} · system shape ${systemShape ? "pinned" : "MOVED"}`,
   );
 
   // ── §6.6 · the guard is provable WITHOUT touching the file that talks to players ─────────────────
-  const diff = trunkDiff(ROOT, [CHAT_TS]);
+  const diff = trunkDiff(ROOT, [CHAT_TS], "8ce376ca0");
   ok(
-    "6.6 · D19a · src/app/_actions/chat.ts is byte-identical to origin/main — the chatbot keeps main's words, and this guard proved it without editing the file or exporting anything from it",
+    "6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved S11 journey prompt checkpoint 8ce376ca0 — today's template and fixed journey swaps stay pinned without editing or importing the action",
     diff.measured && diff.clean,
-    diff.measured ? `clean against origin/main ${diff.sha} · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,
+    diff.measured ? `clean against 8ce376ca0 (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,
   );
 
   // ── §6.7 / §6.8 · POSITIVE CONTROLS · what must still be ALLOWED and PRESENT ─────────────────────
@@ -544,13 +545,13 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
  * completely blind. So the measure is two-part: the ref must resolve AND every path must be a real blob on
  * it, or the case is NOT MEASURED and says so. 6.c10 is the control on exactly this.
  */
-function trunkDiff(ROOT: string, paths: string[]): { measured: boolean; clean: boolean; files: number; sha: string; why: string } {
+function trunkDiff(ROOT: string, paths: string[], ref = "origin/main"): { measured: boolean; clean: boolean; files: number; sha: string; why: string } {
   const git = (args: string[]) => execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8" }).trim();
   let sha = "";
-  try { sha = git(["rev-parse", "--short", "origin/main"]); } catch { return { measured: false, clean: false, files: 0, sha: "", why: "origin/main does not resolve in this worktree" }; }
+  try { sha = git(["rev-parse", "--short", ref]); } catch { return { measured: false, clean: false, files: 0, sha: "", why: `${ref} does not resolve in this worktree` }; }
   let listed: string[] = [];
-  try { listed = git(["ls-tree", "-r", "--name-only", "origin/main", "--", ...paths]).split("\n").filter(Boolean); } catch { /* falls through to the zero-file refusal */ }
-  if (listed.length !== paths.length) return { measured: false, clean: false, files: listed.length, sha, why: `${listed.length} of ${paths.length} path(s) exist on origin/main ${sha} — nothing was compared` };
-  try { git(["diff", "--quiet", "origin/main", "--", ...paths]); return { measured: true, clean: true, files: listed.length, sha, why: "" }; }
-  catch { return { measured: true, clean: false, files: listed.length, sha, why: "differs from origin/main" }; }
+  try { listed = git(["ls-tree", "-r", "--name-only", ref, "--", ...paths]).split("\n").filter(Boolean); } catch { /* falls through to the zero-file refusal */ }
+  if (listed.length !== paths.length) return { measured: false, clean: false, files: listed.length, sha, why: `${listed.length} of ${paths.length} path(s) exist on ${ref} ${sha} — nothing was compared` };
+  try { git(["diff", "--quiet", ref, "--", ...paths]); return { measured: true, clean: true, files: listed.length, sha, why: "" }; }
+  catch { return { measured: true, clean: false, files: listed.length, sha, why: `differs from ${ref}` }; }
 }

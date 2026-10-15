@@ -1,0 +1,593 @@
+/** S10 WP8a: local, in-memory browser drive from a journey guest's pick through a real registration and first bet.
+ * KP_BASE=http://localhost:3043 npm run qa:visitor-path -- [OUTSIDE_REPO_OUTPUT]
+ * KP_ONLY=core,tiles,keyboard,states,refusals selects groups. ENGINE=webkit runs the same browser controls in WebKit.
+ * KP_NO_PASS=1 exercises ACTIVE without a staff pass; STAFF_PREVIEW uses the real officer door.
+ * Requires a local dev server with DISABLE_ADMIN_TOTP=true. Production and configured databases are refused.
+ */
+import { chromium, webkit } from "playwright";
+import { randomBytes } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { localBase, premise, mintStaffPass, LOCALE_COOKIE, SESSION_COOKIE } from "./live/journey-pass.mjs";
+import { visitorFaceFacts, visitorFaceErrors, visitorPageControls, overlaps } from "./live/visitor-cells.mjs";
+
+const BASE = process.env.KP_BASE ?? "http://localhost:3043";
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
+const rel = relative(ROOT, OUT);
+if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
+const sections = ["core", "tiles", "classic", "codes", "keyboard", "states", "refusals"];
+const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
+if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
+const run = s => !only.length || only.includes(s);
+const locales = (process.env.KP_LOCALES ?? "sw,en,zh").split(",").filter(Boolean);
+const widths = (process.env.KP_WIDTHS ?? "320,360,390,768,1280,1920").split(",").map(Number);
+if (locales.some(s => !["sw", "en", "zh"].includes(s)) || widths.some(n => ![320,360,390,768,1280,1920].includes(n))) {
+  console.error("REFUSED: invalid locale or width"); process.exit(2);
+}
+const pre = await premise(BASE);
+const withdrawnClassic = pre.health?.simpleJourney?.state === "WITHDRAWN" && only.length === 1 && only[0] === "classic";
+const activeNoPass = process.env.KP_NO_PASS === "1" && pre.health?.simpleJourney?.state === "ACTIVE";
+if ((process.env.KP_NO_PASS && process.env.KP_NO_PASS !== "1") || (process.env.KP_NO_PASS === "1" && !activeNoPass)) {
+  console.error("REFUSED: KP_NO_PASS=1 requires a local ACTIVE journey server"); process.exit(2);
+}
+if (!localBase(BASE) || pre.health?.database?.configured !== false || pre.health?.security?.adminTotp !== "DISABLED"
+  || pre.refuse && !withdrawnClassic) {
+  console.error(`REFUSED: ${pre.refuse ?? "local preview needs DISABLE_ADMIN_TOTP=true"}`); process.exit(2);
+}
+mkdirSync(OUT, { recursive: true });
+const results = [], errors = [], contexts = new Set();
+const record = (label, pass, detail = "") => {
+  results.push({ label, state: pass ? "PASS" : "FAIL", detail });
+  console.log(`${pass ? "PASS" : "FAIL"} ${label}${detail ? ` — ${detail}` : ""}`);
+};
+const missing = (label, reason) => { results.push({ label, state: "NOT MEASURED", detail: reason }); console.log(`NOT MEASURED ${label} — ${reason}`); };
+const engine = process.env.ENGINE === "webkit" ? webkit : chromium;
+const browser = await engine.launch(process.env.QA_CHROMIUM_PATH && engine === chromium ? { executablePath: process.env.QA_CHROMIUM_PATH } : {});
+const cookie = c => ({ name: c.name, value: c.value, domain: new URL(BASE).hostname, path: c.path || "/" });
+const height = width => width <= 360 ? 640 : width === 390 ? 844 : width === 768 ? 1024 : width === 1280 ? 900 : 1080;
+let preview;
+try { if (!activeNoPass) preview = await mintStaffPass(browser, BASE, { phone: "+255700000098", name: "Visitor QA Support" }); }
+catch (error) {
+  if (withdrawnClassic) missing("I WITHDRAWN classic with a staff pass", `Pass could not be minted while withdrawn: ${String(error.message).split("Call log:")[0].trim()}`);
+  else {
+    console.error(`INVALID staff-pass premise: ${String(error.message).split("Call log:")[0].trim()}`);
+    await browser.close(); process.exit(2);
+  }
+}
+async function context(locale = "sw", width = 390, withPass = true) {
+  const ctx = await browser.newContext({ viewport: { width, height: height(width) }, serviceWorkers: "block" });
+  contexts.add(ctx);
+  await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...(withPass && preview ? [cookie(preview)] : [])]);
+  return ctx;
+}
+async function pageIn(ctx, route) {
+  const page = await ctx.newPage();
+  page.on("console", msg => { if (msg.type() === "error" || /hydration failed|hydrated but|didn't match/i.test(msg.text())) errors.push({ route, kind: "console", text: msg.text() }); });
+  page.on("pageerror", err => errors.push({ route, kind: "pageerror", text: err.message }));
+  await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 240_000 });
+  await page.locator("main").waitFor({ timeout: 90_000 });
+  await page.waitForTimeout(1200);
+  return page;
+}
+async function post(ctx, route, data = {}) {
+  const response = await ctx.request.post(`${BASE}/api/dev-test/${route}`, { data, timeout: 240_000 });
+  const body = await response.json().catch(() => null);
+  if (!response.ok() || body?.ok === false) throw new Error(`${route} premise failed (${response.status()})`);
+  return body;
+}
+async function observe(ctx, id) {
+  const response = await ctx.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${encodeURIComponent(id)}`);
+  const body = await response.json().catch(() => null);
+  if (!response.ok() || !body?.ok) throw new Error(`owner-row observation failed (${response.status()})`);
+  return body;
+}
+const summary = f => ({ path: f.path, frame: f.frame, guest: f.guest, sheetCount: f.sheetCount, stake: f.stake, balance: f.balance, place: f.place,
+  viewport: f.viewport, scrollWidth: f.scrollWidth, tapMin: f.tapMin, signUp: f.signUp, signIn: f.signIn,
+  sheetOverflow: f.sheetOverflow, chip: f.chip, labelClipped: f.labelClipped, tokens: f.tokens, geometry: f.geometry,
+  marker: f.marker ? { present: true, keyed: /"k"\s*:/.test(f.marker), owned: /"owner"\s*:/.test(f.marker) } : { present: false } });
+async function screenshot(page, label) {
+  await page.evaluate(() => document.fonts.ready);
+  const file = `${label.replace(/[^a-z0-9-]+/gi, "-")}.png`;
+  await page.screenshot({ path: join(OUT, file), fullPage: false });
+  results.push({ label, state: "TILE", file });
+}
+/** Page-only red plants: alter rendered DOM, re-read the same browser facts, then restore before navigation. */
+async function renderedPageControls(page, expected) {
+  await page.evaluate(() => document.fonts.ready);
+  const baseline = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+  if (baseline.length) return [{ name: "clean baseline", caught: false, detail: baseline.join(", ") }];
+  const signUp = page.getByTestId("journey-sheet-signup");
+  const original = await signUp.getAttribute("href");
+  if (!original) return [{ name: "sign-up href exists", caught: false }];
+  const controls = [];
+  for (const key of ["next", ...(expected.ref ? ["ref"] : [])]) {
+    try {
+      await signUp.evaluate((node, removed) => {
+        const url = new URL(node.href);
+        url.searchParams.delete(removed);
+        node.setAttribute("href", url.pathname + url.search);
+      }, key);
+      const errors = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+      controls.push({ name: `drop ${key} from rendered door`, caught: errors.includes("guest.doors") });
+    } finally {
+      await signUp.evaluate((node, href) => node.setAttribute("href", href), original);
+    }
+  }
+  try {
+    await page.evaluate(() => {
+      const sheet = document.querySelector('[data-testid="journey-bet-sheet"]');
+      if (!sheet) throw new Error("no guest sheet to duplicate");
+      const clone = sheet.cloneNode(true);
+      clone.setAttribute("data-qa-duplicate-sheet", "");
+      sheet.after(clone);
+    });
+    const errors = visitorFaceErrors(await page.evaluate(visitorFaceFacts), expected);
+    controls.push({ name: "duplicate rendered sheet", caught: errors.includes("guest.one-sheet") });
+  } finally {
+    await page.evaluate(() => document.querySelector('[data-qa-duplicate-sheet]')?.remove());
+  }
+  return controls;
+}
+async function fillRegister(page, local, email, password) {
+  await page.locator("#phone").fill(local);
+  await page.locator("#email").fill(email);
+  await page.locator("#dob").fill("15");
+  await page.locator("#dob").locator("xpath=../..").locator("input[type='text']").nth(1).fill("01");
+  await page.locator("#dob").locator("xpath=../..").locator("input[type='text']").nth(2).fill("1990");
+  await page.locator('input[name="dob"]').waitFor();
+  if (await page.locator('input[name="dob"]').inputValue() !== "1990-01-15") throw new Error("DOB form premise did not bind");
+  await page.locator('input[name="password"]').fill(password);
+  await page.locator('input[name="passwordConfirm"]').fill(password);
+  await page.locator('input[name="acceptAge"]').check({ force: true });
+  await page.locator('input[name="acceptTerms"]').check({ force: true });
+}
+const admin = await context("en", 1280, false);
+const catalogue = await post(admin, "seed-markets");
+await post(admin, "reset-rate-limits");
+if (!catalogue?.ids?.length) { console.error("INVALID: seeded board has no markets"); await browser.close(); process.exit(2); }
+const evidence = { base: BASE, engine: process.env.ENGINE ?? "chromium", flag: pre.health.simpleJourney?.state,
+  pass: activeNoPass ? "none under ACTIVE" : preview ? "staff" : "unavailable", revision: pre.health.deploymentId ?? null, results, errors, faces: [] };
+
+try {
+  if (run("core")) {
+    const guest = await context("sw");
+    const ref = "50PICK-AG-ABC123", invite = "INV-9";
+    const page = await pageIn(guest, `/?ref=${ref}&invite=${invite}`);
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await pick.waitFor({ timeout: 60_000 });
+    const seed = await pick.locator("xpath=ancestor::*[@data-sheet][1]").getAttribute("data-sheet").then(JSON.parse);
+    record("A premise: public bettable market seed", seed?.bettable === true && seed?.min > 0 && seed?.max >= seed?.min);
+    await pick.click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    const plain = await page.evaluate(visitorFaceFacts);
+    const next = `/?bet=${seed.id}.YES.${seed.min}`;
+    const expected = { min: seed.min, next, ref, invite };
+    const faceErrors = visitorFaceErrors(plain, expected);
+    record("A guest sheet, two doors and minimum", faceErrors.length === 0, faceErrors.join(", "));
+    evidence.faces.push({ label: "core-open", ...summary(plain) });
+    const factControls = visitorPageControls(plain, expected);
+    record("A exact fact mutation controls", factControls.every(control => control.caught),
+      factControls.filter(control => !control.caught).map(control => control.name).join(", "));
+    const renderedControls = await renderedPageControls(page, expected);
+    record("A rendered page red controls", renderedControls.every(control => control.caught),
+      renderedControls.filter(control => !control.caught).map(control => `${control.name}${control.detail ? ` (${control.detail})` : ""}`).join(", "));
+    record("A tap opens in place", new URL(page.url()).pathname === "/" && plain.guest && new URL(page.url()).searchParams.has("bet"));
+    await screenshot(page, "core-guest-open-sw-390");
+    await page.locator('[data-testid="journey-bet-sheet"] .kp-bsheet__close').click();
+    await page.locator('[data-testid="journey-bet-sheet"]').waitFor({ state: "detached", timeout: 30_000 });
+    record("A Back closes the guest sheet", !new URL(page.url()).searchParams.has("bet"));
+    await pick.click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A reload reopens at minimum", await page.getByTestId("journey-sheet-stake").inputValue() === String(seed.min));
+    const forwarded = await context("sw");
+    const forwardPage = await pageIn(forwarded, `/?bet=${seed.id}.YES.50000`);
+    await forwardPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A forwarded URL cannot set the stake", await forwardPage.getByTestId("journey-sheet-stake").inputValue() === String(seed.min));
+    await forwardPage.evaluate(() => document.fonts.ready);
+    const forwardExpected = { min: seed.min, next: `/?bet=${seed.id}.YES.${seed.min}` };
+    const forwardBaseline = visitorFaceErrors(await forwardPage.evaluate(visitorFaceFacts), forwardExpected);
+    const forwardStake = forwardPage.getByTestId("journey-sheet-stake");
+    const originalStake = await forwardStake.inputValue();
+    let caughtForwardStake = false;
+    try {
+      await forwardStake.evaluate((node, value) => { node.value = value; }, String(seed.min + 1));
+      caughtForwardStake = visitorFaceErrors(await forwardPage.evaluate(visitorFaceFacts), forwardExpected).includes("guest.minimum");
+    } finally {
+      await forwardStake.evaluate((node, value) => { node.value = value; }, originalStake);
+    }
+    record("A rendered forwarded-stake red control", forwardBaseline.length === 0 && caughtForwardStake,
+      forwardBaseline.join(", "));
+    await forwarded.close(); contexts.delete(forwarded);
+    const campaign = await context("sw");
+    const campaignPage = await pageIn(campaign, `/markets/${seed.id}?side=YES&utm_source=a&utm_campaign=b`);
+    await campaignPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A campaign question opens at minimum", await campaignPage.getByTestId("journey-sheet-stake").inputValue() === String(seed.min));
+    await campaign.close(); contexts.delete(campaign);
+    const live = await context("sw");
+    const livePage = await pageIn(live, "/live");
+    await livePage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await livePage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A live pick opens in place", new URL(livePage.url()).pathname === "/live");
+    await live.close(); contexts.delete(live);
+    const question = await context("sw");
+    const questionPage = await pageIn(question, `/markets/${seed.id}`);
+    await questionPage.locator('[data-testid="journey-bet-buttons"] a[data-bet-side="NO"]').click();
+    await questionPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("A question big button opens in place", new URL(questionPage.url()).pathname === `/markets/${seed.id}`);
+    await questionPage.locator('[data-testid="journey-bet-sheet"] .kp-bsheet__close').click();
+    await questionPage.locator('[data-testid="journey-bet-sheet"]').waitFor({ state: "detached", timeout: 30_000 });
+    const similar = questionPage.locator('[data-testid="journey-card"][data-sheet] a[data-bet-side]').first();
+    if (await similar.count()) {
+      await similar.click();
+      await questionPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+      record("A similar-rail pick opens in place", new URL(questionPage.url()).pathname === `/markets/${seed.id}`);
+    } else missing("A similar-rail pick", "The seeded question displayed no bettable similar card");
+    await question.close(); contexts.delete(question);
+    const chosen = Math.min(seed.max, Math.max(seed.min, 5000));
+    await page.getByTestId("journey-sheet-stake").fill(String(chosen));
+    const changed = await page.evaluate(visitorFaceFacts);
+    record("A editable guest stake", Number(changed.stake) === chosen);
+    const carried = `/?bet=${seed.id}.YES.${chosen}`;
+    record("B door carries page, codes and chosen stake", visitorFaceErrors(changed, { next: carried, ref, invite }).filter(s => s === "guest.doors").length === 0);
+    await page.getByTestId("journey-sheet-signup").click();
+    await page.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const registerUrl = new URL(page.url());
+    const marker = await page.evaluate(() => sessionStorage.getItem("kp-pending-bet"));
+    const mark = (() => { try { return JSON.parse(marker); } catch { return null; } })();
+    record("B keyless, ownerless marker and safe next", !!mark && mark.bet === `${seed.id}.YES.${chosen}` && !mark.k && !mark.owner
+      && registerUrl.searchParams.get("next") === carried && registerUrl.searchParams.get("ref") === ref
+      && registerUrl.searchParams.get("invite") === invite);
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    record("B Back reopens at chosen stake", new URL(page.url()).searchParams.get("bet") === `${seed.id}.YES.${chosen}`
+      && await page.getByTestId("journey-sheet-stake").inputValue() === String(chosen));
+    await page.getByTestId("journey-sheet-signup").click();
+    await page.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const suffix = randomBytes(5).toString("hex");
+    const local = `71${String(BigInt(`0x${suffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const phone = `+255${local}`, email = `visitor-${suffix}@example.com`, password = `Voda2026!${suffix}Aa`;
+    await fillRegister(page, local, email, password);
+    // AuthFlash removes `welcome` with replaceState after showing the toast. Capture the arrival at the URL event,
+    // before Playwright's click finishes waiting for its navigation and the app cleans that query.
+    let landing = null;
+    const registerArrival = page.waitForURL(url => {
+      if (url.searchParams.get("welcome") !== "new") return false;
+      landing = new URL(url); return true;
+    }, { timeout: 120_000 });
+    await Promise.all([registerArrival, page.locator('button[type="submit"]').click()]);
+    if (!landing) throw new Error("register arrival with welcome was not captured");
+    record("C real registration returns to chosen page", landing.pathname === "/" && landing.searchParams.get("bet") === `${seed.id}.YES.${chosen}`
+      && landing.searchParams.get("welcome") === "new");
+    await page.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+    await page.locator(".mat-toast").waitFor({ state: "visible", timeout: 4_000 }).catch(() => {});
+    const money = await page.evaluate(visitorFaceFacts);
+    evidence.faces.push({ label: "registered-low", ...summary(money) });
+    record("C money sheet opens at visitor stake", !money.guest && Number(money.stake) === chosen);
+    if (money.toast) record("J greeting clears chip row and close", !overlaps(money.toast, money.chips) && !overlaps(money.toast, money.close));
+    else missing("J greeting beside returned sheet", "The toast was not visible in this 390px Swahili cell");
+    record("C low balance offers deposit, no commit", await page.getByTestId("journey-sheet-deposit").count() === 1
+      && await page.getByTestId("journey-sheet-place").count() === 0);
+    const before = await observe(guest, seed.id);
+    record("C no implicit position or BET_PLACED row", before.positionCount === 0 && before.betPlacedCount === 0);
+    await screenshot(page, "core-registered-low-sw-390");
+    const accountCookie = (await guest.cookies(BASE)).find(item => item.name === SESSION_COOKIE);
+    if (!accountCookie) throw new Error("registered account session cookie missing");
+    for (const locale of locales) for (const width of widths.filter(n => n <= 390)) {
+      const tileCtx = await context(locale, width);
+      await tileCtx.addCookies([cookie(accountCookie)]);
+      const tilePage = await pageIn(tileCtx, landing.pathname + landing.search);
+      await tilePage.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+      await tilePage.locator(".mat-toast").waitFor({ state: "visible", timeout: 4_000 }).catch(() => {});
+      await tilePage.evaluate(() => document.fonts.ready);
+      const fact = await tilePage.evaluate(visitorFaceFacts);
+      const overlap = overlaps(fact.toast, fact.chips) || overlaps(fact.toast, fact.close);
+      record(`J greeting and money sheet ${locale} ${width}`, !!fact.toast && !overlap && fact.scrollWidth <= width + 1,
+        fact.toast ? overlap ? "toast overlaps chip row or close" : "" : "greeting not visible");
+      evidence.faces.push({ label: `money-greeting-${locale}-${width}`, ...summary(fact) });
+      await screenshot(tilePage, `money-greeting-${locale}-${width}`);
+      await tileCtx.close(); contexts.delete(tileCtx);
+    }
+    await page.getByTestId("journey-sheet-deposit").click();
+    await page.waitForURL(url => url.pathname === "/wallet/deposit", { timeout: 60_000 });
+    const deposit = new URL(page.url());
+    record("C deposit link keeps amount and bet", Number(deposit.searchParams.get("amount")) >= chosen
+      && deposit.searchParams.get("bet") === `${seed.id}.YES.${chosen}`);
+    const anonymous = await context("sw");
+    const edge = await anonymous.request.get(`${BASE}/wallet/deposit?amount=5000&bet=${seed.id}.YES.5000&from=low-balance`, { maxRedirects: 0 });
+    const location = new URL(edge.headers().location ?? "/", BASE);
+    record("M signed-out deposit keeps its full query in next", edge.status() === 307 && location.pathname === "/auth/login"
+      && location.searchParams.get("next") === `/wallet/deposit?amount=5000&bet=${seed.id}.YES.5000&from=low-balance`);
+    await anonymous.close(); contexts.delete(anonymous);
+    await post(admin, "seed-wallet", { phone, amount: Math.max(100_000, chosen) });
+    await page.goto(BASE + carried, { waitUntil: "domcontentloaded" });
+    await page.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+    record("D funded return edits at chosen stake", await page.getByTestId("journey-sheet-stake").inputValue() === String(chosen)
+      && await page.getByTestId("journey-sheet-place").count() === 1);
+    const beforeBet = await observe(guest, seed.id);
+    record("D funding wrote no bet", beforeBet.positionCount === 0 && beforeBet.betPlacedCount === 0);
+    await page.getByTestId("journey-sheet-place").click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-frame="receipt"]').waitFor({ timeout: 90_000 });
+    const afterBet = await observe(guest, seed.id);
+    record("D one explicit bet tap writes one position and one row", afterBet.positionCount === 1 && afterBet.betPlacedCount === 1);
+    await screenshot(page, "core-first-bet-receipt-sw-390");
+    await guest.close(); contexts.delete(guest);
+    const loginSuffix = randomBytes(5).toString("hex");
+    const loginLocal = `71${String(BigInt(`0x${loginSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const loginPhone = `+255${loginLocal}`, loginPassword = `Voda2026!${loginSuffix}Aa`;
+    const seededPlayer = await post(admin, "seed-admin", { role: "PLAYER", phone: loginPhone, name: "Visitor QA Player", password: loginPassword, balance: 100_000 });
+    record("E premise: fresh funded player", !!seededPlayer.userId && !seededPlayer.note);
+    const returning = await context("en");
+    const loginPage = await pageIn(returning, `/?bet=${seed.id}.YES`);
+    await loginPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await loginPage.getByTestId("journey-sheet-signin").click();
+    await loginPage.waitForURL(url => url.pathname === "/auth/login", { timeout: 60_000 });
+    await loginPage.locator("#identifier").fill(loginLocal);
+    await loginPage.locator("#password").fill(loginPassword);
+    let signedIn = null;
+    const loginArrival = loginPage.waitForURL(url => {
+      if (url.searchParams.get("welcome") !== "back") return false;
+      signedIn = new URL(url); return true;
+    }, { timeout: 120_000 });
+    await Promise.all([loginArrival, loginPage.locator('form:has(input[name="identifier"]) button[type="submit"]').click()]);
+    if (!signedIn) throw new Error("login arrival with welcome was not captured");
+    record("E real password sign-in returns to the guest's choice", signedIn.pathname === "/"
+      && signedIn.searchParams.get("bet") === `${seed.id}.YES.${seed.min}` && signedIn.searchParams.get("welcome") === "back");
+    await loginPage.locator('[data-testid="journey-bet-sheet"]:not([data-guest])').waitFor({ timeout: 60_000 });
+    const loginBefore = await observe(returning, seed.id);
+    record("E sign-in alone places nothing", loginBefore.positionCount === 0 && loginBefore.betPlacedCount === 0);
+    await loginPage.getByTestId("journey-sheet-place").click();
+    await loginPage.locator('[data-testid="journey-bet-sheet"][data-frame="receipt"]').waitFor({ timeout: 90_000 });
+    const loginAfter = await observe(returning, seed.id);
+    record("E one signed-in tap writes one bet", loginAfter.positionCount === 1 && loginAfter.betPlacedCount === 1);
+    await returning.close(); contexts.delete(returning);
+  }
+  if (run("codes")) {
+    // F: bind two REAL codes through their existing doors. A player referral exercises the shared `ref` binding;
+    // the verified-agent badge still needs the agent programme's approval workflow and is recorded separately below.
+    const refSuffix = randomBytes(5).toString("hex");
+    const refLocal = `71${String(BigInt(`0x${refSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const referrer = await context("en", 1280, false);
+    await post(referrer, "seed-admin", { role: "PLAYER", phone: `+255${refLocal}`, name: "Visitor QA Referrer", balance: 0 });
+    const refPage = await pageIn(referrer, "/profile/invite");
+    const refCode = (await refPage.locator("main span.font-mono.font-bold").first().textContent())?.trim() ?? "";
+    record("F premise: real player referral code shown in owner's invite page", /^[A-Z0-9-]{4,32}$/.test(refCode));
+    const adminSuffix = randomBytes(5).toString("hex");
+    const adminLocal = `71${String(BigInt(`0x${adminSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    await post(admin, "seed-admin", { role: "ADMIN", phone: `+255${adminLocal}`, name: "Visitor QA Invite Admin" });
+    const inviteAdmin = await pageIn(admin, "/admin/invites");
+    const campaignName = `Visitor path ${randomBytes(3).toString("hex")}`;
+    await inviteAdmin.getByRole("textbox", { name: "Campaign name" }).fill(campaignName);
+    await inviteAdmin.getByRole("button", { name: "Create campaign", exact: true }).click();
+    await inviteAdmin.waitForURL(url => /^\/admin\/invites\/inv_/.test(url.pathname), { timeout: 60_000 });
+    const campaignId = new URL(inviteAdmin.url()).pathname.split("/").at(-1);
+    const campaignCode = (await inviteAdmin.locator("main header").first().innerText()).match(/\bCode ([A-Z0-9]{6,16})\b/)?.[1] ?? "";
+    record("F premise: real campaign invite code shown in admin detail", !!campaignId && /^[A-Z0-9]{6,16}$/.test(campaignCode));
+    const joiner = await context("sw");
+    const joinedPage = await pageIn(joiner, `/?ref=${encodeURIComponent(refCode)}&invite=${encodeURIComponent(campaignCode)}`);
+    await joinedPage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await joinedPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await joinedPage.getByTestId("journey-sheet-signup").click();
+    await joinedPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const codeDoor = new URL(joinedPage.url());
+    const codeInputs = await joinedPage.evaluate(() => ({
+      ref: document.querySelector('form input[name="ref"]')?.value ?? null,
+      invite: document.querySelector('form input[name="invite"]')?.value ?? null,
+    }));
+    record("F both real codes and bet reach the register form", codeDoor.searchParams.get("ref") === refCode
+      && codeDoor.searchParams.get("invite") === campaignCode && codeDoor.searchParams.has("next")
+      && codeInputs.ref === refCode && codeInputs.invite === campaignCode);
+    await screenshot(joinedPage, "codes-register-both-banners-sw-390");
+    const joinSuffix = randomBytes(5).toString("hex");
+    const joinLocal = `71${String(BigInt(`0x${joinSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    await fillRegister(joinedPage, joinLocal, `visitor-codes-${joinSuffix}@example.com`, `Voda2026!${joinSuffix}Aa`);
+    await Promise.all([joinedPage.waitForURL(url => url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+      joinedPage.locator('button[type="submit"]').click()]);
+    await inviteAdmin.goto(`${BASE}/admin/invites/${campaignId}`, { waitUntil: "domcontentloaded" });
+    const registered = (await inviteAdmin.locator('.admin-kpi:has(span[title="Registered"]) .amount').first().textContent())?.trim();
+    record("F campaign invite bound after real registration", registered === "1");
+    await refPage.reload({ waitUntil: "domcontentloaded" });
+    record("F player referral bound in referrer's own list", await refPage.locator('main [data-empty-state-scope] .glass-panel > div').count() === 1);
+    await joiner.close(); contexts.delete(joiner);
+    await referrer.close(); contexts.delete(referrer);
+  }
+  if (run("refusals")) {
+    const ref = "50PICK-AG-ABC123", invite = "INV-9";
+    const suffix = randomBytes(5).toString("hex");
+    const local = `71${String(BigInt(`0x${suffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const password = `Voda2026!${suffix}Aa`;
+    const existing = await post(admin, "seed-admin", { role: "PLAYER", phone: `+255${local}`,
+      name: "Visitor QA Existing Player", password, balance: 0 });
+    if (!existing.userId || existing.note) throw new Error("G premise: fresh existing phone could not be seeded");
+    const refused = await context("sw");
+    const page = await pageIn(refused, `/?ref=${ref}&invite=${invite}`);
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await pick.waitFor({ timeout: 30_000 });
+    const seed = await pick.locator("xpath=ancestor::*[@data-sheet][1]").getAttribute("data-sheet").then(JSON.parse);
+    if (!seed?.bettable || !seed?.min) throw new Error("G premise: home pick must be bettable");
+    await pick.click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await page.getByTestId("journey-sheet-signup").click();
+    await page.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const next = `/?bet=${seed.id}.YES.${seed.min}`;
+    await fillRegister(page, local, `visitor-refusal-${suffix}@example.com`, password);
+    await page.locator('button[type="submit"]').click();
+    const existsPanel = page.locator('[data-refusal="exists"][role="alert"]');
+    await existsPanel.waitFor({ timeout: 60_000 });
+    const signIn = existsPanel.locator('a[href^="/auth/login"]');
+    const signInHref = new URL(await signIn.getAttribute("href") ?? "/", BASE);
+    record("G taken phone offers sign-in with page and codes", signInHref.pathname === "/auth/login"
+      && signInHref.searchParams.get("next") === next && signInHref.searchParams.get("ref") === ref
+      && signInHref.searchParams.get("invite") === invite);
+    await screenshot(page, "refusal-taken-phone-sw-390");
+    await signIn.click();
+    await page.waitForURL(url => url.pathname === "/auth/login", { timeout: 60_000 });
+    const login = new URL(page.url());
+    record("G taken-phone sign-in door keeps the choice and codes", login.searchParams.get("next") === next
+      && login.searchParams.get("ref") === ref && login.searchParams.get("invite") === invite);
+    await page.locator("#identifier").fill(local);
+    await page.waitForFunction(value => document.querySelector('input[type="hidden"][name="identifier"]')?.value === value,
+      local, { timeout: 30_000 });
+    await page.locator("#password").fill(`Wrong!${suffix}Aa`);
+    await Promise.all([page.waitForURL(url => url.pathname === "/auth/login" && url.searchParams.get("error") === "wrong_credentials",
+      { timeout: 60_000 }), page.locator('form:has(input[name="password"]) button[type="submit"]').click()]);
+    const retry = new URL(page.url());
+    record("G wrong-password hop keeps page and codes", retry.searchParams.get("next") === next
+      && retry.searchParams.get("ref") === ref && retry.searchParams.get("invite") === invite
+      && await page.locator('[role="alert"]').count() === 1);
+    const create = page.locator('a[href^="/auth/register"]').first();
+    const createHref = new URL(await create.getAttribute("href") ?? "/", BASE);
+    record("G wrong-password Create one keeps page and codes", createHref.searchParams.get("next") === next
+      && createHref.searchParams.get("ref") === ref && createHref.searchParams.get("invite") === invite);
+    await screenshot(page, "refusal-wrong-password-sw-390");
+    await refused.close(); contexts.delete(refused);
+    missing("G cooling-off and maintenance at landing", "Run the controlled RG and officer-maintenance subcells after local browser stability is restored");
+  }
+  if (run("classic")) {
+    if (pre.health.simpleJourney?.state === "ACTIVE") missing("H classic no-pass control", "ACTIVE shows journey to every guest; run a STAFF_PREVIEW or WITHDRAWN local server");
+    else {
+      const classic = await context("sw", 390, pre.health.simpleJourney?.state === "WITHDRAWN");
+      const oldHome = await pageIn(classic, "/");
+      record("H classic home shows no journey guest host", await oldHome.locator('[data-testid="journey-card"]').count() === 0
+        && await oldHome.locator('[data-testid="journey-bet-sheet"][data-guest]').count() === 0);
+      await screenshot(oldHome, "classic-home-guest-sw-390");
+      const oldPage = await pageIn(classic, `/markets/${catalogue.ids[0].id}?side=YES`);
+      record("H classic question has its guest panel and no journey host", await oldPage.locator('[data-testid="journey-bet-buttons"]').count() === 0
+        && await oldPage.locator('[data-testid="journey-bet-sheet"][data-guest]').count() === 0
+        && await oldPage.locator('[data-testid="side-picker"]').count() === 1);
+      await screenshot(oldPage, "classic-question-guest-sw-390");
+      const classicDoor = oldPage.locator('aside[aria-labelledby="bet-panel-heading"] a[href^="/auth/register"]').first();
+      await classicDoor.click();
+      await oldPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+      const classicNext = `/markets/${catalogue.ids[0].id}?side=YES`;
+      record("H classic question sign-up carries its side", new URL(oldPage.url()).searchParams.get("next") === classicNext);
+      const classicSuffix = randomBytes(5).toString("hex");
+      const classicLocal = `71${String(BigInt(`0x${classicSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+      await fillRegister(oldPage, classicLocal, `classic-${classicSuffix}@example.com`, `Voda2026!${classicSuffix}Aa`);
+      await Promise.all([oldPage.waitForURL(url => url.pathname === `/markets/${catalogue.ids[0].id}` && url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+        oldPage.locator('button[type="submit"]').click()]);
+      const classicLanding = new URL(oldPage.url());
+      record("H classic registration returns to the question dial", classicLanding.searchParams.get("side") === "YES"
+        && await oldPage.locator('[data-testid="dial-lock-toggle"]').count() === 1
+        && await oldPage.locator('[data-testid="journey-bet-sheet"]').count() === 0);
+      await screenshot(oldPage, "classic-question-registered-sw-390");
+      await classic.close(); contexts.delete(classic);
+      const direct = await context("sw", 390, pre.health.simpleJourney?.state === "WITHDRAWN");
+      const directPage = await pageIn(direct, "/auth/register");
+      const directSuffix = randomBytes(5).toString("hex");
+      const directLocal = `71${String(BigInt(`0x${directSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+      await fillRegister(directPage, directLocal, `classic-direct-${directSuffix}@example.com`, `Voda2026!${directSuffix}Aa`);
+      await Promise.all([directPage.waitForURL(url => url.pathname === "/" && url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+        directPage.locator('button[type="submit"]').click()]);
+      record("H classic direct sign-up with no next returns home", await directPage.locator('[data-testid="journey-bet-sheet"]').count() === 0
+        && await directPage.locator('[data-testid="journey-card"]').count() === 0);
+      await direct.close(); contexts.delete(direct);
+    }
+  }
+  if (run("keyboard")) {
+    const keys = await context("sw", 390);
+    const keyPage = await pageIn(keys, "/");
+    const keyPick = keyPage.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await keyPick.waitFor({ timeout: 30_000 });
+    await keyPick.click();
+    const sheet = keyPage.locator('[data-testid="journey-bet-sheet"][data-guest]');
+    await sheet.waitFor({ timeout: 30_000 });
+    await keyPage.waitForFunction(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] h2'), null, { timeout: 30_000 });
+    record("L guest sheet focuses its heading first", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] h2')));
+    await keyPage.getByTestId("journey-sheet-signin").focus();
+    await keyPage.keyboard.press("Tab");
+    record("L Tab from last door wraps inside the sheet", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] .kp-bsheet__close')));
+    await keyPage.keyboard.press("Shift+Tab");
+    record("L Shift+Tab from first control wraps inside the sheet", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-sheet-signin"]')));
+    await keyPage.keyboard.press("Escape");
+    await sheet.waitFor({ state: "detached", timeout: 30_000 });
+    record("L Escape closes the sheet", !new URL(keyPage.url()).searchParams.has("bet"));
+    await keyPage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await sheet.waitFor({ timeout: 30_000 });
+    await keyPage.evaluate(() => {
+      sessionStorage.setItem("__qa_guest_door_clicks", "0");
+      window.addEventListener("click", event => {
+        if (!(event.target instanceof Element) || !event.target.closest('[data-testid="journey-sheet-signup"]')) return;
+        sessionStorage.setItem("__qa_guest_door_clicks", String(Number(sessionStorage.getItem("__qa_guest_door_clicks") ?? "0") + 1));
+      }, true);
+    });
+    await keyPage.getByTestId("journey-sheet-signup").focus();
+    await keyPage.keyboard.down("Enter");
+    await keyPage.keyboard.down("Enter");
+    await keyPage.keyboard.up("Enter");
+    await keyPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    record("L held Enter takes one guest door", await keyPage.evaluate(() => sessionStorage.getItem("__qa_guest_door_clicks") === "1")
+      && new URL(keyPage.url()).searchParams.has("next"));
+    await keys.close(); contexts.delete(keys);
+  }
+  if (run("tiles")) for (const locale of locales) for (const width of widths) {
+    const ctx = await context(locale, width);
+    const page = await pageIn(ctx, "/");
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await pick.waitFor({ timeout: 30_000 });
+    const selected = await pick.locator("xpath=ancestor::*[@data-sheet][1]").getAttribute("data-sheet").then(JSON.parse);
+    await pick.click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await page.evaluate(() => document.fonts.ready);
+    const facts = await page.evaluate(visitorFaceFacts);
+    const faceErrors = visitorFaceErrors(facts, { min: selected?.min, next: `/?bet=${selected?.id}.YES.${selected?.min}` });
+    record(`N guest tile ${locale} ${width}`, faceErrors.length === 0, faceErrors.join(", "));
+    record(`J greeting leaves chip and close free ${locale} ${width}`, !overlaps(facts.toast, facts.chips) && !overlaps(facts.toast, facts.close));
+    evidence.faces.push({ label: `guest-${locale}-${width}`, ...summary(facts) });
+    await screenshot(page, `guest-${locale}-${width}`);
+    await ctx.close(); contexts.delete(ctx);
+  }
+  if (run("states")) {
+    // Keep the state mutations on a separate seeded question: core and the tile matrix read the first market.
+    const stateId = catalogue.ids.at(-1)?.id;
+    if (!stateId || stateId === catalogue.ids[0].id) throw new Error("A states premise needs a second seeded market");
+    const sideFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 1, stake: 1000, userPrefix: "11" });
+    record("A premise: one real YES pool write", sideFund.accepted === 1 && sideFund.poolMath === "PASS");
+    const stateCtx = await context("sw");
+    const statePage = await pageIn(stateCtx, `/markets/${stateId}?side=YES`);
+    const stateSheet = statePage.locator('[data-testid="journey-bet-sheet"][data-guest]');
+    await stateSheet.waitFor({ timeout: 30_000 });
+    record("A one-sided public sheet explains full refund", /Upande mmoja tu/.test(await stateSheet.innerText())
+      && await statePage.getByTestId("journey-sheet-signup").count() === 1);
+    await screenshot(statePage, "states-guest-one-sided-sw-390");
+    const otherFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 0, stake: 1000, userPrefix: "12" });
+    record("A premise: opposite pool is now funded", otherFund.accepted === 1 && otherFund.poolMath === "PASS");
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('.kp-bsheet__estimate-label').filter({ hasText: "Upande mmoja tu" }).waitFor({ state: "detached", timeout: 30_000 });
+    const beforeEstimate = (await statePage.locator('.kp-bsheet__estimate').innerText()).trim();
+    const movedFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 0, stake: 10_000, userPrefix: "13" });
+    record("A premise: live opposing pool moved", movedFund.accepted === 1 && movedFund.poolMath === "PASS");
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('.kp-bsheet__updated').waitFor({ timeout: 30_000 });
+    record("A moved pool announces the refreshed estimate", /Makadirio yamesasishwa/.test(await statePage.locator('.kp-bsheet__updated').innerText())
+      && (await statePage.locator('.kp-bsheet__estimate').innerText()).trim() !== beforeEstimate);
+    await screenshot(statePage, "states-guest-moved-pool-sw-390");
+    await post(admin, "fast-forward-market", { marketId: stateId, seconds: 3600, selectionSeconds: -1 });
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('[data-testid="journey-bet-sheet"][data-guest][data-frame="closed"]').waitFor({ timeout: 30_000 });
+    record("A closed question shows no sign-up commitment", await statePage.getByTestId("journey-sheet-signup").count() === 0
+      && await statePage.getByTestId("journey-sheet-signin").count() === 0);
+    await screenshot(statePage, "states-guest-closed-sw-390");
+    await stateCtx.close(); contexts.delete(stateCtx);
+  }
+  if (run("core") || run("tiles")) {
+    if (!run("states")) missing("A closed, one-sided and moved-pool", "Run KP_ONLY=states on a local preview server");
+    if (!run("refusals")) missing("G taken phone and wrong password", "Run KP_ONLY=refusals on a local preview server");
+    missing("F verified-agent binding and I second flag state", "Requires the agent approval workflow and a second controlled local server");
+    missing("K ended-session and O production tap frame", "Next WP8a package");
+    if (!run("keyboard")) missing("L focus/keyboard", "Run KP_ONLY=keyboard in Chromium and WebKit");
+  }
+} catch (error) {
+  record("drive exception", false, String(error?.message ?? error).split("Call log:")[0].slice(0, 400));
+} finally {
+  for (const ctx of contexts) await ctx.close().catch(() => {});
+  await browser.close();
+  writeFileSync(join(OUT, "evidence.json"), JSON.stringify(evidence, null, 2));
+  console.log(`qa:visitor-path evidence ${OUT}`);
+  console.log(`${results.filter(row => row.state === "PASS").length} pass, ${results.filter(row => row.state === "FAIL").length} fail, ${results.filter(row => row.state === "NOT MEASURED").length} not measured`);
+  process.exitCode = results.some(row => row.state === "FAIL") || errors.length ? 1 : results.some(row => row.state === "NOT MEASURED") ? 3 : 0;
+}

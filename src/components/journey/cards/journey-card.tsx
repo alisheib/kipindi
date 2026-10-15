@@ -226,6 +226,7 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
       prefetch={false}
       data-bet-side={openSheet ? side : undefined}
       data-bet-origin={openSheet ? (from === "home" ? "home" : "card") : undefined}
+      aria-haspopup={openSheet ? "dialog" : undefined}
       className={`${side === "YES" ? "btn-yes" : "btn-no"} kp-jcard__pick${pf.kind === "word" ? " kp-jcard__pick--word" : ""}`}
     >
       <span className="kp-jcard__side">{sideWord(t, side, m.productLine)}</span>

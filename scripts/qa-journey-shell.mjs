@@ -296,8 +296,9 @@ const PAGE_HEADINGS = {
   '/notifications': H('eq', 'Arifa', 'Notifications', '通知'),
   /** profile/page.tsx, its sr-only h1: profile.title, then the display name */
   '/profile': H('has', 'Wasifu', 'Profile', '个人资料'),
-  /** profile/responsible-gambling/page.tsx, its PageHeader: profile.responsibleGambling */
-  '/profile/responsible-gambling': H('eq', 'Vikomo', 'Responsible gambling', '负责任博彩'),
+  /** profile/responsible-gambling/page.tsx, its PageHeader: profile.responsibleGambling — re-pinned 2026-10-14 (S12, ledger
+   *  row 65; Point for Ali 5 accepted by Ali that day): the page is named "Uchezaji salama", where its h1 said "Vikomo". */
+  '/profile/responsible-gambling': H('eq', 'Uchezaji salama', 'Responsible gambling', '负责任博彩'),
   /** profile/invite/page.tsx, its sr-only h1: profile.inviteEarn when paid, else profile.inviteFriends */
   '/profile/invite': H('eq', ['Alika na upate zawadi', 'Alika marafiki'], ['Invite & Earn', 'Invite friends'], ['邀请赚钱', '邀请朋友']),
   /** profile/kyc/page.tsx, its PageHeader before approval: profile.verifyIdentity (sw says the verify button's words since

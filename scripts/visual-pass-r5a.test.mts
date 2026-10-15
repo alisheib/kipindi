@@ -334,8 +334,19 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
   ok("5.5 · the profile page's KYC row and /live's eyebrow (page and ghost) use the page's own word",
     read("src/app/profile/page.tsx").includes("title={t.profile.kycIdentityVerification}") && !read("src/app/profile/page.tsx").includes("t.common.verifyId")
       && ["src/app/live/page.tsx", "src/app/live/loading.tsx"].every((f) => read(f).includes('eyebrow font-bold text-text-subtle">{t.common.live}</p>') && !read(f).includes("t.home.liveSection")));
-  ok("5.5′ CONTROL · /live named itself \"Mubashara\" in its <title> and h1 and \"Hai\" in its eyebrow",
-    read("src/app/live/page.tsx").includes("return { title: t.common.live };") && word("sw", "common.live") === "Mubashara" && word("sw", "home.liveSection") === "Hai");
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12, word-ledger row 66; Point for Ali 5, accepted by Ali that day). This control
+  // held the split 5.5 was written against — /live "Mubashara" in its <title> and h1, "Hai" in its eyebrow's old key
+  // (`home.liveSection`, unread since 5.5 moved the eyebrow to `common.live`). Ali chose ONE word for LIVE in Swahili, so it
+  // now holds that: the title's word, that old key and the count words all say "mubashara", and none says "hai".
+  const liveWords = ["home.liveSection", "home.topicLive", "home.updownRoundsLive", "market.liveCount"].map((k) => word("sw", k));
+  ok("5.5′ · /live names itself \"Mubashara\" in its <title> and h1, and every Swahili LIVE count says the same word (none says \"hai\")",
+    read("src/app/live/page.tsx").includes("return { title: t.common.live };") && word("sw", "common.live") === "Mubashara"
+      && liveWords.every((w) => /mubashara/i.test(w) && !/(^|[^\p{L}])hai([^\p{L}]|$)/iu.test(w)), JSON.stringify(liveWords));
+  // …and the sentences and buttons that name a LIVE market (S12, row 66's second commit): the same one word.
+  const liveLines = ["market.noLiveNow", "market.noLiveBody", "market.similarMarketsBody", "market.noLiveMatch",
+    "common.viewLiveMarket", "common.searchLiveMarkets", "results.browseLive"].map((k) => word("sw", k));
+  ok("5.5″ · the Swahili sentences and buttons that name a LIVE market say \"mubashara\" too (none says \"hai\")",
+    liveLines.every((w) => /mubashara/i.test(w) && !/(^|[^\p{L}])hai([^\p{L}]|$)/iu.test(w)), JSON.stringify(liveLines));
   const harness = raw("scripts/qa-journey-shell.mjs");
   ok("5.6 · the capture harness holds the KYC row to the page's words",
     LOCALES.every((l) => harness.includes(`${l}: '${word(l, "profile.kycIdentityVerification")}'`)) && harness.includes("verifyId: { sw: 'Uthibitisho wa kitambulisho'"));

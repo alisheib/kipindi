@@ -1,0 +1,11 @@
+# Legal visual remainder candidate — 2026-10-15
+
+Base: S12 visual completion `2b50a864f`. This checkpoint addresses source for visual audit F20 and F29. It is not a rendered sign-off.
+
+The shared `LegalSection` body now uses the 14px type rung and 12px paragraph rhythm. Its rendered text nodes give figures the mono/tabular face and keep complete dates and amounts on one line. `LegalHeader` applies the same date protection to the version line while retaining the existing `keepYears` treatment of the Act's year. The versioned Terms and Privacy content blocks and the policy version labels were not edited; `test:privacy-notice` still measures English `e777b6dd281d` at v2026-10-15.
+
+Source checks at this branch tip: typecheck; `test:privacy-notice` 119/0; `test:terms-binding` 17/0; `test:policy-lines` 11/0; `test:type-scale`, `test:source-bytes`, `test:design-frozen`, and `git diff --check` pass. A local React static render kept every character of a sample legal paragraph and found one no-break span around each English, Swahili and Chinese date, the ISO version date, and mono spans around TZS 5,000,000 and 1.5%. No browser/layout test was run under the concurrent S8 and responsive test load.
+
+Before closing F20/F29, inspect `/legal/terms`, `/legal/privacy` and `/legal/rules` on the **integrated exact tip** at 320/360/390/768/1280/1920 in en/sw/zh. For F29 specifically, check the Privacy header version and §2 identity dates at 320/360/390: each complete date must fit inside the content edge without an internal line break or clipping. For F20, check computed body size, paragraph rhythm, and figure faces alongside the support email; verify selection, copy and screen-reader text remain unchanged. `test:house-bot-disclosure` D19a compares the candidate legal tree with current `origin/main` and remains red on this S12-descended branch; rerun it after the approved S12/visual integration reaches main.
+
+F54 remains open. The audit points to deleted `probability-chart.tsx`; the current TradingView chart is `src/components/charts/market-curve.tsx`. Reproduce the Chinese final-tick clipping and non-round times on an integrated rendered chart, then fix its current axis with a before/after read. No chart source was changed here.

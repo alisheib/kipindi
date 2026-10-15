@@ -127,6 +127,10 @@ export async function withdrawAction(formData: FormData) {
     msisdn,
   }, idempotencyKey);
   revalidatePath("/wallet");
+  // A provider may have accepted a payout whose reference/rail could not be
+  // persisted. The reserved row and original key remain the recovery identity;
+  // send the player to that owned status, not an error redirect that remints a key.
+  if (!result.ok && result.txnId) redirect(`/wallet?withdrawal=${result.txnId}` as never);
   // ⭐ THE EMAIL STEP IS A STATE, NOT A FORM ERROR (owner ruling 2026-10-07: a confirmed email is required to withdraw).
   // The page's panel shows that step — the address, "Send the link again", or "Add email" — so the player goes back to it
   // WITH their choices (amount, rail): once the address is confirmed the form opens as they left it. Never the number:

@@ -8,6 +8,32 @@
 
 ---
 
+## 2026-10-15 · Privacy v2026-10-15.2 — Up & Down round selection in necessary tab storage (Vodacom S12)
+
+**Authority.** Ali accepted the S12 plan's recommended answers on 2026-10-14 and instructed the team to complete the
+Vodacom journey. S12 WP10b extends the existing, necessary `kp-pending-bet` selection to an Up & Down round. This
+entry records the published disclosure before the journey arm writes that selection; it adds no analytics or
+marketing permission.
+
+**What §7 says in English, Swahili and Chinese.** When a player goes from an Up & Down round to deposit or to the next
+round, the same tab entry keeps the round, Up or Down, and the amount chosen for at most 24 hours. Saving the entry
+places no bet. The S8 account-bound unfinished-request keys remain separate and unchanged. Privacy's version is
+2026-10-15.2, with the combined English body pinned at `bd8dc162cbac` by `test:privacy-notice` §1a; §4o checks each language's
+new paragraph and the journey marker that makes it necessary.
+
+---
+
+## 2026-10-15 · Privacy v2026-10-15 — How to Play's local seen note (Vodacom S11)
+
+**Authority.** Ali accepted S11-PLAN's recommended privacy wording on 2026-10-14 (the owner decision entry below).
+Privacy §7 now names `50pick-howto-seen` in English, Swahili and Chinese. The guide writes `"1"` in this browser's
+local storage when a player leaves it, so it opens by itself only once in that browser. The note stays on the player's
+device. This adds no account data, analytics permission, or third-party recipient. The published Privacy version moves
+from 2026-10-14 to 2026-10-15 with the three language disclosures; `test:privacy-notice` pins the version and the
+actual browser write.
+
+---
+
 ## 2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted
 
 **Authority.** Ali, 2026-10-14, answering the consolidated list (VODACOM-PLAN §0 "WAITING ON ALI") in this session's

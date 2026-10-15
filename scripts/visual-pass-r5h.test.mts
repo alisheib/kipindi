@@ -394,9 +394,12 @@ section("3 · G-3 · the journey flag and the not-found mark, up and down before
 }
 const FLAG_FILE = "src/components/journey/journey-flag.tsx", FLAG_LIB = "src/lib/journey/journey-on.ts", SHELL = "src/components/layout/app-shell.tsx";
 const NF_MARK = "src/components/ui/not-found-mark.tsx", NF_LIB = "src/lib/not-found-mark.ts";
+/** The journey's slot as AppShell writes it since the Vodacom plan S11 WP4: the flag first and bare, How to Play's host after
+ *  it in a Suspense boundary of its own (`test:journey-shell` JOURNEY_SLOT, `test:howto` §5). */
+const JOURNEY_SLOT = "{journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}";
 const phasesOf = (t: (p: string) => string) => ({
   flagLayout: squash(decomment(t(FLAG_FILE))).includes("useLayoutEffect(() => raiseJourneyFlag(), []);") && !/\buseEffect\(/.test(decomment(t(FLAG_FILE))) && hasDirective(t(FLAG_FILE), "use client"),
-  flagBare: squash(decomment(t(SHELL))).includes("{journeyShown && <LazyJourneyFlag />}") && !/<Suspense[^>]*>\s*<LazyJourneyFlag/.test(decomment(t(SHELL))),
+  flagBare: squash(decomment(t(SHELL))).includes(JOURNEY_SLOT) && !/<Suspense[^>]*>\s*<LazyJourneyFlag/.test(decomment(t(SHELL))),
   lowerAfterCommit: squash(decomment(t(FLAG_LIB))).includes("document.documentElement.removeAttribute(JOURNEY_FLAG_ATTR); window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT)); queueMicrotask(announceJourneyFlagAfterCommit);"),
   markLayout: squash(decomment(t(NF_MARK))).includes("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]); useLayoutEffect(() => announceNotFoundAfterCommit, []);") && !/\buseEffect\(/.test(decomment(t(NF_MARK))),
   markAfterCommit: squash(decomment(t(NF_LIB))).includes("export function announceNotFoundAfterCommit(): void { queueMicrotask(() => { if (typeof window !== \"undefined\") announceNotFound(); }); }"),
@@ -406,7 +409,7 @@ const phasesOf = (t: (p: string) => string) => ({
   ok("3.2 · the flag rises in a LAYOUT effect, from a mount standing bare beside the journey's header and tabs (so it lands in the commit that first paints them); its lowering is announced at once AND once the commit is done; the not-found mark comes in a layout effect and its going is announced once the commit is done",
     Object.values(now).every(Boolean), j(now));
   const passive = phasesOf((p) => (p === FLAG_FILE ? raw(p).replace("useLayoutEffect(() => raiseJourneyFlag(), []);", "useEffect(() => raiseJourneyFlag(), []);") : raw(p)));
-  const boxed = phasesOf((p) => (p === SHELL ? raw(p).replace("{journeyShown && <LazyJourneyFlag />}", "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}") : raw(p)));
+  const boxed = phasesOf((p) => (p === SHELL ? raw(p).replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "{journeyShown && <><Suspense fallback={null}><LazyJourneyFlag /></Suspense><Suspense") : raw(p)));
   ok("3.2′ PLANT · the flag back in a passive effect, or back in a boundary of its own, is reported", !passive.flagLayout && !boxed.flagBare, j({ passive: passive.flagLayout, boxed: boxed.flagBare }));
 }
 {
@@ -488,7 +491,9 @@ const phasesOf = (t: (p: string) => string) => ({
   const MARK_WRITERS: Record<string, string> = {
     "src/lib/journey/journey-on.ts": "the journey flag (data-journey): up in the layout phase of the commit that draws the journey shell, down at once and announced again once that commit is done — FIXED (R5-H, G-3)",
     "src/components/ui/strip-autoscroll.tsx": "the strip's edge fade (data-edges): marked in the layout phase against the strip's real width, so a move's first frame shows the right fade — FIXED (R5-H, G-3); the framing scroll stays passive, as Tabs' does (a scroll position, not a mark)",
-    "src/components/onboarding/how-to-play-sheet.tsx": "the How to Play sheet's steps-region fade (data-edges, the strip's convention on the block axis — the Vodacom plan S7, WP6): marked in the layout phase as the open sheet mounts the region, so its first paint fades only an edge that hides something, then again on its scroll and on any change of size",
+    // Moved 2026-10-15 (the visual audit's F50): the How to Play sheet's steps no longer mark themselves — the kit's
+    // `useBlockScrollEdges` marks them and the bet sheet's middle, one rule for both.
+    "src/components/ui/scroll-edges.ts": "the block-axis scroll fade (data-edges, the strip's convention) of the How to Play sheet's steps and the bet sheet's middle: marked in the ResizeObserver's first report — after the frame's layout, before its paint, so the first paint fades only an edge that hides something and the opening tap pays for no layout read (S8 A21) — then on every scroll, any change of size, and a child coming or going",
     "src/lib/card-spacing.ts": "the reader's card spacing (data-density): written on the toggle (an event) and re-read in ThemeProvider's LAYOUT effect on each new server value — already before the paint",
     "src/components/theme-provider.tsx": "the reader's motion preference (data-motion, kp-reduce-motion): known only to the browser, written once at hydration — the server's HTML has painted by then, so no phase can put it in a first paint; animations read it from the next frame",
     "src/components/settings/feedback-settings.tsx": "the same motion preference, written by the reader's toggle (an event)",

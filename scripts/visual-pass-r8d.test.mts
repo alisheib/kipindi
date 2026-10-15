@@ -540,8 +540,8 @@ const GUARD = req("../src/lib/chat/break-guard.ts") as typeof import("../src/lib
       && [...CR_SRC.matchAll(/^export /gm)].length === 1 && has(CR_SRC, "export async function chatForReader("));
   const diff = (() => { try { git("diff", "--quiet", "HEAD", "--", "src/app/_actions/chat.ts"); return "clean"; } catch { return "changed"; } })();
   const CHAT = code("src/app/_actions/chat.ts");
-  ok("8.5 · chat.ts is byte-identical to HEAD (D19a) — and its prompt is still built from the locale and one global setting alone (the privacy §4 premise `test:privacy-notice` §2c pins)",
-    diff === "clean" && /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\)/.test(CHAT), diff);
+  ok("8.5 · chat.ts is byte-identical to HEAD (D19a) — and its prompt is still built from the locale and global settings alone — since S11 WP6 the rollout's state beside the objection window (the privacy §4 premise `test:privacy-notice` §2c pins)",
+    diff === "clean" && /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\)/.test(CHAT), diff);
   const ROOTSRC = code("src/components/chat/ChatRoot.tsx");
   ok("8.6 · ChatRoot's live call goes through the reader's chat, still after the at-risk check, still one call site",
     has(ROOTSRC, 'import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";') && !ROOTSRC.includes('from "@/app/_actions/chat";')
@@ -580,23 +580,27 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
   const r10b = (s: string) => s.replace('import { noticeBody } from "@/components/ui/empty-state-text";', "")
     .replace('{/* Round 10 (R10-B): its phrases held as an empty state' + "'" + 's body holds them ("Kikao chako", "Your session"). */}', "")
     .replace("{noticeBody(endedNotice.reason", "{endedNotice.reason").replace(": t.auth.sessionIdleBody)}", ": t.auth.sessionIdleBody}");
-  // S8 adds exactly the signed-in journey host. Remove only this import/slot on BOTH sides; PTR's classic mount stays pinned.
+  // S8 added the signed-in journey host; S10 gives its one slot a guest arm. Remove either exact host slot on BOTH
+  // sides, so R8-C's rule remains pinned across this package without masking a change to the journey gate or PTR.
   const hostImport = ", LazyBetSheetHost";
-  const hostSlot = "{journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}";
-  const priorShell = (s: string) => r10b(s).replace(hostImport, "").replace(hostSlot, "");
+  const guestImport = ", LazyGuestSheetHost";
+  const oldHostSlot = "{journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}";
+  const hostSlot = "{journeyShown && (session ? <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense> : <Suspense fallback={null}><LazyGuestSheetHost sessionEnded={endedNotice !== null} /></Suspense>)}";
+  const priorShell = (s: string) => r10b(s).replace(guestImport, "").replace(hostImport, "").replace(hostSlot, "").replace(oldHostSlot, "");
   const sameShell = (a: string, b: string) => squash(decomment(priorShell(a))) === squash(decomment(priorShell(b)));
   const shellFile = "src/components/layout/app-shell.tsx", shellNow = raw(shellFile);
   const sameCode = (p: string) => { try { return sameShell(git("show", `HEAD:${p}`).split(CR + LF).join(LF), raw(p)); } catch { return false; } };
   ok("10.1 · no dictionary string changed (src/lib/i18n-dict.ts is HEAD's)", clean("src/lib/i18n-dict.ts"));
   ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && sameCode("src/components/layout/app-shell.tsx"));
-  const shellBeforeS8 = shellNow.replace(hostImport, "").replace(hostSlot, "");
+  const shellBeforeS8 = shellNow.replace(guestImport, "").replace(hostImport, "").replace(hostSlot, "");
   const unrelatedShell = shellNow.replace("const journeyShown = await journeyShellShown();", "const journeyShown = false;");
-  ok("10.2′ CONTROL · only the exact S8 host delta is symmetric: an unrelated journey-rule edit, changed host gate, or missing PTR mount still differs",
-    shellNow.includes(hostImport) && shellNow.includes(hostSlot) && sameShell(shellNow, shellBeforeS8) && sameShell(shellBeforeS8, shellNow)
+  ok("10.2′ CONTROL · only the exact S8/S10 host delta is symmetric: an unrelated journey-rule edit, changed host gate, or missing PTR mount still differs",
+    shellNow.includes(hostImport) && shellNow.includes(guestImport) && shellNow.includes(hostSlot) && sameShell(shellNow, shellBeforeS8) && sameShell(shellBeforeS8, shellNow)
       && unrelatedShell !== shellNow && !sameShell(shellNow, unrelatedShell)
-      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace("journeyShown && session", "journeyShown")))
+      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace("journeyShown && (session ?", "journeyShown && (true ?")))
       && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace(' key={session.userId}', '')))
       && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace('viewerId={session.userId}', 'viewerId={otherId}')))
+      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace('sessionEnded={endedNotice !== null}', 'sessionEnded={false}')))
       && shellNow.includes("<LazyPullToRefresh />") && !sameShell(shellNow, shellNow.replace("<LazyPullToRefresh />", "")));
   const PS = code("src/lib/server/proposals-service.ts");
   ok("10.3 · voting is kept by decision: castVote reads no break", !/isLockedOut|breakStateOf/.test(decl(PS, "export async function castVote(")));

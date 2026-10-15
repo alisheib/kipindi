@@ -119,6 +119,8 @@ const ROUTES = [
   { name: "watchlist", path: "/watchlist" },
   { name: "market", path: "/markets/[id]" },
   { name: "account", path: "/account" },
+  // S11 WP5: /help reads the FAQ's journey copies for a journey reader; a classic reader's /help must be served as it was.
+  { name: "help", path: "/help" },
 ];
 const VIEWERS = ["guest", "player", "journey"];
 const DEFAULT_VIEWERS = ["guest", "player"];

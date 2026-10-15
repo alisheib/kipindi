@@ -18,7 +18,10 @@ import { JourneyCard } from "@/components/journey/cards/journey-card";
 import { JourneyBetButtons } from "@/components/journey/question/journey-bet-buttons";
 import { JourneyHolder } from "@/components/journey/question/journey-holder";
 import { journeyCardState } from "@/lib/server/journey-sheet";
-import { cardTitle } from "@/lib/markets/short-title";
+import { cardTitle, messageTitle } from "@/lib/markets/short-title";
+// S12 WP13 (the Vodacom plan): a share preview's question is the officer-approved English short title once the new journey
+// is ACTIVE for everyone (S15), and the full English question until then and on any failure.
+import { shortTitlesInMessagesNow } from "@/lib/server/message-titles";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
@@ -115,9 +118,11 @@ export async function generateMetadata(
   let win: Awaited<ReturnType<typeof resolveWinShareToken>> = null;
   if (w) { try { win = await resolveWinShareToken(w); } catch { /* graceful */ } }
   const isWin = !!win && win.marketId === id;
+  // S12 WP13 · the question this preview carries — one read of the title switch, which never rejects (`message-titles.ts`).
+  const shareTitleEn = messageTitle(await shortTitlesInMessagesNow(), "en", m.titleEn, m);
 
   const desc = isWin
-    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
+    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${shareTitleEn}`
     : sharePreviewDescription(preview, settled);
   const ogImage = isWin
     ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
@@ -134,13 +139,13 @@ export async function generateMetadata(
     // og:url would fetch the plain market page and lose the win card.
     openGraph: {
       ...ROOT_OPEN_GRAPH,
-      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : shareTitleEn,
       description: desc,
       images: [{ url: ogImage, width: 1200, height: 630 }],
     },
     twitter: {
       card: "summary_large_image",
-      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : shareTitleEn,
       description: desc,
       images: [ogImage],
     },
@@ -165,12 +170,20 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string; invite?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
   const sp = await searchParams;
   const { side } = sp;
+  // Comments' guest sign-in is another door from this exact question address. Keep its side,
+  // sort and other return context in next; authDoorHrefs carries ref/invite beside next.
+  const commentAuthQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp as Record<string, string | string[] | undefined>)) {
+    for (const item of Array.isArray(value) ? value : typeof value === "string" ? [value] : []) {
+      commentAuthQuery.append(key, item);
+    }
+  }
   const commentOrder = sp.csort === "oldest" ? "oldest" : "newest";
   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
   // markets/error.tsx (retry), never 404 a market that may be holding money.
@@ -727,7 +740,7 @@ export default async function MarketDetail({
             y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
             positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
-        <aside className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>
+        <aside className={journey && bettingOpen && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>
           {bettingOpen ? (
             session && breakBody ? (
               <>
@@ -739,13 +752,13 @@ export default async function MarketDetail({
               {oneSidedCallout}
               <BetBreakNotice body={breakBody} testId="market-bet-break" />
               </>
-            ) : session ? (journey ? (
+            ) : journey ? (
               <>
                 <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
                 {oneSidedCallout}
                 {questionSeed && <JourneyBetButtons seed={questionSeed} title={questionTitle} t={t} headingId={BET_PANEL_HEADING} className="hidden lg:grid" />}
               </>
-            ) : (
+            ) : session ? (
               <>
               {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
                   and not seen. The other four states already name themselves in a heading; this
@@ -811,7 +824,7 @@ export default async function MarketDetail({
                 boardHref="/markets"
               />
               </>
-            )) : (
+            ) : (
               <>
               {oneSidedCallout}
               {/* Sign-in CTA — styled to invite prediction */}
@@ -1132,7 +1145,7 @@ export default async function MarketDetail({
             </section>
           ))}
 
-          {journey && bettingOpen && session && !breakBody && questionSeed && (
+          {journey && bettingOpen && !breakBody && questionSeed && (
             <section className="lg:hidden" aria-labelledby="journey-bet-mobile-heading">
               <h2 id="journey-bet-mobile-heading" className="sr-only">{t.market.placeYourStake}</h2>
               {oneSidedCallout}
@@ -1322,7 +1335,7 @@ export default async function MarketDetail({
         order={commentOrder}
         marketHref={`/markets/${m.id}`}
         canPost={!!session}
-        signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
+        signInHref={authDoorHrefs(`/markets/${m.id}`, commentAuthQuery).signIn}
       />
     </PageContainer>
   );
@@ -1339,6 +1352,9 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
     days: t.market.timeLeftD,
     hours: t.market.timeLeftH,
     minutes: t.market.timeLeftM,
+    daysOne: t.market.timeLeftD1,
+    hoursOne: t.market.timeLeftH1,
+    minutesOne: t.market.timeLeftM1,
   }, fill);
 }
 

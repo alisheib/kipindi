@@ -99,6 +99,11 @@ The canvas already shows the corrected words. Each line: key (or where it shows)
 - `failSystemBusy` · "Dau lako HALIJAONDOKA" → "Dau lako HALIJAWEKWA na hakuna pesa iliyokatwa".
 - `failAccountBlocked` · "Wasiliana na msaada tutakueleza sababu." → "…msaada na tutakueleza sababu."
 - `failWalletFrozen` · "hivyo dau haziwezi kuwekwa" → "kwa hiyo huwezi kuweka dau".
+  ⟶ The six lines above: **shipped on `codex/vodacom-s12-w`** (S12 WP3) — `payout2` and `market.atResolution` (its
+  value), `payoutCalcBody`, `market.finalLabel`, `market.opened` (the word only: the key is still drawn as
+  `{opened} {date}`, so en and zh need no placeholder), `failSystemBusy`, `failAccountBlocked`, `failWalletFrozen`. The
+  same "Lipo" and "dau litakapofungwa / likifungwa" where this list did not look (`dialog.payoutLabel`,
+  `toast.payoutAtResolution`, `dialog.poolSharePayout`, `market.payoutAtClose`) are waiting for review 9 (S12-PLAN WP3 step 3).
 
 **Found 2026-10-03 by Claude as Ali's Swahili reviewer — the same error as `failWalletFrozen`, twelve more times.** The
 panel ruled *dau* class 5/6 (singular *dau lako / limefungwa*, plural *madau ya / yamefungwa*); these live strings give
@@ -108,6 +113,12 @@ rule as above: they ship with S12, never earlier.
 - `udHistoryBody` · "…tofauti na dau zako za muda mrefu." → "…tofauti na madau yako ya muda mrefu."
 - `udRcBetsClose` · "Dau zinafungwa" → "Madau yanafungwa".
 - `udEstimateNote` · "Dau zikifungwa, inakuwa malipo yako kamili." → "Madau yakifungwa, inakuwa malipo yako kamili."
+  ⟶ **The sentence was rewritten by the owner's Up & Down ruling (2026-10-14)**: the qualifier now names the projected
+  return (*marejesho*, class 6), so its last clause reads "Madau yakifungwa, **yanakuwa** malipo yako kamili." — this
+  line's "inakuwa" no longer fits. The ruling's release carried "Dau zikifungwa" forward; corrected on its own the same
+  day (branch `codex/vodacom-s12-madau`, guard `test:updown-pricing` 6.10), together with the same class-10 error in the
+  binding Up & Down Rules §2 (sw): "Si ahadi hadi dau zitakapofungwa." → "Si ahadi hadi **madau yatakapofungwa**."
+  (6.11; the document stays at its same-day version 2026-10-14).
 - `udNobodyBackedEither` · "…wakati dau zinafungwa, kila dau litarudi." → "…wakati madau yanafungwa, kila dau litarudi."
 - `resVoidRefund` · "Dau zote zilirejeshwa kikamilifu — hakuna ada iliyokatwa." → "Madau yote yalirejeshwa kikamilifu — hakuna
   ada iliyokatwa."
@@ -116,12 +127,21 @@ rule as above: they ship with S12, never earlier.
   yanabaki na kila moja hulipwa peke yake".
 - `card3Body` · "dau za washindi zinarudishwa zote na haziguswi kamwe" → "madau ya washindi yanarudishwa yote na hayaguswi
   kamwe".
+  ⟶ `udNoHistory`, `udHistoryBody`, `udRcBetsClose`, `udNobodyBackedEither`, `resVoidRefund`, `noVoidedSettlementsBody`,
+  `hedgeBothBody` and `hedgeOppositeBody` (the clause above), `card3Body` (the clause above): **shipped on
+  `codex/vodacom-s12-w`** (S12 WP3). The same error in `hedgeBothBody`'s second clause and in `card3Body`'s closing
+  "Dau likifungwa" is waiting for review 9 (S12-PLAN WP3 step 3).
 - `faq1a` and `faq1aLoser` · "Dau za kila mchezaji kwenye soko moja zinajiunga bwawa moja" → "Madau ya kila mchezaji
   kwenye soko moja yanaungana kuwa bwawa moja"; `faq1aLoser` also "kutoka dau za upande ulioshindwa" → "kutoka madau ya
   upande ulioshindwa".
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP2's commit: each line edited once, with its side word, "— NDIO na
+  HAPANA pamoja").
 
 - `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
+  ⟶ **Shipped on `codex/vodacom-s12-w`** in its own commit — a responsible-gambling sentence, changed on Ali's yes
+  (S12-PLAN Point for Ali 4, accepted by Ali, 2026-10-14). It now reads as `journey.sheetSessionLimit` does.
 - `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3).
 - ~~`failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".~~
   ⟶ **SHIPPED LIVE 2026-10-12, in another form, by Ali's ruling** (not with S12): the limit is a rolling 24 hours
   (responsible-gambling.ts, `Date.now() - 86_400 * 1000`), so "kesho" — at any hour — was untrue. Now: "Umefikia kikomo
@@ -129,14 +149,34 @@ rule as above: they ship with S12, never earlier.
   "It counts the last 24 hours", zh "该上限按过去 24 小时计算"), the same clause S8's `journey.sheetLossBlock` uses; see
   "Swahili review" 7. ⟶ S8 WP4: the sheet reads this key itself; no `sheetLossBlock` was added (S8-PLAN A5).
 - `youAlreadyHold` · "Tayari unashikilia NDIO hapa" → "Tayari una dau la NDIO hapa"; `hedgeAddBody` "kwenye soko hili" → "kwenye swali hili".
+  ⟶ `youAlreadyHold`: **shipped on `codex/vodacom-s12-w`** (S12 WP3; the first piece only, as the key is drawn
+  `{youAlreadyHold} {side} {here}`). `hedgeAddBody` is a "soko" → "swali" rename only and waits for S15's Maswali sweep
+  (S12-PLAN Open point 33).
 - `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
+  ⟶ `failSelectionClosed`: **shipped on `codex/vodacom-s12-w`** (S12 WP3). The "Soko limefungwa" lines are a rename
+  only and wait for S15 (Open point 33).
 - Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
 - `errDepositLimit` / `errSofRequired` · "Amana hii…" → the C11 sentences (the deposit has not happened yet; SJ-19 "kuweka pesa").
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3): `errSofRequired` is `journey.sheetSofRequired`'s Swahili word for
+  word; `errDepositLimit` is `journey.sheetDepositLimit`'s sentence with "kiasi hiki" ("this amount") where it says
+  `{amount}` — the classic refusal has no amount to fill (failure-reasons.ts), and a literal "{amount}" must never reach
+  a player: "Kuweka kiasi hiki kungepita kikomo cha kuweka pesa ulichojiwekea. Unaweza kukagua vikomo vyako kwenye
+  Uchezaji salama." ("kiasi hiki" is the build's two words, for the reviewer.)
 - `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens). (`verifyGateTitle`'s change is moot since 2026-10-07: the gate is deleted.)
 - Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3).
 - Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
+  ⟶ The chart: **shipped on `codex/vodacom-s12-w`** (S12 WP2, with the other side words spelt NDIYO — eight Swahili
+  values in all, the YES/NO rules §1 and the wizard's placeholder; guard `test:labels` §12).
+  "Inaisha {date}" (`market.resolves`) has had no reader since R4-I and stays (S12-PLAN ledger row 22).
+  ⟶ The KPI, `market.volume` "Kiasi" → "Bwawa": **shipped on `codex/vodacom-s12-w`** (S12 WP3; the Swahili only — en
+  "Volume" and zh 成交量 wait for S15's words, S12-PLAN Open point 29).
 - Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu · Barua pepe" (no number: VODACOM-PLAN §0h point 10 reversed the panel here — 0800 11 0011 is the national helpline, not our desk, and keeps its own labelled row); "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
+  ⟶ `nav.cardSpacing` and `profile.responsibleGamblingSub`: **shipped on `codex/vodacom-s12-w`** (S12 WP3). The privacy
+  notice keeps "nafasi ya kadi" until its own next version (S12-PLAN Open point 29).
 - Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3: `market.udStake`, `market.udTapToBet`). The round page's result label
+  "CHAGUO LAKO · DAU LAKO" (162.8px) is held to its own site's measure in `test:visual-pass-r7a` 5.3″.
 - Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".
 
 **Found 2026-10-08 by Claude as Ali's Swahili reviewer, reading WP12's 333 tiles — the card's time left.** `market.timeLeftH`
@@ -147,6 +187,8 @@ templates (prepared on branch `vodacom-s12-timeleft`, its guard in `test:time-le
 - `timeLeftH` · "masaa {n} yamebaki" → "saa {n} zimebaki"; new `timeLeftH1` · "saa {n} imebaki" (n = 1).
 - `timeLeftD` stays "siku {n} zimebaki"; new `timeLeftD1` · "siku {n} imebaki". `timeLeftM` stays "dakika {n} zimebaki";
   new `timeLeftM1` · "dakika {n} imebaki". (en and zh have no number agreement: their singular keys repeat the plural.)
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP4, 2026-10-14): `1468d7cca` cherry-picked onto `ed95ab031` with no
+  conflict; the five `timeLeftLabel(` callers pass the singular keys and no journey file calls it.
 
 ## S6 drafts (2026-10-01) — for the native review
 
@@ -196,6 +238,8 @@ zangu" and `tabAccount` "Akaunti" are the deck's own words (VODACOM-PLAN §3, bi
 
 **Found while drafting** — classic words, left as they are until S15 (§3.9):
 - `error.positionsSafe` (sw) · "hayajaaathiriwa" carries a third "a" → "hayajaathiriwa" (the journey copy is spelt right, as `error.pageHitSnagBody` already is).
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP3, with review 2's corrections, as review 2 asked). `error.walletSafe`
+  carries the same typo and is waiting for review 9 (S12-PLAN WP3 step 3).
 - `profile.helpSupportSub` (en, zh) · "FAQ · Helpline · Email" / "常见问题 · 热线 · 邮件" names our help desk a helpline — §0h point 10's mix-up; the journey copy says "Phone" / "电话".
 - `profile.inviteFriendsSub` (zh) · "分享你的链接 · 查看谁加入" uses the informal 你 → 您.
 
@@ -282,6 +326,32 @@ the pending body under 10 minutes is `common.depositPendingBody`; and the rest o
 - `journey.lowPendingLateTitle` · "Malipo bado hayajathibitishwa" · a deposit pending from 30 minutes (A10): the approved title (review 3), now a key.
 - `journey.lowPendingLateBody` · "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa." · its approved sentence (review 3; s4-6-wait-over30), now a key — shown only from 30 minutes, where "Imepita dakika 30" is true.
 - `journey.ticketsHere` · "Tiketi zako" · the question page's holder block (s4-10-market).
+
+## S11 drafts (2026-10-14) — for the native review
+
+Added by S11 WP3 (`S11-PLAN.md` WP3, "New dictionary keys") as keys of the `journey` namespace — /help and the chat panel
+read them for a journey reader only (WP5, WP6), so no classic word changed (§3.9) — beside the chat's offline journey
+words (WP6, code strings in `send-message.ts`), the privacy line (WP4), the legal texts parked for the S15 commit (WP9)
+and the tagline's sw and zh (SJ-20, carried by WP9). Each line: key · sw · where it comes from. The dictionary stays the
+truth; `{max}` is `WITHDRAW_MAX_TZS`, formatted. All signed in review 9 below, its corrections applied.
+- `journey.faq2q` · "Makadirio yanabadilika baada ya kuweka dau?" · faq2's question in the journey's word, the estimate, not "odds" (deck slide 3).
+- `journey.faq2a` · "Kabla ya kuweka dau, swali linaonyesha makadirio ya unachoweza kushinda: pale yanapoweza kukadiriwa, …" · faq2's answer without the shelved dial and confirm popup.
+- `journey.faq3a` · "Bonyeza salio lako juu kisha uchague Toa pesa — au fungua Akaunti → Toa pesa — …" · the journey's two withdraw doors (the capsule's sheet, Akaunti's row).
+- `journey.faq5a` · "Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana, hasara na muda, kupumzika, au kujizuia." · the at-risk answer's shortest true path.
+- `journey.faq6a` · "Unaweza, kwa muda mfupi. Mara baada ya kuweka dau, tiketi yake kwenye Tiketi zangu inaonyesha Uza bila ada …" · the journey Sell look's words, with no typed minutes.
+- `journey.chatIntro` · "Niulize kuhusu amana, kuweka dau, malipo, au chochote usichokipata kwenye Msaada." · the chat panel's intro, without "dial".
+- `journey.chatStarterHowTo` · "Ninawezaje kucheza?" · the starter chip, in place of "Dial ya imani ni nini?".
+- The four zh How-to values (`howStep1Body`, `howStep2Title`, `howStep3Body`, `howExampleBody`) take the corrections the
+  "Chinese How-to" line above recorded: the side words in 「」, and 赢家按投注比例分享奖池 (pro rata, never "equally").
+## S10 drafts (2026-10-15) — for the native review
+
+Added by S10 WP2 (`S10-PLAN.md` "New dictionary keys") as one key of the `journey` namespace; only the journey's guest bet
+sheet reads it, so no classic word changed (§3.9).
+- `journey.sheetSignUp` · "Jisajili uweke dau" · the guest sheet's first door, in the commit's place (`s4-4-sheet-guest`):
+  the canvas's word, approved in review 3 below; en and zh drafted at S10, for review 10 below.
+
+**Reused by key, never copied:** the second door is `common.signIn` ("Ingia"); every other word the guest sheet shows is
+S8's (`S10-PLAN.md` "Reused, never copied"). ⛔ No balance or "your bet is saved" sentence, and no helpline key.
 
 ## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
 
@@ -431,3 +501,66 @@ word was introduced.
 - `journey.ticketsHere` · sw "Tiketi zako" · en "Your tickets" · zh "您的注单" — *tiketi* (class 10) takes *zako*, as `journey.tabTickets` "Tiketi zangu" does.
 - Chinese: formal 您 wherever the player is addressed, 充值 for a deposit, 投注 for a bet, 注单 for a ticket (as S6's
   Tiketi zangu), and full-width punctuation between Chinese clauses.
+**9. S11's words (2026-10-14, S11 WP3; journey.*, the chat's offline journey words, the privacy line, the parked legal
+texts and the tagline) — independently reviewed and signed by Claude, the AI reviewer, under Ali's existing delegation of
+the Swahili-speaker role (2026-10-02, quoted in this section's heading).** This is the reviewer's sign-off, not a human or
+owner signature. 54 strings were read against the deck's binding words, the screen labels they name (`footer.setLimits`,
+`journey.withdrawAction`, `journey.tabAccount`, `journey.tabTickets`, `journey.sellFreeCta`, `journey.depositAction`,
+`journey.howToTitle`, `profile.kycIdentityVerification`), this audit's rules and S11-PLAN: 42 approved as drafted and 12
+corrected. The corrections are applied in the dictionary, `send-message.ts`, the privacy page and the parked texts, and
+S11-PLAN's tables take them:
+- `journey.faq2a` sw — *hasa kama* and *kamwe* restore the English's "exactly" and "never", two money promises the draft
+  dropped. And in all three languages the button multiple is qualified "where it can be worked out" (*pale yanapoweza
+  kukadiriwa* · 在可以估算时): the card prints a multiple only on its priced faces (journey-card.tsx `pickWords`).
+- `journey.faq2a` zh — 奖池 for 资金池: the product's Chinese word for the pool (faq1a beside it, howStep3Body, estimateNote).
+- `journey.faq3a` sw — *Bonyeza* for *Gusa*: the journey's tap word (review 3's "Bonyeza Juu au Chini", howStep2Title).
+- `journey.chatStarterHowTo` sw — "Ninawezaje kucheza?": a chip puts the player's own question as *Ninawezaje …?*, and
+  "Jinsi ya kucheza?" is the guide's title with a question mark. The chat's How-to intent matches *kucheza*.
+- `journey.faq5a` (en, sw, zh) — the loss limit named beside the deposit and time limits: the limits page offers it
+  (`rg.dailyLoss`), and the at-risk answer names every door it has.
+- The chat's identity step 1 and invites (sw) — *Nenda kwenye*: review 3's rule, *kwenda* to a place takes *kwenye*.
+- The chat's zh hand-off — 进一步协助 for 人工协助: the chat never says "human" (`send-message.ts`'s own rule).
+- The privacy line (sw) — *ufunguke wenyewe* for *ujifungue wenyewe*: *kujifungua* is "to give birth"; "opens by itself"
+  is the stative *kufunguka* (*mwongozo*, class 3).
+- Rules §4's new paragraph — sw *kutokana na mabwawa ya mwisho* (*kutoka kwa* takes a person); zh 奖池 (the page's word).
+- Terms §4's estimate paragraph (sw) — *Vyote viwili si bei (odds) za uhakika* for *Hivyo si …*: a sentence-initial
+  *Hivyo* reads "therefore"; *vyote viwili* (class 8) agrees with the next clause's *vyote*.
+- Terms §4 (sw) — "Kama madau yote yapo upande mmoja" for "… yako …": after *madau yote*, *yako* also reads "your", which
+  would misstate a money rule; *yapo* is the Rules' own word.
+- The tagline — sw "Chagua. Ona unachoweza kushinda. Cheza." is signed over SJ-20's "Ona unachoshinda": *unachoshinda*
+  ("what you are winning") promises a result before there is one; an estimate is what you *can* win, How-to step 2's own
+  words. zh "选择。看看您能赢多少。开始玩。" approved (您, full-width stops; it echoes the guide's 选择问题 and 您可赢取).
+Checked clean: no NDIYO; no class-10 "dau zote"; no typed figure, rate, ×, % or TZS (placeholders and ≈ only); no
+helpline; Chinese 您, 充值, 投注, 注单 and full-width punctuation; the journey says swali/maswali, the legal texts keep their
+defined soko/market. Noted, not changed (outside S11's strings): the deposit and payout chat intents answer a Swahili
+question in English, and the unchanged paragraphs of Terms §4 type "13%" and "5 minutes".
+
+**10. S10 dictionary key (2026-10-15, S10 WP2; journey.*, not shown to anyone until S15) — reviewed and signed by Claude,
+the AI reviewer, under Ali's existing delegation of the Swahili-speaker role (2026-10-02, quoted in this section's
+heading).** This is the reviewer's sign-off, not a human or owner signature. (Review 9 is S11's, claimed on its own branch.)
+- `journey.sheetSignUp` · sw "Jisajili uweke dau" · en "Sign up to place your bet" · zh "注册以投注" — review 3's approved
+  canvas word, unchanged: *jisajili* (the reflexive imperative "register yourself", the live `common.signUp`'s own verb),
+  then the subjunctive of purpose *uweke dau* ("so that you place a bet"; *dau* as in `stakeLabel`'s *dau lako*) — after
+  an imperative the purpose needs no *ili*. The English says purpose ("to place"), never that signing up places the bet;
+  the Chinese marks purpose with 以 and uses 投注 as every S8 key does. ⛔ Not 注册并投注 ("sign up and bet"): it reads as if
+  signing up placed the bet, which nothing does — the one explicit tap on the signed-in sheet does (DESIGN_AUTHORITY §C).
+
+**11. Review 2's defects where review 2 did not look (S12 WP3 step 3, 2026-10-14) — DRAFTED FOR SIGN-OFF, NOT SIGNED.**
+Built on `codex/vodacom-s12-w` in their own commit, so the reviewer can sign this review or drop the commit whole. The
+same three defects review 2 approved corrections for — "Lipo" for the payout, "dau" closing where the choosing closes,
+and class-10 agreement on *dau* — plus review 2's typo, each where its list did not reach. Swahili only; en and zh
+unchanged. Each line: key · today → drafted · why.
+- `dialog.payoutLabel` · "Lipo" → "Malipo" · `common.payout2`'s approved correction, on the dial's estimate row and the
+  position card (*malipo*, class 6, "the payout"; "Lipo" reads "it is there").
+- `toast.payoutAtResolution` · "Lipo litahesabiwa utatuzi unapofanyika." → "Malipo yatahesabiwa utatuzi unapofanyika." ·
+  the same noun; *malipo* (class 6) takes *ya-* in *yatahesabiwa*.
+- `dialog.poolSharePayout` · "…kitawekwa dau litakapofungwa." → "…kitawekwa uchaguzi utakapofungwa." · `payoutCalcBody`'s
+  approved correction: the bet does not close, the choosing does (*uchaguzi*, class 11, *utakapofungwa*).
+- `market.payoutAtClose` · "Dau likifungwa" → "Uchaguzi ukifungwa" · the same, as the position card's caption (en "When
+  betting closes").
+- `market.hedgeBothBody`'s second clause · "kwa hiyo dau zako zote mbili haziwezi kurudi zote" → "kwa hiyo madau yako yote
+  mawili hayawezi kurudi yote" · review 2's class-6 plural through the whole clause (*madau yako yote mawili hayawezi*,
+  and *kurudi yote*, "come back in full", agreeing with it).
+- `primer.card3Body`'s closing sentence · "Dau likifungwa tutakuambia kiasi kamili utakachopata." → "Uchaguzi ukifungwa
+  tutakuambia kiasi kamili utakachopata." · as `market.payoutAtClose` (en "When betting closes we tell you…").
+- `error.walletSafe` · "hayajaaathiriwa" → "hayajaathiriwa" · review 2's typo, which `error.positionsSafe` shipped with.

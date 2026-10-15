@@ -445,7 +445,7 @@ const ROUTED: Array<[string, string]> = [
     ["agent.wfColParam", CAP_TY, 231, "greedy", "KIPENGELE CHA FEDHA / HATUA YA / MAKATO", "KIPENGELE CHA FEDHA / HATUA / YA MAKATO"],
     ["agent.verifiedBadge", CAP_TY, 170, "greedy", "WAKALA / ALIYETHIBITISHWA WA / 50PICK", "WAKALA / ALIYETHIBITISHWA / WA 50PICK"],
     ["market.resEvidence", CAP_TY, 220, "greedy", "USHAHIDI ULIOREKODIWA NA / AFISA", "USHAHIDI ULIOREKODIWA / NA AFISA"],
-    ["market.probOverTime", CAP_TY, 199, "greedy", "UWEZEKANO WA NDIYO KWA / MUDA", "UWEZEKANO WA NDIYO / KWA MUDA"],
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP2): `market.probOverTime` left this list — see 3.8″ below.
     ["wallet.gatewayReference", CAP_TY, 98, "greedy", "KUMBUKUMBU YA / LANGO", "KUMBUKUMBU / YA LANGO"],
     ["help.liveChat", CAP_TY, 188, "greedy", "MAZUNGUMZO YA MOJA KWA / MOJA", "MAZUNGUMZO YA MOJA / KWA MOJA"],
     ["home.heroProofPaid", MONO(11, 0.14), 172, "greedy", "YALIYOLIPWA KWA / WACHEZAJI", "YALIYOLIPWA / KWA WACHEZAJI"],
@@ -459,6 +459,19 @@ const ROUTED: Array<[string, string]> = [
   const kadi = [93.3, 106.7].map((W) => show(layout(kr.keepConnectives(up(word("sw", "profile.idTypeVoterCard"))), MONO(10, 0), W, "balance").lines));
   ok("3.8′ · the voter's card on the KYC rail (two break candidates: Chromium's balance falls back to its bisection): \"KADI YA MPIGA / KURA\" at 320–360 — no line on \"ya\"; the owner's question (\"KADI / YA MPIGA KURA\" needs \"mpiga kura\" held)",
     kadi.every((v) => v === "KADI YA MPIGA / KURA"), j(kadi));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP2). Spelt "NDIYO", the chart's title measured 199.8px against the
+  // toggle's 199px at sw 320 and wrapped — "UWEZEKANO WA NDIYO KWA / MUDA" raw, "UWEZEKANO WA NDIYO / KWA MUDA" through
+  // the keep (3.7/3.8's old cell). Spelt "NDIO", the product's side word, it measures 192.4px and draws on ONE line, so
+  // it has no line to end on a connective and 3.7's premise no longer holds for it. What is pinned now is that fact:
+  // one line, raw and through the keep, inside the measure. The site still draws through the keep (3.6), and a return
+  // of the misspelling fails here as well as in `test:labels` §12.
+  const pot = up(word("sw", "market.probOverTime"));
+  const potRaw = layout(pot, CAP_TY, 199, "greedy");
+  const potKept = layout(kr.keepConnectives(pot), CAP_TY, 199, "greedy");
+  ok("3.8″ · the chart's title, spelt NDIO (S12 WP2): \"UWEZEKANO WA NDIO KWA MUDA\" is ONE line in the toggle's 199px at sw 320 (192.4px), raw and through the keep",
+    show(potRaw.lines) === "UWEZEKANO WA NDIO KWA MUDA" && show(potKept.lines) === "UWEZEKANO WA NDIO KWA MUDA"
+      && !potRaw.over && !potKept.over && Math.abs(width(pot, CAP_TY) - 192.4) < 0.05,
+    j([show(potRaw.lines), show(potKept.lines), width(pot, CAP_TY)]));
 }
 {
   // The census: every raw dictionary string drawn as the direct words of an eyebrow / caption / label on a player surface,
@@ -471,7 +484,8 @@ const ROUTED: Array<[string, string]> = [
     "src/app/agent/loading.tsx agent.wfEyebrow": "the same eyebrow's ghost",
     "src/app/agent/apply/apply-client.tsx agent.payTitle": "sw \"Lipa ada ya usajili\" 141px in the panel's 248px at 320",
     "src/app/profile/invite/invite-client.tsx profile.yourReferralLink": "\"Kiungo chako cha rufaa\" 163px in a column of 240px or more",
-    "src/components/home/updown-band.tsx home.updownEyebrow": "\"Mchezo wa kasi · hai\" 163px beside its dot in 278px or more",
+    // Re-measured 2026-10-14 (S12, row 66: "hai" → "mubashara"; mono 11px at 0.14em, 8.14px a letter): 163px before.
+    "src/components/home/updown-band.tsx home.updownEyebrow": "\"Mchezo wa kasi · mubashara\" 212px beside its dot in 278px or more",
     "src/app/updown/[roundId]/page.tsx market.udSettlementProof": "\"Uthibitisho wa malipo\" 155px in a flex-WRAP row of 252px or more",
     "src/app/updown/history/page.tsx market.udWinRate": "\"Kiwango cha ushindi\" 141px in a stat card of 167px or more",
     "src/app/profile/activity/page.tsx activity.moneyEyebrow": "\"Muhtasari wa fedha\" 133px in the panel's 240px",
@@ -557,7 +571,9 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   };
   ok("4.4 CONTROL · drawn as round 8 drew it, the journey's sw link read \"Mapendekezo ya / Masoko[flag]\" at 1024 (tile 299: \"Mapendekezo ya\" x528–624) and 768; en and zh one line at 1024 (tiles 307 315)",
     link("sw", word("sw", "proposals.title"), 216, false, "balance") === "Mapendekezo ya / Masoko[flag]" && link("sw", word("sw", "proposals.title"), 160, false, "balance") === "Mapendekezo ya / Masoko[flag]"
-      && link("en", word("en", "proposals.title"), 216, false, "balance") === "Market Proposals[flag]" && link("zh", word("zh", "proposals.title"), 216, false, "balance") === "市场提议[flag]",
+      // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 50): en "Market Proposals" is "Market proposals" (sentence case,
+      // as the rows beside it) — re-measured: one line at 1024 still (the lower-case "p" is the narrower glyph).
+      && link("en", word("en", "proposals.title"), 216, false, "balance") === "Market proposals[flag]" && link("zh", word("zh", "proposals.title"), 216, false, "balance") === "市场提议[flag]",
     j([link("sw", word("sw", "proposals.title"), 216, false, "balance"), link("en", word("en", "proposals.title"), 216, false, "balance")]));
   // ⛔ ROUND 9'S READ REFUTED THIS MODEL'S BISECTION (reader 8, tile 302, sw 1024): with only "ya" held the browser drew
   // "Mapendekezo" / "ya Masoko [INAKUJA]" — the flag here was modelled at 85.4px (COMING SOON's per-letter rate), the real

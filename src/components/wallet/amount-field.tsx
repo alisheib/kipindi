@@ -35,6 +35,8 @@ export function AmountField({
   disabled,
   id = "amount",
   name = "amount",
+  fullFigures = false,
+  onValueChange,
 }: {
   label: string;
   hint?: string;
@@ -45,6 +47,8 @@ export function AmountField({
   disabled?: boolean;
   id?: string;
   name?: string;
+  fullFigures?: boolean;
+  onValueChange?: (value: number | null) => void;
 }) {
   const [amount, setAmount] = useState<string>(
     defaultValue && /^\d+$/.test(defaultValue) ? defaultValue : "",
@@ -71,7 +75,11 @@ export function AmountField({
         min={min}
         max={max}
         value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        onChange={(e) => {
+          setAmount(e.target.value);
+          const parsed = Number(e.target.value);
+          onValueChange?.(e.target.value && Number.isSafeInteger(parsed) ? parsed : null);
+        }}
         disabled={disabled}
         className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
       />
@@ -87,7 +95,7 @@ export function AmountField({
                 key={v}
                 type="button"
                 disabled={disabled}
-                onClick={() => setAmount(String(v))}
+                onClick={() => { setAmount(String(v)); onValueChange?.(v); }}
                 aria-pressed={active}
                 className={
                   // L6: 44px tap target on a money control (deposit AND withdraw).
@@ -100,7 +108,7 @@ export function AmountField({
                     : "border-border bg-bg-overlay text-text-subtle hover:bg-brand-500/10 hover:text-brand-300 hover:border-brand-500/60")
                 }
               >
-                {fmt(v)}
+                {fullFigures ? formatNumber(v) : fmt(v)}
               </button>
             );
           })}

@@ -17,7 +17,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
-  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost,
+  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost, LazyGuestSheetHost, LazyHowToHost,
 } from "./shell-lazy";
 // ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
@@ -69,6 +69,7 @@ import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
 import { isSafePath } from "@/lib/safe-next";
 import { breakStateFromTimers, type BreakState } from "@/lib/break-end";
+import { isFocusedJourneyPaymentPath } from "@/lib/surfaces";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getServerT();
@@ -167,6 +168,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // ⛔ A classic request never meets it, its journey term being false: its `/markets` is today's board, at 200.
   // `test:markets-redirect` §2 holds this line and the page's.
   if (pathname === "/markets" && h.get("x-kp-document") === "1" && (await journeyRead).journey) redirect(journeyMarketsTarget(h.get("x-href") ?? pathname) as never);
+  if (isFocusedJourneyPaymentPath(pathname) && (await journeyRead).journey) {
+    const preview = (await journeyRead).preview;
+    return <div className="min-h-screen flex flex-col bg-bg-base text-text" data-focused-payment="">
+      <SkipToContent label={t.common.skipToContent} />
+      <KeyGuard />
+      {preview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+      <span hidden id={JOURNEY_SHELL_MARK} />
+      <LazyJourneyFlag />
+      <MainLandmark><RouteTransition>{children}</RouteTransition></MainLandmark>
+      {session && <SessionPresence viewerId={session.userId} />}
+    </div>;
+  }
   let topUser: {
     initials: string;
     name: string;
@@ -489,8 +502,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           (`raiseJourneyFlag` has both directions). In a boundary of its own it could land a commit later, the journey's
           chrome painted while the overlays still read the classic answer. It renders nothing, so the first HTML gains no
           markup (only its boundary's two comment markers go); its chunk, a few hundred bytes, is preloaded in the head
-          beside the header's and the rail's, and the page's hydration waits for it as for theirs. */}
-      {journeyShown && <LazyJourneyFlag />}
+          beside the header's and the rail's, and the page's hydration waits for it as for theirs.
+          ⭐ AND HOW TO PLAY'S HOST SHARES THE SLOT (the Vodacom plan S11 WP4; S11-PLAN Open point 3): it opens the sheet by
+          itself once per browser on the four lobby routes, and at /?howto=1. In the fragment beside the flag, so a classic
+          request still renders this slot as the one `false` it always did; the flag stays bare, and the host stands in a
+          Suspense boundary of its own because it reads the address (`useSearchParams`), as BetSheetHost below does. It is
+          handed the session's answer and the break (`promoSuppressed`), both read above. */}
+      {journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}
       {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives with its own
           chunk, at hydration at the earliest, and the Needle once drew for a few frames before it landed. With the mark
           on the page from the first byte, every overlay reads the answer right after hydrating. A classic page never
@@ -615,7 +633,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           shared 5 s), and a move to another page closes it. It draws nothing until a sale, and a lost chunk leaves each
           button drawing its own result, as before. */}
       {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
-      {journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}
+      {/* ⭐ THE BET SHEET'S ONE SLOT (S8 WP7a; S10 WP4, S10-PLAN Open point 4 and A13): a journey request gets S8's money host,
+          keyed by the session's own account, when signed in — and S10's guest host when not, told whether this flight
+          ended a session (its address then opens nothing: the notice above speaks). Each host is the one child of its own
+          boundary, as every lazy part is. A classic request renders one `false` here, as before S10. */}
+      {journeyShown && (session ? <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense> : <Suspense fallback={null}><LazyGuestSheetHost sessionEnded={endedNotice !== null} /></Suspense>)}
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>

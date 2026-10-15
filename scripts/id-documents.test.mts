@@ -541,7 +541,9 @@ section("10 · every player-facing string exists in all three languages");
     [s.labelKey, s.numberLabelKey, s.hintKey, s.ruleKey].forEach((k) => keysToCheck.add(k));
   }
   Object.values(DOC_SLOT_LABEL_KEY).forEach((k) => keysToCheck.add(k));
-  ["chooseIdType", "chooseIdTypeBody", "idExpiryLabel", "idExpiryHint", "identityDocument", "idSaved", "idDocsNeeded"].forEach((k) => keysToCheck.add(k));
+  // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 63): `idDocsNeeded` ("What to attach") left the list with the key
+  // itself — it had no reader since round 3 took its group key off the chooser (the check below keeps it off).
+  ["chooseIdType", "chooseIdTypeBody", "idExpiryLabel", "idExpiryHint", "identityDocument", "idSaved"].forEach((k) => keysToCheck.add(k));
   for (const loc of locales) {
     const d = (dict as unknown as Record<string, { profile: Record<string, string> }>)[loc];
     for (const k of keysToCheck) {

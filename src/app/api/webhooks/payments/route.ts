@@ -227,7 +227,15 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
     return NextResponse.json({ ok: true, ignored: true, reason: "selcom-not-configured" });
   }
 
-  const txn = await db.txn.findByProviderRef(ref);
+  // The reference lookup refuses an AMBIGUOUS reference by throwing (it must identify one row). Answer that like any
+  // other settle fault — audited, 500 so the provider retries, nothing settled — not as an unhandled route error.
+  let txn: Awaited<ReturnType<typeof db.txn.findByProviderRef>>;
+  try {
+    txn = await db.txn.findByProviderRef(ref);
+  } catch (err) {
+    audit({ category: "WALLET", action: "webhook.payment.settle_error", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", stage: "lookup", error: String(err) } });
+    return NextResponse.json({ ok: false, error: "settle-failed" }, { status: 500 });
+  }
   if (!txn) return NextResponse.json({ ok: true, ignored: true, reason: "unknown-reference" });
 
   let status: "CONFIRMED" | "FAILED" | null = null;

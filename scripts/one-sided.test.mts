@@ -351,13 +351,13 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
   const section = sectionAt > 0 ? detail.slice(sectionAt, detail.indexOf("</section>", sectionAt)) : "";
   check("8.5-slice the aside and the content section are real slices", aside.length > 1_000 && section.length > 1_000,
     `aside ${aside.length} · section ${section.length}`);
-  // S8 WP8: the signed-in arm now chooses journey picks or today's dial. Its four exclusive desktop arms are break,
-  // journey, classic signed in, guest. The journey mobile picks are a separate mutually responsive slot.
+  // S10 WP5: its four exclusive desktop arms are break, journey (signed in or guest), classic signed in, classic guest.
+  // The journey mobile picks are a separate mutually responsive slot.
   const noteSlots = (a: string, s: string) => (a.match(/\{oneSidedCallout\}/g) ?? []).length === 4
-    && a.includes(') : session ? (journey ? (')
-    && a.includes('className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex')
+    && a.includes(') : journey ? (') && a.includes(') : session ? (')
+    && a.includes('className={journey && bettingOpen && !breakBody ? "hidden lg:flex')
     && a.includes('<JourneyBetButtons seed={questionSeed} title={questionTitle} t={t} headingId={BET_PANEL_HEADING} className="hidden lg:grid" />')
-    && s.includes('journey && bettingOpen && session && !breakBody && questionSeed')
+    && s.includes('journey && bettingOpen && !breakBody && questionSeed')
     && /<section className="lg:hidden" aria-labelledby="journey-bet-mobile-heading">[\s\S]*?\{oneSidedCallout\}\s*<JourneyBetButtons[^>]*headingId="journey-bet-mobile-heading"/.test(s);
   check("8.5 the refund note is the card's ONE conditional sentence, withheld once settled, at the money control while open and under the rail once closed; no 'One-sided win' body",
     /const oneSidedNote = emptySide && !settled \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, emptySide, "MARKET"\)\) : null;/.test(detail)

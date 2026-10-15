@@ -205,7 +205,10 @@ export function FeaturedContest({
             the first target's 9px stand in the row's gap — see the rail below.) */}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link href={href as Route} className="btn btn-primary btn-md inline-flex">
+            {/* S12 WP5 (word-ledger row 56): the arrow is the family's glyph after the words, at the label's own weight —
+                it was typed into the dictionary ("Fungua soko →"), a third arrow weight (test:visual-pass-r10 §8). */}
             {openLabel}
+            <I.arrowRight s={14} edge="end" text="body-600" />
           </Link>
           {/* 🔴 THE PAGER SAID TWO OPPOSITE THINGS ABOUT ITSELF, AND SHIPPED BOTH.
               The rail was `aria-hidden` — "there is nothing here" — while every dot inside it

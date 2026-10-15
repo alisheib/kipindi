@@ -35,7 +35,8 @@ import { pickLocalized } from "@/lib/localized";
 import { roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
-import { fill, formatNumber, formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
+import { fillNodes } from "@/lib/fill-nodes";
 // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
 import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
@@ -49,6 +50,11 @@ import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+// S12 WP9–WP11 · Juu/Chini's journey arm: the viewer's facts, a carried round bet, and the round-closed notice's loader.
+import { judViewerFor } from "@/lib/server/journey-updown";
+import { parseBetParam } from "@/lib/journey/pending-bet";
+import { judClosedNotice } from "@/lib/journey/updown-arm";
+import { LazyJudRoundClosed } from "@/components/journey/updown/jud-lazy";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
@@ -120,7 +126,7 @@ export default async function UpDownRoundPage({
   searchParams,
 }: {
   params: Promise<{ roundId: string }>;
-  searchParams: Promise<{ side?: string; from?: string }>;
+  searchParams: Promise<{ side?: string; from?: string; bet?: string }>;
 }) {
   const { roundId } = await params;
   const sp = await searchParams;
@@ -211,10 +217,11 @@ export default async function UpDownRoundPage({
   // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
   // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
   const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
-  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;
+  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;
+  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">${Math.abs(move).toFixed(dec)}</span>;
   const moveText = move == null || move === 0 ? null
-    : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
-      : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
+    : !decided && tone === "level" ? fillNodes(t.market.udLevelBy, { amount: deltaFigure })
+      : <>{move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy}{" "}{deltaFigure}</>;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
   const source = decided
@@ -346,6 +353,16 @@ export default async function UpDownRoundPage({
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
   // The shell's own cached answer: a journey reader's door to the round's tickets names the journey's page (round 6, C14).
   const { journey } = await resolveSimpleJourney();
+  /* S12 WP9–WP11 · FOR A JOURNEY READER ONLY: their own facts (the poll re-reads them), the side a bet for THIS round carried
+     back (`?bet=udr_<this round>.<side>[.<stake>]`, the way back from a deposit — its stake is the tab's to prove, client
+     side, `stakeFromUrl`), and, when that round no longer takes a bet, the round-closed notice. Classic readers: none. */
+  const judViewer = journey && session ? await judViewerFor(session.userId, session.playStartedAt) : null;
+  const carriedBet = judViewer ? parseBetParam(sp?.bet) : null;
+  const judSide: "UP" | "DOWN" | null = !judViewer ? null
+    : lockedSide ?? (carriedBet?.kind === "round" && carriedBet.id === roundId ? carriedBet.side : null);
+  const judClosed = judViewer && judSide && !isOpen
+    ? judClosedNotice({ successor: round.successor, confirmedDepositTzs: null, nowMs: round.serverNowMs })
+    : null;
 
   // B7 — was max-w-[1232px] with an inline padding, while this route's own
   // loading.tsx said 1080: a 152px layout jump on EVERY load, which no test
@@ -569,6 +586,7 @@ export default async function UpDownRoundPage({
           />
 
           <div className="flex min-w-0 flex-col gap-4">
+            {judClosed && judSide && <LazyJudRoundClosed roundId={roundId} side={judSide} notice={judClosed} viewer={judViewer} />}
             {/* Stake (open) · Result (resolved & played) · calm panels otherwise.
                 ⭐ UD-2 · the open/locked pair is ONE client component that derives its
                 phase from the instants (`roundPhase` + the server-anchored clock), so
@@ -596,8 +614,10 @@ export default async function UpDownRoundPage({
                   pricing: round.pricing,
                   assetName: name,
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
-                  lockedSide,
-                  walletBalance: detail.walletBalance,
+                  lockedSide: judSide ?? lockedSide,
+                  walletBalance: judViewer ? judViewer.spendable : detail.walletBalance,
+                  // S12 · spread only for a journey reader: a classic panel's props (and the flight data) gain no key.
+                  ...(judViewer ? { journey: { roundId, viewer: judViewer } } : {}),
                   // UD-22 · assembled server-side on the round itself, so this page and the
                   // board card confirm a bet with the same sentences and the same exit terms.
                   receipt: round.receipt,
@@ -650,7 +670,7 @@ export default async function UpDownRoundPage({
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">
-                        {t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
+                        {journey ? t.journey.ticketsHere : t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
                       </p>
                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
                     </div>
@@ -827,15 +847,15 @@ export default async function UpDownRoundPage({
                 <div key={label} style={{ ...inset, padding: "12px 14px 13px" }}>
                   <p className={eyebrow}>{label}</p>
                   <p className="mt-[7px] m-0 font-mono text-[19px] font-bold leading-none tabular-nums text-text">{usd(price, dec)}</p>
-                  <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                  <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                     <dt className="text-text-faint">{t.market.udSource}</dt>
                     <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
                     {/* The stamp's mid-sentence word used as a label opens on a capital, like "Chanzo" and "Ilionekana"
                         around it — the hero's rule (`.ud-cap-first`, round 4); the word itself is unchanged. */}
                     <dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>
-                    <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
+                    <dd className="m-0 font-mono tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
                     <dt className="text-text-faint">{t.market.udObserved}</dt>
-                    <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
+                    <dd className="m-0 font-mono tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
                   </dl>
                 </div>
               ))}
@@ -846,17 +866,17 @@ export default async function UpDownRoundPage({
                   {outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>}
                   {outcomeLabel}
                 </p>
-                <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                   <dt className="text-text-faint">{t.market.udMove}</dt>
-                  <dd className="m-0 tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
                   <dt className="text-text-faint">{t.market.udPercent}</dt>
-                  <dd className="m-0 tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
                   {round.upTarget != null && round.downTarget != null && (
                     <>
                       <dt className="text-text-faint">{t.market.udUp}</dt>
-                      <dd className="m-0 tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
+                      <dd className="m-0 font-mono tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
                       <dt className="text-text-faint">{t.market.udDown}</dt>
-                      <dd className="m-0 tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
+                      <dd className="m-0 font-mono tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
                     </>
                   )}
                   <dt className="text-text-faint">{t.market.udRule}</dt>

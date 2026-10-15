@@ -136,7 +136,7 @@ export function BalanceAdjustControls({
                    44px is A2's preferred tap size, and money controls are never the exception. */
                 "min-h-[44px] rounded-md border font-mono text-caption uppercase tracking-[0.12em] transition-colors " +
                 (direction === d
-                  ? (d === "credit" ? "border-yes-700 bg-yes-500/15 text-yes-300" : "border-no-700 bg-no-500/15 text-no-300")
+                  ? (d === "credit" ? "border-brand-500 bg-brand-500/15 text-brand-300" : "border-danger-border bg-danger-bg text-danger-fg")
                   : "border-border bg-bg-overlay text-text-subtle hover:text-text")
               }
             >
@@ -209,7 +209,7 @@ export function BalanceAdjustControls({
         <div className="mt-4 flex flex-col gap-2">
           <Button
             type="button"
-            variant={direction === "credit" ? "yes" : "no"}
+            variant={direction === "credit" ? "primary" : "danger"}
             size="lg"
             fullWidth
             loading={pending}

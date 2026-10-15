@@ -64,6 +64,7 @@ import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/
 // C8b (B8) · the re-dating's ONE shape rule — this twin asks it before its compare, exactly as the Prisma twin does
 // (`test:dal-parity` §31). It takes only TYPES back from this file, so there is no cycle.
 import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
+import { isMobileMoneyMethodId } from "@/lib/payment-providers";
 
 export type StoredUser = {
   id: string;
@@ -1561,6 +1562,14 @@ export const TXN_TYPES = [
   "AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL", "AGENT_REGISTRATION_FEE",
 ] as const;
 
+export type StoredDepositFundingClaim = {
+  key: string;
+  userId: string;
+  state: "CLAIMED" | "REFUSED";
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type StoredTxn = {
   id: string;
   walletId: string;
@@ -1621,6 +1630,8 @@ export type StoredTxn = {
   houseBotId?: string | null;
   /** The journey funnel's origin of a DEPOSIT (Vodacom plan S3b): "low_balance", else null. ⛔ Create-only. */
   origin?: string | null;
+  /** S9's versioned canonical chosen-bet/return-path JSON. Parse with parseSavedDepositBet before use. Create-only. */
+  pendingBet?: unknown | null;
 };
 
 export type StoredResponsibleGambling = {
@@ -2108,6 +2119,7 @@ declare global {
     wallets: Map<string, StoredWallet>;
     walletsByUser: Map<string, string>;
     txns: Map<string, StoredTxn>;
+    depositFundingClaims: Map<string, StoredDepositFundingClaim>;
     responsible: Map<string, StoredResponsibleGambling>;
     notifications: Map<string, StoredNotification>;
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
@@ -2159,6 +2171,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   wallets: new Map(),
   walletsByUser: new Map(),
   txns: new Map(),
+  depositFundingClaims: new Map(),
   responsible: new Map(),
   notifications: new Map(),
   sourceOfFunds: new Map(),
@@ -2198,6 +2211,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
 // "Cannot read properties of undefined" because the cached global is stale.
 if (!store.usersByPhone)  store.usersByPhone = new Map();
 if (!store.walletsByUser) store.walletsByUser = new Map();
+if (!store.depositFundingClaims) store.depositFundingClaims = new Map();
 if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
@@ -2866,8 +2880,25 @@ const memoryDb = {
       return next;
     },
   },
+  depositFundingClaim: {
+    findByKey: (key: string, _tx?: unknown): StoredDepositFundingClaim | null =>
+      store.depositFundingClaims.get(key) ?? null,
+    create: (key: string, userId: string, _tx?: unknown): StoredDepositFundingClaim => {
+      if (store.depositFundingClaims.has(key)) throw Object.assign(new Error("funding key already claimed"), { code: "P2002" });
+      const now = new Date().toISOString();
+      const row: StoredDepositFundingClaim = { key, userId, state: "CLAIMED", createdAt: now, updatedAt: now };
+      store.depositFundingClaims.set(key, row);
+      return row;
+    },
+    markRefused: (key: string, userId: string, _tx?: unknown): boolean => {
+      const row = store.depositFundingClaims.get(key);
+      if (!row || row.userId !== userId || row.state !== "CLAIMED") return false;
+      store.depositFundingClaims.set(key, { ...row, state: "REFUSED", updatedAt: new Date().toISOString() });
+      return true;
+    },
+  },
   txn: {
-    create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
+    create: (t: StoredTxn) => { const row = { ...t, pendingBet: t.pendingBet ?? null }; store.txns.set(t.id, row); return row; },
     /**
      * ⭐ `excludeHouseBets` (C5-SPEC ruling 173): drop house-marked rows (`houseBotId != null`) INSIDE the filter, BEFORE
      * `.slice(-limit)` — or a holder's newest-N window stays flooded by house rows on this store only. Default off, so every
@@ -2908,8 +2939,22 @@ const memoryDb = {
         .filter((t) => t.userId === userId && types.includes(t.type))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
         .slice(0, limit),
-    findById: (id: string) => store.txns.get(id) ?? null,
-    findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
+    /** S9 phone/rail history: one own, unmarked, confirmed TZS deposit on a currently offered mobile-wallet rail. */
+    latestConfirmedMobileDeposit: (userId: string): StoredTxn | null =>
+      Array.from(store.txns.values())
+        .filter((t) => t.userId === userId && t.type === "DEPOSIT" && t.status === "CONFIRMED" && t.currency === "TZS" && t.houseBotId == null && isMobileMoneyMethodId(t.provider))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,
+    // Memory has no SQL transaction; accept the same explicit transaction argument as the Prisma twin.
+    findById: (id: string, _tx?: unknown) => store.txns.get(id) ?? null,
+    findByProviderRef: (providerRef: string, _tx?: unknown): StoredTxn | null => {
+      let match: StoredTxn | null = null;
+      for (const row of store.txns.values()) {
+        if (row.providerRef !== providerRef) continue;
+        if (match) throw new Error("Payment reference is ambiguous.");
+        match = row;
+      }
+      return match;
+    },
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;
@@ -2918,7 +2963,7 @@ const memoryDb = {
       // either (C5-7's review: `positionId` passed through here, and a row positioned by an update is permanently
       // unmarkable — visible in the holder's own wallet feed and missing from the house book's `returned`, with
       // ruling 232's `.txn.create(` pin blind to it). The pin is `test:house-bot-reports` 0.232.4.
-      const { houseBotId: _marker, positionId: _positioned, origin: _origin, ...rest } = patch;
+      const { houseBotId: _marker, positionId: _positioned, origin: _origin, pendingBet: _pendingBet, ...rest } = patch;
       const next = { ...t, ...rest, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
       return next;
@@ -2964,10 +3009,15 @@ const memoryDb = {
       const all = Array.from(store.txns.values()).filter((t) => matchesFilters(t, f));
       return { rows: sortAndPage(all, f), total: all.length, summary: summarise(all) };
     },
-    findByIdempotencyKey: (key: string): StoredTxn | null => {
+    findByIdempotencyKey: (key: string, _tx?: unknown): StoredTxn | null => {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;
     },
+    findProcessingWithdrawalMissingIdentity: (userId: string, requireRail: boolean, _tx?: unknown): StoredTxn | null =>
+      Array.from(store.txns.values())
+        .filter((t) => t.userId === userId && t.type === "WITHDRAWAL" && t.status === "PROCESSING"
+          && (!t.providerRef || (requireRail && !t.payoutRail)))
+        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id.localeCompare(b.id))[0] ?? null,
     /** Sum of deposits for a user since a cutoff timestamp. No row-count cap.
      *  `includePending` also counts PROCESSING deposits — used by the RG deposit-
      *  cap + SOF gate so an in-flight deposit is visible to a concurrent one

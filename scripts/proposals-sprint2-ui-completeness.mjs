@@ -43,7 +43,8 @@ try {
     const p = await ctx.newPage();
     await p.goto(`${BASE}/proposals`, { waitUntil: "networkidle" });
     let t = await text(p);
-    log("1.header present", /Market Proposals/.test(t) && /Vote for the markets you want to see/.test(t));
+    // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 50): `proposals.title` is "Market proposals" in sentence case.
+    log("1.header present", /Market proposals/.test(t) && /Vote for the markets you want to see/.test(t));
     log("1.bilingual SW header", /Pigia kura soko unayotaka/.test(t));
     log("1.reward banner with prize", /Earn TZS [\d,]+ for each proposal/i.test(t));
     log("1.stats strip", /\d[\d,]* proposals/i.test(t) && /\d[\d,]* votes/i.test(t));
@@ -106,7 +107,9 @@ try {
     const p = await ctx.newPage();
     await p.goto(`${BASE}/admin/proposals`, { waitUntil: "networkidle" });
     const t = await text(p);
-    log("4.title + queue", /Market Proposals/.test(t) && /Queue · sorted by votes/.test(t));
+    // The console's own title already reads "Market proposals" (admin/proposals/page.tsx), so this was stale before S12
+    // WP5 (row 50) gave the player page the same case; re-pinned with it.
+    log("4.title + queue", /Market proposals/.test(t) && /Queue · sorted by votes/.test(t));
     log("4.KPIs present", /Proposals pending/i.test(t) && /Listed from proposals/i.test(t) && /Prizes paid/i.test(t) && /Top proposer/i.test(t));
     log("4.review panel vote stats", /Upvotes/i.test(t) && /Downvotes/i.test(t) && /Votes only rank the queue/i.test(t));
     log("4.officer actions", /Approve & list/i.test(t) && /Decline/i.test(t));

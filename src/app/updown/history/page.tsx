@@ -22,7 +22,7 @@ import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
-import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
+import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay, formatEatDateTime } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
 import { formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
 import { SearchBox } from "@/components/ui/search-box";
@@ -51,17 +51,11 @@ export async function generateMetadata() {
   return { title: journey ? t.journey.tabTickets : t.market.udHistoryTitle };
 }
 
-// UD-19 · EAST AFRICA TIME, stated — the settlement proof on the round page speaks
-// EAT, and a player comparing their history row to the proof must not have to
-// convert time zones between two screens describing one bet.
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return "—";
-  const s = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Nairobi", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(d);
-  return `${s} EAT`;
-};
+// UD-19 · EAST AFRICA TIME, stated — the settlement proof on the round page speaks EAT, and a player comparing their
+// history row to the proof must not have to convert time zones between two screens describing one bet. The row's
+// moment is `placedLine` in the page below (S12 WP5, word-ledger row 57): eat-day's `formatEatDateTime` in the
+// reader's month words, as every other player date (§L4), where this file's own en-GB formatter printed a numeric
+// "12/10, 00:10 EAT" in every language.
 import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
 import { roundPnl } from "@/lib/updown-history-pnl";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
@@ -196,6 +190,11 @@ export default async function UpDownHistoryPage({ searchParams }: {
     matchesQuery(parsedQ, row as unknown as Record<string, string | null | undefined>, UD_ROUND_SEARCH);
 
   const nowMs = Date.now();
+  // A round bet's moment, EAT stated (UD-19, above): "12 Okt, 00:10 EAT" in the reader's words; "—" for an unreadable one.
+  const placedLine = (iso: string) => {
+    const s = formatEatDateTime(Date.parse(iso), nowMs, t.common.monthsShort, locale);
+    return s === "—" ? s : `${s} EAT`;
+  };
   const collate = new Intl.Collator(locale).compare;
   const counts = udCounts(udRows, state, nowMs, matchesText, inDay, assetIds, durIds) as UdCounts;
   const matched = sortUd(filterUd(udRows, state, nowMs, matchesText, inDay), state, collate);
@@ -524,7 +523,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                             "neutral", the same SLATE ink/fill `.chip`'s own base rule painted. */}
                         {name} <Chip className="align-middle">{r.durationMinutes} {t.market.udMin}</Chip>
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {fmtDate(r.placedAt)}</div>
+                      <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {placedLine(r.placedAt)}</div>
                     </div>
                     {/* `shrink-0` is kept explicitly: the kit only implies it at `size="xs"`,
                         and this row is `md`. */}

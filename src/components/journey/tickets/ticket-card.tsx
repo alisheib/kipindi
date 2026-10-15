@@ -27,7 +27,8 @@
  * never wider than "TZS 1,000,000" (105.3px; PLATFORM_MAX_STAKE), so the row splits 2 : 3, and the stake's column never
  * narrows below its own figure (`minmax(max-content, …)`): a stake figure never breaks, and only the one-million stake at
  * 320 takes the words back to two lines. The words' lines are balanced, so a wrap that remains is an even pair
- * ("When the / result is in"), never a word alone.
+ * ("When the / result is in"), never a word alone. F44 now treats that pending value as body
+ * copy at 13px, keeping the grid's wider payout cell while making the sentence easier to read.
  * ⛔ NO PAYOUT FIGURE ON ANY UNRESOLVED TICKET (SJ-4, DESIGN_AUTHORITY §C3, VODACOM-PLAN §0h point 22): "Malipo ·
  * Matokeo yakitoka" while betting is open, after selling closes, and after the closing sweep has stamped the market; the
  * figure arrives with the result ("Malipo ya mwisho"). `ticketPayout` holds the rule and `test:journey-tickets` §2
@@ -116,7 +117,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
       <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3 text-balance">
         <Stat label={t.dialog.stakeLabel} value={formatTzs(p.stake)} money />
         {payout.kind === "atResult" ? (
-          <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" />
+          <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : (
           <Stat label={t.journey.ticketFinalPayout} value={formatTzs(payout.amount)} tone={payout.won ? "gold" : "default"} struck={payout.won} money />
         )}
@@ -128,7 +129,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
         <p className="flex items-center gap-1.5 break-all font-mono"><I.ticket s={14} className="shrink-0" />{p.id}</p>
         <p className="flex items-center gap-1.5">
           <I.clock s={14} className="shrink-0" />
-          <span>{placedBefore}<time dateTime={p.placedAt} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale)}</time>{placedAfter}</span>
+          <span>{placedBefore}<time dateTime={p.placedAt} className="whitespace-nowrap font-mono tabular-nums">{formatEatDateTime(Date.parse(p.placedAt), serverNow, t.common.monthsShort, locale)}</time>{placedAfter}</span>
         </p>
         {open && (
           <p className="flex items-center gap-1.5">
@@ -136,7 +137,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             {closed ? (
               <span>{t.positions.selectionClosed}</span>
             ) : (
-              <span>{t.positions.selectionCloses}{" "}<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time></span>
+              <span>{t.positions.selectionCloses}{" "}<time dateTime={cutoffIso} className="whitespace-nowrap font-mono tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time></span>
             )}
           </p>
         )}

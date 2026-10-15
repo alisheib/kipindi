@@ -552,7 +552,9 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
       if (m[3] !== "/") stack.push({ tag: m[1], cls: c ? (c[1] ?? c[2] ?? "") : "", line: src.slice(0, m.index).split(NL).length, n: 0 });
     }
   }
-  const CSS_PAIRS: Record<string, string> = { "mcardp-actions": ".mcardp-actions", "kp-qrow__act": ".kp-qrow__act", "kp-wsheet__pair": ".kp-wsheet__pair", "kp-hero__ctas": ".kp-hero__ctas" };
+  // S12 (WP9): Juu/Chini's journey arm — its column (`.kp-jud`: "Tumia … badala yake" above the commit) and its Up/Down pair
+  // (`.kp-jud__sides`) — both on --sp-3, as the card's pair.
+  const CSS_PAIRS: Record<string, string> = { "mcardp-actions": ".mcardp-actions", "kp-qrow__act": ".kp-qrow__act", "kp-wsheet__pair": ".kp-wsheet__pair", "kp-hero__ctas": ".kp-hero__ctas", "kp-jud": ".kp-jud", "kp-jud__sides": ".kp-jud__sides" };
   const KEEP_PAIR: Array<[string, string, string]> = [
     ["src/app/agent/apply/apply-client.tsx", "flex items-center justify-between", "Back and Next at the row's two ends (`justify-between`): the gap is a floor, not their distance"],
     ["src/components/onboarding/first-visit-primer.tsx", "mt-6 flex items-center justify-between gap-3", "Back and Next at the row's two ends"],

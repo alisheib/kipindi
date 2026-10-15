@@ -351,7 +351,30 @@ for (const { fn, row } of EMITTED) {
   ok("a failed deposit says no money was taken", /No money was taken/i.test(failed?.bodyEn ?? ""));
   ok("…in Chinese too", /未扣除/.test(failed?.bodyZh ?? ""));
   const reversed = await N.notifyDeposit(U, { status: "REVERSED", amount: 50_000, provider: "Selcom", txnId: "txn_r" });
-  ok("a reversed deposit explains the exclusion and the return", /self-excluded/i.test(reversed?.bodyEn ?? "") && /returned/i.test(reversed?.bodyEn ?? ""));
+  // ⭐ RE-DERIVED 2026-10-14 (S9 root review H3/M2). This used to require "self-excluded" and "returned" in the body. Both
+  // were untrue for some players: the hold also covers a cooling-off break (not a self-exclusion), and the bell went out
+  // while the money was still HELD, before anything was sent back — COMPLIANCE-DECISIONS 2026-10-07 records exactly that
+  // ("returned to the account it came from … go out when the deposit is HELD, before any money is sent back").
+  // ⭐ RE-PINNED 2026-10-14 (S9 release candidate, Ali's decision): the TITLE MATCHES THE BODY — "held for return" in all
+  // three languages wherever a held deposit is named, superseding the 2026-10-07 "Reversed" label for it. So the truth is:
+  // the title says held for return, the body (approved as written) says it was not added and the money is held for
+  // return, and nothing claims a delivered return or the word "Reversed", in any language.
+  const heldTruth = (n: { titleEn?: string; titleSw?: string; titleZh?: string | null; bodyEn?: string; bodySw?: string; bodyZh?: string | null } | null) =>
+    !!n && /^Deposit held for return · /.test(n.titleEn ?? "") && /^Amana imeshikiliwa ili irudishwe · /.test(n.titleSw ?? "") && /^充值暂扣待退还 · /.test(n.titleZh ?? "")
+    && /not added/i.test(n.bodyEn ?? "") && /held for return/i.test(n.bodyEn ?? "")
+    && /zinashikiliwa ili zirudishwe/.test(n.bodySw ?? "") && /待退还/.test(n.bodyZh ?? "")
+    && !/reversed|has been returned|returned to where|imerudishwa|已(?:原路)?退回/i.test(`${n.titleEn} ${n.titleSw} ${n.titleZh} ${n.bodyEn} ${n.bodySw} ${n.bodyZh}`);
+  ok("a held deposit's title matches its body — held for return, claiming no delivered return and never \"Reversed\"",
+    heldTruth(reversed), `${reversed?.titleEn} · ${reversed?.bodyEn}`);
+  // POSITIVE CONTROLS — the predicate can still say NO: the pre-S9 body (a delivered-return claim), and each language's
+  // superseded "Reversed" title, are all rejected.
+  ok("control · the old delivered-return body is rejected", !!reversed && !heldTruth({ ...reversed,
+    bodyEn: "Your account is self-excluded, so this deposit was not added. It has been returned to where it came from.",
+    bodySw: "Akaunti yako imejifungia, hivyo amana hii haikuongezwa. Imerudishwa ilikotoka.", bodyZh: "您的账户处于自我限制状态，此笔充值未入账，已原路退回。" }));
+  ok("control · a \"Reversed\" title is rejected in every language", !!reversed
+    && !heldTruth({ ...reversed, titleEn: "Deposit reversed · TZS 50,000" })
+    && !heldTruth({ ...reversed, titleSw: "Amana imerudishwa · TZS 50,000" })
+    && !heldTruth({ ...reversed, titleZh: "充值已退回 · TZS 50,000" }));
   const processing = await N.notifyDeposit(U, { status: "PROCESSING", amount: 50_000, provider: "Selcom", txnId: "txn_p" });
   ok("a processing deposit warns against paying twice", /Don't pay again/i.test(processing?.bodyEn ?? ""));
   ok("…in Swahili", /Usilipe tena/i.test(processing?.bodySw ?? ""));

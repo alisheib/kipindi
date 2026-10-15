@@ -81,12 +81,16 @@ const POLL_MS = 250;
 /**
  * THE PARTS. `marker` is a string only `file` holds in src/ — it finds the part's chunk whatever the bundler names it.
  * `query` asks the part to show to automation; `shown` counts it on the page (see `PROBE`).
+ * ⚠️ The primer's marker was its opt-in's storage key, "kp-primer-force", until the Vodacom plan S11 WP2 (2026-10-14) moved
+ * that opt-in's declaration to `src/lib/onboarding/primer-keys.ts`, which the How-to host imports too — a module two lazy
+ * parts share can land in a chunk of its own, so its strings no longer find the primer's chunk. The marker is now the
+ * primer's own SVG gradient id, which nothing else under src/ spells (S1 holds that).
  */
 export const PARTS = [
   { id: "chat", name: "the chat bubble", loader: "src/components/layout/lazy-overlays.tsx", l1: true,
     file: "src/components/chat/ChatRoot.tsx", marker: "50pick-chat-history", query: "" },
   { id: "primer", name: "the first-visit primer", loader: "src/components/layout/lazy-overlays.tsx", l1: true,
-    file: "src/components/onboarding/first-visit-primer.tsx", marker: "kp-primer-force", query: "?primer=1" },
+    file: "src/components/onboarding/first-visit-primer.tsx", marker: "primer-no-fill", query: "?primer=1" },
   { id: "consent", name: "the analytics consent prompt (a part of the shell's lazy module)", loader: "src/components/layout/shell-lazy.tsx", l1: false,
     file: "src/components/analytics/consent-prompt.tsx", marker: "kp-consent-force", query: "?consent=1" },
 ];

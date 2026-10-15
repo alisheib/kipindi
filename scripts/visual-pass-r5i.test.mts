@@ -152,6 +152,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/journey/cards/journey-card.tsx": [2, "SIDE — the journey card's two picks in the side buttons' inks (`btn-yes` / `btn-no`); its result chip takes the outcome's ink from `cardFace` (S7 WP5)"],
   "src/components/journey/bet-sheet/bet-sheet.tsx": [2, "SIDE — S8 receipt's committed YES/NO chip (§B2), without a projected payout"],
   "src/components/journey/bet-sheet/sheet-parts.tsx": [2, "SIDE — S8 chosen-side kit Chip, the side locked for this stake (§B2)"],
+  "src/components/journey/updown/jud-arm.tsx": [6, "SIDE — S12 Juu/Chini journey arm: each side's staked chip, the Up/Down buttons and the chosen-side chip (§B2)"],
   "src/components/journey/question/journey-bet-buttons.tsx": [2, "SIDE — S8 question page's two stake choices, the kit YES/NO button inks (§B2)"],
   "src/components/journey/question/journey-holder.tsx": [3, "SIDE and LOSS — S8 held ticket's side word plus the owner's betting-rose LOSS ruling (§B2a)"],
   "src/components/layout/live-ticker.tsx": [2, "SIDE — a bet's side in the ticker (classic chrome, frozen)"],
@@ -180,7 +181,10 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/lib/brand-mark.ts": [2, "MARK — the mark's green and red (§B1a, the one definition)"],
   "src/components/ui/identity-avatar.tsx": [2, "OWNER — the heraldic crest's split field (§B1a: 'a SECOND system and must not borrow from the mark' — the owner's question)"],
   // ── KIT: an atom's side tones, offered for a side ─────────────────────────────────────────────────────────────────────
-  "src/components/ui/button.tsx": [2, "KIT — the `yes`/`no` side buttons (its only `yes` caller is the console's)"],
+  // Reworded 2026-10-14 (the Vodacom plan S12 WP6): its callers were the console's three verdict commits (AML's approve arm, the
+  // player's Suspend / Restore, the balance's Credit / Debit), now `primary` / `danger`, so the variants have NO caller. The count
+  // stays 2 — the census reads the variant map's own two classes — and the kit keeps them for a side, as it keeps dot.tsx's.
+  "src/components/ui/button.tsx": [2, "KIT — the `yes`/`no` side buttons, offered for a side (no caller: the console's three verdicts left them in S12 WP6; test:betting-ink §8c holds the console at none)"],
   "src/components/ui/chip.tsx": [4, "KIT — the `yes`/`no` side chips · OWNER: `hot` shares the NO rose (the board's hot flag — §B2a's 'Ali's call')"],
   "src/components/ui/dot.tsx": [2, "KIT — the `yes`/`no` side dots (no player caller)"],
   "src/components/ui/receipt-row.tsx": [6, "KIT — the `yes`/`no` side rows (no player caller)"],

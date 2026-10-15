@@ -17,8 +17,43 @@ const SHELL = "src/components/layout/app-shell.tsx";
 const MANIFEST = "public/manifest.json";
 const SURFACES = "src/lib/surfaces.ts";
 const NEEDLE = "src/components/layout/needle.tsx";
+/** The manifest the flip will ship, prepared by S12 (the Vodacom plan's WP14) and applied by S15 — §10 of the suite. */
+const PATCH = "docs/design-system/v5-2026-09-29-simplified-journey/s12-manifest-patch.json";
 
 export const MUTATIONS = [
+  // ── §10 · the prepared manifest (S12 WP14, 2026-10-14) ──────────────────────────────────────────────────────────
+  {
+    name: "the-prepared-shortcut-opens-no-route",
+    why: "Tiketi zangu pointed at a page that does not exist — the shortcut would open the not-found page on every phone that installed the app.",
+    file: PATCH,
+    from: `        "url": "/positions",`,
+    to: `        "url": "/tickets",`,
+    check: "10.3 every shortcut it names opens a real route",
+  },
+  {
+    name: "the-prepared-icon-is-neither-there-nor-to-be-drawn",
+    why: "A shortcut names a picture that is not on disk and that nobody was asked to draw: the installed app would carry a broken mark.",
+    file: PATCH,
+    from: `        "icons": [{ "src": "/icons/shortcut-tiketi.png", "type": "image/png", "sizes": "96x96" }]`,
+    to: `        "icons": [{ "src": "/icons/shortcut-tickets.png", "type": "image/png", "sizes": "96x96" }]`,
+    check: "10.4 every icon and screenshot it names is on disk",
+  },
+  {
+    name: "a-redrawn-picture-keeps-its-immutable-name",
+    why: "The new Maswali picture is filed under a name already served one-year immutable: every phone that cached the old picture keeps it.",
+    file: PATCH,
+    from: `      "path": "/icons/shortcut-maswali.png",`,
+    to: `      "path": "/icons/shortcut-markets.png",`,
+    check: "10.4 every icon and screenshot it names is on disk",
+  },
+  {
+    name: "the-tagline-is-invented",
+    why: "S11 owns the tagline; a name with words written here instead of the marked placeholder ships a tagline nobody approved.",
+    file: PATCH,
+    from: `    "name": "50pick — {{S11_TAGLINE}}",`,
+    to: `    "name": "50pick — Bashiri, ushinde.",`,
+    check: "10.5 ⛔ the name carries S11's tagline as a MARKED placeholder",
+  },
   {
     name: "ios-loses-its-already-installed-check",
     why: "⛔ THE CASE A DESKTOP DEV BROWSER NEVER SHOWS YOU. `matchMedia(\"(display-mode: standalone)\")` "

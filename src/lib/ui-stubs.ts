@@ -39,6 +39,8 @@ export type Transaction = {
   /** Whether this row has a receipt — decided on the STORED type (`hasReceipt`, lib/wallet/receipts.ts), never on
    *  `type` above, which is a display fold (a bonus credit folds to `deposit`). */
   hasReceipt?: boolean;
+  /** A deposit held for return (`isRgHeldDeposit`): filed as `reversed`, NAMED "Held for return" (Ali, 2026-10-14). */
+  heldForReturn?: boolean;
 };
 
 /** Logged-out shell identity (isAuthed:false) — never an authenticated user. */

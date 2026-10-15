@@ -34,8 +34,10 @@ const PHASE = process.env.PHASE || "after";
 const OUT = join(REPO, ".qa-shots", "mobile-visual", "U2", PHASE, WHO);
 mkdirSync(OUT, { recursive: true });
 const UA = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
+// sw label re-pinned 2026-10-14 (S12 WP3, review 2): `nav.cardSpacing` "Nafasi ya kadi" → "Ukubwa wa kadi". The privacy
+// notice keeps "nafasi ya kadi" until its own next version (S12-PLAN Open point 29).
 const WORDS = {
-  sw: { label: "Nafasi ya kadi", compact: "Ndogo", comfortable: "Kubwa" },
+  sw: { label: "Ukubwa wa kadi", compact: "Ndogo", comfortable: "Kubwa" },
   en: { label: "Card spacing", compact: "Compact", comfortable: "Comfortable" },
   zh: { label: "卡片间距", compact: "紧凑", comfortable: "宽松" },
 };

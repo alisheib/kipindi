@@ -82,7 +82,14 @@ interface SiteVisitDal {
   bumpSource(day: string, s: Omit<SourceTotal, "visits">): Promise<void>;
   report(fromDay: string, toDay: string, top: number): Promise<Omit<SiteVisitsReport, "fromDay" | "toDay" | "views" | "visits">>;
   pruneBefore(day: string): Promise<number>;
+  /** One path's views per EAT day (S13: the home page's views for the measures — never a top-N ranking). */
+  pathByDay(path: string, fromDay: string, toDay: string): Promise<DayViews[]>;
+  /** Landing visits per EAT day and campaign tag, the empty tag left out (S13's campaign table). */
+  campaignsByDay(fromDay: string, toDay: string): Promise<CampaignVisits[]>;
 }
+
+export type DayViews = { day: string; views: number };
+export type CampaignVisits = { day: string; campaign: string; visits: number };
 
 type MemPage = { day: string; path: string; views: number; entries: number };
 type MemSource = SourceTotal & { day: string };
@@ -132,6 +139,22 @@ const memoryDal: SiteVisitDal = {
       sources: rank([...sources.values()], (s) => s.visits, top),
     };
   },
+  async pathByDay(path, fromDay, toDay) {
+    const out: DayViews[] = [];
+    for (const r of mem.pages.values()) if (r.path === path && r.day >= fromDay && r.day <= toDay) out.push({ day: r.day, views: r.views });
+    return out.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+  },
+  async campaignsByDay(fromDay, toDay) {
+    const acc = new Map<string, CampaignVisits>();
+    for (const r of mem.sources.values()) {
+      if (!r.campaign || r.day < fromDay || r.day > toDay) continue;
+      const k = JSON.stringify([r.day, r.campaign]);
+      const x = acc.get(k) ?? { day: r.day, campaign: r.campaign, visits: 0 };
+      x.visits += r.visits;
+      acc.set(k, x);
+    }
+    return [...acc.values()].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : a.campaign < b.campaign ? -1 : a.campaign > b.campaign ? 1 : 0));
+  },
   async pruneBefore(day) {
     let n = 0;
     for (const [k, r] of mem.pages) if (r.day < day) { mem.pages.delete(k); n++; }
@@ -180,6 +203,21 @@ const prismaDal: SiteVisitDal = {
       sources: sources.map((r: any) => ({ referrer: r.referrer, source: r.source, medium: r.medium, campaign: r.campaign, visits: r._sum.visits ?? 0 })),
     };
   },
+  async pathByDay(path, fromDay, toDay) {
+    const client = prisma(); if (!client) return [];
+    const rows = await (client as any).siteVisitPage.findMany({
+      where: { day: { gte: fromDay, lte: toDay }, path }, select: { day: true, views: true }, orderBy: { day: "asc" },
+    });
+    return rows.map((r: any) => ({ day: r.day, views: r.views }));
+  },
+  async campaignsByDay(fromDay, toDay) {
+    const client = prisma(); if (!client) return [];
+    const rows = await (client as any).siteVisitSource.groupBy({
+      by: ["day", "campaign"], where: { day: { gte: fromDay, lte: toDay }, campaign: { not: "" } }, _sum: { visits: true },
+      orderBy: [{ day: "asc" }, { campaign: "asc" }],
+    });
+    return rows.map((r: any) => ({ day: r.day, campaign: r.campaign, visits: r._sum.visits ?? 0 }));
+  },
   async pruneBefore(day) {
     const client = prisma(); if (!client) return 0;
     const [a, b] = await Promise.all([
@@ -218,6 +256,16 @@ export async function siteVisitsReport(fromDay: string, toDay: string, top = 20)
     views: r.days.reduce((n, d) => n + d.views, 0),
     visits: r.days.reduce((n, d) => n + d.entries, 0),
   };
+}
+
+/** One path's views per EAT day, inclusive range — a narrow read, never a top-N ranking (S13-PLAN Correction 10). */
+export async function pathViewsByDay(path: string, fromDay: string, toDay: string): Promise<DayViews[]> {
+  return dal.pathByDay(path, fromDay, toDay);
+}
+
+/** Landing visits per EAT day and campaign tag (as the visit counter stored it), inclusive range. */
+export async function campaignVisitsByDay(fromDay: string, toDay: string): Promise<CampaignVisits[]> {
+  return dal.campaignsByDay(fromDay, toDay);
 }
 
 /** Retention: delete counts for days before the EAT day SITE_VISIT_RETENTION_DAYS before `now`. Returns rows deleted. */

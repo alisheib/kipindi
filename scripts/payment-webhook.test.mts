@@ -182,7 +182,8 @@ ok("R.6 · a payout the webhook FAILED is notDone in the wallet's result — nev
 
 // ── RECONCILE: sweep a stuck pending deposit ───────────────────────────────
 await makePlayer("usr_rec");
-const d4 = await deposit("usr_rec", { provider: "MPESA", amount: 7_000 });
+// Exercise the real funding tuple even on the mock rail: a mobile-money row with no phone is not a signed-probe identity.
+const d4 = await deposit("usr_rec", { provider: "MPESA", amount: 7_000, msisdn: localDigits.get("usr_rec")! });
 const d4Txn = d4.ok ? d4.data!.txnId : "";
 ok("recon: deposit starts PROCESSING", await st(d4Txn) === "PROCESSING");
 const swept = await reconcileStalePayments(-1); // everything older than "now + 1ms" → all pending
@@ -384,32 +385,36 @@ for (const k of ["PAYMENT_AGGREGATOR", "PAYMENT_API_URL", "PAYMENT_API_KEY", "PA
     resultPhase("PENDING") === "moving" && resultPhase("PROCESSING") === "moving" && resultPhase("AML_REVIEW") === "review"
     && resultPhase("SOMETHING_NEW") === "moving" && resultPhase(undefined) === "moving");
 
-  // R.7 · THE REPLAY THE PAGE MUST SURVIVE (wallet-service unchanged): a used idempotency key returns its row, ok, even
-  //       when that row FAILED. A retry that re-sent the same key got this answer — and the modal called it a success.
+  // R.7 · THE REPLAY THE PAGE MUST SURVIVE: the same valid funding intent/key returns its row, ok, even when FAILED.
+  //       The handset is required by the real deposit action; omitting it no longer describes a recoverable MNO intent.
+  //       A retry that re-sent the same key got this answer — and the old modal called it a success.
   process.env.PAYMENTS_DEMO_ASYNC = "true";
   await makePlayer("usr_result");
-  const first = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_1");
+  const replayInput = { provider: "MPESA" as const, amount: 8_000, msisdn: "712345678" };
+  const first = await deposit("usr_result", replayInput, "idem_result_1");
   const firstTxn = first.ok ? first.data!.txnId : "";
   await settlePaymentWebhook({ providerRef: await ref(firstTxn), status: "FAILED" });
-  const replay = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_1");
+  const replay = await deposit("usr_result", replayInput, "idem_result_1");
   ok("R.7 · the same key after a webhook FAILED replays the row: ok, the same txnId, status FAILED",
     !!firstTxn && await st(firstTxn) === "FAILED" && replay.ok === true && replay.data!.txnId === firstTxn && replay.data!.status === "FAILED");
   // R.8 · …and the wallet's result for that replay is notDone, not "Funds added".
   ok("R.8 · the replayed FAILED row reads notDone", replay.ok === true && resultPhase(replay.data!.status) === "notDone");
   // R.9 · control · a NEW key is a new attempt — which is what the forms now send after a signed refusal (R.12).
-  const fresh = await deposit("usr_result", { provider: "MPESA", amount: 8_000 }, "idem_result_2");
+  const fresh = await deposit("usr_result", replayInput, "idem_result_2");
   ok("R.9 · control · a new key makes a new attempt (a different txnId)",
     fresh.ok === true && !!fresh.data!.txnId && fresh.data!.txnId !== firstTxn);
   delete process.env.PAYMENTS_DEMO_ASYNC;
 
-  // R.10 · the modal reads the phase, not the old one-status test.
+  // R.10 · the modal delegates its status and server-decided deposit kind to the shared copy reader.
   const flat = (s: string) => s.replace(/\s+/g, " ");
   const modal = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/wallet-result-modal.tsx"), "utf8")));
+  const resultCopy = flat(decomment(readFileSync(join(ROOT, "src/lib/wallet/result-copy.ts"), "utf8")));
   const OLD_PENDING = 'const pending = status === "PROCESSING";';
-  const modalReadsPhase = (s: string) => s.includes("resultPhase(status)") && !s.includes(OLD_PENDING);
-  ok("R.10 · the result modal derives its state from resultPhase(status), not `status === \"PROCESSING\"`", modalReadsPhase(modal));
-  const plantedModal = modal.replace('const pending = phase === "moving";', OLD_PENDING);
-  ok("R.10c · control · the planted pre-fix line fails R.10", plantedModal !== modal && !modalReadsPhase(plantedModal));
+  const modalReadsPhase = (m: string, c: string) => m.includes("walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind })")
+    && c.includes("resultPhase(status)") && c.includes('const pending = phase === "moving";') && !c.includes(OLD_PENDING);
+  ok("R.10 · the result modal derives its state through walletResultCopy and resultPhase(status)", modalReadsPhase(modal, resultCopy));
+  const plantedCopy = resultCopy.replace('const pending = phase === "moving";', OLD_PENDING);
+  ok("R.10c · control · the planted pre-fix line fails R.10", plantedCopy !== resultCopy && !modalReadsPhase(modal, plantedCopy));
 
   // R.11 · the page mounts the modal for the STORED type — a bet id typed into ?deposited= gets no modal.
   const walletPage = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/page.tsx"), "utf8")));

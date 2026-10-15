@@ -373,8 +373,21 @@ const ALLOW: readonly Allow[] = [
     excerpt: "kp-sheet-intents:v2: … vitambulisho vya maombi vilivyotengenezwa bila mpangilio",
     why: "this exact storage disclosure names account/request identifiers and random request keys; it makes no claim about identity verification or a money gate",
   },
+  {
+    // ⭐ Found 2026-10-14 (the Vodacom plan S11 WP4: §7 names How to play's seen key). Read in full and TRUE: the unit is
+    //   §7's last paragraph. Its kp-utm sentence says the campaign tags of the visit's FIRST page ("ukurasa wa kwanza") are
+    //   kept with no IDENTIFIER ("hazina kitambulisho", a technical identifier it denies keeping), and the next sentence names
+    //   the guide by its own name, "Jinsi ya kucheza" (How to play) — so identity, "kwanza" and "kucheza" meet in one unit
+    //   and nothing binds identity to betting. The en and zh twins trip nothing. ⛔ Not reworded here: player copy is not
+    //   this guard's to edit.
+    where: "src/app/legal/privacy/page.tsx · sw",
+    rule: 2,
+    sha: "53d95be86ae04fd4",
+    excerpt: "… ukurasa wa kwanza … hazina kitambulisho … kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, …)",
+    why: "kitambulisho is a technical identifier the kp-utm sentence denies keeping, kwanza is a visit's first page, and kucheza is the guide's own name — nothing binds identity to betting",
+  },
 ];
-const ALLOW_SIZE = 3;
+const ALLOW_SIZE = 4;
 const used = new Set<Allow>();
 const shaOf = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 
@@ -410,7 +423,8 @@ function scan(where: string, locs: readonly Loc[], units: readonly Unit[], rules
  *   P3 · notification-service.ts — notifyWithdraw has exactly ONE `if (opts.status === "AML_REVIEW")` branch, and
  *        only literals inside that branch are the surface;
  *   P4 · the dictionary keys `common.withdrawalUnderReview` / `common.amlReviewBody` are read by ONE file,
- *        wallet-result-modal.tsx, and only behind `amlHeld = isWithdraw && status === "AML_REVIEW"`.
+ *        lib/wallet/result-copy.ts (the /wallet result's words, moved out of wallet-result-modal.tsx in the S9 release
+ *        candidate, 2026-10-14), and only behind `amlHeld = isWithdraw && status === "AML_REVIEW"`.
  * A failed proof leaves its surface's hits standing as violations AND prints its own FAIL in §6.
  */
 const readSrc = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
@@ -513,7 +527,9 @@ function proveNotificationBranch(ns: string): Proof & { branch: Span | null } {
   return { ok: true, why: "one AML_REVIEW branch in notifyWithdraw", branch: branches[0] };
 }
 
-const MODAL = "src/app/wallet/wallet-result-modal.tsx";
+// The /wallet result's words live in ONE pure module since the S9 release candidate (2026-10-14): the modal renders what
+// `walletResultCopy` returns. The proof follows the words, not the component's file name.
+const MODAL = "src/lib/wallet/result-copy.ts";
 function proveDictKeys(files: readonly SrcFile[]): Proof {
   const readers = files.filter((f) => f.rel !== "src/lib/i18n-dict.ts" && /\b(?:withdrawalUnderReview|amlReviewBody)\b/.test(f.d)).map((f) => f.rel);
   const modal = files.find((f) => f.rel === MODAL);
@@ -1141,10 +1157,26 @@ ok("§6 proof · the src/ files naming a surface were read", R4_FILES.length >= 
   const strayMail = R4_FILES.map((f) => (f.rel === "src/lib/server/wallet-service.ts"
     ? { rel: f.rel, d: `${f.d}\nexport function plantedMail(amount: number) {\n  return withdrawalUnderReviewHtml({ amount, reference: "x" });\n}\n` } : f));
   ok("§6 proof control · P2 FAILS when the held-withdrawal email is sent outside the held block", P2.ok && !proveTriggers(strayMail).ok);
+  // ⚠️ RE-SCOPED 2026-10-14 (S9 root review H3). The plant used to land at the FIRST `if (opts.status === "AML_REVIEW") {`
+  // in the whole file — and S9 added one EARLIER, in notifyDeposit, so the plant grew notifyDeposit a branch and the control
+  // proved nothing about notifyWithdraw. It now lands inside notifyWithdraw's own text, and states that it did.
+  const notifyWithdrawAt = NOTIFY_SRC.search(/\bexport\s+function\s+notifyWithdraw\s*\(/);
+  const branchRe = /if\s*\(\s*opts\.status\s*===\s*"AML_REVIEW"\s*\)\s*\{/;
+  const intoWithdraw = notifyWithdrawAt < 0 ? NOTIFY_SRC : NOTIFY_SRC.slice(0, notifyWithdrawAt)
+    + NOTIFY_SRC.slice(notifyWithdrawAt).replace(branchRe, (m) => `if (opts.status === "AML_REVIEW") { return null; }\n  ${m}`);
   ok("§6 proof control · P3 FAILS when notifyWithdraw grows a second AML_REVIEW branch",
-    P3.ok && !proveNotificationBranch(NOTIFY_SRC.replace(/if\s*\(\s*opts\.status\s*===\s*"AML_REVIEW"\s*\)\s*\{/, (m) => `if (opts.status === "AML_REVIEW") { return null; }\n  ${m}`)).ok);
-  const otherStatus = R4_FILES.map((f) => (f.rel === MODAL ? { rel: f.rel, d: f.d.replace(/status\s*===\s*"AML_REVIEW"/, 'status === "PROCESSING"') } : f));
-  ok("§6 proof control · P4 FAILS when the modal shows the held copy for another status", P4.ok && !proveDictKeys(otherStatus).ok);
+    P3.ok && notifyWithdrawAt >= 0 && intoWithdraw !== NOTIFY_SRC && !proveNotificationBranch(intoWithdraw).ok);
+  // …and the control is scoped: the same extra branch planted in ANOTHER function (notifyDeposit's, first in the file) is
+  // not notifyWithdraw's business, so P3 still holds there.
+  const intoOther = NOTIFY_SRC.replace(branchRe, (m) => `if (opts.status === "AML_REVIEW") { return null; }\n  ${m}`);
+  ok("§6 proof control · P3 is scoped to notifyWithdraw — a branch planted in an earlier function does not move it",
+    P3.ok && NOTIFY_SRC.search(branchRe) < notifyWithdrawAt && intoOther !== NOTIFY_SRC && proveNotificationBranch(intoOther).ok);
+  // ⚠️ SCOPED 2026-10-14 (S9 release candidate). The plant used to land on the FIRST `status === "AML_REVIEW"` in the file;
+  // since the words moved to lib/wallet/result-copy.ts the first one is a deposit's default, so the plant proved nothing about
+  // `amlHeld`. It now lands inside the `amlHeld` declaration itself, and the control states that the plant changed the text.
+  const otherStatus = R4_FILES.map((f) => (f.rel === MODAL ? { rel: f.rel, d: f.d.replace(/(\bconst\s+amlHeld\s*=\s*isWithdraw\s*&&\s*)status\s*===\s*"AML_REVIEW"/, '$1status === "PROCESSING"') } : f));
+  ok("§6 proof control · P4 FAILS when the modal shows the held copy for another status",
+    P4.ok && otherStatus.some((f, i) => f.d !== R4_FILES[i].d) && !proveDictKeys(otherStatus).ok);
   ok("§6 proof control · P4 FAILS when a second file reads the held copy",
     P4.ok && !proveDictKeys([...R4_FILES, { rel: "src/app/wallet/page.tsx", d: "const x = t.common.amlReviewBody;" }]).ok);
   ok(`§6 the surface allow-list holds exactly ${R4_SURFACE_SIZE} surfaces`, R4_SURFACES.length === R4_SURFACE_SIZE,
