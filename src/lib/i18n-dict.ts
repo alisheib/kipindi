@@ -3782,11 +3782,11 @@ export const dict = {
       picksNone: "Bado huna chaguo. Chagua upande kwenye soko ili ufanye chaguo lako la kwanza.",
       emptyBalance: "Salio lako ni tupu. Weka pesa kwa pesa ya simu au kadi ili ufanye chaguo lako lijalo.",
       browsFirst: "Tazama masoko kwanza →",
-      liveSection: "Hai",
-      updownEyebrow: "Mchezo wa kasi · hai",
+      liveSection: "Mubashara",
+      updownEyebrow: "Mchezo wa kasi · mubashara",
       updownCta: "Cheza Juu na Chini",
-      updownRoundsLive: "raundi {n} hai sasa",
-      updownRoundsLiveOne: "raundi 1 hai sasa",
+      updownRoundsLive: "raundi {n} mubashara sasa",
+      updownRoundsLiveOne: "raundi 1 mubashara sasa",
       udMatchUpLeads: "Juu inaongoza",
       udMatchDownLeads: "Chini inaongoza",
       udMatchUpLed: "Juu iliongoza",
@@ -3835,7 +3835,7 @@ export const dict = {
 
       gridSeeAll: "Masoko yote {n}",
 
-      topicLive: "{n} hai",
+      topicLive: "{n} mubashara",
       topicAll: "Mada zote",
 
       trustEyebrow: "Kwa nini matokeo yanaweza kuaminiwa",
@@ -3870,7 +3870,7 @@ export const dict = {
       noMarketsMatch: "Hakuna soko linalolingana",
       marketsMatch: "masoko yanalingana",
       marketMatch: "soko linaingana",
-      liveCount: "hai",
+      liveCount: "mubashara",
       tzsInPlay: "katika mchezo",
       noLiveNow: "Hakuna soko mubashara sasa hivi",
       noLiveBody: "Masoko mubashara yatatokea hapa yanapofunguliwa kwa biashara.",
