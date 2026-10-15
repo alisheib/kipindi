@@ -323,8 +323,10 @@ export const MUTATIONS = [
     file: SVC,
     // 2026-10-09 (round 3 of the visual pass): the win's label is the market's name alone — the " · ${p.id}" it carried
     // was a raw id in the sentence — so the anchor is the new call's tail; the defect put back is the same one.
-    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));",
-    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
+    // RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the label now goes through `messageTitles` (the switch that
+    // carries the approved short title from the S15 flip), so the tail gained `, m)`. Same defect put back.
+    from: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id));",
+    to: "localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id) + (p.houseBotId != null ? \"#50pick-liquidity-stake\" : \"\"));",
     expect: "8.2 · …and its English body is the plain template",
     suite: "money-mem",
   },

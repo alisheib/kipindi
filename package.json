@@ -674,6 +674,8 @@
     "red:short-title-edit": "tsx scripts/short-title-edit.test.mts --prove-red",
     "test:short-title-ai": "tsx scripts/short-title-ai.test.mts",
     "red:short-title-ai": "tsx scripts/short-title-ai.test.mts --prove-red",
+    "test:message-titles": "tsx scripts/db-scratch.mts --run npx tsx scripts/message-titles.test.mts",
+    "red:message-titles": "node scripts/red-message-titles.mjs",
     "test:journey-estimate": "tsx scripts/journey-estimate.test.mts",
     "red:journey-estimate": "tsx scripts/journey-estimate.test.mts --prove-red",
     "test:card-close-label": "tsx scripts/card-close-label.test.mts",

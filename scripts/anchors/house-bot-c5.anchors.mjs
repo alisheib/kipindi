@@ -274,16 +274,20 @@ export const MUTATIONS = [
   {
     name: "c5-s4:S4-M43 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read,…",
     file: MARKET_SERVICE,
-    from: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id });",
-    to: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, positionId: p.id });",
+    // RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the notice's title now goes through `messageTitles`, the switch
+    // that carries the approved short title from the S15 flip. The defect planted is unchanged: the reason, conditioned on
+    // the house stake.
+    from: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id });",
+    to: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, positionId: p.id });",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
   {
     name: "c5-s4:S4-M44 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read,…",
     file: MARKET_SERVICE,
-    from: "        html: marketCancelledRefundHtml({ title: m.titleEn, reason, amount: p.stake, reference: p.id }),",
-    to: "        html: marketCancelledRefundHtml({ title: m.titleEn, reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, amount: p.stake, reference: p.id }),",
+    // RE-ANCHORED 2026-10-14 (S12 WP12): the letter's title goes through `messageTitle` (English, the switch). Same plant.
+    from: "        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason, amount: p.stake, reference: p.id }),",
+    to: "        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, amount: p.stake, reference: p.id }),",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
