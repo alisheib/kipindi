@@ -7,97 +7,355 @@
     {
       "id": "home",
       "deckImage": "docs/design-system/v5-2026-09-29-simplified-journey/frames/1-home.png",
-      "evidence": null,
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      },
       "checks": [
-        { "id": "H01", "check": "50pick mark leads the header; the 18+ badge uses neutral ink.", "checked": false },
-        { "id": "H02", "check": "Salio captions the mono TZS balance; the hidden-balance preference masks it.", "checked": false },
-        { "id": "H03", "check": "Weka pesa is the header money action for an eligible signed-in viewer.", "checked": false },
-        { "id": "H04", "check": "How-to card title is Jinsi ya kucheza and opens the sheet.", "checked": false },
-        { "id": "H05", "check": "How-to card meta is Hatua 3 · dakika 1, after the title.", "checked": false },
-        { "id": "H06", "check": "Headline is Jibu swali. NDIO au HAPANA. on two lines at 360px.", "checked": false },
-        { "id": "H07", "check": "Topic chips begin Zote, Michezo, Hali ya hewa, Uchumi; selected state is visible.", "checked": false },
-        { "id": "H08", "check": "Each card begins with topic/competition and a truthful close label.", "checked": false },
-        { "id": "H09", "check": "The short question is complete, readable, and below the card metadata.", "checked": false },
-        { "id": "H10", "check": "NDIO and HAPANA buttons each show a qualified ≈ estimate for the stake; no fixed payout is promised.", "checked": false },
-        { "id": "H11", "check": "Onyesha zaidi follows the question list and reaches more cards.", "checked": false },
-        { "id": "H12", "check": "The footer follows the list without clipping or a decorative gold figure.", "checked": false },
-        { "id": "H13", "check": "Fixed tabs read Maswali, Juu/Chini, Tiketi zangu, Akaunti; no centre deposit coin appears.", "checked": false }
+        {
+          "id": "H01",
+          "check": "50pick mark leads the header; the 18+ badge uses neutral ink.",
+          "checked": true
+        },
+        {
+          "id": "H02",
+          "check": "Salio captions the mono TZS balance; the hidden-balance preference masks it.",
+          "checked": true
+        },
+        {
+          "id": "H03",
+          "check": "Weka pesa is the header money action for an eligible signed-in viewer.",
+          "checked": true
+        },
+        {
+          "id": "H04",
+          "check": "How-to card title is Jinsi ya kucheza and opens the sheet.",
+          "checked": true
+        },
+        {
+          "id": "H05",
+          "check": "How-to card meta is Hatua 3 · dakika 1, after the title.",
+          "checked": true
+        },
+        {
+          "id": "H06",
+          "check": "Headline is Jibu swali. NDIO au HAPANA. on two lines at 360px.",
+          "checked": true
+        },
+        {
+          "id": "H07",
+          "check": "Topic chips begin Zote, Michezo, Hali ya hewa, Uchumi; selected state is visible.",
+          "checked": true
+        },
+        {
+          "id": "H08",
+          "check": "Each card begins with topic/competition and a truthful close label.",
+          "checked": true
+        },
+        {
+          "id": "H09",
+          "check": "The short question is complete, readable, and below the card metadata.",
+          "checked": false
+        },
+        {
+          "id": "H10",
+          "check": "NDIO and HAPANA buttons each show a qualified ≈ estimate for the stake; no fixed payout is promised.",
+          "checked": false
+        },
+        {
+          "id": "H11",
+          "check": "Onyesha zaidi follows the question list and reaches more cards.",
+          "checked": true
+        },
+        {
+          "id": "H12",
+          "check": "The footer follows the list without clipping or a decorative gold figure.",
+          "checked": false
+        },
+        {
+          "id": "H13",
+          "check": "Fixed tabs read Maswali, Juu/Chini, Tiketi zangu, Akaunti; no centre deposit coin appears.",
+          "checked": true
+        }
       ]
     },
     {
       "id": "bet-sheet",
       "deckImage": "docs/design-system/v5-2026-09-29-simplified-journey/frames/2-bet-sheet.png",
-      "evidence": null,
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      },
       "checks": [
-        { "id": "B01", "check": "Umechagua NDIO side chip leads the sheet.", "checked": false },
-        { "id": "B02", "check": "The close control is visible and does not dismiss while a bet is placing.", "checked": false },
-        { "id": "B03", "check": "The chosen question titles the sheet in full.", "checked": false },
-        { "id": "B04", "check": "Dau lako labels the grouped TZS stake input, which keeps a stable caret.", "checked": false },
-        { "id": "B05", "check": "Four quick-stake amounts follow the input, each reachable at phone width.", "checked": false },
-        { "id": "B06", "check": "The estimate panel gives the TZS payout the largest numeral and qualifies it as approximate.", "checked": false },
-        { "id": "B07", "check": "≈ multiplier and Makadirio commission note follow the payout; no fixed outcome is promised.", "checked": false },
-        { "id": "B08", "check": "Salio lako follows the estimate and is live and maskable.", "checked": false },
-        { "id": "B09", "check": "Weka dau · TZS amount is the final action and never commits as a guest.", "checked": false },
-        { "id": "B10", "check": "Initial focus, Escape, Back, keyboard-open height, short height and desktop dialog preserve every control.", "checked": false },
-        { "id": "B11", "check": "An authenticated tap places only the displayed market, side and stake, once; a failure stays in the sheet.", "checked": false }
+        {
+          "id": "B01",
+          "check": "Umechagua NDIO side chip leads the sheet.",
+          "checked": true
+        },
+        {
+          "id": "B02",
+          "check": "The close control is visible and does not dismiss while a bet is placing.",
+          "checked": false
+        },
+        {
+          "id": "B03",
+          "check": "The chosen question titles the sheet in full.",
+          "checked": true
+        },
+        {
+          "id": "B04",
+          "check": "Dau lako labels the grouped TZS stake input, which keeps a stable caret.",
+          "checked": true
+        },
+        {
+          "id": "B05",
+          "check": "Four quick-stake amounts follow the input, each reachable at phone width.",
+          "checked": true
+        },
+        {
+          "id": "B06",
+          "check": "The estimate panel gives the TZS payout the largest numeral and qualifies it as approximate.",
+          "checked": false
+        },
+        {
+          "id": "B07",
+          "check": "≈ multiplier and Makadirio commission note follow the payout; no fixed outcome is promised.",
+          "checked": false
+        },
+        {
+          "id": "B08",
+          "check": "Salio lako follows the estimate and is live and maskable.",
+          "checked": true
+        },
+        {
+          "id": "B09",
+          "check": "Weka dau · TZS amount is the final action and never commits as a guest.",
+          "checked": false
+        },
+        {
+          "id": "B10",
+          "check": "Initial focus, Escape, Back, keyboard-open height, short height and desktop dialog preserve every control.",
+          "checked": false
+        },
+        {
+          "id": "B11",
+          "check": "An authenticated tap places only the displayed market, side and stake, once; a failure stays in the sheet.",
+          "checked": false
+        }
       ]
     },
     {
       "id": "low-balance",
       "deckImage": "docs/design-system/v5-2026-09-29-simplified-journey/frames/3-balance-too-low.png",
-      "evidence": null,
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      },
       "checks": [
-        { "id": "L01", "check": "Selected side and question remain at the top of the low-balance sheet.", "checked": false },
-        { "id": "L02", "check": "The typed TZS stake remains visible and editable.", "checked": false },
-        { "id": "L03", "check": "Compact approximate payout follows the stake, without a false guarantee.", "checked": false },
-        { "id": "L04", "check": "Warning names spendable balance and exact shortfall; no bet is placed by opening it.", "checked": false },
-        { "id": "L05", "check": "The choice eyebrow precedes the two paths.", "checked": false },
-        { "id": "L06", "check": "Primary Weka pesa row states the needed TZS amount and enabled wallet methods and carries the pending bet.", "checked": false },
-        { "id": "L07", "check": "Bet-with-what-you-have appears only when spendable funds meet the market minimum and loss limits.", "checked": false },
-        { "id": "L08", "check": "The original stake action remains disabled until sufficient funds are confirmed.", "checked": false },
-        { "id": "L09", "check": "A pending deposit offers its waiting status instead of inviting a duplicate payment.", "checked": false }
+        {
+          "id": "L01",
+          "check": "Selected side and question remain at the top of the low-balance sheet.",
+          "checked": true
+        },
+        {
+          "id": "L02",
+          "check": "The typed TZS stake remains visible and editable.",
+          "checked": true
+        },
+        {
+          "id": "L03",
+          "check": "Compact approximate payout follows the stake, without a false guarantee.",
+          "checked": false
+        },
+        {
+          "id": "L04",
+          "check": "Warning names spendable balance and exact shortfall; no bet is placed by opening it.",
+          "checked": true
+        },
+        {
+          "id": "L05",
+          "check": "The choice eyebrow precedes the two paths.",
+          "checked": true
+        },
+        {
+          "id": "L06",
+          "check": "Primary Weka pesa row states the needed TZS amount and enabled wallet methods and carries the pending bet.",
+          "checked": true
+        },
+        {
+          "id": "L07",
+          "check": "Bet-with-what-you-have appears only when spendable funds meet the market minimum and loss limits.",
+          "checked": true
+        },
+        {
+          "id": "L08",
+          "check": "The original stake action remains disabled until sufficient funds are confirmed.",
+          "checked": true
+        },
+        {
+          "id": "L09",
+          "check": "A pending deposit offers its waiting status instead of inviting a duplicate payment.",
+          "checked": true
+        }
       ]
     },
     {
       "id": "deposit",
       "deckImage": "docs/design-system/v5-2026-09-29-simplified-journey/frames/4-deposit.png",
-      "evidence": null,
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      },
       "checks": [
-        { "id": "D01", "check": "Focused Weka pesa header has a working Back control.", "checked": false },
-        { "id": "D02", "check": "Pending-bet strip names the selected side and original stake.", "checked": false },
-        { "id": "D03", "check": "Kiasi is prefilled to the shortfall or TZS 1,000 deposit minimum.", "checked": false },
-        { "id": "D04", "check": "Deposit quick chips follow the amount and never exceed the allowed ceiling.", "checked": false },
-        { "id": "D05", "check": "Payment rows show only enabled providers, with one chosen deliberately.", "checked": false },
-        { "id": "D06", "check": "Namba ya simu is present for a mobile rail, with the correct number format.", "checked": false },
-        { "id": "D07", "check": "PIN instruction explains the phone prompt and never claims unconfirmed money arrived.", "checked": false },
-        { "id": "D08", "check": "Lipa states the exact amount and is the final payment action.", "checked": false },
-        { "id": "D09", "check": "Waiting and failure states say not to pay twice and show a truthful provider status.", "checked": false },
-        { "id": "D10", "check": "A confirmed callback credits once and returns to the same bet; the player must press to place it.", "checked": false },
-        { "id": "D11", "check": "Short-height and keyboard-open states keep amount, method, phone and pay action reachable.", "checked": false }
+        {
+          "id": "D01",
+          "check": "Focused Weka pesa header has a working Back control.",
+          "checked": false
+        },
+        {
+          "id": "D02",
+          "check": "Pending-bet strip names the selected side and original stake.",
+          "checked": true
+        },
+        {
+          "id": "D03",
+          "check": "Kiasi is prefilled to the shortfall or TZS 1,000 deposit minimum.",
+          "checked": true
+        },
+        {
+          "id": "D04",
+          "check": "Deposit quick chips follow the amount and never exceed the allowed ceiling.",
+          "checked": false
+        },
+        {
+          "id": "D05",
+          "check": "Payment rows show only enabled providers, with one chosen deliberately.",
+          "checked": false
+        },
+        {
+          "id": "D06",
+          "check": "Namba ya simu is present for a mobile rail, with the correct number format.",
+          "checked": true
+        },
+        {
+          "id": "D07",
+          "check": "PIN instruction explains the phone prompt and never claims unconfirmed money arrived.",
+          "checked": true
+        },
+        {
+          "id": "D08",
+          "check": "Lipa states the exact amount and is the final payment action.",
+          "checked": true
+        },
+        {
+          "id": "D09",
+          "check": "Waiting and failure states say not to pay twice and show a truthful provider status.",
+          "checked": false
+        },
+        {
+          "id": "D10",
+          "check": "A confirmed callback credits once and returns to the same bet; the player must press to place it.",
+          "checked": false
+        },
+        {
+          "id": "D11",
+          "check": "Short-height and keyboard-open states keep amount, method, phone and pay action reachable.",
+          "checked": false
+        }
       ]
     },
     {
       "id": "how-to-play",
       "deckImage": "docs/design-system/v5-2026-09-29-simplified-journey/frames/5-how-to-play.png",
-      "evidence": null,
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      },
       "checks": [
-        { "id": "P01", "check": "Jinsi ya kucheza title and close control lead the sheet.", "checked": false },
-        { "id": "P02", "check": "Step 1 says Chagua swali and explains the NDIO/HAPANA question.", "checked": false },
-        { "id": "P03", "check": "Step 2 says Bonyeza NDIO au HAPANA and describes the approximate estimate.", "checked": false },
-        { "id": "P04", "check": "Step 3 says Weka dau, subiri matokeo and explains the shared pool and result.", "checked": false },
-        { "id": "P05", "check": "Mfano uses TZS 1,000 and ≈2.7× as an estimate, and says a losing bet loses its stake.", "checked": false },
-        { "id": "P06", "check": "Nimeelewa, anza is reachable and dismisses the sheet.", "checked": false },
-        { "id": "P07", "check": "The responsible-play limits link remains; the deck's 0800 11 0011 line is absent under the later owner ruling.", "checked": false },
-        { "id": "P08", "check": "The first-visit presentation and later reopen path both work.", "checked": false }
+        {
+          "id": "P01",
+          "check": "Jinsi ya kucheza title and close control lead the sheet.",
+          "checked": true
+        },
+        {
+          "id": "P02",
+          "check": "Step 1 says Chagua swali and explains the NDIO/HAPANA question.",
+          "checked": true
+        },
+        {
+          "id": "P03",
+          "check": "Step 2 says Bonyeza NDIO au HAPANA and describes the approximate estimate.",
+          "checked": true
+        },
+        {
+          "id": "P04",
+          "check": "Step 3 says Weka dau, subiri matokeo and explains the shared pool and result.",
+          "checked": true
+        },
+        {
+          "id": "P05",
+          "check": "Mfano uses TZS 1,000 and ≈2.7× as an estimate, and says a losing bet loses its stake.",
+          "checked": true
+        },
+        {
+          "id": "P06",
+          "check": "Nimeelewa, anza is reachable and dismisses the sheet.",
+          "checked": true
+        },
+        {
+          "id": "P07",
+          "check": "The responsible-play limits link remains; the deck's 0800 11 0011 line is absent under the later owner ruling.",
+          "checked": true
+        },
+        {
+          "id": "P08",
+          "check": "The first-visit presentation and later reopen path both work.",
+          "checked": false
+        }
       ]
     }
   ],
   "proofs": [
-    { "id": "local-e2e", "check": "e2e:journey drives guest → sheet → register → low balance → mock-rail deposit → waiting → back → manual bet on local data.", "evidence": null },
-    { "id": "visual-matrix", "check": "320/360/390/768/1024/1280/1440 × sw/en/zh × guest/signed-in, plus keyboard-open and short heights, are read as viewport tiles.", "evidence": null },
-    { "id": "adversarial", "check": "Adversarial and mutation audit catches skipped confirmation, duplicate payment/bet and stale/false status.", "evidence": null },
-    { "id": "gate-census", "check": "Every predeploy assertion that S15 must rewrite is named with its post-flip assertion and owner.", "evidence": null },
-    { "id": "agency-preview", "check": "The agency preview and side-by-side PDF are ready, with a redacted delivery record when sent.", "evidence": null }
+    {
+      "id": "local-e2e",
+      "check": "e2e:journey drives guest → sheet → register → low balance → mock-rail deposit → waiting → back → manual bet on local data.",
+      "evidence": null
+    },
+    {
+      "id": "visual-matrix",
+      "check": "320/360/390/768/1024/1280/1440 × sw/en/zh × guest/signed-in, plus keyboard-open and short heights, are read as viewport tiles.",
+      "evidence": {
+        "path": "docs/qa/s14-frame-identity-local-20261015.md",
+        "checkedBy": "Codex S14 frame reader",
+        "checkedAt": "2026-10-15T17:33:36.804Z",
+        "commit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0"
+      }
+    },
+    {
+      "id": "adversarial",
+      "check": "Adversarial and mutation audit catches skipped confirmation, duplicate payment/bet and stale/false status.",
+      "evidence": null
+    },
+    {
+      "id": "gate-census",
+      "check": "Every predeploy assertion that S15 must rewrite is named with its post-flip assertion and owner.",
+      "evidence": null
+    },
+    {
+      "id": "agency-preview",
+      "check": "The agency preview and side-by-side PDF are ready, with a redacted delivery record when sent.",
+      "evidence": null
+    }
   ],
   "productionStaffJourney": {
     "stakeTzs": 1000,
