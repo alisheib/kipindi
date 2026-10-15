@@ -682,6 +682,8 @@
     "test:auth-carry": "tsx scripts/auth-carry.test.mts",
     "red:auth-carry": "tsx scripts/auth-carry.test.mts --prove-red",
     "red:pending-bet": "tsx scripts/pending-bet.test.mts --prove-red",
+    "test:guest-sheet": "tsx scripts/guest-sheet.test.mts",
+    "red:guest-sheet": "tsx scripts/guest-sheet.test.mts --prove-red",
     "test:shortfall": "tsx scripts/shortfall.test.mts",
     "red:shortfall": "tsx scripts/shortfall.test.mts --prove-red",
     "test:bet-sheet": "tsx scripts/bet-sheet.test.mts",

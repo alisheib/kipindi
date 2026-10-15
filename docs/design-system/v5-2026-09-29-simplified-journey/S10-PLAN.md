@@ -1170,3 +1170,14 @@ Ali takes Point for Ali 4" and Open point 15's "(Points for Ali 4)": he took it 
 owner's answers to the open points", item 9). The classic question page's guest panel carries a valid `invite` beside
 `ref`, through `doorHrefsFor`, in a commit of its own on the build branch, so the coordinator can release it alone (a §2
 row). It is the one change in S10 every classic guest receives: that panel's two hrefs, in its HTML and RSC.
+
+**A9 · WP1 as built: the one open-count predicate, and the door tail's single bound.** *Overrides:* WP7's "WP1's
+`returnedOpen`" as the hosts' call, and WP1 step 3's anchor note. *From:* the WP1 build. (1) Both hosts ask ONE
+predicate, `countsSheetOpen({ tapped, markerRaw, bet, nowMs })` (guest-sheet.ts): a tap always counts; an address open
+counts unless `returnedOpen` says it continues a visitor's own counted open. S13's WP4 edits that one call. (2)
+`doorHrefsFor(next, search)` bounds `next` once (`boundedNext`), so `authDoorHrefs` hands an /auth page's own `next` to it
+unbounded and the output is unchanged (pending-bet 7.doors, auth-carry doors.*). red:auth-carry's plant on the old
+`boundedNext((search.get("next") ?? "").trim())` is re-pinned in the open to `const safe = boundedNext(next);`, same
+verdict (doors.hostile). (3) `guestCarry` drops a stake no bet can hold (not whole and positive, or over the grammar's
+nine digits) to the side alone, and refuses a seed id or side the grammar refuses. (4) `betReturnPath` returns a round's
+own `/updown/<id>` whatever the page.

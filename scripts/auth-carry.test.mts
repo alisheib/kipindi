@@ -151,7 +151,8 @@ if (process.argv.includes("--prove-red")) {
     ["registerPage", 'normalizeInviteCode(sp.invite) ?? ""', '(sp.invite ?? "").trim().slice(0, 24)', "register.preview-controls"],
     ["landing", 'if (invite) qs.set("invite", invite);', '', "doors.origin"],
     ["landing", 'k !== "ref" && k !== "invite"', 'k !== "ref"', "doors.origin"],
-    ["landing", 'boundedNext((search.get("next") ?? "").trim())', '(search.get("next") ?? "").trim()', "doors.hostile"],
+    // S10 WP1 (re-pinned in the open): an /auth page's own next is bounded once, in the one door tail `doorHrefsFor`.
+    ["landing", 'const safe = boundedNext(next);', 'const safe = next;', "doors.hostile"],
     ["pending", 'normalizeReferralCode(search.get("ref"))', 'search.get("ref")', "marker.invalid-ref"],
     ["pending", '...attributionFrom(search)', '...attribution', "marker.new-write"],
     ["pending", 'if (typeof m.ref === "string" && CODE.test(m.ref)) out.ref = m.ref;', '', "marker.old-readable"],
