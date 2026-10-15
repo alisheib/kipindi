@@ -60,6 +60,11 @@ const KNOWN_ORPHANS: Record<string, string> = {
   // than a missing control.
   checkTotpAction:
     "read-only TOTP-enrolment lookup; the setup page resolves it server-side instead",
+  // S9 removed the unkeyed payout retry button: a FAILED row does not prove the
+  // provider did not send money. The action only refuses stale/direct callers until
+  // an authoritative keyed retry is designed; there is deliberately no UI caller.
+  retryWithdrawalAction:
+    "legacy payout retry endpoint kept fail-closed for stale clients while provider-authoritative keyed retry is designed",
   // The staff reverse button was deliberately removed: a provider response that is
   // merely not CONFIRMED cannot prove no money was sent. Keep the server action
   // fail-closed for stale clients and direct calls until an authoritative reversal

@@ -393,21 +393,25 @@ section("§B1 · the withdraw panel appears only where money leaves (and in the 
     J(tracked) === J(["src/app/wallet/withdraw/page.tsx"]), J(tracked));
 }
 
-section("§B2 · the first-deposit notice appears only on /wallet and the deposit return page");
+section("§B2 · the first-deposit notice appears only after payment on wallet and deposit return/wait pages");
 {
-  const ALLOWED = new Set(["src/app/wallet/page.tsx", "src/app/wallet/wallet-client.tsx", "src/app/wallet/deposit/return/page.tsx"]);
+  const WAIT_CLIENT = "src/app/wallet/deposit/wait/deposit-waiting-client.tsx";
+  const ALLOWED = new Set(["src/app/wallet/page.tsx", "src/app/wallet/wallet-client.tsx", "src/app/wallet/deposit/return/page.tsx", WAIT_CLIENT]);
   const mounts = mountsOf("KycFirstDepositNotice", code);
   console.log(`     <KycFirstDepositNotice mounted in: ${mounts.join(", ") || "nowhere"}`);
   ok("B2.1 ⛔ <KycFirstDepositNotice is mounted nowhere else", mounts.every((f) => ALLOWED.has(f)), mounts.filter((f) => !ALLOWED.has(f)).join(", "));
   ok("B2.2 control · it IS mounted on /wallet and on the deposit return page",
     (mounts.includes("src/app/wallet/page.tsx") || mounts.includes("src/app/wallet/wallet-client.tsx"))
       && (!existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx")) || mounts.includes("src/app/wallet/deposit/return/page.tsx")), mounts.join(", "));
-  ok("B2.3 every mount renders only on the server's decision", mounts.every((f) => /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\b/.test(code.get(f)!)));
+  ok("B2.3 every mount renders only on the server's decision", mounts.every((f) => f === WAIT_CLIENT
+    ? /view\.state\s*===\s*"PAID"\s*&&\s*firstDepositNotice\s*&&\s*<KycFirstDepositNotice\b/.test(code.get(f)!)
+    : /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\b/.test(code.get(f)!)));
   // ⭐ 2026-10-07: the pages ask `firstDepositNotice` (WHICH notice — identity, email or both); `firstDepositNoticeDue`
   // is its yes/no wrapper. Either name counts as asking the one predicate.
   const callers = files.filter((f) => f !== "src/lib/server/kyc-notice.ts" && /\bfirstDepositNotice(?:Due)?\s*\(/.test(code.get(f)!));
-  ok("B2.4 the one predicate decides for both pages, and nobody else asks it",
-    J(callers.sort()) === J(["src/app/wallet/deposit/return/page.tsx", "src/app/wallet/page.tsx"]), callers.join(", "));
+  ok("B2.4 the one predicate decides for the wallet, return and both wait pages, and nobody else asks it",
+    J(callers.sort()) === J(["src/app/wallet/deposit/return/page.tsx", "src/app/wallet/deposit/wait/[id]/page.tsx",
+      "src/app/wallet/deposit/wait/page.tsx", "src/app/wallet/page.tsx"]), callers.join(", "));
   const rederives = (s: string) => /\b(kycGateState|kycNoticeStateDue)\s*\(/.test(s);
   ok("B2.5 ⛔ neither page re-derives who is due", !rederives(code.get("src/app/wallet/page.tsx")!) && !rederives(code.get("src/app/wallet/deposit/return/page.tsx")!));
   ok("B2.6 control · a page that re-derives it is caught", rederives("const due = kycNoticeStateDue(kycGateState(k));"));
@@ -710,7 +714,8 @@ section("B8 · ⛔ THE DEPOSIT SCREEN SAYS NOTHING ABOUT IDENTITY — the quiet 
   };
   const walkDeposit = (dir: string): string[] => readdirSync(join(ROOT, dir)).flatMap((e) => {
     const rel = `${dir}/${e}`;
-    if (statSync(join(ROOT, rel)).isDirectory()) return e === "return" ? [] : walkDeposit(rel);
+    // Return and wait are after-payment screens. They may show the server's first-deposit notice.
+    if (statSync(join(ROOT, rel)).isDirectory()) return e === "return" || e === "wait" ? [] : walkDeposit(rel);
     return /\.tsx?$/.test(e) ? [rel] : [];
   });
   const files = walkDeposit("src/app/wallet/deposit");

@@ -226,6 +226,7 @@ async function txn(userId: string, patch: Record<string, unknown> = {}) {
   return db.txn.create({ id, walletId: `wlt_${userId}`, userId, type: "DEPOSIT", status: "PROCESSING", amount: 5000, fee: 0,
     taxWithheld: 0, balanceAfter: 0, currency: "TZS", provider: "MPESA", providerRef: `dep_s9_status_${n}`, msisdn: "+255712345678",
     description: "S9 local controlled signed-status fixture", idempotencyKey: `00000000-0000-4000-8000-${n.padStart(12, "0")}`,
+    payoutRail: patch.type === "WITHDRAWAL" ? "WALLET_CASHIN" : null,
     createdAt: new Date(Date.now() - 25_000).toISOString(), completedAt: null, origin: "low_balance", pendingBet: null, ...patch } as never);
 }
 const byId = (row: any): DLookup => ({ kind: "txn-id", value: row.id });
@@ -258,11 +259,13 @@ async function runBackground(src = sources): Promise<Check[]> {
     let refused = false, result: any = null;
     try { result = await drive(); } catch { refused = true; }
     const wa = await db.wallet.findByUserId(a), wb = await db.wallet.findByUserId(b), row = await db.txn.findById(own.id), other = await db.txn.findById(foreign.id);
-    const cash = mode === "stable" ? (withdrawal ? reported === "FAILED" ? 5000 : 0 : reported === "CONFIRMED" ? 5000 : 0) : 0;
-    const hold = withdrawal && mode !== "stable" ? 5000 : 0;
+    // A stale payout reported FAILED is still unproven nonpayment: S9 keeps its hold and review marker.
+    const payoutUnproven = lane === "stale-withdraw-fail";
+    const cash = mode === "stable" && !payoutUnproven ? (withdrawal ? reported === "FAILED" ? 5000 : 0 : reported === "CONFIRMED" ? 5000 : 0) : 0;
+    const hold = withdrawal && (mode !== "stable" || payoutUnproven) ? 5000 : 0;
     ok(`background.${lane}.${mode}`, providerOutside && wa?.balance === cash && wa?.hold === hold && wb?.balance === 0
-      && wb?.hold === (withdrawal ? 5000 : 0) && row?.status === (mode === "stable" ? reported : "PROCESSING") && other?.status === "PROCESSING"
-      && s.seen.notices.length === (mode === "stable" ? 1 : 0)
+      && wb?.hold === (withdrawal ? 5000 : 0) && row?.status === (mode === "stable" && !payoutUnproven ? reported : "PROCESSING") && other?.status === "PROCESSING"
+      && s.seen.notices.length === (mode === "stable" && !payoutUnproven ? 1 : 0)
       && s.seen.groups.length === (mode === "stable" && reported === "CONFIRMED" ? 1 : 0)
       // ⛔ A THROWN LANE IS A FAILURE (S9 root review H1). This used to read `refused || …` and so scored a sweep that threw
       // on the row as a pass — while a throw aborts the whole sweep and strands every later row. Every lane must now refuse
@@ -276,7 +279,7 @@ async function runBackground(src = sources): Promise<Check[]> {
     if (mode === "stable" && stale && reported === "FAILED") {
       const notice = s.seen.notices[0];
       ok(`background.reason.${lane}`, withdrawal
-        ? notice?.reason === "reconcile-verified-failed" && row?.description === "Withdrawal failed: reconcile-verified-failed"
+        ? notice === undefined && row?.status === "PROCESSING" && row.providerStatus?.startsWith("REVIEW REQUIRED: payout query said FAILED; nonpayment unproven")
         : notice?.reason === "Your payment provider confirmed the payment did not complete."
           && / deposit failed: reconcile-verified-failed$/.test(row?.description ?? "")
           && s.seen.audits.some(a => a.action === "deposit.failed" && a.payload?.reason === "reconcile-verified-failed"));
@@ -350,12 +353,18 @@ async function runBackground(src = sources): Promise<Check[]> {
         return snapshot;
       } } } as typeof db;
     const s = system(src, data), other = system(src);
-    s.verify(async () => ({ status: reported, amount: 5000 }));
+    const winner = reported === "CONFIRMED" ? "FAILED" : "CONFIRMED";
+    const callbackDuringProbe = type === "WITHDRAWAL" && reported === "FAILED";
+    s.verify(async () => {
+      // This S9 lane only records a review marker; it does not call the terminal
+      // settle path whose pre-lock read the older race fixture delayed.
+      if (callbackDuringProbe) await other.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: winner, amount: 5000 });
+      return { status: reported, amount: 5000 };
+    });
     let failed = false;
     const later = s.money.reconcileStalePayments().then(() => {}, () => { failed = true; });
-    const reached = await Promise.race([entered.then(() => true), later.then(() => false)]);
-    const winner = reported === "CONFIRMED" ? "FAILED" : "CONFIRMED";
-    try { if (reached) await other.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: winner, amount: 5000 }); }
+    const reached = callbackDuringProbe ? (await later, true) : await Promise.race([entered.then(() => true), later.then(() => false)]);
+    try { if (reached && !callbackDuringProbe) await other.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: winner, amount: 5000 }); }
     finally { release(); }
     await later;
     const fresh = await db.txn.findById(row.id), wallet = await db.wallet.findByUserId(owner);
@@ -364,7 +373,9 @@ async function runBackground(src = sources): Promise<Check[]> {
       && s.seen.groups.length === 0 && other.seen.groups.length === (winner === "CONFIRMED" ? 1 : 0)
       && s.seen.notices.length === (type === "DEPOSIT" ? 1 : 0) && other.seen.notices.length === 1
       && (type === "DEPOSIT" ? fresh.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK : fresh.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK)
-      && s.seen.audits.some(a => a.action === "webhook.terminal_contradicted"));
+      && (type === "WITHDRAWAL" && reported === "FAILED"
+        ? !s.seen.audits.some(a => a.action === "webhook.terminal_contradicted")
+        : s.seen.audits.some(a => a.action === "webhook.terminal_contradicted")));
   }
   for (const [type, reported] of [["DEPOSIT", "CONFIRMED"], ["WITHDRAWAL", "CONFIRMED"], ["WITHDRAWAL", "FAILED"]] as const) {
     // H2 (S9 root review): the balance refusals that remain are the impossible ones — negative, NaN, infinite. A fractional
@@ -446,15 +457,17 @@ async function runBackground(src = sources): Promise<Check[]> {
     // ⛔ Refuse the premise silently missing: each poisoned row must really have been visited BEFORE its valid row.
     ok("background.isolation.premise-poison-ahead", [dc, df, wf, wc].every(ahead));
     ok("background.isolation.sweep.returned", !thrown && result?.depositsConfirmed === 2 && result?.depositsFailed === 1
-      && result?.withdrawalsReversed === 1 && result?.withdrawalsConfirmed === 1 && result?.leftPending >= 4);
+      && result?.withdrawalsReversed === 0 && result?.withdrawalsConfirmed === 1 && result?.leftPending >= 4);
     ok("background.isolation.sweep.deposit-confirm", await st(dc.v) === "CONFIRMED" && (await w(dc.vOwner))?.balance === 5000);
     ok("background.isolation.sweep.deposit-fail", await st(df.v) === "FAILED" && (await w(df.vOwner))?.balance === 0);
-    ok("background.isolation.sweep.payout-fail-refunded", await st(wf.v) === "FAILED" && (await w(wf.vOwner))?.balance === 5000 && (await w(wf.vOwner))?.hold === 0);
+    ok("background.isolation.sweep.payout-fail-held", await st(wf.v) === "PROCESSING" && (await w(wf.vOwner))?.balance === 0
+      && (await w(wf.vOwner))?.hold === 5000 && (await db.txn.findById(wf.v.id))?.providerStatus?.startsWith("REVIEW REQUIRED: payout query said FAILED"));
     ok("background.isolation.sweep.payout-confirm", await st(wc.v) === "CONFIRMED" && (await w(wc.vOwner))?.hold === 0 && (await w(wc.vOwner))?.balance === 0);
-    const poisoned = [dc, df, wf, wc].map(pair => pair.p.id);
+    const poisoned = [dc, df, wc].map(pair => pair.p.id);
     ok("background.isolation.sweep.poison-left-for-review", (await Promise.all([dc, df, wf, wc].map(pair => st(pair.p)))).every(x => x === "PROCESSING")
       && (await w(dc.pOwner))?.balance === 0 && (await w(wf.pOwner))?.hold === 3000 && (await w(wf.pOwner))?.balance === 0
-      && (await w(wc.pOwner))?.hold === 5000 && poisoned.every(id => s.seen.audits.some(a => a.action === "payments.reconcile_needs_review"
+      && (await w(wc.pOwner))?.hold === 5000 && (await db.txn.findById(wf.p.id))?.providerStatus?.startsWith("REVIEW REQUIRED: payout query said FAILED")
+      && poisoned.every(id => s.seen.audits.some(a => a.action === "payments.reconcile_needs_review"
         && a.targetId === id && a.payload?.reason === "reconcile settle error — left PROCESSING, not auto-settled" && typeof a.payload?.error === "string")));
     ok("background.opaque-key.sweep", await st(opaque) === "CONFIRMED" && (await w(opaqueOwner))?.balance === 5000);
   }
@@ -537,7 +550,8 @@ async function runBackground(src = sources): Promise<Check[]> {
     const s = system(src, data); s.verify(async () => ({ status: "PENDING", detail: "still moving at the gateway" }));
     for (let pass = 0; pass < 3; pass++) lane === "fast-withdraw" ? await s.money.settleConfirmedWithdrawals() : await s.money.reconcileStalePayments();
     const fresh = await db.txn.findById(row.id);
-    ok(`background.trail.${lane}`, trailWrites === 1 && fresh?.providerStatus === "PENDING: still moving at the gateway" && fresh.status === "PROCESSING"
+    ok(`background.trail.${lane}`, trailWrites === 1 && fresh?.providerStatus === (lane === "stale-withdraw"
+      ? "REVIEW REQUIRED: stale payout still pending — still moving at the gateway" : "PENDING: still moving at the gateway") && fresh.status === "PROCESSING"
       && (await db.wallet.findByUserId(owner))?.hold === 5000);
   }
   // L3: the WEBHOOK path keeps its own reason; only the sweep's verified FAILED says "confirmed … did not complete".
@@ -1134,7 +1148,11 @@ async function run(src = sources): Promise<Check[]> {
         headers: lane === "selcom" ? { authorization: "SELCOM local-fixture" } : { "x-provider": "azampay", "x-signature": "local-fixture" },
         body: JSON.stringify(lane === "selcom" ? { order_id: row.providerRef } : { reference: row.providerRef, status: reported, amount: 5000 }) }));
       const body = await response.json();
-      ok(`review.${stored.toLowerCase()}.http-${lane}-write-fault`, response.status === 500 && body.ok === false && body.error === "settle-failed"
+      // Generic adapters are intentionally unbound in S9: a signed callback cannot name a Selcom row.
+      // Selcom still returns 500 on a review-marker write fault so its provider retries.
+      ok(`review.${stored.toLowerCase()}.http-${lane}-${lane === "generic" ? "unbound" : "write-fault"}`,
+        (lane === "generic" ? response.status === 200 && body.ok === true && body.reason === "provider-unbound"
+          : response.status === 500 && body.ok === false && body.error === "settle-failed")
         && fault.seen.notices.length === 1 && (await db.txn.findById(row.id))?.status === stored);
     }
   }
