@@ -103,7 +103,6 @@ section("1 · R8-4 every notice band draws its words on the page's edge — 16px
   // The census of full-bleed rows: every `max-w-board` row in player code pads as the page does, or is ruled.
   const RULED: Record<string, string> = {
     "src/components/layout/top-app-bar.tsx": "the classic header — frozen chrome until the flip (12px below 640, 24px from it)",
-    "src/components/layout/app-shell.tsx#header": "the opt-out page's own header (16px, 24px from 640) — a header, named for the integrator",
     "src/components/auth/auth-shell.tsx": "the auth grid takes the header's box from 1024; its columns pad themselves",
   };
   const rows: string[] = [];
@@ -113,8 +112,8 @@ section("1 · R8-4 every notice band draws its words on the page's edge — 16px
     const key = f === "src/components/layout/app-shell.tsx" && /sm:px-5/.test(m[1]) ? `${f}#header` : f;
     rows.push(RULED[key] ? `ruled:${key}` : `LOOSE:${f}:${m[1]}`);
   }
-  ok(`1.5 · every full-bleed row pads as the page does, or is ruled (${rows.length} ruled: the classic header, the opt-out header, the auth grid)`,
-    rows.every((r) => r.startsWith("ruled:")) && rows.length === 3, j(rows));
+  ok(`1.5 · every full-bleed row pads as the page does, or is ruled (${rows.length} ruled: the classic header and auth grid; app-shell now uses page padding)`,
+    rows.every((r) => r.startsWith("ruled:")) && rows.length === 2, j(rows));
   ok("1.6 · CONTROL · the journey's ticker keeps the page's edge from 1024 (round 3's rule, unchanged)",
     /@media \(min-width: 1024px\) \{\s*:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.ticker-strip \{ padding-inline: calc\(max\(0px, \(100% - var\(--w-board\)\) \/ 2\) \+ var\(--sp-4\)\); \}/.test(CSS));
 }
@@ -577,7 +576,8 @@ section("4 · R2-D5 every selection ring is drawn inside its box (the payment ti
   const ring = /<span\s+aria-hidden\s+className="(pointer-events-none absolute [^"]*ring-2[^"]*)"/.exec(code(PG))?.[1] ?? "";
   const tile = /className=\{`(group\/tile [^`$]*)/.exec(code(PG))?.[1] ?? "";
   ok("4.1 · the ring's box covers the tile's border box (`-inset-px` over its 1px border) and is drawn inward (`ring-inset`)",
-    /(?:^|\s)-inset-px(?:\s|$)/.test(ring) && /(?:^|\s)ring-inset(?:\s|$)/.test(ring) && /(?:^|\s)ring-2(?:\s|$)/.test(ring) && /(?:^|\s)border(?:\s|$)/.test(tile), ring);
+    /(?:^|\s)-inset-px(?:\s|$)/.test(ring) && /(?:^|\s)ring-inset(?:\s|$)/.test(ring) && /(?:^|\s)ring-2(?:\s|$)/.test(ring)
+      && /rounded-md border border-border/.test(code(PG)) && tile.includes("group/tile"), ring);
   const gap = /\.kp-provgrid \{[^}]*gap: var\(--sp-(\d+)\)/.exec(CSS)?.[1];
   // Before: an outer 2px ring on the padding box (1px in from the border box) spanned [edge − 1, edge + 1]: 1px outside.
   // After: a 2px inward ring on the border box spans [edge, edge + 2].

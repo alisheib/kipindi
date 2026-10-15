@@ -97,6 +97,7 @@ const STATE_GLYPH_HEADS = new Map<string, string>([
   // The deposit return names the deposit in the eyebrow's words; its glyph IS the outcome — paid ✓, failed !, reversed ↺,
   // waiting ◷ — each in its §B11 state ink (R5-I: a state's mark in its own family). A state mark, not the page's name.
   ["src/app/wallet/deposit/return/page.tsx", "the outcome glyph in its state's ink (success · danger · slate · royal), the words subtle"],
+  ["src/app/wallet/deposit/wait/deposit-waiting-client.tsx", "the payment wait header's outcome glyph changes with paid versus pending state; its eyebrow words remain subtle"],
 ]);
 const headerCallOk = (file: string, el: string) => {
   if (/\btone=/.test(el)) return false;

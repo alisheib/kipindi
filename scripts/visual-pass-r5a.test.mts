@@ -191,7 +191,8 @@ section("2 · F12 · a count line: the grouped count and the sentence word (tile
       && res.includes("{formatNumber(predictors)} {predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}")
       && !/\{(?:m\.predictorCount|predictors)\}\s*\{t\.market\.predictors\}/.test(res));
   ok("2.2 · …and the page's tally groups its count: \"12,479 imetatuliwa\" (production's archive), `data-result-count` still the bare integer",
-    res.includes("{formatNumber(totalCount)} {t.results.resolved}") && res.includes("data-result-count={totalCount}"));
+    res.includes('<span className="font-mono tabular-nums">{formatNumber(totalCount)}</span> {t.results.resolved}')
+      && res.includes("data-result-count={totalCount}"));
   const card = read("src/components/markets/market-card.tsx");
   ok("2.3 · the card's count line groups with `formatNumber`, not the runtime locale's `toLocaleString()`",
     card.includes("<b>{formatNumber(predictors)}</b>") && !card.includes("predictors.toLocaleString()"));
@@ -858,9 +859,10 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
     read("src/components/markets/market-card.tsx").includes(': <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}') && content320 === 258 && worst <= content320 && worst + 16 > content320);
   // By design: the two chips' heights, the rail's shadow.
   const chip = read("src/components/ui/chip.tsx");
-  ok("11.5 BY DESIGN · the spotlight's state chip is 20px beside the 18px category chip: status chips are 2px taller at every size (chip.tsx, the kit's metrics), centred 1px each way",
+  ok("11.5 BY DESIGN · the spotlight's category and resolved chips share the 20px status metrics, centred on one line",
     /sm: \{\s*base:\s*\{ height: 18,[\s\S]*?status: \{ height: 20,/.test(chip) && /v === "resolved"/.test(chip.slice(chip.indexOf("const isStatus")))
-      && read("src/app/results/page.tsx").includes('<Chip variant="cat" size="sm">') && read("src/app/results/page.tsx").includes('<Chip variant="resolved" size="sm">'));
+      && read("src/app/results/page.tsx").includes('<Chip variant="cat" size="sm" metrics="status">')
+      && read("src/app/results/page.tsx").includes('<Chip variant="resolved" size="sm">'));
   ok("11.6 BY DESIGN · the AML title's third line is under the bottom rail's elevation shadow at that scroll (232 against 245 at most), not a gradient of its own",
     /\.kp-rail \{\s*background: var\(--panel\);\s*border-top: 1px solid var\(--border\);\s*box-shadow: var\(--shadow-overlay-up\);/.test(CSS));
 }

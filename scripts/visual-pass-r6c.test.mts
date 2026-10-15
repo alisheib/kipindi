@@ -199,7 +199,6 @@ const UD_CONTROLS = "src/components/updown/updown-stake-controls.tsx", UD_PANEL 
   /** Each `.amount` that holds words, and why the words may stand in one unbreakable mono run. */
   const RULED: Array<[string, RegExp, string]> = [
     ["src/components/journey/bet-sheet/sheet-parts.tsx", /fill\(t\.journey\.multOnly/, "S8 keyboard compact multiple: the translation is the bare figure ≈{mult}× in every locale, no dictionary words"],
-    ["src/app/results/page.tsx", /formatNumber\(totalCount\)/, "the archive's tally line — drawn from 640 only (`hidden sm:block`), one deliberate line"],
     ["src/app/updown/[roundId]/page.tsx", /udBothSides/, "a settled round's pick · stake: a side word and one figure (\"Juu · TZS 1,000\"), short in every language"],
     ["src/components/markets/sell-confirm-modal.tsx", /t\.dialog\.noFee/, "\"No fee\" in the fee figure's own slot — two words where a figure stands"],
     ["src/components/markets/sell-confirm-modal.tsx", /t\.dialog\.freeExitWindow/, "the fee's caption: three words in the figure column (≤ 132px)"],
@@ -207,7 +206,7 @@ const UD_CONTROLS = "src/components/updown/updown-stake-controls.tsx", UD_PANEL 
     ["src/components/updown/round-action-panel.tsx", /udYouGet\} \{formatTzs\(payoutIfDown/, "\"you get\" + the DOWN payout, as above"],
   ];
   const unruled = sites.filter((s) => !RULED.some(([f, re]) => s.startsWith(`${f}|`) && re.test(s)));
-  ok(`2.3 · every \`.amount\` that holds dictionary words is ruled (${sites.length} sites: a tally line drawn from 640, a pick · stake, two labels in a figure's slot, two "you get" payouts) — none is a sentence that can be clipped`,
+  ok(`2.3 · every \`.amount\` that holds dictionary words is ruled (${sites.length} sites: a pick · stake, two labels in a figure's slot, two "you get" payouts; the archive count now uses mono without amount) — none is a sentence that can be clipped`,
     unruled.length === 0 && sites.length === RULED.length, j({ unruled, sites }));
   const oldLine = squash(code(UD_CONTROLS)).replace(squash(RANGE_LINE), '<p className={cn("mt-1 text-micro amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}> {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)} </p>');
   ok("2.4 PLANT · the whole-line `.amount` back on the board card is reported (2.1 reads it), and its sentence would be an unruled `.amount` site",
@@ -670,7 +669,7 @@ section("14 · C16 one pill size in the board card's row · C17 the classic held
   };
   const status = box({ size: "xs", metrics: "status", variant: "pending" });
   const signals = ["hot", "pending", "signal", "new"].map((v) => box({ size: "xs", metrics: "status", variant: v }));
-  ok(`14.2 · RENDERED: every signal pill is the status pill's box and type (${status}) whatever its colour`, signals.every((s) => s === status) && status === "23/9", j({ status, signals }));
+  ok(`14.2 · RENDERED: every signal pill is the status pill's box and type (${status}) whatever its colour`, signals.every((s) => s === status) && status === "23/9.5", j({ status, signals }));
   const before = ["hot", "signal"].map((v) => box({ variant: v }));
   ok(`14.2′ CONTROL · the default size drew two boxes in that row: ${before.join(" and ")} against the status pill's ${status}`, before.every((b) => b !== status) && before[0] !== before[1]);
   const PC = "src/components/markets/position-card.tsx";
