@@ -132,9 +132,12 @@ export function UpDownStakeControls({
   // time-pressured money decision in the product — the chip is tapped against a running
   // countdown, one-handed — so it takes the preferred size, not the minimum survivable one.
   // ⚠️ `compact` is a DENSITY, not a licence to drop below the floor: both arms carry 44.
+  // S12 F14 · the narrow card cannot hold the label, four presets and Custom on one
+  // line. The rail wraps instead of clipping Custom at 320px; each chip has a 44px
+  // width floor as well as the existing height floor.
   const chipBase = compact
-    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 min-h-[44px] inline-flex items-center justify-center font-mono text-[10.5px] font-semibold tabular-nums transition-colors"
-    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 min-h-[44px] inline-flex items-center justify-center font-mono text-[11.5px] font-semibold tabular-nums transition-colors";
+    ? "shrink-0 whitespace-nowrap rounded-md px-2 py-1 min-h-[44px] min-w-[44px] inline-flex items-center justify-center font-mono text-[11px] font-semibold tabular-nums transition-colors"
+    : "shrink-0 whitespace-nowrap rounded-md px-2.5 py-1.5 min-h-[44px] min-w-[44px] inline-flex items-center justify-center font-mono text-[12px] font-semibold tabular-nums transition-colors";
   const chipStyle = (on: boolean) => ({
     border: `1px solid ${on ? "var(--border-strong)" : "transparent"}`,
     background: on ? "var(--bg-inset)" : "color-mix(in oklab, var(--bg-inset) 45%, transparent)",
@@ -155,8 +158,9 @@ export function UpDownStakeControls({
       )}
 
       {/* Stake selector — preset chips + a Custom toggle. Compact magnitude labels
-          (no per-chip "TZS") keep the whole row on one line at 360px. */}
-      <div className={cn("flex items-center gap-1", compact ? "mb-2" : "mb-2 gap-1.5")} role="radiogroup" aria-label={t.market.udStake}>
+          (no per-chip "TZS") fit on one line where space permits; the rail wraps
+          at narrow widths so no money control is cut off. */}
+      <div className={cn("flex flex-wrap items-center gap-x-1 gap-y-1", compact ? "mb-2" : "mb-2 gap-x-1.5")} role="radiogroup" aria-label={t.market.udStake}>
         <span className={cn("mr-0.5 shrink-0 font-mono uppercase eyebrow text-text-subtle", compact ? "text-micro" : "text-micro")}>
           {t.market.udStake}
         </span>

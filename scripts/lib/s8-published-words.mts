@@ -1,4 +1,5 @@
-/** S8's approved additions only. Old legal clauses and dictionary entries still compare against origin/main. */
+/** S8's approved additions only (and S12's one round paragraph in §7, below). Old legal clauses and dictionary entries still
+ *  compare against origin/main. */
 import { createHash } from "node:crypto";
 import ts from "typescript";
 
@@ -25,7 +26,15 @@ const NOTICE = /\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/
 // as an unapproved edit for ever, on main too (test:house-bot-disclosure 5.1, test:visual-pass-r5g 4.14′,
 // test:sheet-owner-recovery). ⚠️ A later privacy version adds itself here in the same commit as its META.
 const PRIVACY_VERSIONS = ["2026-10-14", "2026-10-15"] as const;
-const VERSION_LABEL = "(?:en: \"Version |sw: \"Toleo |zh: \"版本 )";
+/**
+ * ⭐ S12 WP10b (Vodacom S12, `S12-PLAN.md` Risk 14, Open point 12): §7 also names a ROUND in `kp-pending-bet` — one
+ * paragraph per language, after S8's, pinned by its own measured hashes — and the combined version moves to 2026-10-15.2.
+ * S8 paragraphs above stay byte-identical. A round paragraph is accepted only as all three at these hashes AND under the new
+ * version; S8's version stands alone only while no round paragraph exists. Legacy comparison strips both additions.
+ */
+const ROUND_NOTICE_HASH: Record<string, string> = { en: "5639330640e3", sw: "be2f9c62bec8", zh: "01251647a662" };
+const ROUND_NOTICE = /\n {8}<p data-policy-addition="pending-round">[\s\S]*?\n {8}<\/p>/g;
+const ROUND_VERSION = "2026-10-15.2";
 
 export type S8Published = { legacy: string; accepted: boolean; hashes: Record<string, string>; count: number };
 export const S8_PUBLICATION_FILES = ["src/app/legal/privacy/page.tsx", "src/lib/i18n-dict.ts"] as const;
@@ -40,10 +49,16 @@ export function s8PublishedWords(rel: string, source: string, requireAdditions =
   if (rel === "src/app/legal/privacy/page.tsx") {
     const paragraphs = [...text.matchAll(NOTICE)];
     const hashes = Object.fromEntries(LOCALES.map((loc, i) => [loc, sha((paragraphs[i]?.[0] ?? "").replace(/\s+/g, " ").trim())]));
+    const rounds = [...text.matchAll(ROUND_NOTICE)];
+    const roundHashes = LOCALES.map((loc, i) => sha((rounds[i]?.[0] ?? "").replace(/\s+/g, " ").trim()) === ROUND_NOTICE_HASH[loc]);
+    const versions = (v: string) => (text.match(new RegExp(`(?:en: "Version |sw: "Toleo |zh: "版本 )${v}`, "g")) ?? []).length;
+    const versionOk = rounds.length === 0 ? PRIVACY_VERSIONS.some((v) => versions(v) === 3)
+      : rounds.length === 3 && roundHashes.every(Boolean) && versions(ROUND_VERSION) === 3;
     const accepted = (!requireAdditions && paragraphs.length === 0) || (paragraphs.length === 3
       && LOCALES.every((loc) => hashes[loc] === NOTICE_HASH[loc])
-      && PRIVACY_VERSIONS.some((v) => (text.match(new RegExp(`${VERSION_LABEL}${v}`, "g")) ?? []).length === 3));
-    const legacy = text.replace(NOTICE, "").replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14|15)/g, "$1S8-version");
+      && versionOk);
+    const legacy = text.replace(NOTICE, "").replace(ROUND_NOTICE, "")
+      .replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14|15(?:\.2)?)/g, "$1S8-version");
     return { legacy, accepted, hashes, count: paragraphs.length };
   }
   if (rel !== "src/lib/i18n-dict.ts") return { legacy: text, accepted: true, hashes: {}, count: 0 };

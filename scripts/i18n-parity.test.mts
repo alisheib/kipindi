@@ -44,6 +44,12 @@ const IDENTICAL_OK = new Set<string>([
   // the approximately sign, the engine's multiple and the times sign — drawn beside a payout on the low-balance frame
   // and the keyboard-up sheet. Every word around it IS translated (`journey.estimatePill` "≈{mult}× dau lako").
   "journey.multOnly",
+  // ⭐ THE FOOTER'S LICENCE AND COPYRIGHT LINES (S12 WP5, ledger row 53, 2026-10-14). Templates, not sentences: the
+  // licence line is the label (`footer.license`, translated) and the number joined by a colon; the copyright line is
+  // the year, the brand and the country. Swahili sets both exactly as English does — a colon, and "Tanzania" is the
+  // country's name in Swahili too — so its values equal the English. Chinese is why the keys exist: the full-width
+  // colon (许可证：…) and the country's own name (坦桑尼亚), which the footer drew in Latin and with an ASCII colon.
+  "footer.licenseLine", "footer.copyrightLine",
   // ⭐ THE THREE FIELD EXAMPLES ON /agent/apply. Each is a literal specimen of a FORMAT, not
   // a sentence — a Tanzanian personal name, a Tanzanian mobile number, and a bank receipt
   // reference. They are written the same way in Swahili and in Chinese because the FORMAT is
@@ -130,6 +136,21 @@ for (const [name, loc] of [["sw", sw], ["zh", zh]] as const) {
     untranslated.length === 0,
     untranslated.length ? `${untranslated.length}: ${untranslated.slice(0, 20).join(", ")}` : "",
   );
+}
+
+// 2b. S12 WP5 (word-ledger row 53, 2026-10-14) — the footer's two template lines exist for CHINESE typesetting, and their
+// IDENTICAL_OK entry (above) exempts both sw and zh from §2. So their reason for existing is pinned here instead: zh sets
+// the licence line with the full-width colon and names the country in Chinese — the footer's ASCII "许可证:" and Latin
+// "Tanzania" are exactly what these keys replaced. Each predicate is shown its defect in this same run.
+{
+  const zhColon = (v: string | undefined) => !!v && v.includes("：") && !v.replace(/\{\w+\}/g, "").includes(":");
+  const zhCountry = (v: string | undefined) => !!v && v.includes("坦桑尼亚") && !v.includes("Tanzania");
+  check("zh: footer.licenseLine sets the full-width colon (许可证：…), never the ASCII one", zhColon(zh.get("footer.licenseLine")),
+    String(zh.get("footer.licenseLine")));
+  check("zh: footer.copyrightLine names the country in Chinese (坦桑尼亚)", zhCountry(zh.get("footer.copyrightLine")),
+    String(zh.get("footer.copyrightLine")));
+  check("CONTROL · the two checks refuse the lines as the footer drew them (an ASCII colon; the Latin \"Tanzania\")",
+    !zhColon("{label}: {number}") && !zhCountry("© {year} 50pick · Tanzania"));
 }
 
 // 3. PLACEHOLDER PARITY.

@@ -10,7 +10,7 @@ import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
 import { PENDING_BET_KEY } from "@/lib/journey/pending-bet";
-import { trustedDepositBet, type SavedDepositBet } from "@/lib/journey/deposit-state";
+import { trustedDepositBet, type SavedDepositBet } from "@/lib/journey/deposit-state-client";
 import { DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 import { depositAction } from "./actions";
 import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStoredFunding, type StoredFundingIdentity } from "@/lib/journey/funding-storage";

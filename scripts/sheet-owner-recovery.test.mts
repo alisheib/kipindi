@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
-import {PENDING_BET_KEY, PENDING_BET_TTL_MS, pendingBetFrom, readMarker, writeMarker, stakeFromUrl} from "../src/lib/journey/pending-bet.ts";
+import {PENDING_BET_KEY, PENDING_BET_TTL_MS, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, parseBetParam} from "../src/lib/journey/pending-bet.ts";
 import {ownedSheetIntents, legacySheetIntents, sheetOwnerKey, saveOwnedSheet, quarantineLegacySheet, saveSheetSelection, unresolvedLegacySheet,
   resolveLegacySheet, SHEET_LEGACY_KEY, SHEET_RECOVERY_MAX_BYTES, type TabStorage} from "../src/lib/journey/sheet-owned-storage.ts";
 import {afterKeyRead, requestFor, reopenInDoubt, sheetFrame, nextKey, quoteAt, withBet, withoutBet, sheetOpensOn, type Quote} from "../src/lib/journey/sheet-state.ts";
@@ -214,7 +214,7 @@ await checkAsync("actual known 401 ends the A epoch; its previously pending posi
 for(const [name,from,to,field] of [
   ["foreign","if (body.me.viewerId !== viewerId) { invalidateOwner(); return failed; }","", "foreign"],
   ["missing",'if (typeof body?.me?.viewerId !== "string") return failed;',"", "missing"],
-  ["404",'if (response.status === 404) return failed;','if (response.status === 404) return { ...failed, reread: { state: "read", market: { found: false }, viewer: null } };',"bare404"],
+  ["404",'if (response.status === 404) return options.key ? failed : { ...failed, bareNotFound: true };','if (response.status === 404) return { ...failed, reread: { state: "read", market: { found: false }, viewer: null } };',"bare404"],
 ] as const){const verdict=await privateVerdicts(plant(HOST,"readTruth",from,to));check(`plant ${name} fails its actual private-reader verdict`,()=>assert.equal(verdict[field],false));}
 const stalePlant=HOST.replaceAll('epoch !== ownerEpoch.current || ',"");assert.notEqual(stalePlant,HOST);await checkAsync("plant stale epoch adoption fails the same reader verdict",async()=>assert.equal((await privateVerdicts(stalePlant)).stale,false));
 
@@ -265,9 +265,10 @@ await checkAsync("actual commit → known401 → late A success cannot consume t
   let reloads=0,receipts=0,dispatches=0,release!:(v:unknown)=>void,work!:Promise<void>;
   const show=(v:unknown)=>{current.current=v as typeof current.current;};const identity=(q:Quote)=>`${q.marketId}.${q.side}`,activeIdentity=(v:typeof current.current)=>`${v.seed.id}.${v.side}`;
   const save=bind(HOST,"save",{mounted,pending,selected,recoveryReady,ownerInvalid,viewerId:OWNER,window,quarantineLegacySheet,saveOwnedSheet,saveSheetSelection});
+  const returnAttribution=bind(HOST,"returnAttribution",{parseBetParam,attributionFrom});
   const invalidateOwner=bind(HOST,"invalidateOwner",{ownerInvalid,recoveryReady,ownerEpoch,generation:{current:0},pending,closedReceipts:{current:new Map()},requests,readingKeys:{current:new Set()},readSequences:{current:new Map()},lastView:{current:{}},show,window});
   const commit=bind(HOST,"commit",{mounted,current,pending,requests,selected,activeIdentity,identity,sheetFrame,quoteAt,nextKey:(p:never,q:Quote)=>nextKey(p,q,()=>key(1)),requestFor,viewerId:OWNER,ownerEpoch,ownerInvalid,recoveryBlocked:()=>false,
-    readMarker,writeMarker,attributionFrom,save,show,window,withBet,Date:{now:()=>NOW},revise:()=>{},startTransition:(fn:()=>Promise<void>)=>{work=fn();},answerOf,buyPositionAction:()=>{dispatches++;return new Promise(r=>{release=r;});},invalidateOwner,
+    readMarker,writeMarker,attributionFrom,returnAttribution,save,show,window,withBet,Date:{now:()=>NOW},revise:()=>{},startTransition:(fn:()=>Promise<void>)=>{work=fn();},answerOf,buyPositionAction:()=>{dispatches++;return new Promise(r=>{release=r;});},invalidateOwner,
     refusalOutcome:()=>{throw new Error("late answer applied");},receipt:()=>{receipts++;},readKey:()=>{}});
   commit("cta");assert.equal(dispatches,1);const saved=bytes.get(a);assert.equal(ownedSheetIntents(saved!,OWNER)[0].key,key(1));
   const read=bind(HOST,"readTruth",{ownerEpoch,ownerInvalid,mounted,current,viewerId:OWNER,router:{push:()=>{}},parseSheetSeed,invalidateOwner,fetch:async()=>({status:401,ok:false})});await read(quote);

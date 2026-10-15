@@ -5439,8 +5439,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .av-stack > * { margin-left: -7px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg-elevated); }
 .av-stack > *:first-child { margin-left: 0; }
 .mcardp-traders { margin-top: -2px; min-height: var(--mcard-traders-h); }
-.mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
-.mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
+.mcardp-traders .t-txt { font-family: var(--font-body); font-size: var(--type-small); line-height: 1.3; color: var(--text-muted); }
+.mcardp-traders .t-txt b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight:600; }
 /* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
    or "One side only". */
 .mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:12px; margin:-3px 0 -5px; }
@@ -5601,7 +5601,7 @@ html[data-sheet-open] .route-enter { animation: none; }
      whose clicks this pseudo-element already swallowed once (see the note above). */
   min-width: var(--tap-min);
 }
-.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
+.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; font-family: var(--font-body); font-size: var(--type-small); line-height: 1.3; }
 
 /* ── Cold-start (2026-07-29) ────────────────────────────────────────────────
    A LIVE market nobody has bet on yet. The card must not assert a 50% split, a
@@ -5721,9 +5721,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    that line always carries the category with it. */
 .mcardp-closes {
   margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-body);
+  font-size: var(--type-small);
+  line-height: 1.3;
   white-space: nowrap;
   color: var(--text);
 }
@@ -6903,6 +6903,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__card > li:not(:last-child) { border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent); }
 .kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }
 .kp-hub__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: var(--sp-2) var(--sp-4); border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+/* F43: only the proposals row has a badge that can stack under a long translated label.
+   Keep a full 16px of air above and below that block; one-line rows retain the 56px rung. */
+.kp-hub__row--proposals { padding-block: var(--sp-4); }
 .kp-hub__row:hover { background: var(--bg-overlay); }
 /* The card-size switch row (`card-size-row.tsx`) is an ordinary hub row (round 4, 2026-10-09, tile 259): glyph, text
    column, switch, all centred on the row. Round 3's grid hung its hint under the switch's column as well, which put the
@@ -6948,8 +6951,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The proposals row's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08). In the row's trailing slot it took
    84px from the label, and "Pendekeza na upate zawadi" folded in two at 390 though the label alone fits. Now the two
    share one wrapping line: side by side, the flag at the row's end as before, where both fit (English and Chinese at
-   every width, Swahili from about 412); else the flag drops under the label like a subtitle, and the row keeps its
-   56px rung. Below 360 the label cannot fit a line even alone, so the flag stays beside it rather than add a third. */
+   every width, Swahili from about 412); else the flag drops under the label like a subtitle.
+   F43 lets that row grow beyond 56px when it stacks. Below 360 the label cannot fit a line even
+   alone, so the flag stays beside it rather than add a third. */
 .kp-hub__head { display: flex; align-items: center; gap: 2px var(--sp-3); min-width: 0; }
 .kp-hub__head > .kp-hub__label { flex: 1 1 auto; min-width: 0; }
 .kp-hub__head > :not(.kp-hub__label) { flex-shrink: 0; }
@@ -7801,7 +7805,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jcard__result-label { font-weight: 500; color: var(--text-muted); }
 /* The settled instant at the small rung: the board's 12px is under §T4's 12.5px reading floor — the hub's second line
    took the small rung for the same reason (§K rule 8c). */
-.kp-jcard__at { font-size: var(--type-small); line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
+.kp-jcard__at { font-family: var(--font-mono); font-size: var(--type-small); line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
 .kp-jcard__outcome { flex-shrink: 0; }
 /* ⭐ IN FORCED COLOURS A PICK KEEPS ITS EDGE. Its ring is the side fill's inset box-shadow, which forced colours strip
    together with the fill, so the pick would be words floating on the card; a 1px border in the system's own ink draws it
@@ -8343,6 +8347,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The round page's open + targets: beside the confirmed price where there is room; below 400 they wrap under it
    and read as a left-aligned list, not a column floating at the right (frame panel, 2026-09-27). */
 .ud-hero-chunk { white-space: nowrap; }
+/* F12/F12b: the round clock shares the card width on phones. Keep one caption row
+   and one digit row in every phase; Swahili cannot push the box into the gutter. */
+.ud-round-pod { display: flex; align-items: center; gap: var(--sp-3); max-width: 100%; padding: var(--sp-2) var(--sp-4); background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md); }
+@media (max-width: 639px) {
+  /* density: general — a round clock fits the phone gutter in both card sizes */
+  .ud-round-pod { width: 100%; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+}
 /* ⭐ A LINE THAT OPENS ON THE QUOTE STAMP OPENS ON A CAPITAL (round 4, 2026-10-09, tiles 165 166). The stamp is the
    dictionary's mid-sentence word — "imenukuliwa" / "quoted", written to follow "… · " — and with no move to follow
    (an open round still at its open price) it stood alone, the one line under the price to start in lower case. The words
@@ -8677,3 +8688,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-qghost { min-width: 0; }
 /* The break row shares the closed row above: one definition for their geometry and neutral ink. */
 .kp-jhome__break { color: var(--text-muted); }
+
+/* S12 WP9–WP11 · Juu/Chini's journey arm (components/journey/updown/jud-arm.tsx). Its stake rows, chips, low rows and
+   commit wear the bet sheet's own classes above; these only place them on a board card and a round panel. No element
+   on a classic page carries a kp-jud class. The prompt and the notes keep the classic control's 13px faint register. */
+.kp-jud { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.kp-jud > * { flex-shrink: 0; }
+.kp-jud__chosen { align-self: flex-start; max-width: 100%; }
+.kp-jud__in { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.kp-jud__prompt { display: flex; align-items: center; gap: var(--sp-1); margin: 0; font-size: var(--type-small); line-height: 1.45; color: var(--text-faint); }
+.kp-jud__sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.kp-jud__note { display: flex; align-items: flex-start; gap: var(--sp-1); margin: 0; font-size: var(--type-small); line-height: 1.45; color: var(--text-faint); }
+.kp-jud__projection { color: var(--text-muted); }
+.kp-jud__time { white-space: nowrap; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }

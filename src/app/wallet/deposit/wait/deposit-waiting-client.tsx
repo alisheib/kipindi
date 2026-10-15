@@ -9,7 +9,7 @@ import { Callout } from "@/components/ui/callout";
 import { Cash } from "@/components/ui/cash";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
-import { depositPollDelay, depositWaitingBand, markerForDeposit, trustedDepositBet, type DepositProjection } from "@/lib/journey/deposit-state";
+import { depositPollDelay, depositWaitingBand, markerForDeposit, trustedDepositBet, type DepositProjection } from "@/lib/journey/deposit-state-client";
 import { parseBetParam, pendingBetUrl, PENDING_BET_KEY } from "@/lib/journey/pending-bet";
 import type { DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";

@@ -116,14 +116,17 @@ ok("1.4 · the proposal not-found is the same page with its own way out: the sam
 ok("1.4b · …and its route passes exactly that", /way=\{\{ href: "\/proposals", label: t\.error\.backToProposals \}\}/.test(code(ROUTES.proposal)));
 ok("1.5 · E44: the English heading types a typographic apostrophe — ‘couldn’t’ — and no word on the page a straight one",
   NOT_FOUND_WORDS.en.notFoundBody === "We couldn’t find that page" && !Object.values(NOT_FOUND_WORDS.en).some((s) => s.includes("'")));
-// The words are the ones the product already ships: the dictionary's own error.* sentences, the only difference the
-// apostrophe the dictionary's English types straight (S12 owns that key), so no word here is new.
+// The words are the ones the product already ships: the dictionary's own error.* sentences — word for word since S12
+// typed the apostrophe the dictionary's English had straight — so no word here is new.
 {
   const d = (l: "sw" | "en" | "zh") => ({ notFoundCode: DICTS[l].error.notFoundCode, notFound: DICTS[l].error.notFound, notFoundBody: DICTS[l].error.notFoundBody, notFoundHint: DICTS[l].error.notFoundHint, home: DICTS[l].common.home, markets: DICTS[l].common.markets, help: DICTS[l].common.help, browseOpenMarkets: DICTS[l].error.browseOpenMarkets });
   const same = (l: "sw" | "en" | "zh") => Object.entries(d(l)).filter(([k, v]) => (NOT_FOUND_WORDS[l] as Record<string, string>)[k] !== v).map(([k]) => k);
   ok("1.6 · sw and zh: every word is the dictionary's own (error.*, common.home/markets/help)", same("sw").length === 0 && same("zh").length === 0, `${same("sw")} ${same("zh")}`);
-  ok("1.6b · en: the same, but for the dictionary's straight apostrophe in error.notFoundBody (S12)",
-    same("en").join() === "notFoundBody" && DICTS.en.error.notFoundBody.replace("'", "’") === NOT_FOUND_WORDS.en.notFoundBody);
+  // ⚠️ FLIPPED IN THE OPEN 2026-10-14 (S12 WP5, word-ledger row 62): this held en to "the same, but for the dictionary's
+  // straight apostrophe in error.notFoundBody (S12)". S12 typed the dictionary's apostrophe, so en is the dictionary's
+  // own word for word too — and a straight one coming back would fail here as well as in 1.5.
+  ok("1.6b · en: every word is the dictionary's own too — its error.notFoundBody types the apostrophe (“couldn’t”) since S12",
+    same("en").length === 0 && !DICTS.en.error.notFoundBody.includes("'"), `${same("en")}`);
 }
 {
   const OLD_MARKET = `<div className="mb-5"><FiftyMark size={64} /></div><p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">{t.error.notFoundCode}</p><nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3"><Link href="/markets">`;

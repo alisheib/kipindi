@@ -28,6 +28,12 @@
  * in exactly the same words as a clean tree — which is how the first draft of this guard
  * reported two findings where there were eight. It must FAIL, not pass, when it cannot see.
  *
+ * §12 (S12 WP2, 2026-10-14) — THE SIDE WORD IS SPELT "NDIO". Its cases are the shipped misspelling in a Swahili value
+ * and in a legal file, a seventh correct-looking "ndiyo" nobody has read, a side word beside an allowed phrase, a stale
+ * allowance and the legal reader going blind — each must fail a §12 check, not merely some check (`section`). And one
+ * GREEN CONTROL (`expect: "green"`): a comment in a legal file that quotes the old misspelling is not served, so the
+ * suite must stay green over it — the guard is comment-blind by construction, and history notes may stay.
+ *
  * Run: npm run red:labels
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -148,6 +154,66 @@ const MUTATIONS = [
     from: `const blockStart = (k: string) => dictLines.findIndex((l) => new RegExp(\`^  \${k}: \\\\{\`).test(l));`,
     to: `const blockStart = (k: string) => dictLines.findIndex((l) => new RegExp(\`^ZZZ  \${k}: \\\\{\`).test(l));`,
   },
+  // ── §12 · THE SIDE WORD IS SPELT "NDIO" (S12 WP2, 2026-10-14) ─────────────────────────────
+  {
+    name: "§12a · the Swahili chart title spells the side NDIYO again (as it shipped until S12 WP2)",
+    section: "§12a",
+    file: p("src", "lib", "i18n-dict.ts"),
+    from: `      probOverTime: "Uwezekano wa NDIO kwa muda",`,
+    to: `      probOverTime: "Uwezekano wa NDIYO kwa muda",`,
+  },
+  {
+    name: "§12b · the YES/NO rules §1 types NDIYO into a legal file again (as it shipped until S12 WP2)",
+    section: "§12b",
+    file: p("src", "app", "legal", "rules", "_content-yes-no.tsx"),
+    from: `soko la {w.sw.yes}/{w.sw.no} na ni makubaliano`,
+    to: `soko la NDIYO/HAPANA na ni makubaliano`,
+  },
+  {
+    // The binding Terms §4 sentence as it shipped until version 2026-10-14 — allowed by name for one commit, never again.
+    name: "§12b · the Terms §4 spells the side NDIYO again (the binding sentence as it shipped until S12 WP2)",
+    section: "§12b",
+    file: p("src", "app", "legal", "terms", "page.tsx"),
+    from: `Madau yote — NDIO na HAPANA — yanakusanywa kwenye bwawa moja.`,
+    to: `Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja.`,
+  },
+  {
+    // Good Swahili ("This is how it works") — and still refused: an allowance is given by reading, never by looking right.
+    name: "§12a · a SEVENTH correct-looking \"ndiyo\" outside the allowlist, in a value nobody has read for it",
+    section: "§12a",
+    file: p("src", "lib", "i18n-dict.ts"),
+    // Two lines, because `howItWorks: "Inavyofanya kazi",` also opens the referral block's line (the anchor must be unique).
+    from: `      howItWorks: "Inavyofanya kazi",\n      howItWorksBody: `,
+    to: `      howItWorks: "Hivi ndiyo inavyofanya kazi",\n      howItWorksBody: `,
+  },
+  {
+    name: "§12a · a side word planted BESIDE an allowed phrase (faq6a's answer \"Ndiyo —\" covers that phrase, not the value)",
+    section: "§12a",
+    file: p("src", "lib", "i18n-dict.ts"),
+    from: `      faq6a: "Ndiyo — kwa muda mfupi.`,
+    to: `      faq6a: "Ndiyo — kwa muda mfupi. Chagua NDIYO.`,
+  },
+  {
+    name: "§12a · a STALE allowance — the allowed phrase reworded away, its entry left behind",
+    section: "§12a",
+    file: p("src", "lib", "i18n-dict.ts"),
+    from: `      contWeekLead: "Ndiyo yote yanayofunga wiki hii",`,
+    to: `      contWeekLead: "Yote yanayofunga wiki hii",`,
+  },
+  {
+    name: "§12b · ⭐ THE LEGAL READER GOES BLIND — its directory resolves to nothing",
+    section: "§12b",
+    file: p("scripts", "label-lexicon.test.mts"),
+    from: `  const LEGAL = join(SRC, "app", "legal");`,
+    to: `  const LEGAL = join(SRC, "app", "legalZZZ");`,
+  },
+  {
+    name: "§12b · GREEN CONTROL — a JSX comment in a legal file that quotes NDIYO is not served: the suite stays green",
+    expect: "green",
+    file: p("src", "app", "legal", "rules", "_content-yes-no.tsx"),
+    from: `soko la {w.sw.yes}/{w.sw.no} na ni makubaliano`,
+    to: `soko la {w.sw.yes}/{w.sw.no} {/* typed NDIYO here until S12 */}na ni makubaliano`,
+  },
 ];
 
 const run = () => spawnSync("npx", ["tsx", SUITE], { encoding: "utf8", shell: true });
@@ -160,9 +226,10 @@ if (baseline.status !== 0) {
   console.error((baseline.stdout + baseline.stderr).split(/\r?\n/).filter((l) => /FAIL/.test(l)).join("\n"));
   process.exit(2);
 }
-console.log("  baseline: test:labels is GREEN — mutations below must each turn it RED.\n");
+console.log("  baseline: test:labels is GREEN — mutations below must each turn it RED (a green control must leave it green).\n");
 
 let proven = 0;
+let greensHeld = 0;
 for (const m of MUTATIONS) {
   console.log(`▶ ${m.name}`);
   const original = readFileSync(m.file, "utf8");
@@ -180,9 +247,20 @@ for (const m of MUTATIONS) {
   const r = run();
   const out = r.stdout + r.stderr;
   const failures = (out.match(/^\s*FAIL /gm) ?? []).length;
-  const caught = r.status !== 0 && failures >= 1;
-  console.log(`   exit=${r.status}  failing checks=${failures}  ${caught ? "✓ CAUGHT" : "✗ MISSED"}`);
-  for (const line of out.split(/\r?\n/).filter((l) => /^\s*FAIL /.test(l)).slice(0, 2)) {
+  const failLines = out.split(/\r?\n/).filter((l) => /^\s*FAIL /.test(l));
+  let caught;
+  if (m.expect === "green") {
+    // A GREEN CONTROL proves the guard does not refuse what it must accept: exit 0, not one failing check.
+    caught = r.status === 0 && failures === 0;
+    console.log(`   exit=${r.status}  failing checks=${failures}  ${caught ? "✓ STAYED GREEN" : "✗ WENT RED"}`);
+  } else {
+    // `section`: the case is only proven when the check it names is the one that fails — red for another reason is
+    // a harness testing something other than it says.
+    const inSection = !m.section || failLines.some((l) => l.includes(m.section));
+    caught = r.status !== 0 && failures >= 1 && inSection;
+    console.log(`   exit=${r.status}  failing checks=${failures}  ${caught ? "✓ CAUGHT" : failures >= 1 && !inSection ? `✗ RED, BUT NOT BY ${m.section}` : "✗ MISSED"}`);
+  }
+  for (const line of failLines.slice(0, 2)) {
     console.log(`     ${line.trim().slice(0, 150)}`);
   }
 
@@ -191,8 +269,9 @@ for (const m of MUTATIONS) {
     console.error(`   🔴 REVERT FAILED on ${m.file} — stop and restore by hand`);
     process.exit(2);
   }
-  if (caught) proven++;
+  if (caught) { proven++; if (m.expect === "green") greensHeld++; }
 }
 
-console.log(`\n${proven}/${MUTATIONS.length} mutations caught — every file restored byte-for-byte.`);
+const greens = MUTATIONS.filter((m) => m.expect === "green").length;
+console.log(`\n${proven}/${MUTATIONS.length} proven — ${proven - greensHeld}/${MUTATIONS.length - greens} mutations caught, ${greensHeld}/${greens} green control${greens === 1 ? "" : "s"} held — every file restored byte-for-byte.`);
 process.exit(proven === MUTATIONS.length ? 0 : 1);

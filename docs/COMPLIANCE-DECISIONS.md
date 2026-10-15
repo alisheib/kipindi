@@ -8,6 +8,21 @@
 
 ---
 
+## 2026-10-15 · Privacy v2026-10-15.2 — Up & Down round selection in necessary tab storage (Vodacom S12)
+
+**Authority.** Ali accepted the S12 plan's recommended answers on 2026-10-14 and instructed the team to complete the
+Vodacom journey. S12 WP10b extends the existing, necessary `kp-pending-bet` selection to an Up & Down round. This
+entry records the published disclosure before the journey arm writes that selection; it adds no analytics or
+marketing permission.
+
+**What §7 says in English, Swahili and Chinese.** When a player goes from an Up & Down round to deposit or to the next
+round, the same tab entry keeps the round, Up or Down, and the amount chosen for at most 24 hours. Saving the entry
+places no bet. The S8 account-bound unfinished-request keys remain separate and unchanged. Privacy's version is
+2026-10-15.2, with the combined English body pinned at `bd8dc162cbac` by `test:privacy-notice` §1a; §4o checks each language's
+new paragraph and the journey marker that makes it necessary.
+
+---
+
 ## 2026-10-15 · Privacy v2026-10-15 — How to Play's local seen note (Vodacom S11)
 
 **Authority.** Ali accepted S11-PLAN's recommended privacy wording on 2026-10-14 (the owner decision entry below).

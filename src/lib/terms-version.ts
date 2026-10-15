@@ -44,6 +44,17 @@
  *     re-acceptance (below). `docs/COMPLIANCE-DECISIONS.md` 2026-10-10 records it.
  *   · §3's FIRST sentence is byte for byte what it was: `red:kyc-copy-truth` plants its regression there.
  *
+ * ⛔ **MOVED TO 2026-10-14 (S12 WP2) — Swahili spelling and grammar only; the English, the Chinese and every right are
+ * unchanged.**
+ *   · §4 spelt the side "NDIYO" where every screen says "NDIO" (`common.yes`): "Madau yote — NDIO na HAPANA —
+ *     yanakusanywa kwenye bwawa moja."
+ *   · "dau" takes its class-6 plural, "madau", where the Swahili gave it class-10 agreement (S4-COPY-AUDIT review 2's
+ *     rule): §3a "Madau yaliyokwisha kuwekwa … yanayotokana nayo"; §4 "Madau ya upande ulioshinda yanarudishwa yote na
+ *     hayaguswi kamwe" and "Kama madau yote yako upande mmoja"; §6 "Madau yanaweza kufutwa".
+ *   · Nothing is asked of anyone and nothing a player may do moved, so no 14-day §10 notice and no re-acceptance
+ *     (below). Correcting now rather than with S11's flip-time version is S12-PLAN's Point for Ali 6 — accepted by
+ *     Ali, 2026-10-14. Its COMPLIANCE-DECISIONS entry is filed with the release.
+ *
  * ⭐ `TERMS_TEXT_SHA` pins a hash of the binding bodies (`content()` in `/legal/terms/page.tsx`, all
  * three locales): the text cannot move without the hash moving, and the hash cannot be updated
  * without the editor being in THIS file, with the version in front of them. `npm run
@@ -54,7 +65,7 @@
  *
  * ⛔ PURE AND IMPORT-FREE: a server component (the page) and a server service (auth) both read it.
  */
-export const TERMS_VERSION = "2026-10-10";
+export const TERMS_VERSION = "2026-10-14";
 
 /**
  * The first 12 hex of `sha256` over the whitespace-normalised `content()` bodies of `/legal/terms` — all three
@@ -68,6 +79,6 @@ export const TERMS_VERSION = "2026-10-10";
  * record. Change both in one commit — or, for a same-day player-favourable amendment inside a version
  * published that day, record it in `COMPLIANCE-DECISIONS.md` and move only the hash.
  */
-// 2026-10-10 · re-pinned WITH `TERMS_VERSION` 2026-10-10 (typed-only identity: §3/§3a — COMPLIANCE-DECISIONS, the
-// 2026-10-10 entry), measured by `test:terms-binding` §2 over the new binding text.
-export const TERMS_TEXT_SHA = "06208a18691e";
+// 2026-10-14 · re-pinned WITH `TERMS_VERSION` 2026-10-14 (S12 WP2: the Swahili side word and "madau" — §3a, §4, §6),
+// measured by `test:terms-binding` §2 over the new binding text (was 06208a18691e at 2026-10-10).
+export const TERMS_TEXT_SHA = "bba4158e18c2";

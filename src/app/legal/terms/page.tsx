@@ -331,8 +331,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           Tukikataa akaunti kabisa — kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
           wasiwasi wa vikwazo, au kwa sababu utambulisho huo tayari unatumika kwenye akaunti nyingine
           — tangu wakati huo kuweka fedha, kuweka dau na kutoa fedha kwenye akaunti hiyo kunazuiwa, na
-          nyaraka inabaki imeunganishwa nayo. Dau zilizokwisha kuwekwa bado hutatuliwa, na malipo au
-          marejesho yoyote yanayotokana nazo huingizwa kwenye akaunti hiyo.
+          nyaraka inabaki imeunganishwa nayo. Madau yaliyokwisha kuwekwa bado hutatuliwa, na malipo au
+          marejesho yoyote yanayotokana nayo huingizwa kwenye akaunti hiyo.
         </p>
         <p>
           Kisha tutaamua kitakachofanyika kwa salio, kesi kwa kesi, na tutakuandikia uamuzi wetu
@@ -348,17 +348,17 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="4" title="Jinsi masoko ya ushindani wa bei yanavyofanya kazi">
         <p>
           50pick inaendesha mfumo wa soko wa <strong className="text-text">Ushindani wa Bei wa kibwawa-kizima (whole-pool)</strong>.
-          Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja. Tunatoza kamisheni yetu, na salio la bwawa
+          Madau yote — NDIO na HAPANA — yanakusanywa kwenye bwawa moja. Tunatoza kamisheni yetu, na salio la bwawa
           linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila dau sahihi katika bwawa la upande ulioshinda.
         </p>
         <p>
-          <strong className="text-text">Kamisheni yetu ni 13% ya upande ulioshindwa.</strong> Dau za upande ulioshinda
-          zinarudishwa zote na haziguswi kamwe; kamisheni yetu inatoka tu kwenye fedha zilizowekwa kwenye matokeo
+          <strong className="text-text">Kamisheni yetu ni 13% ya upande ulioshindwa.</strong> Madau ya upande ulioshinda
+          yanarudishwa yote na hayaguswi kamwe; kamisheni yetu inatoka tu kwenye fedha zilizowekwa kwenye matokeo
           yasiyotokea. Kwa hiyo{" "}
           <strong className="text-text">dau lililoshinda halilipwi chini ya dau lake kamwe</strong>.
         </p>
         <p>
-          Kama dau zote ziko upande mmoja, hakuna upande ulioshindwa, kwa hiyo hatutozi chochote na kila dau
+          Kama madau yote yako upande mmoja, hakuna upande ulioshindwa, kwa hiyo hatutozi chochote na kila dau
           linarudishwa lote. Vivyo hivyo kwa soko lililofutwa.
         </p>
         <p>
@@ -400,7 +400,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="6" title="Kufuta dau na migogoro">
         <p>
-          Dau zinaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yametatuliwa awali, au matokeo
+          Madau yanaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yametatuliwa awali, au matokeo
           yatarekebishwa na mamlaka ya chanzo ndani ya saa {objectionHours} baada ya utatuzi, wakati malipo bado
           yamesimamishwa (masoko pekee: raundi ya Juu na Chini hulipwa mara tu matokeo yake yanaporekodiwa, bila
           kusimamishwa — tazama Kanuni za Juu na Chini, §9). Migogoro ni lazima iwasilishwe kwa maandishi

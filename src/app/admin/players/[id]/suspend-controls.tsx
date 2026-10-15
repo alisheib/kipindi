@@ -85,8 +85,14 @@ export function SuspendControls({
     });
   };
 
-  // DG-A-08 — `min-h-[var(--tap-min)]`, not the kit `<Button>`: these three wear the
-  // yes-/no- outcome ink and DG-A-21 owns that palette, so the tone must not move here.
+  // DG-A-08 — the tap-floor minimum height on raw buttons, not the kit `<Button>`: these three are tinted, not
+  // the kit's solid fills. They wore the betting pair's tints (Suspend the NO rose, Restore and Reopen the YES
+  // green), and this note said the tone must not move here because DG-A-21 owned that palette; DG-A-21 closed
+  // (b00980fce) without moving them. An officer's verdict is not a side (DESIGN_AUTHORITY §B2a), so the Vodacom
+  // plan's S12 WP6 (2026-10-14) swapped the classes only: Suspend wears the danger tint, Restore and Reopen the
+  // brand tint, the console's primary (S12-PLAN Open point 30; accepted by Ali, 2026-10-14, Points for Ali 13,
+  // relayed by the coordinator; the guard names the restoring sites in one list). `test:betting-ink` §8 holds all
+  // three off the betting pair.
   // 32px (10px line box + py-1.5 + border) was under §A2's 40px floor. The class is legal
   // because none of these is a `.btn` — §K1 forbids a height utility only on the kit's own
   // button. It sits on the SHARED base so the self-exclusion status pill below, which can
@@ -101,7 +107,7 @@ export function SuspendControls({
           type="button"
           onClick={() => { setMode("suspend"); setReason(""); }}
           disabled={pending}
-          className={`${btnBase} border-no-700 bg-no-500/15 text-no-300 hover:bg-no-500/25 transition-colors`}
+          className={`${btnBase} border-danger-border bg-danger-bg text-danger-fg hover:bg-danger-500/30 transition-colors`}
         >
           <I.shieldOff s={11} aria-hidden />
           Suspend player
@@ -112,7 +118,7 @@ export function SuspendControls({
           type="button"
           onClick={() => { setMode("restore"); setReason(""); }}
           disabled={pending}
-          className={`${btnBase} border-yes-700 bg-yes-500/15 text-yes-300 hover:bg-yes-500/25 transition-colors`}
+          className={`${btnBase} border-brand-500 bg-brand-500/15 text-brand-300 hover:bg-brand-500/25 transition-colors`}
         >
           <I.shieldcheck s={11} />
           Restore player
@@ -123,7 +129,7 @@ export function SuspendControls({
           type="button"
           onClick={() => { setMode("restore"); setReason(""); }}
           disabled={pending}
-          className={`${btnBase} border-yes-700 bg-yes-500/15 text-yes-300 hover:bg-yes-500/25 transition-colors`}
+          className={`${btnBase} border-brand-500 bg-brand-500/15 text-brand-300 hover:bg-brand-500/25 transition-colors`}
         >
           <I.shieldcheck s={11} />
           Reopen after self-exclusion
@@ -193,7 +199,7 @@ export function SuspendControls({
         <div className="mt-4 flex flex-col gap-2">
           <Button
             type="button"
-            variant={mode === "suspend" ? "no" : "yes"}
+            variant={mode === "suspend" ? "danger" : "primary"}
             size="lg"
             fullWidth
             loading={pending}

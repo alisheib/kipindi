@@ -164,6 +164,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/journey/journey-top-bar.tsx": [1, "the journey's deposit pill — the deposit door (gilt-metal, §M3a)"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "a won ticket's struck payout (§M3)"],
   "src/components/journey/bet-sheet/bet-sheet.tsx": [3, "S8 money commit (D1), and the deposit door's kit gold variant plus gilt-metal row (§M3a); gold hover preserves the metal wash behind its dark rail ink; the estimate remains neutral"],
+  "src/components/journey/updown/jud-arm.tsx": [1, "S12 Juu/Chini journey arm's money commit (D1, the sheet's CTA: \"Weka dau · TZS x\"); its deposit door is the sheet's own LowBlock, and the projection stays muted (§M3)"],
   "src/components/journey/question/journey-holder.tsx": [2, "S8's settled WIN status and payout, money earned (§M3), as the classic holder"],
   "src/components/layout/wallet-balance-pill.tsx": [9, "the capsule: the live balance (§8a, 'gold on a live balance only')"],
   "src/components/layout/wallet-sheet.tsx": [1, "the Wallet's deposit door (gilt-metal)"],

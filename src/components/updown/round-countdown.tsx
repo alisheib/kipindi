@@ -375,19 +375,18 @@ export function RoundCountdownPod({
     : settled ? "settled" : spent ? "spent" : inResult ? "result" : isOpen ? "open" : "idle";
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
+    <div className="ud-round-pod">
       <span key={`c-${podPhase}`}
             className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"
-            /* ⛔ ONE LINE IN EVERY LOCALE — SW and ZH run ~35% longer and this pod sits inline
-               beside 28px digits in a wrapping header. A wrapped caption grows the pod and
-               shifts the whole header row, which is the layout shift §6 forbids. */
+            /* The pod has a full-width mobile row for the caption. Each phase keeps that row,
+               so a longer Swahili label neither crosses the gutter nor shifts the digit row. */
             style={{ whiteSpace: "nowrap" }}>{shownCaption}</span>
       <span
         key={`d-${podPhase}`}
         className={urgent ? "m-tick ud-count-pulse" : "m-tick"}
         style={{
-          fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
-          fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
+          fontFamily: "var(--font-mono)", fontSize: "var(--type-h2)", fontWeight: 700,
+          fontVariantNumeric: "tabular-nums", lineHeight: 1,
           // ⛔ NOT ROSE IN THE FINAL 30 s (2026-09-14, register E-400 ⓪). `--no-300` beside an Up/Down round reads as
           // "price going down" — the betting pair names a SIDE (DESIGN_AUTHORITY §B2a). Urgency is the pulse's job;
           // the digits take the plain running ink.

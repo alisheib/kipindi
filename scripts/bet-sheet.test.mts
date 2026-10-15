@@ -990,7 +990,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && sheetSrc.includes('<Link href={guest.signUp as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-primary btn-xl w-full kp-bsheet__commit" data-testid="journey-sheet-signup"><span>{keepText(t.journey.sheetSignUp)}</span></Link>')
       && sheetSrc.includes('<Link href={guest.signIn as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-ghost btn-lg w-full" data-testid="journey-sheet-signin">{t.common.signIn}</Link>')
       && sheetSrc.includes('data-guest={props.guest ? "" : undefined}')
-      && (sheetSrc.match(/export function \w+\(/g) ?? []).length === 2);
+      // S12 shares the LowBlock with the Juu/Chini arm; it is not a second sheet.
+      && (sheetSrc.match(/export function \w+\(/g) ?? []).filter((name) => name !== "export function LowBlock(").length === 2);
   return failed;
 }
 

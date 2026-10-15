@@ -38,11 +38,14 @@ export const SOURCE_CLASS_KEY: Record<PublicSourceClass, "udSourceCrypto" | "udS
  * and the board chart panel gained the same receipt line — a second private copy is the
  * drift this file's own header exists to stop.
  */
+let EAT_FULL: Intl.DateTimeFormat | null = null;
 export const fmtEAT = (iso: string | null): string | null => {
   if (!iso) return null;
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return null;
-  const s = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(d);
+  // h23 keeps midnight as 00:xx; hour12:false can print 24:xx on some engines.
+  EAT_FULL ??= new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+  const s = EAT_FULL.format(d);
   return `${s} EAT`;
 };
 

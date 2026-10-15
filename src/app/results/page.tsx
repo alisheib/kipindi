@@ -431,8 +431,8 @@ async function ResultsContent({
               after a figure ("TZS 6K imekamilika …"): `market.tickerSettled` — "settled" / "imekamilika" / "已结算". */}
           {/* Round 5 (F12): a count before its word is grouped as every count line is (`formatNumber`) — production's
               archive holds 12,479, which read "12479 imetatuliwa". `data-result-count` stays the bare integer. */}
-          <p data-result-count={totalCount} className="hidden sm:block amount text-micro text-text-subtle whitespace-nowrap">
-            {formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}
+          <p data-result-count={totalCount} className="hidden sm:block text-body-sm text-text-subtle">
+            <span className="font-mono tabular-nums">{formatNumber(totalCount)}</span> {t.results.resolved} · <span className="amount">{formatTzsCompact(totalVolume)}</span> {t.market.tickerSettled}
           </p>
         </div>
       </div>

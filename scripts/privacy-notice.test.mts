@@ -90,11 +90,13 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-14 · owner partition: selection expiry stays 24h; unresolved owned keys and complete legacy archive do not expire by age.
 // 2026-10-15 · Vodacom S11 WP4: §7's display-choices sentence names How to play's seen key (§4n holds it to the code);
 // PRIVACY_EN_SHA re-pinned from the measured English block (ec751bf6da90 -> 09a4c62735bf).
-const PRIVACY_VERSION = "2026-10-15";
+// 2026-10-15.2 · Vodacom S12 WP10b: §7 names a ROUND in kp-pending-bet, its own paragraph after S8's (§4o).
+// The combined body includes S11's How-to note and S12's round paragraph.
+const PRIVACY_VERSION = "2026-10-15.2";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "09a4c62735bf";
+const PRIVACY_EN_SHA = "bd8dc162cbac";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -1418,6 +1420,34 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
   ok("§4n control · a host writing storage itself, and a sheet marking another key, are each reported",
     plantHost[GUIDE[0]] !== guideSrc[GUIDE[0]] && writesDefects(plantHost).some((d) => d.includes("localStorage"))
       && plantKey[GUIDE[1]] !== guideSrc[GUIDE[1]] && writesDefects(plantKey).some((d) => d.includes("markSeen(\"kp-howto\")")));
+}
+
+/* ══ §4o · S12 WP10b: a ROUND in the same tab marker, said in §7 before the first round marker is written ═══════ */
+{
+  // The arm writes a round's bet (`udr_….UP.5000`) into kp-pending-bet when the player goes from a round to deposit or on
+  // to the next round; §7 must say so in every language, as its own paragraph (S8's stays byte-identical).
+  const ROUND_WORDS: Record<Loc, string[]> = {
+    en: ["up &amp; down round", "kp-pending-bet", "the round, the direction (up or down) and the amount you chose", "same 24-hour rule", "places no bet"],
+    sw: ["raundi ya juu na chini", "kp-pending-bet", "raundi, upande (juu au chini) na kiasi ulichochagua", "kanuni ileile ya saa 24", "haiweki dau lolote"],
+    zh: ["涨跌回合", "kp-pending-bet", "回合、方向（涨或跌）和金额", "最长 24 小时", "不会替您投注"],
+  };
+  const roundDefects = (page: string): string[] => {
+    const d: string[] = [];
+    const bl = blocks(page);
+    for (const l of LOCS) {
+      const paras = [...section(bl[l], "7").matchAll(/<p data-policy-addition="pending-round">([\s\S]*?)<\/p>/g)].map((m) => m[1].replace(/\s+/g, " ").toLowerCase());
+      if (paras.length !== 1) { d.push(`${l}: ${paras.length} round paragraphs in §7, want 1`); continue; }
+      for (const w of ROUND_WORDS[l]) if (!paras[0].includes(w.toLowerCase())) d.push(`${l}: ${w}`);
+    }
+    return d;
+  };
+  const markerOn = /export const JUD_TAB_MARKER = true;/.test(read("src/lib/journey/updown-arm.ts"));
+  ok("§4o en/sw/zh §7 say that a round, its direction and the chosen amount sit in kp-pending-bet under the same 24-hour rule and place no bet — the paragraph that lets the Juu/Chini arm write a round marker (JUD_TAB_MARKER)",
+    roundDefects(pageSrc).length === 0 && markerOn, roundDefects(pageSrc).join("; ") || `JUD_TAB_MARKER ${markerOn}`);
+  const dropSw = pageSrc.replace(/<p data-policy-addition="pending-round">\s*Kwa raundi[\s\S]*?<\/p>/, "");
+  ok("§4o control · the Swahili round paragraph removed is reported in Swahili only", dropSw !== pageSrc && roundDefects(dropSw).length > 0 && roundDefects(dropSw).every((x) => x.startsWith("sw:")));
+  const noAmountZh = pageSrc.replace("回合、方向（涨或跌）和金额", "回合和方向（涨或跌）");
+  ok("§4o control · the chosen amount dropped from the Chinese round paragraph is reported", noAmountZh !== pageSrc && roundDefects(noAmountZh).some((x) => x.startsWith("zh:")));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PENDING_BET_KEY } from "@/lib/journey/pending-bet";
-import { trustedDepositBet } from "@/lib/journey/deposit-state";
+import { trustedDepositBet } from "@/lib/journey/deposit-state-client";
 import { useT } from "@/lib/i18n";
 import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStoredFunding } from "@/lib/journey/funding-storage";
 

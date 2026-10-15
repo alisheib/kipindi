@@ -105,7 +105,7 @@ export default function LiveLoading() {
                   (`featured-contest.tsx`: each its drawing and 9px either side, the first 9px taken back into the row's
                   gap — R9-C), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>
+                <ButtonGhost size="md" trailing={<I.arrowRight s={14} text="body-600" />}>{t.market.openMarket}</ButtonGhost>
                 <div className="-ml-[9px] flex items-center">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <span key={i} className="grid h-[40px] place-items-center px-[9px]">

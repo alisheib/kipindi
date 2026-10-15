@@ -17,6 +17,10 @@
 import { signSession, verifySession } from "./crypto";
 import { positionStore } from "./market-dal";
 import { getMarket } from "./market-service";
+// S12 WP13 (the Vodacom plan): the win card names its market by the officer-approved English short title once the new
+// journey is ACTIVE for everyone (S15), and by the full English question until then and on any failure.
+import { shortTitlesInMessagesNow } from "./message-titles";
+import { messageTitle } from "@/lib/markets/short-title";
 
 const PURPOSE = "win-share";
 const TTL_MS = 90 * 24 * 3600_000; // a shared link stays viewable for 90 days
@@ -61,9 +65,10 @@ export async function resolveWinShareToken(token: string | null | undefined): Pr
   if (pos.status !== "WIN" || pos.finalPayout == null || pos.finalPayout <= 0) return null;
   const m = await getMarket(pos.marketId);
   if (!m) return null;
+  const shortTitles = await shortTitlesInMessagesNow();
   return {
     marketId: pos.marketId,
-    marketTitle: m.titleEn,
+    marketTitle: messageTitle(shortTitles, "en", m.titleEn, m),
     side: pos.side,
     stake: pos.stake,
     payout: pos.finalPayout,

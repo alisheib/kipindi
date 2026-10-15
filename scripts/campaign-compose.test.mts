@@ -1061,6 +1061,75 @@ function checkOneComposer(src: ComposerSources, log: (l: string) => void): strin
 
 const COMPOSER_SOURCES = loadComposerSources();
 
+/* ══ §19 — NO SMS CARRIES A MARKET TITLE (the Vodacom plan's S12 WP14, 2026-10-14) ═══════════════════════════
+ * Every SMS this platform sends today is a one-time code, an invite or a marketing campaign the officer wrote — none names
+ * a market. The census below holds that, and the rule for the day one does: a market title (`title*` / `shortTitle*`, or a
+ * helper that returns one) reaches an SMS body only through `foldToGsm7` (sms-compose.ts), so a pasted curly quote or dash
+ * cannot drop the message to UCS-2 and triple its price (sw and en short titles are GSM-7 already, `cleanShortTitle`).
+ * ⭐ THE POPULATION IS STRUCTURAL: every `src/` file that calls an SMS send (`sendBatch(`, `sms.send(`) or a body composer
+ * (`otpMessage(`, `inviteMessage(`, `composeMarketing(`, `renderForRecipient(`, `renderBody(`), and the two rail files —
+ * so a new composer joins by existing. Read as CODE, comments out. */
+const SMS_RAIL_FILES = ["src/lib/server/sms.ts", "src/lib/server/sms-blackball.ts"];
+const SMS_COMPOSER_CALL = /\b(?:sendBatch|otpMessage|inviteMessage|composeMarketing|renderForRecipient|renderBody)\s*\(|\bsms\.send\s*\(/;
+const MARKET_TITLE_READ = /\b(?:title|shortTitle)(?:En|Sw|Zh)\b|\b(?:shortTitleFor|cardTitle|messageTitles?)\s*\(/g;
+type SmsTitleSources = { population: number; files: ReadonlyMap<string, string> };
+function loadSmsTitleSources(): SmsTitleSources {
+  const all = srcFiles();
+  const files = new Map<string, string>();
+  for (const rel of all) {
+    const raw = readFileSync(join(REPO_ROOT, rel), "utf8");
+    if (!SMS_RAIL_FILES.includes(rel) && !SMS_COMPOSER_CALL.test(raw)) continue;
+    const text = decomment(raw).replace(/\r\n/g, NL15);
+    if (SMS_RAIL_FILES.includes(rel) || SMS_COMPOSER_CALL.test(text)) files.set(rel, text);
+  }
+  return { population: all.length, files };
+}
+/** True when the character at `at` sits inside an open `foldToGsm7(` call — parentheses balanced, strings skipped. */
+function insideFold(text: string, at: number): boolean {
+  let depth = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    const c = text[i];
+    if (c === ")") depth++;
+    else if (c === "(") {
+      if (depth === 0) {
+        if (/foldToGsm7\s*$/.test(text.slice(Math.max(0, i - 24), i))) return true;
+      } else depth--;
+    }
+  }
+  return false;
+}
+function checkSmsTitles(src: SmsTitleSources, log: (l: string) => void): string[] {
+  const failed: string[] = [];
+  const ok = (label: string, cond: boolean, extra = "") => {
+    if (cond) log(`  ok   ${label}`);
+    else { failed.push(label); log(`  FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
+  };
+  log(`${NL15}§19 · NO SMS CARRIES A MARKET TITLE — and the day one does, it goes through foldToGsm7`);
+  const bare: string[] = [];
+  const folded: string[] = [];
+  for (const [rel, text] of src.files) {
+    for (const m of text.matchAll(MARKET_TITLE_READ)) {
+      const line = text.slice(0, m.index ?? 0).split(NL15).length;
+      (insideFold(text, m.index ?? 0) ? folded : bare).push(`${rel}:${line} ${m[0]}`);
+    }
+  }
+  const names = [...src.files.keys()];
+  log(`       walked ${src.population} src files · ${src.files.size} SMS composers: ${names.join(", ")}`);
+  const MUST = [...SMS_RAIL_FILES, "src/lib/server/auth-service.ts", "src/lib/server/invite-service.ts", "src/lib/server/marketing/engine.ts",
+    "src/lib/server/marketing/campaign-test-send.ts", "src/lib/marketing/campaign-template.ts"];
+  ok("§19.0 control · the census is real — the rails, the one-time code, the invites and the campaigns are all in it — and its reader sees a title read, and a folded one",
+    src.population > 500 && MUST.every((f) => names.includes(f))
+      && [..."x = m.shortTitleSw;".matchAll(MARKET_TITLE_READ)].length === 1 && !insideFold("x = m.shortTitleSw;", 6)
+      && insideFold("x = foldToGsm7(m.titleEn + y);", 15) && !insideFold("x = foldToGsm7(a) + m.titleEn;", 23),
+    MUST.filter((f) => !names.includes(f)).join(", "));
+  ok("§19.1 ⛔ no SMS composer reads a market title (title* / shortTitle*, or a helper that returns one) outside foldToGsm7",
+    bare.length === 0, bare.slice(0, 4).join(" | "));
+  ok("§19.2 ⭐ …and today none reads one at all: no SMS carries a market title (a session that adds one re-pins this in the open; §19.1 holds it to the fold)",
+    bare.length === 0 && folded.length === 0, folded.slice(0, 4).join(" | "));
+  return failed;
+}
+const SMS_TITLE_SOURCES = loadSmsTitleSources();
+
 /* ══ §16.2–§16.5 · §17.6 — THE COMPOSER'S OWN FILES, READ (U37b, 2026-10-02) ══════════════════════════════
  * The page layer of U37a's rules: the screen sizes nothing itself (its counter is the renderer's), offers no sender
  * control (OD45) and ONE number control — the Test card's kit PhoneInput (U37c-2) — and names no money (OD24) —
@@ -3012,6 +3081,7 @@ if (!PROVE_RED) {
     ...checkComposerWords(REAL_WORDS, (l) => console.log(l)),
     ...(await checkSave(REAL_COMPOSE, (l) => console.log(l))),
     ...(await checkTestSend(REAL_COMPOSE, (l) => console.log(l))),
+    ...checkSmsTitles(SMS_TITLE_SOURCES, (l) => console.log(l)),
   ];
   console.log(`\nCAMPAIGN COMPOSE — ${failed.length === 0 ? "all checks passed" : `${failed.length} failed`}\n`);
   for (const f of failed) console.log(`  · ${f}`);
@@ -3030,6 +3100,7 @@ if (!PROVE_RED) {
     ...checkTemplate(REAL_TEMPLATE, quiet), ...checkOneComposer(COMPOSER_SOURCES, quiet),
     ...checkComposerScreen(SCREEN_SOURCES, quiet), ...checkComposerWords(REAL_WORDS, quiet),
     ...(await checkSave(REAL_COMPOSE, quiet)), ...(await checkTestSend(REAL_COMPOSE, quiet)),
+    ...checkSmsTitles(SMS_TITLE_SOURCES, quiet),
   ];
   ok("§0 baseline · the shipped module passes every assertion before anything is planted",
     baseline.length === 0, baseline.join("; "));
@@ -3762,6 +3833,46 @@ if (!PROVE_RED) {
       const failures = checkOneComposer(p.sources, quiet);
       ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    }
+  }
+
+  /* ── §19's plants: a market title reaches an SMS (the Vodacom plan's S12 WP14) ───────────────────────────── */
+  {
+    const S = SMS_TITLE_SOURCES;
+    const SMS_REL = "src/lib/server/sms.ts";
+    const INVITE_RETURN = "  return `${base ? base + \" \" : \"\"}${bonus}. 50pick: ${link}`;";
+    const smsText = S.files.get(SMS_REL) ?? "";
+    const withFile = (rel: string, text: string): SmsTitleSources => { const files = new Map(S.files); files.set(rel, text); return { ...S, files }; };
+    const bareTitle = smsText.replace(INVITE_RETURN, "  return `${base ? base + \" \" : \"\"}${bonus}. ${opts.market.titleSw}. 50pick: ${link}`;");
+    const foldedTitle = smsText.replace(INVITE_RETURN, "  return `${base ? base + \" \" : \"\"}${bonus}. ${foldToGsm7(opts.market.shortTitleSw)}. 50pick: ${link}`;");
+    type TitlePlant = { name: string; expect: RegExp; sources: SmsTitleSources; landed: () => boolean; landedAs: string; quietOn?: RegExp };
+    const titlePlants: TitlePlant[] = [
+      {
+        name: "the invite SMS quotes a market's Swahili title as it is (no fold)",
+        expect: /^§19\.1 ⛔/, sources: withFile(SMS_REL, bareTitle),
+        landed: () => smsText.split(INVITE_RETURN).length === 2 && bareTitle.includes("opts.market.titleSw"),
+        landedAs: "the invite's return line resolves exactly once in sms.ts and quotes `titleSw` in memory",
+      },
+      {
+        name: "a NEW composer sends a short title by SMS — it joins the census by calling sendBatch",
+        expect: /^§19\.1 ⛔/,
+        sources: withFile("src/lib/server/__planted__/result-sms.ts", "export async function textResult(m, to) { return sendBatch([{ to, body: `${m.shortTitleEn} settled` }]); }"),
+        landed: () => !S.files.has("src/lib/server/__planted__/result-sms.ts"),
+        landedAs: "one in-memory file that calls sendBatch and reads shortTitleEn",
+      },
+      {
+        name: "a title folded onto GSM-7 is the rule's door — §19.1 lets it through, and the census still counts it (re-pin in the open)",
+        expect: /^§19\.2 ⭐/, quietOn: /^§19\.1 ⛔/, sources: withFile(SMS_REL, foldedTitle),
+        landed: () => smsText.split(INVITE_RETURN).length === 2 && foldedTitle.includes("foldToGsm7(opts.market.shortTitleSw)"),
+        landedAs: "the same line quotes `foldToGsm7(opts.market.shortTitleSw)` in memory",
+      },
+    ];
+    for (const p of titlePlants) {
+      ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
+      const failures = checkSmsTitles(p.sources, quiet);
+      ok(`  └─ fires: ${p.expect.source.slice(0, 56)}`, failures.some((f) => p.expect.test(f)),
+        failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+      if (p.quietOn) ok(`  └─ and stays quiet: ${p.quietOn.source.slice(0, 50)}`, !failures.some((f) => p.quietOn!.test(f)), failures.join(" | "));
     }
   }
 

@@ -277,7 +277,16 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
     "app/agent/status/page.tsx",
     "app/agent/invite/[token]/page.tsx",
     "app/profile/source-of-funds/page.tsx",
+    // S12 WP5 (2026-10-14, word-ledger row 57): /updown/history's round rows. Their date never went through an English
+    // helper — the page carried its own `Intl.DateTimeFormat("en-GB", …)`, a numeric "12/10, 00:10 EAT" in every
+    // language — so beside the fence's two checks it is held to having no en-GB formatter of its own (below).
+    "app/updown/history/page.tsx",
   ];
+  {
+    const hist = read("../src/app/updown/history/page.tsx");
+    ok("3: fence · app/updown/history/page.tsx keeps no en-GB date formatter of its own, and still states EAT after the reader's date",
+      hist.length > 0 && !/DateTimeFormat\(\s*["']en-GB["']/.test(hist) && /return s === "—" \? s : `\$\{s\} EAT`;/.test(hist));
+  }
   /* ⚠️ TWO CLIENT FILES WHOSE YEAR RULE READS THE DEVICE CLOCK, BY THEIR OWN DESIGN — held to the first two checks, not
      the third: the comment thread's date is the fallback of a relative time ("5m", "3h") that is the device clock's
      already, and the wallet card's bonus expiry sits in a file whose transaction row (`TxnRow`) reads it the same way.

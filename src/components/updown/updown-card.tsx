@@ -32,6 +32,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
@@ -42,6 +43,10 @@ import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+// S12 WP9 · the journey arm's loader alone: the arm is a chunk of its own, fetched only for a journey request.
+import { LazyJudTwoWay } from "@/components/journey/updown/jud-lazy";
+import type { JudViewer } from "@/lib/journey/updown-arm";
+import { PLATFORM_MAX_STAKE, PLATFORM_MIN_STAKE } from "@/lib/payout";
 import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
@@ -200,6 +205,11 @@ export type UpDownCardProps = {
    * one-tap stakes stand (`BetBreakNotice`) — the page reads the lockout, failing open; the card only draws.
    */
   breakBody?: KeptBody | null;
+  /**
+   * S12 WP9–WP10 · a journey reader's own facts (`judViewerFor`, read by the board page for a journey request with a
+   * session), or absent. Present, the signed-in control is Juu/Chini's journey arm; absent, it is the classic control.
+   */
+  journey?: JudViewer | null;
 };
 
 
@@ -219,7 +229,7 @@ export type UpDownCardProps = {
  */
 
 /**
- * The wall-clock time the lock happened, in the player's own locale, from one formatter.
+ * The wall-clock time the lock happened, in the platform's named EAT zone, from one formatter.
  * ⚠️ Lazy for the same reason: most cards never render the locked branch.
  *
  * 🔴 IT RETURNS `null` FOR A TIME THAT IS NOT A TIME, AND THAT IS THE WHOLE POINT (2026-09-18).
@@ -244,9 +254,9 @@ let CLOCK_FORMAT: Intl.DateTimeFormat | null = null;
 function formatClock(ms: number): string | null {
   if (!Number.isFinite(ms)) return null;
   if (CLOCK_FORMAT === null) {
-    CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    CLOCK_FORMAT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
   }
-  return CLOCK_FORMAT.format(new Date(ms));
+  return `${CLOCK_FORMAT.format(new Date(ms))} EAT`;
 }
 
 /**
@@ -432,7 +442,7 @@ export function UpDownCard(props: UpDownCardProps) {
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,
+    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null, journey = null,
   } = props;
   const { t, locale } = useT();
   const router = useRouter();
@@ -558,10 +568,9 @@ export function UpDownCard(props: UpDownCardProps) {
   // ⚠️ `null` NOW MEANS "COUNT IT" — the leaf owns the ticking number, and a string here is a
   // fixed readout it shows verbatim. The four branches are the same four they always were.
   const handoverDigits = handover.counting ? null : "—:—";
-  // The exact time the lock happened (or will), for the reason line. Local-time formatting is
-  // deliberate — the player's own clock is what they will compare it against.
-  // ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`; this used to build a fresh one on every
-  // render, and this card used to render every second.
+  // The lock and the source quote on this card use one named EAT clock. A device-local 12-hour
+  // time beside a 24-hour EAT quote made one round appear to have two different clocks.
+  // `formatClock` retains its finite guard and its one cached formatter.
   const lockClock = useMemo(
     () => (selectionClosesAtMs != null ? formatClock(selectionClosesAtMs) : null),
     [selectionClosesAtMs],
@@ -656,6 +665,8 @@ export function UpDownCard(props: UpDownCardProps) {
      chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
      round read as three hours stale to a player in Tanzania. */
   const quoted = useMemo(() => fmtEAT(sourceQuotedAt), [sourceQuotedAt]);
+  const sourceLabel = t.market[SOURCE_CLASS_KEY[sourceClass]];
+  const quoteLabel = quoted ? `${t.market.udQuoted} ${quoted}` : null;
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
   // One-tap bet that keeps the card in place (see useUpDownQuickBet — the SHARED
@@ -800,7 +811,7 @@ export function UpDownCard(props: UpDownCardProps) {
             </span>
           ) : (
             <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
-              <span className="inline-flex items-center gap-1 self-center font-mono text-[15.5px] font-bold tabular-nums">
+              <span className="inline-flex items-center gap-1 font-mono text-[15.5px] font-bold tabular-nums">
                 {tone === "up" && <I.trendingUp s={11} />}
                 {tone === "down" && <I.trendingDown s={11} />}
                 {priceText.live}
@@ -1014,11 +1025,16 @@ export function UpDownCard(props: UpDownCardProps) {
             >
               {/* UD-22 · the receipt's ghost CTA goes to the round. From the BOARD that is a
                   real destination, so it is offered here; the round page omits it. */}
+              {/* S12 WP9 · a journey reader's control is Juu/Chini's journey arm, on this very hook; the else arm is the classic control. */}
+              {journey && marketId && serverNowMs != null ? <LazyJudTwoWay bet={bet} viewer={journey} assetName={assetName} receipt={receipt} size="card"
+                onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
+                round={{ marketId, roundId, pricing, min: minStake ?? PLATFORM_MIN_STAKE, max: maxStake ?? PLATFORM_MAX_STAKE, selectionClosesAtMs: selectionClosesAtMs ?? null, open: bettable, serverNowMs, myUpStake, myDownStake }} /> : (
               <UpDownStakeControls
                 bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation
                 receipt={receipt}
                 onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
               />
+              )}
             </div>
           ) : (
             // Signed-out / display-only → the buttons route to the round detail, where
@@ -1236,13 +1252,17 @@ export function UpDownCard(props: UpDownCardProps) {
           17:52:03 EAT", 3px under §T4's reading floor, on the one line that says where the price came from and when.
           It takes the kit's 13px. The words set in the body face, the figures in mono (§T5); "· imenukuliwa 17:52:03 EAT"
           and "Ufunguzi $63,572.10" are each held whole, so the line wraps BETWEEN them — never inside a time or a
-          price, and never leaving the dot stranded at a line's end (the stamp carries it onto its own line). The
-          seconds stay (E-47b). */}
+          price. S12 F25b: DotSeq hides the separator when the stamp starts a new line;
+          the old leading-dot span drew "· imenukuliwa" at the line start. The seconds stay (E-47b). */}
       <div className="ud-foot flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
-          {t.market[SOURCE_CLASS_KEY[sourceClass]]}
-          {quoted && <>{" "}<span className="whitespace-nowrap">{"· "}{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span></>}
+          <DotSeq
+            text={quoteLabel ? `${sourceLabel} · ${quoteLabel}` : sourceLabel}
+            renderPart={(part) => part === quoteLabel
+              ? <span className="whitespace-nowrap">{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span>
+              : part}
+          />
         </span>
         {openPrice != null && (
           <span className="ml-auto whitespace-nowrap">{t.market.udOpenPrice}{" "}<span className="font-mono tabular-nums">{priceText.open}</span></span>

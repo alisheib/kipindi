@@ -236,6 +236,57 @@ console.log("\n§9 · withdrawn today (2026-09-13), and re-enabling still works"
   if (prev === undefined) delete process.env.FEATURE_INSTALL; else process.env.FEATURE_INSTALL = prev;
 }
 
+// ── §10 · THE MANIFEST THE FLIP WILL SHIP — prepared by S12, applied by S15 (the Vodacom plan's WP14) ──────────
+// One manifest serves every visitor, so its shortcuts and name cannot change before the flip (VODACOM-PLAN §0h point 17).
+// S12 prepares the file S15 applies; this holds the prepared file to what the live one is held to (installable, every
+// path real), plus the rules the flip brings: the journey's own words, real routes, NEW names for changed pictures
+// (/icons, /screenshots and /og are one-year immutable, next.config.ts), and S11's tagline as a marked placeholder.
+console.log("\n§10 · the manifest the flip will ship — prepared now, applied by S15, the live one untouched");
+{
+  type Icon = { src: string; sizes?: string; purpose?: string };
+  type Patch = {
+    placeholders: Record<string, string>; toBeDrawn: Array<{ path: string }>; toBeCaptured: Array<{ path: string }>; notes: string[];
+    manifest: Record<string, unknown> & { name: string; short_name: string; icons: Icon[]; shortcuts: Array<{ name: string; short_name: string; url: string; icons: Icon[] }>; screenshots: Array<{ src: string }> };
+  };
+  const PATCH = "docs/design-system/v5-2026-09-29-simplified-journey/s12-manifest-patch.json";
+  const patch = JSON.parse(read(PATCH)) as Patch;
+  const live = JSON.parse(read("public/manifest.json")) as Patch["manifest"];
+  const m = patch.manifest;
+  const sizes = new Set((m.icons ?? []).flatMap((i) => (i.sizes ?? "").split(/\s+/)));
+  ok("10.1 the prepared file is a complete, installable manifest — name, short name, start URL, standalone, a 192, a 512 and a maskable icon, shortcuts and screenshots",
+    !!m?.name && !!m.short_name && m.start_url === "/" && m.display === "standalone" && sizes.has("192x192") && sizes.has("512x512")
+      && m.icons.some((i) => (i.purpose ?? "").includes("maskable")) && m.shortcuts?.length > 0 && m.screenshots?.length > 0, PATCH);
+  const { dict } = await import("../src/lib/i18n-dict.ts");
+  const want = [[dict.sw.journey.tabQuestions, "/"], [dict.sw.journey.tabTickets, "/positions"], [dict.sw.journey.depositAction, "/wallet/deposit"]];
+  ok("10.2 its shortcuts are Maswali (/), Tiketi zangu (/positions) and Weka pesa (/wallet/deposit) — each named by the journey's own words in the dictionary",
+    JSON.stringify(m.shortcuts.map((s) => [s.name, s.url])) === JSON.stringify(want) && m.shortcuts.every((s) => s.short_name === s.name),
+    JSON.stringify(m.shortcuts.map((s) => [s.name, s.url])));
+  const pageFor = (url: string) => (url === "/" ? "src/app/page.tsx" : `src/app${url}/page.tsx`);
+  const noRoute = m.shortcuts.filter((s) => !existsSync(pageFor(s.url))).map((s) => s.url);
+  ok("10.3 every shortcut it names opens a real route (the page exists in src/app)", noRoute.length === 0, noRoute.join(", "));
+  const named = [...m.icons.map((i) => i.src), ...m.shortcuts.flatMap((s) => s.icons.map((i) => i.src)), ...m.screenshots.map((s) => s.src)];
+  const listed = new Set([...(patch.toBeDrawn ?? []), ...(patch.toBeCaptured ?? [])].map((x) => x.path));
+  const unaccounted = named.filter((p) => !existsSync(`public${p}`) && !listed.has(p));
+  const notNew = [...listed].filter((p) => existsSync(`public${p}`));
+  ok("10.4 every icon and screenshot it names is on disk, or listed to be drawn or captured — and every listed one is a NEW name (a changed picture under an old name would stay stale for a year)",
+    named.length >= 7 && listed.size >= 1 && unaccounted.length === 0 && notNew.length === 0,
+    JSON.stringify({ unaccounted, notNew }));
+  const tokens = (s: string) => [...s.matchAll(/\{\{[A-Z0-9_]+\}\}/g)].map((x) => x[0]);
+  const used = tokens(JSON.stringify(m));
+  const retired = live.name.split(" — ")[1] ?? "";
+  ok("10.5 ⛔ the name carries S11's tagline as a MARKED placeholder ({{S11_TAGLINE}}, declared with its owner) — never invented, never the retired slogan — and the live manifest carries none",
+    m.name.includes("{{S11_TAGLINE}}") && used.every((t) => t in (patch.placeholders ?? {})) && Object.keys(patch.placeholders ?? {}).every((k) => used.includes(k))
+      && retired.length > 5 && !m.name.includes(retired) && tokens(read("public/manifest.json")).length === 0,
+    JSON.stringify({ name: m.name, used }));
+  const SAME = ["short_name", "description", "start_url", "display", "background_color", "theme_color", "orientation", "categories", "lang", "icons"];
+  const drift = SAME.filter((k) => JSON.stringify(m[k]) !== JSON.stringify((live as Record<string, unknown>)[k]));
+  ok("10.6 \"lang\" stays today's (Ali's choice, noted in the file), and every member the plan does not change is today's, byte for byte",
+    drift.length === 0 && (patch.notes ?? []).some((n) => /lang/.test(n) && /Ali/.test(n)), drift.join(", "));
+  ok("10.7 ⛔ the live manifest is not the patch: it keeps today's shortcuts and name until S15 applies the file (S15 re-pins this in its commit)",
+    JSON.stringify(live.shortcuts.map((s) => s.url)) === JSON.stringify(["/markets", "/wallet", "/wallet/deposit"]) && live.name !== m.name,
+    JSON.stringify(live.shortcuts.map((s) => s.url)));
+}
+
 console.log(`\ninstall-invite: ${pass} passed, ${fails.length} failed`);
 if (fails.length) {
   console.error("\n✗ §3 — the install invitation is not installable, not non-disturbing, or not out of the way.\n");

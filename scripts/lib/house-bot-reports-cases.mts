@@ -959,7 +959,7 @@ if (STORE === "memory") {
     // per-site marker verdict and deletion/wrong-source plants above and below
     // still independently check the writer bodies.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1788", "market-service.ts:3063", "market-service.ts:3534", "market-service.ts:4003", "market-service.ts:4135", "market-service.ts:4276", "market-service.ts:4873"]), j(marked));
+      j(marked) === j(["market-service.ts:1791", "market-service.ts:3075", "market-service.ts:3546", "market-service.ts:4021", "market-service.ts:4153", "market-service.ts:4294", "market-service.ts:4895"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -1015,7 +1015,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:3063` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:3075` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -1036,11 +1036,11 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3063` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3075` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3063` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3075` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -1048,7 +1048,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3063` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3075` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1057,7 +1057,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1788` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1791` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →
@@ -2092,11 +2092,17 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // controls read the bell after the notices and can fail again (`red:officer-hold` 13/13; 10/13 since R5-B's `instantIn`).
   // Not a word of any notice moved; the same measure reproduces 84c86d46… on the function before the change.
   //   was · notifyVerdictRecordedForMarket 84c86d46…
+  // ⭐ RE-MEASURED 2026-10-15, THE CHANGE REVIEWED AS ONE (the Vodacom plan's S12 WP12, the title switch, 4c7198e5c):
+  // `notifyVerdictRecordedForMarket` reads the switch once (`shortTitlesInMessagesNow`) and names the market through
+  // `messageTitles` — the officer-approved short title only once the new journey is ACTIVE for everyone, and today's full
+  // title, byte for byte, until then and on any failure (`test:message-titles` §C). No house reader, no house word, not a
+  // word of any notice moved today; the same measure reproduces 70065688… on the function before the change.
+  //   was · notifyVerdictRecordedForMarket 70065688…
   notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
-  notifyVerdictRecordedForMarket: "70065688df40f2c4a6ed766158098dc121241ac3ede2b564dca3e45dc505ac03",
+  notifyVerdictRecordedForMarket: "abd5e1f6a346fa8c1d5ab9210f6512ac07d78c991da73ed0d3b6f662fc04fa6d",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
 export function functionDeclarationText(file: string, code: string, name: string): string {
@@ -4481,12 +4487,18 @@ await guard("11.247", async () => {
      nothing passes vacuously, which is the defect c1c's own header records being caught once already. */
   const ogSrc = decomment(read("src/app/api/og/market/[id]/route.tsx")).replace(/\r\n/g, "\n");
   const ogReads = [...ogSrc.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).sort();
-  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the two this sweep accounts for — `getMarket`, driven for all four viewers above, and `resolveWinShareToken`, pinned below — so a third reader arriving in that handler is reported here by name instead of riding out unswept",
-    ogReads.join(",") === "getMarket,resolveWinShareToken", j(ogReads));
+  /* ⭐ RE-PINNED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP13): the handler gained a THIRD await, and it is named
+     here rather than absorbed. `shortTitlesInMessagesNow` (`lib/server/message-titles.ts`) is the title switch — it reads
+     the rollout's ceiling and, only under an ACTIVE one, the journey switch's sealed `SystemConfig` row; it never reads a
+     position, a wallet or a house field, so nothing house can reach the image through it. */
+  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the three this sweep accounts for — `getMarket`, driven for all four viewers above, `resolveWinShareToken`, pinned below, and `shortTitlesInMessagesNow`, the S12 title switch (the rollout switch's row only, never a position) — so a fourth reader arriving in that handler is reported here by name instead of riding out unswept",
+    ogReads.join(",") === "getMarket,resolveWinShareToken,shortTitlesInMessagesNow", j(ogReads));
   const shareSrc = decomment(read("src/lib/server/share-token.ts")).replace(/\r\n/g, "\n");
+  /* ⭐ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP13): the win card's market title goes through `messageTitle` — the approved
+     English short title from the S15 flip, the full English question until then. Still six fields, and still no marker. */
   const WIN_SHARE = `  return {
     marketId: pos.marketId,
-    marketTitle: m.titleEn,
+    marketTitle: messageTitle(shortTitles, "en", m.titleEn, m),
     side: pos.side,
     stake: pos.stake,
     payout: pos.finalPayout,

@@ -1672,6 +1672,10 @@ export function emailVerifyHtml({ name, verifyUrl }: { name?: string; verifyUrl:
  * 2126". The caller asks `selfExclusionStandingOf` — the one definition of permanent, never the period's name — and the
  * letter then names no date at all: each sentence loses only its "until …" clause, and the Period row says the dictionary's
  * own word for it (`common.permanent`). No sentence is reworded (approved responsible-gambling copy).
+ * ⭐ S12 WP5 (word-ledger row 78; S12-PLAN's Point for Ali 4, accepted by Ali, 2026-10-14): the permanent letter's two
+ * words. Its English read "You've locked your account for permanent." (the period's name, "permanent", dropped into
+ * "for …") and its Swahili had no word for it at all; they now read "…your account permanently." and "Akaunti yako
+ * imefungwa kabisa." A dated exclusion's sentences are unchanged.
  * ⚠️ A value that does not parse states no end either, as `agentRevokedHtml` states no date — never "Invalid Date".
  */
 function rgEndIn(untilIso: string, nowMs: number): { en: string; sw: string } | null {
@@ -1694,8 +1698,8 @@ export function selfExclusionHtml({ period, untilIso, permanent = false }: {
   return wrap(`
     ${eyebrow("Self-exclusion active", "Jizuie")}
     ${heading("Self-exclusion confirmed")}
-    ${subtitle(`You've locked your account for ${period}. Betting, deposits, and login are disabled${end ? ` until ${end.en}` : ""}. This cannot be reversed.`)}
-    ${subtitleSw(`Akaunti yako imefungwa${end ? ` hadi ${end.sw}` : ""}. Hii haiwezi kubatilishwa.`)}
+    ${subtitle(`You've locked your account ${permanent ? "permanently" : `for ${period}`}. Betting, deposits, and login are disabled${end ? ` until ${end.en}` : ""}. This cannot be reversed.`)}
+    ${subtitleSw(`Akaunti yako imefungwa${permanent ? " kabisa" : end ? ` hadi ${end.sw}` : ""}. Hii haiwezi kubatilishwa.`)}
     ${detailRows([
       { label: "Period", value: permanent ? dict.en.common.permanent : period },
       ...(end ? [{ label: "Unlocks", value: end.en }] : []),

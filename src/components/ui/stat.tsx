@@ -159,6 +159,7 @@ export function Stat({
   iconAlign = "label",
   className,
   labelClassName,
+  valueClassName,
 }: {
   label: React.ReactNode;
   value: React.ReactNode;
@@ -199,7 +200,7 @@ export function Stat({
   /** Container. Omit for the kit's bare pair. See the BOX dictionary. */
   boxed?: StatBox;
   /** Override the rung's default face. ⛔ Ignored when `money` — M4 outranks it. */
-  font?: "mono" | "display";
+  font?: "mono" | "display" | "body";
   /** Small glyph beside the label (or opposite it — see `iconAlign`).
    *  ⭐ ON THE COLUMN'S EDGE (round 10, R10-A4 — tiles 162 187 188): the slot drew its glyph as given, so its ink stood inside
    *  the column its label and value start on — the market page's KIASI / WATABIRI / INATATULIWA glyphs 1.76 / 1.84 / 1.07px,
@@ -216,6 +217,8 @@ export function Stat({
    * per-call-site label is how the eight became eight.
    */
   labelClassName?: string;
+  /** A value that is a sentence can use body copy without changing money metrics. */
+  valueClassName?: string;
 }) {
   const sz = SIZE[size];
   // §M4 — money is mono and never letter-spaced. Enforced here, not asked for.
@@ -254,13 +257,14 @@ export function Stat({
           a flat `color` sits under a transparent fill and the two disagree. */}
       <p
         className={cn(
-          face === "mono" ? "font-mono" : "font-display",
+          face === "mono" ? "font-mono" : face === "body" ? "font-sans" : "font-display",
           sz.weight ?? "font-bold",
           "tabular-nums",
           sz.text,
           sz.lead,
           sz.gap,
           struck ? "gilt-ink" : TONE[tone],
+          !money && valueClassName,
         )}
         // ⛔ M4 again, belt-and-braces: a `className` from the call site cannot
         // sneak tracking back onto a money figure.
