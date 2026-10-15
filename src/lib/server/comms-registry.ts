@@ -369,6 +369,8 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // ⛔ No holder notices: every HOUSE_BOT row is an officer's (D19c, C4 ruling 149).
   // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.
   { fn: "notifyAdminsHouseBotErasureBlocked", kind: "HOUSE_BOT",  audience: "officer" },
+  // N6: a flagged designated-account stake needs owner review in the AML queue.
+  { fn: "notifyAdminsDeskAmlFlag",          kind: "HOUSE_BOT",  audience: "officer" },
   // ── House bots (build commit 4, step 9): the engine's voice ──────────────
   // Every automatic stake (bell only, capped per hour by the control row) and every staff-chosen one
   // (bell + email, uncapped — a person chose it).

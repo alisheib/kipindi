@@ -65,6 +65,7 @@ import { switchOnHouseBots } from "./house-bot/switch-on";
 import { explainBotIdle } from "./house-bot/planner";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
+import { escalateDeskAmlFlags } from "./house-bot/aml-escalation";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, foldedCodePointOrder, type EventListOrder, type IntentFeedCount, type IntentFeedOrder, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget, type TargetListOrder } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
@@ -157,6 +158,17 @@ export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUse
   if (rows == null || (await houseConsoleAudience(viewerUserId, route))) return rows;
   if (Array.isArray(rows)) return [] as unknown as T;
   return { ...rows, entries: [], ...("total" in rows ? { total: 0 } : {}), ...("truncated" in rows ? { truncated: false } : {}) } as T;
+}
+
+/** The AML queue's owner-review badges and once-only alerts are house data. The page enters through this
+ * named door with its signed-in viewer and exact route; no designation lookup or alert runs before the verdict. */
+export async function houseAmlReviewForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  flags: readonly { userId: string; txnId: string; type: "STAKE_SPIKE" | "VELOCITY" }[],
+): Promise<ReadonlySet<string> | null> {
+  if (route !== "/admin/aml" || !(await houseConsoleAudience(viewerUserId, route))) return null;
+  return escalateDeskAmlFlags(flags);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
