@@ -75,7 +75,7 @@ export function PrivacyRequestForm() {
             <label
               key={value}
               className={[
-                "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-body-sm cursor-pointer transition-colors",
+                "relative inline-flex min-h-[var(--tap-min)] items-center gap-2 rounded-md border px-3 py-2 text-body-sm cursor-pointer transition-colors",
                 kind === value
                   ? "border-royal-700 bg-royal-500/[0.10] text-text"
                   : "border-border bg-bg-overlay/40 text-text-muted hover:text-text",
@@ -87,8 +87,14 @@ export function PrivacyRequestForm() {
                 value={value}
                 checked={kind === value}
                 onChange={() => { setKind(value); setSent(false); }}
-                className="accent-[var(--royal-500)]"
+                className="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
+              <span
+                aria-hidden="true"
+                className={`grid h-[16px] w-[16px] shrink-0 place-items-center rounded-pill border peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--brand-500)] ${kind === value ? "border-royal-700" : "border-border-control"}`}
+              >
+                {kind === value && <span className="h-[8px] w-[8px] rounded-pill bg-royal-500" />}
+              </span>
               {label}
             </label>
           ))}
