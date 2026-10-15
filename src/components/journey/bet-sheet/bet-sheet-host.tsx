@@ -31,7 +31,7 @@ type Active = {
   settled: Settled | null; estimateUpdated: boolean; lowCounted: boolean;
 };
 type Pending = { intent: SheetIntent; seed: SheetSeed | null; at: number; everDoubt: boolean; lastRead: number; owner: string; epoch: number };
-type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null };
+type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null; bareNotFound?: true };
 const identity = (q: Pick<Quote, "marketId" | "side">) => `${q.marketId}.${q.side}`;
 const activeIdentity = (a: Active) => identity({ marketId: a.seed.id, side: a.side });
 
@@ -122,7 +122,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       const response = await fetch(`/api/markets/${encodeURIComponent(quote.marketId)}/sheet?${query}`, { cache: "no-store" });
       if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current) return failed;
       // A bare 404 names no authenticated owner. It cannot retire an outstanding key as an owned null receipt.
-      if (response.status === 404) return failed;
+      if (response.status === 404) return options.key ? failed : { ...failed, bareNotFound: true };
       if (response.status === 401) {
         // Known auth loss ends this runtime epoch too; a late A answer cannot revive it after sign-out.
         invalidateOwner();
@@ -307,7 +307,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     const truth = await readTruth({ marketId: bet.id, side: bet.side });
     if (!mounted.current || token !== generation.current || path !== window.location.pathname) return;
     if (truth.seed && truth.title) open(truth.seed, bet.side, truth.title, false, !q.has("bet"), q.get("from") === "home" ? "home" : "board");
-    else if (truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
+    else if (truth.bareNotFound || truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
   }, [open, readTruth, stripAddress]);
 
   const commit = useCallback((which: "cta" | "betInstead") => {
