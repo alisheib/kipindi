@@ -13,6 +13,8 @@
  *      concurrent sign-ins to one account is the attempt-limiting that reads as a wrong password;
  *   ② polls the ROUND PAGE until the round LOCKS (⛔ not the board — `getBoard` filters
  *      `state === "open" || "confirming"`, so a locked round is deliberately not on it);
+ *      ⚠️ CORRECTED 2026-10-14 (S12-PLAN F2): that filter was a defect, not a design — the board now
+ *      keeps a locked round (`test:updown-lock-window`); the round page stays this drive's subject;
  *   ③ reads both rows at 360 / 768 / 1024 / 1440 and measures whether either is clipped.
  *
  * ⛔ THE ASSERTION IS THE TWO FIGURES, NOT THE WORDS. It requires two DIFFERENT money amounts

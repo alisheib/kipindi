@@ -42,7 +42,9 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { ensureAffiliateAccount, inviteViewerFor, normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+// The guest panel's Sign up / Sign in are the header's doors on this page — one rule (route audit B3).
+import { authDoorHrefs } from "@/lib/auth-landing";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
@@ -839,7 +841,6 @@ export default async function MarketDetail({
                   {t.market.browseForFree}
                 </p>
                 {(() => {
-                  const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
                   /**
                    * 🔴 THE REFERRAL CODE USED TO DIE HERE, AND THAT MADE EVERY SHARED MARKET LINK A
                    * LIE. `ShareButton` appends `?ref=<code>` to the URL a player sends; the friend
@@ -852,21 +853,34 @@ export default async function MarketDetail({
                    * dead — but that programme's links are rare and this one is every player's, so
                    * it stops being a curiosity and becomes the common path.
                    *
-                   * ⛔ NORMALISED, NOT PASSED THROUGH. `normalizeReferralCode` is the same one the
-                   * bind and the ribbon use, so a malformed or over-length code degrades to "no
-                   * ref" here exactly as it would there — never truncated into somebody else's
-                   * code. An unknown code still binds nothing; it simply renders no ribbon.
+                   * 🔴 AND THE CAMPAIGN INVITE DIED HERE UNTIL 2026-10-14 (S10-PLAN, Point for Ali 4). The
+                   * panel kept a hand-built copy of the door rule that knew `next` and `ref` only, so a
+                   * campaign's `?invite=` reached the header's Sign up (`authDoorHrefs`, route audit B3)
+                   * and was dropped by these two — the bigger doors, in the middle of the page.
+                   * ⭐ ONE RULE: these ARE the header's doors on this page — `authDoorHrefs` over this
+                   * page's path and its own query, so `next` is this page with its query (the side
+                   * kept), and `ref` and `invite` ride beside it, never inside it.
+                   *
+                   * ⛔ NORMALISED, NOT PASSED THROUGH. `normalizeReferralCode` and `normalizeInviteCode`
+                   * (inside `authDoorHrefs`) are the ones the bind and the ribbon use, so a malformed or
+                   * over-length code degrades to "no ref" here exactly as it would there — never
+                   * truncated into somebody else's code. An unknown code still binds nothing; it simply
+                   * renders no ribbon.
                    * ⭐ No cookie and no storage: the code rides the query string the visitor is
                    * already carrying, so nothing is tracked and the privacy notice is unchanged.
+                   * Proof: `test:auth-carry` question.* (the doors run from this block's own text).
                    */
-                  const shared = normalizeReferralCode(typeof sp.ref === "string" ? sp.ref : null);
-                  const q = `?next=${encodeURIComponent(betNext)}${shared ? `&ref=${encodeURIComponent(shared)}` : ""}`;
+                  const query = new URLSearchParams();
+                  for (const [k, v] of Object.entries(sp as Record<string, string | string[] | undefined>)) {
+                    for (const x of Array.isArray(v) ? v : typeof v === "string" ? [v] : []) query.append(k, x);
+                  }
+                  const doors = authDoorHrefs(`/markets/${m.id}`, query);
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
+                      <Link href={doors.signUp as never} className="btn btn-primary btn-md btn-pill">
                         {t.common.signUp}
                       </Link>
-                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
+                      <Link href={doors.signIn as never} className="btn btn-ghost btn-md btn-pill">
                         {t.common.signIn}
                       </Link>
                     </div>
