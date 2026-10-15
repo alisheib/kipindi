@@ -661,6 +661,7 @@
     "qa:journey-unread-handover": "node scripts/live/journey-unread-handover-drive.mjs",
     "qa:bell-untouched": "node scripts/bell-untouched.mjs",
     "qa:classic-shell-parity": "node scripts/qa-classic-shell-parity.mjs",
+    "qa:s8-parity-exceptions": "node scripts/qa-s8-parity-exceptions.mjs",
     "test:question-time-mask": "node scripts/question-time-mask.test.mjs",
     "qa:served-skeleton": "node scripts/qa-served-skeleton.mjs",
     "qa:first-load": "node scripts/qa-first-load.mjs",
