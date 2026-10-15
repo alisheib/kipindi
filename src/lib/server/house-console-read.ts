@@ -160,15 +160,14 @@ export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUse
   return { ...rows, entries: [], ...("total" in rows ? { total: 0 } : {}), ...("truncated" in rows ? { truncated: false } : {}) } as T;
 }
 
-/** The AML page's owner-review flags and alert are house reads. Resolve the
- * viewer's stored-role audience before querying designations or claiming alerts;
- * a refused render receives no house key and performs no notification work. */
-export async function houseAmlOwnerFlagsForConsole(
+/** The AML queue's owner-review badges and once-only alerts are house data. The page enters through this
+ * named door with its signed-in viewer and exact route; no designation lookup or alert runs before the verdict. */
+export async function houseAmlReviewForConsole(
   viewerUserId: string | null | undefined,
   route: string,
   flags: readonly { userId: string; txnId: string; type: "STAKE_SPIKE" | "VELOCITY" }[],
 ): Promise<ReadonlySet<string> | null> {
-  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+  if (route !== "/admin/aml" || !(await houseConsoleAudience(viewerUserId, route))) return null;
   return escalateDeskAmlFlags(flags);
 }
 

@@ -896,8 +896,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-seam: ${pas
  * The floor below is the count `npm run test:house-bot-seam` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
-/* N6: 135/0 printed on 2026-10-15 after side, holder, percentage, pool and pair-cap cases. */
-const MIN_ASSERTIONS = 135;
+/* N6: 143/0 printed on 2026-10-15 after side, holder, percentage, pool and shared two-sided cap cases. */
+const MIN_ASSERTIONS = 143;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-seam ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

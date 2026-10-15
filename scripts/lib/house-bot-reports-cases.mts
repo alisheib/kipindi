@@ -2373,7 +2373,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * pinned at **3**: the viewer, the route, and the REQUEST's own query string, which the door validates part by part.
  * ⛔ Its route belt refuses any route outside the desk's own section before the audience question, for the Results
  * tab's reason: a row's reason says which accounts are on the desk, and a non-desk route is answered by its own domain. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseAmlOwnerFlagsForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseAmlReviewForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -3400,7 +3400,7 @@ if (STORE === "memory") {
       j({ withGuard: gateFirstProblems(REFUSED, refusedCode), withoutGuard: gateFirstProblems(REFUSED, ungated) }));
     ok("0.260.1 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/, read from disk, and every row reader the audit module exports, its exports classified to the last name — goes straight to houseAuditForConsole; EVERY call of every gate export names the signed-in viewer and the file's own console route; the three struck display readers (D20) are called NOWHERE; no console file reaches the audit module or the gate by import(), a namespace or a re-export, and none imports a house read module — or keeps what one returns — outside the system page's engine card (only the fire-and-forget holder and money hooks read nothing back); and every file OUTSIDE the console that calls a row reader is classified",
       r.problems.length === 0 && auditExports.length === 0 && r.population >= 200 && j(auditReaders) === j([...AUDIT_ROW_READERS].sort()) && r.readerCalls >= 18 && r.gateCalls >= 17
-        && r.consoleGateCalls.houseAuditForConsole >= 17
+        && r.consoleGateCalls.houseAuditForConsole >= 17 && r.consoleGateCalls.houseAmlReviewForConsole >= 1
         /* ⭐ C7 STEP 1 CHANGED THE AUDIENCE CLAUSE, AND ONLY THAT CLAUSE (C7-SPEC ruling 340). It read
          * `houseConsoleAudience === 0`, which was true only while no console page decided its own audience; the desk's
          * page does, so it becomes a FLOOR at the count this commit MEASURES — never a loose `>= 0` and never deleted.
@@ -3408,7 +3408,7 @@ if (STORE === "memory") {
          * left exactly as it is: a floor is raised only by the session that measures a higher number, never lowered.
          * ⛔ The two struck display readers stay pinned at EXACTLY 0. */
         && r.consoleGateCalls.houseStakeForConsole === 0 && r.consoleGateCalls.houseBotLabelsForConsole === 0
-        && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseAmlOwnerFlagsForConsole >= 1
+        && r.consoleGateCalls.houseConsoleAudience >= 1
         && r.consoleGateCalls.houseRosterForConsole >= 1
         /* ⭐ C7 step 3 · the limits panel's own gated reader, query-shaped and arity-pinned like the roster's. */
         && r.consoleGateCalls.houseUsageForConsole >= 1
@@ -4764,9 +4764,9 @@ await guard("4", async () => {
   };
   let deniedAml: Any, allowedAml: Any, deniedReads = -1;
   try {
-    deniedAml = await CR.houseAmlOwnerFlagsForConsole(plainPlayer, "/admin/aml", [{ userId: holderAB, txnId: `txn_${tag}`, type: "STAKE_SPIKE" }]);
+    deniedAml = await CR.houseAmlReviewForConsole(plainPlayer, "/admin/aml", [{ userId: holderAB, txnId: `txn_${tag}`, type: "STAKE_SPIKE" }]);
     deniedReads = designationReads;
-    allowedAml = await CR.houseAmlOwnerFlagsForConsole(A, "/admin/aml", []);
+    allowedAml = await CR.houseAmlReviewForConsole(A, "/admin/aml", []);
   } finally {
     HD.houseBotStore.listEverDesignatedUserIds = realDesignations;
   }

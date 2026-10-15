@@ -99,5 +99,7 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * window, the dead opener, the panel's queue, and the six cases behind the pre-commit review's fixes), what
  * `test:house-bot-engine` PRINTED: `0.mem · exit 0 · 885 passed` and `0.pg · exit 0 · 866 passed`, ALL PASS — exactly
  * +56 in EACH child, the new 7.17a–o, 7b.25–28, 13.14g–j, 13.52a, 17.80–17.102 (with 17.83b, 17.86c, 17.87b, 17.95b) and
- * 18.54n/p/r labels reaching BOTH stores. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 885, postgres: 866 }, dbPrefix: "hb_engine" });
+ * 18.54n/p/r labels reaching BOTH stores.
+ * ⭐ 908/889 (2026-10-15, N6), green memory and scratch Postgres counts after the two-sided planning,
+ * in-lock placement, and scoped idle-panel assertions. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 908, postgres: 889 }, dbPrefix: "hb_engine" });

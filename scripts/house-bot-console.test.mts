@@ -321,7 +321,7 @@ await runTwoStores({
    * on both stores (`0.mem` 1123 passed, `0.pg` 822 passed, ALL PASS).
    * ⭐ → 1125/824 (2026-10-14, N3), what it PRINTED with 1.N3a–b in it — a handed-on row reads "Passed on" in the slate
    * tone, an officer's cancel still "Cancelled" (`0.mem` 1125 passed, `0.pg` 824 passed, ALL PASS). */
-  /* N6 memory child printed 1132/0 on 2026-10-15. Re-pin Postgres after its own green run. */
-  minPass: { memory: 1132, postgres: 824 },
+  /* N6 green both-store run printed 1133/0 memory and 832/0 scratch Postgres on 2026-10-15. */
+  minPass: { memory: 1133, postgres: 832 },
   dbPrefix: "hb_console",
 });

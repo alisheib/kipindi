@@ -2260,10 +2260,18 @@ await guard("15", async () => {
   ok("15.39 · the window is measured back from the database clock: a minute-old stake is inside 3,600 s, outside 30 s, and two days old is outside 86,400 s",
     in3600.length === 1 && in30.length === 0 && aged.length === 0, `${j(in3600)} · ${j(in30)} · ${j(aged)}`);
 
-  // §12 disables its asset at the end, so §15 creates an enabled one of its own (sources were seeded by §12).
+  // A red run may select §15 alone. Give it its own trusted source and both enabled/disabled chain fixtures.
   const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const { seedDefaultSources, listSources, addSource, setSourceEnabled }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  const approved = (await listSources({ category: "crypto" })).find((s: Any) => s.domain === "api.twelvedata.com");
+  if (approved && !approved.enabled) await setSourceEnabled(approved.id, true, WORLD_OFFICER);
+  if (!approved) await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
   const na = await cfg.createAsset({ key: `F${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
     priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  const disabled = await cfg.createAsset({ key: `G${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  const disabledChain = disabled.ok ? await cfg.createChain({ assetId: disabled.data.id, durationMinutes: 5 }, WORLD_OFFICER) : disabled;
   if (na.ok) {
     await cfg.setAssetEnabled(na.data.id, true, WORLD_OFFICER);
     await cfg.createChain({ assetId: na.data.id, durationMinutes: 5 }, WORLD_OFFICER);
@@ -2276,8 +2284,10 @@ await guard("15", async () => {
   const a0 = c0 ? assets.find((a) => a.id === c0.assetId) : null;
   ok("15.40 · fixture · an enabled asset with a chain exists (created here), and its id is not its symbol", !!a0 && a0.id !== a0.symbol && ofEnabled.some((c) => na.ok && c.assetId === na.data.id), j(a0 ?? na));
   const ofDisabled = chains.filter((c) => !assets.some((a) => a.id === c.assetId));
-  ok("15.41b · a chain of a disabled asset (§12's, disabled at its end) is left out of the context",
-    ofDisabled.length >= 1 && ofDisabled.every((c) => !ctx.chains.some((k: Any) => k.key === `${c.assetId}:${c.durationMinutes}`)), j(ofDisabled.map((c) => c.assetId)));
+  ok("15.41b · a chain of a disabled asset (created here) is left out of the context",
+    disabled.ok && disabledChain.ok && ofDisabled.some((c) => c.id === disabledChain.data.id)
+      && ofDisabled.every((c) => !ctx.chains.some((k: Any) => k.key === `${c.assetId}:${c.durationMinutes}`)),
+    j(disabledChain.ok ? ofDisabled.map((c) => c.assetId) : disabledChain));
   ok("15.41 · the parse context: chain keys <assetId>:<durationMinutes> for every chain of an enabled asset; the platform's categories and durations",
     j(ctx.chains.map((c: Any) => c.key).sort()) === j(ofEnabled.map((c) => `${c.assetId}:${c.durationMinutes}`).sort())
       && j(ctx.categories) === j(R.RULES_CONTEXT_LISTS.categories) && j(ctx.durations) === j(R.RULES_CONTEXT_LISTS.durations), j(ctx.chains));
