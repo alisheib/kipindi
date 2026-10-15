@@ -99,22 +99,25 @@ const asideOf = (src: string) => { const a = src.indexOf("<aside className="); r
 /** The break branch: first under `bettingOpen`, the column's heading, the one-sided note, the notice — and no SidePicker. */
 const marketGateOk = (src: string) => {
   const aside = asideOf(src);
-  const m = /\{bettingOpen \? \(\s*session && breakBody \? \(\s*<>([\s\S]*?)<\/>\s*\) : session \? \(/.exec(aside);
+  const m = /\{bettingOpen \? \(\s*session && breakBody \? \(\s*<>([\s\S]*?)<\/>\s*\) : journey \? \(/.exec(aside);
   if (!m) return false;
   const branch = m[1].replace(/\s+/g, " ").trim();
   return branch === '<h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2> {oneSidedCallout} <BetBreakNotice body={breakBody} testId="market-bet-break" />'
-    && (aside.match(/<SidePicker\b/g) ?? []).length === 1 && aside.indexOf("<SidePicker") > aside.indexOf(") : session ? (");
+    && (aside.match(/<SidePicker\b/g) ?? []).length === 1
+    && aside.includes("<JourneyBetButtons")
+    && aside.indexOf("<JourneyBetButtons") > aside.indexOf(") : journey ? (")
+    && aside.indexOf("<SidePicker") > aside.indexOf(") : session ? (");
 };
 const marketReadOk = (src: string) =>
   /const breakEnd = session\s*\? await Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\s*\.then\(breakStateOf\)\s*\.catch\(\(\) => null\)\s*: null;/.test(src)
   && /const breakBody = breakEnd\s*\? breakSentence\(breakEnd\.exclusion \? t\.rg\.exclusionActive : t\.rg\.breakActive, breakEnd\.until, Date\.now\(\), t\.common\.monthsShort, locale\)\s*: null;/.test(src);
 {
-  ok("2.1 · the break branch comes first under `bettingOpen`: the column's D40 heading, the one-sided note, BetBreakNotice — and the page's one SidePicker only after it, in the `session` branch",
+  ok("2.1 · the break branch comes first under `bettingOpen`: its heading, note and BetBreakNotice precede the journey buttons and classic SidePicker",
     marketGateOk(MARKET), asideOf(MARKET).slice(0, 300));
   ok("2.1′ PLANT · the dial drawn inside the break branch is reported",
     !marketGateOk(MARKET.replace('<BetBreakNotice body={breakBody} testId="market-bet-break" />', '<BetBreakNotice body={breakBody} testId="market-bet-break" /><SidePicker marketId={m.id} />')));
   ok("2.1″ PLANT · the branch removed (the panel back for a reader on a break) is reported",
-    !marketGateOk(MARKET.replace(/session && breakBody \? \([\s\S]*?\) : session \? \(/, "session ? (")));
+    !marketGateOk(MARKET.replace(/session && breakBody \? \([\s\S]*?\) : journey \? \(/, "journey ? (")));
   ok("2.2 · the read fails OPEN (a failed read shows the panel; the server refuses) and the sentence is `breakSentence` — the one formatter, the end one run",
     marketReadOk(MARKET));
   ok("2.2′ PLANT · a read that throws past the page (no catch) is reported", !marketReadOk(MARKET.replace(".then(breakStateOf)\n        .catch(() => null)", ".then(breakStateOf)")));

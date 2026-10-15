@@ -361,7 +361,7 @@ check("…and the admin shell carries its own skip-to-content link",
   const help = src("app/help/page.tsx");
   check("8. /help: the contact cards and the quick links pad on the hero's edge, as the FAQ does",
     help.includes(`"rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400`)
-      && help.includes(`"flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400`)
+      && help.includes(`"flex items-start gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400`)
       && help.includes(`<section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">`) && !/glass-panel p-4\b/.test(help));
   const fair = src("app/fairness/page.tsx");
   check("8. /fairness: How it works pads on the hero's edge",

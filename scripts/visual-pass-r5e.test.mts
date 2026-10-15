@@ -730,7 +730,7 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
     toasts.every((s) => [...html(moneyRuns(s)).matchAll(/<span class="amount">([^<]*)<\/span>/g)].length === 1 && textOf(html(moneyRuns(s))) === s));
   const ud = code("src/app/updown/[roundId]/page.tsx");
   ok("6.7 · the Up & Down quote stamp (\"imenukuliwa 18:55:02 EAT\") is one nowrap span, not no-break spaces",
-    ud.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;`) && !/\\u00A0/i.test(ud));
+    ud.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;`) && !/\\u00A0/i.test(ud));
   // The CJK gap: its space is the stylesheet's, generated, so the text is the dictionary's.
   const hint = D.zh.market.chooseSideHelp as string, hm = html(hangCjkMarks(D.zh.market.whichWay as string)) + html(hangCjkMarks(hint));
   ok("6.8 · a mid-line Chinese mark's gap is an EMPTY span whose space is `.kp-cjk-gap::after` — the page's text (copy, find-in-page, textContent) is the dictionary's",
