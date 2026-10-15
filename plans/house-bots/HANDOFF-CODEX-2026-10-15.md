@@ -235,9 +235,14 @@ document parses RULES_INVALID and auto-pauses — rules.ts ~3280). Cross-field R
 in `src/app/admin/desk/[id]/rules-form.tsx`; `test:house-bot-rules` coverage pins.
 
 **Limits** (`rules.ts` LIMIT fields ~332–370, `limits-save.ts`, DAL `saveLimits` writes only `LIMIT_FIELDS` ~1415):
-add `gCapPairRoundsPerDay` and `gCapPairDailyTzs` to the limits form, nullable, **exempt from the "required to switch
-on" clear-check** (empty = never is a valid state, not an unset money limit), and move them from `PAIR_BUDGET_BOUNDS`
-into `LIMIT_BOUNDS`/`LIMIT_FIELDS` in `scripts/lib/house-bot-dal-cases.mts`. Field hint: "Empty = no pairing."
+add `gCapPairRoundsPerDay` and `gCapPairDailyTzs` to `LIMIT_FIELDS`/`NULLABLE_LIMIT_FIELDS` (re-pin rules `2.d20`
+14/12/2 → 16/14/2), nullable, **no `recommended` value** ("Use recommended values" would switch pairing on), **not in
+`REQUIRED_FOR_MASTER_ON`**, and — so clearing one while the desk is ON is allowed (it is the owner's stop switch) — a
+SEPARATE exemption read only by `X-CLEAR-ON`, ⛔ never `CLEAR_EXEMPT` (it would paint the wrong caption and break console
+1.364 and rules `2.groups`). `CONSOLE_LIMIT_KEY` is TS-enforced (add neutral keys); label/hint/section tables in the
+console; move the pair from `PAIR_BUDGET_BOUNDS` into `LIMIT_BOUNDS` in `scripts/lib/house-bot-dal-cases.mts` and drop
+the duplicate from `house-bot-migrations.test.mts` ~721. Field hint: "Empty = no pairing." Full detail:
+`C:\50pick-ssd\handoff-n5n6\code-map-rules-limits-aml.md`.
 
 **Planner** (`src/lib/server/house-bot/planner.ts`):
 - Duty 7f `fillOpener` (~190) calls `planFillAndOpener(...)` (~539) — add a PAIR stage after it (a new function, so the
@@ -298,12 +303,16 @@ the loader that feeds its `samePerson` fact) rather than inventing a second one.
 the pair) AND in the seam's PAIR branch (refuse `SAME_HOLDER` inside the locks).
 
 ### 3.5 · AML — every desk-pair flag escalates to the owner
-Find the AML detectors and how a flag is raised/closed (`src/lib/server/` — search `aml`, `collusion`, `detector`,
-`escalat`; D20a forbids excluding desk accounts). Add: a flag whose accounts are BOTH designated desk accounts is marked
-for the owner and cannot be closed by any role but the owner (ADMIN / the Owner role on `/admin/staff`), with an alert
-to the owner. Write the officer procedure into `docs/HOUSE-BOTS.md` § "Desk pairs and AML flags" (record what the flag
-shows → confirm both are designated desk accounts paired under the 2026-10-14 ruling → hand to the owner; a flag that
-involves a player is never treated this way).
+⚠️ **Measured: no collusion / opposite-side detector exists in `src`.** `detectSuspiciousBets()` (`analytics.ts`
+~590-666) yields only `STAKE_SPIKE | VELOCITY`, already includes desk accounts (D20a holds), and is computed on each
+read of `/admin/aml` — no persistence, no notification, no "closed" state. So the owner's rule has nothing to hook onto
+yet. Minimum that satisfies it: (1) the written officer procedure in `docs/HOUSE-BOTS.md` § "Desk pairs and AML flags"
+(record what the flag shows → confirm the accounts are designated desk accounts paired under the 2026-10-14 ruling →
+hand to the owner; the owner closes or files it; a flag involving a player is never treated this way) — this is a
+PRECONDITION the 2026-10-14 entry set for the pairing build; (2) on `/admin/aml`, a row whose account is a designated
+desk account says it goes to the owner, and the owner (ADMIN, `houseBotAlertRecipients()`) is notified. A real pair
+detector with persistence and an owner-only close is a larger build — ask Ali before adding it. Copy rule:
+`test:house-bot-surfaces` 1.words.1 scans `/admin/aml` and `analytics.ts` — no feature words there.
 
 ### 3.6 · Tests and proofs N6 must carry (both stores where the suite has two)
 - Engine cases: PAIR planned only with no player money; refused with any player stake; stake = floor(H×pct), ≤ H;
