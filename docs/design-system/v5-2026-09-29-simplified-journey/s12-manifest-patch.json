@@ -1,0 +1,86 @@
+{
+  "status": "PREPARED BY S12 (WP14, the Vodacom plan), NOT APPLIED. S15 writes `manifest` below over public/manifest.json in the flip's commit, with the sw.js CACHE_NAME bump, after replacing every placeholder and drawing every file listed in `toBeDrawn`. Until then public/manifest.json is unchanged: one file for every visitor, so it cannot change before the flip. Guarded by test:install-invite §10.",
+  "decisions": [
+    "Point for Ali 10 — ACCEPTED BY ALI, 2026-10-14: the phone's home-screen shortcuts (Maswali, Tiketi zangu) and the app's name change at launch, with a new screenshot after launch.",
+    "S12 Open point 24: the shortcuts are Maswali (/) and Tiketi zangu (/positions), and Weka pesa (/wallet/deposit) is kept; the Wallet shortcut goes. Their names are the journey's own words, read from the dictionary (journey.tabQuestions, journey.tabTickets, journey.depositAction), never written here."
+  ],
+  "placeholders": {
+    "{{S11_TAGLINE}}": "S11 (SJ-20) owns the tagline the app's name carries. It is never invented here: S15 replaces this token with S11's approved words, and the guard refuses a manifest that still holds it once applied."
+  },
+  "toBeDrawn": [
+    {
+      "path": "/icons/shortcut-maswali.png",
+      "size": "96x96",
+      "picture": "the questions tab's glyph (`questionCircle`, the journey tab bar)",
+      "why": "a new picture takes a new name: /icons/* is served one-year immutable (next.config.ts IMMUTABLE_STATIC_SOURCES), so a redrawn shortcut-markets.png would stay stale on every phone that cached it"
+    },
+    {
+      "path": "/icons/shortcut-tiketi.png",
+      "size": "96x96",
+      "picture": "the tickets tab's glyph (`ticket`, the journey tab bar)",
+      "why": "a new shortcut with a new picture; drawn by hand like the other shortcut-*.png — build:brand never writes them (DESIGN_AUTHORITY §B1a)"
+    }
+  ],
+  "toBeCaptured": [
+    {
+      "path": "/screenshots/journey-narrow.png",
+      "sizes": "390x844",
+      "form_factor": "narrow",
+      "when": "after the flip (S15/S16), never before: the new journey in Swahili at 390×844, signed out, with no chat bubble over a figure (MOBILE-VISUAL D55). It takes a new name because /screenshots/* is one-year immutable; it is added to `manifest.screenshots` in the commit that adds the file."
+    }
+  ],
+  "notes": [
+    "The old narrow screenshot (/screenshots/markets-narrow.png: the retired journey, in English — MOBILE-VISUAL D55) leaves the manifest at the flip; its successor is listed in `toBeCaptured` and joins the manifest only once it exists. The file itself stays on disk (an immutable URL a phone may still hold).",
+    "The wide screenshot is the brand image /og/og-1200x630.png. /og/* is one-year immutable as well (next.config.ts): if S11 redraws that picture with the tagline, it takes a NEW file name, and this entry — and the root layout's openGraph image — move with it.",
+    "\"lang\" stays \"en\", exactly as today: it is Ali's choice (one manifest serves every language; MOBILE-VISUAL D55 asks for \"sw\", the product's default).",
+    "The wide screenshot's label carries the tagline placeholder as the name does: today both carry the slogan the flip retires.",
+    "Every other member is today's, byte for byte: the app's description, colours, orientation, categories and icons."
+  ],
+  "manifest": {
+    "name": "50pick — {{S11_TAGLINE}}",
+    "short_name": "50pick",
+    "description": "Tanzania-licensed prediction markets. Pick YES or NO, winners share the losing pool.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0e33",
+    "theme_color": "#0a0e33",
+    "orientation": "portrait-primary",
+    "categories": ["entertainment", "finance"],
+    "lang": "en",
+    "icons": [
+      { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+      { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
+      { "src": "/icons/mark-color-512.png", "type": "image/png", "sizes": "512x512" },
+      { "src": "/icons/maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+      {
+        "name": "Maswali",
+        "short_name": "Maswali",
+        "url": "/",
+        "icons": [{ "src": "/icons/shortcut-maswali.png", "type": "image/png", "sizes": "96x96" }]
+      },
+      {
+        "name": "Tiketi zangu",
+        "short_name": "Tiketi zangu",
+        "url": "/positions",
+        "icons": [{ "src": "/icons/shortcut-tiketi.png", "type": "image/png", "sizes": "96x96" }]
+      },
+      {
+        "name": "Weka pesa",
+        "short_name": "Weka pesa",
+        "url": "/wallet/deposit",
+        "icons": [{ "src": "/icons/shortcut-deposit.png", "type": "image/png", "sizes": "96x96" }]
+      }
+    ],
+    "screenshots": [
+      {
+        "src": "/og/og-1200x630.png",
+        "type": "image/png",
+        "sizes": "1200x630",
+        "form_factor": "wide",
+        "label": "50pick — {{S11_TAGLINE}}"
+      }
+    ]
+  }
+}
