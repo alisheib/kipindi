@@ -140,6 +140,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/app/markets/[id]/page.tsx": [3, "SIDE — a position's side word · LOSS — a lost position's status word"],
   "src/app/positions/page.tsx": [4, "SIDE — the open stake split by side (words and bar)"],
   "src/app/results/page.tsx": [4, "SIDE — the winning side's words and the outcome donut's two arcs"],
+  "src/app/wallet/deposit/journey-deposit-form.tsx": [2, "SIDE — the pending deposit's saved bet side, shown as a YES/NO chip before return"],
   "src/app/updown/history/page.tsx": [6, "SIDE — the round's outcome chip (UP wins / DOWN wins) and each bet's side chip · LOSS — a negative net"],
   "src/app/updown/[roundId]/page.tsx": [10, "SIDE — the round's outcome ink, the crowd split, the two targets, each bet's side chip"],
   "src/components/auth/auth-shell.tsx": [2, "SIDE — the sign-in panel's picture of a market's two sides (YES 64% / 36% NO)"],
