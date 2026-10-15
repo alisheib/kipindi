@@ -5439,8 +5439,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .av-stack > * { margin-left: -7px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg-elevated); }
 .av-stack > *:first-child { margin-left: 0; }
 .mcardp-traders { margin-top: -2px; min-height: var(--mcard-traders-h); }
-.mcardp-traders .t-txt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
-.mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
+.mcardp-traders .t-txt { font-family: var(--font-body); font-size: var(--type-small); line-height: 1.3; color: var(--text-muted); }
+.mcardp-traders .t-txt b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight:600; }
 /* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
    or "One side only". */
 .mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:12px; margin:-3px 0 -5px; }
@@ -5601,7 +5601,7 @@ html[data-sheet-open] .route-enter { animation: none; }
      whose clicks this pseudo-element already swallowed once (see the note above). */
   min-width: var(--tap-min);
 }
-.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; }
+.mcardp-timeleft { display:inline-flex; align-items:center; gap:6px; font-family: var(--font-body); font-size: var(--type-small); line-height: 1.3; }
 
 /* ── Cold-start (2026-07-29) ────────────────────────────────────────────────
    A LIVE market nobody has bet on yet. The card must not assert a 50% split, a
@@ -5721,9 +5721,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    that line always carries the category with it. */
 .mcardp-closes {
   margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-body);
+  font-size: var(--type-small);
+  line-height: 1.3;
   white-space: nowrap;
   color: var(--text);
 }
@@ -8337,6 +8337,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    and one digit row in every phase; Swahili cannot push the box into the gutter. */
 .ud-round-pod { display: flex; align-items: center; gap: var(--sp-3); max-width: 100%; padding: var(--sp-2) var(--sp-4); background: var(--bg-inset); border: 1px solid color-mix(in oklab, var(--border) 70%, transparent); border-radius: var(--r-md); }
 @media (max-width: 639px) {
+  /* density: general — a round clock fits the phone gutter in both card sizes */
   .ud-round-pod { width: 100%; flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
 }
 /* ⭐ A LINE THAT OPENS ON THE QUOTE STAMP OPENS ON A CAPITAL (round 4, 2026-10-09, tiles 165 166). The stamp is the
