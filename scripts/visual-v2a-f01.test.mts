@@ -172,11 +172,11 @@ try {
   }
   for (const l of LOCALES) {
     const bad: string[] = [];
-    for (const width of [320, 360, 390]) {
+    for (const width of [246, 320, 360, 390]) {
       const g = await stage.measure({ body: bodies.get(`${l}:guest`)!, css, width, lang: l, arg: true, fn: probe });
       for (const w of wrongs(g)) bad.push(`${width}: ${w}`);
     }
-    R.ok(`1 · ${l} open sort panel stays inside the bar at 320/360/390`, bad.length === 0, bad.slice(0, 3).join(" · "));
+    R.ok(`1 · ${l} open sort panel stays inside the bar at 246/320/360/390`, bad.length === 0, bad.slice(0, 3).join(" · "));
   }
 
   /* ══ §2 · where it already fit, nothing moved ══════════════════════════════════════════════════════════════════════ */
@@ -198,7 +198,12 @@ try {
         w.some((x) => /summary runs|key starts|caret ends|sort key runs/.test(x)), w.slice(0, 2).join(" · ") || `NOT CAUGHT (${g.cols})`);
     }
   }
-  const oldPanel = (g: string) => g.replace('[role="listbox"] { left: auto; right: 0; }', '[role="listbox"] { left: 0; right: auto; }');
+  // The pre-fix positioning was relative to the sort details element. Mutating
+  // only its left/right declarations now anchors to the whole bar at x=0 and
+  // leaves the menu visible, so restore both old declarations as one plant.
+  const oldPanel = (g: string) => g
+    .replace('> details { position: static; }', '> details { position: relative; }')
+    .replace('[role="listbox"] { left: auto; right: 0; }', '[role="listbox"] { left: 0; right: auto; }');
   const panelCss = await stylesheet(allHtml, oldPanel);
   R.ok("3 · PLANT left-anchored menu · stylesheet changed", panelCss !== css);
   for (const l of LOCALES) {

@@ -197,13 +197,12 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   ok("4: B3 · the guest doors take their hrefs from authDoorHrefs — this page as next, the invite's code kept",
      bar.includes("authDoorHrefs("));
 
-  /* U5 · THE PAIR SITS ON THE sm RUNG BELOW 640, AND IT MUST BE THE TOKEN, NOT THE NUMBER.
-     40 is also --tap-min, so a literal 40px here would read as correct while silently
-     un-coupling the pill from the control ladder — the next ladder decision would move .btn-sm
-     and leave these two behind. This asserts the phone block declares the RUNG. */
+  /* V2b · THE PAIR SITS ON THE md RUNG AT EVERY WIDTH, MATCHING THE LANGUAGE CONTROL.
+     The phone rule keeps its measured 14px side padding; it must declare the height
+     through the control token rather than a literal. */
   const phoneBlock = css.slice(css.indexOf("@media (max-width: 639.98px)", css.indexOf(".kp-auth-cta") - 2000), css.indexOf(".kp-auth-cta") + 400);
-  ok("4: the auth pills take the sm rung below 640 — the token, never the number",
-     /\.kp-auth-cta\s*\{[^}]*height:\s*var\(--h-control-sm\)/.test(css),
+  ok("4: the auth pills take the md rung below 640 — the token, never the number",
+     /\.kp-auth-cta\s*\{[^}]*height:\s*var\(--h-control-md\)/.test(css),
      phoneBlock.slice(-160));
 }
 
@@ -464,7 +463,7 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      && pill.includes("export function WalletBalanceCaptioned({ balance, held = false, onBreak = false, breakEnd = null }: { balance: number; held?: boolean; onBreak?: boolean; breakEnd?: BreakState | null }) {")
      && pill.includes("anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />")
      && pill.includes("<WalletSheet open={open} onClose={() => setOpen(false)} balance={effectiveBalance} held={held} anchorRef={capsuleRef} />"));
-  const pillBlock = span("{state.pill && (", "</Link>");
+  const pillBlock = span("{state.pill && (", "</a>");
   ok("8c.2 + Weka pesa shows at EVERY width — the classic pill's yield below 1024 is the coin's, and this rail has none",
      pillBlock.length > 0 && !WIDTH_GATE.test(pillBlock) && pillBlock.includes('href="/wallet/deposit"')
      && pillBlock.includes('className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"'),
@@ -475,11 +474,15 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      && pillBlock.includes("<span>{t.journey.depositAction}</span>") && pillBlock.includes("aria-label={t.journey.depositAction}")
      && css.includes(".kp-jhdr__plus { display: none; }")
      && css.includes("@media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }"));
-  const auth = span("{state.authPills && (", "{t.common.signUp}");
+  const auth = span("{state.authPills && (", "</Suspense>");
+  const authComponent = span("function JourneyGuestAuthPills", "function JourneyGuestAuthDoors");
   ok("8c.4 E-276 · a guest's Ingia and Jisajili are never width-hidden — both at the 44px rung, at every width",
      auth.length > 0 && !WIDTH_GATE.test(auth)
-     && auth.includes('className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"')
-     && auth.includes('className="btn btn-primary btn-md btn-pill kp-jhdr__auth"'),
+     && auth.includes('<JourneyGuestAuthDoors />')
+     && auth.includes('<JourneyGuestAuthPills signIn="/auth/login" signUp="/auth/register" />')
+     && !WIDTH_GATE.test(authComponent)
+     && authComponent.includes('className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"')
+     && authComponent.includes('className="btn btn-primary btn-md btn-pill kp-jhdr__auth"'),
      auth === "" ? "the guest pills' guard was not found as written" : auth.slice(0, 160));
   /** Every string the bar writes, class lists included, that carries a width gate, in source order. */
   const gated = [...jbar.matchAll(/"([^"]*)"|`([^`]*)`/g)].map((m) => m[1] ?? m[2]).filter((v) => WIDTH_GATE.test(v));

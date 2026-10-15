@@ -8519,6 +8519,21 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) { border-bottom: 1px solid var(--border); }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row])[data-scrolled] { box-shadow: var(--shadow-2); }
 }
+/* At a 246px zoom viewport, an active filter count otherwise takes the last
+   readable part of the status strip. Put the filter beside the count below it;
+   all three controls stay visible and the status pills still scroll. */
+@media (max-width: 259.98px) {
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet {
+    grid-area: 2 / 2 / 3 / 3;
+  }
+  html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-result-count] {
+    grid-area: 2 / 1 / 3 / 2;
+    text-align: left;
+  }
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    .sensitive-reveal — THE EYE ON A MASKED FIELD, AND ITS REACH.

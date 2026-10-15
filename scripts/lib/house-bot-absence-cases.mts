@@ -177,8 +177,12 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       "src/app/legal/rules/yes-no/page.tsx", "src/app/legal/terms/page.tsx",
       "src/lib/terms-version.ts", "src/lib/i18n-dict.ts",
     ]);
-    // The visual F20/F29 legal layout changes wrappers and spacing, without changing the policy text.
-    const APPROVED_EXTRA = new Map([["src/app/legal/_components.tsx", "671263891"]]);
+    // F20/F29 and V2b change only legal presentation and the rulebook's test citation.
+    // Pin their exact reviewed integrated bytes; none of the versioned policy strings move.
+    const APPROVED_EXTRA = new Map([
+      ["src/app/legal/_components.tsx", "c3e28b473"],
+      ["src/app/legal/rules/page.tsx", "c3e28b473"],
+    ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
     const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
@@ -199,7 +203,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       mainSha.length >= 7 && legal.length >= 14 && PUBLIC_TEXT.includes("src/lib/i18n-dict.ts") && PUBLIC_TEXT.includes("src/lib/terms-version.ts"),
       j({ originMain: mainSha, legalFiles: legal.length, pinned: PUBLIC_TEXT.length }));
     const real = compare(PUBLIC_TEXT);
-    ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, visual wrappers at 671263891, other files at origin/main ${mainSha || "(unresolved)"})`,
+    ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, visual presentation at c3e28b473, other files at origin/main ${mainSha || "(unresolved)"})`,
       real.compared === PUBLIC_TEXT.length && real.differs.length === 0 && real.missing.length === 0,
       j({ comparedAgainst: mainSha, compared: real.compared, differs: real.differs, missing: real.missing }));
     // ⛔ CONTROLS · mutated COPIES in memory. The repository is never written to.

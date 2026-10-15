@@ -53,7 +53,7 @@ const checks = {
     const rail = px(left, /className="h-\[(\d+)px\] rounded-pill bg-bg-overlay kp-shimmer-track"/);
     const labels = px(left, /className="mt-1\.5 flex h-\[([\d.]+)px\] items-center/);
     const stat = px(left, /className="h-\[(\d+)px\] rounded-md border border-border bg-bg-elevated p-3/);
-    const countdown = px(left, /className="glass-panel h-\[(\d+)px\] p-4/);
+    const countdown = px(left, /className="glass-panel h-\[(\d+)px\] p-5/);
     const title = s.ghost.match(/className="h-\[(\d+)px\] md:h-\[(\d+)px\]/)?.slice(1).map(Number);
     const gap = px(s.scale, /"5": "(\d+)px"/);
     const labelGap = px(s.scale, /"1\.5": "(\d+)px"/);
@@ -61,7 +61,8 @@ const checks = {
     const first = 354 + rail + labelGap + labels + gap;
     const second = first + stat + gap;
     const third = second + countdown + gap;
-    return s.page.includes('height={28}') && s.page.includes('glass-panel p-4 space-y-2.5')
+    return s.page.includes('height={28}') && s.page.includes('glass-panel p-5 space-y-2.5')
+      && s.ghost.includes('glass-panel h-[140px] p-5 space-y-2.5')
       && title?.[0] === 70 && title?.[1] === 40
       && first === 430.5 && second === 531.5 && third === 695.5
       && (s.ghost.match(/h-\[77px\] rounded-md/g) ?? []).length === 3
