@@ -17,10 +17,10 @@ export function trustedCardCheckoutUrl(raw: unknown): string | null {
 /** An owned, still-open Card order is the only source of a recoverable checkout link. */
 export function activeCardCheckoutUrl(ownerId: string, row: {
   userId: string; type: string; status: string; currency: string; provider: string | null;
-  houseBotId?: string | null; providerStatus?: string | null; cardCheckoutUrl?: string | null;
+  houseBotId?: string | null; providerRef?: string | null; providerStatus?: string | null; cardCheckoutUrl?: string | null;
 } | null): string | null {
   if (!row || row.userId !== ownerId || row.type !== "DEPOSIT" || row.status !== "PROCESSING"
-    || row.currency !== "TZS" || row.provider !== "CARD" || row.houseBotId != null
+    || row.currency !== "TZS" || row.provider !== "CARD" || !row.providerRef || row.houseBotId != null
     || hasDepositStatusReview(row)) return null;
   return trustedCardCheckoutUrl(row.cardCheckoutUrl);
 }

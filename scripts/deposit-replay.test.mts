@@ -194,6 +194,7 @@ async function run(source: string, mapper = MAPPER, statusSource = STATUS, check
   ok("card.url-owner-and-status", !!cardRow && activeCardCheckoutUrl(me, cardRow) === cardFirst.data?.redirectUrl
     && activeCardCheckoutUrl(other, cardRow) === null
     && activeCardCheckoutUrl(me, { ...cardRow, status: "FAILED" }) === null
+    && activeCardCheckoutUrl(me, { ...cardRow, providerRef: null }) === null
     && activeCardCheckoutUrl(me, { ...cardRow, providerStatus: "deposit-terminal-review:v1" }) === null);
   let routeOwner: string | null = me;
   const routeModule = { exports: {} as any };
