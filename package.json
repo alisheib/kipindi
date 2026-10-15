@@ -695,6 +695,8 @@
     "red:bet-sheet-host": "tsx scripts/bet-sheet-host.test.mts --prove-red",
     "test:root-has": "tsx scripts/root-has.test.mts",
     "red:root-has": "tsx scripts/root-has.test.mts --prove-red",
+    "test:demo-seed-clock": "tsx scripts/demo-seed-clock.test.mts",
+    "red:demo-seed-clock": "tsx scripts/demo-seed-clock.test.mts --prove-red",
     "qa:bet-sheet-prod-serve": "node --import tsx --import ./scripts/live/bet-sheet-prod-bootstrap.mts ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3044",
     "qa:bet-sheet-production": "node scripts/qa-bet-sheet-production.mjs",
     "qa:admin-kpi": "node scripts/qa-admin-kpi.mjs",

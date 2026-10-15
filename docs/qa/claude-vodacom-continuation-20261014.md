@@ -2,7 +2,158 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
-## ⭐ UPDATE 2026-10-14 ~12:30 UTC (Claude, OMEGA-COMPILE01) — read this first
+## ⭐ CODEX TAKEOVER (2026-10-15) — read this first; paste the prompt below into the Codex session
+
+From 2026-10-15 the integrator and release owner is a **Codex session** (Ali's choice). The Claude session on
+OMEGA-COMPILE01 stops pushing `main`; its helpers finish their lanes on their own branches and push nothing. This block
+and the prompt supersede the older sections of this file wherever they disagree (A21 now passes; the admin empty-state
+alignment was closed 2026-10-14; S2 is ✅).
+
+```text
+You are taking over as the integrator and release owner for the 50pick Vodacom plan (the sponsor's "Simplified Journey").
+50pick is a Tanzania-licensed REAL-MONEY pari-mutuel prediction market. Repo: https://github.com/alisheib/kipindi (private).
+`main` IS PRODUCTION: every push to main auto-deploys to https://www.50pick.tz (also https://50pick.tz and
+https://kipindi-production.up.railway.app). There is no staging. You finalize the development: integrate the lanes, release
+each one live with its proof, close S8–S13, and prepare S14–S16 for the owner (Ali). Lead on architecture; ask Ali in plain
+English only for decisions that are truly his.
+
+READ FIRST, in order (verify every fact against the repo; docs drift):
+CLAUDE.md (mechanics; its status paragraphs are history) → docs/SETUP.md → docs/NEXT-PLAN.md (row ▶ 0c) →
+docs/VODACOM-PLAN.md §0 RESUME AT, §1 board, §0k (S8; newest bullet "2026-10-15 Claude continuation (3)") →
+docs/qa/claude-vodacom-continuation-20261014.md (its top block — this takeover — wins over older text) → docs/RULES.md (money)
+→ docs/DESIGN_AUTHORITY.md (the ONLY design rulebook) → .claude/skills/50pick-audit/SKILL.md, .claude/skills/50pick-standards/SKILL.md,
+.claude/skills/railway/SKILL.md → docs/qa/visual-audit-20261015.md (58 visual findings and their owners).
+
+WHERE IT STANDS (2026-10-15 ~09:15 UTC — check `git log origin/main -8` and VODACOM-PLAN §0 first):
+- LIVE: 331048acb (A21 root-:has() fix + main's house-bots N3) → 47e68d20c (records) → [6b19de2ec, the demo seed's
+  single clock read, if the Claude session pushed it — check].
+- S0, S3, S3b, S4, S6 ✅; S2 ✅ 2026-10-15; S1 live (Ali's own "Turn my preview on" press waits until the whole plan is done,
+  his 2026-10-02 rule); S7 closed (✅ at S14); S8 OPEN; S9–S13 building; S14–S16 need Ali.
+- S8 closes when: (a) lane V1's bet-sheet visual fixes have landed and A21 is re-measured at the release commit on a QUIET
+  machine (`npm run qa:bet-sheet-production` ≤150 ms; it read 78/0 at 331048acb); (b) a classic parity compare
+  (`scripts/qa-classic-shell-parity.mjs --compare <v4 baseline>`) has every difference explained — 67/67 is expected once
+  6b19de2ec is in, plus V1's intended Callout differences, cell by cell; (c) `npm run test:all` WITH the database suites at
+  the close tip; (d) [E3] (see SAFETY); (e) the close record in VODACOM-PLAN §0k and the §1 row; S8's done-when is in §1.
+
+LANES (each branch's last commit says "READY FOR RELEASE (proof…)" or "WIP: …"; all on GitHub as checkpoints):
+- seed clock fix — codex/s8-integration @6b19de2ec — proven (test:demo-seed-clock 3/3, red 4/4, 110 suites, tsc 0, build 0)
+- live fixes (3) — codex/live-fixes-1014 — question-page auth doors (S10 point 4), Up & Down balance = cash + bonus (S12 F1),
+  a round in its lock window stays on the board (S12 F2)
+- S9 release candidate — codex/s9-release — CARRIES A MIGRATION (see PRISMA); Ali's 2026-10-14 copy decisions applied
+- S10 visitor path — codex/vodacom-s10-build — WP1–WP8a; WP8b needs S9 on main; WP9 is the release
+- S11 How to Play + copy — codex/vodacom-s11-build
+- S12 consistency — codex/vodacom-s12-w (Swahili words, NDIO, madau, Terms), codex/vodacom-s12-j (@cf8465754) and
+  codex/vodacom-s12-j-marker-v2 (@82f283d45, WP10b on top of J; the older j-marker and j-marker-20261015 are superseded) (Juu/Chini
+  in the journey's language; J extracts the sheet's LowBlock), codex/vodacom-s12-a
+  (admin inks), codex/vodacom-s12-v (the audit's Up & Down/shell items), codex/vodacom-s12-f (message titles), codex/vodacom-s12-wp1
+  (parity v5); plan on codex/vodacom-s12-build
+- S13 measures panel — codex/vodacom-s13-build
+- V1 — codex/visual-v1 — bet sheet clipping/alignment, low-balance rails, sheet titles, kit Callout sm 11px → 13px, .btn-xl
+- V2a — codex/visual-v2a — classic board pages (/markets sort + stats at 320, pagers, carousels, chips, home rows, card spacing)
+- NOT STARTED: V2b — header/footer/auth/legal/help/404/question page/leaderboard (F03 F04 F07 F08 F09 F13 F19 F21 F22 F23 F24
+  F25 F26 F27 F28 F40 F42 F45 F46 F51 F54); kit backlog F38 F39; S7 follow-up F41; F20/F29 ship with the next Terms/Privacy
+  version (hash-bound text).
+COORDINATION: Claude helpers on OMEGA-COMPILE01 may still be finishing a lane; they commit but never push. Integrate READY
+branches first; do not edit a branch whose last commit is a Claude "WIP" younger than 2 hours. Merge, never rebase or force,
+shared branches. You are now the ONLY session that pushes main — but another session (house bots) has pushed main before:
+`git fetch` and read `git log origin/main` before every push.
+
+RELEASE LAW (every push to main):
+1. Per change: its own guard (a test:* script in package.json; test:all auto-discovers it) AND a mutation proof (a red:* twin
+   or in-process plants that make the guard fail). Never weaken a guard to pass; change a pinned expectation only when your
+   change is the reason, and say so. File-mutating red twins one at a time, clean `git diff` after.
+2. Per push: `npm run typecheck` = 0; a production build at the exact commit (`RAILWAY_GIT_COMMIT_SHA=$(git rev-parse HEAD)
+   npx next build`, clean src); every suite that reads a changed file green (5 suites need a server on :3000 —
+   responsive, motion, revoked-deadend, admin-section-gate, needle-rest — run those on their own server); local
+   `npm run qa:live` on a FRESH in-memory dev server (port 3009, no DATABASE_URL, random SESSION_SECRET ≥32 chars,
+   OTP_PEPPER ≥16, JOURNEY_PREVIEW_SECRET, DISABLE_ADMIN_TOTP=true) — all pass.
+3. Push: stage files BY NAME (never `git add -A`), `git push origin HEAD:main`, never --force.
+4. Read back (Railway builds 3–6 min): all three hosts serve `dpl=<full sha>` (`curl -s https://www.50pick.tz/ | grep -o
+   'dpl=[0-9a-f]*'`); `/api/health` ok, database reachable and migrated, `simpleJourney` STAFF_PREVIEW; `npm run
+   qa:chunks-prod -- --origin https://www.50pick.tz` and `-- --origin https://50pick.tz` both 6/6; `BASE=https://www.50pick.tz
+   npm run qa:live` all pass ([E3] prints NOT MEASURED unless authorized); `railway logs -s 50pick` shows a clean boot; look at
+   the changed pages live (360 and 1280, en and sw) and read the screenshots.
+5. Record in ONE place per fact: VODACOM-PLAN §0/§0k/§1, NEXT-PLAN ▶ 0c (its "N/18 sessions ✅" count is guarded), this
+   guide's top block; run the suites that read those docs (test:vodacom-plan, test:docs, test:tracker-hygiene,
+   test:integrity, test:design-one-door …); push the docs commit and read it back.
+Per session close: test:all with the database suites, classic parity, tiles (screenshots read by eye).
+
+PRISMA / DATABASE:
+- Schema prisma/schema.prisma; `npm ci` generates the client (`npx prisma generate` after a schema change). Node 24, npm,
+  the lockfile; Next pinned 16.4.0.
+- Migrations are hand-written: prisma/migrations/<YYYYMMDDHHMMSS>_<name>/migration.sql, idempotent (IF NOT EXISTS),
+  additive where possible. Never `prisma migrate dev` (interactive; its shadow diff trips on known drift).
+- Test on a disposable local PostgreSQL first (OMEGA-COMPILE01: F:\pg-loadtest on port 5433, scripts/load/README.md —
+  three gates refuse production): `npx prisma migrate deploy`, then the PG battery (`e2e:money`, the DB suites).
+- MANDATORY with any migration: `npm run verify:backup-schema` (KP_SCRATCH_PORT=5443 if 5433 is busy). The backup's DDL is
+  generated from the live DB; a migration once broke three nights of backups (docs/BACKUP-RUNBOOK.md "THE THREE NIGHTS").
+- Production gets migrations ONLY through the deploy (`start` = `prisma migrate deploy && next start`). Never hand-run SQL
+  against production.
+- Read-only production DB checks (e.g. `npm run qa:short-title-fit`) take PROD_DATABASE_PUBLIC_URL from the environment or
+  `.env.qa.local` at the checkout root (on OMEGA-COMPILE01: F:\kipindi-main\.env.qa.local); they prove the session read-only
+  first. Pass it only into the process environment; never print it.
+
+RAILWAY: account alisheib07@gmail.com; project 50pick (5e87353c-1d59-433d-a683-a32b9149f74c), environment production,
+service 50pick (baba8802-7f79-4306-9706-1e19a4b95e7c). Verify `railway whoami` / `railway status` first (this PC also had
+another account). `railway logs -s 50pick` for boot logs. The production DB host (postgres.railway.internal) is reachable
+only inside Railway (`railway run --service 50pick -- <cmd>`). Environment variables are Ali's decisions.
+
+MACHINE (if you run on OMEGA-COMPILE01 — Windows, i7-8700 6c/12t, 32 GB): F: is a slow HDD; work in SSD worktrees under
+C:\50pick-ssd (TEMP/TMP=C:\50pick-ssd\tmp); F:\kipindi-main is the long-lived checkout. RAM, not CPU, is the limit (3–5 GB
+free with nine lanes) — add work as lanes finish. `.next/dev/node_modules` holds JUNCTIONS into node_modules: never
+recursive-delete a .next without first removing them (PowerShell `[System.IO.Directory]::Delete(path, $false)` on each
+reparse point). A stale dev cache answers "HMR hash mismatch" and crashes qa:live: clear .next/dev and restart. Files are
+CRLF in worktrees (autocrlf), LF in git. `next dev` writes an untracked AGENTS.md — never commit it. A21's fixture: a clean
+exact-commit production build, then `npm run qa:bet-sheet-prod-serve` (127.0.0.1:3044; env KP_QA_MEMORY_BOOTSTRAP=
+bet-sheet-local-production, NODE_ENV=production, random SESSION_SECRET/JOURNEY_PREVIEW_SECRET/OTP_PEPPER, and NO
+DATABASE_URL, RAILWAY_GIT_COMMIT_SHA or NEXT_DEPLOYMENT_ID at serve time), then `QA_CHROMIUM_PATH=<Chrome for Testing 147>
+npm run qa:bet-sheet-production` from the same worktree — only on a quiet machine. Elsewhere: clone, `npm ci`, and choose
+your own scratch directory.
+
+SAFETY (non-negotiable): never print or commit credentials (.env.qa.local, .env.local, Railway, Selcom, Blackball, Postmark).
+Never create or delete production accounts. [E3] — S8's signed-in production read — is EITHER Ali signing in himself as a
+regular player in a browser while you only read the seven pages (/, /markets, /live, /results, /watchlist, one question,
+/account), OR `QA_SIGNED_IN=mobile01 BASE=https://www.50pick.tz npm run qa:live` ONLY with Ali's explicit go in your session
+(one attempt: a wrong password counts toward lockout, and it ends any other mobile01 session). No money moves on production
+except Ali's S14 journey. Money rules live in docs/RULES.md; a money path never changes without test:money-invariants,
+test:fee-model, test:withdrawal and e2e:money on PostgreSQL. Never fabricate data, prices, approvals, signatures or elapsed
+observation time; never waive a failed check — explain it with evidence or fix its cause. Keep the journey at STAFF_PREVIEW
+until S15's gates.
+
+OWNER RULES IN FORCE: "responsiveness and UI consistency is a rule" (every change at 320/360/390/768/1280/1920 × en/sw/zh,
+built from the kit, the same thing never done two ways — 2026-10-15); "push live each progress"; "perfect spacing, margins,
+fonts"; parallelise as the machine allows; the 2026-10-14 answers in docs/COMPLIANCE-DECISIONS.md (top entries).
+
+OWNER (Ali) ITEMS: [E3]; S14 — a real TZS 1,000 journey on production with a staff account, and the agency's sign-off or
+his override; S15 — the go (the flip); S16 — at least 7 real days after launch (no shortening).
+
+ORDER OF WORK: (1) 6b19de2ec live, if it is not. (2) The live fixes. (3) V1 → S8's close (A21 re-measure on a quiet
+machine, parity, battery, [E3], record). (4) S9 (merge main; battery with the DB suites; verify:backup-schema; release).
+(5) S10 (WP8b after S9), S11, S12 (W, J, A, V, F, WP1), S13 — each its own release with its proof. (6) V2a, V2b, the kit
+backlog, F41. (7) Prepare S14 for Ali (the checklist, the preview press, the TZS 1,000 journey) and S15's readiness; S16 waits
+for the calendar.
+```
+
+## UPDATE 2026-10-15 ~08:15 UTC (Claude, OMEGA-COMPILE01)
+
+- **LIVE is `331048acb7d0c585601c399f68bcf771b0b82a10`** (main `3769e3c3d..331048acb`): A21's root-`:has()` fix merged
+  with main's house-bots N3. Read back: all three hosts serve the exact `dpl` from 07:21:23 UTC, health ok, DB migrated,
+  STAFF_PREVIEW; `qa:chunks-prod` 6/6 on both public hosts; production `qa:live` 352/0 signed out ([E3] NOT MEASURED).
+  **A21 PASSES** at the exact commit on a quiet machine (`qa:bet-sheet-production` 78/0; heading frames 81–112 ms vs
+  150). **Exact-tip CI passes** (run 38697728924). Record: VODACOM-PLAN §0k, "2026-10-15 Claude continuation (3)".
+- **S2 is ✅** (VODACOM-PLAN §0d's close record): Ali signed in to /admin himself; Claude reviewed and approved all 40
+  drafted short titles; `qa:short-title-fit` (read-only, production) clean.
+- **Next, in order:** (1) [E3] — Ali signs in as a regular player in the app's browser pane; the coordinator reads the
+  seven pages only. (2) The demo seed's single clock read with its own guard, then a classic parity compare that must
+  read 67/67 (at `331048acb` it read 66/67: the one failure is the seed's per-row clock, measured — §0k). (3) S8's closing
+  battery and close record. (4) Land, each as its own release: the live fixes (`codex/live-fixes-1014`), S9
+  (`codex/s9-release`, a migration: `verify:backup-schema` first), visual lane V1 (`codex/visual-v1`), then S10–S13.
+- **Machine note:** the limit on OMEGA-COMPILE01 is RAM (32 GB, ~3.5 GB free with nine lanes), not CPU — add a lane only
+  when one finishes. `F:\kipindi-main\.env.qa.local` holds the production read-only database URL the `qa:*` read scripts
+  use (pass it into the process environment only; never print it); it also holds QA passwords, which this session does
+  not use — signing in on production is Ali's.
+
+## UPDATE 2026-10-14 ~12:30 UTC (Claude, OMEGA-COMPILE01)
 
 - **LIVE is `4946a777deaa8e206336202d8c57db8ad39ec3ba`** (main `f830a091c..4946a777d`): Ali's Up & Down ruling (Up/Down
   only, no multiplier on any Up & Down choice) and the A21 first-frame warm-up (behind the flag). Read back: both public
