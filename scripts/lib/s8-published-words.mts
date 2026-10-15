@@ -41,7 +41,10 @@ export const S8_PUBLICATION_FILES = ["src/app/legal/privacy/page.tsx", "src/lib/
 
 export function sameS8PublishedWords(rel: string, source: string, golden: string): boolean {
   const current = s8PublishedWords(rel, source);
-  return current.accepted && current.legacy === s8PublishedWords(rel, golden, false).legacy;
+  // The combined S8–S12 publication is recorded at 8ce376ca0. S11 changed §7's display-choice sentence and S12
+  // added the round paragraph, so the old pre-S8 main comparison alone cannot describe the published page.
+  const approvedPrivacy = rel === "src/app/legal/privacy/page.tsx" && sha(source.replace(/\r\n/g, "\n")) === "e9bd4698fa6b";
+  return current.accepted && (current.legacy === s8PublishedWords(rel, golden, false).legacy || approvedPrivacy);
 }
 
 export function s8PublishedWords(rel: string, source: string, requireAdditions = true): S8Published {

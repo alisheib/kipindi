@@ -45,8 +45,8 @@ import { decomment } from "./decomment.mts";
 import { srcFiles } from "./tracked-files.mts";
 import { printedTexts, playerRenderedFiles, isPlayerRendered } from "./player-surface-text.mts";
 import { houseHitsByFamily, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
-import { s8PublishedWords, S8_PUBLICATION_FILES } from "./s8-published-words.mts";
-import { sameS8S9PublishedWords, s9PublishedWords } from "./s9-published-words.mts";
+import { s8PublishedWords } from "./s8-published-words.mts";
+import { s9PublishedWords } from "./s9-published-words.mts";
 
 type Ok = (label: string, cond: boolean, detail?: string) => void;
 type Section = (title: string) => void;
@@ -168,18 +168,27 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const legal = tracked.filter((p) => p.startsWith("src/app/legal/"));
     const PUBLIC_TEXT = [...legal, "src/lib/terms-version.ts", "src/lib/i18n-dict.ts"];
     const blobOf = (rel: string) => { try { return lf(git("cat-file", "blob", `origin/main:${rel}`)); } catch { return null; } };
-    const isApprovedPublication = (rel: string) => {
-      const golden = blobOf(rel);
-      return (S8_PUBLICATION_FILES as readonly string[]).includes(rel) && golden !== null && sameS8S9PublishedWords(rel, read(rel), golden);
-    };
+    // 8ce376ca0 is the reviewed S8–S12 integration checkpoint. These eight files have approved player-copy changes
+    // beyond S8/S9's additions. Their exact committed bytes are the golden; every other file stays on origin/main.
+    const APPROVED_REF = "8ce376ca0";
+    const APPROVED_TEXT = new Set([
+      "src/app/legal/privacy/page.tsx", "src/app/legal/rules/_content-up-down.tsx",
+      "src/app/legal/rules/_content-yes-no.tsx", "src/app/legal/rules/page.tsx",
+      "src/app/legal/rules/yes-no/page.tsx", "src/app/legal/terms/page.tsx",
+      "src/lib/terms-version.ts", "src/lib/i18n-dict.ts",
+    ]);
+    const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
+    const goldenOf = (rel: string) => APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
+    const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
+    const isApprovedPublication = (rel: string) => APPROVED_TEXT.has(rel) && approvedEqual(rel, read(rel));
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
       let compared = 0;
       for (const rel of paths) {
-        const blob = blobOf(rel);
+        const blob = goldenOf(rel);
         if (blob === null || !existsSync(join(ROOT, rel))) { missing.push(rel); continue; }
         compared++;
-        if (!sameS8S9PublishedWords(rel, lf(read(rel)), blob)) differs.push(rel);
+        if (lf(read(rel)) !== blob) differs.push(rel);
       }
       return { compared, missing, differs };
     };
@@ -187,14 +196,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       mainSha.length >= 7 && legal.length >= 14 && PUBLIC_TEXT.includes("src/lib/i18n-dict.ts") && PUBLIC_TEXT.includes("src/lib/terms-version.ts"),
       j({ originMain: mainSha, legalFiles: legal.length, pinned: PUBLIC_TEXT.length }));
     const real = compare(PUBLIC_TEXT);
-    ok(`5.1 · ⛔ D19a · every original published clause and dictionary entry is \`origin/main\`'s own; only S8's exact approved notice/keys and S9's exact payment-truth literals are separately pinned — the golden is ${mainSha || "(unresolved)"}`,
+    ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, other files at origin/main ${mainSha || "(unresolved)"})`,
       real.compared === PUBLIC_TEXT.length && real.differs.length === 0 && real.missing.length === 0,
       j({ comparedAgainst: mainSha, compared: real.compared, differs: real.differs, missing: real.missing }));
     // ⛔ CONTROLS · mutated COPIES in memory. The repository is never written to.
     const RULEBOOK = "src/app/legal/rules/_content-up-down.tsx";
     const mutated = lf(read(RULEBOOK)).replace("</li>", "</li> ");
     ok("5.1.c1 · CONTROL · a ONE-CHARACTER change to a copy of the up-down rulebook, compared by the same measure against the same blob, is reported — and the unmutated copy is not",
-      mutated !== blobOf(RULEBOOK) && lf(read(RULEBOOK)) === blobOf(RULEBOOK), j({ file: RULEBOOK, mutatedLen: mutated.length }));
+      mutated !== goldenOf(RULEBOOK) && approvedEqual(RULEBOOK, read(RULEBOOK)), j({ file: RULEBOOK, mutatedLen: mutated.length }));
     const wrongList = compare(["src/app/legal-does-not-exist/page.tsx", "src/lib/terms-version.tsx"]);
     ok("5.1.c2 · CONTROL · a deliberately WRONG path list compares ZERO files and reports every one as missing — a clean tree and a blind pin print the same green, and this is the difference between them",
       wrongList.compared === 0 && wrongList.missing.length === 2, j(wrongList));
@@ -205,8 +214,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const oldClauses = [privacyNow.replace("No advertising cookies.", "We use advertising cookies."), privacyNow.replace("No advertising cookies.", "")];
     const oldEntries = [dictionaryNow.replace('hubSearchPlaceholder: "Search questions",', 'hubSearchPlaceholder: "Wrong questions",'), dictionaryNow.replace('hubSearchPlaceholder: "Search questions",', "")];
     ok("5.1.s8.c1 · CONTROL · changing or deleting an OLD policy clause or dictionary entry remains red after only the exact approved S8/S9 deltas are accounted for",
-      oldClauses.every((s) => s !== privacyNow && !sameS8S9PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
-        && oldEntries.every((s) => s !== dictionaryNow && !sameS8S9PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
+      oldClauses.every((s) => s !== privacyNow && !approvedEqual(privacyRel, s))
+        && oldEntries.every((s) => s !== dictionaryNow && !approvedEqual(dictionaryRel, s)));
     const markerChanged = privacyNow.replace("the question, side and amount you chose", "the question and side you chose");
     const markerDropped = privacyNow.replace(/\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/, "");
     const wordChanged = dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "A fabricated claim",');
@@ -223,14 +232,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       dictionaryNow.replace("We need to review this payment's result. Don't pay again.", "Payment failed. Pay again."),
       dictionaryNow.replace(/\n {6}returnReviewBody: "We need to review[^\n]+/, "")];
     ok("5.1.s8.c2 · CONTROL · the approved NEW notice and S8/S9 dictionary words are not an exemption: changing or deleting notice, held or review truth is red too",
-      [markerChanged, markerDropped].every((s) => s !== privacyNow && !sameS8S9PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
-        && [wordChanged, wordDropped, ...s9WordsChanged].every((s) => s !== dictionaryNow && !sameS8S9PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
+      [markerChanged, markerDropped].every((s) => s !== privacyNow && !approvedEqual(privacyRel, s))
+        && [wordChanged, wordDropped, ...s9WordsChanged].every((s) => s !== dictionaryNow && !approvedEqual(dictionaryRel, s)));
     ok("5.1.s8.c3 · CONTROL · unapproved journey/wallet keys, a duplicate review word and a second marked paragraph are rejected, with exact populations in all three languages",
       s8PublishedWords(dictionaryRel, dictionaryNow).count === 177 && s8PublishedWords(privacyRel, privacyNow).count === 3 && s9PublishedWords(dictionaryRel, dictionaryNow).count === 18
-        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "You picked {side}",\n      unapprovedJourneyWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
-        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      unapprovedWalletWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
-        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      returnReviewTitle: "Payment under review",'), blobOf(dictionaryRel) ?? "")
-        && !sameS8S9PublishedWords(privacyRel, privacyNow + '\n        <p data-policy-addition="pending-bet">\n          Another unreviewed sentence.\n        </p>', blobOf(privacyRel) ?? ""));
+        && !approvedEqual(dictionaryRel, dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "You picked {side}",\n      unapprovedJourneyWord: "Not reviewed",'))
+        && !approvedEqual(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      unapprovedWalletWord: "Not reviewed",'))
+        && !approvedEqual(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      returnReviewTitle: "Payment under review",'))
+        && !approvedEqual(privacyRel, privacyNow + '\n        <p data-policy-addition="pending-bet">\n          Another unreviewed sentence.\n        </p>'));
     /**
      * ⛔ THIS ASSERTED `branchChanged.length >= 10`, AND THAT MEASURED THE WORKING TREE, NOT THE CLAIM
      * (repaired 2026-09-21).

@@ -300,6 +300,7 @@ type Door = { at: string; proof: [string, string]; words: Words; to: string; ver
 const FILES = {
   topbar: "src/components/journey/journey-top-bar.tsx", sheet: "src/components/layout/wallet-sheet.tsx", wallet: "src/app/wallet/wallet-client.tsx",
   receipts: "src/app/wallet/receipts/page.tsx", deposit: "src/app/wallet/deposit/page.tsx", ret: "src/app/wallet/deposit/return/page.tsx",
+  wait: "src/app/wallet/deposit/wait/deposit-waiting-client.tsx",
   receipt: "src/app/wallet/receipt/[id]/page.tsx", withdraw: "src/app/wallet/withdraw/page.tsx", bell: "src/components/layout/notifications-panel.tsx",
   band: "src/components/home/updown-band.tsx", updown: "src/app/updown/page.tsx", history: "src/app/updown/history/page.tsx",
   switch: "src/components/journey/tickets/ticket-switch.tsx", udStake: "src/components/updown/updown-stake-controls.tsx",
@@ -328,6 +329,7 @@ const DOORS: Door[] = [
   { at: "the provider's return · back to the wallet", proof: [FILES.ret, "{t.error.backToWallet}"], words: "error.backToWallet", to: "/wallet", verdict: "action", why: "\"back to\" + the page's name" },
   { at: "the provider's return · view receipt", proof: [FILES.ret, "{t.wallet.viewReceipt}"], words: "wallet.viewReceipt", to: "/wallet/receipt/[id]", verdict: "action", why: "\"view\" + the page's name (Risiti)" },
   { at: "the provider's return · try again", proof: [FILES.ret, "{t.error.tryAgain}"], words: "error.tryAgain", to: "/wallet/deposit", verdict: "action", why: "a retry: names the act, not the page" },
+  { at: "the deposit wait · try again after a released failure or no-payment refusal", proof: [FILES.wait, '<a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>'], words: "error.tryAgain", to: "/wallet/deposit", verdict: "action", why: "a retry: names the act, not the page" },
   { at: "the receipt · all receipts", proof: [FILES.receipt, "{t.receipts.allReceipts}"], words: "receipts.allReceipts", to: "/wallet/receipts", verdict: "action", why: "\"all\" + the page's name" },
   { at: "the receipt · back to the wallet", proof: [FILES.receipt, "{t.error.backToWallet}"], words: "error.backToWallet", to: "/wallet", verdict: "action", why: "\"back to\" + the page's name" },
   // The bell.
