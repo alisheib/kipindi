@@ -17,6 +17,7 @@ import { AdminFunnelChart, AdminBarList } from "@/components/admin/admin-charts"
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
 import { canView } from "@/lib/server/rbac";
 import { getInsights } from "@/lib/server/insights";
 import { categoryBreakdown } from "@/lib/server/report-money";
@@ -24,7 +25,7 @@ import { formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
 // E-103 · one rule for the share beside a funnel stage, and for the bar width.
 import { funnelShares, stagesAreNested } from "@/lib/funnel-share";
 import { AdminBody } from "@/components/admin/admin-body";
-import { JourneyFunnelCard } from "./journey-funnel-card";
+import { JourneyMeasuresArea } from "./journey-measures-card";
 import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · Insights" };
@@ -33,18 +34,21 @@ export const dynamic = "force-dynamic";
 const pct = (num: number, den: number) => (den > 0 ? `${Math.round((num / den) * 100)}%` : "—");
 
 /** E-381 §6 item 10 — belt 2: the stored-row gate, re-read per page render (a flight request can skip the layouts). */
-export default async function InsightsPage({ searchParams }: { searchParams: Promise<{ jf?: string; jfc?: string }> }) {
+export default async function InsightsPage({ searchParams }: { searchParams: Promise<{ jfc?: string }> }) {
   const sp = await searchParams;
-  return <AdminPageGate title="Insights"><InsightsContent jf={Number(sp.jf) || 14} jfc={typeof sp.jfc === "string" ? sp.jfc.slice(0, 64) : null} /></AdminPageGate>;
+  return <AdminPageGate title="Insights"><InsightsContent jfc={typeof sp.jfc === "string" ? sp.jfc.slice(0, 64) : null} /></AdminPageGate>;
 }
 
-async function InsightsContent({ jf, jfc }: { jf: number; jfc: string | null }) {
+async function InsightsContent({ jfc }: { jfc: string | null }) {
   const session = await currentSession();
+  const user = session ? await db.user.findById(session.userId) : null;
   // Owner-grade economics — moderators must not read this. Return BEFORE any of
   // the restricted data is computed.
-  if (!session || !(session.role === "ADMIN" || (await canView(session.role, "accounting")))) {
+  if (!user || !(user.role === "ADMIN" || (await canView(user.role, "accounting")))) {
     return <AdminRestricted title="Insights" sw="Maarifa" need="Admin or Compliance" />;
   }
+  // The harm watch reads compliance data. A role cached in the session is not an authorisation source.
+  const includeHarm = await canView(user.role, "compliance");
 
   // DG-A-01: these two are independent, so they run together rather than one after the
   // other. `categoryBreakdown` is the expensive half — it reads the market and position
@@ -63,11 +67,12 @@ async function InsightsContent({ jf, jfc }: { jf: number; jfc: string | null }) 
     return (
       <>
         <AdminPageHead title="Insights" sw="Maarifa" />
-        <div className="px-4 lg:px-6 py-5">
+        <AdminBody>
           <AdminCard title="Unavailable" sw="Haipatikani">
             <p className="text-[13px] text-text-muted">Insight aggregates could not be computed right now.</p>
           </AdminCard>
-        </div>
+          <JourneyMeasuresArea campaign={jfc} includeHarm={includeHarm} />
+        </AdminBody>
       </>
     );
   }
@@ -130,8 +135,8 @@ async function InsightsContent({ jf, jfc }: { jf: number; jfc: string | null }) 
           </p>
         </AdminCard>
 
-        {/* ⭐ The Vodacom plan's measures (S3b) — its own read, so a failure here is contained to this card. */}
-        <JourneyFunnelCard days={jf} campaign={jfc} />
+        {/* S13 uses the same model for this panel and the agency files. Its read is contained to these cards. */}
+        <JourneyMeasuresArea campaign={jfc} includeHarm={includeHarm} />
 
         {/* Cohort retention + LTV — activity-based, honestly labelled. */}
         <AdminCard title="Cohort retention & value" sw="Vikundi: kubaki na thamani">

@@ -64,6 +64,10 @@
  *   journey.rollout.switch — the new journey's rollout switch and its preview links (Vodacom plan S1,
  *     2026-09-30). DELETED, for the same reason: its COMPLIANCE rows are in the AuditLog this reset wipes.
  *     Deleted, the rollout reads "No record yet" (the code's ceiling decides) and every preview link is gone.
+ *   journey.rollout.observed and journey.harm.daily — the measures' launch record and the harm watch's daily count
+ *     (Vodacom plan S13, 2026-10-14). DELETED: the launch record's SYSTEM rows are in the AuditLog this reset wipes, and
+ *     both are observations of a test population. The next lifecycle pass starts the record again ("observed since"
+ *     the reset), and the harm watch counts its next day — a reset before launch loses no launch.
  *
  * ⛔ THE AUDIT LOG IS A DELIBERATE DOCTRINE OVERRIDE. `docs/DATA-RETENTION.md` §3 says the
  * HMAC chain is on no deletion path, and it is right: deleting any row breaks the chain,
@@ -149,7 +153,9 @@ const CONFIG_ZERO: Record<string, string> = {
 // ⛔ `invite.rewards.switch` (2026-09-26) is here and NOT in CONFIG_KEEP: the reset deletes the whole
 // AuditLog, and that is where the switch's COMPLIANCE rows (who made invites payable, and why) live.
 // A switch that survived the reset would keep paying with its paper trail gone. See the header.
-const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/, /^journey\.rollout\.switch$/];
+// ⛔ The two S13 observation keys (2026-10-14) are dropped too — and, like every key here, ALSO named in step 8's DELETE
+// and in the verify step: this list only CLASSIFIES, the SQL is what deletes.
+const CONFIG_DROP_PATTERNS = [/^chat\.daily\./, /^bootstrap\.login_promoted:/, /^test\.overrides$/, /^invite\.rewards\.switch$/, /^journey\.rollout\.switch$/, /^journey\.rollout\.observed$/, /^journey\.harm\.daily$/];
 
 // ── argv ───────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
@@ -567,6 +573,8 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
       `(${base.rulesHash.slice(0, 12)}…) · feeSnapshots ${base.feeSnapshotHash.slice(0, 12)}…`
   );
   console.log(rehearse ? "REHEARSAL — this transaction will be rolled back at the end.\nStarting…" : "Starting transaction…");
+  // S13: the instant the reset began — the standalone --verify holds the two observation rows to it (see assertions).
+  const resetStartedAt = new Date().toISOString();
   await client.query("BEGIN");
   // Fail fast rather than queueing behind (or in front of) live traffic. A rehearsal that
   // WAITS is worse than one that dies: the waiting is what stalls the platform.
@@ -699,7 +707,8 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
       "drop per-user + dead config keys + the invite payment switch",
       `DELETE FROM "SystemConfig"
         WHERE key LIKE 'chat.daily.%' OR key LIKE 'bootstrap.login_promoted:%' OR key='test.overrides'
-           OR key='invite.rewards.switch' OR key='journey.rollout.switch'`,
+           OR key='invite.rewards.switch' OR key='journey.rollout.switch'
+           OR key='journey.rollout.observed' OR key='journey.harm.daily'`,
     ],
 
     // 9 ── AI cost history and the audit chain.
@@ -751,6 +760,7 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
     JSON.stringify(
       {
         at: new Date().toISOString(),
+        resetStartedAt,
         keptUsers: keep.rows,
         baseline: base,
         before,
@@ -868,7 +878,7 @@ async function preserveProvenance(keepIds: string[]) {
   return rows;
 }
 
-async function assertions(keepIds: string[], base: Baseline) {
+async function assertions(keepIds: string[], base: Baseline, resetAt?: string) {
   const c: Array<{ name: string; ok: boolean; got: string }> = [];
   const g = async (sql: string) => Number((await one(sql))?.n ?? 0);
 
@@ -988,6 +998,13 @@ async function assertions(keepIds: string[], base: Baseline) {
   c.push({ name: "invite payment switch gone (Not payable until the Owner acts again)", ok: inviteSwitch === 0, got: `${inviteSwitch}` });
   const journeySwitch = await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key='journey.rollout.switch'`);
   c.push({ name: "new-journey rollout switch gone (the code's ceiling decides; no preview link survives)", ok: journeySwitch === 0, got: `${journeySwitch}` });
+  // ⭐ S13's two observation rows. Inside the reset's transaction they must be GONE. After it commits, the next lifecycle
+  // pass writes them again by design — so the standalone --verify (which passes the receipt's time) asks instead that no
+  // such row is older than the reset: a row written before it would carry the wiped test population into launch.
+  const observed = resetAt
+    ? await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key IN ('journey.rollout.observed','journey.harm.daily') AND "updatedAt" <= '${resetAt.replace(/'/g, "")}'::timestamptz`)
+    : await g(`SELECT count(*)::int n FROM "SystemConfig" WHERE key IN ('journey.rollout.observed','journey.harm.daily')`);
+  c.push({ name: resetAt ? "S13 launch record and harm count not older than the reset" : "S13 launch record and harm count gone (the next pass starts them again)", ok: observed === 0, got: `${observed}` });
 
   const hp = await one(`SELECT value FROM "SystemConfig" WHERE key='house.pool.state'`);
   c.push({
@@ -1021,7 +1038,7 @@ async function verify(keepIds: string[]) {
     process.exit(1);
   }
   console.log(`  baseline from receipt of ${receipt.at}`);
-  const checks = await assertions(keepIds, receipt.baseline as Baseline);
+  const checks = await assertions(keepIds, receipt.baseline as Baseline, String(receipt.resetStartedAt ?? receipt.at ?? "") || undefined);
   for (const c of checks) console.log(`  ${c.ok ? "✔" : "✖"} ${c.name}: ${c.got}`);
   const bad = checks.filter((c) => !c.ok);
   console.log("─".repeat(60));

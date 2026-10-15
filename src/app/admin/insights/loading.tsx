@@ -10,6 +10,9 @@ export default function Loading() {
         <SkKpiRow count={4} />
         {/* Acquisition funnel */}
         <SkCard lines={4} titleW="w-40" />
+        {/* Simplified Journey measures and launch watch */}
+        <SkTableCard cols={5} rows={5} minWidth={880} />
+        <SkCard lines={4} titleW="w-40" />
         {/* Cohort retention heatmap */}
         <SkTableCard cols={7} rows={5} minWidth={640} />
         {/* GGR by category + top markets */}

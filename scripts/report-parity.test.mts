@@ -271,6 +271,11 @@ for (const [name, src] of [
   // The catalogue's one `windowed: true` builder. `reports/catalogue.ts` is scanned PER FUNCTION,
   // behaviourally, by `test:report-window-reads` — its all-time match-integrity read is legitimate.
   ["finance-window", read("../src/lib/server/reports/finance-window.ts")],
+  // S13 (the Vodacom plan's measures view, WP5). Its reads live in `journey-measures-dal.ts`, whose Prisma twin is held by
+  // `test:journey-measures` M.10 (every client call recorded; none without a window or an id list). Its MEMORY twin reads
+  // the in-process maps on purpose, which this literal scan cannot tell from the Prisma twin, so the DAL file is held there
+  // and the view, which must never touch a store at all, is held here.
+  ["journey-measures", read("../src/lib/server/journey-measures.ts")],
 ] as const) {
   const walks = (src.match(/db\.txn\.listAll\(\)/g) ?? []).length;
   ok(`${name}: no whole-table walk on a windowed path`, walks === 0, `${walks} remaining`);
