@@ -204,6 +204,15 @@
 /* Modal plane. */
 .m-dialog-in        { animation: m-settle-lift var(--t-move) var(--m-settle) both; }
 .m-sheet-in         { animation: m-sheet-rise var(--t-move) var(--m-settle) both; }
+/* Keep the responsive sheet variants in the loaded sheet. Injecting a <style> on each modal open
+   invalidated the page's stylesheet during the bet sheet's measured first frame (S8 A21). */
+@media (min-width: 640px) {
+  .kp-modal-sheet.m-sheet-in { animation-name: m-settle-lift; }
+}
+@media (min-width: 1024px) {
+  .kp-modal-sheet-lg.m-sheet-in { animation-name: m-settle-lift; }
+  .kp-modal-sheet-lg.kp-modal-anchored.m-sheet-in { animation-name: m-settle-menu; }
+}
 .m-scrim            { animation: m-scrim-in var(--t-base) linear both; backdrop-filter: blur(var(--m-blur-behind)); }
 .m-behind           { transition: filter var(--t-base) var(--m-glide), opacity var(--t-base) linear; }
 .m-behind[data-covered="true"] { filter: blur(4px); opacity: 0.6; }
