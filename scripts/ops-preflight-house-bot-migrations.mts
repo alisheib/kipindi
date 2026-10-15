@@ -254,18 +254,27 @@ if (!histReg.rows[0]?.r) {
   say(`\n5 · migration history … NONE — this database has never been migrated`);
   problems.push("there is no _prisma_migrations table: this database has never been migrated at all");
 } else {
-  const unclean = await c.query(`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL`);
-  say(`\n5 · unfinished / rolled-back migrations … ${unclean.rowCount}`);
+  // Prisma keeps a resolved, rolled-back attempt in history and inserts a NEW row on retry.
+  // Only a row that is neither finished nor rolled back blocks migrate deploy (P3009).
+  const unclean = await c.query(`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NULL AND rolled_back_at IS NULL`);
+  say(`\n5 · unresolved unfinished migrations … ${unclean.rowCount}`);
   for (const r of unclean.rows) problems.push(`blocked by an unclean migration: ${r.migration_name} — migrate deploy stops at the FIRST one, so this would present as the house migration breaking the boot`);
 
   for (const dir of houseDirs) {
-    const rec = await c.query(`SELECT migration_name, finished_at, rolled_back_at FROM "_prisma_migrations" WHERE migration_name = $1`, [dir]);
-    if (!rec.rowCount) {
-      say(`    ${dir} … not yet applied (this deploy will apply it)`);
+    const rec = await c.query(`SELECT
+      count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)::int AS applied,
+      count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::int AS unfinished,
+      count(*) FILTER (WHERE rolled_back_at IS NOT NULL)::int AS rolled_back
+      FROM "_prisma_migrations" WHERE migration_name = $1`, [dir]);
+    const r = rec.rows[0];
+    if (r.applied) {
+      say(`    ${dir} … recorded as applied${r.rolled_back ? ` after ${r.rolled_back} rolled-back attempt(s)` : ""}`);
+    } else if (r.unfinished) {
+      say(`    ${dir} … unfinished — deploy is blocked until resolved`);
+    } else if (r.rolled_back) {
+      say(`    ${dir} … prior attempt rolled back — deploy may retry it`);
     } else {
-      const r = rec.rows[0];
-      say(`    ${dir} … recorded, finished=${r.finished_at ?? "NO"} rolled_back=${r.rolled_back_at ?? "no"}`);
-      if (r.rolled_back_at) problems.push(`${dir} is recorded as ROLLED BACK — deploy will retry it against objects that may already exist`);
+      say(`    ${dir} … not yet applied (this deploy will apply it)`);
     }
   }
 }
