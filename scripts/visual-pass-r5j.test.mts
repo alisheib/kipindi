@@ -126,6 +126,10 @@ function censusOf(file: string, src: string): string[] {
   const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, /\.tsx$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const alias = ALIAS[file];
   const formatted = (t: string) => FORMATTED.test(t) || (alias !== undefined && alias.test(t));
+  const groupedFill = (e: ts.Expression) => ts.isCallExpression(e) && ts.isIdentifier(e.expression)
+    && /^fill(Nodes)?$/.test(e.expression.text) && e.arguments[1] && ts.isObjectLiteralExpression(e.arguments[1])
+    && e.arguments[1].properties.every((p) => !ts.isPropertyAssignment(p)
+      || !COUNTY.test(p.initializer.getText(sf)) || formatted(p.initializer.getText(sf)));
   const say = (kind: string, e: ts.Node) => out.push(`${kind} :: ${squash(e.getText(sf))}`);
   const visit = (n: ts.Node) => {
     if (ts.isJsxExpression(n) && n.expression && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) {
@@ -137,7 +141,7 @@ function censusOf(file: string, src: string): string[] {
     }
     if (ts.isTemplateSpan(n)) {
       const t = n.expression.getText(sf);
-      if (COUNTY.test(t) && !formatted(t) && !t.includes("?") && !WORDS.test(t)) say("template", n.expression);
+      if (COUNTY.test(t) && !formatted(t) && !groupedFill(n.expression) && !t.includes("?") && !WORDS.test(t)) say("template", n.expression);
     }
     if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "replace" && n.arguments.length === 2
       && ts.isStringLiteral(n.arguments[0]) && /^\{(n|total|shown|count)\}$/.test(n.arguments[0].text)) {
@@ -360,6 +364,7 @@ section("4 · G-6 · every regular expression that reads a currency or a thousan
     "src/lib/contacts/vcard.ts": "the operator's contacts importer (admin)",
     "src/lib/contacts/xlsx-limits.ts": "the operator's contacts importer (admin)",
     "src/components/ui/input.tsx": "the kit's grouped edit coordinates and zero-place draft, not a finished money sentence; exact regexes and an added-reader control below",
+    "src/app/legal/_components.tsx": "published legal prose uses one dedicated reader for dates, rates and currency across seven policies; the matcher dresses spans without changing the versioned text",
   };
   const pool = walk("src").filter((f) => /\.(tsx?|m?js)$/.test(f) && !/^src\/(?:app|components)\/admin\//.test(f) && !f.startsWith("src/lib/server/") && f !== "src/lib/i18n-dict.ts"
     && (!f.startsWith("src/app/api/") || f.startsWith("src/app/api/og/")));
@@ -389,6 +394,12 @@ section("4 · G-6 · every regular expression that reads a currency or a thousan
   const inputReadersOk = (expressions: string[]) => expressions.length === 1 && expressions[0] === editGroup;
   ok("4.Input · the kit exception contains exactly its zero-place edit regex; no private currency or sentence reader", inputReadersOk(readers.get(input) ?? []), j(readers.get(input)));
   ok("4.Input CONTROL · a private finished-money reader added to the actual kit fails that same exact exception", !inputReadersOk(figureReaders(input, raw(input) + "\nconst BAD_PRIVATE_FIGURE = /(TZS [0-9][0-9,]*)/;")));
+  const legal = "src/app/legal/_components.tsx";
+  const legalReadersOk = (expressions: string[]) => expressions.length === 2
+    && expressions[0].startsWith("/\\d{4}-\\d{2}-\\d{2}") && expressions[1] === "/^(?:TZS|USD|KES) /";
+  ok("4.Legal · the published legal copy has exactly its date/figure matcher and currency prefix check", legalReadersOk(readers.get(legal) ?? []));
+  ok("4.Legal CONTROL · an extra private money reader in legal chrome exceeds that exact exception",
+    !legalReadersOk(figureReaders(legal, raw(legal) + "\nconst BAD_PRIVATE_FIGURE = /(TZS [0-9][0-9,]*)/;")));
   const og = code("src/app/api/og/market/[id]/route.tsx");
   ok("4.3 · the share card writes money with the platform's one grammar (`const tzs = formatTzs;` — built in Node, which has Intl), no grouping regex of its own",
     og.includes("const tzs = formatTzs;") && og.includes(`import { formatNumber, formatTzs } from "@/lib/utils";`) && !/\\B\(\?=/.test(og));

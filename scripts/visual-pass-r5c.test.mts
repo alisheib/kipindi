@@ -108,6 +108,9 @@ function goldHits(file: string, src: string): Hit[] {
   const code = file.endsWith(".css") ? decommentCss(text) : decomment(text);
   const out: Hit[] = [];
   code.split("\n").forEach((ln, i) => {
+    // The leaderboard's tier type names the established identity medal. A type union
+    // cannot paint a pixel; keep this exact declaration out of the paint census.
+    if (file === "src/app/leaderboard/tier-hint.tsx" && /^type Tier = "bronze" \| "silver" \| "gold" \| "diamond" \| "sovereign";$/.test(ln)) return;
     const push = (kind: string, re: RegExp, keep: (m: RegExpMatchArray) => boolean = () => true) => {
       for (const m of ln.matchAll(re)) if (keep(m)) out.push({ kind, match: m[0], line: i + 1 });
     };
@@ -491,8 +494,14 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
 
   // 5.2 · §B11 — one word, one tone.
   const WRM = read("src/app/wallet/wallet-result-modal.tsx");
+  const COPY = read("src/lib/wallet/result-copy.ts");
   ok("5.2 · the wallet's result: moving and in-review are ROYAL (`info`), Completed success, Failed danger, Reversed/Cancelled SLATE (§B11 item 5, §C4)",
-    /const variant = notDone \? \(status === "FAILED" \? "danger" : "neutral"\) : \(amlHeld \|\| pending \? "info" : "success"\);/.test(WRM) && !/"warning"/.test(WRM));
+    /walletResultCopy\(t, \{ isWithdraw: !!withdrawal, status, depositKind \}\)/.test(WRM)
+      && /variant=\{variant\}/.test(WRM)
+      && /kind === "review"[\s\S]*?variant: "info"/.test(COPY)
+      && /kind === "held"[\s\S]*?variant: "neutral"/.test(COPY)
+      && /const variant: WalletResultTone = notDone \? \(status === "FAILED" \? "danger" : "neutral"\) : \(amlHeld \|\| pending \? "info" : "success"\);/.test(COPY)
+      && !/"warning"/.test(WRM) && !/"warning"/.test(COPY));
   ok("5.2′ · the result modal has a slate `neutral` (the subtle ring, no auto-close)", /neutral: \{\s*\.\.\.crest\("var\(--text-subtle\)", "var\(--text-muted\)"\)/.test(read("src/components/markets/operation-result-modal.tsx")));
   ok("5.2″ · 'under review' (source of funds) is royal, a hidden comment slate, a paused agent slate, a running break neutral",
     /: "pending";/.test(read("src/app/profile/source-of-funds/page.tsx")) && /<Chip variant="neutral" size="sm">\{t\.market\.commentHidden\}/.test(read("src/components/markets/comments-thread.tsx"))

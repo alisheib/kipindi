@@ -239,7 +239,7 @@ const formOrder = (s: string) => inOrder(squash(s.slice(s.indexOf("export functi
   '<div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3" aria-hidden>', "{t.wallet.securedDepositBody}", "export function WithdrawBalanceGhost"]);
 {
   const page = squash(code(FILES.depositPage));
-  const pageOrder = inOrder(page, ['<form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">', '<div className="space-y-5">', "{t.wallet.choosePaymentMethod}", "<ProviderRadioGrid",
+  const pageOrder = inOrder(page, ['<form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">', '<div data-card-intent-gate={cardOnly ? "" : undefined} inert={cardOnly} className="space-y-5">', "{t.wallet.choosePaymentMethod}", "<ProviderRadioGrid",
     "<DepositAmount", "{t.wallet.mobileMoneyNumber}", "{t.wallet.mobileMoneyNumberHint}", "<DepositNumberChoice", "<CardBillingFields", "<DepositConfirm journey={journey} />", /* R5-G: the confirm takes the journey answer (merged 2026-10-09) */
     '<div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">', "{t.wallet.securedDepositBody}"]);
   const ghostOrder = formOrder(code(FILES.moneyForm));
@@ -261,7 +261,7 @@ const formOrder = (s: string) => inOrder(squash(s.slice(s.indexOf("export functi
     const ghost = inApp("/wallet/deposit", l, h(MF.ProviderGridGhost as never, { names: MF.depositRails(t) } as never));
     const grid = (s: string) => /^<div class="([^"]+)">/.exec(s)?.[1];
     const tiles = (s: string, tag: string) => [...s.matchAll(new RegExp(`<${tag} class="([^"]+)" style="background:var\\(--bg-inset\\)">`, "g"))].map((m) => geometry(m[1]));
-    const names = (s: string) => [...s.matchAll(/<span class="(font-medium text-body-sm[^"]*leading-tight)">(?:<span[^>]*>)?([^<]+)/g)].map((m) => `${geometry(m[1])}: ${unesc(m[2])}`);
+    const names = (s: string) => [...s.matchAll(/<span class="(font-medium text-body-sm[^"]*leading-tight[^"]*)">(?:<span[^>]*>)?([^<]+)/g)].map((m) => `${geometry(m[1])}: ${unesc(m[2])}`);
     if (grid(page) !== grid(ghost)) wrong.push(`${l} grid ${grid(page)} ≠ ${grid(ghost)}`);
     const pt = tiles(page, "label"), gt = tiles(ghost, "div");
     if (pt.length !== 5 || gt.length !== 5 || pt.some((c, i) => c !== gt[i])) wrong.push(`${l} tiles ${pt[0]} ≠ ${gt[0]}`);

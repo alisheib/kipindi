@@ -681,12 +681,18 @@ section("5 · G-2b's sweep · the bands the audit measured exactly from the clas
   // whose first band is its data — is passed over), and each agent route draws its own bands (the shared `AgentGhost`
   // and its `back={false}` are gone).
   const BL = squash(code("src/components/ui/back-link.tsx"));
-  const box = BL.includes('className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em]')
+  const backStyle = squash(code("src/components/ui/back-link-style.ts"));
+  const box = BL.includes('className={BACK_LINK_CLASS}')
+    && backStyle.includes('min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em]')
     && inApp("/", "sw", h((req("../src/components/ui/back-link.tsx") as { BackLinkGhost: unknown }).BackLinkGhost as never)).startsWith('<div class="flex min-h-[44px] items-center" aria-hidden="true"><div class="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track"></div></div>');
   const census = (text: (p: string) => string) => {
     const wrong: string[] = [];
     for (const f of PLAYER) {
-      const page = posix.join(posix.dirname(f), "page.tsx");
+      const wrapper = posix.join(posix.dirname(f), "page.tsx");
+      // /wallet/deposit/card/page.tsx delegates its entire screen to renderDepositPage.
+      const page = f === "src/app/wallet/deposit/card/loading.tsx"
+        && /renderDepositPage\(searchParams, true\)/.test(decomment(text(wrapper)))
+        ? "src/app/wallet/deposit/page.tsx" : wrapper;
       if (!existsSync(page)) continue;
       const draws = drawingsOf(f, text);
       if (draws.some((d) => d.endsWith("components/ui/page-loader.tsx"))) continue;
@@ -701,7 +707,7 @@ section("5 · G-2b's sweep · the bands the audit measured exactly from the clas
   const now = census(raw);
   ok("5.1 · the back link: every ghost whose page opens on a BackLink draws `BackLinkGhost` — the link's own 44px box (`min-h-[44px]`, its 16px label line centred) — and the invitation's, whose page has none, draws none (nine drew a 16–20px bar, the receipt's none)",
     box && now.length === 0, now.join(" | ") || j({ box }));
-  const planted = census((p) => (p === "src/app/wallet/deposit/deposit-ghost.tsx" ? raw(p).replace("<BackLinkGhost />", '<div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />') : raw(p)));
+  const planted = census((p) => (p === "src/app/wallet/deposit/deposit-ghost.tsx" ? raw(p).replaceAll("<BackLinkGhost />", '<div className="h-4 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />') : raw(p)));
   ok("5.1′ PLANT · the deposit ghost back on its 20px bar is reported", planted.some((w) => w.includes("wallet/deposit")), planted.join(" | "));
 }
 /** The class string of the first element in `s` whose class list begins with `head`. */

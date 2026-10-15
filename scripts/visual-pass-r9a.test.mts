@@ -414,9 +414,9 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   /** Each site's kind says what it must carry: `row` and `ghost` an edge (a row's end mark keeps the family's stroke),
    *  `text` an edge and its words' stroke, `button` and `float-text` the stroke alone (no edge to land on), `float-row`,
    *  `alone` and `frozen` neither. */
-  type Kind = "row" | "ghost" | "text" | "button" | "float-text" | "float-row" | "alone" | "frozen";
+  type Kind = "row" | "ghost" | "text" | "button" | "control" | "float-text" | "float-row" | "alone" | "frozen";
   const SITES: Array<[string, string, number, Kind, string]> = [
-    ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 3, "text", "S8's pending receipt, declaration and limits links: their 15px body/400 words and the same run's end"],
+    ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 4, "text", "S8's pending receipt, declaration and limits links, plus the similar-question link: their 15px body/400 words and the same run's end"],
     ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={20} text="body-600" />', 1, "button", B],
     ['src/components/journey/bet-sheet/sheet-parts.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 1, "text", "S8's receipt ticket link: its 15px body/400 words, centred by the run's ink"],
     ['src/app/account/page.tsx', '<I.externalLink s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's staff row end"],
@@ -433,6 +433,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/auth/register/register-form.tsx', '<I.arrowRight s={13} edge="end" text="display-700" />', 1, "text", "the error panel's way-on pill's end — the login page's twin (R10-A6)"],
     ['src/app/auth/reset-password/page.tsx', '<I.chevronLeft s={14} edge="start" text="mono-400" />', 1, "text", "a back link's start"],
     ['src/app/fairness/page.tsx', '<I.ext s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
+    ['src/app/live/featured-contest.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 1, "text", "the featured contest's market link ends after its body-600 label"],
+    ['src/app/live/loading.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", "the featured contest ghost's Button slot keeps the same label stroke"],
     ['src/app/legal/rules/page.tsx', '<I.chevronRight s={14} className="shrink-0 text-text-subtle" />', 1, "frozen", "a rules card's row end — the file is in the published-words population D19a pins byte for byte (test:house-bot-disclosure 5.1) — named for the integrator"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={11} edge="start" text="mono-400" />', 1, "text", "the source address line's start"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={12} edge="end" text="mono-400" />', 1, "text", "the source link's end"],
@@ -445,6 +447,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/proposals/page.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a link cue's end"],
     ['src/app/proposals/page.tsx', '<I.chevronRight s={14} />', 1, "float-row", "it trails a start-aligned meta row: no edge to land on"],
     ['src/app/updown/page.tsx', '<I.chevronRight s={11} edge="end" text="mono-400" />', 1, "text", "the history pill's end"],
+    ['src/app/wallet/deposit/page.tsx', '<I.chevronLeft s={11} edge="start" text="mono-400" />', 1, "text", "the journey deposit page's server-rendered back link uses the same mark and class as BackLink"],
+    ['src/app/wallet/receipt/[id]/page.tsx', '<I.arrowRight s={14} edge="start" />', 1, "control", "the receipt's hand-built return control places its leading mark on the start padding"],
     ['src/app/wallet/receipts/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 rounded bg-bg-overlay/60 text-transparent" />', 1, "ghost", "the ghost of the receipt row's end"],
     ['src/app/wallet/wallet-client.tsx', '<I.chevronRight s={14} edge="end" text="body-600" aria-hidden />', 1, "text", "“Risiti zote ›”"],
     ['src/app/wallet/wallet-client.tsx', '<I.chevronRight s={16} edge="end" className="text-text-subtle" />', 1, "row", "the limits row's end"],
@@ -499,7 +503,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     unlisted.length === 0 && missing.length === 0, j({ unlisted, missing }));
   // A mark between words or in a button keeps its box but takes its words' stroke: every one that sits in a run of words
   // carries `text` (the icon-only controls, the plate, the cube and the two frozen files excepted).
-  const WANT: Record<Kind, [boolean, boolean]> = { row: [true, false], ghost: [true, false], text: [true, true], button: [false, true], "float-text": [false, true], "float-row": [false, false], alone: [false, false], frozen: [false, false] };
+  const WANT: Record<Kind, [boolean, boolean]> = { row: [true, false], ghost: [true, false], text: [true, true], button: [false, true], control: [true, false], "float-text": [false, true], "float-row": [false, false], alone: [false, false], frozen: [false, false] };
   const wrong = SITES.filter(([, el, , kind]) => el.includes(" edge=") !== WANT[kind][0] || el.includes(" text=") !== WANT[kind][1]);
   ok("4.11 · each site carries what its kind says — a row end its edge in the family's stroke, a mark in words its words' stroke (with the edge where its run has one), a button's mark the stroke alone", wrong.length === 0, j(wrong));
   const planted = new Map(seen); planted.set("src/components/markets/market-card.tsx <I.chevronRight s={11} />", 1); planted.delete('src/components/markets/market-card.tsx <I.chevronRight s={11} edge="end" text="display-600" />');
@@ -566,6 +570,8 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/updown/history/page.tsx", "mt-6", "two branches of one condition"],
     ["src/app/watchlist/page.tsx", "space-y-5", "a page's stacked sections, not a pair"],
     ["src/components/journey/bet-sheet/bet-sheet.tsx", "kp-bsheet__footer", "S8's receipt, terminal and editable branches: exactly one Button can render; terminal links are stacked, never a side-by-side button pair"],
+    ["src/app/wallet/deposit/journey-deposit-form.tsx", "space-y-5", "the deposit form's field stack: the payment Button and Card link are separate full-width rows after the input fields"],
+    ["src/app/wallet/deposit/wait/deposit-waiting-client.tsx", "space-y-5 pb-16", "the receipt page's status sections and conditional full-width actions are stacked as separate rows"],
   ];
   const at12 = (cls: string) => new RegExp("(?:^| )gap(?:-x)?-2(?: |$)").test(cls) || Object.keys(CSS_PAIRS).some((k) => cls.split(" ").includes(k) && rule(CSS_PAIRS[k]).includes("gap: var(--sp-3)"));
   const footerBranches = (s: string) => {
