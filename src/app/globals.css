@@ -913,10 +913,11 @@
      resulting 372px / 299px Comfortable and 326px / 261px Compact heights
      are arithmetic targets pending the local browser re-measurement.
 
-     THE OVERRIDES MUST LAND ON `html` ITSELF (see the Compact block beside the
-     card rules). A custom property resolves against the element it is DECLARED
-     on: put them on .mcardp and the CARD shrinks while --mcard-h keeps reading
-     the comfortable sum — exactly the skeleton-lies defect above, rebuilt. */
+     THE HEIGHT TOKEN OVERRIDES MUST LAND ON `html` ITSELF (see the Compact block
+     beside the card rules). A custom property resolves against the element it
+     is DECLARED on: put them on .mcardp and the CARD shrinks while --mcard-h
+     keeps reading the comfortable sum. The phone-only padding-inline rule below
+     is general to both densities and does not alter the height arithmetic. */
   --mcard-pt: var(--sp-4);
   --mcard-gap: var(--sp-3);
   --mcard-act-mt: var(--sp-3);
@@ -2077,9 +2078,9 @@ html.kp-reduce-motion .ticker-pause,
 }
 .tipbar-labels .tb-yes { justify-self: start; white-space: nowrap; }
 .tipbar-labels .tb-no  { justify-self: end; white-space: nowrap; }
-/* F31: a translated final-pool caption gets its own centred line on a 320px card.
-   Both side figures then keep their own unbroken slots. */
 @media (max-width: 359.98px) {
+  /* density: general — F31's translated final-pool caption gets its own centred
+     line on a 320px card in both settings; side figures keep unbroken slots. */
   .tipbar-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tipbar-labels .tipbar-lean { grid-column: 1 / -1; grid-row: 1; }
   .tipbar-labels .tb-yes { grid-column: 1; grid-row: 2; }
@@ -4277,9 +4278,9 @@ html[data-rail-menu-open] .kp-rail { z-index: 61; }
      buys 10px of room and costs nothing a thumb can feel — the controls themselves stay 44px. */
   [data-pager-rows="one"] { gap: 2px; }
 }
-/* F31: a two-page pager fits in the 288px /results panel at 320 while every
-   target keeps the 40px floor. The extra 4px inside the panel avoids an exact fit. */
 @media (max-width: 359.98px) {
+  /* density: general — F31's two-page pager fits in the 288px /results panel
+     at 320 in both settings, with 40px targets and 4px of fit slack. */
   [data-pager-root] { padding-inline: var(--sp-3); }
   [data-pager-root] [data-pager-group] :is(a, button, [aria-disabled="true"]) {
     min-width: var(--tap-min);
@@ -5472,8 +5473,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    that extra 4px and the 3px increase in bottom padding.
    ⭐ ONE GAP FOR A PAIR OF BUTTONS, 12px (R9-A5, round 9 of the visual pass, 2026-10-11; three readers, tiles 159 160 194):
    the card's YES and NO stood 8px apart (159: x191–198) where every other pair stands 12 — the market page's two sides,
-   the sheets', the Wallet's, Up & Down's (R6-C's rule, `gap-2` on the override scale). `--sp-3` is that 12px. At 320 the
-   card's content box is 254px, so each button is 121px. */
+   the sheets', the Wallet's, Up & Down's (R6-C's rule, `gap-2` on the override scale). `--sp-3` is that 12px. */
 .mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: var(--sp-3); margin: var(--mcard-act-mt) 0 var(--mcard-act-mb); }
 /* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
    the live YES/NO row, so card heights match across a mixed grid. */
@@ -5485,12 +5485,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    rung, so what looked like two tuned speeds was one. The `filter` leg had a
    duration and NO easing at all (B5 rule 3 wants the pair stated); neither it nor
    the shadow travels, so both take `linear`. */
-/* The label's room (R9-A5): the widest label at 320 is Swahili's priced NO, "HAPANA @ 99%" — Inter 600 13px with the
-   0.52px tracking, the price in JetBrains Mono 11.5px, which inherits that tracking — about 104px (Inter's Medium and Bold
-   advances averaged, no kerning: an upper bound). In the old 122px button 10px of padding a side left it 100px, so the label
-   ran 2px into the padding each side; 8px a side — the home question rows'
-   own (`.kp-qrow__btn`) — leaves 105px in the new 121px button, and the label keeps 8px from each border. The label is centred, so
-   wherever it fits nothing moves. */
+/* The label's room (R9-A5): the widest label at 320 is Swahili's priced NO, "HAPANA @ 99%" — about 104px of ink.
+   The pair's gap and the 8px inline padding match the home question rows; the phone card gains width from the
+   12px inset below, so the label keeps space from each border. Verify actual glyph advances in the served page. */
 .mcardp-actions .btn { height: var(--h-control-md); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 var(--sp-2); letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
@@ -8384,6 +8381,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    --mcard-meta-mb returns those four pixels above the footer so its reach
    stays separated from the prior row. V2a's new geometry targets are 326px
    cold start and 261px closed at 360 SW; browser re-measurement remains due. */
+@media (max-width: 639.98px) {
+  /* density: general — the 320px market-card meta line previously used 257.6px of 258px.
+     The new kit-sized column gap costs up to 2px; keeping 16px side padding would
+     make the money/time/info row wrap. The 12px phone inset gains 6px against the
+     old 15px inset in BOTH density settings, preserving its one-line geometry. */
+  .mcardp { padding-inline: var(--sp-3); }
+}
 @media (max-width: 639.98px) {
   html:not([data-density="comfortable"]) {
     --mcard-pt: var(--sp-2);

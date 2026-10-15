@@ -336,9 +336,10 @@ section("5 · E30 the card's two-line title slot is the contract (tiles 251 252)
   const q = rule(CSS, ".mcardp-q");
   ok("5.1 · the grid card's question clamps at two lines over a two-line minimum — every card in a row keeps its pick, bar and foot on one line, and --mcard-base (the skeleton's height) is measured with it",
     /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*216px/.test(CSS), q);
-  // The title column: card = viewport − 32 gutter; − 2 border − 32 padding; − the price column ("—" in 28px mono) − 12 gap.
+  // The title column: card = viewport − 32 gutter; − 2 border − 24 phone / 32 desktop padding;
+  // − the price column ("—" in 28px mono) − 12 gap.
   const dash = 0.6 * 28;
-  const colW = (vw: number) => vw - 32 - 2 - 32 - dash - 12;
+  const colW = (vw: number) => vw - 32 - 2 - (vw < 640 ? 24 : 32) - dash - 12;
   const avg = (CAPSIZE.sora.variants["600"].xWidthAvg / CAPSIZE.sora.unitsPerEm) * 15;
   const cap = (vw: number) => 2 * Math.floor(colW(vw) / avg);
   // ⭐ 2026-10-10, Ali's ruling ("make it 100", main 37ba13a1): the budget is 100 code points in en/sw and 50 in zh, so a
