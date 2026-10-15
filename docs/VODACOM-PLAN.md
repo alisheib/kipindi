@@ -4059,7 +4059,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); [E3] measured 385/0 on 2026-10-15 under Ali's one-attempt authorization. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0–WP11 implementation live behind the flag; V1, A21, parity v4 and the close battery remain. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
-| S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
+| S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states; `qa:visitor-path` drives the local browser path. |
 | S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
 | S12 | Consistency sweep | ⬜ | Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
 | S13 | Measures panel and reporting | ⬜ | The panel shows before vs after. The CSV/PDF export and its definitions are sent to the agency. |
@@ -4213,6 +4213,18 @@ own words, which no deck slide gives, are drafts, reviewed in
 | `journey.lowPendingLateTitle` | Malipo bado hayajathibitishwa | Payment not confirmed yet | 付款尚未确认 |
 | `journey.lowPendingLateBody` | Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa. | It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed. | 已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。 |
 | `journey.ticketsHere` | Tiketi zako | Your tickets | 您的注单 |
+
+**S10 keys (2026-10-15, `S10-PLAN.md` WP2 and "New dictionary keys").** One key, of the `journey` namespace, read only by the
+guest bet sheet (S10 WP3), so no classic word changes (§3.9): the first door, "Jisajili uweke dau", which the deck and the S4
+board draw in the commit's place (§3.7; `s4-4-sheet-guest`). sw is the canvas's word approved in review 3; en and zh were
+drafted at S10 and are signed in [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md)
+"S10 drafts" and "Swahili review" 10. Reused by key, never copied: the second door is `common.signIn` ("Ingia"), and every
+other word on the guest sheet is S8's (S10-PLAN "Reused, never copied"). ⛔ No balance or "your bet is saved" sentence, and
+no helpline key.
+
+| S10 key | sw | en | zh |
+|---|---|---|---|
+| `journey.sheetSignUp` | Jisajili uweke dau | Sign up to place your bet | 注册以投注 |
 
 **The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
 block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
@@ -4921,6 +4933,7 @@ INHERIT-MANIFEST is superseded with it.
 **Other rules**
 - The deposit page's signed-out redirect keeps its full query.
 - Old `?side=` links work.
+- `qa:visitor-path` drives the in-memory browser path and records visual tiles and explicit NOT MEASURED cells (S10-PLAN WP8a).
 
 ### 3.8 How to Play (S7 static, S11 complete)
 

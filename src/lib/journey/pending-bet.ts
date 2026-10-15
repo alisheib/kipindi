@@ -85,6 +85,21 @@ export function pendingBetUrl(path: string, bet: PendingBet): string {
   return `${isSafePath(bare) ? bare : "/"}?bet=${formatBetParam(bet)}`;
 }
 
+/**
+ * ⭐ WHERE A BET CHOSEN ON A PAGE RETURNS TO (S10; S10-PLAN WP1 and Correction 8, as A2 settles it) — the page a guest
+ * door's `next` names before `pendingBetUrl` adds the bet: the page itself when it is one of `BET_RETURN_PAGES` or the
+ * bet's own question page, else the bet's own question page (a round, always its own). A similar-rail tap on question A
+ * for question B returns to B's own page (Open point 13), which always draws B's two big buttons and so B's seed. Every
+ * answer is a page S9's deposit return accepts (`sheetOpensOn`).
+ */
+export const BET_RETURN_PAGES: readonly string[] = ["/", "/live", "/watchlist"];
+export function betReturnPath(pathname: string, bet: PendingBet): string {
+  if (bet.kind === "round") return `/updown/${bet.id}`;
+  const path = String(pathname ?? "").split("?")[0].split("#")[0];
+  const own = `/markets/${bet.id}`;
+  return BET_RETURN_PAGES.includes(path) || path === own ? path : own;
+}
+
 /* ─── The marker: proof that THIS browser chose the stake ─────────────────────────────────────────────────────── */
 
 export type PendingBetMarker = {

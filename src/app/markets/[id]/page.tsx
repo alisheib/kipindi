@@ -165,7 +165,7 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string; invite?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
@@ -735,7 +735,7 @@ export default async function MarketDetail({
             y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
             positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
-        <aside className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>
+        <aside className={journey && bettingOpen && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>
           {bettingOpen ? (
             session && breakBody ? (
               <>
@@ -747,13 +747,13 @@ export default async function MarketDetail({
               {oneSidedCallout}
               <BetBreakNotice body={breakBody} testId="market-bet-break" />
               </>
-            ) : session ? (journey ? (
+            ) : journey ? (
               <>
                 <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
                 {oneSidedCallout}
                 {questionSeed && <JourneyBetButtons seed={questionSeed} title={questionTitle} t={t} headingId={BET_PANEL_HEADING} className="hidden lg:grid" />}
               </>
-            ) : (
+            ) : session ? (
               <>
               {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
                   and not seen. The other four states already name themselves in a heading; this
@@ -819,7 +819,7 @@ export default async function MarketDetail({
                 boardHref="/markets"
               />
               </>
-            )) : (
+            ) : (
               <>
               {oneSidedCallout}
               {/* Sign-in CTA — styled to invite prediction */}
@@ -1140,7 +1140,7 @@ export default async function MarketDetail({
             </section>
           ))}
 
-          {journey && bettingOpen && session && !breakBody && questionSeed && (
+          {journey && bettingOpen && !breakBody && questionSeed && (
             <section className="lg:hidden" aria-labelledby="journey-bet-mobile-heading">
               <h2 id="journey-bet-mobile-heading" className="sr-only">{t.market.placeYourStake}</h2>
               {oneSidedCallout}

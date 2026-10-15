@@ -21,7 +21,17 @@ import { sheetEstimate, type SheetFrame, type SheetLine, type SheetSeed, type Sh
 import { depositLeftAfterFor } from "@/lib/journey/shortfall";
 import { nextSheetFocus, type SheetFocusState } from "@/lib/journey/sheet-focus";
 import type { ReturnChoice } from "@/lib/journey/return-choice";
+import { keepText } from "@/components/ui/keep-run";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
+
+/**
+ * S10 WP3 · THE GUEST FACE (`guest-sheet-host.tsx`, S10-PLAN WP3 and A10): a reader who is NOT signed in sees this same
+ * sheet with no balance row and, in the commit's place, two real links — "Jisajili uweke dau" (brand primary at the
+ * commit's own rung and geometry: sign-up is not money, so never gold) and "Ingia" (the ghost, one rung down). Each carries
+ * the bet and the codes in its href. `onPress` runs on every press (the door's `onClick`); `onLeave` only when Next itself
+ * navigates this tab (the door's `onNavigate`) — so a door opened in a new tab leaves this one as it is.
+ */
+export type BetSheetGuest = { signUp: string; signIn: string; onPress: () => void; onLeave: () => void };
 
 export type BetSheetProps = {
   open?: boolean;
@@ -39,6 +49,8 @@ export type BetSheetProps = {
   onBetInstead: () => void;
   onDeposit: (amount?: number) => void;
   onClose: () => void;
+  /** S10 · the guest face: no balance row, and the two doors in the commit's place (`BetSheetGuest`). */
+  guest?: BetSheetGuest;
 };
 
 type BodyProps = BetSheetProps & {
@@ -59,7 +71,7 @@ type BodyProps = BetSheetProps & {
 export function BetSheetBody(props: BodyProps) {
   const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false,
     headingRef, closeRef, onStakeChange, onPlace, onBetInstead, onDeposit, onClose, onStakeFocus, onStakeBlur,
-    depositAmount, onDepositAmount, returnContext, returnBoundsChange } = props;
+    depositAmount, onDepositAmount, returnContext, returnBoundsChange, guest } = props;
   const placing = frame.frame === "placing";
   const receipt = frame.frame === "receipt";
   const terminal = frame.frame === "blocked" || frame.frame === "closed";
@@ -145,7 +157,7 @@ export function BetSheetBody(props: BodyProps) {
         {low?.depositRefusal === "sof_required" && <Link className="kp-bsheet__link" href="/profile/source-of-funds" onClick={onClose}>{t.journey.lowSofCta}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
         {low?.depositRefusal === "deposit_limit" && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
         {instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />}
-        {frame.showEstimate && <BalanceRow t={t} frame={frame} />}
+        {frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}
       </>}
     </div>
     {/* ⭐ The placing status and the inline refusal line stand in the footer, directly above the CTA they explain
@@ -158,6 +170,9 @@ export function BetSheetBody(props: BodyProps) {
           {frame.block?.actions.includes("setLimits") && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}</Link>}
           {frame.block?.actions.includes("contactSupport") && <Link className="kp-bsheet__link" href="/help" onClick={onClose}>{t.kycGate.frozenCta}</Link>}
           <Button type="button" variant="ghost" size="xl" fullWidth onClick={onClose}>{t.common.gotIt}</Button>
+        </> : guest ? <>
+          <Link href={guest.signUp as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-primary btn-xl w-full kp-bsheet__commit" data-testid="journey-sheet-signup"><span>{keepText(t.journey.sheetSignUp)}</span></Link>
+          <Link href={guest.signIn as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-ghost btn-lg w-full" data-testid="journey-sheet-signin">{t.common.signIn}</Link>
         </> : <>
           {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}
           {frame.lines.length > 0 && <div id={lineId} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>}
@@ -280,7 +295,7 @@ export function BetSheet(props: BetSheetProps) {
   return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
     sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
     refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
-    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-ptr-skip=""
+    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-guest={props.guest ? "" : undefined} data-ptr-skip=""
       onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
       onBlurCapture={(event) => { if (open && !event.currentTarget.contains(event.relatedTarget)) release("focus"); }}
       onPointerMove={(event) => { if (!open || !receiptId) return; const prior = pointer.current; pointer.current = { x: event.clientX, y: event.clientY }; if (prior && (prior.x !== event.clientX || prior.y !== event.clientY)) hold("pointer"); }}

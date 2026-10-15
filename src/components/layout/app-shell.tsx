@@ -17,7 +17,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
-  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost,
+  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost, LazyGuestSheetHost,
 } from "./shell-lazy";
 // ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
@@ -628,7 +628,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           shared 5 s), and a move to another page closes it. It draws nothing until a sale, and a lost chunk leaves each
           button drawing its own result, as before. */}
       {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
-      {journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}
+      {/* ⭐ THE BET SHEET'S ONE SLOT (S8 WP7a; S10 WP4, S10-PLAN Open point 4 and A13): a journey request gets S8's money host,
+          keyed by the session's own account, when signed in — and S10's guest host when not, told whether this flight
+          ended a session (its address then opens nothing: the notice above speaks). Each host is the one child of its own
+          boundary, as every lazy part is. A classic request renders one `false` here, as before S10. */}
+      {journeyShown && (session ? <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense> : <Suspense fallback={null}><LazyGuestSheetHost sessionEnded={endedNotice !== null} /></Suspense>)}
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>

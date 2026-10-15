@@ -13,6 +13,7 @@ import { ownedSheetIntents, quarantineLegacySheet, unresolvedLegacySheet, resolv
 import type { StoredIntent } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
 import { sendFunnel } from "@/lib/journey/funnel-beacon";
+import { countsSheetOpen } from "@/lib/journey/guest-sheet";
 import { answerOf, refusalOutcome, settleRefusal, type Reread } from "@/lib/journey/sheet-refusal";
 import {
   afterKeyRead, afterSettle, clockOffset, estimateMoved, keyReadDelay, nextKey, quoteAt, reopenInDoubt,
@@ -33,7 +34,7 @@ type Active = {
   returnContext: ReturnChoice | null;
 };
 type Pending = { intent: SheetIntent; seed: SheetSeed | null; at: number; everDoubt: boolean; lastRead: number; owner: string; epoch: number };
-type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null };
+type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null; bareNotFound?: true };
 const identity = (q: Pick<Quote, "marketId" | "side">) => `${q.marketId}.${q.side}`;
 const activeIdentity = (a: Active) => identity({ marketId: a.seed.id, side: a.side });
 const returnAttribution = (a: Active, marker: PendingBetMarker | null, viewerId: string, search: URLSearchParams) => {
@@ -134,9 +135,8 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     try {
       const response = await fetch(`/api/markets/${encodeURIComponent(quote.marketId)}/sheet?${query}`, { cache: "no-store" });
       if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current) return failed;
-      // A bare 404 can close an ordinary view, but names no authenticated key result and cannot retire an outstanding key.
-      if (response.status === 404) return options.key ? failed
-        : { ...failed, reread: { state: "read", market: { found: false }, viewer: null } };
+      // A bare 404 names no authenticated owner. It cannot retire an outstanding key as an owned null receipt.
+      if (response.status === 404) return options.key ? failed : { ...failed, bareNotFound: true };
       if (response.status === 401) {
         // Known auth loss ends this runtime epoch too; a late A answer cannot revive it after sign-out.
         invalidateOwner();
@@ -296,7 +296,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false,
       returnedFromDeposit, returnBoundsChange, returnContext: null });
     setNow(stamp);
-    sendFunnel("sheet_open", origin);
+    if (countsSheetOpen({ tapped: pushed, markerRaw: raw, bet, nowMs: stamp })) sendFunnel("sheet_open", origin);
     void refreshed(true);
     if (remembered?.intent.phase === "inDoubt") void readKey(remembered);
     if (recoveryBlocked({marketId: seed.id, side})) void resolveLegacy({marketId: seed.id, side});
@@ -355,7 +355,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
         }
       } catch { /* keep the address for an explicit retry; no fabricated closed or wallet answer */ }
     }
-    if (truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
+    if (truth.bareNotFound || truth.reread.state === "read" && !truth.reread.market.found) stripAddress(!q.has("bet"));
   }, [open, readTruth, stripAddress, invalidateOwner, show]);
 
   const commit = useCallback((which: "cta" | "betInstead") => {

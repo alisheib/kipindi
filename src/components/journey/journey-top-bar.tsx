@@ -46,9 +46,9 @@
  * ("page" against "true", from `tabAriaCurrent`). A guest's Tiketi zangu is a button that opens the guest sheet,
  * never a link whose navigation is cancelled: the progress bar listens in the capture phase.
  */
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
 import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
@@ -61,12 +61,35 @@ import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
 import { journeyHeaderState } from "@/lib/journey/header-state";
+import { authDoorHrefs } from "@/lib/auth-landing";
 import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 /** One class for every destination, link or button: a guest's Tiketi zangu must not read as another kind of thing. */
 const JNAV = "kp-jnav__link";
+
+/** The same pills for the server fallback and the page-aware guest doors. */
+function JourneyGuestAuthPills({ signIn, signUp }: { signIn: string; signUp: string }) {
+  const { t } = useT();
+  return (
+    <>
+      <Link href={signIn as never} className="btn btn-ghost btn-md btn-pill kp-jhdr__auth">
+        {t.common.signIn}
+      </Link>
+      <Link href={signUp as never} className="btn btn-primary btn-md btn-pill kp-jhdr__auth">
+        {t.common.signUp}
+      </Link>
+    </>
+  );
+}
+
+function JourneyGuestAuthDoors() {
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const { signIn, signUp } = authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""));
+  return <JourneyGuestAuthPills signIn={signIn} signUp={signUp} />;
+}
 
 /**
  * ⭐ THE BELL BEFORE IT RINGS (2026-10-09, the visual pass round 4, R4-J; E36). The live bell (`NotificationsPanel`) is
@@ -201,14 +224,9 @@ export function JourneyTopBar({
             </a>
           )}
           {state.authPills && (
-            <>
-              <Link href={"/auth/login" as never} className="btn btn-ghost btn-md btn-pill kp-jhdr__auth">
-                {t.common.signIn}
-              </Link>
-              <Link href={"/auth/register" as never} className="btn btn-primary btn-md btn-pill kp-jhdr__auth">
-                {t.common.signUp}
-              </Link>
-            </>
+            <Suspense fallback={<JourneyGuestAuthPills signIn="/auth/login" signUp="/auth/register" />}>
+              <JourneyGuestAuthDoors />
+            </Suspense>
           )}
 
           {/* From 1024 only: on a phone, Akaunti holds the language control, the notifications and the account. */}

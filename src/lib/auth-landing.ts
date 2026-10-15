@@ -1,8 +1,9 @@
 /**
  * WHERE A DOOR SENDS SOMEONE - one rule per question (route audit 2026-10-06, cluster B).
  * landingAfterAuth: after a sign-in or sign-up. accountRefusalPath: an account refusal's panel on the login page.
- * authDoorHrefs: the guest header's Sign in / Sign up. Pure and client-safe: it imports only safe-next.ts,
- * referral-code.ts, invite-code.ts, break-end.ts (pure) and a type. S9/S10 reuse these instead of writing second copies.
+ * authDoorHrefs: the guest header's Sign in / Sign up. doorHrefsFor: the one tail every guest door ends in (S10).
+ * Pure and client-safe: it imports only safe-next.ts, referral-code.ts, invite-code.ts, break-end.ts (pure) and a type.
+ * S9/S10 reuse these instead of writing second copies.
  */
 import { boundedNext, isAdminPath, isAuthPath, pathWithQuery, sanitizeNext, withWelcome } from "@/lib/safe-next";
 import { normalizeReferralCode } from "@/lib/referral-code";
@@ -35,24 +36,33 @@ export function accountRefusalPath(detail: FailureDetail | undefined, next: stri
   return `/auth/login?${qs.toString()}`;
 }
 
-/** On an /auth page only that page's own next, ref and invite travel, never the rest of its query (a reset token stays put).
- *  Elsewhere this page is the next (none on a bare /). Codes travel outside next, through their own rules, never cut. */
-export function authDoorHrefs(pathname: string, search: URLSearchParams): { signIn: string; signUp: string } {
+/** ⭐ THE ONE TAIL EVERY GUEST DOOR ENDS IN (S10 WP1): `next` kept only when `boundedNext` keeps it — refused, never cut —
+ *  then this page's own codes beside it, each through its own rule (`ref` normalised, `invite` normalised) or dropped,
+ *  never cut, never inside `next`. The classic and journey headers' doors, the guest Tiketi sheet's and the guest bet
+ *  sheet's all build their hrefs here. */
+export function doorHrefsFor(next: string, search: URLSearchParams): { signIn: string; signUp: string } {
   const qs = new URLSearchParams();
-  let next = "";
-  if (isAuthPath(pathname)) {
-    next = boundedNext((search.get("next") ?? "").trim());
-  } else {
-    const query: Record<string, string[]> = {};
-    for (const [k, v] of search) if (k !== "ref" && k !== "invite") (query[k] ??= []).push(v);
-    const cand = boundedNext(pathWithQuery(pathname, query)) || boundedNext(pathname);
-    next = cand === "/" ? "" : cand;
-  }
-  if (next) qs.set("next", next);
+  const safe = boundedNext(next);
+  if (safe) qs.set("next", safe);
   const ref = normalizeReferralCode(search.get("ref"));
   if (ref) qs.set("ref", ref);
   const invite = normalizeInviteCode(search.get("invite"));
   if (invite) qs.set("invite", invite);
   const tail = qs.toString() ? `?${qs.toString()}` : "";
   return { signIn: `/auth/login${tail}`, signUp: `/auth/register${tail}` };
+}
+
+/** On an /auth page only that page's own next, ref and invite travel, never the rest of its query (a reset token stays put).
+ *  Elsewhere this page is the next (none on a bare /). Codes travel outside next, through their own rules, never cut. */
+export function authDoorHrefs(pathname: string, search: URLSearchParams): { signIn: string; signUp: string } {
+  let next = "";
+  if (isAuthPath(pathname)) {
+    next = (search.get("next") ?? "").trim();
+  } else {
+    const query: Record<string, string[]> = {};
+    for (const [k, v] of search) if (k !== "ref" && k !== "invite") (query[k] ??= []).push(v);
+    const cand = boundedNext(pathWithQuery(pathname, query)) || boundedNext(pathname);
+    next = cand === "/" ? "" : cand;
+  }
+  return doorHrefsFor(next, search);
 }

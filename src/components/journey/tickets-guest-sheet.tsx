@@ -20,10 +20,31 @@
  * ⚠️ Each action closes the sheet as it navigates: the bar and the rail outlive the page, so a sheet left open would
  * be waiting over the sign-in screen.
  */
-import { useId } from "react";
+import { Suspense, useId } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Modal } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
+import { doorHrefsFor } from "@/lib/auth-landing";
+
+function TicketsGuestDoors({ onClose }: { onClose: () => void }) {
+  const search = useSearchParams();
+  return <TicketsGuestLinks {...doorHrefsFor("/positions", new URLSearchParams(search?.toString() ?? ""))} onClose={onClose} />;
+}
+
+function TicketsGuestLinks({ signIn, signUp, onClose }: { signIn: string; signUp: string; onClose: () => void }) {
+  const { t } = useT();
+  return (
+    <div className="kp-wsheet__pair">
+      <Link href={signUp as never} onClick={onClose} className="btn btn-primary btn-lg kp-wsheet__act" data-testid="tickets-guest-signup">
+        {t.common.signUp}
+      </Link>
+      <Link href={signIn as never} onClick={onClose} className="btn btn-ghost btn-lg kp-wsheet__act" data-testid="tickets-guest-signin">
+        {t.common.signIn}
+      </Link>
+    </div>
+  );
+}
 
 export function TicketsGuestSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useT();
@@ -41,24 +62,9 @@ export function TicketsGuestSheet({ open, onClose }: { open: boolean; onClose: (
     >
       <div aria-hidden className="kp-wsheet__grab" />
       <h2 id={titleId} className="kp-jsheet__title">{t.journey.ticketsGuestTitle}</h2>
-      <div className="kp-wsheet__pair">
-        <Link
-          href={"/auth/register?next=%2Fpositions" as never}
-          onClick={onClose}
-          className="btn btn-primary btn-lg kp-wsheet__act"
-          data-testid="tickets-guest-signup"
-        >
-          {t.common.signUp}
-        </Link>
-        <Link
-          href={"/auth/login?next=%2Fpositions" as never}
-          onClick={onClose}
-          className="btn btn-ghost btn-lg kp-wsheet__act"
-          data-testid="tickets-guest-signin"
-        >
-          {t.common.signIn}
-        </Link>
-      </div>
+      <Suspense fallback={<TicketsGuestLinks signUp="/auth/register?next=%2Fpositions" signIn="/auth/login?next=%2Fpositions" onClose={onClose} />}>
+        <TicketsGuestDoors onClose={onClose} />
+      </Suspense>
     </Modal>
   );
 }
