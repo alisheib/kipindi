@@ -816,7 +816,7 @@
     "red:markets-redirect": "tsx scripts/markets-redirect.test.mts --prove-red",
     "test:signoff": "tsx scripts/signoff.test.mts",
     "test:s14-evidence": "node scripts/s14-evidence.mjs --validate",
-    "red:s14-evidence": "node scripts/s14-evidence-red.mjs",
+    "red:s14-evidence": "node scripts/s14-evidence-red.mjs --prove-red",
     "gate:s14": "node scripts/s14-evidence.mjs --require-s14",
     "gate:s15": "node scripts/s14-evidence.mjs --require-s15",
     "gate:s16": "node scripts/s14-evidence.mjs --require-s16",
