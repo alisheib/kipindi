@@ -32,6 +32,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
@@ -665,6 +666,8 @@ export function UpDownCard(props: UpDownCardProps) {
      chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
      round read as three hours stale to a player in Tanzania. */
   const quoted = useMemo(() => fmtEAT(sourceQuotedAt), [sourceQuotedAt]);
+  const sourceLabel = t.market[SOURCE_CLASS_KEY[sourceClass]];
+  const quoteLabel = quoted ? `${t.market.udQuoted} ${quoted}` : null;
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
   // One-tap bet that keeps the card in place (see useUpDownQuickBet — the SHARED
@@ -1250,13 +1253,17 @@ export function UpDownCard(props: UpDownCardProps) {
           17:52:03 EAT", 3px under §T4's reading floor, on the one line that says where the price came from and when.
           It takes the kit's 13px. The words set in the body face, the figures in mono (§T5); "· imenukuliwa 17:52:03 EAT"
           and "Ufunguzi $63,572.10" are each held whole, so the line wraps BETWEEN them — never inside a time or a
-          price, and never leaving the dot stranded at a line's end (the stamp carries it onto its own line). The
-          seconds stay (E-47b). */}
+          price. S12 F25b: DotSeq hides the separator when the stamp starts a new line;
+          the old leading-dot span drew "· imenukuliwa" at the line start. The seconds stay (E-47b). */}
       <div className="ud-foot flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
-          {t.market[SOURCE_CLASS_KEY[sourceClass]]}
-          {quoted && <>{" "}<span className="whitespace-nowrap">{"· "}{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span></>}
+          <DotSeq
+            text={quoteLabel ? `${sourceLabel} · ${quoteLabel}` : sourceLabel}
+            renderPart={(part) => part === quoteLabel
+              ? <span className="whitespace-nowrap">{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span>
+              : part}
+          />
         </span>
         {openPrice != null && (
           <span className="ml-auto whitespace-nowrap">{t.market.udOpenPrice}{" "}<span className="font-mono tabular-nums">{priceText.open}</span></span>
