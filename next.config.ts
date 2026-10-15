@@ -7,6 +7,7 @@ import { staticSecurityHeaders } from "./src/lib/security-headers";
 const IMMUTABLE_STATIC_SOURCES = [
   "/icons/:path*",
   "/brand/:path*",
+  "/fonts/:path*",
   "/pay/:path*",
   "/og/:path*",
   "/screenshots/:path*",
@@ -83,7 +84,7 @@ const config: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
   // Long-lived cache for STATIC FILES ONLY: the folders and files under public/, and Next's hashed build output
-  // (fonts come from next/font, under /_next/static/media). `IMMUTABLE_STATIC_SOURCES` is the list.
+  // (vendored content-addressed fonts live under public/fonts). `IMMUTABLE_STATIC_SOURCES` is the list.
   // ⛔ NEVER A SUFFIX MATCH (2026-10-09, hotfix). This was one rule, `/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)`,
   // and a path-to-regexp group needs no dot, so it matched PAGES too — `/markets/x.png`, `/markets/mexico`,
   // `/u/federico` — and sent their HTML `public, max-age=31536000, immutable`. Measured on production the same day:

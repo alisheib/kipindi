@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
@@ -14,76 +13,17 @@ import { SiteVisitBeacon } from "@/components/analytics/site-visit-beacon";
 import { appUrl } from "@/lib/app-url";
 import { dict, localeOrDefault } from "@/lib/i18n-dict";
 import "./globals.css";
+import "./fonts.css";
 import "./state-tokens.css";
 import "./motion.css";
 
-/* ─────────────────────────────────────────────────────────────────────────────
- * FONTS — measured 2026-08-21 against the built `.next/static/media` + the
- * generated `@font-face` chunk, not guessed. Two things the numbers say, and the
- * second is the opposite of what everyone assumes:
- *
- * 1. ⭐ `subsets` DOES NOT CHOOSE WHICH GLYPHS EXIST — IT CHOOSES WHAT IS PRELOADED.
- *    Google returns seven subsets per family (latin · latin-ext · greek ·
- *    greek-ext · cyrillic · cyrillic-ext · vietnamese) and next/font emits an
- *    `@font-face` + a woff2 for EVERY one of them regardless of this array. Proof
- *    in this very build: JetBrains_Mono declares `["latin"]` below and the CSS
- *    chunk still carries its cyrillic, greek, vietnamese AND latin-ext blocks,
- *    each `unicode-range`-gated so the browser fetches them only if a glyph in
- *    that range is actually painted. What `subsets` decides is which of those
- *    files get a `<link rel="preload">` — i.e. which are pulled down eagerly, on
- *    every route, whether or not a single glyph needs them.
- *
- * 2. 🔴 SO `latin-ext` WAS 48% OF THE FONT BYTES ON THE CRITICAL PATH, FOR GLYPHS
- *    THIS APP NEVER RENDERS. Preloaded before: 5 files / 202,400 B. Of that,
- *    Inter latin-ext alone was **85,272 B — the largest font file on the site,
- *    1.76× Inter's own latin** — plus Sora latin-ext at 12,116 B. A scan of all
- *    of `src/` for codepoints above U+00BF found seven distinct characters
- *    (× ÷ â Â é ñ ï), every one of them inside `latin`'s own U+0000–00FF range.
- *    Zero latin-ext codepoints in the product's copy; the three locales are
- *    EN + SW (plain ASCII) + ZH (per-glyph fallback by decision, §T6).
- *    Dropping it from this array preloads 3 files / 105,012 B instead — **95 KB
- *    off every first load** on the low-end Android over Tanzanian mobile data
- *    that §A/§M6 gate 3 exists for.
- *    ⛔ AND IT LOSES NO COVERAGE: the latin-ext face is still declared. A player
- *    display name with an "ł" in it still renders in Inter — the file is just
- *    fetched on demand, exactly as cyrillic and greek already are.
- *
- * ⛔ DO NOT PRUNE A WEIGHT TO SAVE BYTES — THERE ARE NO BYTES TO SAVE. All three
- *    families are served as VARIABLE fonts: Sora 400/500/600/700/800 latin all
- *    resolve to the SAME 25,240 B file, Inter 400–700 latin to the same 48,432 B
- *    file, JBM 400–600 latin to the same 31,340 B file. A weight costs one
- *    ~200-byte `@font-face` block and nothing else. Every weight listed below is
- *    also genuinely referenced (Sora 400 via `.mterm-q`/`.display`/`.num-roll`,
- *    Sora 500 in avatar-menu + needle-drawer, Inter 500 in ~34 places), so
- *    cutting one would trade a real rendering change for no download at all.
- *
- * ⚠️ KNOWN, NOT FIXED HERE: 297 `font-mono` class strings and 11 CSS rules ask
- *    JetBrains Mono for weight **700**, which is not in its list — so the browser
- *    SYNTHESISES bold on most money figures, KPI values and countdowns. Adding
- *    "700" would cost zero extra bytes (same variable file) but it changes how
- *    those numerals look, so it is a design call, not a performance one.
- * ───────────────────────────────────────────────────────────────────────────── */
-const sora = Sora({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const jbm = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-mono",
-  display: "swap",
-});
-
+/**
+ * The three site families are frozen from the successful 20c49f568 build in
+ * public/fonts and src/app/fonts.css. This preserves the exact WOFF2 faces,
+ * unicode ranges, weight coverage, fallback metrics and Latin preloads while
+ * removing the intermittent Google stylesheet response from the build path.
+ * The Sora/Inter/JetBrains Mono OFL licenses are in public/fonts.
+ */
 // One source of truth — do not re-derive the base URL here. This line used to
 // duplicate app-url.ts and the two could drift independently.
 const APP_URL = appUrl();
@@ -221,7 +161,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        ⛔ The helpline is NOT published here since 2026-10-09: no player page shows it (the owner's ruling of
        2026-10-06), and once the marketing footer was emptied that day nothing read it — it sat in every page's
        HTML for no reader. `test:support-contact` §15.8 holds it off. */
-    <html lang={lang} translate="no" data-density={density} data-shell={journeyShell ? "journey" : undefined} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
+    <html lang={lang} translate="no" data-density={density} data-shell={journeyShell ? "journey" : undefined} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className="notranslate kp-local-fonts">
+      <head>
+        <link rel="preload" href="/fonts/6bd983bd58a87a3d-s.p.1hey5yyym6mz_.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/83afe278b6a6bb3c-s.p.2bn3s6zvc0dyp.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/051742360c26797e-s.p.1bkzbscqrt8rl.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+      </head>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a
             page translator that has re-parented React's nodes — the crash that took the Up & Down
