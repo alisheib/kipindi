@@ -41,6 +41,14 @@ and deploy settings before this production window; record the new deployment
 status and selected deployment ID at zero replicas. A missing or inconclusive
 rehearsal blocks the production cutover.
 
+Read-only CLI control at 2026-10-15: `railway status --json` returned
+`serviceInstances[50pick].numReplicas = null` even while its active deployment
+contained one `RUNNING` instance. That nullable field cannot prove the scale
+setting. For this service, `railway service list --json` returned the independent
+configured/running counters (`regions: us-west2=1`, `replicas.configured=1`,
+`replicas.running=1`). The zero gate below reads those counters and the actual
+deployment instances; test the same fields in the zero-replica rehearsal.
+
 ## Exact sequence (PowerShell, from the final release checkout)
 
 1. Freeze the verified release SHA, confirm `main` has not advanced, and take the
@@ -64,7 +72,15 @@ rehearsal blocks the production cutover.
      if ($LASTEXITCODE -ne 0 -or -not $state) { throw 'Cannot read Railway status.' }
      $prod = @($state.environments.edges | Where-Object { $_.node.name -eq 'production' })[0].node
      $app = @($prod.serviceInstances.edges | Where-Object { $_.node.serviceId -eq $service })[0].node
-     if (-not $app -or $app.numReplicas -ne 0) { throw 'The app is not configured for zero replicas.' }
+     if (-not $app) { throw 'The app service instance is missing from Railway status.' }
+     $services = @(railway service list --project $project --environment production --json | ConvertFrom-Json)
+     if ($LASTEXITCODE -ne 0) { throw 'Cannot read Railway service replica counters.' }
+     $summary = @($services | Where-Object { $_.id -eq $service })[0]
+     if (-not $summary -or $summary.replicas.configured -ne 0 -or $summary.replicas.running -ne 0) {
+       throw 'The app is not proven configured and running at zero replicas.'
+     }
+     $configuredRegions = @($summary.regions | Where-Object { $_ -and $_.configured -ne 0 })
+     if ($configuredRegions.Count -ne 0) { throw 'An app region still has configured replicas.' }
      $instances = @($app.activeDeployments | ForEach-Object { $_.instances })
      if ($instances.Count -ne 0) { throw "App instances remain: $($instances.Count)" }
    }
