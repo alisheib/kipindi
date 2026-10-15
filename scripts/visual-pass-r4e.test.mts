@@ -340,13 +340,13 @@ section("9 · a <Stat> hint is balanced (tile 197)");
 section("10 · a year keeps the word before it in the legal version line (tile 210)");
 {
   const legal = read("src/app/legal/_components.tsx");
-  ok("10.1 · the legal header draws its meta line with DotSeq, mono, keeping years", /<DotSeq text=\{meta\} mono renderPart=\{keepYears\} \/>/.test(legal));
+  ok("10.1 · the legal header draws its meta line with DotSeq, mono, keeping years", /<DotSeq text=\{meta\} mono renderPart=\{\(part\) => legalFigures\(keepYears\(part\)\)\} \/>/.test(legal));
   const privacy = raw("src/app/legal/privacy/page.tsx");
   const meta = (l: string) => new RegExp(`${l}: "([^"]+)"`).exec(privacy.slice(privacy.indexOf("const META")))?.[1] ?? "";
   const out = html(h(DotSeq, { text: meta("sw"), mono: true, renderPart: keepYears }));
   // The version date is read from the page, not pinned here: it moves with every policy version (2026-10-07 →
   // 2026-10-09, Privacy v2026-10-09 on main). What 10.2 holds is that keepYears leaves it whole and unchanged.
-  const version = /Toleo (\d{4}-\d{2}-\d{2})/.exec(meta("sw"))?.[1] ?? "";
+  const version = /Toleo (\d{4}-\d{2}-\d{2}(?:\.\d+)?)/.exec(meta("sw"))?.[1] ?? "";
   ok("10.2 · sw: \"…Protection <Act 2022> na kanuni…\" — the year with the Act's name, the date and the words unchanged",
     out.includes(`Protection <span class="whitespace-nowrap">Act 2022</span> na kanuni`) && version !== "" && out.includes(`Toleo ${version}</span>`) && out.replace(/<[^>]+>/g, "") === meta("sw"), out);
   const zhOut = html(h("p", null, keepYears(meta("zh"))));
@@ -359,8 +359,9 @@ section("10 · a year keeps the word before it in the legal version line (tile 2
 section("11 · the payment-provider grid: a short last row shares the row (tile 069)");
 {
   const grid = read("src/components/wallet/provider-radio-grid.tsx");
-  ok("11.1 · four rails take `kp-provgrid--quarters`, any other count `kp-provgrid--thirds`; no Tailwind column count is left",
-    /const cols = providers\.length === 4 \? "kp-provgrid kp-provgrid--quarters" : "kp-provgrid kp-provgrid--thirds";/.test(grid) && /<div className=\{cols\}>/.test(grid) && !/grid-cols-/.test(grid));
+  ok("11.1 · journey rows use their own layout; classic four rails take quarters and other counts thirds, without Tailwind column count",
+    /const cols = layout === "rows" \? "grid gap-2" : providers\.length === 4 \? "kp-provgrid kp-provgrid--quarters" : "kp-provgrid kp-provgrid--thirds";/.test(grid)
+      && /<div className=\{cols\}>/.test(grid) && !/grid-cols-/.test(grid));
   // ⭐ THE STYLESHEET, EVALUATED: each rule's selectors matched against tile i of n (nth-child arithmetic), the
   // winner by specificity then order, then the grid auto-placed row by row — every row must fill its tracks.
   type Rule = { sels: string[]; col: string; order: number };

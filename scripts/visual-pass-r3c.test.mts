@@ -306,7 +306,9 @@ section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158
   const drawer = read("src/components/layout/needle-drawer.tsx");
   ok("5.1 · the hub asks the drawer for its hub row, in a plain list item", /<li>\s*<NeedleControlsDrawer variant="hub-row" \/>\s*<\/li>/.test(hub));
   const branch = /variant === "hub-row" \? \(([\s\S]*?)\) : \(/.exec(drawer)?.[1] ?? "";
-  const ordinary = /<Link href=\{row\.href as never\} className="kp-hub__row">([\s\S]*?)<\/Link>/.exec(hub)?.[1] ?? "";
+  const ordinaryMatch = /<Link href=\{row\.href as never\} className=\{([^}]+)\}>([\s\S]*?)<\/Link>/.exec(hub);
+  const ordinary = ordinaryMatch?.[2] ?? "";
+  const ordinaryClass = ordinaryMatch?.[1] ?? "";
   const parts = (s: string) => ({
     row: /className="kp-hub__row"/.test(s) || /className="kp-hub__row">/.test(s),
     glyph: /className="kp-hub__glyph" aria-hidden><[A-Za-z.]+ (?:s|size)=\{20\}/.test(s),
@@ -316,7 +318,10 @@ section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158
     chev: s.includes('<I.chevronRight s={18} edge="end" className="kp-hub__chev"'),
   });
   const a = parts(branch), b = parts(`className="kp-hub__row">${ordinary}`);
-  ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev && b.glyph && b.chev, JSON.stringify({ needle: a, ordinary: b }));
+  ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev
+    && /\? "kp-hub__row kp-hub__row--proposals" : "kp-hub__row"/.test(ordinaryClass)
+    && b.glyph && b.chev && /const label = <span className="kp-hub__label">/.test(hub) && /\) : label\}/.test(ordinary),
+    JSON.stringify({ needle: a, ordinary: b, ordinaryClass }));
   ok("5.3 · its value is the hub's value (not the menu's mono capitals)", /<span className="kp-hub__value">\{shownLabel\}<\/span>/.test(branch));
   ok("5.4 · the padded item and its rules are gone", !/\.kp-hub__needle\b/.test(css) && !/kp-hub__needle/.test(hub));
   ok("5.4′ CONTROL · the account menu keeps its own row (variant menu-row is untouched)", /variant === "menu-row" \?/.test(drawer));
@@ -415,7 +420,7 @@ section("9 · a line written \"A · B\" breaks only between its parts, and its d
       && /--seq-gap:\s*3ch/.test(rule(css, ".kp-seq--mono")) && !/kp-hub__seq/.test(css));
   ok("9.4 · the hub's second lines, the legal header's version line and the invite page's call all draw it",
     /<DotSeq text=\{text\} className="kp-hub__sub" \/>/.test(read("src/components/journey/account/hub-row.tsx"))
-      && /<DotSeq text=\{meta\} mono(?: renderPart=\{keepYears\})? \/>/.test(read("src/app/legal/_components.tsx"))
+      && /<DotSeq text=\{meta\} mono renderPart=\{\(part\) => legalFigures\(keepYears\(part\)\)\} \/>/.test(read("src/app/legal/_components.tsx"))
       // Round 6 (R6-C, review C1) moved this pin: the call is chosen by `inviteLine` (src/lib/journey/invite-name.ts), the
       // one name rule the page's title, h1 and doors share — for a player, the same `paid ? inviteEarnSub : inviteFriendsSub`.
       && /<DotSeq text=\{inviteLine\(t, \{ agent: false, paid \}\)\} \/>/.test(read("src/app/profile/invite/page.tsx"))

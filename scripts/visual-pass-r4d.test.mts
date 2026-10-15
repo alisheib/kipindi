@@ -195,7 +195,7 @@ section("3 · the round page: the stake is money, the projection's qualifier is 
   // spaces (characters in the page's text, copied and searched); it is one nowrap span now, the same word first, so the
   // capital the line opens on (3.10, 3.11: `::first-letter` reaches into an inline child) is unchanged.
   ok("3.9 · the round page still composes the stamp from that word",
-    page.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;`));
+    page.includes(`const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;`));
   const hero = code("src/components/updown/price-hero.tsx");
   ok("3.10 · the hero's detail line carries `ud-cap-first`", hero.includes(`<p className="ud-cap-first mt-1.5 mb-0 text-body-sm text-text-muted">{copy.aboveBelow}</p>`));
   ok("3.11 · …whose first letter is set as a capital, and below 400 each stacked clause's is too",
@@ -296,7 +296,7 @@ section("7 · /results: the tally reads in one case (tile 172)");
   // Round 5 (R5-A, F12) moved this pin: the count before its word is grouped (`formatNumber`), as every count line is —
   // the words are this section's, unchanged.
   ok("7.1 · \"0 imetatuliwa · TZS 0 imekamilika\" — the figure's sentence word, not the tab's label",
-    res.includes("{formatNumber(totalCount)} {t.results.resolved} · {formatTzsCompact(totalVolume)} {t.market.tickerSettled}"));
+    res.includes('<span className="font-mono tabular-nums">{formatNumber(totalCount)}</span> {t.results.resolved} · <span className="amount">{formatTzsCompact(totalVolume)}</span> {t.market.tickerSettled}'));
   ok("7.2 · …and each result card's \"TZS 6K imekamilika\" beside \"2 watabiri\"",
     res.includes("{formatTzsCompact(m.yesPool + m.noPool)} {t.market.tickerSettled}"));
   ok("7.3 · ⛔ the tab label is no longer read for a sentence on this page", !res.includes("{t.common.settled}"));
