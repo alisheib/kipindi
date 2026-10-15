@@ -105,7 +105,7 @@ export const MUTATIONS = [
   {
     name: "the tail's column gap goes back to the row's 5px (\"UCHUMI masaa 1 yamebaki\" at sw 390)",
     file: "src/app/globals.css",
-    from: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }`,
+    from: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-4); flex: 1 1 auto; min-width: 0; }`,
     to: `.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; }`,
     expect: "2.16",
   },
