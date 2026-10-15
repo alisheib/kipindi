@@ -296,6 +296,7 @@ const CARRIED: Array<{ file: string; cls: string; why: string; verify: (r: Read)
 const RUNTIME: Array<{ file: string; cls: string; on: string[]; also?: string[][]; why: string }> = [
   { file: "src/components/markets/market-card.tsx", cls: "press-pop", on: ["btn"], why: "a card's YES / NO button calls playPressPop on tap; the helper plays captured kit frames without retaining a React-owned class" },
   { file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "S8's delegated click calls that same helper on the actual kit btn or card pick before opening the sheet" },
+  { file: "src/components/journey/bet-sheet/guest-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "the public guest sheet uses the same delegated pick feedback before opening its sign-in frame" },
   { file: "src/components/ui/route-transition.tsx", cls: "route-enter", on: ["route-enter"], why: "the route frame re-arms its own entrance" },
   { file: "src/components/layout/needle.tsx", cls: "on", on: [], why: "the needle's wake halo breathes while it is awake (`#needle-root #wake.on`; the halo is placed by `inset`)" },
 ];
