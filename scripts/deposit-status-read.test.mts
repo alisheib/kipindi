@@ -17,7 +17,6 @@ import * as QueryWindows from "../src/lib/query/windows.ts";
 import * as ResultPhase from "../src/lib/wallet/result-phase.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
-import { activeCardCheckoutUrl, trustedCardCheckoutUrl } from "../src/lib/card-checkout-url.ts";
 import { MUTATIONS } from "./anchors/deposit-status-read.anchors.mjs";
 import { MUTATIONS as RECHECK_MUTATIONS, PG_MUTATIONS as RECHECK_PG_MUTATIONS } from "./anchors/deposit-recheck.anchors.mjs";
 import { MUTATIONS as BACKGROUND_MUTATIONS, PG_MUTATIONS as BACKGROUND_PG_MUTATIONS } from "./anchors/payment-background.anchors.mjs";
@@ -152,13 +151,13 @@ function system(src = sources, data = db) {
     notifyWithdraw: (ownerId: string, notice: any) => seen.notices.push({ ownerId, ...notice }),
     notifyRefusedFundsReturnFailed: () => {}, amlRejectRefundHtml: () => "", refusedFundsReturnFailedHtml: () => "", payoutRailLabel: () => "",
     audit, isLockedOut: async () => ({ locked: seen.locked, reason: "cooling-off" }), RG_RETURN_MARK, paymentMethodName, formatTzs, formatDateTime,
-    DEPOSIT_STATUS_REVIEW_MARK: reviewModule.DEPOSIT_STATUS_REVIEW_MARK, depositResultStatus: receiptsModule.depositResultStatus,
+    DEPOSIT_STATUS_REVIEW_MARK: reviewModule.DEPOSIT_STATUS_REVIEW_MARK,
+    DEPOSIT_FINAL_NEGATIVE_MARK: reviewModule.DEPOSIT_FINAL_NEGATIVE_MARK, depositResultStatus: receiptsModule.depositResultStatus,
     hasDepositStatusReview: reviewModule.hasDepositStatusReview, isRgHeldDeposit: receiptsModule.isRgHeldDeposit,
     DepositSchema, AdminDepositSchema, parseSavedDepositBet: D.parseSavedDepositBet, sameDepositFunding: D.sameDepositFunding,
     parseDepositRecheckBinding: bindingModule.parseDepositRecheckBinding, matchesDepositRecheckBinding: bindingModule.matchesDepositRecheckBinding,
     depositRecheckBinding: bindingModule.depositRecheckBinding, withdrawalProbeBinding: probeModule.withdrawalProbeBinding,
     isStoredFundingKey: bindingModule.isStoredFundingKey,
-    activeCardCheckoutUrl, trustedCardCheckoutUrl,
     parseProcessingProbeBinding: probeModule.parseProcessingProbeBinding, matchesProcessingProbeBinding: probeModule.matchesProcessingProbeBinding,
     verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); },
     verifyWithdrawalStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); }, isLiveMoneyMode: () => true,
@@ -183,7 +182,6 @@ function system(src = sources, data = db) {
   };
   core = compile(src[files[0]], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
-    "@/lib/card-checkout-url": { activeCardCheckoutUrl },
     "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any, original: any) => {
       seen.settles++;
       const answer = await money.settlePaymentWebhook(input, restriction, original);
@@ -633,6 +631,18 @@ async function referenceControls(src: Record<string, string> = sources): Promise
   const unique = await txn(await player());
   ok("reference.unique-and-missing", (await selector.txn.findByProviderRef(unique.providerRef!))?.id === unique.id
     && await selector.txn.findByProviderRef("s9_ref_absent") === null);
+  const negativeOwner = await player(), negative = await txn(negativeOwner), negativeSystem = system(src);
+  const negativeAnswer = await negativeSystem.money.settlePaymentWebhook({ providerRef: negative.providerRef!, status: "FAILED" });
+  const negativeRow = await db.txn.findById(negative.id);
+  ok("reference.verified-negative-stamped", negativeAnswer.handled && negativeRow?.status === "FAILED"
+    && negativeRow.providerStatus === Review.DEPOSIT_FINAL_NEGATIVE_MARK);
+  await db.txn.update(negative.id, { status: "CANCELLED" });
+  const lateAnswer = await negativeSystem.money.settlePaymentWebhook({ providerRef: negative.providerRef!, status: "CONFIRMED", amount: 5000 });
+  const lateRow = await db.txn.findById(negative.id);
+  ok("reference.cancelled-late-confirm-review", !lateAnswer.handled && lateRow?.status === "CANCELLED"
+    && lateRow.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK
+    && (await db.wallet.findByUserId(negativeOwner))?.balance === 0
+    && negativeSystem.seen.audits.some(a => a.action === "webhook.terminal_contradicted"));
   if (PG) {
     const other = await txn(await player());
     let selectedInTx = false, collisionRejected = false;
@@ -767,8 +777,18 @@ async function run(src = sources): Promise<Check[]> {
   const mapperAt = new Date().toISOString();
   ok("truth.wallet-mapper-retains-unit", ["TZS", "USD"].every(currency => mapper({ currency, createdAt: mapperAt, updatedAt: mapperAt }).currency === currency));
   const writers = providerWriters(src);
-  const ordinaryWriters = writers.filter(w => w.fn !== "markDepositStatusReview");
-  ok("review.provider-writers-scoped", writers.every(w => w.file === files[1]) && ordinaryWriters.length === 5
+  const ordinaryWriters = writers.filter(w => !["markDepositStatusReview", "settleDepositFailed", "retryFailedDepositFromAdmin"].includes(w.fn));
+  const finalNegativeWriter = writers.filter(w => w.fn === "settleDepositFailed");
+  const adminReviewWriter = writers.filter(w => w.fn === "retryFailedDepositFromAdmin");
+  ok("review.provider-writers-scoped", writers.length === 9
+    && writers.every(w => w.file === files[1] || w.file === "src/lib/server/admin-deposit-retry.ts")
+    && finalNegativeWriter.length === 1 && finalNegativeWriter[0].file === files[1]
+    && finalNegativeWriter[0].text === "providerStatus: DEPOSIT_FINAL_NEGATIVE_MARK"
+    && finalNegativeWriter[0].body.includes('reason === "provider-reported-failure" || reason === "reconcile-verified-failed"')
+    && adminReviewWriter.length === 2 && adminReviewWriter.every(w => w.file === "src/lib/server/admin-deposit-retry.ts")
+    && adminReviewWriter.some(w => w.text === "providerStatus: nextStatus" && w.body.includes("DEPOSIT_RETRY_REVIEW_MARK"))
+    && adminReviewWriter.some(w => w.text === "providerStatus: DEPOSIT_RETRY_CLAIM_MARK" && w.body.includes("canAdminRetryDeposit(original, true)"))
+    && ordinaryWriters.length === 5
     && ordinaryWriters.every(w => ["dispatchApprovedWithdrawal", "settleConfirmedWithdrawals", "reconcileStalePayments", "withdraw"].includes(w.fn))
     && ordinaryWriters.every(w => w.fn === "dispatchApprovedWithdrawal" ? w.body.includes('pre.type !== "WITHDRAWAL"')
       : w.fn === "settleConfirmedWithdrawals" ? w.body.includes('listByStatus("PROCESSING")') && w.body.includes("isFastPayoutCandidate")
@@ -1107,10 +1127,12 @@ async function run(src = sources): Promise<Check[]> {
   const lostResult = await lost.read(lostOwner, byId(lostRow)), lostSaved = await db.txn.findById(lostRow.id);
   // M3 (S9 root review): the fault fires INSIDE the marker's wallet-lock transaction, after its write. A memory Map keeps
   // the write, so the marker persists and the reader shows REVIEW. PostgreSQL rolls the whole claim back, so nothing was
-  // recorded and the reader must not invent a review it cannot see: UNKNOWN (the safe answer), the row still FAILED with no
-  // marker, no money. Each store is held to ITS truth; the answer-lost-AFTER-commit case below is the same on both.
+  // recorded and the reader must not invent a review it cannot see: UNKNOWN (the safe answer), the row still FAILED with
+  // only its previously committed provider-negative authority, no money. Each store is held to ITS truth; the
+  // answer-lost-AFTER-commit case below is the same on both.
   ok("review.persisted-write-answer-lost", PG
-    ? lostResult.view.state === "UNKNOWN" && !lostResult.txn && lostSaved?.status === "FAILED" && lostSaved.providerStatus == null
+    ? lostResult.view.state === "UNKNOWN" && !lostResult.txn && lostSaved?.status === "FAILED"
+      && lostSaved.providerStatus === Review.DEPOSIT_FINAL_NEGATIVE_MARK
       && (await db.wallet.findByUserId(lostOwner))?.balance === 0
     : lostResult.view.state === "REVIEW" && lostResult.txn?.id === lostRow.id && Review.hasDepositStatusReview(lostSaved!)
       && (await db.wallet.findByUserId(lostOwner))?.balance === 0);

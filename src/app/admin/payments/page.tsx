@@ -380,7 +380,7 @@ async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
                       <td className="font-mono tabular text-right">{formatTzs(r.amount)}</td>
                       <td className="text-no-300 text-[12px] truncate max-w-[220px]" title={r.reason}>{r.reason}</td>
                       <td className={`font-mono tabular text-right ${r.ageMs > 3_600_000 ? "text-no-300" : "text-text-tertiary"}`}>{ageLabel(r.ageMs)}</td>
-                      <td className="text-right"><RetryControls txnId={r.id} type={r.type} /></td>
+                      <td className="text-right"><RetryControls txnId={r.id} type={r.type} reviewRequired={r.reviewRequired} retryClaimed={r.retryClaimed} /></td>
                     </tr>
                   ))}
                 </tbody>

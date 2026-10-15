@@ -5,7 +5,7 @@ export const MUTATIONS = [
     from: 'fresh.status !== "PROCESSING" || fresh.providerRef !== correlationId', to: 'fresh.providerRef !== correlationId',
     expect: "dispatch.race.confirmed-not-failed" },
   { name: "deposit-ref-prewrite-ignored", file: "src/lib/server/wallet-service.ts", from: 'if (referenced?.providerRef !== correlationId) {', to: 'if (false) {', expect: "reference.pre-dispatch-failure-never-calls-provider" },
-  { name: "deposit-ref-postwrite-ignored", file: "src/lib/server/wallet-service.ts", from: 'if (returnedReference?.providerRef !== result.providerRef || (cardCheckoutUrl && returnedReference.cardCheckoutUrl !== cardCheckoutUrl)) {', to: 'if (false) {', expect: "reference.post-dispatch-failure-remains-pending" },
+  { name: "deposit-ref-postwrite-ignored", file: "src/lib/server/wallet-service.ts", from: 'if (returnedReference?.providerRef !== result.providerRef) {', to: 'if (false) {', expect: "reference.post-dispatch-failure-remains-pending" },
   mutation("foreign-probe-before-scope", "txn.userId !== userId || ", "", "scope.owner"),
   mutation("withdrawal-probe", 'txn.type !== "DEPOSIT" || ', "", "scope.type"),
   mutation("foreign-currency-probe", 'txn.currency !== "TZS" || ', "", "scope.currency"),
@@ -33,7 +33,7 @@ export const MUTATIONS = [
   { name: "locked-replay-reports-raw-terminal", file: "src/lib/server/wallet-service.ts", from: "status: depositResultStatus(txn), balance: w?.balance ?? 0", to: "status: txn.status, balance: w?.balance ?? 0", expect: "review.failed.locked-replay" },
   { name: "ordinary-deposit-clears-review", file: "src/lib/server/wallet-service.ts", from: 'status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}`', to: 'status: "FAILED", providerStatus: null, description: `${friendlyProvider(t.provider)} deposit failed: ${reason}`', expect: "review.provider-writers-scoped" },
   { name: "marker-accepts-suffix", file: "src/lib/wallet/deposit-review.ts", from: "row.providerStatus === DEPOSIT_STATUS_REVIEW_MARK", to: "(row.providerStatus ?? '').startsWith(DEPOSIT_STATUS_REVIEW_MARK)", expect: "review.exact-marker" },
-  { name: "marker-labels-withdrawal", file: "src/lib/wallet/deposit-review.ts", from: 'row.type === "DEPOSIT" && ', to: "", expect: "review.deposit-only" },
+  { name: "marker-labels-withdrawal", file: "src/lib/wallet/deposit-review.ts", from: 'row.type === "DEPOSIT" && row.providerStatus === DEPOSIT_STATUS_REVIEW_MARK', to: 'row.providerStatus === DEPOSIT_STATUS_REVIEW_MARK', expect: "review.deposit-only" },
   { name: "receipt-loses-review-priority", file: "src/lib/wallet/receipts.ts", from: 'if (hasDepositStatusReview(row)) return "AML_REVIEW";', to: "", expect: "review.confirmed.durable" },
   // Ali, 2026-10-14: the receipt's chip names a held deposit "Held for return" — dropping the flag says "Reversed" again.
   { name: "receipt-chip-names-held-reversed", file: "src/app/wallet/receipt/[id]/page.tsx", from: "receiptStatusWord(t, status, heldForReturn)", to: "receiptStatusWord(t, status)", expect: "receipt.rg-rejected-held.chip" },

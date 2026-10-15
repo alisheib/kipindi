@@ -974,3 +974,70 @@ provider-reference **30/30** with **3/3** red plants, and deposit-return **28/28
 plant. The race test runs the signed CONFIRMED callback between provider dispatch and the synchronous
 failure arm, then checks one credit, CONFIRMED status and no failure audit. The core branch must rerun
 these proofs without the held Card capability and then complete the PostgreSQL/browser release gates.
+
+### §5q · Admin deposit retry authority and idempotency (2026-10-15)
+
+The single-row and bulk admin actions now share `retryFailedDepositFromAdmin`. They may request a second
+collection only for a FAILED, non-house TZS mobile-money deposit whose original provider reference still
+uniquely identifies it, whose funding identity is valid, and whose `providerStatus` is exactly
+`deposit-provider-final-failed:v1`. That marker is written in the same wallet-locked transaction as FAILED
+only when the verified callback or authoritative order-status re-query reports FAILED. A synchronous
+dispatch refusal, mock timeout, text description or legacy FAILED row does not prove a provider-negative
+result. Such rows stay FAILED, gain a durable review note and audit, and have no Retry/Cancel buttons in
+the admin queue. Admin Cancel rechecks the same marker under the wallet lock; withdrawals retain their
+existing path. Card cannot be retried by an officer without the buyer's hosted-checkout context.
+
+An eligible retry derives one bounded key from the original transaction id. Both admin paths use that
+key; a lost response, repeat click and concurrent bulk/single action recover the same child row and never
+send another provider order for that original. The original moves to CANCELLED only after a matching child
+is found and its failure authority is rechecked under the wallet lock. A contradictory CONFIRMED callback
+for an old FAILED or CANCELLED deposit records a durable terminal review without crediting or hiding it.
+Provider-side contradictory final answers still require an officer money decision; no automatic debit or
+second credit is introduced here.
+
+The pre-dispatch wallet lock also writes `deposit-admin-retry-claimed:v1` to the existing `providerStatus`
+column before releasing the lock for provider I/O. Cancel therefore cannot close the original during the
+gap before child reservation. A repeat retry on a claimed row uses only the same deterministic child key;
+the admin queue labels that row "Retry unresolved", offers "Check retry", and omits Cancel. This marker
+needs no schema change or backfill. It is reached only from an exact verified-negative marker, so old
+FAILED and terminal-review rows remain locked out. A process failure before child reservation leaves the
+claim recoverable through the same key. A reserved child lacking its pre-dispatch provider reference is
+not accepted as a replacement collection: the original stays FAILED with a durable review marker and
+no further automatic provider call.
+
+### §5r · Existing Selcom rail evidence and core proof (2026-10-15)
+
+The existing mobile-money code path is `wallet-service.deposit` → `dispatchDeposit` → the runtime-selected
+`selcomAdapter.deposit` → `selcomDeposit`, which creates a minimal checkout order and sends a
+`/checkout/wallet-payment` request. The withdrawal path is `wallet-service.withdraw` →
+`dispatchWithdrawal` → `selcomAdapter.withdraw` → the payout ladder and `selcomPayout`. Accepted or
+ambiguous sends remain pending until a signed order-status or the payout rail's status query supplies
+settlement authority. The webhook uses the stored global provider reference to find the row and queries
+Selcom again before settlement; a payout callback also requires a valid signature.
+
+Read-only Railway production inventory on 2026-10-15 showed the `50pick` service deployed successfully
+(latest deployment created 12:28:51 UTC) and the configured variable **names**
+`PAYMENT_AGGREGATOR`, `PAYMENT_API_URL`, `PAYMENT_API_KEY`, `PAYMENT_API_SECRET`,
+`PAYMENT_VENDOR_ID`, `PAYMENT_VENDOR_PIN`, `PAYMENT_WEBHOOK_URL` and `SELCOM_WEBHOOK_SECRET`.
+The connector redacted their values; none were printed or changed. A bounded runtime-log sample filtered
+for Selcom showed three Wallet Cashin **accepted** responses on 2026-10-11 and 2026-10-13, plus a
+wallet-payment event on 2026-10-12. Acceptance establishes that the existing payout path reached
+Selcom, not that a recipient received a final payout. Ali reports that deposits and withdrawals work;
+this read-only check did not create an order or independently assert a final deposit settlement.
+
+None of that supplies a Card `payment_gateway_url` host. That URL is returned only by Card create-order
+in the published Checkout API shape; the read-only order-status/list-orders responses omit it. Card
+recovery remains held on `codex/s9-card-held` until a controlled response or provider confirmation
+establishes the exact redirect host. The releasable core has no Card URL persistence or resume button.
+
+The core admin gate passed **14/14 memory controls**, including a deliberate legacy-gate mutation that
+would send a second collection, and **13/13 disposable PostgreSQL controls** after all **104** migrations.
+These include Cancel-versus-Retry overlap before child reservation and recovery of a claimed row after a
+lost process answer, plus a pre-dispatch child with no reference. A repeat SELECT-only production preflight at **12:52:50 UTC** found zero duplicate
+non-null provider-reference groups or excess rows, and only the prior non-unique reference index. Re-run
+that preflight immediately before deployment because later payment rows can change the data.
+The surrounding signed deposit-status suite passed **182/182 memory** and **161/161 PostgreSQL**;
+the latter includes an answer-lost review rollback and the new authoritative failure marker. The
+deposit-return suite passed **27/27 memory**; typecheck passed. Every PostgreSQL run used this
+checkout's loopback port 5452 and stopped its cluster. Integration still needs the exact-tip WP8,
+browser and production-readback gates. No S9 core or Card release is claimed by this branch.

@@ -15,6 +15,8 @@ import type { StoredTxn } from "./store";
 import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import { MOBILE_MONEY_METHODS, type MobileMoneyMethodId } from "@/lib/payment-providers";
+import { canAdminRetryDeposit } from "@/lib/wallet/admin-deposit-retry-policy";
+import { DEPOSIT_RETRY_CLAIM_MARK } from "@/lib/wallet/deposit-review";
 
 /**
  * ⛔ THE RAIL LIST IS NOT WRITTEN HERE. Both the four ids and their brand spellings
@@ -185,7 +187,8 @@ export async function reconcile(windowMs = DAY_MS): Promise<{ matched: number; u
 }
 
 // ── Retry queue (failed money movements) ─────────────────────────────────────
-export type RetryRow = { id: string; provider: string; type: "DEPOSIT" | "WITHDRAWAL"; amount: number; reason: string; createdAt: string; ageMs: number };
+export type RetryRow = { id: string; provider: string; type: "DEPOSIT" | "WITHDRAWAL"; amount: number; reason: string;
+  reviewRequired: boolean; retryClaimed: boolean; createdAt: string; ageMs: number };
 export async function retryQueue(): Promise<RetryRow[]> {
   const failed = (await db.txn.listByStatus("FAILED")).filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL");
   return failed
@@ -195,6 +198,8 @@ export async function retryQueue(): Promise<RetryRow[]> {
       type: t.type as "DEPOSIT" | "WITHDRAWAL",
       amount: Math.abs(t.amount),
       reason: (t.description ?? "failed").replace(/^.*failed:\s*/i, "") || "failed",
+      reviewRequired: t.type === "DEPOSIT" && !canAdminRetryDeposit(t, true),
+      retryClaimed: t.type === "DEPOSIT" && t.providerStatus === DEPOSIT_RETRY_CLAIM_MARK,
       createdAt: t.createdAt,
       ageMs: Date.now() - Date.parse(t.createdAt),
     }))

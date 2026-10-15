@@ -691,6 +691,8 @@
     "test:deposit-replay": "tsx scripts/deposit-replay.test.mts",
     "red:deposit-replay": "tsx scripts/deposit-replay.test.mts --prove-red",
     "db:probe-deposit-replay": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/deposit-replay.test.mts --pg",
+    "test:admin-deposit-retry": "tsx scripts/admin-deposit-retry.test.mts",
+    "db:probe-admin-deposit-retry": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/admin-deposit-retry.test.mts --pg",
     "test:deposit-persistence": "tsx scripts/deposit-persistence.test.mts",
     "red:deposit-persistence": "tsx scripts/deposit-persistence.test.mts --prove-red",
     "db:probe-deposit-persistence": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/deposit-persistence.test.mts --pg",

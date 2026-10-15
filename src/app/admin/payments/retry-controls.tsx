@@ -13,7 +13,7 @@ import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
-export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" | "WITHDRAWAL" }) {
+export function RetryControls({ txnId, type, reviewRequired, retryClaimed }: { txnId: string; type: "DEPOSIT" | "WITHDRAWAL"; reviewRequired: boolean; retryClaimed: boolean }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
@@ -29,6 +29,7 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
   // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
   // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
   // return above these hooks would render fewer hooks than the last pass and crash the page.
+  if (reviewRequired) return <span className="font-mono text-[10px] text-no-300" title="Provider failure is not proven. Review this payment before retry or closure.">Review required</span>;
   if (!mayAct) return <ActReadOnly />;
 
   const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string }>, okTitle: string) => {
@@ -43,6 +44,13 @@ export function RetryControls({ txnId, type }: { txnId: string; type: "DEPOSIT" 
       router.refresh();
     });
   };
+
+  if (retryClaimed) return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="font-mono text-[10px] text-text-subtle">Retry unresolved</span>
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(retryDepositAction, "Retry checked")}>Check retry</Button>
+    </span>
+  );
 
   if (confirmCancel) {
     return (

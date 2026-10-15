@@ -3,11 +3,9 @@
 /**
  * ADM4 — Payments-ops actions. All gated to ADMIN/COMPLIANCE + 2FA and audited.
  *
- * Money-safety: "Retry now" re-runs the ORIGINAL failed deposit through the
- * money-tested `deposit()` flow (deposits never debit, so this can't double-pay)
- * and cancels the old record. "Cancel & refund" only transitions a FAILED
- * record to CANCELLED — a failed withdrawal was already auto-refunded at
- * fail-time, and a failed deposit never moved money, so nothing is minted here.
+ * Money-safety: deposit retry requires a stored, verified provider-negative result
+ * and a stable child key. Legacy failures enter review without another collection.
+ * "Cancel & refund" cannot hide an unproven failed deposit.
  */
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
@@ -18,9 +16,9 @@ import { setKillSwitch, type Mno, MNOS } from "@/lib/server/payment-ops";
 import { setPaymentControls, type ControlsUpdate, type PaymentProviderId } from "@/lib/server/payment-control";
 import { setPayoutStatus, PAYOUT_STATUSES, type PayoutStatus } from "@/lib/server/payout-status";
 import { selcomEnv, selcomPing } from "@/lib/server/selcom";
-import { deposit } from "@/lib/server/wallet-service";
-
-type DepositProvider = "MPESA" | "AIRTEL_MONEY" | "HALO_PESA" | "MIXX" | "CARD";
+import { retryFailedDepositFromAdmin } from "@/lib/server/admin-deposit-retry";
+import { withLock } from "@/lib/server/locks";
+import { hasDepositFinalNegative, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
 
 /* DG-S-05 — `field` is optional and additive: every refusal below keeps its exact sentence and
    its exact shape; what is new is that three of them can now say WHICH control to fix. */
@@ -120,29 +118,14 @@ export async function testSelcomConnectionAction(): Promise<{ ok: true; detail: 
   return { ok: true, detail: `Reached Selcom · HTTP ${r.httpStatus}${r.resultcode ? ` · code ${r.resultcode}` : ""}${r.message ? ` · ${r.message.slice(0, 90)}` : ""}` };
 }
 
-/** Retry a failed DEPOSIT via the tested deposit() flow; cancel the old record. */
+/** Retry only an authoritative failed DEPOSIT. The same helper owns bulk retry. */
 export async function retryDepositAction(formData: FormData): Promise<Result> {
   const g = await gate("retryDeposit");
   if ("error" in g) return { ok: false, error: g.error };
   const txnId = String(formData.get("txnId") ?? "");
-  const t = await db.txn.findById(txnId);
-  if (!t || t.type !== "DEPOSIT" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed deposit." };
-  const r = await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined });
-  if (r.ok) {
-    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "deposit failed"} · superseded by retry` });
-  } else {
-    // Retry refused (kill-switch, frozen wallet, RG lockout, caps / Source of Funds, rate limit,
-    // bounds) — no replacement txn was created, so the FAILED row must stay in the queue. Record
-    // why, cancel nothing. ⚠️ Identity is NOT among these since 2026-09-13: a deposit asks no
-    // identity question (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 it did. ⚠️ Nor an unconfirmed
-    // email since 2026-10-07: a deposit asks no email (owner ruling); a withdrawal does.
-    // ⚠️ A FAILED deposit of TZS 500–999 from before the TZS 1,000 minimum (2026-10-07) is now refused
-    // as below the minimum, so its retry fails here and it can only be cancelled.
-    await db.txn.update(txnId, { description: `${t.description ?? "deposit failed"} · retry refused: ${r.error ?? "unknown"}` });
-  }
-  audit({ category: "WALLET", action: "payments.retry.deposit", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
+  const r = await retryFailedDepositFromAdmin(txnId, g.userId, "single");
   revalidatePath("/admin/payments");
-  return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Retry failed again." };
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
 
 /** Cancel & refund — close a failed money movement. */
@@ -152,14 +135,25 @@ export async function cancelRefundTxnAction(formData: FormData): Promise<Result>
   const txnId = String(formData.get("txnId") ?? "");
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "FAILED") return { ok: false, error: "Only a FAILED transaction can be cancelled." };
-  await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "failed"} · cancelled by operator` });
+  if (t.type === "DEPOSIT") {
+    const closed = await withLock(`wallet:${t.userId}`, async (tx) => {
+      const fresh = await db.txn.findById(txnId, tx);
+      if (!fresh || fresh.userId !== t.userId || !hasDepositFinalNegative(fresh) || hasDepositStatusReview(fresh)) return false;
+      const saved = await db.txn.update(txnId,
+        { status: "CANCELLED", description: `${fresh.description ?? "failed"} · cancelled by operator` }, tx);
+      return saved?.status === "CANCELLED";
+    });
+    if (!closed) return { ok: false, error: "This deposit needs payment review or has an unresolved retry. Refresh before closure." };
+  } else {
+    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "failed"} · cancelled by operator` });
+  }
   audit({
     category: "WALLET",
     action: "payments.cancel_refund",
     actorId: g.userId,
     targetType: "Transaction",
     targetId: txnId,
-    payload: { type: t.type, amount: Math.abs(t.amount), note: t.type === "WITHDRAWAL" ? "failed withdrawal already auto-refunded at fail-time; record closed" : "failed deposit never moved money; record closed" },
+    payload: { type: t.type, amount: Math.abs(t.amount), note: t.type === "WITHDRAWAL" ? "failed withdrawal already auto-refunded at fail-time; record closed" : "verified provider-negative deposit closed" },
   });
   revalidatePath("/admin/payments");
   return { ok: true };
@@ -307,31 +301,29 @@ export async function reconcileWriteOffAction(formData: FormData): Promise<Resul
   return { ok: true };
 }
 
-/** Bulk-retry every FAILED deposit/withdrawal (A4) via the same tested flows the
- *  single-row retry uses — deposits never debit and a failed withdrawal was
- *  auto-refunded at fail-time, so re-running can't double-pay. Capped per run. */
+/** Bulk-retry delegates every deposit to the exact single-row safety path. Capped per run. */
 export async function bulkRetryAction(): Promise<{ ok: true; retried: number; stillFailed: number } | { ok: false; error: string }> {
   const g = await gate("bulkRetry");
   if ("error" in g) return { ok: false, error: g.error };
   const failed = (await db.txn.listByStatus("FAILED")).filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").slice(0, 50);
-  const { deposit, withdraw } = await import("@/lib/server/wallet-service");
+  const { withdraw } = await import("@/lib/server/wallet-service");
   let retried = 0, stillFailed = 0;
   for (const t of failed) {
     try {
-      const r = t.type === "DEPOSIT"
-        ? await deposit(t.userId, { provider: (t.provider ?? "MPESA") as DepositProvider, amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // 4th argument = the operator who clicked, same reason as retryWithdrawalAction
-        // above. This loop retries up to 50 rows, so an unattributed run would put the
-        // operator's decision behind 50 player names.
-        : await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
-      if (r.ok) {
-        await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
-        retried++;
+      if (t.type === "DEPOSIT") {
+        const r = await retryFailedDepositFromAdmin(t.id, g.userId, "bulk");
+        if (r.ok) retried++; else stillFailed++;
       } else {
-        // Refused retries keep their FAILED row (and the obligation) visible in the queue.
-        await db.txn.update(t.id, { description: `${t.description ?? "failed"} · bulk retry refused: ${r.error ?? "unknown"}` });
-        stillFailed++;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // 4th argument names the officer who made a withdrawal retry decision.
+        const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
+        if (r.ok) {
+          await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
+          retried++;
+        } else {
+          await db.txn.update(t.id, { description: `${t.description ?? "failed"} · bulk retry refused: ${r.error ?? "unknown"}` });
+          stillFailed++;
+        }
       }
     } catch { stillFailed++; }
   }

@@ -45,7 +45,7 @@ import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
 import { depositResultStatus, isRgHeldDeposit, RG_RETURN_MARK } from "@/lib/wallet/receipts";
-import { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
+import { DEPOSIT_FINAL_NEGATIVE_MARK, DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
@@ -634,7 +634,11 @@ async function settleDepositFailed(txnId: string, reason: string, expectedProvid
     const t = await db.txn.findById(txnId, currentLockTx());
     if (!t || t.status !== "PROCESSING") return null;
     if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);
-    await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` }, currentLockTx());
+    const finalNegative = reason === "provider-reported-failure" || reason === "reconcile-verified-failed";
+    const failed = await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}`,
+      ...(finalNegative ? { providerStatus: DEPOSIT_FINAL_NEGATIVE_MARK } : {}) }, currentLockTx());
+    if (!failed || failed.status !== "FAILED" || (finalNegative && failed.providerStatus !== DEPOSIT_FINAL_NEGATIVE_MARK))
+      throw new Error("Deposit failure could not be committed with its authority");
     return t;
   });
   if (!done) return false;
@@ -1117,7 +1121,7 @@ export async function settlePaymentWebhook(
     // human — see docs/RULES.md §2.8 and the money-gate handover.
     const contradicted =
       (txn.status === "CONFIRMED" && input.status === "FAILED") ||
-      ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");
+      ((txn.status === "FAILED" || txn.status === "REVERSED" || (txn.type === "DEPOSIT" && txn.status === "CANCELLED")) && input.status === "CONFIRMED");
     if (contradicted) {
       const depositClaim = restriction ?? (original && !("kind" in original) ? original : undefined);
       const reviewAdded = txn.type === "DEPOSIT" ? await markDepositStatusReview(txn.id, input.status, depositClaim, restriction ? undefined : input.providerRef) : false;
@@ -1171,7 +1175,7 @@ export async function settlePaymentWebhook(
     const fresh = await db.txn.findById(txn.id, currentLockTx());
     if (!fresh || fresh.status === "PROCESSING" || fresh.status === "PENDING") throw new Error("Deposit settlement could not be verified.");
     if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
-      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && input.status === "CONFIRMED"))) {
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED" || fresh.status === "CANCELLED") && input.status === "CONFIRMED"))) {
       // The opposing terminal claim may win AFTER the early PROCESSING check. Re-enter the existing terminal
       // contradiction alarm instead of acknowledging it as settled. This path never reverses or credits again.
       return settlePaymentWebhook(input, restriction ?? undefined, original ?? undefined);
@@ -1205,7 +1209,7 @@ async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "F
     if (expectedProviderRef !== undefined) await assertUniquePaymentReference(fresh, expectedProviderRef, restriction);
     if (fresh.userId !== pre.userId || (isRgHeldDeposit(fresh) && reported === "CONFIRMED")) return false;
     const opposed = (fresh.status === "CONFIRMED" && reported === "FAILED")
-      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && reported === "CONFIRMED");
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED" || fresh.status === "CANCELLED") && reported === "CONFIRMED");
     if (!opposed) return false;
     const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);
     if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
