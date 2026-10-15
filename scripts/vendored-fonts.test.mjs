@@ -68,9 +68,26 @@ const preloads = [...layout.matchAll(/<link rel="preload" href="\/fonts\/([^"/]+
 const latin = [...expectedFiles].filter((file) => file.includes("-s.p."));
 assert.equal(preloads.length, 3, "Exactly three Latin faces preload");
 assert.deepEqual(preloads.sort(), latin.sort(), "Only the same three Latin faces preload");
-const stacks = /\.kp-local-fonts\s*\{([^}]*)\}/.exec(globalCss)?.[1] ?? "";
-assert(stacks.includes('--font-display: "Sora", "Sora Fallback"'), "Sora variable/fallback preserved");
-assert(stacks.includes('--font-sans: "Inter", "Inter Fallback"'), "Inter variable/fallback preserved");
-assert(stacks.includes('--font-mono: "JetBrains Mono", "JetBrains Mono Fallback"'), "Mono variable/fallback preserved");
+const assertStacks = (css) => {
+  const block = /\.kp-local-fonts\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+  const value = (name) => new RegExp(`--${name}:\\s*([^;]+);`).exec(block)?.[1].trim();
+  assert.equal(value("font-display"), '"Sora", "Sora Fallback", system-ui, var(--font-cjk), sans-serif',
+    "Sora metric fallback and original CJK chain preserved");
+  assert.equal(value("font-sans"), '"Inter", "Inter Fallback", system-ui, var(--font-cjk), sans-serif',
+    "Inter metric fallback and original CJK chain preserved");
+  assert.equal(value("font-mono"), '"JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, var(--font-cjk), monospace',
+    "Mono metric fallback and original CJK chain preserved");
+  const cjk = /--font-cjk:\s*([^;]+);/.exec(css)?.[1] ?? "";
+  for (const family of ["PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC"]) {
+    assert(cjk.includes(`'${family}'`), `${family} explicit CJK fallback preserved`);
+  }
+};
+assertStacks(globalCss);
+if (process.argv.includes("--prove-red")) {
+  const withoutCjk = globalCss.replace('"Inter Fallback", system-ui, var(--font-cjk), sans-serif', '"Inter Fallback", system-ui, sans-serif');
+  assert.notEqual(withoutCjk, globalCss, "CJK red plant applied");
+  assert.throws(() => assertStacks(withoutCjk), /original CJK chain preserved/, "CJK omission must fail the guard");
+  console.log("vendored-fonts red: omitted CJK chain rejected");
+}
 
 console.log(`vendored-fonts: ${faces.length} faces, ${expectedFiles.size} WOFF2 subsets, ${preloads.length} Latin preloads, three licenses — PASS`);
