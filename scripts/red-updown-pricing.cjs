@@ -169,6 +169,13 @@ const MUTATIONS = [
     with: `Si ahadi hadi dau zitakapofungwa.</li>`,
   },
   {
+    // S12 WP9 step 6: the journey arm's side buttons are their own components; the ruling holds them too.
+    name: "⭐ the journey arm's Up button prints a multiple again (a journey reader's Juu/Chini, the owner's ruling of 2026-10-14)",
+    file: "src/components/journey/updown/jud-arm.tsx",
+    find: `className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}`,
+    with: `className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}{side === "UP" && <span className="amount">× 1.26</span>}`,
+  },
+  {
     name: "⭐ stripComments returns EMPTY — every absence check would pass over \"\"",
     file: SUITE,
     find: `function stripComments(src: string): string {\n  return src`,

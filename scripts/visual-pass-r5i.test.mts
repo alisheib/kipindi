@@ -152,6 +152,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/journey/cards/journey-card.tsx": [2, "SIDE — the journey card's two picks in the side buttons' inks (`btn-yes` / `btn-no`); its result chip takes the outcome's ink from `cardFace` (S7 WP5)"],
   "src/components/journey/bet-sheet/bet-sheet.tsx": [2, "SIDE — S8 receipt's committed YES/NO chip (§B2), without a projected payout"],
   "src/components/journey/bet-sheet/sheet-parts.tsx": [2, "SIDE — S8 chosen-side kit Chip, the side locked for this stake (§B2)"],
+  "src/components/journey/updown/jud-arm.tsx": [6, "SIDE — S12 Juu/Chini journey arm: each side's staked chip, the Up/Down buttons and the chosen-side chip (§B2)"],
   "src/components/journey/question/journey-bet-buttons.tsx": [2, "SIDE — S8 question page's two stake choices, the kit YES/NO button inks (§B2)"],
   "src/components/journey/question/journey-holder.tsx": [3, "SIDE and LOSS — S8 held ticket's side word plus the owner's betting-rose LOSS ruling (§B2a)"],
   "src/components/layout/live-ticker.tsx": [2, "SIDE — a bet's side in the ticker (classic chrome, frozen)"],

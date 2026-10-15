@@ -2448,7 +2448,9 @@ const WIN_IMPORTERS = ["src/components/layout/away-summary-bar.tsx", "src/compon
  * fails with nothing to catch it takes the whole page to the critical-error screen. The shell's parts took the guard in
  * S6 WP6c; the Tiketi rail, the route ghosts and the journey home's parts in S7 WP6 (A13(a)); the two OLDER loaders — the
  * chat bubble and the first-visit primer, `lazy-overlays.tsx`, on every page, for every player — take it in L1.
- * 12.dynamic.census holds all of them at once, and holds the list: a sixth file that imports `next/dynamic` fails here
+ * ⭐ S12 (WP9–WP11, 2026-10-14) adds the sixth, named in the open: Juu/Chini's journey arm loader (`jud-lazy.tsx`), its three
+ * parts each ending in the guard.
+ * 12.dynamic.census holds all of them at once, and holds the list: a seventh file that imports `next/dynamic` fails here
  * until it is named, so no loader can join the app without the guard, and none can keep a guard of its own beside the
  * app's one.
  */
@@ -2458,6 +2460,7 @@ const DYNAMIC_FILES: readonly string[] = [
   "src/components/journey/tickets/ticket-switch-rail.tsx", // the Maswali | Juu/Chini rail's tabs (S6 WP9; guarded in S7 WP6)
   "src/components/journey/route-ghost-lazy.tsx",           // the journey's route ghosts (R5-D; A24 item 5)
   "src/components/journey/home/home-lazy.tsx",             // the journey home's parts (S7 WP6)
+  "src/components/journey/updown/jud-lazy.tsx",            // Juu/Chini's journey arm (S12 WP9–WP11; named here in the open)
 ];
 /** The overlays' two loaders live in the second of those (L1's file): the red twin plants in it by name. */
 const LAZY_OVERLAYS = DYNAMIC_FILES[1];
@@ -2612,7 +2615,7 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     };
   });
   const censusOff = censusRows.filter((r) => !r.spelled || r.loaders === 0 || r.unguarded.length > 0 || !r.guard || r.own.length > 0);
-  ok(`12.dynamic.census · every file in src that imports next/dynamic is one of the ${DYNAMIC_FILES.length} the census names — the shell's lazy module, lazy-overlays (the chat bubble and the first-visit primer), the Tiketi switch's rail, the journey's route ghosts and the journey home's lazy module — and each imports it as dynamic, ends EVERY loader's import chain in .catch(nothingIfLost), takes that guard by name from the app's one module (lost-chunk.ts) and defines none of its own: a chunk that never arrives leaves its part out, for every player, instead of the critical-error screen (S7-PLAN A13(b), A24 item 5; live fix L1)`,
+  ok(`12.dynamic.census · every file in src that imports next/dynamic is one of the ${DYNAMIC_FILES.length} the census names — the shell's lazy module, lazy-overlays (the chat bubble and the first-visit primer), the Tiketi switch's rail, the journey's route ghosts, the journey home's lazy module and Juu/Chini's journey arm (S12) — and each imports it as dynamic, ends EVERY loader's import chain in .catch(nothingIfLost), takes that guard by name from the app's one module (lost-chunk.ts) and defines none of its own: a chunk that never arrives leaves its part out, for every player, instead of the critical-error screen (S7-PLAN A13(b), A24 item 5; live fix L1)`,
     show(dynamicUsers) === show([...DYNAMIC_FILES].sort()) && censusOff.length === 0,
     show({ unnamed: dynamicUsers.filter((p) => !DYNAMIC_FILES.includes(p)), gone: DYNAMIC_FILES.filter((p) => !dynamicUsers.includes(p)), off: censusOff }));
   const loaderProbe = dynamicLoaders([

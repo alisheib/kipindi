@@ -30,6 +30,9 @@ import { Chip } from "@/components/ui/chip";
 // settlement pays, to the shilling, so it calls the same function rather than multiplying by a rate of its own.
 import { projectedReturn, refundWarningFor, type UpDownPricing } from "@/lib/updown-pricing";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
+// S12 WP9 · the journey arm's loader alone: the arm is a chunk of its own, fetched only for a journey request.
+import { LazyJudConfirm, LazyJudTwoWay } from "@/components/journey/updown/jud-lazy";
+import type { JudViewer } from "@/lib/journey/updown-arm";
 
 export function RoundStakePanel(props: {
   marketId: string;
@@ -50,6 +53,11 @@ export function RoundStakePanel(props: {
   serverNowMs?: number;
   /** UD-22 · the round's frozen receipt facts, for the bet-confirmation modal. */
   receipt?: UpDownReceiptInfo;
+  /**
+   * S12 WP9–WP10 · a journey reader's round id and own facts (`judViewerFor`), or absent. Present, the signed-in arms are
+   * Juu/Chini's journey arm (the two-way control, and the `?side=` panel); absent, they are the classic panels.
+   */
+  journey?: { roundId: string; viewer: JudViewer } | null;
 }) {
   const { t, locale } = useT();
   const { marketId, isAuthed, minStake, maxStake, myUpStake, myDownStake, pricing, assetName, signInHref, lockedSide } = props;
@@ -100,8 +108,15 @@ export function RoundStakePanel(props: {
   // identity panel in place of this stake control; a stake now asks no identity question
   // (`kyc-gate.ts`), so the branch — and its `kycGate`/`returnTo` props — are deleted.
 
+  // S12 WP9 · a journey reader's arms are Juu/Chini's journey arm, on this very hook; the round as the arm reads it.
+  const jud = props.journey && props.serverNowMs != null ? {
+    marketId, roundId: props.journey.roundId, pricing, min: minStake, max: maxStake, selectionClosesAtMs: props.selectionClosesAtMs ?? null,
+    open: props.selectionClosesAtMs == null || props.serverNowMs < props.selectionClosesAtMs, serverNowMs: props.serverNowMs, myUpStake, myDownStake,
+  } : null;
+
   // No side chosen (direct nav) → the safe two-way control, so betting is never blocked.
   if (!lockedSide) {
+    if (jud && props.journey) return <LazyJudTwoWay bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} size="detail" />;
     return (
       <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
         <p className="mb-3 text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
@@ -114,6 +129,7 @@ export function RoundStakePanel(props: {
   }
 
   // ── Locked pick — the D3 single-direction confirm panel ────────────────────
+  if (jud && props.journey) return <LazyJudConfirm bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} side={lockedSide} />;
   const isUp = lockedSide === "UP";
   const pickWord = isUp ? t.market.udUp : t.market.udDown;
   // ⭐ D2 · THE PROJECTION IS THE POOL'S, NOT A RATE'S.

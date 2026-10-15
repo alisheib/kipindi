@@ -30,6 +30,7 @@ import type { UpDownPricing } from "@/lib/updown-pricing";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import type { KeptBody } from "@/components/ui/empty-state-text";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
+import type { JudViewer } from "@/lib/journey/updown-arm";
 
 const cardStyle = {
   background: "var(--bg-elevated)", border: "1px solid var(--border)",
@@ -62,6 +63,8 @@ export function RoundActionPanel(props: {
     receipt?: UpDownReceiptInfo;
     /** R6-A · the viewer's running break or self-exclusion, as the page words it (`breakSentence`), or null. */
     breakBody?: KeptBody | null;
+    /** S12 WP9 · a journey reader's round id and own facts — the stake panel draws Juu/Chini's journey arm with them. */
+    journey?: { roundId: string; viewer: JudViewer } | null;
   };
   /** The frozen figure for the locked presentation — server-computed, never derived here. */
   myExactPayout: number | null;

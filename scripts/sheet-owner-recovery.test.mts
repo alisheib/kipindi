@@ -298,7 +298,7 @@ const privacyRel="src/app/legal/privacy/page.tsx",privacy=readFileSync(new URL(`
 const golden=execFileSync("git",["show",`origin/main:${privacyRel}`],{encoding:"utf8"});
 check("exact three new privacy paragraphs/version are pinned while unrelated published legal words remain unchanged",()=>{assert.equal(s8PublishedWords(privacyRel,privacy).count,3);assert(sameS8PublishedWords(privacyRel,privacy,golden));});
 for(const phrase of ["kp-sheet-intents:v2:","kp-sheet-intents:legacy:v1","no 24-hour expiry","account identifier","confirmed receipt details, until closing the tab",
-  "haziishi baada ya saa 24","kitambulisho cha akaunti","hadi ukifunga kichupo","没有 24 小时的过期限制","账户标识符","直到关闭标签页","Version 2026-10-14","No advertising cookies."]){
+  "haziishi baada ya saa 24","kitambulisho cha akaunti","hadi ukifunga kichupo","没有 24 小时的过期限制","账户标识符","直到关闭标签页","Version 2026-10-15","No advertising cookies."]){ // the version re-pinned in the open: S12 WP10b (Privacy v2026-10-15, §7's round paragraph)
   const changed=privacy.replace(phrase,`[changed ${phrase}]`);check(`published-word plant: ${phrase}`,()=>{assert.notEqual(changed,privacy);assert(!sameS8PublishedWords(privacyRel,changed,golden));});
 }
 assert.equal(SHEET_RECOVERY_MAX_BYTES,64000);console.log(`ALL PASS — ${passed} assertions, actual callback/action plants included`);

@@ -705,15 +705,15 @@
    "x": 470,
    "y": 20838,
    "w": 390,
-   "h": 394,
-   "title": "Juu/Chini · stake panel (round JUU 10,000 · CHINI 8,000)"
+   "h": 298,
+   "title": "Juu/Chini · stake panel (redrawn 2026-10-14: no multiple, no pool line)"
   },
   "s4-11-updown-low.dc.html": {
    "x": 940,
    "y": 20838,
    "w": 390,
-   "h": 576,
-   "title": "Juu/Chini · not enough balance, side chosen first"
+   "h": 580,
+   "title": "Juu/Chini · not enough balance, side chosen first (redrawn 2026-10-14: no multiple, one commit)"
   },
   "s4-11-updown-round-closed.dc.html": {
    "x": 1410,
