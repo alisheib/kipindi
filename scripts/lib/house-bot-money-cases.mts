@@ -647,6 +647,69 @@ if (w.onPostgres) {
       pairHolderDrift: (books.drift as Any[]).filter((d) => d.userId === yes.userId || d.userId === no.userId) }));
 }
 
+// ═══ §5n6b · a shared COUNTER obeys the same durable two-sided budget on real Postgres ═══════════
+if (w.onPostgres) {
+  section("§5n6b · Postgres: a shared COUNTER consumes the two-sided desk budget");
+  const first = await w.bot();
+  const second = await w.bot();
+  const identity = async (userId: string, fullName: string, dob: string) => {
+    const now = new Date().toISOString();
+    await w.db.kyc.upsert({ id: `kyc_${userId}`, userId, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
+      idType: null, idNumber: null, idVerifiedAt: null, fullName, dob, documents: [], extraRequests: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now });
+  };
+  await identity(first.userId, "Fixture Shared Counter Holder One", "1990-01-02");
+  await identity(second.userId, "Fixture Shared Counter Holder Two", "1991-03-04");
+  await w.setCaps(second.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 2 } } });
+  await w.limits({ gCapPairRoundsPerDay: 2, gCapPairDailyTzs: 20_000, gMaxBetsPerMinute: 120 });
+  const market = await w.poll({ graceMin: 0 });
+  const opened: Any = await w.place(first, await w.intent(first, market.id,
+    { kind: "OPENER", side: "YES", stakeTzs: 3_000 }));
+  if (!opened.ok) throw new Error(`5n6b opener failed: ${show(opened)}`);
+  const player = await w.user({ balance: 100_000 });
+  const trigger: Any = await w.svc.buyPosition(player, { marketId: market.id, side: "YES",
+    stake: 5_000, idempotencyKey: crypto.randomUUID() });
+  if (!trigger.ok) throw new Error(`5n6b trigger failed: ${show(trigger)}`);
+  const intent = await w.intent(second, market.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
+    triggerPositionId: trigger.data.positionId, triggerUserId: player });
+  const before = await w.bal(second.userId);
+  const used = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  if (used.count < 1) throw new Error("5n6b: the previously placed PAIR did not reach the shared budget");
+  const remainsClaimed = async () => (await w.dal.houseBotIntentStore.get(intent.id))?.status === "CLAIMED"
+    && (await w.positionsOf(market.id)).every((p: Any) => p.houseBotId !== second.botId)
+    && (await w.bal(second.userId)).balance === before.balance;
+
+  await w.limits({ gCapPairRoundsPerDay: used.count, gCapPairDailyTzs: used.stakeTzs + 1_000,
+    gMaxBetsPerMinute: 120 });
+  const countStop: Any = await w.place(second, intent);
+  ok("5n6b.1 · a shared COUNTER at the desk round ceiling is refused before any money moves",
+    countStop.ok === false && countStop.reason === "house_cap_reached"
+      && countStop.detail?.cap === "PAIR_ROUNDS_PER_DAY" && await remainsClaimed(), show(countStop));
+
+  await w.limits({ gCapPairRoundsPerDay: used.count + 1, gCapPairDailyTzs: used.stakeTzs,
+    gMaxBetsPerMinute: 120 });
+  const stakeStop: Any = await w.place(second, intent);
+  ok("5n6b.2 · a shared COUNTER at the desk TZS ceiling is refused before any money moves",
+    stakeStop.ok === false && stakeStop.reason === "house_cap_reached"
+      && stakeStop.detail?.cap === "PAIR_DAILY_TZS" && await remainsClaimed(), show(stakeStop));
+
+  await w.limits({ gCapPairRoundsPerDay: used.count + 1, gCapPairDailyTzs: used.stakeTzs + 1_000,
+    gMaxBetsPerMinute: 120 });
+  const placed: Any = await w.place(second, intent);
+  const stored = await w.dal.houseBotIntentStore.get(intent.id);
+  const after = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("5n6b.3 · CONTROL · with both budgets available, the second desk holder places NO",
+    placed.ok === true && (await w.positionsOf(market.id)).some((p: Any) =>
+      p.id === placed.data?.positionId && p.houseBotId === second.botId && p.side === "NO"), show(placed));
+  ok("5n6b.4 · Postgres marks the shared COUNTER and charges one round and its stake durably",
+    stored?.status === "PLACED" && stored.positionId === placed.data?.positionId
+      && stored.decision?.twoSidedDesk === true && after.count === used.count + 1
+      && after.stakeTzs === used.stakeTzs + 1_000
+      && before.balance - (await w.bal(second.userId)).balance === 1_000);
+  await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+}
+
 // ═══ §6 · sanctioned change (b): a key is never someone else's receipt ═════════════════════
 section("§6 · (b) a reused key refuses instead of replaying another account's bet");
 {
