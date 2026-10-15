@@ -43,10 +43,15 @@ const browserSource = `
   const errors = [];
   const report = (error) => errors.push(String(error?.message ?? error));
   (async () => {
-    hydrateRoot(document.querySelector("#first"), React.createElement(Probe, { serverNowMs: stamp }),
+    const firstRoot = hydrateRoot(document.querySelector("#first"), React.createElement(Probe, { serverNowMs: stamp }),
       { onRecoverableError: report });
     await wait(350);
     const first = document.querySelector("#first [data-anchor]")?.textContent;
+    // The hook also supports a mounted caller receiving a fresh server stamp.
+    // The displayed offset must reset to zero for an unseen stamp.
+    firstRoot.render(React.createElement(Probe, { serverNowMs: stamp + 10000 }));
+    await wait(350);
+    const changed = document.querySelector("#first [data-anchor]")?.textContent;
     // The same server HTML is served again from the router cache after time has
     // elapsed. Hydrating it must not compare an advanced clock with old markup.
     await wait(2200);
@@ -60,6 +65,7 @@ const browserSource = `
     await wait(150);
     window.__anchorProbe = {
       first,
+      changed,
       replay,
       errors,
       plantErrors,
@@ -98,14 +104,15 @@ try {
   await page.waitForFunction(() => (window as typeof window & { __anchorProbe?: object }).__anchorProbe != null,
     undefined, { timeout: 15000 });
   const result = await page.evaluate(() =>
-    (window as typeof window & { __anchorProbe: { first?: string; replay?: string; errors?: string[]; plantErrors?: string[]; fatal?: string } }).__anchorProbe);
+    (window as typeof window & { __anchorProbe: { first?: string; changed?: string; replay?: string; errors?: string[]; plantErrors?: string[]; fatal?: string } }).__anchorProbe);
   assert.equal(result.fatal, undefined, `browser fixture: ${result.fatal}`);
   assert.equal(result.first, "0", "a fresh hydration keeps the server's text");
+  assert.equal(result.changed, "0", "a new server stamp resets the anchor after a mounted update");
   assert.deepEqual(result.errors, [], "a replayed timestamp hydrates without React #418");
   assert(Number(result.replay) >= 2000, `replay advances after hydration; got ${result.replay}`);
   assert(result.plantErrors?.some((e) => /Hydration failed|#418/.test(e)),
     "the planted early clock shift must trigger React's hydration error");
-  console.log("PASS — fresh SSR text matches; cached replay hydrates cleanly and advances after commit; early-shift plant is red");
+  console.log("PASS — fresh SSR text matches; a new stamp resets; cached replay hydrates and advances; early-shift plant is red");
 } finally {
   await browser.close();
   await new Promise<void>((closed) => server.close(() => closed()));

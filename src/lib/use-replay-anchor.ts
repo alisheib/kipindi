@@ -35,6 +35,9 @@ export function useReplayAnchor(serverNowMs: number): number {
     const first = FIRST_SEEN.get(serverNowMs);
     if (first == null) {
       FIRST_SEEN.set(serverNowMs, performance.now());
+      // A mounted caller can receive a new server stamp without remounting.
+      // Its state still holds the previous anchor until this layout effect.
+      setAnchor(serverNowMs);
     } else {
       setAnchor(serverNowMs + Math.max(0, performance.now() - first));
     }
