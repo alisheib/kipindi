@@ -142,15 +142,16 @@ those is missing, it stays silent — and that is by design.</p></div>
     ticking anything under it reaches no market at all.</div>
   <div><b>Choose how it enters.</b> Tick Counter, Fill or Opener for each product you enabled, as explained in
     section 2. An Up &amp; Down account used only for pairing can instead use the account controls in section 2A;
-    it will stay quiet while either two-sided desk budget is empty.</div>
+    it will stay quiet while either two-sided desk budget is empty. Another Active account needs Up &amp; Down
+    Opener on the same chain to place the first stake of an empty-round pair.</div>
   <div><b>Press Save on Rules.</b> Nothing on the Rules tab saves by itself.</div>
   <div><b>Press Start.</b> Read the sentence it answers with — if the account still cannot bet, it says why.</div>
   <div><b>Turn the master switch on.</b> Until it is on, nothing is staked by any account.</div>
 </div>
 
 <div class="box warn"><b class="lead">Ticking a product is not enough</b>
-<p>Up &amp; Down on with no chain ticked, or Polls on with no category ticked, reaches nothing. The desk will look
-completely healthy — Active, funded, limits set — and never place a bet. Always tick something underneath.</p></div>
+<p>Up &amp; Down on with no chain ticked, or Polls on with no category ticked, reaches nothing. Save on Rules and
+Start refuse that setup and explain what is missing. Always tick something underneath.</p></div>
 
 <h2>2 · The three ways an account enters a market</h2>
 <table>
@@ -206,8 +207,8 @@ chain and all three account controls below are on.</p>
       account may answer the player's stake on the unheld side; its amount is based only on the player's money.</td>
       <td>On that second account's Rules tab, turn on <b>Answer on the other side</b>. Counter and the account's
       usual scope and limits still apply. Both desk-wide two-sided budgets must also be set.</td></tr>
-    <tr><td><b>Pair a round with no player stake</b></td><td>One desk account has staked and no player has staked
-      on either side. A second account may take the opposite side. Polls are not paired.</td>
+    <tr><td><b>Pair a round with no player stake</b></td><td>One desk account has placed an automatic Opener stake
+      and no player has staked on either side. A second account may take the opposite side. Polls are not paired.</td>
       <td>On the second account's Rules tab, turn on <b>Answer on the other side</b>, set <b>Pair rounds · share of
       other stake</b> above 0%, and set <b>Pair rounds per day</b> above zero. The pair amount is the share of the
       first account's total open stake on one side, rounded down and never larger than it.</td></tr>
@@ -220,8 +221,9 @@ Both kinds use the same EAT-day count and stake budget. Leaving either field emp
 including queued pairs and Counters. A bet already past the budget check inside its lock may finish. The master
 switch still stops all desk betting.</p></div>
 <div class="box"><b class="lead">When you choose to allow two-sided play</b>
-<p>Start with a small desk budget, for example <b>50 bets</b> and <b>TZS 50,000</b> per EAT day. Set the account
-switch and numbers above only for accounts you choose. Allow for the extra stakes in the desk's daily stake and
+<p>Start with a small desk budget, for example <b>50 bets</b> and <b>TZS 50,000</b> per EAT day. Keep Up &amp; Down
+Opener on for at least one Active account covering that chain, so it can place the first stake of an empty-round
+pair. Set the account switch and numbers above only for accounts you choose. Allow for the extra stakes in the desk's daily stake and
 bets-per-day limits, and keep fees well under its daily loss limit: reaching the realised loss stop turns the
 whole desk off. Review every suspicious-bet flag on a desk account; if the investigation confirms two desk
 accounts paired, send the evidence to the owner before closing it. A flag involving a player is never cleared as an
