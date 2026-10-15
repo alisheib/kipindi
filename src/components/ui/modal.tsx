@@ -606,19 +606,6 @@ export function Modal({
         {showClose && <CloseX onClick={onClose} label={t.common.close} className="absolute right-3 top-3" />}
         {children}
       </div>
-      {/* The sheet variant docks to the bottom edge only below `sm` (see the wrapper's
-          items-end sm:items-center). Above it the panel is a centered dialog, so it must
-          arrive as one — a full-height sheet rise on a centred panel reads as a mistake.
-          Scoped to `.kp-modal-sheet`, NOT to `.m-sheet-in` itself: overriding the kit
-          utility globally would silently break any future real bottom sheet at ≥sm.
-          Swaps the kit keyframe only; no new motion vocabulary. Reduced motion is handled
-          globally by motion.css. */}
-      <style>{`@media (min-width: 640px) { .kp-modal-sheet { animation-name: m-settle-lift; } }`}</style>
-      {/* The tall sheet swaps at lg instead — to the MENU settle when it is a panel under its
-          trigger (the kit's floating-surface entrance, `.m-float-in`'s keyframe), else the dialog's. */}
-      {tall && (
-        <style>{`@media (min-width: 1024px) { .kp-modal-sheet-lg { animation-name: ${anchored ? "m-settle-menu" : "m-settle-lift"}; } }`}</style>
-      )}
     </div>,
     document.body,
   );
