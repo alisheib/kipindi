@@ -1078,3 +1078,95 @@ optional, the coordinator's call:
 **E · `docs/NEXT-PLAN.md`:** no change proposed (S10 has not started; ▶ 0c names the live lane).
 
 **F · `docs/COMPLIANCE-DECISIONS.md`:** no entry proposed (Open point 18).
+
+---
+
+## ⭐ Amendments from the build (2026-10-15) — these override everything above, "None yet" included
+
+Filed by the S10 builder on OMEGA-COMPILE01, in `C:\50pick-ssd\kipindi-s10b` (branch `codex/vodacom-s10-build`, from
+origin/main `331048acb` with this plan's `82b2ecd2b` cherry-picked), each in the commit of the package it changes. Each
+says what it *Overrides:* and where it comes *From:*. Where an amendment and the body disagree, the amendment wins.
+⛔ The status lines WP0 would have written into VODACOM-PLAN §0, §0h and §1 are NOT written by the build: those sections
+are the coordinator's (the coordinator's instruction of 2026-10-15), so the build's report hands their text over.
+
+**A1 · The start line: S8 is not closed; S10 starts anyway, on S8's live code.** *Overrides:* WP0 step 1's first bullet,
+Open point 1, the "S10 starts after S8 is finished" of Points for Ali 10. *From:* WP0's re-read at `331048acb`. §1's S8
+row still reads 🔨 (VODACOM-PLAN.md:3938): S8's code is live behind the flag, the A21 root-`:has()` fix (`63704243c`) is on
+main and A21 passes, but S8's close record is pending ([E3], the exact-tip CI and the closing battery remain). The
+coordinator directed (2026-10-15) that S10 build WP1–WP7 and WP8a now, since they need only S8's code — Open point 1's
+overrule. So any S8 change that lands on `bet-sheet-host.tsx`, `bet-sheet.tsx`, `sheet-warmup.tsx`, `sheet-state.ts`,
+`pending-bet.ts`, `sheet-owned-storage.ts`, AppShell's host line or the question page's journey arms before S10 merges is
+rebased over, and every suite that reads a merged file is re-run (Risk 11's rule).
+
+**A2 · S9's state, and Corrections 7 and 8 as S9 settled them.** *Overrides:* WP0 step 1's second and third bullets,
+WP1's "S9's `depositReturnPath` reads the same list at its rebase", Correction 8's last sentence, Risk 10. *From:* the S9
+release candidate `codex/s9-release` `0ae0007f8` (based on `c14cb403e`; it holds `f7bdc2ea1` and `ee518f52a`), read
+without touching it. Nothing of S9 is on main. On the release candidate:
+- Correction 7 is fixed by `d281f0505`: `trustedDepositBet` passes the caller as the marker's owner
+  (`stakeFromUrl(bet, trust.markerRaw, nowMs, callerId)`), and `markerForDeposit` proposes a selection-only marker stamped
+  with the caller, never a key (`src/lib/journey/deposit-state.ts` on that branch).
+- Correction 8 is settled the other way round: `depositReturnPath` accepts ANY page that opens the sheet (`sheetOpensOn`:
+  `/`, `/live`, `/watchlist`, `/markets/<any id>`), so question A's page is a valid return for a bet on B. S10's
+  `betReturnPath` keeps Open point 13's choice (B's own page, which always draws B's seed); every path it returns is one
+  S9 accepts, so the two rules agree without S9 reading `BET_RETURN_PAGES`.
+WP8b and S10's close still wait for S9's deposit screen, waiting page and return ON MAIN; both corrections are re-read on
+main when S9 lands.
+
+**A3 · Today's reds (WP0 step 2), measured at `331048acb`, in process, no DATABASE_URL, one at a time.** Green:
+auth-carry 22/22 and its red 20/20 plants; pending-bet all and its red 19/19; bet-sheet all and its red 122/122;
+bet-sheet-host 49/0 and its red (84 in-process controls); sheet-owner-recovery 52; journey-question all and its red 13/13;
+journey-shell 446 and its red 208/208 (417 proofs); journey-home all; one-sided all; visual-pass-r8d 76/0;
+simple-journey-flag 135/0 and its red 41/41; privacy-notice 116/0; i18n en = sw = zh = 2,744 keys; enter-where-pressed
+all and its red 119/119; journey-funnel all; kyc-at-withdrawal 165/0; red-anchors 5,370/0; client-graph-safe 6/0;
+vodacom-plan 18 rows, 0 failures; docs all resolve. **One red, not S10's:** `red:journey-home` 242/244 — "MISSED the
+strip moved below the main landmark (it would paint under the page for every reader) — the plant is broken: the plant's
+anchor resolves 0 times, not once: <MainLandmark>" and "MISSED a second mount of today's strip beside the slot (two strips
+for a classic reader)", one cause: A21 (`63704243c`) gave AppShell's landmark its `viewer` prop, so §8's `STRIP_MAIN` no
+longer resolved, and §8's place reader (`stripPlaced`) had been finding OptOutShell's `<MainLandmark>` below AppShell
+rather than AppShell's own. Re-pinned in the build's first commit (`5680f7d87`), the control kept: 244/244.
+
+**A4 · Line drift, re-read at `331048acb` (no contradiction found).** *Overrides:* the body's line numbers below.
+- `docs/VODACOM-PLAN.md`: every line after :30 is +14 (the §0 paragraph on the owner's answers): §1's S10 row :3940, §2's
+  pre-flip list :3953-3959, S8's keys :4059-4093, §3.1's goldens :4449, §3.3's refresh line :4601, §3.7 :4786-4801 (the
+  "Balance 0 → … code →" line :4794), §5 S10 :5050, §5 S14's `e2e:journey` :5072-5073, the session law :406-410, §0b
+  decision 2 :526-528, §0k's checkpoint :888-894 and its other lanes :1014-1017.
+- `src/components/layout/app-shell.tsx`: the host slot :618 (was :617), the event stream :608 (was :607).
+- `src/app/globals.css`: `.kp-wsheet` :6713 and its grab :6714 (were :6703-6704), the pair and the act :6722-6727 (were
+  :6712-6717), the journey toast offset :7439-7440 (were :7429-7430), the `.kp-bsheet` family :8591-8643 (were :8574-8626):
+  the panel :8591, the shell :8592, the header :8593, the chosen side :8595, the scroll :8596 and its focus rings :8600,
+  the title :8601, the stake :8605-8606, the chips :8607, the estimate :8610, the bounds :8619-8620, the terminal :8635,
+  the footer :8638, the commit :8643. `.btn:focus-visible` :1249 and `--h-control-*` :331-333 are unchanged. Since A21
+  every journey-scoped rule reads `:root:is([data-shell="journey"], #kp-journey-shell)` (was `:root:has(#kp-journey-shell)`),
+  Correction 13's toast offset included.
+- `scripts/journey-shell.test.mts`: 8.chrome's pills :1566-1567, 8.sheet :1800, the census doors :1986-1994.
+- Everything else cited reads at the same lines as at `c14cb403e` (pending-bet.ts, sheet-state.ts, sheet-owned-storage.ts,
+  bet-sheet-host.tsx, bet-sheet.tsx, sheet-warmup.tsx, shell-lazy.tsx, journey-card.tsx, journey-bet-buttons.tsx,
+  journey-top-bar.tsx, tickets-guest-sheet.tsx, top-app-bar.tsx, auth-landing.ts, safe-next.ts, invite-code.ts, the
+  question page, the auth pages and actions, auth-flash.tsx, toast.tsx, modal.tsx, the sheet route, the privacy page and
+  the qa scripts).
+- None of "Proposed record annotations" A1–A8, B, C or D is on main yet; they remain the coordinator's to apply.
+
+**A5 · A21's guest landmark is the same reader as WP4's slot.** *Overrides:* nothing; recorded so WP4's census reads it.
+A21 gave AppShell's main landmark `data-viewer="guest"` for a journey reader with no session
+(`<MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>`, app-shell.tsx:575). WP4's slot hands the guest
+host to exactly that reader (`journeyShown` and no `session`), so the two answers cannot disagree.
+
+**A6 · A 600-character `next` lands as itself.** *Overrides:* WP7 step 1's "a 600-character next → `/?welcome=new`".
+*From:* WP0's re-read. The register action keeps a same-origin `next` of any length (`sanitizeNext`,
+register/actions.ts:56; `landingAfterAuth` asks `sanitizeNext` too, auth-landing.ts:16), and so do the sign-in and the
+two-step doors (login/actions.ts:52, :129): an over-long safe path lands as itself, never cut. The 512 bound is the
+DOORS' (`boundedNext`), so no door builds a longer `next`. `test:post-register-landing` pins today's rule; S10 changes no
+landing.
+
+**A7 · The guest's one storage write may archive a legacy envelope first.** *Overrides:* WP4 Gates' "the only storage key
+touched is `kp-pending-bet`". *From:* `saveSheetSelection` (sheet-owned-storage.ts:128-135) quarantines a keyed legacy
+envelope into `kp-sheet-intents:legacy:v1` (:84-93) before it replaces `kp-pending-bet`: a key of an earlier signed-in
+request is archived, never destroyed by a guest's selection, and Privacy §7 (v2026-10-14) already names both keys. The
+census becomes: the guest host names no storage key but `PENDING_BET_KEY`, writes only through `saveSheetSelection`, and
+with no legacy envelope writes `kp-pending-bet` alone.
+
+**A8 · Point for Ali 4 is built, as its own commit.** *Overrides:* "What does change for a classic visitor" (b)'s "only if
+Ali takes Point for Ali 4" and Open point 15's "(Points for Ali 4)": he took it (COMPLIANCE-DECISIONS § "2026-10-14 · The
+owner's answers to the open points", item 9). The classic question page's guest panel carries a valid `invite` beside
+`ref`, through `doorHrefsFor`, in a commit of its own on the build branch, so the coordinator can release it alone (a §2
+row). It is the one change in S10 every classic guest receives: that panel's two hrefs, in its HTML and RSC.
