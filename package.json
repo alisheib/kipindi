@@ -185,6 +185,7 @@
     "qa:agent-visual-authed": "node scripts/live/agent-v1-visual-authed.mjs",
     "red:rg-doors": "node scripts/red-rg-doors.mjs",
     "test:webhook-sec": "tsx scripts/webhook-security.test.mts",
+    "test:generic-webhook-provider-binding": "tsx scripts/generic-webhook-provider-binding.test.mts",
     "red:webhook-money": "node scripts/webhook-money-red.mjs",
     "test:lock-hash": "tsx scripts/lock-hash.test.mts",
     "test:contrast": "tsx scripts/contrast-audit.mts",
