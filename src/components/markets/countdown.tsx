@@ -91,7 +91,7 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
           </time>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-1 sm:gap-2">
         <Cell v={time.d} unit={t.common.days} />
         <Cell v={time.h} unit={t.common.hours} />
         <Cell v={time.m} unit={t.common.minsUnit} />
@@ -111,9 +111,9 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
  */
 const Cell = memo(function Cell({ v, unit }: { v: number; unit: string }) {
   return (
-    <div className="flex flex-col items-center min-w-[56px]">
+    <div className="flex min-w-0 flex-1 flex-col items-center">
       <div
-        className="font-mono font-bold text-[28px] tabular-nums leading-none rounded-md border border-border bg-bg-elevated px-3 py-2.5 min-w-[48px] text-center text-text"
+        className="w-full min-w-0 rounded-md border border-border bg-bg-elevated px-2 py-2.5 text-center font-mono text-[28px] font-bold tabular-nums leading-none text-text sm:px-3"
         style={{ letterSpacing: "-0.04em" }}
         // SSR and hydration are moments apart; the seconds cell (and, at a
         // boundary, any cell) legally differs between the two paints. This is

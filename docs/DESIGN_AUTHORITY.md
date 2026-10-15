@@ -1399,7 +1399,7 @@ Values: `--sp-*`, `--r-*` in `globals.css`. Laws:
    `--rh-*` gaps §Spacing allows a long page. It takes `--rh-section`.
 2. **The radius scale is additive and closed, and each family has ONE radius:**
    cards, modals and sheets take `--r-lg`; inputs, stake rows, stat tiles and ledger
-   containers take `--r-md`; tabs and filter pills take `--r-sm`; chips, quick-stake pills
+   containers take `--r-md`; tabs take `--r-sm`; filter pills, chips, quick-stake pills
    and split-bar tracks take `--r-pill`; avatars and dots are 50%. Buttons take the control
    radius, except `btn-xl`, which takes `--r-lg`.
    ⛔ **No one-off `rounded-[…]`.** An arbitrary radius is a second definition site.

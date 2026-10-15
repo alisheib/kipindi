@@ -184,10 +184,10 @@ export function LegalSection({
 }) {
   return (
     <section className="space-y-2 pt-2">
-      <h2 className="font-display text-[17px] font-semibold text-text leading-tight text-balance">
-        <span className="font-mono text-body-sm text-text-subtle mr-2 tabular-nums">{n}.</span>
+      <h2 className="grid grid-cols-[3ch_minmax(0,1fr)] gap-x-2 font-display text-[17px] font-semibold text-text leading-tight">
+        <span className="font-mono text-body-sm text-text-subtle tabular-nums">{n}.</span>
         {/* Round 7: a section heading never ends a line on a connective either (`keepConnectives`). */}
-        {keepConnectives(title)}
+        <span className="text-balance">{keepConnectives(title)}</span>
       </h2>
       {/* 2026-09-14: text-pretty, inherited by every paragraph and list item, so a zh paragraph does not end
           on one stranded character. Not text-balance: these are long paragraphs. */}

@@ -4414,25 +4414,21 @@ html[data-sheet-open] .route-enter { animation: none; }
 
    ⭐ Re-measured with both shown: no overflow at 360, 390 or 414 — the yield was never needed,
    exactly as `top-app-bar.tsx`'s own comment had already recorded. At 320 alone the pair ended
-   0.5px past the viewport, so below `sm` the two account pills tighten from the `btn-lg` 20px
-   measure to 14px a side. Same height, same radius, same idiom — only the measure moves, which
-   is the one thing a control is allowed to change with width.
+   0.5px past the viewport, so below `sm` the two account pills tighten their horizontal
+   measure to 14px a side. The current md-height pair lines up with the language control.
    ⛔ NOT A NEW BREAKPOINT. `639.98px` is the mirror of Tailwind's `sm` (640), the boundary this
    pair was already being judged against; inventing a 360 or 400 rung here would add a tier to a
    system that documents exactly five. */
 @media (max-width: 639.98px) {
   /* density: general — the header's auth pills (E-276), not the board; both card-spacing settings. */
-  /* U5 · THE PAIR TAKES THE sm RUNG BELOW 640 — 48 → 40, with the 13px measure that rung
-     carries. The ladder is 40 / 44 / 48 and these are secondary CHROME: a btn-lg pill is the
-     largest control the product has, and two of them filled 48 of the header's 56px, leaving
-     4px of air. At the sm rung they leave 8.
-     ⛔ AND THE 14px MEASURE STAYS, DELIBERATELY. `.btn-sm` carries 12px, but 14 was chosen by
+  /* V2b · THE PAIR TAKES THE md RUNG AT EVERY WIDTH — 44px, the language trigger's height.
+     The utility trigger keeps its bordered shape; action pills keep their capsule shape.
+     ⛔ AND THE 14px MOBILE MEASURE STAYS, DELIBERATELY. `.btn-sm` carries 12px, but 14 was chosen by
      MEASUREMENT for the 320 fit (E-276) and there is already slack there — re-measured on
      production 2026-09-23: both pills visible at 320 in sw/en/zh, document overflow 0, the bar
      exactly 320 wide, the pair ending 12px short of the edge. Changing a measured value for
-     tidiness is what this campaign exists to stop. The height and the type step; the measure
-     that was reasoned about does not. */
-  .kp-auth-cta { height: var(--h-control-sm); font-size: 13px; padding-left: 14px; padding-right: 14px; }
+     tidiness is what this campaign exists to stop. The type steps; the measured width does not. */
+  .kp-auth-cta { height: var(--h-control-md); font-size: 13px; padding-left: 14px; padding-right: 14px; }
 }
 
 /* 🔴 E-290 · A CHIP WHOSE OWN AXIS IS STILL IN FLIGHT. `/updown`'s duration chips are built by

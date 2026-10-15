@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { DotSeq } from "@/components/ui/dot-seq";
 // A card's eyebrow never ends a line on a connective (round 9, R9-B): beside its glyph box it gets ~188px at 320, and
 // "Mazungumzo ya moja kwa moja" (200px) breaks "…moja kwa" / "moja" — now "…moja" / "kwa moja".
 import { keepConnectives } from "@/components/ui/keep-run";
@@ -238,7 +239,7 @@ function ContactCard({
   // below do.
   const card = (
     <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-2 hover:border-brand-400 transition-colors h-full">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <span className={`inline-flex h-7 w-7 items-center justify-center rounded-md border ${tintCls}`}>
           {icon}
         </span>
@@ -246,7 +247,7 @@ function ContactCard({
           {keepConnectives(title)}
         </span>
       </div>
-      <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>
+      <p className={href?.startsWith("tel:") ? "font-mono tabular-nums font-bold text-[15px] text-text whitespace-nowrap" : "font-display font-bold text-[15px] text-text break-all"}>{value}</p>
       <p className="text-body-sm text-text-subtle">{sub}</p>
     </div>
   );
@@ -272,7 +273,7 @@ function QuickLinkCard({
     // edge the hero, the contact cards and the FAQ above it share.
     <Link
       href={href as never}
-      className="flex items-center gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400 transition-colors"
+      className="flex items-start gap-3 rounded-xl glass-panel p-5 lg:p-6 hover:border-brand-400 transition-colors"
     >
       {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215), so
           `h-9` was 64px: 24px larger than the 40px badge on this very same page. */}
@@ -283,12 +284,9 @@ function QuickLinkCard({
         {/* 2026-09-14 — the title wraps instead of truncating ("Responsible gamb…" at 768), and both
             lines balance so a zh subtitle never leaves one glyph alone. */}
         <p className="font-display text-[13px] font-semibold text-text break-words text-balance">{title}</p>
-        {/* Each item is unbreakable with its dot in front, so a wrap never starts or ends on a bare "·", and zh
-            never splits a term (break-keep) — 3-up cards at 768 did both (visual pass 2). */}
+        {/* DotSeq gives each phrase its own wrap point and hides a dot at a new line's edge. */}
         <p className="mt-0.5 text-body-sm text-text-subtle text-balance break-keep">
-          {sub.split(" · ").map((part, i) => (
-            <span key={i}>{i > 0 && " "}<span className="whitespace-nowrap">{i > 0 && "· "}{part}</span></span>
-          ))}
+          <DotSeq text={sub} />
         </p>
       </div>
     </Link>

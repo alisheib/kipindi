@@ -93,7 +93,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="relative w-full min-w-0 max-w-md">
             {/* Mobile lockup — the rail carries it on lg. */}
-            <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-block transition-opacity hover:opacity-90 lg:hidden">
+            <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-flex min-h-[var(--tap-min)] items-center transition-opacity hover:opacity-90 lg:hidden">
               <FiftyLockup size={22} />
             </Link>
             {children}

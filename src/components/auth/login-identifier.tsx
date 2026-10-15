@@ -83,7 +83,7 @@ export function LoginIdentifier({
                 // (tailwind.config.ts:200-215), so `h-10` is 80px and made the identifier
                 // chooser taller than the field it introduces. 44px = --h-input, the
                 // height of the phone/email field directly below.
-                "brand-focus inline-flex h-[44px] items-center justify-center gap-2 rounded-md border text-[13.5px] font-display font-semibold transition-colors duration-100",
+                "brand-focus inline-flex h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-md border text-body-sm font-display font-semibold transition-colors duration-100",
                 active
                   ? "border-brand-500/60 bg-brand-500/15 text-brand-200"
                   : "border-transparent text-text-muted hover:text-text",

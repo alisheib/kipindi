@@ -172,20 +172,20 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           the slack THIS FILE set as the standard at 360: *"8px leaves 9px, which is the
           difference between 'fits' and 'fits reliably'."*
           ⭐ The bar is its own surface, not page content, so its gutter is allowed to differ
-          from the page's at the one width where the row is full. ⛔ Below `sm` only — from `sm`
-          up there is 16px of measured slack and `px-5` stands. */}
-      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4">
+          from the page's at the one width where the row is full. ⛔ Below `sm` only — above
+          it the bar follows the page/footer gutters (`px-3`, then `px-6`). */}
+      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-3 lg:gap-2 lg:px-6 xl:gap-4">
         {/* Brand lockup — kit COMPONENTS §14: "inside a `min-height: 44px` link".
             ⚠️ It was 136×33, i.e. UNDER the 44px floor on the control that takes a reader back to
             the board from anywhere in the product. Pre-existing rather than introduced here, and
             surfaced by measuring every control in the bar rather than only the ones this batch
-            added — the kit had already specified the fix. Width was never the problem (136px);
-            only the height was, so `inline-flex items-center` gives it the floor without moving
-            the mark one pixel. */}
+            added — the kit had already specified the fix. Below xl, the mark alone is 26px;
+            its 40px hit box is centred with 7px negative margins on each side, so the tightly
+            measured 320px row and the mark's ink stay in place. The full lockup resets margins. */}
         <Link
           href="/"
           aria-label={`50pick ${t.common.home}`}
-          className="shrink-0 inline-flex min-h-[44px] items-center hover:opacity-90 transition-opacity"
+          className="-mx-[7px] inline-flex min-h-[44px] min-w-[var(--tap-min)] shrink-0 items-center justify-center hover:opacity-90 transition-opacity xl:mx-0"
         >
           {/* M8 — the mark performs: one flip on its own needle axis per hover
               (.mark-flip-i), on the LOGO only. Wrapped on the mark span, not the
@@ -450,14 +450,14 @@ function GuestAuthPills({ signIn, signUp }: { signIn: string; signUp: string }) 
       <Link
         href={signIn as never}
         aria-label={t.common.signIn}
-        className="btn btn-ghost btn-lg btn-pill kp-auth-cta"
+        className="btn btn-ghost btn-md btn-pill kp-auth-cta"
       >
         {t.common.signIn}
       </Link>
       <Link
         href={signUp as never}
         aria-label={t.common.signUp}
-        className="btn btn-primary btn-lg btn-pill kp-auth-cta"
+        className="btn btn-primary btn-md btn-pill kp-auth-cta"
       >
         {t.common.signUp}
       </Link>

@@ -738,7 +738,7 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col bg-bg-base text-text">
       <SkipToContent label={t.common.skipToContent} />
       <header style={{ height: 56, background: "var(--panel)", borderBottom: "1px solid var(--border)" }}>
-        <div className="mx-auto max-w-board flex items-center justify-between h-full gap-2 px-3 sm:px-5">
+        <div className="mx-auto max-w-board flex items-center justify-between h-full gap-2 px-3 lg:px-6">
           <span className="inline-flex min-h-[44px] items-center">
             <FiftyLockup size={22} />
           </span>
@@ -746,7 +746,7 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
         </div>
       </header>
       <MainLandmark>{children}</MainLandmark>
-      <footer className="mt-8 lg:mt-12 bg-bg-elevated/40" data-testid="optout-footer">
+      <footer className="mt-8 lg:mt-[var(--rh-close)] bg-bg-elevated/40" data-testid="optout-footer">
         <div aria-hidden className="claret-rule mx-auto max-w-board" />
         <div className="mx-auto max-w-board px-3 lg:px-6 pt-4 pb-7 space-y-2">
           <div className="flex items-center gap-[10px]">

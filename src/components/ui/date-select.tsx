@@ -62,7 +62,7 @@ const HEIGHT: Record<NonNullable<Props["size"]>, string> = {
 const TYPE: Record<NonNullable<Props["size"]>, string> = {
   sm: "px-2.5 text-[13px]",
   md: "px-3.5 text-[16px]",
-  lg: "px-3.5 text-[16px]",
+  lg: "px-2.5 text-[16px]",
 };
 
 // Widths must comfortably fit the digits in the mono font or the centered text
@@ -304,10 +304,22 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
           errored ? "border-danger-500" : "border-border",
         )}
         style={{ background: errored ? "var(--danger-wash)" : "var(--bg-inset)" }}
+        onPointerDown={(e) => {
+          // The field's empty space and separators are part of the date target.
+          // Keep direct segment and calendar presses on their own controls.
+          if ((e.target as Element).closest("input, button")) return;
+          e.preventDefault();
+          const nearest = refs.reduce((best, ref, idx) => {
+            const box = ref.current?.getBoundingClientRect();
+            const distance = box ? Math.abs(e.clientX - (box.left + box.right) / 2) : Infinity;
+            return distance < best.distance ? { idx, distance } : best;
+          }, { idx: 0, distance: Infinity });
+          focusSeg(nearest.idx);
+        }}
       >
         <div className={cn("flex-1 flex items-center tabular-nums font-mono", TYPE[size])}>
           {SEGMENTS.map((seg, idx) => (
-            <span key={seg.key} className="flex items-center">
+            <span key={seg.key} className="flex h-full items-center">
               {idx > 0 && <span className="text-text-subtle mx-1 select-none" aria-hidden>/</span>}
               <input
                 ref={refs[idx]}
@@ -333,8 +345,8 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                 aria-invalid={errored || undefined}
                 aria-required={required || field?.required || undefined}
                 maxLength={seg.max}
-                style={{ width: SEG_WIDTH[seg.key] }}
-                className="bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
+                style={{ width: SEG_WIDTH[seg.key], minWidth: "var(--tap-min)" }}
+                className="h-full bg-transparent text-center text-text outline-none placeholder:text-text-subtle"
                 onChange={(e) => onSegChange(idx, e.target.value)}
                 onKeyDown={(e) => onSegKeyDown(idx, e)}
                 onBlur={() => onSegBlur(idx)}

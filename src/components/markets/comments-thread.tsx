@@ -194,7 +194,7 @@ export function CommentsThread({
        navigate the reader to the TOP of a market detail page — a control that appears to have
        thrown them away. ⚠️ There was no `id` on this section at all; it was grepped for before the
        links were written rather than assumed. */
-    <section id="discussion" className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
+    <section id="discussion" className="mt-8 rounded-lg border border-border bg-bg-elevated p-5">
       <div className="mb-4 flex items-center gap-2">
         <I.comment s={16} />
         <h2 className="font-display text-[17px] font-semibold text-text">{t.common.discussion}</h2>
