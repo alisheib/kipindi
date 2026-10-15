@@ -244,6 +244,8 @@ try {
   await waitFrame(pendingPage, "low");
   await pendingPage.locator('[data-testid="journey-sheet-deposit"]').click();
   await pendingPage.waitForURL(/\/wallet\/deposit\?/);
+  const pendingBet = new URL(pendingPage.url()).searchParams.get("bet");
+  check("pending deposit carries the selected bet", !!pendingBet && pendingBet.startsWith(pendingSeed.id + "."));
   await pendingPage.locator('label:has(#provider-MPESA)').click();
   await pendingPage.locator('input[name="amount"]').fill("1000");
   await pendingPage.locator("#msisdn").fill("712345678");
@@ -266,6 +268,17 @@ try {
   const pendingReplay = await pendingPlayer.ctx.request.get(pendingStatusUrl).then((r) => r.json());
   check("pending wait replay keeps one uncredited payment", pendingReplay.state === "PENDING" && pendingReplay.balance === 0);
   await noPosition(pendingPlayer.ctx, pendingSeed.id, "pending wait replay does not auto bet");
+  // Following the saved choice before the callback cannot turn the pending
+  // payment into spendable money or submit the bet behind the player's back.
+  await pendingPage.goto(`${BASE}/?bet=${encodeURIComponent(pendingBet)}`, { waitUntil: "domcontentloaded", timeout: 120_000 });
+  await pendingPage.locator(S.root).waitFor({ timeout: 120_000 });
+  const earlyFrame = await pendingPage.locator(S.root).getAttribute("data-frame");
+  check("return before confirmation restores the choice without a bet", ["edit", "low"].includes(earlyFrame)
+    && pendingBetRequests.length === 0, `frame=${earlyFrame}, bet requests=${pendingBetRequests.length}`);
+  const earlyStatus = await pendingPlayer.ctx.request.get(pendingStatusUrl).then((r) => r.json());
+  check("return before confirmation cannot spend pending money", earlyStatus.state === "PENDING" && earlyStatus.balance === 0,
+    `state=${earlyStatus.state}, balance=${earlyStatus.balance}`);
+  await noPosition(pendingPlayer.ctx, pendingSeed.id, "return before confirmation has no bet or bet ledger row");
   await pendingPlayer.ctx.close();
 
   evidence.completedAt = stamp();
