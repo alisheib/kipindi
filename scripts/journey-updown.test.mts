@@ -19,8 +19,9 @@
  *      and nothing else (the owner's ruling of 2026-10-14), no "×" anywhere, the chips in full figures, the commit names
  *      the stake, the projection is `projectedReturn` and travels with its qualifier, the empty-side sentence iff a side
  *      is empty; not enough money draws the sheet's own low rows; a bonus that covers the stake draws none.
- *   §6 CLASSIC FILES KEEP EVERY LINE. Each classic file S12 touched holds its base text as an in-order subsequence: lines
- *      are only ADDED beside it, except the named one-line swaps (each of which is classic-identical by construction).
+ *   §6 FIVE CLASSIC FILES KEEP THEIR LINES. Each file this section tracks holds its base text as an in-order subsequence:
+ *      lines are only added beside it, except the named journey-only swaps and the source footer's DotSeq replacement.
+ *      `test:updown-source-line` proves that replacement keeps the price's source and full quoted time together.
  *   §7 THE FLAG. The pages read the viewer's facts only for a journey request with a session, and hand the arm its props
  *      by a spread that a classic card's props never see.
  *   §8 THE WORDS. S12's journey keys exist in en/sw/zh with the reviewed Swahili; the Chinese How-to says winners share
@@ -385,12 +386,18 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
 }
 
 // ── §6 · classic files keep every line ────────────────────────────────────────────────────────────────────────────
-console.log("\n§6 · the classic files keep every base line, in order; only the named one-line swaps differ");
+console.log("\n§6 · the classic files keep every base line, in order, except the named swaps and source footer");
 {
   const SWAPS: Record<string, RegExp[]> = {
     [BOARD]: [/^\s+walletBalance=\{walletBalance\}$/],
     [ROUND]: [/^\s+searchParams: Promise<\{ side\?: string; from\?: string \}>;$/, /^\s+lockedSide,$/, /^\s+walletBalance: detail\.walletBalance,$/, /^\s+\{t\.market\.udPositionsOnRound\} · \{formatNumber\(myPosition\.items\.length\)\}$/],
-    [CARD]: [/^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/],
+    [CARD]: [
+      /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,
+      /^\s+price, and never leaving the dot stranded at a line's end \(the stamp carries it onto its own line\)\. The$/,
+      /^\s+seconds stay \(E-47b\)\. \*\/\}$/,
+      /^\s+\{t\.market\[SOURCE_CLASS_KEY\[sourceClass\]\]\}$/,
+      /^\s+\{quoted && <>\{" "\}<span className="whitespace-nowrap">\{"· "\}/,
+    ],
     [PANEL]: [],
     [ACTION]: [],
   };
@@ -409,7 +416,7 @@ console.log("\n§6 · the classic files keep every base line, in order; only the
     }
     return { file, missing, swapsSeen: swaps.filter((re) => baseLines.some((l) => re.test(l))).length, swapsWanted: swaps.length };
   });
-  ok("6.1 every base line of the five classic files is still there, in order, but for the named swaps",
+  ok("6.1 every base line of the five classic files is still there, in order, but for the named swaps and DotSeq footer",
     results.every((r) => !("error" in r) && r.missing!.length === 0 && r.swapsSeen === r.swapsWanted), `against ${BASE}: ` + j(results.filter((r) => "error" in r || r.missing!.length || r.swapsSeen !== r.swapsWanted)));
   const board = strip(read(BOARD)), roundSrc = strip(read(ROUND)), card = strip(read(CARD)), panel = strip(read(PANEL));
   ok("6.2 each swap is classic-identical by construction: the journey value only when `judViewer` is set, else today's",
@@ -468,4 +475,4 @@ if (fails.length) {
   console.error(`\n✗ ${fails.length} failed:\n${fails.map((f) => `   · ${f}`).join("\n")}\n`);
   process.exit(1);
 }
-console.log("✓ Juu/Chini speaks the journey's language on the classic money path, and no classic line moved.\n");
+console.log("✓ Juu/Chini speaks the journey's language on the classic money path; the named source footer replacement is guarded separately.\n");
