@@ -266,6 +266,14 @@ function suspenseCensus(src: Src): string[] {
       if (f === "src/app/markets/page.tsx" && fb === "<MarketsBoardGhost />"
         && s.includes('import { MarketsBoardGhost } from "./markets-ghost";')) continue;
       if (f === "src/components/layout/top-app-bar.tsx" && fb.startsWith("<GuestAuthPills")) continue; // chrome, not a skeleton
+      // S10's URL-aware guest doors suspend while reading search params; each fallback draws the same links in the
+      // page chrome or guest sheet, not a loading skeleton. Keep these two exceptions exact and named.
+      if (f === "src/components/journey/journey-top-bar.tsx"
+        && fb === '<JourneyGuestAuthPills signIn="/auth/login" signUp="/auth/register" />'
+        && s.includes("function JourneyGuestAuthPills(")) continue;
+      if (f === "src/components/journey/tickets-guest-sheet.tsx"
+        && fb === '<TicketsGuestLinks signUp="/auth/register?next=%2Fpositions" signIn="/auth/login?next=%2Fpositions" onClose={onClose} />'
+        && s.includes("function TicketsGuestLinks(")) continue;
       // ⭐ THE VODACOM PLAN S7 (WP7, A17 item 2, A24 item 2): `/`'s journey arm stands the journey home's own ghost while the
       // home's list arrives — the very drawing the root loading's journey picture of `/` draws (route-ghost.tsx), so one
       // drawing in two places. `/`'s loading file is the root's, generic for every classic reader and unedited (A17 item
@@ -283,7 +291,7 @@ function suspenseCensus(src: Src): string[] {
 }
 {
   const now = suspenseCensus(REAL);
-  ok("2.1 · the census: outside the console every Suspense fallback is null, the classic bar's guest pills (chrome), or its route's own ghost imported from ./loading (on `/`, the journey home's own ghost: S7 WP7) — no page draws a skeleton of its own",
+  ok("2.1 · the census: outside the console every Suspense fallback is null, named guest-door chrome, or its route's own ghost imported from ./loading (on `/`, the journey home's own ghost: S7 WP7) — no page draws a skeleton of its own",
     now.length === 0, now.join(" | "));
   const back = suspenseCensus(planted("src/app/markets/page.tsx", "<Suspense fallback={<MarketsBoardGhost />}>", "<Suspense fallback={<GridSkeleton />}>"));
   ok("2.1′ PLANT · /markets' own GridSkeleton back as the fallback is reported", back.length > 0, back.join(" | "));
@@ -450,11 +458,11 @@ const subPairs: Pair[] = [
 section("5 · /leaderboard: ribbon, lens, sort, podium and the table with its head — no spinner box");
 const LB = "src/app/leaderboard/page.tsx", LBG = "src/app/leaderboard/loading.tsx", RIB = "src/components/layout/page-ribbon.tsx";
 const lbPairs: Pair[] = [
-  { band: "the ribbon", page: ["rounded-xl border border-border bg-bg-elevated/60 px-4 py-3", "flex flex-wrap items-baseline gap-x-6 gap-y-2"], pageFile: RIB, ghost: "rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent", ghostFile: LBG },
-  { band: "a ribbon stat", page: "flex items-baseline gap-2 min-w-0", pageFile: RIB, ghost: "flex items-baseline gap-2 min-w-0", ghostFile: LBG },
+  { band: "the ribbon", page: ["rounded-xl border border-border bg-bg-elevated/60 px-4 py-3", "grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3"], pageFile: RIB, ghost: "rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 text-transparent", ghostFile: LBG },
+  { band: "a ribbon stat", page: "flex min-w-0 flex-col items-start gap-1", pageFile: RIB, ghost: "flex min-w-0 flex-col items-start gap-1", ghostFile: LBG },
   { band: "a ribbon label", page: "font-mono text-micro uppercase eyebrow font-bold text-text-subtle whitespace-nowrap", pageFile: RIB, ghost: "font-mono text-micro uppercase eyebrow font-bold whitespace-nowrap", ghostFile: LBG },
   { band: "a ribbon figure", page: "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none text-text", pageFile: RIB, ghost: "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none", ghostFile: LBG },
-  { band: "the lens", page: "flex flex-wrap items-center gap-1.5 -mx-1 px-1", pageFile: LB, ghost: "flex flex-wrap items-center gap-1.5 -mx-1 px-1", ghostFile: LBG },
+  { band: "the lens", page: "kp-thin-scroll kp-strip-fade flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0", pageFile: LB, ghost: "kp-thin-scroll kp-strip-fade flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0", ghostFile: LBG },
   { band: "the podium", page: "rounded-xl glass-panel px-4 pt-6 pb-4", pageFile: LB, ghost: "rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent", ghostFile: LBG },
   // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R5-F1): the podium hangs its columns from the top, #1 raised by a
   // margin — `-translate-y-3` was held at `transform: none` by the page's `kp-rise`, and the bottoms' alignment sank the
@@ -476,7 +484,7 @@ const lbPairs: Pair[] = [
   ok(`5.1 · every band is the page's own box (${lbPairs.length} class strings held — the ribbon's from PageRibbon): ribbon, lens, podium and its columns, the admin-tbl table with its head and rows (the table's own CSS pads them, 10px over the head, 12 over each row)`,
     now.length === 0, now.slice(0, 4).join(" | "));
   const g = code(LBG), pg = code(LB);
-  const order = ["<PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />", "gap-x-6 gap-y-2", '-mx-1 px-1', "cn(QUERY_BAR_ROW2_CLASS, \"py-0\")", "<PodiumGhost />", "admin-tbl min-w-[640px]"].map((n) => g.indexOf(n));
+  const order = ["<PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />", "gap-x-4 gap-y-3", 'kp-thin-scroll kp-strip-fade', "cn(QUERY_BAR_ROW2_CLASS, \"py-0\")", "<PodiumGhost />", "admin-tbl min-w-[640px]"].map((n) => g.indexOf(n));
   const scroller = pg.includes('<ScrollX label="Leaderboard" className="rounded-xl glass-panel">') && code("src/components/ui/scroll-x.tsx").includes('"scrollx overflow-x-auto rounded-md"') && g.includes('className="scrollx overflow-x-auto rounded-xl glass-panel text-transparent"');
   ok("5.2 · the bands stand in the page's order — header, ribbon, lens, the sort on its own `py-0` row, podium, the table in ScrollX's own scroller (`scrollx overflow-x-auto`, the page's glass) — and the spinner box the page does not have is gone",
     order.every((x, i) => x >= 0 && (i === 0 || x > order[i - 1])) && !/BrandSpinner|t\.common\.loading/.test(g) && pg.includes("<div className={cn(QUERY_BAR_ROW2_CLASS, \"py-0\")}>") && scroller, j({ order, scroller }));
@@ -488,7 +496,7 @@ const lbPairs: Pair[] = [
       && html.includes("crest-holder h-[56px] w-[56px]") && count(html, "crest-holder h-[48px] w-[48px]") === 2
       && pg.includes('<Avatar initials={r.handle.slice(0, 2)} size="sm"') && pg.includes("width={140} height={32}") && pg.includes('size={first ? "xl" : "lg"}'));
   const lens = (req("../src/lib/leaderboard/board.ts") as { LEADER_PRODUCTS: readonly string[] }).LEADER_PRODUCTS;
-  const pills = count(html.slice(html.indexOf("-mx-1 px-1"), html.indexOf("kp-qbar-row")), "inline-flex min-h-[44px]");
+  const pills = count(html.slice(html.indexOf("kp-thin-scroll kp-strip-fade"), html.indexOf("kp-qbar-row")), "inline-flex min-h-[44px]");
   ok(`5.4 · RUN: the lens draws ${pills} pills — the page's ${lens.length} (\`LEADER_PRODUCTS\`), their words set and not shown`, pills === lens.length && html.includes(esc(dict.sw.common.markets)));
   // The podium's case (the ghost's note): the measured board's — the two beside the leader on a hot streak, the leader not;
   // the columns stand #2, #1, #3. The page draws the streak's line only for a player on one.
@@ -498,7 +506,7 @@ const lbPairs: Pair[] = [
     streakIn.length === 3 && streakIn[0] && !streakIn[1] && streakIn[2] && pg.includes('{r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}'), j({ streakIn }));
   const plants: Array<[string, string, string]> = [
     ["the podium's padding", '<section className="rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent" aria-hidden>', '<section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>'],
-    ["the ribbon's rung", "px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent", "px-4 py-2 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent"],
+    ["the ribbon's rung", "px-4 py-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 text-transparent", "px-4 py-2 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 text-transparent"],
   ];
   const missed = plants.filter(([, from, to]) => held(lbPairs, planted(LBG, from, to)).length === 0).map(([n]) => n);
   ok(`5.1′ PLANT · ${plants.map(([n]) => n).join(" · ")} — each reported`, missed.length === 0, missed.join(", "));
@@ -515,11 +523,11 @@ const rsPairs: Pair[] = [
   { band: "the dots' row", page: "mt-2.5 flex items-center justify-center", pageFile: NC, ghost: "mt-[10px] flex items-center justify-center", ghostFile: RSG },
   // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R5-F5): a dot's target is its drawing and 9px either side —
   // the fixed 24px put 12px beside the 18px pill and 18 between dots. The ghost draws the page's target.
-  { band: "a dot's target", page: "grid h-[40px] place-items-center rounded-md px-[9px]", pageFile: NC, ghost: "grid h-[40px] place-items-center px-[9px]", ghostFile: RSG },
+  { band: "a dot's target", page: "grid h-[40px] min-w-[40px] place-items-center rounded-md px-[9px]", pageFile: NC, ghost: "grid h-[40px] min-w-[40px] place-items-center px-[9px]", ghostFile: RSG },
   { band: "the notable card", page: "group relative block overflow-hidden rounded-xl border bg-bg-elevated p-5 lg:p-6", pageFile: RS, ghost: "relative block overflow-hidden rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 kp-shimmer-track text-transparent", ghostFile: RSG },
   { band: "its chip row", page: "mb-3 flex flex-wrap items-center gap-2", pageFile: RS, ghost: "mb-3 flex flex-wrap items-center gap-2", ghostFile: RSG },
   // 2026-10-10: the flag is one unbreakable unit on the page and in the drawing (`whitespace-nowrap`, round 6's read).
-  { band: "its flag", page: "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300", pageFile: RS, ghost: "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold", ghostFile: RSG },
+  { band: "its flag", page: "sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300", pageFile: RS, ghost: "sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold", ghostFile: RSG },
 ];
 {
   const now = held(rsPairs);
@@ -624,8 +632,8 @@ const lvPairs: Pair[] = [
   { band: "the CTA row", page: "mt-4 flex flex-wrap items-center gap-3", pageFile: FC, ghost: "mt-4 flex flex-wrap items-center gap-3", ghostFile: LVG },
   // RE-PINNED 2026-10-11 (R9-C): the target is its drawing and 9px either side, and the rail takes its first 9px back into
   // the row's gap (`-ml-[9px]`) — the ghost's rail too, so the row breaks where the page's does.
-  { band: "the dots' rail", page: "-ml-[9px] flex items-center", pageFile: FC, ghost: "-ml-[9px] flex items-center", ghostFile: LVG },
-  { band: "a dot's target", page: "grid h-[40px] place-items-center rounded-md px-[9px]", pageFile: FC, ghost: "grid h-[40px] place-items-center px-[9px]", ghostFile: LVG },
+  { band: "the dots' rail", page: "flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto", pageFile: FC, ghost: "flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto", ghostFile: LVG },
+  { band: "a dot's target", page: "grid h-[40px] min-w-[40px] place-items-center rounded-md px-[9px]", pageFile: FC, ghost: "grid h-[40px] min-w-[40px] place-items-center px-[9px]", ghostFile: LVG },
   { band: "a card", page: "kp-rise group flex flex-col rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-border-strong", pageFile: PG, ghost: "kp-shimmer-track flex flex-col rounded-xl border border-border bg-bg-elevated p-4 text-transparent", ghostFile: LVG },
   { band: "a card's tag row", page: "mb-2 flex items-center justify-between gap-2", pageFile: PG, ghost: "mb-2 flex items-center justify-between gap-2", ghostFile: LVG },
   { band: "a card's tag", page: "inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle", pageFile: PG, ghost: "inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow", ghostFile: LVG },
@@ -637,7 +645,7 @@ const lvPairs: Pair[] = [
     now.length === 0 && g.includes('<PageHero glow="aqua" watermark={200}>') && p.includes('<PageHero glow="aqua" watermark={200}>'), now.join(" | "));
   const take = /export function liveContest<[^>]+>\(rows: readonly T\[\], take = (\d+)\)/.exec(code("src/lib/markets/live-contest.ts"))?.[1];
   ok(`8.2 · the CTA is the page's button (\`.btn .btn-md\`, "Open market" in it) and the rail is ${take} dots — \`liveContest\`'s take — so the row breaks where the page's does`,
-    g.includes('<ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>') && code(FC).includes('className="btn btn-primary btn-md inline-flex"') && g.includes(`Array.from({ length: ${take} })`) && !g.includes("w-[150px]"), take);
+    g.includes('<ButtonGhost size="md" trailing={<I.arrowRight s={14} text="body-600" />}>{t.market.openMarket}</ButtonGhost>') && code(FC).includes('className="btn btn-primary btn-md inline-flex"') && g.includes(`Array.from({ length: ${take} })`) && !g.includes("w-[150px]"), take);
   const wrong: string[] = [];
   for (const l of LOCALES) {
     const html = render(LVG, l, "/live");

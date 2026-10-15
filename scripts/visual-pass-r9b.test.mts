@@ -553,7 +553,7 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   const props = { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "desk@example.test", supportPhone: "0700000000", supportPhoneTel: "+255700000000" };
   const journey = renderToStaticMarkup(h(PublicFooter as never, { ...props, journeyShown: true } as never));
   const classic = renderToStaticMarkup(h(PublicFooter as never, props as never));
-  const linkSpans = (html: string) => [...html.matchAll(/<a [^>]*min-h-\[44px\] group[^>]*><span class="[^"]*">([\s\S]*?)<\/span><\/a>/g)].map((m) => m[1]);
+  const linkSpans = (html: string) => [...html.matchAll(/<a [^>]*min-h-\[44px\][^"]*group[^>]*><span class="[^"]*">([\s\S]*?)<\/span><\/a>/g)].map((m) => m[1]);
   const jl = linkSpans(journey), cl = linkSpans(classic);
   ok("4.2 · the journey's footer (sw): \"<span…>Mapendekezo ya Masoko</span>\" (the name whole, round 9's read) + its flag, \"Uthibitisho <span…>wa </span>utatuzi\", \"RTP <span…>ya </span>mchezo <span…>na </span>sheria\", \"Sera <span…>ya </span>faragha\"…",
     jl.some((s) => s.startsWith('<span class="whitespace-nowrap">Mapendekezo ya Masoko</span><')) && jl.includes('Uthibitisho <span class="whitespace-nowrap">wa </span>utatuzi')
@@ -561,7 +561,8 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   ok("4.3 · the classic footer is frozen chrome: none of its links holds a run, each label is its words as main drew them",
     cl.length >= 10 && cl.every((s) => !s.includes('<span class="whitespace-nowrap">')) && cl.includes("Uthibitisho wa utatuzi") && cl.includes("Notisi ya faragha"), j(cl));
   // The proposals link's lines: Inter 12px and its flag (measured on tile 307: the flag 92px for COMING SOON's 11 letters at
-  // 5.78px a letter, so 28.4 + 5.78 n, set 16.5px after the words), in the 160px column at 768, 216 at 1024, 280 at 1280.
+  // 5.78px a letter, so 28.4 + 5.78 n, set 16.5px after the words). The current footer has two 352px columns at 768,
+  // then four columns of 216px at 1024 and 280px at 1280. The 160px case below records the older four-column tablet.
   const LINK: Type = { face: interFace, size: 12, ls: 0 };
   const flag = (label: string) => 16.5 + 28.4 + 5.78 * Array.from(label).length;
   const link = (l: Loc, title: string, W: number, kept: boolean, mode: Mode) => {
@@ -569,7 +570,7 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
     const node = kept ? [kr.keepConnectives(title), BOX] : title + BOX;
     return show(layout(node, ty, W, mode).lines).split(BOX).join("[flag]");
   };
-  ok("4.4 CONTROL · drawn as round 8 drew it, the journey's sw link read \"Mapendekezo ya / Masoko[flag]\" at 1024 (tile 299: \"Mapendekezo ya\" x528–624) and 768; en and zh one line at 1024 (tiles 307 315)",
+  ok("4.4 CONTROL · drawn as round 8 drew it, the journey's sw link read \"Mapendekezo ya / Masoko[flag]\" at 1024 (tile 299) and in the historical 160px tablet column; en and zh one line at 1024 (tiles 307 315)",
     link("sw", word("sw", "proposals.title"), 216, false, "balance") === "Mapendekezo ya / Masoko[flag]" && link("sw", word("sw", "proposals.title"), 160, false, "balance") === "Mapendekezo ya / Masoko[flag]"
       // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 50): en "Market Proposals" is "Market proposals" (sentence case,
       // as the rows beside it) — re-measured: one line at 1024 still (the lower-case "p" is the narrower glyph).
@@ -583,12 +584,12 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
     show(layout([h("span", { className: "whitespace-nowrap" }, word(l, "proposals.title")), BOX], { ...LINK, box: flagW }, W, mode).lines).split(BOX).join("[flag]");
   const FLAGS = [60, 70, 80.4, 85.4, 95];
   const okLines = (r: string) => r === "Mapendekezo ya Masoko[flag]" || r === "Mapendekezo ya Masoko / [flag]";
-  ok("4.5 · the name held whole: for EVERY flag width from 60 to 95px, at 768 (160px), 1024 (216px) and 1280 (280px), one line where the name and its flag fit, else \"Mapendekezo ya Masoko / [flag]\" — never \"Mapendekezo\" alone, never a line on \"ya\"; with tile 302's flag (80.4px) at 1024 the name over its flag",
-    FLAGS.every((f) => [160, 216, 280].every((W) => okLines(whole("sw", W, f, "balance")))) && whole("sw", 216, 80.4, "balance") === "Mapendekezo ya Masoko / [flag]"
-      && whole("sw", 280, 80.4, "balance") === "Mapendekezo ya Masoko[flag]",
-    j(FLAGS.map((f) => [f, whole("sw", 160, f, "balance"), whole("sw", 216, f, "balance"), whole("sw", 280, f, "balance")])));
-  ok("4.5′ · the whole name never overflows a footer column: its widest locale fits the narrowest column (160px at 768)",
-    LOCALES.every((l) => width(word(l, "proposals.title"), LINK) <= 160), j(LOCALES.map((l) => [l, Math.round(width(word(l, "proposals.title"), LINK) * 10) / 10])));
+  ok("4.5 · the name held whole: for EVERY flag width from 60 to 95px, at 768 (352px), 1024 (216px) and 1280 (280px), one line where the name and flag fit, else \"Mapendekezo ya Masoko / [flag]\"; with tile 302's flag (80.4px) at 1024 the name over its flag",
+    FLAGS.every((f) => [352, 216, 280].every((W) => okLines(whole("sw", W, f, "balance")))) && whole("sw", 216, 80.4, "balance") === "Mapendekezo ya Masoko / [flag]"
+      && whole("sw", 280, 80.4, "balance") === "Mapendekezo ya Masoko[flag]" && whole("sw", 352, 80.4, "balance") === "Mapendekezo ya Masoko[flag]",
+    j(FLAGS.map((f) => [f, whole("sw", 352, f, "balance"), whole("sw", 216, f, "balance"), whole("sw", 280, f, "balance")])));
+  ok("4.5′ · the whole name never overflows a footer column: its widest locale fits the narrowest current column (216px at 1024)",
+    LOCALES.every((l) => width(word(l, "proposals.title"), LINK) <= 216), j(LOCALES.map((l) => [l, Math.round(width(word(l, "proposals.title"), LINK) * 10) / 10])));
   ok("4.5″ CONTROL · drawn with only \"ya\" held and the flag tile 302 measured (80.4px), the balance tears the name — the round-9 read's defect, reproduced",
     link("sw", word("sw", "proposals.title"), 216, true, "balance").startsWith("Mapendekezo / ") || layout([kr.keepConnectives(word("sw", "proposals.title")), BOX], { ...LINK, box: 80.4 }, 216, "balance").lines[0] === "Mapendekezo",
     j(layout([kr.keepConnectives(word("sw", "proposals.title")), BOX], { ...LINK, box: 80.4 }, 216, "balance").lines));
@@ -596,7 +597,7 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   const JOURNEY = ["footer.setLimits", "footer.resolutionAttestation", "footer.gameRtp", "profile.inviteFriends", "profile.inviteEarn", "agent.dashTitle", "agent.footerLink", "common.help", "common.consentMore", "footer.amlKyc", "footer.terms", "footer.exportClose"];
   const CLASSIC = ["footer.setLimits", "footer.resolutionAttestation", "footer.gameRtp", "profile.inviteFriends", "agent.footerLink", "footer.helpSupport", "footer.privacyNotice", "footer.amlKyc", "footer.terms", "footer.exportClose"];
   const bad: string[] = [];
-  for (const l of LOCALES) for (const W of [288, 160, 216, 280]) {
+  for (const l of LOCALES) for (const W of [288, 352, 216, 280]) {
     for (const k of JOURNEY) { const r = layout(kr.keepConnectives(word(l, k)), LINK, W, "greedy").lines; if (endsOnConnective(r)) bad.push(`journey ${l} ${k} @${W}: ${show(r)}`); }
     for (const k of CLASSIC) { const r = layout(word(l, k), LINK, W, "greedy").lines; if (endsOnConnective(r)) bad.push(`classic ${l} ${k} @${W}: ${show(r)}`); }
     const cp = link(l, word(l, "footer.proposeGetPaid"), W, false, "greedy");
@@ -617,10 +618,8 @@ section("5 · B5 the comments that quoted the Board's old lines say what renders
   ok("5.2 · the opt-out shell's footer and the offline document: since round 7 the stub runs from 351 (281 + 70), no record says the name holds from 333 now",
     shell.includes('"Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at sw 351–390') && !shell.includes('and "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."; a line narrower')
       && off.includes("(sw under 333 then; under 351 since round 7, below)") && off.includes('"Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." under 351'));
-  // 5.3 — B4 asked for the footer's other columns at 1024/1280: the brand column's licence line wraps there in sw (tiles 299
-  // at 1024, 301 at 1280), and round 5's F18 record (globals.css) said a footer column holds the Swahili name up from 1200,
-  // which round 7's 281 made untrue. The numbers are read from the source — the spacing scale, the board's width, the
-  // footer's grid, the sw condition — so the record cannot drift from them unseen.
+  // 5.3 — the responsive footer now has two columns on tablets and four from 1024. Read each column's actual width
+  // from the source, so the regulator-name wrapping record cannot drift unnoticed.
   const cssRaw = raw("src/app/globals.css"), cssCode = decommentCss(cssRaw);
   const tw = code("tailwind.config.ts");
   const spacingAt = tw.indexOf("spacing: {"), spacing = tw.slice(spacingAt, tw.indexOf("}", spacingAt));
@@ -629,15 +628,18 @@ section("5 · B5 the comments that quoted the Board's old lines say what renders
   const board = pxOf(/--w-board:\s*(\d+)px/, cssCode);
   const swNeed = pxOf(/@container kp-gbt \(min-width: (\d+)px\) \{ \.kp-gbt-name:lang\(sw\)/, cssCode);
   const footer = "src/components/layout/public-footer.tsx";
-  const gridOk = has(footer, 'className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]"')
+  const gridOk = has(footer, 'className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-[12px]"')
     && !/col-span/.test(code(footer)) && code(footer).includes('${journeyShown ? " kp-gbt" : ""}');
-  const col = (W: number) => (Math.min(W, board) - 2 * (W >= 1024 ? s6 : s3) - 3 * s6) / 4;
-  const widest = Math.max(...Array.from({ length: 2561 - 768 }, (_, i) => col(768 + i)));
-  ok("5.3′ CONTROL · the footer's grid read from the source gives the record's own 160px column at 768 and the tiles' 216px (299, sw 1024) and 280px (301, sw 1280)",
-    gridOk && col(768) === 160 && col(1024) === 216 && col(1280) === 280, j({ gridOk, s3, s6, board, c768: col(768), c1024: col(1024), c1280: col(1280) }));
-  ok("5.3 · globals.css's F18 record says what renders: from 768 on, no footer column holds the sw name (the widest is 280px, the condition 281); the round-9 note records the lines and the 1px",
-    swNeed > 0 && widest < swNeed && !cssRaw.includes("from 768 to 1199") && cssRaw.includes("from 768 on, no footer column holds the Swahili one")
-      && cssRaw.includes(`caps them at ${widest}px`) && cssRaw.includes(`and ${swNeed} keeps it out by ${swNeed - widest}px`), j({ widest, swNeed }));
+  const col = (W: number) => {
+    const n = W >= 1024 ? 4 : 2;
+    return (Math.min(W, board) - 2 * (W >= 1024 ? s6 : s3) - (n - 1) * s6) / n;
+  };
+  const widestFour = Math.max(...Array.from({ length: 2561 - 1024 }, (_, i) => col(1024 + i)));
+  ok("5.3′ CONTROL · the footer's grid read from source gives 352px columns at 768, then 216px at 1024 and 280px at 1280",
+    gridOk && col(768) === 352 && col(1024) === 216 && col(1280) === 280, j({ gridOk, s3, s6, board, c768: col(768), c1024: col(1024), c1280: col(1280) }));
+  ok("5.3 · globals.css's F18 record says what renders: tablet columns hold the Swahili name; four-column widths stay below its 281px no-wrap condition",
+    swNeed > 0 && col(768) >= swNeed && widestFour < swNeed && cssRaw.includes("From 768 to 1023 the two columns hold the Swahili name")
+      && cssRaw.includes(`caps the four columns at ${widestFour}px; ${swNeed} keeps it out by ${swNeed - widestFour}px`), j({ widestFour, swNeed }));
 }
 
 /* ══ §6 · THE WORDS ══════════════════════════════════════════════════════════════════════════════════════════════════ */
