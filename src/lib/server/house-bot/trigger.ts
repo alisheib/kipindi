@@ -204,7 +204,7 @@ export async function decideTrigger(row: TriggerRow, f: PassFacts, deps: Trigger
     trigger: { positionId: row.id, userId: row.userId, handle: playerHandle(row.userId), side: row.side, stakeTzs: row.stake, placedAt: row.placedAt },
     filtered, globalScopeFrom: f.globalScopeFrom, pools, price, blocked, bounds, passNow: f.passNow,
   };
-  const scope: DecideScope = { f, view, row, bounds, randomInt };
+  const scope: DecideScope = { f, view, row, bounds, pools, randomInt };
   let decided = await decideWithFlags(base, prepared, scope);
   if (!decided.row) return "notCovered";
   if (decided.row.targetId != null) {
@@ -230,7 +230,7 @@ function tookTurn(f: PassFacts, row: DecidedRow): void {
 
 type DecideBase = Omit<CounterInput, "bots" | "target">;
 type TargetPrep = Omit<NonNullable<CounterInput["target"]>, "staffChosenRoomTzs">;
-type DecideScope = { f: PassFacts; view: PublicMarketView; row: TriggerRow; bounds: { min: number; max: number }; randomInt: RandomInt };
+type DecideScope = { f: PassFacts; view: PublicMarketView; row: TriggerRow; bounds: { min: number; max: number }; pools: DecideBase["pools"]; randomInt: RandomInt };
 type Flags = { marketHeld: boolean; capPrecheck: EngineCode | null; roomTzs: number };
 
 const intentOf = (d: DecidedRow, row: TriggerRow, f: PassFacts) => intentRowOf(d, { id: newHouseId("intent"), anchorKey: row.id, nowIso: f.passNow });
