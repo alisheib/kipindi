@@ -84,7 +84,7 @@ to the published collusion language.
 
 ## S15 publication draft · How to Play estimates, legal wording and share tagline (Vodacom S11)
 
-**Status: parked on `codex/vodacom-s15-copy`; date this entry and the legal versions when S15 publishes.**
+**Status: parked on `codex/s15-preflip-rebased-1015`; do not publish with the S9/S14 preview. Date this entry and the legal versions together when S15 publishes.**
 Ali accepted the S11-PLAN "Points for Ali" on 2026-10-14 (the owner decision entry below). The Rules and Terms
 describe the estimated return that a player may see before betting, how it can change with later bets, and when the
 final payout is fixed. The Swahili Rules and Terms correct *dau/madau* and the YES/NO spelling. The six Terms links
