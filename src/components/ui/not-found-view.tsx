@@ -8,6 +8,7 @@ import { hangCjkMarks } from "@/lib/cjk-marks";
 import type { NotFoundWords } from "@/components/ui/not-found-words";
 // ⭐ R4-J (2026-10-09): every not-found answer says so to what stands outside the page (`lib/not-found-mark.ts`).
 import { NotFoundMark } from "@/components/ui/not-found-mark";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 
 /**
  * ⭐ ONE NOT-FOUND, EVERYWHERE IN THE APP (2026-10-09, the visual pass's round 4, E42–E47 E51; tiles 345–398).
@@ -58,7 +59,8 @@ export function NotFoundView({
   /** The one way out under the cards; by default the open markets. */
   way?: { href: string; label: string };
 }) {
-  const out = way ?? { href: "/markets", label: words.browseOpenMarkets };
+  const browseHref = useJourneyOn() ? "/" : "/markets";
+  const out = way ?? { href: browseHref, label: words.browseOpenMarkets };
   return (
     // Same kit frame as the shared RouteError (A3): FiftyMark 64 over a faint BrandTopo, a glyph badge, neutral chrome.
     // A 404 is "not found", not an error — so the badge is royal/info (not the RouteError rose alert tint), and there is
@@ -102,7 +104,7 @@ export function NotFoundView({
             </span>
             <p className={LABEL}>{words.home}</p>
           </Link>
-          <Link href="/markets" className={CARD}>
+          <Link href={browseHref} className={CARD}>
             <span className={PLATE}>
               <I.chart s={13} />
             </span>

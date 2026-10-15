@@ -1,5 +1,5 @@
 {
-  "name": "50pick — Predict events. Not chance.",
+  "name": "50pick — Pick. See what you win. Play.",
   "short_name": "50pick",
   "description": "Tanzania-licensed prediction markets. Pick YES or NO, winners share the losing pool.",
   "start_url": "/",
@@ -34,18 +34,17 @@
   ],
   "shortcuts": [
     {
-      "name": "Markets",
-      "short_name": "Markets",
-      "description": "Browse live prediction markets",
-      "url": "/markets",
+      "name": "Questions",
+      "short_name": "Questions",
+      "description": "Browse questions",
+      "url": "/",
       "icons": [{ "src": "/icons/shortcut-markets.png", "type": "image/png", "sizes": "96x96" }]
     },
     {
-      "name": "Wallet",
-      "short_name": "Wallet",
-      "description": "View your balance and activity",
-      "url": "/wallet",
-      "icons": [{ "src": "/icons/shortcut-wallet.png", "type": "image/png", "sizes": "96x96" }]
+      "name": "My tickets",
+      "short_name": "Tickets",
+      "description": "View your bets and results",
+      "url": "/positions"
     },
     {
       "name": "Deposit",
@@ -68,7 +67,7 @@
       "type": "image/png",
       "sizes": "1200x630",
       "form_factor": "wide",
-      "label": "50pick — Predict events, not chance"
+      "label": "50pick — Pick. See what you win. Play."
     }
   ]
 }

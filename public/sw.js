@@ -28,7 +28,8 @@
 // next visitor of that address on the same phone (a sandbox run of this worker). The rule now never takes a navigation
 // and keeps only an image or a font (`keepable`, below); the name moves so `activate` drops what an older one stored.
 // v5 itself never reached production (main ran v4), so devices there go v4 → v6. ⛔ Never reuse a name up to v5.
-const CACHE_NAME = "50pick-v6";
+// v6 → v7 (S15): refresh the installed journey's manifest and share art at the public flip.
+const CACHE_NAME = "50pick-v7";
 // C2j — dedicated branded offline route (precached below) instead of falling
 // back to the data-heavy home page. Since R4-G a self-contained document, not a page: `src/lib/offline-document.ts`.
 const OFFLINE_URL = "/offline";

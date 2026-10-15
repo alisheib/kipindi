@@ -114,7 +114,7 @@ type Ok = (id: string, label: string, cond: boolean, detail?: string) => void;
  * the same commit as the words it describes: §2's retired slogan leaves the tagline's key and the manifest, §3's legal lines
  * trade places and §4 reads the tagline too. A census that cannot tell "before" from "after" would pass either way.
  */
-const PUBLISHED_AT_S15 = false;
+const PUBLISHED_AT_S15 = true;
 
 const QUOTES = String.fromCharCode(34, 39, 96);
 /** Whether code reads dictionary key `ns.k`: `t.ns.k`, `dict.en.ns.k`, or the key named whole in quotes. */
@@ -241,12 +241,14 @@ const TAGLINE_READERS = [
   "src/app/api/og/market/[id]/route.tsx",       // the market share card's footer, twice
   "src/lib/server/reports/brand.ts",            // the officers' PDF and XLSX reports
   "src/app/legal/rules/yes-no/page.tsx",        // the rules page's subtitle
+  ...(PUBLISHED_AT_S15 ? ["src/app/api/og/page/route.tsx"] : []), // the generic share card joins at the flip
 ].sort();
 
 function s2(w: World, ok: Ok) {
   const spelled = [...w.files.keys()].filter((f) => f.startsWith("src/") || f.startsWith("public/"))
     .filter((f) => f !== "src/lib/i18n-dict.ts").flatMap((f) => spells(codeOf(w, f)).map((r) => `${f}: ${r}`));
-  let manifest: { name?: string; screenshots?: Array<{ form_factor?: string; label?: string }> } = {};
+  let manifest: { name?: string; screenshots?: Array<{ form_factor?: string; label?: string }>;
+    shortcuts?: Array<{ name?: string; short_name?: string; url?: string }> } = {};
   try { manifest = JSON.parse(text(w, MANIFEST)); } catch { /* reported below */ }
   const wide = (manifest.screenshots ?? []).filter((s) => s.form_factor === "wide").map((s) => s.label ?? "");
   const named = PUBLISHED_AT_S15 ? [] : [`${MANIFEST}: Predict events. Not chance.`, `${MANIFEST}: Predict events, not chance`];
@@ -260,6 +262,12 @@ function s2(w: World, ok: Ok) {
     j(readers) === j(TAGLINE_READERS), j(readers));
   ok("2.manifest", "the manifest's name is “50pick — ” + the English tagline (a static file the parked commit edits by hand: this is what holds it to the key)",
     manifest.name === `50pick — ${w.words.en["auth.railTagline"]}`, j({ name: manifest.name, key: w.words.en["auth.railTagline"] }));
+  const shortcuts = (manifest.shortcuts ?? []).map(({ name, short_name, url }) => ({ name, short_name, url }));
+  ok("2.shortcuts", "the installed app opens Questions directly at / and My tickets at /positions, without a /markets redirect",
+    j(shortcuts.slice(0, 2)) === j([
+      { name: "Questions", short_name: "Questions", url: "/" },
+      { name: "My tickets", short_name: "Tickets", url: "/positions" },
+    ]), j(shortcuts));
   const inDict = [...new Set(LOCS.flatMap((l) => Object.keys(w.words[l]).filter((k) => spells(w.words[l][k] ?? "").length > 0)))].sort();
   const exceptions = PUBLISHED_AT_S15 ? ["primer.card1Title"] : ["auth.railTagline", "primer.card1Title"];
   const primerReaders = readersOf(w, "primer.card1Title");
@@ -595,16 +603,16 @@ const PLANTS: Plant[] = [
   { name: "a new surface reads the tagline outside the table", expect: /^2[.]readers /, alone: true,
     plant: add("src/components/markets/tagline-chip.tsx", "export const chip = (t: { auth: { railTagline: string } }) => t.auth.railTagline;") },
   { name: "the manifest's name drifts from the key", expect: /^2[.](manifest|files) /,
-    plant: edit(MANIFEST, '"name": "50pick — Predict events. Not chance.",', '"name": "50pick — Predict events",') },
+    plant: (w) => edit(MANIFEST, `"name": "50pick — ${w.words.en["auth.railTagline"]}",`, '"name": "50pick — Words drift",')(w) },
   { name: "a second dictionary key spells the slogan (a hero line)", expect: /^2[.]dictionary /, alone: true,
     plant: dictWord("en", "journey.heroTagline", () => "Predict events. Not chance.") },
   // §3
   { name: "Terms §4's dial paragraph rewritten before S15 (the parked text half-applied)", expect: /^3[.]legal /, alone: true,
-    plant: edit(TERMS, "The probabilities shown on the dial are <em>implied</em>", "The probabilities are <em>implied</em>") },
+    plant: edit(TERMS, "Before you bet, a market may show what its pools imply", "The probabilities shown on the dial are <em>implied</em>") },
   { name: "a parked rules line published before S15", expect: /^3[.]legal /, alone: true,
-    plant: edit(RULES_YN, "<li>信心指示器显示资金分布，仅供参考，不构成建议。</li>", "<li>信心指示器显示资金分布，仅供参考，不构成建议。</li><li>市场在您下注前显示的内容——资金分布——仅供参考。</li>") },
+    plant: edit(RULES_YN, "<li>市场在您下注前显示的内容——资金分布，或某笔投注可获回报的预估——仅供参考，不构成建议。</li>", "<li>信心指示器显示资金分布，仅供参考，不构成建议。</li>") },
   { name: "the Swahili indicator line doubled", expect: /^3[.]legal /, alone: true,
-    plant: edit(RULES_YN, "<li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li>", "<li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li><li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li>") },
+    plant: edit(RULES_YN, "<li>Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri.</li>", "<li>Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri.</li><li>Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri.</li>") },
   // §4
   { name: "an S11 word claims the crowd (the chat's intro)", expect: /^4[.]overclaim /, alone: true,
     plant: word("en", "chatIntro", (o) => `${o} The crowd knows best.`) },

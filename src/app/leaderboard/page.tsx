@@ -32,6 +32,7 @@ import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { StripAutoScroll } from "@/components/ui/strip-autoscroll";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import {
   LEADER_NATURAL_DIR,
   LEADER_PRODUCTS,
@@ -251,6 +252,7 @@ function syntheticLeaderboard(): Row[] {
 
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale } = await getServerT();
+  const { journey } = await resolveSimpleJourney();
   const sp = await searchParams;
   const state = parseLeaderParams(sp);
   /**
@@ -339,7 +341,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           kind="leaderboard"
           title={t.leaderboard.emptyTitle}
           body={breakBody ?? t.leaderboard.emptyBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          action={breakBody ? null : <Link href={(journey ? "/" : "/markets") as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>

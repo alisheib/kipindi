@@ -4,11 +4,12 @@
  *   ?title=...&sub=...
  *
  * Deep-navy brand gradient (#0A0E33 → #060A50, per spec), the mark-a coin, the
- * wordmark, a gilt hairline, the title, and the "The wisdom of YES & NO" tagline.
+ * wordmark, a gilt hairline, the title, and the reviewed tagline.
  * Text uses Satori's default sans (brand fonts aren't loaded into ImageResponse
  * — the ⊘-font caveat); everything else is brand-exact.
  */
 import { ImageResponse } from "next/og";
+import { dict } from "@/lib/i18n-dict";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
         {sub ? <div style={{ marginTop: 16, fontSize: 25, opacity: 0.68, display: "flex" }}>{sub}</div> : null}
 
         <div style={{ position: "absolute", bottom: 46, fontSize: 15, letterSpacing: "0.16em", textTransform: "uppercase", opacity: 0.5 }}>
-          The wisdom of YES &amp; NO
+          {dict.en.auth.railTagline}
         </div>
       </div>
     ),

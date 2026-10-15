@@ -43,7 +43,7 @@ const COMPETITION_OPTIONS = [
 ];
 
 type FeeInfo =
-  | { model: "loser-share"; feePct: string; estMult: string; showEstimate: boolean }
+  | { model: "loser-share"; feePct: string; showEstimate: boolean }
   | { model: "capped-commission"; commissionPct: string; ceilingPct: string };
 
 export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; platformTz: string }) {
@@ -219,7 +219,7 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
           <p className="mt-1">
             <strong className="text-text">Loser-share</strong> — fee = <strong className="text-text">{feeInfo.feePct}%</strong> of the losing pool.
             {feeInfo.showEstimate
-              ? <> Players see a fixed <strong className="text-text">{feeInfo.estMult}×</strong> &ldquo;possible winnings&rdquo; estimate before betting.</>
+              ? <> The journey may show a qualified pre-bet estimate calculated from the current pools and these frozen fee rates.</>
               : <> The pre-bet estimate is hidden.</>}
           </p>
         ) : (
