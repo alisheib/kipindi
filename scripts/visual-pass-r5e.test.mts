@@ -322,8 +322,10 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
   ok(`2.5 · every player file that names a market title (${population.length}) is classified — a surface held by 2.1, one that hands it on, or not a wrapping title`,
     unclassified.length === 0 && population.length >= 20, unclassified.join(", "));
   const refs = ["src/app/positions/performance/page.tsx", "src/components/markets/conviction-dial.tsx"];
+  // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 87): the bet result's subtitle lost its unreachable fallback
+  // (`marketTitle` is required now), so the shape it keeps is `keepFigures(marketTitle)` alone.
   ok("2.6 · the two references in body text keep the figures whole too (the best market's line, the bet result's subtitle)",
-    code(refs[0]).includes("{keepFigures(bestTitle)}") && code(refs[1]).includes("? (marketTitle != null ? keepFigures(marketTitle) : t.common.positionOpenNotify)"));
+    code(refs[0]).includes("{keepFigures(bestTitle)}") && /resultData\.variant === "success"\s*\? keepFigures\(marketTitle\)\s*:/.test(code(refs[1])));
 }
 
 /* ══ §3 · F1 F4 — THE MECHANISM ══════════════════════════════════════════════════════════════════════════════════════ */

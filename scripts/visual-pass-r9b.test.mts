@@ -570,7 +570,9 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   };
   ok("4.4 CONTROL · drawn as round 8 drew it, the journey's sw link read \"Mapendekezo ya / Masoko[flag]\" at 1024 (tile 299: \"Mapendekezo ya\" x528–624) and 768; en and zh one line at 1024 (tiles 307 315)",
     link("sw", word("sw", "proposals.title"), 216, false, "balance") === "Mapendekezo ya / Masoko[flag]" && link("sw", word("sw", "proposals.title"), 160, false, "balance") === "Mapendekezo ya / Masoko[flag]"
-      && link("en", word("en", "proposals.title"), 216, false, "balance") === "Market Proposals[flag]" && link("zh", word("zh", "proposals.title"), 216, false, "balance") === "市场提议[flag]",
+      // Re-pinned 2026-10-14 (S12 WP5, word-ledger row 50): en "Market Proposals" is "Market proposals" (sentence case,
+      // as the rows beside it) — re-measured: one line at 1024 still (the lower-case "p" is the narrower glyph).
+      && link("en", word("en", "proposals.title"), 216, false, "balance") === "Market proposals[flag]" && link("zh", word("zh", "proposals.title"), 216, false, "balance") === "市场提议[flag]",
     j([link("sw", word("sw", "proposals.title"), 216, false, "balance"), link("en", word("en", "proposals.title"), 216, false, "balance")]));
   // ⛔ ROUND 9'S READ REFUTED THIS MODEL'S BISECTION (reader 8, tile 302, sw 1024): with only "ya" held the browser drew
   // "Mapendekezo" / "ya Masoko [INAKUJA]" — the flag here was modelled at 85.4px (COMING SOON's per-letter rate), the real

@@ -6,8 +6,8 @@ import type { Locale } from "@/lib/i18n-dict";
  * (`not-found-view.tsx`), and the metadata titles the tab with them.
  *
  * ⭐ THE WORDS ARE THE ROOT PAGE'S, in every language (2026-10-09, the visual pass's round 4, E43 E44) — the market page
- * used the dictionary's twin of these sentences, whose English h1 types a straight apostrophe ("couldn't", E44; S12 owns
- * that key).
+ * used the dictionary's twin of these sentences, whose English h1 typed a straight apostrophe ("couldn't", E44) until
+ * S12 WP5 typed it (`error.notFoundBody`, 2026-10-14).
  * ⛔ NOT IN THE VIEW'S MODULE (2026-10-09, the visual pass's round 5, R5-D — review G1's sibling). The view is client code,
  * and on the server a "use client" module's exports are references: a component can be rendered, but
  * `NOT_FOUND_WORDS[locale]` would throw ("cannot dot into a client module") and `notFoundTitle()` could not be called.
