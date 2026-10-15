@@ -171,6 +171,10 @@ export const MARKERS = [
   // S8: the click selector identifies the host's executable code without adding a hidden product element.
   { id: "BetSheetHost", stage: "S8", wp: "WP7a", journey: true, part: "BetSheetHost",
     file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", marker: '"a[data-bet-side]"', expect: OWN_CHUNK },
+  // S11 WP4: How to Play's host — journey-only, a next/dynamic part of the shell's lazy module (mounted beside the flag);
+  // its marker is the one string of its module a minifier keeps, its React name, which no other file under src/ spells.
+  { id: "HowToHost", stage: "S11", wp: "WP4", journey: true, part: "HowToHost",
+    file: "src/components/onboarding/how-to-host.tsx", marker: '"JourneyShell.HowToHost"', expect: OWN_CHUNK },
   { id: "BetSheet", stage: "S8", wp: "WP6", journey: true,
     file: "src/components/journey/bet-sheet/bet-sheet.tsx", marker: '"journey-bet-sheet"', expect: () => ({ marker: "out" }) },
   // S8 WP8/WP9: the client question ghost is inside the journey-only lazy drawing; picks and the home break are
@@ -235,6 +239,8 @@ const exists = (root, rel) => Boolean(rel) && fs.existsSync(path.join(root, rel)
  * The table's own check (A9: "the script fails if any marker is not unique in src/"). Reads every file under
  * `root`/src. Returns { ok, lines, rows: Map(id → { landed, judged, holders }) }.
  */
+/** The stages whose rows wait for their WP to add their file (PENDING until then): S7's and S8's, and S11's (WP4's host). */
+const waitsForItsWp = (stage) => stage === "S7" || stage === "S8" || stage === "S11";
 export function checkMarkerTable(root, table = [...CONTROLS, ...MARKERS]) {
   const files = listFiles(root, "src");
   const texts = files.map((f) => [f, fs.readFileSync(path.join(root, f), "latin1")]);
@@ -253,13 +259,13 @@ export function checkMarkerTable(root, table = [...CONTROLS, ...MARKERS]) {
     let note = "";
     if (row.marker !== null && seen.has(row.marker)) bad = `the same marker as ${seen.get(row.marker)}`;
     if (row.marker !== null) seen.set(row.marker, row.id);
-    if (!bad && !landed && (row.stage === "S7" || row.stage === "S8")) {
+    if (!bad && !landed && waitsForItsWp(row.stage)) {
       if (holders.length) bad = `PENDING (${row.file} does not exist yet) but already held by ${holders.join(", ")}: the row names the wrong file, or the marker is not unique`;
       else note = `PENDING: ${row.wp} has not added ${row.file}`;
     } else if (!bad && !landed) {
       bad = `its file ${row.file} is gone`;
     } else if (!bad && row.marker === null) {
-      if (row.stage === "S7" || row.stage === "S8") bad = `${row.wp} has added ${row.file}: give the row its marker (see its stage's block)`;
+      if (waitsForItsWp(row.stage)) bad = `${row.wp} has added ${row.file}: give the row its marker (see its stage's block)`;
       else note = "structural only, no marker";
     } else if (!bad && (holders.length !== 1 || holders[0] !== row.file)) {
       bad = `not unique in src/: held by ${holders.length ? holders.join(", ") : "no file"} (want ${row.file} alone)`;

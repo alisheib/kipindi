@@ -7,8 +7,15 @@
  *
  * In §3.8's order: the title; the three steps (choose a question · tap YES or NO · place your bet and wait); MFANO, the
  * worked example, with the estimate's footnote; "Nimeelewa, anza", which closes the sheet; and "Weka mipaka" alone.
- * It opens on a tap and on nothing else — no auto-open and no seen key (Open point 18: both are S11's, with
- * `primer-keys.ts`) — so it writes nothing to storage, and Privacy §7 is unchanged.
+ * ⭐ S11 WP4 (2026-10-14; VODACOM-PLAN §3.8, S11-PLAN Open points 5 and 7) · two instances open it: the How-to card's tap on
+ * the home, and the How-to host the shell mounts for a journey reader (`how-to-host.tsx`: by itself once per browser on
+ * `/`, `/live`, `/results` and `/watchlist`, and at `/?howto=1`). The two never open together — each sees the other as an
+ * open dialog. Whichever opened it, EVERY WAY OUT goes through the one `close` below, which writes the seen key
+ * (`HOWTO_SEEN_KEY`, "50pick-howto-seen", through `markSeen`) and then hands back to the opener: the ✕, the scrim and
+ * Escape (the Modal's `onClose`), "Nimeelewa, anza" and Weka mipaka, which closes and then navigates. Nothing is written on
+ * open. Privacy §7 names the key, in the same release (§3.10). While open it holds the bottom invitation slot below the
+ * analytics consent prompt's priority (−1 under 0), so the consent card waits until it closes and appears then
+ * (`invitation-slot.ts`: lower wins; consent's code is untouched).
  *
  * ⭐ THE KIT'S SHEET (Open point 20): `<Modal sheet sheetUntil="lg" maxWidth={440}>`, the Wallet's and the guest Tiketi
  * sheet's shell — a bottom sheet below 1024 with the grab handle (no drag: `dragToDismiss` is not built), a centred
@@ -37,12 +44,17 @@
  * ⭐ ITS SENTENCES HOLD THEIR PHRASES as a notice body does (`noticeBody`, round 10's R10-B): a YES/NO pair, a possessive
  * and its noun ("dau lako", "your bet"), a dash with its unit and the last two words break together. The example's two
  * sums are `.amount` (§M4: mono, tabular, whole) and its multiple one mono unit with the ≈ and × the dictionary wraps it
- * in — kept whole, never split at a line's end.
+ * in — kept whole, never split at a line's end. The note's commission is one `.amount` unit too, its % with it (§T5: a
+ * numeral inside a sentence is mono — the audit's F36, 2026-10-14, found "13%" in the body face beside the box's mono
+ * figures; S11).
+ * ⭐ ONE MARKER COLUMN, ONE TEXT EDGE (S11; the audit's F36): MFANO's (i) is centred on the step badges' centre line and its
+ * words start on the steps' text edge. The kit Callout's own row put them 6px right and 9px left; globals.css re-spaces
+ * that row from the badge's two numbers (`--howto-badge`, `--howto-badge-gap`), so the two columns cannot part again.
  * ⛔ NO HELPLINE (the owner's ruling of 2026-10-06, COMPLIANCE-DECISIONS; S7-PLAN A6): the canvas's "Msaada 0800 11 0011"
  * is not built, and nothing stands in its place. `test:support-contact` §15 and `test:journey-home` §5 hold it.
- * ⚠️ Every way out closes the sheet: the CTA, the ✕, the scrim, Escape — and Weka mipaka as it navigates.
+ * ⚠️ Every way out closes the sheet through `close`: the CTA, the ✕, the scrim, Escape — and Weka mipaka as it navigates.
  */
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -54,6 +66,8 @@ import { fill, formatTzs } from "@/lib/utils";
 import { sideWord } from "@/lib/side-label";
 import { estimateFor, HOW_TO_EXAMPLE } from "@/lib/markets/estimate";
 import { loserSharePct } from "@/lib/payout";
+import { useInvitationSlot } from "@/lib/invitation-slot";
+import { HOWTO_SEEN_KEY, markSeen } from "@/lib/onboarding/primer-keys";
 
 /** The three steps, in §3.8's order: WP4's `journey.*` words. */
 const STEPS = [
@@ -86,6 +100,12 @@ const LIMITS = { signedIn: "/profile/responsible-gambling", signedOut: "/legal/r
 const MULT_UNIT = /≈?[{]mult[}]×?/;
 function multUnit(template: string, mult: string): string {
   return fill(MULT_UNIT.exec(template)?.[0] ?? "{mult}", { mult });
+}
+
+/** The commission as the dictionary writes it — "{pct}%" — so the note's figure is one mono unit, its sign with it. */
+const PCT_UNIT = /[{]pct[}]%?/;
+function pctUnit(template: string, pct: number): string {
+  return fill(PCT_UNIT.exec(template)?.[0] ?? "{pct}", { pct });
 }
 
 /** A figure in a sentence and the class it is drawn in: a sum `.amount`, the multiple `.kp-howto__mult`. */
@@ -161,17 +181,30 @@ function StepsRegion({ label, children }: { label: string; children: ReactNode }
   );
 }
 
-/** `signedIn` is read on the server and handed down by the card: it decides where Weka mipaka goes. */
+/**
+ * The sheet's slot claim in the bottom invitation zone: below the analytics consent prompt's 0, so while the sheet is open
+ * the consent card waits, and it appears the moment the sheet closes (S11-PLAN Open point 7). Claimed only while open.
+ */
+const HOWTO_SLOT_PRIORITY = -1;
+
+/** `signedIn` is read on the server and handed down by the opener (the card, or the host): it decides where Weka mipaka goes. */
 export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onClose: () => void; signedIn: boolean }) {
   const { t } = useT();
   const titleId = useId();
   const sides = { yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET") };
   const mult = FIGURES?.mult ?? "";
+  useInvitationSlot("howto", "bottom", HOWTO_SLOT_PRIORITY, open);
+  // ⭐ THE ONE WAY OUT (S11 WP4): the seen key first, then the opener's own close. Every exit below calls this, never
+  // `onClose` itself — so however the sheet was opened and however it is left, the browser remembers it was seen.
+  const close = useCallback(() => {
+    markSeen(HOWTO_SEEN_KEY);
+    onClose();
+  }, [onClose]);
 
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={close}
       labelledBy={titleId}
       sheet
       sheetUntil="lg"
@@ -219,15 +252,17 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
                   ],
                 )}
               </p>
-              <p className="kp-howto__note text-body-sm">{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}</p>
+              <p className="kp-howto__note text-body-sm">
+                {sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}
+              </p>
             </Callout>
           )}
         </StepsRegion>
-        <Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={onClose}>
+        <Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={close}>
           {t.journey.howCta}
         </Button>
         <div className="kp-howto__foot">
-          <Link href={signedIn ? LIMITS.signedIn : LIMITS.signedOut} onClick={onClose} className="kp-wsheet__link">
+          <Link href={signedIn ? LIMITS.signedIn : LIMITS.signedOut} onClick={close} className="kp-wsheet__link">
             {t.rg.setLimits}
           </Link>
         </div>

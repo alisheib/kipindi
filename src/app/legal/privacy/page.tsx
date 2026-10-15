@@ -106,10 +106,15 @@ const TITLE: Record<Locale, string> = {
 // §9). Contact details and the password are still removed at once. No 14-day notice, by the same ruling. §2, §6 and §9 are
 // unchanged; the data-rights text (`privacy.ts`, rights.erasure) says the same; `test:privacy-notice` §4j pins the bullet
 // and §4l holds it to the code. `POLICY_PAGES.privacy.codeVersion` moved with META.
+// 2026-10-15 (the Vodacom plan S11 WP4; the COMPLIANCE-DECISIONS entry "Privacy v2026-10-15" is filed with the release):
+// §7's display-choices sentence names How to Play's seen key, 50pick-howto-seen, written by every exit of the sheet so the
+// guide opens by itself only once per browser (VODACOM-PLAN §3.10: named in the same commit as its first write). ⚠️ If S11
+// lands on a later day, that day replaces 2026-10-15 here, in `POLICY_PAGES.privacy.codeVersion`, in test:privacy-notice's
+// pin and in the entry's heading (a second change the same day would be 2026-10-15.2).
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-14 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-14 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-14 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-15 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-15 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-15 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -211,7 +216,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           it holds no personal details beyond who issued it, and lasts at most 24 hours.
           For as long as a browser tab stays open, the campaign tags of your visit&apos;s first page (utm_source and utm_campaign) are kept in that tab&apos;s own storage as kp-utm,
           so the journey counts can be split by campaign; it holds no identifier and is gone when the tab closes.
-          Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser&apos;s own storage on your device.
+          Some display choices, such as hiding your balance, dismissing a prompt or having seen How to play (50pick-howto-seen, so the guide opens by itself only once), are kept in your browser&apos;s own storage on your device.
         </p>
         <p data-policy-addition="pending-bet">
           A bet chosen through a link is kept in that tab&apos;s sessionStorage as kp-pending-bet for at most 24 hours: the question, side and amount you chose,
@@ -341,7 +346,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           hakina taarifa binafsi zaidi ya kuonyesha nani aliyekitoa, na kinadumu si zaidi ya saa 24.
           Kwa muda wote kichupo cha kivinjari kikiwa wazi, lebo za kampeni za ukurasa wa kwanza wa tembeleo lako (utm_source na utm_campaign) huhifadhiwa kwenye hifadhi ya kichupo hicho kama kp-utm,
           ili hesabu za safari zigawanywe kwa kampeni; hazina kitambulisho na hufutika kichupo kinapofungwa.
-          Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
+          Baadhi ya machaguo ya maonyesho, kama kuficha salio lako, kufunga ujumbe au kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, ili mwongozo ufunguke wenyewe mara moja tu), huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
         </p>
         <p data-policy-addition="pending-bet">
           Dau ulilochagua kupitia kiungo huhifadhiwa kwenye sessionStorage ya kichupo hicho kama kp-pending-bet kwa muda usiozidi saa 24: swali, upande na kiasi ulichochagua,
@@ -463,7 +468,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。在浏览器标签页保持打开期间，您此次访问首个页面的推广标签（utm_source 和 utm_campaign）以 kp-utm 的名称保存在该标签页自身的存储中，以便按推广活动拆分使用流程计数；其中不含标识符，标签页关闭即删除。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
+          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。在浏览器标签页保持打开期间，您此次访问首个页面的推广标签（utm_source 和 utm_campaign）以 kp-utm 的名称保存在该标签页自身的存储中，以便按推广活动拆分使用流程计数；其中不含标识符，标签页关闭即删除。部分显示选择（例如隐藏余额、关闭提示，或已看过「玩法说明」——50pick-howto-seen，使该指南只会自动打开一次）保存在您设备上的浏览器存储中。
         </p>
         <p data-policy-addition="pending-bet">
           您通过链接选择的投注以 kp-pending-bet 的名称保存在该标签页的 sessionStorage 中，最长 24 小时：包括您选择的问题、方向和金额、链接的推荐与推广标签，以及登录后的账户标识符。

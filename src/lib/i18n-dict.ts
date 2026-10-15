@@ -3230,6 +3230,19 @@ export const dict = {
       lowPendingLateTitle: "Payment not confirmed yet",
       lowPendingLateBody: "It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed.",
       ticketsHere: "Your tickets",
+      /**
+       * S11 (VODACOM-PLAN §3.8-§3.9; S11-PLAN.md WP3), for review 9 (S4-COPY-AUDIT). The FAQ's journey copies: /help reads
+       * them for a journey reader in place of help.faq2q, faq2a, faq3a, faq5a and faq6a (WP5); `{max}` is WITHDRAW_MAX_TZS,
+       * formatted. They name the journey's own doors (the capsule, Account's rows, My tickets' Sell free) and no shelved
+       * surface — no dial, no confirm popup, no typed minutes. The chat panel's two journey words follow (WP6).
+       */
+      faq2q: "Does the estimate change after I bet?",
+      faq2a: "Before you bet, a question shows an estimate of what you could win: where it can be worked out, ≈ a multiple of your bet on each button and, once you enter a stake, about what you would get if your side wins. It comes from the pools at that moment, after our commission, and it moves as others bet, so it is not guaranteed. Your bet is placed exactly as its button names it, and a question’s fee rates are fixed when it is created, so a later change never re-prices a bet you placed. The moment betting closes, the pools are final and we tell you the exact amount you get if your side wins.",
+      faq3a: "Tap your balance at the top and choose Withdraw — or open Account → Withdraw — then enter an amount, up to {max} per withdrawal. The money goes to the mobile-money number registered on your account. Before you withdraw, confirm your email address; before your first withdrawal we also verify your identity once.",
+      faq5a: "Open Account → Set limits. You can set deposit, loss and time limits, take a break, or self-exclude.",
+      faq6a: "Yes, for a short time. Right after you place a bet, its ticket in My tickets shows Sell free and the time it lasts until; selling before then gives your whole stake back at no cost. After that the bet waits for the result and can no longer be sold (a bet placed close to when betting shuts can’t be sold at all). The money from a sold bet returns to your balance.",
+      chatIntro: "Ask me about deposits, betting, payouts, or anything you can’t find in Help.",
+      chatStarterHowTo: "How do I play?",
     },
   },
 
@@ -5714,6 +5727,14 @@ export const dict = {
       lowPendingLateTitle: "Malipo bado hayajathibitishwa",
       lowPendingLateBody: "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa.",
       ticketsHere: "Tiketi zako",
+      /** S11 (WP3), for review 9 — the FAQ's journey copies and the chat panel's two journey words (the note at en). */
+      faq2q: "Makadirio yanabadilika baada ya kuweka dau?",
+      faq2a: "Kabla ya kuweka dau, swali linaonyesha makadirio ya unachoweza kushinda: pale yanapoweza kukadiriwa, ≈ mara ngapi ya dau lako kwenye kila kitufe na, ukishaandika dau, takriban kiasi utakachopata upande wako ukishinda. Yanatokana na mabwawa ya wakati huo, baada ya kamisheni yetu, na hubadilika wengine wanapoweka dau, kwa hiyo si ya uhakika. Dau lako linawekwa hasa kama kitufe chake kinavyolitaja, na viwango vya ada vya swali vinawekwa linapoundwa, kwa hiyo mabadiliko ya baadaye hayabadilishi kamwe dau uliloweka tayari. Uwekaji dau ukifungwa, mabwawa yanakuwa ya mwisho na tunakujulisha kiasi kamili utakachopata upande wako ukishinda.",
+      faq3a: "Bonyeza salio lako juu kisha uchague Toa pesa — au fungua Akaunti → Toa pesa — kisha andika kiasi, hadi {max} kwa kila kutoa. Pesa hutumwa kwenye nambari ya pesa ya simu iliyosajiliwa kwenye akaunti yako. Kabla ya kutoa pesa, thibitisha barua pepe yako; kabla ya kutoa pesa kwa mara ya kwanza pia tunathibitisha utambulisho wako mara moja.",
+      faq5a: "Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana, hasara na muda, kupumzika, au kujizuia.",
+      faq6a: "Unaweza, kwa muda mfupi. Mara baada ya kuweka dau, tiketi yake kwenye Tiketi zangu inaonyesha Uza bila ada na saa muda huo unapoisha; ukiuza kabla ya hapo, unarudishiwa dau lako lote bila gharama. Baada ya hapo dau linasubiri matokeo na haliwezi kuuzwa tena (dau lililowekwa karibu na kufungwa kwa uwekaji dau haliwezi kuuzwa kabisa). Pesa za dau ulilouza zinarudi kwenye salio lako.",
+      chatIntro: "Niulize kuhusu amana, kuweka dau, malipo, au chochote usichokipata kwenye Msaada.",
+      chatStarterHowTo: "Ninawezaje kucheza?",
     },
   },
 
@@ -8092,13 +8113,13 @@ export const dict = {
       howToTitle: "玩法说明",
       howStepsAria: "步骤",
       howStep1Title: "选择问题",
-      howStep1Body: "每个问题都是一个真实事件，只有一个答案：{yes}或{no}。",
-      howStep2Title: "点击{yes}或{no}",
+      howStep1Body: "每个问题都是一个真实事件，只有一个答案：「{yes}」或「{no}」。",
+      howStep2Title: "点击「{yes}」或「{no}」",
       howStep2Body: "立即看到您可赢取的金额，例如 ≈{mult}× 您的投注。",
       howStep3Title: "投注，等待结果",
-      howStep3Body: "赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。",
+      howStep3Body: "赢家按投注比例分享奖池。奖金进入您的余额，可通过手机钱包提现。",
       howExampleLabel: "示例",
-      howExampleBody: "在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。",
+      howExampleBody: "在「{side}」一方（显示 ≈{mult}×）投注 {stake} → 若赢，约可获得 {payout}。若猜错，您将输掉这笔投注。",
       howCta: "明白了，开始",
       estimateNote: "预估。最终金额取决于市场关闭时的奖池。已扣除输方 {pct}% 的佣金。",
       headlineAsk: "回答问题。",
@@ -8178,6 +8199,14 @@ export const dict = {
       lowPendingLateTitle: "付款尚未确认",
       lowPendingLateBody: "已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。",
       ticketsHere: "您的注单",
+      /** S11 (WP3), for review 9 — the FAQ's journey copies and the chat panel's two journey words (the note at en). */
+      faq2q: "下注后预估会变吗？",
+      faq2a: "下注前，问题会显示您可赢取金额的预估：在可以估算时，每个按钮上以 ≈ 显示投注额的倍数；输入投注额后，还会显示若所选一方获胜您约可获得的金额。预估依据当时的奖池计算，已扣除我们的佣金，并会随他人下注而变动，因此并非保证。您的投注会严格按按钮所示下单；问题的费率在创建时即已固定，之后的调整绝不会重新计价您已下的注。投注一经关闭，奖池即告最终确定，我们会告知您：若所选一方获胜，您将获得的确切金额。",
+      faq3a: "点击顶部的余额并选择「提现」——或打开「账户」→「提现」——然后输入金额，每笔最高 {max}。款项将转入您账户注册的移动支付号码。提现前请先确认您的电子邮箱；首次提现前，我们还会对您的身份进行一次核验。",
+      faq5a: "打开「账户」→「设置限额」。您可以设置充值、亏损和时间限额、休息一下或自我排除。",
+      faq6a: "可以，但时间很短。下注后，「我的注单」中该投注的注单会显示「免费卖出」及截止时间；在此之前卖出，可全额取回投注额，不收任何费用。之后该投注将等待结果，无法再卖出（在投注即将关闭时下的注则无法卖出）。卖出投注的资金将返回您的余额。",
+      chatIntro: "有关充值、投注、赔付或帮助页面找不到的任何问题，都可以问我。",
+      chatStarterHowTo: "怎么玩？",
     },
   },
 } as const;

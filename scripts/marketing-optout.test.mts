@@ -169,6 +169,7 @@ const SL = {
   rgContext: "S20d · ⭐ the responsible-gambling sentence stays and no helpline comes back (the owner's ruling, 2026-10-06), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span)",
   overlay: (file: string) => `S21 · ⛔ D6 — ${file} stays off the opt-out page, and only off it`,
   shellMatch: "S21b · the shell's own test is a SEGMENT match built from `OPTOUT_PATH` — bare `/s` and `/s/<one segment>` only; a deeper path gets the FULL shell, so its 404 never renders inside the stripped one",
+  howToOff: "S21h · ⛔ D6 — How to Play's host (S11 WP4) never opens on the opt-out page: its route rule is four exact routes, none of them /s, with the primer's HIDE_ON asked too, and the opt-out shell never renders it",
   bare: "S23 · 🔴 2026-09-27 — bare `/s` (a link that lost its token) is the opt-out REFUSAL, not the root 404 inside the stripped shell — noindex and force-dynamic",
 } as const;
 
@@ -181,6 +182,10 @@ let shellMatch: (p: string) => boolean = isOptOutPath;
 type SurfacePlant = { file: string; from: string; to: string };
 let SURFACE_PLANT: SurfacePlant | null = null;
 let surfacePlantHits = -1;
+/** S11 WP2 (2026-10-14): where the first-visit primer's HIDE_ON is declared, shared with the How-to host (S21 reads it). */
+const PRIMER_KEYS = "src/lib/onboarding/primer-keys.ts";
+/** S11 WP4: How to Play's route rule (S21h reads it). */
+const HOWTO_OPEN = "src/lib/onboarding/how-to-open.ts";
 
 /** ⚠️ A token of the right SHAPE that nobody minted, FRESH on every call. The acts' cap is keyed per
  *  LINK, so a miss token shared between runs would reach the next run's walker already dry and answer
@@ -1000,13 +1005,39 @@ async function runSurface(f: Fixtures): Promise<void> {
   ];
   const hit = [`${OPTOUT_PATH}${f.contactToken}`, "/s", `${OPTOUT_PATH}ZZZZZZZZ`];
   const miss = ["/settings", "/support", "/", "/markets", "/sx/abc"];
+  /* ⭐ S11 WP2 (2026-10-14): the primer's HIDE_ON is DECLARED in `primer-keys.ts`, shared with the How-to host, and the primer
+     imports it from there. A file that imports it is held to the rule where the rule is declared — and must declare no copy of
+     its own, which would shadow the shared one. A file that neither declares nor imports one reads "no HIDE_ON found". */
+  const hideOnOf = (src: string) => {
+    const own = src.match(/const HIDE_ON = \/(.+)\/;/);
+    const imported = /import\s*\{[^}]*\bHIDE_ON\b[^}]*\}\s*from\s*"@\/lib\/onboarding\/primer-keys";/.test(src);
+    if (imported) return own ? null : read(PRIMER_KEYS).match(/export const HIDE_ON = \/(.+)\/;/);
+    return own;
+  };
   for (const file of OVERLAYS) {
     const src = read(file);
-    const m = src.match(/const HIDE_ON = \/(.+)\/;/);
+    const m = hideOnOf(src);
     const re = m ? new RegExp(m[1]) : null;
     ok(SL.overlay(file.split("/").pop() ?? file),
       !!re && hit.every((x) => re.test(x)) && miss.filter((x) => x !== "/markets" || !file.includes("channels")).every((x) => !re.test(x)),
       re ? `/${re.source}/` : "no HIDE_ON found");
+  }
+  // ⭐ S11 WP4 · How to Play's host, the journey's first-visit overlay: an allowlist of four exact routes (`how-to-open.ts`), so no
+  // opt-out path can open it, with HIDE_ON asked as well; and the stripped shell has no slot for it (`test:howto` §5 runs the rest).
+  {
+    const ruleSrc = read(HOWTO_OPEN);
+    const DECL = "export const HOWTO_ROUTES: readonly string[] = ";
+    const at = ruleSrc.indexOf(DECL);
+    let routes: string[] = [];
+    try { routes = at < 0 ? [] : (JSON.parse(ruleSrc.slice(at + DECL.length, ruleSrc.indexOf(";", at))) as string[]); } catch { routes = []; }
+    const body = (ruleSrc.match(/export function howToRoute[(][^)]*[)][^{]*[{][^}]*[}]/) ?? [""])[0];
+    const exact = body.includes("HOWTO_ROUTES.includes(pathname)") && body.includes("!HIDE_ON.test(pathname)")
+      && /import [{] HIDE_ON, SUPPRESS_ON [}] from "[.][/]primer-keys";/.test(ruleSrc);
+    const optoutShell = shellSrc.slice(Math.max(0, shellSrc.indexOf("function OptOutShell")));
+    const opens = hit.filter((x) => routes.includes(x));
+    ok(SL.howToOff,
+      routes.length === 4 && opens.length === 0 && routes.every((r) => !r.startsWith("/s")) && exact && !optoutShell.includes("HowToHost"),
+      `routes ${JSON.stringify(routes)} · exact ${exact} · opens on ${JSON.stringify(opens)}`);
   }
   // ⚠️ The overlays hide on ANY `/s…` path (harmless on a 404); the SHELL takes only the two routes that
   // exist, so a deeper path's 404 renders in the full shell, where its soft links work.
@@ -1385,8 +1416,17 @@ if (!PROVE_RED) {
   };
   /** `swap` (2026-09-27): replaces an imported function the S-checks call, for the length of a case. */
   const SURFACE_CASES: Array<{ name: string; expect: string; plant?: SurfacePlant; copy?: () => () => void; swap?: () => () => void }> = [
+    // S11 WP2: the primer's rule is declared in primer-keys.ts, so the plant edits it there; the second plant gives the
+    // primer a local copy that would shadow it.
     { name: "D6 · the first-visit primer opens on /s again", expect: SL.overlay("first-visit-primer.tsx"),
-      plant: { file: PRIMER, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+      plant: { file: PRIMER_KEYS, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+    { name: "D6 · the first-visit primer declares its own HIDE_ON again, shadowing the shared rule", expect: SL.overlay("first-visit-primer.tsx"),
+      plant: { file: PRIMER, from: "export function FirstVisitPrimer() {", to: "const HIDE_ON = /^\\/(auth|admin|s)(\\/|$)/;\nexport function FirstVisitPrimer() {" } },
+    { name: "S11 · How to Play's host may open on /s (the opt-out page joins its routes)", expect: SL.howToOff,
+      plant: { file: HOWTO_OPEN, from: `["/", "/live", "/results", "/watchlist"]`, to: `["/", "/live", "/results", "/s"]` } },
+    { name: "S11 · the opt-out shell renders How to Play's host", expect: SL.howToOff,
+      plant: { file: SHELL, from: ["      <MainLandmark>{children}</MainLandmark>", "      <footer"].join(String.fromCharCode(10)),
+        to: ["      <MainLandmark>{children}</MainLandmark>", "      <LazyHowToHost signedIn={false} onBreak={false} />", "      <footer"].join(String.fromCharCode(10)) } },
     { name: "D6 · the chat bubble sits on /s again", expect: SL.overlay("ChatRoot.tsx"),
       plant: { file: CHAT, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
     { name: "D6 · the socials interstitial may open on /s again", expect: SL.overlay("channels-panel.tsx"),

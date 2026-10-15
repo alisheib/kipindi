@@ -23,6 +23,10 @@
  *   citation to the route). Current intents: deposits, conviction dial,
  *   payouts/withdrawals, KYC, referral (the UNPAID player invite + the paid agent programme —
  *   NO citation, deliberately: see the branch itself), proposals (→ /proposals), escalation.
+ *   ⭐ AND A JOURNEY READER'S WORDS (the Vodacom plan S11 WP6): `sendMessage(…, { journey })` — the shell's answer, read by
+ *   ChatRoot — gives a reader the journey is shown to the journey's doors in the same intents (+ Deposit at the top, the
+ *   balance's Withdraw, Account → …), a How-to-play intent in place of the dial (it also answers "dial", citing /?howto=1),
+ *   and How to play first in the Chinese hand-off. Every other reader's replies are today's, word for word.
  *   Treat this list as the chatbot's
  *   knowledge index; a page without an intent here falls through to the
  *   "I'm not sure" → support handoff. (Live mode replaces this with the
@@ -176,7 +180,7 @@ type Reply =
 
 /** The stub's intent table — keyword to reply. Every reply is "what we
  *  expect the live model to produce" so we can demo the surface today. */
-function stubReply(userText: string, lang: Lang): Reply {
+function stubReply(userText: string, lang: Lang, journey = false): Reply {
   const t = userText.toLowerCase();
 
   if (isAtRiskLanguage(userText)) {
@@ -192,7 +196,9 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text",
       lang,
       unresolved: true,
-      text: "您好！您可以在帮助页面（/help）找到中文版的平台指南 — 涵盖充值、投注、提现和身份验证。如需人工协助，我可以为您转接支持团队。",
+      text: journey
+        ? "您好！您可以打开「玩法说明」（/?howto=1）了解如何投注，或在帮助页面（/help）找到中文版的平台指南——涵盖充值、投注、提现和身份验证。如需进一步协助，我可以为您转接支持团队。"
+        : "您好！您可以在帮助页面（/help）找到中文版的平台指南 — 涵盖充值、投注、提现和身份验证。如需人工协助，我可以为您转接支持团队。",
     };
   }
 
@@ -214,7 +220,11 @@ function stubReply(userText: string, lang: Lang): Reply {
       kind: "text",
       lang,
       text:
-        lang === "sw"
+        journey
+          ? lang === "sw"
+            ? "Nimewekwa kwa 50pick — amana, kuweka dau, malipo, KYC, kanuni za maswali. Kwa swali hilo utapata jibu bora mahali pengine. Kuna kitu kingine ninachoweza kukusaidia kuhusu jukwaa?"
+            : "I'm tuned for 50pick — deposits, betting, payouts, KYC, question rules. For that question you'll have better luck somewhere else. Anything I can help with on the platform itself?"
+          : lang === "sw"
           ? "Nimewekwa kwa 50pick — amana, dial, malipo, KYC, kanuni za soko. Kwa swali hilo utapata jibu bora mahali pengine. Kuna kitu kingine ninachoweza kukusaidia kuhusu jukwaa?"
           : "I'm tuned for 50pick — deposits, the dial, payouts, KYC, market rules. For that question you'll have better luck somewhere else. Anything I can help with on the platform itself?",
     };
@@ -227,7 +237,7 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       paragraphs: [
         "To deposit money on 50pick:",
-        "1. Open your **Wallet** and tap **Deposit**[1]",
+        journey ? "1. Tap **+ Deposit** at the top of the screen[1]" : "1. Open your **Wallet** and tap **Deposit**[1]",
         "2. Choose your payment method — M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card",
         `3. Enter the amount — from {${formatTzs(DEPOSIT_MIN_TZS)}} to {${formatTzs(DEPOSIT_MAX_TZS)}}`,
         "4. Confirm the payment on your phone",
@@ -241,6 +251,37 @@ function stubReply(userText: string, lang: Lang): Reply {
         // the page. Receipts is where the deposit's state actually is (2026-10-07).
         { n: 2, href: "/wallet/receipts", label: "/wallet/receipts" },
       ],
+    };
+  }
+
+  // ⭐ S11 WP6 · HOW TO PLAY, FOR A JOURNEY READER: the bet sheet replaced the dial, so a journey reader who asks how to play —
+  // or asks about "the dial" by its old name — is taught the four steps the How-to sheet teaches, and linked to it. Today's
+  // dial answer below stays every other reader's, word for word.
+  if (journey && (/\bdial\b/.test(t) || /\bconviction\b/.test(t) || /\bkuamua\b/.test(t) || /\bhow (do i|to) (play|bet)\b/.test(t)
+    || /\bplace a bet\b/.test(t) || /\bkucheza\b/.test(t) || /\bkuweka dau\b/.test(t))) {
+    return {
+      role: "ai",
+      kind: "text_with_citations",
+      lang,
+      paragraphs:
+        lang === "sw"
+          ? [
+              "Hivi ndivyo unavyocheza kwenye 50pick:",
+              "1. Chagua swali",
+              "2. Bonyeza **NDIO** au **HAPANA** — utaona papo hapo takriban unachoweza kushinda (≈)",
+              "3. Andika dau lako na ubonyeze **Weka dau** — kubonyeza huko kunaweka dau lile lile kitufe kinalolitaja",
+              "4. Subiri matokeo: washindi wanagawana bwawa, na ushindi unaingia kwenye salio lako",
+              "Mwongozo mfupi uko hapa[1]",
+            ]
+          : [
+              "Here's how to play on 50pick:",
+              "1. Choose a question",
+              "2. Tap **YES** or **NO** — you see straight away about what you could win (≈)",
+              "3. Enter your stake and tap **Place bet** — that tap places exactly the bet the button names",
+              "4. Wait for the result: winners share the pool, and winnings go to your balance",
+              "The short guide is here[1]",
+            ],
+      citations: [{ n: 1, href: "/?howto=1", label: "/?howto=1" }],
     };
   }
 
@@ -275,7 +316,9 @@ function stubReply(userText: string, lang: Lang): Reply {
         // assistant (`_actions/chat.ts`) states the real figure; this fallback states the rule.
         "1. Winnings settle after the market resolves and the objection window closes[1]",
         "2. Once settled, winnings go directly to your **Wallet**",
-        "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
+        journey
+          ? "3. To withdraw, tap your balance at the top and choose **Withdraw** (or open **Account → Withdraw**), then enter the amount"
+          : "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
         // ⛔ NO HOLD AND NO SPEED (owner ruling 2026-09-13). This step used to say a withdrawal
         // under TZS 1,000,000 arrives "within 60 seconds" and one at or above it "is held for
         // compliance review, up to 24 hours". The hold is switched off (`WITHDRAWAL_AML_HOLD`,
@@ -347,7 +390,7 @@ function stubReply(userText: string, lang: Lang): Reply {
         lang === "sw"
           ? [
               "Hivi ndivyo uthibitisho wa utambulisho unavyofanya kazi kwenye 50pick:",
-              "1. Nenda **Wasifu → Thibitisha utambulisho** kuanza[1]",
+              journey ? "1. Nenda kwenye **Akaunti → Uthibitisho wa kitambulisho** kuanza[1]" : "1. Nenda **Wasifu → Thibitisha utambulisho** kuanza[1]",
               "2. Chagua kitambulisho kimoja — NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — kisha ujaze nambari yake, tarehe yake ya mwisho kama inayo, na jina lako kamili kama lilivyoandikwa juu yake",
               "3. Unathibitisha mara moja tu, kabla ya kutoa pesa kwa mara ya kwanza — wachezaji wengi huthibitishwa papo hapo",
               "4. Taarifa zako zikihitaji kuangaliwa na timu yetu, kwa kawaida hilo huchukua hadi saa 24; wakati huo hakuna kingine unachohitaji kufanya",
@@ -355,7 +398,7 @@ function stubReply(userText: string, lang: Lang): Reply {
             ]
           : [
               "Here's how identity verification works on 50pick:",
-              "1. Go to **Profile → Verify identity** to start[1]",
+              journey ? "1. Go to **Account → Identity verification** to start[1]" : "1. Go to **Profile → Verify identity** to start[1]",
               "2. Choose one document — NIDA, passport, driving licence or voter's card — and enter its number, its expiry date if it has one, and your full name exactly as printed on it",
               "3. You verify once, before your first withdrawal — most players are verified straight away",
               "4. If our team needs to look at your details, that usually takes up to 24 hours; there is nothing else for you to do meanwhile",
@@ -399,7 +442,11 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       text:
         lang === "sw"
-          ? "Unaweza kualika marafiki: nenda Wasifu → Alika marafiki upate kiungo chako, ushiriki, na uone wanaojiunga kwenye orodha yako. 50pick hailipi zawadi yoyote kwa mialiko — kualika ni kushiriki tu. Kupata tume kwa kuleta wachezaji ni kwa Mawakala walioidhinishwa pekee, ambao hulipa ada na kukaguliwa; wasiliana na huduma kwa wateja kama unataka kuwa Wakala."
+          ? journey
+            ? "Unaweza kualika marafiki: nenda kwenye Akaunti → Alika marafiki upate kiungo chako, ushiriki, na uone wanaojiunga kwenye orodha yako. 50pick hailipi zawadi yoyote kwa mialiko — kualika ni kushiriki tu. Kupata tume kwa kuleta wachezaji ni kwa Mawakala walioidhinishwa pekee, ambao hulipa ada na kukaguliwa; wasiliana na huduma kwa wateja kama unataka kuwa Wakala."
+            : "Unaweza kualika marafiki: nenda Wasifu → Alika marafiki upate kiungo chako, ushiriki, na uone wanaojiunga kwenye orodha yako. 50pick hailipi zawadi yoyote kwa mialiko — kualika ni kushiriki tu. Kupata tume kwa kuleta wachezaji ni kwa Mawakala walioidhinishwa pekee, ambao hulipa ada na kukaguliwa; wasiliana na huduma kwa wateja kama unataka kuwa Wakala."
+          : journey
+          ? "You can invite friends: go to Account → Invite friends for your link, share it, and the people who sign up on it appear in your list. 50pick pays no reward for invites — inviting is sharing, not earning. Earning commission for bringing players is limited to approved 50pick Agents, who pay a fee and are vetted; contact support if you would like to become one."
           : "You can invite friends: go to Profile → Invite friends for your link, share it, and the people who sign up on it appear in your list. 50pick pays no reward for invites — inviting is sharing, not earning. Earning commission for bringing players is limited to approved 50pick Agents, who pay a fee and are vetted; contact support if you would like to become one.",
     };
   }
@@ -465,7 +512,7 @@ function stubReply(userText: string, lang: Lang): Reply {
  * In stub mode the latency is simulated (~600ms) so the typing indicator
  * has a moment to render before the reply lands.
  */
-export async function sendMessage(history: Message[], userText: string): Promise<Message> {
+export async function sendMessage(history: Message[], userText: string, opts: { journey?: boolean } = {}): Promise<Message> {
   const lang = detectLang(userText);
 
   // Pre-filter at-risk language — always route to RG card, never free-text
@@ -481,7 +528,7 @@ export async function sendMessage(history: Message[], userText: string): Promise
 
   // ─── STUB MODE — keyword matching fallback ───────────────────────
   await new Promise((r) => setTimeout(r, 600));
-  const reply = stubReply(userText, lang);
+  const reply = stubReply(userText, lang, opts.journey === true);
   return { ...reply, id: nextId() } as Message;
 }
 

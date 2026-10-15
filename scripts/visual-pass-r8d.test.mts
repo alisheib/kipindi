@@ -540,8 +540,8 @@ const GUARD = req("../src/lib/chat/break-guard.ts") as typeof import("../src/lib
       && [...CR_SRC.matchAll(/^export /gm)].length === 1 && has(CR_SRC, "export async function chatForReader("));
   const diff = (() => { try { git("diff", "--quiet", "HEAD", "--", "src/app/_actions/chat.ts"); return "clean"; } catch { return "changed"; } })();
   const CHAT = code("src/app/_actions/chat.ts");
-  ok("8.5 · chat.ts is byte-identical to HEAD (D19a) — and its prompt is still built from the locale and one global setting alone (the privacy §4 premise `test:privacy-notice` §2c pins)",
-    diff === "clean" && /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\)/.test(CHAT), diff);
+  ok("8.5 · chat.ts is byte-identical to HEAD (D19a) — and its prompt is still built from the locale and global settings alone — since S11 WP6 the rollout's state beside the objection window (the privacy §4 premise `test:privacy-notice` §2c pins)",
+    diff === "clean" && /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\)/.test(CHAT), diff);
   const ROOTSRC = code("src/components/chat/ChatRoot.tsx");
   ok("8.6 · ChatRoot's live call goes through the reader's chat, still after the at-risk check, still one call site",
     has(ROOTSRC, 'import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";') && !ROOTSRC.includes('from "@/app/_actions/chat";')

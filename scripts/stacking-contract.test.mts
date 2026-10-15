@@ -878,8 +878,21 @@ if (stackTable) {
   // ⚠️ CONTROLS — the population must exist, or 8.1 could pass by matching nothing, and both
   // patterns must still be declared or the guard is asserting against names that are gone.
   ok("8.2 ⚠️ CONTROL — a render-time `return null` guard was actually found", renderGuard.length > 0);
-  ok("8.3 ⚠️ CONTROL — both path patterns are still declared",
-    /const HIDE_ON =/.test(primer) && /const SUPPRESS_ON =/.test(primer));
+  // ⭐ S11 WP2 (2026-10-14): the two patterns are DECLARED in `primer-keys.ts`, shared with the How-to host, and the primer
+  // imports both from there — so "still declared" now means: declared there, imported here, and NOT declared here again (a
+  // local copy would shadow the shared rule and let the two readers drift). 8.3c plants exactly that local copy.
+  const primerKeys = src("src/lib/onboarding/primer-keys.ts");
+  const keysImport = (file: string) => (file.match(/import\s*\{([^}]*)\}\s*from\s*"@\/lib\/onboarding\/primer-keys";/) ?? ["", ""])[1];
+  const pathRulesShared = (file: string) => {
+    const names = keysImport(file);
+    return /\bHIDE_ON\b/.test(names) && /\bSUPPRESS_ON\b/.test(names) && !/const (HIDE_ON|SUPPRESS_ON) =/.test(file);
+  };
+  ok("8.3 ⚠️ CONTROL — both path patterns are declared in primer-keys.ts, and the primer imports both and declares neither",
+    /export const HIDE_ON =/.test(primerKeys) && /export const SUPPRESS_ON =/.test(primerKeys) && pathRulesShared(primer),
+    `the primer imports {${keysImport(primer).trim()}}`);
+  ok("8.3c ⚠️ CONTROL — a second, LOCAL HIDE_ON planted in the primer fails 8.3's rule",
+    !pathRulesShared(primer.replace("export function FirstVisitPrimer()", "const HIDE_ON = /plant/;\nexport function FirstVisitPrimer()"))
+      && primer.includes("export function FirstVisitPrimer()"));
   // ⭐ And the automation block must remain OVERRIDABLE, or every design verdict on this modal
   // goes back to being source-derived: a default-UA Chromium sees a page where it never opened.
   // ⛔ ASSERT THE CALL SITE, NOT THE DECLARATION. The first version tested whether the string
@@ -892,6 +905,37 @@ if (stackTable) {
     uaLine || "no UA block found at all",
     "the block is kept — ~10 drives assume the primer is absent — but a driver can now ask for it");
   ok("8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)", uaLine.length > 0);
+}
+
+// ⭐ 8.6–8.8 · THE HOW-TO HOST'S TWINS OF 8.1, 8.3 AND 8.4 (the Vodacom plan S11 WP4, 2026-10-14). How to Play opens by itself
+// for a journey reader, as the primer did for everyone, so the primer's three lessons hold for it too: its RENDER asks its
+// route rule (the four routes, HIDE_ON, SUPPRESS_ON — the effect cannot take down a sheet already open), the two patterns are
+// the primer's own, imported from `primer-keys.ts` and never re-declared, and its automation term carries the opt-in at the
+// call site. `test:howto` runs the host itself; these read the source the way §8 reads the primer's, each with its control.
+{
+  const host = src("src/components/onboarding/how-to-host.tsx");
+  const rule = src("src/lib/onboarding/how-to-open.ts");
+  const ruleBody = (r: string) => (r.match(/export function howToRoute[(][^)]*[)][^{]*[{][^}]*[}]/) ?? [""])[0];
+  const hostRenderGuarded = (h: string, r: string) => {
+    const guards = h.match(/.*return null;.*/g) ?? [];
+    const body = ruleBody(r);
+    return guards.some((g) => /howToRoute[(]pathname[)]/.test(g)) && /HIDE_ON[.]test[(]pathname[)]/.test(body) && /SUPPRESS_ON[.]test[(]pathname[)]/.test(body);
+  };
+  ok("8.6 ⛔ the How-to host's RENDER guard asks its route rule, and that rule tests HIDE_ON and SUPPRESS_ON (8.1's lesson)",
+    hostRenderGuarded(host, rule), (host.match(/.*return null;.*/g) ?? []).join(" | ") || "no `return null` guard found at all");
+  ok("8.6c ⚠️ CONTROL — a route rule that stops testing SUPPRESS_ON, and a render with no guard, are each reported",
+    !hostRenderGuarded(host, rule.replace(" && !SUPPRESS_ON.test(pathname)", "")) && !hostRenderGuarded(host.replace("if (!howToRoute(pathname)) return null;", ""), rule)
+      && rule.includes(" && !SUPPRESS_ON.test(pathname)") && host.includes("if (!howToRoute(pathname)) return null;"));
+  const rulesShared = (r: string, h: string) => /import [{] HIDE_ON, SUPPRESS_ON [}] from "[.][/]primer-keys";/.test(r)
+    && !/const (HIDE_ON|SUPPRESS_ON) =/.test(r) && !/const (HIDE_ON|SUPPRESS_ON) =/.test(h);
+  ok("8.7 ⚠️ CONTROL — the host's route rule imports the primer's two patterns from primer-keys.ts and neither file re-declares them (8.3's twin)",
+    rulesShared(rule, host));
+  ok("8.7c ⚠️ CONTROL — a local SUPPRESS_ON planted in the rule module fails 8.7's rule",
+    !rulesShared(rule.replace("export function howToRoute(", "const SUPPRESS_ON = /plant/;\nexport function howToRoute("), host) && rule.includes("export function howToRoute("));
+  const forcedAt = (h: string) => (h.match(/.*forced: .*/g) ?? []).join(" · ");
+  ok("8.8 the host's automation term can be opted out of — `forced: primerForced()` at the decision's call (8.4's twin), beside `automated: automated(navigator)`",
+    forcedAt(host).includes("forced: primerForced(),") && host.includes("automated: automated(navigator),"), forcedAt(host) || "no forced fact found at all");
+  ok("8.8c ⚠️ CONTROL — the opt-in hard-wired off is reported", !forcedAt(host.replace("forced: primerForced(),", "forced: false,")).includes("primerForced()"));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -29,6 +29,10 @@
  *        `KYC_DOCUMENT_HOLD_YEARS` sets, compared with new identity checks meanwhile, then erased but for a coded form of
  *        the number — in every language, with the retired "removed at once" gone (Part C, the owner's ruling).
  *        (§4i is the final-rule gate's own section; these two are named apart from it.)
+ *   §4n · v2026-10-15 · §7 names How to play's seen key (the Vodacom plan S11 WP4), with the guide's name and what the
+ *        key is for, in every language; the guide's files write storage only through `markSeen(HOWTO_SEEN_KEY)`, and the
+ *        helper writes exactly that key, "1". Controls: the key dropped from one language, renamed in code only, a direct
+ *        storage write in the host, another key marked by the sheet.
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
  * licence bullet, and the §4 SMS gateway bullet. The page wraps each in a `PolicyLine` element whose children are today's
@@ -58,6 +62,7 @@ import { dict } from "../src/lib/i18n-dict.ts";
 import { OPTOUT_PATH, composeMarketing, footerMeasurementToken } from "../src/lib/marketing/footer.ts";
 import { REFEREE_PROMISE_REWORDED_IN } from "../src/lib/legal/privacy-referees.ts";
 import { PENDING_BET_KEY, PENDING_BET_TTL_MS, readMarker, writeMarker } from "../src/lib/journey/pending-bet.ts";
+import { HOWTO_SEEN_KEY, markSeen } from "../src/lib/onboarding/primer-keys.ts";
 import { ownedSheetIntents, saveOwnedSheet, sheetOwnerKey, saveSheetSelection, quarantineLegacySheet, unresolvedLegacySheet, resolveLegacySheet,
   SHEET_OWNER_PREFIX, SHEET_LEGACY_KEY, type TabStorage } from "../src/lib/journey/sheet-owned-storage.ts";
 
@@ -83,11 +88,13 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-13 · S8 WP7b: §7 discloses the necessary bet/link and unresolved request identities in tab storage;
 // §4m proves the marker's field/expiry/recovery contract; the separate necessary-state paragraph measures as 6cb5b4f816b1.
 // 2026-10-14 · owner partition: selection expiry stays 24h; unresolved owned keys and complete legacy archive do not expire by age.
-const PRIVACY_VERSION = "2026-10-14";
+// 2026-10-15 · Vodacom S11 WP4: §7's display-choices sentence names How to play's seen key (§4n holds it to the code);
+// PRIVACY_EN_SHA re-pinned from the measured English block (ec751bf6da90 -> 09a4c62735bf).
+const PRIVACY_VERSION = "2026-10-15";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "ec751bf6da90";
+const PRIVACY_EN_SHA = "09a4c62735bf";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -193,9 +200,19 @@ ok("§2b the witnesses are real: Postmark sends with open and click tracking, th
   /from "postmark"/.test(emailSrc) && /TrackOpens: true/.test(emailSrc)
   && /import\("@anthropic-ai\/sdk"\)/.test(chatSrc)
   && /beforeSend: \(event: unknown\) => scrubEvent\(event\)/.test(monitoringSrc) && /\["@sentry", "node"\]/.test(monitoringSrc));
+// ⭐ S11 WP6 (2026-10-14): the prompt takes a third input, the journey's words — and it is the GLOBAL rollout's state
+// (`simpleJourneyStateNow() === "ACTIVE"`), a setting every reader shares, never the reader's pass or session: so the §4
+// sentence's premise holds, "built from the locale and global settings alone". The control below plants per-reader values.
+const systemCallIsGlobal = (src: string) => /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\)/.test(src)
+  && src.includes("function systemPrompt(locale: string, objectionHours: number, journey: boolean): string {")
+  && /const prompt = buildSystemPrompt\(locale, objectionHours\);[ \r\n]*return journey \? journeyPrompt\(prompt\) : prompt;/.test(src);
 ok("§2c the chat sends the conversation and no account data (the §4 sentence's premise)",
-  /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\)/.test(chatSrc)
+  systemCallIsGlobal(chatSrc)
   && /\.\.\.history\.slice\(-10\)/.test(chatSrc));
+ok("§2c control · a prompt keyed on the reader — the session, or a preview pass — is refused",
+  [`(await simpleJourneyStateNow()) === "ACTIVE"`].every((g) => chatSrc.includes(g))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "Boolean(session.userId))"))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "(await resolveSimpleJourney()).journey)")));
 ok("§2d the scrub removes what §4 says it removes — Tanzanian mobile numbers, 12+ digit numbers, email addresses",
   /\.replace\(\/\(\?:\\\+\?255\|0\)7\\d\{8\}\/g, "<msisdn>"\)/.test(monitoringSrc)
   && /\.replace\(\/\\b\\d\{12,\}\\b\/g, "<digits>"\)/.test(monitoringSrc)
@@ -1344,6 +1361,63 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
     const changed = pageSrc.replace(from, to);
     ok(`§4m control · altered ${name} is reported in the actual disclosure`, changed !== pageSrc && tabWordsDefects(changed).some(d => d.startsWith("en:")));
   }
+}
+
+/* ══ §4n · S11 WP4: How to play's seen key — named in §7 in three languages, and the one key its code writes ══════════ */
+{
+  /** What each locale's §7 must say: the key itself, the guide's own name (`journey.howToTitle`), and what the key is for. */
+  const words: Record<Loc, string[]> = {
+    en: ["How to play", "opens by itself only once"],
+    sw: ["Jinsi ya kucheza", "mara moja tu"],
+    zh: ["玩法说明", "只会自动打开一次"],
+  };
+  const howtoWordsDefects = (page: string, key = HOWTO_SEEN_KEY): string[] => {
+    const d: string[] = [];
+    const bl = blocks(page);
+    for (const l of LOCS) {
+      const text = section(bl[l], "7").replace(/\s+/g, " ");
+      for (const word of [key, ...words[l]]) if (!text.includes(word)) d.push(`${l}: ${word}`);
+    }
+    return d;
+  };
+  ok("§4n en/sw/zh §7 name How to play's seen key (the guide's name and what the key is for), in the display-choices sentence",
+    howtoWordsDefects(pageSrc).length === 0 && LOCS.every((l) => words[l][0] === dict[l].journey.howToTitle),
+    howtoWordsDefects(pageSrc).join("; "), HOWTO_SEEN_KEY);
+  /** The files that open or close the guide: storage only through `markSeen(HOWTO_SEEN_KEY)`, never a direct write. */
+  const GUIDE = ["src/components/onboarding/how-to-host.tsx", "src/components/onboarding/how-to-play-sheet.tsx", "src/lib/onboarding/how-to-open.ts", "src/components/journey/home/howto-card.tsx"];
+  const guideSrc: Record<string, string> = Object.fromEntries(GUIDE.map((f) => [f, read(f)]));
+  const writesDefects = (srcs: Record<string, string>): string[] => {
+    const d: string[] = [];
+    for (const [f, src] of Object.entries(srcs)) {
+      const c = code(src);
+      for (const w of ["localStorage", "sessionStorage", "document.cookie", "indexedDB"]) if (c.includes(w)) d.push(`${f}: ${w}`);
+      for (const m of c.matchAll(/markSeen\(([^)]*)\)/g)) if (m[1].trim() !== "HOWTO_SEEN_KEY") d.push(`${f}: markSeen(${m[1].trim()})`);
+    }
+    return d;
+  };
+  const callsIn = (f: string) => [...code(guideSrc[f]).matchAll(/markSeen\(HOWTO_SEEN_KEY\)/g)].length;
+  ok("§4n the guide's files write storage only through markSeen(HOWTO_SEEN_KEY) — the sheet's one close and the host's route-change exit — and nothing else",
+    writesDefects(guideSrc).length === 0 && callsIn(GUIDE[1]) === 1 && callsIn(GUIDE[0]) === 1 && callsIn(GUIDE[2]) === 0 && callsIn(GUIDE[3]) === 0,
+    writesDefects(guideSrc).join("; "), `sheet ${callsIn(GUIDE[1])} · host ${callsIn(GUIDE[0])}`);
+  /** The helper itself, run on a stand-in window: exactly the named key, the value "1", nothing else. */
+  const written: Record<string, string> = {};
+  const g = globalThis as { window?: unknown };
+  const had = "window" in g, before = g.window;
+  g.window = { localStorage: { getItem: (k: string) => written[k] ?? null, setItem: (k: string, v: string) => { written[k] = String(v); } } };
+  try { markSeen(HOWTO_SEEN_KEY); } finally { if (had) g.window = before; else delete g.window; }
+  ok("§4n markSeen(HOWTO_SEEN_KEY) writes exactly one browser-storage entry, 50pick-howto-seen = \"1\" — the key §7 names",
+    JSON.stringify(written) === JSON.stringify({ "50pick-howto-seen": "1" }) && HOWTO_SEEN_KEY === "50pick-howto-seen", JSON.stringify(written));
+  // Controls: the defects §4n exists for, planted into copies.
+  const plantZh = pageSrc.replace("已看过「玩法说明」——50pick-howto-seen，", "已看过「玩法说明」，");
+  ok("§4n control · the key dropped from the Chinese §7 alone is reported, and only for zh",
+    plantZh !== pageSrc && howtoWordsDefects(plantZh).some((d) => d.startsWith("zh:")) && !howtoWordsDefects(plantZh).some((d) => !d.startsWith("zh:")));
+  ok("§4n control · a key renamed in the code but not in §7 leaves a false notice in every language",
+    LOCS.every((l) => howtoWordsDefects(pageSrc, "50pick-howto-done").some((d) => d.startsWith(`${l}:`))));
+  const plantHost = { ...guideSrc, [GUIDE[0]]: guideSrc[GUIDE[0]].replace("markSeen(HOWTO_SEEN_KEY);", "window.localStorage.setItem(\"kp-howto\", \"1\");") };
+  const plantKey = { ...guideSrc, [GUIDE[1]]: guideSrc[GUIDE[1]].replace("markSeen(HOWTO_SEEN_KEY);", "markSeen(\"kp-howto\");") };
+  ok("§4n control · a host writing storage itself, and a sheet marking another key, are each reported",
+    plantHost[GUIDE[0]] !== guideSrc[GUIDE[0]] && writesDefects(plantHost).some((d) => d.includes("localStorage"))
+      && plantKey[GUIDE[1]] !== guideSrc[GUIDE[1]] && writesDefects(plantKey).some((d) => d.includes("markSeen(\"kp-howto\")")));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
