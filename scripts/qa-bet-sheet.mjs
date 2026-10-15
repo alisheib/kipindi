@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 import { BET_SHEET_SELECTORS as S, NOT_DRIVEN_MATRIX, betSheetTracesIn, betSheetTracesControl, betSheetDomProbe, betSheetDomVerdict, onceOnlyVerdict } from "./live/bet-sheet-cells.mjs";
+import { parseMultipart, actionFields, buildMultipart } from "./live/bet-sheet-gates.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3043";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -982,24 +983,81 @@ try {
     }
     {
       await post(admin, "reset-rate-limits");
-      const { ctx: player } = await freshPlayer(), page = await pageIn(player), seed = await open(page), watch = actionWatch(page);
+      const { ctx: player, userId } = await freshPlayer(), page = await pageIn(player), seed = await open(page), watch = actionWatch(page);
       await page.locator(S.place).click(); await waitFrame(page, "receipt");
       const request = watch.requests[0]; if (!request) throw new Error("Rate cell lacks first real action");
       const headers = await request.allHeaders(); delete headers["content-length"]; delete headers.host; delete headers.connection;
-      await Promise.all(Array.from({ length: 35 }, () => player.request.post(request.url(), { headers, data: request.postData(), timeout: 90_000 })));
-      const nextId = catalogue.ids.find(market => market.id !== seed.id)?.id;
-      if (!nextId) throw new Error("Rate-capacity cell needs a second open question; the first side is already held");
+      // A replayed key can be answered with its landed receipt even after the rate gate refuses it.
+      // Change ONLY the key in the captured real action, so each drive is a distinct local bet.
+      const parsed = parseMultipart(request.postDataBuffer(), headers["content-type"]), action = actionFields(parsed);
+      if (!action.ok) throw new Error(`Rate cell cannot read the actual Server Action body: ${action.why}`);
+      const keyName = action.prefix + "idempotencyKey";
+      const keyParts = parsed.parts.filter(part => part.name === keyName);
+      if (keyParts.length !== 1 || !keyParts[0].value) throw new Error("Rate cell needs one nonempty captured idempotency key");
+      const keyedBody = key => {
+        const body = buildMultipart(parsed.boundary, parsed.parts.map(part => part.name === keyName
+          ? part.raw.slice(0, part.raw.length - part.value.length) + key : part.raw), parsed.epilogue);
+        const next = parseMultipart(body, headers["content-type"]), fields = actionFields(next);
+        if (!fields.ok || fields.fields.idempotencyKey !== key ||
+            next.parts.some((part, index) => part.name !== keyName && part.raw !== parsed.parts[index].raw)) {
+          throw new Error("Rate cell's unique-key action changed another field or failed the installed reply codec");
+        }
+        return body;
+      };
+      const answers = [], keys = new Set();
+      for (let batch = 0; batch < 9 && !answers.some(answer => answer.rateLimited); batch++) {
+        const responses = await Promise.all(Array.from({ length: 5 }, () => {
+          const key = crypto.randomUUID();
+          if (keys.has(key) || key === keyParts[0].value) throw new Error("Rate cell minted a duplicate key");
+          keys.add(key);
+          return player.request.post(request.url(), { headers, data: keyedBody(key), timeout: 90_000 });
+        }));
+        for (const response of responses) {
+          const body = await response.text();
+          answers.push({ status: response.status(), replayed: body.includes("replayed"), sessionChanged: body.includes("SESSION_CHANGED"),
+            rateLimited: body.includes("RATE_LIMITED"), busy: body.includes('"BUSY"'), position: body.includes("positionId") });
+        }
+      }
+      const answerKinds = answers.reduce((counts, answer) => {
+        for (const [key, value] of Object.entries(answer)) if (value === true || key === "status") counts[`${key}:${value}`] = (counts[`${key}:${value}`] ?? 0) + 1;
+        return counts;
+      }, {});
+      observations.push({ label: "rate unique-key action transport", answerKinds });
+      if (answers.some(answer => answer.replayed || answer.sessionChanged || answer.status !== 200) ||
+          !answers.some(answer => answer.rateLimited)) {
+        throw new Error(`Rate cell did not establish a real RATE_LIMITED refusal after ${answers.length} distinct actions: ${JSON.stringify(answerKinds)}`);
+      }
+      // The distinct actions can replace the original receipt portal. Keep this document and
+      // account live: a reload may compile another dev worker and reset its process-local bucket.
+      const activeViewer = await player.request.get(`${BASE}/api/session/status`).then(response => response.json()).then(body => body.viewerId ?? null);
+      observations.push({ label: "rate UI before fresh pick", frame: (await probe(page)).got.frame, activeViewer, expectedViewer: userId });
+      if (activeViewer !== userId) throw new Error("Rate cell's own browser account changed after distinct actions");
+      if (await page.locator(S.root).isVisible()) {
+        await page.locator(S.close).click();
+        await page.locator(S.root).waitFor({ state: "hidden" });
+      }
+      await page.locator(`${S.pick}[data-bet-side="YES"]`).first().waitFor({ state: "visible", timeout: 90_000 });
+      const nextId = await page.locator(`${S.pick}[data-bet-side="YES"]`).evaluateAll((anchors, heldId) => {
+        for (const anchor of anchors) {
+          if (!anchor.getClientRects().length || anchor.closest('[aria-hidden="true"]')) continue;
+          try {
+            const id = JSON.parse(anchor.closest("[data-sheet]")?.getAttribute("data-sheet") ?? "null")?.id;
+            if (id && id !== heldId) return id;
+          } catch { /* open() requires the canonical data-sheet. */ }
+        }
+        return null;
+      }, seed.id);
+      if (!nextId) throw new Error("Rate-capacity cell needs a second visible open question; the first side is already held");
       const before = await observed(player, nextId);
-      await page.locator(".kp-bsheet__continue").click(); await page.locator(S.root).waitFor({ state: "hidden" }); await open(page, nextId);
-      await waitFrame(page, "edit");
+      await open(page, nextId); await waitFrame(page, "edit");
       await page.locator(S.place).click(); await page.waitForTimeout(300);
       const p = (await probe(page)).got, after = await observed(player, nextId);
-      ok("real bet.place capacity exhausted by same-key service replays: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
+      ok("real bet.place capacity exhausted by distinct service actions: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
       await tile(page, "matrix-rate-capacity"); await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
     }
     if (!MATRIX_ONLY) {
-      await coolingOffDrive();
-      for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
+    await coolingOffDrive();
+    for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
     }
   }
 
