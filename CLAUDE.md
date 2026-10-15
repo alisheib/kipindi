@@ -1,5 +1,10 @@
 # 50pick — Claude Onboarding
 
+> **2026-10-15 S15 candidate:** [`docs/qa/s15-launch-candidate-20261015.md`](docs/qa/s15-launch-candidate-20261015.md)
+> is the current launch handoff. Its ACTIVE source branch is not a production
+> go: the S14 staff/agency proof, complete 14-day baseline, security review,
+> dated legal publication and Ali's fresh S15 decision still gate the push.
+
 <!-- Note: the git repo/dir is legacy-named `kipindi-main` and prod env may still
      carry `kipindi-*` deploy hosts / SMS sender — those are infra, not brand.
      The product is "50pick" everywhere user-facing. -->

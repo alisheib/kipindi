@@ -181,7 +181,6 @@ const DIAL_KEYS: Record<string, DialEntry> = {
   "primer.card1Body": { readers: [LANDING_BAND, PRIMER].sort(), why: "the shelved primer, and the classic landing's how-it-works band — S15: the journey home replaces the landing for every reader" },
   "home.howStep1B": { readers: [LANDING_BAND], why: "the classic landing's how-it-works band — S15: the journey home replaces it for every reader" },
   "market.noBetYet": { readers: ["src/app/markets/[id]/page.tsx"], why: "the classic market page's own positions box (a journey reader is shown JourneyHolder) — S15: the dictionary's convergence of the classic keys" },
-  "positions.noOpenBody": { readers: ["src/app/positions/page.tsx"], why: "the classic positions list's empty state (a journey reader's /positions is Tiketi zangu, returned first) — S15: the convergence" },
   "chat.helpline": { readers: [EMPTY], why: "the chat panel's classic arm (S11 WP6: a journey reader is shown journey.chatIntro) — S16, with the classic chat keys" },
   "chat.starterDial": { readers: [EMPTY], why: "the chat panel's classic arm (S11 WP6: a journey reader is shown journey.chatStarterHowTo) — S16" },
   "help.faq2a": { readers: [HELP], why: "/help's classic arm, read by its key's name (S11 WP5: a journey reader is shown journey.faq2a) — S16" },

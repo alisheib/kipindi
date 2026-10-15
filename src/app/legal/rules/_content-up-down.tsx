@@ -380,7 +380,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <strong className="text-text">Kuuza dau mapema.</strong> Ndani ya dakika{" "}
             <span className="font-mono tabular-nums text-text">{r.freeExitMinutes}</span> za kwanza baada ya kuweka dau
             unaweza kuliuza na kurudishiwa kamili bila gharama — <strong>ikiwa, wakati ulipoliweka, kulikuwa bado na
-            angalau dakika {r.freeExitMinutes} za kuweka dau kwenye raundi hiyo</strong>, na ikiwa nafasi hiyo
+            angalau dakika {r.freeExitMinutes} za kuweka dau kwenye raundi hiyo</strong>, na ikiwa dau hilo
             haikugharamiwa na bonasi.
           </p>
           <p>
@@ -391,7 +391,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             badala ya kuacha ugundue: haki isiyoweza kufikiwa si haki.
           </p>
           <p>
-            Dau hukatwa nafasi inapothibitishwa. Nje ya dirisha la kuuza, nafasi haiwezi kubadilishwa, kughairiwa wala
+            Dau hukatwa unapolithibitisha. Nje ya dirisha la kuuza, tiketi haiwezi kubadilishwa, kughairiwa wala
             kuhamishwa. Wewe ndiye mwenye jukumu la siri za pochi yako.
           </p>
         </LegalSection>

@@ -166,6 +166,48 @@ for (const [i, plant] of hostPlants.entries()) {
   ok(`§5.plant${i + 1} ${hostRules[plant.rule]}`, changed !== host && !hostRecoveryChecks(changed)[plant.rule]);
 }
 
+/* ── §6 · a waiting deposit survives a new build without replaying money-in ─ */
+console.log("\n§6 · the waiting page resumes from the owner's stored funding key");
+const waitingPage = decomment(read("src/app/wallet/deposit/wait/page.tsx"));
+const waitingClient = decomment(read("src/app/wallet/deposit/wait/deposit-waiting-client.tsx"));
+function waitingChecks(page: string, client: string): boolean[] {
+  const refreshAt = client.indexOf("const refresh = useCallback(async () => {");
+  const refreshEnd = client.indexOf("const recheckFailure = useCallback", refreshAt);
+  const refresh = refreshAt < 0 || refreshEnd < 0 ? "" : client.slice(refreshAt, refreshEnd);
+  return [
+    page.includes('export const dynamic = "force-dynamic"')
+      && page.includes('readDepositStatus(session.userId, { kind: "funding-key", value: key })'),
+    page.includes('lookupUrl={`/api/wallet/deposits/recover?key=${encodeURIComponent(key)}`}')
+      && page.includes('paymentKey={isFundingUuid(key) ? key : null}'),
+    refresh.includes('fetch(statusUrl, { credentials: "same-origin", cache: "no-store", signal: abort.signal })')
+      && refresh.includes('if (response.status === 401) { window.location.reload(); return; }'),
+    refresh.includes('if (next.state === "UNKNOWN" && current.current.state !== "UNKNOWN")')
+      && refresh.includes('if (current.current.state !== "UNKNOWN" && current.current.state !== "PENDING" && next.state === "PENDING") return;'),
+    client.includes('box.setItem(PENDING_BET_KEY, marker)')
+      && client.includes('window.location.replace(tagged)')
+      && !client.includes('buyPositionAction('),
+  ];
+}
+const waitingRules = [
+  "a reload rereads the owner's funding key on a dynamic server page",
+  "the status route remains keyed to that funding identity",
+  "polling is a fresh authenticated GET and an expired session reloads",
+  "an UNKNOWN or older PENDING answer cannot erase a terminal receipt",
+  "return restores the choice marker without replaying the bet action",
+];
+waitingChecks(waitingPage, waitingClient).forEach((holds, i) => ok(`§6.${i + 1} ${waitingRules[i]}`, holds));
+const waitingPlants = [
+  [waitingPage.replace('export const dynamic = "force-dynamic"', 'export const dynamic = "force-static"'), waitingClient, 0],
+  [waitingPage.replace('kind: "funding-key"', 'kind: "latest"'), waitingClient, 0],
+  [waitingPage.replace('encodeURIComponent(key)', 'encodeURIComponent("latest")'), waitingClient, 1],
+  [waitingPage, waitingClient.replace('cache: "no-store", signal: abort.signal', 'cache: "force-cache", signal: abort.signal'), 2],
+  [waitingPage, waitingClient.replace('if (next.state === "UNKNOWN" && current.current.state !== "UNKNOWN")', 'if (false && next.state === "UNKNOWN")'), 3],
+  [waitingPage, waitingClient.replace('window.location.replace(tagged)', 'buyPositionAction(fd); window.location.replace(tagged)'), 4],
+] as const;
+for (const [i, [page, client, rule]] of waitingPlants.entries()) {
+  ok(`§6.plant${i + 1} ${waitingRules[rule]}`, (page !== waitingPage || client !== waitingClient) && !waitingChecks(page, client)[rule]);
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass < 15) { console.error(`!! only ${pass} assertions ran — treating as failure.`); process.exit(3); }
 process.exit(fail === 0 ? 0 : 1);

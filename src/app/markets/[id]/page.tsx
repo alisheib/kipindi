@@ -573,7 +573,7 @@ export default async function MarketDetail({
       <RefreshPoller intervalMs={15_000} />
       <HashFocus />
       {/* ── Back link ── */}
-      <BackLink fallbackHref="/markets" label={t.common.markets} />
+      <BackLink fallbackHref={journey ? "/" : "/markets"} label={journey ? t.journey.tabQuestions : t.common.markets} />
 
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">

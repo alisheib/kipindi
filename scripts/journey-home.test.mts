@@ -2498,6 +2498,8 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     // while a classic rollback reader still gets the board. This is separate from the card slot.
     if (n === "watch") rest = rest.replace('href={(journey ? "/" : "/markets") as never}', 'href={"/markets" as never}');
     if (n === "results") rest = rest.replace('href={journey ? "/" : "/markets"}', 'href="/markets"');
+    if (n === "live") rest = rest.replace('href={(q ? "/live" : journey ? "/" : "/markets") as never}', 'href={(q ? "/live" : "/markets") as never}');
+    if (n === "question") rest = rest.replace('<BackLink fallbackHref={journey ? "/" : "/markets"} label={journey ? t.journey.tabQuestions : t.common.markets} />', '<BackLink fallbackHref="/markets" label={t.common.markets} />');
     const stray = (rest.match(PG_JOURNEY_ID) ?? []).length;
     const problems = [
       s.openers !== 1 ? `${s.openers} openers` : "",
@@ -2512,9 +2514,11 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
   });
   ok("9.slot · each page's cards' slot is ONE ternary on the resolver's answer — the journey arm first, then the classic arm, today's markup line for line (pinned at its first and last lines, at today's indentation, never wrapped) — and the page reads journey nowhere else (the similar rail's heading words and S15 discovery links aside): no journey && sibling, which would add a false child to every classic payload",
     badSlot.length === 0, j(badSlot));
-  ok("9.browse · an empty journey watchlist or results page links directly to Questions; a classic reader keeps /markets for rollback",
+  ok("9.browse · journey watchlist, results, live and question exits link directly to Questions; classic readers keep /markets for rollback",
     code.watch.includes('href={(journey ? "/" : "/markets") as never}')
-    && code.results.includes('href={journey ? "/" : "/markets"}'));
+    && code.results.includes('href={journey ? "/" : "/markets"}')
+    && code.live.includes('href={(q ? "/live" : journey ? "/" : "/markets") as never}')
+    && code.question.includes('<BackLink fallbackHref={journey ? "/" : "/markets"} label={journey ? t.journey.tabQuestions : t.common.markets} />'));
 
   /* what each site hands the card (WP10 Gates) */
   const noCards = PG_NAMES.filter((n) => cards[n].length === 0);

@@ -249,7 +249,7 @@ export default async function LivePage({
             title={q ? `${t.market.noLiveMatch} "${q}"` : t.market.noLiveNow}
             body={q ? t.results.tryDifferentKeywords : t.market.noLiveBody}
             action={
-              <Link href={(q ? "/live" : "/markets") as never} className="btn btn-primary btn-md">
+              <Link href={(q ? "/live" : journey ? "/" : "/markets") as never} className="btn btn-primary btn-md">
                 {q ? t.common.clearSearch : t.common.browseAll}
               </Link>
             }

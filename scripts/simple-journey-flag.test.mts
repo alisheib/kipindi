@@ -265,11 +265,11 @@ async function g1Ceiling(I: Impl) {
   const bad = [];
   for (const t of typos) {
     const c = await withEnv({ FEATURE_SIMPLEJOURNEY: t }, () => I.ceiling());
-    if (c.ceiling !== "STAFF_PREVIEW" || c.source !== "CODE") bad.push(`${j(t)}→${j(c)}`);
+    if (c.ceiling !== "ACTIVE" || c.source !== "CODE") bad.push(`${j(t)}→${j(c)}`);
   }
-  ok("1.env.typo · any other value (case, spaces, a dash, blank, a retired word) is the shipped STAFF_PREVIEW, from the code", bad.length === 0, bad.join(" "));
+  ok("1.env.typo · any other value (case, spaces, a dash, blank, a retired word) is the shipped ACTIVE, from the code", bad.length === 0, bad.join(" "));
   const unset = await withEnv({ FEATURE_SIMPLEJOURNEY: undefined }, () => I.ceiling());
-  ok("1.code · unset, the ceiling is the shipped STAFF_PREVIEW — nothing is launched by default", unset.ceiling === "STAFF_PREVIEW" && unset.source === "CODE", j(unset));
+  ok("1.code · unset, the ceiling is the shipped ACTIVE", unset.ceiling === "ACTIVE" && unset.source === "CODE", j(unset));
 }
 
 async function g2Table(I: Impl) {
@@ -473,7 +473,7 @@ async function g7Viewers(I: Impl, tag: string) {
   }
   setMem(null);
   const absent = await I.resolveFor({ cookie: staffPass, path: "/" });
-  ok("7.absent · with no record (a fresh database) a staff pass previews under the shipped STAFF_PREVIEW", absent.state === "STAFF_PREVIEW" && absent.preview, j({ state: absent.state, preview: absent.preview }));
+  ok("7.absent · with no record (a fresh database) the shipped ACTIVE shows the journey without a preview marker", absent.state === "ACTIVE" && absent.journey && !absent.preview, j({ state: absent.state, journey: absent.journey, preview: absent.preview }));
   const envKill = await withEnv({ FEATURE_SIMPLEJOURNEY: "WITHDRAWN" }, () => I.resolveFor({ cookie: staffPass, path: "/" }));
   ok("7.env.kill · FEATURE_SIMPLEJOURNEY=WITHDRAWN hides it from a pass holder too", envKill.state === "WITHDRAWN" && !envKill.journey && !envKill.preview, j(envKill));
   const broken = await I.resolveFor({ cookie: staffPass, path: "/" }, { switchNow: async () => { throw new Error("boom"); } }).then((r) => r, () => "threw");
@@ -771,8 +771,8 @@ async function g11Health() {
   const { GET } = await import("../src/app/api/health/route.ts");
   const res = await GET();
   const body = await res.json() as { simpleJourney?: { ceiling?: string; state?: string } };
-  ok("11.health · GET /api/health: simpleJourney = { ceiling STAFF_PREVIEW, state STAFF_PREVIEW } with no record",
-    body.simpleJourney?.ceiling === "STAFF_PREVIEW" && body.simpleJourney?.state === "STAFF_PREVIEW", j(body.simpleJourney));
+  ok("11.health · GET /api/health: simpleJourney = { ceiling ACTIVE, state ACTIVE } with no record",
+    body.simpleJourney?.ceiling === "ACTIVE" && body.simpleJourney?.state === "ACTIVE", j(body.simpleJourney));
   setMem(SW.sealJourneySwitch(record("WITHDRAWN")));
   await new Promise((r) => setTimeout(r, 5));
   const killed = await (await GET()).json() as { simpleJourney?: { state?: string } };
@@ -786,12 +786,12 @@ async function g12Database() {
   SW.__setJourneySwitchStoreForTests(null);
   TABLE.clear();
   const a = await SW.journeySwitchNow(0);
-  ok("12.db.absent · database mode, no row: the ceiling decides (STAFF_PREVIEW)", a.state === "STAFF_PREVIEW" && a.stored.kind === "ABSENT", j(a));
+  ok("12.db.absent · database mode, no row: the ceiling decides (ACTIVE)", a.state === "ACTIVE" && a.stored.kind === "ABSENT", j(a));
   TABLE.set(KEY, SW.sealJourneySwitch(record("WITHDRAWN")));
   const cached = await SW.journeySwitchNow();
   const fresh = await SW.journeySwitchNow(0);
   ok("12.db.other.container · a kill written by another container is read within the cache window (forced read: WITHDRAWN)",
-    fresh.state === "WITHDRAWN" && (cached.state === "STAFF_PREVIEW" || cached.state === "WITHDRAWN"), j({ cached: cached.state, fresh: fresh.state }));
+    fresh.state === "WITHDRAWN" && (cached.state === "ACTIVE" || cached.state === "WITHDRAWN"), j({ cached: cached.state, fresh: fresh.state }));
   TABLE.delete(KEY);
   FAIL_READ.add(KEY);
   const failed = await SW.journeySwitchNow(0);
@@ -815,7 +815,7 @@ async function g12Database() {
   const resume = await CE.runJourneyCeremony("sjf_db_owner", { op: "CAP", to: "ACTIVE", reason: "resume the preview", expectSeq: 1 }, { totp: "ok" });
   AUDIT_FAIL.delete("journey.rollout.set");
   ok("12.db.outcome.unrecorded · an act that LANDED but whose outcome row failed is reported as landed, with a warning",
-    resume.ok && resume.changed && resume.state === "STAFF_PREVIEW" && resume.recorded === false && resume.warn === true, j(resume));
+    resume.ok && resume.changed && resume.state === "ACTIVE" && resume.recorded === false && resume.warn === true, j(resume));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -827,8 +827,9 @@ async function runAll(I: Impl, W: World, tag: string) {
   await g5Seal(I);
   await g6Entitlement(I, tag);
   await g7Viewers(I, tag);
-  await g8Ceremony(tag);
-  await g9Doors(I, tag);
+  // The preview ceremony remains a rollback control after the shipped state becomes ACTIVE.
+  await withEnv({ FEATURE_SIMPLEJOURNEY: "STAFF_PREVIEW" }, () => g8Ceremony(tag));
+  await withEnv({ FEATURE_SIMPLEJOURNEY: "STAFF_PREVIEW" }, () => g9Doors(I, tag));
   g10Wiring(W);
   await g11Health();
 }

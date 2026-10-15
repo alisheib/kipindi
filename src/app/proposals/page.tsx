@@ -20,6 +20,7 @@ import { VoteControl } from "@/components/proposals/vote-control";
 import { StatusBadge } from "@/components/proposals/status-badge";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { pickLocalized } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
 import { formatTzs, formatNumber } from "@/lib/utils";
@@ -77,13 +78,14 @@ export default async function ProposalsPage({
   const state = cfg.state;
   const active = isProposalsActive(cfg);
   if (state === "DISABLED") {
+    const { journey } = await resolveSimpleJourney();
     return (
       <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-12">
         <h1 className="sr-only">{t.proposals.title}</h1>
         <ProposalsUnavailable
           title={t.proposals.unavailableTitle}
           body={t.proposals.unavailableBody}
-          browseHref="/markets"
+          browseHref={journey ? "/" : "/markets"}
           browseLabel={t.proposals.browseMarkets}
         />
       </div>

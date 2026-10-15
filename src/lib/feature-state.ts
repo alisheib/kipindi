@@ -397,11 +397,13 @@ export function houseBotsLive(): boolean {
 export type RolloutState = "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE";
 
 /**
- * ⭐ THE SHIPPED CEILING. STAFF_PREVIEW until the S15 flip, which is the one-word commit that makes it ACTIVE.
+ * ⭐ THE SHIPPED CEILING. This isolated S15 candidate sets ACTIVE; its predeploy
+ * publication gate remains closed until the actual launch evidence and date are filed.
  * ⛔ Not a member of `PRODUCT_STATE` (`test:withdrawn-features` §6 holds that table to one declaration and two
  * states), and its name says what it is.
  */
-const SIMPLE_JOURNEY_SHIPPED: RolloutState = "STAFF_PREVIEW";
+// The environment and the Owner's stored cap can still lower the public ceiling.
+const SIMPLE_JOURNEY_SHIPPED: RolloutState = "ACTIVE";
 
 const ROLLOUT_RANK: Record<RolloutState, number> = { WITHDRAWN: 0, STAFF_PREVIEW: 1, ACTIVE: 2 };
 

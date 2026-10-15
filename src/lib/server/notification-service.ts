@@ -2237,8 +2237,8 @@ export function notifyAgentRateChanged(userId: string, opts: { beforePct: number
     titleEn: `Your commission rate is now ${opts.afterPct}%`,
     titleSw: `Kiwango chako cha kamisheni sasa ni ${opts.afterPct}%`,
     titleZh: `您的佣金比例现为 ${opts.afterPct}%`,
-    bodyEn: `Changed from ${before} to ${opts.afterPct}% of the net fee. It applies to positions settled from now on; commission already accrued keeps the rate that priced it.`,
-    bodySw: `Imebadilishwa kutoka ${before} hadi ${opts.afterPct}% ya ada halisi. Inatumika kwa nafasi zinazosuluhishwa kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`,
+    bodyEn: `Changed from ${before} to ${opts.afterPct}% of the net fee. It applies to tickets settled from now on; commission already accrued keeps the rate that priced it.`,
+    bodySw: `Imebadilishwa kutoka ${before} hadi ${opts.afterPct}% ya ada halisi. Inatumika kwa tiketi zinazosuluhishwa kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`,
     bodyZh: `已从 ${before} 调整为净手续费的 ${opts.afterPct}%。适用于此后结算的头寸；已累积的佣金保持原比例。`,
     href: "/profile/invite",
   });
@@ -2269,8 +2269,8 @@ export function notifyAgentCommission(userId: string, opts: { amountTzs: number 
     titleEn: `Agent commission · ${amount}`,
     titleSw: `Kamisheni ya wakala · ${amount}`,
     titleZh: `代理佣金 · ${amount}`,
-    bodyEn: `Credited to your cash balance from a settled position one of your recruits played. Withdrawable now.`,
-    bodySw: `Imewekwa kwenye salio lako la fedha kutoka nafasi iliyosuluhishwa aliyocheza mchezaji uliyemleta. Inaweza kutolewa sasa.`,
+    bodyEn: `Credited to your cash balance from a settled ticket one of your recruits played. Withdrawable now.`,
+    bodySw: `Imewekwa kwenye salio lako la fedha kutoka tiketi ya mchezaji uliyemleta iliyosuluhishwa. Inaweza kutolewa sasa.`,
     bodyZh: `已从您推荐玩家结算的头寸计入您的现金余额，可立即提现。`,
     href: "/profile/invite",
   });

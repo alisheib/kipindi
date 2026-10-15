@@ -1123,7 +1123,7 @@ export function betPlacedHtml({ reference, side, stake, marketTitle, placedAt, r
     : `${mins}-min free exit · You can sell this position within ${mins} minutes for a full refund at no cost. After that, selling closes and the bet rides to settlement.`;
   return wrap(`
     ${eyebrow("Bet placed", "Dau limewekwa")}
-    ${heading("Position open")}
+    ${heading("Ticket open")}
     ${subtitle(marketTitle)}
     ${detailRows([
       { label: "Reference", value: reference },
@@ -1144,7 +1144,7 @@ export function winNotificationHtml({ reference, payout, stake, marketTitle, set
 }): string {
   const net = payout - stake;
   return wrapGold(`
-    ${eyebrow("Position won", "Umeshinda", true)}
+    ${eyebrow("Ticket won", "Umeshinda", true)}
     ${heading(`You won ${formatTzs(payout)}`, GILT)}
     ${subtitle(marketTitle)}
     ${detailRows([
@@ -1258,7 +1258,7 @@ export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldA
   const net = value - stake;
   const profit = net >= 0;
   return wrap(`
-    ${eyebrow("Position sold", "Imeuzwa")}
+    ${eyebrow("Ticket sold", "Imeuzwa")}
     ${heading(`Cashed out · ${formatTzs(value)}`)}
     ${subtitle(marketTitle)}
     ${gracePeriod ? `<p style="margin:12px 0;padding:10px 14px;background:oklch(40% 0.12 152 / 0.15);border-left:3px solid oklch(60% 0.14 152);border-radius:6px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:oklch(80% 0.10 152)">Grace period exit — full stake returned, no fee applied.</p>` : ""}
@@ -2160,7 +2160,7 @@ export function accountClosedHtml({ name, time }: { name: string; time: string }
   return wrap(`
     ${eyebrow("Account", "Akaunti")}
     ${heading(`Your account is closed, ${name}`)}
-    ${subtitle("Your 50pick account has been closed as you requested. Deposits, withdrawals and betting are disabled. Any open positions will settle out normally.")}
+    ${subtitle("Your 50pick account has been closed as you requested. Deposits, withdrawals and betting are disabled. Any open tickets will settle out normally.")}
     ${subtitleSw("Akaunti yako ya 50pick imefungwa kama ulivyoomba.")}
     ${detailRows([
       { label: "Closed", value: time },
@@ -2345,7 +2345,7 @@ export function agentCommissionEarnedHtml({ amountTzs }: { amountTzs: number }):
     ${eyebrow("Verified 50pick Agent", "Wakala Aliyethibitishwa", true)}
     ${heading(`Agent commission · ${formatTzs(amountTzs)}`)}
     ${subtitle(`A position one of your recruits played has settled, and your share of the net fee — ${formatTzs(amountTzs)} — is in your cash balance as withdrawable money.`)}
-    ${subtitleSw(`Nafasi aliyocheza mchezaji uliyemleta imesuluhishwa, na sehemu yako ya ada halisi — ${formatTzs(amountTzs)} — iko kwenye salio lako la fedha, inaweza kutolewa.`)}
+    ${subtitleSw(`Tiketi ya mchezaji uliyemleta imesuluhishwa, na sehemu yako ya ada halisi — ${formatTzs(amountTzs)} — iko kwenye salio lako la fedha, inaweza kutolewa.`)}
     ${subtitle("You have been signed out of 50pick; sign in again to see your history and any commission already paid.")}
     ${detailRows([
       { label: "Commission", value: formatTzs(amountTzs), tone: "good" },
@@ -2361,12 +2361,12 @@ export function agentRateChangedHtml({ beforePct, afterPct }: { beforePct: numbe
   return wrapGold(`
     ${eyebrow("Verified 50pick Agent", "Wakala Aliyethibitishwa", true)}
     ${heading(`Your commission rate is now ${afterPct}%`)}
-    ${subtitle(`A compliance officer has set your rate to ${afterPct}% of the net fee 50pick keeps on every settled position your recruits play. It applies to positions settled from now on; commission already accrued keeps the rate that priced it.`)}
-    ${subtitleSw(`Afisa wa uzingatiaji ameweka kiwango chako kuwa ${afterPct}% ya ada halisi ambayo 50pick inabaki nayo kwa kila nafasi inayosuluhishwa. Inatumika kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`)}
+    ${subtitle(`A compliance officer has set your rate to ${afterPct}% of the net fee 50pick keeps on every settled ticket your recruits play. It applies to tickets settled from now on; commission already accrued keeps the rate that priced it.`)}
+    ${subtitleSw(`Afisa wa uzingatiaji ameweka kiwango chako kuwa ${afterPct}% ya ada halisi ambayo 50pick inabaki nayo kwa kila tiketi inayosuluhishwa. Inatumika kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`)}
     ${detailRows([
       { label: "Previous rate", value: before },
       { label: "New rate", value: `${afterPct}% of the net fee` },
-      { label: "Applies to", value: "Positions settled from now on" },
+      { label: "Applies to", value: "Tickets settled from now on" },
     ])}
     ${ctaButton("/profile/invite", "Open your agent dashboard · Fungua", "gold")}
   `);

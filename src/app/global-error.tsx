@@ -39,7 +39,7 @@ const MINI_DICT = {
   en: {
     criticalError: "Critical error",
     title: "Something broke too early to recover",
-    body: "Your wallet, positions, and bets are unaffected \u2014 every state change is captured in our append-only audit log. The team has been notified.",
+    body: "Your wallet, tickets, and bets are unaffected \u2014 every state change is captured in our append-only audit log. The team has been notified.",
     tryAgain: "Try again",
     goHome: "Go home",
     reference: "Reference",
@@ -50,7 +50,7 @@ const MINI_DICT = {
   sw: {
     criticalError: "Hitilafu kubwa",
     title: "Kitu kimevunjika kabla hata ya kuanza",
-    body: "Pochi yako, nafasi na madau hayajaathiriwa \u2014 kila mabadiliko yanarekodiwa kwenye kumbukumbu yetu. Timu imetaarifiwa.",
+    body: "Pochi yako, tiketi na madau hayajaathiriwa \u2014 kila mabadiliko yanarekodiwa kwenye kumbukumbu yetu. Timu imetaarifiwa.",
     tryAgain: "Jaribu tena",
     goHome: "Nenda nyumbani",
     reference: "Rejea",

@@ -52,11 +52,11 @@ const emails = [
   },
   {
     subject: '3/5 Bet placed \u00b7 YES on "Will TZS strengthen?"',
-    html: wrap(ey("Bet placed","Dau limewekwa")+h1("Position open")+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Your pick",v:`<span style="color:${Y}">YES</span>`},{l:"Stake",v:"TZS 5,000"},{l:"Resolves",v:"2026-06-30"}])+sub("Payout is calculated at resolution from the final pool share.")+cta("https://kipindi-production.up.railway.app/positions","View positions \u00b7 Tazama madau")),
+    html: wrap(ey("Bet placed","Dau limewekwa")+h1("Ticket open")+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Your pick",v:`<span style="color:${Y}">YES</span>`},{l:"Stake",v:"TZS 5,000"},{l:"Resolves",v:"2026-06-30"}])+sub("Payout is calculated at resolution from the final pool share.")+cta("https://kipindi-production.up.railway.app/positions","View tickets \u00b7 Tazama tiketi")),
   },
   {
     subject: "4/5 You won \u00b7 TZS 12,350",
-    html: wrap(ey("Position won","Umeshinda")+h1("You won TZS 12,350",G)+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Payout",v:"TZS 12,350",t:"good"},{l:"Net profit",v:"+TZS 7,350",t:"good"},{l:"Stake",v:"TZS 5,000"}])+cta("https://kipindi-production.up.railway.app/markets","Browse markets \u00b7 Tazama masoko")),
+    html: wrap(ey("Ticket won","Umeshinda")+h1("You won TZS 12,350",G)+sub("Will the TZS strengthen against the USD by month-end?")+rows([{l:"Payout",v:"TZS 12,350",t:"good"},{l:"Net profit",v:"+TZS 7,350",t:"good"},{l:"Stake",v:"TZS 5,000"}])+cta("https://kipindi-production.up.railway.app/","Browse questions \u00b7 Tazama maswali")),
   },
   {
     subject: "5/5 Signed in \u00b7 Umeingia 50pick",

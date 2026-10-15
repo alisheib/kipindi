@@ -94,7 +94,11 @@ async function verdict(w: World): Promise<string[]> {
   const misses: string[] = [];
   const ok = (name: string, pass: boolean) => { if (!pass) misses.push(name); };
   const forbidden = /resolveSimpleJourney|simpleJourneyFor|journey-preview|kp_preview|journey-on/;
-  ok("flag.census", !Object.values(w.auth).some(source => forbidden.test(decomment(source))) && !forbidden.test(decomment(w.landing))
+  // Page rendering may resolve the rollout to draw the appropriate journey
+  // shell (verify-email does). The auth success *actions* must not branch on it:
+  // a saved post-auth destination is carried unchanged through either shell.
+  const actionSources = Object.entries(w.auth).filter(([path]) => path.endsWith("actions.ts")).map(([, source]) => source);
+  ok("flag.census", !actionSources.some(source => forbidden.test(decomment(source))) && !forbidden.test(decomment(w.landing))
     && !forbidden.test(decomment(read("src/lib/safe-next.ts"))));
   const flags = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"] as const;
   for (const flag of flags) for (const pass of [false, true]) {
