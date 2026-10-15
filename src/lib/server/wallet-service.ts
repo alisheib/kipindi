@@ -330,9 +330,14 @@ export async function deposit(
   // reference always exists from the moment the gateway could possibly have been
   // told about it.
   const correlationId = `dep_${randomId(10)}`;
-  // Best-effort: if this write fails we still dispatch, and the post-dispatch write
-  // below is the authoritative one. It must never block a deposit.
-  try { await db.txn.update(txnId, { providerRef: correlationId }); } catch { /* non-fatal */ }
+  // A null result includes a swallowed SQL error (including a uniqueness collision).
+  // Never send the provider a request whose reference we cannot recover. Leave the
+  // reserved row PROCESSING for the same-key recovery/review path.
+  const referenced = await db.txn.update(txnId, { providerRef: correlationId });
+  if (referenced?.providerRef !== correlationId) {
+    auditNeedsReviewOnce(txnId, "deposit reference was not persisted before dispatch; provider was not called", { correlationId });
+    return { ok: false, error: "Payment setup is being checked. Do not pay again; use this deposit's status page.", code: "INVALID" };
+  }
   // Dispatch to provider
   const result = await dispatchDeposit({ provider: parse.data.provider, amount: parse.data.amount, msisdn: parse.data.msisdn, userId, card, correlationId });
   if (!result.ok) {
@@ -356,7 +361,11 @@ export async function deposit(
   // write above guarantees SOME reference exists even if we crash here; this write
   // makes it the authoritative one, because the mock and AML branches return a
   // different value from the correlation id we minted. Keep both writes.
-  await db.txn.update(txnId, { providerRef: result.providerRef });
+  const returnedReference = await db.txn.update(txnId, { providerRef: result.providerRef });
+  if (returnedReference?.providerRef !== result.providerRef) {
+    auditNeedsReviewOnce(txnId, "provider accepted deposit but its returned reference could not be persisted", { correlationId, providerRef: result.providerRef });
+    return { ok: false, error: "Payment is being checked. Do not pay again; use this deposit's status page.", code: "INVALID" };
+  }
 
   if (result.status === "PENDING") {
     // Real mobile-money / card collection is ASYNCHRONOUS: the initiate call only
@@ -852,11 +861,16 @@ export async function dispatchApprovedWithdrawal(
   // wrote only the ref, so a payout that went out through compliance review carried
   // no record of what Selcom said — the exact blind spot the 2026-07-29 incident was
   // made of, reproduced on the one path a human had already touched.
-  await db.txn.update(txnId, {
+  const savedReference = await db.txn.update(txnId, {
     providerRef: result.providerRef,
     ...(result.rail ? { payoutRail: result.rail } : {}),
     ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
   });
+  if (savedReference?.providerRef !== result.providerRef || (result.rail && savedReference.payoutRail !== result.rail)) {
+    recordRailAttempts(txnId, claimed.userId, result);
+    auditNeedsReviewOnce(txnId, "approved payout dispatched but its reference or rail could not be persisted", { correlationId: result.correlationId, providerRef: result.providerRef, rail: result.rail ?? null });
+    return { ok: false, error: "The payout is being checked. Keep its funds on hold until an officer resolves it." };
+  }
   recordRailAttempts(txnId, claimed.userId, result);
   audit({ category: "COMPLIANCE", action: "withdraw.approved_dispatched", actorId: null, targetType: "Transaction", targetId: txnId, payload: { providerRef: result.providerRef, rail: result.rail ?? null, gross, net, status: result.status } });
 
@@ -2151,11 +2165,16 @@ export async function withdraw(
   // together: the ref identifies the payout, the rail identifies WHICH endpoint can
   // be asked about it. Persist one without the other and every later re-query is a
   // coin flip between the right answer and a refund on top of a completed payment.
-  await db.txn.update(txnId, {
+  const savedReference = await db.txn.update(txnId, {
     providerRef: result.providerRef,
     ...(result.rail ? { payoutRail: result.rail } : {}),
     ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
   });
+  if (savedReference?.providerRef !== result.providerRef || (result.rail && savedReference.payoutRail !== result.rail)) {
+    recordRailAttempts(txnId, userId, result);
+    auditNeedsReviewOnce(txnId, "payout dispatched but its reference or rail could not be persisted", { correlationId: result.correlationId, providerRef: result.providerRef, rail: result.rail ?? null });
+    return { ok: false, error: "The payout is being checked. Its funds remain on hold until resolved.", code: "INVALID" };
+  }
   recordRailAttempts(txnId, userId, result);
 
   if (result.status === "AML_REVIEW") {

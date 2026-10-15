@@ -905,3 +905,44 @@ verdict**. Retry on a known-good disposable cluster after the main release batte
 candidate still needs actual PostgreSQL status/return proof, backup-schema, the complete WP8 battery,
 production build, visual and three-locale review, classic parity and independent bridge/controller
 review. The root owns the integration and release decision; this checkpoint is not a LIVE claim.
+
+### §5o · Reference-unique S9 release candidate (2026-10-15)
+
+This section supersedes §5n's unresolved reference-index and local-PostgreSQL-runtime notes. The S9
+candidate remains an isolated branch, not a production deployment. A SELECT-only preflight on the Railway
+production proxy at 2026-10-15 11:09:44 UTC found **zero** duplicate non-null `providerRef` groups, zero
+extra rows and zero cross-provider groups. Only the non-unique `Transaction_providerRef_idx` was installed.
+`npm run qa:provider-ref-uniqueness` repeats the read-only scan without printing connection details; it
+must be rerun immediately before migration. Webhook, signed return and reconciliation reads all select
+by **bare reference**, so `prisma/migrations/20261015111500_provider_ref_global_unique/migration.sql`
+installs one global unique index for non-null references. Prisma schema now declares `providerRef @unique`;
+null internal/unreferenced transactions remain valid. A 3-second lock timeout makes a busy live migration
+fail visibly rather than wait indefinitely on money writes. No speculative provider-scoped identity is used.
+
+The writer audit covered deposit pre-dispatch correlation and post-dispatch adapter references; ordinary and
+AML-approved payout post-dispatch references; inside-money-transaction deposit settlement; officer reconcile
+match/writeoff; the one fixed-ID demo deposit; agent registration fee and refund creates; and the null-ref
+market, bonus and development fixtures. The prior deposit pre-dispatch write was best effort even though a
+Prisma update outside a transaction returns `null` on error. It now refuses provider dispatch unless the
+exact reference was saved. Every post-dispatch reference write and officer match/writeoff checks the exact
+returned row before reporting success; a write failure keeps the payment or payout pending for review and
+never releases held money. The writeoff sentinel is transaction-specific (`WRITEOFF-${txnId}`), so one
+officer can write off multiple rows. Agent fee/refund prefixes differ and their creates are inside money
+transactions, where uniqueness errors roll the money change back. The demo fixture has one fixed transaction
+ID and therefore one reference row. The memory-only duplicate-reference controls remain as defense against
+malformed legacy state; PostgreSQL fixtures now prove the database rejects such rows.
+
+Disposable PostgreSQL 18.3 in this checkout, port 5452: all **104** migrations applied; backup/restore
+schema gate **13/13**, including **127** unique indexes. Deposit persistence **38/38**, including actual
+same-provider and cross-provider insert collisions, a failed update returning null with its old row intact,
+and multiple null references. Signed status **156/156**; private recheck **146/146** and actual-PG rollback
+plants **2/2**; background settlement **148/148** and actual-PG rollback plants **5/5**. The scratch cluster
+stopped after each run. Typecheck, doc links (730), Vodacom plan and orphan reachability passed. Memory
+signed status **177/177**, focused provider-reference **27/27**, and its two red plants **2/2**: a failed
+pre-dispatch write allowed **zero** provider calls, while a failed returned-reference write left the
+dispatched deposit PROCESSING without credit. These proofs cover reference identity, writer failure and
+money settlement; they do not claim a live provider payment, a browser visual pass, or production rollout.
+
+Before integration: rerun the read-only production preflight, then run the full WP8 gate and local/browser
+release review on the exact integrated tip. After the
+root-controlled deployment, repeat production read-back and owner-visible visual and logical checks.

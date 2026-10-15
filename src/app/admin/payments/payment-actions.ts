@@ -213,7 +213,8 @@ export async function reconcileMatchAction(formData: FormData): Promise<Result> 
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
   if (t.providerRef) return { ok: false, error: "Already matched." };
-  await db.txn.update(txnId, { providerRef });
+  const matched = await db.txn.update(txnId, { providerRef });
+  if (matched?.providerRef !== providerRef) return { ok: false, error: "Reference could not be saved. Check whether it is already in use, then retry." };
   audit({ category: "COMPLIANCE", action: "payments.reconcile.matched", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef, reason, type: t.type, amount: Math.abs(t.amount) } });
   revalidatePath("/admin/payments");
   return { ok: true };
@@ -296,7 +297,11 @@ export async function reconcileWriteOffAction(formData: FormData): Promise<Resul
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "CONFIRMED" || (t.type !== "DEPOSIT" && t.type !== "WITHDRAWAL")) return { ok: false, error: "Not an unmatched settled money movement." };
   if (t.providerRef) return { ok: false, error: "Already matched." };
-  await db.txn.update(txnId, { providerRef: `WRITEOFF-${g.userId.slice(0, 10)}`, amlReason: reason });
+  // One officer can write off several rows; an officer-based sentinel collides
+  // with the globally unique settlement-reference namespace on the second row.
+  const writeOffRef = `WRITEOFF-${txnId}`;
+  const writtenOff = await db.txn.update(txnId, { providerRef: writeOffRef, amlReason: reason });
+  if (writtenOff?.providerRef !== writeOffRef || writtenOff.amlReason !== reason) return { ok: false, error: "Write-off could not be saved. Refresh and retry." };
   audit({ category: "COMPLIANCE", action: "payments.reconcile.written_off", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { reason, type: t.type, amount: Math.abs(t.amount) } });
   revalidatePath("/admin/payments");
   return { ok: true };

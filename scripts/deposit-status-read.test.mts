@@ -38,6 +38,7 @@ const RESULT_COPY_FILE = "src/lib/wallet/result-copy.ts";
 for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE, PROBE_FILE, LIFECYCLE_FILE, RESULT_COPY_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
 const RECHECK = process.argv.includes("--recheck-only");
 const BACKGROUND = process.argv.includes("--background-only");
+const REFERENCE_ONLY = process.argv.includes("--reference-only");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) throw new Error("Use memory with DATABASE_URL unset, or explicit own scratch --pg");
 if (PG) {
@@ -230,6 +231,7 @@ async function runBackground(src = sources): Promise<Check[]> {
   const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
   const lanes = ["fast-deposit", "stale-deposit-confirm", "stale-deposit-fail", "fast-withdraw", "stale-withdraw-confirm", "stale-withdraw-fail"];
   for (const lane of lanes) for (const mode of ["stable", "ref-move", "raw-mutable", "duplicate"] as const) {
+    if (PG && mode === "duplicate") continue; // the new SQL invariant rejects this legacy malformed row
     const withdrawal = lane.includes("withdraw"), stale = lane.startsWith("stale"), reported = lane.endsWith("fail") ? "FAILED" : "CONFIRMED";
     const a = await player(), b = await player(), patch = { type: withdrawal ? "WITHDRAWAL" : "DEPOSIT", amount: withdrawal ? -5000 : 5000,
       createdAt: new Date(Date.now() - (stale ? 31 * 60_000 : 25_000)).toISOString() };
@@ -314,7 +316,8 @@ async function runBackground(src = sources): Promise<Check[]> {
         const fresh = await db.txn.findById(id, tx), snapshot = fresh && { ...fresh };
         if (id === row.id && !inLock() && !changed) {
           changed = true;
-          const change = field === "key" ? { ...patch, idempotencyKey: `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}` } : patch;
+          const change = field === "key" ? { ...patch, idempotencyKey: `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}` }
+            : field === "ref" ? { providerRef: `changed_owned_ref_${row.id}` } : patch;
           await withLock(`wallet:${owner}`, async actualTx => { await db.txn.update(row.id, change, actualTx); });
         }
         return snapshot;
@@ -412,7 +415,7 @@ async function runBackground(src = sources): Promise<Check[]> {
   // ── H1 (S9 root review): ONE THROWING ROW NEVER STALLS THE SWEEP. The REAL listByStatus (no one-row stub): poisoned rows are
   // created immediately AHEAD of valid rows of the same arm, among every other PROCESSING row this suite left behind. The
   // provider answers only for these rows; any other reference reads PENDING, so nothing else is settled.
-  {
+  if (!PG) {
     const staleAt = new Date(Date.now() - 31 * 60_000).toISOString();
     const verdicts = new Map<string, "CONFIRMED" | "FAILED">(), visited: string[] = [];
     const stalePair = async (type: "DEPOSIT" | "WITHDRAWAL", verdict: "CONFIRMED" | "FAILED", poison: "ambiguous" | "short-hold") => {
@@ -454,7 +457,7 @@ async function runBackground(src = sources): Promise<Check[]> {
     ok("background.opaque-key.sweep", await st(opaque) === "CONFIRMED" && (await w(opaqueOwner))?.balance === 5000);
   }
   // The two fast lanes already isolate per row — a control that they still do, with the same poison ahead of a valid row.
-  for (const lane of ["fast-deposit", "fast-payout"] as const) {
+  if (!PG) for (const lane of ["fast-deposit", "fast-payout"] as const) {
     const type = lane === "fast-deposit" ? "DEPOSIT" : "WITHDRAWAL", amount = type === "WITHDRAWAL" ? -5000 : 5000;
     const at = new Date(Date.now() - 25_000).toISOString(), verdicts = new Set<string>(), visited: string[] = [];
     const pOwner = await player(), p = await txn(pOwner, { type, amount, createdAt: at });
@@ -568,25 +571,46 @@ async function runBackground(src = sources): Promise<Check[]> {
   }
   return checks;
 }
-async function referenceControls(src: Record<string, string>): Promise<Check[]> {
+async function referenceControls(src: Record<string, string> = sources): Promise<Check[]> {
   const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
+  const reservedOwner = await player();
+  const blocked = system(src, { ...db, txn: { ...db.txn,
+    update: async (id: string, patch: any, tx: any) => patch.providerRef?.startsWith("dep_") ? null : db.txn.update(id, patch, tx),
+  } } as typeof db);
+  const blockedDeposit = await blocked.money.deposit(reservedOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" },
+    `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`);
+  ok("reference.pre-dispatch-failure-never-calls-provider", !blockedDeposit.ok && blocked.seen.dispatches === 0);
+  const returnedOwner = await player();
+  let referenceWrites = 0;
+  const returned = system(src, { ...db, txn: { ...db.txn,
+    update: async (id: string, patch: any, tx: any) => patch.providerRef?.startsWith("dep_") && ++referenceWrites === 2
+      ? null : db.txn.update(id, patch, tx),
+  } } as typeof db);
+  const returnedKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const returnedDeposit = await returned.money.deposit(returnedOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" }, returnedKey);
+  const returnedRow = await db.txn.findByIdempotencyKey(returnedKey);
+  ok("reference.post-dispatch-failure-remains-pending", !returnedDeposit.ok && returned.seen.dispatches === 1
+    && referenceWrites === 2 && returnedRow?.status === "PROCESSING" && (await db.wallet.findByUserId(returnedOwner))?.balance === 0);
   const selector = referenceData(src);
   const unique = await txn(await player());
   ok("reference.unique-and-missing", (await selector.txn.findByProviderRef(unique.providerRef!))?.id === unique.id
     && await selector.txn.findByProviderRef("s9_ref_absent") === null);
   if (PG) {
     const other = await txn(await player());
-    let refusedInTx = false;
+    let selectedInTx = false, collisionRejected = false;
     try {
       await withLock(`wallet:${unique.userId}`, async (tx) => {
+        selectedInTx = (await selector.txn.findByProviderRef(unique.providerRef!, tx))?.id === unique.id;
         await db.txn.update(other.id, { providerRef: unique.providerRef }, tx);
-        try { await selector.txn.findByProviderRef(unique.providerRef!, tx); } catch { refusedInTx = true; }
-        throw new Error("controlled reference selector rollback");
       });
-    } catch { /* Actual rollback must restore the unrelated row's original reference. */ }
+    } catch { collisionRejected = true; }
     const rows = await prisma()!.transaction.findMany({ where: { providerRef: unique.providerRef } });
-    ok("reference.pg-current-tx", refusedInTx && rows.length === 1 && rows[0].id === unique.id
+    ok("reference.pg-unique-current-tx", selectedInTx && collisionRejected && rows.length === 1 && rows[0].id === unique.id
       && (await db.txn.findById(other.id))?.providerRef === other.providerRef);
+    // The remaining ambiguity controls deliberately plant duplicate legacy rows.
+    // The SQL index makes those fixtures impossible; the memory run retains them
+    // to prove settlement still refuses malformed pre-migration data.
+    return checks;
   }
   for (const [firstType, secondType] of [["DEPOSIT", "DEPOSIT"], ["DEPOSIT", "WITHDRAWAL"], ["WITHDRAWAL", "DEPOSIT"], ["WITHDRAWAL", "WITHDRAWAL"]] as const) {
     const a = await player(), b = await player();
@@ -1132,7 +1156,7 @@ async function run(src = sources): Promise<Check[]> {
   ok("card.opaque-key-settles", opaqueReturn.state === "PAID" && opaqueReturn.txn?.id === opaqueCard.id && opaqueReturn.balance === 10_000);
   // L1 (S9 root review): an AMBIGUOUS reference on the Selcom callback is an audited 500 (the provider retries), never an
   // unhandled route error, and nothing is settled.
-  {
+  if (!PG) {
     const ambOwner = await player(), amb = await txn(ambOwner), twin = await txn(await player(), { providerRef: amb.providerRef });
     const hookAudits: any[] = [];
     const hook = compile(src[files[8]], { "next/server": { NextResponse: { json: (body: any, init: any = {}) =>
@@ -1401,7 +1425,7 @@ async function runRecheck(src = sources): Promise<Check[]> {
       && rolled.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
     ok("review.pg-rollback-no-review-notice", rolled.seen.notices.length === 0);
   }
-  for (const [name, type, status, owner] of [
+  if (!PG) for (const [name, type, status, owner] of [
     ["foreign-failed", "DEPOSIT", "FAILED", other], ["foreign-confirmed", "DEPOSIT", "CONFIRMED", other],
     ["withdrawal-failed", "WITHDRAWAL", "FAILED", other], ["withdrawal-confirmed", "WITHDRAWAL", "CONFIRMED", other],
     ["same-owner", "DEPOSIT", "FAILED", me],
@@ -1418,6 +1442,7 @@ async function runRecheck(src = sources): Promise<Check[]> {
       && s.seen.notices.length === 1 && s.seen.notices[0].ownerId === me && s.seen.notices[0].txnId === own.id
       && s.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0 && (await db.wallet.findByUserId(other))?.balance === 0);
   }
+  if (!PG) {
   const unrestrictedFirst = await txn(other, { status: "FAILED" });
   const unrestrictedSecond = await txn(me, { status: "FAILED", providerRef: unrestrictedFirst.providerRef });
   let selectorRefused = false;
@@ -1430,11 +1455,13 @@ async function runRecheck(src = sources): Promise<Check[]> {
     && (await db.txn.findById(unrestrictedFirst.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
     && (await db.txn.findById(unrestrictedSecond.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
     && unrestricted.seen.notices.length === 0 && unrestricted.seen.groups.length === 0);
+  }
   const processingOwner = await player(), processing = await txn(processingOwner), restrictedProcessing = system(src);
   const processingResult = await restrictedProcessing.money.settlePaymentWebhook({ providerRef: processing.providerRef!, status: "CONFIRMED", amount: 5000 }, B.depositRecheckBinding(processingOwner, processing));
   ok("claim.processing-restriction-refused", !processingResult.handled && (await db.txn.findById(processing.id))?.status === "PROCESSING"
     && (await db.wallet.findByUserId(processingOwner))?.balance === 0 && restrictedProcessing.seen.groups.length === 0 && restrictedProcessing.seen.notices.length === 0);
   for (const kind of ["duplicate", "missing", "other-row"] as const) {
+    if (PG && kind === "duplicate") continue;
     const owner = await player(), otherOwner = await player(), row = await txn(owner, { status: "FAILED" });
     const other = await txn(otherOwner, { status: "FAILED", ...(kind === "duplicate" ? { providerRef: row.providerRef } : {}) });
     let underLock = false, sameTx = false;
@@ -1599,10 +1626,11 @@ async function runRecheck(src = sources): Promise<Check[]> {
   return checks;
 }
 try {
-  const mutations = BACKGROUND ? BACKGROUND_MUTATIONS : RECHECK ? RECHECK_MUTATIONS : MUTATIONS;
+  const mutations = BACKGROUND ? BACKGROUND_MUTATIONS : RECHECK ? RECHECK_MUTATIONS
+    : REFERENCE_ONLY ? MUTATIONS.filter(m => m.name.startsWith("deposit-ref-")) : MUTATIONS;
   for (const m of mutations) { const anchor = resolveAnchor(sources[m.file], m.from); if (!anchor.ok) throw new Error(`${m.name}: ${anchor.reason}`); }
-  const execute = BACKGROUND ? runBackground : RECHECK ? runRecheck : run;
-  const suite = BACKGROUND ? "payment-background" : RECHECK ? "deposit-recheck" : "deposit-status-read";
+  const execute = BACKGROUND ? runBackground : RECHECK ? runRecheck : REFERENCE_ONLY ? referenceControls : run;
+  const suite = BACKGROUND ? "payment-background" : RECHECK ? "deposit-recheck" : REFERENCE_ONLY ? "provider-reference" : "deposit-status-read";
   const green = await execute(), failed = green.filter(c => !c.pass);
   for (const c of green) console.log(`${c.pass ? "PASS" : "FAIL"} ${c.name}`);
   if (failed.length) throw new Error(`${failed.length} status-read controls failed`);

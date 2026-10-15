@@ -50,6 +50,22 @@ async function realChecks(): Promise<Check[]> {
   const checks: Check[] = [], ok = (name: string, pass: boolean) => checks.push({ name, pass });
   const me = await account(), other = await account(), row = await transaction(me, { pendingBet: A });
   ok("real.intent-create-read", eq(parseSavedDepositBet((await db.txn.findById(row.id))?.pendingBet), A));
+  if (PG) {
+    // Bare-reference webhook lookup has no provider scope. The physical index
+    // must reject both a same-rail replay and a different-rail collision.
+    const uniqueRef = `s9_global_ref_${Date.now()}`;
+    const first = await transaction(me, { provider: "MPESA", providerRef: uniqueRef });
+    let sameProviderRejected = false, crossProviderRejected = false;
+    try { await transaction(other, { provider: "MPESA", providerRef: uniqueRef }); }
+    catch { sameProviderRejected = true; }
+    try { await transaction(other, { provider: "MIXX", providerRef: uniqueRef }); }
+    catch { crossProviderRejected = true; }
+    const empty = await transaction(other, { provider: "MIXX", providerRef: null });
+    const later = await transaction(other, { provider: "MIXX" });
+    const refusedUpdate = await db.txn.update(later.id, { providerRef: uniqueRef });
+    ok("pg.provider-ref-global-unique", sameProviderRejected && crossProviderRejected && first.providerRef === uniqueRef
+      && empty.providerRef === null && refusedUpdate === null && (await db.txn.findById(later.id))?.providerRef === null);
+  }
   await db.txn.update(row.id, { pendingBet: B, origin: "changed", houseBotId: "changed", description: "Ordinary update" });
   const preserved = await db.txn.findById(row.id);
   ok("real.intent-update-retained", eq(preserved?.pendingBet, A) && preserved?.origin === "low_balance" && preserved.houseBotId == null && preserved.description === "Ordinary update");

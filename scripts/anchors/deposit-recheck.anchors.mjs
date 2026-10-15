@@ -4,7 +4,8 @@ const m = (name, from, to, expect) => ({ name, file, from, to, expect });
 const ORIGINAL_BIND = '\n        || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)';
 const INITIAL_BIND = 'let fresh = await db.txn.findById(initial.id, tx);\n      if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)\n        || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey' + ORIGINAL_BIND + ') return unknown();';
 const binding = (name, from, to, expect) => m(name, INITIAL_BIND, INITIAL_BIND.replace(from, to).replace(ORIGINAL_BIND, ''), expect);
-const WALLET_READ = '      const wallet = await db.wallet.findByUserId(userId, tx);\n      if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();\n';
+const WALLET_GUARD = 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0\n        || !Number.isFinite(bonus) || bonus < 0) return unknown();';
+const WALLET_READ = '      const wallet = await db.wallet.findByUserId(userId, tx);\n      const bonus = wallet?.bonusBalance ?? 0;\n      ' + WALLET_GUARD + '\n';
 const CLAIM = `      const opposed = (fresh.status === "FAILED" && verifiedTerminal === "CONFIRMED")
         || (fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED");
       if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") {
@@ -41,11 +42,11 @@ export const MUTATIONS = [
   binding("changed-funding-key-accepted", " || fresh.idempotencyKey !== initial.idempotencyKey", "", "fresh.key"),
   m("fresh-signed-opposition-not-recorded", '(fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED")', 'false', "review.fresh-confirmed-opposes-failed"),
   m("fresh-marker-ignored", 'let projection = depositProjection(userId, fresh, Date.now());', 'let projection = depositProjection(userId, { ...fresh, providerStatus: null }, Date.now());', "fresh.review"),
-  m("missing-wallet-fabricates-zero", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', 'if (!wallet) return { view: { ...projection, balance: 0, retryAfterSec: 0, failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };', "wallet.missing"),
-  m("invalid-wallet-allows-review-claim", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', '', "wallet.opposed.wrong-currency"),
+  m("missing-wallet-fabricates-zero", WALLET_GUARD, 'if (!wallet) return { view: { ...projection, balance: 0, retryAfterSec: 0, failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };', "wallet.missing"),
+  m("invalid-wallet-allows-review-claim", WALLET_GUARD, '', "wallet.opposed.wrong-currency"),
   m("wallet-validated-after-review-claim", WALLET_READ + CLAIM, CLAIM + WALLET_READ, "wallet.opposed.wrong-currency"),
   // H2 (S9 root review): a Decimal(18,2) wallet is a valid wallet; the whole-shilling rule refused to record a real contradiction.
-  m("recheck-requires-whole-shillings", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', 'if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();', "wallet.opposed.fractional-records-review"),
+  m("recheck-requires-whole-shillings", WALLET_GUARD, WALLET_GUARD.replace('Number.isFinite(wallet.balance)', 'Number.isSafeInteger(wallet.balance)'), "wallet.opposed.fractional-records-review"),
   // M4: the browser-POSTED capsule keeps the UUID-or-null key shape and is refused before any lookup (stored keys are opaque).
   { name: "posted-capsule-accepts-any-stored-key", file: "src/lib/journey/deposit-recheck-binding.ts", from: "return binding && (binding.fundingKey === null || UUID.test(binding.fundingKey)) ? binding : null;", to: "return binding;", expect: "capsule.invalid-key" },
   { name: "review-marker-write-escapes-tx", file: "src/lib/server/wallet-service.ts", from: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);', to: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });', expect: "review.reentrant-same-tx" },
@@ -79,8 +80,6 @@ export const MUTATIONS = [
 ];
 // These plants need actual SQL selection/visibility and rollback; Maps cannot supply that evidence.
 export const PG_MUTATIONS = [
-  { name: "postgres-reference-picks-arbitrary-owner", file: "src/lib/server/prisma-dal.ts", from: 'transaction.findMany({ where: { providerRef }, take: 2 })', to: 'transaction.findMany({ where: { providerRef }, take: 1 })', expect: "reference.ambiguous.DEPOSIT-DEPOSIT.CONFIRMED" },
-  { name: "postgres-reference-read-ignores-current-tx", file: "src/lib/server/prisma-dal.ts", from: '(tx ?? pc()).transaction.findMany({ where: { providerRef }, take: 2 })', to: 'pc().transaction.findMany({ where: { providerRef }, take: 2 })', expect: "reference.pg-current-tx" },
   { name: "review-marker-autocommits-before-outer-rollback", file: "src/lib/server/wallet-service.ts", from: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);', to: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });', expect: "review.pg-rollback-no-partial-marker" },
-  { name: "review-notice-escapes-rollback", file: "src/lib/server/wallet-service.ts", from: 'if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id }));', to: 'if (reviewAdded) notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id });', expect: "review.pg-rollback-no-review-notice" },
+  { name: "review-notice-escapes-rollback", file: "src/lib/server/wallet-service.ts", from: 'if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,\n          savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));', to: 'if (reviewAdded) notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,\n          savedReturn: !!parseSavedDepositBet(txn.pendingBet) });', expect: "review.pg-rollback-no-review-notice" },
 ];

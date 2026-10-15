@@ -669,6 +669,8 @@
     "test:short-title-fit": "tsx scripts/short-title-fit.test.mts",
     "red:short-title-fit": "tsx scripts/short-title-fit.test.mts --prove-red",
     "qa:short-title-fit": "tsx scripts/qa-short-title-fit.mjs",
+    "qa:provider-ref-uniqueness": "node scripts/qa-provider-ref-uniqueness.mjs",
+    "red:provider-reference": "tsx scripts/deposit-status-read.test.mts --reference-only --prove-red",
     "qa:short-titles": "node scripts/qa-short-titles.mjs",
     "test:short-title-edit": "tsx scripts/short-title-edit.test.mts",
     "red:short-title-edit": "tsx scripts/short-title-edit.test.mts --prove-red",

@@ -1,6 +1,8 @@
 const file = "src/lib/server/deposit-status.ts";
 const mutation = (name, from, to, expect) => ({ name, file, from, to, expect });
 export const MUTATIONS = [
+  { name: "deposit-ref-prewrite-ignored", file: "src/lib/server/wallet-service.ts", from: 'if (referenced?.providerRef !== correlationId) {', to: 'if (false) {', expect: "reference.pre-dispatch-failure-never-calls-provider" },
+  { name: "deposit-ref-postwrite-ignored", file: "src/lib/server/wallet-service.ts", from: 'if (returnedReference?.providerRef !== result.providerRef) {', to: 'if (false) {', expect: "reference.post-dispatch-failure-remains-pending" },
   mutation("foreign-probe-before-scope", "txn.userId !== userId || ", "", "scope.owner"),
   mutation("withdrawal-probe", 'txn.type !== "DEPOSIT" || ', "", "scope.type"),
   mutation("foreign-currency-probe", 'txn.currency !== "TZS" || ', "", "scope.currency"),

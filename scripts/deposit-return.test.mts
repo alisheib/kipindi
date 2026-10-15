@@ -87,6 +87,11 @@ check("a pre-dispatch refusal cannot release an unresolved same-key funding iden
   fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource));
 if (red) check("plant: an early tab-key release is caught",
   !fundingUnlockGuard(depositActionSource, `${mobileFormSource}\nbox.removeItem(slot);`, cardBridgeSource));
+const keyedActionGuard = (source: string) => source.includes("(journeyFlow || cardFlow) && (!idempotencyKey")
+  && source.indexOf("(journeyFlow || cardFlow) && (!idempotencyKey") < source.indexOf("const result = await deposit(");
+check("focused and Card actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));
+if (red) check("plant: an unkeyed charge path is caught",
+  !keyedActionGuard(depositActionSource.replace("(journeyFlow || cardFlow) && (!idempotencyKey", "false && (!idempotencyKey")));
 const cardRecoveryGuard = (source: string) => source.includes("gate.inert = true;")
   && source.includes("if (gate.inert || window.sessionStorage.getItem(fundingKey(ownerId)))")
   && source.includes('form.addEventListener("submit", submit, true)');

@@ -87,6 +87,11 @@ export async function depositAction(formData: FormData) {
     redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
 
   if (requestedFlow === "journey" && !journey) fail(t.error.somethingDidntWork);
+  // Focused and direct Card forms are recoverable payment flows. A missing/malformed key cannot fall
+  // through to deposit() as an unkeyed charge when hydration or a browser form guard fails.
+  if ((journeyFlow || cardFlow) && (!idempotencyKey
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)))
+    fail(t.error.somethingDidntWork);
   if (journeyFlow && !isMobileMoneyMethodId(provider)) fail(t.error.somethingDidntWork);
   if (cardFlow && provider !== "CARD") fail(t.error.somethingDidntWork);
   if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) fail(t.error.somethingDidntWork);

@@ -664,7 +664,7 @@ model Transaction {
   balanceAfter      Decimal?         @db.Decimal(18, 2)
   currency          String           @default("TZS")
   provider          PaymentProvider?
-  providerRef       String?
+  providerRef       String?          @unique
   providerStatus    String?
   // WHICH Selcom payout rail this withdrawal actually went out on — one of
   // PayoutRail in src/lib/server/selcom.ts (WALLET_CASHIN | SELCOM_PESA |
@@ -719,10 +719,9 @@ model Transaction {
   // Market.selectionClosedNotifiedAt. Null = not yet told / not applicable.
   pendingNotifiedAt DateTime?
 
-  // Prevent duplicate deposits/withdrawals from the same payment provider
-  // transaction. A retried webhook with the same providerRef must not
-  // create a second ledger entry. Nulls are excluded (internal txns).
-  @@unique([provider, providerRef])
+  // Webhooks and status reads select by bare providerRef across all providers,
+  // so every non-null reference must identify one ledger row globally. PostgreSQL
+  // permits multiple nulls for unreferenced/internal transactions.
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
   @@index([type, status])
