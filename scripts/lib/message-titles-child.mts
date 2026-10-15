@@ -4,9 +4,9 @@
  * backend when it is first imported, so a store is a process. `HB_MONEY_STORE` names the store; every line carries it.
  * `red:message-titles` runs it on the memory store alone, once per planted defect.
  *
- * WHAT IT HOLDS. A message that leaves the site — a bell row and its push, a player's letter — carries a market's
- * OFFICER-APPROVED SHORT TITLE only once the new journey is ACTIVE for everyone (the S15 flip), and the full title until
- * then and on any failure (WP13 adds the share surfaces, as §D):
+ * WHAT IT HOLDS. A message that leaves the site — a bell row and its push, a player's letter, the share picture, the win
+ * card, the share preview — carries a market's OFFICER-APPROVED SHORT TITLE only once the new journey is ACTIVE for
+ * everyone (the S15 flip), and the full title until then and on any failure:
  *   §A  the rule (`messageTitle` / `messageTitles`, lib/markets/short-title.ts): off returns the caller's own title
  *       untouched; on is exactly what a card shows (`cardTitle`), each language its own, never another's.
  *   §B  the switch (`shortTitlesInMessagesNow`, lib/server/message-titles.ts): true only when the rollout is ACTIVE; the
@@ -19,20 +19,28 @@
  *       as N; at ACTIVE, S reads as N with each language's short title where its full one stood, P only in English, and
  *       N as it read before the flip. An Up & Down round keeps its round title even with short titles forced onto its
  *       row, and the officers' cancellation copies keep the full English question.
+ *   §D  the share surfaces in the same four states: the OG card, its win variant, the win card's projection
+ *       (`resolveWinShareToken`) and the market page's share metadata (`generateMetadata`, run from its own source).
  *
  * FIXTURES, EACH DECLARED: users and wallets are written to the store directly (a confirmed address, so player letters go
  * out), the seed cash booked as a deposit; markets are made by `createMarket` with the officer's short titles (the
  * wizard's own path); betting closes by the market's `selectionClosedAt` stamped into the past (a fixture of TIME); the
  * round's outcome is stamped the way `updown-service.ts` stamps it, then settled by `settleMarket`; the round's forced
  * short titles go through the narrow writer `marketStore.setShortTitles` (a fixture of STATE: `createMarket` and the
- * admin edit both refuse one on a round).
+ * admin edit both refuse one on a round). `next/og`'s ImageResponse is replaced by a recorder, so the card's words are
+ * read from the element tree the real handler builds.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createRequire } from "node:module";
+import NodeModule from "node:module";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 type Any = any;
 type L = "en" | "sw" | "zh";
 const LANGS: L[] = ["en", "sw", "zh"];
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STORE = process.env.HB_MONEY_STORE ?? "memory";
 
 let pass = 0, fail = 0;
@@ -62,17 +70,33 @@ delete process.env.FEATURE_SIMPLEJOURNEY;
 
 const req = createRequire(import.meta.url);
 
+/* The share picture's renderer, recorded: the real handler builds its element tree and hands it to this. */
+{
+  const at = req.resolve("next/og");
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true;
+  stub.exports = { ImageResponse: class { el: unknown; constructor(el: unknown) { this.el = el; } } };
+  (req.cache as Record<string, unknown>)[at] = stub;
+}
+
 const svc: Any = req("../../src/lib/server/market-service.ts");
 const mdal: Any = req("../../src/lib/server/market-dal.ts");
 const { db }: Any = req("../../src/lib/server/store.ts");
 const notif: Any = req("../../src/lib/server/notification-service.ts");
 const mail: Any = req("../../src/lib/server/email.ts");
 const watch: Any = req("../../src/lib/server/watchlist-service.ts");
+const share: Any = req("../../src/lib/server/share-token.ts");
 const sw: Any = req("../../src/lib/server/simple-journey-switch.ts");
 const { shortTitlesInMessagesNow }: Any = req("../../src/lib/server/message-titles.ts");
 const st: Any = req("../../src/lib/markets/short-title.ts");
 const { localizedText, pickLocalized }: Any = req("../../src/lib/localized.ts");
 const { postLedgerEntries, depositEntries }: Any = req("../../src/lib/server/ledger.ts");
+const route: Any = req("../../src/app/api/og/market/[id]/route.tsx");
+const preview: Any = req("../../src/lib/markets/share-preview.ts");
+const { shownPredictors }: Any = req("../../src/lib/markets/predictors.ts");
+const { formatTzs }: Any = req("../../src/lib/utils.ts");
+const { dict }: Any = req("../../src/lib/i18n-dict.ts");
+const esbuild = req("esbuild") as { transformSync: (c: string, o: { loader: string }) => { code: string } };
 const onPostgres = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
 
 /* ══ THE FIXTURES ═══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -267,7 +291,7 @@ type Bell = { kind: string; titleEn: string; titleSw: string; titleZh: string; b
 type Letter = { subject: string; html: string; tag: string };
 /** Everything one tour sent, keyed `<kind>:<role>:<row kind>:<row title>` (letters `<kind>:<role>:<tag>`), every id
  *  replaced by its role — the SAME placeholder in every kind, so twins compare byte for byte. */
-type Transcript = { bells: Map<string, Bell>; letters: Map<string, Letter>; officer: { bells: Bell[]; letters: Letter[] }; round: Bell[] };
+type Transcript = { bells: Map<string, Bell>; letters: Map<string, Letter>; officer: { bells: Bell[]; letters: Letter[] }; round: Bell[]; share: Map<string, Any> };
 
 async function tour(state: State): Promise<Transcript> {
   await setState(state);
@@ -416,7 +440,58 @@ async function tour(state: State): Promise<Transcript> {
   const roundRows: Bell[] = [];
   for (const u of [G, H]) for (const row of await until(() => rowsOf(u), (x) => x.length >= 1)) roundRows.push({ ...row, titleZh: row.titleZh ?? "", bodyZh: row.bodyZh ?? "" });
 
-  return { bells, letters, officer: { bells: officerBells, letters: officerLetters.map((e) => ({ subject: e.subject, html: e.html, tag: e.tag ?? "" })) }, round: roundRows };
+  // ── §D · the share surfaces, on the three main markets, in this same state ──
+  const shareOut = new Map<string, Any>();
+  for (const k of KINDS) {
+    const id = main[k].id;
+    shareOut.set(`${k}:og`, await ogTexts(id));
+    const token = await share.mintWinShareToken(per[k].A, pos[k].A);
+    shareOut.set(`${k}:winshare`, token ? await share.resolveWinShareToken(token) : null);
+    shareOut.set(`${k}:ogwin`, token ? await ogTexts(id, token) : null);
+    shareOut.set(`${k}:meta`, await metadata(id));
+    shareOut.set(`${k}:metawin`, token ? await metadata(id, token) : null);
+  }
+  return { bells, letters, officer: { bells: officerBells, letters: officerLetters.map((e) => ({ subject: e.subject, html: e.html, tag: e.tag ?? "" })) }, round: roundRows, share: shareOut };
+}
+
+/** The words of the card the real handler builds, read from its element tree. */
+async function ogTexts(id: string, w?: string): Promise<string[]> {
+  const url = `http://local.test/api/og/market/${id}${w ? `?w=${encodeURIComponent(w)}` : ""}`;
+  const res: Any = await route.GET(new Request(url), { params: Promise.resolve({ id }) });
+  const out: string[] = [];
+  const walk = (n: Any) => {
+    if (n == null || typeof n === "boolean") return;
+    if (typeof n === "string" || typeof n === "number") { out.push(String(n)); return; }
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    if (n.props) walk(n.props.children);
+  };
+  walk(res?.el);
+  return out;
+}
+
+/** `/markets/[id]`'s generateMetadata, transpiled from its own source and run with the real readers and rule. */
+const META_FN = (() => {
+  const src = readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"), "utf8").replace(/\r\n/g, "\n");
+  const at = src.indexOf("export async function generateMetadata(");
+  let i = src.indexOf("(", at), depth = 0;
+  for (; i < src.length; i++) { if (src[i] === "(") depth++; else if (src[i] === ")" && --depth === 0) break; }
+  const open = src.indexOf("{", i);
+  depth = 0;
+  let end = -1;
+  for (let k = open; k < src.length; k++) { if (src[k] === "{") depth++; else if (src[k] === "}" && --depth === 0) { end = k; break; } }
+  return esbuild.transformSync(src.slice(at, end + 1).replace(/^export\s+/, ""), { loader: "ts" }).code;
+})();
+async function metadata(id: string, w?: string): Promise<Any> {
+  const deps: Record<string, unknown> = {
+    getServerT: async () => ({ t: dict.en, locale: "en" }),
+    getMarket: svc.getMarket, notFoundMetadata: async () => ({ title: "not found" }),
+    pickLocalized, sharePreviewPrice: preview.sharePreviewPrice, sharePreviewSettled: preview.sharePreviewSettled,
+    sharePreviewDescription: preview.sharePreviewDescription, shownPredictors, formatTzs,
+    resolveWinShareToken: share.resolveWinShareToken, ROOT_OPEN_GRAPH: { siteName: "50pick" },
+    shortTitlesInMessagesNow, messageTitle: st.messageTitle,
+  };
+  const generateMetadata = new Function(...Object.keys(deps), `${META_FN}\nreturn generateMetadata;`)(...Object.values(deps));
+  return generateMetadata({ params: Promise.resolve({ id }), searchParams: Promise.resolve(w ? { w } : {}) });
 }
 
 /* ── the comparisons ─────────────────────────────────────────────────────────────────────────────────────────────── */
@@ -542,12 +617,36 @@ function judgeActive(t: Transcript, before: Transcript) {
     `${t.officer.bells.length} rows, ${t.officer.letters.length} letters`);
 }
 
+/* ══ §D · THE SHARE SURFACES ═══════════════════════════════════════════════════════════════════════════════════════ */
+function judgeShare(state: State, t: Transcript) {
+  const on = state === "ACTIVE";
+  const og: string[] = [], win: string[] = [], meta: string[] = [];
+  for (const k of KINDS) {
+    const expect = on ? (SHORTS[k].en ?? FULL.en) : FULL.en;
+    const notExpect = expect === FULL.en ? SHORT.en : FULL.en;
+    const card: string[] = t.share.get(`${k}:og`) ?? [];
+    if (!card.includes(expect) || card.some((x) => x.includes(notExpect) || anyShortIn(x, { sw: SHORT.sw, zh: SHORT.zh }))) og.push(`${k} card ${j(card.slice(0, 5))}`);
+    const ogwin: string[] | null = t.share.get(`${k}:ogwin`);
+    if (!ogwin || !ogwin.includes(expect) || ogwin.some((x) => x.includes(notExpect))) og.push(`${k} win card ${j(ogwin?.slice(0, 6))}`);
+    const ws = t.share.get(`${k}:winshare`);
+    if (!ws || ws.marketTitle !== expect) win.push(`${k} ${j(ws?.marketTitle)}`);
+    const md = t.share.get(`${k}:meta`);
+    const mw = t.share.get(`${k}:metawin`);
+    if (!md || md.openGraph?.title !== expect || md.twitter?.title !== expect || md.title !== FULL.en) meta.push(`${k} ${j([md?.openGraph?.title, md?.twitter?.title, md?.title])}`);
+    if (!mw || !String(mw.description).endsWith(` · ${expect}`) || String(mw.description).includes(notExpect)) meta.push(`${k} win ${j(mw?.description)}`);
+  }
+  const what = on ? "the English short title where an officer approved one (S and P), the full question where none (N)" : "the full English question, every market";
+  ok(`D.${state}.og · the share picture — the card and its win variant — names ${what}`, og.length === 0, og.join(" | "));
+  ok(`D.${state}.win · the win card's projection (\`resolveWinShareToken\`) names ${what}`, win.length === 0, win.join(" | "));
+  ok(`D.${state}.meta · the share preview (og:title, twitter:title, a win's description) names ${what}; the browser tab keeps the page's own title`, meta.length === 0, meta.join(" | "));
+}
+
 /* ══ THE RUN ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 OFFICERS.a = await user("mt_officer_a", "ADMIN", 0);
 OFFICERS.b = await user("mt_officer_b", "ADMIN", 0);
 sectionA();
 await sectionB();
-console.log("\n§C · every call site, in four switch states");
+console.log("\n§C/§D · every call site and every share surface, in four switch states");
 const tours = new Map<State, Transcript>();
 for (const s of STATES) {
   const t = await tour(s);
@@ -555,6 +654,7 @@ for (const s of STATES) {
   census(s, t);
   quotes(s, t);
   if (s !== "ACTIVE") judgeOff(s, t);
+  judgeShare(s, t);
 }
 judgeActive(tours.get("ACTIVE")!, tours.get("STAFF_PREVIEW")!);
 delete process.env.FEATURE_SIMPLEJOURNEY;

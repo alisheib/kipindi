@@ -16,15 +16,16 @@
  * shipped STAFF_PREVIEW, WITHDRAWN, the switch's read failing, ACTIVE), §D the share picture, the win card and the share
  * preview in the same four.
  *
- * ⛔ THE FLOOR IS PER STORE, and it is what the first run PRINTED, never arithmetic: 55 on each store (2026-10-15, the
- * first two-store run: `0.mem` 55 passed, `0.pg` 55 passed), the child's store check included. A section that stops
- * running fails this floor even while every case that ran passed. It only ever rises, to a number a run printed.
+ * ⛔ THE FLOOR IS PER STORE, and it is what a run PRINTED, never arithmetic: 67 on each store (2026-10-14, the two-store
+ * run of this case list: `0.mem` 67 passed, `0.pg` 67 passed), the child's store check included. It rose from 55 with §D
+ * (WP13); WP12's list without §D printed 55 on each store (2026-10-15). A section that stops running fails this floor
+ * even while every case that ran passed. It only ever rises, to a number a run printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:message-titles",
   casesFile: "scripts/lib/message-titles-child.mts",
-  minPass: { memory: 55, postgres: 55 },
+  minPass: { memory: 67, postgres: 67 },
   dbPrefix: "msg_titles",
 });

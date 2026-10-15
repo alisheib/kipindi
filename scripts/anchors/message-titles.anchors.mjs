@@ -13,6 +13,9 @@
 const SWITCH = "src/lib/server/message-titles.ts";
 const RULE = "src/lib/markets/short-title.ts";
 const SVC = "src/lib/server/market-service.ts";
+const OG = "src/app/api/og/market/[id]/route.tsx";
+const TOKEN = "src/lib/server/share-token.ts";
+const PAGE = "src/app/markets/[id]/page.tsx";
 
 export const MUTATIONS = [
   {
@@ -70,5 +73,26 @@ export const MUTATIONS = [
     from: "    // S12 WP12 · the title switch is read once for this receipt, and the sale never waits for it (`message-titles.ts`).\n    void shortTitlesInMessagesNow().then((shortTitles) => {",
     to: "    // S12 WP12 · the title switch is read once for this receipt, and the sale never waits for it (`message-titles.ts`).\n    void shortTitlesInMessagesNow().then(() => { const shortTitles = true;",
     expect: "C.STAFF_PREVIEW.full",
+  },
+  {
+    name: "the share picture stops asking the switch",
+    file: OG,
+    from: `  const shareTitleEn = messageTitle(await shortTitlesInMessagesNow(), "en", m.titleEn, m);`,
+    to: `  const shareTitleEn = messageTitle(true, "en", m.titleEn, m);`,
+    expect: "D.STAFF_PREVIEW.og",
+  },
+  {
+    name: "the win card's projection stops asking the switch",
+    file: TOKEN,
+    from: `  const shortTitles = await shortTitlesInMessagesNow();`,
+    to: `  const shortTitles = true;`,
+    expect: "D.STAFF_PREVIEW.win",
+  },
+  {
+    name: "the share preview's metadata stops asking the switch",
+    file: PAGE,
+    from: `  const shareTitleEn = messageTitle(await shortTitlesInMessagesNow(), "en", m.titleEn, m);`,
+    to: `  const shareTitleEn = messageTitle(true, "en", m.titleEn, m);`,
+    expect: "D.STAFF_PREVIEW.meta",
   },
 ];

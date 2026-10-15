@@ -4473,12 +4473,18 @@ await guard("11.247", async () => {
      nothing passes vacuously, which is the defect c1c's own header records being caught once already. */
   const ogSrc = decomment(read("src/app/api/og/market/[id]/route.tsx")).replace(/\r\n/g, "\n");
   const ogReads = [...ogSrc.matchAll(/await\s+([A-Za-z_$][\w$]*)\s*\(/g)].map((m) => m[1]).sort();
-  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the two this sweep accounts for — `getMarket`, driven for all four viewers above, and `resolveWinShareToken`, pinned below — so a third reader arriving in that handler is reported here by name instead of riding out unswept",
-    ogReads.join(",") === "getMarket,resolveWinShareToken", j(ogReads));
+  /* ⭐ RE-PINNED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP13): the handler gained a THIRD await, and it is named
+     here rather than absorbed. `shortTitlesInMessagesNow` (`lib/server/message-titles.ts`) is the title switch — it reads
+     the rollout's ceiling and, only under an ACTIVE one, the journey switch's sealed `SystemConfig` row; it never reads a
+     position, a wallet or a house field, so nothing house can reach the image through it. */
+  ok("11.247.c1e · 247 · the OG image route's data reads are exactly the three this sweep accounts for — `getMarket`, driven for all four viewers above, `resolveWinShareToken`, pinned below, and `shortTitlesInMessagesNow`, the S12 title switch (the rollout switch's row only, never a position) — so a fourth reader arriving in that handler is reported here by name instead of riding out unswept",
+    ogReads.join(",") === "getMarket,resolveWinShareToken,shortTitlesInMessagesNow", j(ogReads));
   const shareSrc = decomment(read("src/lib/server/share-token.ts")).replace(/\r\n/g, "\n");
+  /* ⭐ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP13): the win card's market title goes through `messageTitle` — the approved
+     English short title from the S15 flip, the full English question until then. Still six fields, and still no marker. */
   const WIN_SHARE = `  return {
     marketId: pos.marketId,
-    marketTitle: m.titleEn,
+    marketTitle: messageTitle(shortTitles, "en", m.titleEn, m),
     side: pos.side,
     stake: pos.stake,
     payout: pos.finalPayout,

@@ -71,6 +71,8 @@ const { roundName } = req("../src/lib/updown-round-name.ts") as { roundName: (t:
 /* The REAL count rule (2026-10-11, "Counts as"): `/markets/[id]`'s metadata builds its share line from the count players see.
    It is pure and imports nothing, so the page's own function runs here rather than a stub that could agree with anything. */
 const { shownPredictors } = req("../src/lib/markets/predictors.ts") as { shownPredictors: (m: { predictorCount: number; predictorExtra?: number | null }) => number };
+/* S12 WP13 (2026-10-14): the share preview's question, by the REAL rule (`messageTitle`, lib/markets/short-title.ts — pure). */
+const { messageTitle } = req("../src/lib/markets/short-title.ts") as { messageTitle: (on: boolean, locale: Locale, full: string, m: unknown) => string };
 
 /* ══ §1 · F1 · A RECORD PAGE'S METADATA NEVER DECIDES THE PAGE ═══════════════════════════════════════════════════════ */
 section("1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws");
@@ -104,6 +106,9 @@ function runnable(fn: string, read: (id: string) => Promise<unknown>, calls: Cal
     sharePreviewPrice: () => ({ kind: "none" }), sharePreviewSettled: () => null, sharePreviewDescription: () => "desc",
     resolveWinShareToken: async () => null, formatTzs: (n: number) => `TZS ${n}`, ROOT_OPEN_GRAPH: { siteName: "50pick" },
     roundName, shownPredictors,
+    // ⭐ ADDED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP13): the market's share preview reads the title switch once
+    // (`shortTitlesInMessagesNow`, answered here as it answers today — no) and names its question through the REAL rule.
+    shortTitlesInMessagesNow: async () => false, messageTitle,
   };
   return new Function(...Object.keys(deps), `${js}\nreturn generateMetadata;`)(...Object.values(deps)) as
     (a: { params: Promise<Record<string, string>>; searchParams?: Promise<Record<string, string>> }) => Promise<unknown>;
@@ -220,6 +225,8 @@ for (const [route, file, board, boardFile, boardLine] of RECORD_PAGES) {
     resolveSimpleJourney: "catches: any failure answers WITHDRAWN (lib/server/journey-preview.ts)",
     invitePaysPlayersNow: "catches: \"Never rejects; any failure answers false\" (lib/server/invite-rewards-switch.ts)",
     inviteViewerFor: "catches: a failed read answers NO_VIEWER (lib/server/affiliate-service.ts)",
+    // ⭐ ADDED IN THE OPEN 2026-10-14 (the Vodacom plan's S12 WP13): the market's share preview asks the title switch once.
+    shortTitlesInMessagesNow: "catches: \"Never rejects; any failure answers false\" (lib/server/message-titles.ts)",
   };
   /** The function's text with every `try { … }` body taken out (braces balanced). */
   const outsideTry = (fn: string) => {
@@ -245,8 +252,8 @@ for (const [route, file, board, boardFile, boardLine] of RECORD_PAGES) {
   });
   const loose = reads(code);
   const used = [...new Set(files.flatMap((f) => { const fn = fnText(code(f), "export async function generateMetadata"); return fn ? awaited(fn) : []; }))].sort();
-  const catches = ["src/lib/server/journey-preview.ts", "src/lib/server/invite-rewards-switch.ts", "src/lib/server/affiliate-service.ts"].every((p) => /\}\s*catch\s*\{/.test(code(p)));
-  ok(`1.4″ · and outside a try, every generateMetadata awaits only reads that never reject (${used.join(", ")}) — the three that catch do catch`,
+  const catches = ["src/lib/server/journey-preview.ts", "src/lib/server/invite-rewards-switch.ts", "src/lib/server/affiliate-service.ts", "src/lib/server/message-titles.ts"].every((p) => /\}\s*catch\s*\{/.test(code(p)));
+  ok(`1.4″ · and outside a try, every generateMetadata awaits only reads that never reject (${used.join(", ")}) — the four that catch do catch`,
     loose.length === 0 && catches && used.includes("getMarket") === false, loose.join(" | ") || j(used));
   const plantedRead = reads((p) => (p === "src/app/updown/[roundId]/page.tsx" ? code(p).replace(/try \{\s*d = await getRoundDetail\(roundId\);\s*\} catch \{ return \{ title: t\.market\.udTitle \}; \}/, "d = await getRoundDetail(roundId);") : code(p)));
   ok("1.4‴ PLANT · the round's read taken out of its try (a failed read would throw beside the page) is found", j(plantedRead) === j(["src/app/updown/[roundId]/page.tsx: getRoundDetail"]), j(plantedRead));
