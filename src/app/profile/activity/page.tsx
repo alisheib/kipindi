@@ -26,6 +26,7 @@ import { getServerT, type Dict } from "@/lib/i18n-server";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { breakSentence, breakStateFromTimers } from "@/lib/break-end";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Your activity", which a Swahili player saw in their browser tab and history.
@@ -42,6 +43,7 @@ function isPeriod(v: string | undefined): v is ActivityPeriod {
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const { t, locale } = await getServerT();
+  const { journey } = await resolveSimpleJourney();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/activity");
   const { period: rawPeriod } = await searchParams;
@@ -158,7 +160,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           kind="positions"
           title={t.activity.emptyTitle}
           body={breakBody ?? t.activity.emptyBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
+          action={breakBody ? null : <Link href={(journey ? "/" : "/markets") as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
         />
       )}
       {!summary.empty && (

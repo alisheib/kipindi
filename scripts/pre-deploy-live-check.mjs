@@ -437,6 +437,13 @@ const JOURNEY_PAGE_PROBE = (traceSel) => ({
     const el = li.querySelector("a,button");
     return el ? { href: el.getAttribute("href"), kind: el.tagName.toLowerCase(), popup: el.getAttribute("aria-haspopup") } : null;
   }),
+  bareMarketsLinks: [...document.querySelectorAll('a[href="/markets"]')]
+    .filter((el) => {
+      const box = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return box.width > 0 && box.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    })
+    .map((el) => (el.textContent ?? "").trim().slice(0, 80)),
   traces: [...document.querySelectorAll(traceSel)].map((e) => e.getAttribute("data-testid")
     || (e.id === "kp-journey-shell" ? "#kp-journey-shell" : e.hasAttribute("data-journey") ? `${e.tagName.toLowerCase()}[data-journey]` : "data-kp-funnel=new")),
 });
@@ -520,6 +527,8 @@ async function activeDocument(ctx, who, route, signedIn = false) {
     `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""}; bytes ${d.traces.join(", ") || "none"}; DOM ${v?.traces.join(", ") || "none"})`);
   ok(`${who}: ${route} has no staff preview marker in bytes or DOM`, read && marks.length === 0,
     !read ? "(the named page was not read)" : `(markers ${marks.join(", ") || "none"})`);
+  ok(`${who}: ${route} has no visible bare /markets link under ACTIVE`, read && v.bareMarketsLinks.length === 0,
+    !read ? "(the named page was not read)" : `(links ${JSON.stringify(v.bareMarketsLinks)})`);
   if (signedIn) ok(`${who}: ${route} is the signed-in player's journey page`, read && v.journeySignedIn,
     `(journey balance ${!!v?.journeySignedIn}; classic balance ${!!v?.signedIn})`);
   if (route === "/") {

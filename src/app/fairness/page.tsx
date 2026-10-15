@@ -44,6 +44,7 @@ import { keepConnectives } from "@/components/ui/keep-run";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -106,6 +107,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
 
 export default async function FairnessPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale } = await getServerT();
+  const { journey } = await resolveSimpleJourney();
   // B-1 — no swallow: the attestation list IS this page; a failed read must
   // throw to fairness/error.tsx, never render "no resolved markets yet".
   // ⛔ THE LIVE WINDOW, READ ONCE. This page is the regulator's own reading surface, so the
@@ -318,7 +320,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
               : t.market.filterMissBody
             }
             action={
-              <Link href={"/markets" as never} className="btn btn-primary btn-sm">
+              <Link href={(journey ? "/" : "/markets") as never} className="btn btn-primary btn-sm">
                 {t.positions.browseMarkets}
               </Link>
             }

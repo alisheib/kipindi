@@ -284,8 +284,8 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
             <>
               <strong className="text-text">Loser-share.</strong> When a poll resolves, the fee is a fixed
               percentage of the <strong>losing</strong> side&apos;s pool (Platform + Operator, set below). Winners get
-              their stake back plus a share of the rest of the pool. Players are shown an estimated
-              &ldquo;possible winnings&rdquo; before betting. The fee depends on which side loses.
+              their stake back plus a share of the rest of the pool. When enabled, the journey shows
+              a qualified estimate from the current pools and frozen fee rates before betting. The fee depends on which side loses.
             </>
           ) : (
             <>
@@ -307,12 +307,12 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
               <Input name="operatorFeeRate" type="number" step="0.1" min="0" max="100" defaultValue={operatorPct} mono />
             </Field>
             <Field
-              label="Estimated-winnings bonus (%)"
-              hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% → 1.5×).`}
+              label="Classic dial estimate bonus (%)"
+              hint={`Current ${estPct}%. The classic dial uses stake × ${(1 + config.estimatedWinningsRate).toFixed(2)} during rollback. The journey calculates its qualified estimate from current pools and the poll's frozen fee rates; this bonus does not set that figure.`}
             >
               <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
             </Field>
-            <Field label="Show estimate to players" hint="When on, loser-share polls show the pre-bet estimate + disclaimer. When off, players see only qualitative copy.">
+            <Field label="Show estimate to players" hint="When on, eligible loser-share polls may show a qualified pre-bet estimate from current pools. When off, players see qualitative copy only.">
               <div className="flex items-center gap-2.5">
                 <Toggle
                   on={showEst}
