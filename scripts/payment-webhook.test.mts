@@ -405,14 +405,16 @@ for (const k of ["PAYMENT_AGGREGATOR", "PAYMENT_API_URL", "PAYMENT_API_KEY", "PA
     fresh.ok === true && !!fresh.data!.txnId && fresh.data!.txnId !== firstTxn);
   delete process.env.PAYMENTS_DEMO_ASYNC;
 
-  // R.10 · the modal reads the phase, not the old one-status test.
+  // R.10 · the modal delegates its status and server-decided deposit kind to the shared copy reader.
   const flat = (s: string) => s.replace(/\s+/g, " ");
   const modal = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/wallet-result-modal.tsx"), "utf8")));
+  const resultCopy = flat(decomment(readFileSync(join(ROOT, "src/lib/wallet/result-copy.ts"), "utf8")));
   const OLD_PENDING = 'const pending = status === "PROCESSING";';
-  const modalReadsPhase = (s: string) => s.includes("resultPhase(status)") && !s.includes(OLD_PENDING);
-  ok("R.10 · the result modal derives its state from resultPhase(status), not `status === \"PROCESSING\"`", modalReadsPhase(modal));
-  const plantedModal = modal.replace('const pending = phase === "moving";', OLD_PENDING);
-  ok("R.10c · control · the planted pre-fix line fails R.10", plantedModal !== modal && !modalReadsPhase(plantedModal));
+  const modalReadsPhase = (m: string, c: string) => m.includes("walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind })")
+    && c.includes("resultPhase(status)") && c.includes('const pending = phase === "moving";') && !c.includes(OLD_PENDING);
+  ok("R.10 · the result modal derives its state through walletResultCopy and resultPhase(status)", modalReadsPhase(modal, resultCopy));
+  const plantedCopy = resultCopy.replace('const pending = phase === "moving";', OLD_PENDING);
+  ok("R.10c · control · the planted pre-fix line fails R.10", plantedCopy !== resultCopy && !modalReadsPhase(modal, plantedCopy));
 
   // R.11 · the page mounts the modal for the STORED type — a bet id typed into ?deposited= gets no modal.
   const walletPage = flat(decomment(readFileSync(join(ROOT, "src/app/wallet/page.tsx"), "utf8")));

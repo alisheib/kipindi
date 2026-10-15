@@ -30,7 +30,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!bet || bet.kind !== "market" || bet.id !== marketId)
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404, headers: PRIVATE });
     const [market, wallet, { locale }] = await Promise.all([
-      getMarket(marketId), db.wallet.findByUserId(session.userId).catch(() => null), getServerT(),
+      getMarket(marketId), Promise.resolve().then(() => db.wallet.findByUserId(session.userId)).catch(() => null), getServerT(),
     ]);
     const walletBalance = wallet && wallet.currency === "TZS" && Number.isFinite(wallet.balance) && wallet.balance >= 0
       ? wallet.balance : null;

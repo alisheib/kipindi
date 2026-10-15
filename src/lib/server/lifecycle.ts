@@ -399,7 +399,7 @@ let lastKycSlaWatchAt = 0;
 async function observeJourneyLaunch(): Promise<void> {
   const { observeJourneyRollout } = await import("./journey-launch");
   const r = await observeJourneyRollout();
-  if (r.wrote === "created" || r.wrote === "appended") console.log(`[lifecycle] journey rollout observed — ${r.from ?? "first observation"} → ${r.to}`);
+  if (r.wrote === "created" || r.wrote === "appended") console.log("[lifecycle] journey rollout observed");
 }
 
 /** The EAT day this process last saw counted — so the row is read about once a day, not once a minute. */
