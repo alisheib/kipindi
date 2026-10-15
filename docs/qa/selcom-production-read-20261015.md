@@ -15,3 +15,7 @@ The selected production app uses `PAYMENT_AGGREGATOR=selcom`. `PAYMENT_API_URL`,
 - The generic AzamPay/Mixx HMAC receiver explicitly refuses `selcom`, so it cannot bypass the authoritative Selcom order query.
 
 These are source and masked configuration findings, not evidence that a particular payment completed. The S14 staff operator must still record the real production deposit, return and separate bet press. Before S15, Ali must review the then-current admin access and enabled provider signing posture and give a fresh dated launch decision.
+
+## Read-only ledger activity at 18:44 UTC
+
+A read-only query of the Railway production proxy counted completed money rows created during the preceding 14 days. It found **18 confirmed deposits** (M-Pesa 8, Airtel Money 5, Mixx 3, HaloPesa 2) and **5 confirmed withdrawals** (Mixx 4, M-Pesa 1). No phone, user, transaction, or provider reference was selected or printed. This corroborates that the existing mobile-money routes have recent completed activity. The `Transaction.provider` field identifies the mobile-money rail, not the configured aggregator; the historical rows alone cannot prove which aggregator processed each one. The live configuration above identifies Selcom as the selected aggregator at the time of the read. This aggregate is not the S14 journey proof.
