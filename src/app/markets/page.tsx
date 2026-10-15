@@ -438,15 +438,15 @@ lastLabel={t.common.lastPage}
           rhythm token in TSX — `app/page.tsx:212` and `components/home/trust-band.tsx:91`. */}
       {resolved.length > 0 && (
         <section style={{ marginTop: "var(--rh-section)" }}>
-          <div className="mb-3 flex items-baseline justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-display text-[20px] font-semibold text-text">
               {searching ? t.market.marketsMatch : t.market.recentlyResolved}
             </h2>
-            {/* "See all" hovers in the link blue's own step, as the home's see-all links do (`.kp-shead__link`; Ali's
-                ruling (2) of 2026-10-10, §B4c: hover included) — it hovered to white. */}
+            {/* F06: this is a navigation control, so its hit box has the tap floor and its type is on the kit ladder.
+                It keeps the link-blue hover step used by the home see-all links (§B4c). The row can wrap at 320px. */}
             <Link
               href={"/results" as never}
-              className="whitespace-nowrap font-mono text-[11.5px] font-semibold text-brand-300 transition-colors hover:text-brand-200"
+              className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap font-mono text-body-sm font-semibold text-brand-300 transition-colors hover:text-brand-200"
             >
               {t.market.allResults}
             </Link>
