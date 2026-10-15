@@ -378,6 +378,8 @@ export type StoredPosition = {
    * statement, never through positionStore.set.
    */
   houseBotId?: string | null;
+  /** S9 verified manual deposit-return attribution. Null/absent on legacy/direct/house bets; create-only. */
+  origin?: string | null;
 };
 
 

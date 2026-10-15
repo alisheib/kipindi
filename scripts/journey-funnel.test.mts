@@ -282,8 +282,9 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
       && impl.depAction.includes('const origin = formData.get("origin") === "low_balance" ? ("low_balance" as const) : undefined;')
       && impl.depAction.includes('if (origin) carry.set("from", "low-balance");'));
   ok("9.create-only · the origin is written on create and skipped by BOTH update paths; its migration adds one nullable column under the lock-retry block",
-    /origin: t\.origin \?\? null,/.test(impl.prismaDal) && /k === "positionId" \|\| k === "origin"\) continue;/.test(impl.prismaDal)
-      && /origin: _origin, \.\.\.rest \} = patch;/.test(impl.memStore)
+    // S9's saved deposit intent joins the same create-only exclusions; no other extra exclusion is sanctioned here.
+    /origin: t\.origin \?\? null,/.test(impl.prismaDal) && /k === "positionId" \|\| k === "origin"(?: \|\| k === "pendingBet")?\) continue;/.test(impl.prismaDal)
+      && /origin: _origin, (?:pendingBet: _pendingBet, )?\.\.\.rest \} = patch;/.test(impl.memStore)
       && /ALTER TABLE "Transaction"\s+ADD COLUMN IF NOT EXISTS "origin" TEXT;/.test(impl.txnMigration) && /EXCEPTION WHEN lock_not_available/.test(impl.txnMigration)
       && !/\b(DROP|UPDATE|DELETE)\b/.test(impl.txnMigration.replace(/--[^\n]*/g, "")));
 
@@ -387,7 +388,7 @@ if (!PROVE_RED) {
     { name: "the deposit counted inside the lock", expect: /^9\.deposit-wiring /,
       impl: { ...REAL, wallet: REAL.wallet.replace('runOutsideLock(() => {\n      void import("./journey-funnel")', '(() => {\n      void import("./journey-funnel")') } },
     { name: "the origin overwritable by an update", expect: /^9\.create-only /,
-      impl: { ...REAL, prismaDal: REAL.prismaDal.replace(' || k === "origin") continue;', ") continue;") } },
+      impl: { ...REAL, prismaDal: REAL.prismaDal.replace(' || k === "origin"', "") } },
     { name: "a ratio printed above 100%", expect: /^10\.measure /,
       impl: { ...REAL, measure: (k, n, d) => ({ key: k, numerator: n, denominator: d, pct: d > 0 ? Math.round((n / d) * 100) : null, overCounted: false }) } },
     { name: "Up & Down quick bets counted as sheet bets", expect: /^10\.totals /,

@@ -101,6 +101,10 @@ export const RATE_RULES: Record<string, RateRule> = {
   // Per account, keyed `<userId>:attach` (`kycAttachRateKey`): the agent photo track's attaches — a set and a few retakes at once, then 3 a minute (2026-10-10, R5.5).
   "kyc.attach":    { capacity: 12, refillPerMin: 3 },
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
+  // S9: per caller, including SSR/receipt reads. Thirty a minute accommodates the first-minute 3s poll plus opens.
+  "deposit.status": { capacity: 30, refillPerMin: 30 },
+  // Per OWNED transaction: at most one signed foreground probe per 10s; a refused probe keeps the stored state.
+  "deposit.probe": { capacity: 1, refillPerMin: 6 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },
   "wallet.payee_lookup":{ capacity: 20, refillPerMin: 6 }, // payee name-lookup on the withdraw confirm — bounded to deter name enumeration
 

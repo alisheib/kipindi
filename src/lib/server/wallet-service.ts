@@ -37,16 +37,20 @@ import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes"
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
-import { runOutsideLock, withLock } from "./locks";
+import { afterCommit, currentLockTx, runOutsideLock, withLock } from "./locks";
+import { depositRecheckBinding, isStoredFundingKey, matchesDepositRecheckBinding, parseDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
+import { matchesProcessingProbeBinding, parseProcessingProbeBinding, withdrawalProbeBinding, type ProcessingProbeBinding } from "./payment-probe-binding";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
-import { RG_RETURN_MARK, presentedStatus } from "@/lib/wallet/receipts";
+import { depositResultStatus, isRgHeldDeposit, RG_RETURN_MARK } from "@/lib/wallet/receipts";
+import { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { parseSavedDepositBet, sameDepositFunding, type SavedDepositBet } from "@/lib/journey/deposit-state";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -71,17 +75,33 @@ export async function deposit(
   /** CARD only — buyer + billing details and the return URLs for Selcom's hosted
    *  checkout. Ignored on the mobile-money rails, which push to the handset. */
   card?: CardCheckoutContext,
+  /** S9's private server handoff. The page/action must establish chosen-stake trust before supplying this envelope;
+   * an incoming URL claim is never this argument. Existing four-argument callers retain a null intent. */
+  savedBet?: SavedDepositBet | null,
 ): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string }>> {
   const rl = await rateCheckAsync(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  // Idempotency: if this key was already used, return the existing txn result.
-  // (Returned even during maintenance — it's an already-made deposit, not a new one.)
+  const pendingBet = savedBet == null ? null : parseSavedDepositBet(savedBet);
+  if (savedBet != null && !pendingBet) return { ok: false, error: "The saved question selection is invalid.", code: "INVALID" };
+  // The stored key is the funding identity's equality key (`deposit-recheck-binding.ts`). A key that binding cannot carry
+  // (empty, over 256 characters, control characters — the action passes the form's value through) would leave a PAID
+  // deposit outside every automatic settle path, so it is refused here, before anything is reserved or dispatched.
+  if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The request key is invalid.", code: "INVALID" };
+
+  // A global key recovers only this caller's persisted funding intent. Billing edits on CARD do not change that
+  // intent or dispatch another checkout. The canonical saved question is part of that identity. Origin and saved
+  // intent are create-only and are not rewritten on a replay.
+  const funding = { userId, type: "DEPOSIT", amount: input?.amount, currency: "TZS", provider: input?.provider, msisdn: input?.msisdn, pendingBet };
+  const matchesFunding = (existing: StoredTxn) => DepositSchema.shape.provider.safeParse(input?.provider).success && sameDepositFunding(funding, existing);
+  const keyConflict = () => ({ ok: false as const, error: "This request cannot recover the saved deposit.", code: "INVALID" as const });
+  // Matching replays stay available during maintenance: they recover a payment already made, never send a new one.
   if (idempotencyKey) {
     const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
     if (existing) {
+      if (!matchesFunding(existing)) return keyConflict();
       const w = await db.wallet.findByUserId(userId);
-      return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
+      return { ok: true, data: { txnId: existing.id, status: depositResultStatus(existing), balance: w?.balance ?? 0 } };
     }
   }
 
@@ -195,6 +215,12 @@ export async function deposit(
     | { ok: false; error: string; code: "INVALID"; reason?: FailureReason };
 
   const reservation: Reservation = await withLock(`wallet:${userId}`, async (): Promise<Reservation> => {
+    // The first lookup can miss while another request reserves this same intent. Ask again under the wallet lock,
+    // before the cap/SOF reads; a replay consumes no new cap and the memory twin must not reserve a second row.
+    if (idempotencyKey) {
+      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+      if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();
+    }
     // Responsible-gambling deposit-limit (daily / weekly / monthly), re-read
     // INSIDE the lock. Skipped for admin test-funding (see bypass note above).
     if (!adminTest) {
@@ -263,6 +289,7 @@ export async function deposit(
         idempotencyKey: idempotencyKey ?? null,
         // The journey funnel's origin (S3b) — create-only; read when the deposit is confirmed.
         origin: (parse.data as { origin?: "low_balance" }).origin ?? null,
+        pendingBet,
       });
       return { ok: true, txn: created, reused: false };
     } catch (err) {
@@ -271,7 +298,7 @@ export async function deposit(
       // 500 — exactly-once, no duplicate PROCESSING row. Mirrors withdraw.
       if (idempotencyKey) {
         const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
-        if (existing) return { ok: true, txn: existing, reused: true };
+        if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();
       }
       throw err;
     }
@@ -283,7 +310,7 @@ export async function deposit(
   if (reservation.reused) {
     // Idempotent replay — the deposit was already initiated; don't dispatch again.
     const w = await db.wallet.findByUserId(userId);
-    return { ok: true, data: { txnId, status: txn.status, balance: w?.balance ?? 0 } };
+    return { ok: true, data: { txnId, status: depositResultStatus(txn), balance: w?.balance ?? 0 } };
   }
   // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATES: the account's identity standing (2026-09-13) and
   // its email standing (2026-10-07), as fields on the row every deposit already writes. Stamped on
@@ -361,7 +388,12 @@ export async function deposit(
   // credit immediately. settleDepositConfirmed is the SAME exactly-once path the
   // webhook uses, so the two can never double-credit.
   const settled = await settleDepositConfirmed(txnId, result.providerRef);
-  return { ok: true, data: { txnId, status: "CONFIRMED", balance: settled.balance } };
+  const final = await db.txn.findById(txnId);
+  if (!final || final.userId !== userId || final.type !== "DEPOSIT" || final.currency !== "TZS") {
+    throw new Error("Deposit settlement could not be reread.");
+  }
+  // RG can begin while the collection is moving. A held/refused settlement is not a successful wallet credit.
+  return { ok: true, data: { txnId, status: depositResultStatus(final), balance: settled.balance } };
 }
 
 /**
@@ -372,26 +404,28 @@ export async function deposit(
  * The receipt / notification / affiliate side-effects fire only on the call
  * that actually credits.
  */
-async function settleDepositConfirmed(txnId: string, providerRef?: string): Promise<{ credited: boolean; balance: number }> {
+async function settleDepositConfirmed(txnId: string, providerRef?: string, expectedProviderRef?: string, expectedFunding?: ProcessingProbeBinding): Promise<{ credited: boolean; balance: number }> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return { credited: false, balance: 0 };
 
   const outcome = await withLock(`wallet:${pre.userId}`, async (): Promise<{ credited: boolean; balance: number; txn?: StoredTxn; rgReversed?: boolean }> => {
-    const t = await db.txn.findById(txnId);
+    const t = await db.txn.findById(txnId, currentLockTx());
     if (!t) return { credited: false, balance: 0 };
+    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);
     if (t.status !== "PROCESSING") {
       // Already settled — idempotent no-op. Return the live balance.
       const w = await db.wallet.findByUserId(t.userId);
       return { credited: false, balance: w?.balance ?? 0 };
     }
-    const fresh = await db.wallet.findByUserId(t.userId);
-    if (!fresh) return { credited: false, balance: 0 };
+    const fresh = await db.wallet.findByUserId(t.userId, currentLockTx());
+    // Identity and unit are exact; the balance need only be a real, non-negative amount. `Wallet.balance` is
+    // Decimal(18,2), so a whole-shilling test would refuse a legitimate wallet and strand a paid deposit on every lane.
+    if (!fresh || fresh.userId !== t.userId || fresh.id !== t.walletId || t.currency !== "TZS" || fresh.currency !== "TZS"
+      || !Number.isFinite(fresh.balance) || fresh.balance < 0) throw new Error("Deposit wallet could not be verified.");
     // Responsible-gambling gate (GLI-19 / LCCP): if the player self-excluded or
     // cooled-off AFTER this deposit was initiated (or the provider pushed it late),
-    // we must NOT credit an excluded account. Reverse it instead — mark the deposit
-    // REVERSED and leave the balance untouched. On the stub INTERNAL provider no
-    // money actually moved, so this IS the refund; a real aggregator (Appendix D1)
-    // plugs an outbound reversal in right here.
+    // we must NOT credit an excluded account. Book the received money in suspense and leave the wallet untouched.
+    // This path does not dispatch an outbound return; an AML rejection/status change is not proof of refund delivery.
     const rgLock = await isLockedOut(t.userId);
     if (rgLock.locked) {
       // The comment above was written when the only rail was the INTERNAL stub, where
@@ -447,6 +481,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     return { credited: true, balance: newBalance, txn: t };
   });
 
+  const publish = async () => {
   if (outcome.credited && outcome.txn) {
     const t = outcome.txn;
     // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
@@ -511,8 +546,9 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     // No credit and no CONFIRMATION email — but the player must still be TOLD.
     // Staying silent here was the worst of the notification gaps: a self-excluded
     // player who sees money leave their bank and never arrive has every reason to
-    // believe the platform kept it. We tell them it was reversed and why, without
-    // inviting them back into the deposit flow (see depositReversedHtml).
+    // believe the platform kept it. We tell them it is held for return and why, without
+    // inviting them back into the deposit flow (see depositReversedHtml). The subject names it as the letter does (Ali,
+    // 2026-10-14: a held deposit is "held for return" wherever it is named, never "Reversed").
     const t = outcome.txn;
     const gatewayRef = providerRef ?? t.providerRef;
     audit({ category: "COMPLIANCE", action: "deposit.auto_reversed.rg_lockout", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { amount: t.amount, provider: t.provider ?? "INTERNAL" } });
@@ -520,11 +556,15 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     notifyDeposit(t.userId, { status: "REVERSED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id });
     sendEmailToUser(t.userId, (email) => ({
       to: email,
-      subject: `Deposit reversed · ${formatTzs(t.amount)}`,
+      subject: `Deposit held for return · ${formatTzs(t.amount)}`,
       html: depositReversedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef }),
       tag: "deposit",
     }), { confirmedOnly: true }).catch(() => {});
   }
+  };
+  const enclosingTx = currentLockTx();
+  if (enclosingTx) afterCommit(enclosingTx, () => { void publish().catch(() => {}); });
+  else await publish();
   return { credited: outcome.credited, balance: outcome.balance };
 }
 
@@ -551,10 +591,21 @@ function friendlyFailureReason(reason: string): string | undefined {
  *  timeout). No wallet movement — a PENDING deposit was never credited.
  *  Idempotent: only acts while the txn is PROCESSING — which is also what makes
  *  the player-facing notification + email below fire EXACTLY ONCE. */
-async function settleDepositFailed(txnId: string, reason: string): Promise<boolean> {
-  const t = await db.txn.findById(txnId);
-  if (!t || t.status !== "PROCESSING") return false;
-  await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });
+async function settleDepositFailed(txnId: string, reason: string, expectedProviderRef?: string, expectedFunding?: ProcessingProbeBinding): Promise<boolean> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return false;
+  // The same claim lock as confirmation. An old PROCESSING read is not authority to overwrite a concurrently paid
+  // deposit or to tell its owner that nothing was taken. Only the winner below sends the failure notice/email.
+  const done = await withLock(`wallet:${pre.userId}`, async () => {
+    const t = await db.txn.findById(txnId, currentLockTx());
+    if (!t || t.status !== "PROCESSING") return null;
+    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);
+    await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` }, currentLockTx());
+    return t;
+  });
+  if (!done) return false;
+  const t = done;
+  afterCommit(currentLockTx(), () => {
   audit({ category: "WALLET", action: "deposit.failed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
   // Tell the player. This path used to write an audit row and stop — so a player
   // whose card was declined, or whose deposit was reconciled to failed half an
@@ -569,20 +620,24 @@ async function settleDepositFailed(txnId: string, reason: string): Promise<boole
     html: depositFailedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef, reason: friendly }),
     tag: "deposit",
   }), { confirmedOnly: true }).catch(() => {});
+  });
   return true;
 }
 
 /** Finalize a held withdrawal once the payout is confirmed: release the hold
  *  (funds have left the platform) and mark CONFIRMED. Exactly-once / idempotent
  *  under the per-wallet lock. */
-async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
+async function settleWithdrawalConfirmed(txnId: string, expectedProviderRef?: string, expectedFunding?: ProcessingProbeBinding): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
   const done = await withLock(`wallet:${pre.userId}`, async (): Promise<{ txn: StoredTxn; gatewayShare: number } | null> => {
-    const t = await db.txn.findById(txnId);
+    const t = await db.txn.findById(txnId, currentLockTx());
     if (!t || t.status !== "PROCESSING") return null;
+    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);
     const amt = Math.abs(t.amount);
-    const w = await db.wallet.findByUserId(t.userId);
+    const w = await db.wallet.findByUserId(t.userId, currentLockTx());
+    if (!w || w.userId !== t.userId || w.id !== t.walletId || t.currency !== "TZS" || w.currency !== "TZS"
+      || !Number.isFinite(w.balance) || w.balance < 0 || !Number.isFinite(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
     // The fee was frozen onto the txn row at initiation — read it back, never
     // recompute (a rate change mid-flight would reprice a withdrawal in flight).
     const fee = t.fee ?? 0;
@@ -606,6 +661,7 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
     return { txn: t, gatewayShare };
   });
   if (done) {
+    afterCommit(currentLockTx(), () => {
     const t = done.txn;
     const gross = Math.abs(t.amount);
     const fee = t.fee ?? 0;
@@ -616,6 +672,7 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
     // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
     runOutsideLock(() => {
       void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(t.userId, { event: "withdrew", amountTzs: gross, txnId: txnId })).catch(() => {});
+    });
     });
   }
   return !!done;
@@ -820,7 +877,7 @@ export async function dispatchApprovedWithdrawal(
  *  re-queries the provider and refuses on a COMPLETED verdict before calling this,
  *  and the idempotency here is what makes a race with the sweep or a late callback
  *  safe. */
-export async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
+export async function settleWithdrawalFailed(txnId: string, reason: string, expectedProviderRef?: string, expectedFunding?: ProcessingProbeBinding): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
   /**
@@ -850,21 +907,23 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
    * the row PROCESSING with NO refund, and the next sweep tick retries it safely.
    */
   const done = await withLock(`wallet:${pre.userId}`, async (tx): Promise<StoredTxn | null> => {
-    // ⚠️ `txn.findById` takes no `tx` (the DAL only threads it where a WRITE needs it), and
-    // it does not need one: the advisory lock serialises every writer to this wallet, so
-    // this guard read sees committed state and the two writes below are what must be atomic.
-    const t = await db.txn.findById(txnId);
+    const t = await db.txn.findById(txnId, tx);
     if (!t || t.status !== "PROCESSING") return null;
+    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);
     const amt = Math.abs(t.amount);
     const w = await db.wallet.findByUserId(t.userId, tx);
-    if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt }, undefined, tx);
+    if (!w || w.userId !== t.userId || w.id !== t.walletId || t.currency !== "TZS" || w.currency !== "TZS"
+      || !Number.isFinite(w.balance) || w.balance < 0 || !Number.isFinite(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
+    const refunded = await db.wallet.adjust(w.id, { balance: amt, hold: -amt }, undefined, tx);
+    if (!refunded) throw new Error("Withdrawal refund could not be verified.");
     await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${reason}` }, tx);
     return t;
   });
   if (done) {
     const refunded = Math.abs(done.amount);
     // Read live balance for SSE push (funds were returned to spendable).
-    const liveWallet = await db.wallet.findByUserId(done.userId);
+    const liveWallet = await db.wallet.findByUserId(done.userId, currentLockTx());
+    afterCommit(currentLockTx(), () => {
     if (liveWallet) emit("wallet:balance", { userId: done.userId, balance: liveWallet.balance });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
     // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
@@ -893,6 +952,7 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
         tag: "withdrawal",
       }), { confirmedOnly: true }).catch(() => {});
     }
+    });
   }
   return !!done;
 }
@@ -902,8 +962,8 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
 export type DepositReturnOutcome = {
   /** `REVERSED` (2026-10-07): the card paid, but the account could not take money (a break or an exclusion), so the
    *  deposit is held for return — never "nothing was taken from your card", which is what FAILED says. */
-  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN" | "REVERSED";
-  balance: number;
+  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN" | "REVERSED" | "REVIEW";
+  balance: number | null;
   txn?: {
     id: string;
     amount: number;
@@ -924,7 +984,7 @@ export type DepositReturnOutcome = {
  * pre-seeded, and:
  *
  *   1. loads OUR transaction row for that providerRef,
- *   2. checks the row actually belongs to the signed-in user (an attacker must
+ *   2. checks the row is an unmarked DEPOSIT belonging to the signed-in user (an attacker must
  *      not be able to read another player's deposit by guessing a reference),
  *   3. if it is still PROCESSING, asks Selcom's SIGNED order-status endpoint and
  *      settles through `settlePaymentWebhook` — the same exactly-once, amount-
@@ -938,52 +998,16 @@ export type DepositReturnOutcome = {
  * failed while it is still moving is what makes them pay twice.
  */
 export async function settleDepositFromReturn(userId: string, orderId: string): Promise<DepositReturnOutcome> {
-  const wallet = await db.wallet.findByUserId(userId);
-  const balanceOf = async () => (await db.wallet.findByUserId(userId))?.balance ?? wallet?.balance ?? 0;
-
-  if (!orderId) return { state: "UNKNOWN", balance: await balanceOf() };
-
-  let txn = await db.txn.findByProviderRef(orderId);
-  // Unknown reference, or someone else's — same answer either way. We do NOT
-  // distinguish them: confirming "that reference exists but isn't yours" would
-  // leak the existence of other players' transactions.
-  if (!txn || txn.userId !== userId) {
-    if (txn && txn.userId !== userId) {
-      audit({
-        category: "SECURITY",
-        action: "deposit.return_ownership_mismatch",
-        actorId: userId, targetType: "Transaction", targetId: txn.id,
-        payload: { providerRef: orderId },
-      });
-    }
-    return { state: "UNKNOWN", balance: await balanceOf() };
-  }
-
-  // Still open → ask the authority. verifyDepositStatus returns PENDING for
-  // anything non-terminal (incl. INPROGRESS and unrecognised values), so an
-  // in-flight payment stays PROCESSING rather than being failed here.
-  if (txn.status === "PROCESSING" && txn.providerRef) {
-    const v = await verifyDepositStatus(txn.providerRef);
-    if (v.status === "CONFIRMED") {
-      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "CONFIRMED", amount: v.amount });
-    } else if (v.status === "FAILED") {
-      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "FAILED" });
-    }
-    // PENDING / UNSUPPORTED → leave it PROCESSING for the webhook + reconcile sweep.
-    txn = (await db.txn.findById(txn.id)) ?? txn;
-  }
-
-  // Through the player's one status rule, so the return page, the receipt and the bell agree about a held deposit.
-  const shown = presentedStatus(txn);
-  const state: DepositReturnOutcome["state"] =
-    shown === "CONFIRMED" ? "PAID" :
-    shown === "PROCESSING" ? "PENDING" :
-    shown === "REVERSED" ? "REVERSED" :
-    "FAILED"; // FAILED / CANCELLED / anything terminal-but-not-credited
-
+  // Dynamic at the adapter boundary: the shared core imports the existing webhook settlement entry point, so the
+  // wallet's mutation module does not statically depend on its reader. Both doors execute the same scope/probe/read.
+  const { readDepositStatus } = await import("./deposit-status");
+  const result = await readDepositStatus(userId, { kind: "card-order", value: orderId });
+  const view = result.view, txn = result.txn;
+  if (view.state === "UNKNOWN" || !txn) return { state: "UNKNOWN", balance: null };
+  const state: DepositReturnOutcome["state"] = view.state === "HELD" || view.state === "RETURNED" ? "REVERSED" : view.state;
   return {
     state,
-    balance: await balanceOf(),
+    balance: view.balance,
     txn: {
       id: txn.id,
       amount: Math.abs(txn.amount),
@@ -1001,10 +1025,40 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
  * All underlying settle fns are idempotent, so a retried (at-least-once) webhook
  * is safe. Returns a small verdict for the route to log.
  */
-export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }): Promise<{ handled: boolean; reason: string }> {
-  const txn = await db.txn.findByProviderRef(input.providerRef);
+export async function settlePaymentWebhook(
+  input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }, expected?: DepositRecheckBinding, processing?: ProcessingProbeBinding,
+  /** Server-only: the reconcile sweep's re-queried FAILED keeps its own reason, so the player's notice ("confirmed the
+   *  payment did not complete") and every audit query keyed on `reconcile-verified-failed` survive the bound path. */
+  failureReason: "provider-reported-failure" | "reconcile-verified-failed" = "provider-reported-failure",
+): Promise<{ handled: boolean; reason: string }> {
+  const restriction = expected === undefined ? undefined : parseDepositRecheckBinding(expected);
+  if (expected !== undefined && (!restriction || restriction.providerRef !== input.providerRef)) return { handled: false, reason: "scope-mismatch" };
+  // An ordinary OWNED status probe freezes its original funding capsule too, but still goes through the global
+  // unique selector. It cannot reuse the terminal-only private door to bypass ambiguity or credit another row.
+  const original = processing === undefined ? undefined : parseProcessingProbeBinding(processing);
+  if (processing !== undefined && (expected !== undefined || !original || original.providerRef !== input.providerRef)) return { handled: false, reason: "scope-mismatch" };
+  // A private recheck already knows its authenticated transaction. References are not unique across stored rows;
+  // never select another account/type's first matching reference for that restricted claim.
+  const txn = restriction ? await db.txn.findById(restriction.txnId, currentLockTx()) : await db.txn.findByProviderRef(input.providerRef, currentLockTx());
   if (!txn) return { handled: false, reason: "unknown-reference" };
+  if (restriction && !matchesDepositRecheckBinding(restriction.owner, restriction.txnId, restriction, txn)) return { handled: false, reason: "scope-mismatch" };
+  if (original && !matchesProcessingProbeBinding(original, txn)) return { handled: false, reason: "scope-mismatch" };
+  if (restriction && txn.status === "PROCESSING") return { handled: false, reason: "scope-mismatch" };
   if (txn.status !== "PROCESSING") {
+    // The original collection can repeat CONFIRMED after an RG rejection. The rejection records no outbound refund,
+    // so that is already-received/held money, not an opposing collection result and not authority to credit it again.
+    if (isRgHeldDeposit(txn) && input.status === "CONFIRMED") {
+      const collectionAmountMatches = input.amount == null || Math.abs(input.amount) === Math.abs(txn.amount);
+      if (!collectionAmountMatches) {
+        audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id,
+          payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef } });
+        auditNeedsReviewOnce(txn.id, "provider reported a DIFFERENT collection amount for an RG-held deposit — never auto-settled", {
+          providerRef: input.providerRef, expected: txn.amount, got: input.amount, type: txn.type,
+        });
+        return { handled: false, reason: "amount-mismatch" };
+      }
+      return { handled: true, reason: "already-rg-held" };
+    }
     // 🔴 A TERMINAL TRANSACTION BEING TOLD THE OPPOSITE IS NOT A DUPLICATE CALLBACK.
     // Every non-PROCESSING txn used to return `already-<status>` with `handled: true`,
     // which is right for a provider's at-least-once retry and WRONG for a contradiction:
@@ -1026,6 +1080,10 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
       (txn.status === "CONFIRMED" && input.status === "FAILED") ||
       ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");
     if (contradicted) {
+      const depositClaim = restriction ?? (original && !("kind" in original) ? original : undefined);
+      const reviewAdded = txn.type === "DEPOSIT" ? await markDepositStatusReview(txn.id, input.status, depositClaim, restriction ? undefined : input.providerRef) : false;
+      if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
+        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id }));
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1068,16 +1126,61 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
   }
 
   if (txn.type === "DEPOSIT") {
-    if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef);
-    else await settleDepositFailed(txn.id, "provider-reported-failure");
+    if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef, input.providerRef, original ?? undefined);
+    else await settleDepositFailed(txn.id, failureReason, input.providerRef, original ?? undefined);
+    const fresh = await db.txn.findById(txn.id, currentLockTx());
+    if (!fresh || fresh.status === "PROCESSING" || fresh.status === "PENDING") throw new Error("Deposit settlement could not be verified.");
+    if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && input.status === "CONFIRMED"))) {
+      // The opposing terminal claim may win AFTER the early PROCESSING check. Re-enter the existing terminal
+      // contradiction alarm instead of acknowledging it as settled. This path never reverses or credits again.
+      return settlePaymentWebhook(input, restriction ?? undefined, original ?? undefined);
+    }
     return { handled: true, reason: `deposit-${input.status.toLowerCase()}` };
   }
   if (txn.type === "WITHDRAWAL") {
-    if (input.status === "CONFIRMED") await settleWithdrawalConfirmed(txn.id);
-    else await settleWithdrawalFailed(txn.id, "provider-reported-failure");
+    if (input.status === "CONFIRMED") await settleWithdrawalConfirmed(txn.id, input.providerRef, original ?? undefined);
+    else await settleWithdrawalFailed(txn.id, failureReason, input.providerRef, original ?? undefined);
+    const fresh = await db.txn.findById(txn.id, currentLockTx());
+    if (!fresh || fresh.status === "PROCESSING" || fresh.status === "PENDING") throw new Error("Withdrawal settlement could not be verified.");
+    if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && input.status === "CONFIRMED"))) {
+      return settlePaymentWebhook(input, restriction ?? undefined, original ?? undefined);
+    }
     return { handled: true, reason: `withdrawal-${input.status.toLowerCase()}` };
   }
   return { handled: false, reason: `untracked-type-${txn.type.toLowerCase()}` };
+}
+
+/** One durable deposit-only review signal, claimed under its wallet lock. No terminal status, amount or ledger changes.
+ * Matching callbacks/retries do not clear it. An officer's actual resolution needs a separate reviewed action. */
+async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "FAILED", restriction?: DepositRecheckBinding, expectedProviderRef?: string): Promise<boolean> {
+  const pre = await db.txn.findById(txnId, currentLockTx());
+  if (!pre || pre.type !== "DEPOSIT" || pre.currency !== "TZS" || pre.houseBotId != null) return false;
+  if (restriction && !matchesDepositRecheckBinding(restriction.owner, txnId, restriction, pre)) return false;
+  return withLock(`wallet:${pre.userId}`, async (tx) => {
+    const fresh = await db.txn.findById(txnId, tx);
+    if (!fresh || fresh.type !== "DEPOSIT" || fresh.currency !== "TZS" || fresh.houseBotId != null || hasDepositStatusReview(fresh)) return false;
+    if (restriction && !matchesDepositRecheckBinding(restriction.owner, txnId, restriction, fresh)) return false;
+    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(fresh, expectedProviderRef, restriction);
+    if (fresh.userId !== pre.userId || (isRgHeldDeposit(fresh) && reported === "CONFIRMED")) return false;
+    const opposed = (fresh.status === "CONFIRMED" && reported === "FAILED")
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && reported === "CONFIRMED");
+    if (!opposed) return false;
+    const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);
+    if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
+    return true;
+  });
+}
+
+/** A pre-lock unique reference may have collided or changed while waiting. Read through the SAME wallet transaction
+ * before any ordinary signed settlement changes status, money or a review marker. A fault has no payment authority. */
+async function assertUniquePaymentReference(txn: StoredTxn, providerRef: string, expected?: ProcessingProbeBinding): Promise<void> {
+  const selected = await db.txn.findByProviderRef(providerRef, currentLockTx());
+  if (!selected || selected.id !== txn.id || selected.userId !== txn.userId || selected.type !== txn.type
+    || txn.providerRef !== providerRef) throw new Error("Payment reference could not be verified.");
+  if (expected && (!matchesProcessingProbeBinding(expected, selected)
+    || !matchesProcessingProbeBinding(expected, txn))) throw new Error("Payment funding could not be verified.");
 }
 
 /**
@@ -1140,9 +1243,11 @@ export async function creditConfirmedDeposits(
   let confirmed = 0;
   for (const t of inFlight) {
     try {
-      const v = await verifyDepositStatus(t.providerRef!);
+      const original = depositRecheckBinding(t.userId, t);
+      if (!original || hasDepositStatusReview(t) || isRgHeldDeposit(t)) { auditNeedsReviewOnce(t.id, "deposit funding identity or review authority unavailable — not auto-settled", {}); continue; }
+      const v = await verifyDepositStatus(original.providerRef);
       if (v.status !== "CONFIRMED") continue; // PENDING / FAILED / UNSUPPORTED — not ours to act on
-      const r = await settlePaymentWebhook({ providerRef: t.providerRef!, status: "CONFIRMED", amount: v.amount });
+      const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: v.amount }, undefined, original);
       // `handled` is ALSO true for "already-confirmed" — the idempotent no-op when
       // another path settled first. Counting that as a credit inflates the metric and
       // makes a duplicate poll look like a duplicate payment in the audit log, which
@@ -1222,19 +1327,29 @@ export async function settleConfirmedWithdrawals(
   let confirmed = 0;
   for (const t of inFlight) {
     try {
-      const v = await verifyWithdrawalStatus(t.providerRef!, t.payoutRail);
+      const original = withdrawalProbeBinding(t);
+      if (!original) { auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }
+      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
       // Keep the LATEST provider answer on the row, every pass. A payout that stalls
       // for an hour should be able to tell an operator what it has been hearing that
       // whole time — the 2026-07-29 incident had no such trail, so "still in flight"
       // and "the gateway is refusing us" were indistinguishable.
-      if (v.detail && v.detail !== t.providerStatus) {
-        try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
+      // ⚠️ Compare the STORED form. This used to compare the bare detail with the stored "<status>: <detail>", which
+      // never matches, so every in-flight payout took a wallet lock and a write every 15 s to restate an unchanged answer.
+      const trail = v.detail ? `${v.status}: ${v.detail}`.slice(0, 500) : null;
+      if (trail && trail !== t.providerStatus) {
+        try { await withLock(`wallet:${original.owner}`, async (tx) => {
+          const fresh = await db.txn.findById(original.txnId, tx);
+          if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return;
+          await assertUniquePaymentReference(fresh, original.providerRef, original);
+          await db.txn.update(original.txnId, { providerStatus: trail }, tx);
+        }); } catch { /* non-fatal */ }
       }
       // PENDING is also what a FAILED QUERY looks like (verifyWithdrawalStatus maps
       // an unreachable/rejected provider call to PENDING), and FAILED is left to the
       // stale sweep. Only a definitive CONFIRMED is actionable here.
       if (v.status !== "CONFIRMED") continue;
-      const r = await settlePaymentWebhook({ providerRef: t.providerRef!, status: "CONFIRMED" });
+      const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED" }, undefined, original);
       // `handled` is also true for the idempotent already-settled no-op. Counting
       // that would make a duplicate poll look like a duplicate payout in the audit
       // log — precisely the wrong signal on a money surface.
@@ -1310,7 +1425,17 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
   let depositsConfirmed = 0;
   let withdrawalsConfirmed = 0;
   let leftPending = 0;
-  for (const t of stale) {
+  /**
+   * ⛔ ONE ROW NEVER STALLS THE SWEEP (S9 root review H1, 2026-10-14). This loop had no per-row isolation, so a single
+   * row whose settlement threw — an ambiguous reference, a wallet that fails its identity check, a DB fault — aborted the
+   * whole pass, every five minutes, at the same place: every later stale deposit went uncredited, every later
+   * provider-FAILED payout kept its hold, and `maybePaymentSweeps` skipped the still-pending notices and the outage
+   * escalation behind it. This sweep is the ONLY path that credits a deposit confirmed after the fast window, fails a
+   * stale deposit or refunds a FAILED payout, so a stall here strands money. The fast lanes already isolate per row.
+   * A row that throws moves no money (each settle is one transaction under its wallet lock), stays PROCESSING, and is
+   * put in front of an officer once; the sweep goes on to the next row.
+   */
+  for (const t of stale) try {
     const ref = t.providerRef;
     if (t.type === "DEPOSIT") {
       if (!ref) {
@@ -1332,9 +1457,11 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         }
         continue;
       }
-      const v = await verifyDepositStatus(ref);
+      const original = depositRecheckBinding(t.userId, t);
+      if (!original || hasDepositStatusReview(t) || isRgHeldDeposit(t)) { leftPending++; auditNeedsReviewOnce(t.id, "deposit funding identity or review authority unavailable — not auto-settled", {}); continue; }
+      const v = await verifyDepositStatus(original.providerRef);
       if (v.status === "CONFIRMED") {
-        const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED", amount: v.amount }); // exactly-once + amount-tamper check
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: v.amount }, undefined, original); // exactly-once + amount-tamper check
         if (r.handled) { depositsConfirmed++; clearNeedsReview(t.id); }
         // ⛔ A REFUSAL IS NOT A NO-OP. `handled: false` here means Selcom says this
         // deposit is COMPLETED and we refused to credit it — an amount mismatch, or a
@@ -1346,7 +1473,9 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // stops reporting the money as absent.
         else leftPending++;
       } else if (v.status === "FAILED") {
-        if (await settleDepositFailed(t.id, "reconcile-verified-failed")) { depositsFailed++; clearNeedsReview(t.id); }
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");
+        if (r.handled && r.reason === "deposit-failed") { depositsFailed++; clearNeedsReview(t.id); }
+        else leftPending++;
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask" — the mock rail, or a live provider
         // whose credentials are missing. Terminalising on that is only safe when no
@@ -1356,7 +1485,7 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         if (isLiveMoneyMode()) {
           leftPending++;
           auditNeedsReviewOnce(t.id, "provider status unavailable in LIVE mode — not auto-failed", { providerRef: ref });
-        } else if (await settleDepositFailed(t.id, "reconcile-timeout")) {
+        } else if (await settleDepositFailed(t.id, "reconcile-timeout", original.providerRef, original)) {
           depositsFailed++; // mock/test — no money credited, safe
           clearNeedsReview(t.id);
         }
@@ -1370,18 +1499,28 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       // 🔴 `t.payoutRail` is load-bearing here, not decoration. This is the ONLY path
       // that can auto-reverse a payout, so querying the wrong rail's endpoint would
       // read a stranger's envelope as FAILED and refund a player whose money is gone.
-      const v = await verifyWithdrawalStatus(ref, t.payoutRail);
+      const original = withdrawalProbeBinding(t);
+      if (!original) { leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }
+      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
-      if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
-        try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
+      const trail = v.detail ? `${v.status}: ${v.detail}`.slice(0, 500) : null;
+      if (trail && trail !== t.providerStatus) {
+        try { await withLock(`wallet:${original.owner}`, async (tx) => {
+          const fresh = await db.txn.findById(original.txnId, tx);
+          if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return;
+          await assertUniquePaymentReference(fresh, original.providerRef, original);
+          await db.txn.update(original.txnId, { providerStatus: trail }, tx);
+        }); } catch { /* non-fatal */ }
         console.log(`[payments] payout ${t.id} (${ref}) — ${v.status}: ${v.detail}`);
       }
       if (v.status === "CONFIRMED") {
-        const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED" }, undefined, original); // release the hold, exactly-once
         if (r.handled) { withdrawalsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) { withdrawalsReversed++; clearNeedsReview(t.id); }
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");
+        if (r.handled && r.reason === "withdrawal-failed") { withdrawalsReversed++; clearNeedsReview(t.id); }
+        else leftPending++;
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
         // reachable with no operator action at all: any PAYMENT_API_* variable
@@ -1399,6 +1538,13 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
       }
     }
+  } catch (err) {
+    // The isolation above: count it as still in flight, say so once per transaction (the message rides in the payload,
+    // so the dedupe key stays stable while the cause is visible), and continue with the next row.
+    leftPending++;
+    auditNeedsReviewOnce(t.id, "reconcile settle error — left PROCESSING, not auto-settled",
+      { error: String((err as Error)?.message ?? err).slice(0, 200) });
+    console.error("[payments] reconcile row failed", { txnId: t.id, err: (err as Error)?.message });
   }
   if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending } });
   return { depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending };
@@ -1541,6 +1687,11 @@ export async function withdraw(
     const rl = await rateCheckAsync(userId, "wallet.withdraw");
     if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
+  // ⛔ THE KEY DOOR, AS ON deposit() (S9 release candidate, Ali 2026-10-14). The payout lanes bind a withdrawal to its
+  // original funding key (`payment-probe-binding.ts`), and a key that binding cannot carry — empty, over 256 characters,
+  // control characters, which a tampered form can send — left the payout outside both automatic lanes for review. It is
+  // refused here, before any read, gate, reservation or hold. Every minted UUID and internal `rfd:` key still passes.
+  if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };
 
   // Idempotency: if this key was already used, return the existing txn result.
   // Read the fee off the STORED ROW rather than recomputing it — recomputing
@@ -2691,9 +2842,10 @@ export async function refundAmlRejection(txn: StoredTxn, reason: string): Promis
         if (!updated) throw new Error(`aml reject ${txn.id}: wallet ${wallet.id} row missing`);
       }
     }
-    // ⭐ A DEPOSIT HELD FOR RETURN KEEPS ITS MARK in front of the officer's reason (2026-10-07). The player's surfaces read
-    // the mark (`presentedStatus`), so the returned deposit still reads "Reversed" — as the notice and the email already
-    // said — instead of turning into "Failed" the moment the money goes back. A withdrawal's reason is unchanged.
+    // A deposit keeps its held-for-return mark. This DEPOSIT arm dispatches no refund and posts no outbound ledger
+    // movement; FAILED/completedAt is the officer's rejection, not refund-delivery authority. The player still reads it
+    // as "Held for return" (filed with the reversed ones; Ali, 2026-10-14), with truthful held copy. A withdrawal's reason
+    // and actual wallet refund stay unchanged.
     const keepMark = txn.type === "DEPOSIT" && (txn.amlReason ?? "").startsWith(RG_RETURN_MARK);
     await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: keepMark ? `${txn.amlReason} · ${reason}` : reason }, tx);
   });
