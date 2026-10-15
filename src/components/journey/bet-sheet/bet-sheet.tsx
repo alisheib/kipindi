@@ -10,6 +10,8 @@ import { Callout } from "@/components/ui/callout";
 import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { useBlockScrollEdges } from "@/components/ui/scroll-edges";
 import { useT, type Dict, type Locale } from "@/lib/i18n";
 import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -70,13 +72,17 @@ export function BetSheetBody(props: BodyProps) {
   const displayedStake = frame.stake === null ? stakeText : String(frame.stake);
   const parts = { t, locale, seed, side, frame, nowMs };
   const footerLine = frame.cta?.label;
+  // ⭐ The middle fades only the edge that hides something (`data-edges`, the kit's one rule — scroll-edges.ts): at rest a
+  // money figure or a field cut by the header or the commit button reads as more to come, never as a whole (F50, 2026-10-14).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useBlockScrollEdges(scrollRef, "--bsheet-gutter");
   return <>
     <div aria-hidden className="kp-wsheet__grab" />
     <div className="kp-bsheet__header">
       {receipt ? <p className="kp-bsheet__eyebrow">{t.common.betPlacedEyebrow}</p> : <ChosenSide t={t} side={side} />}
       <CloseX ref={closeRef} withheld={placing} onClick={onClose} label={t.common.close} className="kp-bsheet__close" />
     </div>
-    <div className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">
+    <div ref={scrollRef} className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">
       {terminal && <p className="kp-bsheet__question">{title}</p>}
       <h2 id={titleId} ref={headingRef} tabIndex={-1} className="kp-bsheet__title">
         {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
@@ -113,7 +119,7 @@ export function BetSheetBody(props: BodyProps) {
         {options && selectedDeposit !== undefined && <>
           <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
             <span className="kp-bsheet__deposit-copy"><span>{fillNodes(t.journey.lowDeposit, { amount: <span className="amount">{formatTzs(selectedDeposit)}</span> })}</span>
-              <span className="kp-bsheet__rails">{railNames.map((name, index) => <span key={name}>{index > 0 && <span aria-hidden> · </span>}<span className="kp-bsheet__rail">{name}</span></span>)}</span>
+              <span className="kp-bsheet__rails"><DotSeq text={railNames.join(" · ")} /></span>
             </span>
           </Button>
           {options.chips.length > 1 && <div className="kp-bsheet__chips" role="group" aria-label={t.common.deposit}>{options.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={selectedDeposit === amount} onClick={() => onDepositAmount?.(amount)}>{formatNumber(amount)}</Button>)}</div>}
@@ -199,8 +205,9 @@ export function BetSheet(props: BetSheetProps) {
     const field = middle?.querySelector<HTMLInputElement>('[data-testid="journey-sheet-stake"]');
     if (!middle || !field || document.activeElement !== field) return;
     const port = middle.getBoundingClientRect(), stake = field.getBoundingClientRect();
-    const padding = getComputedStyle(middle);
-    const top = port.top + parseFloat(padding.paddingTop), bottom = port.bottom - parseFloat(padding.paddingBottom);
+    // The middle's scroll padding is its edge fade's depth (globals.css), so the field is revealed clear of a fade.
+    const inset = getComputedStyle(middle);
+    const top = port.top + parseFloat(inset.scrollPaddingTop), bottom = port.bottom - parseFloat(inset.scrollPaddingBottom);
     // The keyboard can shrink a focused field's scrollport after the browser has already revealed it.
     // Move only this middle region, keeping the chosen side, CloseX and commit fixed.
     if (stake.bottom > bottom) middle.scrollTop += stake.bottom - bottom;

@@ -162,7 +162,8 @@ const TONE: Record<CalloutTone, ToneSpec> = {
 // title and a body one step lighter, because at `sm` a notice that must be read
 // before money moves reads as a footnote and gets skimmed past.
 const SIZE = {
-  sm: { box: "gap-2.5 rounded-md px-3 py-2.5", icon: 14, title: "font-bold text-text", body: "text-caption leading-snug text-text-secondary", titleGap: "" },
+  // F15/F15b: a small notice carries reading copy and uses the kit's semantic control radius and spacing rungs.
+  sm: { box: "gap-3 rounded-control px-4 py-3", icon: 14, title: "font-bold text-text", body: "text-body-sm leading-snug text-text-secondary", titleGap: "" },
   md: { box: "gap-3 rounded-xl px-4 py-3.5", icon: 17, title: "font-display font-semibold text-text text-[13.5px]", body: "text-body-sm leading-snug text-text-muted", titleGap: "mt-1" },
 } as const;
 

@@ -1269,7 +1269,7 @@ body {
 .btn-sm { height: var(--h-control-sm); padding: 0 12px; font-size: 13px; }
 .btn-md { height: var(--h-control-md); padding: 0 16px; font-size: 14px; }
 .btn-lg { height: var(--h-control-lg); padding: 0 20px; font-size: 15px; }
-.btn-xl { height: var(--h-control-xl); padding: 0 24px; font-size: 16.5px; border-radius: var(--r-lg); }
+.btn-xl { height: var(--h-control-xl); padding: 0 24px; font-size: var(--type-h4); border-radius: var(--r-lg); }
 
 /* Fully-rounded button — replaces the inline `style={{ borderRadius: var(--r-pill) }}`
    override repeated across ~14 CTAs (auth, kyc, wallet, profile, market sign-in). */
@@ -7668,15 +7668,17 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); min-height: 0; }
 .kp-howto__sheet > * { flex-shrink: 0; }
 .kp-howto__scroll { display: flex; flex-direction: column; gap: var(--sp-4); flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.kp-howto__scroll[data-edges="end"] {
+/* ⭐ ONE BLOCK-AXIS FADE, TWO SCROLLERS: the steps here and the bet sheet's middle (F50, 2026-10-14), both marked by the
+   kit's `useBlockScrollEdges` (`scroll-edges.ts`). A second copy of these ramps is how two sheets start fading apart. */
+.kp-howto__scroll[data-edges="end"], .kp-bsheet__scroll[data-edges="end"] {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--sp-6)), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - var(--sp-6)), transparent);
 }
-.kp-howto__scroll[data-edges="start"] {
+.kp-howto__scroll[data-edges="start"], .kp-bsheet__scroll[data-edges="start"] {
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6));
   mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6));
 }
-.kp-howto__scroll[data-edges="both"] {
+.kp-howto__scroll[data-edges="both"], .kp-bsheet__scroll[data-edges="both"] {
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent);
 }
@@ -8605,12 +8607,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .kp-bsheet__close { flex: none; }
 .kp-bsheet__chosen { max-width: calc(100% - var(--sp-12) - var(--sp-2)); }
-.kp-bsheet__scroll { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; gap: var(--sp-3); padding-block: var(--sp-1); scrollbar-gutter: stable; }
+/* ⭐ F50 (the visual audit, 2026-10-14): the middle is cut where its scrollport ends, and at rest that cut could slice money —
+   "≈ TZS 1,153" under the commit at 320 zh, a stake box under the header once scrolled. So it fades the edge that hides
+   something, and only that one (`data-edges`; the How-to's ramps above, one definition). Its scroll padding is that ramp's
+   depth, so a control the browser or the keyboard lift reveals (`revealFocusedStake`) stops clear of a fade. */
+.kp-bsheet__scroll { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; gap: var(--sp-3); padding-block: var(--sp-1); scroll-padding-block: var(--sp-6); scrollbar-gutter: stable; }
 /* The viewport shrinks the scroll region, never its multiline controls or reading blocks. */
 .kp-bsheet__scroll > * { flex-shrink: 0; }
 /* As on section rails and clipped strips, the two-pixel keyboard outline stays inside this scrollport's controls. */
 .kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: -2px; }
-.kp-bsheet__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; font-family: var(--font-display); font-size: var(--type-h3); font-weight: 600; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; outline: none; }
+.kp-bsheet__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; font-family: var(--font-display); font-size: var(--type-h3); font-weight: 700; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; outline: none; }
 /* The chosen heading is legible in the first painted frame while the existing kit lift settles. */
 .kp-bsheet.m-sheet-in { animation-name: m-settle-lift; --m-settle-start-opacity: 1; }
 .kp-bsheet__question { margin: 0; font-size: var(--type-body); line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
@@ -8640,14 +8646,18 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__deposit + .kp-bsheet__chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kp-bsheet__deposit-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: var(--sp-1); text-align: left; white-space: normal; }
 .kp-bsheet__rails { font-size: var(--type-small); font-weight: 500; line-height: 1.5; color: var(--gold-fg); }
-.kp-bsheet__rail { white-space: nowrap; }
 .kp-bsheet__instead { display: flex; flex-direction: column; height: auto; min-height: var(--h-control-xl); gap: var(--sp-1); border: 1px solid var(--border-control); padding-block: var(--sp-2); white-space: normal; }
 .kp-bsheet__instead-estimate { font-size: var(--type-small); font-weight: 400; color: var(--text-muted); }
 .kp-bsheet__link, .kp-bsheet__ticket-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-md); padding: var(--sp-2); color: var(--brand-300); font-size: var(--type-body); text-decoration: none; }
 .kp-bsheet__terminal, .kp-bsheet__lines { font-size: var(--type-body); line-height: 1.5; color: var(--text-muted); }
 .kp-bsheet__lines p { margin: 0; }
 .kp-bsheet__placing { margin: 0; font-size: var(--type-small); color: var(--text-muted); }
-.kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); }
+/* The middle's scrollbar gutter is 8px under the kit's custom scrollbar, but WebKit can use a 0px overlay at wider
+   widths. Its ResizeObserver writes the measured width to --bsheet-gutter before paint, so the footer's CTA ends where
+   the middle's blocks do in either engine (F16). The footer lets focus and gold glow reach the panel's 20px padding;
+   vertical margin/padding cancel so the CTA does not move. A negative right margin on a clipped footer made the SHEET
+   scrollWidth 20px too wide with a keyboard open at 320/360. */
+.kp-bsheet__footer { display: flex; flex: none; flex-direction: column; gap: var(--sp-2); overflow: visible; margin: calc(-1 * var(--sp-3)) 0 calc(-1 * var(--sp-5)); padding: var(--sp-3) var(--bsheet-gutter, 0px) var(--sp-5) 0; }
 /* The placing status and the refusal line stand above the CTA they explain, at the sheet's row rhythm (gap + 4px = 12px).
    Two plain selectors, not `> :is(…)`: Chrome files a rule under its rightmost compound, and an `:is()` list there is
    tried against every element on every style pass (the tap's selector stats, 2026-10-14); a class is looked up. */

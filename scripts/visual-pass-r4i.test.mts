@@ -287,7 +287,11 @@ section("3 · the limits page: the callout at reading size, the two forms in lin
   ok("3.1 · the break and exclusion callouts take the md rung: 13px body, over the 12.5px floor (they were sm: 11px, caps 8px)",
     (RG.match(/<Callout tone="neutral" size="md" glyph="(lock|pause)">\{endSentence\(t\.rg\.(exclusionActive|breakActive), rg\.(selfExclusionUntil|coolingOffUntil)\)\}<\/Callout>/g) ?? []).length === 2
       && px(mdBody) === 13 && px(mdBody) >= 12.5, `md "${mdBody}" = ${px(mdBody)}px`);
-  ok("3.1′ CONTROL · the sm rung they wore is under the floor", px(smBody) === 11 && px(smBody) < 12.5, `sm "${smBody}" = ${px(smBody)}px`);
+  // S8 V1 F15 raises the shared sm Callout body to 13px. Keep the old below-floor premise as a planted control.
+  const legacySmBody = smBody.replace("text-body-sm", "text-caption");
+  ok("3.1′ CONTROL · shared sm now clears the floor at 13px; restoring its old caption rung falls to 11px",
+    px(smBody) === 13 && px(smBody) >= 12.5 && px(legacySmBody) === 11 && px(legacySmBody) < 12.5,
+    `sm "${smBody}" = ${px(smBody)}px; planted "${legacySmBody}" = ${px(legacySmBody)}px`);
   const planted = RG.replace('<Callout tone="neutral" size="md" glyph="pause">{endSentence(t.rg.breakActive', '<Callout tone="neutral" glyph="pause">{endSentence(t.rg.breakActive');
   ok("3.1″ PLANT · the break callout back on the sm rung is reported", (planted.match(/size="md" glyph="(lock|pause)">\{endSentence/g) ?? []).length !== 2);
 
