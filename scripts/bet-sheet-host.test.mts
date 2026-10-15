@@ -204,7 +204,8 @@ async function lifecycleChecks(source: string) {
       const commit = bindHost(source, "commit", { mounted: h.mounted, current: h.current, pending: h.pending, requests, selected: h.selected,
         viewerId: h.viewerId, ownerEpoch: h.ownerEpoch, ownerInvalid: h.ownerInvalid, recoveryBlocked: () => false, invalidateOwner: () => {},
         activeIdentity, identity, sheetFrame: () => { frames++; return {}; }, quoteAt: () => quote, nextKey: () => ({ quote, key: key(101) }), requestFor: () => new FormData(),
-        readMarker, writeMarker, attributionFrom, save: h.save, show: h.show, window: h.window, withBet, revise: () => revisions++,
+        readMarker, writeMarker, attributionFrom, returnAttribution: (_a: unknown, _marker: unknown, _viewer: unknown, search: URLSearchParams) => attributionFrom(search),
+        save: h.save, show: h.show, window: h.window, withBet, revise: () => revisions++,
         startTransition: (fn: () => Promise<void>) => { work = fn(); }, answerOf: (fn: () => Promise<unknown>) => fn(),
         buyPositionAction: () => { dispatches++; return new Promise(r => { answerResolve = r; }); },
         refusalOutcome: () => { outcomes++; return { reread: "viewer", frame: "decide" }; },
@@ -235,7 +236,8 @@ async function lifecycleChecks(source: string) {
     const close = bindHost(source, "close", { mounted: direct.mounted, current: direct.current, pending: direct.pending, activeIdentity, show: direct.show, generation: { current: 0 }, window: direct.window, stripAddress: direct.stripAddress });
     const deposit = bindHost(source, "deposit", { mounted: direct.mounted, current: direct.current, pending: direct.pending, activeIdentity, sheetFrame: () => ({ low: { deposit: { amount: 500 } }, stake: 500, stakeLocked: false }), selected: direct.selected,
       viewerId: direct.viewerId, recoveryBlocked: () => false,
-      readMarker, writeMarker, attributionFrom, window: direct.window, withBet, save: direct.save, show: direct.show, router: { push: (url: string) => pushes.push(url) } });
+      readMarker, writeMarker, attributionFrom, returnAttribution: (_a: unknown, _marker: unknown, _viewer: unknown, search: URLSearchParams) => attributionFrom(search),
+      window: direct.window, withBet, save: direct.save, show: direct.show, router: { push: (url: string) => pushes.push(url) } });
     close(); deposit();
     const directClosed = direct.shown.length === 0 && direct.history.length === 0 && direct.writes.length === 0 && pushes.length === 0;
     const auth = async (live: boolean) => {
@@ -246,7 +248,10 @@ async function lifecycleChecks(source: string) {
     };
     const authClosed = await auth(false) === 0 && await auth(true) === 1;
     return { lateReceipt, closedReceipt, keyReadEntry, keyReadLate, actionEntry, actionAnswer, actionTruth, actionLive, directClosed, authClosed };
-  } catch { return null; }
+  } catch (error) {
+    if (process.env.KP_DEBUG_SHEET_HOST === "1") console.error("Lifecycle harness failed:", error);
+    return null;
+  }
 }
 /** Evaluate the shipped frozen-view choice and JSX handlers against closed, replaced and matching serials. */
 function exitChecks(source: string) {
