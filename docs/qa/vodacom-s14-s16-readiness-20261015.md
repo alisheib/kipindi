@@ -1,5 +1,14 @@
 # Vodacom S14–S16 execution record and evidence gate
 
+**Local update, 2026-10-15 17:21 UTC:** the isolated S8–S13 candidate now has
+`e2e:journey` **43/0** on a disposable mock rail, including a return before
+confirmation, plus the focused adversarial and mutation checks in
+[`s14-adversarial-gate-census-20261015.md`](s14-adversarial-gate-census-20261015.md).
+This does not close the final-SHA visual matrix, real staff transaction,
+agency sign-off, S15 gate rewrites, or production evidence. Their JSON entries
+remain open. The original status below describes the older `c8a982cd7` base
+on which this execution record was first written.
+
 **Status, 2026-10-15:** S14 has not been performed. The five deck frames have 52 element checks, all still open in
 [`vodacom-s14-evidence.json`](vodacom-s14-evidence.json). `e2e:journey` is specified in
 [`VODACOM-PLAN.md`](../VODACOM-PLAN.md) §5 S14, but no package command by that name exists on the `c8a982cd7` base of this
