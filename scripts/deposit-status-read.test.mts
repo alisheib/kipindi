@@ -615,6 +615,20 @@ async function referenceControls(src: Record<string, string> = sources): Promise
   const failedRow = await db.txn.findByIdempotencyKey(failedKey);
   ok("dispatch.sync-failure-claims-processing", !failedReply.ok && failedRow?.status === "FAILED"
     && (await db.wallet.findByUserId(failedOwner))?.balance === 0 && failed.seen.audits.some(a => a.action === "deposit.failed"));
+  const uncertainOwner = await player();
+  let walletReads = 0;
+  const uncertainData = { ...db, txn: { ...db.txn, update: async (id: string, patch: any, tx: any) =>
+    patch.status === "FAILED" ? null : db.txn.update(id, patch, tx) },
+    wallet: { ...db.wallet, findByUserId: async (id: string, tx: any) => {
+      if (id === uncertainOwner && ++walletReads > 1) throw new Error("controlled balance read fault after dispatch");
+      return db.wallet.findByUserId(id, tx);
+    } } } as typeof db;
+  const uncertain = system(src, uncertainData);
+  uncertain.dispatch(async ({ correlationId }: { correlationId: string }) => ({ ok: false, reason: "PROVIDER_DOWN", correlationId }));
+  const uncertainKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const uncertainReply = await uncertain.money.deposit(uncertainOwner, { provider: "MPESA", amount: 5000, msisdn: "+255712345678" }, uncertainKey);
+  ok("dispatch.failed-write-keeps-recovery", uncertainReply.ok && uncertainReply.data.recoveryRequired && uncertainReply.data.balance === 0
+    && uncertain.seen.dispatches === 1 && (await db.txn.findByIdempotencyKey(uncertainKey))?.status === "PROCESSING");
   const selector = referenceData(src);
   const unique = await txn(await player());
   ok("reference.unique-and-missing", (await selector.txn.findByProviderRef(unique.providerRef!))?.id === unique.id

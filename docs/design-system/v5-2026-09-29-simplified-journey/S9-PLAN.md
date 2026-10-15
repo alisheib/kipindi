@@ -962,13 +962,17 @@ that won the lock remains CONFIRMED and credited.
 Selcom Card's validated HTTPS checkout URL is stored in the new nullable `Transaction.cardCheckoutUrl`
 column in the same write as the returned reference, before the first redirect. The exact accepted hosts are
 `checkout.selcommobile.com`, `checkout.selcom.net`, and `selcompay.me`; an unexpected provider host requires
-review before it may be added. A matching same-key Card replay returns that existing URL without creating
+review before it may be added. These hosts come from repository fixtures, **not** a verified Selcom order:
+the current [Selcom Checkout API reference](https://developers.selcommobile.com/) documents
+`payment_gateway_url` using an example.com placeholder
+and does not state live or sandbox checkout hosts. A controlled provider response must establish the actual
+host before release. A matching same-key Card replay returns that existing URL without creating
 another order. The waiting page offers a deliberate continuation link only while the owned Card transaction
 is PROCESSING and not marked for review. Its server route repeats owner, rail, currency, status, review and
 host checks before redirecting; neither status JSON nor audit records contain the URL.
 
 Focused memory proof on this checkpoint: typecheck, deposit replay **57/57** with **17/17** red plants,
-provider-reference **29/29** with **3/3** red plants, and deposit-return **28/28** including its ambiguity
+provider-reference **30/30** with **3/3** red plants, and deposit-return **28/28** including its ambiguity
 plant. The race test runs the signed CONFIRMED callback between provider dispatch and the synchronous
 failure arm, then checks one credit, CONFIRMED status and no failure audit. The Card test checks the
 persisted URL, same-key no-dispatch replay, foreign and terminal denial, owned route and exact-host

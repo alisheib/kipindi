@@ -366,9 +366,12 @@ export async function deposit(
       });
     } catch { /* A lost write answer cannot authorize another charge. Recover the reserved order. */ }
     if (!claim || !claim.failedHere) {
-      const w = await db.wallet.findByUserId(userId);
+      // The same database fault may make this optional balance reread fail too. The action only uses this
+      // answer to enter owned recovery, so retain the earlier verified balance and original funding key.
+      let balance = wallet.balance;
+      try { balance = (await db.wallet.findByUserId(userId))?.balance ?? balance; } catch { /* recovery still wins */ }
       return { ok: true, data: { txnId, status: claim ? depositResultStatus(claim.row) : "PROCESSING",
-        balance: w?.balance ?? wallet.balance, recoveryRequired: true } };
+        balance, recoveryRequired: true } };
     }
     // `detail` carries the provider's own explanation (HTTP status, result code,
     // message). Without it a failed real-money deposit is undiagnosable once the
