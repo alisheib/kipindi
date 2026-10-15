@@ -855,3 +855,31 @@ OPEN: `test:house-bot-disclosure` 5.1 (and its two controls) is red at `9869dd70
 the stack is merged with main. A withdrawal stored under a key the withdrawal tuple cannot carry (over 256 characters
 or control characters, which a tampered form can send) is still left for review by both payout lanes; the deposit door
 now refuses such keys, the withdrawal door does not yet.
+
+### §5m · Codex S9 product candidate (2026-10-15)
+
+The isolated `codex/s9-candidate-1015` checkpoint at `49acd4ed6` merges the pushed S9 preparation into
+`origin/main` at `50b586d50` and implements a **candidate** for WP4–WP7. It has not been deployed or enabled.
+The new journey uses focused deposit, Card and waiting routes; a separate owner-scoped, read-back-verified tab
+funding key; a hydrated chosen-bet bridge; owned status and explicit bound FAILED recheck; the 30-minute
+existing-wallet-money alternative; manual return; real closed-question and current-bounds frames; stored-intent
+receipt links; and create-only question-position return attribution. The classic direct deposit form remains in
+its same-route alternative. WP8 and independent bridge/controller review remain release gates.
+
+**Reporting contract before integration.** The established `deposits.betWithin30` and old/new funnel
+`depositToBet` stay broad: any player BET_PLACED transaction within 30 minutes of a confirmed deposit counts.
+The candidate adds a separate `depositReturns` measure, displayed as “Saved question → manual bet (30 min) ·
+all players.” Its denominator is confirmed TZS player deposits in the report window with a canonical saved
+question intent, positive selected stake and valid completion time. A saved Up & Down intent is counted
+separately, never treated as a question position. Its numerator is one-to-one inferred matches from
+`Position.origin = deposit_return` to those deposits, with the same owner, exact question/side/stake,
+and placement no later than 30 minutes after actual completion. Origin has no stored deposit foreign key,
+so the pairing among overlapping identical deposits is inferred and the measure is not split by campaign
+or old/new journey. The UI names it as an all-player measure. Neither the broad aggregate nor a client
+funnel beacon is used to claim a saved-question return.
+
+Memory candidate proof before the final storage/phone/listener edits: typecheck; deposit-return 20/20 and
+red 17/17; deposit-state 184/184; replay 48/48; persistence 34/34; status-read 175/175. The latest
+source edits and actual PostgreSQL, migration/backup, visual, three-locale, and full WP8 gates remain to be
+rerun before integration. A checkpoint commit and branch push preserve the candidate; they do not constitute
+release approval.
