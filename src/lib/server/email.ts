@@ -723,6 +723,15 @@ function ctaButton(hrefOrPath: string, label: string, variant: "gold" | "primary
   </td></tr></table>`;
 }
 
+/** Outbound mail has no preview pass. Its browse door follows the effective
+ * product rollout supplied by the sender, so an Owner rollback restores the
+ * classic label and address on the next email. */
+function browseQuestionsCta(journeyActive: boolean, classicSwVerb: "Tazama" | "Angalia" = "Tazama"): string {
+  return journeyActive
+    ? ctaButton("/", "Browse questions · Tazama maswali")
+    : ctaButton("/markets", `Browse markets · ${classicSwVerb} masoko`);
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -857,13 +866,17 @@ export function staffRoleChangedHtml({ name, roleLabel, isStaff }: { name: strin
   `);
 }
 
-export function welcomeHtml({ name }: { name: string }): string {
+export function welcomeHtml({ name, journeyActive = false }: { name: string; journeyActive?: boolean }): string {
   return wrap(`
     ${eyebrow("Welcome · Karibu")}
     ${heading(`Welcome to 50pick, ${name}`)}
-    ${subtitle("Your account is ready. Browse markets, place your first prediction, and join the community.")}
-    ${subtitleSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
-    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
+    ${subtitle(journeyActive
+      ? "Your account is ready. Browse questions, choose YES or NO, and place your first bet."
+      : "Your account is ready. Browse markets, place your first prediction, and join the community.")}
+    ${subtitleSw(journeyActive
+      ? "Akaunti yako iko tayari. Tazama maswali, chagua NDIO au HAPANA, kisha uweke dau lako la kwanza."
+      : "Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
+    ${browseQuestionsCta(journeyActive)}
   `, { promo: true });
 }
 
@@ -1274,8 +1287,8 @@ export function cashOutReceiptHtml({ reference, value, stake, marketTitle, soldA
   `);
 }
 
-export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }: {
-  reference: string; stake: number; marketTitle: string; settledAt?: string;
+export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt, journeyActive = false }: {
+  reference: string; stake: number; marketTitle: string; settledAt?: string; journeyActive?: boolean;
 }): string {
   return wrap(`
     ${eyebrow("Full refund", "Pesa imerudishwa")}
@@ -1289,7 +1302,7 @@ export function oneSidedRefundHtml({ reference, stake, marketTitle, settledAt }:
       ...(settledAt ? [{ label: "Settled", value: fmtDateTime(settledAt) }] : []),
     ])}
     ${refNote()}
-    ${ctaButton("/markets", "Browse markets \u00b7 Angalia masoko")}
+    ${browseQuestionsCta(journeyActive, "Angalia")}
   `);
 }
 
@@ -2093,7 +2106,7 @@ export function sofSubmittedHtml(): string {
   `);
 }
 
-export function loginNotificationHtml({ name, time, ip }: { name: string; time: string; ip: string }): string {
+export function loginNotificationHtml({ name, time, ip, journeyActive = false }: { name: string; time: string; ip: string; journeyActive?: boolean }): string {
   return wrap(`
     ${eyebrow("Sign-in", "Umeingia")}
     ${heading(`Welcome back, ${name}`)}
@@ -2103,7 +2116,7 @@ export function loginNotificationHtml({ name, time, ip }: { name: string; time: 
       { label: "Time", value: time },
       { label: "IP address", value: ip },
     ])}
-    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
+    ${browseQuestionsCta(journeyActive)}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If this wasn't you, change your password immediately and contact support.</p>
   `);
 }

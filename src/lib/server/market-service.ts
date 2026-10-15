@@ -4059,7 +4059,7 @@ export async function settleMarket(
         if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
-          html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
+          html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt, journeyActive: shortTitles }),
           tag: "one-sided-refund",
         }), { confirmedOnly: true }).catch(() => {});
       } else {

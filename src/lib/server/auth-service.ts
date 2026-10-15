@@ -17,6 +17,7 @@ import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
 import { runOutsideLock, withLock } from "./locks";
 import { sendEmail, sendEmailToUser, welcomeHtml, loginNotificationHtml } from "./email";
+import { shortTitlesInMessagesNow } from "./message-titles";
 import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
 import { validatePasswordStrength } from "./password-policy";
@@ -496,16 +497,17 @@ export async function verifyOtpAndAuth(
     return { ok: true, data: { userId: user.id, role: user.role, twoFactorRequired: true } };
   }
   // New sign-in security email — parity with the password login path.
-  sendEmailToUser(user.id, (email) => ({
+  void shortTitlesInMessagesNow().then((journeyActive) => sendEmailToUser(user.id, (email) => ({
     to: email,
     subject: "New sign-in to your 50pick account",
     html: loginNotificationHtml({
       name: displayLabel(user!),
       time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }),
       ip: meta.ip ?? "unknown",
+      journeyActive,
     }),
     tag: "login-otp",
-  })).catch(() => {});
+  }))).catch(() => {});
   await createSession({ userId: user.id, phoneE164: user.phoneE164, role: user.role, kycStatus: (await db.kyc.findByUserId(user.id))?.status ?? "NOT_STARTED" });
   await applyTestFloat(user.id);
   return { ok: true, data: { userId: user.id, role: user.role } };
@@ -744,12 +746,12 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
   // Welcome email — best-effort, never blocks registration
   if (user.email) {
     const { displayLabel } = await import("../display-label");
-    sendEmail({
+    void shortTitlesInMessagesNow().then((journeyActive) => sendEmail({
       to: user.email,
       subject: "Welcome to 50pick · Karibu",
-      html: welcomeHtml({ name: displayLabel(user) }),
+      html: welcomeHtml({ name: displayLabel(user), journeyActive }),
       tag: "welcome",
-    }).catch(() => {});
+    })).catch(() => {});
 
     // Confirmation link, sent IMMEDIATELY at sign-up. Since 2026-10-07 a deposit asks
     // no email; a confirmed address is needed before a WITHDRAWAL, so the link is
@@ -1109,12 +1111,12 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   if (userEmail) {
     const { displayLabel } = await import("../display-label");
     const userRef = { id: user.id, displayName: user.displayName };
-    sendEmail({
+    void shortTitlesInMessagesNow().then((journeyActive) => sendEmail({
       to: userEmail,
       subject: "Signed in · Umeingia 50pick",
-      html: loginNotificationHtml({ name: displayLabel(userRef), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown" }),
+      html: loginNotificationHtml({ name: displayLabel(userRef), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown", journeyActive }),
       tag: "login",
-    }).catch(() => {});
+    })).catch(() => {});
   }
 
   await createSession({
@@ -1162,12 +1164,12 @@ export async function completeTwoFactorLogin(userId: string): Promise<ServiceRes
   const emailForPhone = resolvePhoneEmail(user.phoneE164);
   const userEmail = user.email ?? emailForPhone;
   if (userEmail) {
-    sendEmail({
+    void shortTitlesInMessagesNow().then((journeyActive) => sendEmail({
       to: userEmail,
       subject: "Signed in · Umeingia 50pick",
-      html: loginNotificationHtml({ name: displayLabel({ id: user.id, displayName: user.displayName }), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown" }),
+      html: loginNotificationHtml({ name: displayLabel({ id: user.id, displayName: user.displayName }), time: new Date().toLocaleString("en-GB", { timeZone: "Africa/Dar_es_Salaam" }), ip: meta.ip ?? "unknown", journeyActive }),
       tag: "login",
-    }).catch(() => {});
+    })).catch(() => {});
   }
 
   await createSession({
