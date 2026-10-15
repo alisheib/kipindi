@@ -362,4 +362,6 @@ desk guide PDF with a new section on pairing.
 ## 6 · The handoff folder `C:\50pick-ssd\handoff-n5n6\`
 `n5.sh` (lock wrapper) → `n5-body.sh` (the gate) → `hb5-lib.sh`, `hb5-devsuites.sh`, `n5-visual.sh`, `n5-pgdrive.sh`;
 gate-only drives to copy into the worktree's `.suites\` before use: `n5-roster-seed.mts`, `n5-shots.mjs`,
-`drive-dal-n5.mts`; `n3-live-probe.cjs` (read-only production probe, counts only); `n6-compliance-draft.md`; `rep.cjs`.
+`drive-dal-n5.mts`; `n3-live-probe.cjs` (read-only production probe, counts only); `n6-compliance-draft.md`; `rep.cjs`;
+`code-map-*.md` — read-only surveys of the N6 touchpoints (planner/decide/marketHeld/pools; seam/fire/caps;
+rules/limits/AML) with file:line references at `fd9034e25`.
