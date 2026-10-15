@@ -334,10 +334,13 @@ section("9 · the lean word is upright (tiles 177 178 205)");
 {
   const lean = rule(css, ".tipbar-lean");
   ok("9.1 · `.tipbar-lean` sets no italic", lean.length > 0 && !/font-style:\s*italic/.test(lean), lean.trim());
-  const layout = code("src/app/layout.tsx");
-  const jbmDecl = /const jbm = JetBrains_Mono\(\{([\s\S]*?)\}\);/.exec(layout)?.[1] ?? "";
+  const fontCss = decommentCss(read("src/app/fonts.css"));
+  const jbmFaces = [...fontCss.matchAll(/@font-face\s*\{([^}]*)\}/g)]
+    .map((match) => match[1])
+    .filter((face) => /font-family:\s*JetBrains Mono;/.test(face));
   ok("9.2 CONTROL · the premise: JetBrains Mono is loaded upright only — an italic there could only be sheared",
-    jbmDecl.length > 0 && !/style:/.test(jbmDecl), jbmDecl.trim());
+    jbmFaces.length === 18 && jbmFaces.every((face) => /font-style:\s*normal;/.test(face) && !/font-style:\s*italic;/.test(face)),
+    `${jbmFaces.length} upright local faces`);
   ok("9.1′ PLANT · the rule as it shipped is reported", /font-style:\s*italic/.test("color: var(--bar-label-tipping); font-style: italic;"));
 }
 

@@ -983,6 +983,15 @@
   }
 }
 
+/* The exact local font stacks replace next/font's generated html class. Keep
+   their variables beside the other typography tokens so no stylesheet can
+   silently shadow a second definition of the same token. */
+.kp-local-fonts {
+  --font-display: "Sora", "Sora Fallback";
+  --font-sans: "Inter", "Inter Fallback";
+  --font-mono: "JetBrains Mono", "JetBrains Mono Fallback";
+}
+
 /* Single dark-royal theme by invariant (DESIGN_AUTHORITY B3 — light mode killed).
    The theme engine is gone; everything renders on the canonical royal canvas. */
 

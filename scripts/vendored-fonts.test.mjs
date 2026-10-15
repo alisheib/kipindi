@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 // subsets so non-Latin names retain glyph coverage, while builds stay offline.
 const root = process.cwd();
 const css = readFileSync(join(root, "src/app/fonts.css"), "utf8");
+const globalCss = readFileSync(join(root, "src/app/globals.css"), "utf8");
 const layout = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
 const config = readFileSync(join(root, "next.config.ts"), "utf8");
 const expected = new Map([
@@ -67,8 +68,9 @@ const preloads = [...layout.matchAll(/<link rel="preload" href="\/fonts\/([^"/]+
 const latin = [...expectedFiles].filter((file) => file.includes("-s.p."));
 assert.equal(preloads.length, 3, "Exactly three Latin faces preload");
 assert.deepEqual(preloads.sort(), latin.sort(), "Only the same three Latin faces preload");
-assert(css.includes('--font-display: "Sora", "Sora Fallback"'), "Sora variable/fallback preserved");
-assert(css.includes('--font-sans: "Inter", "Inter Fallback"'), "Inter variable/fallback preserved");
-assert(css.includes('--font-mono: "JetBrains Mono", "JetBrains Mono Fallback"'), "Mono variable/fallback preserved");
+const stacks = /\.kp-local-fonts\s*\{([^}]*)\}/.exec(globalCss)?.[1] ?? "";
+assert(stacks.includes('--font-display: "Sora", "Sora Fallback"'), "Sora variable/fallback preserved");
+assert(stacks.includes('--font-sans: "Inter", "Inter Fallback"'), "Inter variable/fallback preserved");
+assert(stacks.includes('--font-mono: "JetBrains Mono", "JetBrains Mono Fallback"'), "Mono variable/fallback preserved");
 
 console.log(`vendored-fonts: ${faces.length} faces, ${expectedFiles.size} WOFF2 subsets, ${preloads.length} Latin preloads, three licenses — PASS`);
