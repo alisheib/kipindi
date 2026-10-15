@@ -81,6 +81,7 @@ async function observe(ctx, id) {
 }
 const summary = f => ({ path: f.path, frame: f.frame, guest: f.guest, stake: f.stake, balance: f.balance, place: f.place,
   viewport: f.viewport, scrollWidth: f.scrollWidth, tapMin: f.tapMin, signUp: f.signUp, signIn: f.signIn,
+  sheetOverflow: f.sheetOverflow, chip: f.chip, labelClipped: f.labelClipped, tokens: f.tokens, geometry: f.geometry,
   marker: f.marker ? { present: true, keyed: /"k"\s*:/.test(f.marker), owned: /"owner"\s*:/.test(f.marker) } : { present: false } });
 async function screenshot(page, label) {
   await page.evaluate(() => document.fonts.ready);

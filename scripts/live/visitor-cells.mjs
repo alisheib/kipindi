@@ -16,6 +16,16 @@ export function visitorFaceFacts() {
   };
   const roots = getComputedStyle(document.documentElement);
   const tapMin = Number.parseFloat(roots.getPropertyValue('--tap-min')) || 0;
+  const token = name => Number.parseFloat(roots.getPropertyValue(name)) || 0;
+  const style = node => node ? getComputedStyle(node) : null;
+  const panel = sheet?.closest('.kp-bsheet');
+  const shell = sheet?.querySelector('.kp-bsheet__shell') ?? sheet;
+  const header = sheet?.querySelector('.kp-bsheet__header');
+  const scroll = sheet?.querySelector('.kp-bsheet__scroll');
+  const footer = sheet?.querySelector('.kp-bsheet__footer');
+  const titleNode = sheet?.querySelector('.kp-bsheet__title');
+  const estimate = sheet?.querySelector('.kp-bsheet__estimate');
+  const chip = sheet?.querySelector('.kp-bsheet__chosen, .kp-bsheet__header .chip');
   const controls = [...(sheet?.querySelectorAll('a,button,input') ?? [])].filter(node => {
     const style = getComputedStyle(node);
     return style.display !== 'none' && style.visibility !== 'hidden' && rect(node)?.width > 0;
@@ -35,7 +45,24 @@ export function visitorFaceFacts() {
     toast: rect(toast), close: rect(sheet?.querySelector('.kp-bsheet__close')),
     chips: rect(sheet?.querySelector('.kp-bsheet__chips')),
     viewport: { width: innerWidth, height: innerHeight },
-    scrollWidth: document.documentElement.scrollWidth, tapMin, controls,
+    scrollWidth: document.documentElement.scrollWidth, sheetOverflow: sheet ? sheet.scrollWidth - sheet.clientWidth : null,
+    tapMin, controls, chip: chip ? { text: chip.textContent?.trim(), variant: chip.getAttribute('data-kit-chip-variant') } : null,
+    labelClipped: !!signUp && (signUp.scrollWidth > signUp.clientWidth + 1 || signUp.scrollHeight > signUp.clientHeight + 1),
+    tokens: {
+      sp1: token('--sp-1'), sp2: token('--sp-2'), sp3: token('--sp-3'), sp4: token('--sp-4'), sp5: token('--sp-5'),
+      h3: token('--type-h3'), controlLg: token('--h-control-lg'), controlXl: token('--h-control-xl'),
+    },
+    geometry: {
+      panelTop: Number.parseFloat(style(panel)?.paddingTop), panelInline: Number.parseFloat(style(panel)?.paddingLeft),
+      shellGap: Number.parseFloat(style(shell)?.gap), headerGap: Number.parseFloat(style(header)?.gap),
+      scrollGap: Number.parseFloat(style(scroll)?.gap), scrollPad: Number.parseFloat(style(scroll)?.paddingTop),
+      footerGap: Number.parseFloat(style(footer)?.gap), chipsGap: Number.parseFloat(style(sheet?.querySelector('.kp-bsheet__chips'))?.gap),
+      estimatePadding: Number.parseFloat(style(estimate)?.paddingTop),
+      titleSize: Number.parseFloat(style(titleNode)?.fontSize),
+      titleFont: style(titleNode)?.fontFamily ?? null, stakeFont: style(stake)?.fontFamily ?? null,
+      signUpFont: style(signUp)?.fontFamily ?? null, signUpMin: Number.parseFloat(style(signUp)?.minHeight),
+      signInMin: Number.parseFloat(style(signIn)?.minHeight),
+    },
     fontLoaded: document.fonts.status === 'loaded',
   };
 }
@@ -57,11 +84,24 @@ export function visitorFaceErrors(facts, { min, next, ref, invite } = {}) {
     && !!facts.signUpText && !!facts.signInText);
   if (min !== undefined) check('guest.minimum', Number(facts.stake) === min);
   check('visual.width', facts.scrollWidth <= facts.viewport.width + 1);
+  check('visual.sheet-width', facts.sheetOverflow !== null && facts.sheetOverflow <= 1);
   check('visual.font', facts.fontLoaded);
+  check('visual.side', !!facts.chip?.text && ['yes', 'no'].includes(facts.chip.variant));
+  check('visual.label', !facts.labelClipped);
   check('visual.targets', facts.tapMin > 0 && facts.controls.every(control => control.rect.height + 0.5 >= facts.tapMin));
   check('visual.doors-fit', !!facts.dialog && [facts.signUpRect, facts.signInRect].every(r => r
     && r.left >= facts.dialog.left - 1 && r.right <= facts.dialog.right + 1
     && r.top >= facts.dialog.top - 1 && r.bottom <= facts.dialog.bottom + 1));
+  const near = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= 1;
+  const t = facts.tokens ?? {}, g = facts.geometry ?? {};
+  check('visual.tokens', near(g.panelTop, facts.viewport.width >= 1024 ? t.sp5 : t.sp3)
+    && near(g.panelInline, t.sp5) && near(g.shellGap, t.sp3) && near(g.headerGap, t.sp2)
+    && near(g.scrollGap, t.sp3) && near(g.scrollPad, t.sp1) && near(g.footerGap, t.sp2)
+    && near(g.chipsGap, t.sp2) && (!Number.isFinite(g.estimatePadding) || near(g.estimatePadding, t.sp4))
+    && near(g.titleSize, t.h3)
+    && facts.signUpRect?.height + 1 >= t.controlXl && facts.signInRect?.height + 1 >= t.controlLg);
+  check('visual.faces', /Sora/i.test(g.titleFont ?? '') && /JetBrains Mono/i.test(g.stakeFont ?? '')
+    && /Inter/i.test(g.signUpFont ?? ''));
   return errors;
 }
 
