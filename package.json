@@ -717,6 +717,8 @@
     "test:journey-account": "tsx scripts/journey-account.test.mts",
     "red:journey-account": "tsx scripts/journey-account.test.mts --prove-red",
     "test:journey-tickets": "tsx scripts/journey-tickets.test.mts",
+    "test:question-ghost": "node scripts/question-ghost.test.mjs",
+    "red:question-ghost": "node scripts/question-ghost.test.mjs --prove-red",
     "test:visual-pass-r3c": "tsx scripts/visual-pass-r3c.test.mts",
     "test:visual-pass-r4d": "tsx scripts/visual-pass-r4d.test.mts",
     "test:visual-pass-r4e": "tsx scripts/visual-pass-r4e.test.mts",

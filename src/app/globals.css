@@ -8653,5 +8653,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jbet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
 .kp-jbet > a, .kp-jbet > button { display: flex; align-items: center; justify-content: center; min-height: var(--sp-16); font-size: var(--type-h3); font-weight: 700; }
 .kp-qghost { min-width: 0; }
+/* The shell marks a signed-out journey on the first HTML. Keep the loading question's guest invitation in the same
+   column as the real page; a signed-in reader sees picks instead. On phones the signed-in picks follow the information,
+   while a guest's invitation stands above it. No auth request or client state is needed during the loading paint. */
+.kp-qghost__guest, .kp-qghost__aside { display: none; }
+:root [data-viewer="guest"] .kp-qghost__guest,
+:root [data-viewer="guest"] .kp-qghost__aside { display: block; }
+:root [data-viewer="guest"] .kp-qghost__member { display: none; }
+@media (min-width: 1024px) {
+  .kp-qghost__aside { display: block; }
+  .kp-qghost__mobile-picks { display: none; }
+}
 /* The break row shares the closed row above: one definition for their geometry and neutral ink. */
 .kp-jhome__break { color: var(--text-muted); }
