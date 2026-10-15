@@ -37,7 +37,6 @@ import { clockOffset, estimateMoved, sheetEstimate, sheetOpensOn, sheetPreset, w
 import { carriedStake, countsSheetOpen, guestCarry, guestFrame, guestOpensFrom } from "@/lib/journey/guest-sheet";
 import { doorHrefsFor } from "@/lib/auth-landing";
 import { BetSheet } from "./bet-sheet";
-import { warmSheet } from "./sheet-warmup";
 import { useExitPhase } from "@/components/ui/modal";
 
 /** A pick the sheet takes over: a pick inside a seed box. `qa:first-load`'s GuestSheetHost row reads this literal (A12). */
@@ -74,7 +73,7 @@ class GuestSheetBoundary extends Component<{ children: ReactNode; onFailed: () =
 export function GuestSheetHost({ sessionEnded = false }: { sessionEnded?: boolean }) {
   const pathname = usePathname();
   const search = useSearchParams();
-  const { t, locale } = useT();
+  const { t } = useT();
   const [active, setActive] = useState<GuestActive | null>(null);
   const { present } = useExitPhase(active !== null);
   const lastView = useRef<{ active: GuestActive; frame: SheetFrame } | null>(null);
@@ -243,19 +242,6 @@ export function GuestSheetHost({ sessionEnded = false }: { sessionEnded?: boolea
       window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh);
     };
   }, [open, openAddress, refreshed, show, stopWaiting]);
-
-  // A21 · the guest's first tap meets a warm page too: its first frame drawn once, out of sight, at the first idle moment
-  // (sheet-warmup.tsx) — never while a sheet is open.
-  useEffect(() => {
-    const warm = () => { if (mounted.current && !current.current) warmSheet(t, locale, { guest: true }); };
-    if (typeof window.requestIdleCallback === "function") {
-      // Use the same bounded deadline as the signed-in host; a cold first guest tap missed A21 at 4× CPU.
-      const handle = window.requestIdleCallback(warm, { timeout: 50 });
-      return () => window.cancelIdleCallback(handle);
-    }
-    const handle = window.setTimeout(warm, 0);
-    return () => window.clearTimeout(handle);
-  }, [t, locale]);
 
   useEffect(() => {
     const a = current.current;

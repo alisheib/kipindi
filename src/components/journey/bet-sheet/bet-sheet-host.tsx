@@ -21,7 +21,6 @@ import {
   type Quote, type Settled, type SheetFrame, type SheetIntent, type SheetSeed, type SheetSide, type SheetViewer, type SheetViewerRead,
 } from "@/lib/journey/sheet-state";
 import { BetSheet } from "./bet-sheet";
-import { warmSheet } from "./sheet-warmup";
 import { parseReturnChoice, type ReturnChoice } from "@/lib/journey/return-choice";
 import { VisibleCardRefresh } from "./visible-card-refresh";
 import { useExitPhase } from "@/components/ui/modal";
@@ -65,7 +64,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
-  const { t, locale } = useT();
+  const { t } = useT();
   const [, startTransition] = useTransition();
   const [active, setActive] = useState<Active | null>(null);
   const { present } = useExitPhase(active !== null);
@@ -530,20 +529,6 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       window.removeEventListener("50pick:sse:market-odds", odds); window.removeEventListener("50pick:sse:wallet-balance", refresh);
     };
   }, [open, openAddress, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
-
-  // ⭐ A21 · the first tap pays no more than a second one. In the first idle moment after the host mounts (and after a
-  // language change) the page draws the sheet's first frame once, out of sight (sheet-warmup.tsx). Never while a sheet
-  // is open; a tap that comes first simply pays for its own first drawing, as every tap did before.
-  useEffect(() => {
-    const warm = () => { if (mounted.current && !current.current) warmSheet(t, locale); };
-    if (typeof window.requestIdleCallback === "function") {
-      // A21 production trace: a 1 s idle deadline let /live taps arrive before this rehearsal on busy hydration.
-      const handle = window.requestIdleCallback(warm, { timeout: 50 });
-      return () => window.cancelIdleCallback(handle);
-    }
-    const handle = window.setTimeout(warm, 0);
-    return () => window.clearTimeout(handle);
-  }, [t, locale]);
 
   useLayoutEffect(() => {
     const a = current.current;

@@ -18,6 +18,7 @@ import { decomment } from "./lib/decomment.mts";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p: string) => decomment(readFileSync(join(ROOT, p), "utf8").replace(/\r\n/g, "\n"));
 const HOST = read("src/components/journey/bet-sheet/bet-sheet-host.tsx");
+const GUEST = read("src/components/journey/bet-sheet/guest-sheet-host.tsx");
 const SHELL = read("src/components/layout/app-shell.tsx");
 const LAZY = read("src/components/layout/shell-lazy.tsx");
 const BOOTSTRAP = read("scripts/live/bet-sheet-prod-bootstrap.mts");
@@ -28,8 +29,8 @@ const NOW = Date.UTC(2026, 9, 13, 12);
 const SEED = { v: 1, id: "mkt_sheet01", yesPool: 24_825, noPool: 50_462, rates: { feeModel: "loser-share", platformFeeRate: .03, operatorFeeRate: .1 }, feePct: 13, min: 500, max: 1_000_000, closesAt: new Date(NOW + 60_000).toISOString(), serverNow: NOW, bettable: true };
 const key = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
 const stored = (i: number): StoredIntent => ({ quote: { marketId: `mkt_sheet${i}`, side: i % 2 ? "YES" : "NO", stake: 500 + i }, key: key(i), at: NOW - 1_000 });
-type Impl = { parse: typeof parseSheetSeed; restore: typeof pendingIntents; pack: typeof pendingStorage; host: string; shell: string; lazy: string; bootstrap: string; modal: string; warmup: string; sheet: string };
-const REAL: Impl = { parse: parseSheetSeed, restore: pendingIntents, pack: pendingStorage, host: HOST, shell: SHELL, lazy: LAZY, bootstrap: BOOTSTRAP, modal: MODAL, warmup: WARMUP, sheet: SHEET };
+type Impl = { parse: typeof parseSheetSeed; restore: typeof pendingIntents; pack: typeof pendingStorage; host: string; guest: string; shell: string; lazy: string; bootstrap: string; modal: string; warmup: string; sheet: string };
+const REAL: Impl = { parse: parseSheetSeed, restore: pendingIntents, pack: pendingStorage, host: HOST, guest: GUEST, shell: SHELL, lazy: LAZY, bootstrap: BOOTSTRAP, modal: MODAL, warmup: WARMUP, sheet: SHEET };
 type Check = { name: string; pass: boolean };
 /** Execute only the REAL pure CLI predicate and first refusal expression; never import/seed the fixture. */
 function bootstrapAllows(source: string, entry: string, args: string[], env: Record<string, string | undefined>): boolean {
@@ -484,39 +485,6 @@ function hostOpenEvents(source: string, pushed: boolean, markerRaw: string | nul
     return events;
   } catch { return null; }
 }
-/** A21 · execute the host's REAL warm-up effect with a controlled window and refs: when it draws, and what it cancels. */
-function warmEffect(source: string) {
-  try {
-    const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-    let call: ts.CallExpression | undefined;
-    const visit = (n: ts.Node) => {
-      if (ts.isCallExpression(n) && n.expression.getText(file) === "useEffect" && n.arguments[0] && ts.isArrowFunction(n.arguments[0])
-        && n.arguments[0].getText(file).includes("warmSheet(")) call = n;
-      ts.forEachChild(n, visit);
-    };
-    visit(file);
-    const callback = call?.arguments[0], dependencies = call?.arguments[1];
-    if (!callback || !dependencies || !ts.isArrayLiteralExpression(dependencies)) return null;
-    const js = ts.transpileModule(`const effect = ${callback.getText(file)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-    const run = (idle: boolean, mounted: boolean, open: boolean) => {
-      const calls: unknown[][] = [], scheduled: { kind: string; fn: () => void; arg: unknown }[] = [], cancelled: string[] = [];
-      const window = {
-        ...(idle ? { requestIdleCallback: (fn: () => void, options: unknown) => { scheduled.push({ kind: "idle", fn, arg: options }); return 7; },
-          cancelIdleCallback: (handle: number) => { cancelled.push(`idle:${handle}`); } } : {}),
-        setTimeout: (fn: () => void, ms: unknown) => { scheduled.push({ kind: "timeout", fn, arg: ms }); return 9; },
-        clearTimeout: (handle: number) => { cancelled.push(`timeout:${handle}`); },
-      };
-      const words = { marker: "t" };
-      const cleanup = new Function("window", "mounted", "current", "warmSheet", "t", "locale", `${js}\nreturn effect();`)(
-        window, { current: mounted }, { current: open ? { seed: SEED } : null }, (...args: unknown[]) => { calls.push(args); return true; }, words, "sw");
-      const synchronous = calls.length;
-      for (const s of scheduled) s.fn();
-      if (typeof cleanup === "function") cleanup();
-      return { scheduled, calls, synchronous, cancelled, words, cleanup: typeof cleanup === "function" };
-    };
-    return { run, dependencies: dependencies.elements.map(e => e.getText(file)).sort().join(",") };
-  } catch { return null; }
-}
 /** The capture listener is registered in the mount effect's own body — never deferred behind a timer or the warm-up. */
 function tapsArmedAtMount(source: string): boolean {
   try {
@@ -674,13 +642,8 @@ async function checks(x: Impl): Promise<Check[]> {
   ok("warmup.failed-render-is-false", empty !== null && empty.result === false && !empty.threw && empty.log.unmounts === 1 && empty.log.attached.every(n => empty.log.removed.includes(n)));
   const skipped = [null, { seed: { ...SEED, bettable: false } }, { seed: "{" }].map(p => warmRun(x.warmup, p));
   ok("warmup.only-a-bettable-card", skipped.every(r => r !== null && r.result === false && !r.threw && r.log.created.length === 0 && r.log.attached.length === 0));
-  const effect = warmEffect(x.host);
-  const idle = effect?.run(true, true, false), timer = effect?.run(false, true, false), whileOpen = effect?.run(true, true, true), unmounted = effect?.run(true, false, false);
-  ok("host.warmup-idle", effect !== null && effect.dependencies === "locale,t"
-    && idle?.scheduled.length === 1 && idle.scheduled[0].kind === "idle" && Number((idle.scheduled[0].arg as { timeout?: number } | undefined)?.timeout) > 0
-    && idle.synchronous === 0 && idle.calls.length === 1 && idle.calls[0][0] === idle.words && idle.calls[0][1] === "sw" && idle.cleanup && JSON.stringify(idle.cancelled) === '["idle:7"]'
-    && timer?.scheduled.length === 1 && timer.scheduled[0].kind === "timeout" && timer.scheduled[0].arg === 0 && timer.synchronous === 0 && timer.calls.length === 1
-    && JSON.stringify(timer.cancelled) === '["timeout:9"]' && whileOpen?.calls.length === 0 && unmounted?.calls.length === 0);
+  // The staged real modal supplies the first heading; neither host may schedule the old hidden, blocking rehearsal.
+  ok("host.no-hidden-warmup", [x.host, x.guest].every(source => !/\bwarmSheet\b|\brequestIdleCallback\b|\bsheet-warmup\b/.test(source)));
   ok("host.taps-armed-at-mount", tapsArmedAtMount(x.host));
   const metadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: head, NEXT_DEPLOYMENT_ID: head});
   const movedMetadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: foreign, NEXT_DEPLOYMENT_ID: foreign});
@@ -782,14 +745,9 @@ if (process.argv.includes("--prove-red")) {
       ["warmup.never-throws", "} catch {\n    return false;\n  }", "} catch (error) {\n    throw error;\n  }"],
       ["warmup.only-a-bettable-card", "if (!box || !seed?.bettable) return false;", "if (!box || !seed) return false;"],
     ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, warmup: REAL.warmup.replace(from, to) } })),
-    ...[
-      ["host.warmup-idle", "if (mounted.current && !current.current) warmSheet(t, locale);", "warmSheet(t, locale);"],
-      ["host.warmup-idle", "if (mounted.current && !current.current) warmSheet(t, locale);", "if (!current.current) warmSheet(t, locale);"],
-      ["host.warmup-idle", "return () => window.cancelIdleCallback(handle);", "return () => {};"],
-      ["host.warmup-idle", "}, [t, locale]);", "}, []);"],
-      ["host.warmup-idle", "const handle = window.setTimeout(warm, 0);", "const handle = window.setTimeout(warm, 0); warm();"],
-      ["host.taps-armed-at-mount", 'window.addEventListener("click", click, true);', 'window.setTimeout(() => window.addEventListener("click", click, true), 0);'],
-    ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, host: REAL.host.replace(from, to) } })),
+    { name: "signed host reintroduces hidden rehearsal", check: "host.no-hidden-warmup", impl: { ...REAL, host: `${REAL.host}\nwarmSheet(t, locale);` } },
+    { name: "guest host reintroduces hidden rehearsal", check: "host.no-hidden-warmup", impl: { ...REAL, guest: `${REAL.guest}\nwarmSheet(t, locale, { guest: true });` } },
+    { name: "the tap listener is deferred", check: "host.taps-armed-at-mount", impl: { ...REAL, host: REAL.host.replace('window.addEventListener("click", click, true);', 'window.setTimeout(() => window.addEventListener("click", click, true), 0);') } },
     { name: "the tap's first frame drifts from the warm one", check: "warmup.public-first-frame", impl: { ...REAL, host: plantCallback(REAL.host, "open", 'viewer: { state: "loading" }', 'viewer: { state: "failed" }') } },
     { name: "the returned guest sheet is counted a second time", check: "host.open-once", impl: { ...REAL, host: plantCallback(REAL.host, "open",
       'if (countsSheetOpen({ tapped: pushed, markerRaw: raw, bet, nowMs: stamp })) sendFunnel("sheet_open", origin);',
