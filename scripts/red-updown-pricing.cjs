@@ -156,6 +156,19 @@ const MUTATIONS = [
     with: `      udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",`,
   },
   {
+    // 2026-10-14, the same day: the ruling's Swahili shipped S4-COPY-AUDIT's class-10 agreement error ("Dau zikifungwa").
+    name: "the Swahili qualifier goes back to the class-10 \"Dau zikifungwa\" (the reviewed form is \"Madau yakifungwa\")",
+    file: DICT,
+    find: `si odds zisizobadilika. Madau yakifungwa, yanakuwa malipo yako kamili.",`,
+    with: `si odds zisizobadilika. Dau zikifungwa, yanakuwa malipo yako kamili.",`,
+  },
+  {
+    name: "the binding Rules §2 in Swahili goes back to \"dau zitakapofungwa\" (the reviewed form is \"madau yatakapofungwa\")",
+    file: RULES,
+    find: `Si ahadi hadi madau yatakapofungwa.</li>`,
+    with: `Si ahadi hadi dau zitakapofungwa.</li>`,
+  },
+  {
     name: "⭐ stripComments returns EMPTY — every absence check would pass over \"\"",
     file: SUITE,
     find: `function stripComments(src: string): string {\n  return src`,

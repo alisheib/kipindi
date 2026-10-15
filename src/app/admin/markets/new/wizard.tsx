@@ -318,7 +318,7 @@ export function NewMarketWizard({ feeInfo, platformTz }: { feeInfo: FeeInfo; pla
           <Field label="Criterion (SW) · Swahili" hint="Optional. Leave blank if you have no translation — the player is shown the English with a note saying why, which is better than a bad translation of the rule that decides their money.">
             <Textarea value={criterionSw} onChange={(e) => setCriterionSw(e.target.value)} disabled={pending} rows={5}
               aria-invalid={!!swIssue || undefined} className={swIssue ? "border-danger-500" : undefined}
-              placeholder="Inatatuliwa NDIYO iwapo kiwango cha katikati cha BoT…" />
+              placeholder="Inatatuliwa NDIO iwapo kiwango cha katikati cha BoT…" />
             {swIssue && <p role="alert" className="mt-1.5 text-body-sm leading-snug text-danger-fg">{issueText(swIssue)}</p>}
           </Field>
           <Field label="Criterion (ZH) · Chinese / 中文" hint="Optional. Same rule as Swahili — blank is honest, a copy of the English is not.">

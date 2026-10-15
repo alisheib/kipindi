@@ -568,7 +568,9 @@ section("7 · A7 the win notice cuts its market's name as every sibling cuts it"
   const off = offIn(ns);
   ok(`7.2 · ★ each family of notices quotes its market at one room per language — ${FAMILIES.map(([name, , want]) => `${name}: ${want}`).join("; ")} — the win now with its own family`,
     off.length === 0, off.join(" | "));
-  const plantedLoss = safely(() => swap(ns, "${clipQuote(opts.marketTitle.sw, 70)} · Upande wako haukushinda.", "${clipQuote(opts.marketTitle.sw, 50)} · Upande wako haukushinda."));
+  // Re-anchored 2026-10-14 (S12 WP5, ledger row 47): notifyLoss writes "· upande wako haukushinda." in lower case now, as
+  // notifyUpDownLoss does — the plant is unchanged (the loss's Swahili cut at 50), only the line it finds moved.
+  const plantedLoss = safely(() => swap(ns, "${clipQuote(opts.marketTitle.sw, 70)} · upande wako haukushinda.", "${clipQuote(opts.marketTitle.sw, 50)} · upande wako haukushinda."));
   ok("7.2′ PLANT · a family split — the loss's Swahili cut at 50 while its win and refund cut at 70 — is reported by 7.2",
     plantedLoss !== null && offIn(plantedLoss).some((x) => x.startsWith("notifyLoss")), plantedLoss === null ? "plant failed" : offIn(plantedLoss).join(" | "));
   for (const fn of ["notifyBetPlaced", "notifySelectionClosed", "notifyMarketCancelled", "notifyCashout", "notifyOneSidedRefund"]) console.log(`       ${fn}: ${roomsOf(fn)} (its own sentence)`);

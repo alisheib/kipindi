@@ -29,10 +29,12 @@ function readOutcome(text) {
     t.match(/RESOLVED\s*·\s*(YES|NO)\b/i) ||          // detail resolution panel
     t.match(/RESULT\s+(YES|NO)\b/i) ||                 // card value slot
     t.match(/RESOLVED\s+(YES|NO)\b/i) ||               // card status pill
-    t.match(/MATOKEO\s*·?\s*(NDIYO|HAPANA)\b/i);       // sw
+    // sw — the product's side word is NDIO (`common.yes`). This read "NDIYO" only, so a Swahili YES verdict matched
+    // nothing and its market was left out of the comparison (S12 WP2, 2026-10-14).
+    t.match(/MATOKEO\s*·?\s*(NDIO|HAPANA)\b/i);
   if (!m) return null;
   const v = m[1].toUpperCase();
-  return v === "NDIYO" ? "YES" : v === "HAPANA" ? "NO" : v;
+  return v === "NDIO" ? "YES" : v === "HAPANA" ? "NO" : v;
 }
 
 const browser = await chromium.launch();

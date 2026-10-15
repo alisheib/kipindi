@@ -29,6 +29,9 @@
  *     Up & Down cards show Up and Down only"): no Up & Down surface displays a multiplier any more, so the bullet
  *     names the one payout figure that IS shown before betting closes — the projected return when a stake is placed.
  *     Nothing a player may do changed. Version bumped to 2026-10-14.
+ *     The same day, before the text had been read as a change, §2's Swahili took the reviewed plural agreement
+ *     ("…hadi madau yatakapofungwa", S4-COPY-AUDIT's class-6 "madau"; it had shipped as "dau zitakapofungwa"): a
+ *     grammar correction of the same sentence, so the version stays 2026-10-14.
  *  Durations, the withdrawal fee, stake bounds and the licence number all read from source.
  */
 import type { Locale } from "@/lib/i18n-server";
@@ -284,7 +287,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
               ya pesa zilizokwisha wekwa.
             </li>
             <li><strong className="text-text">Mabwawa mawili.</strong> Unaweka dau kwenye bwawa la Juu au la Chini. Jumla za mabwawa huonekana moja kwa moja.</li>
-            <li><strong className="text-text">Marejesho yanayotarajiwa hubadilika.</strong> Marejesho yanayotarajiwa yanayoonyeshwa unapoweka dau hutokana na mabwawa yaliyopo, si odds zisizobadilika. Si ahadi hadi dau zitakapofungwa.</li>
+            <li><strong className="text-text">Marejesho yanayotarajiwa hubadilika.</strong> Marejesho yanayotarajiwa yanayoonyeshwa unapoweka dau hutokana na mabwawa yaliyopo, si odds zisizobadilika. Si ahadi hadi madau yatakapofungwa.</li>
             <li><strong className="text-text">Kufunga raundi.</strong> Dau hufungwa kwa muda uliochapishwa. Hakuna dau linalokubaliwa baadaye.</li>
             <li><strong className="text-text">Utatuzi.</strong> Mwisho wa raundi, thamani ya kufunga husomwa kutoka chanzo rasmi kilichotajwa na kulinganishwa na malengo yaliyofungwa.</li>
           </ul>

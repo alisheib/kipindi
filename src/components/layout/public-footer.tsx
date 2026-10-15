@@ -25,6 +25,7 @@ import { LICENCE_NUMBER } from "@/lib/support-config";
 import { SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
+import { fill } from "@/lib/utils";
 import { keepRegulator } from "@/components/ui/keep-words";
 import { keepConnectives } from "@/components/ui/keep-run";
 import { inviteName } from "@/lib/journey/invite-name";
@@ -173,11 +174,14 @@ export function PublicFooter({
           <p className={`text-text-muted leading-relaxed text-body-sm text-balance break-keep${journeyShown ? " kp-gbt" : ""}`}>
             {journeyShown ? keepRegulator(t.footer.licensedByGbt) : t.footer.licensedByGbt}
           </p>
+          {/* S12 WP5 (word-ledger row 53): each language's own punctuation and country name, from the dictionary. The
+              Chinese lines read "许可证: …" with an ASCII colon and "… · Tanzania" in Latin; en and sw read the same words
+              as before. Frozen classic chrome: a named classic-parity difference. */}
           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
-            {t.footer.license}: {license}
+            {fill(t.footer.licenseLine, { label: t.footer.license, number: license })}
           </p>
           <p className="font-mono text-[11px] text-text-subtle">
-            © {new Date().getFullYear()} 50pick · Tanzania
+            {fill(t.footer.copyrightLine, { year: new Date().getFullYear() })}
           </p>
           {/* ⭐ LAST IN THE IDENTITY COLUMN, AND THE ORDER IS THE RULING. Nothing is
               inserted above the 18+ badge, the Gaming Board sentence, the licence number

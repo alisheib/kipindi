@@ -561,7 +561,7 @@ section("7 · A7 the search box's two insets are equal by ink (tiles 172 194)");
 }
 
 /* ══ §8 · A8 · "Fungua soko →" ═══════════════════════════════════════════════════════════════════════════════════════════ */
-section("8 · A8 the dictionary's typed arrow is a third weight — S12, no dictionary change");
+section("8 · A8 the dictionary's typed arrow was a third weight — S12 took it out of the label and draws the glyph");
 {
   const shaft = (n: string) => {
     const f = FONT(n), g = f.glyphForCodePoint(0x2192);
@@ -579,8 +579,15 @@ section("8 · A8 the dictionary's typed arrow is a third weight — S12, no dict
   ok(`8.1 · Inter draws its arrow ${at600.toFixed(4)}em at 600 (Medium ${medium.toFixed(4)}, Bold ${bold.toFixed(4)}) against its 600 stem ${GLYPH_STEM["body-600"]}em: at 14px ${(at600 * 14).toFixed(2)}px between the family's ${((1.9 * 14) / 24).toFixed(2)} and the words' ${(GLYPH_STEM["body-600"] * 14).toFixed(2)} — a third weight (tile 178 read 1.29–1.30 between 1.11 and 2.07)`,
     at600 < GLYPH_STEM["body-600"] * 0.9 && at600 > (1.9 / 24) && near(medium, 0.0928, 1e-3) && near(bold, 0.1167, 1e-3));
   const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<string, { market: Record<string, string> }> };
-  ok(`8.2 · the arrow is the dictionary's own ("${dict.sw.market.openMarket}" / "${dict.en.market.openMarket}" / "${dict.zh.market.openMarket}"), so it is filed for S12 — the label without it, the glyph after it — and nothing here changes it`,
-    ["sw", "en", "zh"].every((l) => dict[l].market.openMarket.endsWith(` ${String.fromCharCode(0x2192)}`)) && has("src/app/live/featured-contest.tsx", "{openLabel}"));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP5, word-ledger row 56). This check held the typed arrow IN the label, filed
+  // for S12; S12 took it out — "the label without it, the glyph after it" — so it now holds the fix: no arrow character in
+  // the label in any language, the family's glyph drawn after the words at the label's weight, and the loading ghost
+  // keeping the glyph's room so its row wraps where the page's does.
+  const ARROW = String.fromCharCode(0x2192);
+  ok(`8.2 · the label carries no typed arrow ("${dict.sw.market.openMarket}" / "${dict.en.market.openMarket}" / "${dict.zh.market.openMarket}"), and /live's button draws the family's glyph after it — its ghost the glyph's room`,
+    ["sw", "en", "zh"].every((l) => !dict[l].market.openMarket.includes(ARROW) && dict[l].market.openMarket.trim() === dict[l].market.openMarket)
+      && has("src/app/live/featured-contest.tsx", '{openLabel} <I.arrowRight s={14} edge="end" text="body-600" /> </Link>')
+      && has("src/app/live/loading.tsx", '<ButtonGhost size="md" trailing={<I.arrowRight s={14} text="body-600" />}>{t.market.openMarket}</ButtonGhost>'));
 }
 
 /* ══ §9 · R10-B · BANNER AND NOTICE BODIES ═══════════════════════════════════════════════════════════════════════════════ */

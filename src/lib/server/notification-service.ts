@@ -411,8 +411,9 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
     bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.`,
     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
     // several open positions got "your side didn't win" with nothing saying WHICH
-    // market — the one thing the receipt exists to identify.
-    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} · Upande wako haukushinda.`,
+    // market — the one thing the receipt exists to identify. Lower case after the "·", as notifyUpDownLoss writes it
+    // (S12 WP5, ledger row 47: the capital read as a new sentence in the middle of one).
+    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} · upande wako haukushinda.`,
     bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 您所选的一方未获胜。`,
     // The ticket, not a position id in the sentence (round 3, 2026-10-09; notification-text.ts).
     href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),

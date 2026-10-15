@@ -138,8 +138,10 @@ type Props = {
    *  exactly the admin-configured [min, max]. Undefined → legacy baseStake×200. */
   maxStake?: number;
   initial?: number;
-  /** Used in the confirm modal headline. */
-  marketTitle?: string;
+  /** Used in the confirm modal headline and the placed bet's result subtitle. REQUIRED since S12 WP5 (word-ledger row
+   *  87): its one caller (`side-picker.tsx`) always passes the question, so the result's fallback subtitle
+   *  (`common.positionOpenNotify`) could never be reached — the branch and the key are gone, and tsc now holds it. */
+  marketTitle: string;
   /** ISO timestamp when this market closes — when the wall clock crosses
    *  this, the dial freezes and shows a "Closed — awaiting settlement"
    *  state on the next render so the player sees the transition without
@@ -1834,8 +1836,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
           title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}` : refusalRepeatsEyebrow ? t.common.couldNotPlaceBet : (resultData.title ?? resultData.error ?? t.error.tryAgain)}
           subtitle={
             resultData.variant === "success"
-              // The question bet on, its figures whole as on every card (`keepFigures`, round 5, R5-E).
-              ? (marketTitle != null ? keepFigures(marketTitle) : t.common.positionOpenNotify)
+              // The question bet on, its figures whole as on every card (`keepFigures`, round 5, R5-E). `marketTitle` is
+              // required (S12 WP5, row 87): the old fallback (`t.common.positionOpenNotify`) had no way to be reached.
+              ? keepFigures(marketTitle)
               // 🔴 E-234 · THE REASON WAS COMPUTED AND THEN GUARANTEED UNREAD. This subtitle was
               // the constant `t.common.stakeHasntMoved`, and the failure path passes the reason
               // copy in as `error` (`error: mapped.body`) while ALSO setting `title` — so the

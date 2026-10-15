@@ -136,7 +136,8 @@ section("2 · the chart's controls keep one 12px rhythm on a phone (tile 202)");
 section("3 · the round page: the stake is money, the projection's qualifier is an ⓘ note, the quote stamp opens on a capital (tiles 165 166)");
 {
   const ctl = code("src/components/updown/updown-stake-controls.tsx");
-  ok("3.1 · \"Gusa Juu au Chini kuweka dau · TZS 1,000\": the stake is an .amount, inside ONE flex item",
+  // The label quotes the line as it reads since S12 WP3 (review 2: "Gusa" → "Bonyeza"); the check reads the markup, not the word.
+  ok("3.1 · \"Bonyeza Juu au Chini kuweka dau · TZS 1,000\": the stake is an .amount, inside ONE flex item",
     ctl.includes(`<span>{t.market.udTapToBet} · <span className="amount">{formatTzs(bet.stake)}</span></span>`));
   ok("3.2 · …and so is the stake on the line that streams a bet", ctl.includes(`<span><span className="amount">{formatTzs(bet.stake)}</span> · {t.market.udStreaming}</span>`));
   ok("3.1′ PLANT · the line as it shipped — the figure in the sentence's face — is reported",
