@@ -2,6 +2,15 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
+**CURRENT CODEX READ (2026-10-15 11:05 UTC; supersedes older status lines below):** `main` is live at
+`c8a982cd755553bcc7ba52c018910dc5e85ee637` with the seed-clock and home-hydration repairs. All three hosts
+serve that SHA with healthy, migrated DB and `STAFF_PREVIEW`; www/apex chunk gates are 6/6, signed-out production
+`qa:live` 352/0, visual 20/20 cells. Exact-tip CI run 38723925475 is still in progress. Ali authorized one
+`mobile01` production sign-in on preceding live `50b586d50`; [E3] passed 385/0 including the seven-page signed-in read.
+That one attempt is consumed: do not repeat it without fresh explicit authorization. S8 still owes V1's release,
+A21 re-measure, parity v4 and the closing battery. The live-fix candidate is next; S9, S10, S11 and later lanes stay on
+checkpoint branches. See VODACOM-PLAN §0k for the release evidence and current blockers.
+
 ## ⭐ CODEX TAKEOVER (2026-10-15) — read this first; paste the prompt below into the Codex session
 
 From 2026-10-15 the integrator and release owner is a **Codex session** (Ali's choice). The Claude session on
@@ -24,16 +33,17 @@ docs/qa/claude-vodacom-continuation-20261014.md (its top block — this takeover
 → docs/DESIGN_AUTHORITY.md (the ONLY design rulebook) → .claude/skills/50pick-audit/SKILL.md, .claude/skills/50pick-standards/SKILL.md,
 .claude/skills/railway/SKILL.md → docs/qa/visual-audit-20261015.md (58 visual findings and their owners).
 
-WHERE IT STANDS (2026-10-15 ~09:15 UTC — check `git log origin/main -8` and VODACOM-PLAN §0 first):
-- LIVE: 331048acb (A21 root-:has() fix + main's house-bots N3) → 47e68d20c (records) → [6b19de2ec, the demo seed's
-  single clock read, if the Claude session pushed it — check].
+WHERE IT STANDS (updated 2026-10-15 11:05 UTC — check `git log origin/main -8` and VODACOM-PLAN §0 first):
+- LIVE: 331048acb (A21 root-:has() fix + house-bots N3) → 6b19de2ec (demo seed) → 50b586d50 (handoff docs) →
+  c8a982cd7 (home hydration and the demo-seed guard scanner), deployed and read back.
 - S0, S3, S3b, S4, S6 ✅; S2 ✅ 2026-10-15; S1 live (Ali's own "Turn my preview on" press waits until the whole plan is done,
   his 2026-10-02 rule); S7 closed (✅ at S14); S8 OPEN; S9–S13 building; S14–S16 need Ali.
 - S8 closes when: (a) lane V1's bet-sheet visual fixes have landed and A21 is re-measured at the release commit on a QUIET
   machine (`npm run qa:bet-sheet-production` ≤150 ms; it read 78/0 at 331048acb); (b) a classic parity compare
   (`scripts/qa-classic-shell-parity.mjs --compare <v4 baseline>`) has every difference explained — 67/67 is expected once
   6b19de2ec is in, plus V1's intended Callout differences, cell by cell; (c) `npm run test:all` WITH the database suites at
-  the close tip; (d) [E3] (see SAFETY); (e) the close record in VODACOM-PLAN §0k and the §1 row; S8's done-when is in §1.
+  the close tip; (d) [E3] is measured 385/0 under Ali's one-attempt `mobile01` authorization; (e) the close record in
+  VODACOM-PLAN §0k and the §1 row; S8's done-when is in §1.
 
 LANES (each branch's last commit says "READY FOR RELEASE (proof…)" or "WIP: …"; all on GitHub as checkpoints):
 - seed clock fix — codex/s8-integration @6b19de2ec — proven (test:demo-seed-clock 3/3, red 4/4, 110 suites, tsc 0, build 0)
@@ -111,10 +121,9 @@ npm run qa:bet-sheet-production` from the same worktree — only on a quiet mach
 your own scratch directory.
 
 SAFETY (non-negotiable): never print or commit credentials (.env.qa.local, .env.local, Railway, Selcom, Blackball, Postmark).
-Never create or delete production accounts. [E3] — S8's signed-in production read — is EITHER Ali signing in himself as a
-regular player in a browser while you only read the seven pages (/, /markets, /live, /results, /watchlist, one question,
-/account), OR `QA_SIGNED_IN=mobile01 BASE=https://www.50pick.tz npm run qa:live` ONLY with Ali's explicit go in your session
-(one attempt: a wrong password counts toward lockout, and it ends any other mobile01 session). No money moves on production
+Never create or delete production accounts. [E3] — S8's signed-in production read — passed once on `50b586d50` with
+Ali's explicit authorization: `QA_SIGNED_IN=mobile01 BASE=https://www.50pick.tz npm run qa:live`, 385/0. A second
+sign-in needs a NEW explicit authorization; the first attempt ended any other `mobile01` session. No money moves on production
 except Ali's S14 journey. Money rules live in docs/RULES.md; a money path never changes without test:money-invariants,
 test:fee-model, test:withdrawal and e2e:money on PostgreSQL. Never fabricate data, prices, approvals, signatures or elapsed
 observation time; never waive a failed check — explain it with evidence or fix its cause. Keep the journey at STAFF_PREVIEW
@@ -124,13 +133,13 @@ OWNER RULES IN FORCE: "responsiveness and UI consistency is a rule" (every chang
 built from the kit, the same thing never done two ways — 2026-10-15); "push live each progress"; "perfect spacing, margins,
 fonts"; parallelise as the machine allows; the 2026-10-14 answers in docs/COMPLIANCE-DECISIONS.md (top entries).
 
-OWNER (Ali) ITEMS: [E3]; S14 — a real TZS 1,000 journey on production with a staff account, and the agency's sign-off or
+OWNER (Ali) ITEMS: S14 — a real TZS 1,000 journey on production with a staff account, and the agency's sign-off or
 his override; S15 — the go (the flip); S16 — at least 7 real days after launch (no shortening).
 
-ORDER OF WORK: (1) 6b19de2ec live, if it is not. (2) The live fixes. (3) V1 → S8's close (A21 re-measure on a quiet
-machine, parity, battery, [E3], record). (4) S9 (merge main; battery with the DB suites; verify:backup-schema; release).
-(5) S10 (WP8b after S9), S11, S12 (W, J, A, V, F, WP1), S13 — each its own release with its proof. (6) V2a, V2b, the kit
-backlog, F41. (7) Prepare S14 for Ali (the checklist, the preview press, the TZS 1,000 journey) and S15's readiness; S16 waits
+ORDER OF WORK: (1) The live fixes. (2) V1 → S8's close (A21 re-measure on a quiet
+machine, parity, battery, record). (3) S9 (merge main; battery with the DB suites; verify:backup-schema; release).
+(4) S10 (WP8b after S9), S11, S12 (W, J, A, V, F, WP1), S13 — each its own release with its proof. (5) V2a, V2b, the kit
+backlog, F41. (6) Prepare S14 for Ali (the checklist, the preview press, the TZS 1,000 journey) and S15's readiness; S16 waits
 for the calendar.
 ```
 
