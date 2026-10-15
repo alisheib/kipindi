@@ -171,6 +171,14 @@ export default async function MarketDetail({
   const { id } = await params;
   const sp = await searchParams;
   const { side } = sp;
+  // Comments' guest sign-in is another door from this exact question address. Keep its side,
+  // sort and other return context in next; authDoorHrefs carries ref/invite beside next.
+  const commentAuthQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp as Record<string, string | string[] | undefined>)) {
+    for (const item of Array.isArray(value) ? value : typeof value === "string" ? [value] : []) {
+      commentAuthQuery.append(key, item);
+    }
+  }
   const commentOrder = sp.csort === "oldest" ? "oldest" : "newest";
   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
   // markets/error.tsx (retry), never 404 a market that may be holding money.
@@ -1322,7 +1330,7 @@ export default async function MarketDetail({
         order={commentOrder}
         marketHref={`/markets/${m.id}`}
         canPost={!!session}
-        signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
+        signInHref={authDoorHrefs(`/markets/${m.id}`, commentAuthQuery).signIn}
       />
     </PageContainer>
   );
