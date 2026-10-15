@@ -62,10 +62,11 @@ function checks(w: World): string[] {
     const classes = [...w.buttons[l].matchAll(/<a\b[^>]*class="([^"]+)"/g)].map(m => m[1].split(" "));
     return classes.length === 2 && classes.every(c => c.includes("btn") && !c.includes("press-pop"));
   }));
-  ok("mount", w.page.includes('session ? (journey ? (') && w.page.includes('session && (journey ? (')
-    && w.page.includes('journey && bettingOpen && session && !breakBody && questionSeed')
+  ok("mount", w.page.includes(') : journey ? (') && w.page.includes(') : session ? (')
+    && !w.page.includes('session ? (journey ? (')
+    && w.page.includes('journey && bettingOpen && !breakBody && questionSeed')
     && w.page.includes('className="hidden lg:grid"') && w.page.includes('className="lg:hidden"')
-    && w.page.includes('journey && bettingOpen && session && !breakBody ? "hidden lg:flex'));
+    && w.page.includes('journey && bettingOpen && !breakBody ? "hidden lg:flex'));
   ok("loading", w.detailLoading.includes('const { journey } = await resolveSimpleJourney();')
     && w.detailLoading.includes('if (journey) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
     && w.detailLoading.includes('return <MarketDetailGhost />;') && w.parentLoading.includes('journey && /^\\/markets\\/[^/]+$/.test(pathname)')
@@ -93,6 +94,9 @@ if (!process.argv.includes("--prove-red")) {
     ["buttons-motion", { ...real, buttons: { ...real.buttons, sw: real.buttons.sw.replace('class="btn btn-yes', 'class="btn-yes') } }],
     ["buttons-motion", { ...real, buttons: { ...real.buttons, sw: real.buttons.sw.replace('class="btn btn-yes', 'class="press-pop btn btn-yes') } }],
     ["mount", { ...real, page: page.replace('className="lg:hidden"', 'className="grid"') }],
+    ["mount", { ...real, page: page.replace(') : journey ? (', ') : journey && session ? (') }],
+    ["mount", { ...real, page: page.replace('journey && bettingOpen && !breakBody && questionSeed', 'journey && bettingOpen && session && !breakBody && questionSeed') }],
+    ["mount", { ...real, page: page.replace('journey && bettingOpen && !breakBody ? "hidden lg:flex', 'journey && bettingOpen && session && !breakBody ? "hidden lg:flex') }],
     ["loading", { ...real, parentLoading: parentLoading.replace('journey && /^\\/markets\\/[^/]+$/.test(pathname)', 'journey') }],
     ["ghost-marker", { ...real, questionGhost: questionGhost.replace('data-testid="journey-question-ghost"', '') }],
     ["board-ghost", { ...real, boardGhost: boardGhost.replace('tier="board"', 'tier="reading"') }],

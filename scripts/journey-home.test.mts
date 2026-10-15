@@ -2434,10 +2434,10 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     const lines = s.classicArm === null ? [] : s.classicArm.split(LF);
     let rest = code[n].replace(PG_ASK, "").replace(`${pad}${PG_OPENER}`, "");
     if (n === "question") rest = rest.replace(PG_RAIL_WORDS, "")
-      .replace('journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"', '"hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"')
-      .replace('session ? (journey ? (', 'session ? (')
+      .replace('journey && bettingOpen && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"', '"hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"')
+      .replace(') : journey ? (', ') : (')
       .replace('session && (journey ? (', 'session && (')
-      .replace('journey && bettingOpen && session && !breakBody && questionSeed', 'bettingOpen && session && !breakBody && questionSeed');
+      .replace('journey && bettingOpen && !breakBody && questionSeed', 'bettingOpen && !breakBody && questionSeed');
     if (n === "question" || n === "watch") rest = rest.replace(/const journeyCards = journey \? await journeyCardState\([^;]+;\s*/g, "");
     const stray = (rest.match(PG_JOURNEY_ID) ?? []).length;
     const problems = [

@@ -65,8 +65,8 @@ export const MUTATIONS = [
     why: "the bet column spaces its cards with `space-y-3` again, which counts the out-of-flow D40 heading as a sibling: the first card a player sees starts 16px below the probability bar beside it (y370 against y354 at 1280)",
     file: PAGE,
     suite: "market-columns",
-    from: `        <aside className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>`,
-    to: `        <aside className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "space-y-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>`,
+    from: `        <aside className={journey && bettingOpen && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>`,
+    to: `        <aside className={journey && bettingOpen && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "space-y-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>`,
     expect: "5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
   },
   {
