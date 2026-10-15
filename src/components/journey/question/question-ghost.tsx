@@ -71,7 +71,7 @@ export function QuestionGhost() {
           <div className="h-[77px] rounded-md border border-border bg-bg-elevated p-3 kp-shimmer-track" />
           <div className="col-span-2 sm:col-span-1 h-[77px] rounded-md border border-border bg-bg-elevated p-3 kp-shimmer-track" />
         </div>
-        <div className="glass-panel h-[140px] p-5 space-y-2.5 kp-shimmer-track">
+        <div className="glass-panel h-[140px] p-5 space-y-[10px] kp-shimmer-track">
           <div className="h-3 w-2/5 rounded bg-bg-overlay" />
           <div className="h-[64px] w-3/4 rounded bg-bg-overlay" />
         </div>

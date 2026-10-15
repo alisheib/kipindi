@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { Callout } from "@/components/ui/callout";
+import { Button } from "@/components/ui/button";
 import { Cash } from "@/components/ui/cash";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
@@ -235,9 +236,9 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     <PageHero><PageHeader icon={view.state === "PAID" ? <I.checkCircle s={14} className="text-success-fg" /> : <I.clock s={14} className="text-brand-300" />}
       eyebrow={t.journey.depositWaitEyebrow} title={title} subtitle={body} /></PageHero>
     {view.state === "PENDING" && <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>{t.wallet.returnPendingWarnBody}</Callout>}
-    {existingMoneyChoice && <button type="button" onClick={returnToChoice} className="btn btn-ghost btn-lg w-full">
+    {existingMoneyChoice && <Button type="button" variant="ghost" size="lg" fullWidth onClick={returnToChoice}>
       {t.journey.depositUseExistingMoney}
-    </button>}
+    </Button>}
     {view.state === "PAID" && firstDepositNotice && <KycFirstDepositNotice variant={firstDepositNotice} dismissValue={noticeDismissValue} documentNavigation />}
     {readError && <Callout tone="neutral" title={t.journey.depositCheckDelayed}>{t.journey.depositUnknownBody}</Callout>}
     {view.state !== "UNKNOWN" && <div className="rounded-xl glass-panel divide-y divide-border">
@@ -246,16 +247,14 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     </div>}
     {view.state === "PAID" && returnBlocked && <Callout tone="neutral" title={t.journey.depositReturnNeedsTab}>{t.journey.depositReturnNeedsTabBody}</Callout>}
     {view.state === "PAID" && returnTapReason === "new-tab" && !returnBlocked && <Callout tone="info" title={t.journey.depositNewTabTitle}>{t.journey.depositNewTabBody}</Callout>}
-    {view.state === "PAID" && returnTapReason && !returnBlocked && <button type="button" onClick={returnToChoice}
-      className="btn btn-primary btn-lg w-full">{t.journey.depositReturnToChoice}</button>}
-    {view.state === "FAILED" && !failureReleased && <button type="button" disabled={checkingFailure} onClick={() => { void recheckFailure(); }}
-      className="btn btn-primary btn-lg w-full disabled:opacity-50">{t.journey.depositCheckPayment}</button>}
+    {view.state === "PAID" && returnTapReason && !returnBlocked && <Button type="button" size="lg" fullWidth onClick={returnToChoice}>{t.journey.depositReturnToChoice}</Button>}
+    {view.state === "FAILED" && !failureReleased && <Button type="button" size="lg" fullWidth disabled={checkingFailure} onClick={() => { void recheckFailure(); }}
+      className="disabled:opacity-50">{t.journey.depositCheckPayment}</Button>}
     {view.state === "FAILED" && failureReleased && <a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>}
-    {view.state === "FAILED" && view.pendingBet && <button type="button" onClick={returnToChoice}
-      className="btn btn-ghost btn-lg w-full">{t.journey.depositReturnToChoice}</button>}
+    {view.state === "FAILED" && view.pendingBet && <Button type="button" variant="ghost" size="lg" fullWidth onClick={returnToChoice}>{t.journey.depositReturnToChoice}</Button>}
     {view.state !== "FAILED" && view.state !== "UNKNOWN" && <a href={`/wallet/receipt/${view.txnId}`} className="btn btn-ghost btn-lg flex w-full justify-center">{t.wallet.viewReceipt}</a>}
     {view.state === "UNKNOWN" && view.noPayment && noPaymentReleased && <a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>}
-    {view.state === "UNKNOWN" && (!view.noPayment || !noPaymentReleased) && <button type="button" onClick={() => { void refresh(); }} className="btn btn-ghost btn-lg w-full">{t.error.tryAgain}</button>}
+    {view.state === "UNKNOWN" && (!view.noPayment || !noPaymentReleased) && <Button type="button" variant="ghost" size="lg" fullWidth onClick={() => { void refresh(); }}>{t.error.tryAgain}</Button>}
     {view.state === "PENDING" && (band === "long" || band === "late") && <a href="/help" className="btn btn-ghost btn-md flex w-full justify-center">{t.journey.depositContactSupport}</a>}
     <a href="/wallet" className="btn btn-ghost btn-md flex w-full justify-center">{t.error.backToWallet}</a>
   </PageContainer>;

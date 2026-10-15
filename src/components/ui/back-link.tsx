@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { BACK_LINK_CLASS } from "@/components/ui/back-link-style";
 
 /**
  * BackLink — uses router.back() when the user navigated in-app,
@@ -54,7 +55,7 @@ export function BackLink({
           router.push(fallbackHref as never);
         }
       }}
-      className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"
+      className={BACK_LINK_CLASS}
     >
       {/* ⭐ THE CHEVRON'S TIP SITS ON THE COLUMN'S EDGE (2026-10-09, the visual pass's round 3, tiles 332/333 and
           067–069): the glyph draws its point at x9 of its 24-unit box, stroke 1.9, so at 11px its ink began 3.7px in

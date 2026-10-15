@@ -41,8 +41,8 @@ export const MUTATIONS = [
     // reads the config field straight, the way a surface would bring the number back with no reader left.
     name: "public-footer.tsx — the helpline comes back to the footer of every page",
     file: "src/components/layout/public-footer.tsx",
-    from: `<span className="whitespace-nowrap">{supportPhone}</span>`,
-    to: `<span className="whitespace-nowrap">{supportPhone}</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>`,
+    from: `<span className="whitespace-nowrap font-mono tabular-nums">{supportPhone}</span>`,
+    to: `<span className="whitespace-nowrap font-mono tabular-nums">{supportPhone}</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>`,
     expect: `§15.1 ★ no player-facing file reads the helpline`,
   },
   {

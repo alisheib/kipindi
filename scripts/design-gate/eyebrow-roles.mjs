@@ -268,12 +268,12 @@ export const NOT_EYEBROW = new Map([
   ["app/positions/performance/page.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\">{keepConnectives(t.performance.cumulativePerS", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
-  ["app/profile/kyc/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"], // R10-A6: its typed ← became the family's arrow (the link a flex row) — the same element, the same role
+  ["app/profile/kyc/page.tsx :: className=\"inline-flex min-h-[var(--tap-min)] items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"], // R10-A6: the link now also has the real tap floor
   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em]", "STATUS_CHIP"],
   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
   // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back);
   // its ink is R5-C's brand-300 (the second gold audit).
-  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} ", "STATUS_CHIP"],
+  ["app/results/page.tsx :: <span className=\"sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={1", "STATUS_CHIP"],
   // R5-L (2026-10-09): the notable card's GHOST sets the same flag, its words not shown, so the chip row wraps where the
   // page's does on a phone (the flag's 0.16em is part of its width). The same role as the page's.
   ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13", "STATUS_CHIP"],
@@ -299,7 +299,7 @@ export const NOT_EYEBROW = new Map([
   // scans. Measured, not guessed: 97 → 19,718 the moment a block comment was added here.
   ["app/updown/page.tsx :: \"inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted h", "CONTROL_LABEL"],
   // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.14em (`kp-track-end`); same role.
-  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
+  ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}> ↵ {tx.heldForReturn ? t.wallet.txnStatusHeld : statusLa", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle flex items-center gap-1.5\"> ↵ {BONUS_SOURCE_LABEL[g.source] ?? g.source}", "OTHER"],
   ["app/wallet/wallet-client.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: className=\"mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors\" ↵ >", "CONTROL_LABEL"],
@@ -344,7 +344,7 @@ export const NOT_EYEBROW = new Map([
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-border bg-bg-inset px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-t", "STATUS_CHIP"],
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1", "STATUS_CHIP"],
   ["components/settings/push-settings.tsx :: <span className=\"shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint kp-track-end kp-track-end--12\"> ↵ {state === \"loading\" ? \"…\" : t.push.na}", "STATUS_CHIP"],
-  ["components/ui/back-link.tsx :: className=\"min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate", "CONTROL_LABEL"],
+  ["components/ui/back-link-style.ts :: export const BACK_LINK_CLASS = \"min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition", "CONTROL_LABEL"],
   ["components/ui/callout.tsx :: ? <p className=\"mt-1.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\">{meta}</p> ↵ : null;", "OTHER"],
   ["components/ui/cashback-promo.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
   ["components/ui/chip.tsx :: \"inline-flex items-center rounded-pill font-bold border uppercase max-w-full\", ↵ selected && \"ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated\",", "STATUS_CHIP"],
@@ -359,7 +359,7 @@ export const NOT_EYEBROW = new Map([
   // (app/not-found.tsx, app/markets/[id]/not-found.tsx, app/proposals/[id]/not-found.tsx — two each, the market and
   // proposal ones in gold) are these two. Roles unchanged: the 0.20em kicker is RouteError's family, the link a control.
   ["components/ui/not-found-view.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {words.notFoundCode} · {words.notFound}", "CELEBRATION"],
-  ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
+  ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex min-h-[var(--tap-min)] items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],
   ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage", "OTHER"],
   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],

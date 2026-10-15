@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
+import { BACK_LINK_CLASS } from "@/components/ui/back-link-style";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { FieldLegend } from "@/components/ui/field-legend";
@@ -188,7 +189,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   return (
     <PageContainer tier="form" className="space-y-5">
       <FundingReleaseBridge ownerId={session.userId} releaseKey={releaseKey} />
-      {journey ? <a href="/wallet" className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"><I.chevronLeft s={11} edge="start" text="mono-400" />{t.wallet.title}</a>
+      {journey ? <a href="/wallet" className={BACK_LINK_CLASS}><I.chevronLeft s={11} edge="start" text="mono-400" />{t.wallet.title}</a>
         : <BackLink fallbackHref="/wallet" label={t.wallet.title} />}
 
       {/* ⛔ NO GOLD ON THE DEPOSIT SCREEN (§M3a D1, 2026-10-07): moving your own money into your own wallet earns nothing,

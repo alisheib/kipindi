@@ -537,11 +537,16 @@ check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, 
     const visit = (node: ts.Node) => {
       if (ts.isCallExpression(node)) {
         const callee = node.expression.getText(tree);
-        const index = callee === "fetch" || callee === "router.push" || callee === "router.replace" ? 0
+        const index = callee === "fetch" || callee === "router.push" || callee === "router.replace"
+          || callee === "window.location.assign" ? 0
           : callee === "window.history.pushState" || callee === "window.history.replaceState" ? 2 : -1;
         let arg = index < 0 ? undefined : node.arguments[index];
         while (arg && (ts.isAsExpression(arg) || ts.isParenthesizedExpression(arg))) arg = arg.expression;
         if (arg && (ts.isTemplateExpression(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) ranges.push([arg.getStart(tree), arg.end]);
+      }
+      if (ts.isNewExpression(node) && node.expression.getText(tree) === "URLSearchParams") {
+        const arg = node.arguments?.[0];
+        if (arg) ranges.push([arg.getStart(tree), arg.end]);
       }
       ts.forEachChild(node, visit);
     };
@@ -641,9 +646,9 @@ check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, 
       TAINT.test("  const x = p.side;") && !TAINT.test("  const x = p.side;" + String.fromCharCode(13)));
     const queryBuild = /[$][{]query[}]/;
     check("§3d control · fetch, navigation and history URLs keep their protocol side",
-      visibleBuildLines('fetch(`/sheet?${query}`);\nrouter.push(\n `/deposit?${query}` as never\n);\nrouter.replace(`/question?${query}`);\nwindow.history.replaceState(null, "", `/question?${query}`);', queryBuild).length === 0);
+      visibleBuildLines('fetch(`/sheet?${query}`);\nrouter.push(\n `/deposit?${query}` as never\n);\nrouter.replace(`/question?${query}`);\nwindow.location.assign(`/deposit?${query}`);\nwindow.history.replaceState(null, "", `/question?${query}`);\nconst params = new URLSearchParams({ bet: `${query}` });', queryBuild).length === 0);
     check("§3d control · the same tainted query in a title is rejected beside a transport",
-      visibleBuildLines('fetch(`/sheet?${query}`); const title = `${query}`;', queryBuild).length === 1);
+      visibleBuildLines('const params = new URLSearchParams({ bet: `${query}` }); const title = `${query}`;', queryBuild).length === 1);
     check("§3d control · a URL-shaped title is still visible copy and must be rejected",
       visibleBuildLines('return <h2 title={`/sheet?${query}`}>{`${query}`}</h2>;', queryBuild).length === 1);
   }

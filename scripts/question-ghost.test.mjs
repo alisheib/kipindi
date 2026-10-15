@@ -62,7 +62,7 @@ const checks = {
     const second = first + stat + gap;
     const third = second + countdown + gap;
     return s.page.includes('height={28}') && s.page.includes('glass-panel p-5 space-y-2.5')
-      && s.ghost.includes('glass-panel h-[140px] p-5 space-y-2.5')
+      && s.ghost.includes('glass-panel h-[140px] p-5 space-y-[10px]')
       && title?.[0] === 70 && title?.[1] === 40
       && first === 430.5 && second === 531.5 && third === 695.5
       && (s.ghost.match(/h-\[77px\] rounded-md/g) ?? []).length === 3

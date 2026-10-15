@@ -1049,11 +1049,16 @@ function run(w: World, log: (l: string) => void): string[] {
       && up.includes("swallowsSpaceUp(") && up.includes("e.preventDefault();") && up.includes("e.stopPropagation();"),
     JSON.stringify({ down: squashed(down).slice(0, 160), up: squashed(up).slice(0, 120) }));
   const install = definitionNamed(guardSrc, "installKeyGuard");
-  ok("4.2 · the guard is installed once per page: by AppShell on every player page, and by every Modal when it mounts, open or not, so a page outside the shell (the console) has it wherever a dialog can open",
+  const focusedStart = shellSrc.indexOf("if (isFocusedJourneyPaymentPath(pathname)");
+  const focusedEnd = shellSrc.indexOf("let topUser:", focusedStart);
+  const focusedShell = focusedStart >= 0 && focusedEnd > focusedStart ? shellSrc.slice(focusedStart, focusedEnd) : "";
+  const ordinaryShell = focusedEnd >= 0 ? shellSrc.slice(focusedEnd) : "";
+  ok("4.2 · the guard is installed once per page: in the focused payment shell or the ordinary AppShell, and by every Modal when it mounts",
     install.includes('if (installed || typeof window === "undefined") return;') && install.includes("installed = true;")
-      && count(shellSrc, "<KeyGuard />") === 1 && shellSrc.includes('import { KeyGuard } from "@/components/ui/key-guard";')
+      && count(focusedShell, "<KeyGuard />") === 1 && count(ordinaryShell, "<KeyGuard />") === 1
+      && count(shellSrc, "<KeyGuard />") === 2 && shellSrc.includes('import { KeyGuard } from "@/components/ui/key-guard";')
       && modalSrc.includes("React.useEffect(() => { installKeyGuard(); }, []);"),
-    JSON.stringify({ shellTags: count(shellSrc, "<KeyGuard />"), modal: modalSrc.includes("installKeyGuard();") }));
+    JSON.stringify({ focused: count(focusedShell, "<KeyGuard />"), ordinary: count(ordinaryShell, "<KeyGuard />"), modal: modalSrc.includes("installKeyGuard();") }));
   const U = (key: string, t: HK.KeyTarget | null, here: boolean) => safely(() => w.ms.swallowsSpaceUp(key, t, here));
   ok("4.3 · a Space presses only where it went down: released on a control it did not go down on (held on the dial while the confirm took focus) or after it was swallowed, it presses nothing; released where it went down, it presses once; a release in a text field and any other key's release pass",
     U(" ", BTN, false) === true && U(" ", el("INPUT", { type: "checkbox" }), false) === true && U(" ", BTN, true) === false

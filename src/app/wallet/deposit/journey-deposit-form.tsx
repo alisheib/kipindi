@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AmountField } from "@/components/wallet/amount-field";
 import { ProviderRadioGrid, type ProviderOption } from "@/components/wallet/provider-radio-grid";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { Button } from "@/components/ui/button";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
 import { useT } from "@/lib/i18n";
@@ -176,9 +177,9 @@ export function JourneyDepositForm({
             copy={{ useAnother: t.wallet.useAnotherNumber, useMine: t.wallet.useMyNumber }} />
         </div>
         <p className="text-body-sm text-text-muted">{t.journey.depositPinNote}</p>
-        <button type="submit" disabled={submitting || !canPay} className="btn btn-primary btn-lg w-full disabled:opacity-50">
+        <Button type="submit" size="lg" fullWidth disabled={submitting || !canPay} className="disabled:opacity-50">
           {amount && amount >= DEPOSIT_MIN_TZS ? t.journey.depositPayAmount.replace("{amount}", formatTzs(amount)) : t.journey.depositPay}
-        </button>
+        </Button>
         <a href={cardHref} className="btn btn-ghost btn-md flex w-full justify-center">{t.journey.depositCardLink}</a>
         <p className="text-center text-body-sm text-text-subtle">18+</p>
       </div>

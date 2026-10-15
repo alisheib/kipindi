@@ -132,8 +132,8 @@ export const MUTATIONS = [
     why: "⭐ S6 WP9 · the journey ticket's close line formats the RESOLUTION while its <time> claims the selection cutoff — present, formatted, zoned, and about a different moment, the wrong-instant case on a preview reader's ticket",
     file: JOURNEY_CARD,
     suite: "timer-date",
-    from: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time>`,
-    to: `<time dateTime={cutoffIso} className="whitespace-nowrap tabular-nums">{formatEatDateTime(Date.parse(m.resolutionAt), serverNow, t.common.monthsShort, locale)}</time>`,
+    from: `<time dateTime={cutoffIso} className="whitespace-nowrap font-mono tabular-nums">{formatEatDateTime(Date.parse(cutoffIso), serverNow, t.common.monthsShort, locale)}</time>`,
+    to: `<time dateTime={cutoffIso} className="whitespace-nowrap font-mono tabular-nums">{formatEatDateTime(Date.parse(m.resolutionAt), serverNow, t.common.monthsShort, locale)}</time>`,
     expect: "3: ...its <time dateTime={cutoffIso}> names the SAME instant it formats",
   },
   {

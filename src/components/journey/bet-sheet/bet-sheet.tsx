@@ -159,7 +159,7 @@ export function BetSheetBody(props: BodyProps) {
           {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
         </div>
         {frame.frame === "closed" && returnContext?.walletBalance !== null && returnContext?.walletBalance !== undefined &&
-          <p role="status" className="mt-4 text-body-sm text-text-muted">{fill(t.journey.depositClosedWallet, { amount: formatTzs(returnContext.walletBalance) })}</p>}
+          <p role="status" className="mt-4 text-body-sm text-text-muted">{fillNodes(t.journey.depositClosedWallet, { amount: <span className="amount">{formatTzs(returnContext.walletBalance)}</span> })}</p>}
         {frame.frame === "closed" && returnContext && returnContext.similar.length > 0 && <div className="mt-5 space-y-2">
           <h3 className="font-display font-semibold text-text">{t.journey.similarTitle}</h3>
           {returnContext.similar.map((question) => <a key={question.id} href={`/markets/${encodeURIComponent(question.id)}`}
@@ -170,7 +170,7 @@ export function BetSheetBody(props: BodyProps) {
       </> : <>
         <HolderNote {...parts} />
         {returnBoundsChange && <p role="status" className="text-body-sm text-text-muted">
-          {fill(t.journey.depositStakeChanged, { old: formatTzs(returnBoundsChange.from), amount: formatTzs(returnBoundsChange.to) })}
+          {fillNodes(t.journey.depositStakeChanged, { old: <span className="amount">{formatTzs(returnBoundsChange.from)}</span>, amount: <span className="amount">{formatTzs(returnBoundsChange.to)}</span> })}
         </p>}
         <div className="kp-bsheet__stake">
           <label htmlFor={`${id}-stake`}>{t.journey.stakeLabel}</label>
