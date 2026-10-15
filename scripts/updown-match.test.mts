@@ -521,7 +521,8 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
       const footTag = foot.slice(0, foot.indexOf(">"));
       if (!/\btext-body-sm\b/.test(footTag)) d.push("the trust line is not on the kit's 13px");
       if (/text-\[\d/.test(footTag)) d.push("the trust line hand-types a size");
-      if (!/<span class="whitespace-nowrap">· [^<]+ <span class="font-mono tabular-nums">\d\d:\d\d:\d\d EAT<\/span><\/span>/.test(foot)) d.push("the quote stamp is not held whole with its seconds");
+      // DotSeq owns the separator; the quoted label and second-precision EAT time still travel as one span.
+      if (!/<span class="whitespace-nowrap">[^<]+ <span class="font-mono tabular-nums">\d\d:\d\d:\d\d EAT<\/span><\/span>/.test(foot)) d.push("the quote stamp is not held whole with its seconds");
       if (!/<span class="ml-auto whitespace-nowrap">[^<]+ <span class="font-mono tabular-nums">\$85,000\.00<\/span><\/span>/.test(foot)) d.push("the open price in the trust line is not held whole");
       const heading = html.slice(html.indexOf('<div class="ud-prices"'), html.indexOf('<div class="ud-act"'));
       if (/\btruncate\b/.test(heading)) d.push("the win-target heading truncates");
