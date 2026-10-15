@@ -47,11 +47,6 @@ async function screenshot(page, name) {
   await page.screenshot({ path, animations: "disabled", style: "nextjs-portal{display:none!important}" });
   return { image, sha256: sha(path) };
 }
-function rect(el) {
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), height: Math.round(r.height) };
-}
 async function homeRead(page, role) {
   await page.locator('[data-testid="journey-card"] .kp-jcard__picks').first().waitFor({ state: "visible", timeout: 120_000 });
   const read = await page.evaluate(() => {
@@ -61,10 +56,13 @@ async function homeRead(page, role) {
     const rail = document.querySelector('[data-testid="journey-tabs"]');
     const tabs = [...(rail?.querySelectorAll('li') ?? [])].map((li) => ({ name: li.textContent?.replace(/\s+/g, " ").trim() ?? "", rect: box(li) }));
     const pickRows = [...picks].map((el) => ({ text: el.textContent?.replace(/\s+/g, " ").trim().slice(0, 90) ?? "", rect: box(el) }));
+    const depositActions = [...document.querySelectorAll('[data-testid="journey-deposit"]')]
+      .filter((el) => { const style = getComputedStyle(el); return style.display !== "none" && style.visibility !== "hidden" && el.getBoundingClientRect().width > 0; })
+      .map((el) => ({ label: el.textContent?.replace(/\s+/g, " ").trim() ?? "", rect: box(el) }));
     return { viewport: { width: innerWidth, height: innerHeight }, firstCard: box(first),
       firstPicks: box(first?.querySelector('.kp-jcard__picks')), pickRows,
       firstCardText: first?.textContent?.replace(/\s+/g, " ").trim().slice(0, 180) ?? "",
-      rail: box(rail), tabs, railListCount: tabs.length,
+      rail: box(rail), tabs, railListCount: tabs.length, depositActions,
       overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth };
   });
   const frame = await screenshot(page, `home-${role}-en-360x740`);
