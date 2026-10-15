@@ -8,10 +8,10 @@
  * the problem were closed. It was not. SIX more re-implementations appeared
  * afterwards, one of them a local `Stat` that SHADOWS this file's own export:
  *
- *   src/components/ui/stat.tsx        label 9    / value 13.5 mono
+ *   src/components/ui/stat.tsx        label 9→9.5 (F38) / value 13.5 mono
  *   wallet-client.tsx      SubStat    label 9.5  / value 14   mono   · boxed
  *   admin/payments         Stat       label 9.5  / value 15   mono
- *   admin/payments         Metric     label 9    / value inherits mono
+ *   admin/payments         Metric     label 9→9.5 (F38) / value inherits mono
  *   profile/activity       MoneyTile  label 10   / value 17   SORA   · boxed · <Cash>
  *   profile/page           Stat       label 10   / value 18   SORA
  *   positions/performance  Stat       label 9.5  / value 18   mono   · boxed  ← shadows the kit name
@@ -121,8 +121,8 @@ const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: str
 export type StatLabel = "micro" | "tiny" | "plain" | "quiet" | "caps" | "strong" | "wide" | "widest";
 
 const LABEL: Record<StatLabel, string> = {
-  micro:  "text-[9px] tracking-[0.10em] text-text-subtle",                  // the kit's own
-  tiny:   "text-[9px] tracking-[0.12em] text-text-subtle",                  // admin/payments Metric
+  micro:  "text-[9.5px] tracking-[0.10em] text-text-subtle",                // the kit's own · F38: --type-label
+  tiny:   "text-[9.5px] tracking-[0.12em] text-text-subtle",                // admin/payments Metric · F38: --type-label
   plain:  "text-[9.5px] tracking-[0.10em] text-text-subtle",                // wallet SubStat
   quiet:  "text-[9.5px] tracking-[0.12em] text-text-subtle",                // admin/payments Stat
   caps:   "text-[9.5px] font-semibold tracking-[0.10em] text-text-subtle",  // performance Kpi + Stat
@@ -136,12 +136,12 @@ const LABEL: Record<StatLabel, string> = {
 export type StatBox = "inset" | "tile" | "panel" | "card" | "glass" | "pad";
 
 const BOX: Record<StatBox, string> = {
-  inset: "rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2.5 backdrop-blur-md", // wallet SubStat
-  tile:  "rounded-lg border border-border/60 bg-bg-overlay/40 px-3.5 py-3",                  // activity MoneyTile
-  panel: "rounded-xl border border-border bg-bg-elevated px-4 py-3.5",                       // performance Stat
+  inset: "rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2 backdrop-blur-md",   // wallet SubStat
+  tile:  "rounded-lg border border-border/60 bg-bg-overlay/40 px-3 py-3",                    // activity MoneyTile
+  panel: "rounded-xl border border-border bg-bg-elevated px-4 py-3",                         // performance Stat
   card:  "rounded-md border border-border bg-bg-elevated p-3",                               // markets KPI
-  glass: "rounded-xl glass-panel p-3.5",                                                     // invite Kpi
-  pad:   "px-4 py-3.5",                                                                      // profile Stat — pad only, no edge
+  glass: "rounded-xl glass-panel p-3",                                                       // invite Kpi
+  pad:   "px-4 py-3",                                                                        // profile Stat — pad only, no edge
 };
 
 export function Stat({
