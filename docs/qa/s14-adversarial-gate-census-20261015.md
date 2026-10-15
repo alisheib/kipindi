@@ -58,7 +58,8 @@ the named journey/classic browser drives, and the flip-specific tests named by
 answer** depends on `STAFF_PREVIEW`, a classic no-pass viewer, or a classic dial.
 The engineering owner for every rewrite below is the **S15 Codex integration
 lane**; **Ali** is the release owner who reviews the final gate report and gives
-the separate S15 go. Rewrites are prepared here, not implemented or signed off.
+the separate S15 go. The `qa:live` part of the first three rows has a local
+dual-mode checkpoint; the other rewrites and production sign-off remain open.
 
 | Current guard and assumption | Required S15 replacement assertion | Owner |
 | --- | --- | --- |
@@ -71,6 +72,33 @@ the separate S15 go. Rewrites are prepared here, not implemented or signed off.
 | `qa:visitor-path` classic H control and `e2e:journey` preflight: H refuses an `ACTIVE` classic no-pass control; `e2e:journey` requires `STAFF_PREVIEW` to mint the pass. | Split local classic rollback control from the `ACTIVE` flow. On the active server, enter without a preview cookie, preserve choice through signup/deposit, and prove pending/failure/replay/one manual bet with position and ledger reads. | S15 Codex |
 | `test:one-sided`, `test:rate-copy`, and landing-ten-plan V15/V16/V19/V22-negative/V25/V26: current classic card, estimate, dial, deposit coin, and rail expectations. | Re-pin the active card's qualified `≈` estimate, sheet-only exact payout decision, no centre deposit coin, one reachable Deposit per non-inert region, and four tabs, with in-process red mutants. Keep `test:dial-stake` as a shelved classic regression until S16. | S15 Codex |
 | `test:simple-journey-flag`, `test:markets-redirect`, `test:post-register-landing`, `test:flip-copy`, `test:privacy-notice`, `test:journey-home`, `test:journey-shell`: current switch/copy/route/privacy checks include the staff-preview split. | Pin the shipped `ACTIVE` ceiling and no-pass route table; re-point bare `/markets` links, converge action keys, version Terms/Rules/Privacy on the publication date, and assert active home/shell without a preview marker. Keep `WITHDRAWN` rollback and `STAFF_PREVIEW` pass controls. Run their red twins where supplied. | S15 Codex |
+
+### Local `qa:live` two-state control
+
+`scripts/pre-deploy-live-check.mjs` now branches on the health rollout for its
+public and signed-in pages. `STAFF_PREVIEW` still tests the classic no-pass
+viewer and a pass-holder positive control. `ACTIVE` positively reads the
+journey home, first linked question, four tabs, `/updown`, `/live`, `/results`,
+`/account`, and the signed-in ticket and watchlist pages; it checks the marker
+is absent in served bytes and hydrated DOM, and drives `/markets` as a browser
+document to prove the real 307 to `/`. Its local ACTIVE bet drive is confined
+to an in-memory server and measures the owner-scoped position and `BET_PLACED`
+ledger counts before and after one explicit sheet press. The local focused
+switch `QA_LIVE_ROLLOUT_ONLY=1` omits sections [A]-[E] and prints that it is
+not a full predeploy result.
+
+On the isolated 2026-10-15 local server, the focused `STAFF_PREVIEW` control
+passed **102/0** and the focused `ACTIVE` control passed **93/0**. The ACTIVE
+press was TZS 500 against a synthetic demo balance: zero new positions/ledger
+rows before the press and exactly one of each afterward. This is local mock
+evidence, not a production payment or approval. The ACTIVE low-balance,
+inline-refusal, and responsible-gambling browser drives in the third row are
+still separate S15 work; this `qa:live` press does not replace them. The full
+`qa:live` run on the same warm local ACTIVE server passed **381/0**. Its first
+cold-cache attempt timed out on `/live` in the unchanged public sweep under
+machine contention, so the driver now warms `/live` and `/results` and allows
+90 seconds per public navigation. The remaining rows above and the full gate
+on the final S15 SHA still need proof.
 
 Stable money and access guards remain required on the flip commit:
 `test:payments`, `test:deposit-replay`, `test:deposit-return`,

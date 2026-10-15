@@ -27,6 +27,9 @@ import { BET_SHEET_TESTIDS, betSheetTracesIn, betSheetTracesControl } from "./li
 
 const BASE = process.env.BASE || "http://localhost:3009";
 const LOCAL = /localhost|127\.0\.0\.1/.test(BASE);
+// Local, focused two-state control only. `predeploy` never sets this; a focused run
+// prints its reduced scope and cannot be mistaken for the full public gauntlet.
+const ROLLOUT_FOCUS = LOCAL && process.env.QA_LIVE_ROLLOUT_ONLY === "1";
 
 let pass = 0; const failures = [];
 const ok = (label, cond, extra = "") => {
@@ -70,7 +73,7 @@ async function hasErrorOverlay(page) {
 {
   const warm = await fetch(BASE + "/api/health").then((r) => r.ok).catch(() => false);
   for (let i = 0; i < 20 && !warm; i++) { await new Promise((r) => setTimeout(r, 1500)); if (await fetch(BASE + "/api/health").then((r) => r.ok).catch(() => false)) break; }
-  for (const r of ["/", "/markets", "/auth/register", "/proposals", "/wallet"]) await fetch(BASE + r).catch(() => {});
+  for (const r of ["/", "/markets", "/live", "/results", "/auth/register", "/proposals", "/wallet"]) await fetch(BASE + r).catch(() => {});
   await new Promise((r) => setTimeout(r, 800));
 }
 
@@ -80,8 +83,10 @@ async function hasErrorOverlay(page) {
 const browser = await chromium.launch(
   process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {},
 );
+if (ROLLOUT_FOCUS) console.log("FOCUSED rollout control — [A]-[E] omitted; this is not a full qa:live or predeploy pass.");
 
 // ── A. Public route health ──────────────────────────────────────────
+if (!ROLLOUT_FOCUS) {
 console.log("\n[A] Public route health (render + no console/page/5xx errors + no error overlay)");
 const PUBLIC_ROUTES = [
   "/", "/markets", "/markets?when=new", "/markets?when=soon", "/markets?when=week",
@@ -154,7 +159,7 @@ const PUBLIC_ROUTES = [
       const errs = attach(page);
       let status = 0;
       page.once("response", (r) => { if (r.url() === BASE + route || r.url() === BASE + route + "/") status = r.status(); });
-      await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+      await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 90_000 });
       await page.waitForTimeout(400);
       const overlay = await hasErrorOverlay(page);
       const text = (await page.locator("body").innerText().catch(() => "")).trim();
@@ -178,6 +183,7 @@ const PUBLIC_ROUTES = [
     pagesRead === expectedPages && PUBLIC_ROUTES.length >= 21 && PUBLIC_ROUTES.includes("/legal/agent-terms"),
     `${pagesRead} of ${expectedPages} pages read (${PUBLIC_ROUTES.length} routes × ${PASSES.length} locales)`);
 }
+}
 
 /**
  * THE ENGLISH CONTEXT. DEFAULT_LOCALE is "sw" (src/lib/i18n-dict.ts), so a context with no
@@ -196,6 +202,7 @@ async function enContext(opts) {
 }
 
 // ── B. Date field cruelty (/auth/register DOB) ──────────────────────
+if (!ROLLOUT_FOCUS) {
 console.log("\n[B] Date field — clipping, typing order, validation, junk");
 {
   // B1 clipping at 3 widths with a full date
@@ -312,9 +319,15 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
   await page.goto(BASE + "/markets?when=new", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const body = await page.locator("body").innerText();
   ok(`no demo polls on /markets`, !body.includes("Demo ·"));
-  // Single-language display (dual-language labels were removed): only the
-  // active locale's word renders, so accept either "New" (en) or "Mpya" (sw).
-  ok(`New tab present`, body.includes("New") || body.includes("Mpya"));
+  const eState = await fetch(BASE + "/api/health").then((r) => r.json()).then((h) => h.simpleJourney?.state).catch(() => null);
+  if (eState === "ACTIVE") {
+    ok(`/markets?when=new reaches the ACTIVE journey home`, new URL(page.url()).pathname === "/"
+      && (await page.locator('[data-testid="journey-home"]').count()) === 1, page.url());
+  } else {
+    // Single-language display (dual-language labels were removed): only the
+    // active locale's word renders, so accept either "New" (en) or "Mpya" (sw).
+    ok(`New tab present`, body.includes("New") || body.includes("Mpya"));
+  }
   // 🔴 THIS ASSERTION USED TO PIN A LITERAL — `body.includes("support@50pick.tz")` — and it was
   // ALREADY RED against production, because the persisted `support_config` row has served
   // `msaada@50pick.tz` since 2026-08-19 and the footer reads that row. So a gate on the
@@ -328,6 +341,7 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
   ok(`footer publishes a support address on the licensed domain`, !!footerEmail, footerEmail || "no @50pick.tz address found");
   ok(`…and it is not the no-reply sender`, !!footerEmail && !/^noreply@/i.test(footerEmail), footerEmail);
   await ctx.close();
+}
 }
 
 // ── E2. The new journey's rollout (public — runs against production too) ──
@@ -344,9 +358,9 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
  * ceiling and the Owner's switch) is the health contract changing, and it FAILS rather than let this block guess.
  * ⛔ AN UNREAD PAGE IS NOT A CLEAN PAGE (section [A], 2026-09-14): a route that failed, answered non-200 or did not
  * come back as an HTML document FAILS the no-marker check instead of passing it.
- * Under ACTIVE the checks are SKIPPED — printed with the reason, never passed. While the state is UNKNOWN (the
- * contract check failed) they still run: no marker on a signed-out page is the expectation in every state short of
- * ACTIVE, so an unknown state is no reason to stop looking.
+ * Under ACTIVE the gate positively reads the journey home, question, account hub and four tabs, with no marker.
+ * While the state is UNKNOWN (the contract check failed), the classic absence checks still run: an unknown state
+ * must not be mistaken for a successful launch.
  * `journeyRollout` is read ONCE, here, and section [F] asks the same answer for its signed-in player.
  * ⭐ AND THE SHELL ITSELF (S6 WP12 step 1): short of ACTIVE, `/` and `/markets` carry no trace of the journey shell either
  * — no journey test id, no shell mark, no journey flag (`journeyTracesIn`, below) — and `/account` is the not-found
@@ -354,7 +368,7 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
  * to. Locally the readers are first shown a page the journey IS served on (`journeyShellControl`), so an absence
  * means something. [E3] asks both of a signed-in player.
  */
-console.log("\n[E2] New journey rollout — /api/health contract + no preview marker and no journey shell on signed-out pages, /account not found");
+console.log("\n[E2] New journey rollout — /api/health contract + signed-out classic or ACTIVE journey pages");
 const ROLLOUT_WORDS = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"]; // rank = index: WITHDRAWN < STAFF_PREVIEW < ACTIVE
 const PREVIEW_TESTIDS = ["journey-preview-marker", "journey-preview-exit"];
 /** Which of the preview marker's testids a page's HTML carries — the element, or the props in the RSC payload. */
@@ -397,11 +411,11 @@ const JOURNEY_S7_ROUTES = ["/live", "/results"];
 let S7_QUESTION = null;
 /** The classic board's own grid on `/markets` (`data-board="grid"`): a journey reader is answered with the home instead. */
 const BOARD_GRID = 'data-board="grid"';
-/** The first question `/markets` links to (a classic card's `/markets/mkt_…`), read signed out; null when there is none. */
-async function firstQuestionPath() {
+/** The first question on the currently served board, read signed out; null when there is none. */
+async function firstQuestionPath(board = "/markets") {
   if (LOCAL) await fetch(BASE + "/api/dev-test/seed-markets", { method: "POST" }).catch(() => {});
   try {
-    const r = await fetch(BASE + "/markets", { headers: { accept: "text/html" }, redirect: "manual" });
+    const r = await fetch(BASE + board, { headers: { accept: "text/html" }, redirect: "manual" });
     const m = /href="(\/markets\/mkt_[0-9A-Za-z]+)"/.exec(r.status === 200 ? await r.text() : "");
     return m ? m[1] : null;
   } catch {
@@ -418,6 +432,11 @@ const JOURNEY_PAGE_PROBE = (traceSel) => ({
   main: (document.querySelector("main")?.innerText ?? "").replace(/\s+/g, " ").trim(),
   shell: !!document.querySelector("header.app-topbar"),
   signedIn: !!document.querySelector('[data-testid="wallet-balance-capsule"]') && !document.querySelector('[data-testid="session-ended-notice"]'),
+  journeySignedIn: !!document.querySelector('[data-testid="journey-balance"]') && !document.querySelector('[data-testid="session-ended-notice"]'),
+  tabs: [...document.querySelectorAll('[data-testid="journey-tabs"] li')].map((li) => {
+    const el = li.querySelector("a,button");
+    return el ? { href: el.getAttribute("href"), kind: el.tagName.toLowerCase(), popup: el.getAttribute("aria-haspopup") } : null;
+  }),
   traces: [...document.querySelectorAll(traceSel)].map((e) => e.getAttribute("data-testid")
     || (e.id === "kp-journey-shell" ? "#kp-journey-shell" : e.hasAttribute("data-journey") ? `${e.tagName.toLowerCase()}[data-journey]` : "data-kp-funnel=new")),
 });
@@ -487,6 +506,52 @@ async function accountNotFound(ctx, who, signedIn = false) {
   }
   ok(`${who}: …and no uncaught page error on either`, account.errs.length === 0 && control.errs.length === 0, [...account.errs, ...control.errs].slice(0, 2).join(" | "));
   console.log(`  · ${who}: /account answered HTTP ${account.status || "—"} (A3 expects 200: the root loader streams first), the control HTTP ${control.status || "—"} — printed, never judged`);
+}
+
+/** The public ACTIVE answer, read from the requested document and its hydrated DOM. */
+async function activeDocument(ctx, who, route, signedIn = false) {
+  const d = await readDocument(ctx, route);
+  const v = d.view;
+  const read = d.status === 200 && d.final === route && d.raw.length > 0 && !!v?.shell;
+  const must = ["testid:journey-top-bar", "testid:journey-tabs", "#kp-journey-shell"];
+  const domMust = ["journey-top-bar", "journey-tabs"];
+  const marks = [...new Set([...previewMarksIn(d.raw), ...(v?.traces ?? []).filter((x) => PREVIEW_TESTIDS.includes(x))])];
+  ok(`${who}: ${route} is its own ACTIVE journey document`, read && must.every((x) => d.traces.includes(x)) && domMust.every((x) => v.traces.includes(x)),
+    `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""}; bytes ${d.traces.join(", ") || "none"}; DOM ${v?.traces.join(", ") || "none"})`);
+  ok(`${who}: ${route} has no staff preview marker in bytes or DOM`, read && marks.length === 0,
+    !read ? "(the named page was not read)" : `(markers ${marks.join(", ") || "none"})`);
+  if (signedIn) ok(`${who}: ${route} is the signed-in player's journey page`, read && v.journeySignedIn,
+    `(journey balance ${!!v?.journeySignedIn}; classic balance ${!!v?.signedIn})`);
+  if (route === "/") {
+    const home = journeyHomeIdsIn(d.raw);
+    ok(`${who}: / has the journey home and a question card`, read && home.includes("journey-home") && home.includes("journey-card"),
+      `(ids ${home.join(", ") || "none"})`);
+    const expected = signedIn
+      ? [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, { href: "/positions", kind: "a" }, { href: "/account", kind: "a" }]
+      : [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, { href: null, kind: "button", popup: "dialog" }, { href: "/account", kind: "a" }];
+    ok(`${who}: / has all four journey tabs in order, with the ${signedIn ? "ticket link" : "guest ticket sheet"}`,
+      read && v.tabs.length === 4 && expected.every((item, i) => Object.entries(item).every(([key, value]) => v.tabs[i]?.[key] === value)),
+      `(tabs ${JSON.stringify(v?.tabs ?? [])})`);
+  }
+  if (route === "/account") ok(`${who}: /account is the journey account hub`, read && d.traces.includes("testid:journey-account-hub") && v.traces.includes("journey-account-hub"),
+    `(bytes ${d.traces.join(", ") || "none"}; DOM ${v?.traces.join(", ") || "none"})`);
+  if (route.startsWith("/markets/")) ok(`${who}: ${route} offers the journey question choices`, read && d.traces.includes("testid:journey-bet-buttons"),
+    `(bytes ${d.traces.join(", ") || "none"})`);
+  ok(`${who}: ${route} has no uncaught page error`, d.errs.length === 0, d.errs.slice(0, 2).join(" | "));
+}
+
+/** `/markets` is a redirect to the journey home under ACTIVE; a followed page is not the board. */
+async function activeMarketsRedirect(ctx, who) {
+  const page = await ctx.newPage();
+  try {
+    const landed = await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" });
+    const first = landed?.request().redirectedFrom();
+    const response = first ? await first.response() : null;
+    const target = new URL(page.url()).pathname;
+    ok(`${who}: /markets document load redirects to the journey home`, response?.status() === 307 && target === "/",
+      `(first HTTP ${response?.status() ?? "none"}, landed ${target})`);
+  } catch (e) { ok(`${who}: /markets redirect can be read`, false, String(e?.message ?? e).slice(0, 160)); }
+  await page.close().catch(() => {});
 }
 /**
  * ⭐ AND THE READERS ARE SEEN TO SEE (S6 WP12). Every check below proves "no trace of the journey", which means something
@@ -655,7 +720,15 @@ const journeyRollout = await (async () => {
       await ctx.close();
     }
   } else {
-    console.log(`  ⚠ SKIP  the ${JOURNEY_PUBLIC_ROUTES.length} signed-out no-preview-marker checks, the ${JOURNEY_PUBLIC_ROUTES.length} no-journey-shell checks (${JOURNEY_PUBLIC_ROUTES.join(", ")}) and /account's not-found checks — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so the pre-launch promise that nobody outside the preview sees it no longer applies ${journeyRollout.detail}. NOT measured by this run.`);
+    S7_QUESTION = await firstQuestionPath("/");
+    ok("signed out: ACTIVE home links a question to read", S7_QUESTION !== null,
+      "(no /markets/<id> link on the journey home — a question was not measured)");
+    const ctx = await enContext({ viewport: { width: 390, height: 844 } });
+    for (const route of ["/", "/updown", "/live", "/results", "/account", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
+      await activeDocument(ctx, "signed out", route);
+    }
+    await activeMarketsRedirect(ctx, "signed out");
+    await ctx.close();
   }
 }
 
@@ -684,15 +757,15 @@ const journeyRollout = await (async () => {
  * `.test` address, which cannot deliver. Everything after it is a page read.
  * ⛔ The harness reads its target from LIVE_BASE, so this sets it to BASE before loading the harness and then compares
  * the two: a sign-in on one host and a measurement on another reads exactly like a bad password.
- * Under ACTIVE nothing here runs and nobody is signed in — a printed SKIP, never a pass. ⛔ Each page counts only as
- * the route named (the browser ended there, at HTTP 200: a 404 or a redirect is another page) and as a signed-in
- * player's page (the balance capsule there, no session-ended notice); an unread page is not a clean page.
+ * Under ACTIVE the same QA player is signed in once and positively reads the journey pages and account/ticket access.
+ * ⛔ Each page counts only as the route named (the browser ended there, at HTTP 200: a 404 or a redirect is another
+ * page) and as a signed-in player's page (the rollout's balance capsule there, no session-ended notice).
  */
-console.log("\n[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form, with QA_SIGNED_IN=mobile01)");
+console.log("\n[E3] New journey shell — rollout-correct for the signed-in QA player (production: mobile01 through the real form, with QA_SIGNED_IN=mobile01)");
 const E3_OPTED = LOCAL || process.env.QA_SIGNED_IN === "mobile01";
-if (journeyRollout.state !== "ACTIVE" && !E3_OPTED) {
+if (!E3_OPTED) {
   console.log(`  ⚠ NOT MEASURED  [E3] — on a non-local BASE the QA player is signed in only when QA_SIGNED_IN=mobile01 is set (S7-PLAN A23 item 2): one session per account, so an unasked sign-in would end another lane's mobile01 session. Neither a pass nor a failure.`);
-} else if (journeyRollout.state !== "ACTIVE") {
+} else {
   const who = LOCAL ? "signed in (demo PLAYER)" : "signed in (QA player mobile01)";
   let player = null;
   let why = "";
@@ -732,6 +805,13 @@ if (journeyRollout.state !== "ACTIVE" && !E3_OPTED) {
     if (signedIn) {
       const ctx = await browser.newContext({ storageState: player, viewport: { width: 390, height: 844 } });
       await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+      if (journeyRollout.state === "ACTIVE") {
+        for (const route of ["/", "/updown", "/live", "/results", "/account", "/positions", "/watchlist", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
+          await activeDocument(ctx, who, route, true);
+        }
+        if (!S7_QUESTION) ok(`${who}: ACTIVE question page was not found on /`, false);
+        await activeMarketsRedirect(ctx, who);
+      } else {
       // S6's two, then S7's (WP11, A23 item 2): /live, /results, /watchlist (edge-protected: a signed-in player's own
       // page, never the sign-in) and the same question page [E2] read.
       for (const route of [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES, "/watchlist", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
@@ -758,13 +838,12 @@ if (journeyRollout.state !== "ACTIVE" && !E3_OPTED) {
       }
       if (!S7_QUESTION) ok(`${who}: the question page — none was found on /markets by [E2], so it was not read`, false);
       await accountNotFound(ctx, who, true);
+      }
       await ctx.close();
     } else {
       console.log(`  ⚠ [E3]'s page checks NOT run — the demo sign-in did not hold (the failure above). Locally that stops nothing: [F] runs next and asks its own signed-in pages.`);
     }
   }
-} else {
-  console.log(`  ⚠ SKIP  [E3] — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so nobody is signed in to look for its absence ${journeyRollout.detail}. NOT measured by this run.`);
 }
 
 // ── F. Authed surfaces (LOCAL only — uses /auth/demo, 404 in prod) ──
@@ -784,7 +863,8 @@ if (LOCAL) {
   // assert the old ones are GONE, so a partial revert cannot pass.
   await page.goto(BASE + "/positions", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const posBody = await page.locator("body").innerText();
-  ok(`/positions names itself once`, posBody.includes("Positions"), `(no Positions label)`);
+  ok(`/positions names itself once`, posBody.includes(journeyRollout.state === "ACTIVE" ? "My tickets" : "Positions"),
+    `(no ${journeyRollout.state === "ACTIVE" ? "My tickets" : "Positions"} label)`);
   ok(`/positions drops the two retired names`, !/Polls you've played/i.test(posBody), `(an old name came back)`);
   ok(`/positions no error overlay`, !(await hasErrorOverlay(page)));
 
@@ -807,20 +887,16 @@ if (LOCAL) {
    * failed would otherwise pass here as a signed-out page. ⛔ And an unread page is not a clean page.
    * Read from the RENDERED document (`page.content()`, after hydration), so a marker painted client-side counts too.
    */
-  if (journeyRollout.state !== "ACTIVE") {
-    await page.goto(BASE + "/", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
-    const signedIn = (await ctx.cookies(BASE)).some((c) => c.name === "kp_session" && !!c.value);
-    const homeHtml = await page.content().catch(() => "");
-    const homeRead = /<html[\s>]/i.test(homeHtml) && (await page.locator("body").innerText().catch(() => "")).trim().length > 40;
-    const homeMarks = homeRead ? previewMarksIn(homeHtml) : [];
-    ok(`signed in (demo PLAYER): / carries no preview marker (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
-      signedIn && homeRead && homeMarks.length === 0,
-      !signedIn ? "(no kp_session cookie — the demo sign-in did not hold, so this was not a signed-in page)"
-        : !homeRead ? "(the page could not be read, or rendered no content — nothing was checked)"
-        : homeMarks.length ? `(found ${homeMarks.join(", ")} for a player who holds no preview pass)` : "");
-  } else {
-    console.log(`  ⚠ SKIP  the signed-in no-preview-marker check on / — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone ${journeyRollout.detail}. NOT measured by this run.`);
-  }
+  await page.goto(BASE + "/", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
+  const signedIn = (await ctx.cookies(BASE)).some((c) => c.name === "kp_session" && !!c.value);
+  const homeHtml = await page.content().catch(() => "");
+  const homeRead = /<html[\s>]/i.test(homeHtml) && (await page.locator("body").innerText().catch(() => "")).trim().length > 40;
+  const homeMarks = homeRead ? previewMarksIn(homeHtml) : [];
+  ok(`signed in (demo PLAYER): / carries no preview marker (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
+    signedIn && homeRead && homeMarks.length === 0,
+    !signedIn ? "(no kp_session cookie — the demo sign-in did not hold, so this was not a signed-in page)"
+      : !homeRead ? "(the page could not be read, or rendered no content — nothing was checked)"
+      : homeMarks.length ? `(found ${homeMarks.join(", ")} for a player who holds no preview pass)` : "");
 
   /**
    * 🔴 THIS BLOCK HAS BEEN WRONG IN BOTH DIRECTIONS, AND THE HISTORY IS WHY IT IS WRITTEN LIKE THIS.
@@ -927,6 +1003,50 @@ if (LOCAL) {
   // A fresh in-memory boot has NO markets, so the board had no card and this block only ever reported "no live card
   // found": seed the catalogue first (idempotent — a no-op once 25 are live; the route is 404 in production).
   if (LOCAL) await fetch(BASE + "/api/dev-test/seed-markets", { method: "POST" }).catch(() => {});
+  if (journeyRollout.state === "ACTIVE") {
+    const { premise } = await import("./live/journey-pass.mjs");
+    const pre = await premise(BASE);
+    ok("ACTIVE bet drive is confined to a local in-memory server", !pre.refuse, pre.refuse ?? "");
+    if (!pre.refuse) {
+    await page.goto(BASE + "/", { waitUntil: "domcontentloaded" });
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    const choice = await pick.waitFor({ state: "visible", timeout: 20_000 }).then(() => true, () => false);
+    ok("ACTIVE journey home offers a bettable YES choice", choice);
+    if (choice) {
+      const seed = await pick.evaluate((el) => JSON.parse(el.closest("[data-sheet]").getAttribute("data-sheet")));
+      const title = await pick.evaluate((el) => el.closest("[data-sheet]").getAttribute("data-sheet-title"));
+      const { observed } = await import("./live/bet-sheet-gates.mjs");
+      const before = await observed(BASE, ctx, seed.id);
+      await pick.click();
+      const sheet = page.locator('[data-testid="journey-bet-sheet"]');
+      await sheet.waitFor({ state: "visible", timeout: 20_000 });
+      const stake = sheet.locator('[data-testid="journey-sheet-stake"]');
+      await stake.fill("500");
+      const frame = await sheet.getAttribute("data-frame");
+      const sheetText = await sheet.innerText();
+      ok("ACTIVE YES opens the in-place sheet with the selected question, side and TZS 500 stake",
+        new URL(page.url()).pathname === "/" && !!title && sheetText.includes(title) && /YES|Ndiyo/i.test(sheetText)
+        && (await stake.inputValue()).replace(/\D/g, "") === "500" && frame === "edit",
+        `(path ${new URL(page.url()).pathname}, frame ${frame}, market ${seed.id})`);
+      const beforePress = await observed(BASE, ctx, seed.id);
+      ok("ACTIVE sheet choice has not placed a bet before an explicit press",
+        beforePress.positionCount === before.positionCount && beforePress.betPlacedCount === before.betPlacedCount,
+        `(positions ${before.positionCount}→${beforePress.positionCount}; BET_PLACED ${before.betPlacedCount}→${beforePress.betPlacedCount})`);
+      const place = sheet.locator('[data-testid="journey-sheet-place"]');
+      const enabled = await place.isEnabled().catch(() => false);
+      ok("ACTIVE sheet has one enabled explicit place action", enabled && (await place.count()) === 1);
+      if (enabled) {
+        await place.click();
+        const receipt = await page.locator('[data-testid="journey-bet-sheet"][data-frame="receipt"]')
+          .waitFor({ timeout: 20_000 }).then(() => true, () => false);
+        const after = await observed(BASE, ctx, seed.id);
+        ok("ACTIVE one explicit press creates one position and one BET_PLACED ledger row",
+          receipt && after.positionCount - before.positionCount === 1 && after.betPlacedCount - before.betPlacedCount === 1,
+          `(positions ${before.positionCount}→${after.positionCount}; BET_PLACED ${before.betPlacedCount}→${after.betPlacedCount})`);
+      }
+    }
+    }
+  } else {
   await page.goto(BASE + "/markets", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(500);
   const liveCard = page.locator(".mcardp:has(.mcardp-actions)").first();
   if (await liveCard.count() > 0) {
@@ -980,6 +1100,7 @@ if (LOCAL) {
     }
   } else {
     ok(`at least one bettable market exists`, false, "no live card found");
+  }
   }
   ok(`authed flow no console errors`, errs.length === 0, errs.slice(0, 3).join(" | "));
   await ctx.close();
