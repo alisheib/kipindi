@@ -1,6 +1,7 @@
 /** S10 WP8a: local, in-memory browser drive from a journey guest's pick through a real registration and first bet.
  * KP_BASE=http://localhost:3043 npm run qa:visitor-path -- [OUTSIDE_REPO_OUTPUT]
  * KP_ONLY=core,tiles,keyboard,states selects groups. ENGINE=webkit runs the same browser controls in WebKit.
+ * KP_NO_PASS=1 exercises ACTIVE without a staff pass; STAFF_PREVIEW uses the real officer door.
  * Requires a local dev server with DISABLE_ADMIN_TOTP=true. Production and configured databases are refused.
  */
 import { chromium, webkit } from "playwright";
@@ -28,6 +29,10 @@ if (locales.some(s => !["sw", "en", "zh"].includes(s)) || widths.some(n => ![320
 }
 const pre = await premise(BASE);
 const withdrawnClassic = pre.health?.simpleJourney?.state === "WITHDRAWN" && only.length === 1 && only[0] === "classic";
+const activeNoPass = process.env.KP_NO_PASS === "1" && pre.health?.simpleJourney?.state === "ACTIVE";
+if ((process.env.KP_NO_PASS && process.env.KP_NO_PASS !== "1") || (process.env.KP_NO_PASS === "1" && !activeNoPass)) {
+  console.error("REFUSED: KP_NO_PASS=1 requires a local ACTIVE journey server"); process.exit(2);
+}
 if (!localBase(BASE) || pre.health?.database?.configured !== false || pre.health?.security?.adminTotp !== "DISABLED"
   || pre.refuse && !withdrawnClassic) {
   console.error(`REFUSED: ${pre.refuse ?? "local preview needs DISABLE_ADMIN_TOTP=true"}`); process.exit(2);
@@ -44,7 +49,7 @@ const browser = await engine.launch(process.env.QA_CHROMIUM_PATH && engine === c
 const cookie = c => ({ name: c.name, value: c.value, domain: new URL(BASE).hostname, path: c.path || "/" });
 const height = width => width <= 360 ? 640 : width === 390 ? 844 : width === 768 ? 1024 : width === 1280 ? 900 : 1080;
 let preview;
-try { preview = await mintStaffPass(browser, BASE, { phone: "+255700000098", name: "Visitor QA Support" }); }
+try { if (!activeNoPass) preview = await mintStaffPass(browser, BASE, { phone: "+255700000098", name: "Visitor QA Support" }); }
 catch (error) {
   if (withdrawnClassic) missing("I WITHDRAWN classic with a staff pass", `Pass could not be minted while withdrawn: ${String(error.message).split("Call log:")[0].trim()}`);
   else {
@@ -107,7 +112,7 @@ const catalogue = await post(admin, "seed-markets");
 await post(admin, "reset-rate-limits");
 if (!catalogue?.ids?.length) { console.error("INVALID: seeded board has no markets"); await browser.close(); process.exit(2); }
 const evidence = { base: BASE, engine: process.env.ENGINE ?? "chromium", flag: pre.health.simpleJourney?.state,
-  revision: pre.health.deploymentId ?? null, results, errors, faces: [] };
+  pass: activeNoPass ? "none under ACTIVE" : preview ? "staff" : "unavailable", revision: pre.health.deploymentId ?? null, results, errors, faces: [] };
 
 try {
   if (run("core")) {
