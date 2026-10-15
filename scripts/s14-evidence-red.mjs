@@ -7,7 +7,7 @@ import { validateS14Evidence } from "./lib/s14-evidence.mjs";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const original = JSON.parse(readFileSync(resolve(root, "docs/qa/vodacom-s14-evidence.json"), "utf8"));
 const clone = () => structuredClone(original);
-const errors = (record, opts = {}) => validateS14Evidence(record, { root, now: Date.parse("2026-10-15T12:00:00Z"), ...opts });
+const errors = (record, opts = {}) => validateS14Evidence(record, { root, now: Date.now(), ...opts });
 let passed = 0, failed = 0;
 function proves(label, record, pattern, opts) {
   const found = errors(record, opts);
@@ -26,7 +26,7 @@ proves("pending record cannot clear S14", original, /pending evidence/, { requir
   proves("deck element order is enforced", x, /reordered/, {});
 }
 {
-  const x = clone(); x.frames[0].checks[0].checked = true;
+  const x = clone(); x.frames[0].evidence = null;
   proves("a tick without a read record is caught", x, /home\.evidence: pending evidence/, {});
 }
 {
@@ -50,7 +50,7 @@ proves("pending record cannot clear S14", original, /pending evidence/, { requir
   proves("a launch go cannot be attributed to QA", x, /launch go must come from Ali/, {});
 }
 {
-  const x = clone(); x.s15.launchAt = "2026-10-15T11:00:00Z";
+  const x = clone(); x.s15.launchAt = new Date(Date.now() - 60_000).toISOString();
   proves("S16 cannot shelve before seven real days", x, /seven full days/, { requireS16: true });
 }
 console.log(`s14-evidence-red: ${passed} passed, ${failed} failed`);
