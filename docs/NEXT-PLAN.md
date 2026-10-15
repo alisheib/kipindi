@@ -124,7 +124,7 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 | **Where** | A worktree off `main` (`C:\kipindi-tax`, branch `tax-report`, on the laptop; `F:\kipindi-tax`, branch `tax-report-edits`, on OMEGA-COMPILE01) → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 
-## ▶ 0h · HOUSE BOTS — MANY ACCOUNTS, BOTH SIDES OF THE GAME — `HOUSE-BOTS-N3` · 🚀 **OPENED 2026-10-14 (Ali) · Phase 1 LIVE `8cb4bff0c` (22:24 EAT) · Phase 2 held (Ali) · Phase 3 next**
+## ▶ 0h · HOUSE BOTS — MANY ACCOUNTS, BOTH SIDES OF THE GAME — `HOUSE-BOTS-N3` · ✅ **Phase 1 LIVE `8cb4bff0c` · Phase 2 held (Ali) · Phase 3 schema applied 2026-10-15 15:53:09 UTC, code LIVE in `311fddfdc4f40745547ea6cbb756b91ff6182029` · Phase 4 code LIVE `311fddfdc4f40745547ea6cbb756b91ff6182029`, two-sided controls off until Ali saves them**
 
 Ali, 2026-10-14: *"find a way to allow as much as we want bots to work with each other, even bet against each other …
 so on bot blocks in queue the bot after it … the purpose of bots is adding real traffic on both sides of the game"*.
@@ -135,8 +135,8 @@ against each other within a daily budget, may fetch their own price, and the ros
 | | |
 |---|---|
 | **Why** | Measured on production over 7 days: 2,278 Up & Down rounds held house money on ONE side only (every stake refunded, not one two-sided); 1,111 rounds planned and then lost at fire, the round hidden from every other account; one account starved for fifteen days by the old order; 0 of 507 player stakes answered |
-| **Shape** | Phase 0 settings Ali saves · **Phase 1 the queue (N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel)** · Phase 2 the desk's own price (A15 amended) · Phase 3 one house migration (the desk-against-desk budget and stop switch, a PAIR kind, a counter hand-off, a roster past 20) · Phase 4 two-sided play (answer a player from another account; pair empty rounds within the budget) |
-| **Where** | Worktree `F:\kipindi-house-bots-mb`, branch `house-bots-multibot`, off `origin/main` → `main` (on OMEGA-COMPILE01; heavy jobs through `F:/kipindi-locks/heavy-node.lock`) |
+| **Shape** | Phase 0 owner settings · Phase 1 weighted draw, hand-off and price window (LIVE) · Phase 2 own price (held) · Phase 3 expand-only pair schema, roster ceiling 100 and typed per-minute ceiling 120 (LIVE) · Phase 4 PAIR and shared COUNTER paths under two global daily budgets (code LIVE, controls off until Ali saves them) |
+| **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
 ## 0e · MONEY DOORS — `MONEY-DOORS` · 🏁 **DONE 2026-10-07, LIVE** · Phase A `c9b17053` (14:46 EAT) · Phase B `012cccbc` (17:34 EAT)
