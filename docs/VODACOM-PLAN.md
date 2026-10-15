@@ -16,18 +16,17 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-14):** (as of 12:30 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
-`4946a777deaa8e206336202d8c57db8ad39ec3ba` is LIVE and read back (§0k's second 2026-10-14 Claude bullet): Ali's Up & Down
-ruling (every Up & Down choice says Up/Down only, no multiplier — COMPLIANCE-DECISIONS 2026-10-14) and the A21 first-frame
-warm-up behind the flag. Before it, `08a8c0472` (the first 2026-10-14 bullet): the chunk gate 6/6 on both hosts, CI's 90
-admin cells, the BUSY / row-23 / pending-age drives, the refusal line above the CTA. The battery at `f830a091c` is
-540/540 (the three server suites on their own server; all 19 database suites). It is not S8 acceptance: the strict A21
-tap is still FAILED (218 ms median under load vs 150; its next cause is found and measured — the root `:has()` rules,
-§0k), and the final parity v4 compare, [E3] and exact-tip CI remain open. The portable continuation and access guide is
-[`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md); the newest state is on `main`
-(the `codex/*` branches may lag). S9 preparation is on `codex/vodacom-s9`, its review fixes ready on
-`codex/vodacom-s9-fixes` (`daaffe1b3`, not on main); the S11, S12 and S13 build plans are filed on their own
-`codex/vodacom-s1N-plan` branches (§0k).
+**State (2026-10-15):** (as of ~08:15 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
+`331048acb7d0c585601c399f68bcf771b0b82a10` is LIVE and read back (§0k's 2026-10-15 bullet): A21's root-`:has()` fix merged
+with main's house-bots N3. **A21 PASSES** at that exact commit on a quiet machine — `qa:bet-sheet-production` 78/0, the
+six 4×-CPU heading frames 91 / 112 / 110 ms on `/` and 102 / 81 / 92 ms on `/live` (limit 150) — and **exact-tip CI
+passes** (run 38697728924: every step, the browser gates and the three cross-instance PostgreSQL proofs). **S2 is ✅**
+(§0d's close record). S8 still owes its close record: [E3] (Ali signs in as a player — asked 2026-10-15), the classic
+parity compare at the release (66/67 — its one failure the demo seed's per-row clock, measured and explained in §0k; the
+fix queued) and the closing battery. In flight on this machine: S9's release candidate (`codex/s9-release`), the live fixes
+(`codex/live-fixes-1014`), the S10, S11, S12 and S13 builds, and visual-fix lane V1 (`codex/visual-v1`). The
+2026-10-15 visual audit (58 findings, each with its owner) is [`qa/visual-audit-20261015.md`](qa/visual-audit-20261015.md).
+The portable continuation and access guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
 
 **✅ ALI ANSWERED THE OPEN POINTS (2026-10-14)** — the record is COMPLIANCE-DECISIONS § "2026-10-14 · The owner's answers
 to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted". In short: the
@@ -38,7 +37,7 @@ and no harm marker above its own; and every recommended answer in S10-, S11-, S1
 accepted.
 **⏳ STILL WAITING ON ALI:** (1) S8's signed-in check ([E3]) — Ali signs in himself, as a regular player, in the app's
 browser pane, and the coordinator reads the pages only (signing in with a password on production is not something the
-session may do; the record says why). (2) S14: a real TZS 1,000 journey on production with a staff account, and the
+session may do; the record says why). Asked again 2026-10-15 once `331048acb` was live. (2) S14: a real TZS 1,000 journey on production with a staff account, and the
 agency's sign-off or Ali's override. (3) S15: the go for launch. (4) S16: at least seven real days after launch.
 
 S7 (home and cards, flagged)
@@ -1020,6 +1019,61 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
     the sw and zh "Reversed" titles mean "returned" while the bodies say "held for return"; the held and review bodies
     have no recorded sign-off; the /wallet modal's words for a review-marked deposit (L6). The new sw `udEstimateNote`
     ("Dau zikifungwa") and Rules §2 ("dau zitakapofungwa") take the reviewed "madau" form in the next release.
+- **2026-10-15 Claude continuation (3), OMEGA-COMPILE01 — release `331048acb` (main `3769e3c3d..331048acb`, pushed 07:17
+  UTC under Ali's standing "push live each progress").** Not S8 acceptance.
+  - *In the release:* A21's root-`:has()` fix (`63704243c`): the journey shell is an attribute the root layout writes
+    on `<html>` (`data-shell`); the guest hub reads `<main data-viewer="guest">`; the sort menu sets `data-sort-open`
+    on the root while open; the not-found verdict is a root attribute an inline watcher sets as the not-found boundary
+    streams in — so no selector makes `<html>` a `:has()` subject. Its guards (`07f036601`; `test:root-has`, 19
+    plants), `db:probe-sheet-facts` reading the key receipt's shape (`4f2f34b41`, was `a4a5f409e`), the owner's
+    2026-10-14 answers (`0bea75dd9`, `071f94e73`), qa:live waiting for the locked dial's "Place YES" instead of a fixed
+    400 ms (`dbd04371d`), merged with main's house-bots N3 (`331048acb`; COMPLIANCE-DECISIONS keeps both new entries).
+  - *A21 PASSES at the exact commit on a quiet machine (06:54 UTC, CPU 23% at start):* `qa:bet-sheet-production` 78
+    passed, 0 failed, 0 unmeasured; the six 4×-CPU heading frames 91.0 / 112.0 / 109.9 ms on `/` and 102.3 / 81.0 /
+    92.3 ms on `/live` (limit 150); each RED delayed control 268.6–283.9 ms fails as it must. (Before the fix, under
+    load: `/live` 380–440 ms.)
+  - *Proof at the candidate:* typecheck 0; `next build` 0 (82 s); the 152 suites that read a changed file green (the
+    five server-needing suites excluded, as always); local `qa:live` 376/0 on a fresh dev server (fewer checks than
+    `dbd04371d`'s 407 only because a fresh store has fewer cards and pages to link-check). Computed-style parity
+    (`style-parity.mjs`, 8,922 records) found 0 style differences between `c14cb403e` and `07f036601` on classic pages.
+    Exact-tip CI at `331048acb` (run 38697728924): success, every step — typecheck, content integrity, the in-memory
+    suite, build, first-load, the browser gates, and the s10/s11/s12 cross-instance PostgreSQL proofs.
+  - *Production read-back (07:21–07:40 UTC):* www, the apex and the Railway host serve `dpl=331048acb…` from 07:21:23;
+    health ok on all three, database reachable and migrated, journey STAFF_PREVIEW; `qa:chunks-prod` 6/6 on both public
+    hosts (124 GETs each); production `qa:live` 352/0 signed out, [E3] NOT MEASURED (it needs Ali's own sign-in).
+  - *Classic parity v4:* the compare of `07f036601` (the same app change) against the `ff8c731e2` baseline read 66/67 —
+    every difference the /markets "Recently resolved" strip, in the book's 16 /markets fields. The cause (read, not the
+    change): `seedDemoMarkets` stamps each row with its own `Date.now()` read (40 reads in market-service.ts) and the
+    strip sorts by `resolutionAt`, latest first; Bitcoin $80k (+4 d) and Zanzibar (+4 d), Yanga (+5 d) and Arusha (+5 d)
+    tie when built inside one millisecond — the baseline's Yanga, Arusha, Bitcoin $80k — and one millisecond tick between
+    those rows gives exactly the compare's Arusha, Yanga, Zanzibar. A CSS change cannot reorder or replace server-rendered
+    cards. **The compare at the release commit `331048acb` (07:14–08:06 UTC, CPU 100%) read 66/67 the same way:** 224/224
+    shell cells, 8/8 Sell cells and first paints, 56/56 question cells, 36/44 book cells, §2/§3/§S/§B/§Q all pass; the
+    other 8 book cells (guest and player, en and sw, 360 and 1280) differ ONLY in the strip — with its `<section>`
+    removed every `<main>` is byte-identical, and every changed layout line is the strip's third card. Measured
+    read-only on that server (each question page's Event JSON-LD `endDate` = its stored `resolutionAt`): Yanga,
+    Arusha, BTC $80k and Zanzibar `…26.597Z`, Brent, S&P and gold `…26.598Z` — so Brent, one millisecond later, took
+    the third place the baseline gave BTC $80k (the settled set is the same in every run; only the order inside a tie
+    picks which three of the five show). The `07f036601` server, still up, read Yanga `.938` / Arusha `.939`, BTC $80k
+    `.938` / Zanzibar and Brent `.939` — exactly its order. The fix is a seed that reads the clock once (every tie then
+    keeps insertion order, which IS the baseline's order); it is queued with its own guard and a compare that must read
+    67/67. D30 (the open sort menu hides the chat bubble) was driven by hand on `331048acb` at 360 (guest en/sw, player
+    en): the root flag present only while open, the bubble `opacity 0` / `pointer-events none` and hit-tested through
+    to the card beneath, and restored on close by its summary and by Escape. Records:
+    `C:\50pick-ssd\parity\compare-331048acb-20261015\` on OMEGA-COMPILE01.
+  - *S2 ✅* — §0d's close record.
+  - *Visual audit (2026-10-14/15):* 58 findings (4 high, 27 medium) over 270 classic production cells and 288 journey
+    cells — `qa/visual-audit-20261015.md`, each with its owner. Lane V1 (`codex/visual-v1`: the bet sheet's clipped
+    money and 8px misalignment, the low-balance rails line, the sheet titles' weights, the kit Callout sm's 11px
+    sentences, `.btn-xl` off the ladder) is building; S12 took the Up & Down and shell items; V2 (the classic round)
+    waits for memory.
+  - *Other lanes (resumed after the 2026-10-14 usage limit):* S9's release candidate (`codex/s9-release`), the live
+    fixes (`codex/live-fixes-1014`: the question page's auth doors, Up & Down's balance check = cash + bonus, a round in
+    its lock window stays on the board), S10's build (`codex/vodacom-s10-build`, started 2026-10-15), and the S11, S12
+    and S13 builds — each lands as its own release with its proof.
+  - *Owner rulings 2026-10-15:* "responsiveness and UI consistency is a rule" (sent to every lane); "parallelise as
+    needed — this PC has good compute" (lanes are added as memory allows: the limit here is RAM, ~3.5 GB free with nine
+    lanes running, not CPU).
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
@@ -2704,6 +2758,8 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     short title (as the Swahili reviewer) and approves them in /admin — which needs an officer login on 50pick.tz:
     Ali's admin is never re-minted and signing in with it signs him out everywhere. Waiting on Ali: a staff account
     for Claude (any officer role with the approve permission), or Ali approves after Claude's review list.
+    ✅ RESOLVED 2026-10-15: Ali signed in himself and asked Claude to review and approve in that session — S2 is closed
+    (§0d's close record). A staff account for Claude is not needed: signing in with a password on production stays Ali's.
 20. **The journey chrome must not ride in every visitor's first download — WP6c** (found on production 2026-10-03, §0i
     WP6b item 2). AppShell's `lazy()` bindings did not keep the journey header, tabs and flag out of the scripts a
     classic page loads (≈3–4 KB gzipped, never rendered). WP6c moves them behind a small client wrapper that loads
@@ -3877,6 +3933,27 @@ browser locally (`qa:short-titles` 28/28) on the same commit.
 or corrects each one. When every open market has short titles within budget (`qa:short-title-fit` reports 0 fallbacks),
 S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where short titles appear.
 
+**✅ S2 CLOSED (2026-10-15, OMEGA-COMPILE01).** Ali signed in to /admin himself (a test Owner account, in the app's
+browser pane) and asked Claude to review and approve in that session (§0h point 19). Two draft runs: 19 of 40 (the first
+run was cut when the `331048acb` deploy switched containers — "An unexpected response was received from the server";
+its run lock lapsed after `DRAFT_RUN_TTL_MS`, 15 minutes), then 21 of 21. Every draft was read against its full
+question in en, sw and zh: 16 of 40 approved as drafted, 24 corrected first — Swahili meaning errors carried over from
+the markets' own full Swahili questions ("mapitio" for passes, "msongo" for a clean sheet, "maoni" for YouTube views,
+"chanjo" for coverage, "mgombea wake" for his own candidacy, "maonyesho" for exhibitors, "mabawabu"/"hifadhi" for
+goalkeepers/saves), a Chinese "7次以上" for "7 or more", dropped conditions (the source, "publicly", a season, a venue,
+"U.S."), three Chinese titles refused for a season written 26/27, four over budget, three past the form; and one
+already-approved Swahili title that said "magoli 21" where the question is "more than 21". Four titles were re-saved
+on their market pages where the sentinel's notes asked (Villa's venue; Spurs' 主场, reverted because the binding English
+names no venue; the US House date; Virtus.pro's dash). The sentinel is advisory and twice contradicted the binding
+English question (Spurs' 主场, and a Leeds Swahili "season omitted" the stored title does carry): the binding English
+question decided. `qa:short-title-fit` READ-ONLY on production (07:57 UTC, again after the corrections): 49 open
+long-form markets; en/sw/zh 49 within budget, 0 fall back, 0 break the rules; competition 23 of 49 carry a known key;
+one number warning ACCEPTED — Virtus.pro's zh "12月1–13日": the market stores no Chinese full question, so the zh title is
+compared with the English digits, where December is a word. RESULT: clean. **For an officer** (market text, not short
+titles): several markets' FULL Swahili questions carry the mistranslations above (e.g. the NBC top scorer's "mshabiki
+bora" = best fan; Villa's "mapitio"; Spurs' "msongo"), and Spurs' full Chinese question adds 主场 (home), which the
+binding English does not state.
+
 ## §0c · S2 research (read-only, 2026-09-30): what short titles + competition must touch
 
 **Where things really are** (the plan's names were wrong in places)
@@ -3928,7 +4005,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 |---|---|---|---|
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
-| S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market's short titles are within the budget in sw/en/zh (`test:short-title-fit`; 100 / 100 / 50 since Ali's ruling of 2026-10-10, two lines before) and the backfill is approved in /admin. |
+| S2 | Short titles + competition | ✅ | LIVE `473807b1` 2026-09-30 (§0d); the backfill approved 2026-10-15 (§0d's close record): `qa:short-title-fit` READ-ONLY on production — 49 open markets, en/sw/zh 49 within budget, 0 fall back, 0 break the rules (one number warning accepted). Done when every open market's short titles are within the budget in sw/en/zh (`test:short-title-fit`; 100 / 100 / 50 since Ali's ruling of 2026-10-10, two lines before) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ✅ | LIVE `64a63b7c` 2026-10-01 (§0f); counts appear daily (second read 2026-10-03: both full days, every client and bet step; no deposit was confirmed on either day, checked) and the 14-day baseline runs to 2026-10-15. |
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |

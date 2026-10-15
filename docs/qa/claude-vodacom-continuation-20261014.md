@@ -2,7 +2,26 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
-## ⭐ UPDATE 2026-10-14 ~12:30 UTC (Claude, OMEGA-COMPILE01) — read this first
+## ⭐ UPDATE 2026-10-15 ~08:15 UTC (Claude, OMEGA-COMPILE01) — read this first
+
+- **LIVE is `331048acb7d0c585601c399f68bcf771b0b82a10`** (main `3769e3c3d..331048acb`): A21's root-`:has()` fix merged
+  with main's house-bots N3. Read back: all three hosts serve the exact `dpl` from 07:21:23 UTC, health ok, DB migrated,
+  STAFF_PREVIEW; `qa:chunks-prod` 6/6 on both public hosts; production `qa:live` 352/0 signed out ([E3] NOT MEASURED).
+  **A21 PASSES** at the exact commit on a quiet machine (`qa:bet-sheet-production` 78/0; heading frames 81–112 ms vs
+  150). **Exact-tip CI passes** (run 38697728924). Record: VODACOM-PLAN §0k, "2026-10-15 Claude continuation (3)".
+- **S2 is ✅** (VODACOM-PLAN §0d's close record): Ali signed in to /admin himself; Claude reviewed and approved all 40
+  drafted short titles; `qa:short-title-fit` (read-only, production) clean.
+- **Next, in order:** (1) [E3] — Ali signs in as a regular player in the app's browser pane; the coordinator reads the
+  seven pages only. (2) The demo seed's single clock read with its own guard, then a classic parity compare that must
+  read 67/67 (at `331048acb` it read 66/67: the one failure is the seed's per-row clock, measured — §0k). (3) S8's closing
+  battery and close record. (4) Land, each as its own release: the live fixes (`codex/live-fixes-1014`), S9
+  (`codex/s9-release`, a migration: `verify:backup-schema` first), visual lane V1 (`codex/visual-v1`), then S10–S13.
+- **Machine note:** the limit on OMEGA-COMPILE01 is RAM (32 GB, ~3.5 GB free with nine lanes), not CPU — add a lane only
+  when one finishes. `F:\kipindi-main\.env.qa.local` holds the production read-only database URL the `qa:*` read scripts
+  use (pass it into the process environment only; never print it); it also holds QA passwords, which this session does
+  not use — signing in on production is Ali's.
+
+## UPDATE 2026-10-14 ~12:30 UTC (Claude, OMEGA-COMPILE01)
 
 - **LIVE is `4946a777deaa8e206336202d8c57db8ad39ec3ba`** (main `f830a091c..4946a777d`): Ali's Up & Down ruling (Up/Down
   only, no multiplier on any Up & Down choice) and the A21 first-frame warm-up (behind the flag). Read back: both public
