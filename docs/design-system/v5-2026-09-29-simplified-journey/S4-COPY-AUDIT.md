@@ -283,6 +283,16 @@ the pending body under 10 minutes is `common.depositPendingBody`; and the rest o
 - `journey.lowPendingLateBody` · "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa." · its approved sentence (review 3; s4-6-wait-over30), now a key — shown only from 30 minutes, where "Imepita dakika 30" is true.
 - `journey.ticketsHere` · "Tiketi zako" · the question page's holder block (s4-10-market).
 
+## S10 drafts (2026-10-15) — for the native review
+
+Added by S10 WP2 (`S10-PLAN.md` "New dictionary keys") as one key of the `journey` namespace; only the journey's guest bet
+sheet reads it, so no classic word changed (§3.9).
+- `journey.sheetSignUp` · "Jisajili uweke dau" · the guest sheet's first door, in the commit's place (`s4-4-sheet-guest`):
+  the canvas's word, approved in review 3 below; en and zh drafted at S10, for review 10 below.
+
+**Reused by key, never copied:** the second door is `common.signIn` ("Ingia"); every other word the guest sheet shows is
+S8's (`S10-PLAN.md` "Reused, never copied"). ⛔ No balance or "your bet is saved" sentence, and no helpline key.
+
 ## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
 
 Reviewed 2026-10-02, string by string, for grammar (noun-class agreement, tense, object markers), meaning against the
@@ -431,3 +441,13 @@ word was introduced.
 - `journey.ticketsHere` · sw "Tiketi zako" · en "Your tickets" · zh "您的注单" — *tiketi* (class 10) takes *zako*, as `journey.tabTickets` "Tiketi zangu" does.
 - Chinese: formal 您 wherever the player is addressed, 充值 for a deposit, 投注 for a bet, 注单 for a ticket (as S6's
   Tiketi zangu), and full-width punctuation between Chinese clauses.
+
+**10. S10 dictionary key (2026-10-15, S10 WP2; journey.*, not shown to anyone until S15) — reviewed and signed by Claude,
+the AI reviewer, under Ali's existing delegation of the Swahili-speaker role (2026-10-02, quoted in this section's
+heading).** This is the reviewer's sign-off, not a human or owner signature. (Review 9 is S11's, claimed on its own branch.)
+- `journey.sheetSignUp` · sw "Jisajili uweke dau" · en "Sign up to place your bet" · zh "注册以投注" — review 3's approved
+  canvas word, unchanged: *jisajili* (the reflexive imperative "register yourself", the live `common.signUp`'s own verb),
+  then the subjunctive of purpose *uweke dau* ("so that you place a bet"; *dau* as in `stakeLabel`'s *dau lako*) — after
+  an imperative the purpose needs no *ili*. The English says purpose ("to place"), never that signing up places the bet;
+  the Chinese marks purpose with 以 and uses 投注 as every S8 key does. ⛔ Not 注册并投注 ("sign up and bet"): it reads as if
+  signing up placed the bet, which nothing does — the one explicit tap on the signed-in sheet does (DESIGN_AUTHORITY §C).

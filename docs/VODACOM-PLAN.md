@@ -4171,6 +4171,18 @@ own words, which no deck slide gives, are drafts, reviewed in
 | `journey.lowPendingLateBody` | Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa. | It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed. | 已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。 |
 | `journey.ticketsHere` | Tiketi zako | Your tickets | 您的注单 |
 
+**S10 keys (2026-10-15, `S10-PLAN.md` WP2 and "New dictionary keys").** One key, of the `journey` namespace, read only by the
+guest bet sheet (S10 WP3), so no classic word changes (§3.9): the first door, "Jisajili uweke dau", which the deck and the S4
+board draw in the commit's place (§3.7; `s4-4-sheet-guest`). sw is the canvas's word approved in review 3; en and zh were
+drafted at S10 and are signed in [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md)
+"S10 drafts" and "Swahili review" 10. Reused by key, never copied: the second door is `common.signIn` ("Ingia"), and every
+other word on the guest sheet is S8's (S10-PLAN "Reused, never copied"). ⛔ No balance or "your bet is saved" sentence, and
+no helpline key.
+
+| S10 key | sw | en | zh |
+|---|---|---|---|
+| `journey.sheetSignUp` | Jisajili uweke dau | Sign up to place your bet | 注册以投注 |
+
 **The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
 block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
 is re-worded, or its surface moves to the journey copy named:

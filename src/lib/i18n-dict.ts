@@ -3230,6 +3230,14 @@ export const dict = {
       lowPendingLateTitle: "Payment not confirmed yet",
       lowPendingLateBody: "It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed.",
       ticketsHere: "Your tickets",
+      /**
+       * S10 (2026-10-15; `S10-PLAN.md` "New dictionary keys"; S4-COPY-AUDIT.md "S10 drafts" and "Swahili review" 10) · the
+       * guest bet sheet's first door, in the commit's place: a visitor signs up so that they can place the bet they chose.
+       * sw is the S4 canvas's word (`s4-4-sheet-guest`, approved in review 3); en and zh are S10's, signed in review 10.
+       * ⛔ Never "sign up and bet" (zh 注册并投注): signing up places nothing — the one explicit tap on the signed-in sheet
+       * does. The second door is `common.signIn`, reused; only journey files read this key, so no classic word changes.
+       */
+      sheetSignUp: "Sign up to place your bet",
     },
   },
 
@@ -5714,6 +5722,8 @@ export const dict = {
       lowPendingLateTitle: "Malipo bado hayajathibitishwa",
       lowPendingLateBody: "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa.",
       ticketsHere: "Tiketi zako",
+      /** S10 · the guest sheet's first door (the canvas's approved word, review 3). */
+      sheetSignUp: "Jisajili uweke dau",
     },
   },
 
@@ -8178,6 +8188,8 @@ export const dict = {
       lowPendingLateTitle: "付款尚未确认",
       lowPendingLateBody: "已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。",
       ticketsHere: "您的注单",
+      /** S10 · the guest sheet's first door: 以 marks purpose — never 注册并投注, as if signing up placed the bet (review 10). */
+      sheetSignUp: "注册以投注",
     },
   },
 } as const;
