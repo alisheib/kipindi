@@ -122,7 +122,7 @@ export function FeaturedContest({
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />
-            <span className="font-mono text-[10.5px] tabular-nums text-text-subtle select-none">
+            <span className="font-mono text-caption tabular-nums text-text-subtle select-none">
               {formatNumber(idx + 1)}<span className="text-text-faint"> / {formatNumber(n)}</span>
             </span>
             <Arrow dir="next" onClick={() => go(1)} />
