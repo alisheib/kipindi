@@ -200,9 +200,19 @@ ok("§2b the witnesses are real: Postmark sends with open and click tracking, th
   /from "postmark"/.test(emailSrc) && /TrackOpens: true/.test(emailSrc)
   && /import\("@anthropic-ai\/sdk"\)/.test(chatSrc)
   && /beforeSend: \(event: unknown\) => scrubEvent\(event\)/.test(monitoringSrc) && /\["@sentry", "node"\]/.test(monitoringSrc));
+// ⭐ S11 WP6 (2026-10-14): the prompt takes a third input, the journey's words — and it is the GLOBAL rollout's state
+// (`simpleJourneyStateNow() === "ACTIVE"`), a setting every reader shares, never the reader's pass or session: so the §4
+// sentence's premise holds, "built from the locale and global settings alone". The control below plants per-reader values.
+const systemCallIsGlobal = (src: string) => /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\)/.test(src)
+  && src.includes("function systemPrompt(locale: string, objectionHours: number, journey: boolean): string {")
+  && /const prompt = buildSystemPrompt\(locale, objectionHours\);[ \r\n]*return journey \? journeyPrompt\(prompt\) : prompt;/.test(src);
 ok("§2c the chat sends the conversation and no account data (the §4 sentence's premise)",
-  /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\)/.test(chatSrc)
+  systemCallIsGlobal(chatSrc)
   && /\.\.\.history\.slice\(-10\)/.test(chatSrc));
+ok("§2c control · a prompt keyed on the reader — the session, or a preview pass — is refused",
+  [`(await simpleJourneyStateNow()) === "ACTIVE"`].every((g) => chatSrc.includes(g))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "Boolean(session.userId))"))
+    && !systemCallIsGlobal(chatSrc.replace('(await simpleJourneyStateNow()) === "ACTIVE")', "(await resolveSimpleJourney()).journey)")));
 ok("§2d the scrub removes what §4 says it removes — Tanzanian mobile numbers, 12+ digit numbers, email addresses",
   /\.replace\(\/\(\?:\\\+\?255\|0\)7\\d\{8\}\/g, "<msisdn>"\)/.test(monitoringSrc)
   && /\.replace\(\/\\b\\d\{12,\}\\b\/g, "<digits>"\)/.test(monitoringSrc)

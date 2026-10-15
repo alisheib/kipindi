@@ -10,6 +10,8 @@ import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 // The stake rule — read, never restated: a typed "TZS 1,000" here outlived the minimum it copied (2026-10-12).
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
+// The journey's words follow the GLOBAL rollout (S11 WP6): the effective state, never the reader's pass.
+import { simpleJourneyStateNow } from "@/lib/server/simple-journey-switch";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.
@@ -106,6 +108,62 @@ function capacityMessage(locale: string): string {
 }
 
 /**
+ * ⭐ THE JOURNEY'S PROMPT IS THIS PROMPT WITH NAMED PASSAGES SWAPPED — never a second copy of it (the Vodacom plan S11 WP6;
+ * S11-PLAN Open points 15 and 16, Amendment B7). Each entry names a passage of today's prompt, as built — a phrase inside a
+ * line, or a whole line by its opening words — and the words a journey reader's assistant is told in its place: how a bet
+ * is placed now (the bet sheet and its estimate, How to play), the journey's doors, the Sell look's words, the key pages —
+ * and three facts the journey adds after the Sell line. Every money, responsible-gambling, identity and email line is the
+ * template's own, shared verbatim by both prompts. ⚠️ A whole line is named by its OPENING words, never copied: the red
+ * anchors read this file's template text, and each must still resolve exactly once (`test:red-anchors`).
+ * ⛔ WHO GETS IT IS THE GLOBAL ROLLOUT, NEVER THE READER: `chatWithClaude` passes `simpleJourneyStateNow() === "ACTIVE"`,
+ * so the prompt is still built from the locale and global settings alone (`chat-reader.ts`, `test:privacy-notice` §2c) and
+ * the model is never told that a reader holds a staff preview pass. Before the S15 flip every reader gets today's prompt; a
+ * previewer meets the journey's words in the offline helper (`send-message.ts`). `test:flip-copy` §6 builds both prompts.
+ */
+type JourneySwap = { phrase: string; to: string } | { line: string; to: string };
+const JOURNEY_SWAPS: readonly JourneySwap[] = [
+  { phrase: "1. Open **Wallet → Deposit**", to: "1. Tap **+ Deposit** (Swahili: **+ Weka pesa**) at the top" },
+  { phrase: "deposits/withdrawals, the conviction dial, payouts", to: "deposits/withdrawals, placing a bet (the bet sheet and its estimate), How to play, payouts" },
+  { phrase: "the app, deposits, the dial, payouts, KYC and the like", to: "the app, deposits, betting, payouts, KYC and the like" },
+  {
+    phrase: "Players pick a side using the conviction dial (sets side + stake in one gesture).",
+    to: "A player chooses a question and taps YES or NO; a bet sheet opens with that side chosen. They enter a stake or tap a quick amount, and the sheet shows an estimate of what they would get if their side wins — an amount and ≈N× their bet — computed from the current pools at that stake, after our commission. Tapping **Place bet · TZS X** places exactly that bet; there is no further confirm step.",
+  },
+  { phrase: "- The exact payout is not knowable", to: "- The estimate shown before a bet is marked ≈ and is not guaranteed. The exact payout is not knowable" },
+  {
+    line: "- Early cash-out (sell position):",
+    to: [
+      "- Selling a bet: in **My tickets**, a new bet shows **Sell free** until a stated time; selling then refunds the full stake. After that the bet waits for the result and cannot be sold — there is no paid exit and no fee. Selling also closes the moment betting closes.",
+      "- If a player's balance is too low for the stake they chose, the sheet offers to deposit the shortfall or to bet what they have instead. A bet is never placed automatically after a deposit; the player confirms it.",
+      "- HOW TO PLAY: a three-step guide opens by itself on a player's first visit and from the **How to play** card at the top of the home page. Link a player to /?howto=1 to open it.",
+      "- Deposit is the **+ Deposit** button at the top. Tapping the balance at the top opens the wallet, with **Withdraw**. **Account** holds the profile, identity verification, limits, help and settings.",
+    ].join("\n"),
+  },
+  {
+    line: "KEY PAGES:",
+    to: "KEY PAGES: / (the questions), /live, /results, /updown, /positions (My tickets), /account, /wallet, /wallet/deposit, /wallet/withdraw, /wallet/receipts, /profile, /profile/account, /profile/kyc, /profile/responsible-gambling, /proposals, /fairness, /help, /leaderboard, /?howto=1 (How to play).",
+  },
+];
+
+/** Today's prompt with the journey's passages swapped in. A passage is swapped only where it is found exactly once — one a
+ *  later edit of the template no longer holds is left as it is, and `test:flip-copy` §6 fails on it before a player reads it. */
+function journeyPrompt(prompt: string): string {
+  let out = prompt;
+  for (const swap of JOURNEY_SWAPS) {
+    if ("phrase" in swap) {
+      if (out.split(swap.phrase).length === 2) out = out.replace(swap.phrase, () => swap.to);
+      continue;
+    }
+    const lines = out.split("\n");
+    const at = lines.flatMap((l, i) => (l.startsWith(swap.line) ? [i] : []));
+    if (at.length === 1) {
+      lines[at[0]] = swap.to;
+      out = lines.join("\n");
+    }
+  }
+  return out;
+}
+/**
  * ⛔ `objectionHours` IS A PARAMETER, AND THE MISS IT FIXES WAS THE WORST IN THE SWEEP.
  *
  * This prompt is what the LIVE chatbot answers every player from. It said, flatly,
@@ -187,6 +245,16 @@ RULES:
 }
 
 /**
+ * WHAT THE MODEL IS SENT (S11 WP6): today's prompt, or — once the rollout is ACTIVE for everyone, at the S15 flip — the
+ * journey's, which is today's with `JOURNEY_SWAPS` applied. `buildSystemPrompt` above is untouched, so its template stays the
+ * one artefact `test:house-bot-disclosure` §6 reads; `journey` is the global rollout's state, never the reader (§2c).
+ */
+function systemPrompt(locale: string, objectionHours: number, journey: boolean): string {
+  const prompt = buildSystemPrompt(locale, objectionHours);
+  return journey ? journeyPrompt(prompt) : prompt;
+}
+
+/**
  * ⭐ `unresolved` MARKS A REPLY THE SERVER KNOWS IS NOT AN ANSWER — Unit 6.2.
  *
  * 🔴 THE ESCALATE CARD COULD NOT FIRE ON THE LIVE PATH AT ALL. `ChatRoot` counts
@@ -242,7 +310,8 @@ export async function chatWithClaude(
       model,
       max_tokens: 350,
       // The window the assistant quotes is the one in force, read at answer time.
-      system: buildSystemPrompt(locale, (await getGlobalConfig()).objectionWindowHours),
+      // The journey's words are the rollout's (S11 WP6): ACTIVE for everyone at the flip, today's prompt until then.
+      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),
       messages,
     }, { timeout: 15_000 }); // user-facing: don't let a hung API call block the request
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

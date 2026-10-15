@@ -198,7 +198,9 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
           // be built without the field, so `isUnresolved` below was false for every
           // live reply and the escalate run counter reset on every turn.
           ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text, unresolved: liveResult.unresolved, ts: Date.now() }
-          : await sendMessage([...messages, user], text);
+          // S11 WP6: the offline helper answers a journey reader in the journey's words (send-message.ts); the live prompt
+          // follows the global rollout instead, never the reader (_actions/chat.ts).
+          : await sendMessage([...messages, user], text, { journey: journeyOn });
         // Per the design spec, surface the escalate-to-support card
         // after 2 consecutive unresolved AI text replies — at that
         // point the bot is clearly not helping and we should hand the

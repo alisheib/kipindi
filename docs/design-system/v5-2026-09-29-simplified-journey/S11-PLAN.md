@@ -1117,8 +1117,8 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
 | WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | `65ad04b0c` |
 | WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | `b144a6a93` (+ `3b063f8bb`: the records rule, the version) |
-| WP5 · the FAQ | Done (below) | this commit |
-| WP6 · the chat | — | — |
+| WP5 · the FAQ | Done (below) | `8ba6a0c50` |
+| WP6 · the chat | Done (below) | this commit |
 | WP7 · the tagline and `test:flip-copy` | — | — |
 | WP8 · the share-picture generator | — | — |
 | WP9 · the parked S15 commit | — | — |
@@ -1247,3 +1247,28 @@ is built as decided, not pending:
   suites, then 51/0 twice alone — a load timing, not this change (it reads no file WP5 touched); recorded, not waived.
 - **Served bytes:** none for a classic reader (server code, the same markup); `qa:served-skeleton --main` with `/help` runs
   at the proof stage.
+### WP6 — the chat (built 2026-10-15)
+
+- **Code:** `src/lib/chat/send-message.ts` — `sendMessage(…, { journey })` → `stubReply(…, journey)`: a journey reader gets a
+  How-to-play intent (it also answers "dial", "conviction", "kuamua", "how do I play/bet", "place a bet", "kucheza", "kuweka
+  dau") teaching the sheet's four steps with `/?howto=1`, the journey's doors in the deposit, withdraw, identity and invite
+  answers, "betting" in the out-of-scope line, and How to play first in the zh hand-off (review 9's words); every other
+  reader's replies are today's. `ChatRoot` hands it `{ journey: journeyOn }`; `EmptyState` shows `journey.chatIntro` and
+  `journey.chatStarterHowTo` to a journey reader. `src/app/_actions/chat.ts` — **Amendment B15:** the plan's
+  `buildSystemPrompt(locale, objectionHours, journey)` became a wrapper, `systemPrompt(locale, objectionHours, journey)`,
+  over an UNTOUCHED `buildSystemPrompt`: its template stays the one artefact `test:house-bot-disclosure` §6 slices (a
+  changed `return` broke 6.0's slice in the first build), and the journey prompt is that template with named passages
+  swapped (`JOURNEY_SWAPS` — phrases, or whole lines named by their opening words so the red anchors still resolve once:
+  B7). The third argument is `(await simpleJourneyStateNow()) === "ACTIVE"` — the global rollout, never the reader.
+- **Re-pins, each with a per-reader plant:** `test:privacy-notice` §2c (+ a control refusing the session and the preview
+  pass as the third input), `scripts/lib/house-bot-chatbot-cases.mts` 6.5b, `test:visual-pass-r8d` 8.5, and the red anchor
+  `house-bot-chatbot.anchors.mjs` :167 (B6) plus a new anchor plant `the-journey-words-follow-the-reader`.
+- **Guard:** `test:flip-copy` §6 — both prompts BUILT from chat.ts's text and compared (5-8 swapped lines; 19 money, RG,
+  identity and email passages identical; no dial in the journey's), the helper RUN on 20 questions (a classic reader's 20
+  answers identical to the merge base's, a journey reader's naming no dial and citing `/?howto=1` where they teach betting),
+  `sendMessage` run through its public door, the panel's words — and `red:flip-copy` **17/17**.
+- **Gates:** `test:chat-safety`, `test:journey-shell`, `test:rate-copy` 40/0, `test:money-minimums` 41/0,
+  `test:kyc-copy-truth` 499/0, `test:withdraw-email-gate` 84/0, `test:withdrawn-features` 88/0, `test:chat-availability`,
+  `test:red-anchors`, `test:labels`, `test:support-contact` 79/0, typecheck 0. Red by construction until on main:
+  `test:house-bot-disclosure` 6.6 (chat.ts vs origin/main) beside 5.1/5.1.c3; `test:privacy-notice` §1a (the entry);
+  `test:visual-pass-r8d` 8.5 reads chat.ts against HEAD, so it is green once committed.
