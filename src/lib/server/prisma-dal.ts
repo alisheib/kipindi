@@ -71,6 +71,7 @@ import type {
   StoredOtp,
   StoredWallet,
   StoredTxn,
+  StoredDepositFundingClaim,
   StoredResponsibleGambling,
   StoredNotification,
   StoredSourceOfFunds,
@@ -2411,6 +2412,25 @@ export const prismaDb = {
       };
       if (tx) return run(); // let a guard failure / db error propagate to roll back the tx
       try { return await run(); } catch { return null; }
+    },
+  },
+
+  // ── DURABLE DEPOSIT ACTION CLAIM ─────────────────────────────────────────
+  depositFundingClaim: {
+    findByKey: async (key: string, tx?: Prisma.TransactionClient | null): Promise<StoredDepositFundingClaim | null> => {
+      const row = await (tx ?? pc()).depositFundingClaim.findUnique({ where: { key } });
+      return row ? { key: row.key, userId: row.userId, state: row.state as StoredDepositFundingClaim["state"],
+        createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() } : null;
+    },
+    create: async (key: string, userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredDepositFundingClaim> => {
+      const row = await (tx ?? pc()).depositFundingClaim.create({ data: { key, userId, state: "CLAIMED" } });
+      return { key: row.key, userId: row.userId, state: "CLAIMED", createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+    },
+    markRefused: async (key: string, userId: string, tx?: Prisma.TransactionClient | null): Promise<boolean> => {
+      const result = await (tx ?? pc()).depositFundingClaim.updateMany({
+        where: { key, userId, state: "CLAIMED" }, data: { state: "REFUSED" },
+      });
+      return result.count === 1;
     },
   },
 

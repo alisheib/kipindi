@@ -686,6 +686,7 @@
     "red:pending-bet": "tsx scripts/pending-bet.test.mts --prove-red",
     "test:deposit-state": "tsx scripts/deposit-state.test.mts",
     "test:deposit-return": "tsx scripts/deposit-return.test.mts",
+    "db:probe-deposit-return": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/deposit-return.test.mts --pg",
     "test:deposit-action-recovery": "tsx scripts/deposit-action-recovery.test.mts",
     "red:deposit-action-recovery": "tsx scripts/deposit-action-recovery.test.mts --prove-red",
     "db:probe-deposit-action-recovery": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/deposit-action-recovery.test.mts --pg",

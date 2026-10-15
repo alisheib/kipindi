@@ -7,8 +7,9 @@ import { join, resolve } from "node:path";
 import ts from "typescript";
 import { db } from "../src/lib/server/store.ts";
 import { prisma } from "../src/lib/server/prisma.ts";
-import { depositRefusalDisposition } from "../src/lib/server/deposit-action-recovery.ts";
-import { fundingStorageKey, releaseStoredFunding, writeStoredFunding } from "../src/lib/journey/funding-storage.ts";
+import { beginDepositActionClaim, depositRefusalDisposition } from "../src/lib/server/deposit-action-recovery.ts";
+import { readDepositStatus } from "../src/lib/server/deposit-status.ts";
+import { fundingStorageKey, isFundingUuid, releaseStoredFunding, writeStoredFunding } from "../src/lib/journey/funding-storage.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const pg = process.argv.includes("--pg");
@@ -55,7 +56,7 @@ async function row(userId: string, idempotencyKey: string, status: "PROCESSING" 
 }
 let passed = 0;
 function ok(label: string, fact: boolean) { assert.ok(fact, label); passed++; process.stdout.write(`  ✓ ${label}\n`); }
-function action(disposition = depositRefusalDisposition) {
+function action(disposition = depositRefusalDisposition, dispatch?: () => Promise<{ ok: false; code: "SUSPENDED"; error: string }>) {
   let calls = 0;
   const t = { error: { somethingDidntWork: "Something went wrong" }, wallet: {
     depositBounds: "Deposit {min} to {max}", billingIncomplete: "Billing incomplete", msisdnRequired: "Phone needed",
@@ -65,7 +66,8 @@ function action(disposition = depositRefusalDisposition) {
     getServerT: async () => ({ t, locale: "en" }), resolveSimpleJourney: async () => ({ journey: true }),
     redirect: (url: string): never => { throw new Error(`REDIRECT:${url}`); },
     signFlash: (kind: string, message: string) => `${kind}|${message}`, revalidatePath: () => {},
-    depositRefusalDisposition: disposition, deposit: async () => { calls++; return { ok: false, code: "SUSPENDED", error: "Break active" }; },
+    beginDepositActionClaim, depositRefusalDisposition: disposition, isFundingUuid,
+    deposit: async () => { calls++; return dispatch ? dispatch() : { ok: false, code: "SUSPENDED", error: "Break active" }; },
     errorCopy: (_t: unknown, result: { error: string }) => result.error,
     formatBreakEnd: () => "", formatNumber: String, displayLabel: () => "Fixture",
     parseSavedDepositBet: () => null, isMobileMoneyMethodId: (provider: string) => provider === "MPESA",
@@ -95,6 +97,11 @@ const refused = await destination(noRow.fn, form(noRowKey));
 ok("real action preserves a no-row gate refusal on the deposit form", refused.pathname === "/wallet/deposit"
   && refused.searchParams.get("error") === "deposit-error|Break active" && noRow.calls() === 1);
 ok("the refusal carries only an owner/key-bound signed release", refused.searchParams.get("release") === `deposit-release-key|${owner}:${noRowKey}`);
+const refusedRead = await readDepositStatus(owner, { kind: "funding-key", value: noRowKey });
+const foreignRefusedRead = await readDepositStatus(foreign, { kind: "funding-key", value: noRowKey });
+ok("the owner alone sees a durable no-payment answer for the released key", refusedRead.view.state === "UNKNOWN"
+  && refusedRead.view.noPayment === true && foreignRefusedRead.view.state === "UNKNOWN"
+  && !foreignRefusedRead.view.noPayment);
 
 const heldKey = key(); await row(owner, heldKey, "PROCESSING");
 const held = await destination(action().fn, form(heldKey));
@@ -126,6 +133,36 @@ ok("a failed proof stays on original-key recovery", uncertain.pathname === "/wal
 const classic = await destination(action().fn, form(key(), ""));
 ok("classic direct deposits retain their existing localized refusal route", classic.pathname === "/wallet/deposit"
   && classic.searchParams.get("error") === "deposit-error|Break active" && !classic.searchParams.has("release"));
+
+const concurrentKey = key();
+let entered!: () => void;
+let finish!: (value: { ok: false; code: "SUSPENDED"; error: string }) => void;
+const inProviderGap = new Promise<void>((resolve) => { entered = resolve; });
+const firstResult = new Promise<{ ok: false; code: "SUSPENDED"; error: string }>((resolve) => { finish = resolve; });
+const first = action(depositRefusalDisposition, async () => { entered(); return firstResult; });
+const firstRequest = destination(first.fn, form(concurrentKey));
+await inProviderGap;
+const overlapping = action();
+const secondAnswer = await destination(overlapping.fn, form(concurrentKey));
+ok("overlapping same-key request cannot pass the durable claimant or dispatch", secondAnswer.pathname === "/wallet/deposit/wait"
+  && secondAnswer.searchParams.get("key") === concurrentKey && overlapping.calls() === 0);
+finish({ ok: false, code: "SUSPENDED", error: "Break active" });
+const firstAnswer = await firstRequest;
+ok("original no-row refusal closes its claim before releasing the tab key", firstAnswer.pathname === "/wallet/deposit"
+  && firstAnswer.searchParams.get("release") === `deposit-release-key|${owner}:${concurrentKey}`
+  && (await db.depositFundingClaim.findByKey(concurrentKey))?.state === "REFUSED");
+const late = action();
+const lateAnswer = await destination(late.fn, form(concurrentKey));
+ok("a late same-key request after release still cannot reserve or dispatch", lateAnswer.pathname === "/wallet/deposit"
+  && lateAnswer.searchParams.has("release") && late.calls() === 0);
+const interruptedKey = key();
+const interruptedClaim = await beginDepositActionClaim(owner, interruptedKey);
+const interruptedDestination = await destination(action().fn, form(interruptedKey));
+const interruptedRead = await readDepositStatus(owner, { kind: "funding-key", value: interruptedKey });
+ok("an interrupted claimant remains durable uncertainty", interruptedClaim === "claimed"
+  && interruptedDestination.pathname === "/wallet/deposit/wait"
+  && (await db.depositFundingClaim.findByKey(interruptedKey))?.state === "CLAIMED"
+  && interruptedRead.view.state === "UNKNOWN" && !interruptedRead.view.noPayment);
 
 const items = new Map<string, string>();
 const box = { getItem: (name: string) => items.get(name) ?? null,

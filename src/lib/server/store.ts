@@ -1562,6 +1562,14 @@ export const TXN_TYPES = [
   "AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL", "AGENT_REGISTRATION_FEE",
 ] as const;
 
+export type StoredDepositFundingClaim = {
+  key: string;
+  userId: string;
+  state: "CLAIMED" | "REFUSED";
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type StoredTxn = {
   id: string;
   walletId: string;
@@ -2111,6 +2119,7 @@ declare global {
     wallets: Map<string, StoredWallet>;
     walletsByUser: Map<string, string>;
     txns: Map<string, StoredTxn>;
+    depositFundingClaims: Map<string, StoredDepositFundingClaim>;
     responsible: Map<string, StoredResponsibleGambling>;
     notifications: Map<string, StoredNotification>;
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
@@ -2162,6 +2171,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   wallets: new Map(),
   walletsByUser: new Map(),
   txns: new Map(),
+  depositFundingClaims: new Map(),
   responsible: new Map(),
   notifications: new Map(),
   sourceOfFunds: new Map(),
@@ -2201,6 +2211,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
 // "Cannot read properties of undefined" because the cached global is stale.
 if (!store.usersByPhone)  store.usersByPhone = new Map();
 if (!store.walletsByUser) store.walletsByUser = new Map();
+if (!store.depositFundingClaims) store.depositFundingClaims = new Map();
 if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
@@ -2867,6 +2878,23 @@ const memoryDb = {
       };
       store.wallets.set(id, next);
       return next;
+    },
+  },
+  depositFundingClaim: {
+    findByKey: (key: string, _tx?: unknown): StoredDepositFundingClaim | null =>
+      store.depositFundingClaims.get(key) ?? null,
+    create: (key: string, userId: string, _tx?: unknown): StoredDepositFundingClaim => {
+      if (store.depositFundingClaims.has(key)) throw Object.assign(new Error("funding key already claimed"), { code: "P2002" });
+      const now = new Date().toISOString();
+      const row: StoredDepositFundingClaim = { key, userId, state: "CLAIMED", createdAt: now, updatedAt: now };
+      store.depositFundingClaims.set(key, row);
+      return row;
+    },
+    markRefused: (key: string, userId: string, _tx?: unknown): boolean => {
+      const row = store.depositFundingClaims.get(key);
+      if (!row || row.userId !== userId || row.state !== "CLAIMED") return false;
+      store.depositFundingClaims.set(key, { ...row, state: "REFUSED", updatedAt: new Date().toISOString() });
+      return true;
     },
   },
   txn: {

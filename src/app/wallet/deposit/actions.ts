@@ -18,7 +18,8 @@ import { formatNumber } from "@/lib/utils";
 import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { isMobileMoneyMethodId } from "@/lib/payment-providers";
-import { depositRefusalDisposition } from "@/lib/server/deposit-action-recovery";
+import { beginDepositActionClaim, depositRefusalDisposition } from "@/lib/server/deposit-action-recovery";
+import { isFundingUuid } from "@/lib/journey/funding-storage";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -83,14 +84,16 @@ export async function depositAction(formData: FormData) {
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  const validKey = !!idempotencyKey && isFundingUuid(idempotencyKey);
+  const focusedIntent = requestedFlow === "journey" || cardFlow;
   const fail = async (message: string): Promise<never> => {
     let suffix = "";
-    if (journey && (journeyFlow || cardFlow) && idempotencyKey) {
+    if (validKey && idempotencyKey) {
       let disposition: "release" | "recover" | "conflict" = "recover";
       try { disposition = await depositRefusalDisposition(session.userId, idempotencyKey); }
       catch { /* A failed lookup cannot prove that an order was never reserved. */ }
-      if (disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
-      if (disposition === "release") {
+      if (focusedIntent && disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+      if (focusedIntent && disposition === "release") {
         const bound = `${session.userId}:${idempotencyKey}`;
         suffix = `&release=${encodeURIComponent(signFlash("deposit-release-key", bound))}`;
       }
@@ -99,11 +102,15 @@ export async function depositAction(formData: FormData) {
     redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}${suffix}&${carry.toString()}`) as never);
   };
 
+  if (validKey && idempotencyKey) {
+    const claim = await beginDepositActionClaim(session.userId, idempotencyKey);
+    if (claim === "uncertain") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+    if (claim === "conflict" || claim === "refused") await fail(t.error.somethingDidntWork);
+  }
+
   if (requestedFlow === "journey" && !journey) await fail(t.error.somethingDidntWork);
   // Every rail needs a recoverable funding identity. A missing key must never dispatch an unkeyed charge.
-  if ((!idempotencyKey
-    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)))
-    await fail(t.error.somethingDidntWork);
+  if (!validKey) await fail(t.error.somethingDidntWork);
   if (journeyFlow && !isMobileMoneyMethodId(provider)) await fail(t.error.somethingDidntWork);
   if (cardFlow && provider !== "CARD") await fail(t.error.somethingDidntWork);
   if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) await fail(t.error.somethingDidntWork);

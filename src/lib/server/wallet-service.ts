@@ -215,12 +215,16 @@ export async function deposit(
     | { ok: true; txn: StoredTxn; reused: boolean }
     | { ok: false; error: string; code: "INVALID"; reason?: FailureReason };
 
-  const reservation: Reservation = await withLock(`wallet:${userId}`, async (): Promise<Reservation> => {
+  const reservation: Reservation = await withLock(`wallet:${userId}`, async (tx): Promise<Reservation> => {
     // The first lookup can miss while another request reserves this same intent. Ask again under the wallet lock,
     // before the cap/SOF reads; a replay consumes no new cap and the memory twin must not reserve a second row.
     if (idempotencyKey) {
-      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+      const existing = await db.txn.findByIdempotencyKey(idempotencyKey, tx);
       if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();
+      // The action may have terminally refused this key while an earlier or direct
+      // service caller was still in preflight. Both paths serialize on this lock.
+      const claim = await db.depositFundingClaim.findByKey(idempotencyKey, tx);
+      if (claim && (claim.userId !== userId || claim.state === "REFUSED")) return keyConflict();
     }
     // Responsible-gambling deposit-limit (daily / weekly / monthly), re-read
     // INSIDE the lock. Skipped for admin test-funding (see bypass note above).

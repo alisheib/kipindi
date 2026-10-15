@@ -1,18 +1,33 @@
 /** S9: a manual question bet earns create-only return attribution from an owned, matching paid deposit. */
 import "./lib/verified-fixtures.mts";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { db } from "../src/lib/server/store.ts";
+import { prisma } from "../src/lib/server/prisma.ts";
+import { auditFlush } from "../src/lib/server/audit.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { depositReturnMeasure } from "../src/lib/journey/deposit-return-measure.ts";
 import { isDepositReturnBet } from "../src/lib/journey/deposit-state.ts";
 import { returnedSheetPreset } from "../src/lib/journey/sheet-state.ts";
 import { parseReturnChoice } from "../src/lib/journey/return-choice.ts";
-import { FUNDING_STORAGE_MAX_BYTES, fundingStorageKey, parseStoredFunding, writeStoredFunding } from "../src/lib/journey/funding-storage.ts";
+import { FUNDING_STORAGE_MAX_BYTES, fundingStorageKey, isFundingUuid, parseStoredFunding, writeStoredFunding } from "../src/lib/journey/funding-storage.ts";
 
 const red = process.argv.includes("--prove-red");
-const pg = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
+const pg = process.argv.includes("--pg");
+if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== pg) || (red && pg))
+  throw new Error("deposit-return requires memory with DATABASE_URL unset, or explicit scratch PostgreSQL --pg");
+if (pg) {
+  const root = resolve(import.meta.dirname, "..");
+  const target = new URL(process.env.DATABASE_URL!);
+  if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(target.hostname)
+    || target.port !== String(process.env.KP_SCRATCH_PORT ?? 5433)) throw new Error("deposit-return refuses another PostgreSQL port");
+  const rows = await prisma()!.$queryRawUnsafe<Array<{ data_directory: string }>>("SHOW data_directory");
+  const normal = (path: string) => realpathSync(path).replace(/\\/g, "/").toLowerCase();
+  if (normal(rows[0]?.data_directory ?? "") !== normal(join(root, ".pgscratch")))
+    throw new Error("deposit-return refuses another checkout's cluster");
+}
 let passed = 0;
 function check(label: string, fact: boolean) { assert.ok(fact, label); passed++; process.stdout.write(`  ✓ ${label}\n`); }
 const iso = (at: number) => new Date(at).toISOString();
@@ -82,12 +97,15 @@ const mobileFormSource = readFileSync(new URL("../src/app/wallet/deposit/journey
 const cardBridgeSource = readFileSync(new URL("../src/app/wallet/deposit/card-intent-bridge.tsx", import.meta.url), "utf8");
 const dispositionSource = readFileSync(new URL("../src/lib/server/deposit-action-recovery.ts", import.meta.url), "utf8");
 const pageSource = readFileSync(new URL("../src/app/wallet/deposit/page.tsx", import.meta.url), "utf8");
+const waitPageSource = readFileSync(new URL("../src/app/wallet/deposit/wait/page.tsx", import.meta.url), "utf8");
 const fundingUnlockGuard = (action: string, mobile: string, card: string, disposition: string, page: string) =>
   action.includes("await depositRefusalDisposition(session.userId, idempotencyKey)")
+  && action.includes("await beginDepositActionClaim(session.userId, idempotencyKey)")
   && action.includes('signFlash("deposit-release-key", bound)')
-  && disposition.includes("withLock(`wallet:${ownerId}`")
+  && (disposition.match(/withLock\(`wallet:\$\{ownerId\}`/g) ?? []).length === 2
   && disposition.includes("db.txn.findByIdempotencyKey(key, tx)")
-  && disposition.includes('if (!row) return "release"')
+  && disposition.includes("db.depositFundingClaim.create(key, ownerId, tx)")
+  && disposition.includes("db.depositFundingClaim.markRefused(key, ownerId, tx)")
   && page.includes('readFlash("deposit-release-key", sp.release)')
   && page.includes("releaseProof?.startsWith(ownerPrefix)")
   && mobile.includes("releaseStoredFunding(box, ownerId, releaseKey)")
@@ -98,11 +116,24 @@ check("a no-row refusal releases the owner/key identity only after locked proof 
 if (red) check("plant: an unlocked tab-key release is caught",
   !fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource,
     dispositionSource.replace("withLock(`wallet:${ownerId}`", "withoutLock(`wallet:${ownerId}`"), pageSource));
-const keyedActionGuard = (source: string) => source.includes("if ((!idempotencyKey")
-  && source.indexOf("if ((!idempotencyKey") < source.indexOf("const result = await deposit(");
+const releaseUuidGuard = (page: string, waitPage: string) =>
+  page.includes("isFundingUuid(releaseProof.slice(ownerPrefix.length))")
+  && waitPage.includes("paymentKey={isFundingUuid(key) ? key : null}");
+check("a minted five-group funding UUID survives both signed form release and no-payment recovery",
+  isFundingUuid(JSON.parse(funding).key) && !isFundingUuid("12345678-1234-1234-123456789abc")
+  && releaseUuidGuard(pageSource, waitPageSource));
+if (red) {
+  check("plant: a signed form release that drops the UUID validator is caught",
+    !releaseUuidGuard(pageSource.replace("isFundingUuid(releaseProof.slice(ownerPrefix.length))", "false"), waitPageSource));
+  check("plant: a wait route that drops the payment key is caught",
+    !releaseUuidGuard(pageSource, waitPageSource.replace("paymentKey={isFundingUuid(key) ? key : null}", "paymentKey={null}")));
+}
+const keyedActionGuard = (source: string) => source.includes("const validKey = !!idempotencyKey && isFundingUuid(idempotencyKey)")
+  && source.includes("if (!validKey) await fail(t.error.somethingDidntWork);")
+  && source.indexOf("if (!validKey) await fail") < source.indexOf("const result = await deposit(");
 check("all deposit actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));
 if (red) check("plant: an unkeyed charge path is caught",
-  !keyedActionGuard(depositActionSource.replace("if ((!idempotencyKey", "if (false && (!idempotencyKey")));
+  !keyedActionGuard(depositActionSource.replace("if (!validKey) await fail(t.error.somethingDidntWork);", "if (false) await fail(t.error.somethingDidntWork);")));
 const ambiguousActionGuard = (source: string) => source.includes("if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);")
   && source.indexOf("if (data.redirectUrl)") < source.indexOf("if (data.recoveryRequired)")
   && source.indexOf("if (data.recoveryRequired)") < source.indexOf("if (journeyFlow) redirect");
@@ -169,3 +200,10 @@ if (!red) {
   check("an expired return cannot mark a real bet", late.ok && !!late.data && (await positionStore.get(late.data.positionId))?.origin == null);
 }
 process.stdout.write(`S9 deposit return: ${passed} passed, 0 failed (${pg ? "Postgres" : "memory"}${red ? ", red plants" : ""})\n`);
+if (pg) {
+  // The real bet writer sends inbox/push/email courtesies without awaiting them.
+  // Let those fixture reads finish before this disposable client shuts down.
+  await new Promise(resolve => setTimeout(resolve, 1_000));
+  await auditFlush();
+  await prisma()?.$disconnect();
+}

@@ -1079,3 +1079,37 @@ The schema backup/restore gate passed **13/13** with all **104** migrations and 
 indexes, including the new global non-null provider-reference constraint. This candidate has not run
 its exact-tip full source/browser battery or production read-back; Card checkout URL recovery remains
 held pending an observed Selcom Card redirect host.
+
+### §5t · Durable funding claim and exact-key refusal release (2026-10-15)
+
+The §5s locked no-row check alone had a gap: an earlier same-key action or direct service caller
+could still be doing preflight when the refused action released the tab key. S9 now creates one
+`DepositFundingClaim` per owner/funding UUID **before** the action's first asynchronous form gate.
+The primary key arbitrates workers. A second request for a CLAIMED key stays on the original-key
+recovery route; a crash leaves that claim uncertain. The original action marks a no-row refusal
+`REFUSED` under the same wallet lock as reservation, before it signs an owner/key-bound release.
+The actual `deposit()` reservation path reads the claim inside that lock and refuses REFUSED or
+foreign claims before a PROCESSING row or provider call. A scheduled late direct-writer race proves
+this ordering on memory and PostgreSQL. No clock-based claim expiry can remint a payment.
+
+The new additive table is migration `20261015133000_deposit_funding_claim`, after
+`20261015111500_provider_ref_global_unique`. There is no backfill or broad unlock of old money
+rows. **Apply migrations before serving code that uses the claim model.** During a rolling cutover,
+the old writer lacks the REFUSED check, so release must keep old and new deposit writers from
+overlapping on live funding requests. Confirm this at deployment, then read back the exact new
+build before enabling the journey money door.
+
+The form-release and wait pages had copied four-group UUID patterns that rejected a minted
+five-group key. Both now use the same validator as tab storage; a signed no-row refusal can
+actually release the matching tab key, and the wait route can pass that key to its client.
+Existing or unreadable payment rows remain in owned recovery. Classic direct routing remains.
+
+Focused exact-source proofs: `test:deposit-action-recovery` **15/15 memory and 15/15 PostgreSQL**;
+`test:deposit-replay` **50/50 memory and 50/50 PostgreSQL** using the real writer with a controlled
+provider, with **15/15** mutation plants caught; `test:deposit-return` **28/28 memory and 28/28
+PostgreSQL**, with **31/31** memory red controls including both UUID route omissions. Typecheck
+passed. PostgreSQL 18.3 on isolated port 5452 applied all **105** migrations; `verify:backup-schema`
+passed **13/13**, restoring the backup and checking **128** unique indexes. The scratch cluster
+was stopped. This is a checkpoint proof, not the integrated WP8/browser, production migration,
+real provider payment, or LIVE read-back. Card checkout URL recovery remains held pending an
+observed Selcom Card redirect host and owner release decision.

@@ -9,7 +9,7 @@ import { depositRecheckBinding, matchesDepositRecheckBinding, type DepositRechec
 
 export type DepositLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
 export type DepositStatusView =
-  | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number }
+  | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number; noPayment?: boolean }
   | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable: number; retryAfterSec: number };
 export type DepositStatusRead = { view: DepositStatusView; rateLimited: boolean; txn?: StoredTxn };
 
@@ -39,6 +39,14 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
       : await db.txn.findByProviderRef(lookup.value);
     // All refused identifiers have the same view. The audit deliberately records neither the submitted key/reference
     // nor a foreign row id: a lookup attempt does not need somebody else's financial identifier in its audit payload.
+    if (!txn && lookup.kind === "funding-key") {
+      // Only a durable original claimant may say no provider request began. A bare
+      // missing transaction remains UNKNOWN: another request may still reserve it.
+      const claim = await db.depositFundingClaim.findByKey(lookup.value);
+      if (claim?.userId === userId && claim.state === "REFUSED") {
+        return { view: { state: "UNKNOWN", serverNow: Date.now(), retryAfterSec: 0, noPayment: true }, rateLimited: false };
+      }
+    }
     if (!txn || txn.userId !== userId || txn.type !== "DEPOSIT" || txn.currency !== "TZS" || txn.houseBotId != null) {
       await audit({ category: "SECURITY", action: "deposit.status.lookup_refused", actorId: userId,
         targetType: "Transaction", targetId: null, payload: { lookup: lookup.kind, reason: "scope" } });

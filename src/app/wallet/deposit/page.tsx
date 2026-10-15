@@ -40,6 +40,7 @@ import { getKillSwitches } from "@/lib/server/payment-ops";
 import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 import { CardIntentBridge } from "./card-intent-bridge";
 import { FundingReleaseBridge } from "./funding-release-bridge";
+import { isFundingUuid } from "@/lib/journey/funding-storage";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -91,7 +92,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   const releaseProof = errorMsg ? readFlash("deposit-release-key", sp.release) : null;
   const ownerPrefix = `${session.userId}:`;
   const releaseKey = releaseProof?.startsWith(ownerPrefix)
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(releaseProof.slice(ownerPrefix.length))
+    && isFundingUuid(releaseProof.slice(ownerPrefix.length))
     ? releaseProof.slice(ownerPrefix.length) : null;
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";

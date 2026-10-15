@@ -6,6 +6,7 @@ import { DepositWaitingClient } from "./deposit-waiting-client";
 import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { cookies } from "next/headers";
+import { isFundingUuid } from "@/lib/journey/funding-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,6 @@ export default async function RecoverDepositPage({ searchParams }: { searchParam
   });
   return <DepositWaitingClient ownerId={session.userId} initial={read.view}
     lookupUrl={`/api/wallet/deposits/recover?key=${encodeURIComponent(key)}`}
-    paymentKey={/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key) ? key : null}
+    paymentKey={isFundingUuid(key) ? key : null}
     firstDepositNotice={notice} noticeDismissValue={notice ? kycNoticeDismissValue(session.userId) : null} />;
 }

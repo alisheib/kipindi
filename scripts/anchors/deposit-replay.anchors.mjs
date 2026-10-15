@@ -4,8 +4,9 @@ const mutation = (name, from, to, expect) => ({ name, file, from, to, expect });
 export const MUTATIONS = [
   mutation("early-global-key-without-intent", "if (!matchesFunding(existing)) return keyConflict();", "", "early.owner"),
   mutation("race-key-without-intent", "if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();\n      }\n      throw err;", "if (existing) return { ok: true, txn: existing, reused: true };\n      }\n      throw err;", "catch.owner"),
-  mutation("no-locked-key-recheck", "if (idempotencyKey) {\n      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);\n      if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();\n    }", "", "locked.same-intent-race"),
-  mutation("locked-key-without-intent", "if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();\n    }\n    // Responsible-gambling", "if (existing) return { ok: true, txn: existing, reused: true };\n    }\n    // Responsible-gambling", "locked.owner"),
+  mutation("no-locked-key-recheck", "const existing = await db.txn.findByIdempotencyKey(idempotencyKey, tx);\n      if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();", "const existing = null;", "locked.same-intent-race"),
+  mutation("locked-key-without-intent", "if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();\n      // The action may", "if (existing) return { ok: true, txn: existing, reused: true };\n      // The action may", "locked.owner"),
+  mutation("terminal-funding-claim-ignored", 'if (claim && (claim.userId !== userId || claim.state === "REFUSED")) return keyConflict();', "", "claim.late-reservation-after-refusal"),
   { name: "withdrawal-reference-on-return", file: "src/lib/server/deposit-status.ts", from: 'txn.type !== "DEPOSIT" || ', to: "", expect: "return.wrong-type" },
   { name: "marked-row-on-return", file: "src/lib/server/deposit-status.ts", from: " || txn.houseBotId != null", to: "", expect: "return.house" },
   { name: "wrong-currency-on-return", file: "src/lib/server/deposit-status.ts", from: 'txn.currency !== "TZS" || ', to: "", expect: "return.currency" },

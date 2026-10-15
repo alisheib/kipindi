@@ -18,6 +18,7 @@ import { presentedStatus } from "../src/lib/wallet/receipts.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/deposit-replay.anchors.mjs";
+import { beginDepositActionClaim, depositRefusalDisposition } from "../src/lib/server/deposit-action-recovery.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE = readFileSync(join(ROOT, "src/lib/server/wallet-service.ts"), "utf8");
@@ -61,10 +62,10 @@ function threshold(name: string): number {
   if (!text || !/^[0-9_]+$/.test(text)) throw new Error(`Nonliteral fixture threshold ${name}`);
   return Number(text.replaceAll("_", ""));
 }
-function serviceFor(source: string, data = db, statusSource = STATUS) {
+function serviceFor(source: string, data = db, statusSource = STATUS, lock: typeof withLock = withLock) {
   const counters = { dispatches: 0, dispatchIntents: [] as unknown[], verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
   const dependencies = {
-    db: data, withLock, parseSavedDepositBet, sameDepositFunding, depositResultStatus, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
+    db: data, withLock: lock, parseSavedDepositBet, sameDepositFunding, depositResultStatus, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
     isStoredFundingKey: DepositBinding.isStoredFundingKey,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     audit: (entry: unknown) => counters.audit.push(entry), auditNeedsReviewOnce: () => {}, isMaintenanceMode: async () => counters.maintenance,
@@ -206,6 +207,32 @@ async function run(source: string, mapper = MAPPER, statusSource = STATUS): Prom
   const rows = await db.txn.findByUser(raceOwner);
   ok("locked.same-intent-race", replies.every(r => r.ok) && replies[0].data.txnId === replies[1].data.txnId && rows.length === 1 && race.counters.dispatches === 1 && race.counters.capReads === 1);
   ok("locked.race-no-credit", (await db.wallet.findByUserId(raceOwner))?.balance === 77_000 && rows.every(t => t.status === "PROCESSING"));
+
+  // Schedule a direct service caller just before the reservation lock. The
+  // action finishes its no-row refusal first; the real writer must observe the
+  // terminal claim under that same lock and must not create or dispatch money.
+  const claimOwner = await account(), claimKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const firstClaim = await beginDepositActionClaim(claimOwner, claimKey);
+  let entered!: () => void, releaseLate!: () => void;
+  const atLock = new Promise<void>(resolve => { entered = resolve; });
+  const letReserve = new Promise<void>(resolve => { releaseLate = resolve; });
+  const scheduledLock: typeof withLock = async (name, fn) => { entered(); await letReserve; return withLock(name, fn); };
+  const lateWriter = serviceFor(source, db, statusSource, scheduledLock);
+  const lateReply = lateWriter.deposit(claimOwner, request, claimKey);
+  await atLock;
+  const refusal = await depositRefusalDisposition(claimOwner, claimKey);
+  releaseLate();
+  const lateAnswer = await lateReply;
+  ok("claim.late-reservation-after-refusal", firstClaim === "claimed" && refusal === "release" && !lateAnswer.ok
+    && lateAnswer.code === "INVALID" && (await db.txn.findByIdempotencyKey(claimKey)) == null
+    && lateWriter.counters.dispatches === 0 && lateWriter.counters.capReads === 0);
+
+  const foreignClaimOwner = await account(), foreignClaimKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const foreignClaim = await beginDepositActionClaim(foreignClaimOwner, foreignClaimKey);
+  const foreignWriter = service(source), foreignAnswer = await foreignWriter.deposit(claimOwner, request, foreignClaimKey);
+  ok("claim.foreign-owner-cannot-reserve", foreignClaim === "claimed" && !foreignAnswer.ok
+    && foreignAnswer.code === "INVALID" && (await db.txn.findByIdempotencyKey(foreignClaimKey)) == null
+    && foreignWriter.counters.dispatches === 0);
 
   const returns = service(source), unknown = await returns.settleDepositFromReturn(me, "dep_s9_absent");
   ok("return.missing", unknown.state === "UNKNOWN" && unknown.txn === undefined && returns.counters.verifies === 0);

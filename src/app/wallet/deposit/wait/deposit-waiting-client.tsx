@@ -14,10 +14,10 @@ import { parseBetParam, pendingBetUrl, PENDING_BET_KEY } from "@/lib/journey/pen
 import type { DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import type { FirstDepositNotice } from "@/lib/kyc-notice";
-import { fundingStorageKey, parseStoredFunding } from "@/lib/journey/funding-storage";
+import { fundingStorageKey, parseStoredFunding, releaseStoredFunding } from "@/lib/journey/funding-storage";
 
 type WaitingView =
-  | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number }
+  | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number; noPayment?: boolean }
   | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable?: number; retryAfterSec: number; failureAuthority?: "signed-recheck" };
 
 const fundingKey = fundingStorageKey;
@@ -33,6 +33,7 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
   const [returnTapReason, setReturnTapReason] = useState<"notice" | "new-tab" | null>(null);
   const [checkingFailure, setCheckingFailure] = useState(false);
   const [failureReleased, setFailureReleased] = useState(false);
+  const [noPaymentReleased, setNoPaymentReleased] = useState(false);
   const [statusUrl, setStatusUrl] = useState(lookupUrl);
   const [unknownStartedAt, setUnknownStartedAt] = useState<number | null>(null);
   const mounted = useRef(true);
@@ -53,6 +54,8 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
       if (!mounted.current || abort.signal.aborted) return;
       // A temporary UNKNOWN, including a rate limit, cannot erase a terminal/held answer already seen.
       if (next.state === "UNKNOWN" && current.current.state !== "UNKNOWN") { setReadError(true); return; }
+      if (current.current.state === "UNKNOWN" && current.current.noPayment
+        && next.state === "UNKNOWN" && !next.noPayment) { setReadError(true); return; }
       if (current.current.state !== "UNKNOWN" && current.current.state !== "PENDING" && next.state === "PENDING") return;
       current.current = next;
       setView(next);
@@ -125,8 +128,14 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
   }, [refresh]);
 
   useEffect(() => {
+    if (view.state !== "UNKNOWN" || !view.noPayment || !paymentKey) return;
+    try { setNoPaymentReleased(releaseStoredFunding(window.sessionStorage, ownerId, paymentKey)); }
+    catch { setNoPaymentReleased(false); }
+  }, [view, ownerId, paymentKey]);
+
+  useEffect(() => {
     // A terminal or held answer has no payment poll or SSE status listener. The receipt stays available.
-    if (view.state !== "PENDING" && view.state !== "UNKNOWN") return;
+    if (view.state !== "PENDING" && (view.state !== "UNKNOWN" || view.noPayment)) return;
     const hint = () => { void refresh(); };
     window.addEventListener("50pick:sse:wallet-balance", hint);
     return () => window.removeEventListener("50pick:sse:wallet-balance", hint);
@@ -134,6 +143,7 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
 
   useEffect(() => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    if (view.state === "UNKNOWN" && view.noPayment) return;
     const arm = () => {
       const scheduledFor = current.current;
       const delay = scheduledFor.state === "UNKNOWN" ? Math.max(
@@ -208,12 +218,14 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
   const pendingText = band === "fresh" ? t.journey.depositWaitFresh
     : band === "slow" ? t.journey.depositWaitSlow
     : band === "long" ? t.journey.depositWaitLong : t.journey.depositWaitLate;
-  const title = view.state === "PAID" ? t.wallet.returnPaidTitle
+  const title = view.state === "UNKNOWN" && view.noPayment ? t.journey.depositNoPaymentTitle
+    : view.state === "PAID" ? t.wallet.returnPaidTitle
     : view.state === "FAILED" ? t.wallet.returnFailedTitle
     : view.state === "HELD" || view.state === "RETURNED" ? t.wallet.returnReversedTitle
     : view.state === "REVIEW" ? t.wallet.returnReviewTitle
     : view.state === "PENDING" ? t.wallet.returnPendingTitle : t.journey.depositWaitUnknown;
-  const body = view.state === "PAID" ? (view.pendingBet ? t.journey.depositPaidManual : t.wallet.returnPaidBody)
+  const body = view.state === "UNKNOWN" && view.noPayment ? t.journey.depositNoPaymentBody
+    : view.state === "PAID" ? (view.pendingBet ? t.journey.depositPaidManual : t.wallet.returnPaidBody)
     : view.state === "FAILED" ? t.wallet.returnFailedBody
     : view.state === "HELD" || view.state === "RETURNED" ? t.wallet.returnReversedBody
     : view.state === "REVIEW" ? t.wallet.returnReviewBody
@@ -242,7 +254,8 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
     {view.state === "FAILED" && view.pendingBet && <button type="button" onClick={returnToChoice}
       className="btn btn-ghost btn-lg w-full">{t.journey.depositReturnToChoice}</button>}
     {view.state !== "FAILED" && view.state !== "UNKNOWN" && <a href={`/wallet/receipt/${view.txnId}`} className="btn btn-ghost btn-lg flex w-full justify-center">{t.wallet.viewReceipt}</a>}
-    {view.state === "UNKNOWN" && <button type="button" onClick={() => { void refresh(); }} className="btn btn-ghost btn-lg w-full">{t.error.tryAgain}</button>}
+    {view.state === "UNKNOWN" && view.noPayment && noPaymentReleased && <a href="/wallet/deposit" className="btn btn-primary btn-lg flex w-full justify-center">{t.error.tryAgain}</a>}
+    {view.state === "UNKNOWN" && (!view.noPayment || !noPaymentReleased) && <button type="button" onClick={() => { void refresh(); }} className="btn btn-ghost btn-lg w-full">{t.error.tryAgain}</button>}
     {view.state === "PENDING" && (band === "long" || band === "late") && <a href="/help" className="btn btn-ghost btn-md flex w-full justify-center">{t.journey.depositContactSupport}</a>}
     <a href="/wallet" className="btn btn-ghost btn-md flex w-full justify-center">{t.error.backToWallet}</a>
   </PageContainer>;
