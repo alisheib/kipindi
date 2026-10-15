@@ -1583,17 +1583,24 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         continue;
       }
       const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
-      const recordStatus = async (status: string) => {
-        try { await withLock(`wallet:${original.owner}`, async (tx) => {
+      const recordStatus = async (status: string | null, review?: { reason: string; payload: Record<string, unknown> }): Promise<boolean> => {
+        try { return await withLock(`wallet:${original.owner}`, async (tx) => {
           const fresh = await db.txn.findById(original.txnId, tx);
-          if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return;
+          if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return false;
           await assertUniquePaymentReference(fresh, original.providerRef, original);
           // A later generic PENDING/UNSUPPORTED answer must not erase the more
           // specific fact that a prior FAILED query already needed human review.
-          if (fresh.providerStatus?.startsWith("REVIEW REQUIRED: payout query said FAILED")
-            && !status.startsWith("REVIEW REQUIRED: payout query said FAILED")) return;
-          if (fresh.providerStatus !== status) await db.txn.update(original.txnId, { providerStatus: status }, tx);
-        }); } catch { /* non-fatal */ }
+          if (status && !(fresh.providerStatus?.startsWith("REVIEW REQUIRED: payout query said FAILED")
+            && !status.startsWith("REVIEW REQUIRED: payout query said FAILED"))
+            && fresh.providerStatus !== status) await db.txn.update(original.txnId, { providerStatus: status }, tx);
+          // The callback cannot settle between this fresh PROCESSING check and the
+          // review audit. A terminal callback that won the lock emits no stale row.
+          if (review) auditNeedsReviewOnce(t.id, review.reason, review.payload);
+          return true;
+        }); } catch (err) {
+          if (review) throw err;
+          return false; // a provider-detail trail is non-fatal
+        }
       };
       // Generic FAILED and overdue PENDING need a durable review marker. Other
       // answers retain a bounded provider trail while the row is still PROCESSING.
@@ -1610,11 +1617,10 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // reference while an accepted payout is still in flight. Persist an
         // operator-visible marker on the PROCESSING row and leave the hold intact.
         const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);
-        await recordStatus(reviewStatus);
-        leftPending++;
-        auditNeedsReviewOnce(t.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed", {
-          providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null,
-        });
+        if (await recordStatus(reviewStatus, {
+          reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed",
+          payload: { providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null },
+        })) leftPending++;
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
         // reachable with no operator action at all: any PAYMENT_API_* variable
@@ -1626,18 +1632,19 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // Deliberately NOT mode-gated like the deposit arm above: a withdrawal that
         // has a providerRef is never auto-reversed in ANY mode. Gating it would leave
         // a branch shaped exactly like the bug, waiting for someone to flip a flag.
-        leftPending++;
-        auditNeedsReviewOnce(t.id, "payout status unavailable — never auto-reversed", { providerRef: ref });
+        if (await recordStatus(null, {
+          reason: "payout status unavailable — never auto-reversed",
+          payload: { providerRef: ref },
+        })) leftPending++;
       } else {
         // At the sweep threshold even genuine provider progress is overdue.
         // Preserve an operator-visible marker on the transaction across restarts;
         // a later generic/contradictory query must not erase it with PENDING.
         const reviewStatus = `REVIEW REQUIRED: stale payout still pending${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);
-        await recordStatus(reviewStatus);
-        leftPending++; // payout may be in flight; NEVER blind-reverse
-        auditNeedsReviewOnce(t.id, "stale payout remains pending — verify with provider before action", {
-          providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null,
-        });
+        if (await recordStatus(reviewStatus, {
+          reason: "stale payout remains pending — verify with provider before action",
+          payload: { providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null },
+        })) leftPending++; // payout may be in flight; NEVER blind-reverse
       }
     }
   } catch (err) {
