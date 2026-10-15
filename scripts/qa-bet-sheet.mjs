@@ -132,12 +132,21 @@ async function tile(page, label) {
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   },S.root);
   if(receipt){
-    await page.waitForFunction(selector=>{
+    try { await page.waitForFunction(selector=>{
       const root=document.querySelector(selector),panel=root?.closest('.kp-bsheet'),dialog=root?.closest('[role="dialog"]');
       if(root?.getAttribute('data-frame')!=='receipt'||!panel||dialog?.getAttribute('aria-hidden')==='true')return false;
       let opacity=1;for(let node=panel;node&&node!==document.body;node=node.parentElement)opacity*=Number(getComputedStyle(node).opacity);
       return opacity>=.999 && !(dialog?.getAnimations({subtree:true})??[]).some(animation=>animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
-    },S.root);
+    },S.root); }
+    catch(error){
+      const state=await page.evaluate(selector=>{
+        const root=document.querySelector(selector),panel=root?.closest('.kp-bsheet'),dialog=root?.closest('[role="dialog"]');
+        let opacity=1;for(let node=panel;node&&node!==document.body;node=node.parentElement)opacity*=Number(getComputedStyle(node).opacity);
+        return {url:location.href,frame:root?.getAttribute('data-frame')??null,panel:!!panel,dialogHidden:dialog?.getAttribute('aria-hidden')??null,
+          opacity,animations:(dialog?.getAnimations({subtree:true})??[]).map(animation=>({state:animation.playState,iterations:animation.effect?.getComputedTiming().iterations}))};
+      },S.root).catch(readError=>({url:page.url(),readError:String(readError)}));
+      throw new Error(`${label}: receipt did not settle ${JSON.stringify(state)}; ${String(error)}`);
+    }
   }
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
   // Playwright's default caret hiding writes an inline style on hidden preview-form inputs.
