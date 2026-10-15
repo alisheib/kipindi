@@ -602,7 +602,6 @@ function linkSites(file: string, src: string): LinkSite[] {
 }
 /** The links inside the hashed binding legal texts — held until each text's next version (owner item 31; §B4c). */
 const HELD: Record<string, { count: number; fam: string; why: string }> = {
-  "src/app/legal/terms/page.tsx": { count: 6, fam: "gold", why: "the Terms' RG links — `content()` is hashed (TERMS_TEXT_SHA), so their ink moves with the next Terms version" },
   "src/app/legal/responsible-gambling/page.tsx": { count: 3, fam: "gold", why: "the RG policy's settings links — its binding English is hashed (RG_EN_SHA); the three languages move together with the next policy version" },
   "src/app/legal/agent-terms/page.tsx": { count: 6, fam: "neutral", why: "the agent terms' support addresses — `content` is hashed (AGENT_TERMS_TEXT_SHA), so their ink moves with the next agent-terms version" },
 };
@@ -664,7 +663,7 @@ section("5 · the link census — every text link draws the link ink, at rest an
     const got = by("held").filter((v) => v.site.file === file).length;
     ok(`5.2 · HELD · ${file.replace("src/app/legal/", "legal/")}: ${hold.count} links in the ${hold.fam} ink — ${hold.why}`, got === hold.count, `${got} ≠ ${hold.count}`);
   }
-  ok("5.2′ · …and nothing else anywhere is held (the exception is three named files, fifteen links)", by("held").every((v) => v.site.file in HELD) && by("held").length === 15, String(by("held").length));
+  ok("5.2′ · …and nothing else anywhere is held (two named files, nine links; Terms moved with their next version)", by("held").every((v) => v.site.file in HELD) && by("held").length === 9, String(by("held").length));
   for (const x of CONTROLS) ok(`5.3 · NAMED · ${x.why}`, by("control").filter((v) => v.site.file === x.file).length === 1);
   for (const b of LINK_BUTTONS) ok(`5.3′ · LINK-DRAWN BUTTON · ${b.why} — held to the link ink`, verdicts.some((v) => v.site.file === b.file && v.site.kind === "button" && v.kind === "text" && v.problems.length === 0));
   // 5.4 · the CSS rules that target an anchor by element (the chat's source list) draw the link ink too.
