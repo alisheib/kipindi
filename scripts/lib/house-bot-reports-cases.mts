@@ -2373,7 +2373,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * pinned at **3**: the viewer, the route, and the REQUEST's own query string, which the door validates part by part.
  * ⛔ Its route belt refuses any route outside the desk's own section before the audience question, for the Results
  * tab's reason: a row's reason says which accounts are on the desk, and a non-desk route is answered by its own domain. */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseAmlOwnerFlagsForConsole: 3, houseRosterForConsole: 3, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3, houseRulesSaveForConsole: 3, houseDetailForConsole: 4, houseFeedForConsole: 3, houseHistoryForConsole: 3, houseCancelIntentForConsole: 3, houseSwitchForConsole: 3, houseAccountActForConsole: 3, houseAccountsForConsole: 3, houseAccountListForConsole: 3, houseCheckForConsole: 3, houseDesignateForConsole: 3, houseWhyIdleForConsole: 3, houseResultsForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -3408,7 +3408,8 @@ if (STORE === "memory") {
          * left exactly as it is: a floor is raised only by the session that measures a higher number, never lowered.
          * ⛔ The two struck display readers stay pinned at EXACTLY 0. */
         && r.consoleGateCalls.houseStakeForConsole === 0 && r.consoleGateCalls.houseBotLabelsForConsole === 0
-        && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseRosterForConsole >= 1
+        && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseAmlOwnerFlagsForConsole >= 1
+        && r.consoleGateCalls.houseRosterForConsole >= 1
         /* ⭐ C7 step 3 · the limits panel's own gated reader, query-shaped and arity-pinned like the roster's. */
         && r.consoleGateCalls.houseUsageForConsole >= 1
         /* ⭐ replan ruling 537 · the limits SAVE. A floor at the count this commit measures, never a loose `>= 0`:
@@ -4751,6 +4752,27 @@ await guard("4", async () => {
   };
   ok("4.259.2 · the audience is the page's own view grant on the STORED role: COMPLIANCE sees the KYC case and the objections, the MODERATOR the Up and Down rounds and not the objections, an Owner-only path is ADMIN's alone, and the holder, a player, no session, an empty or unknown id and an ADMIN asking about a non-console route are all outside",
     j(audience) === j({ coOnKyc: true, coOnObjections: true, modOnObjections: false, modOnRounds: true, adminOwnerOnly: true, modOwnerOnly: false, holderOnKyc: false, playerOnMarkets: false, noSession: false, emptyId: false, unknownId: false, adminOffConsole: false }), j(audience));
+
+  // The AML owner flag is a house read with a notification side effect. A denied
+  // render must not even query past designations, let alone claim an alert.
+  const HD: Any = await import("../../src/lib/server/house-bot-dal.ts");
+  const realDesignations = HD.houseBotStore.listEverDesignatedUserIds;
+  let designationReads = 0;
+  HD.houseBotStore.listEverDesignatedUserIds = async (...args: Any[]) => {
+    designationReads++;
+    return realDesignations.apply(HD.houseBotStore, args);
+  };
+  let deniedAml: Any, allowedAml: Any, deniedReads = -1;
+  try {
+    deniedAml = await CR.houseAmlOwnerFlagsForConsole(plainPlayer, "/admin/aml", [{ userId: holderAB, txnId: `txn_${tag}`, type: "STAKE_SPIKE" }]);
+    deniedReads = designationReads;
+    allowedAml = await CR.houseAmlOwnerFlagsForConsole(A, "/admin/aml", []);
+  } finally {
+    HD.houseBotStore.listEverDesignatedUserIds = realDesignations;
+  }
+  ok("4.260.aml · a player gets no AML owner flag and causes no designation read or alert; an allowed officer reaches the real designation reader",
+    deniedAml === null && deniedReads === 0 && allowedAml instanceof Set && allowedAml.size === 0 && designationReads === 1,
+    j({ deniedAml, deniedReads, allowedCount: allowedAml?.size ?? null, designationReads }));
 
   // A viewer read that fails is no viewer: the gate is asked while the user read throws.
   const realFindById = w.db.user.findById;
