@@ -960,7 +960,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             family's arrows now, at their words' stem, their ink on the row's two edges. */}
         <Link
           href={journey ? "/account" : "/profile"}
-          className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+          className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
         >
           <I.arrowLeft s={12} edge="start" text="mono-400" />
           {journey ? t.journey.tabAccount : t.common.profile}
@@ -968,7 +968,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         <Link
           href="/wallet"
           /* A link is a control, never money: the product's link ink (brand-300, as R4-K's not-found link), not gold (R5-C). */
-          className="inline-flex items-center gap-1.5 font-display text-[13px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"
+          className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 font-display text-[13px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"
         >
           {t.common.wallet}
           <I.arrowRight s={13} edge="end" text="display-600" />

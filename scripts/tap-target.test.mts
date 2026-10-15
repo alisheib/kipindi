@@ -355,8 +355,6 @@ const RATCHET: Record<string, { px: number; note: string }> = {
     { px: 26, note: "the kit Switch TRACK is 44×26 and stays that way by design — but since DG-A-02 (2026-08-29) its REACH is 40px via `.toggle-switch::after` (globals.css), so this row is now about PAINT, not about tap. ⛔ Do not read it as 'sub-floor' any more, and do not 'fix' it by raising the inline height: that would fail §4.x here (this key would stop matching) and change the geometry of ~100 controls. This scan is static and can only ever see the declared 26; the reach is proven where it actually lives, by `npm run qa:toggle-hit` against production with elementFromPoint — a bounding box cannot see that fix." },
   "src/components/proposals/vote-control.tsx:button@34":
     { px: 34, note: "the proposal up/down vote buttons are 36×34 inside a 3px-padded capsule (≈40 outer). Genuinely close, and genuinely not 44." },
-  "src/components/profile/password-section.tsx:button@30":
-    { px: 30, note: "the `Change / Set password` button in the account panel — 30px, the smallest declared player control in the tree, on a security action." },
   "src/components/ui/tabs.tsx:button@36":
     { px: 36, note: "36px segment inside the `p-1` (4px) capsule ⇒ a 46px capsule. The SEGMENT is under the floor even though the control group is not; documented at the call site." },
   "src/components/ui/date-select.tsx:button@36":

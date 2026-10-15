@@ -180,7 +180,7 @@ export function EmailEditor({ currentEmail, verified, hasPassword }: { currentEm
         </div>
       ) : (
         <div className="mt-1 space-y-1.5">
-          <button ref={triggerRef} type="button" onClick={open} className="inline-flex items-center gap-2 text-left group" aria-label={t.common.editContactEmail}>
+          <button ref={triggerRef} type="button" onClick={open} className="inline-flex min-h-[var(--tap-min)] items-center gap-2 text-left group" aria-label={t.common.editContactEmail}>
             <span className={`text-[14px] ${currentEmail ? "text-text" : "text-text-subtle italic"}`}>
               {currentEmail || t.profile.addEmailForReceipts}
             </span>
