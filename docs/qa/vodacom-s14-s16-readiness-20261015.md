@@ -96,6 +96,11 @@ launch is not implied by the user's general instruction to finish the plan.
 
 ## S16: wait for actual evidence
 
+The parked [S16 shelving preparation](s16-shelving-prep-20261015.md) adds
+inventory, source and release guards without making an S16 completion claim.
+Its `predeploy` gate intentionally stays closed until the actual seven-day
+observation and final unmount are recorded.
+
 `npm run gate:s16` requires a real `launchAt` at least **seven full days** in the past, the S15 production read-back,
 an agency acknowledgment, no rollback, and shelving proof. The measures record must show each of the five measures
 at or above its 14-day baseline after day 7 and neither daily harm marker (rapid deposit escalation or chasing losses)
