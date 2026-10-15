@@ -15,17 +15,30 @@ writers have stopped; this result is a snapshot, not authority for a later migra
 
 The new `DepositFundingClaim` primary key blocks a late reservation only in S9 code.
 An old process does not read its terminal `REFUSED` state. This service has one app
-replica in `us-west2`. The repository's `railway.json` requests 60 seconds of
-deployment overlap and 30 seconds of draining, but the current production
-deployment manifest at 2026-10-15 15:04 UTC has `null` for both and for
-`healthcheckPath`/`healthcheckTimeout`. Remediate the live service settings and
-verify the next deployment manifest **before** the outage; a source file alone
-does not prove those settings applied. Railway says the old deployment is stopped
-*after* the new one is active; setting overlap to zero does not prove that an old
-in-flight request cannot race a new one. Its [deployment teardown](https://docs.railway.com/deployments/deployment-teardown)
+replica in `us-west2`. The actual production service settings and the current
+`dfb8432b9e0248c56d174902170e1f567a29fa5f` deployment manifest were read at
+2026-10-15 16:23 UTC: healthcheck
+`/api/health`, timeout 300 seconds, overlap 60 seconds, and drain 30 seconds.
+Recheck the **selected deployment's manifest** before the outage; a source file
+or service setting alone does not prove the running image used those values.
+Railway says the old deployment is stopped *after* the new one is active; setting
+overlap to zero does not prove that an old in-flight request cannot race a new one.
+Its [deployment teardown](https://docs.railway.com/deployments/deployment-teardown)
 and [deployment lifecycle](https://docs.railway.com/deployments/reference) describe
 this order. The existing maintenance and payment switches hydrate once per process,
 so a switch changed in one process cannot prove every old worker has stopped.
+
+The `dfb8432b9e` production deployment (`e55f621c-968a-4175-94e9-7e7ddf5b11d5`)
+became `SUCCESS` at 16:20:06 UTC while the prior `9068cb19ba` deployment
+(`95b4ea2a-c057-42ac-9871-d16f389b6565`) still showed `SUCCESS` with a running instance.
+The prior deployment became `REMOVED` at 16:21:43 UTC, about 97 seconds after
+the new one became successful. The observed delay is consistent with the configured
+60-second overlap and 30-second drain plus scheduling; two `SUCCESS` deployments
+during this interval are **expected**, and both can run old/new app code. At
+16:23 UTC, `railway status --json` and Railway's environment status showed only
+the new deployment selected and one `RUNNING` app instance, with no pending work.
+This is why the cutover preflight below requires the prior deployment to be
+`REMOVED` and exactly one active instance; elapsed time alone is never the gate.
 
 Stop **only the `50pick` app deployment**, leaving Postgres and Redis running.
 The app is intentionally unavailable during this window. Do not roll back to a
@@ -87,17 +100,23 @@ for the tested SHA, not the final S9 SHA or the production service settings.
 1. Freeze the verified release SHA, confirm `main` has not advanced, and prepare
    the required production backup. Confirm the isolated `down`/new Git push
    rehearsal above passed **again for the final candidate SHA**. Before the
-   outage, set the production app's **actual Railway service settings** to
-   healthcheck path `/api/health`, timeout 300 seconds,
-   overlap 60 seconds, and drain 30 seconds. Allow any settings-triggered old-code
-   deployment to finish, then require those four values in its deployment
-   manifest and a direct 200/`ok:true` response from `/api/health` on every public
-   host. The 2026-10-15 production manifest had all four as `null`; this gate is
-   presently unmet. Freeze other pushes and Railway deploy actions for this app.
+   outage, require the production app's **actual selected deployment manifest**
+   to have healthcheck path `/api/health`, timeout 300 seconds, overlap 60 seconds,
+   and drain 30 seconds, plus a direct 200/`ok:true` response from `/api/health`
+   on every public host. These values were verified on deployment `e55f621c`
+   at 16:23 UTC; repeat the check for whichever deployment is selected at cutover.
+   If service settings need correction, allow the resulting deployment and its
+   predecessor's overlap/drain to finish before preflight. Freeze other pushes
+   and Railway deploy actions for this app.
    Confirm the public database URL is present in `F:\kipindi-main\.env.qa.local`
    without printing it. The local migration command below uses only that Railway
    public proxy, not `railway run`'s private host.
-2. Require exactly one current successful app deployment and no pending build,
+2. After the last ordinary deployment, wait for its predecessor to become
+   `REMOVED`: the 60-second overlap and 30-second drain begin after the replacement
+   is active, and the observed removal took about 97 seconds. If two deployments
+   still show `SUCCESS`, keep waiting and inspect Railway status; do **not** call
+   `railway down` yet. Require exactly one current successful app deployment, one
+   selected `RUNNING` instance, and no pending build or staged/applying change,
    then remove that deployment with `railway down`. The command may expose an
    older `SUCCESS` deployment, so the preflight and stopped checks are both
    mandatory. Wait beyond the configured 30-second drain and repeat the stopped
