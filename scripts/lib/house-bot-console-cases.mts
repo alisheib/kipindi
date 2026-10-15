@@ -1916,8 +1916,8 @@ section("§2 · the strip, the band, the roster and every failure");
     ok("1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption — the blanket sentence would be a LIE on a staff-chosen cap",
       EXEMPT.length >= 7 && EXEMPT.every((f) => off(f) === TARGETED), j(EXEMPT.filter((f) => off(f) !== TARGETED)));
     const PAIR_BUDGETS = ["gCapPairRoundsPerDay", "gCapPairDailyTzs"];
-    ok("1.364 · either empty pairing budget says pairing is off, and neither enters CLEAR_EXEMPT",
-      PAIR_BUDGETS.every((f) => !EXEMPT.includes(f) && off(f) === "Not set — no pair rounds can be placed."));
+    ok("1.364 · either empty two-sided desk budget stops the second account, and neither enters CLEAR_EXEMPT",
+      PAIR_BUDGETS.every((f) => !EXEMPT.includes(f) && off(f) === "Not set — no second desk account can take the other side."));
     ok("1.364 · every cap the seam reads UNCONDITIONALLY gets the third caption, and it says `account` — ruling 453 outranks 364's own wording",
       UNCONDITIONAL.every((f) => off(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => off(f))));
     /* ━━ 1.547 · RULING 306's DEFECT, ONE CARD LOWER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2047,11 +2047,12 @@ section("§2 · the strip, the band, the roster and every failure");
         && u3.limits.length === (R.LIMIT_FIELDS as readonly string[]).length,
       j({ rows: u3.limits.length, want: (R.LIMIT_FIELDS as readonly string[]).length }));
     const pairLimitRows = u3.limits.filter((l: Any) => l.section === "Pairing");
-    ok("1.pair.limits · both pair budgets are optional Limits controls with neutral keys, useful help and no recommendation",
+    ok("1.pair.limits · both two-sided desk budgets are optional Limits controls with neutral keys, useful help and no recommendation",
       j(pairLimitRows.map((l: Any) => l.key).sort()) === j(["pair-rounds-per-day", "pair-tzs-per-day"].sort())
         && pairLimitRows.every((l: Any) => l.optional === true && l.recommended === ""
-          && typeof l.hint === "string" && l.hint.includes("Empty = no pairing.")),
-      j(pairLimitRows.map((l: Any) => [l.key, l.optional, l.recommended, l.hint])));
+          && typeof l.hint === "string" && l.hint.includes("Empty = no two-sided desk play.")
+          && l.hint.includes("Counter answers") && l.name.startsWith("Two-sided desk ")),
+      j(pairLimitRows.map((l: Any) => [l.key, l.name, l.optional, l.recommended, l.hint])));
     /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
      * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one
      * ruling 364 requires a USAGE ROW for — is the one 432(f) missed. */
@@ -6945,7 +6946,8 @@ try {
     const pairPct = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-round-share");
     const pairPerDay = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-rounds-account-per-day");
     ok("2h.pair.model · the switch and both account pairing numbers start off, have separate controls, and explain their effect",
-      pairFlag?.section === "Pairing" && pairFlag?.on === false && pairFlag?.help?.length >= 30
+      pairFlag?.section === "Pairing" && pairFlag?.on === false
+        && pairFlag?.help?.includes("Both desk Pairing limits must allow it.")
         && pairPct?.section === "Pairing" && pairPct?.value === "0" && pairPct?.help?.length >= 30
         && pairPerDay?.section === "Pairing" && pairPerDay?.value === "0" && pairPerDay?.help?.length >= 30,
       j({ flag: pairFlag, pct: pairPct, perDay: pairPerDay }));

@@ -1526,7 +1526,7 @@ export function unsetCaptionFor(field: string, on: boolean): string {
     return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;
   }
   if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";
-  if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no pair rounds can be placed.";
+  if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no second desk account can take the other side.";
   return "Not set — this account cannot place a bet.";
 }
 
@@ -2070,7 +2070,7 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer. Only polls created after the desk is switched on and after this account is started.",
   enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
   targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
-  otherSide: "Let this account take the unheld side opposite a player's stake when another desk account holds the player's side. An empty Up & Down pair also needs this on.",
+  otherSide: "Let this account take the unheld side opposite a player's stake when another desk account holds the player's side. Both desk Pairing limits must allow it. An empty Up & Down pair also needs this on.",
 };
 
 /**

@@ -3221,9 +3221,9 @@ import { formatEat } from "@/lib/utils";`,
   {
     name: "N6-pair-budget-caption · an empty desk pair budget falsely reads as an account-wide stop",
     file: GATE,
-    from: `if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no pair rounds can be placed.";`,
+    from: `if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no second desk account can take the other side.";`,
     to: `if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — this account cannot place a bet.";`,
-    expect: "1.364 · either empty pairing budget says pairing is off",
+    expect: "1.364 · either empty two-sided desk budget stops the second account",
     suite: "console-mem",
   },
   {

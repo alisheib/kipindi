@@ -901,13 +901,13 @@ const RAW_FIELDS = {
     recommended: 50,
     hint: "Enter now refuses when one player holds more than this share of the players' locked money it would add to. Not set = Enter now is off for every bot.",
   }),
-  gCapPairRoundsPerDay: num("limits", "Pairing", "Pair rounds per day", "count", 1, 28_800, {
+  gCapPairRoundsPerDay: num("limits", "Pairing", "Two-sided desk bets per day", "count", 1, 28_800, {
     nullable: true,
-    hint: "Empty = no pairing. Counts placed rounds in the EAT day.",
+    hint: "Empty = no two-sided desk play. Counts empty-round pairs and second-account Counter answers in the EAT day.",
   }),
-  gCapPairDailyTzs: num("limits", "Pairing", "Pair TZS per day", "TZS", 0, TZS_RAIL_MAX, {
+  gCapPairDailyTzs: num("limits", "Pairing", "Two-sided desk TZS per day", "TZS", 0, TZS_RAIL_MAX, {
     nullable: true,
-    hint: "Empty = no pairing. Counts placed stakes in the EAT day.",
+    hint: "Empty = no two-sided desk play. Counts the second account's stakes in empty-round pairs and Counter answers in the EAT day.",
   }),
 } satisfies Record<string, FieldSpec>;
 
