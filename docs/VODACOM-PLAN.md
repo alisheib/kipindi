@@ -16,16 +16,21 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-15):** (as of ~08:15 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
-`331048acb7d0c585601c399f68bcf771b0b82a10` is LIVE and read back (§0k's 2026-10-15 bullet): A21's root-`:has()` fix merged
-with main's house-bots N3. **A21 PASSES** at that exact commit on a quiet machine — `qa:bet-sheet-production` 78/0, the
-six 4×-CPU heading frames 91 / 112 / 110 ms on `/` and 102 / 81 / 92 ms on `/live` (limit 150) — and **exact-tip CI
-passes** (run 38697728924: every step, the browser gates and the three cross-instance PostgreSQL proofs). **S2 is ✅**
-(§0d's close record). S8 still owes its close record: [E3] (Ali signs in as a player — asked 2026-10-15), the classic
-parity compare at the release (66/67 — its one failure the demo seed's per-row clock, measured and explained in §0k; the
-fix queued) and the closing battery. In flight on this machine: S9's release candidate (`codex/s9-release`), the live fixes
-(`codex/live-fixes-1014`), the S10, S11, S12 and S13 builds, and visual-fix lane V1 (`codex/visual-v1`). The
-2026-10-15 visual audit (58 findings, each with its owner) is [`qa/visual-audit-20261015.md`](qa/visual-audit-20261015.md).
+**State (2026-10-15):** At 12:40 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
+`0229b2140c00208a1b873b112dc0c2713008d47b` fixes three player-facing defects: the question bet panel's guest sign-in
+doors preserve their return path, Up & Down's stake preflight counts cash plus bonus, and a locked round stays visible on
+the board. Its local source/PG battery passed 544/544, with typecheck, exact-tip build and fresh local `qa:live` 375/0;
+Railway deployed that exact SHA. All three hosts serve it with healthy, migrated DB and `STAFF_PREVIEW`; public chunk
+gates pass 6/6 on www and apex; signed-out production `qa:live` passes 352/0; 28 production visual route/width/language
+cells have no overflow or page error. Exact-tip CI run 38734948076 passed every step; see the §0k release record.
+**[E3] is measured:** Ali
+authorized one `mobile01` sign-in attempt; production QA on the preceding live `50b586d50` passed 385/0, including the
+signed-in seven-page read. The account will not be signed in again without a new authorization. S8 still owes V1's visual
+fix release, A21 re-measure at that release tip, classic parity v4, the closing battery and its close record. S2 is ✅
+(§0d). In flight on isolated Codex branches: V1/S8 release proof, S9 core (Card recovery held pending provider host
+verification), S10–S13 and visual follow-ups. These checkpoints are on GitHub. The 2026-10-15 visual audit (58 findings,
+each with its owner) is
+[`qa/visual-audit-20261015.md`](qa/visual-audit-20261015.md).
 The portable continuation and access guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
 **⭐ From 2026-10-15 a Codex session is the integrator and release owner (Ali's choice):** its takeover prompt is that
 guide's top block; the Claude session stops pushing `main`, and its helpers finish their lanes on their own branches.
@@ -37,10 +42,9 @@ like its body (all three languages); S9's bodies are approved; a deposit under r
 withdrawals get the deposits' key door; S16's "in bounds" = every measure at or above its 14-day baseline after 7 days
 and no harm marker above its own; and every recommended answer in S10-, S11-, S12- and S13-PLAN's "Points for Ali" is
 accepted.
-**⏳ STILL WAITING ON ALI:** (1) S8's signed-in check ([E3]) — Ali signs in himself, as a regular player, in the app's
-browser pane, and the coordinator reads the pages only (signing in with a password on production is not something the
-session may do; the record says why). Asked again 2026-10-15 once `331048acb` was live. (2) S14: a real TZS 1,000 journey on production with a staff account, and the
-agency's sign-off or Ali's override. (3) S15: the go for launch. (4) S16: at least seven real days after launch.
+**⏳ STILL WAITING ON ALI:** (1) S14: a real TZS 1,000 journey on production with a staff account, and the agency's
+written sign-off or Ali's override. (2) S15: the go for launch, after its concrete release candidate and gates are ready.
+(3) S16: at least seven real days after launch. [E3] was completed under Ali's one-attempt authorization above.
 
 S7 (home and cards, flagged)
 is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
@@ -393,16 +397,15 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S8 — the bet sheet and low balance — is in progress (§0k): the saved implementation checkpoint is live;
-finish the strict150ms tap failure, the six outstanding browser scenarios, current responsive/chunk diagnostics,
-then the final WP11/WP12 closure and relevant parity ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md),
-its Amendments A1–A24 overriding its body). (2) S7 is closed (§0j): WP0–WP12 live, the close at `a590790c` (2026-10-13
-01:39 EAT); the current temporary zero-wallet PLAYER proves E3 page isolation (§0k), while existing mobile01 remains
-unused and notification transport is not proved by its blocked requests. S7 is ✅
-only at S14. (3) The two classic gaps Ali ruled "fix now" are live, each its own release: L3 `c604343b` (§0h point 80)
-and L2 `9c167bef` (§0h point 81). OMEGA's own 2026-10-07/08 S7 WP1 is on origin for reference only as
-`vodacom-s7-wp1-omega`, never to be merged (§0h point 66). (4) When Ali says so, and not before (nothing turns on until
-the plan is done): an officer approves the S2 short titles, and Ali presses S1's preview switch.
+**Next:** (1) Finish the `0229b2140` production/CI read-back, then release V1's visual changes. (2) Close S8 (§0k): re-measure A21 at
+V1's exact release tip on a quiet machine, compare classic parity v4 cell by cell, run the closing battery with the
+database suites and record the result; [E3] was measured 385/0 under Ali's one-attempt authorization. (3) Complete
+S9's funding-key and provider-reference safety work, migration and backup-schema/PG proofs before its own release;
+hold Card checkout recovery until the actual Selcom redirect host is verified, as Ali directed.
+(4) Complete and release S10–S13 one lane at a time with each lane's browser, visual, mutation, money and production
+proof. (5) Prepare S14's preview, identity checklist and real TZS 1,000 staff journey for Ali and the agency; S15 needs
+Ali's later go after the actual gates, and S16 waits at least seven real days after launch. Keep `STAFF_PREVIEW` until
+that go and keep the 6/18 session count until a board row actually closes.
 
 Session law, the same for every session — ⭐ Ali, 2026-10-10: *"eliminate any checks that are never expected to be wrong,
 or that are very repetitive … maximum efficiency of our time through this plan"*:
@@ -1076,6 +1079,46 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   - *Owner rulings 2026-10-15:* "responsiveness and UI consistency is a rule" (sent to every lane); "parallelise as
     needed — this PC has good compute" (lanes are added as memory allows: the limit here is RAM, ~3.5 GB free with nine
     lanes running, not CPU).
+- **2026-10-15 Codex continuation — seed release, [E3], and hydration repair.** The seed clock fix `6b19de2ec` and
+  takeover guide `50b586d50` went live from the prior session. Ali then authorized one `mobile01` production sign-in;
+  `qa:live` on `50b586d50` passed **385/0**, including [E3]'s seven signed-in pages (`C:\50pick-ssd\logs\codex-e3-20261015.log`).
+  It was one attempt and ended any earlier `mobile01` session; no money moved. The production signed-out check's one
+  failure was React hydration #418 on `/`: `useReplayAnchor` read a module-wide map during render, so a cached home
+  could hydrate to a different first clock. The fix `3500e7707` + mounted prop reset `26c96d1c5` uses the server clock
+  for the first render and advances after hydration; `c8a982cd7` also repairs the demo-seed guard's comment scanner
+  population. The deterministic hydration guard and its planted early-shift failure, affected suites, typecheck, exact
+  production build and fresh in-memory local `qa:live` **376/0** passed. Railway deployment
+  `8e9c099d-9e40-4b55-8023-b7db5d3a6599` is SUCCESS on exact `c8a982cd755553bcc7ba52c018910dc5e85ee637`;
+  boot ran 102 migrations with none pending. At 11:02 UTC all three hosts returned that `dpl`, health 200/ok with a
+  reachable/migrated DB and `STAFF_PREVIEW`; both public `qa:chunks-prod` gates passed 6/6 (124 GETs each), production
+  signed-out `qa:live` **352/0**. The live `/sw.js` bytes match the exact Git blob (SHA-256
+  `323618599bdb3b3b3e19ad104fc330c58af30b2c2d687f7f6d51a3d2c7b870d1`), and all three root pages return
+  private/no-store. The 20-cell production visual sweep at 360/1280 returned HTTP 200, no overflow
+  or browser errors; `/` and `/live` en/sw screenshots were read at both widths
+  (`C:\50pick-ssd\logs\visual-c8-production`). Exact-tip CI run 38723925475 passed every step, including its browser
+  gates and PostgreSQL cross-instance proofs.
+  This is a repair release, **not S8 acceptance**: V1, A21 re-measure, parity v4 and the closing battery remain.
+- **2026-10-15 12:40 UTC — three live fixes, release `0229b2140c00208a1b873b112dc0c2713008d47b`.**
+  The question bet panel's guest sign-in doors preserve `next`, `ref` and invite context; Up & Down's stake preflight uses
+  cash plus bonus; a round in its lock window remains on the board. These fixes were independently reviewed before
+  integration. The source/PG `test:all` at `d87ed68f5` passed **544/544**; `0229b2140` adds only documentation on top of
+  that source. At the exact release tip: typecheck 0, production build 0, first-load 10/10, public bundle guard green,
+  fresh local `qa:live` **375/0**, responsive 7281/0 (320 soft warnings in the separate visual backlog), motion 43/0, admin section 21/0, needle rest 92/0 and revoked
+  dead-end 46/0. Railway deployment `fbfc300d-bb79-495a-bdb4-9993f9a65b30` succeeded; boot found 102 migrations
+  and none pending. All three hosts served that SHA; health showed reachable/migrated DB and `STAFF_PREVIEW`. The public
+  chunk gates passed 6/6 on www and apex (124 GETs each); signed-out production `qa:live` passed **352/0** ([E3] was
+  already measured once on the preceding release under Ali's one-attempt authorization). The en/sw production visual
+  sweep across seven changed/relevant routes at 360 and 1280 passed 28/28 cells: HTTP 200, no page error, 5xx or
+  horizontal overflow; 36 screenshots were retained and the 360px question and Up & Down frames read by eye. The Sw
+  question title and eyebrow have their full 16px left inset in the original PNG. Railway metrics at 12:42 UTC showed
+  0 application 5xx in 2,074 requests since the traffic switch; the runtime's only configuration warnings are the
+  deliberately disabled admin TOTP and deferred webhook secrets. Exact-tip CI run 38734948076 passed every step at
+  13:08 UTC, including browser, PostgreSQL migration, C4/C6 and cross-instance leader-election proofs. This release
+  fixes live defects, **not S8 acceptance**: V1, exact-tip A21, parity v4 and S8's own closing battery remain; its real
+  staff money proof transfers to S14.
+  A separate production read-only GET with a safe `side`, `ref` and `invite` query verified the header and bet-panel
+  doors carry all three. The comments section's guest sign-in link still carries only the market path; S10's visitor
+  door census must repair and prove that remaining link before its release.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
@@ -4013,8 +4056,8 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); owed: [E3] measured, from a machine that holds the QA player's password. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
-| S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0 live with its record. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); [E3] measured 385/0 on 2026-10-15 under Ali's one-attempt authorization. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0–WP11 implementation live behind the flag; V1, A21, parity v4 and the close battery remain. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
 | S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
