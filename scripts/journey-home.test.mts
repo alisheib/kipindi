@@ -1487,7 +1487,7 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // re-spaced from them: the arithmetic here, from the declared values and the kit's own glyph; `qa:howto` measures it drawn.
   const pxOf = (v: string | null) => (v !== null && /^[0-9.]+px$/.test(v) ? Number(v.slice(0, -2)) : NaN);
   const badgePx = pxOf(cv(".kp-howto", "--howto-badge")), badgeGap = pxOf(cv(".kp-howto", "--howto-badge-gap")), glyphPx = pxOf(cv(".kp-howto__ex", "--howto-ex-glyph"));
-  const kitGlyph = Number(/sm: [{] box: "gap-2[.]5 rounded-md px-3 py-2[.]5", icon: ([0-9]+),/.exec(hw.callout)?.[1] ?? NaN);
+  const kitGlyph = Number(/\bsm:\s*\{\s*box:\s*"[^"]+",\s*icon:\s*(\d+),/.exec(hw.callout)?.[1] ?? NaN);
   const kitBorder = hw.callout.includes(`"flex items-start border",`) && !hw.callout.includes(`"flex items-start border-2",`) ? 1 : NaN;
   const stepsRead = cv(".kp-howto__step", "gap") === "var(--howto-badge-gap)" && cv(".kp-howto__num", "width") === "var(--howto-badge)" && cv(".kp-howto__num", "height") === "var(--howto-badge)";
   const rowRead = cv(".kp-howto__ex", "padding-left") === "calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 - 1px)"

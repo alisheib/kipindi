@@ -182,6 +182,9 @@ function build(w: World): Built {
     "@/components/ui/modal": { Modal: ModalStub },
     "@/components/ui/button": { Button: ButtonStub },
     "@/components/ui/callout": { Callout: CalloutStub },
+    // S8 owns the shared scroll-edge hook and proves its edge behavior separately;
+    // this host exercises the How-to sheet's exits and invitation-slot claim.
+    "@/components/ui/scroll-edges": { useBlockScrollEdges: () => {} },
     "@/components/ui/keep-run": KeepRun,
     "@/components/ui/empty-state-text": EmptyStateText,
     "@/lib/i18n": { useT: () => ({ t: dict.sw, locale: "sw" }) },
