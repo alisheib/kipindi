@@ -1373,7 +1373,8 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const figuresSrc = count(sheet, "estimateFor({ ...HOW_TO_EXAMPLE, bettable: true })") === 1 && count(sheet, "loserSharePct(HOW_TO_EXAMPLE.rates)") === 1
     && sheet.includes("formatTzs(HOW_TO_EXAMPLE.stake)") && sheet.includes("formatTzs(EXAMPLE.payout)") && typed.length === 0
     // the multiple is handed only to a step whose body writes {mult} (step 2): steps 1 and 3 get no figure to look for
-    && sheet.includes(`const holdsMult = body.includes("{mult}");`) && sheetFlat.includes(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`);
+    && sheet.includes(`const holdsMult = body.includes("{mult}");`) && sheetFlat.includes(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`)
+    && sheetFlat.includes("{noticeBody(held(fill(body, { ...sides, mult }), figures), drawn(figures))}");
   const golden = T !== null && T.stake === "TZS 1,000" && T.mult === "2.7" && T.payout === "TZS 2,700" && T.pct === 13;
   const figuresDrawn = T !== null && sheets.every(([, html]) => count(html, `<span class="amount">${T.stake}</span>`) === 1
     && count(html, `<span class="amount">${T.payout}</span>`) === 1 && count(html, `<span class="kp-howto__mult">≈${T.mult}×</span>`) === 2
@@ -1458,7 +1459,8 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // ruling (3) of 2026-10-10 (`test:visual-pass-r8b` §1 holds every eyebrow to it), which the canvas's info-blue predates.
   const mfanoSrc = count(sheet, `<Callout tone="info" className="kp-howto__ex">`) === 1
     && sheet.includes(`<p className="kp-howto__ex-label eyebrow font-mono text-caption font-semibold uppercase text-text-subtle">{t.journey.howExampleLabel}</p>`)
-    && sheetFlat.includes('{sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}')
+    && sheetFlat.includes('const noteFigures: readonly Figure[] = PCT === null ? [] : [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }];')
+    && sheetFlat.includes("{noticeBody(held(fill(t.journey.estimateNote, { pct: PCT }), noteFigures), drawn(noteFigures))}")
     && sheet.includes("const PCT_UNIT = /[{]pct[}]%?/;");
   const mfanoDrawn = T !== null && sheets.every(([l, html]) => {
     const at = html.indexOf(`<div role="note"`), end = at < 0 ? -1 : htCloseOf(html, at);
@@ -1623,7 +1625,7 @@ function howToDefects(): HtPlant[] {
     { name: "MFANO a hand-rolled box instead of the kit Callout", expect: /^5[.]mfano /,
       plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Callout tone="info" className="kp-howto__ex">`, `<div className="kp-howto__ex">`), "</Callout>", "</div>") }) },
     { name: "the note's commission back in the body face (noticeBody, its 13% bare: the audit's F36)", expect: /^5[.]mfano /,
-      plant: htSheet('{sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}', "{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}") },
+      plant: htSheet("{noticeBody(held(fill(t.journey.estimateNote, { pct: PCT }), noteFigures), drawn(noteFigures))}", "{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}") },
     { name: "the Chinese note draws 13% bare", expect: /^5[.]figures /,
       plant: (w) => htDrawn(w, "sheetIn", "zh", (html) => htSwap(html, `<span class="amount">13%</span>`, "13%")) },
     { name: "MFANO's row left as the kit draws it (its words 9px left of the steps', its (i) 6px right: F36)", expect: /^5[.]align /,

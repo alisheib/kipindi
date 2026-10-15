@@ -59,8 +59,7 @@ import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
-import { keepRanges, keptRanges, mergeRanges } from "@/components/ui/keep-run";
-import { emptyStateRanges, noticeBody } from "@/components/ui/empty-state-text";
+import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 import { useT } from "@/lib/i18n";
 import { fill, formatTzs } from "@/lib/utils";
 import { sideWord } from "@/lib/side-label";
@@ -108,7 +107,7 @@ function pctUnit(template: string, pct: number): string {
   return fill(PCT_UNIT.exec(template)?.[0] ?? "{pct}", { pct });
 }
 
-/** A figure in a sentence and the class it is drawn in: a sum `.amount`, the multiple `.kp-howto__mult`. */
+/** A figure in a sentence and the class it is drawn in: a sum or the commission `.amount`, the multiple `.kp-howto__mult`. */
 type Figure = { text: string; className: string };
 
 /** A part of a sentence with its figures in their own spans (§M4), the words around them untouched. */
@@ -132,15 +131,14 @@ function dressed(part: string, figures: readonly Figure[]): ReactNode {
 }
 
 /**
- * A sentence held as a notice body is — `noticeBody`'s own ranges (empty-state-text.ts: each YES/NO pair, each possessive
- * phrase, each dash with its unit and the last two words kept) — with its figures kept whole too and drawn in their own
- * spans. `noticeBody` draws its parts as plain text, so a sentence that carries a figure is drawn here; one that carries
- * none comes out exactly as `noticeBody` draws it.
+ * A sentence with figures, held as a notice body is: `noticeBody` itself (empty-state-text.ts: each YES/NO pair, each
+ * possessive phrase, each dash with its unit, the last two words — and each figure, a run the caller names, whole), its
+ * parts drawn by `dressed` so each figure is its own span. `held` is the body, `drawn` the way its parts are drawn: the
+ * two halves of one `noticeBody` call, so every sentence of the sheet goes through the kit's one keep (S11; the audit's
+ * F36 — `test:visual-pass-r10` 9.3 reads a Callout's body for it). A sentence with no figure draws as `noticeBody` alone.
  */
-function sentence(text: string, figures: readonly Figure[]): ReactNode {
-  const runs = figures.map((f) => f.text);
-  return keepRanges(text, mergeRanges([...emptyStateRanges(text, runs), ...keptRanges(text, runs)]), (part) => dressed(part, figures));
-}
+const held = (text: string, figures: readonly Figure[]): KeptBody => ({ text, keep: figures.map((f) => f.text) });
+const drawn = (figures: readonly Figure[]) => ({ part: (part: string) => dressed(part, figures) });
 
 /**
  * The steps and MFANO: the one part of the sheet that scrolls, and only when the panel's cap bites. It says which of its
@@ -193,6 +191,13 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
   const titleId = useId();
   const sides = { yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET") };
   const mult = FIGURES?.mult ?? "";
+  // MFANO's two sentences' figures: the example's two sums and its multiple, and the note's commission.
+  const exampleFigures: readonly Figure[] = FIGURES === null ? [] : [
+    { text: FIGURES.stake, className: "amount" },
+    { text: multUnit(t.journey.howExampleBody, FIGURES.mult), className: "kp-howto__mult" },
+    { text: FIGURES.payout, className: "amount" },
+  ];
+  const noteFigures: readonly Figure[] = PCT === null ? [] : [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }];
   useInvitationSlot("howto", "bottom", HOWTO_SLOT_PRIORITY, open);
   // ⭐ THE ONE WAY OUT (S11 WP4): the seen key first, then the opener's own close. Every exit below calls this, never
   // `onClose` itself — so however the sheet was opened and however it is left, the browser remembers it was seen.
@@ -224,6 +229,7 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
               // no figure to look for — words that happened to spell the multiple there would not be dressed as one.
               const holdsMult = body.includes("{mult}");
               const priced = !holdsMult || FIGURES !== null;
+              const figures: readonly Figure[] = holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : [];
               return (
                 <li key={step.title} className="kp-howto__step">
                   <span aria-hidden className="kp-howto__num font-mono font-bold text-body-lg">{i + 1}</span>
@@ -231,7 +237,7 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
                     <p className="kp-howto__step-title font-display font-semibold text-body-lg">{noticeBody(fill(t.journey[step.title], sides))}</p>
                     {priced && (
                       <p className="kp-howto__step-body text-body">
-                        {sentence(fill(body, { ...sides, mult }), holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : [])}
+                        {noticeBody(held(fill(body, { ...sides, mult }), figures), drawn(figures))}
                       </p>
                     )}
                   </div>
@@ -243,18 +249,12 @@ export function HowToPlaySheet({ open, onClose, signedIn }: { open: boolean; onC
             <Callout tone="info" className="kp-howto__ex">
               <p className="kp-howto__ex-label eyebrow font-mono text-caption font-semibold uppercase text-text-subtle">{t.journey.howExampleLabel}</p>
               <p className="kp-howto__ex-body text-body">
-                {sentence(
-                  fill(t.journey.howExampleBody, { stake: FIGURES.stake, side: sideWord(t, HOW_TO_EXAMPLE.side, "MARKET"), mult: FIGURES.mult, payout: FIGURES.payout }),
-                  [
-                    { text: FIGURES.stake, className: "amount" },
-                    { text: multUnit(t.journey.howExampleBody, FIGURES.mult), className: "kp-howto__mult" },
-                    { text: FIGURES.payout, className: "amount" },
-                  ],
+                {noticeBody(
+                  held(fill(t.journey.howExampleBody, { stake: FIGURES.stake, side: sideWord(t, HOW_TO_EXAMPLE.side, "MARKET"), mult: FIGURES.mult, payout: FIGURES.payout }), exampleFigures),
+                  drawn(exampleFigures),
                 )}
               </p>
-              <p className="kp-howto__note text-body-sm">
-                {sentence(fill(t.journey.estimateNote, { pct: PCT }), [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }])}
-              </p>
+              <p className="kp-howto__note text-body-sm">{noticeBody(held(fill(t.journey.estimateNote, { pct: PCT }), noteFigures), drawn(noteFigures))}</p>
             </Callout>
           )}
         </StepsRegion>

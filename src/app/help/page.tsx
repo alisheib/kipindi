@@ -14,7 +14,7 @@ import { durationHours } from "@/lib/duration-phrase";
 import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
-import { keepFigures } from "@/components/ui/keep-words";
+import { fillNodes } from "@/lib/fill-nodes";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -46,7 +46,9 @@ const WHOLE_WORD_ANSWERS: ReadonlySet<string> = new Set(["faq5"]);
  * capsule's and Account's withdraw doors, Account → Set limits, the Sell look on a ticket — where the classic answers name
  * surfaces that reader no longer meets (the dial, the confirm popup, Wallet → Withdraw, Profile → Responsible gambling,
  * the Sell-now button). Read in the SAME slots as today's keys, whose expressions stay the else arms, so every other reader
- * is served today's page byte for byte. `{max}` is the per-withdrawal cap, formatted and held whole. `test:flip-copy` §5.
+ * is served today's page byte for byte. `{max}` is the per-withdrawal cap, formatted and drawn as money: its own
+ * `.amount` element (`fillNodes`; DESIGN_AUTHORITY §M4 — mono, tabular, untracked, whole), never the answer's body face and
+ * tracking (`test:type-scale` §1/§2 found the first build's nowrap span in both). `test:flip-copy` §5.
  */
 const JOURNEY_FAQ: Readonly<Partial<Record<(typeof FAQ_ITEMS)[number]["key"], { q?: "faq2q"; a: "faq2a" | "faq3a" | "faq5a" | "faq6a" }>>> = {
   faq2: { q: "faq2q", a: "faq2a" },
@@ -167,7 +169,7 @@ export default async function HelpPage() {
                 <p className={`mt-2 pb-3 pl-[25px] text-body-sm text-text-muted leading-relaxed${WHOLE_WORD_ANSWERS.has(key) ? " break-keep [overflow-wrap:anywhere]" : ""}`}>
                   {/* The fee FAQ (faq1) is model-specific: loser-share polls charge a
                       % of the losing side, not a capped commission on the pool. */}
-                  {own ? keepFigures(fill(t.journey[own.a], { max: formatTzs(WITHDRAW_MAX_TZS) })) : key === "faq1" && cfg.feeModel === "loser-share"
+                  {own ? fillNodes(t.journey[own.a], { max: <span className="amount">{formatTzs(WITHDRAW_MAX_TZS)}</span> }) : key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
                     : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: durationHours(locale, cfg.objectionWindowHours) })}
                   {/* ⭐ faq5 ("I think I have a problem with gambling") answers with the limits, the break and

@@ -9,7 +9,7 @@
  *   §5 /HELP FOR A JOURNEY READER (WP5): the FAQ's journey copies — faq2's question and answer, faq3, faq5 and faq6 — are
  *      read in the SAME slots as today's keys, for a reader the journey is shown to and for no other: the journey arm first,
  *      today's expression the else arm, word for word; the keys exist in three languages, name none of the surfaces a
- *      journey reader no longer meets, and type no figure (`{max}` is the cap, formatted and held whole).
+ *      journey reader no longer meets, and type no figure (`{max}` is the cap, formatted and drawn as money: one `.amount`).
  *   §6 THE CHAT (WP6), built from its text and run: the live action's two prompts — the journey's is today's with the named
  *      passages swapped, every money, responsible-gambling, identity and email line shared verbatim, and no dial in it; the
  *      offline helper — a classic reader's answers the branch base's word for word, a journey reader's naming no dial,
@@ -20,11 +20,12 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { transformSync } from "esbuild";
 import { join } from "node:path";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { REPO_ROOT } from "./lib/tracked-files.mts";
 import { decomment } from "./lib/decomment.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
-import { keepFigures } from "../src/components/ui/keep-words.tsx";
+import { fillNodes } from "../src/lib/fill-nodes.tsx";
 import { fill, formatTzs } from "../src/lib/utils.ts";
 import * as Utils from "../src/lib/utils.ts";
 import { WITHDRAW_MAX_TZS } from "../src/lib/server/validators.ts";
@@ -101,7 +102,7 @@ function s5(w: World, ok: Ok) {
     resolver: count(flat, "const { journey } = await resolveSimpleJourney();") === 1,
     own: count(flat, "const own = journey ? JOURNEY_FAQ[key] : undefined;") === 1,
     question: count(flat, `<span>{own?.q ? t.journey[own.q] : ${CLASSIC_Q}}</span>`) === 1,
-    answer: count(flat, `{own ? keepFigures(fill(t.journey[own.a], { max: formatTzs(WITHDRAW_MAX_TZS) })) : ${CLASSIC_A}`) === 1,
+    answer: count(flat, `{own ? fillNodes(t.journey[own.a], { max: <span className="amount">{formatTzs(WITHDRAW_MAX_TZS)}</span> }) : ${CLASSIC_A}`) === 1,
     noOtherJourneyRead: count(flat, "t.journey[") === 2,
   };
   ok("5.slot", "each copy is read in today's slot, for a journey reader alone (the shell's own resolver), the journey arm first and today's expression the else arm, word for word",
@@ -123,10 +124,10 @@ function s5(w: World, ok: Ok) {
     keyDefects.length === 0, keyDefects.join("; "));
   const max = formatTzs(WITHDRAW_MAX_TZS);
   const held = LOCS.filter((l) => {
-    const html = renderToStaticMarkup(keepFigures(fill(w.journey[l].faq3a ?? "", { max })) as never);
-    return html.includes(`<span class="whitespace-nowrap">${max}</span>`);
+    const html = renderToStaticMarkup(createElement("p", null, ...fillNodes(w.journey[l].faq3a ?? "", { max: createElement("span", { className: "amount" }, max) })));
+    return count(html, `<span class="amount">${max}</span>`) === 1 && !html.includes("{max}");
   });
-  ok("5.max", `{max} is the per-withdrawal cap (${max}), formatted, and held whole in each language`,
+  ok("5.max", `{max} is the per-withdrawal cap (${max}), formatted, and drawn as money in each language: one .amount figure (mono, tabular, untracked, whole — §M4; test:type-scale §1/§2), never the answer's body face`,
     j(held) === j([...LOCS]) && slot.answer, j(held));
 }
 
@@ -168,7 +169,8 @@ function promptsOf(src: string): { today: string; journey: string } {
     "@/lib/server/rate-limit": { rateCheckAsync: async () => ({ allowed: true }) },
     "@/lib/server/config-store": { loadConfig: async () => null, saveConfig: async () => undefined },
     "@/lib/server/market-config": { getGlobalConfig: async () => ({ objectionWindowHours: 24 }) },
-    "@/lib/server/support-config": { SUPPORT_EMAIL: () => "support@50pick.tz", SUPPORT_PHONE: () => "+255 700 000 000" },
+    // Stand-ins, never the real contact (test:support-contact §8: a contact is written once, in support-config.ts).
+    "@/lib/server/support-config": { SUPPORT_EMAIL: () => "SUPPORT_EMAIL()", SUPPORT_PHONE: () => "SUPPORT_PHONE()" },
     "@/lib/server/validators": Validators, "@/lib/payout": Payout, "@/lib/utils": Utils,
     "@/lib/server/simple-journey-switch": { simpleJourneyStateNow: async () => "STAFF_PREVIEW" },
   });
@@ -318,8 +320,8 @@ const PLANTS: Plant[] = [
     plant: edit(EMPTY, "journeyOn ? t.journey.chatStarterHowTo : t.chat.starterDial,", "t.journey.chatStarterHowTo,") },
   { name: "ChatRoot no longer hands the helper the reader's answer", expect: /^6[.](panel|stub) /,
     plant: edit(CHAT_ROOT, "await sendMessage([...messages, user], text, { journey: journeyOn });", "await sendMessage([...messages, user], text);") },
-  { name: "the cap printed bare (no keep)", expect: /^5[.](max|slot) /,
-    plant: edit(HELP, "{own ? keepFigures(fill(t.journey[own.a], { max: formatTzs(WITHDRAW_MAX_TZS) })) :", "{own ? fill(t.journey[own.a], { max: formatTzs(WITHDRAW_MAX_TZS) }) :") },
+  { name: "the cap printed in the answer's body face (no .amount: what test:type-scale found)", expect: /^5[.](max|slot) /,
+    plant: edit(HELP, '{ max: <span className="amount">{formatTzs(WITHDRAW_MAX_TZS)}</span> }', "{ max: formatTzs(WITHDRAW_MAX_TZS) }") },
 ];
 
 const REAL = load();

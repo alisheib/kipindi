@@ -86,9 +86,17 @@ export function emptyStateBody(body: EmptyStateBody): ReactNode {
  * empty state does. ⛔ Data — an officer's note, an operator's announcement, a server's message — is drawn as given, as a
  * market title is (`phrases: false`, keep-run.tsx).
  * `test:visual-pass-r10` §9 lays out every routed body at every measure from 150 to 1000px in each language.
+ * ⭐ `part` (the Vodacom plan S11; the audit's F36, 2026-10-14) · how each part of a LEFT-SET body is drawn, between and
+ * inside its held runs — the How-to sheet's sentences draw their figures in their own mono spans (`.amount`), so they
+ * route through this one keep instead of a copy of it. Without it a part is its plain text, as before; a centred body
+ * hangs its Chinese marks and takes no `part`.
  */
-export function noticeBody(body: EmptyStateBody, opts: { centred?: boolean } = {}): ReactNode {
+export function noticeBody(
+  body: EmptyStateBody,
+  opts: { centred?: false; part?: (part: string) => ReactNode } | { centred: true; part?: never } = {},
+): ReactNode {
   const { text, keep } = typeof body === "string" ? { text: body, keep: [] as readonly string[] } : body;
   const ranges = mergeRanges([...emptyStateRanges(text, keep), ...keptRanges(text, keep)]);
-  return opts.centred ? keepRanges(text, ranges, hangCjkMarks) : keepRanges(text, ranges);
+  if (opts.centred) return keepRanges(text, ranges, hangCjkMarks);
+  return opts.part ? keepRanges(text, ranges, opts.part) : keepRanges(text, ranges);
 }

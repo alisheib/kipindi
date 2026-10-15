@@ -1118,7 +1118,9 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | `65ad04b0c` |
 | WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | `b144a6a93` (+ `3b063f8bb`: the records rule, the version) |
 | WP5 · the FAQ | Done (below) | `8ba6a0c50` |
-| WP6 · the chat | Done (below) | this commit |
+| WP6 · the chat | Done (below) | `a97374dfa` |
+| F36 · the How-to sheet's two columns, its 13% | Done (below: the coordinator's audit item of 2026-10-15) | `978acf225` |
+| Resumption fixes · /help's cap as money, the chat stub's contact, the sheet through the kit's keep | Done (below) | this commit |
 | WP7 · the tagline and `test:flip-copy` | — | — |
 | WP8 · the share-picture generator | — | — |
 | WP9 · the parked S15 commit | — | — |
@@ -1272,3 +1274,32 @@ is built as decided, not pending:
   `test:red-anchors`, `test:labels`, `test:support-contact` 79/0, typecheck 0. Red by construction until on main:
   `test:house-bot-disclosure` 6.6 (chat.ts vs origin/main) beside 5.1/5.1.c3; `test:privacy-notice` §1a (the entry);
   `test:visual-pass-r8d` 8.5 reads chat.ts against HEAD, so it is green once committed.
+### Resumption (2026-10-15) — WP6's reds, the audit's F36, and three defects the wider suites found
+
+- **WP6's red twins, one at a time, tree clean after each:** `test:visual-pass-r8d` 76/0; `red:chat-safety` 9/9;
+  `red:rate-copy` 12/12; `red:kyc-copy-truth` 10/10; `red:withdraw-email-gate` 11/11; `red:chat-availability` 3/3.
+  `red:house-bot-chatbot`: its shadow tree green (§1.1-1.2, 35 §6 assertions on the unmutated shadow), then it stops at
+  §1.3, which runs the LIVE `test:house-bot-disclosure` and throws on its exit 1 — red on this branch by construction
+  (5.1, 5.1.c3 and 6.6 compare against `origin/main`). **NOT MEASURED past §1.3 on the branch**; measured at the proof
+  stage in a scratch clone whose `origin/main` is this branch (WP11's record).
+- **F36 (the coordinator's audit item: `C:/50pick-ssd/visual-audit/logs/findings.jsonl`).** The How-to sheet's MFANO box
+  drew its (i) 6px right of the step badges' centre line and its words 9px left of the steps' words (the kit Callout's row:
+  1px border, 16px padding, a 14px glyph, a 10px gap), and the note's 13% in the body face beside mono TZS figures.
+  `978acf225`: the badge's two numbers named once (`--howto-badge` 36px, `--howto-badge-gap` 14px), the steps read them,
+  and `.kp-howto__ex` re-spaces the box's row from them — the (i) at 18, the words at 50, as the badges' and the steps' —
+  and the 13% one `.amount` unit with its sign (§T5). `test:journey-home` 5.align holds the arithmetic (6 plants);
+  `qa:howto` measures it drawn (WP10).
+- **/help's cap was drawn in the answer's body face** (WP5): `keepFigures` held it whole but left it Inter and tracked by
+  `text-body-sm` — `test:type-scale` §1/§2 "tracked-money 0 → 1" (it was not in WP5's gate list; it is now). Fixed:
+  `fillNodes` with `<span className="amount">` (§M4), the scanner's own remedy; `test:flip-copy` 5.max/5.slot re-pinned.
+- **`test:flip-copy`'s chat stub carried the real support email** (WP6): `test:support-contact` §8 (78/1). Stand-ins now.
+- **The sheet's sentences now go through the kit's one keep.** F36's note left the MFANO Callout with no `noticeBody(`
+  call, and `test:visual-pass-r10` 9.3 (every Callout body routed through the keep) went red: the sheet had its own copy
+  of `noticeBody`'s ranges (`sentence`). `noticeBody` gains an optional `part` renderer (empty-state-text.ts; every
+  existing call draws as before) and the sheet calls it with its figures (`held` + `drawn`), its copy deleted.
+  r10 81/0, r9b 51/0, r7a 43/0, r4i 129/0, r3c 70/0, r4d 64/0, r4k 77/0, r8d 76/0, `test:journey-home` + red 253/253.
+- **Timing, not a defect:** `test:visual-pass-r5e` 5.5 (linear keep helpers) read 183 ms inside a batch; 20 ms and 116 ms
+  alone — it reads no function this branch changed. Recorded, not waived.
+- **Found for the next commit:** `scripts/lib/s8-published-words.mts` pins S8's privacy version (2026-10-14) in its
+  `accepted` test, and `test:sheet-owner-recovery` plants the phrase "Version 2026-10-14": WP4's v2026-10-15 would leave
+  `test:house-bot-disclosure` 5.1, `test:visual-pass-r5g` 4.14′ and `test:sheet-owner-recovery` red AFTER landing too.
