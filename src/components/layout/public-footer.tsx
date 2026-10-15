@@ -417,7 +417,7 @@ function FooterLink({ href, children, balance = false, keep = false }: { href: s
            the painted box — nothing extended any of them. The list rows were 19–19.5px. ⭐ The discriminator
            that says oversight rather than choice: the SAME footer’s Instagram and WhatsApp links measured
            exactly 44, because `SocialLink` was given the rung and this component was not. */
-        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 min-h-[44px] group"
+        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 min-h-[44px] min-w-[44px] group"
       >
         <span className={`border-b border-transparent group-hover:border-text-subtle transition-colors${balance ? " text-balance" : ""}`}>{keep ? keptLabel(children) : children}</span>
       </Link>

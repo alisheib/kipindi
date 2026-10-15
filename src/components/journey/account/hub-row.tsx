@@ -58,7 +58,7 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
   const status = statusTemplate && statusDate ? keepText(fill(statusTemplate, { date: statusDate }), [statusDate]) : null;
   return (
     <li>
-      <Link href={row.href as never} className="kp-hub__row">
+      <Link href={row.href as never} className={row.extra === "proposals" && viewer.signedIn ? "kp-hub__row kp-hub__row--proposals" : "kp-hub__row"}>
         <span className="kp-hub__glyph" aria-hidden><Glyph s={20} /></span>
         <span className="kp-hub__text">
           {/* The programme's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08): beside it where both fit,

@@ -390,16 +390,42 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
 {
   const SWAPS: Record<string, RegExp[]> = {
     [BOARD]: [/^\s+walletBalance=\{walletBalance\}$/],
-    [ROUND]: [/^\s+searchParams: Promise<\{ side\?: string; from\?: string \}>;$/, /^\s+lockedSide,$/, /^\s+walletBalance: detail\.walletBalance,$/, /^\s+\{t\.market\.udPositionsOnRound\} · \{formatNumber\(myPosition\.items\.length\)\}$/],
+    [ROUND]: [
+      /^\s+searchParams: Promise<\{ side\?: string; from\?: string \}>;$/, /^\s+lockedSide,$/,
+      /^\s+walletBalance: detail\.walletBalance,$/, /^\s+\{t\.market\.udPositionsOnRound\} · \{formatNumber\(myPosition\.items\.length\)\}$/,
+      // F34: the page keeps prose in the body face and isolates the amount, instant and proof figures in mono.
+      /^import \{ fill, formatNumber, formatTzs \} from "@\/lib\/utils";$/,
+      /^\s+const stamp = quotedAt \? <span className="whitespace-nowrap">\{t\.market\.udQuoted\} \{quotedAt\}/,
+      /^\s+: !decided && tone === "level" \? fill\(t\.market\.udLevelBy/,
+      /^\s+: `\$\{move > 0 \? t\.market\.udAboveOpenBy/,
+      /^\s+<dl className="mt-\[11px\] grid grid-cols-\[auto_1fr\].*font-mono text-\[10\.5px\]/,
+      /^\s+<dd className="m-0 tabular-nums text-text-muted">\{fmtEAT\((quotedAt|observedAt)\)/,
+      /^\s+<dd className="m-0 tabular-nums text-text-muted">\{pMove(Pct)?/,
+      /^\s+<dd className="m-0 tabular-nums" style=\{\{ color: "var\(--(yes|no)-300\)"/,
+    ],
     [CARD]: [
       /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,
       /^\s+price, and never leaving the dot stranded at a line's end \(the stamp carries it onto its own line\)\. The$/,
       /^\s+seconds stay \(E-47b\)\. \*\/\}$/,
       /^\s+\{t\.market\[SOURCE_CLASS_KEY\[sourceClass\]\]\}$/,
       /^\s+\{quoted && <>\{" "\}<span className="whitespace-nowrap">\{"· "\}/,
+      // F32/F55: baseline alignment and the named EAT lock instant.
+      /^\s+\* The wall-clock time the lock happened, in the player's own locale/,
+      /^\s+CLOCK_FORMAT = new Intl.DateTimeFormat\(undefined/,
+      /^\s+return CLOCK_FORMAT.format\(new Date\(ms\)\);$/,
+      /^\s+\/\/ The exact time the lock happened \(or will\), for the reason line\. Local-time formatting is$/,
+      /^\s+\/\/ deliberate — the player's own clock is what they will compare it against\.$/,
+      /^\s+\/\/ ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`/,
+      /^\s+\/\/ render, and this card used to render every second\.$/,
+      /^\s+<span className="inline-flex items-center gap-1 self-center font-mono text-\[15\.5px\]/,
     ],
     [PANEL]: [],
-    [ACTION]: [],
+    [ACTION]: [
+      // F55: the locked round panel names the same EAT clock as its board card.
+      /^\s+const lockClock = selectionClosesAtMs != null$/,
+      /^\s+\? new Date\(selectionClosesAtMs\)\.toLocaleTimeString\(undefined/,
+      /^\s+: null;$/,
+    ],
   };
   const results = Object.entries(SWAPS).map(([file, swaps]) => {
     let base = "";

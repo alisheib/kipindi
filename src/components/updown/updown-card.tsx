@@ -229,7 +229,7 @@ export type UpDownCardProps = {
  */
 
 /**
- * The wall-clock time the lock happened, in the player's own locale, from one formatter.
+ * The wall-clock time the lock happened, in the platform's named EAT zone, from one formatter.
  * ⚠️ Lazy for the same reason: most cards never render the locked branch.
  *
  * 🔴 IT RETURNS `null` FOR A TIME THAT IS NOT A TIME, AND THAT IS THE WHOLE POINT (2026-09-18).
@@ -254,9 +254,9 @@ let CLOCK_FORMAT: Intl.DateTimeFormat | null = null;
 function formatClock(ms: number): string | null {
   if (!Number.isFinite(ms)) return null;
   if (CLOCK_FORMAT === null) {
-    CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    CLOCK_FORMAT = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Nairobi", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
   }
-  return CLOCK_FORMAT.format(new Date(ms));
+  return `${CLOCK_FORMAT.format(new Date(ms))} EAT`;
 }
 
 /**
@@ -568,10 +568,9 @@ export function UpDownCard(props: UpDownCardProps) {
   // ⚠️ `null` NOW MEANS "COUNT IT" — the leaf owns the ticking number, and a string here is a
   // fixed readout it shows verbatim. The four branches are the same four they always were.
   const handoverDigits = handover.counting ? null : "—:—";
-  // The exact time the lock happened (or will), for the reason line. Local-time formatting is
-  // deliberate — the player's own clock is what they will compare it against.
-  // ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`; this used to build a fresh one on every
-  // render, and this card used to render every second.
+  // The lock and the source quote on this card use one named EAT clock. A device-local 12-hour
+  // time beside a 24-hour EAT quote made one round appear to have two different clocks.
+  // `formatClock` retains its finite guard and its one cached formatter.
   const lockClock = useMemo(
     () => (selectionClosesAtMs != null ? formatClock(selectionClosesAtMs) : null),
     [selectionClosesAtMs],
@@ -812,7 +811,7 @@ export function UpDownCard(props: UpDownCardProps) {
             </span>
           ) : (
             <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
-              <span className="inline-flex items-center gap-1 self-center font-mono text-[15.5px] font-bold tabular-nums">
+              <span className="inline-flex items-center gap-1 font-mono text-[15.5px] font-bold tabular-nums">
                 {tone === "up" && <I.trendingUp s={11} />}
                 {tone === "down" && <I.trendingDown s={11} />}
                 {priceText.live}

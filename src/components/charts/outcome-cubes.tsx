@@ -55,7 +55,7 @@ export function OutcomeCubes({
           </span>
         ))}
       </span>
-      <span className="whitespace-nowrap font-mono text-[9px] text-text-faint">{labels.oldestNewest}</span>
+      <span className="text-body-sm text-text-muted">{labels.oldestNewest}</span>
     </div>
   );
 }

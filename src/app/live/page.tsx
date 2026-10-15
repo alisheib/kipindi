@@ -208,7 +208,7 @@ export default async function LivePage({
               header) and features the genuinely MOST-CONTESTED market (closest to
               50/50) — not the soonest-closing one the old label implied. */}
           <PageHero glow="aqua" watermark={200}>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <PulseRing size={18} color="var(--aqua-400)">
                   <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
@@ -226,9 +226,9 @@ export default async function LivePage({
               <p
                 aria-live="polite"
                 data-result-count={markets.length}
-                className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap"
+                className="text-body-sm text-text-subtle"
               >
-                {formatNumber(markets.length)} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${formatNumber(tippingMarkets)} ${t.market.tipping}` : ""}
+                <span className="font-mono tabular-nums">{formatNumber(markets.length)}</span> {t.market.liveCount}{tippingMarkets > 0 ? <> · <span className="font-mono tabular-nums">{formatNumber(tippingMarkets)}</span> {t.market.tipping}</> : null}
               </p>
             </div>
             <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />

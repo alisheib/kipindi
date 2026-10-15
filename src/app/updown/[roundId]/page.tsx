@@ -35,7 +35,8 @@ import { pickLocalized } from "@/lib/localized";
 import { roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
-import { fill, formatNumber, formatTzs } from "@/lib/utils";
+import { formatNumber, formatTzs } from "@/lib/utils";
+import { fillNodes } from "@/lib/fill-nodes";
 // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
 import { decideOutcomeByTargets } from "@/lib/server/updown-service";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9) — PV-06.
@@ -216,10 +217,11 @@ export default async function UpDownRoundPage({
   // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
   // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
   const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
-  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;
+  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;
+  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">${Math.abs(move).toFixed(dec)}</span>;
   const moveText = move == null || move === 0 ? null
-    : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
-      : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
+    : !decided && tone === "level" ? fillNodes(t.market.udLevelBy, { amount: deltaFigure })
+      : <>{move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy}{" "}{deltaFigure}</>;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
   const source = decided
@@ -845,15 +847,15 @@ export default async function UpDownRoundPage({
                 <div key={label} style={{ ...inset, padding: "12px 14px 13px" }}>
                   <p className={eyebrow}>{label}</p>
                   <p className="mt-[7px] m-0 font-mono text-[19px] font-bold leading-none tabular-nums text-text">{usd(price, dec)}</p>
-                  <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                  <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                     <dt className="text-text-faint">{t.market.udSource}</dt>
                     <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
                     {/* The stamp's mid-sentence word used as a label opens on a capital, like "Chanzo" and "Ilionekana"
                         around it — the hero's rule (`.ud-cap-first`, round 4); the word itself is unchanged. */}
                     <dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>
-                    <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
+                    <dd className="m-0 font-mono tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
                     <dt className="text-text-faint">{t.market.udObserved}</dt>
-                    <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
+                    <dd className="m-0 font-mono tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
                   </dl>
                 </div>
               ))}
@@ -864,17 +866,17 @@ export default async function UpDownRoundPage({
                   {outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>}
                   {outcomeLabel}
                 </p>
-                <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                   <dt className="text-text-faint">{t.market.udMove}</dt>
-                  <dd className="m-0 tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
                   <dt className="text-text-faint">{t.market.udPercent}</dt>
-                  <dd className="m-0 tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
                   {round.upTarget != null && round.downTarget != null && (
                     <>
                       <dt className="text-text-faint">{t.market.udUp}</dt>
-                      <dd className="m-0 tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
+                      <dd className="m-0 font-mono tabular-nums" style={{ color: "var(--yes-300)" }}>≥ {usd(round.upTarget, dec)}</dd>
                       <dt className="text-text-faint">{t.market.udDown}</dt>
-                      <dd className="m-0 tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
+                      <dd className="m-0 font-mono tabular-nums" style={{ color: "var(--no-300)" }}>≤ {usd(round.downTarget, dec)}</dd>
                     </>
                   )}
                   <dt className="text-text-faint">{t.market.udRule}</dt>
