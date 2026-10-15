@@ -283,6 +283,15 @@ the duplicate from `house-bot-migrations.test.mts` ~721. Field hint: "Empty = no
   memory ~3012, SQL ~4380) — a new `pairPlacedToday({ houseBotId: string|null, dayKey })` in both twins.
 - New CapCodes/EngineCodes need: `constants.ts` lists, `ENGINE_CODE_SENTENCE` (feed-copy.ts ~14, `satisfies`),
   `OUTCOME_TABLE` (outcome-map.ts ~49, `satisfies`), engine test 9.1 (every code has a sentence), the console copy.
+- ⛔ **Three traps from the seam survey** (`C:\50pick-ssd\handoff-n5n6\code-map-seam-fire-caps.md`):
+  (1) seam test 5.5 fails if `houseH3` contains `listForMarket(`, `.stake` or `reduce(` — the other account's stake
+  and side must come from a DAL AGGREGATE (extend `marketUsage` in both twins), never from summing positions in the seam;
+  (2) a new cap code that is not in `H4_CAP_CODES` maps to UNMAPPED, which writes FAILED and **auto-pauses the account**
+  — register them, keep them out of `DEFERRABLE_CAP_CODES`/`HANDOFF_CODES`; (3) `CONSOLE_SKIP_SENTENCE` (console
+  ~3789) is the table the console actually shows — a new code needs a row there AND in `ENGINE_CODE_SENTENCE`.
+- `house:control` is one global lock held to commit, so H4's count read + this bet's `markPlaced` cannot race; the pair
+  count query (`kind='PAIR' AND status='PLACED'` by `finishedAt`) can ride the partial `hbi_pair_anchor_uq` — check
+  `EXPLAIN` on a scratch DB.
 
 **Fire** (`fire.ts`): ~85 `coversAtFire` maps PAIR to "opener" — give it a "pair" mode (rules still cover it); ~222–227
 the locked-money cut must SKIP PAIR (it would cut to ≤ 0 and end every PAIR CONDITION_GONE); closeness ~189–194 applies.
