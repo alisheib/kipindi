@@ -511,7 +511,7 @@ log("\n── 10 · /results' notable result (C1)");
     isNotableResult({ status: "RESOLVED", resolvedOutcome: "NO", yesPool: 25_000, noPool: 100 }));
   check("10.11 the page picks its notables through that rule", /paged\.filter\(isNotableResult\)/.test(res));
   check("10.12 the spotlight's topic chip is translated, never the stored enum",
-    /<Chip variant="cat" size="sm">\{marketCategoryLabel\(t, m\.category\)\}<\/Chip>/.test(featured));
+    /<Chip variant="cat" size="sm" metrics="status">\{marketCategoryLabel\(t, m\.category\)\}<\/Chip>/.test(featured));
   // ⭐ CONTROLS — the pre-C1 spellings ARE detected.
   check("10-control the pre-C1 price line and rail label ARE detected",
     /pricedYesPct/.test("const yesPct = pricedYesPct(m.yesPool, m.noPool);")

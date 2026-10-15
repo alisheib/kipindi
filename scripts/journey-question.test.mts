@@ -76,7 +76,7 @@ function checks(w: World): string[] {
     && !w.parentLoading.includes('"use client"') && !w.detailLoading.includes('"use client"'));
   ok("board-ghost", oldBoardGhost.includes("export default function MarketsLoading()") && w.boardGhost === canonicalBoardGhost);
   ok("ghost-marker", (w.questionGhost.match(/data-testid="journey-question-ghost"/g) ?? []).length === 1
-    && /<header data-testid="journey-question-ghost" className="mt-3" aria-hidden>/.test(w.questionGhost));
+    && /<header data-testid="journey-question-ghost" className="mt-3 mb-5" aria-hidden>/.test(w.questionGhost));
   return failed;
 }
 const failures = checks(real);

@@ -388,8 +388,10 @@ section("9 · F14 a count line under a bar has 12px of air on both sides (tile 1
     /className="shrink-0 font-mono text-\[11\.5px\] tabular-nums text-text-subtle"/.test(qb) && Math.abs(capAir(gapY) - 12) < 0.5 && Math.abs(baseAir(reach) - 12) < 0.5,
     `${capAir(gapY).toFixed(2)} | ${baseAir(reach).toFixed(2)}`);
   ok("9.1′ CONTROL · the old `gap-y-1` put the capitals 8.37 under the pills — tile 171's measured 8 (y697 → y706)", Math.abs(capAir(4) - 8.37) < 0.01);
-  const mk = mediaBlock(CSS, "max-width: 639.98px", "grid-template-columns: minmax(160px, 1fr) auto auto");
-  ok("9.2 · the /markets phone bar's count line takes the same 8px each way (R4-D)", /row-gap:\s*var\(--sp-2\);/.test(mk) && px("--sp-2") === 8);
+  const mk = mediaBlock(CSS, "max-width: 639.98px", "grid-template-columns: minmax(0, 1fr) max-content auto");
+  ok("9.2 · the /markets phone bar's count line takes the same 8px each way (R4-D)",
+    /grid-template-columns:\s*minmax\(0,\s*1fr\) max-content auto;/.test(mk)
+    && /row-gap:\s*var\(--sp-2\);/.test(mk) && px("--sp-2") === 8);
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2b): the receipts ghost's bar is the money books' one bar ghost now — /wallet's
   // too (its ghost had none) — with every pill as wide as the page's in every language (`test:visual-pass-r5h` §4).
   const users = ["src/app/wallet/wallet-bar.tsx", "src/app/wallet/receipts/receipts-bar.tsx", "src/app/wallet/money-bar-ghost.tsx"].map((f) => [f, read(f)] as const);

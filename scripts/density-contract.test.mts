@@ -64,11 +64,12 @@ function mediaChain(r: Rule): string[] {
   return out;
 }
 const phoneOnly = (chain: string[]) => chain.some((m) => { const w = m.match(/max-width:(\d+(?:\.\d+)?)px/); return !!w && Number(w[1]) < 640; });
-/** The fence is the phone query EXACTLY, or an AND of it with more conditions — never an OR list or a `not` query,
- *  either of which matches wider screens too — and no enclosing ≥ 640 query. */
+/** A Compact fence must cap the width below 640px. Narrower safety fences are valid; OR lists, negation,
+ *  and an enclosing desktop-only query are not. */
 const fencedByPhone = (chain: string[]) =>
-  chain.some((m) => m.includes(PHONE) && !m.includes(",") && !/(^|\))not\b|^onlynot|^not/.test(m)) &&
-  !chain.some((m) => /min-width:(\d+)/.test(m) && Number(m.match(/min-width:(\d+)/)![1]) >= 640);
+  chain.some((m) => !m.includes(",") && !m.includes("not")
+    && [...m.matchAll(/max-width:(\d+(?:\.\d+)?)px/g)].some((width) => Number(width[1]) < 640)) &&
+  !chain.some((m) => [...m.matchAll(/min-width:(\d+(?:\.\d+)?)px/g)].some((width) => Number(width[1]) >= 640));
 const gated = (sel: string) => sel.split(",").every((part) => part.trim().startsWith(GATE));
 /** "density: general — <why>" as a comment inside the rule, or as the FIRST node of its enclosing @media block. */
 function exempt(r: Rule): boolean {
@@ -97,7 +98,7 @@ function cssDefects(css: string, file: string): { defects: string[]; density: nu
     if (/data-density/.test(r.selector)) {
       density++;
       if (!gated(r.selector)) defects.push(`${at} every selector part must start ${GATE}: "${r.selector.replace(/\s+/g, " ").slice(0, 90)}"`);
-      if (!fencedByPhone(chain)) defects.push(`${at} a Compact rule outside a plain @media ${PHONE}: "${r.selector.replace(/\s+/g, " ").slice(0, 60)}"`);
+      if (!fencedByPhone(chain)) defects.push(`${at} a Compact rule outside an AND-only phone @media: "${r.selector.replace(/\s+/g, " ").slice(0, 60)}"`);
       return;
     }
     if (phoneOnly(chain)) {
@@ -219,6 +220,7 @@ console.log("\n§5 · planted fixtures — each must be reported");
 const P = "@media (max-width: 639.98px)";
 const FIX: Array<[string, string, boolean]> = [
   ["a fenced Compact rule", `${P} { ${GATE} .mcardp { padding-top: 10px; } }`, false],
+  ["a narrower Compact safety fence", `@media (max-width: 259.98px) { ${GATE} .mcardp { padding-top: 10px; } }`, false],
   ["a fenced comma list", `${P} { ${GATE} .mcardp, ${GATE} .market-grid { gap: 10px; } }`, false],
   ["an exempt general phone rule", `${P} { .mcardp-share::after { /* density: general — D28 reach, both settings */ top: -14px; } }`, false],
   ["a phone block that declares itself general once, first", `@media (max-width: 560.98px) { /* density: general — home hero */ .kp-hero__cta { width: 100%; } .kp-proof { gap: 8px; } }`, false],
@@ -228,6 +230,7 @@ const FIX: Array<[string, string, boolean]> = [
   ["an ungated phone token on :root", `${P} { :root { --rh-section: 32px; } }`, true],
   ["a general comment that is NOT first in its block", `${P} { .kp-auth-cta { padding: 0; } /* density: general — too late */ .mcardp { gap: 6px; } }`, true],
   ["a gate with no phone query", `${GATE} .mcardp { padding-top: 10px; }`, true],
+  ["a too-wide Compact fence", `@media (max-width: 700px) { ${GATE} .mcardp { gap: 6px; } }`, true],
   ["a phone query under a ≥ 640 query", `@media (min-width: 768px) { ${P} { ${GATE} .mcardp { gap: 6px; } } }`, true],
   ["a comma list with one ungated part", `${P} { ${GATE} .mcardp, .market-grid { gap: 10px; } }`, true],
   ["the wrong polarity ([data-density=compact])", `${P} { html[data-density="compact"] .mcardp { gap: 6px; } }`, true],

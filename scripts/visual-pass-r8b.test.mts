@@ -164,6 +164,9 @@ function wordsShown(el: El): boolean {
     if (ts.isJsxSelfClosingElement(n)) return true;
     if (ts.isJsxElement(n)) {
       if (n.openingElement.tagName.getText() === "GhostText") return true;
+      const cls = n.openingElement.attributes.properties.find((a) => ts.isJsxAttribute(a) && a.name.getText() === "className");
+      if (cls && ts.isJsxAttribute(cls) && cls.initializer && ts.isStringLiteral(cls.initializer)
+        && cls.initializer.text.split(/\s+/).includes("invisible")) return true;
       return n.children.every(hiddenNode);
     }
     if (ts.isJsxExpression(n)) return !n.expression;
@@ -306,6 +309,7 @@ ok("1.4 · the data labels the round moved are in it, in the one ink: Up & Down'
     ["a new eyebrow with no ink of its own (it would wear its caller's)", "src/components/agent/commission-waterfall.tsx", "uppercase eyebrow text-text-subtle kp-track-end\">{t.agent.wfEyebrow}", "uppercase eyebrow kp-track-end\">{t.agent.wfEyebrow}"],
     ["a ghost row that would show its words (an ink on the hidden label)", "src/components/ui/query-bar-ghost.tsx", "shrink-0 font-mono text-micro font-bold uppercase eyebrow\">{label}", "shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-muted\">{label}"],
     ["a ghost row that would show its words even in the one ink", "src/components/ui/query-bar-ghost.tsx", "shrink-0 font-mono text-micro font-bold uppercase eyebrow\">{label}", "shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-subtle\">{label}"],
+    ["a question ghost whose hidden words become visible", "src/components/journey/question/question-ghost.tsx", '<span className="invisible">{t.market.signInToPredict}</span>', '<span>{t.market.signInToPredict}</span>'],
     ["a section head at one width only (`sm:text-text-faint`)", "src/app/updown/history/page.tsx", "uppercase eyebrow text-text-subtle\">{t.market.udRoundsPlayed}", "uppercase eyebrow text-text-subtle sm:text-text-faint\">{t.market.udRoundsPlayed}"],
   ];
   const missed = P.filter(([, f, a, b]) => plant(f, a, b) === "").map(([n]) => n);

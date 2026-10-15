@@ -848,6 +848,7 @@
     "red:unwrappable-id": "node scripts/red-e100.cjs",
     "qa:updown-guide-shots": "node scripts/capture-guide-shots.mjs",
     "test:orphans": "node scripts/orphan-scripts.mjs",
+    "test:profile-touch": "node scripts/profile-touch.test.mjs",
     "qa:contrast-rendered": "node scripts/contrast-rendered.mjs",
     "test:cert-c1": "tsx scripts/comms-email-truth.test.mts",
     "test:cert-c3": "tsx scripts/comms-notification-truth.test.mts",
