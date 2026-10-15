@@ -151,22 +151,23 @@ const sizeStyles: Record<Size, {
   tracking: string;
 }> = {
   /* ⭐ `xs` IS the market card's treatment, promoted from `.mcardp .chip` — the
-   * per-surface override the consolidation exists to delete. Ported exactly:
-   * 9px type, 0 6px inline padding, 3px gap, 0.02em tracking, 5px live-dot.
+   * per-surface override the consolidation exists to delete. Its original
+   * metrics were 9px type, 0 6px inline padding, 3px gap, 0.02em tracking,
+   * and a 5px live-dot. F38 lifts the off-ladder type to the 9.5px label rung.
    *
    * ⚠️ Its HEIGHTS are md's on purpose and that is not an oversight. The CSS
    * override set font-size/padding/gap/tracking and NOT height, so a card chip
-   * has always drawn in a 21px (23px status) box with 9px type inside it. `xs`
-   * therefore shrinks the TYPE, not the pill. Changing that here would repaint
-   * every board, which is a redesign, not a consolidation.
+   * has always drawn in a 21px (23px status) box. `xs` therefore changes the
+   * TYPE, not the pill. F38's 0.5px type lift is a visible kit change and needs
+   * the board's multilingual width check before release.
    *
    * ⛔ What `xs` deliberately does NOT port is `white-space: nowrap`. That one
    * property is the live G-7 defect: it is what makes a Swahili card label draw
    * outside its column instead of wrapping. `flexShrink: 0` IS ported (below) so
    * the card's `.mcardp-top` row keeps its geometry. */
   xs: {
-    base:   { height: 21, padding: "0 6px", fontSize: 9 },
-    status: { height: 23, padding: "0 6px", fontSize: 9 },
+    base:   { height: 21, padding: "0 6px", fontSize: 9.5 },
+    status: { height: 23, padding: "0 6px", fontSize: 9.5 },
     gap: 3, dot: 5, tracking: "0.02em",
   },
   sm: {
@@ -175,13 +176,13 @@ const sizeStyles: Record<Size, {
     gap: 4, dot: 6, tracking: "0.06em",
   },
   md: {
-    base:   { height: 21, padding: "0 8px", fontSize: 10.5 },
+    base:   { height: 21, padding: "0 8px", fontSize: 11 },
     status: { height: 23, padding: "0 9px", fontSize: 11 },
     gap: 4, dot: 6, tracking: "0.06em",
   },
   lg: {
     base:   { height: 25, padding: "0 10px", fontSize: 12 },
-    status: { height: 27, padding: "0 11px", fontSize: 12.5 },
+    status: { height: 27, padding: "0 11px", fontSize: 13 },
     gap: 4, dot: 6, tracking: "0.06em",
   },
 };
