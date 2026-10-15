@@ -6,11 +6,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { railOf, selcomVerifyPayout } from "../src/lib/server/selcom.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8").replaceAll("\r\n", "\n");
 const actions = read("../src/app/admin/payments/payment-actions.ts");
 const wallet = read("../src/lib/server/wallet-service.ts");
 const controls = read("../src/app/admin/payments/stuck-payout-controls.tsx");
+const callbackRoute = read("../src/app/api/webhooks/payments/route.ts");
 
 function body(source: string, begin: string, end: string): string {
   const a = source.indexOf(begin);
@@ -26,6 +28,8 @@ function compile<T>(source: string, name: string, bindings: Record<string, unkno
 
 const reverseBody = body(actions, "export async function reverseStuckPayoutAction", "\n/** PSP reconciliation");
 const sweepBody = body(wallet, "export async function reconcileStalePayments", "\n/**\n * Email players");
+const callbackBody = callbackRoute.slice(callbackRoute.indexOf("async function handleSelcomCallback"));
+assert(callbackBody.startsWith("async function handleSelcomCallback"));
 
 type Verdict = "PENDING" | "UNSUPPORTED" | "FAILED" | "CONFIRMED";
 type Result = { ok: boolean; error?: string };
@@ -89,6 +93,44 @@ async function runSweep(verdict: Verdict, providerRef: string | null, failStatus
   return { result, row, hold, balance, refunds, settlements, reviews };
 }
 
+async function runSignedCallback(envelope: Record<string, unknown>, signatureValid = true) {
+  const providerRef = "wdr_callback_1";
+  const env = { baseUrl: "https://selcom.example.test/v1", apiKey: "test", apiSecret: "test", vendor: "test", timeoutMs: 5_000 };
+  let settleCalls = 0;
+  let settledStatus: string | null = null;
+  let queriedRef = "";
+  const callback = compile<(req: Request, body: string) => Promise<{ body: Record<string, unknown> }>>(
+    callbackBody, "handleSelcomCallback", {
+      NextResponse: { json: (body: Record<string, unknown>) => ({ body }) },
+      selcomEnv: () => env,
+      verifySelcomCallback: () => signatureValid,
+      audit: () => {},
+      db: { txn: { findByProviderRef: async (ref: string) => ref === providerRef
+        ? { id: "txn_callback_1", userId: "player_1", type: "WITHDRAWAL", providerRef, payoutRail: "WALLET_CASHIN" }
+        : null } },
+      selcomVerifyPayout,
+      railOf,
+      settlePaymentWebhook: async ({ status }: { status: string }) => {
+        settleCalls++;
+        settledStatus = status;
+        return { handled: true, reason: "test" };
+      },
+    },
+  );
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: unknown) => {
+    queriedRef = new URL(String(url)).searchParams.get("transid") ?? "";
+    return new Response(JSON.stringify(envelope), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const req = new Request("https://example.test/api/webhooks/payments", { headers: { "signed-fields": "transid", timestamp: "test", digest: "test" } });
+    const result = await callback(req, JSON.stringify({ order_id: providerRef, transid: providerRef, payment_status: "FAILED" }));
+    return { result, settleCalls, settledStatus, queriedRef };
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
 for (const verdict of ["PENDING", "UNSUPPORTED", "FAILED", "CONFIRMED"] as const) {
   const x = await runReverse(verdict, "selcom_ref_1");
   assert.equal(x.refunds, 0, `staff reversal refunded an in-flight payout after ${verdict}`);
@@ -109,8 +151,8 @@ for (const verdict of ["FAILED", "PENDING", "UNSUPPORTED"] as const) {
   assert.equal(x.balance, 0);
   assert.equal(x.row.status, "PROCESSING");
   assert.equal(x.result.leftPending, 1);
-  if (verdict === "FAILED") {
-    assert.equal(x.reviews, 1, "ambiguous FAILED verdict needs operator review");
+  if (verdict === "FAILED" || verdict === "PENDING") {
+    assert.equal(x.reviews, 1, `${verdict} stale payout needs operator review`);
     assert.match(x.row.providerStatus ?? "", /REVIEW REQUIRED/i, "operator review must survive a restart on the transaction row");
   }
 }
@@ -124,7 +166,24 @@ assert.equal(writeFailure.refunds, 0, "a failed status-trail write must never re
 assert.equal(writeFailure.result.leftPending, 1, "a failed status-trail write must not abort the sweep");
 assert.equal(writeFailure.reviews, 1, "a failed status-trail write must still alert operators");
 
+for (const envelope of [
+  { resultcode: "038", result: "FAIL", transid: "wdr_callback_1" },
+  { resultcode: "010", result: "FAIL", reference: "gateway_receipt_1" },
+  { resultcode: "000", result: "FAIL", transid: "wdr_callback_1" },
+  { resultcode: "111", result: "SUCCESS", transid: "wdr_callback_1" },
+  { resultcode: "000", result: "SUCCESS", transid: "different_payout" },
+]) {
+  const x = await runSignedCallback(envelope);
+  assert.equal(x.queriedRef, "wdr_callback_1", "signed callback must query its own stored payout ref");
+  assert.equal(x.settleCalls, 0, `callback settled ambiguous payout: ${JSON.stringify(envelope)}`);
+}
+const signedSuccess = await runSignedCallback({ resultcode: "000", result: "SUCCESS", reference: "gateway_receipt_1" });
+assert.equal(signedSuccess.settleCalls, 1, "documented coherent success must still settle");
+assert.equal(signedSuccess.settledStatus, "CONFIRMED");
+const unsignedSuccess = await runSignedCallback({ resultcode: "000", result: "SUCCESS", reference: "gateway_receipt_1" }, false);
+assert.equal(unsignedSuccess.settleCalls, 0, "unsigned callback must never settle");
+
 assert.match(controls, /provider.*review|review.*provider/is, "admin panel must explain provider review");
 assert.doesNotMatch(controls, /Return to player|Return the money|provider is asked one more time/i,
   "admin panel must not offer or promise an unsafe return");
-console.log("payout uncertain fail-close: all action, sweep, and UI cases passed");
+console.log("payout uncertain fail-close: all action, sweep, callback, and UI cases passed");

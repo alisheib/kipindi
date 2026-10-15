@@ -191,10 +191,9 @@ export async function POST(req: Request) {
  * credit a wallet, and a genuine one is confirmed against Selcom's own record. The
  * re-queried amount also flows into settlePaymentWebhook's M4 tamper check.
  *
- * WITHDRAWALS (wallet-cashin) have no confirmed status endpoint, so we settle them
- * only on a signature-verified callback; an unverified one is ignored and the hold
- * stays until the reconcile sweep or a manual /admin/payments action resolves it —
- * the wallet is already debited-and-held, so nothing is lost or double-paid.
+ * WITHDRAWALS require a verified callback and a query of the stored payout rail
+ * and reference. Only coherent provider success settles; unverified callbacks and
+ * ambiguous query replies leave the held funds pending provider review.
  *
  * Always returns HTTP 200 on a parseable callback so Selcom stops retrying; the
  * verdict is in the audit log.
@@ -267,10 +266,10 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
     // caller's body, while the transaction being settled was found by `ref`. So a
     // caller could name a real payout in `order_id` and ANY other id in `transid`: we
     // looked up the victim's row, asked Selcom about the attacker's id, and settled the
-    // victim's row with the answer. `envelopeSettlementVerdict` defaults to **FAILED**
-    // for every code that is not 000/111/927/999 — an id Selcom does not recognise is
-    // therefore a FAILED verdict — so the reply refunds a payout that is still in
-    // flight, and the money leaves twice.
+    // victim's row with the answer. Historically an unrecognised query envelope
+    // defaulted to FAILED and refunded a payout still in flight. The payout query
+    // now leaves ambiguous replies pending, but the same-transaction identity here
+    // is still required for trustworthy confirmations.
     //
     // ⛔ Routing here needs no secret: `Authorization: SELCOM <anything>` reaches this
     // handler, and `sigOk` was computed and never read.
