@@ -55,6 +55,7 @@ import { Cash } from "@/components/ui/cash";
 import { keepIdRuns } from "@/components/ui/keep-words";
 import { PageContainer } from "@/components/layout/page-container";
 import { Callout } from "@/components/ui/callout";
+import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
@@ -83,6 +84,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const typeWord = receiptTypeWord(t, txn.type);
   const method = methodLabel(t, txn.provider);
   const settled = status === "CONFIRMED";
+  const savedReturn = txn.type === "DEPOSIT" && !!parseSavedDepositBet(txn.pendingBet);
   // A pending receipt must not read as a completed one: the note shows while the money is still moving or in review.
   const moving = STATE_STATUSES.flight.includes(status);
   // B-19 — a receipt opened while the money is still in flight watches for the terminal state (the server's fast poll
@@ -158,6 +160,10 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       {/* Each door's glyph puts its ink on the door's start padding (round 10, R10-A6: a centred control frames its ink). */}
       <div className="flex flex-col sm:flex-row gap-2">
+        {savedReturn && (settled || moving) && <a href={`/wallet/deposit/wait/${encodeURIComponent(txn.id)}`}
+          className="btn btn-primary btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5">
+          <I.arrowRight s={14} edge="start" />{settled ? t.journey.depositReturnToChoice : t.journey.depositCheckPayment}
+        </a>}
         <Link href="/wallet/receipts" className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5">
           <I.receipt s={14} edge="start" />
           {t.receipts.allReceipts}

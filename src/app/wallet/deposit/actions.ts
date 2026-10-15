@@ -15,6 +15,9 @@ import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
 import { formatBreakEnd } from "@/lib/break-end";
 import { formatNumber } from "@/lib/utils";
+import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { isMobileMoneyMethodId } from "@/lib/payment-providers";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -27,6 +30,15 @@ export async function depositAction(formData: FormData) {
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
   const { t, locale } = await getServerT();
+  const requestedFlow = String(formData.get("flow") ?? "");
+  const { journey } = await resolveSimpleJourney();
+  const journeyFlow = requestedFlow === "journey" && journey;
+  const cardFlow = requestedFlow === "card";
+  const formPath = cardFlow ? "/wallet/deposit/card" : "/wallet/deposit";
+  // A cached payment form from account A cannot dispatch under account B after a session switch.
+  if ((requestedFlow === "journey" || cardFlow) && formData.get("expectedOwner") !== session.userId) {
+    redirect(`/wallet/deposit?error=${encodeURIComponent(signFlash("deposit-error", t.error.somethingDidntWork))}` as never);
+  }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
@@ -52,6 +64,15 @@ export async function depositAction(formData: FormData) {
   carry.set("provider", provider);
   carry.set("amount", String(amount));
   if (msisdn) carry.set("msisdn", msisdn);
+  const rawPendingBet = formData.get("pendingBet");
+  let pendingBet = null;
+  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && rawPendingBet.length <= 512) {
+    try { pendingBet = parseSavedDepositBet(JSON.parse(rawPendingBet)); } catch { /* rejected below */ }
+  }
+  if (pendingBet) {
+    carry.set("bet", pendingBet.bet);
+    carry.set("returnPath", pendingBet.returnPath);
+  }
   if (isCard) {
     if (billing.firstName) carry.set("bFirst", billing.firstName);
     if (billing.lastName) carry.set("bLast", billing.lastName);
@@ -60,9 +81,17 @@ export async function depositAction(formData: FormData) {
     if (billing.region) carry.set("bRegion", billing.region);
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
+  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  const preflightKey = journey && idempotencyKey && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)
+    ? signFlash("deposit-preflight-key", idempotencyKey) : null;
   const fail = (message: string): never =>
     // ⛔ SIGNED (2026-10-06): the page prints only a sentence this server wrote (`flash-message.ts`).
-    redirect((`/wallet/deposit?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
+    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}${preflightKey ? `&preflight=${encodeURIComponent(preflightKey)}` : ""}&${carry.toString()}`) as never);
+
+  if (requestedFlow === "journey" && !journey) fail(t.error.somethingDidntWork);
+  if (journeyFlow && !isMobileMoneyMethodId(provider)) fail(t.error.somethingDidntWork);
+  if (cardFlow && provider !== "CARD") fail(t.error.somethingDidntWork);
+  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) fail(t.error.somethingDidntWork);
 
   // B-23 — the bounds are IMPORTED from validators.ts (the schema's own
   // constants), not restated. The old literals here were a second definition
@@ -134,11 +163,15 @@ export async function depositAction(formData: FormData) {
     fail(t.wallet.msisdnRequired);
   }
 
-  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
-  const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card);
+  const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card, pendingBet);
   revalidatePath("/wallet");
 
   if (!result.ok) {
+    if (journey && (journeyFlow || cardFlow) && idempotencyKey) {
+      // The action alone cannot prove that an earlier same-key request did not reserve or dispatch.
+      // Keep the original funding identity locked even if a fresh lookup momentarily finds no row.
+      redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+    }
     // ⛔ NO EMAIL HOP HERE ANY MORE (2026-10-07): `deposit()` asks no email question, so it can no longer return
     // `EMAIL_UNVERIFIED`. The hop that kept the player's choices on the way to the email door moved to the WITHDRAW
     // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).
@@ -154,6 +187,8 @@ export async function depositAction(formData: FormData) {
   // providerRef stored, so whatever happens next (they pay, cancel, or close the
   // tab) the return leg and the reconcile sweep can both resolve it.
   if (data.redirectUrl) redirect(data.redirectUrl as never);
+
+  if (journeyFlow) redirect(`/wallet/deposit/wait/${data.txnId}` as never);
 
   // status is CONFIRMED for synchronous providers, PROCESSING when the provider
   // collects asynchronously (we credit on the webhook). The modal reflects both.

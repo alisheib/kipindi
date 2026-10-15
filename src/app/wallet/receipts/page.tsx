@@ -184,9 +184,9 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
           action={
             cause === "no-rows" ? (
               depositOpen ? (
-                <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+                <a href="/wallet/deposit" className="btn btn-primary btn-md">
                   {journey ? t.journey.depositAction : t.common.depositCta}
-                </Link>
+                </a>
               ) : undefined
             ) : exits.length > 0 ? (
               <div className="flex flex-wrap items-center justify-center gap-2">

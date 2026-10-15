@@ -19,7 +19,7 @@ import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
 import { DepositAmount } from "./deposit-amount";
 import { DepositConfirm } from "./deposit-confirm";
 import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
-import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
+import { ProviderRadioGrid, type ProviderOption } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { Callout } from "@/components/ui/callout";
 import { noticeBody } from "@/components/ui/empty-state-text";
@@ -35,6 +35,10 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { depositNames } from "@/lib/journey/money-names";
 import { readFlash } from "@/lib/server/flash-message";
 import { pathWithQuery } from "@/lib/safe-next";
+import { JourneyDepositForm } from "./journey-deposit-form";
+import { getKillSwitches } from "@/lib/server/payment-ops";
+import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
+import { CardIntentBridge } from "./card-intent-bridge";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -59,13 +63,22 @@ const PROVIDERS = [
 // ONE ladder: the bet sheet's low-balance chips read the same amounts (Vodacom plan S3, `lib/journey/shortfall.ts`).
 const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
 
-export default async function DepositPage({ searchParams }: { searchParams: Promise<{
+export type DepositSearch = {
   error?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
+  bet?: string; returnPath?: string;
+  preflight?: string;
   bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
-}> }) {
+};
+
+export default async function DepositPage({ searchParams }: { searchParams: Promise<DepositSearch> }) {
+  return renderDepositPage(searchParams);
+}
+
+/** The Card route calls the same page body and gates, with only the classic Card form selected. */
+export async function renderDepositPage(searchParams: Promise<DepositSearch>, cardOnly = false) {
   const session = await currentSession();
   // The whole address survives the sign-in — `?from=low-balance` (the funnel's source tag) and anything carried.
-  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit", await searchParams))}`);
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery(cardOnly ? "/wallet/deposit/card" : "/wallet/deposit", await searchParams))}`);
   const { t, locale } = await getServerT();
 
   // A player about to put money IN has the most right to know we cannot get it out.
@@ -75,6 +88,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // ⛔ Only a sentence the deposit action signed (`flash-message.ts`) — a hand-made `?error=` used to print
   // whatever it said under "Deposit failed", on a money page, on the real domain (2026-10-06).
   const errorMsg = readFlash("deposit-error", sp.error);
+  const preflightKey = readFlash("deposit-preflight-key", sp.preflight);
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
@@ -108,9 +122,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // money control, not an identity status: the notice names the freeze and the way to support, and nothing else.
   // ⚠️ A failed read keeps today's form — the server still refuses a held wallet on submit.
   let walletHeld = false;
+  let spendable: number | null = null;
   try {
     const w = await db.wallet.findByUserId(session.userId);
     walletHeld = !!w && w.status !== "ACTIVE";
+    spendable = w && Number.isFinite(w.balance) && Number.isFinite(w.bonusBalance ?? 0)
+      ? w.balance + (w.bonusBalance ?? 0) : null;
   } catch { /* graceful — the server is the enforcement */ }
   // ⭐ THE BREAK IS DRAWN BEFORE EVERY OTHER DOOR (2026-10-06). The SERVER's order is a held wallet first, then the
   // break, then the caps (`wallet-service.deposit()`). This page draws the break first because it is the player's own
@@ -133,6 +150,20 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // R4-I · the break's end, said once by the one formatter; and which shell's words the notice's Withdraw door wears.
   const breakEndText = breakUntil ? formatBreakEnd(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) : null;
   const { journey } = await resolveSimpleJourney();
+  // The separate Card door belongs to the focused journey. A direct classic request keeps the
+  // complete established chooser and billing path, including its normal key and error behavior.
+  if (cardOnly && !journey) redirect(`/wallet/deposit${sp.from === "low-balance" ? "?from=low-balance" : ""}` as never);
+  let journeyHistory: Awaited<ReturnType<typeof db.txn.latestConfirmedMobileDeposit>> = null;
+  let journeyProviders: ProviderOption[] = [];
+  if (journey && !cardOnly) {
+    try { journeyHistory = await db.txn.latestConfirmedMobileDeposit(session.userId); } catch { /* no guessed last rail */ }
+    try {
+      const kills = await getKillSwitches();
+      journeyProviders = MOBILE_MONEY_METHODS.map((p) => ({ id: p.id, name: p.name, hue: p.hue ?? 0, unavailable: !!kills[p.id]?.deposits }));
+    } catch {
+      journeyProviders = MOBILE_MONEY_METHODS.map((p) => ({ id: p.id, name: p.name, hue: p.hue ?? 0, unavailable: true }));
+    }
+  }
   // ⭐ ONE PAGE, ONE NAME (R5-G, G-1): the journey's doors say "Weka pesa", so its screen does — h1, tab and commit — under
   // the Wallet's eyebrow; a classic reader's keeps "Amana" under "WEKA PESA" (`money-names.ts`).
   const names = depositNames(t, journey);
@@ -151,7 +182,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
   return (
     <PageContainer tier="form" className="space-y-5">
-      <BackLink fallbackHref="/wallet" label={t.wallet.title} />
+      {journey ? <a href="/wallet" className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"><I.chevronLeft s={11} edge="start" text="mono-400" />{t.wallet.title}</a>
+        : <BackLink fallbackHref="/wallet" label={t.wallet.title} />}
 
       {/* ⛔ NO GOLD ON THE DEPOSIT SCREEN (§M3a D1, 2026-10-07): moving your own money into your own wallet earns nothing,
           and the receipt and the card-return page of this same deposit are plain — the flow no longer goes gold, then plain. */}
@@ -262,6 +294,23 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           </Callout>
         </div>
       ) : (
+      journey && !cardOnly ? (
+        <JourneyDepositForm
+          ownerId={session.userId}
+          rawBet={sp.bet ?? null}
+          returnPath={sp.returnPath ?? null}
+          initialAmount={prevAmount}
+          initialPhone={moneyFormMsisdn(session.phoneE164, errorMsg ? sp.msisdn : journeyHistory?.msisdn ?? undefined, errorMsg != null)}
+          registeredPhone={normalizeTzLocalDigits(session.phoneE164)}
+          initialProvider={errorMsg ? prevProvider : journeyHistory?.provider ?? ""}
+          providers={journeyProviders}
+          maxAmount={maxAmount}
+          quickAmounts={quickAmounts}
+          spendable={spendable}
+          fromLowBalance={sp.from === "low-balance"}
+          preflightKey={preflightKey}
+        />
+      ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">
         {/* ⭐ THE FORM'S RHYTHM LIVES ON THIS WRAPPER, NOT ON THE <form> (2026-10-08, the visual pass's round 3, tiles
             067–069 / 173–174). React's server renderer writes `<input type="hidden" name="$ACTION_ID_…">` straight after
@@ -269,13 +318,16 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "CHAGUA NJIA YA KULIPA": 51px
             from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
             no sibling before it whatever React adds to the form. */}
-        <div className="space-y-5">
+        {cardOnly && <CardIntentBridge ownerId={session.userId} rawBet={sp.bet ?? null} returnPath={sp.returnPath ?? null} preflightKey={preflightKey} />}
+        <div data-card-intent-gate={cardOnly ? "" : undefined} inert={cardOnly} className="space-y-5">
           {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
               intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
               router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
               synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
               a new key; a double tap or a lost response on the SAME screen still dedupes. */}
-          <IdempotencyKeyField key={sp.error ?? ""} />
+          {cardOnly ? <input type="hidden" hidden name="idempotencyKey" defaultValue="" /> : <IdempotencyKeyField key={sp.error ?? ""} />}
+          {cardOnly && <input type="hidden" hidden name="flow" value="card" />}
+          {cardOnly && <input type="hidden" hidden name="expectedOwner" value={session.userId} />}
           {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
               `hidden` keeps it out of the wrapper's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
               without it a low-balance deposit put the 24px gap back above the method chooser. */}
@@ -286,8 +338,8 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             </FieldLegend>
             {/* Brand names stay literal; "Card" is a word, so it comes from the dictionary (id unchanged). */}
             <ProviderRadioGrid
-              providers={PROVIDERS.map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
-              defaultProvider={prevProvider}
+              providers={(cardOnly ? PROVIDERS.filter((p) => p.id === "CARD") : PROVIDERS).map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
+              defaultProvider={cardOnly ? "CARD" : prevProvider}
               unavailableLabel={t.common.temporarilyUnavailable}
             />
           </fieldset>
@@ -340,6 +392,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <DepositConfirm journey={journey} />
         </div>
       </form>
+      )
       )}
 
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);

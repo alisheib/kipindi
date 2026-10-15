@@ -17,6 +17,8 @@ import { funnelRows } from "./journey-funnel";
 import { siteVisitsReport } from "./site-visits";
 import { simpleJourneyStateNow } from "./simple-journey-switch";
 import { funnelMeasures, median, totalsFor, type Measure } from "../journey/funnel-measures";
+import { depositReturnMeasure, type DepositReturnMeasure } from "../journey/deposit-return-measure";
+import { positionStore } from "./market-dal";
 
 export const JOURNEY_REPORT_WINDOWS = [7, 14, 28] as const;
 export type JourneyReportWindow = (typeof JOURNEY_REPORT_WINDOWS)[number];
@@ -33,6 +35,7 @@ export type JourneyFunnelReport = {
   measures: Record<"old" | "new", Measure[]>;
   homeViews: number;
   deposits: { confirmed: number; betWithin30: number };
+  depositReturns: DepositReturnMeasure;
   timeToFirstBet: { players: number; medianMinutes: number | null };
   /** The campaigns seen in the window, for the filter. */
   campaigns: string[];
@@ -86,13 +89,21 @@ export async function journeyFunnelReport(opts: { days?: number; campaign?: stri
     firstBetMinutes.push(Math.max(0, Math.round((Math.min(...bets) - joined) / 60_000)));
   }
   const deposits = { confirmed, betWithin30 };
+  const reportDeposits = txns.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED" && !t.houseBotId
+    && players.has(t.userId) && Date.parse(t.completedAt ?? t.createdAt) >= fromMs
+    && Date.parse(t.completedAt ?? t.createdAt) <= now);
+  const betIds = txns.filter((t) => t.type === "BET_PLACED" && !t.houseBotId && players.has(t.userId)
+    && t.positionId && Date.parse(t.createdAt) >= fromMs && Date.parse(t.createdAt) <= now)
+    .map((t) => t.positionId!);
+  const positions = await positionStore.getMany(betIds);
+  const depositReturns = depositReturnMeasure(reportDeposits, positions);
   const measures = {
     old: funnelMeasures(totalsFor(rows, "old", campaign), liveVariant === "old" ? homeViews : 0, deposits),
     new: funnelMeasures(totalsFor(rows, "new", campaign), liveVariant === "new" ? homeViews : 0, deposits),
   };
   const campaigns = [...new Set(rows.map((r) => r.utmCampaign).filter(Boolean))].sort();
   return {
-    fromDay, toDay, days, campaign, liveVariant, measures, homeViews, deposits,
+    fromDay, toDay, days, campaign, liveVariant, measures, homeViews, deposits, depositReturns,
     timeToFirstBet: { players: firstBetMinutes.length, medianMinutes: median(firstBetMinutes) },
     campaigns,
   };

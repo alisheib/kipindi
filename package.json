@@ -683,6 +683,8 @@
     "red:auth-carry": "tsx scripts/auth-carry.test.mts --prove-red",
     "red:pending-bet": "tsx scripts/pending-bet.test.mts --prove-red",
     "test:deposit-state": "tsx scripts/deposit-state.test.mts",
+    "test:deposit-return": "tsx scripts/deposit-return.test.mts",
+    "red:deposit-return": "tsx scripts/deposit-return.test.mts --prove-red",
     "red:deposit-state": "tsx scripts/deposit-state.test.mts --prove-red",
     "test:deposit-replay": "tsx scripts/deposit-replay.test.mts",
     "red:deposit-replay": "tsx scripts/deposit-replay.test.mts --prove-red",

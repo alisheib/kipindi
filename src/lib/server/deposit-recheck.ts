@@ -70,7 +70,9 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
       // A provider contradiction may be recorded only for a valid current wallet. Read before that mutation;
       // the marker-only claim below changes no balance and reenters this same wallet lock.
       const wallet = await db.wallet.findByUserId(userId, tx);
-      if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();
+      const bonus = wallet?.bonusBalance ?? 0;
+      if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0
+        || !Number.isFinite(bonus) || bonus < 0) return unknown();
       const opposed = (fresh.status === "FAILED" && verifiedTerminal === "CONFIRMED")
         || (fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED");
       if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") {
@@ -91,7 +93,7 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
         const referenced = await db.txn.findByProviderRef(fresh.providerRef!, tx);
         if (!referenced || referenced.id !== fresh.id) return unknown();
       }
-      return { view: { ...projection, balance: wallet.balance, retryAfterSec: 0,
+      return { view: { ...projection, balance: wallet.balance, spendable: wallet.balance + bonus, retryAfterSec: 0,
         ...(projection.state === "FAILED" ? { failureAuthority: "signed-recheck" as const } : {}) }, rateLimited: false, unavailable: false };
     });
   } catch { return unknown(0, false, true); }

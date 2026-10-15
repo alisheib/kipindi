@@ -112,6 +112,7 @@ function BalanceCard({
         {balance === 0 && pending === 0 && hold === 0 && canDeposit && (
           <Link
             href="/wallet/deposit"
+            onClick={journey ? (event) => { event.preventDefault(); window.location.assign("/wallet/deposit"); } : undefined}
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
           >
             <I.plus s={12} />
@@ -773,7 +774,7 @@ export function WalletPageClient({
                 stem (it drew the family's 1.11px shaft beside "→ Omba sasa"'s 2.07), and it leads a centred control, so its
                 ink stands on the button's start padding. */}
             {depositOpen && (
-            <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
+            <Link href="/wallet/deposit" onClick={journey ? (event) => { event.preventDefault(); window.location.assign("/wallet/deposit"); } : undefined} className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} edge="start" text="body-600" />
               {journey ? t.journey.depositAction : t.common.deposit}
             </Link>
@@ -901,7 +902,7 @@ export function WalletPageClient({
                    a break, not over a hold. */
                 emptyCause === "no-rows" ? (
                   isAuthed && depositOpen ? (
-                    <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+                    <Link href="/wallet/deposit" onClick={journey ? (event) => { event.preventDefault(); window.location.assign("/wallet/deposit"); } : undefined} className="btn btn-primary btn-md">
                       {journey ? t.journey.depositAction : t.common.depositCta}
                     </Link>
                   ) : undefined

@@ -29,6 +29,7 @@ import { depositNames } from "@/lib/journey/money-names";
 export function DepositGhost({ journey }: { journey: boolean }) {
   const { t } = useT();
   const names = depositNames(t, journey);
+  if (journey) return <JourneyDepositGhost />;
   /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
      This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
      typed onto one child, while the page it stands in for (`page.tsx`, same directory)
@@ -64,4 +65,40 @@ export function DepositGhost({ journey }: { journey: boolean }) {
       <DepositFormGhost t={t} />
     </PageContainer>
   );
+}
+
+/** Focused payment ghost: four readable mobile wallet rows and one explicit commit footprint. */
+export function JourneyDepositGhost() {
+  const { t } = useT();
+  const names = depositNames(t, true);
+  return <PageContainer tier="form" className="space-y-5">
+    <BackLinkGhost />
+    <PageHero><PageHeader icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
+      eyebrow={names.eyebrow} title={names.heading} subtitle={t.wallet.mobileMoney} /></PageHero>
+    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-5" aria-hidden>
+      <div className="h-4 w-2/3 rounded bg-bg-overlay kp-shimmer-track" />
+      <div className="space-y-2">{[0, 1, 2, 3].map((n) => <div key={n} className="h-[60px] rounded-md bg-bg-inset kp-shimmer-track" />)}</div>
+      <div className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">{[0, 1, 2, 3, 4, 5].map((n) => <div key={n} className="h-[44px] rounded-pill bg-bg-inset kp-shimmer-track" />)}</div>
+      <div className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />
+      <div className="h-[var(--h-control-lg)] rounded-pill bg-bg-overlay kp-shimmer-track" />
+      <div className="h-[var(--h-control-md)] rounded-pill bg-bg-overlay kp-shimmer-track" />
+    </div>
+  </PageContainer>;
+}
+
+export function CardDepositGhost({ journey }: { journey: boolean }) {
+  const { t } = useT();
+  const names = depositNames(t, journey);
+  return <PageContainer tier="form" className="space-y-5">
+    <BackLinkGhost />
+    <PageHero><PageHeader icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
+      eyebrow={names.eyebrow} title={names.heading} subtitle={t.wallet.mobileMoney} /></PageHero>
+    <div className="rounded-xl glass-panel p-5 lg:p-6 space-y-5" aria-hidden>
+      <div className="h-[106px] rounded-md bg-bg-inset kp-shimmer-track" />
+      <div className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />
+      <div className="grid grid-cols-2 gap-2">{[0, 1, 2, 3, 4, 5].map((n) => <div key={n} className="h-[54px] rounded-md bg-bg-inset kp-shimmer-track" />)}</div>
+      <div className="h-[var(--h-control-lg)] rounded-pill bg-bg-overlay kp-shimmer-track" />
+    </div>
+  </PageContainer>;
 }

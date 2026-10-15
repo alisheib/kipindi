@@ -10,7 +10,7 @@ import { depositRecheckBinding, matchesDepositRecheckBinding, type DepositRechec
 export type DepositLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
 export type DepositStatusView =
   | { state: "UNKNOWN"; serverNow: number; retryAfterSec: number }
-  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; retryAfterSec: number };
+  | Exclude<DepositProjection, { state: "UNKNOWN" }> & { balance: number; spendable: number; retryAfterSec: number };
 export type DepositStatusRead = { view: DepositStatusView; rateLimited: boolean; txn?: StoredTxn };
 
 function validLookup(lookup: DepositLookup): boolean {
@@ -97,7 +97,9 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
     if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") return unknown(retryAfterSec);
     const wallet = await db.wallet.findByUserId(userId);
     // `Wallet.balance` is Decimal(18,2): a real, non-negative TZS amount is a valid wallet, whole shillings or not.
-    if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown(retryAfterSec);
-    return { view: { ...projection, balance: wallet.balance, retryAfterSec }, rateLimited: false, txn };
+    const bonus = wallet?.bonusBalance ?? 0;
+    if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0
+      || !Number.isFinite(bonus) || bonus < 0) return unknown(retryAfterSec);
+    return { view: { ...projection, balance: wallet.balance, spendable: wallet.balance + bonus, retryAfterSec }, rateLimited: false, txn };
   } catch { return unknown(); }
 }

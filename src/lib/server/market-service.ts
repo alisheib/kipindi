@@ -17,6 +17,7 @@
  */
 import { audit } from "./audit";
 import { db } from "./store";
+import { isDepositReturnBet } from "@/lib/journey/deposit-state";
 import { randomId } from "./crypto";
 import { withLock, runOutsideLock } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
@@ -1028,6 +1029,8 @@ type BuyOpts = {
   side: Side;
   stake: number;
   idempotencyKey?: string;
+  /** Untrusted manual-return hint. The locked owned deposit row alone may authorize create-only attribution. */
+  returnDepositId?: string;
   /**
    * E-235 · ms epoch this PLAY SESSION began, from the signed session cookie. Passed in
    * rather than read here so the service stays callable without a request context — and so
@@ -1615,6 +1618,11 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     const positionId = `pos_${randomId(10)}`;
     const betTxnId = `txn_${randomId(12)}`;
     const placedAt = new Date().toISOString();
+    const returnRow = opts.returnDepositId && /^[a-z0-9_-]{1,128}$/i.test(opts.returnDepositId)
+      ? await db.txn.findById(opts.returnDepositId, lockTx) : null;
+    const depositReturn = isDepositReturnBet(userId, returnRow, {
+      marketId: opts.marketId, side: opts.side, stake: opts.stake, houseBotId: houseIntent?.houseBotId ?? null,
+    }, Date.parse(placedAt));
     const position: StoredPosition = {
       id: positionId,
       userId,
@@ -1628,6 +1636,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       placedAt,
       settledAt: null,
       idempotencyKey: opts.idempotencyKey ?? null,
+      ...(depositReturn ? { origin: "deposit_return" } : {}),
       // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
       // SEAM:marker
       ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),

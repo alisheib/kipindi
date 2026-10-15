@@ -189,7 +189,7 @@ export function JourneyTopBar({
             <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />
           )}
           {state.pill && (
-            <Link
+            <a
               href="/wallet/deposit"
               aria-label={t.journey.depositAction}
               data-testid="journey-deposit"
@@ -198,7 +198,7 @@ export function JourneyTopBar({
               {/* Its ink on the pill's start padding (round 10, R10-A6: a centred control frames its ink). */}
               <span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>
               <span>{t.journey.depositAction}</span>
-            </Link>
+            </a>
           )}
           {state.authPills && (
             <>

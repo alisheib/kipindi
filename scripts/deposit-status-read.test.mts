@@ -939,6 +939,7 @@ async function run(src = sources): Promise<Check[]> {
         "@/components/ui/refresh-poller": { RefreshPoller: ({ enabled }: any) => ReactRuntime.jsx("span", { "data-refresh": String(enabled) }) },
         "@/components/ui/cash": { Cash: leaf }, "@/components/ui/keep-words": { keepIdRuns: (id: string) => id },
         "@/components/layout/page-container": { PageContainer: leaf }, "@/components/ui/callout": { Callout: leaf },
+        "@/lib/journey/deposit-state": { parseSavedDepositBet: D.parseSavedDepositBet },
       });
       const html = renderToStaticMarkup(await receipt.default({ params: Promise.resolve({ id: row.id }) }));
       const shown = name === "rg-rejected-held" ? "REVERSED" : "AML_REVIEW";

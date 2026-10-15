@@ -376,7 +376,8 @@ export async function deposit(
     // (`notifyStillPendingDeposits`), which sends it only once a deposit has
     // actually been slow. Emailing at t=0 would put a "we're waiting" mail in the
     // inbox of every card payer who completes in eight seconds.
-    notifyDeposit(userId, { status: "PROCESSING", amount: parse.data.amount, provider: friendlyProvider(parse.data.provider), txnId });
+    notifyDeposit(userId, { status: "PROCESSING", amount: parse.data.amount, provider: friendlyProvider(parse.data.provider), txnId,
+      savedReturn: !!pendingBet });
     const cur = await db.wallet.findByUserId(userId);
     // `redirectUrl` (card/hosted checkout) is passed straight through for the
     // caller to send the buyer to. It carries NO money meaning — the txn is
@@ -500,11 +501,13 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string, expec
     // off; t.id is what WE key off. The receipt, the return page, the admin table
     // and this email must all show the same pair — one payment, one identity.
     const gatewayRef = providerRef ?? t.providerRef;
-    notifyDeposit(t.userId, { status: "CONFIRMED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id });
+    notifyDeposit(t.userId, { status: "CONFIRMED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id,
+      savedReturn: !!parseSavedDepositBet(t.pendingBet) });
     sendEmailToUser(t.userId, (email) => ({
       to: email,
       subject: `Deposit confirmed · ${formatTzs(t.amount)}`,
-      html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef, balance: outcome.balance }),
+      html: depositConfirmedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef, balance: outcome.balance,
+        savedReturn: !!parseSavedDepositBet(t.pendingBet) }),
       tag: "deposit",
     }), { confirmedOnly: true }).catch(() => {});
     // Affiliate accrual (first-deposit bonus / threshold prize) — best-effort.
@@ -1083,7 +1086,8 @@ export async function settlePaymentWebhook(
       const depositClaim = restriction ?? (original && !("kind" in original) ? original : undefined);
       const reviewAdded = txn.type === "DEPOSIT" ? await markDepositStatusReview(txn.id, input.status, depositClaim, restriction ? undefined : input.providerRef) : false;
       if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
-        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id }));
+        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
+          savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1590,7 +1594,8 @@ export async function notifyStillPendingDeposits(olderThanMs = 30 * 60 * 1000): 
     sendEmailToUser(t.userId, (email) => ({
       to: email,
       subject: `Still waiting on your deposit · ${formatTzs(t.amount)}`,
-      html: depositPendingHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef }),
+      html: depositPendingHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef: t.providerRef,
+        savedReturn: !!parseSavedDepositBet(t.pendingBet) }),
       tag: "deposit",
     }), { confirmedOnly: true }).catch(() => {});
     audit({ category: "WALLET", action: "deposit.pending_notified", actorId: null, targetType: "Transaction", targetId: t.id, payload: { olderThanMs, amount: t.amount } });

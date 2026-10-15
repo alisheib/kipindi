@@ -80,6 +80,9 @@ export default async function DepositReturnPage({
   // The ONLY thing we take from the URL: which order to ask Selcom about (trimmed, capped, and cut at a stray `?`).
   const orderId = cardReturnOrderId(sp.order_id);
   const outcome = await settleDepositFromReturn(session.userId, orderId);
+  // The hosted Card return and mobile-money wait use one owned, signed-status experience in the journey.
+  // An unknown order retains the existing indistinguishable return page rather than exposing a row.
+  if (journey && outcome.txn) redirect(`/wallet/deposit/wait/${outcome.txn.id}` as never);
 
   // ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE, IN THE CONFIRMED STATE ONLY (2026-09-13). The ONE rule
   // (`firstDepositNoticeDue`, shared with /wallet): not dismissed by THIS player in this browser · nothing

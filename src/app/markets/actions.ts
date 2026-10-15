@@ -98,6 +98,8 @@ export async function buyPositionAction(formData: FormData) {
   const stake = parseInt(String(formData.get("stake") ?? "0"), 10);
   if (!marketId || !Number.isFinite(stake) || stake <= 0) return { ok: false as const, error: "Invalid bet parameters." };
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  const returnDepositId = typeof formData.get("returnDepositId") === "string"
+    ? String(formData.get("returnDepositId")) : undefined;
   // ⛔ SANCTIONED CHANGE (c) (house bots, PLAN §3): the `hb:` prefix belongs to house intents alone. A
   // player request carrying it is refused before the bet path sees it, so no player can collide with,
   // replay or pre-empt a house stake's key.
@@ -106,7 +108,7 @@ export async function buyPositionAction(formData: FormData) {
   }
   // E-235 — the play clock rides on the signed session, so the limit cannot be reset by
   // clearing site data. `buyPosition` treats an absent value as "no opinion".
-  const r = await buyPosition(session.userId, { marketId, side, stake, idempotencyKey, playStartedAt: session.playStartedAt });
+  const r = await buyPosition(session.userId, { marketId, side, stake, idempotencyKey, playStartedAt: session.playStartedAt, returnDepositId });
   // The journey funnel (Vodacom plan S3b, §0f): a NEW bet, counted once it has landed — never a replay, never inside a
   // lock (the money call has returned), fire-and-forget.
   if (r.ok && !r.data?.replayed) countBetFunnel(session, formData);

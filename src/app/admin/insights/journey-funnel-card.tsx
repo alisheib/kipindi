@@ -63,6 +63,9 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
   const keys: MeasureKey[] = ["homeToSheet", "sheetToBet", "shortToDeposit"];
   const over = [...r.measures.old, ...r.measures.new].some((m) => m.overCounted);
   const depositToBet = r.measures.old.find((m) => m.key === "depositToBet");
+  const returned = r.depositReturns;
+  const returnPct = returned.eligibleMarketDeposits > 0
+    ? Math.round(returned.matchedMarketDeposits / returned.eligibleMarketDeposits * 100) : null;
   return (
     <AdminCard title="Journey funnel" sw="Safari ya mchezaji" action={windows}>
       <p className="text-body-sm leading-relaxed text-text-subtle">
@@ -123,10 +126,18 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
           </table>
         </ScrollX>
       </div>
-      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <dt className="text-body-sm text-text-subtle">{LABEL.depositToBet.title} · all players</dt>
           <dd className="mt-0.5"><Cell m={depositToBet} /></dd>
+        </div>
+        <div>
+          <dt className="text-body-sm text-text-subtle">Saved question → manual bet (30 min) · all players</dt>
+          <dd className="mt-0.5 font-mono tabular-nums text-text">
+            {returnPct === null ? "—" : `${returnPct}%`}
+            <span className="block text-body-sm text-text-subtle">{formatNumber(returned.matchedMarketDeposits)} of {formatNumber(returned.eligibleMarketDeposits)} saved question deposits</span>
+            <span className="block text-body-sm text-text-subtle">{formatNumber(returned.eligibleRoundDeposits)} saved Up &amp; Down deposits tracked separately</span>
+          </dd>
         </div>
         <div>
           <dt className="text-body-sm text-text-subtle">Time to first bet · median, players who joined in the window</dt>
@@ -139,6 +150,7 @@ export async function JourneyFunnelCard({ days, campaign }: { days: number; camp
       <p className="mt-3 border-t border-border/60 pt-3 text-body-sm leading-relaxed text-text-subtle">
         Each measure is a pair of counts in which the first is part of the second. Home-page views count everyone who
         opened the page; they sit in the column of the journey players are shown now.
+        {" "}The saved-question return pair uses only confirmed deposits with a stored question choice and a distinct, origin-marked manual bet; overlapping choices are matched to the most recent eligible deposit. Up &amp; Down returns remain separate from question positions.
         {r.campaign ? " A campaign filter applies to the counted steps only; the two row-based figures are for everyone." : ""}
         {over ? " * Two counters disagreed (one of the pair lost a count); the share is held at 100%." : ""}
       </p>

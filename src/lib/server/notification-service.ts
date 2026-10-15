@@ -717,12 +717,15 @@ export function notifyDeposit(
     provider: string;
     /** Internal txn id — makes the notification deep-link to its own receipt. */
     txnId?: string;
+    /** Parsed from the owned transaction's stored intent, never from a URL. */
+    savedReturn?: boolean;
     /** Friendly, player-safe reason. Never a raw gateway code. */
     reason?: string;
   },
 ) {
   const amt = formatTzs(opts.amount);
-  const href = opts.txnId ? `/wallet/receipt/${opts.txnId}` : "/wallet";
+  const href = opts.txnId ? (opts.savedReturn && (opts.status === "PROCESSING" || opts.status === "CONFIRMED")
+    ? `/wallet/deposit/wait/${opts.txnId}` : `/wallet/receipt/${opts.txnId}`) : "/wallet";
 
   if (opts.status === "AML_REVIEW") {
     return notify({

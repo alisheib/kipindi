@@ -915,8 +915,8 @@ function withdrawRefRows(reference: string, gatewayRef?: string | null, railLabe
   ];
 }
 
-export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance }: {
-  amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number;
+export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance, savedReturn }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number; savedReturn?: boolean;
 }): string {
   return wrapGold(`
     ${eyebrow("Deposit confirmed", "Amana imethibitishwa", true)}
@@ -928,7 +928,7 @@ export function depositConfirmedHtml({ amount, method, reference, gatewayRef, ba
       ...depositRefRows(reference, gatewayRef),
       { label: "New balance", value: formatTzs(balance) },
     ])}
-    ${ctaButton("/wallet", "View wallet · Tazama pochi")}
+    ${ctaButton(savedReturn ? `/wallet/deposit/wait/${encodeURIComponent(reference)}` : "/wallet", savedReturn ? "Return to your choice · Rudi kwenye chaguo" : "View wallet · Tazama pochi")}
     ${refNote()}
   `);
 }
@@ -944,8 +944,8 @@ export function depositConfirmedHtml({ amount, method, reference, gatewayRef, ba
  * is reserved for money that has actually ARRIVED (gold discipline), and this
  * money has not.
  */
-export function depositPendingHtml({ amount, method, reference, gatewayRef }: {
-  amount: number; method: string; reference: string; gatewayRef?: string | null;
+export function depositPendingHtml({ amount, method, reference, gatewayRef, savedReturn }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; savedReturn?: boolean;
 }): string {
   return wrap(`
     ${eyebrow("Payment processing", "Malipo yanashughulikiwa")}
@@ -960,7 +960,7 @@ export function depositPendingHtml({ amount, method, reference, gatewayRef }: {
     ])}
     ${subtitle("Please do NOT pay again — a second attempt would take a second payment from you. We'll email you the moment it clears, or if it fails.")}
     ${subtitleSw("TAFADHALI usilipe tena — jaribio la pili litachukua malipo ya pili kutoka kwako. Tutakutumia barua pepe mara itakapokamilika, au ikishindikana.")}
-    ${ctaButton("/wallet", "Check your wallet · Angalia pochi")}
+    ${ctaButton(savedReturn ? `/wallet/deposit/wait/${encodeURIComponent(reference)}` : "/wallet", savedReturn ? "Track this payment · Fuatilia malipo" : "Check your wallet · Angalia pochi")}
     ${refNote()}
   `);
 }
