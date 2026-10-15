@@ -232,7 +232,9 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
   const instead = frame.low?.betInstead ?? frame.pending?.betInstead ?? null;
   const word = sideWord(t, side, "UPDOWN");
   const describedBy = frame.low || frame.pending || frame.lossRoom || frame.block ? `${id}-callout` : frame.lines.length ? `${id}-line` : frame.breaks && frame.breaks !== "empty" ? `${id}-bounds` : undefined;
-  return <div className={cn("kp-jud", pulse && "ud-place-pulse")} data-jud="confirm">
+  // The place pulse wraps the column, so the column's own class stays one literal: its buttons stand on its 12px gap
+  // (`test:visual-pass-r9a` 5.2 reads the class).
+  return <div className={cn(pulse && "ud-place-pulse")}><div className="kp-jud" data-jud="confirm">
     <Chip variant={side === "UP" ? "yes" : "no"} size="lg" metrics="status" className="kp-jud__chosen" data-testid="jud-chosen">{fill(t.journey.sheetChosen, { side: word })}</Chip>
     <StakeRows id={id} t={t} locale={locale} nowMs={nowMs} frame={frame} text={text} setText={setText} size="detail" disabled={bet.pending} />
     {projected !== null && <p className="kp-bsheet__compact kp-jud__projection" data-testid="jud-projection">{fillNodes(t.journey.estimateCompact, { amount: <span className="amount">{formatTzs(projected)}</span> })}</p>}
@@ -254,7 +256,7 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
     <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     {receipt && <UpDownBetReceiptModal key={bet.placedReceipt?.nonce ?? 0} placed={bet.placedReceipt} info={receipt} pricing={round.pricing}
       assetName={assetName} onClose={bet.clearPlacedReceipt} />}
-  </div>;
+  </div></div>;
 }
 
 /**
