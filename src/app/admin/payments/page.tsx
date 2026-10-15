@@ -156,7 +156,7 @@ async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
                       {t.id} · {t.providerStatus ?? "no provider response recorded"}
                     </p>
                   </div>
-                  <StuckPayoutControls txnId={t.id} amountLabel={formatTzs(Math.abs(t.amount))} />
+                  <StuckPayoutControls amountLabel={formatTzs(Math.abs(t.amount))} />
                 </li>
               ))}
             </ul>

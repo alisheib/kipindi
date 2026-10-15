@@ -1367,13 +1367,12 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       // ⚠️ THE 1,329-ROW SITE. One withdrawal sat here from 2026-08-07 to 2026-08-10 and this
       // line fired on every sweep. The refusal is right; the repetition was not.
       if (!ref) { leftPending++; auditNeedsReviewOnce(t.id, "stale withdrawal has no providerRef — not auto-reversed", {}); continue; }
-      // 🔴 `t.payoutRail` is load-bearing here, not decoration. This is the ONLY path
-      // that can auto-reverse a payout, so querying the wrong rail's endpoint would
-      // read a stranger's envelope as FAILED and refund a player whose money is gone.
+      // Ask the recorded rail so the status trail and review use the right provider.
+      // A generic FAILED query verdict is still not proof of nonpayment.
       const v = await verifyWithdrawalStatus(ref, t.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
-      if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
+      if (v.status !== "FAILED" && v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
         try { await db.txn.update(t.id, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }); } catch { /* non-fatal */ }
         console.log(`[payments] payout ${t.id} (${ref}) — ${v.status}: ${v.detail}`);
       }
@@ -1381,7 +1380,17 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" }); // release the hold, exactly-once
         if (r.handled) { withdrawalsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        if (await settleWithdrawalFailed(t.id, "reconcile-verified-failed")) { withdrawalsReversed++; clearNeedsReview(t.id); }
+        // Selcom's broad FAILED classification can include an unknown result or
+        // reference while an accepted payout is still in flight. Persist an
+        // operator-visible marker on the PROCESSING row and leave the hold intact.
+        const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);
+        if (t.providerStatus !== reviewStatus) {
+          try { await db.txn.update(t.id, { providerStatus: reviewStatus }); } catch { /* audit and continue the sweep */ }
+        }
+        leftPending++;
+        auditNeedsReviewOnce(t.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed", {
+          providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null,
+        });
       } else if (v.status === "UNSUPPORTED") {
         // UNSUPPORTED means "we could not ask", NOT "nothing happened". It is
         // reachable with no operator action at all: any PAYMENT_API_* variable
