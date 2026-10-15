@@ -106,9 +106,9 @@ export default function LiveLoading() {
                   gap — R9-C), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>
-                <div className="-ml-[9px] flex items-center">
+                  <div className="flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <span key={i} className="grid h-[40px] place-items-center px-[9px]">
+                    <span key={i} className="grid h-[40px] min-w-[40px] place-items-center px-[9px]">
                       <span className="block h-[6px] rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
                     </span>
                   ))}

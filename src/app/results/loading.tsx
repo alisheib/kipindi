@@ -265,7 +265,7 @@ function NotableGhost() {
       {/* The rail's targets as the page draws them (R9-C): each its drawing and 9px either side, the dot 6px round. */}
       <div className="mt-[10px] flex items-center justify-center">
         {[0, 1, 2].map((i) => (
-          <span key={i} className="grid h-[40px] place-items-center px-[9px]">
+          <span key={i} className="grid h-[40px] min-w-[40px] place-items-center px-[9px]">
             <span className="block h-[6px] rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
           </span>
         ))}

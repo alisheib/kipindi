@@ -2080,6 +2080,14 @@ html.kp-reduce-motion .ticker-pause,
 }
 .tipbar-labels .tb-yes { justify-self: start; white-space: nowrap; }
 .tipbar-labels .tb-no  { justify-self: end; white-space: nowrap; }
+/* F31: a translated final-pool caption gets its own centred line on a 320px card.
+   Both side figures then keep their own unbroken slots. */
+@media (max-width: 359.98px) {
+  .tipbar-labels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tipbar-labels .tipbar-lean { grid-column: 1 / -1; grid-row: 1; }
+  .tipbar-labels .tb-yes { grid-column: 1; grid-row: 2; }
+  .tipbar-labels .tb-no { grid-column: 2; grid-row: 2; }
+}
 .tipbar-labels .tb-yes { color: var(--bar-label-yes); }
 .tipbar-labels .tb-no  { color: var(--bar-label-no); }
 .tipbar-labels .tb-yes strong { color: var(--bar-label-yes-strong); font-variant-numeric: tabular-nums; }
@@ -4272,6 +4280,15 @@ html[data-rail-menu-open] .kp-rail { z-index: 61; }
      buys 10px of room and costs nothing a thumb can feel — the controls themselves stay 44px. */
   [data-pager-rows="one"] { gap: 2px; }
 }
+/* F31: a two-page pager fits in the 288px /results panel at 320 while every
+   target keeps the 40px floor. The extra 4px inside the panel avoids an exact fit. */
+@media (max-width: 359.98px) {
+  [data-pager-root] { padding-inline: var(--sp-3); }
+  [data-pager-root] [data-pager-group] :is(a, button, [aria-disabled="true"]) {
+    min-width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
 
 /* 🔴 AND THE LIFT ABOVE NAMES A COMPONENT, WHICH IS NOT WHERE THE RULE LIVES — found 2026-08-25
    the first time this sheet gained a SECOND call site (UD-13b, the Up & Down board's phone
@@ -4977,6 +4994,8 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-lproof__inner { display: grid; gap: var(--sp-8); }
 @media (min-width: 768px) { .kp-lproof__inner { gap: var(--sp-10); } }
 .kp-conv { max-width: 760px; }
+/* F49: the needle rises 6px above the rail; its caption clears that live-data position. */
+.kp-conv > .kp-hero__eyebrow { margin-bottom: var(--sp-2); }
 
 
 /* 🔴 D60 + D61 · THE FAIRNESS RECORD STOPS BEING A FIVE-COLUMN TABLE ON A PHONE.
@@ -5194,7 +5213,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* Desktop: one line — the title, the reading, the pair. */
 @media (min-width: 1024px) {
   .kp-qrow {
-    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px) 288px;
     grid-template-areas: "head read act";
     column-gap: var(--sp-8);
   }
@@ -6404,7 +6423,8 @@ textarea::-webkit-resizer {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* F52: every title in a grid row starts at the same top edge even when a meta wraps. */
+  justify-content: flex-start;
   gap: 6px;
   min-height: 72px;
   padding: var(--sp-3) var(--sp-4);
@@ -7139,7 +7159,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   position: relative;
   transition: background var(--t-quick) ease-out;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: calc(var(--sp-16) + var(--sp-2)) minmax(0, 1fr) auto;
   grid-template-areas: "o q q" ". m m" ". s a";
   align-items: center;
   gap: var(--sp-1) var(--sp-4);
@@ -7149,14 +7169,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 }
 @media (min-width: 768px) {
   .kp-settled__row {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-columns: calc(var(--sp-16) + var(--sp-2)) minmax(0, 1fr) auto auto;
     grid-template-areas: "o q s a" "o m s a";
     column-gap: var(--sp-4);
   }
 }
 .kp-settled__row:hover { background: var(--bg-overlay); }
 .kp-settled__row:hover .kp-settled__q { color: var(--text); }
-.kp-settled__pill { grid-area: o; }
+.kp-settled__pill { grid-area: o; justify-self: start; }
 .kp-settled__q {
   grid-area: q;
   min-width: 0;
@@ -8433,24 +8453,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (max-width: 639.98px) {
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
     display: grid;
-    /* ⛔ 160px is a FLOOR, not a preference: below it the status strip stops showing a whole
-       chip and starts cutting one mid-word, which is the clipped-not-scrolled failure. Stating
-       it in the track is what makes the strip win the argument against the two controls. */
-    grid-template-columns: minmax(160px, 1fr) auto auto;
+    /* F01: the sort and direction are controls; the status strip is scrollable. Give the
+       sort its content width before the strip takes the remaining room. A 160px strip floor
+       made the sort summary paint underneath its direction button at 320px. */
+    grid-template-columns: minmax(0, 1fr) max-content auto;
 
-    /* 🔴 D58 · AND BELOW 300px THAT FLOOR KILLED THE SORT CONTROL, WHICH IS THE WORSE FAILURE.
-       `auto` lets the sort track collapse without limit, and it did: measured on production at an effective
-       277 and 246 (= 360 and 320 with Android text at 130%), `details` computed to width **0**, the summary
-       painted as a 13px sliver with 12 of 61 units of label visible, and the 44×44 direction link — later in
-       DOM order, so it paints on top — took its exact left edge. **0 of 14 hit-test points reached the sort
-       control**, and the Filters sheet carries no sort section, so sort could not be changed at all except by
-       editing the URL. Two instruments agreed, with a healthy control in the same run.
-       ⚠️ THE TRADE IS STATED, NOT HIDDEN. Giving the sort track a 76px floor costs the strip its 160px one
-       at these widths (measured: strip 160 → 96). The strip is `overflow-x: auto` and masked, so it DEGRADES
-       TO SCROLLING, which is a thing a player can still use; a 0px control is dead. That is why the trade goes
-       this way — and why it is gated at 300 rather than applied to the whole phone band: at **320 and 360
-       nothing moves at all**, verified to the pixel (summary 27 and 67, strip 160 and 160, 14/14 both).
-       ⭐ It also closes D18 at these widths as a side effect: the label goes from 12/61 to 47/61 at 277. */
+    /* D58's earlier <=300px override is unnecessary with this allocation: the same rule
+       keeps the sort reachable at native phone sizes and at enlarged text sizes. */
     align-items: center;
     column-gap: 6px;
     /* ⭐ THE COUNT LINE HAS AIR ON BOTH SIDES (round 4, 2026-10-09, tile 195 at sw 390). At 2px and 6px the caption
@@ -8463,17 +8472,6 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
     padding-bottom: var(--sp-2);
   }
 
-  /* ⛔ THIS OVERRIDE MUST COME AFTER THE RULE ABOVE, AND THE FIRST ATTEMPT DID NOT — D58, 2026-09-23.
-     Same selector, same specificity, so SOURCE ORDER decides. It was first written into an EARLIER
-     `@media (max-width: 639.98px)` block — this file has more than one — and shipped: the media query
-     matched (`mq300 = true`), `:has()` matched, and the computed track was still `160px 28px 45px`,
-     because the 160px rule compiled 321 bytes LATER and won. Read the compiled sheet, not the source,
-     when a rule that should match does nothing. */
-  @media (max-width: 300px) {
-    html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) {
-      grid-template-columns: minmax(96px, 1fr) minmax(76px, auto) auto;
-    }
-  }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) > [data-bar-row] { display: contents; }
   /* /markets' search over this compact bar: see `.kp-markets-search`, beside `.search-box-wrap`. */
   html:not([data-density="comfortable"]) .kp-markets-search { margin-bottom: 3px; }
@@ -8501,10 +8499,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
      an inline style: hence `!important`) is undone. With a count it leads [sliders][count] and keeps the pull. */
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-trigger:not([data-on]) > .kp-fsheet-glyph { margin-inline-start: 0 !important; }
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-count-sort] { display: inline; color: var(--text-muted); }
-  /* The sort trigger gives its remaining slack to the strip: the key is short and constant, so
-     the padding around it is the only fat left on this line. Measured: the strip goes 147 -> 163px,
-     clearing the 160px floor the driver asserts. The 44px direction button is NOT touched — it is
-     on the tap floor. */
+  /* The sort trigger's tight padding keeps the label and caret readable while giving the
+     scrollable status strip as much room as this width permits. The 44px direction target stays. */
   html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) [data-bar-cell="sort"] > details > summary { padding-left: 6px; padding-right: 6px; gap: 4px; }
   /* ⛔ AND ITS PANEL MOVES TO THE RIGHT EDGE. The listbox is 220px and `left: 0` of a control that
      now sits MID-BAR, so it ran 41px (sw), 48 (en) and 55 (zh) past the viewport — measured, and

@@ -658,7 +658,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {/* §L3 · the translated topic, never the stored enum ("SPORTS" on a Swahili page) — as the grid card. */}
-        <Chip variant="cat" size="sm">{marketCategoryLabel(t, m.category)}</Chip>
+        <Chip variant="cat" size="sm" metrics="status">{marketCategoryLabel(t, m.category)}</Chip>
         {/* §L3 — the featured card is a SECOND code path from the grid above, and it kept
             the raw enum: "Imetatuliwa · NO" / "已结算 · NO" on production. */}
         {/* The void arm is the dictionary's (R7-B, round 7, 2026-10-10): it was a hand-typed royal `pending` beside this
@@ -671,7 +671,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
             margin, so this shrink-to-fit flag sized itself 1.6px narrower than its words and broke them — "MATOKEO" /
             "MASHUHURI", 61px short of the edge, the card 8–14px taller. `whitespace-nowrap`: the words hold, the trailing
             tracking overhangs the box as intended, and a row too narrow for the flag takes it whole to the next line. */}
-        <span className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
+        <span className="sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
           <I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>
         </span>
       </div>

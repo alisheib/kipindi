@@ -563,7 +563,7 @@ export default async function MarketDetail({
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
+          <Chip variant="cat" size="lg" metrics="status">{marketCategoryLabel(t, m.category)}</Chip>
           {/* C1a hero state — LIVE only while actually accepting predictions
               (open/closing); waiting & resolved carry their own state chips.
               2026-09-13 — `market.statusLive`, the key the market cards use: zh `common.live`
