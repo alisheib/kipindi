@@ -331,6 +331,11 @@ between them. The tighter of the two always wins.</p>
 <p>Leaving a money limit blank does not mean "no limit" — the desk treats an unset limit as a reason to refuse the
 bet. Fill every one in. This is deliberate: a limit nobody set should never be a limit nobody has.</p></div>
 
+<div class="box"><b class="lead">How many accounts, and how fast</b>
+<p><b>Max designated bots</b> can be anything from 1 to 100. Set it to the number of accounts you actually run — the
+desk refuses a new account beyond it. <b>Bets per minute</b> can be anything from 1 to 120 for the whole desk; 12 is
+the recommended start. Raise it if the desk skips rounds at the start of each minute, when most rounds open together.</p></div>
+
 <h2>8 · The master switch</h2>
 <p>One switch governs the whole desk. Turning it off stops every account immediately; bets already placed stand and
 settle normally. Turning it on or off is recorded with who did it and why.</p>
@@ -345,8 +350,9 @@ changes nothing that has already happened.</p></div>
     reverse the order. The heading in force shows an arrow (↑ or ↓). Running figures — Opening, Closing and Left
     today — and a few descriptive columns do not sort, because their order only makes sense in time.</div>
   <div><b>Twenty rows to a page.</b> Every list that can grow — activity, history, targets, the list of accounts —
-    shows twenty rows with a pager under it. The roster has one too, but it only appears if the maximum number of
-    accounts is ever raised above twenty; until then every account is on one screen.</div>
+    shows twenty rows with a pager under it. The desk can now hold up to 100 accounts, so the roster and the Results
+    tab's <b>By account</b> table page the same way once there are more than twenty; the pager appears only when
+    there is a second page.</div>
   <div><b>A press that is loading says so.</b> When you press a tab, a heading, a page number or a filter, a thin
     moving bar appears under what you pressed and the part of the page it will replace fades, until the new page
     arrives. On a slow connection, wait for it — nothing is stuck.</div>
