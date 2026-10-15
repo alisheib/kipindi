@@ -329,7 +329,7 @@ export async function houseH3(input: {
     if (raw !== "UPDOWN" || market.playerOpen || market.ownBotOpen || market.otherBotCount !== 1
       || market.otherBotUserId == null || !mayShare || sideTakenByOther
       || !(side === "YES" ? market.otherBotNoOpen : market.otherBotYesOpen)
-      || rawPool(side) !== 0 || rawPool(opposite(side)) <= 0
+      || rawPool(side) !== 0 || rawPool(opposite(side)) !== market.otherBotOpenStakeTzs
       || stake > market.otherBotOpenStakeTzs
       || stake > Math.floor(market.otherBotOpenStakeTzs * share.matchPct / 100)) return refuse(conditionGone("PAIR"));
     // A lost opposite leg or new player money is a lost PAIR condition first; then check

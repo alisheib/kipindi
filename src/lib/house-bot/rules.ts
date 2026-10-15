@@ -241,6 +241,9 @@ export type ScopeDoc = {
 /** A `ScopeDoc` plus the two by-hand switches, which the reach and Start read as well. */
 export type EntryDoc = ScopeDoc & { enterNow: { enabled: boolean }; targeting: { enabled: boolean } };
 
+/** Start also considers the optional Up & Down pair route; old stored rules parse its leaves as off. */
+type PairEntryDoc = EntryDoc & Pick<HouseBotRulesV1, "share">;
+
 export const ROUND_TO_OPTIONS = [100, 500, 1000, 5000] as const;
 export type RoundToTzs = (typeof ROUND_TO_OPTIONS)[number];
 
@@ -2781,6 +2784,11 @@ export function rulesReach(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "cate
   };
 }
 
+/** A pair-only account has a genuine route into a round only with all three leaves and a live chain. */
+function pairEntryReady(r: PairEntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): boolean {
+  return r.share.otherSide && r.share.matchPct > 0 && r.share.matchPerDay > 0 && rulesReach(r, ctx).updown.chains.length > 0;
+}
+
 export type InertReasonCode =
   | "NO_PRODUCT"
   | "NO_MODE"
@@ -2856,28 +2864,29 @@ function scopeShapeReasons(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "cate
 
 /**
  * Why this account cannot bet — one reason per cause, on the field that fixes it, in page order. Empty means it
- * can: every ticked product reaches a market with a mode that is on (or, for polls, a by-hand mode a screen can
- * press), no mode is on for a product that is off, and something is on at all.
+ * can: every ticked product reaches a market with a mode that is on (or, for Up & Down, a configured pair route;
+ * for polls, a by-hand mode a screen can press), no mode is on for a product that is off, and something is on at all.
  *
  * - NO_PRODUCT — neither product is ticked.
- * - NO_MODE — no automatic mode, and neither by-hand switch, is on (the per-product "no mode" reasons stand down:
- *   it is one fact).
+ * - NO_MODE — no ordinary mode, no configured pair route, and neither by-hand switch, is on (the per-product
+ *   "no mode" reasons stand down: it is one fact).
  * - PRODUCT_NO_LIST — a ticked product whose list reaches no member of the context (`rulesCoverTarget`, mode null).
- * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for polls only while no by-hand switch is
- *   on either, since Enter now and targets are polls entries.
+ * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for Up & Down a configured pair route
+ *   also counts, and for polls a by-hand switch counts only while a screen can press it.
  * - MODE_WITHOUT_PRODUCT — a mode on for a product that is off, one per mode.
  * - BY_HAND_NO_SCREEN — polls is on with no automatic polls mode, and the only entries on are by-hand switches no
  *   screen on this build can press (`opts.byHandScreens`, the honest default being `BY_HAND_SCREENS`).
  */
 export function rulesInertReasons(
-  r: EntryDoc,
+  r: PairEntryDoc,
   ctx: Pick<RulesContext, "chains" | "categories">,
   opts: { byHandScreens: ByHandScreens },
 ): InertReason[] {
   const out = scopeShapeReasons(r, ctx);
   const byHandOn = r.enterNow.enabled || r.targeting.enabled;
   const byHandUsable = (r.enterNow.enabled && opts.byHandScreens.enterNow) || (r.targeting.enabled && opts.byHandScreens.targeting);
-  const noEntryAtAll = !hasAnyEntryMode(r);
+  const pairReady = pairEntryReady(r, ctx);
+  const noEntryAtAll = !hasAnyEntryMode(r) && !pairReady;
   if (!r.scope.products.updown && !r.scope.products.polls) {
     out.push({ code: "NO_PRODUCT", field: "scope.products.updown", message: INERT_COPY.noProduct });
   }
@@ -2885,6 +2894,7 @@ export function rulesInertReasons(
   for (const product of SCOPE_PRODUCTS) {
     if (!r.scope.products[product] || noEntryAtAll) continue;
     if (ENTRY_MODES.some((mode) => r.modes[product][mode])) continue;
+    if (product === "updown" && pairReady) continue;
     if (product === "polls" && byHandOn) {
       if (!byHandUsable) {
         const both = r.enterNow.enabled && r.targeting.enabled;
@@ -2913,10 +2923,17 @@ export const START_COPY = {
 } as const;
 
 /**
- * The Start dialog's line when no automatic mode is on (N1 §5), or null when one is — or when
- * neither Enter now nor targets are on either, which Start refuses anyway.
+ * The Start dialog's line when no Counter, Fill or Opener mode is on (N1 §5), or null when
+ * none of the by-hand or pair routes is configured either, which Start refuses anyway.
  */
-export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; targets: boolean }): string | null => {
+export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; targets: boolean; pair?: boolean }): string | null => {
+  if (on.pair) {
+    const manual = on.enterNow && on.targets
+      ? " It may also stake when you press Enter now or a target reacts."
+      : on.enterNow ? " It may also stake when you press Enter now."
+        : on.targets ? " It may also stake when a target reacts." : "";
+    return `${label} has no Counter, Fill or Opener mode: it can pair an empty Up & Down round only when the desk pair budgets allow.${manual}`;
+  }
   if (on.enterNow && on.targets) return `${label} has no automatic mode: it bets only when you press Enter now or a target reacts.`;
   if (on.enterNow) return `${label} has no automatic mode: it bets only when you press Enter now.`;
   if (on.targets) return `${label} has no automatic mode: it bets only when a target reacts.`;
@@ -3036,7 +3053,7 @@ export function rulesStartProblems(
 
   const warnings: string[] = [];
   if (!hasAnyAutomaticMode(r)) {
-    const line = NO_AUTOMATIC_MODE_LINE(label, { enterNow: r.enterNow.enabled, targets: r.targeting.enabled });
+    const line = NO_AUTOMATIC_MODE_LINE(label, { enterNow: r.enterNow.enabled, targets: r.targeting.enabled, pair: pairEntryReady(r, ctx) });
     if (line) warnings.push(line);
   }
   const timing = effectiveTiming(r, ctx);

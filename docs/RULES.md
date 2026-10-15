@@ -262,7 +262,7 @@ changes are inseparable.
 > of that very test asserted the same thing and went RED. On a lopsided market a small hedge
 > on the thin side can pay many times both stakes.
 
-House liquidity stakes are the exception: a house bot holds one side per market and never trades against another bot (§2.11, ⏳ live, not yet verified on production).
+House liquidity stakes follow a separate rule: each desk account holds only one side of a market; a second desk account may hold the other side only in the bounded cases in §2.11 (⏳ live, not yet verified on production).
 
 ### 2.5 · Bonus wagering — only one side counts
 

@@ -1607,6 +1607,12 @@ section("§10 · timing and Start");
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: true, targets: true }) === "Bot A has no automatic mode: it bets only when you press Enter now or a target reacts." &&
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: true }) === "Bot A has no automatic mode: it bets only when a target reacts." &&
         NO_AUTOMATIC_MODE_LINE("Bot A", { enterNow: false, targets: false }) === null);
+    ok("10.S.pair · a pair-only warning names its automatic route and all extra by-hand routes, rather than saying it can only be pressed by hand",
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true }) ===
+        "Account A has no Counter, Fill or Opener mode: it can pair an empty Up & Down round only when the desk pair budgets allow." &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: false, pair: true })?.endsWith(" It may also stake when you press Enter now.") === true &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: true, pair: true })?.endsWith(" It may also stake when a target reacts.") === true &&
+      NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: true, targets: true, pair: true })?.endsWith(" It may also stake when you press Enter now or a target reacts.") === true);
     const caps = capsOf({ targetsMaxActive: 5 });
     const NO_SCREENS = { enterNow: false, targeting: false };
     const ALL_SCREENS = { enterNow: true, targeting: true };
@@ -1767,6 +1773,31 @@ section("§10 · timing and Start");
         ["NO_PRODUCT", "scope.products.updown", "Choose at least one product."],
         ["NO_MODE", "modes.updown.counter", "Turn on at least one entry mode."],
       ]) && START_COPY.noProduct === INERT_COPY.noProduct && START_COPY.noMode === INERT_COPY.noMode, canon(reasonsOf()));
+    const pairOnly = (r: HouseBotRulesV1) => {
+      r.scope.products.updown = true;
+      r.scope.chains = ["BTC:3"];
+      r.share = { otherSide: true, matchPct: 50, matchPerDay: 2 };
+    };
+    const pairOnlyStart = rulesStartProblems(rulesOf(pairOnly), capsOf(), CTX, { label: "Account A" });
+    ok("10.inert.pair · an Up & Down account with a reachable chain and all pair leaves on starts with no ordinary mode, with a truthful budget warning",
+      reasonsOf(pairOnly).length === 0 && pairOnlyStart.refusals.length === 0 &&
+        same(pairOnlyStart.warnings, [NO_AUTOMATIC_MODE_LINE("Account A", { enterNow: false, targets: false, pair: true })]),
+      canon({ reasons: reasonsOf(pairOnly), start: pairOnlyStart }));
+    ok("10.inert.pair.off · each off leaf independently keeps the old NO_MODE refusal, including a positive share with its switch off",
+      [
+        (r: HouseBotRulesV1) => { r.share.otherSide = false; },
+        (r: HouseBotRulesV1) => { r.share.matchPct = 0; },
+        (r: HouseBotRulesV1) => { r.share.matchPerDay = 0; },
+      ].every((off) => same(keyed(reasonsOf((r) => { pairOnly(r); off(r); })), ["NO_MODE@modes.updown.counter"])),
+      canon(reasonsOf((r) => { pairOnly(r); r.share.matchPerDay = 0; })));
+    const noChain = rulesOf(pairOnly);
+    noChain.scope.chains = [];
+    const noLiveChain = rulesInertReasons(rulesOf(pairOnly), { chains: [], categories: MARKET_CATEGORIES }, { byHandScreens: NO_SCREENS });
+    ok("10.inert.pair.scope · pair-only entry still refuses a missing or retired chain, and does not excuse a second product with no mode",
+      same(keyed(rulesInertReasons(noChain, SCOPE_CTX, { byHandScreens: NO_SCREENS })), ["PRODUCT_NO_LIST:updown@scope.chains", "NO_MODE@modes.updown.counter"]) &&
+        same(keyed(noLiveChain), ["PRODUCT_NO_LIST:updown@scope.chains", "NO_MODE@modes.updown.counter"]) &&
+        same(keyed(reasonsOf((r) => { pairOnly(r); r.scope.products.polls = true; r.scope.categories = [SPORTS]; })), ["PRODUCT_NO_MODE:polls@modes.polls.counter"]),
+      canon({ noChain: keyed(rulesInertReasons(noChain, SCOPE_CTX, { byHandScreens: NO_SCREENS })), noLiveChain: keyed(noLiveChain) }));
     ok("10.inert · ⛔ THE PRODUCTION SHAPE: exactly PRODUCT_NO_LIST twice, on the two list fields, page order, the sealed sentences",
       same(reasonsOf(prodShape).map((r) => [r.code, r.product, r.field, r.message]), [
         ["PRODUCT_NO_LIST", "updown", "scope.chains", "Up & Down is on but no chain is chosen."],
@@ -2484,8 +2515,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-rules: ${pa
  * live account had `poolTotalMaxTzs = 0` saved with every counter on, and `decide.ts:383` refuses POOL_BAND
  * whenever `total > max` — while a COUNTER only ever answers a stake ALREADY in the pool, so the total is
  * never 0 and every counter was refused for ever. The +3 IS the measurement, never an arithmetic guess. */
-/* N6: 655/0 printed on 2026-10-15 after the sharing defaults, cross-field rule and legacy read cases. */
-const MIN_ASSERTIONS = 655;
+/* N6: 659/0 printed on 2026-10-15 after the pair-only Start and truthful warning cases. */
+const MIN_ASSERTIONS = 659;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-rules ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

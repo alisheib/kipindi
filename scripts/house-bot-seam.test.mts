@@ -346,6 +346,10 @@ section("§3p2 · N6 · PAIR in-lock conditions");
     fresh, side: "NO", stake: 6_000 });
   ok("3p2.5 · a PAIR stake below the opposite 10,000 but above the current 50% share loses its condition in H3",
     aboveShare.refusal?.detail?.condition === "PAIR");
+  const poolMismatch: Any = await houseH3({ tx: null, ctx: context, intent: pair,
+    fresh: { ...fresh, yesPool: 11_000 }, side: "NO", stake: 5_000 });
+  ok("3p2.6 · a pool that no longer equals the one other desk account's OPEN stake ends the PAIR condition",
+    poolMismatch.refusal?.detail?.condition === "PAIR");
   const legal: Any = await w.place(pairBot, pair);
   ok("3p2.c1 · CONTROL · a different holder legally places the opposite side at half the opener stake",
     legal.ok === true && (await w.positionsOf(second)).some((p: Any) =>
@@ -832,7 +836,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-seam: ${pas
  * The floor below is the count `npm run test:house-bot-seam` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
-const MIN_ASSERTIONS = 98;
+/* N6: 135/0 printed on 2026-10-15 after side, holder, percentage, pool and pair-cap cases. */
+const MIN_ASSERTIONS = 135;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-seam ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

@@ -2070,7 +2070,7 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer. Only polls created after the desk is switched on and after this account is started.",
   enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
   targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
-  otherSide: "Let this account answer a player's stake when another account already holds the opposite side. A pair round also needs this on.",
+  otherSide: "Let this account take the unheld side opposite a player's stake when another desk account holds the player's side. An empty Up & Down pair also needs this on.",
 };
 
 /**
@@ -2249,7 +2249,7 @@ export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
   /* Owner ruling 2026-10-11 ("a desk account may count as more than one predictor"). Display only: no money moves. */
   "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change.",
-  "share.matchPct": "A second account may take the other side of an Up & Down round with no player stakes, at this share of the first account's open stake. Zero turns this off.",
+  "share.matchPct": "A second account may take the other side of an Up & Down round with no player stakes, at this share of the first account's total open stake on one side. Zero turns this off.",
   "share.matchPerDay": "The most pair rounds this account may place in one EAT day. Zero turns pairing off for this account even when the desk budget is set.",
 };
 

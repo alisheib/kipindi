@@ -168,6 +168,14 @@ export const MUTATIONS = [
     suite: "seam",
   },
   {
+    name: "seam.ts — N6 · unowned pool money may be mistaken for the other desk account's stake",
+    file: SEAM,
+    from: `rawPool(opposite(side)) !== market.otherBotOpenStakeTzs`,
+    to: `false`,
+    expect: "3p2.6 · a pool that no longer equals the one other desk account's OPEN stake ends the PAIR condition",
+    suite: "seam",
+  },
+  {
     name: "seam.ts — N6 · a reached pair-round budget no longer binds at H4",
     file: SEAM,
     from: `    if (allPairs.count >= control.gCapPairRoundsPerDay) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));`,

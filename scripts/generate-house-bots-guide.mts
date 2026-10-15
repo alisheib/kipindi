@@ -123,7 +123,7 @@ guide explains what every control does, what to set it to, and what to check whe
 
 <div class="box"><b class="lead">The one rule that matters most</b>
 <p>An account only bets when <b>every</b> condition is satisfied at once: the master switch is on, the account is
-Active, its limits are filled in, it has money, and its rules point at markets that actually exist. If any one of
+Active, its core limits are filled in, it has money, and its rules point at markets that actually exist. If any one of
 those is missing, it stays silent — and that is by design.</p></div>
 
 <h2>1 · Getting an account betting</h2>
@@ -134,13 +134,15 @@ those is missing, it stays silent — and that is by design.</p></div>
     the holder's permission. The desk never creates accounts of its own. Search for it by handle, phone number or
     account ID — or, if you have none of those, pick it from the list of every account underneath the search:
     twenty to a page, sortable by account, joined and signed in, and it says why an account cannot be chosen.</div>
-  <div><b>Fill in the money limits.</b> On the <b>Limits</b> tab. Every limit must have a number — an empty limit
-    is treated as "refuse", not as "no limit", so a blank box stops the account betting.</div>
+  <div><b>Fill in the core money limits.</b> On the <b>Limits</b> tab. An empty core limit means "refuse", not
+    "no limit", so a blank core box stops the account betting. Leave either optional pair budget empty to keep
+    empty-round pairing off.</div>
   <div><b>Choose the markets.</b> On the <b>Rules</b> tab, under Markets: tick <b>Up &amp; Down</b> and/or
     <b>Polls</b>, then tick at least one <b>chain</b> or <b>category</b> underneath. Ticking a product without
     ticking anything under it reaches no market at all.</div>
-  <div><b>Choose how it enters.</b> Tick at least one of Counter, Fill or Opener for each product you enabled.
-    These are explained in section 2.</div>
+  <div><b>Choose how it enters.</b> Tick Counter, Fill or Opener for each product you enabled, as explained in
+    section 2. An Up &amp; Down account used only for pairing can instead use the account controls in section 2A;
+    it will stay quiet while either desk pair budget is empty.</div>
   <div><b>Press Save.</b> Nothing on the Rules tab saves by itself.</div>
   <div><b>Press Start.</b> Read the sentence it answers with — if the account still cannot bet, it says why.</div>
   <div><b>Turn the master switch on.</b> Until it is on, nothing is staked by any account.</div>
@@ -194,8 +196,9 @@ its balance.</p></div>
 
 <h2>2A · Two-sided play starts off</h2>
 <p>Two accounts may take opposite sides, with <b>one account on each side</b> and a different holder for each
-account. A desk stake never triggers another desk account's answer. Opening, filling and stakes entered by an
-officer still keep the whole-market hold.</p>
+account. A desk stake never triggers another desk account's Counter answer. Opening, filling and stakes entered by an
+officer still keep the whole-market hold. Pairing may be an Up &amp; Down account's only entry route if it covers a
+chain and all three account controls below are on.</p>
 <table>
   <thead><tr><th style="width:25%">Option</th><th>When it can act</th><th style="width:31%">Account setting</th></tr></thead>
   <tbody>
@@ -207,7 +210,7 @@ officer still keep the whole-market hold.</p>
       on either side. A second account may take the opposite side. Polls are not paired.</td>
       <td>On the second account's Rules tab, turn on <b>Answer on the other side</b>, set <b>Pair rounds · share of
       other stake</b> above 0%, and set <b>Pair rounds per day</b> above zero. The pair amount is the share of the
-      first account's open stake, rounded down and never larger than it.</td></tr>
+      first account's total open stake on one side, rounded down and never larger than it.</td></tr>
   </tbody>
 </table>
 <div class="box stop"><b class="lead">The desk pair budget starts empty</b>
@@ -285,10 +288,10 @@ roster, and the panel beside the Rules form, will usually name the reason too.</
       each one looks.</td></tr>
     <tr><td><b>Is a chain or category ticked?</b></td><td>A ticked product with nothing ticked underneath reaches
       no market at all. This is the most common cause.</td></tr>
-    <tr><td><b>Is at least one entry mode on?</b></td><td>With none of Counter, Fill or Opener ticked, the account
-      has no way to enter a market.</td></tr>
-    <tr><td><b>Is every money limit filled in?</b></td><td>A limit left empty is treated as "refuse". Blank boxes
-      stop bets rather than allowing them.</td></tr>
+    <tr><td><b>Is its entry mode on?</b></td><td>Counter, Fill and Opener each need their own tick. A pair-only
+      Up &amp; Down account uses the controls in section 2A and is outside this opening-and-filling check.</td></tr>
+    <tr><td><b>Is every core money limit filled in?</b></td><td>An empty core limit refuses bets. The two optional
+      pair budgets may stay empty to keep empty-round pairing off.</td></tr>
     <tr><td><b>Does the account hold enough money?</b></td><td>Its balance must stay above the balance floor after
       the stake, or the bet is refused.</td></tr>
     <tr><td><b>Is a pool ceiling set to 0?</b></td><td>A pool maximum of 0 means "only bet when the pool holds
