@@ -1,6 +1,6 @@
 /** S10 WP8a: local, in-memory browser drive from a journey guest's pick through a real registration and first bet.
  * KP_BASE=http://localhost:3043 npm run qa:visitor-path -- [OUTSIDE_REPO_OUTPUT]
- * KP_ONLY=core,tiles selects groups. ENGINE=webkit runs the same browser controls in WebKit.
+ * KP_ONLY=core,tiles,keyboard selects groups. ENGINE=webkit runs the same browser controls in WebKit.
  * Requires a local dev server with DISABLE_ADMIN_TOTP=true. Production and configured databases are refused.
  */
 import { chromium, webkit } from "playwright";
@@ -17,7 +17,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const sections = ["core", "tiles", "classic", "codes"];
+const sections = ["core", "tiles", "classic", "codes", "keyboard"];
 const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
 const run = s => !only.length || only.includes(s);
@@ -79,7 +79,7 @@ async function observe(ctx, id) {
   if (!response.ok() || !body?.ok) throw new Error(`owner-row observation failed (${response.status()})`);
   return body;
 }
-const summary = f => ({ path: f.path, frame: f.frame, guest: f.guest, stake: f.stake, balance: f.balance, place: f.place,
+const summary = f => ({ path: f.path, frame: f.frame, guest: f.guest, sheetCount: f.sheetCount, stake: f.stake, balance: f.balance, place: f.place,
   viewport: f.viewport, scrollWidth: f.scrollWidth, tapMin: f.tapMin, signUp: f.signUp, signIn: f.signIn,
   sheetOverflow: f.sheetOverflow, chip: f.chip, labelClipped: f.labelClipped, tokens: f.tokens, geometry: f.geometry,
   marker: f.marker ? { present: true, keyed: /"k"\s*:/.test(f.marker), owned: /"owner"\s*:/.test(f.marker) } : { present: false } });
@@ -375,6 +375,39 @@ try {
       await direct.close(); contexts.delete(direct);
     }
   }
+  if (run("keyboard")) {
+    const keys = await context("sw", 390);
+    const keyPage = await pageIn(keys, `/?bet=${catalogue.ids[0].id}.YES`);
+    const sheet = keyPage.locator('[data-testid="journey-bet-sheet"][data-guest]');
+    await sheet.waitFor({ timeout: 30_000 });
+    await keyPage.waitForFunction(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] h2'), null, { timeout: 30_000 });
+    record("L guest sheet focuses its heading first", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] h2')));
+    await keyPage.getByTestId("journey-sheet-signin").focus();
+    await keyPage.keyboard.press("Tab");
+    record("L Tab from last door wraps inside the sheet", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] .kp-bsheet__close')));
+    await keyPage.keyboard.press("Shift+Tab");
+    record("L Shift+Tab from first control wraps inside the sheet", await keyPage.evaluate(() => document.activeElement === document.querySelector('[data-testid="journey-sheet-signin"]')));
+    await keyPage.keyboard.press("Escape");
+    await sheet.waitFor({ state: "detached", timeout: 30_000 });
+    record("L Escape closes the sheet", !new URL(keyPage.url()).searchParams.has("bet"));
+    await keyPage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await sheet.waitFor({ timeout: 30_000 });
+    await keyPage.evaluate(() => {
+      sessionStorage.setItem("__qa_guest_door_clicks", "0");
+      window.addEventListener("click", event => {
+        if (!(event.target instanceof Element) || !event.target.closest('[data-testid="journey-sheet-signup"]')) return;
+        sessionStorage.setItem("__qa_guest_door_clicks", String(Number(sessionStorage.getItem("__qa_guest_door_clicks") ?? "0") + 1));
+      }, true);
+    });
+    await keyPage.getByTestId("journey-sheet-signup").focus();
+    await keyPage.keyboard.down("Enter");
+    await keyPage.keyboard.down("Enter");
+    await keyPage.keyboard.up("Enter");
+    await keyPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    record("L held Enter takes one guest door", await keyPage.evaluate(() => sessionStorage.getItem("__qa_guest_door_clicks") === "1")
+      && new URL(keyPage.url()).searchParams.has("next"));
+    await keys.close(); contexts.delete(keys);
+  }
   if (run("tiles")) for (const locale of locales) for (const width of widths) {
     const ctx = await context(locale, width);
     const page = await pageIn(ctx, `/?bet=${catalogue.ids[0].id}.YES`);
@@ -391,7 +424,8 @@ try {
   if (run("core") || run("tiles")) {
     missing("A closed, one-sided, moved-pool and keyboard matrix", "Needs the host's controlled market states and WebKit run");
     missing("F verified-agent binding, G refusals and I second flag state", "Requires the agent approval workflow and a second controlled local server");
-    missing("K ended-session, L focus/keyboard and O production tap frame", "Next WP8a package");
+    missing("K ended-session and O production tap frame", "Next WP8a package");
+    if (!run("keyboard")) missing("L focus/keyboard", "Run KP_ONLY=keyboard in Chromium and WebKit");
   }
 } catch (error) {
   record("drive exception", false, String(error?.message ?? error).split("Call log:")[0].slice(0, 400));

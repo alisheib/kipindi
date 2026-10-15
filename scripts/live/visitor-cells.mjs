@@ -36,6 +36,7 @@ export function visitorFaceFacts() {
   try { marker = sessionStorage.getItem('kp-pending-bet'); } catch {}
   return {
     path: location.pathname + location.search, guest: sheet?.hasAttribute('data-guest') ?? false,
+    sheetCount: document.querySelectorAll('[data-testid="journey-bet-sheet"]').length,
     frame: sheet?.getAttribute('data-frame') ?? null, title: sheet?.querySelector('h2')?.textContent?.trim() ?? null,
     signUp: signUp?.getAttribute('href') ?? null, signIn: signIn?.getAttribute('href') ?? null,
     signUpText: signUp?.textContent?.trim() ?? null, signInText: signIn?.textContent?.trim() ?? null,
@@ -79,6 +80,7 @@ export function visitorFaceErrors(facts, { min, next, ref, invite } = {}) {
     } catch { return false; }
   };
   check('guest.frame', facts.guest && facts.frame !== null);
+  check('guest.one-sheet', facts.sheetCount === 1);
   check('guest.no-money', !facts.balance && !facts.place);
   check('guest.doors', href(facts.signUp, '/auth/register') && href(facts.signIn, '/auth/login')
     && !!facts.signUpText && !!facts.signInText);
@@ -123,6 +125,7 @@ export function visitorPageControls(facts, expected) {
     ['show a money action to a guest', { ...facts, place: true }],
     ['clip a door on the phone', { ...facts, signUpRect: facts.signUpRect && { ...facts.signUpRect, right: facts.dialog?.right + 12 } }],
     ['copy a forwarded stake', { ...facts, stake: String((expected.min ?? 500) + 1) }],
+    ['open a second sheet', { ...facts, sheetCount: 2 }],
   ];
   return plants.map(([name, altered]) => ({ name, caught: visitorFaceErrors(altered, expected).length > 0 }));
 }
