@@ -1,6 +1,6 @@
 /** S10 WP8a: local, in-memory browser drive from a journey guest's pick through a real registration and first bet.
  * KP_BASE=http://localhost:3043 npm run qa:visitor-path -- [OUTSIDE_REPO_OUTPUT]
- * KP_ONLY=core,tiles,keyboard selects groups. ENGINE=webkit runs the same browser controls in WebKit.
+ * KP_ONLY=core,tiles,keyboard,states selects groups. ENGINE=webkit runs the same browser controls in WebKit.
  * Requires a local dev server with DISABLE_ADMIN_TOTP=true. Production and configured databases are refused.
  */
 import { chromium, webkit } from "playwright";
@@ -17,7 +17,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const sections = ["core", "tiles", "classic", "codes", "keyboard"];
+const sections = ["core", "tiles", "classic", "codes", "keyboard", "states"];
 const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
 const run = s => !only.length || only.includes(s);
@@ -421,8 +421,41 @@ try {
     await screenshot(page, `guest-${locale}-${width}`);
     await ctx.close(); contexts.delete(ctx);
   }
+  if (run("states")) {
+    // Keep the state mutations on a separate seeded question: core and the tile matrix read the first market.
+    const stateId = catalogue.ids.at(-1)?.id;
+    if (!stateId || stateId === catalogue.ids[0].id) throw new Error("A states premise needs a second seeded market");
+    const sideFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 1, stake: 1000, userPrefix: "11" });
+    record("A premise: one real YES pool write", sideFund.accepted === 1 && sideFund.poolMath === "PASS");
+    const stateCtx = await context("sw");
+    const statePage = await pageIn(stateCtx, `/markets/${stateId}?side=YES`);
+    const stateSheet = statePage.locator('[data-testid="journey-bet-sheet"][data-guest]');
+    await stateSheet.waitFor({ timeout: 30_000 });
+    record("A one-sided public sheet explains full refund", /Upande mmoja tu/.test(await stateSheet.innerText())
+      && await statePage.getByTestId("journey-sheet-signup").count() === 1);
+    await screenshot(statePage, "states-guest-one-sided-sw-390");
+    const otherFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 0, stake: 1000, userPrefix: "12" });
+    record("A premise: opposite pool is now funded", otherFund.accepted === 1 && otherFund.poolMath === "PASS");
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('.kp-bsheet__estimate-label').filter({ hasText: "Upande mmoja tu" }).waitFor({ state: "detached", timeout: 30_000 });
+    const beforeEstimate = (await statePage.locator('.kp-bsheet__estimate').innerText()).trim();
+    const movedFund = await post(admin, "stress-bulk-bet", { marketId: stateId, n: 1, yesRatio: 0, stake: 10_000, userPrefix: "13" });
+    record("A premise: live opposing pool moved", movedFund.accepted === 1 && movedFund.poolMath === "PASS");
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('.kp-bsheet__updated').waitFor({ timeout: 30_000 });
+    record("A moved pool announces the refreshed estimate", /Makadirio yamesasishwa/.test(await statePage.locator('.kp-bsheet__updated').innerText())
+      && (await statePage.locator('.kp-bsheet__estimate').innerText()).trim() !== beforeEstimate);
+    await screenshot(statePage, "states-guest-moved-pool-sw-390");
+    await post(admin, "fast-forward-market", { marketId: stateId, seconds: 3600, selectionSeconds: -1 });
+    await statePage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await statePage.locator('[data-testid="journey-bet-sheet"][data-guest][data-frame="closed"]').waitFor({ timeout: 30_000 });
+    record("A closed question shows no sign-up commitment", await statePage.getByTestId("journey-sheet-signup").count() === 0
+      && await statePage.getByTestId("journey-sheet-signin").count() === 0);
+    await screenshot(statePage, "states-guest-closed-sw-390");
+    await stateCtx.close(); contexts.delete(stateCtx);
+  }
   if (run("core") || run("tiles")) {
-    missing("A closed, one-sided, moved-pool and keyboard matrix", "Needs the host's controlled market states and WebKit run");
+    if (!run("states")) missing("A closed, one-sided and moved-pool", "Run KP_ONLY=states on a local preview server");
     missing("F verified-agent binding, G refusals and I second flag state", "Requires the agent approval workflow and a second controlled local server");
     missing("K ended-session and O production tap frame", "Next WP8a package");
     if (!run("keyboard")) missing("L focus/keyboard", "Run KP_ONLY=keyboard in Chromium and WebKit");
