@@ -173,7 +173,7 @@ const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdm
   "notifyAdminsKycPostCheckDue",
   // House bots (build commit 4, step 9): eight admin fan-outs, each driven in §5.
   "notifyAdminsHouseBotBet", "notifyAdminsHouseBotStaffChosen", "notifyAdminsHouseBotHourSummary", "notifyAdminsHouseBotPaused",
-  "notifyAdminsHouseBotSwitch", "notifyAdminsHouseBotMoneyEvent", "notifyAdminsHouseBotAlert", "notifyAdminsHouseBotRoster"];
+  "notifyAdminsHouseBotSwitch", "notifyAdminsHouseBotMoneyEvent", "notifyAdminsHouseBotAlert", "notifyAdminsHouseBotRoster", "notifyAdminsDeskAmlFlag"];
 ok("every emitter is driven by this suite",
   exportedFns.every((f) => EMITTED.some((e) => e.fn === f) || FANOUT.includes(f)),
   `never driven: ${exportedFns.filter((f) => !EMITTED.some((e) => e.fn === f) && !FANOUT.includes(f)).join(", ") || "-"}`);
@@ -275,6 +275,9 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   ok("the post-check alert reaches at least one officer, in both shapes", postFlagged >= 1 && postPlain >= 1, `flagged=${postFlagged} plain=${postPlain}`);
   // House bots (build commit 3) — an erasure refused while the account is still a house bot (04 R6).
   await N.notifyAdminsHouseBotErasureBlocked({ botId: "hb_c3erasure01", holderUserId: U });
+  const deskSpike = await N.notifyAdminsDeskAmlFlag({ type: "STAKE_SPIKE" });
+  const deskVelocity = await N.notifyAdminsDeskAmlFlag({ type: "VELOCITY" });
+  ok("both desk AML findings reach the owner", deskSpike >= 1 && deskVelocity >= 1);
   // House bots (build commit 4, step 9): the engine's eight admin fan-outs, driven in §5.
   await N.notifyAdminsHouseBotBet({ botId: "hb_c3bot01", label: "Bot A", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", marketId: "mkt_c3house", intentId: "hbi_c3bet01", at: "14:02:11" });
   await N.notifyAdminsHouseBotStaffChosen({ botId: "hb_c3bot01", label: "Bot A", side: "NO", stakeTzs: 12_000, marketTitle: "Will Dar get rain today?", marketId: "mkt_c3house", intentId: "hbi_c3staff01", entry: "MANUAL", byName: "Juma M.", sideRule: "the thinner side", at: "14:03:22" });
@@ -285,8 +288,13 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" });
   await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", eventId: "hbe_c3roster01", at: "14:08:11", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  // 17 → 19 on 2026-10-10: the two post-check alerts above.
-  ok("officer received the fan-out alerts", rows.length >= before + 19, `before=${before} after=${rows.length}`);
+  // 17 → 19 for the post-check alerts, then → 21 for both desk AML findings.
+  ok("officer received the fan-out alerts", rows.length >= before + 21, `before=${before} after=${rows.length}`);
+  const deskRows = rows.filter((r) => r.titleEn === "AML finding · owner review" && r.href === "/admin/aml");
+  ok("desk AML notices name each finding without account details", deskRows.length === 2
+    && deskRows.every((r) => r.kind === "HOUSE_BOT" && !r.bodyEn.includes(U))
+    && deskRows.some((r) => r.bodyEn.includes("stake spike"))
+    && deskRows.some((r) => r.bodyEn.includes("high frequency")));
   // ⭐ The post-check alert names its flags in the officer's words (the case page's FLAG_LABEL) and links the case —
   // never the document number or a date of birth (the kycSubmittedAdminHtml rule).
   const flaggedRow = rows.find((r) => r.titleEn.startsWith("Flagged automatic approval") && r.href === `/admin/kyc/${U}`);
