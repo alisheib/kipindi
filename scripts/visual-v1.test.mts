@@ -397,11 +397,11 @@ async function probeGeo(page: Page): Promise<Geo> {
 
 const STEPS = ["rest", "middle", "end"] as const;
 type Extra = {
-  notice: { size: string; radius: string; pad: string; gap: string } | null;
+  notice: { size: string; radius: string; padTop: string; padLeft: string; gap: string } | null;
   title: { size: string; weight: string };
   xl: string | null;
   rails: { items: number; rows: number; dotsHidden: boolean; clip: string } | null;
-  note: { text: string; dashLeft: number; noteLeft: number; dashTop: number; minTop: number } | null;
+  note: { text: string; held: boolean; dashLeft: number; noteLeft: number; dashTop: number; minTop: number } | null;
 };
 async function probeExtra(page: Page): Promise<Extra> {
   return page.evaluate(() => {
@@ -420,14 +420,15 @@ async function probeExtra(page: Page): Promise<Extra> {
         const i = part.textContent!.indexOf("—");
         const range = document.createRange(); range.setStart(part, i); range.setEnd(part, i + 1);
         const q = range.getBoundingClientRect(), r = note.getBoundingClientRect(), m = min.getBoundingClientRect();
-        noteProbe = { text: note.textContent ?? "", dashLeft: q.left, noteLeft: r.left, dashTop: q.top, minTop: m.top };
+        noteProbe = { text: note.textContent ?? "", held: !!part.parentElement?.classList.contains("whitespace-nowrap") && !!part.parentElement?.contains(min),
+          dashLeft: q.left, noteLeft: r.left, dashTop: q.top, minTop: m.top };
       }
     }
     const ns = notice && getComputedStyle(notice), body = notice?.lastElementChild && getComputedStyle(notice.lastElementChild);
     const ts = getComputedStyle(title);
     const items = seq ? Array.from(seq.querySelectorAll<HTMLElement>(".kp-seq__item")) : [];
     return {
-      notice: ns && body ? { size: body.fontSize, radius: ns.borderRadius, pad: ns.paddingTop, gap: ns.columnGap } : null,
+      notice: ns && body ? { size: body.fontSize, radius: ns.borderRadius, padTop: ns.paddingTop, padLeft: ns.paddingLeft, gap: ns.columnGap } : null,
       title: { size: ts.fontSize, weight: ts.fontWeight }, xl: xl ? getComputedStyle(xl).fontSize : null,
       rails: seq ? { items: items.length, rows: new Set(items.map((it) => Math.round(it.getBoundingClientRect().top))).size,
         dotsHidden: Array.from(seq.querySelectorAll(".kp-seq__dot")).every((d) => d.getAttribute("aria-hidden") === "true"),
@@ -547,16 +548,18 @@ function evalF16(views: View[], ok: Ok) {
 function staticV1(src: Sources, ok: Ok) {
   const callout = decomment(src.callout), sheet = decomment(src.sheet), parts = decomment(src.parts);
   const decls = cascadeOf(src.css);
-  ok("3.1 · F15/F15b: the sm Callout's sentence and title inherit the 13px reading rung; its radius and gap/padding are the kit's semantic control and 12px spacing rungs",
-    callout.includes('sm: { box: "gap-2 rounded-control px-2 py-2", icon: 14, title: "font-bold text-text", body: "text-body-sm leading-snug text-text-secondary"'));
+  ok("3.1 · F15/F15b: the sm Callout reads at 13px with the semantic control radius, 16px vertical/gap and 20px horizontal padding",
+    callout.includes('sm: { box: "gap-3 rounded-control px-4 py-3", icon: 14, title: "font-bold text-text", body: "text-body-sm leading-snug text-text-secondary"'));
   ok("3.2 · F17: the xl button uses the 17px type rung, not the private 16.5px size",
     cv(decls, ".btn-xl", "font-size") === "var(--type-h4)");
   ok("3.3 · F35: deposit rails are one DotSeq of the four real provider names; no hand-rolled dot can end or open a line",
     sheet.includes('import { DotSeq } from "@/components/ui/dot-seq";')
       && sheet.includes('<span className="kp-bsheet__rails"><DotSeq text={railNames.join(" · ")} /></span>')
       && !sheet.includes('railNames.map((name, index)'));
-  ok("3.4 · F35: only the below-minimum note keeps its em dash with the amount before it, without editing published words",
-    parts.includes('line.key === "journey.lowMinNote" ? template.replace(" — ", "\\u00a0— ") : template'));
+  ok("3.4 · F35: only the below-minimum note keeps its em dash with the amount before it through a nowrap wrapper, preserving the dictionary's characters",
+    parts.includes('line.key === "journey.lowMinNote" && template.includes("{min} — ")')
+      && parts.includes('values.min = <span className="whitespace-nowrap">{values.min} —</span>;')
+      && parts.includes('template.replace("{min} — ", "{min} ")'));
   ok("3.5 · F37: the bet sheet and guest ticket sheet share the 20px display-title size and 700 weight; How-to remains the large 24px variant",
     cv(decls, ".kp-bsheet__title", "font-size") === cv(decls, ".kp-jsheet__title", "font-size")
       && cv(decls, ".kp-bsheet__title", "font-weight") === cv(decls, ".kp-jsheet__title", "font-weight")
@@ -566,8 +569,8 @@ function staticV1(src: Sources, ok: Ok) {
 function evalV1(views: View[], ok: Ok) {
   const rest = views.filter((v) => v.step === "rest" && v.extra);
   const notices = rest.flatMap((v) => v.extra!.notice ? [{ v, n: v.extra!.notice! }] : []);
-  const noticeBad = notices.filter(({ n }) => n.size !== "13px" || n.radius !== "12px" || n.pad !== "12px" || n.gap !== "12px");
-  ok(`3.6 · in Chromium, sm Callouts read at 13px with a 12px radius, padding and gap across ${notices.length} sheet frames`,
+  const noticeBad = notices.filter(({ n }) => n.size !== "13px" || n.radius !== "12px" || n.padTop !== "16px" || n.padLeft !== "20px" || n.gap !== "16px");
+  ok(`3.6 · in Chromium, sm Callouts read at 13px with a 12px radius, 16px vertical/gap and 20px horizontal padding across ${notices.length} sheet frames`,
     notices.length >= 18 && noticeBad.length === 0, j(noticeBad.slice(0, 3)));
   const typeBad = rest.filter((v) => v.extra!.title.size !== "20px" || v.extra!.title.weight !== "700" || v.extra!.xl !== "17px");
   ok(`3.7 · in Chromium, every ${rest.length} sheet frame has a 20px/700 title and its large action reads at 17px`,
@@ -578,7 +581,7 @@ function evalV1(views: View[], ok: Ok) {
   ok("3.8 · the low-balance rails render as four whole parts with decorative dots, and the 320 sw row wraps without a visible line-opening dot",
     low.length === 18 && railsBad.length === 0 && wrap >= 2, j({ wrap, bad: railsBad.slice(0, 2).map((v) => v.extra!.rails) }));
   const notes = low.filter((v) => v.locale !== "zh");
-  const noteBad = notes.filter((v) => !v.extra!.note || !v.extra!.note.text.includes("\u00a0— ")
+  const noteBad = notes.filter((v) => !v.extra!.note || !v.extra!.note.held || !v.extra!.note.text.includes(" — ") || v.extra!.note.text.includes("\u00a0")
     || v.extra!.note.dashLeft <= v.extra!.note.noteLeft + 4 || Math.abs(v.extra!.note.dashTop - v.extra!.note.minTop) > 2);
   ok("3.9 · the minimum note's em dash stays with the preceding amount in every en/sw low-balance frame",
     notes.length === 12 && noteBad.length === 0, j(noteBad.slice(0, 3).map((v) => ({ width: v.width, locale: v.locale, note: v.extra!.note }))));
@@ -657,14 +660,14 @@ const PLANTS: Plant[] = [
   { name: "F15 · the sm Callout falls back to 11px caption copy", expect: /^3\.1 /,
     world: withSrc(() => ({ callout: swap(SOURCES.callout, 'body: "text-body-sm leading-snug text-text-secondary"', 'body: "text-caption leading-snug text-text-secondary"') })) },
   { name: "F15b · the sm Callout falls back to the legacy radius and private padding", expect: /^3\.1 /,
-    world: withSrc(() => ({ callout: swap(SOURCES.callout, 'box: "gap-2 rounded-control px-2 py-2"', 'box: "gap-2.5 rounded-md px-3 py-2.5"') })) },
+    world: withSrc(() => ({ callout: swap(SOURCES.callout, 'box: "gap-3 rounded-control px-4 py-3"', 'box: "gap-2.5 rounded-md px-3 py-2.5"') })) },
   { name: "F17 · the large button gets its private 16.5px type size again", expect: /^3\.2 /,
     world: withSrc(() => ({ css: swap(SOURCES.css, "font-size: var(--type-h4); border-radius: var(--r-lg);", "font-size: 16.5px; border-radius: var(--r-lg);") })) },
   { name: "F35 · the deposit rail loses DotSeq and hand-rolls its separators", expect: /^3\.3 /,
     world: withSrc(() => ({ sheet: swap(SOURCES.sheet, '<span className="kp-bsheet__rails"><DotSeq text={railNames.join(" · ")} /></span>',
       '<span className="kp-bsheet__rails">{railNames.map((name, index) => <span key={name}>{index > 0 && <span aria-hidden> · </span>}{name}</span>)}</span>') })) },
   { name: "F35 · the minimum note's dash can open a wrapped line again", expect: /^3\.4 /,
-    world: withSrc(() => ({ parts: swap(SOURCES.parts, 'template.replace(" — ", "\\u00a0— ")', 'template') })) },
+    world: withSrc(() => ({ parts: swap(SOURCES.parts, 'values.min = <span className="whitespace-nowrap">{values.min} —</span>;', 'values.min = values.min;') })) },
   { name: "F37 · the bet sheet title drops below its sibling's weight", expect: /^3\.5 /,
     world: withSrc(() => ({ css: swap(SOURCES.css, "font-size: var(--type-h3); font-weight: 700; line-height: 1.3; text-wrap: balance;", "font-size: var(--type-h3); font-weight: 600; line-height: 1.3; text-wrap: balance;") })) },
 ];

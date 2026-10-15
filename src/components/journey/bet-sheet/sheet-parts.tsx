@@ -43,9 +43,13 @@ export function SheetSentence({ t, locale, line, nowMs }: { t: Dict; locale: Loc
       : (key === "until" || key === "untilAt") && typeof value === "string" && Number.isFinite(Date.parse(value))
         ? formatBreakEnd(Date.parse(value), nowMs, t.common.monthsShort, locale) : value;
   }
-  // Keep the em dash with the minimum amount: a wrapped low-balance note must not open a line with punctuation (F35).
+  // F35: keep the minimum amount and its em dash on one line without inserting an invisible layout character into copy.
   const template = sheetTemplate(t, line.key);
-  return <>{fillNodes(line.key === "journey.lowMinNote" ? template.replace(" — ", "\u00a0— ") : template, values)}</>;
+  if (line.key === "journey.lowMinNote" && template.includes("{min} — ") && Object.prototype.hasOwnProperty.call(values, "min")) {
+    values.min = <span className="whitespace-nowrap">{values.min} —</span>;
+    return <>{fillNodes(template.replace("{min} — ", "{min} "), values)}</>;
+  }
+  return <>{fillNodes(template, values)}</>;
 }
 
 type Parts = { t: Dict; locale: Locale; seed: SheetSeed; side: SheetSide; frame: SheetFrame; nowMs: number };
