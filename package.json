@@ -203,6 +203,7 @@
     "test:product-line": "tsx scripts/product-line.test.mts",
     "test:results-freshness": "tsx scripts/db-scratch.mts --run npx tsx scripts/results-freshness.test.mts",
     "test:updown-config": "tsx scripts/updown-config.test.mts",
+    "test:updown-observation-race": "tsx scripts/db-scratch.mts --run npx tsx scripts/updown-observation-race.test.mts",
     "test:admin-nav": "tsx scripts/admin-nav.test.mts",
     "test:admin-clip": "tsx scripts/admin-clip.test.mts",
     "test:control-gates": "tsx scripts/control-gates.test.mts",
