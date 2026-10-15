@@ -152,6 +152,9 @@ export type StoredHouseBotControl = {
   gCapStaffChosenDailyTzs: number | null;
   gTargetsMaxActive: number | null;
   gStaffChosenMaxCounterpartyShare: number | null;
+  /** N5 · the daily budget for desk-against-desk pairs; NULL = never. Nothing reads either before N6. */
+  gCapPairRoundsPerDay: number | null;
+  gCapPairDailyTzs: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -527,6 +530,8 @@ export const HOUSE_BOT_CONTROL_COLUMNS: Record<keyof StoredHouseBotControl, Colu
   gCapStaffChosenDailyTzs: { col: "gCapStaffChosenDailyTzs", kind: "bigint" },
   gTargetsMaxActive: { col: "gTargetsMaxActive", kind: "int" },
   gStaffChosenMaxCounterpartyShare: { col: "gStaffChosenMaxCounterpartyShare", kind: "int" },
+  gCapPairRoundsPerDay: { col: "gCapPairRoundsPerDay", kind: "int" },
+  gCapPairDailyTzs: { col: "gCapPairDailyTzs", kind: "bigint" },
   createdAt: { col: "createdAt", kind: "ts" },
   updatedAt: { col: "updatedAt", kind: "ts" },
 };
@@ -700,6 +705,8 @@ export const HOUSE_UNIQUE_INDEXES = [
   "hbi_manual_live_market_uq",
   "hbt_active_market_uq",
   "hbp_actor_submit_uq",
+  /* N5 · created by the THIRD house migration, so Postgres checks it after every index above. */
+  "hbi_pair_anchor_uq",
 ] as const;
 export type HouseUniqueIndex = (typeof HOUSE_UNIQUE_INDEXES)[number];
 
@@ -728,6 +735,7 @@ const MEM_UNIQUES: { [T in HouseTable]: ReadonlyArray<MemUnique<HouseRows[T]>> }
     { name: "hbi_fill_opener_anchor_uq", cols: ["kind", "anchorKey"], where: (r) => (r.kind === "FILL" || r.kind === "OPENER") && r.status !== "CANCELLED" },
     { name: "hbi_manual_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "MANUAL" },
     { name: "hbi_manual_live_market_uq", cols: ["marketId"], where: (r) => r.kind === "MANUAL" && LIVE_STATUSES.includes(r.status) },
+    { name: "hbi_pair_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "PAIR" && r.status !== "CANCELLED" },
   ],
   HouseBotTarget: [
     { name: "hbt_active_market_uq", cols: ["marketId"], where: (r) => r.status === "ACTIVE" },
@@ -798,16 +806,18 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
     { name: "HouseBotControl_gCapDailyLossTzs_check", ok: (r) => between(r.gCapDailyLossTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gCapOpenExposureTzs_check", ok: (r) => between(r.gCapOpenExposureTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gCapPerMarketTzs_check", ok: (r) => between(r.gCapPerMarketTzs, 0, TZS_MAX) },
-    { name: "HouseBotControl_gMaxBetsPerMinute_check", ok: (r) => between(r.gMaxBetsPerMinute, 1, 20) },
+    { name: "HouseBotControl_gMaxBetsPerMinute_check", ok: (r) => between(r.gMaxBetsPerMinute, 1, 120) },
     { name: "HouseBotControl_gMaxBetsPerDay_check", ok: (r) => between(r.gMaxBetsPerDay, 1, 28800) },
     { name: "HouseBotControl_gCounterPerPlayerPerDay_check", ok: (r) => between(r.gCounterPerPlayerPerDay, 1, 1440) },
     { name: "HouseBotControl_gCounterPerPlayerTzsPerDay_check", ok: (r) => between(r.gCounterPerPlayerTzsPerDay, 0, TZS_MAX) },
-    { name: "HouseBotControl_maxDesignatedBots_check", ok: (r) => between(r.maxDesignatedBots, 1, 20) },
+    { name: "HouseBotControl_maxDesignatedBots_check", ok: (r) => between(r.maxDesignatedBots, 1, 100) },
     { name: "HouseBotControl_bellAlertsPerHour_check", ok: (r) => between(r.bellAlertsPerHour, 0, 60) },
     { name: "HouseBotControl_gCapStaffChosenPerDay_check", ok: (r) => between(r.gCapStaffChosenPerDay, 1, 200) },
     { name: "HouseBotControl_gCapStaffChosenDailyTzs_check", ok: (r) => between(r.gCapStaffChosenDailyTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gTargetsMaxActive_check", ok: (r) => between(r.gTargetsMaxActive, 1, 200) },
     { name: "HouseBotControl_gStaffChosenMaxCounterpartyShare_check", ok: (r) => between(r.gStaffChosenMaxCounterpartyShare, 10, 100) },
+    { name: "HouseBotControl_gCapPairRoundsPerDay_check", ok: (r) => between(r.gCapPairRoundsPerDay, 1, 28800) },
+    { name: "HouseBotControl_gCapPairDailyTzs_check", ok: (r) => between(r.gCapPairDailyTzs, 0, TZS_MAX) },
   ],
   HouseBotRuntime: [
     { name: "HouseBotRuntime_key_check", ok: (r) => r.key === "global" || r.key === "beat:planner"
@@ -836,6 +846,8 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
       || (r.triggerPositionId != null && r.anchorKey === r.triggerPositionId) },
     { name: "HouseBotIntent_market_anchor_check", ok: (r) => !(r.kind === "FILL" || r.kind === "OPENER") || r.anchorKey === r.marketId },
     { name: "HouseBotIntent_manual_anchor_check", ok: (r) => r.kind !== "MANUAL" || manualAnchorOk(r.anchorKey, r.requestedById) },
+    { name: "HouseBotIntent_pair_anchor_check", ok: (r) => r.kind !== "PAIR" || r.anchorKey === `pair:${r.marketId}` },
+    { name: "HouseBotIntent_pair_updown_check", ok: (r) => r.kind !== "PAIR" || r.productLine === "UPDOWN" },
     { name: "HouseBotIntent_idempotencyKey_check", ok: (r) => r.idempotencyKey === `hb:${r.id}` },
     { name: "HouseBotIntent_placed_check", ok: (r) => r.status !== "PLACED" || r.positionId != null },
   ],
@@ -939,9 +951,9 @@ export function checkViolation(err: unknown): string | null {
 
 /**
  * Each house unique index by the table it lives on and the key columns Postgres's DETAIL lists
- * (in index order). Two indexes share `("anchorKey")` on intents; the key's value tells them apart,
- * because a MANUAL anchor always starts "manual:" (`HouseBotIntent_manual_anchor_check`) and a
- * COUNTER anchor is a position id.
+ * (in index order). Three indexes share `("anchorKey")` on intents; the key's value tells them apart, because a
+ * MANUAL anchor always starts "manual:" (`HouseBotIntent_manual_anchor_check`), a PAIR anchor always starts "pair:"
+ * (`HouseBotIntent_pair_anchor_check`, N5) and a COUNTER anchor is a position id.
  */
 const UNIQUE_BY_KEY: Readonly<Partial<Record<HouseTable, readonly { cols: string; name: HouseUniqueIndex; value?: (v: string) => boolean }[]>>> = {
   HouseBot: [
@@ -950,7 +962,8 @@ const UNIQUE_BY_KEY: Readonly<Partial<Record<HouseTable, readonly { cols: string
   ],
   HouseBotIntent: [
     { cols: "anchorKey", name: "hbi_manual_anchor_uq", value: (v) => v.startsWith("manual:") },
-    { cols: "anchorKey", name: "hbi_counter_anchor_uq", value: (v) => !v.startsWith("manual:") },
+    { cols: "anchorKey", name: "hbi_pair_anchor_uq", value: (v) => v.startsWith("pair:") },
+    { cols: "anchorKey", name: "hbi_counter_anchor_uq", value: (v) => !v.startsWith("manual:") && !v.startsWith("pair:") },
     { cols: "kind,anchorKey", name: "hbi_fill_opener_anchor_uq" },
     { cols: "marketId", name: "hbi_manual_live_market_uq" },
     { cols: "positionId", name: "HouseBotIntent_positionId_key" },
@@ -1210,6 +1223,8 @@ function toHouseBotControl(r: any): StoredHouseBotControl {
     gCapStaffChosenDailyTzs: big(r.gCapStaffChosenDailyTzs),
     gTargetsMaxActive: int(r.gTargetsMaxActive),
     gStaffChosenMaxCounterpartyShare: int(r.gStaffChosenMaxCounterpartyShare),
+    gCapPairRoundsPerDay: int(r.gCapPairRoundsPerDay),
+    gCapPairDailyTzs: big(r.gCapPairDailyTzs),
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
   };
@@ -2085,7 +2100,7 @@ function seededControl(now: string): StoredHouseBotControl {
     gMaxBetsPerMinute: null, gMaxBetsPerDay: null, gCounterPerPlayerPerDay: null, gCounterPerPlayerTzsPerDay: null,
     maxDesignatedBots: 5, bellAlertsPerHour: 20,
     gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null,
-    gStaffChosenMaxCounterpartyShare: null,
+    gStaffChosenMaxCounterpartyShare: null, gCapPairRoundsPerDay: null, gCapPairDailyTzs: null,
     createdAt: now, updatedAt: now,
   };
 }
@@ -2724,14 +2739,17 @@ const toIntentRow = (row: NewHouseBotIntent, createdAt: string): StoredHouseBotI
 
 /**
  * Ruling 97 · the memory twin of `ON CONFLICT (<the row's anchor index>) DO NOTHING`: is the row's OWN anchor taken?
- * `hbi_counter_anchor_uq` covers every COUNTER; `hbi_fill_opener_anchor_uq` a FILL/OPENER that is not CANCELLED.
+ * `hbi_counter_anchor_uq` covers every COUNTER; `hbi_fill_opener_anchor_uq` a FILL/OPENER that is not CANCELLED; `hbi_pair_anchor_uq` (N5) a PAIR that is not CANCELLED.
  */
 function memAnchorTaken(row: NewHouseBotIntent): boolean {
   if (row.kind === "COUNTER") return [...memIntents.values()].some((i) => i.kind === "COUNTER" && i.anchorKey === row.anchorKey);
   if (row.kind === "FILL" || row.kind === "OPENER") {
     return [...memIntents.values()].some((i) => i.kind === row.kind && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");
   }
-  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+  if (row.kind === "PAIR") {
+    return [...memIntents.values()].some((i) => i.kind === "PAIR" && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");
+  }
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL, OPENER or PAIR rows only (C4-SPEC ruling 97; N5)");
 }
 
 /** Ruling 97 · the anchor index a Postgres engine insert may treat as "already decided" — partial-index inference. */
@@ -2740,7 +2758,8 @@ function anchorConflictSql(kind: IntentKind): string {
   if (kind === "FILL" || kind === "OPENER") {
     return `ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING RETURNING *`;
   }
-  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+  if (kind === "PAIR") return `ON CONFLICT ("anchorKey") WHERE "kind" = 'PAIR' AND "status" <> 'CANCELLED' DO NOTHING RETURNING *`;
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL, OPENER or PAIR rows only (C4-SPEC ruling 97; N5)");
 }
 
 /** A planner scan row's market is out of every house scope when its title marks a demo (`isDemoMarket`'s prefix). */

@@ -231,7 +231,7 @@ export async function loadWorld() {
 
   /**
    * Age every house position placed in the last minute by 61 s, so a suite that places more than
-   * `gMaxBetsPerMinute` (≤ 20 by CHECK) house bets a minute can test other caps. A fixture of time; the
+   * `gMaxBetsPerMinute` (≤ 120 by CHECK since N5; it was 20) house bets a minute can test other caps. A fixture of time; the
    * per-minute cap itself is tested before anything calls this.
    */
   async function ageHouseMinute(): Promise<void> {

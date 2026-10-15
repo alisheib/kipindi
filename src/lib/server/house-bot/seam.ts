@@ -61,7 +61,7 @@ function capReached(cap: CapCode, detail: FailureDetail = {}): HouseRefusal {
 function conflict(code: ConflictCode): HouseRefusal {
   return { ok: false, error: `House market conflict: ${code}.`, code: "INVALID", reason: "house_market_conflict", detail: { conflict: code } };
 }
-function conditionGone(condition: "OPENER" | "THIN" | "COUNTER" | "FILL"): HouseRefusal {
+function conditionGone(condition: "OPENER" | "THIN" | "COUNTER" | "FILL" | "PAIR"): HouseRefusal {
   return { ok: false, error: `House condition gone: ${condition}.`, code: "INVALID", reason: "house_condition_gone", detail: { condition } };
 }
 const KEY_MISMATCH: HouseRefusal = { ok: false, error: "House key mismatch.", code: "INVALID", reason: "house_key_mismatch" };
@@ -300,6 +300,12 @@ export async function houseH3(input: {
       const top = pool![opposite(side)].accounts[0];
       if (top != null && top.lockedTzs * 100 > share * lockedOpp) return concentration();
     }
+  } else if (intent.kind === "PAIR") {
+    // ⛔ N5 ships the PAIR kind's schema alone. What makes a pair legal — the opposite side to the other desk account, no
+    // player money on either side, a stake no larger than that account's, the daily budget (H4) — is N6's, decided here
+    // inside these same locks. Until then a PAIR row, which nothing writes, fails closed as a lost condition (SKIPPED ·
+    // CONDITION_GONE), and OTHER_BOT above refuses it first on any market another account holds.
+    return refuse(conditionGone("PAIR"));
   } else {
     const never: never = intent.kind;
     throw new Error(`house seam: unhandled intent kind ${String(never)}`);

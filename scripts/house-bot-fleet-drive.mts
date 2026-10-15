@@ -232,10 +232,10 @@ try {
    * `maxDesignatedBots` defaults to 5 — which is exactly the five desks of lanes A and B, so nothing
    * noticed until lane C, whose first run was refused `ROSTER_FULL` by `designation.ts` before it had
    * designated anything. It is raised HERE, through the real limits service, in this process's own
-   * database, to the product's own maximum. The column's CHECK stops at 20, so a roster that outgrows
-   * that is refused in a sentence rather than as an opaque CAS failure fifty lines later.
+   * database, to the product's own maximum. The column's CHECK stops at 100 (N5, Ali 2026-10-14; it was 20), so a
+   * roster that outgrows that is refused in a sentence rather than as an opaque CAS failure fifty lines later.
    */
-  const MAX_DESIGNATED = 20;
+  const MAX_DESIGNATED = 100;
   const wantedBots = ROSTER_ALL.filter((s) => laneWanted(s.lane)).length;
   if (wantedBots > MAX_DESIGNATED) {
     console.error(`REFUSED — the selected lanes ask for ${wantedBots} accounts and \`maxDesignatedBots\` cannot exceed ${MAX_DESIGNATED}. Split the run with --only.`);

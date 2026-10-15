@@ -835,9 +835,9 @@ const RAW_FIELDS = {
     nullable: true,
     recommended: 30_000,
   }),
-  gMaxBetsPerMinute: num("limits", "Global limits", "Bets per minute", "count", 1, 20, {
+  gMaxBetsPerMinute: num("limits", "Global limits", "Bets per minute", "count", 1, 120, {
     nullable: true,
-    recommended: 6,
+    recommended: 12,
     hint: "Rolling 60 seconds.",
   }),
   gMaxBetsPerDay: num("limits", "Global limits", "Bets per day", "count", 1, 28_800, {
@@ -859,7 +859,7 @@ const RAW_FIELDS = {
     TZS_RAIL_MAX,
     { nullable: true, recommended: 30_000, hint: RESETS_AT_MIDNIGHT_HINT },
   ),
-  maxDesignatedBots: num("limits", "Roster and alerts", "Max designated bots", "count", 1, 20, {
+  maxDesignatedBots: num("limits", "Roster and alerts", "Max designated bots", "count", 1, 100, {
     default: 5,
     recommended: 5,
   }),

@@ -166,7 +166,13 @@ const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/updown/page.tsx": "one row per chain. Chains are created by an operator one at a time and every one must be visible to be controlled",
   "src/app/admin/sources/page.tsx": "the trusted-source allowlist. It grows only when a compliance officer adds a domain, and the whole allowlist must be readable in one view to be auditable",
   "src/app/admin/live/page.tsx": "its table is live matches in progress — bounded by reality, not by a limit. Its two audit feeds are deliberately a newest-few glance, and each already links to /admin/audit?category=…, which IS fully paged and filterable. A second pager here would duplicate that surface on a page an operator refreshes constantly",
-  // ⭐ BOUNDED BY AN OPERATOR-SET CEILING THE PAGE ITSELF RENDERS. The desk's roster holds one row per
+  // ⭐ N5 (2026-10-15) · THE DESK'S ENTRY IS GONE, AS ITS OWN LAST LINES SAID IT WOULD BE. Ali raised the roster
+  // ceiling to 100 (`maxDesignatedBots` 1–100), a number no operator holds on one screen, so "every row visible at
+  // once" stopped being true and stopped being a reason. The page pages instead, twice, both through
+  // `AdminPagination`: the roster at twenty over the full non-removed read (a counting reader — the house DAL clamps
+  // list readers at 500, five times the ceiling), and the Results "By account" table at twenty under `apage`. What
+  // stood here, for the record:
+  // BOUNDED BY AN OPERATOR-SET CEILING THE PAGE ITSELF RENDERS. The desk's roster holds one row per
   // designated account, and the count is capped by `maxDesignatedBots` — the same ceiling the page prints
   // beside it as "N of M" and the same one the designation service refuses against (ROSTER_FULL). So the
   // grid cannot outgrow a number the operator chose and is looking at.
@@ -179,8 +185,7 @@ const FIXED_GRIDS: Record<string, string> = {
   // ⭐ 2026-09-27 (house-bots build step 9, Ali: "all desk tables and grids got the right paging"): the roster now
   // carries that pager, at TWENTY — the ceiling's own maximum (`maxDesignatedBots` is 1–20) — over the full
   // non-removed read, so while the ceiling holds it never draws and every row stays visible at once; the day the
-  // ceiling rises past twenty, the second page is already there. This entry's reason therefore still holds.
-  "src/app/admin/desk/page.tsx": "one row per designated account, capped by the operator-set maxDesignatedBots the page prints beside it as \"N of M\" and the designation service refuses against. Every row must be visible at once to be controlled — a row on page 2 is one nobody pauses, and this one can be moving money while it hides",
+  // ceiling rises past twenty, the second page is already there.
 };
 
 /**

@@ -369,9 +369,9 @@ RETURNING *;
 | daily loss (realised stops the master) | 100,000 | ≤ daily stake |
 | open exposure | 300,000 | ≥ every bot's per-market cap |
 | per market | 30,000 | ≥ every bot's stake max |
-| bets/minute | 6 | 1–20 |
+| bets/minute | ~~6~~ 12 | ~~1–20~~ 1–120 (amended by N5, 2026-10-15: the CHECK is `BETWEEN 1 AND 120`; the recommended value is the desk guide's 12) |
 | counters per player per day | 3 and 30,000 | — |
-| max designated bots | 5 | 1–20, ≥ current count |
+| max designated bots | 5 | ~~1–20~~ 1–100, ≥ current count (amended by N5, 2026-10-15: Ali's ceiling of 100) |
 | bell alerts/hour | 20 | 0–60 |
 | ~~holder notices/hour~~ | ~~6~~ | ~~0–60 (0 = summary only)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** removed before it shipped; the holder is told nothing, so the limit had no reader (D19c; C4 ruling 153). |
 

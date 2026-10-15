@@ -1301,7 +1301,7 @@ if (STORE === "memory") {
 
       const houseDirs = (git(["ls-tree", "--name-only", "HEAD", `${MIGS}/`]).split("\n"))
         .map((l) => l.trim().replace(`${MIGS}/`, "")).filter((f) => /_house_bot_(?:tables|markers)$/.test(f)).sort();
-      ok("rel.0 · the two house migration folders are read OUT of the tree, never typed into this suite",
+      ok("rel.0 · the two September house migration folders (tables, markers — N5 added a third, read by the script itself) are read OUT of the tree, never typed into this suite",
         houseDirs.length === 2, j(houseDirs));
       const target = `${MIGS}/${houseDirs[1] ?? houseDirs[0]}/migration.sql`;
       const original = execFileSync("git", ["show", `HEAD:${target}`], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 });

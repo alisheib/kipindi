@@ -190,8 +190,8 @@ export const PASSWORD_SET_VIA = ["REGISTRATION", "SELF_CHANGE", "RESET_LINK", "O
 export type PasswordSetVia = (typeof PASSWORD_SET_VIA)[number];
 export const isPasswordSetVia = closedListGuard(PASSWORD_SET_VIA);
 
-/** `HouseBotIntent.kind` (N1 §2 adds MANUAL — an Enter now press). */
-export const INTENT_KINDS = ["COUNTER", "FILL", "OPENER", "MANUAL"] as const;
+/** `HouseBotIntent.kind` (N1 §2 adds MANUAL — an Enter now press; N5 adds PAIR, the second leg of a desk-against-desk round, written from N6 — LAST, because test:house-bot-migrations compares this list to the live CHECK in order). */
+export const INTENT_KINDS = ["COUNTER", "FILL", "OPENER", "MANUAL", "PAIR"] as const;
 export type IntentKind = (typeof INTENT_KINDS)[number];
 export const isIntentKind = closedListGuard(INTENT_KINDS);
 

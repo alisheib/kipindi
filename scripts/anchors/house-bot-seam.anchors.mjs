@@ -142,4 +142,14 @@ export const MUTATIONS = [
     expect: "6.s1 · a player's stake",
     suite: "seam",
   },
+  {
+    // ⭐ N5 (2026-10-15): the PAIR kind ships its schema alone, so a PAIR row must fail closed inside the locks until N6
+    // writes what makes a pair legal. Waving it through is a bet nothing decided.
+    name: "seam.ts — N5 · a PAIR row passes the condition step instead of failing closed",
+    file: SEAM,
+    from: `    return refuse(conditionGone("PAIR"));`,
+    to: `    return { refusal: null, pool };`,
+    expect: "3p.1 · a PAIR row is refused as a lost condition",
+    suite: "seam",
+  },
 ];

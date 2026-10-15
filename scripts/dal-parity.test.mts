@@ -587,10 +587,12 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("6.sealed.sql · insertTargetedIfActive holds the target FOR SHARE before inserting",
     /FOR SHARE[\s\S]*insertSql\("HouseBotIntent"[\s\S]*anchorConflictSql\(row\.kind\)/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertTargetedIfActive")));
   {
-    const conflict = houseDalSrc.slice(houseDalSrc.indexOf("function anchorConflictSql("), houseDalSrc.indexOf("function anchorConflictSql(") + 900);
+    const conflict = houseDalSrc.slice(houseDalSrc.indexOf("function anchorConflictSql("), houseDalSrc.indexOf("function anchorConflictSql(") + 1400);
     ok("6.sealed.sql · ruling 97 · the engine insert swallows only its own anchor index (partial-index inference, never a bare ON CONFLICT DO NOTHING)",
       conflict.includes(`ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER' DO NOTHING`)
         && conflict.includes(`ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING`)
+        // N5 · the PAIR anchor index, the FILL/OPENER rule (a CANCELLED pair may be planned again).
+        && conflict.includes(`ON CONFLICT ("anchorKey") WHERE "kind" = 'PAIR' AND "status" <> 'CANCELLED' DO NOTHING`)
         && !/ON CONFLICT DO NOTHING/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertIgnoringConflict")));
   }
   {
@@ -619,9 +621,11 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       `memory ${memToday.length} · prisma ${priToday.length}`);
   }
 
-  // Every name the migrations fix, mirrored for the memory twin — no database needed to compare.
+  // Every name the migrations fix, mirrored for the memory twin — no database needed to compare. ⭐ N5 · EVERY house
+  // folder, in creation order (the third, `…_house_bot_pairs_roster`, adds the PAIR index and checks). A CHECK it drops and
+  // re-adds under the same name appears twice in the text; the comparison below is by SET, so that is one name.
   const migDir = join(ROOT, "prisma/migrations");
-  const houseSql = readdirSync(migDir).filter((f) => /^\d{14}_house_bot_(tables|markers)$/.test(f)).sort()
+  const houseSql = readdirSync(migDir).filter((f) => /^\d{14}_house_bot_\w+$/.test(f)).sort()
     .map((f) => readFileSync(join(migDir, f, "migration.sql"), "utf8").replace(/--.*$/gm, "")).join("\n");
   const listAt = houseDalSrc.indexOf("export const HOUSE_UNIQUE_INDEXES = [");
   const exportedUniques = listAt < 0 ? [] : [...houseDalSrc.slice(listAt, houseDalSrc.indexOf("] as const;", listAt)).matchAll(/"(\w+)"/g)].map((m) => m[1]);

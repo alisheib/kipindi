@@ -7,11 +7,22 @@
  * on User, Position, Transaction and PredictionMarket, eight new tables, and two migration rows its
  * own folder does not have. "Expand-only" is a claim about that build; this is the measurement.
  *
- *   1. the checkout really is the old build (HEAD = origin/main, no house folder, its own install);
- *   2. THIS tree's `prisma migrate deploy` migrates a scratch database, both house migrations included;
+ *   1. the checkout really is the old build (HEAD = origin/main, its own install — and, since N5, the two
+ *      September house folders and NOT this release's third);
+ *   2. THIS tree's `prisma migrate deploy` migrates a scratch database, every house migration included;
  *   3. the OLD build's own `prisma migrate deploy` exits 0 on that database;
  *   4. the OLD build's money end-to-end suite (bet, cash-out, settle, on the real services) passes on it;
- *   5. and every row the old build wrote left the house markers NULL.
+ *   5. and every row the old build wrote left the house markers NULL;
+ *   6. ⭐ N5 · the OLD build's own house suites (engine, money, caps, designation, console) pass on the N5 schema.
+ *
+ * ⭐ N5 (2026-10-15) · WHY §1 AND §4 CHANGED. Written for September, this gate's old build had NO house folder: the
+ * whole house schema was new. N5's old build is production with the house desk running, and the schema it meets is
+ * the third house folder (`…_house_bot_pairs_roster`) on top of the two it already has — three widened CHECKs, two
+ * nullable columns, two PAIR-only CHECKs and one PAIR-only unique index. So the question became "does the OLD house
+ * engine still work on it", and §4 answers it with the old build's own suites: this tree's third folder is copied into
+ * the old checkout for the length of §4 — its `prisma migrate deploy` then builds the N5 schema in each suite's own
+ * scratch database — and removed again in a `finally`, whatever happened. Its intent INSERTs and their `ON CONFLICT`
+ * clauses, its control-row reads and writes and its caps all run against the new CHECKs and the new partial index.
  *
  * ⚠️ WHY IT IS NOT A `test:` KEY. It needs a second checkout with its own `npm ci` and runs the money
  * end-to-end suite, so it cannot live inside `test:all` without making every run on every machine
@@ -27,7 +38,7 @@
  *   git worktree add ../kipindi-old-build origin/main && (cd ../kipindi-old-build && npm ci)
  *   HOUSE_BOT_OLD_BUILD_DIR=../kipindi-old-build npm run verify:house-bot-migrations-old-build
  */
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -101,9 +112,15 @@ console.log("\n§1 · the checkout is the old build, installed on its own");
   ok("c.0b · its HEAD is origin/main", head !== "" && head === main, `${head || "?"} vs origin/main ${main || "?"}`);
   const migDir = join(DIR, "prisma/migrations");
   const folders = existsSync(migDir) ? readdirSync(migDir) : [];
-  ok("c.0c · it has migrations and no house migration folder", folders.length > 0 && !folders.some((f) => /house_bot/.test(f)), `${folders.length} entries`);
+  const oldHouse = folders.filter((f) => /_house_bot_\w+$/.test(f)).sort();
+  ok("c.0c · it has migrations, the two September house folders and NOT this release's third (N5: the old build is production)",
+    folders.length > 0 && oldHouse.length === 2 && oldHouse.some((f) => /_house_bot_tables$/.test(f)) && oldHouse.some((f) => /_house_bot_markers$/.test(f))
+      && !folders.some((f) => /_house_bot_pairs_roster$/.test(f)),
+    `${folders.length} entries · house: ${oldHouse.join(", ") || "none"}`);
   const schemaPath = join(DIR, "prisma/schema.prisma");
-  ok("c.0d · its schema has no house marker column", existsSync(schemaPath) && !/\bhouseBotId\b/.test(readFileSync(schemaPath, "utf8")));
+  const oldSchema = existsSync(schemaPath) ? readFileSync(schemaPath, "utf8") : "";
+  ok("c.0d · its schema has the house marker column and none of N5's budget columns",
+    /\bhouseBotId\b/.test(oldSchema) && !/\bgCapPairRoundsPerDay\b/.test(oldSchema) && !/\bgCapPairDailyTzs\b/.test(oldSchema));
   const nm = join(DIR, "node_modules");
   ok("c.0e · it has its OWN node_modules — not a junction or symlink into another tree",
     existsSync(nm) && !lstatSync(nm).isSymbolicLink(), existsSync(nm) ? "" : "missing: run npm ci in the old checkout");
@@ -111,7 +128,7 @@ console.log("\n§1 · the checkout is the old build, installed on its own");
   if (fail > 0) { console.error("\n!! The old-build checkout is not usable; nothing below was run."); finish(); }
 }
 
-console.log("\n§2 · this tree migrates a scratch database, both house migrations included");
+console.log("\n§2 · this tree migrates a scratch database, every house migration included");
 await withClient(RAW, async (c) => {
   await c.query(`DROP DATABASE IF EXISTS "${DB}" WITH (FORCE)`);
   await c.query(`CREATE DATABASE "${DB}"`);
@@ -120,8 +137,11 @@ ok("c.1 · this tree's prisma migrate deploy exits 0", run("npx", ["prisma", "mi
 {
   const got = await withClient(URL_DB, async (c) => (await c.query(`SELECT
     to_regclass('"HouseBotPress"')::text AS "press",
-    (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'Position' AND column_name = 'houseBotId') AS "marker"`)).rows[0]);
+    (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'Position' AND column_name = 'houseBotId') AS "marker",
+    (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'HouseBotControl' AND column_name = 'gCapPairRoundsPerDay') AS "pairBudget",
+    (SELECT count(*)::int FROM pg_indexes WHERE indexname = 'hbi_pair_anchor_uq') AS "pairIndex"`)).rows[0]);
   ok("c.1b · CONTROL · the database really has the house tables and the Position marker", got?.press != null && got?.marker === 1, JSON.stringify(got));
+  ok("c.1c · CONTROL · …and N5's objects (a budget column, the PAIR index): it is the NEW schema the old build meets", got?.pairBudget === 1 && got?.pairIndex === 1, JSON.stringify(got));
 }
 
 console.log("\n§3 · the OLD build on the new schema");
@@ -145,5 +165,47 @@ await withClient(URL_DB, async (c) => {
     await c.query("ROLLBACK");
   }
 });
+
+console.log("\n§4 · N5 · the OLD build's own house suites on the N5 schema");
+{
+  const pairsName = readdirSync(join(ROOT, "prisma/migrations")).find((f) => /_house_bot_pairs_roster$/.test(f)) ?? "";
+  ok("c.5 · this tree has the N5 folder to lend", pairsName !== "", pairsName || "missing");
+  if (pairsName) {
+    const lent = join(DIR, "prisma/migrations", pairsName);
+    ok("c.5a · the old checkout does not already carry it (a left-over copy would mean an earlier run never cleaned up)", !existsSync(lent));
+    mkdirSync(lent);
+    try {
+      copyFileSync(join(ROOT, "prisma/migrations", pairsName, "migration.sql"), join(lent, "migration.sql"));
+      // ⛔ CONTROL: the old tree's migrate deploy really applies the lent file — otherwise every suite below would run on
+      // the September schema and prove nothing about N5.
+      const CTL = `${DB}_ctl`;
+      await withClient(RAW, async (c) => {
+        await c.query(`DROP DATABASE IF EXISTS "${CTL}" WITH (FORCE)`);
+        await c.query(`CREATE DATABASE "${CTL}"`);
+      });
+      const URL_CTL = `${RAW.replace(/\/[^/?]*(\?.*)?$/, "")}/${CTL}`;
+      ok("c.5b · CONTROL · the old tree's prisma migrate deploy applies the lent N5 file", run("npx", ["prisma", "migrate", "deploy"], { DATABASE_URL: URL_CTL }, DIR) === 0);
+      const n5 = await withClient(URL_CTL, async (c) => (await c.query(`SELECT
+        (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'HouseBotControl' AND column_name = 'gCapPairDailyTzs') AS "col",
+        (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotIntent_kind_check') AS "kinds"`)).rows[0]);
+      ok("c.5c · CONTROL · …and the database it built has N5's column and the PAIR kind", n5?.col === 1 && /'PAIR'/.test(String(n5?.kinds)), JSON.stringify(n5));
+      await withClient(RAW, (c) => c.query(`DROP DATABASE IF EXISTS "${CTL}" WITH (FORCE)`));
+      // Each is the OLD build's own two-store suite, run from its own checkout: its runner creates a scratch database
+      // from the old tree's migrations — which now include the lent file — and its child processes use the old client.
+      for (const [key, file] of [
+        ["engine", "scripts/house-bot-engine.test.mts"],
+        ["money", "scripts/house-bot-money.test.mts"],
+        ["caps", "scripts/house-bot-caps.test.mts"],
+        ["designation", "scripts/house-bot-designation.test.mts"],
+        ["console", "scripts/house-bot-console.test.mts"],
+      ] as const) {
+        ok(`c.6.${key} · the old build's ${file} passes on the N5 schema (both stores)`, run("npx", ["tsx", file], {}, DIR) === 0);
+      }
+    } finally {
+      rmSync(lent, { recursive: true, force: true });
+    }
+    ok("c.7 · the lent folder is gone again: the old checkout is back to its own tree", !existsSync(lent) && git(DIR, ["status", "--porcelain", "prisma/migrations"]) === "");
+  }
+}
 
 finish();

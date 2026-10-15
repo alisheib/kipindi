@@ -188,6 +188,20 @@ const rosterEvery = async (viewer: string): Promise<Any> => {
   for (let n = 2; n <= pages; n++) rows.push(...(((await GATEM.houseRosterForConsole(viewer, "/admin/desk", { rpage: String(n) })) as Any)?.rows ?? []));
   return { ...first, rows };
 };
+/**
+ * ⭐ N5 · …AND SO DOES THE RESULTS TAB'S BY ACCOUNT (2026-10-15). The roster may pass twenty since N5 (ceiling 1–100), so
+ * the account lines page at twenty under `apage`. A case that ADDS the lines up, finds one account's line or scans their
+ * words reads every page through the door the same way and gets page 1's view carrying every page's lines. A case that
+ * COUNTS the reader's own reads (1.437a, 1.437f, 1.437g) keeps one call, so its count stays one render's.
+ */
+const resultsEvery = async (viewer: string): Promise<Any> => {
+  const first: Any = await GATEM.houseResultsForConsole(viewer, "/admin/desk");
+  if (first == null || !Array.isArray(first.resultAccounts) || typeof first.resultAccountsTotal !== "number") return first;
+  const pages = Math.max(1, Math.ceil(first.resultAccountsTotal / first.resultAccountsPerPage));
+  const lines: Any[] = [...first.resultAccounts];
+  for (let n = 2; n <= pages; n++) lines.push(...(((await GATEM.houseResultsForConsole(viewer, "/admin/desk", { apage: String(n) })) as Any)?.resultAccounts ?? []));
+  return { ...first, resultAccounts: lines };
+};
 const ROLES: Any = await import("../../src/lib/server/roles.ts");
 const RBAC: Any = await import("../../src/lib/server/rbac.ts");
 /** ⭐ C7 step 6 · the picker's own bucket (387(e)) — named here because `rateCheckAsync` FAILS OPEN on a key it
@@ -4061,12 +4075,21 @@ try {
     /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
+    /* ⛔ N5 · PAIR is a kind the schema accepts and nothing writes until N6, so the Type axis offers every kind BUT it —
+       a chip that can only ever select nothing is 432(a)'s dead control. The feed still has a word for one ("Pairing"),
+       so a PAIR row could never render blank. */
+    const RAIL_KINDS = (K_INTENT_KINDS as string[]).filter((k) => k !== "PAIR");
     ok("1.410 · the rail is THREE axes, each an 'Any …' option plus one per member of its own closed list, with the live one marked",
       groups.length === 3 && all(groups.map((g) => g.param)) === all(["kind", "product", "outcome"])
-        && groups[0].options.length === 1 + (K_INTENT_KINDS as string[]).length
+        && groups[0].options.length === 1 + RAIL_KINDS.length
         && groups[2].options.some((o: Any) => o.on === true && o.key === "failed")
         && groups[0].options.filter((o: Any) => o.on).length === 1,
       j(groups.map((g) => ({ param: g.param, options: g.options.length, on: g.options.filter((o: Any) => o.on).length }))));
+    ok("1.410 · N5 · the Type axis offers no PAIR chip while nothing writes one — and the feed's word for a PAIR row is \"Pairing\", so such a row never renders blank",
+      (K_INTENT_KINDS as string[]).includes("PAIR") && RAIL_KINDS.length === (K_INTENT_KINDS as string[]).length - 1
+        && !groups[0].options.some((o: Any) => o.label === "Pairing" || o.key === "pairing")
+        && GATEM.CONSOLE_FEED_AXES.kind.word.PAIR === "Pairing" && !GATEM.CONSOLE_FEED_AXES.kind.members.includes("PAIR"),
+      j({ kinds: K_INTENT_KINDS, options: groups[0].options.map((o: Any) => o.label), word: GATEM.CONSOLE_FEED_AXES.kind.word.PAIR }));
     ok("1.411 · every rail link carries the tab and every OTHER live filter, and DROPS the page — a filter change that kept the page lands on one the narrowed list no longer has",
       groups.every((g) => g.options.every((o: Any) => o.href.includes("tab=activity") && !/[?&]page=/.test(o.href)))
         && groups[0].options.some((o: Any) => o.href.includes("outcome=failed")),
@@ -5315,11 +5338,12 @@ section("§2e3 · the desk landing page's activity and history panels");
       && /param="page"/.test(landing) && /param="hpage"/.test(landing)
       && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
     "");
-  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty). */
-  ok("1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
-    (landing.match(/<AdminPagination/g) ?? []).length === 3
+  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty).
+     ⭐ N5 · FOUR: the roster may pass twenty now (ceiling 1–100), so the Results tab's By account pages as well. */
+  ok("1.411 · the four paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 4
       && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
-      && /total=\{rosterView\.rosterTotal\}/.test(landing)
+      && /total=\{rosterView\.rosterTotal\}/.test(landing) && /total=\{resultsView\.resultAccountsTotal\}/.test(landing)
       && !/total=\{[^}]*\.length\}/.test(landing)
       && !/parsePage/.test(landing)
       && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
@@ -5333,11 +5357,18 @@ section("§2e3 · the desk landing page's activity and history panels");
      at the configured ceiling of twenty it renders nothing (the kit pager returns null on one page — ruling 411's own
      reason the loader draws no ghost for it), and the day that ceiling moves it is a real pager, not a longer table.
      The limits and Results panels still draw none, for the reasons above. */
-  ok("1.411 · the limits and results panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's is the kit pager over its reader's own count, its own page word and its validated parameters",
+  /* ⭐ N5 · THE RESULTS PANEL LEFT THIS LIST TOO, for the roster's reason: its By account has one line per account, the
+     roster may pass twenty since N5, and no desk table grows past a page. It pages THAT table only — By day is seven
+     fixed rows — under its own word `apage`, over its reader's count, from the reader's own parameters (D20b's
+     amendment permits one VIEW; paging the view exports and reports nothing). The limits panel still draws none. */
+  ok("1.411 · the limits panel draws NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's and the Results By account's are the kit pager over their reader's own count, their own page word and their validated parameters",
     /<AdminPagination/.test(panelOf("roster")) && /param="rpage"/.test(panelOf("roster"))
       && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, rosterView\.rosterParams, "rpage"\)\}/.test(panelOf("roster"))
       && !/<AdminPagination/.test(panelOf("limits"))
-      && !/<AdminPagination/.test(panelOf("results")) && panelOf("results").length > 200
+      && (panelOf("results").match(/<AdminPagination/g) ?? []).length === 1 && /param="apage"/.test(panelOf("results"))
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, resultsView\.resultsParams, "apage"\)\}/.test(panelOf("results"))
+      && /page=\{resultsView\.resultAccountsPage\}/.test(panelOf("results")) && /perPage=\{resultsView\.resultAccountsPerPage\}/.test(panelOf("results"))
+      && panelOf("results").length > 200
       && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
     "");
   /* ⛔ EACH PANEL'S EMPTY STATE IS THE KIT'S AND IS REACHED ONLY BY A `length === 0` BRANCH; THE FAILURE STATE IS
@@ -7686,7 +7717,7 @@ try {
      * ⭐ 437(d): the tab's day figure is `book.ts`'s own settled figure with the sign turned — the one the Limits tab's
      * settled row and both automatic stops act on — so no two readings of it can disagree. Measured here over EVERY
      * stake on the desk today, whoever placed it, so the identity is not a property of this fixture's population. */
-    const wholeView: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const wholeView: Any = await resultsEvery(OFFICER);
     const wholeBook: Any = await BOOK.houseDayBook(wholeView.dayKey, null);
     const wholeUsage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     const oneArithmetic = (view: Any, bookLoss: number, settledUsed: number | null): boolean => {
@@ -7710,7 +7741,9 @@ try {
       return rows.filter((r: Any) => MINE.has(r.houseBotId));
     };
     const isolated = w.dal.houseBookStore.dayRows;
-    const v: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const v: Any = await resultsEvery(OFFICER);
+    /* ⛔ 1.437g compares ONE render with one planted failure against the same render without it — page 1 of each. */
+    const vFirst: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
     const book: Any = await BOOK.houseDayBook(v.dayKey, null);
     const usage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     const desk = deskOf(v);
@@ -7943,9 +7976,9 @@ try {
       j({ failedCalls, row: g2, weeks: gView?.resultAccounts?.map((r: Any) => r.week?.text) }));
     ok("1.437g · …and everything else is REAL: the six other days and every account's Today are exactly what they are with no failure",
       gView !== null && [0, 1, 3, 4, 5, 6].every((i) => all(gView.resultDays[i]) === all(v.resultDays[i]))
-        && gView.resultAccounts.length === v.resultAccounts.length
-        && gView.resultAccounts.every((r: Any, i: number) => all(r.today) === all(v.resultAccounts[i].today) && r.accountName === v.resultAccounts[i].accountName),
-      j({ lines: [gView?.resultAccounts?.length, v.resultAccounts.length] }));
+        && gView.resultAccounts.length === vFirst.resultAccounts.length && gView.resultAccounts.length > 0
+        && gView.resultAccounts.every((r: Any, i: number) => all(r.today) === all(vFirst.resultAccounts[i].today) && r.accountName === vFirst.resultAccounts[i].accountName),
+      j({ lines: [gView?.resultAccounts?.length, vFirst.resultAccounts.length] }));
     ok("1.437g · CONTROL · the failed row is not blank, not Even, not No stakes and not — (each would read as a zero), and the same row without the failure is the real Even",
       typeof g2?.result?.text === "string" && g2.result.text !== "" && !["Even", "No stakes", "—", "Nothing settled"].includes(g2.result.text)
         && g2.result.figure === null && v.resultDays[2].result.text === "Even",
@@ -7973,7 +8006,7 @@ try {
     /* A SECOND removed account that staked in the window turns the one line plural. D is removed here (C already is);
        both still give their slots back in the teardown, which removes whatever is left. */
     await w.dal.houseBotStore.setStatus(accD.botId, { from: ["ACTIVE"], ...REMOVE });
-    const vMany: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const vMany: Any = await resultsEvery(OFFICER);
     const glMany: Any = goneRow(vMany);
     ok("1.437h · with a SECOND removed account in the window the line reads `Accounts no longer on the desk` — still ONE line, carrying both accounts' money, with every total unchanged",
       glMany?.accountName === GONE_MANY && vMany.resultAccounts.filter((r: Any) => r.accountHref === null).length === 1
@@ -9767,21 +9800,42 @@ try {
     }
     ok("1.s9 · results · By day's Result, Stakes placed and State order the seven days both ways by what each cell paints — a day with no result LAST both ways — each tie in the table's own order",
       dayBad.length === 0 && resBare.resultDays.some((d: Any) => resultOf(d.result) !== null), j(dayBad));
-    const acctAt = new Map((resBare.resultAccounts ?? []).map((a: Any, i: number) => [a.accountName, i]));
+    /* ⭐ N5 · By account PAGES at twenty under `apage` (the roster may pass twenty now), so every property of its order is
+       measured over EVERY page, concatenated — the walk the roster and the ledger already take. */
+    const walkAcct = (q: Record<string, unknown>) => walk9(readRes, q, "apage", (v) => v.resultAccounts, (v) => v.resultAccountsTotal);
+    const acctBare = await walkAcct({});
+    const acctAt = new Map(acctBare.rows.map((a: Any, i: number) => [a.accountName, i]));
     const acctTie = (a: Any, b: Any) => (acctAt.get(a.accountName) ?? 0) < (acctAt.get(b.accountName) ?? 0);
     const acctBad: string[] = [];
     for (const [token, key] of [["account", (a: Any) => (a.accountIsOperatorText ? a.accountName : null)], ["today", (a: Any) => resultOf(a.today)], ["last-7-days", (a: Any) => resultOf(a.week)]] as Array<[string, (a: Any) => number | string | null]>) {
       for (const dir of ["asc", "desc"] as const) {
-        const v = await readRes({ acctsort: token, acctdir: dir });
-        if (pairsOut(v.resultAccounts ?? [], key, dir, acctTie).length > 0 || (v.resultAccounts ?? []).length !== (resBare.resultAccounts ?? []).length) acctBad.push(`${token}:${dir}`);
+        const v = await walkAcct({ acctsort: token, acctdir: dir });
+        if (pairsOut(v.rows, key, dir, acctTie).length > 0 || v.rows.length !== acctBare.rows.length) acctBad.push(`${token}:${dir}`);
       }
     }
-    const acctAsc = await readRes({ acctsort: "account", acctdir: "asc" });
-    const acctDesc = await readRes({ acctsort: "account", acctdir: "desc" });
+    const acctAsc = await walkAcct({ acctsort: "account", acctdir: "asc" });
+    const acctDesc = await walkAcct({ acctsort: "account", acctdir: "desc" });
     ok("1.s9 · results · By account orders by the account's label, today's result and the week's both ways — and the line folding every account no longer on the desk has no label and sorts LAST in both directions",
-      acctBad.length === 0 && (resBare.resultAccounts ?? []).some((a: Any) => !a.accountIsOperatorText)
-        && !acctAsc.resultAccounts.at(-1).accountIsOperatorText && !acctDesc.resultAccounts.at(-1).accountIsOperatorText,
+      acctBad.length === 0 && acctBare.rows.some((a: Any) => !a.accountIsOperatorText)
+        && !acctAsc.rows.at(-1).accountIsOperatorText && !acctDesc.rows.at(-1).accountIsOperatorText,
       j({ acctBad }));
+    /* ━━ N5 · BY ACCOUNT'S PAGER — the roster pager's own rules, over this table's count ━━ */
+    const acctPast = await readRes({ apage: "999", acctsort: "today" });
+    const acctBadPage = await readRes({ apage: "x" });
+    const lineKey = (a: Any) => a.accountHref ?? "the removed-accounts line";
+    ok("1.s9 · results pager · N5 · By account is twenty to a page over the WHOLE list's count — never the page's length — the pages together are every line exactly once, a page past the end is the last page with its lines, and the parameters a link is built from carry no page",
+      acctBare.rows.length > 20 && acctBare.pages[0].resultAccounts.length === 20
+        && acctBare.pages[0].resultAccountsTotal === acctBare.rows.length && acctBare.pages[0].resultAccountsPerPage === 20
+        && acctBare.pages.length === Math.ceil(acctBare.rows.length / 20)
+        && new Set(acctBare.rows.map(lineKey)).size === acctBare.rows.length
+        && acctPast.resultAccountsPage === acctBare.pages.length
+        && acctPast.resultAccounts.length === acctBare.rows.length - 20 * (acctBare.pages.length - 1)
+        && acctBare.pages[1]?.resultAccountsPage === 2 && acctBare.pages[1].resultsParams.apage === undefined
+        && acctPast.resultsParams.acctsort === "today" && acctPast.resultsParams.apage === undefined
+        && acctBare.pages.every((p: Any) => p.resultDays.length === 7),
+      j({ total: acctBare.pages[0]?.resultAccountsTotal, lines: acctBare.rows.length, past: acctPast.resultAccountsPage, params: acctPast.resultsParams }));
+    ok("1.s9 · results pager · N5 · CONTROL · a page that is not a whole number is refused BY NAME and page 1 is served",
+      acctBadPage.resultAccountsPage === 1 && acctBadPage.queryRefusal === one("page") && acctBadPage.resultAccounts.length === 20, j(acctBadPage.queryRefusal));
     const both = await readRes({ daysort: "stakes-placed", daydir: "asc", acctsort: "today" });
     ok("1.s9 · results · the two tables sort INDEPENDENTLY on one address — each keeps the other's order in its parameters, the tab rides both, and each header row marks its own column",
       both.daySort.current === "stakes-placed" && both.daySort.dir === "asc" && both.acctSort.current === "today" && both.acctSort.dir === "desc"

@@ -237,6 +237,25 @@ await w.switchOn();
   })());
 }
 
+/* ═══ §3p · N5 — a PAIR row, which nothing writes until N6, fails closed inside the locks ═══════════ */
+section("§3p · N5 · a PAIR row fails closed");
+{
+  // ⛔ N5 ships the PAIR kind's schema alone; what makes a pair legal is N6's, decided in the seam. Until then a PAIR row
+  // that somehow exists must be refused where every other lost condition is — inside the locks, before any money moves.
+  const market = await w.poll({ graceMin: 0 });
+  const b = await w.bot();
+  const before = (await w.bal(b.userId)).balance;
+  const i = await w.intent(b, market.id, { kind: "PAIR", anchorKey: `pair:${market.id}`, productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 });
+  const r: Any = await w.place(b, i);
+  ok("3p.1 · a PAIR row is refused as a lost condition — CONDITION_GONE naming PAIR — inside the seam",
+    r.ok === false && r.reason === "house_condition_gone" && r.detail?.condition === "PAIR", `${r.reason} ${JSON.stringify(r.detail ?? null)}`);
+  ok("3p.2 · …and it moved no money", (await w.bal(b.userId)).balance === before);
+  // ⛔ CONTROL: the same account on the same market places an OPENER, so 3p.1 is the kind and not the fixture.
+  const o = await w.intent(b, market.id, { kind: "OPENER", side: "YES", stakeTzs: 1_000 });
+  const ro: Any = await w.place(b, o);
+  ok("3p.c1 · CONTROL · the same account places an OPENER on the same market", ro.ok === true, `${ro.code ?? ""} ${ro.reason ?? ""}`);
+}
+
 /* ═══ §4 · SEAM sites — no house branch outside an anchored site (04 F3) ════════════════════════ */
 section("§4 · SEAM sites");
 {

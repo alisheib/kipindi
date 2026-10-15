@@ -65,16 +65,27 @@ export const LIMIT_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCapDailyLossTzs", 0, 1_000_000_000],
   ["gCapOpenExposureTzs", 0, 1_000_000_000],
   ["gCapPerMarketTzs", 0, 1_000_000_000],
-  ["gMaxBetsPerMinute", 1, 20],
+  ["gMaxBetsPerMinute", 1, 120], // N5: 20 → 120
   ["gMaxBetsPerDay", 1, 28_800],
   ["gCounterPerPlayerPerDay", 1, 1_440],
   ["gCounterPerPlayerTzsPerDay", 0, 1_000_000_000],
-  ["maxDesignatedBots", 1, 20],
+  ["maxDesignatedBots", 1, 100], // N5: 20 → 100 (Ali, 2026-10-14)
   ["bellAlertsPerHour", 0, 60],
   ["gCapStaffChosenPerDay", 1, 200],
   ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
   ["gTargetsMaxActive", 1, 200],
   ["gStaffChosenMaxCounterpartyShare", 10, 100],
+];
+
+/**
+ * ⭐ N5 · THE PAIRS' DAILY BUDGET — its CHECKs are probed on Postgres with the rest (`test:house-bot-migrations`), but it is
+ * NOT in `LIMIT_FIELDS` yet, so the limits save cannot write it and the c10 save cases above cannot reach it: a form row
+ * that changes nothing is the dead control the console refuses. N6 moves these two into `LIMIT_FIELDS` and into
+ * `LIMIT_BOUNDS`, in the commit that gives them a form row and a reader.
+ */
+export const PAIR_BUDGET_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
+  ["gCapPairRoundsPerDay", 1, 28_800],
+  ["gCapPairDailyTzs", 0, 1_000_000_000],
 ];
 
 /** A press id in the browser's `crypto.randomUUID()` shape, fixed per case. */
@@ -124,6 +135,16 @@ function buildExpected(): Record<string, string> {
     "c04.d claim and skip the re-plan": "CLAIMED:true",
     "c04.e re-plan after SKIPPED": "unique:hbi_fill_opener_anchor_uq",
     "c04.f an OPENER on the same market is its own anchor": "PENDING",
+    // c04p · N5 · PAIR — one live pair per Up & Down round, planned again only after CANCELLED (FILL/OPENER's rule)
+    "c04p.a PAIR planned": "PENDING",
+    "c04p.b a second live PAIR on the round": "unique:hbi_pair_anchor_uq",
+    "c04p.c the sweep insert swallows the same clash": "null",
+    "c04p.d cancel it": "CANCELLED",
+    "c04p.e re-plan after CANCELLED": "PENDING",
+    "c04p.f claim and skip the re-plan": "CLAIMED:true",
+    "c04p.g re-plan after SKIPPED": "unique:hbi_pair_anchor_uq",
+    "c04p.h a FILL and an OPENER on the same round are their own anchors": "PENDING:PENDING",
+    "c04p.i a COUNTER clash still names the counter index, never the pair one": "unique:hbi_counter_anchor_uq",
     // c05 · a press id is used once, ever
     "c05.a Enter now queued": "PENDING",
     "c05.b cancel it": "CANCELLED",
@@ -186,6 +207,9 @@ function buildExpected(): Record<string, string> {
     "c10.g a zero stake": "check:HouseBotIntent_stakeTzs_check",
     "c10.h a PLACED row without its position": "check:HouseBotIntent_placed_check",
     "c10.i a fractional stake is refused before the database could round it": "error:house-bot-dal: HouseBotIntent.stakeTzs must be a whole number",
+    "c10.j a PAIR whose anchor is not pair:<its market>": "check:HouseBotIntent_pair_anchor_check",
+    "c10.k a PAIR on a poll": "check:HouseBotIntent_pair_updown_check",
+    "c10.l a kind outside the list": "check:HouseBotIntent_kind_check",
     // c11 · BIGINT round trip
     "c11.a a BIGINT bot cap reads back as a number": "true:number:1000000000",
     "c11.b BIGINT limits read back as numbers": "number:1000000000:number:1000000000",
@@ -198,6 +222,7 @@ function buildExpected(): Record<string, string> {
     "c12.d P2002 with a field list names nothing": "null",
     "c12.e a message naming two house indexes names nothing": "null",
     "c12.f a name inside a longer identifier is not that name": "null",
+    "c12.i a raw-SQL PAIR violation names the pair index": "hbi_pair_anchor_uq",
     "c12.g a CHECK violation names its constraint": "HouseBot_label_check",
     "c12.h a unique violation is not a CHECK": "null",
     // c13 · the claim
@@ -423,6 +448,9 @@ async function runCases(): Promise<void> {
     intent({ id, kind: "COUNTER", anchorKey: pos, triggerPositionId: pos, marketId: `mkt_${id}`, ...o });
   const fill = (id: string, marketId: string, o: Record<string, unknown> = {}) =>
     intent({ id, kind: "FILL", anchorKey: marketId, marketId, ...o });
+  /** N5 · a PAIR is the second leg of an Up & Down round: its anchor is `pair:<market>` by CHECK. */
+  const pair = (id: string, marketId: string, o: Record<string, unknown> = {}) =>
+    intent({ id, kind: "PAIR", anchorKey: `pair:${marketId}`, marketId, productLine: "UPDOWN", ...o });
   const manual = (id: string, marketId: string, submitId: string, o: Record<string, unknown> = {}) =>
     intent({ id, kind: "MANUAL", anchorKey: manualAnchorKey(OFFICER, submitId), marketId, requestedById: OFFICER, entryCondition: "THIN", ...o });
   const claimAndSkip = async (id: string, me: string): Promise<string> => {
@@ -503,6 +531,28 @@ async function runCases(): Promise<void> {
     await rec("c04.e re-plan after SKIPPED", async () => (await intents.insert(fill("hbi_c04c", "mkt_c04"))).status);
     await rec("c04.f an OPENER on the same market is its own anchor", async () =>
       (await intents.insert(intent({ id: "hbi_c04d", kind: "OPENER", anchorKey: "mkt_c04", marketId: "mkt_c04" }))).status);
+  });
+
+  // ── c04p · N5 · PAIR — one live pair per round, planned again only after CANCELLED ───────────
+  // ⛔ Both PAIR and COUNTER keep a unique index on "anchorKey", so a duplicate on either must be told apart by NAME on the
+  // memory twin too (UNIQUE_BY_KEY reads the `pair:` prefix): c04p.b and c04p.i are the two directions.
+  await group("c04p", async () => {
+    await rec("c04p.a PAIR planned", async () => (await intents.insert(pair("hbi_c04pa", "mkt_c04p"))).status);
+    await rec("c04p.b a second live PAIR on the round", async () => (await intents.insert(pair("hbi_c04pb", "mkt_c04p"))).status);
+    await rec("c04p.c the sweep insert swallows the same clash", () => intents.insertIgnoringConflict(pair("hbi_c04pc", "mkt_c04p")));
+    await rec("c04p.d cancel it", async () => (await intents.cancelPending("hbi_c04pa", "CASE"))?.status ?? null);
+    await rec("c04p.e re-plan after CANCELLED", async () => (await intents.insert(pair("hbi_c04pd", "mkt_c04p"))).status);
+    await rec("c04p.f claim and skip the re-plan", () => claimAndSkip("hbi_c04pd", "w_c04p"));
+    await rec("c04p.g re-plan after SKIPPED", async () => (await intents.insert(pair("hbi_c04pe", "mkt_c04p"))).status);
+    await rec("c04p.h a FILL and an OPENER on the same round are their own anchors", async () => {
+      const f = await intents.insert(intent({ id: "hbi_c04pf", kind: "FILL", anchorKey: "mkt_c04p", marketId: "mkt_c04p", productLine: "UPDOWN" }));
+      const o = await intents.insert(intent({ id: "hbi_c04pg", kind: "OPENER", anchorKey: "mkt_c04p", marketId: "mkt_c04p", productLine: "UPDOWN" }));
+      return `${f.status}:${o.status}`;
+    });
+    await rec("c04p.i a COUNTER clash still names the counter index, never the pair one", async () => {
+      await intents.insert(counter("hbi_c04ph", "pos_c04p"));
+      return (await intents.insert(counter("hbi_c04pi", "pos_c04p"))).status;
+    });
   });
 
   // ── c05 · a press id is used once, ever ──────────────────────────────────────────────────
@@ -691,6 +741,9 @@ async function runCases(): Promise<void> {
     await rec("c10.g a zero stake", () => st(fill("hbi_c10g", "mkt_c10g", { stakeTzs: 0 })));
     await rec("c10.h a PLACED row without its position", () => st(fill("hbi_c10h", "mkt_c10h", { status: "PLACED" })));
     await rec("c10.i a fractional stake is refused before the database could round it", () => st(fill("hbi_c10i", "mkt_c10i", { stakeTzs: 1.5 })));
+    await rec("c10.j a PAIR whose anchor is not pair:<its market>", () => st(pair("hbi_c10j", "mkt_c10j", { anchorKey: "mkt_c10j" })));
+    await rec("c10.k a PAIR on a poll", () => st(pair("hbi_c10k", "mkt_c10k", { productLine: "MARKET" })));
+    await rec("c10.l a kind outside the list", () => st(intent({ id: "hbi_c10l", kind: "PAIRS", anchorKey: "pair:mkt_c10l", marketId: "mkt_c10l", productLine: "UPDOWN" })));
 
     await mkUser("usr_c10");
     await designate("hb_c10", "usr_c10", "Case ten");
@@ -772,6 +825,7 @@ async function runCases(): Promise<void> {
     await rec("c12.e a message naming two house indexes names nothing", async () =>
       dal.uniqueViolation(planted(`${dup("hbi_counter_anchor_uq")} ${dup("hbi_manual_anchor_uq")}`)));
     await rec("c12.f a name inside a longer identifier is not that name", async () => dal.uniqueViolation(planted(dup("hbt_active_market_uq_old"))));
+    await rec("c12.i a raw-SQL PAIR violation names the pair index", async () => dal.uniqueViolation(planted(dup("hbi_pair_anchor_uq"))));
     await rec("c12.g a CHECK violation names its constraint", async () =>
       dal.checkViolation(planted('new row for relation "HouseBot" violates check constraint "HouseBot_label_check"', "23514")));
     await rec("c12.h a unique violation is not a CHECK", async () => dal.checkViolation(planted(dup("hbt_active_market_uq"))));

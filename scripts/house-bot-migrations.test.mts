@@ -51,7 +51,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import pg from "pg";
 import {
-  EXPECTED, BOT_CAP_BOUNDS, LIMIT_BOUNDS, diffOutcomes, outcomesOf, submitIdFor, type CaseRun,
+  EXPECTED, BOT_CAP_BOUNDS, LIMIT_BOUNDS, PAIR_BUDGET_BOUNDS, diffOutcomes, outcomesOf, submitIdFor, type CaseRun,
 } from "./lib/house-bot-dal-cases.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -144,6 +144,7 @@ const UNIQUE_TABLE: Record<string, string> = {
   HouseBotIntent_positionId_key: "HouseBotIntent", HouseBotIntent_idempotencyKey_key: "HouseBotIntent",
   hbi_counter_anchor_uq: "HouseBotIntent", hbi_fill_opener_anchor_uq: "HouseBotIntent", hbi_manual_anchor_uq: "HouseBotIntent",
   hbi_manual_live_market_uq: "HouseBotIntent", hbt_active_market_uq: "HouseBotTarget", hbp_actor_submit_uq: "HouseBotPress",
+  hbi_pair_anchor_uq: "HouseBotIntent",
 };
 /** The five marker indexes on the two hot existing tables (A23 may build them by hand first). */
 const MARKER_INDEXES: Record<string, string> = {
@@ -212,7 +213,7 @@ const KYC_IDENT = /"Kyc[A-Za-z]*"/;
 const lfSha256 = (buf: Buffer): string =>
   createHash("sha256").update(Buffer.from(buf.toString("latin1").replace(/\r\n/g, "\n"), "latin1")).digest("hex");
 
-let sqlTables = "", sqlMarkers = "", tablesFolder = "", markersFolder = "";
+let sqlTables = "", sqlMarkers = "", sqlPairs = "", tablesFolder = "", markersFolder = "", pairsFolder = "";
 await step("§A", async () => {
   const folders = readdirSync(MIG_DIR).filter((f) => /^\d{14}_/.test(f)).sort();
   const tables = folders.filter((f) => /^\d{14}_house_bot_tables$/.test(f));
@@ -228,12 +229,68 @@ await step("§A", async () => {
   // newest" is a release-time fact (REL-0's migrations diff, the commit-8 preflight), never a test key.
   const between = folders.filter((f) => f > tablesFolder && f < markersFolder);
   ok("A.1e · no other migration sorts between the two house migrations", between.length === 0, between.join(", "));
-  if (!tablesFolder || !markersFolder) return;
+  /* ⭐ N5 · THE THIRD HOUSE FOLDER, and the guard that a FOURTH cannot slip past every check here: each house folder this
+     suite reads is named, and any other `house_bot` folder is a failure until this suite is taught to read it. Migrations of
+     other lanes DO sort between the markers and the third folder (KYC, contacts, …), so A.1e's no-gap rule is not asked of it. */
+  const pairs = folders.filter((f) => /^\d{14}_house_bot_pairs_roster$/.test(f));
+  ok("A.1f · N5 · exactly one house_bot_pairs_roster migration folder, sorting after the markers", pairs.length === 1 && (pairs[0] ?? "") > markersFolder, pairs.join(", "));
+  pairsFolder = pairs[0] ?? "";
+  const unread = folders.filter((f) => /house_bot/.test(f) && f !== tablesFolder && f !== markersFolder && f !== pairsFolder);
+  ok("A.1g · N5 · no house folder this suite does not read (a fourth must be taught here before it is trusted)", unread.length === 0, unread.join(", "));
+  if (!tablesFolder || !markersFolder || !pairsFolder) return;
 
   const rawTables = readFileSync(join(MIG_DIR, tablesFolder, "migration.sql"), "utf8");
   const rawMarkers = readFileSync(join(MIG_DIR, markersFolder, "migration.sql"), "utf8");
   sqlTables = stripSql(rawTables);
   sqlMarkers = stripSql(rawMarkers);
+  const rawPairs = readFileSync(join(MIG_DIR, pairsFolder, "migration.sql"), "utf8");
+  sqlPairs = stripSql(rawPairs);
+
+  /* ═══ A.9 · N5 · THE THIRD FILE UNDER THE MIGRATION LAW — expand-only IN EFFECT ═════════════════════════════════════
+     It may drop exactly what it re-adds under the same name (a widened CHECK), and nothing else; every other rule of the
+     first two files holds. ⛔ A.9h is the reason this block exists: the build still serving during the deploy inserts a
+     COUNTER with ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER', which no NARROWER partial index satisfies — touching
+     `hbi_counter_anchor_uq` here would fail every one of those inserts with 42P10 until the old container stopped. */
+  ok("A.9a · pairs: the first statement is SET LOCAL lock_timeout = '3s';", sqlPairs.trimStart().startsWith("SET LOCAL lock_timeout = '3s';"));
+  for (const [word, re] of FORBIDDEN.filter(([w]) => w !== "DROP")) ok(`A.9b · pairs: no ${word}`, !re.test(sqlPairs), (sqlPairs.match(re) ?? [""])[0]);
+  const drops = [...sqlPairs.matchAll(/\bDROP\s+(\w+(?:\s+\w+)*?)\s+(?:IF\s+EXISTS\s+)?"(\w+)"/gi)].map((m) => ({ what: m[1].toUpperCase(), name: m[2] }));
+  ok("A.9c · pairs: the only drops are DROP CONSTRAINT IF EXISTS — no table, column, index or type",
+    drops.length > 0 && drops.every((d) => d.what === "CONSTRAINT") && [...sqlPairs.matchAll(/\bDROP\s+CONSTRAINT\s+(?!IF\s+EXISTS)/gi)].length === 0,
+    drops.filter((d) => d.what !== "CONSTRAINT").map((d) => `${d.what} ${d.name}`).join(", "));
+  const readded = new Set([...sqlPairs.matchAll(/ADD\s+CONSTRAINT\s+"(\w+)"/gi)].map((m) => m[1]));
+  ok("A.9d · pairs: every constraint it drops it re-adds under the same name in the same file", drops.every((d) => readded.has(d.name)),
+    drops.filter((d) => !readded.has(d.name)).map((d) => d.name).join(", "));
+  const badPairs = withoutIfNotExists(sqlPairs);
+  ok("A.9e · pairs: every CREATE INDEX and ADD COLUMN says IF NOT EXISTS", badPairs.length === 0, badPairs.join(" | "));
+  const pairAdds = [...sqlPairs.matchAll(/ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+"\w+"\s+[^,;]*/gi)].map((m) => m[0]);
+  ok("A.9f · pairs: exactly two columns, both NULLABLE with no DEFAULT (expand-only)", pairAdds.length === 2 && pairAdds.every(addIsExpandOnly), pairAdds.join(" | "));
+  ok("A.9g · pairs: no INSERT and no KYC table", insertsOf(sqlPairs).length === 0 && !KYC_IDENT.test(sqlPairs), (sqlPairs.match(KYC_IDENT) ?? [""])[0]);
+  ok("A.9h · ⛔ pairs: hbi_counter_anchor_uq is named NOWHERE (the serving build's COUNTER insert needs its predicate unchanged)",
+    !/hbi_counter_anchor_uq/.test(sqlPairs));
+  // Each re-added CHECK accepts a SUPERSET of what the September file's accepted — read from both files' own text.
+  const range = (sql: string, col: string): [number, number] | null => {
+    const m = new RegExp(`"${col}"\\s+BETWEEN\\s+(\\d+)\\s+AND\\s+(\\d+)`, "i").exec(sql);
+    return m ? [Number(m[1]), Number(m[2])] : null;
+  };
+  const widened = (col: string): boolean => {
+    const was = range(sqlTables, col), now = range(sqlPairs, col);
+    return was != null && now != null && now[0] <= was[0] && now[1] >= was[1];
+  };
+  ok("A.9i · pairs: maxDesignatedBots widens 1–20 → 1–100 and gMaxBetsPerMinute 1–20 → 1–120 (supersets, read from both files)",
+    widened("maxDesignatedBots") && widened("gMaxBetsPerMinute") && range(sqlPairs, "maxDesignatedBots")?.[1] === 100 && range(sqlPairs, "gMaxBetsPerMinute")?.[1] === 120,
+    JSON.stringify({ was: [range(sqlTables, "maxDesignatedBots"), range(sqlTables, "gMaxBetsPerMinute")], now: [range(sqlPairs, "maxDesignatedBots"), range(sqlPairs, "gMaxBetsPerMinute")] }));
+  const kindsIn = (sql: string): string[] => {
+    const m = /"HouseBotIntent_kind_check"\s+CHECK\s*\(\s*"kind"\s+IN\s*\(([^)]*)\)/i.exec(sql);
+    return m ? [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]) : [];
+  };
+  const wasKinds = kindsIn(sqlTables), nowKinds = kindsIn(sqlPairs);
+  ok("A.9j · pairs: the kind list is the September list with PAIR APPENDED — same order, nothing removed",
+    wasKinds.length === 4 && nowKinds.join(",") === [...wasKinds, "PAIR"].join(","), `${wasKinds.join(",")} → ${nowKinds.join(",")}`);
+  const ctlAt = sqlPairs.search(/ALTER\s+TABLE\s+"HouseBotControl"/i), intentAt = sqlPairs.search(/ALTER\s+TABLE\s+"HouseBotIntent"/i);
+  ok("A.9k · pairs: the control table is altered BEFORE the intent table — a desk bet's own order (§b3.6 runs it)",
+    ctlAt >= 0 && intentAt > ctlAt, `control at ${ctlAt} · intent at ${intentAt}`);
+  ok("A.9l · CONTROL · the drop parser sees a planted DROP INDEX and a bare DROP CONSTRAINT",
+    [..."ALTER TABLE t DROP CONSTRAINT \"c\"; DROP INDEX IF EXISTS \"i\";".matchAll(/\bDROP\s+(\w+(?:\s+\w+)*?)\s+(?:IF\s+EXISTS\s+)?"(\w+)"/gi)].map((m) => m[1].toUpperCase()).join(",") === "CONSTRAINT,INDEX");
 
   // ⛔ CONTROLS FIRST: the stripper must drop comments and keep statements, or every check below
   // is either blind or vacuous.
@@ -267,7 +324,7 @@ await step("§A", async () => {
   ok("A.6c · tables: no existing table is altered", !/ALTER\s+TABLE/i.test(sqlTables));
 
   // A.7 · every fixed name is in the files, and the files name nothing the DAL does not know.
-  const all = `${sqlTables}\n${sqlMarkers}`;
+  const all = `${sqlTables}\n${sqlMarkers}\n${sqlPairs}`;
   const plain = Object.values(PLAIN_INDEXES).flat();
   const named = [...dal.HOUSE_UNIQUE_INDEXES, ...plain, ...Object.keys(MARKER_INDEXES), ...dal.HOUSE_CHECK_NAMES];
   const absent = named.filter((n) => !all.includes(`"${n}"`));
@@ -384,10 +441,11 @@ ok("a0.3 · CONTROL · a timestamp without time zone is not a DAL time column",
   !typeMatches({ data_type: "timestamp without time zone", datetime_precision: 3 }, "ts")
     && !typeMatches({ data_type: "timestamp with time zone", datetime_precision: 6 }, "ts"));
 
-let fileTables = "", fileMarkers = "";
-if (tablesFolder && markersFolder) {
+let fileTables = "", fileMarkers = "", filePairs = "";
+if (tablesFolder && markersFolder && pairsFolder) {
   fileTables = readFileSync(join(MIG_DIR, tablesFolder, "migration.sql"), "utf8");
   fileMarkers = readFileSync(join(MIG_DIR, markersFolder, "migration.sql"), "utf8");
+  filePairs = readFileSync(join(MIG_DIR, pairsFolder, "migration.sql"), "utf8");
 }
 
 /**
@@ -541,6 +599,7 @@ async function probeConstraints(url: string): Promise<void> {
     insertOf("HouseBotIntent", intentRow("hbi_u_fill", { anchorKey: "mkt_u_fill", marketId: "mkt_u_fill" })),
     insertOf("HouseBotIntent", manualRow("hbi_u_manual", 900, { marketId: "mkt_u_manual" })),
     insertOf("HouseBotIntent", intentRow("hbi_u_placed", { status: "PLACED", positionId: "pos_u_placed" })),
+    insertOf("HouseBotIntent", intentRow("hbi_u_pair", { kind: "PAIR", anchorKey: "pair:mkt_u_pair", marketId: "mkt_u_pair", productLine: "UPDOWN" })),
     insertOf("HouseBotEvent", { id: "hbe_u_draw", marketId: "mkt_u_draw", kind: "OPENER_SIDE_DRAWN", payload: { side: "YES" } }),
     insertOf("HouseBotTarget", targetRow("hbt_u", { marketId: "mkt_u_target" })),
     insertOf("HouseBotPress", pressRow("hbp_u", 901)),
@@ -609,6 +668,12 @@ async function probeConstraints(url: string): Promise<void> {
     ["intent · the same COUNTER trigger twice", insertOf("HouseBotIntent", counterRow("hbi_p19", "pos_u")), "unique:hbi_counter_anchor_uq"],
     ["intent · the same FILL anchor while the first is not CANCELLED", insertOf("HouseBotIntent", intentRow("hbi_p20", { anchorKey: "mkt_u_fill", marketId: "mkt_u_fill" })), "unique:hbi_fill_opener_anchor_uq"],
     ["intent · a CANCELLED FILL beside a live one on the anchor", insertOf("HouseBotIntent", intentRow("hbi_p21", { anchorKey: "mkt_u_fill", marketId: "mkt_u_fill", status: "CANCELLED" })), "ok"],
+    // N5 · the PAIR kind: its anchor, its product, its one-live-per-market index (a CANCELLED one may sit beside it).
+    ["intent · a PAIR anchored on the bare market id", insertOf("HouseBotIntent", intentRow("hbi_p25", { kind: "PAIR", anchorKey: "mkt_p25", marketId: "mkt_p25", productLine: "UPDOWN" })), "check:HouseBotIntent_pair_anchor_check"],
+    ["intent · a PAIR on a poll", insertOf("HouseBotIntent", intentRow("hbi_p26", { kind: "PAIR", anchorKey: "pair:mkt_p26", marketId: "mkt_p26", productLine: "MARKET" })), "check:HouseBotIntent_pair_updown_check"],
+    ["intent · a PAIR on an Up & Down round, anchored pair:<market>", insertOf("HouseBotIntent", intentRow("hbi_p27", { kind: "PAIR", anchorKey: "pair:mkt_p27", marketId: "mkt_p27", productLine: "UPDOWN" })), "ok"],
+    ["intent · the same PAIR anchor while the first is not CANCELLED", insertOf("HouseBotIntent", intentRow("hbi_p28", { kind: "PAIR", anchorKey: "pair:mkt_u_pair", marketId: "mkt_u_pair", productLine: "UPDOWN" })), "unique:hbi_pair_anchor_uq"],
+    ["intent · a CANCELLED PAIR beside a live one on the anchor", insertOf("HouseBotIntent", intentRow("hbi_p29", { kind: "PAIR", anchorKey: "pair:mkt_u_pair", marketId: "mkt_u_pair", productLine: "UPDOWN", status: "CANCELLED" })), "ok"],
     ["intent · the same Enter now press id, even CANCELLED", insertOf("HouseBotIntent", manualRow("hbi_p22", 900, { marketId: "mkt_other_manual", status: "CANCELLED" })), "unique:hbi_manual_anchor_uq"],
     ["intent · a second live Enter now on the market", insertOf("HouseBotIntent", manualRow("hbi_p23", 905, { marketId: "mkt_u_manual" })), "unique:hbi_manual_live_market_uq"],
     ["intent · one position behind two intents", insertOf("HouseBotIntent", intentRow("hbi_p24", { status: "PLACED", positionId: "pos_u_placed" })), "unique:HouseBotIntent_positionId_key"],
@@ -653,7 +718,7 @@ async function probeConstraints(url: string): Promise<void> {
     PROBES.push([`bot · ${f} = ${hi}`, botSet(`"${f}" = ${hi}`), "ok"]);
     PROBES.push([`bot · ${f} = ${hi + 1}`, botSet(`"${f}" = ${hi + 1}`), `check:HouseBot_${f}_check`]);
   }
-  for (const [f, lo, hi] of LIMIT_BOUNDS) {
+  for (const [f, lo, hi] of [...LIMIT_BOUNDS, ...PAIR_BUDGET_BOUNDS]) {
     PROBES.push([`control · ${f} = ${lo - 1}`, controlSet(`"${f}" = ${lo - 1}`), `check:HouseBotControl_${f}_check`]);
     PROBES.push([`control · ${f} = ${lo}`, controlSet(`"${f}" = ${lo}`), "ok"]);
     PROBES.push([`control · ${f} = ${hi}`, controlSet(`"${f}" = ${hi}`), "ok"]);
@@ -686,7 +751,7 @@ async function probeConstraints(url: string): Promise<void> {
 // ═══ §a · REPLAY (S1 a) ══════════════════════════════════════════════════════════════════════
 section("§a1 · replay on an empty database");
 await step("§a1", async () => {
-  if (!fileTables || !fileMarkers) { ok("a1.0 · the two house migration files were found", false); return; }
+  if (!fileTables || !fileMarkers || !filePairs) { ok("a1.0 · the three house migration files were found", false); return; }
   const url = dbUrl("hb_mig_empty");
   await recreate("hb_mig_empty");
   ok("a1.1 · prisma migrate deploy applies every migration to an empty database", run("npx", ["prisma", "migrate", "deploy"], { DATABASE_URL: url }) === 0);
@@ -698,6 +763,8 @@ await step("§a1", async () => {
     const e2 = await applyRaw(url, fileMarkers);
     ok(`a1.3 · replay ${i}: the tables file raises no error`, e1 === null, e1 ?? "");
     ok(`a1.3 · replay ${i}: the markers file raises no error`, e2 === null, e2 ?? "");
+    const e3 = await applyRaw(url, filePairs);
+    ok(`a1.3 · replay ${i}: N5 · the pairs-and-roster file raises no error`, e3 === null, e3 ?? "");
   }
   const again = await readSweep(url);
   ok("a1.4 · the replays leave the sweep watermark where the first apply put it (A11)", again.iso === first.iso, `${first.iso} → ${again.iso}`);
@@ -711,7 +778,7 @@ await step("§a2", async () => {
   const scratch = mkdtempSync(join(tmpdir(), "hb-mig-kyc-"));
   try {
     cpSync(join(ROOT, "prisma/schema.prisma"), join(scratch, "schema.prisma"));
-    cpSync(MIG_DIR, join(scratch, "migrations"), { recursive: true, filter: (src) => !/_house_bot_(tables|markers)([\\/]|$)/.test(src) });
+    cpSync(MIG_DIR, join(scratch, "migrations"), { recursive: true, filter: (src) => !/_house_bot_\w+([\\/]|$)/.test(src) });
     const copied = readdirSync(join(scratch, "migrations"));
     ok("a2.0 · the scratch copy holds the KYC migration and no house folder",
       copied.includes(KYC_FOLDER) && !copied.some((f) => /house_bot/.test(f)), `${copied.length} entries`);
@@ -733,6 +800,11 @@ await step("§a2", async () => {
     const e3 = await applyRaw(url, fileTables);
     const e4 = await applyRaw(url, fileMarkers);
     ok("a2.6 · both files replay with no error", e3 === null && e4 === null, [e3, e4].filter(Boolean).join(" | "));
+    // N5 · the third file lands on the same database after the markers, as it will on production, and replays.
+    const e5 = filePairs ? await applyRaw(url, filePairs) : "the third house file was not found";
+    ok("a2.6b · N5 · the pairs-and-roster file applies after the markers", e5 === null, e5 ?? "");
+    const e6 = filePairs ? await applyRaw(url, filePairs) : "the third house file was not found";
+    ok("a2.6c · N5 · …and replays with no error", e6 === null, e6 ?? "");
     const again = await readSweep(url);
     ok("a2.7 · the replay leaves the sweep watermark where the first apply put it", again.iso === first.iso, `${first.iso} → ${again.iso}`);
     await checkSchema(url, "a2");
@@ -827,6 +899,97 @@ await step("§b", async () => {
     ok("b.6a · …the bet's INSERT succeeds", err6b === null, err6b?.message ?? "");
     ok("b.6b · …and the apply either succeeds or fails fast with 55P03", applied6 || err6a?.code === "55P03",
       applied6 ? "applied" : `${err6a?.code} ${err6a?.message ?? ""}`);
+  } finally {
+    for (const c of [c1, c2, c3]) await c.end().catch(() => {});
+  }
+});
+
+// ═══ §b3 · N5 · THE THIRD FILE, BLOCKED — on the tables it alters, while a desk bet holds them ═════════════════════════
+/* The September §b holds a Position row; the third file never touches Position, it alters HouseBotControl and then
+   HouseBotIntent — the two tables a desk bet holds (it READS the control row inside the bet and MARKS the intent placed at
+   its end). So the same three promises are asked of it there: a held lock makes the apply fail with 55P03 inside its 3 s
+   lock_timeout, the write queue behind it waits no longer than that, and the failure leaves nothing. b3.6 runs the bet's
+   own order against the file — control first, then intent — and a file that took the intent table first would meet it
+   in a deadlock (40P01). */
+section("§b3 · N5 · a blocked apply of the pairs-and-roster file fails fast, stalls nothing, and its lock order cannot deadlock a bet");
+await step("§b3", async () => {
+  if (!fileTables || !fileMarkers || !filePairs) { ok("b3.0 · the three house migration files were found", false); return; }
+  // Production's state before N5: the §b database (KYC-only, the markers applied) with the tables file on it.
+  await recreate("hb_mig_block3", "hb_mig_block");
+  const url = dbUrl("hb_mig_block3");
+  const eT = await applyRaw(url, fileTables);
+  ok("b3.0 · fixture · the September tables file applies to the copy (the markers are already on it)", eT === null, eT ?? "");
+  const c1 = new pg.Client({ connectionString: url });
+  const c2 = new pg.Client({ connectionString: url });
+  const c3 = new pg.Client({ connectionString: url });
+  await Promise.all([c1.connect(), c2.connect(), c3.connect()]);
+  const intentSql = (id: string) => `INSERT INTO "HouseBotIntent" ("id", "houseBotId", "botUserId", "kind", "anchorKey", "marketId", "productLine", "side",
+      "stakeTzs", "dueAt", "deadlineAt", "staleAt", "status", "decision", "idempotencyKey")
+    VALUES ('${id}', 'hb_block3', 'usr_block3', 'FILL', 'mkt_${id}', 'mkt_${id}', 'UPDOWN', 'YES', 1000, now(), now(), now(), 'PENDING', '{}', 'hb:${id}')`;
+  try {
+    const pidOf = async (c: pg.Client) => Number((await c.query("SELECT pg_backend_pid() AS pid")).rows[0].pid);
+    const pid2 = await pidOf(c2), pid3 = await pidOf(c3);
+    const cancelLater = (pid: number) => setTimeout(() => {
+      void withClient(RAW, (a) => a.query("SELECT pg_cancel_backend($1)", [pid])).catch(() => {});
+    }, 15_000);
+
+    // conn1 is a bet in flight that has READ the control row, so it holds the table in ACCESS SHARE.
+    await c1.query("BEGIN");
+    await c1.query(`SELECT "enabled" FROM "HouseBotControl" WHERE "id" = 'global'`);
+    const t0 = Date.now();
+    let tFail = 0, applied = false, err2: Any = null;
+    const guard2 = cancelLater(pid2);
+    const p2 = c2.query(filePairs).then(() => { applied = true; tFail = Date.now(); }, (e) => { err2 = e; tFail = Date.now(); });
+    // conn3, half a second later, is the next bet: it reads the control row too — queued behind the file's request.
+    await sleep(500);
+    let tRead = 0, err3: Any = null;
+    const guard3 = cancelLater(pid3);
+    const p3 = c3.query(`SELECT "enabled" FROM "HouseBotControl" WHERE "id" = 'global'`).then(() => { tRead = Date.now(); }, (e) => { err3 = e; tRead = Date.now(); });
+    await p2;
+    clearTimeout(guard2);
+    await p3;
+    clearTimeout(guard3);
+    await c1.query("ROLLBACK");
+    ok("b3.1 · with the control table held by a bet, the apply fails with 55P03 (lock_not_available)", !applied && err2?.code === "55P03",
+      applied ? "the apply SUCCEEDED while the bet held the table" : `${err2?.code} ${err2?.message}`);
+    ok("b3.2 · …within 3.5 s of starting: the file's SET LOCAL lock_timeout holds", tFail - t0 <= 3_500, `${tFail - t0} ms`);
+    ok("b3.3 · the next bet's read of the control row goes through", err3 === null, err3?.message ?? "");
+    ok("b3.4 · …within 1 s of the failure: the file never stalls the queue past its own timeout", err3 === null && tRead - tFail <= 1_000, `${tRead - tFail} ms`);
+    const left = (await c2.query(`SELECT
+      (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'HouseBotControl' AND column_name = 'gCapPairRoundsPerDay') AS "col",
+      (SELECT count(*)::int FROM pg_indexes WHERE indexname = 'hbi_pair_anchor_uq') AS "idx",
+      (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotIntent_kind_check') AS "kinds",
+      (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotControl_maxDesignatedBots_check') AS "roster"`)).rows[0];
+    ok("b3.5 · the failed apply left NOTHING — no column, no index, the kind CHECK without PAIR, the roster CHECK still 1–20 (one transaction)",
+      left.col === 0 && left.idx === 0 && !/PAIR/.test(String(left.kinds)) && /20/.test(String(left.roster)) && !/100/.test(String(left.roster)), JSON.stringify(left));
+
+    // ⛔ CONTROL: the failure above came from the held lock, not from the file.
+    let ctl: Any = null;
+    try { await c2.query(filePairs); } catch (e) { ctl = e; }
+    ok("b3.c1 · CONTROL · with nothing held the same apply succeeds", ctl === null, ctl?.message ?? "");
+    const after = (await c2.query(`SELECT
+      (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'HouseBotControl' AND column_name = 'gCapPairRoundsPerDay') AS "col",
+      (SELECT count(*)::int FROM pg_indexes WHERE indexname = 'hbi_pair_anchor_uq') AS "idx"`)).rows[0];
+    ok("b3.c2 · CONTROL · …and the column and the index exist afterwards", after.col === 1 && after.idx === 1, JSON.stringify(after));
+
+    // ⭐ b3.6 · A BET'S OWN ORDER AGAINST THE FILE: read the control row, then write an intent, while the file (re-run, so
+    // it takes the same locks again) waits for the control table. The file has locked nothing yet, so the bet's INSERT
+    // goes through and the bet commits; then the file proceeds. Had the file altered HouseBotIntent FIRST, it would hold
+    // the intent table while waiting for control, and this bet, holding control and wanting intent, would close a cycle.
+    await c1.query("BEGIN");
+    await c1.query(`SELECT "enabled" FROM "HouseBotControl" WHERE "id" = 'global'`);
+    let applied6 = false, err6a: Any = null, err6b: Any = null;
+    const guard6 = cancelLater(pid2);
+    const p6 = c2.query(filePairs).then(() => { applied6 = true; }, (e) => { err6a = e; });
+    await sleep(500);
+    await c1.query(intentSql("hbi_block3_bet")).catch((e) => { err6b = e; });
+    await c1.query(err6b ? "ROLLBACK" : "COMMIT");
+    await p6;
+    clearTimeout(guard6);
+    ok("b3.6 · a bet reading control then writing an intent while the file runs: no deadlock (40P01) on either side",
+      err6a?.code !== "40P01" && err6b?.code !== "40P01", `apply ${err6a?.code ?? "ok"} · bet ${err6b?.code ?? "ok"}`);
+    ok("b3.6a · …the bet's intent INSERT succeeds", err6b === null, err6b?.message ?? "");
+    ok("b3.6b · …and the file either applies or fails fast with 55P03", applied6 || err6a?.code === "55P03", applied6 ? "applied" : `${err6a?.code} ${err6a?.message ?? ""}`);
   } finally {
     for (const c of [c1, c2, c3]) await c.end().catch(() => {});
   }

@@ -362,9 +362,9 @@ export type ConsoleRosterView = ConsoleDeskShell & {
    */
   rows: ConsoleRosterRow[] | null;
   /**
-   * ⭐ STEP 9 · THE ROSTER PAGES AND SORTS. It is bounded by the configured maximum (1–20), so at twenty to a page the
-   * pager draws nothing today — and it is paged anyway, so no desk table can ever grow past a page if that ceiling
-   * moves. ⛔ `rosterTotal` is the WHOLE roster's length, never the page's (344); `null` with `rows`.
+   * ⭐ STEP 9 · THE ROSTER PAGES AND SORTS. The configured maximum was 1–20, so at twenty to a page the pager drew
+   * nothing; it was paged anyway so no desk table could outgrow a page when that ceiling moved — and N5 moved it to
+   * 1–100, so past twenty accounts it draws. ⛔ `rosterTotal` is the WHOLE roster's length, never the page's (344); `null` with `rows`.
    */
   rosterTotal: number | null;
   /** The page SERVED — a page past the end is the last page. */
@@ -1312,6 +1312,8 @@ export async function houseRosterForConsole(
 
 /** Twenty to a page — the admin table size, written here for the reason `CONSOLE_TARGETS_PER_PAGE` states. */
 const CONSOLE_ROSTER_PER_PAGE = 20;
+/** N5 · the Results tab's By account, twenty to a page, for the roster's reason. */
+const CONSOLE_RESULTS_ACCOUNTS_PER_PAGE = 20;
 
 /**
  * One roster row's sort key — the figure its cell PAINTS, or `null` where the cell paints none. ⛔ Read from the same
@@ -3716,6 +3718,7 @@ const CONSOLE_INTENT_KIND_WORD = {
   FILL: "Filling",
   OPENER: "Opening",
   MANUAL: "Manual",
+  PAIR: "Pairing",
 } as const satisfies Record<IntentKind, string>;
 
 /** One intent status, its word and its chip. ⛔ TOTAL, and the chip comes from the ONE tone table (ruling 311). */
@@ -4075,6 +4078,8 @@ export type ConsoleQuery = {
   daydir?: string | string[];
   acctsort?: string | string[];
   acctdir?: string | string[];
+  /** ⭐ N5 · the Results tab's By account page — the roster may pass twenty, and no desk table grows past a page. */
+  apage?: string | string[];
   /**
    * ⭐ THE ONE ACT A LINK MAY OPEN (register A5, 2026-09-23). `consoleReverifyHref` has answered a stale
    * consent with `?reverify=1` since it was written and nothing read it, so the way out landed on the
@@ -4293,6 +4298,8 @@ type ConsoleParsed = {
   refusals: string[];
   /** ⭐ STEP 9 · the roster's own page (1 when absent), and every table's validated sort this page carries. */
   rpage: number;
+  /** ⭐ N5 · the Results tab's By account page (1 when absent). */
+  apage: number;
   sorts: Readonly<Partial<Record<ConsoleSortTable, ConsoleSortParsed>>>;
 };
 
@@ -4438,6 +4445,7 @@ function parseConsoleQuery(
      direction with no column to apply it to (a table in its own order has none to reverse); each falls back to the
      table's own order and never rides into a link. A repeated word is a refusal, as everywhere on this rail. */
   const rosterPage = pageOf(q.rpage, "page");
+  const resultsAccountsPage = pageOf(q.apage, "page");
   const words = q as Readonly<Record<string, string | string[] | undefined>>;
   const sorts: Partial<Record<ConsoleSortTable, ConsoleSortParsed>> = {};
   for (const table of sortTables) {
@@ -4457,6 +4465,7 @@ function parseConsoleQuery(
 
   return {
     rpage: rosterPage.n,
+    apage: resultsAccountsPage.n,
     sorts,
     tab: tabOf(q.tab),
     tpage: targets.n,
@@ -4567,7 +4576,10 @@ function consoleFeedLink(base: string, params: Record<string, string | undefined
  * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
  */
 export const CONSOLE_FEED_AXES = {
-  kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
+  /* ⛔ N5 · PAIR is a kind the schema accepts and nothing writes until N6, so the rail does not offer it: a chip that can
+     only ever select nothing is 432(a)'s dead control. N6 drops the filter in the commit that writes the first PAIR row.
+     The feed still has a word for one (`CONSOLE_INTENT_KIND_WORD` is TOTAL), so a row could never render blank. */
+  kind: { label: "Type", all: "Any type", members: INTENT_KINDS.filter((k) => k !== "PAIR") as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
   product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
   outcome: {
     label: "Outcome", all: "Any outcome", members: INTENT_STATUSES as readonly string[],
@@ -5890,8 +5902,9 @@ export async function houseDetailForConsole(
    * millisecond are counted with it and the rank can only be too LARGE, never too small — which pushes the computed
    * page LATER, never earlier. The rows are already in hand, so the correction costs no read of its own: if the
    * anchor is not among them, the page is stepped back ONCE, before the single re-read below. That is exact for any
-   * tie block smaller than a page, which is every physically possible one — the per-minute cap is at most twenty
-   * stakes across the whole desk, so twenty stakes by ONE account inside one millisecond cannot happen. */
+   * tie block smaller than a page, which is every physically possible one: twenty stakes by ONE account inside one
+   * millisecond cannot happen — each takes that account's wallet lock in turn, and one bet is some thirty database
+   * round trips. (⚠️ N5: this used to rest on the desk-wide per-minute cap being at most twenty; it is 1–120 now.) */
   const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
   let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
   let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
@@ -7006,8 +7019,14 @@ export type ConsoleResultsAccountRow = {
 export type ConsoleResultsView = ConsoleDeskShell & {
   /** Exactly seven rows, newest first: today, then the six EAT days before it. */
   resultDays: ConsoleResultsDayRow[];
-  /** `null` when the roster read failed — nobody can tell which line is whose (355). */
+  /** ONE PAGE of the accounts (N5), in the order the address asks; `null` when the roster read failed — nobody can tell
+   *  which line is whose (355). */
   resultAccounts: ConsoleResultsAccountRow[] | null;
+  /** ⭐ N5 · every account's line counted (the removed accounts' line included), the page served and its size — the
+   *  roster may pass twenty, so By account pages as every other desk table does. `null` with the rows. */
+  resultAccountsTotal: number | null;
+  resultAccountsPage: number;
+  resultAccountsPerPage: number;
   resultsNote: string;
   /** ⭐ STEP 9 · By day's four sortable headers and the one in force — the day, newest first, on a bare address. */
   daySort: ConsoleSortView<SortKeysOf<"resultDays">>;
@@ -7212,10 +7231,21 @@ export async function houseResultsForConsole(
         : resultValue(key === "today" ? tallyFor(facts[i].set, days[0].books) : sumTallies(days.map((d) => tallyFor(facts[i].set, d.books))))),
       acctSort.dir, (i, j) => i - j);
   }
+  /* ⭐ N5 · THE ORDER, THEN THE PAGE — the roster's own rule (twenty to a page, a page past the end served as the last,
+     the total the whole list and never the page). The roster may pass twenty now, and "every desk table sorts, and none
+     can grow past a page" (Ali, step 9) holds here too; it stays ONE view on ONE tab, which is all D20b's amendment
+     permits — a pager pages the view, it exports and reports nothing. */
+  const accountsTotal = sortedAccounts === null ? null : sortedAccounts.length;
+  const accountsPage = consoleLastPage(accountsTotal, q.apage, CONSOLE_RESULTS_ACCOUNTS_PER_PAGE);
+  const accountsPageRows = sortedAccounts === null ? null
+    : sortedAccounts.slice((accountsPage - 1) * CONSOLE_RESULTS_ACCOUNTS_PER_PAGE, accountsPage * CONSOLE_RESULTS_ACCOUNTS_PER_PAGE);
   return {
     ...view,
     resultDays: sortedDays,
-    resultAccounts: sortedAccounts,
+    resultAccounts: accountsPageRows,
+    resultAccountsTotal: accountsTotal,
+    resultAccountsPage: accountsPage,
+    resultAccountsPerPage: CONSOLE_RESULTS_ACCOUNTS_PER_PAGE,
     resultsNote: CONSOLE_RESULTS_NOTE,
     daySort: consoleSortView(daySort),
     acctSort: consoleSortView(acctSort),
