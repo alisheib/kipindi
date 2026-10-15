@@ -182,7 +182,7 @@ await withFetch(() => jsonResp("500", 500), async () => {
 });
 await withFetch(() => jsonResp("038", 200), async () => {
   const r = await selcomWithdraw(FAKE_ENV, { transid: "t3", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
-  ok("withdraw definitive FAIL code → FAILED (safe to reverse)", !r.ok && r.reason === "FAILED");
+  ok("withdraw unknown 2xx FAIL code → AMBIGUOUS (hold for review)", !r.ok && r.reason === "AMBIGUOUS");
 });
 await withFetch(() => jsonResp("999", 200), async () => {
   const r = await selcomWithdraw(FAKE_ENV, { transid: "t4", amount: 1000, msisdn: "0712345678", utilityCode: "VMCASHIN" });
