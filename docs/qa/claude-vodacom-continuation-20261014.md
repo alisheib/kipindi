@@ -2,6 +2,21 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
+**CURRENT CODEX READ (2026-10-15 12:40 UTC; supersedes older status lines below):** `main` is live at
+`0229b2140c00208a1b873b112dc0c2713008d47b` with the question bet-panel guest-auth, Up & Down spendable-balance and
+locked-round visibility repairs. All three hosts serve that SHA with healthy, migrated DB and `STAFF_PREVIEW`;
+www/apex chunk gates are 6/6, signed-out production `qa:live` 352/0, visual 28/28 en/sw route/width cells.
+Source/PG `test:all` passed 544/544; exact-tip typecheck, build, local `qa:live` 375/0 and changed-file browser suites
+passed. Exact-tip CI run 38734948076 passed every step, including browser, PostgreSQL migration, C4/C6 and
+cross-instance leader-election proofs. Ali authorized one
+`mobile01` production sign-in on preceding live `50b586d50`; [E3] passed 385/0 including the seven-page signed-in read.
+That one attempt is consumed: do not repeat it without fresh explicit authorization. S8 still owes V1's release,
+A21 re-measure, parity v4 and the closing battery. S9 core, S10–S13 and the visual follow-ups stay on checkpoint
+branches. Ali directed Card checkout recovery to remain held until the Selcom redirect host is verified; admin TOTP
+and payment webhook secret settings are intentionally deferred during staff preview. He will arrange S14's real
+TZS 1,000 staff operator and agency sign-off; S15 still needs a fresh explicit go, and S16 needs seven real days.
+See VODACOM-PLAN §0k for the release evidence and current blockers.
+
 ## ⭐ CODEX TAKEOVER (2026-10-15) — read this first; paste the prompt below into the Codex session
 
 From 2026-10-15 the integrator and release owner is a **Codex session** (Ali's choice). The Claude session on
@@ -24,35 +39,38 @@ docs/qa/claude-vodacom-continuation-20261014.md (its top block — this takeover
 → docs/DESIGN_AUTHORITY.md (the ONLY design rulebook) → .claude/skills/50pick-audit/SKILL.md, .claude/skills/50pick-standards/SKILL.md,
 .claude/skills/railway/SKILL.md → docs/qa/visual-audit-20261015.md (58 visual findings and their owners).
 
-WHERE IT STANDS (2026-10-15 ~09:15 UTC — check `git log origin/main -8` and VODACOM-PLAN §0 first):
-- LIVE: 331048acb (A21 root-:has() fix + main's house-bots N3) → 47e68d20c (records) → [6b19de2ec, the demo seed's
-  single clock read, if the Claude session pushed it — check].
+WHERE IT STANDS (updated 2026-10-15 12:40 UTC — check `git log origin/main -8` and VODACOM-PLAN §0 first):
+- LIVE: 331048acb (A21 root-:has() fix + house-bots N3) → 6b19de2ec (demo seed) → 50b586d50 (handoff docs) →
+  c8a982cd7 (home hydration and the demo-seed guard scanner) → 0229b2140 (question guest auth doors, Up & Down
+  cash-plus-bonus preflight, locked round visibility), deployed and read back. CI run 38734948076 passed every step.
 - S0, S3, S3b, S4, S6 ✅; S2 ✅ 2026-10-15; S1 live (Ali's own "Turn my preview on" press waits until the whole plan is done,
   his 2026-10-02 rule); S7 closed (✅ at S14); S8 OPEN; S9–S13 building; S14–S16 need Ali.
-- S8 closes when: (a) lane V1's bet-sheet visual fixes have landed and A21 is re-measured at the release commit on a QUIET
+- S8's WP11 close record is ready when: (a) lane V1's bet-sheet visual fixes have landed and A21 is re-measured at the release commit on a QUIET
   machine (`npm run qa:bet-sheet-production` ≤150 ms; it read 78/0 at 331048acb); (b) a classic parity compare
   (`scripts/qa-classic-shell-parity.mjs --compare <v4 baseline>`) has every difference explained — 67/67 is expected once
   6b19de2ec is in, plus V1's intended Callout differences, cell by cell; (c) `npm run test:all` WITH the database suites at
-  the close tip; (d) [E3] (see SAFETY); (e) the close record in VODACOM-PLAN §0k and the §1 row; S8's done-when is in §1.
+  the close tip; (d) [E3] is measured 385/0 under Ali's one-attempt `mobile01` authorization; (e) the close record in
+  VODACOM-PLAN §0k and the §1 row. Keep the S8 row 🔨 until S14's real staff bet satisfies its final acceptance gate.
 
-LANES (each branch's last commit says "READY FOR RELEASE (proof…)" or "WIP: …"; all on GitHub as checkpoints):
-- seed clock fix — codex/s8-integration @6b19de2ec — proven (test:demo-seed-clock 3/3, red 4/4, 110 suites, tsc 0, build 0)
-- live fixes (3) — codex/live-fixes-1014 — question-page auth doors (S10 point 4), Up & Down balance = cash + bonus (S12 F1),
-  a round in its lock window stays on the board (S12 F2)
-- S9 release candidate — codex/s9-release — CARRIES A MIGRATION (see PRISMA); Ali's 2026-10-14 copy decisions applied
-- S10 visitor path — codex/vodacom-s10-build — WP1–WP8a; WP8b needs S9 on main; WP9 is the release
-- S11 How to Play + copy — codex/vodacom-s11-build
-- S12 consistency — codex/vodacom-s12-w (Swahili words, NDIO, madau, Terms), codex/vodacom-s12-j (@cf8465754) and
-  codex/vodacom-s12-j-marker-v2 (@82f283d45, WP10b on top of J; the older j-marker and j-marker-20261015 are superseded) (Juu/Chini
-  in the journey's language; J extracts the sheet's LowBlock), codex/vodacom-s12-a
-  (admin inks), codex/vodacom-s12-v (the audit's Up & Down/shell items), codex/vodacom-s12-f (message titles), codex/vodacom-s12-wp1
-  (parity v5); plan on codex/vodacom-s12-build
-- S13 measures panel — codex/vodacom-s13-build
-- V1 — codex/visual-v1 — bet sheet clipping/alignment, low-balance rails, sheet titles, kit Callout sm 11px → 13px, .btn-xl
-- V2a — codex/visual-v2a — classic board pages (/markets sort + stats at 320, pagers, carousels, chips, home rows, card spacing)
-- NOT STARTED: V2b — header/footer/auth/legal/help/404/question page/leaderboard (F03 F04 F07 F08 F09 F13 F19 F21 F22 F23 F24
-  F25 F26 F27 F28 F40 F42 F45 F46 F51 F54); kit backlog F38 F39; S7 follow-up F41; F20/F29 ship with the next Terms/Privacy
-  version (hash-bound text).
+LANES (all checkpointed on GitHub; verify the exact tip and uncommitted state before integration):
+- S8/V1 — `codex/s8-close-candidate-1015` @8e5c55e71, first-parented to live 0229. Its 544-suite source/PG battery,
+  exact-tip A21, parity v4 and browser close gates are in progress; root alone releases it. S8's real staff bet is S14.
+- S9 core — `codex/s9-core-1015`, with migration and funding/provider-reference safety work. Review, scratch-PG,
+  `verify:backup-schema`, browser and release gates remain. **Card checkout recovery is held** by Ali until its Selcom
+  redirect host is verified. The held code is checkpointed separately on `codex/s9-card-held`; do not merge it now.
+- S10 visitor path — `codex/s10-candidate-1015` @eb9abd4db; WP1–WP8a source, WP8b needs S9 on main, browser/release
+  gates remain. A production GET at 0229 with `side`, `ref` and `invite` found the comments guest sign-in href still keeps
+  only the market path; include and prove that door in S10's census. S11 How to Play/copy — `codex/s11-candidate-1015`
+  @ac2bea747; source done, browser/release gates remain.
+- S12 consistency — `codex/s12-candidate-1015` @4bd37b44f, merged W/A/J/F source; S11's Privacy version and the
+  separate Up & Down P2002 race fix `0a84ecfbe` need integration. S13 measures — `codex/s13-candidate-1015`
+  @0d557eb47, source done; browser, PDF, PG, dependency and release gates remain.
+- Visual candidates — `codex/visual-v2a-candidate-1015` @8986346a0, `codex/visual-v2b-candidate-1015`
+  @4342d0022, `codex/visual-kit-candidate-1015` @a7fff9a07, `codex/visual-f41-candidate-1015`
+  @ea5c51227 and `codex/profile-touch-candidate-1015` @708e602a1. Each needs overlap review and responsive browser
+  proof before release; F20/F29 belong with the next Terms/Privacy version.
+- S14 readiness — `codex/s14-readiness-1015` @74fd5bb30; checklist and fail-closed gates only. Real staff TZS 1,000
+  journey, agency sign-off/owner override, S15 fresh go and S16's seven days remain external acceptance gates.
 COORDINATION: Claude helpers on OMEGA-COMPILE01 may still be finishing a lane; they commit but never push. Integrate READY
 branches first; do not edit a branch whose last commit is a Claude "WIP" younger than 2 hours. Merge, never rebase or force,
 shared branches. You are now the ONLY session that pushes main — but another session (house bots) has pushed main before:
@@ -111,10 +129,9 @@ npm run qa:bet-sheet-production` from the same worktree — only on a quiet mach
 your own scratch directory.
 
 SAFETY (non-negotiable): never print or commit credentials (.env.qa.local, .env.local, Railway, Selcom, Blackball, Postmark).
-Never create or delete production accounts. [E3] — S8's signed-in production read — is EITHER Ali signing in himself as a
-regular player in a browser while you only read the seven pages (/, /markets, /live, /results, /watchlist, one question,
-/account), OR `QA_SIGNED_IN=mobile01 BASE=https://www.50pick.tz npm run qa:live` ONLY with Ali's explicit go in your session
-(one attempt: a wrong password counts toward lockout, and it ends any other mobile01 session). No money moves on production
+Never create or delete production accounts. [E3] — S8's signed-in production read — passed once on `50b586d50` with
+Ali's explicit authorization: `QA_SIGNED_IN=mobile01 BASE=https://www.50pick.tz npm run qa:live`, 385/0. A second
+sign-in needs a NEW explicit authorization; the first attempt ended any other `mobile01` session. No money moves on production
 except Ali's S14 journey. Money rules live in docs/RULES.md; a money path never changes without test:money-invariants,
 test:fee-model, test:withdrawal and e2e:money on PostgreSQL. Never fabricate data, prices, approvals, signatures or elapsed
 observation time; never waive a failed check — explain it with evidence or fix its cause. Keep the journey at STAFF_PREVIEW
@@ -124,13 +141,13 @@ OWNER RULES IN FORCE: "responsiveness and UI consistency is a rule" (every chang
 built from the kit, the same thing never done two ways — 2026-10-15); "push live each progress"; "perfect spacing, margins,
 fonts"; parallelise as the machine allows; the 2026-10-14 answers in docs/COMPLIANCE-DECISIONS.md (top entries).
 
-OWNER (Ali) ITEMS: [E3]; S14 — a real TZS 1,000 journey on production with a staff account, and the agency's sign-off or
+OWNER (Ali) ITEMS: S14 — a real TZS 1,000 journey on production with a staff account, and the agency's sign-off or
 his override; S15 — the go (the flip); S16 — at least 7 real days after launch (no shortening).
 
-ORDER OF WORK: (1) 6b19de2ec live, if it is not. (2) The live fixes. (3) V1 → S8's close (A21 re-measure on a quiet
-machine, parity, battery, [E3], record). (4) S9 (merge main; battery with the DB suites; verify:backup-schema; release).
-(5) S10 (WP8b after S9), S11, S12 (W, J, A, V, F, WP1), S13 — each its own release with its proof. (6) V2a, V2b, the kit
-backlog, F41. (7) Prepare S14 for Ali (the checklist, the preview press, the TZS 1,000 journey) and S15's readiness; S16 waits
+ORDER OF WORK: (1) The live fixes. (2) V1 → S8's close (A21 re-measure on a quiet
+machine, parity, battery, record). (3) S9 (merge main; battery with the DB suites; verify:backup-schema; release).
+(4) S10 (WP8b after S9), S11, S12 (W, J, A, V, F, WP1), S13 — each its own release with its proof. (5) V2a, V2b, the kit
+backlog, F41. (6) Prepare S14 for Ali (the checklist, the preview press, the TZS 1,000 journey) and S15's readiness; S16 waits
 for the calendar.
 ```
 
