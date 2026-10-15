@@ -11,7 +11,7 @@
  *   §2 WHAT A DOOR CARRIES — the bet (a stake only inside the bounds), a keyless, ownerless marker with the page's codes,
  *      the address left behind (every parameter kept) and the `next` (the return page and the bet, nothing else).
  *   §3 THE DOOR'S TAIL — `next` refused unless bounded, `ref` and `invite` normalised or dropped, never cut, never inside
- *      `next`.
+ *      `next`; and the classic question page's guest panel builds its two doors through it (Point for Ali 4, A8).
  *   §4 WHAT AN ADDRESS OPENS — a forwarded stake opens at the minimum; only this tab's ownerless, keyless, fresh marker
  *      lets the stake through; nothing off the journey's pick pages or for a round.
  *   §5 ONE COUNT PER VISITOR OPEN — `returnedOpen` and `countsSheetOpen`.
@@ -37,11 +37,14 @@ type Impl = {
   frame: typeof GS.guestFrame; carried: typeof GS.carriedStake; carry: typeof GS.guestCarry; opens: typeof GS.guestOpensFrom;
   returned: typeof GS.returnedOpen; counts: typeof GS.countsSheetOpen; doors: typeof AL.doorHrefsFor; ret: typeof PB.betReturnPath;
   src: string;
+  /** src/app/markets/[id]/page.tsx — the classic guest panel's doors (Point for Ali 4). */
+  page: string;
 };
 const SOURCE = read("src/lib/journey/guest-sheet.ts");
+const PAGE_SRC = read("src/app/markets/[id]/page.tsx");
 const REAL: Impl = {
   frame: GS.guestFrame, carried: GS.carriedStake, carry: GS.guestCarry, opens: GS.guestOpensFrom, returned: GS.returnedOpen,
-  counts: GS.countsSheetOpen, doors: AL.doorHrefsFor, ret: PB.betReturnPath, src: SOURCE,
+  counts: GS.countsSheetOpen, doors: AL.doorHrefsFor, ret: PB.betReturnPath, src: SOURCE, page: PAGE_SRC,
 };
 
 /* ─── The world: the deck's Dodoma pools (VODACOM-PLAN §3.1's goldens) ───────────────────────────────────────── */
@@ -166,6 +169,24 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("3.tail · doorHrefsFor: next kept only when bounded (over 512, an /auth page, //evil or a tab trick is dropped, never cut); ref and invite normalised beside it, a spaced invite URL-encoded, an over-long, control-bearing or malformed code dropped; nothing else rides",
     rows.every(([, want], i) => tails[i] === want), j(rows.map(([i, w], k) => [i, w, tails[k]]).filter(([, w, g]) => w !== g)));
 
+  // 3.question-panel · Point for Ali 4 (A8): the classic question page's guest panel ("Ingia ili kutabiri") builds its
+  // two doors through the one tail, with the page's own ref AND invite; with no invite its hrefs are byte for byte
+  // the ones it built before (the old formula, recomputed here), so a classic guest without a campaign gets the same page.
+  const panelAt = decomment(impl.page).indexOf("const betNext = ");
+  const panel = panelAt < 0 ? "" : decomment(impl.page).slice(panelAt, decomment(impl.page).indexOf("})()}", panelAt));
+  const oldFormula = (next: string, ref: string | null) => `?next=${encodeURIComponent(next)}${ref ? `&ref=${encodeURIComponent(ref)}` : ""}`;
+  const QN = `/markets/${MKT}?side=YES`;
+  const before = safe(() => impl.doors(QN, new URLSearchParams("ref=50pick-ag-abc123")));
+  const withInvite = safe(() => impl.doors(QN, new URLSearchParams("ref=50pick-ag-abc123&invite=inv-9")));
+  ok("3.question-panel · the classic question page's guest panel builds both doors through doorHrefsFor with the page's own ref and invite (Point for Ali 4); with no invite its hrefs are exactly the old ones",
+    panel.includes("const doors = doorHrefsFor(betNext, codes);") && panel.includes('if (typeof sp.ref === "string") codes.set("ref", sp.ref);')
+      && panel.includes('if (typeof sp.invite === "string") codes.set("invite", sp.invite);')
+      && panel.includes("href={doors.signUp as never}") && panel.includes("href={doors.signIn as never}")
+      && !panel.includes("encodeURIComponent(") && !panel.includes("?next=")
+      && before !== "threw" && before.signUp === `/auth/register${oldFormula(QN, "50PICK-AG-ABC123")}` && before.signIn === `/auth/login${oldFormula(QN, "50PICK-AG-ABC123")}`
+      && withInvite !== "threw" && withInvite.signUp === `/auth/register${oldFormula(QN, "50PICK-AG-ABC123")}&invite=INV-9`,
+    j({ panel: panel.length, before, withInvite }));
+
   /* §4 · what an address opens */
   const own = (stake: number | null, o: { at?: number; owner?: string; key?: string; id?: string } = {}) =>
     PB.writeMarker(bet(stake, o.id ?? MKT), o.at ?? NOW - HOUR, {}, o.key, o.owner);
@@ -269,6 +290,12 @@ if (!PROVE_RED) {
       impl: { ...REAL, doors: (n, s) => AL.doorHrefsFor(n.slice(0, 512), s) } },
     { name: "the tail passes the invite un-normalised", expect: /^3\.tail /,
       impl: { ...REAL, doors: (n, s) => { const d = AL.doorHrefsFor(n, s); const raw = s.get("invite"); if (raw === null) return d; const fix = (h: string) => { const at = h.indexOf("?"); const q = new URLSearchParams(at < 0 ? "" : h.slice(at + 1)); q.set("invite", raw); return `${at < 0 ? h : h.slice(0, at)}?${q}`; }; return { signIn: fix(d.signIn), signUp: fix(d.signUp) }; } } },
+    { name: "the classic question panel drops the invite again", expect: /^3\.question-panel /,
+      impl: { ...REAL, page: PAGE_SRC.replace('if (typeof sp.invite === "string") codes.set("invite", sp.invite);', "") } },
+    { name: "the classic question panel hand-builds its query again", expect: /^3\.question-panel /,
+      impl: { ...REAL, page: PAGE_SRC.replace("href={doors.signUp as never}", "href={`/auth/register?next=${encodeURIComponent(betNext)}` as never}") } },
+    { name: "the tail encodes next differently from the classic panel's old bytes", expect: /^3\.question-panel /,
+      impl: { ...REAL, doors: (n, q) => { const d = AL.doorHrefsFor(n, q); return { signIn: d.signIn.replaceAll("%2F", "/"), signUp: d.signUp.replaceAll("%2F", "/") }; } } },
     { name: "the tail forgets the invite", expect: /^3\.tail /,
       impl: { ...REAL, doors: (n, s) => { const q = new URLSearchParams(s); q.delete("invite"); return AL.doorHrefsFor(n, q); } } },
     // §4

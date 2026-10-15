@@ -42,7 +42,8 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { ensureAffiliateAccount, inviteViewerFor, normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+import { doorHrefsFor } from "@/lib/auth-landing";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
@@ -163,7 +164,7 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string; invite?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
@@ -858,15 +859,21 @@ export default async function MarketDetail({
                    * code. An unknown code still binds nothing; it simply renders no ribbon.
                    * ⭐ No cookie and no storage: the code rides the query string the visitor is
                    * already carrying, so nothing is tracked and the privacy notice is unchanged.
+                   * ⭐ AND A CAMPAIGN INVITE RIDES BESIDE IT (2026-10-15, the owner's answer of 2026-10-14 to S10-PLAN's
+                   * Point for Ali 4): these doors dropped `?invite=`, so a campaign visitor who signed up from a question
+                   * was bound to no campaign. Both codes go through `doorHrefsFor`, the one tail every guest door ends in
+                   * (auth-landing.ts): each normalised or dropped, never cut, never inside `next`.
                    */
-                  const shared = normalizeReferralCode(typeof sp.ref === "string" ? sp.ref : null);
-                  const q = `?next=${encodeURIComponent(betNext)}${shared ? `&ref=${encodeURIComponent(shared)}` : ""}`;
+                  const codes = new URLSearchParams();
+                  if (typeof sp.ref === "string") codes.set("ref", sp.ref);
+                  if (typeof sp.invite === "string") codes.set("invite", sp.invite);
+                  const doors = doorHrefsFor(betNext, codes);
                   return (
                     <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
-                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
+                      <Link href={doors.signUp as never} className="btn btn-primary btn-md btn-pill">
                         {t.common.signUp}
                       </Link>
-                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
+                      <Link href={doors.signIn as never} className="btn btn-ghost btn-md btn-pill">
                         {t.common.signIn}
                       </Link>
                     </div>
