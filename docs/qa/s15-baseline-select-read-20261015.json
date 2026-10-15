@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "kind": "S15_PRELAUNCH_BASELINE_SELECT_ONLY",
+  "generatedAt": "2026-10-15T17:42:49.230Z",
+  "database": "Railway production public proxy",
+  "readOnlySession": true,
+  "s13Source": "src/lib/journey/measures.ts / S13-PLAN.md definitions table",
+  "window": {
+    "firstDay": "2026-10-02",
+    "lastDay": "2026-10-14",
+    "observedDays": 13,
+    "requiredDays": 14,
+    "earliestCompletion": "2026-10-16T00:00:00+03:00",
+    "complete": false,
+    "notCountedDays": [],
+    "waitingFirstBetCohort": 0,
+    "waitingDepositFollowUps": 0
+  },
+  "launchObservation": "absent",
+  "measures": [
+    {
+      "key": "homeToSheet",
+      "no": "1",
+      "name": "Home → bet sheet",
+      "status": "figure",
+      "numerator": 87,
+      "denominator": 1354,
+      "share": "6.4%",
+      "held": false,
+      "smallSample": false,
+      "partial": {
+        "counted": 13,
+        "asked": 14
+      },
+      "waiting": 0,
+      "notCounted": [],
+      "note": null
+    },
+    {
+      "key": "sheetToBet",
+      "no": "2",
+      "name": "Bet sheet → bet placed",
+      "status": "figure",
+      "numerator": 90,
+      "denominator": 542,
+      "share": "16.6%",
+      "held": false,
+      "smallSample": false,
+      "partial": {
+        "counted": 13,
+        "asked": 14
+      },
+      "waiting": 0,
+      "notCounted": [],
+      "note": null
+    },
+    {
+      "key": "shortToDeposit",
+      "no": "3",
+      "name": "Short balance → deposit",
+      "status": "no-offer",
+      "numerator": null,
+      "denominator": 423,
+      "share": null,
+      "held": false,
+      "smallSample": false,
+      "partial": {
+        "counted": 13,
+        "asked": 14
+      },
+      "waiting": 0,
+      "notCounted": [],
+      "note": "no deposit was offered at a shortfall before launch"
+    },
+    {
+      "key": "depositToBet",
+      "no": "4",
+      "name": "Deposit → bet completed",
+      "status": "not-recorded",
+      "numerator": null,
+      "denominator": null,
+      "share": null,
+      "held": false,
+      "smallSample": false,
+      "partial": null,
+      "waiting": 0,
+      "notCounted": [],
+      "note": "the bet a deposit was made for is recorded from launch"
+    },
+    {
+      "key": "timeToFirstBet",
+      "no": "5",
+      "name": "Time to first bet",
+      "status": "figure",
+      "numerator": 9,
+      "denominator": 212,
+      "share": "4.2%",
+      "held": false,
+      "smallSample": false,
+      "partial": {
+        "counted": 13,
+        "asked": 14
+      },
+      "waiting": 0,
+      "notCounted": [],
+      "note": null,
+      "medianMinutes": 10.968216666666667
+    }
+  ],
+  "comparison4b": {
+    "status": "figure",
+    "numerator": 14,
+    "denominator": 17,
+    "share": "82.4%",
+    "held": false,
+    "smallSample": true,
+    "partial": {
+      "counted": 13,
+      "asked": 14
+    },
+    "waiting": 0,
+    "notCounted": [],
+    "note": null
+  },
+  "watch": {
+    "questionBetsPerDay": 6.923076923076923,
+    "questionBetDays": 13,
+    "depositConfirmRate": 0.5862068965517241,
+    "decidedDeposits": 29,
+    "undecidedDeposits": 0
+  }
+}
