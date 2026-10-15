@@ -1181,3 +1181,16 @@ unbounded and the output is unchanged (pending-bet 7.doors, auth-carry doors.*).
 verdict (doors.hostile). (3) `guestCarry` drops a stake no bet can hold (not whole and positive, or over the grammar's
 nine digits) to the side alone, and refuses a seed id or side the grammar refuses. (4) `betReturnPath` returns a round's
 own `/updown/<id>` whatever the page.
+
+**A10 · WP3 as built: the door's two moments are Next's own, and the money face is byte-identical.** *Overrides:* WP3's
+`guest` prop `{ signUp; signIn; onLeave: () => void }`, its "each door calls `onLeave` before the Link navigates", and WP4
+step 5's "on a plain primary click". *From:* the WP3 build, reading Next 16.4's app-router `Link`
+(`node_modules/next/dist/client/app-dir/link.js`, `linkClicked`): its `onClick` runs on every click, and its `onNavigate`
+runs only when Next itself navigates THIS tab (an unmodified click on a local URL), after `preventDefault` and before it
+pushes. So the prop is `BetSheetGuest = { signUp; signIn; onPress; onLeave }`: `onPress` (the door's `onClick`) writes the
+marker on every press, a new tab's included; `onLeave` (the door's `onNavigate`) replaces the address with the carried bet
+and closes the sheet without touching history. A modified click therefore writes the marker and leaves this tab as it is —
+by Next's own test of a modified click, not a second copy of it. The guest arm of the footer draws only the two doors (a
+guest frame has no lines: `guestFrame` never yields one). Proof that the money face did not move: the markup of
+`test:bet-sheet`'s fourteen money frames in three languages (42 renders, 133,293 characters) hashed before and after the
+edit — sha256 `333bd7e5…405a0e47` both times — beside `test:bet-sheet`'s own render checks, all green.

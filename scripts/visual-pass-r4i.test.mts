@@ -204,7 +204,7 @@ section("2 · the end one run, no line opening on a dash, no last word alone —
     digitChoice(T.sw.common.phoneInputTitle)[0] === "6 au 7" && digitChoice(T.en.common.phoneInputTitle)[0] === "6 or 7" && digitChoice(T.zh.common.phoneInputTitle)[0] === "6 或 7");
 
   // 2.8 every kept run must be narrower than the narrowest line it can get (320 phones), or it would overflow.
-  type Surface = { name: string; line: number; size: number; face: "inter" | "sora"; sentences: (l: L) => Array<{ text: string; runs: string[] }> };
+  type Surface = { name: string; line: number; size: number; face: "inter" | "interBold" | "sora"; sentences: (l: L) => Array<{ text: string; runs: string[] }> };
   const withEnd = (tpl: string, l: L) => ({ text: fill(tpl, { date: endText(l) }), runs: [endText(l)] });
   const SURF: Surface[] = [
     // AuthShell's 16px gutter, AuthPanel's 32px padding, the panel's 14px padding + border, the 16px glyph and its 10px gap.
@@ -238,6 +238,9 @@ section("2 · the end one run, no line opening on a dash, no last word alone —
     // the sign-in heading: 224px, Sora 28px bold.
     { name: "auth heading (320)", line: 320 - 32 - 64, size: 28, face: "sora", sentences: (l) => [{ text: T[l].auth.welcomeTo50pick, runs: [] }, { text: T[l].auth.welcomeBack, runs: [] }] },
     { name: "auth subtitle (320)", line: 320 - 32 - 64, size: 13.5, face: "inter", sentences: (l) => [{ text: T[l].auth.emailOrPhoneHint, runs: [] }] },
+    // S10 WP3 · the guest bet sheet's sign-up door: the sheet's 20px sides (.kp-wsheet) and btn-xl's 24px inline padding, its
+    // 16.5px label at weight 600 — read in the bold face, the wider of the two the model holds.
+    { name: "guest sheet sign-up door (320)", line: 320 - 40 - 48, size: 16.5, face: "interBold", sentences: (l) => [{ text: T[l].journey.sheetSignUp, runs: [] }] },
   ];
   const over: string[] = [];
   let widest = { w: 0, what: "" };
@@ -246,7 +249,7 @@ section("2 · the end one run, no line opening on a dash, no last word alone —
       for (const { text: s2, runs } of sf.sentences(l)) {
         for (const [a, b] of keptRanges(s2, runs)) {
           const run = s2.slice(a, b);
-          const w = sf.face === "sora" ? soraW(run, sf.size, -0.02) : widthMixed(inter, run, sf.size);
+          const w = sf.face === "sora" ? soraW(run, sf.size, -0.02) : widthMixed(sf.face === "interBold" ? interBold : inter, run, sf.size);
           if (w / sf.line > widest.w) widest = { w: w / sf.line, what: `${sf.name} ${l} "${run}" ${w.toFixed(0)}/${sf.line}px` };
           if (w > sf.line) over.push(`${sf.name} ${l} "${run}" ${w.toFixed(0)}px > ${sf.line}px`);
         }
@@ -270,6 +273,7 @@ section("2 · the end one run, no line opening on a dash, no last word alone —
     ["the RG confirm", "src/components/rg/rg-confirm-submit.tsx", /typeof body === "string" \? <p>\{keepText\(body\)\}<\/p> : body/],
     ["the thin-upside notice", "src/components/markets/house-lean-warning.tsx", /title=\{keepText\(t\.market\.crowdedWarning\)\}[\s\S]{0,200}\{keepText\(t\.market\.thinUpsideNote\)\}/],
     ["the auth heading", "src/components/auth/auth-panel.tsx", /typeof title === "string" \? keepText\(title\) : title/],
+    ["the guest sheet's sign-up door (S10)", "src/components/journey/bet-sheet/bet-sheet.tsx", /data-testid="journey-sheet-signup"><span>\{keepText\(t\.journey\.sheetSignUp\)\}<\/span><\/Link>/],
   ];
   const missing = sites.filter(([, f, re]) => !re.test(read(f))).map(([n]) => n);
   ok("2.9 · the sentences the tiles caught are drawn through keepText", missing.length === 0, missing.join(" · "));
