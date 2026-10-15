@@ -95,6 +95,12 @@ app deployment again; the app is stopped while Postgres and the project remain
 for the final candidate. This proves the Railway stop and Git restart behavior
 for the tested SHA, not the final S9 SHA or the production service settings.
 
+### Early live-backup drill and audit-key read (17:39–17:50 UTC)
+
+An encrypted pre-cutover snapshot was captured while the production app was still writing. Its scratch restore matched all 73 tables, 281 indexes, 52 foreign keys, 360,250 rows, the wallet and ledger totals, and the audit links. The verifier nevertheless failed one of 106 checks: the manifest's source audit census ran after the repeatable-read dump had closed, and six new audit entries arrived meanwhile. That artifact is **not** the stopped-writer release backup and must not be used as the cutover restore point.
+
+The first drill also ran without the production audit and session signing keys in the local process, making historical hashes appear unmatched. A subsequent read-only `verifyChainFull()` with the actual Railway keys returned `valid=true`, 103,106 rows, 103,097 verified, nine covered by the existing baseline, zero unattested and no broken link. The baseline was not changed. The final stopped-writer backup and its scratch verification must inherit `BACKUP_ENCRYPTION_KEY`, `AUDIT_CHAIN_SECRET` and `SESSION_SECRET` in process memory; print no values. They must pass all artifact and source-integrity comparisons before migrations.
+
 ## Exact sequence (PowerShell, from the final release checkout)
 
 1. Freeze the verified release SHA, confirm `main` has not advanced, and prepare
