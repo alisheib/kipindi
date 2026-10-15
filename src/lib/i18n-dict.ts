@@ -3989,7 +3989,7 @@ export const dict = {
       youAlreadyHold: "Tayari una dau la",
       here: "hapa",
       // 🔴 B3/F2 — see the EN note. Rate removed; no conclusion drawn.
-      hedgeBothBody: "Unaweka dau pande zote mbili za soko hili. Madau yote mawili yanabaki na kila moja hulipwa peke yake, lakini upande mmoja tu unaweza kushinda — na ada yetu hutolewa kabla washindi hawajalipwa, kwa hiyo dau zako zote mbili haziwezi kurudi zote.",
+      hedgeBothBody: "Unaweka dau pande zote mbili za soko hili. Madau yote mawili yanabaki na kila moja hulipwa peke yake, lakini upande mmoja tu unaweza kushinda — na ada yetu hutolewa kabla washindi hawajalipwa, kwa hiyo madau yako yote mawili hayawezi kurudi yote.",
       hedgeOppositeBody: "Tayari una dau upande mwingine wa soko hili. Madau yote mawili yanabaki na kila moja hulipwa peke yake — upande mmoja tu unaweza kushinda, na ada yetu hutolewa kabla washindi hawajalipwa.",
       hedgeAddBody: "Kuweka tena kunaongeza dau lako kwenye soko hili.",
       selectionClosedBadge: "Uchaguzi umefungwa",
@@ -4168,7 +4168,7 @@ export const dict = {
       atResolution: "Matokeo yakitoka", finalLabel: "Malipo ya mwisho",
       payoutIfWin: "Upande wako ukishinda",
       payoutExactNote: "Kamili — dau limefungwa na bwawa limekamilika.",
-      payoutAtClose: "Dau likifungwa",
+      payoutAtClose: "Uchaguzi ukifungwa",
       predictorsCount: "watabiri",
       predictorsCountOne: "mtabiri",
       tickerSettled: "imekamilika", tickerOn: "kwenye",
@@ -4923,7 +4923,7 @@ export const dict = {
          the English beside it at least said "minus a small margin". A Swahili player reading it
          would have been told the whole losing pool is shared out. Corrected to the same promise
          the other two locales make. */
-      card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao. Kamisheni yetu inatoka tu kwenye upande ulioshindwa — madau ya washindi yanarudishwa yote na hayaguswi kamwe — kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Dau likifungwa tutakuambia kiasi kamili utakachopata.",
+      card3Body: "Hakuna odds. Washindi wanagawana bwawa kulingana na dau lao. Kamisheni yetu inatoka tu kwenye upande ulioshindwa — madau ya washindi yanarudishwa yote na hayaguswi kamwe — kwa hiyo kuwa sahihi hakukugharimu pesa kamwe. Uchaguzi ukifungwa tutakuambia kiasi kamili utakachopata.",
       poolCaption: "wapotezao hulipa washindi · jibu sahihi halipotezi",
       dragToCommit: "sogeza kujitolea",
       dialMin: "{n}× chini", dialMax: "{n}× juu",
@@ -5135,7 +5135,7 @@ export const dict = {
       backToPositions: "Rudi kwenye nafasi",
       backToProposals: "Rudi kwenye mapendekezo",
       backToProfile: "Rudi kwenye wasifu",
-      walletSafe: "Fedha zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Salio lako na miamala hayajaaathiriwa.",
+      walletSafe: "Fedha zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Salio lako na miamala hayajaathiriwa.",
       agentSafe: "Hatukuweza kupakia programu ya uwakala kwa sasa. Maombi yako, nyaraka zako na ada uliyolipa hayajaathiriwa \u2014 hakuna kilichopotea na hakuna uamuzi uliobadilika.",
       positionsSafe: "Nafasi zako ziko salama. Tumeandika kilichotokea na tutashughulikia. Madau na malipo yote hayajaathiriwa.",
       contactSupport: "Wasiliana na msaada",
@@ -5226,7 +5226,7 @@ export const dict = {
       youArePicking: "Unachagua",
       stakeLabel: "Dau",
       conviction: "imani",
-      payoutLabel: "Lipo",
+      payoutLabel: "Malipo",
       payoutCalcBody: "Inahesabiwa wakati wa matokeo kutoka bwawa la mwisho. Tutakuambia kiasi kamili mara uchaguzi utakapofungwa.",
       estimatedWinningsLabel: "Ushindi unaowezekana",
       estimateDisclaimer: "Ni makadirio tu — kiasi halisi hupangwa na bwawa dau litakapofungwa, na kinaweza kuwa zaidi au chini.",
@@ -5241,7 +5241,7 @@ export const dict = {
       thenReaim: "kisha lenga upya kwenye dial.",
       placing: "Inaweka…",
       busyHolding: "Kuna msongamano — tunakushikilia nafasi yako. Fedha yako haijaguswa.",
-      poolSharePayout: "Malipo ya mgawo wa bwawa. Kiasi chako kamili kitawekwa dau litakapofungwa.",
+      poolSharePayout: "Malipo ya mgawo wa bwawa. Kiasi chako kamili kitawekwa uchaguzi utakapofungwa.",
       poolShareIfWins: "{side} ikishinda, unagawana mfuko.",
       cashOutTitle: "Toa sasa",
       sellPositionNow: "Uza nafasi hii sasa?",
@@ -5263,7 +5263,7 @@ export const dict = {
     },
     toast: {
       betPlaced: "Dau limewekwa",
-      payoutAtResolution: "Lipo litahesabiwa utatuzi unapofanyika.",
+      payoutAtResolution: "Malipo yatahesabiwa utatuzi unapofanyika.",
       soldReturned: "imerejeshwa",
       fullStakeRefunded: "Dau lote limerejeshwa — bila gharama",
       earlyExitFeeApplied: "ada ya kutoka mapema imetumika",

@@ -473,3 +473,23 @@ word was introduced.
 - `journey.ticketsHere` · sw "Tiketi zako" · en "Your tickets" · zh "您的注单" — *tiketi* (class 10) takes *zako*, as `journey.tabTickets` "Tiketi zangu" does.
 - Chinese: formal 您 wherever the player is addressed, 充值 for a deposit, 投注 for a bet, 注单 for a ticket (as S6's
   Tiketi zangu), and full-width punctuation between Chinese clauses.
+
+**9. Review 2's defects where review 2 did not look (S12 WP3 step 3, 2026-10-14) — DRAFTED FOR SIGN-OFF, NOT SIGNED.**
+Built on `codex/vodacom-s12-w` in their own commit, so the reviewer can sign this review or drop the commit whole. The
+same three defects review 2 approved corrections for — "Lipo" for the payout, "dau" closing where the choosing closes,
+and class-10 agreement on *dau* — plus review 2's typo, each where its list did not reach. Swahili only; en and zh
+unchanged. Each line: key · today → drafted · why.
+- `dialog.payoutLabel` · "Lipo" → "Malipo" · `common.payout2`'s approved correction, on the dial's estimate row and the
+  position card (*malipo*, class 6, "the payout"; "Lipo" reads "it is there").
+- `toast.payoutAtResolution` · "Lipo litahesabiwa utatuzi unapofanyika." → "Malipo yatahesabiwa utatuzi unapofanyika." ·
+  the same noun; *malipo* (class 6) takes *ya-* in *yatahesabiwa*.
+- `dialog.poolSharePayout` · "…kitawekwa dau litakapofungwa." → "…kitawekwa uchaguzi utakapofungwa." · `payoutCalcBody`'s
+  approved correction: the bet does not close, the choosing does (*uchaguzi*, class 11, *utakapofungwa*).
+- `market.payoutAtClose` · "Dau likifungwa" → "Uchaguzi ukifungwa" · the same, as the position card's caption (en "When
+  betting closes").
+- `market.hedgeBothBody`'s second clause · "kwa hiyo dau zako zote mbili haziwezi kurudi zote" → "kwa hiyo madau yako yote
+  mawili hayawezi kurudi yote" · review 2's class-6 plural through the whole clause (*madau yako yote mawili hayawezi*,
+  and *kurudi yote*, "come back in full", agreeing with it).
+- `primer.card3Body`'s closing sentence · "Dau likifungwa tutakuambia kiasi kamili utakachopata." → "Uchaguzi ukifungwa
+  tutakuambia kiasi kamili utakachopata." · as `market.payoutAtClose` (en "When betting closes we tell you…").
+- `error.walletSafe` · "hayajaaathiriwa" → "hayajaathiriwa" · review 2's typo, which `error.positionsSafe` shipped with.
