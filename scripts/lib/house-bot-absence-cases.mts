@@ -178,10 +178,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       "src/lib/terms-version.ts", "src/lib/i18n-dict.ts",
     ]);
     // F20/F29 and V2b change only legal presentation and the rulebook's test citation.
-    // Pin their exact reviewed integrated bytes; none of the versioned policy strings move.
+    // S14's local journey adds dictionary keys; pin the exact reviewed source
+    // from 012aa885e (same blob as the integrated tip), not a blanket exemption.
+    // None of the versioned policy strings move.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
+      ["src/lib/i18n-dict.ts", "012aa885e"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
