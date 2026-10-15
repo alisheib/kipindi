@@ -249,7 +249,8 @@ export function GuestSheetHost({ sessionEnded = false }: { sessionEnded?: boolea
   useEffect(() => {
     const warm = () => { if (mounted.current && !current.current) warmSheet(t, locale, { guest: true }); };
     if (typeof window.requestIdleCallback === "function") {
-      const handle = window.requestIdleCallback(warm, { timeout: 1_000 });
+      // Use the same bounded deadline as the signed-in host; a cold first guest tap missed A21 at 4× CPU.
+      const handle = window.requestIdleCallback(warm, { timeout: 50 });
       return () => window.cancelIdleCallback(handle);
     }
     const handle = window.setTimeout(warm, 0);
