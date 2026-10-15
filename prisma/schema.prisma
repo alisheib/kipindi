@@ -2031,8 +2031,8 @@ model HouseBotControl {
   gCapStaffChosenDailyTzs          BigInt?
   gTargetsMaxActive                Int?
   gStaffChosenMaxCounterpartyShare Int?
-  /// N5 (Ali, 2026-10-14): the daily budget for desk-against-desk pairs — rounds paired and TZS staked by the pairing
-  /// leg in an EAT day. NULL = never; N6 checks both inside the bet's own locks (H4). Nothing reads them before N6.
+  /// N5 (Ali, 2026-10-14): the daily budget for second desk legs — paired rounds and opposite-side COUNTER answers,
+  /// counting placed second-leg bets and their TZS stake in an EAT day. NULL = never; N6 checks both inside H4's locks.
   gCapPairRoundsPerDay             Int?
   gCapPairDailyTzs                 BigInt?
   createdAt                        DateTime  @default(now()) @db.Timestamptz(3)

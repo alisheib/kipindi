@@ -1,4 +1,4 @@
-/** Planning mirror of the PAIR-only H4 caps; H4 remains the in-lock authority. */
+/** Planning mirror of the shared two-sided budget and PAIR account cap; H4 remains the in-lock authority. */
 import { eatDayKey } from "@/lib/house-bot/clock";
 import type { EngineCode } from "@/lib/house-bot/constants";
 import type { HouseBotRulesV1 } from "@/lib/house-bot/rules";
