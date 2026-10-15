@@ -701,9 +701,9 @@ export function MarketCard({
             ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
             also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
         {/* Round 5 (the check on the /markets grid, 2026-10-09): a grid card's figure names itself to a screen reader in the
-            featured card's own word ("Bwawa TZS 10,800"). On screen it keeps no word: at 320 the row's worst case — a
-            7-digit pool, "dakika 59 zimebaki" and the info button — already fills 257.6 of its 258px, so even a glyph
-            (+16px) would wrap a fixed-height card; whether to give the grid card room for the word is an owner question. */}
+            featured card's own word ("Bwawa TZS 10,800"). On screen it keeps no word: the 320px row's worst case — a
+            7-digit pool, "dakika 59 zimebaki" and the info button — used 257.6 of its then-258px content box. V2a
+            gives the phone card a 12px inline inset to keep that row on one line after the kit spacing change. */}
         <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
           {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}
         </span>

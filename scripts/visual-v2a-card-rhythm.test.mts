@@ -45,6 +45,12 @@ function inspect(styles: string) {
   const padding = value(".mcardp", "padding") ?? "";
   const pad = /^var\(--mcard-pt\) (var\(--sp-\d+\)) (var\(--sp-\d+\))$/.exec(padding);
   const padBottom = sp(pad?.[2]);
+  const phonePad = sp(value(".mcardp", "padding-inline", true));
+  const metaColumnGap = sp((value(".mcardp-meta", "gap") ?? "").split(" ")[1]);
+  // Before V2a the narrowest pool/time/info row used 257.6px of a 258px box at 320.
+  // Allow two column gaps to grow from 7px to the kit rung: the phone inset must
+  // still leave the real row enough width without adding a line to the skeleton.
+  const phoneMetaSlack = 258 + 2 * (15 - phonePad) - (257.6 + 2 * (metaColumnGap - 7));
   const movement = value(".mcardp-moveline", "margin") ?? "";
   const moveScaled = /^calc\(-1 \* var\(--sp-\d+\)\) 0$/.test(movement);
   const compactGridScaled = Number.isFinite(sp(value('html:not([data-density="comfortable"]) .market-grid', "gap", true)));
@@ -81,8 +87,11 @@ function inspect(styles: string) {
       && rootLayout[0] > compactLayout[0] && rootLayout[1] > compactLayout[1]
       && Number.isFinite(metaCompact) && metaRoot === 0,
     internalScaled: everyGapScaled && !!pad && Number.isFinite(sp(pad[1])) && Number.isFinite(padBottom)
-      && moveScaled && compactGridScaled,
-    internalDetails: { everyGapScaled, padding, movement, moveScaled, compactGridScaled },
+      && moveScaled && compactGridScaled && Number.isFinite(phonePad),
+    internalDetails: { everyGapScaled, padding, movement, moveScaled, compactGridScaled, phonePad },
+    phoneMetaSafe: phoneMetaSlack >= 0 && card.includes('className="mcardp-meta"')
+      && card.includes('className="mcardp-meta-right"') && card.includes("<HowItWorks />"),
+    phoneMetaSlack,
     actionEqual: cardAction === kitAction && cardAction === "var(--h-control-md)" && control >= floor,
     footerReach: Number.isFinite(footerReach) && padBottom + 1 >= footerReach,
     skeletonCoherent: skeletonFormulas && base === predictedBase && closedBase === predictedClosedBase
@@ -97,6 +106,8 @@ const current = inspect(css);
 check("F10 · comfortable and compact layout tokens resolve to kit spacing rungs", current.layoutScaled);
 check("F10 · card padding, inner gaps, movement and phone grid use kit spacing rungs", current.internalScaled,
   JSON.stringify(current.internalDetails));
+check("F10 · the 320px pool/time/info line retains width after kit spacing", current.phoneMetaSafe,
+  `${current.phoneMetaSlack.toFixed(1)}px conservative slack`);
 check("F53 · card and home use btn-md; the card action inherits its 44px kit height", current.actionEqual
   && card.includes('className="btn btn-yes btn-md"') && card.includes('className="btn btn-no btn-md"')
   && home.includes('className="btn btn-yes btn-md kp-qrow__btn"') && home.includes('className="btn btn-no btn-md kp-qrow__btn"'));
@@ -109,6 +120,7 @@ const plant = (before: string, after: string) => {
 };
 check("CONTROL · restoring the 40px card action is caught", !plant(".mcardp-actions .btn { height: var(--h-control-md);", ".mcardp-actions .btn { height: var(--tap-min);").actionEqual);
 check("CONTROL · restoring a private 10px row gap is caught", !plant("--mcard-gap: var(--sp-3);", "--mcard-gap: 10px;").layoutScaled);
+check("CONTROL · a 16px phone inset that wraps the money row is caught", !plant(".mcardp { padding-inline: var(--sp-3); }", ".mcardp { padding-inline: var(--sp-4); }").phoneMetaSafe);
 check("CONTROL · shrinking the footer padding below its hit reach is caught", !plant("padding: var(--mcard-pt) var(--sp-4) var(--sp-4);", "padding: var(--mcard-pt) var(--sp-4) var(--sp-3);").footerReach);
 check("CONTROL · a stale skeleton base is caught", !plant("--mcard-base: 216px;", "--mcard-base: 209px;").skeletonCoherent);
 console.log(`\n${passed} passed, ${failures.length} failed`);
