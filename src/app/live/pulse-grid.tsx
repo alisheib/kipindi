@@ -137,7 +137,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
       {hasMore && (
         <div
           ref={sentinelRef}
-          className="flex flex-col items-center gap-2.5 py-8"
+          className="flex flex-col items-center gap-2 py-8"
           aria-live="polite"
         >
           <BrandSpinner size={30} />
