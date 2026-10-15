@@ -29,7 +29,7 @@
  *        `KYC_DOCUMENT_HOLD_YEARS` sets, compared with new identity checks meanwhile, then erased but for a coded form of
  *        the number — in every language, with the retired "removed at once" gone (Part C, the owner's ruling).
  *        (§4i is the final-rule gate's own section; these two are named apart from it.)
- *   §4n · v2026-10-14.2 · §7 names How to play's seen key (the Vodacom plan S11 WP4), with the guide's name and what the
+ *   §4n · v2026-10-15 · §7 names How to play's seen key (the Vodacom plan S11 WP4), with the guide's name and what the
  *        key is for, in every language; the guide's files write storage only through `markSeen(HOWTO_SEEN_KEY)`, and the
  *        helper writes exactly that key, "1". Controls: the key dropped from one language, renamed in code only, a direct
  *        storage write in the host, another key marked by the sheet.
@@ -88,9 +88,9 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-13 · S8 WP7b: §7 discloses the necessary bet/link and unresolved request identities in tab storage;
 // §4m proves the marker's field/expiry/recovery contract; the separate necessary-state paragraph measures as 6cb5b4f816b1.
 // 2026-10-14 · owner partition: selection expiry stays 24h; unresolved owned keys and complete legacy archive do not expire by age.
-// 2026-10-14.2 · Vodacom S11 WP4: §7's display-choices sentence names How to play's seen key (§4n holds it to the code);
+// 2026-10-15 · Vodacom S11 WP4: §7's display-choices sentence names How to play's seen key (§4n holds it to the code);
 // PRIVACY_EN_SHA re-pinned from the measured English block (ec751bf6da90 -> 09a4c62735bf).
-const PRIVACY_VERSION = "2026-10-14.2";
+const PRIVACY_VERSION = "2026-10-15";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */

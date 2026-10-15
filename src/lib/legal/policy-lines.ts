@@ -147,10 +147,10 @@ export type PolicyPageSpec = {
    date of birth, document number) is held 7 years from closure, then erased except a coded form of the number. The same
    suffix rule holds for a save made on 2026-10-11 before it deploys.
    Privacy 2026-10-14 (Vodacom S8 owner recovery): §7 distinguishes the 24-hour link selection from account-partitioned unresolved keys and historic quarantine.
-   Privacy 2026-10-14.2 (Vodacom S11 WP4): §7's display-choices sentence names How to Play's seen key, 50pick-howto-seen. */
+   Privacy 2026-10-15 (Vodacom S11 WP4): §7's display-choices sentence names How to Play's seen key, 50pick-howto-seen. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-14.2", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-15", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

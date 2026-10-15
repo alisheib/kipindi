@@ -106,14 +106,15 @@ const TITLE: Record<Locale, string> = {
 // §9). Contact details and the password are still removed at once. No 14-day notice, by the same ruling. §2, §6 and §9 are
 // unchanged; the data-rights text (`privacy.ts`, rights.erasure) says the same; `test:privacy-notice` §4j pins the bullet
 // and §4l holds it to the code. `POLICY_PAGES.privacy.codeVersion` moved with META.
-// 2026-10-14.2 (the Vodacom plan S11 WP4; COMPLIANCE-DECISIONS.md "Privacy v2026-10-14.2"): §7's display-choices sentence
-// names How to Play's seen key, 50pick-howto-seen, written by every exit of the sheet so the guide opens by itself only once
-// per browser (VODACOM-PLAN §3.10: named in the same commit as its first write). Same day as S8's §7 change, so the
-// suffix; ⚠️ it moves to the release day if S11 lands later (with `POLICY_PAGES.privacy.codeVersion` and the entry's title).
+// 2026-10-15 (the Vodacom plan S11 WP4; the COMPLIANCE-DECISIONS entry "Privacy v2026-10-15" is filed with the release):
+// §7's display-choices sentence names How to Play's seen key, 50pick-howto-seen, written by every exit of the sheet so the
+// guide opens by itself only once per browser (VODACOM-PLAN §3.10: named in the same commit as its first write). ⚠️ If S11
+// lands on a later day, that day replaces 2026-10-15 here, in `POLICY_PAGES.privacy.codeVersion`, in test:privacy-notice's
+// pin and in the entry's heading (a second change the same day would be 2026-10-15.2).
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-14.2 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-14.2 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-14.2 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-15 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-15 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-15 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**

@@ -1133,7 +1133,7 @@ is built as decided, not pending:
    2026-10-14.
 2. **The X picture fixed now, for everyone, in its own release** — WP1, commit `0986baa5a` (its message predates the
    answer and says the ruling is owed: it is accepted). Accepted by Ali, 2026-10-14.
-3. **Privacy §7 names the How-to seen note, with a new version** — WP4; COMPLIANCE-DECISIONS "Privacy v2026-10-14.2"
+3. **Privacy §7 names the How-to seen note, with a new version** — WP4; the proposed COMPLIANCE-DECISIONS entry "Privacy v2026-10-15"
    records the acceptance. Accepted by Ali, 2026-10-14.
 4. **The new Terms and rules prepared now and published at launch** — WP9, parked on `codex/vodacom-s15-copy`. Accepted
    by Ali, 2026-10-14.
@@ -1184,9 +1184,13 @@ is built as decided, not pending:
   `HOWTO_DELAY_MS` 700, `HOWTO_PARAM`); `src/components/onboarding/how-to-host.tsx` (`HowToHost` + its landing hook
   `useHowToLanding`, apart so the suite runs it as React does); the sheet's one `close` (key, then opener) and its slot
   claim at −1 while open; `LazyHowToHost` in shell-lazy; AppShell's journey slot is now the fragment (B5); Privacy §7 in
-  three languages at v2026-10-14.2 with `POLICY_PAGES.privacy.codeVersion` and the COMPLIANCE-DECISIONS entry (which also
-  records Correction 3). ⚠️ If S11 lands on a later day than 2026-10-14, that day replaces 2026-10-14.2 in META,
+  three languages at **v2026-10-15** with `POLICY_PAGES.privacy.codeVersion` (moved from 2026-10-14.2 on 2026-10-15, when
+  the build resumed: nothing landed on the 14th). ⚠️ If S11 lands on a later day, that day replaces 2026-10-15 in META,
   `codeVersion`, `PRIVACY_VERSION` (test:privacy-notice) and the entry's heading.
+- **COMPLIANCE-DECISIONS is the coordinator's (rule of 2026-10-15).** WP4's entry was written in `b144a6a93` and taken out
+  again on resumption; its exact text is under "Proposed records" below. Until it is filed, `test:privacy-notice` §1a
+  reads red on this branch BY CONSTRUCTION ("no entry heading naming Privacy v2026-10-15"): measured 121/1, and 122/0
+  with the proposed entry put in place in the working tree and taken out again.
 - **Amendment B14 (found building it):** journey-home §5's pins of the sheet's three exits (5.frame :1311, 5.limits :1396,
   5.cta :1408 and the plants at :1571-1574) named `onClose` and are re-pinned to `close` — the plan named only 5.storage,
   5.lazy and :1575. And `test:kyc-copy-truth` rule 2 matched the new sw §7 sentence's neighbourhood ("hazina
@@ -1204,3 +1208,29 @@ is built as decided, not pending:
   --self-test` 106/0 (the HowToHost row; S11 rows wait for their WP like S7's and S8's); `qa:chunks-prod --self-test`
   69/0; typecheck 0. Red by construction until on main: `test:house-bot-disclosure` 5.1 (the privacy page).
 - **Browser drives:** WP10.
+
+**COMPLIANCE-DECISIONS.md — a new entry at the top, newest first** (proposed, verbatim; WP4):
+
+> ## 2026-10-15 · Privacy v2026-10-15 — How to play's seen note, named in §7 (Vodacom S11)
+>
+> **Authority.** Ali's instruction to complete the Vodacom plan, whose §3.10 asks that How to play's seen key be named in
+> Privacy §7 in the same commit as its first write (S11-PLAN.md Open point 12), and his answer to S11-PLAN's Point for
+> Ali 3: the recommended answer — name it, with a new version — accepted by Ali, 2026-10-14 (relayed by the coordinating
+> session with his acceptance of all seven points). It adds no analytics or marketing permission.
+>
+> **What §7 says, in English, Swahili and Chinese.** How to play — the journey's three-step guide, seen by staff only until
+> the S15 flip — remembers in the browser that it has been seen: the browser-storage key `50pick-howto-seen`, value "1",
+> written by every way out of the guide (its close button, the scrim, Escape, "Got it", "Set limits", or leaving the page),
+> so it opens by itself only once per browser. §7's existing sentence on display choices names it, with what it is for. No
+> cookie, no identifier, nothing sent to 50pick's servers or to anyone else; clearing the browser's site data removes it.
+> The shelved first-visit primer's own note (`50pick-primer-seen`) stays covered by the same sentence's "dismissing a
+> prompt", as before.
+>
+> **Version.** The page's three labels and `POLICY_PAGES.privacy.codeVersion` move together to 2026-10-15. If this lands
+> on a later day, that day replaces 2026-10-15 in all four places and in this heading. No 14-day notice: it discloses a
+> note the device keeps for display and processes no new personal data.
+>
+> **Also recorded (S11-PLAN Correction 3).** The 2026-09-29 entry's §5 still says "the helpline is in How to Play and the
+> footer". The owner's ruling of 2026-10-06 took the helpline off every player surface, and its "Supersedes" list did not
+> name that line: How to play shows no helpline (S7-PLAN A6), and the 2026-09-29 entry is left as written — this log never
+> edits an old entry.
