@@ -5166,6 +5166,9 @@ tagline, OG re-renders.
   `test:rate-copy`, `test:one-sided` + red.
 - The dictionary action-key convergence; re-pointing bare `/markets` links; Rules + Terms (+`TERMS_VERSION`); CLAUDE.md
   sections; the tagline on ~12 surfaces; the `/admin/config` copy.
+- S11's S15 legal/tagline/share-picture copy is parked at `codex/vodacom-s15-copy` (`d5aa8bc02`). Its Terms and Rules
+  versions and the compliance draft's date are set on the actual publication day; run its legal, flip-copy and brand gates
+  after it is brought onto the S15 base.
 - `sw.js` `CACHE_NAME` bump + manifest.
 - `test:deploy-skew` with an open sheet and a waiting page.
 - Re-measure on production as `mobile01`, including one real deposit → back → bet.

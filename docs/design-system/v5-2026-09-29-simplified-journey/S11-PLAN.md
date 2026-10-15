@@ -1121,10 +1121,10 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP6 · the chat | Done (below) | `a97374dfa` |
 | F36 · the How-to sheet's two columns, its 13% | Done (below: the coordinator's audit item of 2026-10-15) | `978acf225` |
 | Resumption fixes · /help's cap as money, the chat stub's contact, the sheet through the kit's keep | Done (below) | this commit |
-| WP7 · the tagline and `test:flip-copy` | — | — |
-| WP8 · the share-picture generator | — | — |
-| WP9 · the parked S15 commit | — | — |
-| WP10 · the drives | — | — |
+| WP7 · the tagline and `test:flip-copy` | Done: shared key readers, unchanged current words, flipped exact-copy plants, red 37/37 | `a006cea83` |
+| WP8 · the share-picture generator | Done as an unpublished tool: Sora/Inter/JetBrains Mono, brand-mark, dictionary lines, deterministic pixel test; `test:brand-assets` green | `3bb6ca457` |
+| WP9 · the parked S15 commit | Prepared, tested and pushed separately; never merge before S15. The publication day must set the Terms and Rules versions and date the compliance draft | `codex/vodacom-s15-copy` @ `d5aa8bc02` |
+| WP10 · the drives | Source written (`qa:howto`), browser matrix and 72-tile visual read pending the local Next server | this commit |
 | WP11 · proof, records, merge, deploy | The coordinator's | — |
 ### Ali's answers — "accepted by Ali, 2026-10-14"
 
