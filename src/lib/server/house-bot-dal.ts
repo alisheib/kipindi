@@ -1631,7 +1631,11 @@ export interface HouseBotIntentStore {
    * cancelled, expired or placed by someone else. `counterparties` is MANUAL THIN's pro-rata
    * attribution, written in the same statement (N1 §3 H4).
    */
-  markPlaced(id: string, positionId: string, tx: HouseTx, opts?: { counterparties?: ReadonlyArray<Record<string, unknown>> }): Promise<boolean>;
+  markPlaced(id: string, positionId: string, tx: HouseTx, opts?: {
+    counterparties?: ReadonlyArray<Record<string, unknown>>;
+    /** Persisted with PLACED: this stake became the second desk leg under H3's market lock. */
+    twoSidedDesk?: boolean;
+  }): Promise<boolean>;
   /** Transient requeue (MON-10): `attempts` back, `transientAttempts` up. Null means no time is
    *  left before `staleAt` or the deadline, and the caller writes it terminal. */
   requeueTransient(id: string, me: string, backoffMs: number): Promise<StoredHouseBotIntent | null>;
@@ -1691,6 +1695,8 @@ export interface HouseBotIntentStore {
   staffChosenPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** PAIR rows placed in one EAT day. A passed day key is never re-derived. */
   pairPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
+  /** PAIRs and marked shared COUNTERs placed in one EAT day; the desk-wide two-sided budget. */
+  twoSidedPlacedToday(input: { dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** Live PAIR reservations whose possible fire window overlaps one EAT day. */
   pairLiveToday(input: { houseBotId: string | null; dayKey: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** The activity feed, newest first, keyset-paged, and `offset`-paged for a numbered pager (C7, ruling 345). */
@@ -2916,7 +2922,10 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   async markPlaced(id, positionId, _tx, opts) {
     const i = memIntents.get(id);
     if (!i || i.status !== "CLAIMED" || i.positionId != null) return false;
-    const decision = opts?.counterparties ? { ...i.decision, counterparties: opts.counterparties } : i.decision;
+    const decision = opts?.counterparties || opts?.twoSidedDesk
+      ? { ...i.decision, ...(opts.counterparties ? { counterparties: opts.counterparties } : {}),
+        ...(opts.twoSidedDesk ? { twoSidedDesk: true } : {}) }
+      : i.decision;
     memWrite("HouseBotIntent", { ...i, status: "PLACED", positionId, finishedAt: nowIso(), decision }, "update");
     return true;
   },
@@ -3065,6 +3074,20 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     for (const i of memIntents.values()) {
       if (i.kind !== "PAIR" || i.status !== "PLACED" || i.finishedAt == null
         || (houseBotId != null && i.houseBotId !== houseBotId)) continue;
+      const at = ms(i.finishedAt);
+      if (at < w.fromMs || at >= w.toMs) continue;
+      count++;
+      stakeTzs += i.stakeTzs;
+    }
+    return { count, stakeTzs };
+  },
+  async twoSidedPlacedToday({ dayKey }) {
+    const w = eatDayWindow(dayKey ?? eatDayKey(Date.now()));
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey ?? "(now)")}`);
+    let count = 0, stakeTzs = 0;
+    for (const i of memIntents.values()) {
+      if (i.status !== "PLACED" || i.finishedAt == null
+        || !(i.kind === "PAIR" || (i.kind === "COUNTER" && i.decision?.twoSidedDesk === true))) continue;
       const at = ms(i.finishedAt);
       if (at < w.fromMs || at >= w.toMs) continue;
       count++;
@@ -3620,7 +3643,12 @@ const memoryHouseSeam: HouseSeamStore = {
   async revertPlacedInMemory(id, positionId) {
     const i = memIntents.get(id);
     if (!i || i.status !== "PLACED" || i.positionId !== positionId) return false;
-    memWrite("HouseBotIntent", { ...i, status: "CLAIMED", positionId: null, finishedAt: null }, "update");
+    // Memory's no-funds compensation undoes the placement marker too. The SQL twin rolls
+    // the whole transaction back, including its JSONB merge in markPlaced.
+    const decision = { ...i.decision };
+    delete decision.twoSidedDesk;
+    delete decision.counterparties;
+    memWrite("HouseBotIntent", { ...i, status: "CLAIMED", positionId: null, finishedAt: null, decision }, "update");
     return true;
   },
 };
@@ -4199,6 +4227,16 @@ async function pairSums(tx: HouseTx | undefined, houseBotId: string | null, rang
   return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
 }
 
+/** The global two-sided budget counts the durable placement marker, never current OPEN positions. */
+async function twoSidedSums(tx: HouseTx | undefined, rangeSql: (p: Params) => string): Promise<{ count: number; stakeTzs: number }> {
+  const p = new Params();
+  const rows = await sql(tx, `SELECT count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs"`
+    + ` FROM "HouseBotIntent" WHERE "status" = 'PLACED'`
+    + ` AND ("kind" = 'PAIR' OR ("kind" = 'COUNTER' AND "decision"->>'twoSidedDesk' = 'true'))`
+    + ` AND ${rangeSql(p)}`, p.values);
+  return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
+}
+
 /**
  * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 345; ruling 177's shape).
  * `listFeed` and `countFeed` both build their `WHERE` from here, binding into the SAME `Params` the caller
@@ -4336,8 +4374,10 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
       `"positionId" = ${p.col("HouseBotIntent", "positionId", positionId)}`,
       `"finishedAt" = now()`,
     ];
-    if (opts?.counterparties) {
-      sets.push(`"decision" = "decision" || jsonb_build_object('counterparties', ${p.raw(JSON.stringify(opts.counterparties), "jsonb")})`);
+    if (opts?.counterparties || opts?.twoSidedDesk) {
+      const extra = { ...(opts.counterparties ? { counterparties: opts.counterparties } : {}),
+        ...(opts.twoSidedDesk ? { twoSidedDesk: true } : {}) };
+      sets.push(`"decision" = "decision" || ${p.raw(JSON.stringify(extra), "jsonb")}`);
     }
     const text = updateSql("HouseBotIntent", sets,
       `"id" = ${p.raw(id, "text")} AND "status" = 'CLAIMED' AND "positionId" IS NULL`, { returning: `"id"` });
@@ -4516,6 +4556,17 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
         `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
     }
     return pairSums(tx, houseBotId, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
+  },
+  async twoSidedPlacedToday({ dayKey }, tx) {
+    if (dayKey != null) {
+      const w = eatDayWindow(dayKey);
+      if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+      const fromIso = new Date(w.fromMs).toISOString();
+      const toIso = new Date(w.toMs).toISOString();
+      return twoSidedSums(tx, (p) =>
+        `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
+    }
+    return twoSidedSums(tx, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
   },
   async pairLiveToday({ houseBotId, dayKey }, tx) {
     const w = eatDayWindow(dayKey);

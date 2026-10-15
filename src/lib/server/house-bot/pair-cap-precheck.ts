@@ -17,7 +17,7 @@ export async function pairCapPrecheck(input: {
   if (rules.share.matchPerDay < 1) return "CAP_PAIR_ACCOUNT_PER_DAY";
   const dayKey = eatDayKey(nowMs);
   const allLive = await houseBotIntentStore.pairLiveToday({ houseBotId: null, dayKey });
-  const allPlaced = await houseBotIntentStore.pairPlacedToday({ houseBotId: null, dayKey });
+  const allPlaced = await houseBotIntentStore.twoSidedPlacedToday({ dayKey });
   if (allLive.count + allPlaced.count >= control.gCapPairRoundsPerDay) return "CAP_PAIR_ROUNDS_PER_DAY";
   if (allLive.stakeTzs + allPlaced.stakeTzs + stakeTzs > control.gCapPairDailyTzs) return "CAP_PAIR_DAILY_TZS";
   const mineLive = await houseBotIntentStore.pairLiveToday({ houseBotId, dayKey });

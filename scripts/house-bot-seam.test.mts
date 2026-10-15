@@ -428,14 +428,67 @@ section("§3c · N6 · a shared untargeted COUNTER is side-aware");
     `${sameSide.reason ?? sameSide.code} ${JSON.stringify(sameSide.detail ?? null)}`);
 
   const allowed = await make("YES");
+  const { houseH3, houseH4 } = await import("../src/lib/server/house-bot/seam.ts");
+  const h3: Any = await houseH3({ tx: null,
+    ctx: { kind: "house", botId: reacting.botId, intentId: allowed.intent.id },
+    intent: allowed.intent, fresh: await w.svc.getMarket(allowed.market.id), side: "NO", stake: 1_000 });
+  ok("3c.2 · H3 identifies the shared COUNTER as a second desk leg under the market lock",
+    h3.refusal === null && h3.twoSidedDesk === true);
+  const countBefore = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  const check = async () => houseH4({ tx: null,
+    ctx: { kind: "house", botId: reacting.botId, intentId: allowed.intent.id },
+    intent: allowed.intent, side: "NO", stake: 1_000, pool: h3.pool, twoSidedDesk: h3.twoSidedDesk }) as Promise<Any>;
+  await w.limits({ gCapPairRoundsPerDay: null,
+    gCapPairDailyTzs: countBefore.stakeTzs + 2_000, gMaxBetsPerMinute: 120 });
+  ok("3c.3 · clearing the desk's daily round budget blocks a shared COUNTER",
+    (await check()).refusal?.detail?.cap === "PAIR_ROUNDS_PER_DAY");
+  await w.limits({ gCapPairRoundsPerDay: countBefore.count + 2,
+    gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+  ok("3c.4 · clearing the desk's daily TZS budget blocks a shared COUNTER",
+    (await check()).refusal?.detail?.cap === "PAIR_DAILY_TZS");
+  await w.limits({ gCapPairRoundsPerDay: countBefore.count + 2,
+    gCapPairDailyTzs: countBefore.stakeTzs + 2_000, gMaxBetsPerMinute: 120 });
   const oppositeSide: Any = await w.place(reacting, allowed.intent);
   ok("3c.c1 · CONTROL · the same opted-in account may counter on the opposite desk side",
     oppositeSide.ok === true && (await w.positionsOf(allowed.market.id)).some((p: Any) =>
       p.houseBotId === reacting.botId && p.side === "NO"), `${oppositeSide.reason ?? oppositeSide.code ?? "placed"}`);
+  const stored = await w.dal.houseBotIntentStore.get(allowed.intent.id);
+  const countAfter = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.5 · shared COUNTER is durably marked and consumes one desk round and its TZS stake",
+    stored?.status === "PLACED" && stored.decision.twoSidedDesk === true
+      && countAfter.count === countBefore.count + 1 && countAfter.stakeTzs === countBefore.stakeTzs + 1_000);
+
+  await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+  const unsharedMarket = await w.poll({ graceMin: 0 });
+  const unsharedPlayer = await w.user({ balance: 100_000 });
+  const unsharedTrigger: Any = await w.svc.buyPosition(unsharedPlayer, { marketId: unsharedMarket.id,
+    side: "YES", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+  if (!unsharedTrigger.ok) throw new Error(`3c unshared trigger failed: ${unsharedTrigger.reason ?? unsharedTrigger.code}`);
+  const unsharedBot = await w.bot();
+  const unsharedIntent = await w.intent(unsharedBot, unsharedMarket.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
+    triggerPositionId: unsharedTrigger.data.positionId, triggerUserId: unsharedPlayer });
+  const unshared: Any = await w.place(unsharedBot, unsharedIntent);
+  const unsharedStored = await w.dal.houseBotIntentStore.get(unsharedIntent.id);
+  const afterUnshared = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.6 · a player-only COUNTER still places while both desk two-sided budgets are empty",
+    unshared.ok === true && unsharedStored?.status === "PLACED" && unsharedStored.decision.twoSidedDesk !== true
+      && afterUnshared.count === countAfter.count && afterUnshared.stakeTzs === countAfter.stakeTzs,
+    `${unshared.reason ?? unshared.code ?? "placed"}`);
+  const undoMarket = await w.poll({ graceMin: 0 });
+  const undoIntent = await w.intent(reacting, undoMarket.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
+    triggerPositionId: `fixture_undo_trigger_${process.pid}`, triggerUserId: unsharedPlayer });
+  const undoPositionId = `fixture_undo_position_${process.pid}`;
+  const marked = await w.dal.houseBotIntentStore.markPlaced(undoIntent.id, undoPositionId, null, { twoSidedDesk: true });
+  const reverted = await w.dal.houseSeamStore.revertPlacedInMemory(undoIntent.id, undoPositionId);
+  const undone = await w.dal.houseBotIntentStore.get(undoIntent.id);
+  const afterUndo = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.7 · memory no-funds compensation removes a second-leg marker with the rolled-back placement",
+    marked && reverted && undone?.status === "CLAIMED" && undone.decision.twoSidedDesk !== true
+      && afterUndo.count === afterUnshared.count && afterUndo.stakeTzs === afterUnshared.stakeTzs);
 }
 
-/* ═══ §3b · PAIR-only H4 caps are live under the control lock ═══════════════════════════════ */
-section("§3b · N6 · PAIR daily budgets");
+/* ═══ §3b · both kinds share one H4 desk budget under the control lock ════════════════════════ */
+section("§3b · N6 · shared second-leg daily budgets");
 {
   const { houseH4 } = await import("../src/lib/server/house-bot/seam.ts");
   const b = await w.bot();
@@ -444,10 +497,13 @@ section("§3b · N6 · PAIR daily budgets");
   const m = await w.poll({ graceMin: 0 });
   const i = await w.intent(b, m.id, { kind: "PAIR", anchorKey: `pair:${m.id}`,
     productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 });
-  const baseline = await w.dal.houseBotIntentStore.pairPlacedToday({ houseBotId: null });
+  const baseline = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  const pairOnly = await w.dal.houseBotIntentStore.pairPlacedToday({ houseBotId: null });
   const check = async () => houseH4({ tx: null, ctx: { kind: "house", botId: b.botId, intentId: i.id },
-    intent: i, side: "YES", stake: 1_000, pool: null }) as Promise<Any>;
+    intent: i, side: "YES", stake: 1_000, pool: null, twoSidedDesk: true }) as Promise<Any>;
   const cap = (r: Any) => r.refusal?.detail?.cap;
+  ok("3b.0 · the desk aggregate includes the marked COUNTER but the account PAIR aggregate does not",
+    baseline.count === pairOnly.count + 1 && baseline.stakeTzs === pairOnly.stakeTzs + 1_000);
   await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: 5_000, gMaxBetsPerMinute: 120 });
   ok("3b.1 · an empty pair-round budget refuses at H4", cap(await check()) === "PAIR_ROUNDS_PER_DAY");
   await w.limits({ gCapPairRoundsPerDay: baseline.count + 2, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
@@ -455,6 +511,10 @@ section("§3b · N6 · PAIR daily budgets");
   await w.limits({ gCapPairRoundsPerDay: baseline.count + 2,
     gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
   ok("3b.c1 · CONTROL · a fresh pair under both budgets passes H4", (await check()).refusal === null);
+  await w.limits({ gCapPairRoundsPerDay: baseline.count,
+    gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.2b · the prior marked COUNTER shares the daily count budget with a later PAIR",
+    cap(await check()) === "PAIR_ROUNDS_PER_DAY");
 
   const priorMarket = await w.poll({ graceMin: 0 });
   const prior = await w.intent(b, priorMarket.id, { kind: "PAIR", anchorKey: `pair:${priorMarket.id}`,

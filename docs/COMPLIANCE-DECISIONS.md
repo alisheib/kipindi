@@ -28,10 +28,14 @@ on file. On 2026-10-15 he authorised final validation and release. This entry am
 A desk stake never triggers another desk account's answer. Openers, fills, Enter now and targets retain their
 whole-market hold. Staff and agent stakes remain excluded as triggers.
 
-**The stop control starts empty.** Two desk-wide Limits fields, pair rounds per EAT day and pair TZS per EAT day,
-both start empty. Either empty field means no pair can place, and clearing either field stops all pairing, including
-queued pairs, without a deploy. Both are checked inside the bet's locks, counting placed pairs today. Each account's
-`matchPct` and `matchPerDay` default to zero, and `otherSide` defaults off. Recommended values never enable them.
+**The stop control starts empty.** Two desk-wide Limits fields, Two-sided desk bets per day and Two-sided desk TZS per
+day, both start empty. Either empty field prevents a second desk account from taking the opposite side through a PAIR
+or an opted-in untargeted COUNTER. Each placed second leg consumes one EAT-day bet and its stake from the same
+budget; the count uses the PAIR kind or the durable shared-COUNTER marker, even after a position settles. Clearing
+either field stops new second legs, including queued PAIR and COUNTER rows, without a deploy. The check is inside
+the bet's locks; a bet already past it may finish. A COUNTER against player money alone does not use this budget.
+Each account's `matchPct` and `matchPerDay` apply only to PAIR and default to zero; `otherSide` defaults off.
+Recommended values never enable them.
 
 **Different holders are mandatory.** The planner omits a second account that belongs to the same person as the
 first, and the bet path refuses such a pair inside its locks. The same-person rule uses verified identity, confirmed

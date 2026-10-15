@@ -141,6 +141,8 @@ function buildExpected(): Record<string, string> {
     "c04p.l a live PAIR crossing EAT midnight reserves the next day too": "1:1200|0:0",
     "c04p.m a live PAIR wins a timestamp tie with its cancelled predecessor": "PENDING:true",
     "c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow": "1:0",
+    "c04p.o the desk budget counts PAIR and marked COUNTER, not ordinary COUNTER, on each EAT day": "2:2200|1:900|1:1700",
+    "c04p.p markPlaced keeps the decision and atomically marks a shared COUNTER": "true:PLACED:true:keep",
     // c05 · a press id is used once, ever
     "c05.a Enter now queued": "PENDING",
     "c05.b cancel it": "CANCELLED",
@@ -596,6 +598,28 @@ async function runCases(): Promise<void> {
       const before = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-16" });
       const after = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-17" });
       return `${before.count}:${after.count}`;
+    });
+    await intents.insert(counter("hbi_c04po", "pos_c04po_trigger", { status: "PLACED", stakeTzs: 500,
+      positionId: "pos_c04po", finishedAt: "2026-09-14T20:59:59.999Z", decision: { twoSidedDesk: true } }));
+    await intents.insert(counter("hbi_c04pp", "pos_c04pp_trigger", { status: "PLACED", stakeTzs: 800,
+      positionId: "pos_c04pp", finishedAt: "2026-09-14T20:59:59.999Z" }));
+    await intents.insert(counter("hbi_c04pq", "pos_c04pq_trigger", { status: "PLACED", stakeTzs: 900,
+      positionId: "pos_c04pq", finishedAt: "2026-09-14T21:00:00.000Z", decision: { twoSidedDesk: true } }));
+    await rec("c04p.o the desk budget counts PAIR and marked COUNTER, not ordinary COUNTER, on each EAT day", async () => {
+      const first = await intents.twoSidedPlacedToday({ dayKey: "2026-09-14" });
+      const second = await intents.twoSidedPlacedToday({ dayKey: "2026-09-15" });
+      const pairOnly = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-14" });
+      return `${first.count}:${first.stakeTzs}|${second.count}:${second.stakeTzs}|${pairOnly.count}:${pairOnly.stakeTzs}`;
+    });
+    const marked = counter("hbi_c04pr", "pos_c04pr_trigger", {
+      dueAt: fromNow(-1_000), decision: { note: "keep" },
+    });
+    await intents.insert(marked);
+    await intents.claimById(marked.id, "w_c04pr");
+    await rec("c04p.p markPlaced keeps the decision and atomically marks a shared COUNTER", async () => {
+      const didMark = await intents.markPlaced(marked.id, "pos_c04pr", null, { twoSidedDesk: true });
+      const read = await intents.get(marked.id);
+      return `${didMark}:${read?.status}:${read?.decision?.twoSidedDesk}:${read?.decision?.note}`;
     });
   });
 

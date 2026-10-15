@@ -236,7 +236,7 @@ export async function houseH2(input: {
 
 /* ═══ H3 ══════════════════════════════════════════════════════════════════════════════════════ */
 
-export type H3Result = { refusal: HouseRefusal } | { refusal: null; pool: LockedPool | null };
+export type H3Result = { refusal: HouseRefusal } | { refusal: null; pool: LockedPool | null; twoSidedDesk: boolean };
 
 /**
  * H3 — inside `market:<id>`, after the bet path's closed re-check. `fresh` is the market as re-read in this
@@ -339,7 +339,10 @@ export async function houseH3(input: {
     const never: never = intent.kind;
     throw new Error(`house seam: unhandled intent kind ${String(never)}`);
   }
-  return { refusal: null, pool };
+  // This fact is decided while the market lock holds. A COUNTER only joins the
+  // two-sided budget when it actually becomes the second desk leg.
+  return { refusal: null, pool, twoSidedDesk: intent.kind === "PAIR"
+    || (intent.kind === "COUNTER" && mayShare && market.otherBotOpen) };
 }
 
 /* ═══ H4 ══════════════════════════════════════════════════════════════════════════════════════ */
@@ -359,6 +362,8 @@ export async function houseH4(input: {
   side: Side;
   stake: number;
   pool: LockedPool | null;
+  /** H3's in-lock finding, kept through H4 and the atomic PLACED marker. */
+  twoSidedDesk: boolean;
 }): Promise<H4Result> {
   const { tx, intent, side, stake } = input;
   const refuse = (refusal: HouseRefusal): H4Result => ({ refusal });
@@ -402,18 +407,20 @@ export async function houseH4(input: {
     if (over(control.gCapStaffChosenDailyTzs, staff.stakeTzs + stake)) return refuse(capReached("GLOBAL_STAFF_CHOSEN_DAILY_STAKE"));
   }
 
-  if (intent.kind === "PAIR") {
-    // `house:control` is held to commit, so these PLACED counts and markPlaced cannot race another pair.
+  if (input.twoSidedDesk || intent.kind === "PAIR") {
+    // `house:control` is held to commit, so these PLACED counts and markPlaced cannot race another second desk leg.
     if (control.gCapPairRoundsPerDay == null) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));
     if (control.gCapPairDailyTzs == null) return refuse(capReached("PAIR_DAILY_TZS"));
-    const bot = await houseBotStore.get(input.ctx.botId, tx);
-    const share = currentShare(bot?.rules);
-    if (!share.otherSide || share.matchPct <= 0 || share.matchPerDay <= 0) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
-    const allPairs = await houseBotIntentStore.pairPlacedToday({ houseBotId: null, dayKey: day }, tx);
-    if (allPairs.count >= control.gCapPairRoundsPerDay) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));
-    if (over(control.gCapPairDailyTzs, allPairs.stakeTzs + stake)) return refuse(capReached("PAIR_DAILY_TZS"));
-    const botPairs = await houseBotIntentStore.pairPlacedToday({ houseBotId: input.ctx.botId, dayKey: day }, tx);
-    if (botPairs.count >= share.matchPerDay) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
+    const twoSided = await houseBotIntentStore.twoSidedPlacedToday({ dayKey: day }, tx);
+    if (twoSided.count >= control.gCapPairRoundsPerDay) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));
+    if (over(control.gCapPairDailyTzs, twoSided.stakeTzs + stake)) return refuse(capReached("PAIR_DAILY_TZS"));
+    if (intent.kind === "PAIR") {
+      const bot = await houseBotStore.get(input.ctx.botId, tx);
+      const share = currentShare(bot?.rules);
+      if (!share.otherSide || share.matchPct <= 0 || share.matchPerDay <= 0) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
+      const botPairs = await houseBotIntentStore.pairPlacedToday({ houseBotId: input.ctx.botId, dayKey: day }, tx);
+      if (botPairs.count >= share.matchPerDay) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
+    }
   }
 
   // N1 §3 (MON-03) · `staleAt` on the DATABASE clock, immediately before `markPlaced`. Only a CLAIMED row

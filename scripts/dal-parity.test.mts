@@ -641,6 +641,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memPair)
         && /i\.kind !== "PAIR" \|\| i\.status !== "PLACED"/.test(memPair)
         && /eatDayWindow\(dayKey\)/.test(priPair) && /pairSums/.test(priPair));
+    const priTwoSided = objectMethod(priIntents, "twoSidedPlacedToday");
+    const memTwoSided = objectMethod(memIntentsSrc, "twoSidedPlacedToday");
+    const twoSidedAt = houseDalSrc.indexOf("async function twoSidedSums(");
+    const sqlTwoSided = twoSidedAt < 0 ? "" : houseDalSrc.slice(twoSidedAt, houseDalSrc.indexOf("\n/**", twoSidedAt));
+    ok("6.pair.shared · both desk budget twins count PLACED PAIRs and durably marked COUNTERs on the caller's EAT day",
+      /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memTwoSided)
+        && /i\.kind === "PAIR"/.test(memTwoSided) && /i\.kind === "COUNTER" && i\.decision\?\.twoSidedDesk === true/.test(memTwoSided)
+        && /twoSidedSums/.test(priTwoSided) && /eatDayWindow\(dayKey\)/.test(priTwoSided)
+        && /"kind" = 'PAIR'/.test(sqlTwoSided) && /"kind" = 'COUNTER'/.test(sqlTwoSided)
+        && /"decision"->>'twoSidedDesk' = 'true'/.test(sqlTwoSided));
     const priLive = objectMethod(priIntents, "pairLiveToday");
     const memLive = objectMethod(memIntentsSrc, "pairLiveToday");
     ok("6.pair.live · both pairLiveToday twins count queued PAIRs whose fire window overlaps the caller's EAT day",
