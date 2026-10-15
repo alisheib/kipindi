@@ -382,7 +382,10 @@ try {
   }
   if (run("keyboard")) {
     const keys = await context("sw", 390);
-    const keyPage = await pageIn(keys, `/?bet=${catalogue.ids[0].id}.YES`);
+    const keyPage = await pageIn(keys, "/");
+    const keyPick = keyPage.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await keyPick.waitFor({ timeout: 30_000 });
+    await keyPick.click();
     const sheet = keyPage.locator('[data-testid="journey-bet-sheet"][data-guest]');
     await sheet.waitFor({ timeout: 30_000 });
     await keyPage.waitForFunction(() => document.activeElement === document.querySelector('[data-testid="journey-bet-sheet"] h2'), null, { timeout: 30_000 });
@@ -415,11 +418,15 @@ try {
   }
   if (run("tiles")) for (const locale of locales) for (const width of widths) {
     const ctx = await context(locale, width);
-    const page = await pageIn(ctx, `/?bet=${catalogue.ids[0].id}.YES`);
+    const page = await pageIn(ctx, "/");
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await pick.waitFor({ timeout: 30_000 });
+    const selected = await pick.locator("xpath=ancestor::*[@data-sheet][1]").getAttribute("data-sheet").then(JSON.parse);
+    await pick.click();
     await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
     await page.evaluate(() => document.fonts.ready);
     const facts = await page.evaluate(visitorFaceFacts);
-    const faceErrors = visitorFaceErrors(facts, { min: facts.seed?.min, next: `/?bet=${catalogue.ids[0].id}.YES.${facts.seed?.min}` });
+    const faceErrors = visitorFaceErrors(facts, { min: selected?.min, next: `/?bet=${selected?.id}.YES.${selected?.min}` });
     record(`N guest tile ${locale} ${width}`, faceErrors.length === 0, faceErrors.join(", "));
     record(`J greeting leaves chip and close free ${locale} ${width}`, !overlaps(facts.toast, facts.chips) && !overlaps(facts.toast, facts.close));
     evidence.faces.push({ label: `guest-${locale}-${width}`, ...summary(facts) });
