@@ -16,16 +16,20 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-15):** At 11:36 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
-`c8a982cd755553bcc7ba52c018910dc5e85ee637` fixes the home hydration mismatch and the demo-seed guard scanner. Its
-local build, typecheck and `qa:live` 376/0 passed; Railway deployed that exact SHA; all three hosts serve it with healthy,
-migrated DB and `STAFF_PREVIEW`; public chunk gates pass 6/6 on www and apex; signed-out production `qa:live` passes 352/0;
-20 production visual route/width cells pass. Exact-tip CI run 38723925475 passed every step. **[E3] is measured:** Ali
+**State (2026-10-15):** At 12:40 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
+`0229b2140c00208a1b873b112dc0c2713008d47b` fixes three player-facing defects: the question bet panel's guest sign-in
+doors preserve their return path, Up & Down's stake preflight counts cash plus bonus, and a locked round stays visible on
+the board. Its local source/PG battery passed 544/544, with typecheck, exact-tip build and fresh local `qa:live` 375/0;
+Railway deployed that exact SHA. All three hosts serve it with healthy, migrated DB and `STAFF_PREVIEW`; public chunk
+gates pass 6/6 on www and apex; signed-out production `qa:live` passes 352/0; 28 production visual route/width/language
+cells have no overflow or page error. Exact-tip CI run 38734948076 passed every step; see the §0k release record.
+**[E3] is measured:** Ali
 authorized one `mobile01` sign-in attempt; production QA on the preceding live `50b586d50` passed 385/0, including the
 signed-in seven-page read. The account will not be signed in again without a new authorization. S8 still owes V1's visual
 fix release, A21 re-measure at that release tip, classic parity v4, the closing battery and its close record. S2 is ✅
-(§0d). In flight on isolated Codex branches: the three live fixes, V1, S9, S10 and S11; S12 and S13 checkpoints remain
-on GitHub. The 2026-10-15 visual audit (58 findings, each with its owner) is
+(§0d). In flight on isolated Codex branches: V1/S8 release proof, S9 core (Card recovery held pending provider host
+verification), S10–S13 and visual follow-ups. These checkpoints are on GitHub. The 2026-10-15 visual audit (58 findings,
+each with its owner) is
 [`qa/visual-audit-20261015.md`](qa/visual-audit-20261015.md).
 The portable continuation and access guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
 **⭐ From 2026-10-15 a Codex session is the integrator and release owner (Ali's choice):** its takeover prompt is that
@@ -393,10 +397,11 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) Release the three validated live fixes, then V1's visual changes. (2) Close S8 (§0k): re-measure A21 at
+**Next:** (1) Finish the `0229b2140` production/CI read-back, then release V1's visual changes. (2) Close S8 (§0k): re-measure A21 at
 V1's exact release tip on a quiet machine, compare classic parity v4 cell by cell, run the closing battery with the
 database suites and record the result; [E3] was measured 385/0 under Ali's one-attempt authorization. (3) Complete
-S9's funding-key and provider-reference safety work, migration and backup-schema/PG proofs before its own release.
+S9's funding-key and provider-reference safety work, migration and backup-schema/PG proofs before its own release;
+hold Card checkout recovery until the actual Selcom redirect host is verified, as Ali directed.
 (4) Complete and release S10–S13 one lane at a time with each lane's browser, visual, mutation, money and production
 proof. (5) Prepare S14's preview, identity checklist and real TZS 1,000 staff journey for Ali and the agency; S15 needs
 Ali's later go after the actual gates, and S16 waits at least seven real days after launch. Keep `STAFF_PREVIEW` until
@@ -1093,6 +1098,27 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   (`C:\50pick-ssd\logs\visual-c8-production`). Exact-tip CI run 38723925475 passed every step, including its browser
   gates and PostgreSQL cross-instance proofs.
   This is a repair release, **not S8 acceptance**: V1, A21 re-measure, parity v4 and the closing battery remain.
+- **2026-10-15 12:40 UTC — three live fixes, release `0229b2140c00208a1b873b112dc0c2713008d47b`.**
+  The question bet panel's guest sign-in doors preserve `next`, `ref` and invite context; Up & Down's stake preflight uses
+  cash plus bonus; a round in its lock window remains on the board. These fixes were independently reviewed before
+  integration. The source/PG `test:all` at `d87ed68f5` passed **544/544**; `0229b2140` adds only documentation on top of
+  that source. At the exact release tip: typecheck 0, production build 0, first-load 10/10, public bundle guard green,
+  fresh local `qa:live` **375/0**, responsive 7281/0 (320 soft warnings in the separate visual backlog), motion 43/0, admin section 21/0, needle rest 92/0 and revoked
+  dead-end 46/0. Railway deployment `fbfc300d-bb79-495a-bdb4-9993f9a65b30` succeeded; boot found 102 migrations
+  and none pending. All three hosts served that SHA; health showed reachable/migrated DB and `STAFF_PREVIEW`. The public
+  chunk gates passed 6/6 on www and apex (124 GETs each); signed-out production `qa:live` passed **352/0** ([E3] was
+  already measured once on the preceding release under Ali's one-attempt authorization). The en/sw production visual
+  sweep across seven changed/relevant routes at 360 and 1280 passed 28/28 cells: HTTP 200, no page error, 5xx or
+  horizontal overflow; 36 screenshots were retained and the 360px question and Up & Down frames read by eye. The Sw
+  question title and eyebrow have their full 16px left inset in the original PNG. Railway metrics at 12:42 UTC showed
+  0 application 5xx in 2,074 requests since the traffic switch; the runtime's only configuration warnings are the
+  deliberately disabled admin TOTP and deferred webhook secrets. Exact-tip CI run 38734948076 passed every step at
+  13:08 UTC, including browser, PostgreSQL migration, C4/C6 and cross-instance leader-election proofs. This release
+  fixes live defects, **not S8 acceptance**: V1, exact-tip A21, parity v4 and S8's own closing battery remain; its real
+  staff money proof transfers to S14.
+  A separate production read-only GET with a safe `side`, `ref` and `invite` query verified the header and bet-panel
+  doors carry all three. The comments section's guest sign-in link still carries only the market path; S10's visitor
+  door census must repair and prove that remaining link before its release.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
