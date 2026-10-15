@@ -352,7 +352,7 @@ async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
 
         {tab === "queue" && (<>
         {/* Retry queue. */}
-        <AdminCard title="Retry queue · Foleni ya majaribio" sw="Failed deposits & withdrawals" padding={queue.length ? "p-0" : "p-4"} action={queue.length > 1 ? <BulkRetryControls /> : undefined}>
+        <AdminCard title="Retry queue · Foleni ya majaribio" sw="Failed deposits & withdrawals needing review" padding={queue.length ? "p-0" : "p-4"} action={queue.filter((r) => r.type === "DEPOSIT" && !r.reviewRequired).length > 1 ? <BulkRetryControls /> : undefined}>
           {queue.length === 0 ? (
             <div className="flex items-center gap-2.5 text-caption text-text-secondary">
               <I.checkCircle s={16} className="text-yes-300" /> No failed transactions — the rails are clear.

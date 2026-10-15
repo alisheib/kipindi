@@ -1,8 +1,7 @@
 "use client";
 
-/** A4 — bulk retry for the failed-payment queue. Unproven failed deposits remain
- *  in review; eligible deposits and failed withdrawals use their guarded paths.
- *  A short confirm guards the bulk action. */
+/** A4 — bulk retry for verified-negative failed deposits only. Payouts remain
+ *  in manual review; a short confirm guards the bulk collection action. */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -34,7 +33,7 @@ export function BulkRetryControls() {
   if (!mayAct) return <ActReadOnly />;
 
   const run = () => {
-    overlay.run("Checking failed payments…", "Up to 50 rows; only eligible payments can be sent to a gateway. Don't navigate away.");
+    overlay.run("Checking failed deposits…", "Up to 50 verified-negative deposits may be sent to a gateway. Don't navigate away.");
     start(async () => {
       const r = await runAdminAction(() => bulkRetryAction());
       if (!r.ok) { overlay.fail("Bulk retry blocked", r.error ?? "Server error — refresh before retrying."); return; }
@@ -52,13 +51,13 @@ export function BulkRetryControls() {
       <ActionOverlay state={overlay.state} onDismiss={overlay.dismiss} />
       {confirm ? (
         <span className="inline-flex items-center gap-1.5">
-          <span className="font-mono text-[10px] text-text-subtle">Retry eligible payments?</span>
+          <span className="font-mono text-[10px] text-text-subtle">Retry eligible deposits?</span>
           <Button size="sm" variant="claret" disabled={pending} onClick={run}>Yes</Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirm(false)}>No</Button>
         </span>
       ) : (
         <Button size="sm" variant="ghost" disabled={pending} leading={<I.rotateCcw s={13} />} onClick={() => setConfirm(true)}>
-          Retry eligible
+          Retry eligible deposits
         </Button>
       )}
     </>

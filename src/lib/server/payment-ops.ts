@@ -198,7 +198,9 @@ export async function retryQueue(): Promise<RetryRow[]> {
       type: t.type as "DEPOSIT" | "WITHDRAWAL",
       amount: Math.abs(t.amount),
       reason: (t.description ?? "failed").replace(/^.*failed:\s*/i, "") || "failed",
-      reviewRequired: t.type === "DEPOSIT" && !canAdminRetryDeposit(t, true),
+      // A FAILED payout may include an officer reversal on PENDING/UNSUPPORTED.
+      // Its status alone never authorizes a second provider dispatch or closure.
+      reviewRequired: t.type === "WITHDRAWAL" || !canAdminRetryDeposit(t, true),
       retryClaimed: t.type === "DEPOSIT" && t.providerStatus === DEPOSIT_RETRY_CLAIM_MARK,
       createdAt: t.createdAt,
       ageMs: Date.now() - Date.parse(t.createdAt),

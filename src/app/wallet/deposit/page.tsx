@@ -39,6 +39,7 @@ import { JourneyDepositForm } from "./journey-deposit-form";
 import { getKillSwitches } from "@/lib/server/payment-ops";
 import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 import { CardIntentBridge } from "./card-intent-bridge";
+import { FundingReleaseBridge } from "./funding-release-bridge";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit", which a Swahili player saw in their browser tab and history.
@@ -64,7 +65,7 @@ const PROVIDERS = [
 const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
 
 export type DepositSearch = {
-  error?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
+  error?: string; release?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
   bet?: string; returnPath?: string;
   bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
 };
@@ -87,6 +88,11 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   // ⛔ Only a sentence the deposit action signed (`flash-message.ts`) — a hand-made `?error=` used to print
   // whatever it said under "Deposit failed", on a money page, on the real domain (2026-10-06).
   const errorMsg = readFlash("deposit-error", sp.error);
+  const releaseProof = errorMsg ? readFlash("deposit-release-key", sp.release) : null;
+  const ownerPrefix = `${session.userId}:`;
+  const releaseKey = releaseProof?.startsWith(ownerPrefix)
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(releaseProof.slice(ownerPrefix.length))
+    ? releaseProof.slice(ownerPrefix.length) : null;
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
@@ -180,6 +186,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
 
   return (
     <PageContainer tier="form" className="space-y-5">
+      <FundingReleaseBridge ownerId={session.userId} releaseKey={releaseKey} />
       {journey ? <a href="/wallet" className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate-x-0.5 group"><I.chevronLeft s={11} edge="start" text="mono-400" />{t.wallet.title}</a>
         : <BackLink fallbackHref="/wallet" label={t.wallet.title} />}
 
@@ -295,6 +302,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
       journey && !cardOnly ? (
         <JourneyDepositForm
           ownerId={session.userId}
+          releaseKey={releaseKey}
           rawBet={sp.bet ?? null}
           returnPath={sp.returnPath ?? null}
           initialAmount={prevAmount}
@@ -315,7 +323,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
             attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "CHAGUA NJIA YA KULIPA": 51px
             from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
             no sibling before it whatever React adds to the form. */}
-        {cardOnly && <CardIntentBridge ownerId={session.userId} rawBet={sp.bet ?? null} returnPath={sp.returnPath ?? null} />}
+        {cardOnly && <CardIntentBridge ownerId={session.userId} rawBet={sp.bet ?? null} returnPath={sp.returnPath ?? null} releaseKey={releaseKey} />}
         <div data-card-intent-gate={cardOnly ? "" : undefined} inert={cardOnly} className="space-y-5">
           {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
               intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the

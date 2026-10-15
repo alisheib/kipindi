@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { PENDING_BET_KEY } from "@/lib/journey/pending-bet";
 import { trustedDepositBet } from "@/lib/journey/deposit-state";
 import { useT } from "@/lib/i18n";
-import { fundingStorageKey, parseStoredFunding, writeStoredFunding } from "@/lib/journey/funding-storage";
+import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStoredFunding } from "@/lib/journey/funding-storage";
 
 const fundingKey = fundingStorageKey;
 
 /** Keep the whole classic Card form, but require a recoverable funding key and a trusted chosen-bet handoff. */
-export function CardIntentBridge({ ownerId, rawBet, returnPath }: {
-  ownerId: string; rawBet: string | null; returnPath: string | null;
+export function CardIntentBridge({ ownerId, rawBet, returnPath, releaseKey }: {
+  ownerId: string; rawBet: string | null; returnPath: string | null; releaseKey: string | null;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const submittedKey = useRef<string | null>(null);
@@ -38,6 +38,7 @@ export function CardIntentBridge({ ownerId, rawBet, returnPath }: {
     };
     try {
       const box = window.sessionStorage;
+      if (releaseKey && releaseStoredFunding(box, ownerId, releaseKey) && submittedKey.current === releaseKey) submittedKey.current = null;
       setRecoverKey(null);
       const existing = box.getItem(fundingKey(ownerId));
       if (existing) {
@@ -70,7 +71,7 @@ export function CardIntentBridge({ ownerId, rawBet, returnPath }: {
     };
     form.addEventListener("submit", submit, true);
     return () => form.removeEventListener("submit", submit, true);
-  }, [ownerId, rawBet, returnPath]);
+  }, [ownerId, rawBet, returnPath, releaseKey]);
 
   return <>
     <input ref={ref} type="hidden" hidden name="pendingBet" defaultValue="" />

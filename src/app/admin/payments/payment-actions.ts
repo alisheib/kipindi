@@ -5,7 +5,9 @@
  *
  * Money-safety: deposit retry requires a stored, verified provider-negative result
  * and a stable child key. Legacy failures enter review without another collection.
- * "Cancel & refund" cannot hide an unproven failed deposit.
+ * "Cancel & refund" cannot hide an unproven failed money movement. A FAILED
+ * withdrawal does not prove the provider never paid it, so staff cannot re-send
+ * or close one through this queue until an authoritative retry path exists.
  */
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
@@ -128,13 +130,14 @@ export async function retryDepositAction(formData: FormData): Promise<Result> {
   return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
 
-/** Cancel & refund — close a failed money movement. */
+/** Close only a provider-negative failed deposit. A failed payout needs review. */
 export async function cancelRefundTxnAction(formData: FormData): Promise<Result> {
   const g = await gate("cancelRefund");
   if ("error" in g) return { ok: false, error: g.error };
   const txnId = String(formData.get("txnId") ?? "");
   const t = await db.txn.findById(txnId);
   if (!t || t.status !== "FAILED") return { ok: false, error: "Only a FAILED transaction can be cancelled." };
+  if (t.type === "WITHDRAWAL") return { ok: false, error: "This failed payout needs manual provider review. Automatic closure is unavailable." };
   if (t.type === "DEPOSIT") {
     const closed = await withLock(`wallet:${t.userId}`, async (tx) => {
       const fresh = await db.txn.findById(txnId, tx);
@@ -144,55 +147,31 @@ export async function cancelRefundTxnAction(formData: FormData): Promise<Result>
       return saved?.status === "CANCELLED";
     });
     if (!closed) return { ok: false, error: "This deposit needs payment review or has an unresolved retry. Refresh before closure." };
-  } else {
-    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "failed"} · cancelled by operator` });
-  }
+  } else return { ok: false, error: "Only a verified failed deposit can be closed here." };
   audit({
     category: "WALLET",
     action: "payments.cancel_refund",
     actorId: g.userId,
     targetType: "Transaction",
     targetId: txnId,
-    payload: { type: t.type, amount: Math.abs(t.amount), note: t.type === "WITHDRAWAL" ? "failed withdrawal already auto-refunded at fail-time; record closed" : "verified provider-negative deposit closed" },
+    payload: { type: t.type, amount: Math.abs(t.amount), note: "verified provider-negative deposit closed" },
   });
   revalidatePath("/admin/payments");
   return { ok: true };
 }
 
-/** Retry a failed WITHDRAWAL via the tested withdraw() flow; cancel the old
- *  record (A4). A failed withdrawal was auto-refunded to spendable balance at
- *  fail-time, so re-initiating debits from the restored balance — no double-pay. */
+/** Retained for direct/stale clients: a FAILED withdrawal is not proof that the
+ * provider never paid. The old unkeyed re-dispatch could pay twice after a lost
+ * response or late success; an authoritative keyed retry requires separate work. */
 export async function retryWithdrawalAction(formData: FormData): Promise<Result> {
   const g = await gate("retryWithdrawal");
   if ("error" in g) return { ok: false, error: g.error };
   const txnId = String(formData.get("txnId") ?? "");
   const t = await db.txn.findById(txnId);
   if (!t || t.type !== "WITHDRAWAL" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed withdrawal." };
-  const { withdraw } = await import("@/lib/server/wallet-service");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // ⛔ THE 4th ARGUMENT IS THE OPERATOR, AND IT IS NOT OPTIONAL IN PRACTICE. `withdraw()`
-  // records who initiated a payout; without this argument the compliance record would name
-  // the PLAYER for an action an officer took. `undefined` is the idempotencyKey this path has
-  // never passed.
-  // ⚠️ THE ORIGINAL REASON IS DATED. It was written for 2026-08-19, when identity was NOT a
-  // precondition of withdrawal (Board comment #1; docs/BOARD-DISCLOSURE-B-E.md §6.2), so this
-  // path could push a payout for a never-verified account. Since 2026-09-05 — and unchanged by
-  // the 2026-09-13 ruling — `withdraw()` refuses an account that was never approved
-  // (`kyc-gate.ts`), for an operator retry exactly as for the player. The argument still
-  // matters: an account under re-verification (approved once, not APPROVED now) IS paid, and
-  // its `withdraw.unverified_payer` row must name the officer (`operatorInitiated`).
-  // docs/COMPLIANCE-DECISIONS.md 2026-09-13, S10.
-  const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
-  if (r.ok) {
-    await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
-  } else {
-    // Retry refused — withdraw() created no replacement txn; the FAILED row (the
-    // record that money is still owed) must stay in the retry queue. Status unchanged.
-    await db.txn.update(txnId, { description: `${t.description ?? "withdrawal failed"} · retry refused: ${r.error ?? "unknown"}` });
-  }
-  audit({ category: "WALLET", action: "payments.retry.withdrawal", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
-  revalidatePath("/admin/payments");
-  return r.ok ? { ok: true } : { ok: false, error: r.error ?? "Retry failed again." };
+  audit({ category: "COMPLIANCE", action: "payments.retry.withdrawal_refused", actorId: g.userId,
+    targetType: "Transaction", targetId: txnId, payload: { reason: "provider-negative result and replay identity are unproven" } });
+  return { ok: false, error: "This failed payout needs manual provider review. Automatic retry is unavailable." };
 }
 
 /** PSP reconciliation — manually MATCH an unmatched CONFIRMED money movement to a
@@ -301,30 +280,16 @@ export async function reconcileWriteOffAction(formData: FormData): Promise<Resul
   return { ok: true };
 }
 
-/** Bulk-retry delegates every deposit to the exact single-row safety path. Capped per run. */
+/** Bulk-retry delegates eligible deposits to the exact single-row safety path. Capped per run. */
 export async function bulkRetryAction(): Promise<{ ok: true; retried: number; stillFailed: number } | { ok: false; error: string }> {
   const g = await gate("bulkRetry");
   if ("error" in g) return { ok: false, error: g.error };
-  const failed = (await db.txn.listByStatus("FAILED")).filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").slice(0, 50);
-  const { withdraw } = await import("@/lib/server/wallet-service");
+  const failed = (await db.txn.listByStatus("FAILED")).filter((t) => t.type === "DEPOSIT").slice(0, 50);
   let retried = 0, stillFailed = 0;
   for (const t of failed) {
     try {
-      if (t.type === "DEPOSIT") {
-        const r = await retryFailedDepositFromAdmin(t.id, g.userId, "bulk");
-        if (r.ok) retried++; else stillFailed++;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // 4th argument names the officer who made a withdrawal retry decision.
-        const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
-        if (r.ok) {
-          await db.txn.update(t.id, { status: "CANCELLED", description: `${t.description ?? "failed"} · superseded by bulk retry` });
-          retried++;
-        } else {
-          await db.txn.update(t.id, { description: `${t.description ?? "failed"} · bulk retry refused: ${r.error ?? "unknown"}` });
-          stillFailed++;
-        }
-      }
+      const r = await retryFailedDepositFromAdmin(t.id, g.userId, "bulk");
+      if (r.ok) retried++; else stillFailed++;
     } catch { stillFailed++; }
   }
   audit({ category: "WALLET", action: "payments.retry.bulk", actorId: g.userId, targetType: null, targetId: null, payload: { attempted: failed.length, retried, stillFailed } });

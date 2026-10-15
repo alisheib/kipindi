@@ -80,13 +80,24 @@ check("a tab store that drops writes refuses the payment identity",
 const depositActionSource = readFileSync(new URL("../src/app/wallet/deposit/actions.ts", import.meta.url), "utf8");
 const mobileFormSource = readFileSync(new URL("../src/app/wallet/deposit/journey-deposit-form.tsx", import.meta.url), "utf8");
 const cardBridgeSource = readFileSync(new URL("../src/app/wallet/deposit/card-intent-bridge.tsx", import.meta.url), "utf8");
-const fundingUnlockGuard = (action: string, mobile: string, card: string) =>
-  !action.includes("deposit-preflight-key") && !mobile.includes("removeItem(fundingStorageKey")
+const dispositionSource = readFileSync(new URL("../src/lib/server/deposit-action-recovery.ts", import.meta.url), "utf8");
+const pageSource = readFileSync(new URL("../src/app/wallet/deposit/page.tsx", import.meta.url), "utf8");
+const fundingUnlockGuard = (action: string, mobile: string, card: string, disposition: string, page: string) =>
+  action.includes("await depositRefusalDisposition(session.userId, idempotencyKey)")
+  && action.includes('signFlash("deposit-release-key", bound)')
+  && disposition.includes("withLock(`wallet:${ownerId}`")
+  && disposition.includes("db.txn.findByIdempotencyKey(key, tx)")
+  && disposition.includes('if (!row) return "release"')
+  && page.includes('readFlash("deposit-release-key", sp.release)')
+  && page.includes("releaseProof?.startsWith(ownerPrefix)")
+  && mobile.includes("releaseStoredFunding(box, ownerId, releaseKey)")
+  && card.includes("releaseStoredFunding(box, ownerId, releaseKey)")
   && !mobile.includes("removeItem(slot)") && !card.includes("removeItem(fundingKey");
-check("a pre-dispatch refusal cannot release an unresolved same-key funding identity",
-  fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource));
-if (red) check("plant: an early tab-key release is caught",
-  !fundingUnlockGuard(depositActionSource, `${mobileFormSource}\nbox.removeItem(slot);`, cardBridgeSource));
+check("a no-row refusal releases the owner/key identity only after locked proof and signed return",
+  fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource, dispositionSource, pageSource));
+if (red) check("plant: an unlocked tab-key release is caught",
+  !fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource,
+    dispositionSource.replace("withLock(`wallet:${ownerId}`", "withoutLock(`wallet:${ownerId}`"), pageSource));
 const keyedActionGuard = (source: string) => source.includes("if ((!idempotencyKey")
   && source.indexOf("if ((!idempotencyKey") < source.indexOf("const result = await deposit(");
 check("all deposit actions refuse an unkeyed payment before dispatch", keyedActionGuard(depositActionSource));

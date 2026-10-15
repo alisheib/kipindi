@@ -1,15 +1,13 @@
 "use client";
 
-/** ADM4 — retry-queue row actions. Retry re-dispatches a failed payment (a
- *  DEPOSIT re-requests a collection from the player; a WITHDRAWAL re-sends real
- *  money OUT — so the withdrawal retry is confirmed, like cancel). Cancel closes
- *  a failed record (confirm). All are guarded + audited server-side. */
+/** ADM4 — verified-negative failed deposits can be retried or closed. Failed
+ *  withdrawals stay visible for manual review: a late payout may still settle. */
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useDeferredToast } from "@/components/ui/toast";
-import { retryDepositAction, retryWithdrawalAction, cancelRefundTxnAction } from "./payment-actions";
+import { retryDepositAction, cancelRefundTxnAction } from "./payment-actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
@@ -21,7 +19,6 @@ export function RetryControls({ txnId, type, reviewRequired, retryClaimed }: { t
 
   const [pending, startTransition] = useTransition();
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [confirmRetry, setConfirmRetry] = useState(false);
   const router = useRouter();
   // B-28 — success toasts ride the transition's falling edge (data visible when announced)
   const { toast, deferToast } = useDeferredToast(pending);
@@ -29,7 +26,8 @@ export function RetryControls({ txnId, type, reviewRequired, retryClaimed }: { t
   // Rules of hooks: read the gate as a hook at the top, ACT on it below every other hook.
   // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
   // return above these hooks would render fewer hooks than the last pass and crash the page.
-  if (reviewRequired) return <span className="font-mono text-[10px] text-no-300" title="Provider failure is not proven. Review this payment before retry or closure.">Review required</span>;
+  if (type === "WITHDRAWAL" || reviewRequired) return <span className="font-mono text-[10px] text-no-300"
+    title={type === "WITHDRAWAL" ? "Payout may still settle. Review the provider result manually; automatic retry and closure are unavailable." : "Provider failure is not proven. Review this payment before retry or closure."}>Manual review required</span>;
   if (!mayAct) return <ActReadOnly />;
 
   const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string }>, okTitle: string) => {
@@ -40,7 +38,6 @@ export function RetryControls({ txnId, type, reviewRequired, retryClaimed }: { t
       if (!r.ok) { toast({ title: "Blocked", description: r.error, variant: "danger" }); return; }
       deferToast({ title: okTitle, variant: "success" });
       setConfirmCancel(false);
-      setConfirmRetry(false);
       router.refresh();
     });
   };
@@ -62,22 +59,9 @@ export function RetryControls({ txnId, type, reviewRequired, retryClaimed }: { t
     );
   }
 
-  // A WITHDRAWAL retry re-dispatches REAL money out — confirm it (parity with
-  // cancel and the bulk "Retry all"). A DEPOSIT retry only re-requests a
-  // collection push from the player, so it stays a single click.
-  if (confirmRetry) {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="font-mono text-[10px] text-text-subtle">Re-send payout?</span>
-        <Button size="sm" variant="claret" disabled={pending} onClick={() => run(retryWithdrawalAction, "Retry dispatched")}>Yes</Button>
-        <Button size="sm" variant="ghost" onClick={() => setConfirmRetry(false)}>No</Button>
-      </span>
-    );
-  }
-
   return (
     <span className="inline-flex items-center gap-2">
-      <Button size="sm" variant="ghost" disabled={pending} leading={<I.rotateCcw s={13} />} onClick={() => (type === "WITHDRAWAL" ? setConfirmRetry(true) : run(retryDepositAction, "Retry dispatched"))}>
+      <Button size="sm" variant="ghost" disabled={pending} leading={<I.rotateCcw s={13} />} onClick={() => run(retryDepositAction, "Retry dispatched")}>
         Retry
       </Button>
       <Button size="sm" variant="ghost" disabled={pending} leading={<I.x s={13} />} onClick={() => setConfirmCancel(true)}>

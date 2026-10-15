@@ -67,6 +67,20 @@ async function oldDeposit(userId: string, patch: Record<string, unknown> = {}) {
   // Prisma's create DAL does not persist providerStatus, so model the real update path.
   return authority == null ? row : (await db.txn.update(row.id, { providerStatus: authority as string }))!;
 }
+async function reversedWithdrawal(userId: string) {
+  // An officer can explicitly return a PROCESSING payout on a PENDING or
+  // UNSUPPORTED re-query. Its FAILED row records the refund, not rail finality.
+  const serial = ++n;
+  await db.wallet.adjust(`wlt_${userId}`, { balance: 5000 });
+  const row = await db.txn.create({ id: `txn_s9_reversed_${serial}`, walletId: `wlt_${userId}`, userId,
+    type: "WITHDRAWAL", status: "FAILED", amount: -5000, fee: 0, taxWithheld: 0,
+    balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: `wdr_s9_reversed_${serial}`,
+    providerStatus: null, msisdn: "+255712345678",
+    description: "Withdrawal failed: officer-reversed-stuck-payout", positionId: null, amlReason: null,
+    createdAt: now(), updatedAt: now(), completedAt: null, idempotencyKey: `old_s9_reversed_${serial}`,
+    origin: null, pendingBet: null } as never);
+  return (await db.txn.update(row.id, { providerStatus: "PENDING: provider outcome unresolved" }))!;
+}
 
 function scenario(source = HELPER) {
   const audits: any[] = [];
@@ -126,10 +140,8 @@ function scenario(source = HELPER) {
     set beforeReservation(fn: (() => Promise<void>) | null) { beforeReservation = fn; },
     set duringDispatch(fn: ((child: any) => Promise<void>) | null) { duringDispatch = fn; }, childReads, audits };
 }
-function action(name: string, deps: Record<string, unknown>) {
-  let code = fn(ACTIONS, name);
-  if (name === "bulkRetryAction") code = code.replace('const { withdraw } = await import("@/lib/server/wallet-service");',
-    "const { withdraw } = withdrawalFixture;");
+function action(name: string, deps: Record<string, unknown>, source = ACTIONS) {
+  const code = fn(source, name);
   const js = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   return new Function(...Object.keys(deps), `${js}\nreturn ${name};`)(...Object.values(deps)) as (...args: any[]) => Promise<any>;
 }
@@ -137,7 +149,7 @@ const commonActions = (retry: (id: string, actor: string, source: "single" | "bu
   gate: async () => ({ userId: "officer_s9", sessionId: "s9" }), db,
   retryFailedDepositFromAdmin: retry, revalidatePath: () => {}, withLock: Locks.withLock,
   hasDepositFinalNegative: Review.hasDepositFinalNegative, hasDepositStatusReview: Review.hasDepositStatusReview,
-  audit: async () => ({ recorded: true }), withdrawalFixture: { withdraw: async () => { throw new Error("Unexpected payout dispatch"); } },
+  audit: async () => ({ recorded: true }),
 });
 
 const legacyOwner = await player(), legacy = await oldDeposit(legacyOwner, { providerStatus: null });
@@ -150,6 +162,40 @@ const cancel = action("cancelRefundTxnAction", commonActions(legacyRun.retry)), 
 cancelForm.set("txnId", legacy.id);
 const closedLegacy = await cancel(cancelForm);
 ok("legacy.cannot-close", !closedLegacy.ok && (await db.txn.findById(legacy.id))?.status === "FAILED");
+
+const payoutOwner = await player(), reversed = await reversedWithdrawal(payoutOwner);
+const payoutForm = new FormData(); payoutForm.set("txnId", reversed.id);
+let payoutCalls = 0, wrongDepositCalls = 0;
+const payoutDeps = { ...commonActions(legacyRun.retry), withdrawalFixture: { withdraw: async () => {
+  payoutCalls++; throw new Error("Controlled lost response after payout accepted");
+} } };
+const retryPayout = action("retryWithdrawalAction", payoutDeps);
+const closePayout = action("cancelRefundTxnAction", payoutDeps);
+const payoutBulk = action("bulkRetryAction", { ...payoutDeps,
+  db: { ...db, txn: { ...db.txn, listByStatus: async () => [reversed] } },
+  retryFailedDepositFromAdmin: async () => { wrongDepositCalls++; return { ok: false, error: "Not a deposit" }; },
+});
+const [singlePayout, bulkPayout, closedPayout] = await Promise.all([retryPayout(payoutForm), payoutBulk(), closePayout(payoutForm)]);
+const [repeatSinglePayout, repeatBulkPayout] = await Promise.all([retryPayout(payoutForm), payoutBulk()]);
+const payoutQueue = (await retryQueue()).find(r => r.id === reversed.id);
+const payoutAfter = await db.txn.findById(reversed.id);
+ok("withdrawal.ambiguous-reversal.manual-review-visible", payoutQueue?.reviewRequired === true
+  && payoutQueue.retryClaimed === false && payoutAfter?.status === "FAILED"
+  && payoutAfter.providerStatus?.startsWith("PENDING:") === true);
+ok("withdrawal.single-bulk-repeat.no-payout", !singlePayout.ok && !repeatSinglePayout.ok
+  && bulkPayout.ok && repeatBulkPayout.ok && bulkPayout.retried === 0 && repeatBulkPayout.retried === 0
+  && payoutCalls === 0 && wrongDepositCalls === 0 && (await db.txn.findById(reversed.id))?.status === "FAILED");
+ok("withdrawal.ambiguous-reversal.cannot-close", !closedPayout.ok
+  && (await db.txn.findById(reversed.id))?.status === "FAILED");
+const { settlePaymentWebhook } = await import("../src/lib/server/wallet-service.ts");
+const latePayout = await settlePaymentWebhook({ providerRef: reversed.providerRef!, status: "CONFIRMED", amount: 5000 });
+const afterLatePayout = await db.txn.findById(reversed.id);
+const retryAfterLate = await retryPayout(payoutForm), bulkAfterLate = await payoutBulk();
+ok("withdrawal.late-confirmation.no-second-payout", !latePayout.handled
+  && latePayout.reason === "contradicted-failed-now-confirmed" && afterLatePayout?.status === "FAILED"
+  && (await db.wallet.findByUserId(payoutOwner))?.balance === 5000
+  && !retryAfterLate.ok && bulkAfterLate.ok && bulkAfterLate.retried === 0
+  && payoutCalls === 0 && wrongDepositCalls === 0);
 
 const owner = await player(), original = await oldDeposit(owner), lost = scenario();
 lost.loseAnswer = true;
@@ -230,6 +276,23 @@ if (!PG) {
   const plantOwner = await player(), plantOld = await oldDeposit(plantOwner, { providerStatus: null }), planted = scenario(mutant);
   await planted.retry(plantOld.id, "officer_s9", "single");
   ok("red.legacy-gate-kills-dispatch", planted.dispatches === 1);
+  const denied = 'return { ok: false, error: "This failed payout needs manual provider review. Automatic retry is unavailable." };';
+  const payoutMutant = ACTIONS.replace(denied, 'await withdrawalFixture.withdraw(t.userId); return { ok: true };');
+  if (payoutMutant === ACTIONS) throw new Error("Withdrawal retry gate mutation anchor missing");
+  const unsafePayout = action("retryWithdrawalAction", payoutDeps, payoutMutant);
+  await unsafePayout(payoutForm).catch(() => {});
+  await unsafePayout(payoutForm).catch(() => {});
+  ok("red.withdrawal-gate-kills-lost-response-repeat", payoutCalls === 2);
+  const bulkFilter = '.filter((t) => t.type === "DEPOSIT").slice(0, 50)';
+  const bulkMutant = ACTIONS.replace(bulkFilter,
+    '.filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").slice(0, 50)');
+  if (bulkMutant === ACTIONS) throw new Error("Withdrawal bulk gate mutation anchor missing");
+  const unsafeBulk = action("bulkRetryAction", { ...payoutDeps,
+    db: { ...db, txn: { ...db.txn, listByStatus: async () => [reversed] } },
+    retryFailedDepositFromAdmin: async () => { wrongDepositCalls++; return { ok: false, error: "Not a deposit" }; },
+  }, bulkMutant);
+  await unsafeBulk();
+  ok("red.bulk-filter-kills-withdrawal-attempt", wrongDepositCalls === 1);
 }
 
 const failed = checks.filter(c => !c.pass);

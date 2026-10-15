@@ -984,8 +984,9 @@ uniquely identifies it, whose funding identity is valid, and whose `providerStat
 only when the verified callback or authoritative order-status re-query reports FAILED. A synchronous
 dispatch refusal, mock timeout, text description or legacy FAILED row does not prove a provider-negative
 result. Such rows stay FAILED, gain a durable review note and audit, and have no Retry/Cancel buttons in
-the admin queue. Admin Cancel rechecks the same marker under the wallet lock; withdrawals retain their
-existing path. Card cannot be retried by an officer without the buyer's hosted-checkout context.
+the admin queue. Admin Cancel rechecks the same marker under the wallet lock. The later §5s
+fail-closed withdrawal policy supersedes the older admin Retry/Cancel path. Card cannot be retried by
+an officer without the buyer's hosted-checkout context.
 
 An eligible retry derives one bounded key from the original transaction id. Both admin paths use that
 key; a lost response, repeat click and concurrent bulk/single action recover the same child row and never
@@ -1032,10 +1033,9 @@ in the published Checkout API shape; the read-only order-status/list-orders resp
 recovery remains held on `codex/s9-card-held` until a controlled response or provider confirmation
 establishes the exact redirect host. The releasable core has no Card URL persistence or resume button.
 
-The core admin gate passed **15/15 memory controls**, including a deliberate legacy-gate mutation that
-would send a second collection and a child-read transaction check. The prior checkpoint passed **13/13
-disposable PostgreSQL controls** after all **104** migrations; repeat that PG proof on the tx-aware
-follow-up tip before integration.
+The core admin gate passed **21/21 memory** and **18/18 disposable PostgreSQL** controls, including a
+deliberate legacy-gate mutation that would send a second collection, a child-read transaction check,
+and the fail-closed withdrawal cases in §5s. The PostgreSQL run applied all **104** migrations.
 These include Cancel-versus-Retry overlap before child reservation and recovery of a claimed row after a
 lost process answer, plus a pre-dispatch child with no reference. A repeat SELECT-only production preflight at **12:52:50 UTC** found zero duplicate
 non-null provider-reference groups or excess rows, and only the prior non-unique reference index. Re-run
@@ -1045,3 +1045,37 @@ the latter includes an answer-lost review rollback and the new authoritative fai
 deposit-return suite passed **27/27 memory**; typecheck passed. Every PostgreSQL run used this
 checkout's loopback port 5452 and stopped its cluster. Integration still needs the exact-tip WP8,
 browser and production-readback gates. No S9 core or Card release is claimed by this branch.
+
+### §5s · Fail-closed withdrawal and deposit-form recovery (2026-10-15)
+
+The admin payments queue no longer offers Retry or Cancel for a FAILED withdrawal. That status can
+follow an operator reversal after an ambiguous provider answer, so it does not establish that a second
+payout or refund is safe. Single and bulk retry refuse or skip these rows; Cancel refuses closure; the
+row stays visible as **Manual review required**. Normal player withdrawal initiation is unchanged.
+An authoritative, keyed provider-negative withdrawal retry is future work and requires its own money
+proof. The existing staff reversal path is under a separate urgent fail-closed live fix and must be
+integrated before this candidate releases.
+
+When a provider accepts a player withdrawal but the returned reference or required live payout rail
+cannot be persisted, the PROCESSING row and wallet hold remain. The action carries the original
+transaction id to the owned Wallet status view. A same-key replay returns that row; a fresh key is
+refused under the wallet lock while any PROCESSING payout lacks verified reference/rail identity.
+The legacy AML-approved dispatch path also refuses to claim success when this identity write fails.
+Controlled provider-boundary tests passed **10/10 memory and 10/10 disposable PostgreSQL** cases,
+including null/throw writes, a callback arriving before reference persistence, same/new/foreign keys,
+and partial payout-rail identity. The admin suite covers a late confirmation of an ambiguously reversed
+FAILED withdrawal with no second payout.
+
+A focused journey or Card deposit refusal now checks the exact funding key under the wallet lock. An
+owned reserved row stays on its receipt/recheck route; a failed read also stays on recovery. When the
+locked read proves no row, the action returns the original localized refusal and signs an owner/key-
+bound release token. The form and blocked-wallet page release only the matching tab identity, so a
+responsible-gambling, maintenance, limit, billing, or phone refusal does not strand the form. Classic
+direct deposit behavior remains unchanged. The actual action body and storage helper passed **10/10
+memory and 10/10 disposable PostgreSQL** controls; two red plants catch unconditional wait or release.
+The deposit-return suite remained **27/27 memory**, its red controls **28/28**, and typecheck passed.
+
+The schema backup/restore gate passed **13/13** with all **104** migrations and checked **127** unique
+indexes, including the new global non-null provider-reference constraint. This candidate has not run
+its exact-tip full source/browser battery or production read-back; Card checkout URL recovery remains
+held pending an observed Selcom Card redirect host.

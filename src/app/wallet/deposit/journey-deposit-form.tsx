@@ -13,13 +13,14 @@ import { PENDING_BET_KEY } from "@/lib/journey/pending-bet";
 import { trustedDepositBet, type SavedDepositBet } from "@/lib/journey/deposit-state";
 import { DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 import { depositAction } from "./actions";
-import { fundingStorageKey, parseStoredFunding, writeStoredFunding, type StoredFundingIdentity } from "@/lib/journey/funding-storage";
+import { fundingStorageKey, parseStoredFunding, releaseStoredFunding, writeStoredFunding, type StoredFundingIdentity } from "@/lib/journey/funding-storage";
 
 export function JourneyDepositForm({
-  ownerId, rawBet, returnPath, initialAmount, initialPhone, registeredPhone, initialProvider,
+  ownerId, releaseKey, rawBet, returnPath, initialAmount, initialPhone, registeredPhone, initialProvider,
   providers, maxAmount, quickAmounts, spendable, fromLowBalance,
 }: {
   ownerId: string;
+  releaseKey: string | null;
   rawBet: string | null;
   returnPath: string | null;
   initialAmount: string;
@@ -50,6 +51,10 @@ export function JourneyDepositForm({
     try {
       const box = window.sessionStorage;
       const slot = fundingStorageKey(ownerId);
+      if (releaseKey && releaseStoredFunding(box, ownerId, releaseKey) && submittedKey.current === releaseKey) {
+        submittedKey.current = null;
+        setSubmitting(false);
+      }
       setStored(null);
       setChosenBet(null);
       const existing = box.getItem(slot);
@@ -71,7 +76,7 @@ export function JourneyDepositForm({
       setBlocked(true);
       setReady(true);
     }
-  }, [ownerId, rawBet, returnPath]);
+  }, [ownerId, releaseKey, rawBet, returnPath]);
 
   const cardHref = useMemo(() => {
     const p = new URLSearchParams();

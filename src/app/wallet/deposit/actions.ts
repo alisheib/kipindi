@@ -18,6 +18,7 @@ import { formatNumber } from "@/lib/utils";
 import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { isMobileMoneyMethodId } from "@/lib/payment-providers";
+import { depositRefusalDisposition } from "@/lib/server/deposit-action-recovery";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -82,25 +83,37 @@ export async function depositAction(formData: FormData) {
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
-  const fail = (message: string): never =>
-    // ⛔ SIGNED (2026-10-06): the page prints only a sentence this server wrote (`flash-message.ts`).
-    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
+  const fail = async (message: string): Promise<never> => {
+    let suffix = "";
+    if (journey && (journeyFlow || cardFlow) && idempotencyKey) {
+      let disposition: "release" | "recover" | "conflict" = "recover";
+      try { disposition = await depositRefusalDisposition(session.userId, idempotencyKey); }
+      catch { /* A failed lookup cannot prove that an order was never reserved. */ }
+      if (disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+      if (disposition === "release") {
+        const bound = `${session.userId}:${idempotencyKey}`;
+        suffix = `&release=${encodeURIComponent(signFlash("deposit-release-key", bound))}`;
+      }
+    }
+    // The page prints only a sentence this server wrote. A release token is bound to owner + exact key.
+    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}${suffix}&${carry.toString()}`) as never);
+  };
 
-  if (requestedFlow === "journey" && !journey) fail(t.error.somethingDidntWork);
+  if (requestedFlow === "journey" && !journey) await fail(t.error.somethingDidntWork);
   // Every rail needs a recoverable funding identity. A missing key must never dispatch an unkeyed charge.
   if ((!idempotencyKey
     || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)))
-    fail(t.error.somethingDidntWork);
-  if (journeyFlow && !isMobileMoneyMethodId(provider)) fail(t.error.somethingDidntWork);
-  if (cardFlow && provider !== "CARD") fail(t.error.somethingDidntWork);
-  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) fail(t.error.somethingDidntWork);
+    await fail(t.error.somethingDidntWork);
+  if (journeyFlow && !isMobileMoneyMethodId(provider)) await fail(t.error.somethingDidntWork);
+  if (cardFlow && provider !== "CARD") await fail(t.error.somethingDidntWork);
+  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) await fail(t.error.somethingDidntWork);
 
   // B-23 — the bounds are IMPORTED from validators.ts (the schema's own
   // constants), not restated. The old literals here were a second definition
   // that would silently drift the moment the schema was retuned. The copy
   // fills the same constants, so the message can never disagree either.
   if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
-    fail(t.wallet.depositBounds
+    await fail(t.wallet.depositBounds
       // One grouping for every figure (`formatNumber`, R5-J) — the withdraw action fills its own bounds the same way.
       .replace("{min}", formatNumber(DEPOSIT_MIN_TZS))
       .replace("{max}", formatNumber(DEPOSIT_MAX_TZS)));
@@ -128,10 +141,10 @@ export async function depositAction(formData: FormData) {
     // B-7 — the form highlights its own empty fields; the localized line names
     // the requirement rather than the field (the English field name helped no
     // SW/ZH player). `missing` still gates, so behaviour is unchanged.
-    if (missing) fail(t.wallet.billingIncomplete);
+    if (missing) await fail(t.wallet.billingIncomplete);
 
     const user = await db.user.findById(session.userId);
-    if (!user) fail(t.error.somethingDidntWork);
+    if (!user) await fail(t.error.somethingDidntWork);
 
     // `order_id` is pre-seeded by US — Selcom appends payment_status + transid on
     // the return but does NOT echo order_id back. Without this the return page
@@ -162,18 +175,13 @@ export async function depositAction(formData: FormData) {
   } else if (!msisdn) {
     // Mobile money has nowhere to push the USSD prompt without a number. The
     // adapter would return a bare DECLINED; say the useful thing instead.
-    fail(t.wallet.msisdnRequired);
+    await fail(t.wallet.msisdnRequired);
   }
 
   const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card, pendingBet);
   revalidatePath("/wallet");
 
   if (!result.ok) {
-    if (journey && (journeyFlow || cardFlow) && idempotencyKey) {
-      // The action alone cannot prove that an earlier same-key request did not reserve or dispatch.
-      // Keep the original funding identity locked even if a fresh lookup momentarily finds no row.
-      redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
-    }
     // ⛔ NO EMAIL HOP HERE ANY MORE (2026-10-07): `deposit()` asks no email question, so it can no longer return
     // `EMAIL_UNVERIFIED`. The hop that kept the player's choices on the way to the email door moved to the WITHDRAW
     // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).

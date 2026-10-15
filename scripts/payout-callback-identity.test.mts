@@ -159,10 +159,15 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
   // §3.2's controls (re-derived 2026-10-14): the predicate can still say NO at every end it pins.
   const wallet = read("src/lib/server/wallet-service.ts"), binder = read("src/lib/server/payment-probe-binding.ts");
   const plant = (src: string, from: string, to: string) => (src.split(from).length === 2 ? src.replace(from, to) : null);
-  const sweepAsksOther = plant(wallet, 'leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);',
-    'leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(t.idempotencyKey!, original.payoutRail);');
-  const laneAsksLive = plant(wallet, '{ auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);',
-    '{ auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(t.providerRef!, t.payoutRail);');
+  const probeCall = 'const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);';
+  const plantProbe = (at: "first" | "last", to: string) => {
+    const first = wallet.indexOf(probeCall), last = wallet.lastIndexOf(probeCall);
+    if (first < 0 || last === first || wallet.split(probeCall).length !== 3) return null;
+    const i = at === "first" ? first : last;
+    return wallet.slice(0, i) + to + wallet.slice(i + probeCall.length);
+  };
+  const sweepAsksOther = plantProbe("last", 'const v = await verifyWithdrawalStatus(t.idempotencyKey!, original.payoutRail);');
+  const laneAsksLive = plantProbe("first", 'const v = await verifyWithdrawalStatus(t.providerRef!, t.payoutRail);');
   const snapshotsOther = plant(binder, "providerRef: row.providerRef,", "providerRef: row.idempotencyKey,");
   ok("4.5  3.2 accepts the current sweep, fast lane and snapshot", asksOwnReference(wallet, binder));
   ok("4.6  3.2 rejects a sweep that asks the rail about another identifier",

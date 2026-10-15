@@ -15,7 +15,7 @@
  */
 import { signSession, verifySession } from "./crypto";
 
-export type FlashKind = "deposit-error" | "deposit-preflight-key" | "withdraw-error";
+export type FlashKind = "deposit-error" | "deposit-preflight-key" | "deposit-release-key" | "withdraw-error";
 
 const TTL_MS = 15 * 60_000;
 const MAX_LEN = 400;

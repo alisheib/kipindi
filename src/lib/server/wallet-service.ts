@@ -887,12 +887,15 @@ export async function dispatchApprovedWithdrawal(
   // wrote only the ref, so a payout that went out through compliance review carried
   // no record of what Selcom said — the exact blind spot the 2026-07-29 incident was
   // made of, reproduced on the one path a human had already touched.
-  const savedReference = await db.txn.update(txnId, {
+  let savedReference: StoredTxn | null = null;
+  try { savedReference = await db.txn.update(txnId, {
     providerRef: result.providerRef,
     ...(result.rail ? { payoutRail: result.rail } : {}),
     ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
-  });
-  if (savedReference?.providerRef !== result.providerRef || (result.rail && savedReference.payoutRail !== result.rail)) {
+  }); } catch { /* the accepted payout remains held and needs review */ }
+  if (savedReference?.providerRef !== result.providerRef
+    || (result.rail && savedReference.payoutRail !== result.rail)
+    || (isLiveMoneyMode() && !result.rail)) {
     recordRailAttempts(txnId, claimed.userId, result);
     auditNeedsReviewOnce(txnId, "approved payout dispatched but its reference or rail could not be persisted", { correlationId: result.correlationId, providerRef: result.providerRef, rail: result.rail ?? null });
     return { ok: false, error: "The payout is being checked. Keep its funds on hold until an officer resolves it." };
@@ -1373,6 +1376,10 @@ export async function settleConfirmedWithdrawals(
     try {
       const original = withdrawalProbeBinding(t);
       if (!original) { auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }
+      if (isLiveMoneyMode() && !original.payoutRail) {
+        auditNeedsReviewOnce(t.id, "live payout rail unavailable — not auto-settled", {});
+        continue;
+      }
       const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
       // Keep the LATEST provider answer on the row, every pass. A payout that stalls
       // for an hour should be able to tell an operator what it has been hearing that
@@ -1545,6 +1552,11 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       // read a stranger's envelope as FAILED and refund a player whose money is gone.
       const original = withdrawalProbeBinding(t);
       if (!original) { leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }
+      if (isLiveMoneyMode() && !original.payoutRail) {
+        leftPending++;
+        auditNeedsReviewOnce(t.id, "live payout rail unavailable — not auto-settled", {});
+        continue;
+      }
       const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
@@ -1691,9 +1703,9 @@ function shortOfFunds(w: { balance: number; bonusBalance?: number | null }, amou
 }
 
 /** `actorId` — WHO initiated this payout, when that is not the account holder.
- *  Two OPERATOR paths call this function directly (`admin/payments/payment-actions.ts`
- *  `retryWithdrawalAction` and `bulkRetryAction`), and without this the compliance
- *  record would name the PLAYER as the actor on an operator-initiated payout. Defaults
+ *  Explicit officer return paths may call this function for a refused player's funds;
+ *  FAILED withdrawal Retry/Cancel is held for manual review in S9. Without this the compliance
+ *  record could name the PLAYER as the actor on an operator-initiated payout. Defaults
  *  to `userId` — a player withdrawing for themselves. The account holder is never lost:
  *  it is the txn's `userId` and is carried as `onBehalfOf` in both audit payloads. */
 export async function withdraw(
@@ -1739,11 +1751,14 @@ export async function withdraw(
   if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };
 
   // Idempotency: if this key was already used, return the existing txn result.
+  // The row must belong to this payout owner; a foreign key is never a status-read door.
   // Read the fee off the STORED ROW rather than recomputing it — recomputing
   // would silently reprice a replayed withdrawal at today's rate.
   if (idempotencyKey) {
     const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
     if (existing) {
+      if (existing.userId !== userId || existing.type !== "WITHDRAWAL")
+        return { ok: false, error: "The withdrawal request key belongs to another payment.", code: "CONFLICT" };
       const f = existing.fee ?? 0;
       return { ok: true, data: { txnId: existing.id, status: existing.status, fee: f, net: Math.abs(existing.amount) - f } };
     }
@@ -1901,8 +1916,8 @@ export async function withdraw(
   //
   // ⚠️ THE OFFICER'S REFUSED-FUNDS RETURN IS EXEMPT, AND MUST BE: `decideRefusedFunds` has already
   // forfeited the remainder when it calls this function, so a refusal here would turn an officer's
-  // return into "forfeited, payout failed". Operator retries of a FAILED withdrawal are NOT exempt —
-  // they re-send what the player asked for, under the rule that governs the player.
+  // return into "forfeited, payout failed". FAILED withdrawal admin retries are held for manual
+  // review; a future authoritative keyed retry must not bypass this player rule.
   // Refused BEFORE the hold, like the two gates above: nothing has moved when this returns, and
   // nobody is notified, mailed or prompted — the withdraw screen's panel is the only voice it has.
   if (!refundReturn && !user.emailVerifiedAt) {
@@ -2006,10 +2021,20 @@ export async function withdraw(
     // (reconcileStalePayments scans txns, so it never finds/reverses them). Mirrors
     // the in-lock re-check buyPosition already does.
     if (idempotencyKey) {
-      const dup = await db.txn.findByIdempotencyKey(idempotencyKey);
-      if (dup) return { ok: true as const, duplicate: dup };
+      const dup = await db.txn.findByIdempotencyKey(idempotencyKey, tx);
+      if (dup) {
+        if (dup.userId !== userId || dup.type !== "WITHDRAWAL")
+          return { ok: false as const, error: "The withdrawal request key belongs to another payment.", code: "CONFLICT" as const };
+        return { ok: true as const, duplicate: dup };
+      }
     }
-    const w = await db.wallet.findByUserId(userId);
+    // Until a provider reference and its live payout rail can be verified, a
+    // second key cannot authorize another payout for this owner. This also
+    // catches a concurrent request during the first dispatch round-trip.
+    const unresolved = await db.txn.findProcessingWithdrawalMissingIdentity(userId, isLiveMoneyMode(), tx);
+    if (unresolved) return { ok: false as const, error: "An earlier payout is being checked. Use its original transaction status.",
+      code: "BUSY" as const, txnId: unresolved.id };
+    const w = await db.wallet.findByUserId(userId, tx);
     if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
     // ⭐ A REFUSED-FUNDS RETURN MAY PAY OUT OF A FROZEN WALLET — and only a return, and never a CLOSED
     // one (S1, 2026-09-13). The final refusal froze this wallet; unfreezing it to pay would open a
@@ -2191,15 +2216,27 @@ export async function withdraw(
   // together: the ref identifies the payout, the rail identifies WHICH endpoint can
   // be asked about it. Persist one without the other and every later re-query is a
   // coin flip between the right answer and a refund on top of a completed payment.
-  const savedReference = await db.txn.update(txnId, {
+  let savedReference: StoredTxn | null = null;
+  try { savedReference = await db.txn.update(txnId, {
     providerRef: result.providerRef,
     ...(result.rail ? { payoutRail: result.rail } : {}),
     ...(result.detail ? { providerStatus: result.detail.slice(0, 500) } : {}),
-  });
-  if (savedReference?.providerRef !== result.providerRef || (result.rail && savedReference.payoutRail !== result.rail)) {
+  }); } catch { /* an accepted payout must remain held for review */ }
+  if (savedReference?.providerRef !== result.providerRef
+    || (result.rail && savedReference.payoutRail !== result.rail)
+    || (isLiveMoneyMode() && result.status !== "AML_REVIEW" && !result.rail)) {
     recordRailAttempts(txnId, userId, result);
     auditNeedsReviewOnce(txnId, "payout dispatched but its reference or rail could not be persisted", { correlationId: result.correlationId, providerRef: result.providerRef, rail: result.rail ?? null });
-    return { ok: false, error: "The payout is being checked. Its funds remain on hold until resolved.", code: "INVALID" };
+    // The provider may have accepted the transfer. A reread verifies the
+    // reserved original identity; either way the action carries its txn id to
+    // the status page, never the error form that mints a fresh request key.
+    let original: StoredTxn | null = null;
+    try { original = await db.txn.findById(txnId); } catch { /* fail closed below */ }
+    if (!original || original.userId !== userId || original.type !== "WITHDRAWAL"
+      || original.idempotencyKey !== (idempotencyKey ?? null) || Math.abs(original.amount) !== amount) {
+      auditNeedsReviewOnce(txnId, "accepted payout reservation could not be reread — no new dispatch", {});
+    }
+    return { ok: false, error: "The payout is being checked. Its funds remain on hold until resolved.", code: "BUSY", txnId };
   }
   recordRailAttempts(txnId, userId, result);
 

@@ -2669,6 +2669,14 @@ export const prismaDb = {
       const row = await (tx ?? pc()).transaction.findUnique({ where: { idempotencyKey: key } });
       return row ? toStoredTxn(row) : null;
     },
+    findProcessingWithdrawalMissingIdentity: async (userId: string, requireRail: boolean, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findFirst({
+        where: { userId, type: "WITHDRAWAL", status: "PROCESSING",
+          OR: requireRail ? [{ providerRef: null }, { payoutRail: null }] : [{ providerRef: null }] },
+        orderBy: { createdAt: "asc" },
+      });
+      return row ? toStoredTxn(row) : null;
+    },
     sumDepositsSince: async (userId: string, sinceMs: number, includePending = false): Promise<number> => {
       const result = await pc().transaction.aggregate({
         where: {

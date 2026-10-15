@@ -25,3 +25,14 @@ export function writeStoredFunding(box: Storage, owner: string, value: StoredFun
   box.setItem(fundingStorageKey(owner), raw);
   return box.getItem(fundingStorageKey(owner)) === raw;
 }
+
+/** A server-verified no-row refusal may release exactly the matching tab identity. */
+export function releaseStoredFunding(box: Storage, owner: string, key: string): boolean {
+  const slot = fundingStorageKey(owner);
+  const raw = box.getItem(slot);
+  if (!raw) return true;
+  const record = parseStoredFunding(raw, owner);
+  if (!record || record.key !== key) return false;
+  box.removeItem(slot);
+  return box.getItem(slot) === null;
+}

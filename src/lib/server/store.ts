@@ -2985,6 +2985,11 @@ const memoryDb = {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;
     },
+    findProcessingWithdrawalMissingIdentity: (userId: string, requireRail: boolean, _tx?: unknown): StoredTxn | null =>
+      Array.from(store.txns.values())
+        .filter((t) => t.userId === userId && t.type === "WITHDRAWAL" && t.status === "PROCESSING"
+          && (!t.providerRef || (requireRail && !t.payoutRail)))
+        .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.id.localeCompare(b.id))[0] ?? null,
     /** Sum of deposits for a user since a cutoff timestamp. No row-count cap.
      *  `includePending` also counts PROCESSING deposits — used by the RG deposit-
      *  cap + SOF gate so an in-flight deposit is visible to a concurrent one
