@@ -1534,7 +1534,7 @@ function RejectForm({ pollId, onClose, overlay }: { pollId: string; onClose: () 
         rows={2}
       />
       <div className="flex flex-col gap-2">
-        <button type="button" onClick={submit} disabled={pending} className="btn btn-no btn-md w-full">
+        <button type="button" onClick={submit} disabled={pending} className="btn btn-danger btn-md w-full">
           {pending ? "Rejecting…" : "Reject"}
         </button>
         <button type="button" onClick={onClose} className="btn btn-ghost btn-sm w-full">Cancel</button>

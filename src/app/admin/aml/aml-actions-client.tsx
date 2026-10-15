@@ -210,7 +210,7 @@ export function AmlActionRow({
                the 32px dense-admin height the filter rails use. */
             className="flex-1 h-[40px] px-2 rounded-md border border-border bg-bg-inset text-text-secondary text-caption font-mono focus:outline-none admin-focus transition-colors"
           />
-          <Button size="sm" variant={mode === "approve" ? "yes" : "danger"} onClick={() => submit(mode)} loading={busy === mode} disabled={busy !== null}>
+          <Button size="sm" variant={mode === "approve" ? "primary" : "danger"} onClick={() => submit(mode)} loading={busy === mode} disabled={busy !== null}>
             Submit
           </Button>
         </div>
