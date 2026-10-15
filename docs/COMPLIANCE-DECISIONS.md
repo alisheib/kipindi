@@ -43,12 +43,12 @@ email, or normalised full name with date of birth. Balance moving between the tw
 the app, as D3b already provides.
 
 **AML owner escalation.** The existing detector reports stake spikes and high betting frequency, not opposite-side
-pairing as a separate pattern, and its `/admin/aml` list has no stored closure state. A flag on a designated desk
-account is marked for owner review and sends a once-only owner bell. The officer procedure in `docs/HOUSE-BOTS.md`
-§ “Desk pairs and AML flags” requires the officer to check whether two designated accounts were paired, record the
-evidence, and bring every such finding to Ali before closure. The owner then closes or files it. A flag involving a
-player is never dismissed as an authorised pair. A separate pair-pattern detector with a durable owner-only close
-would require a further build and decision.
+pairing as a separate pattern, and its `/admin/aml` list has no stored closure state. A flag on an account ever
+designated to the desk, including one later Removed, is marked for owner review and sends a once-only owner bell. The
+officer procedure in `docs/HOUSE-BOTS.md` § “Desk pairs and AML flags” requires the officer to check whether two
+accounts took opposite sides while designated, record the evidence, and bring every such finding to Ali before closure.
+The owner then closes or files it. A flag involving a player is never dismissed as an authorised pair. A separate
+pair-pattern detector with a durable owner-only close would require a further build and decision.
 
 **Accepted consequences, stated before the ruling.** A paired round settles instead of refunding, so the ordinary
 platform fee and TRA/GBT levies on that fee apply. Ordinary turnover in the Gaming Board pack and tax report includes

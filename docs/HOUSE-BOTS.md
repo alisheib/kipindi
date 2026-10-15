@@ -75,17 +75,17 @@ The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard
 ### Desk pairs and AML flags
 
 The `/admin/aml` suspicious-bet detector currently flags stake spikes and high betting frequency. It does not detect
-opposite-side pairs as a separate pattern and has no persistent close state. It includes designated desk accounts; a
-flag on one is marked for owner review and a once-only owner bell is sent. This is a prompt to investigate, not a
-finding that the two accounts paired.
+opposite-side pairs as a separate pattern and has no persistent close state. It includes accounts ever designated to
+the desk, even after Remove; a flag on one is marked for owner review and a once-only owner bell is sent. This is a
+prompt to investigate, not a finding that the two accounts paired.
 
-For **every** flagged designated account, the compliance officer records what the flag shows, checks the underlying
-stakes and both account designations, and establishes whether two designated accounts of different holders took
-opposite sides under the 2026-10-14 ruling. If they did, the officer sends the finding and evidence to the owner
-before treating the investigation as closed. The owner decides whether to close it or file it under the normal AML
-procedure; the officer records that decision. A flag involving a player is investigated on its own facts and is never
-cleared as an authorised desk pair. A dedicated pair-pattern detector and owner-only close workflow require a
-separate build and owner decision.
+For **every** flagged current or former desk account, the compliance officer records what the flag shows, checks the
+underlying stakes and both accounts' designation dates, and establishes whether two accounts of different holders
+took opposite sides while designated under the 2026-10-14 ruling. If they did, the officer sends the finding and
+evidence to the owner before treating the investigation as closed. The owner decides whether to close it or file it
+under the normal AML procedure; the officer records that decision. A flag involving a player is investigated on its
+own facts and is never cleared as an authorised desk pair. A dedicated pair-pattern detector and owner-only close
+workflow require a separate build and owner decision.
 
 ---
 
