@@ -9,8 +9,8 @@ import { fundingStorageKey, parseStoredFunding, writeStoredFunding } from "@/lib
 const fundingKey = fundingStorageKey;
 
 /** Keep the whole classic Card form, but require a recoverable funding key and a trusted chosen-bet handoff. */
-export function CardIntentBridge({ ownerId, rawBet, returnPath, preflightKey }: {
-  ownerId: string; rawBet: string | null; returnPath: string | null; preflightKey: string | null;
+export function CardIntentBridge({ ownerId, rawBet, returnPath }: {
+  ownerId: string; rawBet: string | null; returnPath: string | null;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const submittedKey = useRef<string | null>(null);
@@ -23,6 +23,9 @@ export function CardIntentBridge({ ownerId, rawBet, returnPath, preflightKey }: 
     const gate = form?.querySelector<HTMLElement>("[data-card-intent-gate]");
     const keyField = form?.querySelector<HTMLInputElement>('input[name="idempotencyKey"]');
     if (!form || !gate || !ref.current || !keyField) { setInvalid(true); return; }
+    // A query-only navigation can reuse this DOM node after an earlier effect enabled it.
+    // Every new recovery decision begins closed, including the stored-key early return.
+    gate.inert = true;
     const trust = () => {
       if (!rawBet) { if (ref.current) ref.current.value = ""; return true; }
       try {
@@ -40,19 +43,18 @@ export function CardIntentBridge({ ownerId, rawBet, returnPath, preflightKey }: 
       if (existing) {
         const record = parseStoredFunding(existing, ownerId);
         if (!record) throw new Error("Invalid saved payment");
-        if (preflightKey === record.key) {
-          box.removeItem(fundingKey(ownerId));
-          if (box.getItem(fundingKey(ownerId)) !== null) throw new Error("Payment identity could not be released");
-          submittedKey.current = null;
-        } else { setRecoverKey(record.key); return; }
+        setRecoverKey(record.key);
+        setInvalid(false);
+      } else {
+        if (!trust()) throw new Error("Chosen bet unavailable");
+        gate.inert = false;
+        setInvalid(false);
       }
-      if (!trust()) throw new Error("Chosen bet unavailable");
-      gate.inert = false;
-      setInvalid(false);
     } catch { gate.inert = true; setInvalid(true); }
 
     const submit = (event: Event) => {
       try {
+        if (gate.inert || window.sessionStorage.getItem(fundingKey(ownerId))) throw new Error("Payment recovery is locked");
         if (submittedKey.current) { event.preventDefault(); return; }
         if (!trust()) throw new Error("Payment cannot be recovered");
         const key = crypto.randomUUID();
@@ -68,7 +70,7 @@ export function CardIntentBridge({ ownerId, rawBet, returnPath, preflightKey }: 
     };
     form.addEventListener("submit", submit, true);
     return () => form.removeEventListener("submit", submit, true);
-  }, [ownerId, rawBet, returnPath, preflightKey]);
+  }, [ownerId, rawBet, returnPath]);
 
   return <>
     <input ref={ref} type="hidden" hidden name="pendingBet" defaultValue="" />

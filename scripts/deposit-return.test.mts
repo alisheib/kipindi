@@ -77,6 +77,23 @@ check("funding identity is readable after write before any payment dispatch",
 check("a tab store that drops writes refuses the payment identity",
   !writeStoredFunding({ setItem: () => undefined, getItem: () => null } as unknown as Storage, "s9_a", JSON.parse(funding)));
 
+const depositActionSource = readFileSync(new URL("../src/app/wallet/deposit/actions.ts", import.meta.url), "utf8");
+const mobileFormSource = readFileSync(new URL("../src/app/wallet/deposit/journey-deposit-form.tsx", import.meta.url), "utf8");
+const cardBridgeSource = readFileSync(new URL("../src/app/wallet/deposit/card-intent-bridge.tsx", import.meta.url), "utf8");
+const fundingUnlockGuard = (action: string, mobile: string, card: string) =>
+  !action.includes("deposit-preflight-key") && !mobile.includes("removeItem(fundingStorageKey")
+  && !mobile.includes("removeItem(slot)") && !card.includes("removeItem(fundingKey");
+check("a pre-dispatch refusal cannot release an unresolved same-key funding identity",
+  fundingUnlockGuard(depositActionSource, mobileFormSource, cardBridgeSource));
+if (red) check("plant: an early tab-key release is caught",
+  !fundingUnlockGuard(depositActionSource, `${mobileFormSource}\nbox.removeItem(slot);`, cardBridgeSource));
+const cardRecoveryGuard = (source: string) => source.includes("gate.inert = true;")
+  && source.includes("if (gate.inert || window.sessionStorage.getItem(fundingKey(ownerId)))")
+  && source.includes('form.addEventListener("submit", submit, true)');
+check("Card recovery still blocks a submit after the route reuses an enabled form", cardRecoveryGuard(cardBridgeSource));
+if (red) check("plant: a Card bridge without the submit-time recovery lock is caught",
+  !cardRecoveryGuard(cardBridgeSource.replace("if (gate.inert || window.sessionStorage.getItem(fundingKey(ownerId)))", "if (false)")));
+
 const marked = (id: string, at: number) => ({ id, userId: "s9_a", marketId: "mkt_target", side: "YES", stake: 5_000,
   placedAt: iso(at), origin: "deposit_return" });
 const d1 = row("txn_measure_1", "s9_a", "CONFIRMED", now - 120_000, "mkt_target.YES.5000");

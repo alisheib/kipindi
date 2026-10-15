@@ -17,7 +17,7 @@ import { fundingStorageKey, parseStoredFunding, writeStoredFunding, type StoredF
 
 export function JourneyDepositForm({
   ownerId, rawBet, returnPath, initialAmount, initialPhone, registeredPhone, initialProvider,
-  providers, maxAmount, quickAmounts, spendable, fromLowBalance, preflightKey,
+  providers, maxAmount, quickAmounts, spendable, fromLowBalance,
 }: {
   ownerId: string;
   rawBet: string | null;
@@ -31,7 +31,6 @@ export function JourneyDepositForm({
   quickAmounts: number[];
   spendable: number | null;
   fromLowBalance: boolean;
-  preflightKey: string | null;
 }) {
   const { t } = useT();
   const formRef = useRef<HTMLFormElement>(null);
@@ -57,12 +56,7 @@ export function JourneyDepositForm({
       if (existing) {
         const record = parseStoredFunding(existing, ownerId);
         if (!record) throw new Error("Invalid saved payment");
-        if (preflightKey === record.key && record.attempts === 1) {
-          box.removeItem(slot);
-          if (box.getItem(slot) !== null) throw new Error("Payment identity could not be released");
-          submittedKey.current = null;
-          setSubmitting(false);
-        } else setStored(record);
+        setStored(record);
       }
       if (rawBet) {
         const markerRaw = box.getItem(PENDING_BET_KEY);
@@ -77,7 +71,7 @@ export function JourneyDepositForm({
       setBlocked(true);
       setReady(true);
     }
-  }, [ownerId, rawBet, returnPath, preflightKey]);
+  }, [ownerId, rawBet, returnPath]);
 
   const cardHref = useMemo(() => {
     const p = new URLSearchParams();

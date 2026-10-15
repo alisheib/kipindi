@@ -66,7 +66,6 @@ const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
 export type DepositSearch = {
   error?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
   bet?: string; returnPath?: string;
-  preflight?: string;
   bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
 };
 
@@ -88,7 +87,6 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
   // ⛔ Only a sentence the deposit action signed (`flash-message.ts`) — a hand-made `?error=` used to print
   // whatever it said under "Deposit failed", on a money page, on the real domain (2026-10-06).
   const errorMsg = readFlash("deposit-error", sp.error);
-  const preflightKey = readFlash("deposit-preflight-key", sp.preflight);
   const prevProvider = sp.provider ?? "";
   const prevAmount = sp.amount ?? "";
   // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
@@ -308,7 +306,6 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
           quickAmounts={quickAmounts}
           spendable={spendable}
           fromLowBalance={sp.from === "low-balance"}
-          preflightKey={preflightKey}
         />
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">
@@ -318,7 +315,7 @@ export async function renderDepositPage(searchParams: Promise<DepositSearch>, ca
             attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "CHAGUA NJIA YA KULIPA": 51px
             from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
             no sibling before it whatever React adds to the form. */}
-        {cardOnly && <CardIntentBridge ownerId={session.userId} rawBet={sp.bet ?? null} returnPath={sp.returnPath ?? null} preflightKey={preflightKey} />}
+        {cardOnly && <CardIntentBridge ownerId={session.userId} rawBet={sp.bet ?? null} returnPath={sp.returnPath ?? null} />}
         <div data-card-intent-gate={cardOnly ? "" : undefined} inert={cardOnly} className="space-y-5">
           {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
               intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the

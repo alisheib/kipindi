@@ -82,11 +82,9 @@ export async function depositAction(formData: FormData) {
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
-  const preflightKey = journey && idempotencyKey && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idempotencyKey)
-    ? signFlash("deposit-preflight-key", idempotencyKey) : null;
   const fail = (message: string): never =>
     // ⛔ SIGNED (2026-10-06): the page prints only a sentence this server wrote (`flash-message.ts`).
-    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}${preflightKey ? `&preflight=${encodeURIComponent(preflightKey)}` : ""}&${carry.toString()}`) as never);
+    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
 
   if (requestedFlow === "journey" && !journey) fail(t.error.somethingDidntWork);
   if (journeyFlow && !isMobileMoneyMethodId(provider)) fail(t.error.somethingDidntWork);

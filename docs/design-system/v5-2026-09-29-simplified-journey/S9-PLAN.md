@@ -1,12 +1,10 @@
 # S9 — Deposit, waiting and return
 
-**Status: preparation, deposit-safety prerequisites, additive persistence and private status rehearsal; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
-`C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, branch `codex/vodacom-s9`, created at
-`e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. The root reviewer authorized
-the deposit prerequisites, additive persistence and private status rehearsal independently. No S9 screen, route, schema, provider or production
-change has been deployed. Nullable persistence is prepared and rehearsed locally, with no application writer yet.
-Rebase this branch onto the verified S8 release before wiring
-its host: the final S8 recovery and keyboard corrections are newer than this preparation base.
+**Status: isolated S9 product candidate; S9 remains open, 2026-10-15.** The original preparation branch was
+`codex/vodacom-s9` in `C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, created at
+`e767f3f52c54b2659d9057dcbc46d42c5edcc833`. Its reviewed prerequisites and additive persistence now join
+the product candidate on `codex/s9-candidate-1015` (record in §5m–§5n). No S9 product or migration has been deployed.
+The candidate must integrate the verified S8 release, complete WP8 and pass an independent funding bridge review before S9 can close.
 
 This is an implementation plan for the existing S9, not another programme or a design rulebook. The authority is
 [VODACOM-PLAN](../../VODACOM-PLAN.md), §3.5 and §5 S9, with §0h's later owner rulings; [INHERIT-MANIFEST](INHERIT-MANIFEST.md),
@@ -883,3 +881,27 @@ red 17/17; deposit-state 184/184; replay 48/48; persistence 34/34; status-read 1
 source edits and actual PostgreSQL, migration/backup, visual, three-locale, and full WP8 gates remain to be
 rerun before integration. A checkpoint commit and branch push preserve the candidate; they do not constitute
 release approval.
+
+### §5n · Candidate hardening and remaining gates (2026-10-15)
+
+The subsequent pushed candidate checkpoints through `19c6ebbd5` use a funding tab record containing only
+its UUID, owner, creation time and attempts marker. The Card and mobile forms read it before another payment
+commit. Typecheck, doc links (730), trilingual structure (38/38), journey shell (452/452), sheet-host
+(49/49), its red controls (84), and the targeted source/status tests in §5m passed on memory. Those
+checks do not establish the migration or browser result.
+
+A source review found that the signed preflight redirect was releasing a stored funding UUID even though a
+prior same-key request could still be uncertain. The candidate now retains that UUID for both mobile money
+and Card and routes the owner through recovery. The Card bridge also closes its form gate on each effect
+and checks the stored lock at submit time, including after same-route DOM reuse. These latest changes need
+their focused test and typecheck rerun. A pre-dispatch refusal with no transaction can therefore stay
+locked: a safe automatic unlock needs a proven writer/reference serialization rule, not an elapsed timer
+or a signed message about only the latest invocation. §5i/§5k's missing installed reference constraint
+and global writer serialization remain release blockers.
+
+An attempted fresh `verify:backup-schema` on this candidate's isolated local PostgreSQL 18.3 runtime
+stopped during `initdb` with Windows exception `0xC0000005` before migrations ran; it is **no database
+verdict**. Retry on a known-good disposable cluster after the main release battery frees RAM. The
+candidate still needs actual PostgreSQL status/return proof, backup-schema, the complete WP8 battery,
+production build, visual and three-locale review, classic parity and independent bridge/controller
+review. The root owns the integration and release decision; this checkpoint is not a LIVE claim.
