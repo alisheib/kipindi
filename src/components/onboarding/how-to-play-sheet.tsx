@@ -21,7 +21,8 @@
  * (`calc(100dvh - var(--sp-12))` in globals.css — the same fixed gutter as the first-visit primer's panel), never a
  * height measured here. The Modal's wrapper is `items-end`, so content above a docked panel taller than the screen could
  * never be scrolled back to. When the cap bites only the steps and MFANO scroll — under a fade at each edge that hides
- * something (`data-edges`, the scrolling strip's convention: the one thing this file reads from the layout) — while the
+ * something (`data-edges`, the scrolling strip's convention, read by the kit's `useBlockScrollEdges`: the one thing this
+ * sheet reads from the layout) — while the
  * title, the CTA and Weka mipaka never scroll, so every way out is always on screen (A6 item 5; WP11 measures it at
  * 320×640, 360×640, 390×844 and 1280).
  * ⭐ EVERY FIGURE IS THE ENGINE'S (Open point 21; SJ-21): the stake, the multiple and the payout come from
@@ -42,9 +43,10 @@
  * is not built, and nothing stands in its place. `test:support-contact` §15 and `test:journey-home` §5 hold it.
  * ⚠️ Every way out closes the sheet: the CTA, the ✕, the scrim, Escape — and Weka mipaka as it navigates.
  */
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
+import { useBlockScrollEdges } from "@/components/ui/scroll-edges";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { keepRanges, keptRanges, mergeRanges } from "@/components/ui/keep-run";
@@ -125,35 +127,15 @@ function sentence(text: string, figures: readonly Figure[]): ReactNode {
 /**
  * The steps and MFANO: the one part of the sheet that scrolls, and only when the panel's cap bites. It says which of its
  * edges hide something — "start", "end", "both" or "none", the scrolling strip's `data-edges` (`strip-autoscroll.tsx`),
- * read on its block axis — and the stylesheet fades exactly those edges, so a region that fits draws no fade. Read when it
- * mounts, on every scroll, and on any change of size, its own or its content's (the fonts landing, a language change).
- * ⚠️ 1px of slack each way, as the strip's: `scrollTop` is fractional on a high-density screen.
+ * read on its block axis — and the stylesheet fades exactly those edges, so a region that fits draws no fade. Marked by the
+ * kit's `useBlockScrollEdges` (`scroll-edges.ts` — the one rule the bet sheet's middle reads too, 1px of slack each way):
+ * before its first paint, on every scroll, and on any change of size, its own or its content's (the fonts landing, a
+ * language change).
  * ⭐ A keyboard reaches it (`tabIndex={0}`, named by `journey.howStepsAria`), so it scrolls without a pointer.
  */
 function StepsRegion({ label, children }: { label: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mark = () => {
-      const max = el.scrollHeight - el.clientHeight;
-      const before = max > 1 && el.scrollTop > 1;
-      const after = max > 1 && el.scrollTop < max - 1;
-      const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";
-      if (el.getAttribute("data-edges") !== edges) el.setAttribute("data-edges", edges);
-    };
-    mark();
-    el.addEventListener("scroll", mark, { passive: true });
-    const sizes = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(mark);
-    if (sizes) {
-      sizes.observe(el);
-      for (const child of Array.from(el.children)) sizes.observe(child);
-    }
-    return () => {
-      el.removeEventListener("scroll", mark);
-      sizes?.disconnect();
-    };
-  }, []);
+  useBlockScrollEdges(ref);
   return (
     <div ref={ref} role="region" tabIndex={0} aria-label={label} className="kp-howto__scroll">
       {children}

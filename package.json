@@ -751,6 +751,8 @@
     "test:visual-pass-r9b": "tsx scripts/visual-pass-r9b.test.mts",
     "test:visual-pass-r9c": "tsx scripts/visual-pass-r9c.test.mts",
     "test:visual-pass-r10": "tsx scripts/visual-pass-r10.test.mts",
+    "test:visual-v1": "tsx scripts/visual-v1.test.mts",
+    "red:visual-v1": "tsx scripts/visual-v1.test.mts --prove-red",
     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
     "test:journey-home": "tsx scripts/journey-home.test.mts",
     "red:journey-home": "tsx scripts/journey-home.test.mts --prove-red",
