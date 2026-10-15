@@ -171,6 +171,9 @@ export const MARKERS = [
   // S8: the click selector identifies the host's executable code without adding a hidden product element.
   { id: "BetSheetHost", stage: "S8", wp: "WP7a", journey: true, part: "BetSheetHost",
     file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", marker: '"a[data-bet-side]"', expect: OWN_CHUNK },
+  // S10: the guest host matches a pick inside a seed box in one selector, a literal only its file holds (S10-PLAN A12).
+  { id: "GuestSheetHost", stage: "S10", wp: "WP4", journey: true, part: "GuestSheetHost",
+    file: "src/components/journey/bet-sheet/guest-sheet-host.tsx", marker: '"[data-sheet] a[data-bet-side]"', expect: OWN_CHUNK },
   { id: "BetSheet", stage: "S8", wp: "WP6", journey: true,
     file: "src/components/journey/bet-sheet/bet-sheet.tsx", marker: '"journey-bet-sheet"', expect: () => ({ marker: "out" }) },
   // S8 WP8/WP9: the client question ghost is inside the journey-only lazy drawing; picks and the home break are

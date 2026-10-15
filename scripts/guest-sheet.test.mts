@@ -17,6 +17,12 @@
  *   §5 ONE COUNT PER VISITOR OPEN — `returnedOpen` and `countsSheetOpen`.
  *   §6 THE SOURCE — the module imports only sheet-state.ts and pending-bet.ts; no clock, timer, window, document, storage
  *      or fetch; no money figure, rate or multiple typed; client-safe.
+ *   §7–§10 THE GUEST HOST (WP4; S10-PLAN A10–A13), its actual callbacks bound from its source against a controlled world:
+ *      §7 a tap — the money host's own table, row for row; §8 the doors — a press writes one keyless, ownerless marker
+ *      (archiving a legacy envelope first, A7), Next's navigation leaves the carried bet in the address and closes the
+ *      sheet, a storage refusal stops nothing; §9 the census — no Server Action, money action or private read anywhere
+ *      in its module graph, no key, owner, account store or reload, the public half its only read; §10 an ended
+ *      session's flight opens nothing from the address, AppShell's one slot, and the picks' dialog popup.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written, so `test:red-anchors` counts the twin as in-process.
  */
@@ -28,6 +34,9 @@ import * as SS from "../src/lib/journey/sheet-state.ts";
 import * as PB from "../src/lib/journey/pending-bet.ts";
 import * as AL from "../src/lib/auth-landing.ts";
 import { decomment } from "./lib/decomment.mts";
+import ts from "typescript";
+import { parseSheetSeed } from "../src/lib/journey/sheet-seed.ts";
+import { saveSheetSelection } from "../src/lib/journey/sheet-owned-storage.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -39,12 +48,14 @@ type Impl = {
   src: string;
   /** src/app/markets/[id]/page.tsx — the classic guest panel's doors (Point for Ali 4). */
   page: string;
+  /** §7–§10 · the guest host, the money host and their mount, as written. */
+  hostWorld: HostWorld;
 };
 const SOURCE = read("src/lib/journey/guest-sheet.ts");
 const PAGE_SRC = read("src/app/markets/[id]/page.tsx");
 const REAL: Impl = {
   frame: GS.guestFrame, carried: GS.carriedStake, carry: GS.guestCarry, opens: GS.guestOpensFrom, returned: GS.returnedOpen,
-  counts: GS.countsSheetOpen, doors: AL.doorHrefsFor, ret: PB.betReturnPath, src: SOURCE, page: PAGE_SRC,
+  counts: GS.countsSheetOpen, doors: AL.doorHrefsFor, ret: PB.betReturnPath, src: SOURCE, page: PAGE_SRC, hostWorld: undefined as unknown as HostWorld,
 };
 
 /* ─── The world: the deck's Dodoma pools (VODACOM-PLAN §3.1's goldens) ───────────────────────────────────────── */
@@ -64,6 +75,254 @@ const ZERO_WALLET: SS.SheetFacts = {
   wallet: { status: "ACTIVE", balance: 0, bonusBalance: 0 }, loss: { dailyLossLimit: null, lossToday: 0 }, pendingDeposit: null,
   deposit: { limits: { daily: null, weekly: null, monthly: null }, usage: { day: 0, week: 0, month: 0 }, sof: { accepted: true, singleTxn: 1_000_000, rolling30d: 5_000_000 }, railsOpen: true },
 };
+
+/* ─── §7–§10 · the guest host (S10 WP4): its actual callbacks, bound from its source, against a controlled world ─── */
+
+const HOST_PATH = "src/components/journey/bet-sheet/guest-sheet-host.tsx";
+const MONEY_HOST_PATH = "src/components/journey/bet-sheet/bet-sheet-host.tsx";
+type HostWorld = {
+  /** guest-sheet-host.tsx, as written. */
+  host: string;
+  /** bet-sheet-host.tsx, as written — the tap table's reference. */
+  money: string;
+  shell: string;
+  lazy: string;
+  card: string;
+  buttons: string;
+};
+const HOST_WORLD: HostWorld = {
+  host: read(HOST_PATH), money: read(MONEY_HOST_PATH), shell: read("src/components/layout/app-shell.tsx"),
+  lazy: read("src/components/layout/shell-lazy.tsx"), card: read("src/components/journey/cards/journey-card.tsx"),
+  buttons: read("src/components/journey/question/journey-bet-buttons.tsx"),
+};
+
+/** The arrow a `const <name> = useCallback(<arrow>, …)` or `const <name> = <arrow>` declares — the ONE in the file. */
+function arrowOf(source: string, name: string): string {
+  const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.name.getText(file) === name && node.initializer) {
+      const init = node.initializer;
+      if (ts.isArrowFunction(init)) found.push(init.getText(file));
+      else if (ts.isCallExpression(init) && init.arguments[0] && ts.isArrowFunction(init.arguments[0])) found.push(init.arguments[0].getText(file));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  if (found.length !== 1) throw new Error(`${found.length} declarations of ${name} in the host`);
+  return found[0];
+}
+/** The actual callback, transpiled and bound to the given world — nothing of the host's code is copied here. */
+function bindArrow(source: string, name: string, deps: Record<string, unknown>): (...args: unknown[]) => unknown {
+  const js = ts.transpileModule(`const callback = ${arrowOf(source, name)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return new Function(...Object.keys(deps), `${js}\nreturn callback;`)(...Object.values(deps)) as (...args: unknown[]) => unknown;
+}
+/** A module-level string constant, read from the source as written (the guest host's pick selector). */
+const constOf = (source: string, name: string) => new RegExp(`const ${name} = "([^"]+)";`).exec(source)?.[1] ?? null;
+
+/* A fake DOM that reads exactly the selectors the hosts ask, and refuses any other (a plant that changes one fails loudly). */
+const ORIGIN = "https://www.50pick.tz";
+class FakeElement {
+  constructor(public tag: string, public attrs: Record<string, string> = {}, public parent: FakeElement | null = null) {}
+  getAttribute(n: string) { return Object.hasOwn(this.attrs, n) ? this.attrs[n] : null; }
+  get dataset() {
+    const d: Record<string, string> = {};
+    for (const [k, v] of Object.entries(this.attrs)) if (k.startsWith("data-")) d[k.slice(5).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())] = v;
+    return d;
+  }
+  get href() { return this.attrs.href === undefined ? "" : new URL(this.attrs.href, `${ORIGIN}/`).href; }
+  get target() { return this.attrs.target ?? ""; }
+  matches(sel: string): boolean {
+    if (sel === "a[data-bet-side]") return this.tag === "a" && Object.hasOwn(this.attrs, "data-bet-side");
+    if (sel === "[data-sheet]") return Object.hasOwn(this.attrs, "data-sheet");
+    if (sel === "[data-sheet] a[data-bet-side]") {
+      if (!this.matches("a[data-bet-side]")) return false;
+      for (let p = this.parent; p; p = p.parent) if (p.matches("[data-sheet]")) return true;
+      return false;
+    }
+    throw new Error(`a selector the fake DOM does not read: ${sel}`);
+  }
+  closest<T = FakeElement>(sel: string): T | null { for (let n: FakeElement | null = this; n; n = n.parent) if (n.matches(sel)) return n as T; return null; }
+}
+
+type TapRow = { name: string; path: string; target: FakeElement; mods?: Partial<Record<"metaKey" | "ctrlKey" | "shiftKey" | "altKey" | "defaultPrevented", boolean>>; button?: number };
+/** One world of picks: an open card, a card whose seed is not taking bets, a round row with no seed, a card's own link. */
+function tapWorld() {
+  const seedJson = (o: Partial<SS.SheetSeed> = {}) => JSON.stringify(seed(o));
+  const card = new FakeElement("article", { "data-sheet": seedJson(), "data-sheet-title": "Je, Dodoma itanyesha?", "data-sheet-origin": "home" });
+  const yes = new FakeElement("a", { href: `/markets/${MKT}?side=YES&from=home`, "data-bet-side": "YES" }, card);
+  const yesWord = new FakeElement("span", {}, yes);
+  const no = new FakeElement("a", { href: `/markets/${MKT}?side=NO&from=home`, "data-bet-side": "NO" }, card);
+  const open = new FakeElement("a", { href: `/markets/${MKT}` }, card);
+  const shut = new FakeElement("article", { "data-sheet": seedJson({ bettable: false }) });
+  const shutPick = new FakeElement("a", { href: `/markets/${MKT}?side=YES`, "data-bet-side": "YES" }, shut);
+  const round = new FakeElement("article", {});
+  const roundPick = new FakeElement("a", { href: "/updown/udr_4f1c09aa2d", "data-bet-side": "YES" }, round);
+  const odd = new FakeElement("a", { href: `/markets/${MKT}?side=YES`, "data-bet-side": "MAYBE" }, card);
+  const away = new FakeElement("a", { href: "https://evil.example/markets", "data-bet-side": "YES" }, card);
+  const blank = new FakeElement("a", { href: `/markets/${MKT}?side=YES`, "data-bet-side": "YES", target: "_blank" }, card);
+  const button = new FakeElement("div", { "data-sheet": seedJson(), "data-sheet-title": "Je, Dodoma itanyesha?", "data-sheet-origin": "market" });
+  const big = new FakeElement("a", { href: `/markets/${MKT}?side=NO`, "data-bet-side": "NO" }, button);
+  const rows: TapRow[] = [
+    { name: "a plain YES on a home card", path: "/", target: yes }, { name: "the word inside the pick", path: "/", target: yesWord },
+    { name: "a plain NO", path: "/live", target: no }, { name: "a question's big button", path: `/markets/${MKT}`, target: big },
+    { name: "the card's own link", path: "/", target: open }, { name: "a seed not taking bets", path: "/", target: shutPick },
+    { name: "a round row (no seed)", path: "/live", target: roundPick }, { name: "a side that is not YES or NO", path: "/", target: odd },
+    { name: "another origin", path: "/", target: away }, { name: "a new-tab target", path: "/", target: blank },
+    { name: "a page with no picks (/wallet)", path: "/wallet", target: yes }, { name: "/positions", path: "/positions", target: yes },
+    { name: "meta", path: "/", target: yes, mods: { metaKey: true } }, { name: "ctrl", path: "/", target: yes, mods: { ctrlKey: true } },
+    { name: "shift", path: "/", target: yes, mods: { shiftKey: true } }, { name: "alt", path: "/", target: yes, mods: { altKey: true } },
+    { name: "already prevented", path: "/", target: yes, mods: { defaultPrevented: true } }, { name: "a middle button", path: "/", target: yes, button: 1 },
+  ];
+  return rows;
+}
+/** Every row through one host's actual `click`: what it prevented, pushed and opened. */
+function tapTable(source: string, extra: Record<string, unknown> = {}): string[] {
+  return tapWorld().map((row) => {
+    const log: { prevented: boolean; pushed: string | null; opened: unknown[] | null; popped: number } = { prevented: false, pushed: null, opened: null, popped: 0 };
+    const window = {
+      location: { pathname: row.path, search: "?cat=weather", hash: "", href: `${ORIGIN}${row.path}?cat=weather`, origin: ORIGIN },
+      history: { pushState: (_: unknown, __: unknown, url: string) => { log.pushed = url; } },
+    };
+    try {
+      const click = bindArrow(source, "click", { parseSheetSeed, sheetOpensOn: SS.sheetOpensOn, withBet: SS.withBet, playPressPop: () => { log.popped++; },
+        // The guest's `open` takes a seventh argument, the stake an address allows (null for a tap): the table compares
+        // the six both hosts share — the seed, the side, the title, pushed, dropSide and the origin.
+        flushSync: (work: () => void) => work(), open: (...args: unknown[]) => { log.opened = args.slice(0, 6); }, window, Element: FakeElement, ...extra });
+      click({ ...{ defaultPrevented: false, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false }, ...row.mods, button: row.button ?? 0, target: row.target,
+        preventDefault: () => { log.prevented = true; } });
+      return `${row.name}: ${JSON.stringify(log)}`;
+    } catch (e) { return `${row.name}: THREW ${String(e).slice(0, 80)}`; }
+  });
+}
+
+/* The storage, the history and the clock the doors write to. */
+function doorWorld(o: { stakeText: string; search: string; storage?: Record<string, string>; storageThrows?: boolean }) {
+  const store = new Map(Object.entries(o.storage ?? {}));
+  const writes: string[] = [], history: string[] = [];
+  const sessionStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { writes.push(k); store.set(k, v); },
+    removeItem: (k: string) => { writes.push(`-${k}`); store.delete(k); },
+  };
+  const window = {
+    get sessionStorage() { if (o.storageThrows) throw new Error("SecurityError: storage is disabled"); return sessionStorage; },
+    location: { pathname: "/", search: o.search, hash: "#top" },
+    history: { replaceState: (_: unknown, __: unknown, url: string) => history.push(`replace ${url}`), pushState: (_: unknown, __: unknown, url: string) => history.push(`push ${url}`), back: () => history.push("back") },
+  };
+  const active = { seed: seed(), side: "YES" as const, title: "Je, Dodoma itanyesha?", stakeText: o.stakeText, offset: 0, serial: 1, pathname: "/", pushed: true, dropSide: false, estimateUpdated: false };
+  const shown: unknown[] = [];
+  /** The host's actual `carryNow`, `press` and `leave`, bound to this world; `press` then `leave`, as Next calls a door's
+   *  onClick and then its onNavigate. */
+  const run = (host: string, which: "both" | "press" = "both") => {
+    const carryNow = bindArrow(host, "carryNow", { current: { current: active }, Date: { now: () => NOW }, guestFrame: GS.guestFrame, guestCarry: GS.guestCarry, carriedStake: GS.carriedStake, window });
+    bindArrow(host, "press", { carryNow, saveSheetSelection, window })();
+    if (which === "both") bindArrow(host, "leave", { carryNow, mounted: { current: true }, window, generation: { current: 0 }, stopWaiting: () => {}, show: (v: unknown) => shown.push(v) })();
+  };
+  return { store, writes, history, shown, run };
+}
+
+function hostChecks(impl: Impl, w: HostWorld, ok: (label: string, cond: boolean, extra?: string) => void) {
+  const j = (v: unknown) => JSON.stringify(v);
+  const host = decomment(w.host), money = decomment(w.money);
+
+  /* §7 · a tap: the money host's own table, row for row */
+  const pick = constOf(host, "PICK");
+  const guestTaps = tapTable(host, { PICK: pick }), moneyTaps = tapTable(money);
+  const opened = guestTaps.filter((r) => r.includes('"opened":["') || r.includes('"opened":[{'));
+  ok("7.tap · the guest host takes exactly the taps the money host takes (18 rows: a plain pick on a card or a big button, the word inside it — and never the card's own link, a seed not taking bets, a round, an odd side, another origin, a new tab, a page with no picks, a modifier, a prevented click or a middle button), with S8's moves: preventDefault, the press pop, ?bet=<id>.<side> pushed, the sheet opened on the tap frame",
+    pick === "[data-sheet] a[data-bet-side]" && j(guestTaps) === j(moneyTaps) && guestTaps.length === 18 && opened.length === 4
+      && guestTaps[0].includes(`"pushed":"/?cat=weather&bet=${MKT}.YES"`) && guestTaps[0].includes('"prevented":true') && guestTaps[0].includes('"popped":1'),
+    j(guestTaps.filter((r, i) => r !== moneyTaps[i]).slice(0, 3)));
+
+  /* §8 · the doors: a press writes the marker; Next's navigation of this tab leaves the address and closes the sheet */
+  const SEARCH = `?cat=weather&ref=50pick-ag-abc123&invite=inv-9&utm_source=agency&bet=${MKT}.YES`;
+  const inBounds = doorWorld({ stakeText: "2500", search: SEARCH });
+  try { inBounds.run(host); } catch (e) { inBounds.history.push(`THREW ${String(e).slice(0, 60)}`); }
+  const marker = PB.readMarker(inBounds.store.get(PB.PENDING_BET_KEY), NOW);
+  ok("8.doors · a press writes ONE key, kp-pending-bet: the bet at the carried stake with the page's codes, no request key, no owner; then Next's navigation replaces the address with that bet (every parameter and the hash kept), closes the sheet and never goes back or pushes",
+    j(inBounds.writes) === j([PB.PENDING_BET_KEY]) && marker?.bet === `${MKT}.YES.2500` && marker.k === undefined && marker.owner === undefined
+      && marker.ref === "50PICK-AG-ABC123" && marker.invite === "INV-9" && marker.at === NOW
+      && j(inBounds.history) === j([`replace /?cat=weather&ref=50pick-ag-abc123&invite=inv-9&utm_source=agency&bet=${MKT}.YES.2500#top`])
+      && j(inBounds.shown) === j([null]), j({ writes: inBounds.writes, marker, history: inBounds.history, shown: inBounds.shown }));
+  const below = doorWorld({ stakeText: "499", search: SEARCH });
+  try { below.run(host); } catch { below.history.push("THREW"); }
+  ok("8.outside · a stake outside the bounds carries the side alone: the marker and the address name id.side, never 499 (Open point 6)",
+    PB.readMarker(below.store.get(PB.PENDING_BET_KEY), NOW)?.bet === `${MKT}.YES` && below.history.length === 1 && below.history[0].endsWith(`&bet=${MKT}.YES#top`),
+    j({ marker: below.store.get(PB.PENDING_BET_KEY), history: below.history }));
+  const legacyRaw = JSON.stringify({ bet: `${MKT}.NO.3000`, at: NOW - 60_000, k: "0f8b6a52-3c1d-4e7a-9b2f-5d6c7e8f9a01" });
+  const legacy = doorWorld({ stakeText: "2500", search: SEARCH, storage: { [PB.PENDING_BET_KEY]: legacyRaw } });
+  try { legacy.run(host, "press"); } catch { legacy.writes.push("THREW"); }
+  const archive = legacy.store.get("kp-sheet-intents:legacy:v1") ?? "";
+  ok("8.legacy · a keyed envelope an earlier signed-in request left is archived first (kp-sheet-intents:legacy:v1), never destroyed, and only then replaced by the guest's keyless choice (A7)",
+    j(legacy.writes) === j(["kp-sheet-intents:legacy:v1", PB.PENDING_BET_KEY]) && archive.includes(JSON.stringify(legacyRaw).slice(1, -1))
+      && PB.readMarker(legacy.store.get(PB.PENDING_BET_KEY), NOW)?.bet === `${MKT}.YES.2500`, j({ writes: legacy.writes, archive: archive.slice(0, 120) }));
+  const refused = doorWorld({ stakeText: "2500", search: SEARCH, storageThrows: true });
+  let refusedThrew = false;
+  try { refused.run(host); } catch { refusedThrew = true; }
+  ok("8.refusal · storage that refuses never stops the visitor: the press throws nothing and the door still leaves (Open point 7)",
+    !refusedThrew && refused.history.length === 1 && refused.history[0].startsWith("replace "), j({ refusedThrew, history: refused.history }));
+
+  /* §9 · the census: no money code reaches a guest */
+  const graph = importGraph(w.host, HOST_PATH);
+  // A money action is a Server Action: a "use server" module, any import from @/app, or a call of one by its name (a
+  // dictionary KEY that happens to share a name — `journey.depositAction: "+ Weka pesa"` — is no call).
+  const moneyInGraph = graph.files.filter(([, src]) => /^\s*["']use server["']/m.test(src) || /from\s+"@\/app\//.test(src)
+    || /\b(?:buyPositionAction|sellPositionAction|cashOutAction|depositAction|withdrawAction)\s*\(/.test(decomment(src)));
+  ok("9.graph · the guest host's whole module graph reaches no Server Action, no @/app module and no money action",
+    graph.files.length >= 12 && moneyInGraph.length === 0 && graph.unresolved.length === 0, j({ files: graph.files.length, moneyInGraph: moneyInGraph.map(([p]) => p), unresolved: graph.unresolved }));
+  const never = ["me=1", "\"me\"", "crypto.randomUUID", "mintIntentKey", "saveOwnedSheet", "resolveLegacySheet", "kp-sheet-intents", "sheetOwnerKey", "location.reload",
+    "quarantineLegacySheet", "writeMarker", "viewerId", "localStorage", "requestFor"].filter((n) => host.includes(n));
+  ok("9.never · it names no private read, request key, owner, account store, legacy resolver, reload, marker writer or local storage — its one storage name is PENDING_BET_KEY and its one write saveSheetSelection",
+    never.length === 0 && (host.match(/saveSheetSelection\(/g) ?? []).length === 1 && (host.match(/sessionStorage\.(?:setItem|removeItem)/g) ?? []).length === 0
+      && (host.match(/sessionStorage\.getItem\(PENDING_BET_KEY\)/g) ?? []).length === 1, j(never));
+  const fetches = [...host.matchAll(/fetch\((`[^`]*`|"[^"]*")/g)].map((m) => m[1]);
+  ok("9.fetch · its only reads are the public half of the sheet route (no query at all) and the client-error report",
+    j(fetches) === j(['"/api/client-error"', "`/api/markets/${encodeURIComponent(before.seed.id)}/sheet`"]), j(fetches));
+
+  /* §10 · the mount, the ended session and the picks' popup */
+  const watched: string[] = [];
+  const endedOpen = bindArrow(host, "openAddress", { ended: { current: true }, window: { location: { pathname: "/", search: `?bet=${MKT}.YES.2500` } }, markerRaw: () => null,
+    guestOpensFrom: (...a: unknown[]) => { watched.push("read"); return (GS.guestOpensFrom as (...x: unknown[]) => unknown)(...a); }, current: { current: null },
+    stopWaiting: () => watched.push("stop"), generation: { current: 0 }, document: { querySelectorAll: () => { watched.push("dom"); return []; } },
+    open: () => watched.push("open"), MutationObserver: class { observe() { watched.push("observe"); } disconnect() {} }, waiting: { current: null }, sameSheet: () => false,
+    parseSheetSeed, SEED_WAIT_MS: 5_000, mounted: { current: true } });
+  try { endedOpen(); } catch { watched.push("THREW"); }
+  ok("10.ended · on a flight that ended a session the address opens nothing — not read, not looked for, not waited for — the session-ended notice speaks (Open point 20)",
+    watched.length === 0, j(watched));
+  const shellNow = decomment(w.shell);
+  ok("10.slot · AppShell's one host slot: a journey request gets the money host with the session's own id when signed in and the guest host (told whether this flight ended a session) when not, each the one child of its own boundary; a classic request still renders one false; shell-lazy loads it like every part",
+    shellNow.includes("{journeyShown && (session ? <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense> : <Suspense fallback={null}><LazyGuestSheetHost sessionEnded={endedNotice !== null} /></Suspense>)}")
+      && !shellNow.includes("journeyShown && session && <Suspense")
+      && decomment(w.lazy).includes('export const LazyGuestSheetHost = dynamic(() => import("@/components/journey/bet-sheet/guest-sheet-host").then((m) => m.GuestSheetHost).catch(nothingIfLost));'),
+    "");
+  const card = decomment(w.card), buttons = decomment(w.buttons);
+  ok("10.popup · every journey pick that opens the sheet says so (aria-haspopup=\"dialog\", S8-PLAN A22 item 9), exactly where it carries data-bet-side: the card's picks (only while their seed is open) and the question's big buttons",
+    card.includes('data-bet-side={openSheet ? side : undefined}') && card.includes('aria-haspopup={openSheet ? "dialog" : undefined}')
+      && buttons.includes('data-bet-side={side} data-bet-origin="market" aria-haspopup="dialog"'), "");
+}
+
+/** The module graph from a source, resolved against src/: every file it reaches through `@/` and relative imports. */
+function importGraph(entry: string, entryPath: string): { files: Array<[string, string]>; unresolved: string[] } {
+  const files = new Map<string, string>(), unresolved: string[] = [];
+  const resolve = (spec: string, from: string): string | null => {
+    const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? join(dirname(from), spec).replace(/\\/g, "/") : null;
+    if (base === null || /\.(css|json|svg)$/.test(base)) return null;
+    for (const ext of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) { try { readFileSync(join(ROOT, base + ext)); if (!/\.(ts|tsx)$/.test(base + ext)) continue; return base + ext; } catch { /* next */ } }
+    unresolved.push(`${spec} (from ${from})`); return null;
+  };
+  const walk = (path: string, src: string) => {
+    if (files.has(path)) return;
+    files.set(path, src);
+    for (const m of decomment(src).matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g)) {
+      const next = resolve(m[1], path);
+      if (next && !files.has(next)) walk(next, read(next));
+    }
+  };
+  walk(entryPath, entry);
+  return { files: [...files.entries()], unresolved };
+}
+REAL.hostWorld = HOST_WORLD;
 
 function run(impl: Impl, log: (l: string) => void): string[] {
   const failed: string[] = [];
@@ -243,6 +502,9 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   });
   ok("6.typed · no rate, multiple or shilling amount is typed: every figure is the engine's", typed.length === 0, j(typed));
   ok("6.client-safe · no server module, server-only, Server Action or Next import", !/from\s+"@\/lib\/server|server-only|"use server"|from\s+"next\//.test(code));
+
+  /* §7–§10 · the guest host */
+  hostChecks(impl, impl.hostWorld, ok);
   return failed;
 }
 
@@ -254,7 +516,36 @@ if (!PROVE_RED) {
 } else {
   const quiet = () => {};
   type Plant = { name: string; expect: RegExp; impl: Impl };
+  /** One defect in a copy of a host-world file; an anchor that does not resolve exactly once is a broken plant. */
+  const hostPlant = (k: keyof HostWorld, from: string, to: string): Impl => {
+    const n = HOST_WORLD[k].split(from).length - 1;
+    if (n !== 1) throw new Error(`the plant's anchor resolves ${n} times in ${k}, not once: ${from.slice(0, 60)}`);
+    return { ...REAL, hostWorld: { ...HOST_WORLD, [k]: HOST_WORLD[k].replace(from, () => to) } };
+  };
   const plants: Plant[] = [
+    // §7 · a tap
+    { name: "the guest host takes a modified click", expect: /^7\.tap /, impl: hostPlant("host", "event.metaKey || ", "") },
+    { name: "the guest host opens a seed that is not taking bets", expect: /^7\.tap /, impl: hostPlant("host", "!seed.bettable || ", "") },
+    { name: "the guest host pushes no address for its sheet", expect: /^7\.tap /, impl: hostPlant("host", 'window.history.pushState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);', "") },
+    { name: "the guest host takes a pick off the journey's pages", expect: /^7\.tap /, impl: hostPlant("host", " || !sheetOpensOn(window.location.pathname)) return;", ") return;") },
+    // §8 · the doors
+    { name: "a press stamps an owner on the guest's marker", expect: /^8\.doors /, impl: hostPlant("host", "saveSheetSelection(window.sessionStorage, carry.markerRaw)", 'saveSheetSelection(window.sessionStorage, JSON.stringify({ ...JSON.parse(carry.markerRaw), owner: "usr_guest" }))') },
+    { name: "the door's leave goes back in history instead of leaving the address", expect: /^8\.doors /, impl: hostPlant("host", 'window.history.replaceState(null, "", carry.address + window.location.hash);', "window.history.back();") },
+    { name: "the door's leave leaves the sheet open over the sign-in page", expect: /^8\.doors /, impl: hostPlant("host", "++generation.current; stopWaiting(); show(null);", "++generation.current; stopWaiting();") },
+    { name: "the doors carry a stake outside the bounds", expect: /^8\.outside /, impl: hostPlant("host", "stake: carriedStake(frame)", "stake: Number(a.stakeText)") },
+    { name: "a press writes past the legacy archive", expect: /^8\.legacy /, impl: hostPlant("host", "saveSheetSelection(window.sessionStorage, carry.markerRaw)", 'window.sessionStorage.setItem("kp-pending-bet", carry.markerRaw)') },
+    { name: "a storage refusal stops the door", expect: /^8\.refusal /, impl: hostPlant("host", "try { if (carry) saveSheetSelection(window.sessionStorage, carry.markerRaw); } catch { /* the door still navigates */ }", "if (carry) saveSheetSelection(window.sessionStorage, carry.markerRaw);") },
+    // §9 · the census
+    { name: "a money action imported into the guest host", expect: /^9\.graph /, impl: hostPlant("host", 'import { useT } from "@/lib/i18n";', 'import { useT } from "@/lib/i18n";\nimport { buyPositionAction } from "@/app/markets/actions";') },
+    { name: "the guest host reads the private half", expect: /^9\.never /, impl: hostPlant("host", "/sheet`, { cache", "/sheet?me=1`, { cache") },
+    { name: "the guest host reaches an account's store", expect: /^9\.never /, impl: hostPlant("host", 'import { saveSheetSelection } from "@/lib/journey/sheet-owned-storage";', 'import { saveOwnedSheet, saveSheetSelection } from "@/lib/journey/sheet-owned-storage";') },
+    { name: "a second read the census does not know", expect: /^9\.fetch /, impl: { ...REAL, hostWorld: { ...HOST_WORLD, host: HOST_WORLD.host + '\nconst stray = () => fetch("/api/wallet/balance");\n' } } },
+    // §10 · the mount, the ended session, the popup
+    { name: "an ended session's flight opens the guest sheet from the address", expect: /^10\.ended /, impl: hostPlant("host", "if (ended.current) return;", "") },
+    { name: "AppShell hands a guest the money host", expect: /^10\.slot /, impl: hostPlant("shell", "<LazyGuestSheetHost sessionEnded={endedNotice !== null} />", '<LazyBetSheetHost viewerId="" />') },
+    { name: "the guest host's loader line lost", expect: /^10\.slot /, impl: hostPlant("lazy", 'export const LazyGuestSheetHost = dynamic(() => import("@/components/journey/bet-sheet/guest-sheet-host").then((m) => m.GuestSheetHost).catch(nothingIfLost));', "") },
+    { name: "the big buttons say nothing of their dialog", expect: /^10\.popup /, impl: hostPlant("buttons", ' aria-haspopup="dialog"', "") },
+    { name: "every card pick claims a dialog, an open seed or not", expect: /^10\.popup /, impl: hostPlant("card", 'aria-haspopup={openSheet ? "dialog" : undefined}', 'aria-haspopup="dialog"') },
     // §1
     { name: "the guest's estimate computed by a second formula (stake × the card's multiple)", expect: /^1\.deck /,
       impl: { ...REAL, frame: (i) => { const f = GS.guestFrame(i); return f.estimate && f.stake ? { ...f, estimate: { ...f.estimate, payout: Math.round(f.stake * 2.8) } } : f; } } },

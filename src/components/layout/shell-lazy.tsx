@@ -35,7 +35,8 @@
  * ⭐ THE GUARD IS THE APP'S ONE GUARD, IMPORTED (the Vodacom plan S7, S7-PLAN A13(a), 2026-10-12): it was defined here,
  * and lifted verbatim into `lost-chunk.ts` so every `next/dynamic` loader takes the same one — these parts, the journey's
  * route ghosts, the Tiketi switch's tabs and the journey home's parts. It is this module's one import besides
- * `next/dynamic`, and the eleven loader lines below are unchanged, byte for byte.
+ * `next/dynamic`, and the eleven loader lines below are unchanged, byte for byte. (S8 added the money host's twelfth and S10
+ * the guest host's thirteenth, each one line of the same shape.)
  * ⛔ THE OFFLINE BANNER IS NOT HERE, ON PURPOSE: its one job is a connection that fails, so AppShell imports it
  * statically and its code comes with the page, as it always did (12.shell.offline).
  * ⛔ Each part keeps the name AppShell rendered before WP6c, and AppShell renders it where it did, with the same props.
@@ -71,3 +72,5 @@ export const LazyJourneyFlag = dynamic(() => import("@/components/journey/journe
 export const LazyJourneyTopBar = dynamic(() => import("@/components/journey/journey-top-bar").then((m) => m.JourneyTopBar).catch(nothingIfLost));
 export const LazyJourneyTabs = dynamic(() => import("@/components/journey/journey-tabs").then((m) => m.JourneyTabs).catch(nothingIfLost));
 export const LazyBetSheetHost = dynamic(() => import("@/components/journey/bet-sheet/bet-sheet-host").then((m) => m.BetSheetHost).catch(nothingIfLost));
+// S10 · the journey's bet sheet for a reader who is not signed in: AppShell's same slot, the session's other arm.
+export const LazyGuestSheetHost = dynamic(() => import("@/components/journey/bet-sheet/guest-sheet-host").then((m) => m.GuestSheetHost).catch(nothingIfLost));

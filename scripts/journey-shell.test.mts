@@ -264,6 +264,7 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyWinCelebration", "@/components/markets/win-celebration", "WinCelebrationHost"],
   ["LazySellResultHost", "@/components/markets/sell-result-host", "SellResultHost"],
   ["LazyBetSheetHost", "@/components/journey/bet-sheet/bet-sheet-host", "BetSheetHost"],
+  ["LazyGuestSheetHost", "@/components/journey/bet-sheet/guest-sheet-host", "GuestSheetHost"],
   ["LazyNotifyPoller", "@/components/markets/notify-poller", "NotifyPoller"],
   ["LazyEventStream", "@/components/layout/event-stream-provider", "EventStreamProvider"],
   ["LazyInstallInvite", "@/components/pwa/install-invite", "InstallInvite"],

@@ -574,7 +574,7 @@ async function checks(x: Impl): Promise<Check[]> {
     && receiptAddressBarrier(h, null)?.next === "next");
   ok("host.boundary", /class SheetBoundary extends Component/.test(h) && /<SheetBoundary[\s\S]*?<BetSheet[\s\S]*?<\/SheetBoundary>/.test(h) && /componentDidCatch/.test(h) && /\/api\/client-error/.test(h) && throwsCaught(h));
   ok("host.capture-safe", /event\.defaultPrevented \|\| event\.button !== 0 \|\| event\.metaKey \|\| event\.ctrlKey \|\| event\.shiftKey \|\| event\.altKey/.test(h) && /!seed\.bettable/.test(h) && /href\.origin !== window\.location\.origin/.test(h) && /addEventListener\("click", click, true\)/.test(h));
-  ok("host.conditional-mount", /journeyShown && session && <Suspense fallback=\{null\}><LazyBetSheetHost key=\{session\.userId\} viewerId=\{session\.userId\}\s*\/><\/Suspense>/.test(x.shell) && /export const LazyBetSheetHost = dynamic\(\(\) => import\("@\/components\/journey\/bet-sheet\/bet-sheet-host"\)\.then\(\(m\) => m\.BetSheetHost\)\.catch\(nothingIfLost\)\)/.test(x.lazy));
+  ok("host.conditional-mount", /journeyShown && \(session \? <Suspense fallback=\{null\}><LazyBetSheetHost key=\{session\.userId\} viewerId=\{session\.userId\}\s*\/><\/Suspense> : <Suspense fallback=\{null\}><LazyGuestSheetHost sessionEnded=\{endedNotice !== null\}\s*\/><\/Suspense>\)/.test(x.shell) && /export const LazyBetSheetHost = dynamic\(\(\) => import\("@\/components\/journey\/bet-sheet\/bet-sheet-host"\)\.then\(\(m\) => m\.BetSheetHost\)\.catch\(nothingIfLost\)\)/.test(x.lazy));
   const refresh = await privateRefreshChecks(h);
   ok("host.private-read-fault", refresh?.faultClosed === true);
   ok("host.private-read-race", refresh?.serialProtected === true && refresh?.sequenceProtected === true);
@@ -739,7 +739,7 @@ if (process.argv.includes("--prove-red")) {
       ["host.unmounted-close-deposit", "deposit", "if (!mounted.current) return;", ""],
       ["host.unmounted-auth-redirect", "readTruth", "invalidateOwner();\n        return failed;", "return failed;"],
     ].map(([check, callback, from, to]) => ({ name: `${check}: ${callback}`, check, impl: { ...REAL, host: plantCallback(REAL.host, callback, from, to) } })),
-    { name: "guest receives money host", check: "host.conditional-mount", impl: { ...REAL, shell: REAL.shell.replace("journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost", "journeyShown && <Suspense fallback={null}><LazyBetSheetHost") } },
+    { name: "guest receives money host", check: "host.conditional-mount", impl: { ...REAL, shell: REAL.shell.replace("journeyShown && (session ?", "journeyShown && (true ?") } },
     { name: "opening focus fires before its portal commit", check: "modal.portal-ready-opening", impl: { ...REAL, modal: REAL.modal.replace("if (!mounted) return;", "") } },
     { name: "portal commit never re-arms initial focus", check: "modal.portal-ready-opening", impl: { ...REAL, modal: REAL.modal.replace("}, [open, mounted]);", "}, [open]);") } },
     { name: "callback changes steal focus on every render", check: "modal.portal-ready-opening", impl: { ...REAL, modal: REAL.modal.replace("}, [open, mounted]);", "}, [open, mounted, onClose]);") } },
