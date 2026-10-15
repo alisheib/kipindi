@@ -19,6 +19,8 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { markSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
+import { ogLines, renderOgPicture } from "./build-og-picture.mts";
+import { dict } from "../src/lib/i18n-dict.ts";
 
 const ROOT = process.cwd();
 let bad = 0;
@@ -149,5 +151,21 @@ const cardRaw = await rawOf(readFileSync(resolve(ROOT, "public/og/twitter-1200x6
   refuse("the right window with a 36px badge painted in its bottom-left corner", badged);
 }
 
-console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts, and the X card is the share picture's middle" : bad + " asset(s) DRIFTED from the source of truth"}`);
+console.log("\n== 4. the unpublished share-picture generator (S11 WP8) ==");
+{
+  const lines = ogLines("auth.railTagline");
+  const fromKey = lines.en === dict.en.auth.railTagline && lines.sw === dict.sw.auth.railTagline;
+  const first = await renderOgPicture(lines);
+  const second = await renderOgPicture(lines);
+  const firstPx = await rawOf(first), secondPx = await rawOf(second);
+  const same = firstPx.width === X_W && firstPx.height === OG_H && firstPx.channels === secondPx.channels
+    && firstPx.data.equals(secondPx.data);
+  const generator = readFileSync(resolve(ROOT, "scripts/build-og-picture.mts"), "utf8");
+  const fromMark = generator.includes('import { markSvg } from "../src/lib/brand-mark.ts";')
+    && generator.includes('markSvg({ variant: "color" })');
+  if (!fromKey || !same || !fromMark) bad++;
+  console.log(`  ${fromKey && same && fromMark ? "IN SYNC " : "DRIFTED "} two renders are pixel-identical, the lines read the named dictionary key, and the mark reads brand-mark.ts`);
+}
+
+console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts, the X card is the share picture's middle, and the unpublished picture generator is deterministic" : bad + " asset(s) DRIFTED from the source of truth"}`);
 process.exitCode = bad === 0 ? 0 : 1;
