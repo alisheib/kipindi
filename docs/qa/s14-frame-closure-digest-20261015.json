@@ -1,0 +1,394 @@
+{
+  "kind": "S14-local-frame-closure",
+  "sourceCommit": "e42d970ab9ead56bc44da399352bfd57f9230849",
+  "matrixSourceCommit": "4c7327bcdd31a556215d03a486a0d2e3a93e12e0",
+  "closureCapturedAt": "2026-10-15T18:09:33.133Z",
+  "closureLocalPath": "C:\\50pick-ssd\\s14-frame-closure-v8",
+  "closureChecks": [
+    {
+      "id": "P08.first",
+      "state": "PASS"
+    },
+    {
+      "id": "P08.seen",
+      "state": "PASS"
+    },
+    {
+      "id": "P08.once",
+      "state": "PASS"
+    },
+    {
+      "id": "P08.reopen",
+      "state": "PASS"
+    },
+    {
+      "id": "H12.order",
+      "state": "PASS"
+    },
+    {
+      "id": "H10",
+      "state": "PASS"
+    },
+    {
+      "id": "B06",
+      "state": "PASS"
+    },
+    {
+      "id": "B07",
+      "state": "PASS"
+    },
+    {
+      "id": "L03",
+      "state": "PASS"
+    },
+    {
+      "id": "D11",
+      "state": "PASS"
+    },
+    {
+      "id": "D04.baseline",
+      "state": "PASS"
+    },
+    {
+      "id": "D04.ceiling",
+      "state": "PASS"
+    },
+    {
+      "id": "D04.clamped",
+      "state": "PASS"
+    },
+    {
+      "id": "D04.belowMinimum",
+      "state": "PASS"
+    },
+    {
+      "id": "D05.premise",
+      "state": "PASS"
+    },
+    {
+      "id": "D05.filter",
+      "state": "PASS"
+    },
+    {
+      "id": "D05.choice",
+      "state": "PASS"
+    },
+    {
+      "id": "D01.back",
+      "state": "PASS"
+    },
+    {
+      "id": "D01.choice",
+      "state": "PASS"
+    },
+    {
+      "id": "B10.focus",
+      "state": "PASS"
+    },
+    {
+      "id": "B10.escape",
+      "state": "PASS"
+    },
+    {
+      "id": "B10.back",
+      "state": "PASS"
+    },
+    {
+      "id": "B02",
+      "state": "PASS"
+    },
+    {
+      "id": "B11",
+      "state": "PASS"
+    }
+  ],
+  "closureImages": [
+    {
+      "name": "first-visit-howto.png",
+      "sha256": "179e0f5f6860f226799c5110d6a8888ab5bad12b92e529557561b3afb84ddf48"
+    },
+    {
+      "name": "home-footer-390.png",
+      "sha256": "454e17bb3098435d2be760f10492ec4c4fc5888bcacad0a914035d7913260dc7"
+    },
+    {
+      "name": "funded-card-390.png",
+      "sha256": "08d21f5f86576a0d76a76dbae66522c760e88a33be1b0da08d46d12e1bab0ec9"
+    },
+    {
+      "name": "funded-edit-sheet-390.png",
+      "sha256": "15ea062ceafd631d755f01812310728dcee6af18c82104f1673639ff08a6ad46"
+    },
+    {
+      "name": "funded-low-sheet-390.png",
+      "sha256": "a4b5ef75d5a63f0d539cf0e4ae336d92ee89455581db6dab63bdfefca0fc6b32"
+    },
+    {
+      "name": "funded-low-keyboard-360x640.png",
+      "sha256": "ca8fd2466b808a73bfb53cea42a225fd3ca6477897a8e177ae49ec1d64316e42"
+    },
+    {
+      "name": "deposit-pay-reached-360x400.png",
+      "sha256": "a22330caf63fed3426c6761c391d31ea07d7c3d5d7c5f8135447ee365519d823"
+    },
+    {
+      "name": "deposit-ceiling-360x400.png",
+      "sha256": "df53db0e5d6c43c667a4a0e103cfaf6523109682725bd6a8fc1c5af625bbaccb"
+    },
+    {
+      "name": "deposit-below-minimum-360x400.png",
+      "sha256": "f235e238a5c53565f2443690cdfae96729ebd48803e109f678a5277d46453162"
+    },
+    {
+      "name": "deposit-one-rail-paused-360x400.png",
+      "sha256": "c4adab2cc07e870cdde02c4caa22151dffc92b3b559149fb7097287018af6d5a"
+    },
+    {
+      "name": "bet-placing-held-390.png",
+      "sha256": "af3af203b68478694b5f69dee937749e0b4b97db408bf2caa5003d76706a67d6"
+    },
+    {
+      "name": "bet-inline-failure-390.png",
+      "sha256": "88a5fe240517b9818360ac174da9bbe4fd7c1fd4b54f80bed2daf11066805964"
+    }
+  ],
+  "e2eCapturedAt": "2026-10-15T18:08:37.417Z",
+  "e2eLocalPath": "C:\\50pick-ssd\\s14-closure-e2e-v6",
+  "e2eChecks": [
+    {
+      "name": "open market fixture",
+      "state": "PASS"
+    },
+    {
+      "name": "mock payment rail selected",
+      "state": "PASS"
+    },
+    {
+      "name": "mock starts synchronous",
+      "state": "PASS"
+    },
+    {
+      "name": "how-to heading and action fit the viewport",
+      "state": "PASS"
+    },
+    {
+      "name": "mobile how-to steps can scroll when needed",
+      "state": "PASS"
+    },
+    {
+      "name": "guest choice opens a sheet in place",
+      "state": "PASS"
+    },
+    {
+      "name": "guest choice sends no bet request",
+      "state": "PASS"
+    },
+    {
+      "name": "registration carries choice",
+      "state": "PASS"
+    },
+    {
+      "name": "registration returns to selected market",
+      "state": "PASS"
+    },
+    {
+      "name": "new player has short balance",
+      "state": "PASS"
+    },
+    {
+      "name": "registration does not place a bet",
+      "state": "PASS"
+    },
+    {
+      "name": "registration email captured in dev outbox",
+      "state": "PASS"
+    },
+    {
+      "name": "captured email link stays on local server",
+      "state": "PASS"
+    },
+    {
+      "name": "captured email link opens confirmation",
+      "state": "PASS"
+    },
+    {
+      "name": "low-balance deposit carries selected bet",
+      "state": "PASS"
+    },
+    {
+      "name": "deposit carries chosen YES side and TZS 500 stake",
+      "state": "PASS"
+    },
+    {
+      "name": "deposit amount precedes payment methods",
+      "state": "PASS"
+    },
+    {
+      "name": "deposit visits waiting route",
+      "state": "PASS"
+    },
+    {
+      "name": "mock deposit confirmed once",
+      "state": "PASS"
+    },
+    {
+      "name": "waiting page tells player the deposit arrived and a bet still needs a press",
+      "state": "PASS"
+    },
+    {
+      "name": "mobile transaction ID stays on one line",
+      "state": "PASS"
+    },
+    {
+      "name": "confirmed deposit does not auto bet",
+      "state": "PASS"
+    },
+    {
+      "name": "no hidden bet action before player press",
+      "state": "PASS"
+    },
+    {
+      "name": "waiting-page replay does not double-credit",
+      "state": "PASS"
+    },
+    {
+      "name": "waiting-page replay does not auto bet",
+      "state": "PASS"
+    },
+    {
+      "name": "one deposit action captured",
+      "state": "PASS"
+    },
+    {
+      "name": "same-key deposit action replay is handled",
+      "state": "PASS"
+    },
+    {
+      "name": "same-key action replay cannot double-credit",
+      "state": "PASS"
+    },
+    {
+      "name": "same-key action replay does not bet",
+      "state": "PASS"
+    },
+    {
+      "name": "returned choice still awaits a separate press",
+      "state": "PASS"
+    },
+    {
+      "name": "returned sheet shows an enabled place button",
+      "state": "PASS"
+    },
+    {
+      "name": "one explicit press places exactly one bet",
+      "state": "PASS"
+    },
+    {
+      "name": "one bet action after manual press",
+      "state": "PASS"
+    },
+    {
+      "name": "decline control starts without a position",
+      "state": "PASS"
+    },
+    {
+      "name": "mock decline states wallet truth without naming Card",
+      "state": "PASS"
+    },
+    {
+      "name": "declined payment has a recoverable funding identity",
+      "state": "PASS"
+    },
+    {
+      "name": "declined mock payment is not credited",
+      "state": "PASS"
+    },
+    {
+      "name": "declined payment does not auto bet",
+      "state": "PASS"
+    },
+    {
+      "name": "mock pending mode enabled",
+      "state": "PASS"
+    },
+    {
+      "name": "pending deposit carries the selected bet",
+      "state": "PASS"
+    },
+    {
+      "name": "mock async payment waits without credit",
+      "state": "PASS"
+    },
+    {
+      "name": "pending payment does not auto bet",
+      "state": "PASS"
+    },
+    {
+      "name": "pending payment sends no bet action",
+      "state": "PASS"
+    },
+    {
+      "name": "pending wait replay keeps one uncredited payment",
+      "state": "PASS"
+    },
+    {
+      "name": "pending wait replay does not auto bet",
+      "state": "PASS"
+    },
+    {
+      "name": "return before confirmation restores the choice without a bet",
+      "state": "PASS"
+    },
+    {
+      "name": "return before confirmation cannot spend pending money",
+      "state": "PASS"
+    },
+    {
+      "name": "return before confirmation has no bet or bet ledger row",
+      "state": "PASS"
+    }
+  ],
+  "e2eImages": [
+    {
+      "name": "00-home.png",
+      "sha256": "f25c8507266fd602600d713168133d42018b81bf0757b258b15724b65064a4ca"
+    },
+    {
+      "name": "00-how-to-play.png",
+      "sha256": "dfedda96a79c316deaf4c1299e02baed70af721b53afe44715277dfb89ea09fe"
+    },
+    {
+      "name": "01-guest-sheet.png",
+      "sha256": "5fb1478eb9da069be78382ed9c92b3f26b60d628171559be9783088d7578e44d"
+    },
+    {
+      "name": "02-short-balance.png",
+      "sha256": "9f8befc1fb88fd4dc5229d287d90fb68b8c7d3fc085243d955e1dc2066e0a0eb"
+    },
+    {
+      "name": "03-deposit-form.png",
+      "sha256": "679a491c0e48794a73e7389f84e827a7920dd48a64a4cf195b89a4fd2b5bbbb4"
+    },
+    {
+      "name": "04-paid-waiting.png",
+      "sha256": "b688842ca850ac4f095f1228f8e71d8f6cd361ce01780e1a7d26a80aaa3bd2d8"
+    },
+    {
+      "name": "05-returned-choice.png",
+      "sha256": "b3303c7838bb7df978994f0459dedbd62864bf6785a3c5a7306d2fa83929dd2a"
+    },
+    {
+      "name": "06-one-bet-receipt.png",
+      "sha256": "6a7c06aeff6ee49747a2bd3fd447ea0cf3bbf5f66ecf8469538a7c8f9659db98"
+    },
+    {
+      "name": "07-declined-payment.png",
+      "sha256": "71687094dfff54288d3ef187694b809df3a5373be63360e887348b4a485b18b8"
+    },
+    {
+      "name": "08-pending-payment.png",
+      "sha256": "ee93aedfd93fadbf89808641534a6764c7b2a7c0c23539d7da59dfd44e7d4337"
+    }
+  ],
+  "scope": "Synthetic local in-memory store and mock payment rail; no production money, staff or agency proof"
+}
