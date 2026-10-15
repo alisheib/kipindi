@@ -537,7 +537,8 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   useEffect(() => {
     const warm = () => { if (mounted.current && !current.current) warmSheet(t, locale); };
     if (typeof window.requestIdleCallback === "function") {
-      const handle = window.requestIdleCallback(warm, { timeout: 1_000 });
+      // A21 production trace: a 1 s idle deadline let /live taps arrive before this rehearsal on busy hydration.
+      const handle = window.requestIdleCallback(warm, { timeout: 50 });
       return () => window.cancelIdleCallback(handle);
     }
     const handle = window.setTimeout(warm, 0);
