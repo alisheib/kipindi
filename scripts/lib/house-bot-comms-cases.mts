@@ -39,6 +39,7 @@ async function guard(label: string, fn: () => Promise<void> | void): Promise<voi
 
 const w = await loadWorld();
 const N: Any = await import("../../src/lib/server/notification-service.ts");
+const AML: Any = await import("../../src/lib/server/house-bot/aml-escalation.ts");
 const EM: Any = await import("../../src/lib/server/house-bot/emitters.ts");
 const REG: Any = await import("../../src/lib/server/comms-registry.ts");
 const K: Any = await import("../../src/lib/house-bot/constants.ts");
@@ -383,6 +384,38 @@ await guard("8", () => {
     houseSection.length > 1_000 && !/sendSms|sms\.send|consoleSms/.test(houseSection), `${houseSection.length} characters scanned`);
   const emitters = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/emitters.ts"), "utf8"));
   ok("8.5 · …and neither does the engine's channel", !/sendSms|sms\.send/.test(emitters));
+});
+
+/* ═══ §8a · a removed designation cannot erase AML review of an earlier desk stake ═══════════════ */
+section("§8a · AML owner review follows a desk stake after designation removal");
+await guard("8a", async () => {
+  const former = await w.bot();
+  const market = await w.poll({ graceMin: 0 });
+  const intent = await w.intent(former, market.id, { kind: "OPENER", side: "YES", stakeTzs: 1_000 });
+  const placed = await w.place(former, intent);
+  if (!placed.ok) throw new Error(`fixture: ${j(placed)}`);
+  const placedIntent = await w.dal.houseBotIntentStore.get(intent.id);
+  const stake = (await w.txnsFor(placedIntent.positionId)).find((t: Any) => t.type === "BET_PLACED" && t.houseBotId === former.botId);
+  if (!stake) throw new Error("fixture: marked stake transaction was not written");
+  const removed = await w.dal.houseBotStore.setStatus(former.botId, {
+    from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+    removal: { byId: ADMIN_A, reason: "fixture", cause: "MANUAL" },
+  });
+  if (!removed) throw new Error("fixture: desk designation was not removed");
+  const unrelated = await w.user();
+  const flagged = { userId: former.userId, txnId: stake.id, type: "STAKE_SPIKE" as const };
+  const otherFlag = { userId: unrelated, txnId: `txn_unrelated_${process.pid}`, type: "VELOCITY" as const };
+  const key = `${flagged.userId}:${flagged.txnId}:${flagged.type}`;
+  const beforeA = await countHouse(ADMIN_A), beforeB = await countHouse(ADMIN_B);
+  const review = await AML.escalateDeskAmlFlags([flagged, otherFlag]);
+  const afterA = await countHouse(ADMIN_A), afterB = await countHouse(ADMIN_B);
+  ok("8a.1 · a flagged marked stake still requires owner review after its designation is Removed",
+    review.has(key) && !review.has(`${otherFlag.userId}:${otherFlag.txnId}:${otherFlag.type}`));
+  ok("8a.2 · its owner-review bell reaches both admins, while the unrelated player's flag sends none",
+    afterA === beforeA + 1 && afterB === beforeB + 1, j({ a: afterA - beforeA, b: afterB - beforeB }));
+  const again = await AML.escalateDeskAmlFlags([flagged]);
+  ok("8a.3 · a second AML page read keeps the review badge without sending the same owner bell again",
+    again.has(key) && (await countHouse(ADMIN_A)) === afterA && (await countHouse(ADMIN_B)) === afterB);
 });
 
 /* ═══ §9 · the policy and the copy table are exhaustive ═════════════════════════════════════════ */

@@ -3,9 +3,12 @@ import { notifyAdminsDeskAmlFlag } from "../notification-service";
 
 type FlagRef = { userId: string; txnId: string; type: "STAKE_SPIKE" | "VELOCITY" };
 
-/** Mark designated accounts and claim one owner alert for each live finding. No account details enter copy or logs. */
+/** Mark present and former desk accounts and claim one owner alert for each live finding.
+ * Removal cannot erase a flag on a stake that was placed while the account was designated.
+ * A later flag on the same account is also sent for review; this errs toward escalation.
+ * No account details enter copy or logs. */
 export async function escalateDeskAmlFlags(flags: readonly FlagRef[]): Promise<ReadonlySet<string>> {
-  const designated = new Set((await houseBotStore.listNonRemoved()).map((account) => account.userId));
+  const designated = new Set(await houseBotStore.listEverDesignatedUserIds());
   const keys = new Set<string>();
   for (const flag of flags) {
     if (!designated.has(flag.userId)) continue;

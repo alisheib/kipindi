@@ -1430,6 +1430,8 @@ export interface HouseBotStore {
   listByUserId(userId: string, tx?: HouseTx): Promise<StoredHouseBot[]>;
   /** Every non-REMOVED bot, oldest designation first. */
   listNonRemoved(tx?: HouseTx): Promise<StoredHouseBot[]>;
+  /** Every account ever designated, including REMOVED records retained for AML review. */
+  listEverDesignatedUserIds(tx?: HouseTx): Promise<string[]>;
   countLive(tx?: HouseTx): Promise<number>;
   /** Status move conditional on `from`. A removal stamps `removedAt` on the database clock. */
   setStatus(id: string, input: SetStatusInput, tx?: HouseTx): Promise<StoredHouseBot | null>;
@@ -2458,6 +2460,9 @@ const memoryHouseBots: HouseBotStore = {
   async listNonRemoved() {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED")
       .sort((a, b) => ms(a.designatedAt) - ms(b.designatedAt)).map(clone);
+  },
+  async listEverDesignatedUserIds() {
+    return [...new Set([...memBots.values()].map((b) => b.userId))].sort();
   },
   async countLive() {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED").length;
@@ -3816,6 +3821,10 @@ const prismaHouseBots: HouseBotStore = {
   async listNonRemoved(tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "status" <> 'REMOVED' ORDER BY "designatedAt" ASC`, []);
     return rows.map(toHouseBot);
+  },
+  async listEverDesignatedUserIds(tx) {
+    const rows = await sql(tx, `SELECT DISTINCT "userId" FROM "HouseBot" ORDER BY "userId"`, []);
+    return rows.map((r) => String(r.userId));
   },
   async countLive(tx) {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBot" WHERE "status" <> 'REMOVED'`, []);
