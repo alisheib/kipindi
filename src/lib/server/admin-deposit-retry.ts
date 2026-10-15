@@ -63,7 +63,7 @@ export async function retryFailedDepositFromAdmin(originalId: string, actorId: s
       if (!original || original.userId !== initial.userId || original.type !== "DEPOSIT")
         return { kind: "blocked", error: "The original deposit changed. Refresh before retrying." };
       if (hasDepositStatusReview(original)) return { kind: "review", reason: "original has a contradictory provider result" };
-      const child = await db.txn.findByIdempotencyKey(key);
+      const child = await db.txn.findByIdempotencyKey(key, tx);
       if (child && !matchesChild(original, child, key))
         return markReview(original, "retry key belongs to another funding identity", tx);
       if (original.status === "CANCELLED" && child) return { kind: "child", original, child };
@@ -129,7 +129,7 @@ export async function retryFailedDepositFromAdmin(originalId: string, actorId: s
   try {
     finish = await withLock(`wallet:${initial.userId}`, async (tx): Promise<Finish> => {
       const original = await db.txn.findById(originalId, tx);
-      const persistedChild = await db.txn.findByIdempotencyKey(key);
+      const persistedChild = await db.txn.findByIdempotencyKey(key, tx);
       if (!original || !persistedChild || !matchesChild(original, persistedChild, key)) {
         if (original) await markReview(original, "replacement identity could not be verified", tx);
         return { kind: "review", reason: "replacement identity could not be verified" };

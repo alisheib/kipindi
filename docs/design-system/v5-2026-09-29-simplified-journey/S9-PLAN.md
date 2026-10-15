@@ -998,7 +998,9 @@ second credit is introduced here.
 The pre-dispatch wallet lock also writes `deposit-admin-retry-claimed:v1` to the existing `providerStatus`
 column before releasing the lock for provider I/O. Cancel therefore cannot close the original during the
 gap before child reservation. A repeat retry on a claimed row uses only the same deterministic child key;
-the admin queue labels that row "Retry unresolved", offers "Check retry", and omits Cancel. This marker
+the admin queue labels that row "Retry unresolved", offers "Check retry", and omits Cancel. The two
+child lookups inside that wallet lock use its same PostgreSQL transaction, avoiding a second connection
+and preserving the lock's read context. This marker
 needs no schema change or backfill. It is reached only from an exact verified-negative marker, so old
 FAILED and terminal-review rows remain locked out. A process failure before child reservation leaves the
 claim recoverable through the same key. A reserved child lacking its pre-dispatch provider reference is
@@ -1030,8 +1032,10 @@ in the published Checkout API shape; the read-only order-status/list-orders resp
 recovery remains held on `codex/s9-card-held` until a controlled response or provider confirmation
 establishes the exact redirect host. The releasable core has no Card URL persistence or resume button.
 
-The core admin gate passed **14/14 memory controls**, including a deliberate legacy-gate mutation that
-would send a second collection, and **13/13 disposable PostgreSQL controls** after all **104** migrations.
+The core admin gate passed **15/15 memory controls**, including a deliberate legacy-gate mutation that
+would send a second collection and a child-read transaction check. The prior checkpoint passed **13/13
+disposable PostgreSQL controls** after all **104** migrations; repeat that PG proof on the tx-aware
+follow-up tip before integration.
 These include Cancel-versus-Retry overlap before child reservation and recovery of a claimed row after a
 lost process answer, plus a pre-dispatch child with no reference. A repeat SELECT-only production preflight at **12:52:50 UTC** found zero duplicate
 non-null provider-reference groups or excess rows, and only the prior non-unique reference index. Re-run

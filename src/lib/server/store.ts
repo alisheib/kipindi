@@ -2981,7 +2981,7 @@ const memoryDb = {
       const all = Array.from(store.txns.values()).filter((t) => matchesFilters(t, f));
       return { rows: sortAndPage(all, f), total: all.length, summary: summarise(all) };
     },
-    findByIdempotencyKey: (key: string): StoredTxn | null => {
+    findByIdempotencyKey: (key: string, _tx?: unknown): StoredTxn | null => {
       for (const t of store.txns.values()) if (t.idempotencyKey === key) return t;
       return null;
     },

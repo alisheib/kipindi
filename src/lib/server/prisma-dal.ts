@@ -2665,8 +2665,8 @@ export const prismaDb = {
       }) as unknown as StoredTxn));
       return { rows: rows.map(toStoredTxn), total, summary };
     },
-    findByIdempotencyKey: async (key: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
+    findByIdempotencyKey: async (key: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findUnique({ where: { idempotencyKey: key } });
       return row ? toStoredTxn(row) : null;
     },
     sumDepositsSince: async (userId: string, sinceMs: number, includePending = false): Promise<number> => {

@@ -70,6 +70,7 @@ async function oldDeposit(userId: string, patch: Record<string, unknown> = {}) {
 
 function scenario(source = HELPER) {
   const audits: any[] = [];
+  const childReads: Array<{ argc: number; transaction: boolean }> = [];
   let dispatches = 0, loseAnswer = false, failBeforeReservation = false, stopAfterReservation = false;
   let beforeReservation: (() => Promise<void>) | null = null;
   let duringDispatch: ((child: any) => Promise<void>) | null = null;
@@ -98,12 +99,18 @@ function scenario(source = HELPER) {
     }
     return { ok: true, data: { txnId: reserved.row.id, status: reserved.row.status } };
   };
+  const observedDb = { ...db, txn: { ...db.txn,
+    findByIdempotencyKey: (...args: any[]) => {
+      childReads.push({ argc: args.length, transaction: args.length > 1 && args[1] != null });
+      return (db.txn.findByIdempotencyKey as (...a: any[]) => any)(...args);
+    },
+  } };
   const imports: Record<string, unknown> = {
     "node:crypto": { createHash }, "@/lib/journey/deposit-state": Funding,
     "@/lib/payment-providers": Methods, "@/lib/wallet/deposit-review": Review,
     "@/lib/wallet/admin-deposit-retry-policy": Policy,
     "./audit": { audit: async (a: any) => { audits.push(a); return { recorded: true }; } },
-    "./locks": Locks, "./store": { db }, "./wallet-service": { deposit: fakeDeposit },
+    "./locks": Locks, "./store": { db: observedDb }, "./wallet-service": { deposit: fakeDeposit },
   };
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   const module = { exports: {} as any };
@@ -117,7 +124,7 @@ function scenario(source = HELPER) {
     set failBeforeReservation(v: boolean) { failBeforeReservation = v; },
     set stopAfterReservation(v: boolean) { stopAfterReservation = v; },
     set beforeReservation(fn: (() => Promise<void>) | null) { beforeReservation = fn; },
-    set duringDispatch(fn: ((child: any) => Promise<void>) | null) { duringDispatch = fn; }, audits };
+    set duringDispatch(fn: ((child: any) => Promise<void>) | null) { duringDispatch = fn; }, childReads, audits };
 }
 function action(name: string, deps: Record<string, unknown>) {
   let code = fn(ACTIONS, name);
@@ -152,6 +159,9 @@ const again = await lost.retry(original.id, "officer_s9", "single");
 ok("lost-response.one-child-one-dispatch", first.ok && again.ok && first.childTxnId === child?.id
   && again.childTxnId === child.id && lost.dispatches === 1 && (await db.txn.findById(original.id))?.status === "CANCELLED");
 ok("lost-response.owned-key", child?.idempotencyKey === lost.key(original.id) && child.userId === owner);
+ok("child-reads.join-wallet-transaction", lost.childReads.filter(r => r.argc === 2).length >= 4
+  && lost.childReads.filter(r => r.argc === 1).length === 1
+  && (!PG || lost.childReads.every(r => r.argc === 1 || r.transaction)));
 
 const claimOwner = await player(), claimOld = await oldDeposit(claimOwner), claimRace = scenario();
 let cancelledDuringGap: any, claimedQueue: any;
