@@ -23,6 +23,8 @@ const SECTIONS = ["controls", "v20", "keyboard", "once", "lock", "host", "lifecy
 const ONLY = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (ONLY.some(s => !SECTIONS.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${SECTIONS.join(",")}`); process.exit(2); }
 const run = s => !ONLY.length || ONLY.includes(s);
+const MATRIX_ONLY = process.env.KP_MATRIX_ONLY ?? "";
+if (MATRIX_ONLY && (MATRIX_ONLY !== "rate" || ONLY.join(",") !== "matrix")) { console.error("REFUSED: KP_MATRIX_ONLY=rate requires KP_ONLY=matrix"); process.exit(2); }
 const LOCALES = (process.env.KP_LOCALES ?? "sw,en,zh").split(",");
 const WIDTHS = (process.env.KP_WIDTHS ?? "320,360,390,1280").split(",").map(Number);
 if (LOCALES.some(locale => !["sw", "en", "zh"].includes(locale)) || WIDTHS.some(width => ![320, 360, 390, 1280].includes(width))) { console.error("REFUSED: invalid locale/width selection"); process.exit(2); }
@@ -34,6 +36,7 @@ if (pre.refuse || pre.health?.security?.adminTotp !== "DISABLED") { console.erro
 mkdirSync(OUT, { recursive: true });
 const results = [], consoleRows = [], observations = [];
 let tiles = 0;
+let lastPage = null;
 function result(label, state, detail = "") { results.push({ label, state, detail }); console.log(`${state} ${label}${detail ? ` — ${detail}` : ""}`); }
 const ok = (label, test, detail = "") => result(label, test ? "PASS" : "FAIL", detail);
 const nm = (label, why) => result(label, "NOT MEASURED", why);
@@ -63,8 +66,12 @@ async function context(locale = "en", viewport = { width: 390, height: 844 }, { 
 }
 async function pageIn(ctx, route = "/") {
   const page = await ctx.newPage();
+  lastPage = page;
   await readyProbe(page);
   await page.bringToFront();
+  if (process.env.KP_TRACE === "1") page.on("framenavigated", frame => {
+    if (frame === page.mainFrame()) consoleRows.push({ route, type: "document-navigation", text: frame.url() });
+  });
   page.on("console", m => {
     if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() });
     if (/hydrated but|hydration failed|server rendered HTML didn't match/i.test(m.text())) result(`${route}: hydration mismatch`, "FAIL", "Full console text, attribute and element retained in evidence.json");
@@ -99,6 +106,11 @@ async function readyProbe(page) {
       const identity = node => node instanceof Element ? { tag: node.tagName, id: node.id, testid: node.getAttribute("data-testid"), nearestSheet: node.closest('[data-testid="journey-bet-sheet"]')?.getAttribute("data-frame"), nearestDialog: node.closest('[role="dialog"]')?.getAttribute("aria-labelledby") } : null;
       const address = () => { const url = new URL(location.href), query = new URLSearchParams(); for (const key of ["bet", "side", "cat", "sort", "cursor"]) if (url.searchParams.has(key)) query.set(key, url.searchParams.get(key)); return url.pathname + (query.size ? `?${query}` : ""); };
       const record = (type, more = {}) => { if (window.__sheetTrace.length < 600) window.__sheetTrace.push({ type, ms: performance.now(), ready: document.readyState, document: window.__sheetDocument, address: address(), active: identity(document.activeElement), ...more }); };
+      try { window.__sheetTracePrevious = JSON.parse(sessionStorage.getItem("__s8_sheet_trace_before_unload") ?? "null"); } catch { window.__sheetTracePrevious = null; }
+      window.addEventListener("beforeunload", () => {
+        record("beforeunload");
+        try { sessionStorage.setItem("__s8_sheet_trace_before_unload", JSON.stringify(window.__sheetTrace)); } catch { /* diagnostic only */ }
+      }, true);
       for (const type of ["focusin", "focusout"]) document.addEventListener(type, event => record(type, { target: identity(event.target), related: identity(event.relatedTarget) }), true);
       for (const type of ["DOMContentLoaded", "load", "pageshow", "popstate", "pagehide"]) window.addEventListener(type, () => record(type), true);
       const focus = HTMLElement.prototype.focus;
@@ -123,7 +135,10 @@ async function readyProbe(page) {
   }, process.env.KP_TRACE === "1");
 }
 async function tile(page, label) {
+  const expectedReceipt = /(?:^|-)receipt$/.test(label);
   const receipt = await page.locator(`${S.root}[data-frame="receipt"]`).count() > 0;
+  if (expectedReceipt && !receipt) throw new Error(`${label}: receipt frame vanished before capture at ${page.url()}`);
+  if (receipt) await holdReceipt(page);
   await page.evaluate(async selector => {
     await document.fonts.ready;
     const root=document.querySelector(selector),dialog=root?.closest('[role="dialog"]');
@@ -148,12 +163,16 @@ async function tile(page, label) {
       throw new Error(`${label}: receipt did not settle ${JSON.stringify(state)}; ${String(error)}`);
     }
   }
+  if (expectedReceipt && !(await page.locator(`${S.root}[data-frame="receipt"]`).count()))
+    throw new Error(`${label}: receipt frame vanished while settling capture at ${page.url()}`);
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
   // Playwright's default caret hiding writes an inline style on hidden preview-form inputs.
   // A screenshot during hydration then creates a mismatch that the app did not render.
   await page.screenshot({ path: join(OUT, filename), fullPage: false, caret: "initial" });
+  if (expectedReceipt && !(await page.locator(`${S.root}[data-frame="receipt"]`).count()))
+    throw new Error(`${label}: receipt frame vanished during capture at ${page.url()}`);
   results.push({ label, state: "TILE", file: filename });
-  if (process.env.KP_TRACE === "1") observations.push({ label, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
+  if (process.env.KP_TRACE === "1") observations.push({ label, trace: await page.evaluate(() => ({ current: window.__sheetTrace ?? [], previous: window.__sheetTracePrevious ?? null })) });
 }
 async function probe(page, expected = {}) {
   const got = await page.evaluate(betSheetDomProbe, S);
@@ -181,8 +200,16 @@ async function open(page, wantedId = null, side = "YES") {
   return seed;
 }
 async function waitFrame(page, frame) {
-  try { await page.waitForFunction(([selector, frame]) => document.querySelector(selector)?.getAttribute("data-frame") === frame, [S.root, frame], { timeout: 90_000 }); await page.waitForTimeout(200); }
+  try { await page.waitForFunction(([selector, frame]) => document.querySelector(selector)?.getAttribute("data-frame") === frame, [S.root, frame], { timeout: 90_000 }); if (frame === "receipt") await holdReceipt(page); await page.waitForTimeout(200); }
   catch (error) { throw new Error(`Expected ${frame}; actual ${JSON.stringify((await probe(page)).got)}; ${error.message}`); }
+}
+/** A receipt normally dismisses after five seconds. The real pointer interaction pauses that dwell while the
+ * visual drive reads the money rows and captures the tile; two moves are required by the component's pointer rule. */
+async function holdReceipt(page) {
+  const box = await page.locator(`${S.root}[data-frame="receipt"]`).boundingBox({ timeout: 1_500 });
+  if (!box) throw new Error("Receipt vanished before its pointer hold");
+  await page.mouse.move(box.x + Math.min(40, box.width / 4), box.y + Math.min(40, box.height / 4));
+  await page.mouse.move(box.x + Math.min(48, box.width / 3), box.y + Math.min(44, box.height / 3));
 }
 /** A native push/replaceState event is not a new document. Wait for this probe's init script
  * to run again, then for the new document's rendered sheet and field, before reading recovery. */
@@ -446,6 +473,7 @@ try {
       if (process.env.KP_TRACE === "1") observations.push({ label: `${label}-after-reload${repeat}`, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
     }
     await page.locator(S.place).focus();
+    const commitDocument = await page.evaluate(() => window.__sheetDocument);
     const before = await observed(ctx, seed.id);
     await page.keyboard.down("Enter"); await page.keyboard.down("Enter"); await page.keyboard.up("Enter");
     await waitFrame(page, "receipt");
@@ -453,7 +481,13 @@ try {
     const errors = onceOnlyVerdict(before, after, watch.requests.length);
     ok(`${label}: focused/held Enter commits exactly once`, !errors.length, errors.join(";"));
     ok(`${label}: receipt strips bet/side address`, !new URL(page.url()).searchParams.has("bet") && !new URL(page.url()).searchParams.has("side"), new URL(page.url()).pathname + new URL(page.url()).search);
-    await tile(page, `${label}-receipt`);
+    try { await tile(page, `${label}-receipt`); }
+    catch (error) {
+      const postCommit = await page.evaluate(selector => ({ document: window.__sheetDocument, frame: document.querySelector(selector)?.getAttribute("data-frame") ?? "closed" }), S.root).catch(() => null);
+      if (postCommit?.document && postCommit.document !== commitDocument && postCommit.frame === "closed")
+        nm(`${label}: receipt visual tile`, `The document reloaded after the receipt before capture; ${String(error.message).split("\n")[0]}`);
+      else throw error;
+    }
     watch.stop(); await ctx.close(); contexts.delete(ctx);
   }
 
@@ -833,6 +867,7 @@ try {
   }
 
   if (run("matrix")) {
+    if (!MATRIX_ONLY) {
     SESSION = await demoSession(browser, BASE);
     const ctx = await context(), page = await pageIn(ctx), seed = await open(page);
     const beforeMaintenance = await observed(ctx, seed.id);
@@ -944,6 +979,7 @@ try {
       await post(admin, "fast-forward-market", { marketId: seed.id, seconds: 7 * 86400, selectionSeconds: 6 * 86400 });
       watch.stop(); await closeContext(player);
     }
+    }
     {
       await post(admin, "reset-rate-limits");
       const { ctx: player } = await freshPlayer(), page = await pageIn(player), seed = await open(page), watch = actionWatch(page);
@@ -951,15 +987,20 @@ try {
       const request = watch.requests[0]; if (!request) throw new Error("Rate cell lacks first real action");
       const headers = await request.allHeaders(); delete headers["content-length"]; delete headers.host; delete headers.connection;
       await Promise.all(Array.from({ length: 35 }, () => player.request.post(request.url(), { headers, data: request.postData(), timeout: 90_000 })));
-      const before = await observed(player, seed.id);
-      await page.locator(".kp-bsheet__continue").click(); await page.locator(S.root).waitFor({ state: "hidden" }); await open(page, seed.id);
+      const nextId = catalogue.ids.find(market => market.id !== seed.id)?.id;
+      if (!nextId) throw new Error("Rate-capacity cell needs a second open question; the first side is already held");
+      const before = await observed(player, nextId);
+      await page.locator(".kp-bsheet__continue").click(); await page.locator(S.root).waitFor({ state: "hidden" }); await open(page, nextId);
+      await waitFrame(page, "edit");
       await page.locator(S.place).click(); await page.waitForTimeout(300);
-      const p = (await probe(page)).got, after = await observed(player, seed.id);
+      const p = (await probe(page)).got, after = await observed(player, nextId);
       ok("real bet.place capacity exhausted by same-key service replays: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
       await tile(page, "matrix-rate-capacity"); await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
     }
-    await coolingOffDrive();
-    for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
+    if (!MATRIX_ONLY) {
+      await coolingOffDrive();
+      for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
+    }
   }
 
   if(run("cooling")&&!run("matrix"))await coolingOffDrive();
@@ -1097,6 +1138,14 @@ try {
     }
   }
 } catch (error) {
+  if (process.env.KP_TRACE === "1" && lastPage && !lastPage.isClosed()) {
+    observations.push({ label: "drive-failure-state", trace: await lastPage.evaluate(() => ({
+      current: window.__sheetTrace ?? [], previous: window.__sheetTracePrevious ?? null,
+      address: location.pathname + location.search,
+      frame: document.querySelector('[data-testid="journey-bet-sheet"]')?.getAttribute("data-frame") ?? "closed",
+      navigationType: performance.getEntriesByType("navigation")[0]?.type ?? null,
+    })).catch(readError => ({ readError: String(readError), address: lastPage.url() })) });
+  }
   for (const page of await admin.pages()) if (new URL(page.url()).pathname === "/admin/payments") await tile(page, "invalid-payments-premise").catch(() => {});
   const diagnostic = String(error?.stack ?? error);
   result("drive stopped on invalid premise or runtime error", "FAIL", diagnostic.split("Call log:")[0].trim() + "\n" + diagnostic.split(/\r?\n/).filter(line => /^\s+at /.test(line) && /scripts[\\/]|qa-bet-sheet/.test(line)).join("\n"));
