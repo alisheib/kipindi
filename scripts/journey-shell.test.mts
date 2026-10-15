@@ -285,6 +285,13 @@ const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
  *  switches the journey on mounts it in the commit that first paints them. It is the `journeyShown &&` arm itself — it
  *  has no classic twin — so 12.shell.flag holds it, not 12.shell.bare's ternaries. */
 const BARE_FLAG = "LazyJourneyFlag";
+/** S9 adds a second, early shell arm for journey payments. It is guarded by the resolved journey answer. */
+const FOCUSED_PAYMENT_ARM = "if (isFocusedJourneyPaymentPath(pathname) && (await journeyRead).journey) {";
+function focusedPaymentArm(shell: string): string {
+  const start = shell.indexOf(FOCUSED_PAYMENT_ARM);
+  const end = start < 0 ? -1 : shell.indexOf("\n  let topUser:", start);
+  return start < 0 || end < 0 ? "" : shell.slice(start, end);
+}
 /** A part's one line in the shell's lazy module, exactly as it is written there. */
 const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -469,7 +476,9 @@ const EXPECTED: Record<string, Expect> = {
   "/updown": U, "/updown/[roundId]": U,
   "/updown/history": T, "/positions": T, "/positions/[positionId]": T, "/positions/performance": T,
   "/account": A,
-  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A, "/wallet/receipts": A, "/wallet/withdraw": A,
+  "/wallet": A, "/wallet/deposit": A, "/wallet/deposit/card": A, "/wallet/deposit/wait": A,
+  "/wallet/deposit/wait/[id]": A, "/wallet/deposit/return": A, "/wallet/receipt/[id]": A,
+  "/wallet/receipts": A, "/wallet/withdraw": A,
   "/profile": A, "/profile/account": A, "/profile/activity": A, "/profile/invite": A, "/profile/kyc": A,
   "/profile/notifications": A, "/profile/responsible-gambling": A, "/profile/security": A, "/profile/sessions": A,
   "/profile/source-of-funds": A,
@@ -867,11 +876,13 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
   // ⚠️ BARE SINCE ROUND 5'S FOLLOW-UP (R5-H, G-3): 12.shell.flag holds why.
   const flagMount = "{journeyShown && <LazyJourneyFlag />}";
   const shellText = text(W, SHELL);
+  const focused = focusedPaymentArm(shellText);
+  const focusedFlag = focused.includes('data-focused-payment=""') && count(focused, "<LazyJourneyFlag") === 1;
   const direct = [...W.files].filter(([p, s]) => p !== FLAG_COMPONENT && s.includes("<JourneyFlag")).map(([p]) => p);
   const lazyElsewhere = [...W.files].filter(([p, s]) => p !== SHELL && s.includes("<LazyJourneyFlag")).map(([p]) => p);
   const mounted = { once: count(shellText, flagMount), lazy: count(shellText, "<LazyJourneyFlag"), direct, lazyElsewhere };
-  ok("5.mount · JourneyFlag is mounted once, in AppShell, only behind journeyShown (WP7) — nothing renders it otherwise, so a classic page never carries data-journey",
-    mounted.once === 1 && mounted.lazy === 1 && direct.length === 0 && lazyElsewhere.length === 0, show(mounted));
+  ok("5.mount · JourneyFlag is mounted only in the journey shell and S9's resolved focused payment arm; classic pages never carry data-journey",
+    mounted.once === 1 && mounted.lazy === 2 && focusedFlag && direct.length === 0 && lazyElsewhere.length === 0, show({ ...mounted, focusedFlag }));
   // ⭐ THE SHELL'S MARK (WP7's drive, 2026-10-03): the same answer, written into the server's HTML, so the first frame
   // after hydration is already right. Once, in AppShell, behind the resolver's answer; read by the hook; nowhere else.
   const markMount = "{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}";
@@ -884,8 +895,9 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
     markUsers,
     id: MARK.JOURNEY_SHELL_MARK,
   };
-  ok("5.mark.mount · AppShell writes the shell's mark once, only behind journeyShown, as a plain element in the server's HTML, and the hook reads it — nothing else touches it, so a classic page never carries it",
-    marks.once === 1 && marks.rendered === 1 && marks.shellImports && marks.hookReads && markUsers.length === 0 && marks.id === "kp-journey-shell", show(marks));
+  const focusedMark = focused.includes('data-focused-payment=""') && count(focused, "id={JOURNEY_SHELL_MARK}") === 1;
+  ok("5.mark.mount · AppShell writes the shell mark only in the journey shell and S9's resolved focused payment arm",
+    marks.once === 1 && marks.rendered === 2 && focusedMark && marks.shellImports && marks.hookReads && markUsers.length === 0 && marks.id === "kp-journey-shell", show({ ...marks, focusedMark }));
   const markSrc = text(W, MARK_HOME);
   ok("5.mark.pure · shell-mark.ts is pure — no import, no directive — because the server shell and the client hook both load it",
     markSrc.includes("export const JOURNEY_SHELL_MARK") && !markSrc.includes("import") && !isClient(markSrc) && !hasDirective(markSrc, "use server"));
@@ -2505,10 +2517,10 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     shell.length > 0 && lazyHit === null && !LAZY_IMPORT.test(shell), show({ lazyHit, imported: LAZY_IMPORT.test(shell) }));
   const imported = importedNames(W, SHELL, SHELL_LAZY);
   const rendered = [...shell.matchAll(LAZY_TAG)].map((m) => m[1]);
-  const notOnce = table.filter((b) => rendered.filter((r) => r === b).length !== 1);
+  const notOnce = table.filter((b) => rendered.filter((r) => r === b).length !== (b === BARE_FLAG ? 2 : 1));
   const stray = [...new Set(rendered.filter((r) => !table.includes(r)))];
   const ownBinding = new RegExp("(?:const|let|var|function|class)[ ]+Lazy[A-Za-z0-9_]*").test(shell);
-  ok(`12.shell.parts · every lazily loaded part AppShell renders is imported from the shell's lazy module under its table name, and rendered once (${table.length})`,
+  ok(`12.shell.parts · every lazy shell part is imported from the one module; S9's flag also mounts in its focused payment arm (${table.length} parts)`,
     show([...imported].sort()) === show([...table].sort()) && notOnce.length === 0 && stray.length === 0 && !ownBinding,
     show({ imported, notOnce, stray, ownBinding }));
   const flat = squash(shell);
@@ -2519,9 +2531,11 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
   const emptyBox = count(flat, `className="kp-jhdr"`);
   ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
     chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
-  const flagArm = { arm: count(flat, `{journeyShown && <${BARE_FLAG} />}`), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length, tags: count(flat, `<${BARE_FLAG}`) };
-  ok("12.shell.flag · the journey flag stands in NO Suspense boundary either (round 5's follow-up, R5-H · G-3): the journeyShown arm itself, beside the header and the tabs, so a refresh that switches the journey on waits for its chunk as for theirs and mounts it in the commit that first paints them — and its layout effect raises the flag before that paint",
-    flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 1, show(flagArm));
+  const focused = focusedPaymentArm(shell);
+  const flagArm = { arm: count(flat, `{journeyShown && <${BARE_FLAG} />}`), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length,
+    tags: count(flat, `<${BARE_FLAG}`), focused: count(focused, `<${BARE_FLAG} />`) };
+  ok("12.shell.flag · the journey flag stays bare beside the chrome and bare in S9's resolved focused payment arm",
+    flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 2 && flagArm.focused === 1, show(flagArm));
   const offline = {
     imported: importedNames(W, SHELL, OFFLINE_BANNER), mounted: count(flat, OFFLINE_MOUNT), tags: count(shell, "<OfflineBanner"),
     deferred: (G.out.get(SHELL_LAZY) ?? []).includes(OFFLINE_BANNER), loaders: [...(G.into.get(OFFLINE_BANNER) ?? [])].sort(),
