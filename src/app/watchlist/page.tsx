@@ -233,7 +233,7 @@ export default async function WatchlistPage({
           body={emptyBody}
           action={
             cause === "no-rows" ? (
-              <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.watchlist.browseMarkets}</Link>
+              <Link href={(journey ? "/" : "/markets") as never} className="btn btn-primary btn-sm">{t.watchlist.browseMarkets}</Link>
             ) : (
               <Link href={buildFollowHref(state, { lens: "all", cat: "all", q: "" })} className="btn btn-ghost btn-sm">
                 {t.common.clearAll}

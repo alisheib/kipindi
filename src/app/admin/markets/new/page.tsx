@@ -21,7 +21,6 @@ async function NewMarketPageContent() {
       ? {
           model: "loser-share" as const,
           feePct: ((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0),
-          estMult: (1 + config.estimatedWinningsRate).toFixed(2),
           showEstimate: config.showEstimatedWinnings,
         }
       : {

@@ -88,7 +88,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
             value={config.feeModel === "loser-share" ? "Loser-share" : "Capped"}
             delta={
               config.feeModel === "loser-share"
-                ? `${((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of losing pool · players see ${(1 + config.estimatedWinningsRate).toFixed(1)}× estimate`
+                ? `${((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of losing pool · journey estimates follow the pools`
                 : "min(commission, ceiling) · outcome-neutral"
             }
           />
@@ -124,10 +124,10 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
                 <p>
                   New polls charge{" "}
                   <code className="font-mono text-text">fee = (platform + operator) × losingPool</code>{" "}
-                  = {((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of whichever side loses, and
-                  players are shown a fixed{" "}
-                  <code className="font-mono text-text">{(1 + config.estimatedWinningsRate).toFixed(2)}×</code>{" "}
-                  &ldquo;possible winnings&rdquo; estimate before betting (with a disclaimer that it is an estimate).
+                  = {((config.platformFeeRate + config.operatorFeeRate) * 100).toFixed(0)}% of whichever side loses.
+                  When enabled, the journey shows a qualified pre-bet estimate from each poll&apos;s frozen fee rates
+                  and current pools. The figure can change before betting closes; the sheet refreshes it before a bet.
+                  The fixed estimate setting below remains for the classic dial during rollback.
                 </p>
                 <p>
                   <strong className="text-text">This is outcome-dependent</strong> — the fee differs by which side wins,

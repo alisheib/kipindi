@@ -2494,6 +2494,10 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
       .replace('session && (journey ? (', 'session && (')
       .replace('journey && bettingOpen && !breakBody && questionSeed', 'bettingOpen && !breakBody && questionSeed');
     if (n === "question" || n === "watch") rest = rest.replace(/const journeyCards = journey \? await journeyCardState\([^;]+;\s*/g, "");
+    // S15: the empty-state way back to discovery must go straight to Questions for a journey reader,
+    // while a classic rollback reader still gets the board. This is separate from the card slot.
+    if (n === "watch") rest = rest.replace('href={(journey ? "/" : "/markets") as never}', 'href={"/markets" as never}');
+    if (n === "results") rest = rest.replace('href={journey ? "/" : "/markets"}', 'href="/markets"');
     const stray = (rest.match(PG_JOURNEY_ID) ?? []).length;
     const problems = [
       s.openers !== 1 ? `${s.openers} openers` : "",
@@ -2506,8 +2510,11 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     ].filter((p) => p !== "");
     return problems.length > 0 ? [[n, problems]] : [];
   });
-  ok("9.slot · each page's cards' slot is ONE ternary on the resolver's answer — the journey arm first, then the classic arm, today's markup line for line (pinned at its first and last lines, at today's indentation, never wrapped) — and the page reads journey nowhere else (the similar rail's heading words aside): no journey && sibling, which would add a false child to every classic payload",
+  ok("9.slot · each page's cards' slot is ONE ternary on the resolver's answer — the journey arm first, then the classic arm, today's markup line for line (pinned at its first and last lines, at today's indentation, never wrapped) — and the page reads journey nowhere else (the similar rail's heading words and S15 discovery links aside): no journey && sibling, which would add a false child to every classic payload",
     badSlot.length === 0, j(badSlot));
+  ok("9.browse · an empty journey watchlist or results page links directly to Questions; a classic reader keeps /markets for rollback",
+    code.watch.includes('href={(journey ? "/" : "/markets") as never}')
+    && code.results.includes('href={journey ? "/" : "/markets"}'));
 
   /* what each site hands the card (WP10 Gates) */
   const noCards = PG_NAMES.filter((n) => cards[n].length === 0);

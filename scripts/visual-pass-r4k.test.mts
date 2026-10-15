@@ -393,9 +393,9 @@ section("9 · E48 — the 404 a player's not-found page logs is its own Server A
     code("src/lib/journey/use-unread-count.ts").includes(`import { fetchMyNotifications } from "@/app/_actions/notifications";`) && /^["']use server["']/.test(read("src/app/_actions/notifications.ts")));
   // Every file the root layout and the manifest name exists: the 404 is not a missing asset.
   const layout = code("src/app/layout.tsx");
-  const manifest = JSON.parse(read("public/manifest.json")) as { icons: Array<{ src: string }>; shortcuts: Array<{ icons: Array<{ src: string }> }>; screenshots: Array<{ src: string }> };
+  const manifest = JSON.parse(read("public/manifest.json")) as { icons: Array<{ src: string }>; shortcuts: Array<{ icons?: Array<{ src: string }> }>; screenshots: Array<{ src: string }> };
   const named = [...layout.matchAll(/(?:url|manifest|images):\s*\[?\s*\{?\s*(?:url:\s*)?"(\/[^"]+)"/g)].map((m) => m[1])
-    .concat(manifest.icons.map((i) => i.src), manifest.shortcuts.flatMap((s) => s.icons.map((i) => i.src)), manifest.screenshots.map((s) => s.src));
+    .concat(manifest.icons.map((i) => i.src), manifest.shortcuts.flatMap((s) => (s.icons ?? []).map((i) => i.src)), manifest.screenshots.map((s) => s.src));
   const missing = named.filter((p) => !existsSync(`public${p}`));
   ok(`9.4 · every icon, manifest, image and screenshot the layout and manifest name is in public/ (${named.length} checked)`, named.length >= 12 && missing.length === 0, missing.join(", "));
 }

@@ -11,6 +11,7 @@ import { openEmailVerifyLink } from "@/lib/server/email-verification";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { confirmEmailAction } from "./actions";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -20,6 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function VerifyEmailPage({ searchParams }: { searchParams?: Promise<{ token?: string; done?: string; reason?: string; retry?: string }> }) {
   const { t } = await getServerT();
+  const { journey } = await resolveSimpleJourney();
   const sp = (await searchParams) ?? {};
   // 🔴 A3 (route audit 2026-10-06) · OPENING THE LINK CONFIRMS ONLY FOR THE ACCOUNT HOLDER. It used to confirm during this
   // GET for anyone holding the link — a mail scanner, or the stranger who owns a mistyped address. A pending link now
@@ -170,13 +172,13 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
                     {t.wallet.openWallet}
                   </Link>
                 )}
-                <Link href="/markets" className={otherSignedIn ? "btn btn-primary btn-lg btn-pill w-full" : "btn btn-ghost btn-lg btn-pill w-full"}>
+                <Link href={journey ? "/" : "/markets"} className={otherSignedIn ? "btn btn-primary btn-lg btn-pill w-full" : "btn btn-ghost btn-lg btn-pill w-full"}>
                   {t.home.heroCta}
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/markets" className="btn btn-primary btn-lg btn-pill w-full">
+                <Link href={journey ? "/" : "/markets"} className="btn btn-primary btn-lg btn-pill w-full">
                   {t.home.heroCta}
                 </Link>
                 <Link

@@ -244,7 +244,7 @@ export default async function PerformancePage({
           kind="positions"
           title={journey ? t.journey.ticketsEmptySettled : t.performance.noPerformance}
           body={breakBody ?? t.performance.noPerformanceBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          action={breakBody ? null : <Link href={(journey ? "/" : "/markets") as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
         />
       ) : (
         <>
