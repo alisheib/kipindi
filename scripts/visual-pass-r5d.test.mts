@@ -724,7 +724,8 @@ section("5 · F4's pattern · every useSyncExternalStore reader is classified, a
 {
   // Both F4's answer and F5's CSS assume that a page that is left LEAVES the document in the commit that draws the next
   // one. Next 16 keeps left pages mounted in a hidden <Activity> only with `cacheComponents` on: then the old not-found's
-  // span would stay, `:root:has(#kp-not-found)` would rest the next page's tab, and `getElementById` could find the old span.
+  // span would stay, the not-found rule (read through `data-not-found` since A21) could rest the next page's tab, and
+  // `getElementById` could find the old span.
   const cfg = code("next.config.ts");
   const bf = raw("node_modules/next/dist/client/components/bfcache-state-manager.js"), lr = raw("node_modules/next/dist/client/components/layout-router.js");
   const leaves = (c: string) => !/\bcacheComponents\b/.test(c)

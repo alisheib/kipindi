@@ -310,7 +310,7 @@ section("7 · /fairness' step numerals stand on the card's content edge (tile 19
 /* ══ §8 · THE WALLET'S LINK RING ═════════════════════════════════════════════════════════════════════════════════ */
 section("8 · the Wallet's text links wear the house focus ring (tile 154)");
 {
-  const J = ":root:has(#kp-journey-shell) ";
+  const J = ':root:is([data-shell="journey"], #kp-journey-shell) ';
   const link = rule(CSS, `${J}.kp-wsheet__link`), focus = rule(CSS, `${J}.kp-wsheet__link:focus-visible`), btn = rule(CSS, ".btn:focus-visible");
   const halo = (s: string) => /box-shadow:\s*([^;]+);/.exec(s)?.[1]?.trim();
   const ringed = (l: string, f: string) => /border-radius:\s*var\(--r-sm\)/.test(l) && /padding-inline:\s*var\(--sp-1\)/.test(l) && /margin-inline:\s*calc\(-1 \* var\(--sp-1\)\)/.test(l)

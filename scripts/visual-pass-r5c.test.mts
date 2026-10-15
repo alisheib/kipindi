@@ -546,7 +546,7 @@ section("7 · the owner's items, pinned as they stand — classic chrome (frozen
   // 7.7 · the "coming soon" tag renders in the classic header, rail and avatar menu (frozen chrome) AND in page bodies
   // (the propose promo, /proposals). Bodies and the journey wear the neutral tag; the classic chrome keeps its tint.
   const csBase = rule(CSS, ".cs-badge");
-  const csScoped = /#main-content \.cs-badge,\s*:root:has\(#kp-journey-shell\) \.cs-badge\s*\{\s*background:\s*var\(--bg-inset\);\s*border-color:\s*var\(--border\);\s*\}/.test(CSS);
+  const csScoped = /#main-content \.cs-badge,\s*:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.cs-badge\s*\{\s*background:\s*var\(--bg-inset\);\s*border-color:\s*var\(--border\);\s*\}/.test(CSS);
   ok("7.7 · OWNER · the classic chrome's 'coming soon' tag keeps its gold tint; page bodies (#main-content) and the journey wear the neutral tag",
     /background:\s*color-mix\(in oklab, var\(--gold-500\) 9%, var\(--bg-inset\)\)/.test(csBase) && csScoped);
 }

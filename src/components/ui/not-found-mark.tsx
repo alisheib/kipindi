@@ -18,14 +18,19 @@
  * commit runs after the paint: a refresh that found the record at the same address painted one frame of "not found".
  * ⛔ Rendered by the shared not-found view only (`components/ui/not-found-view.tsx`), so every not-found answer carries
  * it and no other page can: `test:visual-pass-r4j` §5 holds both.
+ * ⭐ AND ARRIVING LOWERS THE PRE-SCRIPT FLAG (A21, 2026-10-14): `data-not-found` on <html>, raised by the root layout's
+ * load-time watcher (`lib/not-found-watch.ts`) so the CSS could rest the lit tab before any script ran. From this commit
+ * the chrome answers for itself (announced in the same layout effect, painted together), and a flag left up would rest
+ * the next page's tab after a client navigation.
  */
 import { useLayoutEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NOT_FOUND_MARK, announceNotFound, announceNotFoundAfterCommit } from "@/lib/not-found-mark";
+import { NOT_FOUND_FLAG } from "@/lib/not-found-watch";
 
 export function NotFoundMark() {
   const path = usePathname() ?? "";
-  useLayoutEffect(() => { announceNotFound(); }, [path]);
+  useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);
   useLayoutEffect(() => announceNotFoundAfterCommit, []);
   return <span hidden id={NOT_FOUND_MARK} data-path={path} />;
 }

@@ -371,14 +371,21 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     && read("src/components/journey/account/card-size-row.tsx").includes('<li className="sm:hidden">');
   ok("3.11 · the /account ghost stands in the page's own column (tier reading), with the page's h1 and the page's column cut; its hiding rows hide where the page's do", sameShape(acct));
   ok("3.11′ PLANT · a ghost in the board's column (the 100px jump of E38) is reported", !sameShape(acct.replace('<PageContainer tier="reading">', '<PageContainer tier="board">')));
-  const bar = read(JHDR);
-  const guestBy = (css: string, b: string) => /\n\.kp-hubghost--guest \{ display: none; \}/.test(css)
-    && /\n:root:has\(\.kp-jhdr__auth\) \.kp-hubghost--member \{ display: none; \}/.test(css)
-    && /\n:root:has\(\.kp-jhdr__auth\) p\.kp-hubghost--guest \{ display: block; \}/.test(css)
-    && /\n:root:has\(\.kp-jhdr__auth\) \.kp-hub__grid\.kp-hubghost--guest \{ display: grid; \}/.test(css)
-    && count(b, "kp-jhdr__auth") === 2 && b.includes("{state.authPills && (");
-  ok("3.12 · a guest is drawn a guest's hub, chosen by the header's own sign-in pills (a guest's alone, and in the first HTML since §1)", guestBy(CSS, bar));
-  ok("3.12′ PLANT · the pills renamed in the header (every guest drawn a member's hub) is reported", !guestBy(CSS, bar.split("kp-jhdr__auth").join("kp-jhdr__signin")));
+  const bar = read(JHDR), shellSrc = read("src/components/layout/app-shell.tsx");
+  // A21 (2026-10-14): the guest switch is `data-viewer="guest"` on #main-content, written by the shell that draws the
+  // header's sign-in pills, on the same condition (a journey request and no session) — it read `:root:has(.kp-jhdr__auth)`,
+  // a root `:has()`, before. `test:root-has` holds the root free of `:has()`.
+  const guestBy = (css: string, b: string, shell: string) => /\n\.kp-hubghost--guest \{ display: none; \}/.test(css)
+    && /\n:root \[data-viewer="guest"\] \.kp-hubghost--member \{ display: none; \}/.test(css)
+    && /\n:root \[data-viewer="guest"\] p\.kp-hubghost--guest \{ display: block; \}/.test(css)
+    && /\n:root \[data-viewer="guest"\] \.kp-hub__grid\.kp-hubghost--guest \{ display: grid; \}/.test(css)
+    && shell.includes('<MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>')
+    && shell.includes('<main id="main-content" className="flex-1" data-viewer={viewer}>') && shell.includes("isAuthed: true,")
+    && count(b, "kp-jhdr__auth") === 2 && b.includes("{state.authPills && (")
+    && read("src/lib/journey/header-state.ts").includes("authPills: !i.isAuthed");
+  ok("3.12 · a guest is drawn a guest's hub, chosen by the shell's own answer — `data-viewer=\"guest\"` on the main landmark exactly when the journey header shows its sign-in pills (both in the first HTML)", guestBy(CSS, bar, shellSrc));
+  ok("3.12′ PLANT · the switch written for a signed-in reader instead (every guest drawn a member's hub) is reported",
+    !guestBy(CSS, bar, shellSrc.replace('journeyShown && !session ? "guest"', 'journeyShown && session ? "guest"')));
 }
 {
   const live = read(LIVE_LOADING);
@@ -437,7 +444,7 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.1′ PLANT · the hook back to the span's presence (R4-J's: \"not found\" for the next page while the old span is up) is reported",
     !hookOk(lib.replace("return isNotFoundFor(markPath, path);", "return markPath !== null;")));
   const markOk = (s: string) => hasDirective(s, "use client") && s.includes('const path = usePathname() ?? "";')
-    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useLayoutEffect(() => announceNotFoundAfterCommit, []);")
+    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);") && squash(s).includes("useLayoutEffect(() => announceNotFoundAfterCommit, []);")
     && s.includes("return <span hidden id={NOT_FOUND_MARK} data-path={path} />;");
   const { PathnameContext: PathCtx } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
     PathnameContext: import("react").Context<string | null>;
@@ -449,7 +456,8 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
     markOk(mark) && drawnAt === '<span hidden="" id="kp-not-found" data-path="/markets/mkt_gone"></span>', drawnAt);
   ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useLayoutEffect(() => announceNotFoundAfterCommit, []);", "")));
   ok("5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported",
-    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); }, [path]);", "useEffect(() => { announceNotFound(); }, [path]);")));
+    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);",
+      "useEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);")));
   ok("5.2‴ PLANT · a mark that names no path (presence again) is reported", !markOk(mark.replace(" data-path={path} />", " />")));
   // Only client code may load the hook module (journey-on.ts's rule, for its reason).
   const files: string[] = [];
@@ -491,9 +499,13 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   // Before the scripts run: the server lit the tab the address names; the server's verdict in the same HTML unlights it,
   // by CSS, each lit value put back to the slot's own base value. ⚠️ MOVED IN ROUND 5 (review F5): the verdict is the
   // mark (an unmatched address) OR the boundary's 404 template (a record found missing inside a loading boundary).
+  // A21 (2026-10-14): the verdict is read by the root layout's load-time watcher, which raises `data-not-found` on <html>
+  // when the mark or the 404 template arrives (`lib/not-found-watch.ts`; `test:root-has` executes it); the rules read
+  // that flag. The id inside `:is()` matches nothing on <html> — it keeps the old `:root:has(…)` rule's specificity.
   const id = `#${NF.NOT_FOUND_MARK}, ${VERDICT}`;
+  const FLAGGED = `:root:is([data-not-found], #${NF.NOT_FOUND_MARK})`;
   const unlit = (css: string) => {
-    const at = (sel: string) => rule(css, `:root:has(${id}) ${sel}`);
+    const at = (sel: string) => rule(css, `${FLAGGED} ${sel}`);
     const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${esc(prop)}:\\s*([^;]+);`).exec(body)?.[1].trim();
     const base = { item: decl(rule(css, ".kp-rail__item"), "color"), label: decl(rule(css, ".kp-rail__label"), "font-weight"),
       link: decl(rule(css, ".kp-jnav__link"), "color"), after: decl(rule(css, ".kp-jnav__link::after"), "transform"),
@@ -510,9 +522,9 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   const now = unlit(CSS);
   ok(`5.12 · until the scripts run, the server's not-found verdict (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
   ok("5.12′ PLANT · the rail's lit pip left on a not-found page's first paint is reported",
-    !unlit(CSS.replace(`:root:has(${id}) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
-  ok("5.12″ PLANT · the rule reading the mark alone again (R4-J's: a missing question's, round's or proposal's first paint keeps its tab lit) is reported",
-    !unlit(CSS.split(`:root:has(${id})`).join(`:root:has(#${NF.NOT_FOUND_MARK})`)).ok);
+    !unlit(CSS.replace(`${FLAGGED} .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
+  ok("5.12″ PLANT · the rules no longer reading the watcher's flag (a missing question's, round's or proposal's first paint keeps its tab lit) is reported",
+    !unlit(CSS.split(FLAGGED).join(`:root:is(#${NF.NOT_FOUND_MARK})`)).ok);
 }
 {
   // ⭐ ROUND 5 (review F5) · WHAT THE SERVER'S HTML OF A MISSING RECORD CARRIES, on React's own server renderer — Next's

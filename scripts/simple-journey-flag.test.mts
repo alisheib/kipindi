@@ -645,7 +645,7 @@ function g10Wiring(W: World) {
     const barAnywhere = [...W.files].filter(([, s]) => s.includes("<EmailVerifyBanner")).map(([p]) => p);
     ok("10.shell.emailbar · there is no email-verify bar for any reader, classic or journey — the shell or anywhere else (deleted 2026-10-07)",
       tallyIn(shell, "<EmailVerifyBanner") === 0 && !shell.includes("emailVerifyState")
-        && shell.includes("const journeyShown = (await journeyRead).journey;") && barAnywhere.length === 0,
+        && shell.includes("const journeyShown = await journeyShellShown();") && barAnywhere.length === 0,
       j({ mounts: tallyIn(shell, "<EmailVerifyBanner"), elsewhere: barAnywhere }));
   }
   const readers: string[] = []; const writers: string[] = []; const deciders: string[] = []; const passReaders: string[] = [];

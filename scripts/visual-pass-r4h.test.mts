@@ -462,8 +462,8 @@ section("9 · E34 the journey's toaster hangs under its header (tiles 203 218 23
   const viewport = /<div\s+role="region"[\s\S]*?className="([^"]+)"\s*>/.exec(toast);
   ok("9.1 · the toaster carries the hook as an attribute, its classes unchanged (the classic overlay census names classes, not data attributes)",
     !!viewport && /data-toaster=""/.test(viewport[0]) && viewport[1] === "pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0", viewport?.[1]);
-  const base = /:root:has\(#kp-journey-shell\) \[data-toaster\] \{ top: 56px; \}/.test(CSS);
-  const sm = /@media \(min-width: 640px\) \{ :root:has\(#kp-journey-shell\) \[data-toaster\] \{ top: calc\(56px \+ var\(--sp-2\)\); \} \}/.test(CSS);
+  const base = /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: 56px; \}/.test(CSS);
+  const sm = /@media \(min-width: 640px\) \{ :root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: calc\(56px \+ var\(--sp-2\)\); \} \}/.test(CSS);
   const header = Number(/height:\s*(\d+)px/.exec(rule(CSS, ".kp-jhdr"))?.[1] ?? NaN);
   const menuPhone = /top-\[calc\(env\(safe-area-inset-top\)\+(\d+)px\)\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
   const menuSm = /sm:top-\[(\d+)px\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
@@ -502,7 +502,7 @@ section("11 · E2 E3 the journey's Wallet doors and captions at 320 (tiles 488 4
   const labels = [sw, en, zh].flatMap((d) => [d.journey.depositAction, d.journey.withdrawAction]);
   const tight = labels.filter((l) => need(l) > room(320, px("--sp-3")));
   ok("11.1 · with 12px a side every journey door holds its 16px glyph, the 8px gap and its label at 320 (Weka pesa needs ~105.5 of 109)",
-    /:root:has\(#kp-journey-shell\) \.kp-wsheet__act \{ padding-inline: var\(--sp-3\); \}/.test(CSS) && /:root:has\(#kp-journey-shell\) \.kp-wsheet__act > svg \{ flex-shrink: 0; \}/.test(CSS) && tight.length === 0,
+    /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.kp-wsheet__act \{ padding-inline: var\(--sp-3\); \}/.test(CSS) && /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.kp-wsheet__act > svg \{ flex-shrink: 0; \}/.test(CSS) && tight.length === 0,
     show({ tight, weka: need(sw.journey.depositAction).toFixed(1), room: room(320, px("--sp-3")) }));
   ok("11.1′ CONTROL · btn-lg's 20px left 93 at 320: the ⊕ shrank by ~12px (the tile's ~4px glyph), and Withdraw's arrow by ~3",
     need(sw.journey.depositAction) - room(320, 20) > 10 && need(en.journey.withdrawAction) > room(320, 20), show({ weka: (need(sw.journey.depositAction) - room(320, 20)).toFixed(1), wd: (need(en.journey.withdrawAction) - room(320, 20)).toFixed(1) }));

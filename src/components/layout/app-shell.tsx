@@ -45,7 +45,7 @@ import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
 import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliate-service";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
-import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { journeyShellShown, resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";
 import { journeyMarketsTarget } from "@/lib/journey/markets-redirect";
 import { PreviewMarker } from "./preview-marker";
@@ -403,8 +403,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   /** True only for a request whose preview pass counts (`simpleJourneyFor`). Everybody else gets no marker. */
   const journeyPreview = (await journeyRead).preview;
-  /** This request is shown the new journey (the funnel counts it as "new"). */
-  const journeyShown = (await journeyRead).journey;
+  /** This request is shown the new journey (the funnel counts it as "new"). The ONE answer the root layout writes on
+   *  <html> as `data-shell="journey"` too (`journeyShellShown`); the console and opt-out returns above agree with it. */
+  const journeyShown = await journeyShellShown();
   /* ⭐ WHO THE JOURNEY FUNNEL COUNTS (Vodacom plan S3b, §0f) — decided HERE, on the server, and rendered as one
      attribute the browser beacon reads before it sends anything: staff, a preview pass and an account whose read
      failed are "off"; everybody else is counted in the journey they are shown. `/api/funnel` needs no cookie. */
@@ -571,7 +572,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ⭐ 2026-09-14 — main GROWS (the shell is a flex column), so on a page shorter than the window
           the footer sits at the window's bottom edge instead of leaving a bare darker band under it
           (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
-      <MainLandmark>
+      <MainLandmark viewer={journeyShown && !session ? "guest" : undefined}>
         <RouteTransition>{children}</RouteTransition>
       </MainLandmark>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
@@ -682,9 +683,13 @@ function SkipToContent({ label }: { label: string }) {
  * viewport tall, so the footer starts BELOW the fold on every page, short ones included, and never
  * shifts inside the viewport as content arrives. On `/s` that is ~520px of scroll above the licence
  * lines, by design.
+ * ⭐ `viewer="guest"` (A21, 2026-10-14) — a signed-out reader of the journey, the reader the journey header offers
+ * Ingia/Jisajili (`header-state.ts` `authPills`). The hub's loading ghost (`route-ghost.tsx`) picks its guest or member
+ * drawing from it in CSS. It asked `:root:has(.kp-jhdr__auth)` before, which made `<html>` a `:has()` subject (see
+ * `journeyShellShown`); the shell that draws the header draws this landmark, so the two change together.
  */
-function MainLandmark({ children }: { children: React.ReactNode }) {
-  return <main id="main-content" className="flex-1">{children}</main>;
+function MainLandmark({ children, viewer }: { children: React.ReactNode; viewer?: "guest" }) {
+  return <main id="main-content" className="flex-1" data-viewer={viewer}>{children}</main>;
 }
 
 /**

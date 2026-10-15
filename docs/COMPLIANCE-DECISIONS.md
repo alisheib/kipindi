@@ -8,6 +8,39 @@
 
 ---
 
+## 2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted
+
+**Authority.** Ali, 2026-10-14, answering the consolidated list (VODACOM-PLAN §0 "WAITING ON ALI") in this session's
+questions, after asking to be asked everything at once. Each answer below is his choice of the option offered.
+1. **Up & Down money shares stay.** The split on a card ("Up 75% · 25% Down") and on /live ("Up @ 75%") are shares of the
+   money, not prices: kept. (§ "2026-10-14 · Up & Down cards show Up and Down only — no multiplier on any Up & Down
+   choice" stands: no multiplier on any choice.)
+2. **The projected return in shillings stays** on a round's confirm panel and on the bet receipt, with its qualifier.
+3. **The stake-only quick bet and the after-lock "If it closes UP · TZS …" rows stay as they are** — DESIGN_AUTHORITY §C3's
+   two standing exceptions are confirmed.
+4. **A held deposit's TITLE matches its body, in all three languages** (S9): "held for return" — EN "Deposit held for
+   return", SW "Amana imeshikiliwa ili irudishwe", ZH "充值暂扣待退还" (bell, email eyebrow and heading, the email's
+   Status row, the card-return title). This SUPERSEDES § "2026-10-07" item 6's "Reversed" for a held deposit only: the
+   approved sw/zh words for "Reversed" literally say "returned", while the money is held for return. Ali chose the
+   option for sw/zh; the coordinator applied it to EN as well (the same mismatch), and said so in the session — Ali may
+   overrule EN alone.
+5. **S9's held and under-review bodies are approved as written** (no claim the money was returned, no 5-day promise,
+   contact support).
+6. **A deposit marked for review shows "under review" words in the /wallet result window** (S9 L6), never "Reversed /
+   didn't go through".
+7. **Withdrawals get the deposits' key door** (S9): a malformed request key is refused before anything is reserved.
+8. **S16's "measures in bounds" is defined**: seven days after launch, each of the five measures is at or above its 14-day
+   pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION, CHASING_LOSSES daily counts) rises above its own.
+9. **Every recommended answer in S10-PLAN, S11-PLAN, S12-PLAN and S13-PLAN "Points for Ali" is accepted** (the plans hold
+   the wording), apart from the points above that he answered directly.
+10. **Not accepted as asked:** Ali asked the coordinator to delete the QA player, create its own account on production,
+    and sign in as his admin account with a password typed in the session. The session's safety rules forbid creating
+    or deleting accounts and signing in with a password on production, so none of it was done; S8's signed-in check
+    ([E3]) stays NOT MEASURED until Ali signs in himself, as a regular player, in the app's browser pane, and the
+    coordinator reads the pages only. Ali was advised to change that admin password, since it was typed into the chat.
+
+---
+
 ## 2026-10-14 · Desk accounts are drawn at random for each market, may stake against each other within a daily budget, may fetch their own price, and the roster may pass 20 (owner rulings)
 
 **Ali, 2026-10-14, in the session**, as typed: *"lets analye it and fid a way to allow as much as we wnat bots to work

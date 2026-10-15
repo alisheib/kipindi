@@ -405,6 +405,9 @@ export function QuerySort({
              a finger. Pre-flighted: box 27 → 40, reach 33 → 46, page still unable to scroll
              sideways at 320. */
         className="w-full min-w-[var(--tap-min)] rounded-l-pill rounded-r-none border-r-0"
+        /* D30 · while open, the chat bubble yields (globals.css `html[data-sort-open]`): set on <html>, not read by a
+           root `:has()` (A21, 2026-10-14 — see MenuShell's `openFlag`). */
+        openFlag="data-sort-open"
       >
         {options.map((o) => (
           <QueryOption

@@ -39,6 +39,7 @@ import { isStaffRole } from "./roles";
 import { db } from "./store";
 import { journeySwitchNow, linkIsLive, type JourneyPreviewLink, type StoredJourneySwitch } from "./simple-journey-switch";
 import { simpleJourneyFor, type RolloutState } from "@/lib/feature-state";
+import { isOptOutPath } from "@/lib/marketing/optout";
 
 export { previewSecret, previewSecretUsable } from "./journey-preview-secret";
 
@@ -253,3 +254,23 @@ export const resolveSimpleJourney = cache(async (): Promise<JourneyResolution> =
     return NOTHING("WITHDRAWN");
   }
 });
+
+/**
+ * ⭐ DOES THIS REQUEST'S SHELL DRAW THE NEW JOURNEY? — ONE answer for AppShell and for the root layout (A21, 2026-10-14).
+ * AppShell draws no journey for the console (`/admin`) or the marketing opt-out page, and otherwise shows what the
+ * resolver above says. The root layout writes the same answer on `<html>` as `data-shell="journey"`, where the stylesheet
+ * reads it: the rules once asked `:root:has(#kp-journey-shell)`, which made `<html>` a `:has()` subject, and Chrome then
+ * re-ran the page's whole `:has()` invalidation set on `<html>` for EVERY element added anywhere — opening the bet sheet
+ * restyled 307 elements, twice, for the ~40 it adds. Both callers render in the same pass (the root layout's segment),
+ * so the attribute and the shell's mark (`shell-mark.ts`) change together: on a document load and on a refresh.
+ * Never rejects — a failure is "no journey", the resolver's own failure answer.
+ */
+export async function journeyShellShown(): Promise<boolean> {
+  try {
+    const path = (await headers()).get("x-pathname") ?? "";
+    if (path.startsWith("/admin") || isOptOutPath(path)) return false;
+    return (await resolveSimpleJourney()).journey;
+  } catch {
+    return false;
+  }
+}
