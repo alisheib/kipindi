@@ -7,6 +7,8 @@ import { MeasuresRail } from "./measures-rail";
 import { LaunchWatchCard } from "./launch-watch-card";
 import { MeasuresExportButtons } from "./measures-export-buttons";
 import { getAuditByActionsDurable, type AuditEntry } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
+import { currentSession } from "@/lib/server/auth-service";
 
 const AFTER = [7, 14, 28] as const;
 
@@ -93,9 +95,10 @@ function MeasuresCard({ view, downloads }: { view: JourneyMeasuresView; download
 }
 
 export async function JourneyMeasuresArea({ campaign, includeHarm }: { campaign: string | null; includeHarm: boolean }) {
+  const session = await currentSession();
   const [view, downloads] = await Promise.all([
     journeyMeasuresView({ campaign, includeHarm }).catch(() => null),
-    getAuditByActionsDurable(["journey_measures.exported"], { category: "ADMIN", limit: 8 }).catch(() => null),
+    houseAuditForConsole(session?.userId ?? null, "/admin/insights", getAuditByActionsDurable(["journey_measures.exported"], { category: "ADMIN", limit: 8 })).catch(() => null),
   ]);
   if (!view) return <AdminCard title="Simplified Journey measures" sw="Vipimo vya safari rahisi"><p className="text-body-sm text-warning-fg">The measures could not be read. Refresh to try again.</p></AdminCard>;
   return <><MeasuresCard view={view} downloads={downloads} /><LaunchWatchCard watch={view.watch} includeHarm={includeHarm} /></>;
