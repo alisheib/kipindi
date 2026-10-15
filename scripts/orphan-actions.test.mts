@@ -60,6 +60,12 @@ const KNOWN_ORPHANS: Record<string, string> = {
   // than a missing control.
   checkTotpAction:
     "read-only TOTP-enrolment lookup; the setup page resolves it server-side instead",
+  // The staff reverse button was deliberately removed: a provider response that is
+  // merely not CONFIRMED cannot prove no money was sent. Keep the server action
+  // fail-closed for stale clients and direct calls until an authoritative reversal
+  // workflow is designed, then remove this exemption with that endpoint.
+  reverseStuckPayoutAction:
+    "legacy payout reverse endpoint kept fail-closed for stale clients while provider-authoritative resolution is designed",
   // ✅ E-33 IS CLOSED (2026-08-21) and its entry is GONE from this list, in the same commit
   // as its first caller — which is what this suite's §2 ratchet demands: an entry that is no
   // longer true fails as loudly as a missing one, with "it now HAS a caller".

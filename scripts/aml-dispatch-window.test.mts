@@ -14,9 +14,9 @@
  * an AML row's createdAt is hours or days old — so the whole 30-minute grace is ALREADY
  * SPENT and the row is sweep-eligible immediately. The dispatch round-trip on the next line
  * happens OUTSIDE the wallet lock by design and can run to the 45s rail timeout. In that
- * window the sweep queries the phantom id, `envelopeSettlementVerdict` returns FAILED for any
- * code that is not 000/111/927/999, and `settleWithdrawalFailed` refunds a payout that is in
- * flight. Every AML-approved payout is at or above the review threshold by construction.
+ * window the sweep can query the phantom id. The historical sweep treated a broad
+ * FAILED query verdict as proof of nonpayment and refunded a payout in flight.
+ * Every AML-approved payout is at or above the review threshold by construction.
  *
  * ⚠️ Nothing downstream corrects it: after the round-trip the REAL ref is written onto the
  * now-FAILED row, `withdraw.approved_dispatched` is audited and the player is told the money
@@ -106,8 +106,9 @@ console.log("\n§3 · the sweep still refuses to auto-reverse a payout with no p
   ok("3.1  the withdrawal arm skips a row with no ref, and moves no money",
     /if \(!ref\) \{ leftPending\+\+; auditNeedsReviewOnce\(t\.id, "stale withdrawal has no providerRef — not auto-reversed"/.test(sweep),
     "the !ref guard moved — clearing providerRef is no longer safe");
-  ok("3.2  a FAILED verdict still routes to settleWithdrawalFailed (the branch we are avoiding)",
-    /v\.status === "FAILED"[\s\S]{0,120}settleWithdrawalFailed\(t\.id, "reconcile-verified-failed"\)/.test(sweep));
+  ok("3.2  a broad FAILED verdict leaves the payout held for review",
+    /v\.status === "FAILED"[\s\S]{0,750}auditNeedsReviewOnce\(t\.id, "payout query returned FAILED/.test(sweep) &&
+    !/settleWithdrawalFailed\(t\.id, "reconcile-verified-failed"\)/.test(sweep));
   ok("3.3  selection is still on createdAt — which is why the grace is already spent",
     /listByStatus\("PROCESSING"\)\)\.filter\(\(t\) => Date\.parse\(t\.createdAt\) < cutoff\)/.test(sweep),
     "if selection moved to updatedAt the premise changes and this gate should be re-derived");

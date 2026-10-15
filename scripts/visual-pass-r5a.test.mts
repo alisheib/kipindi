@@ -561,7 +561,6 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/app/admin/kyc/[id]/kyc-decision-rail.tsx": [C("glyph", "a blocking automatic check"), C("glyph", "a failed check"), C("glyph", "Reject")],
     "src/app/admin/payments/reconcile-controls.tsx": [C("glyph", "Write off")],
     "src/app/admin/payments/retry-controls.tsx": [C("glyph", "Cancel the payout")],
-    "src/app/admin/payments/stuck-payout-controls.tsx": [C("glyph", "Return to player")],
   };
   /**
    * ⭐ THE ✕ IN ANY SPELLING (round 6, 2026-10-09, review C2). The census looked only for the kit glyph (`<I.x`), so two
@@ -732,9 +731,9 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     }
     return { problems, modals, confirms };
   };
-  // The sweep's own count on 2026-10-09 (27 dialogs whose close waits on a request; 4 confirms open across one): fewer
-  // means the detector went blind, not that the tree got better.
-  const MODALS_FLOOR = 27, CONFIRMS_FLOOR = 4;
+  // The staff payout-return modal was removed when its unsafe action was closed.
+  // The remaining 26 request-bound dialogs and four confirms must still obey the rule.
+  const MODALS_FLOOR = 26, CONFIRMS_FLOOR = 4;
   const rule8 = inFlightRule(SRC);
   ok(`8.13 · the one in-flight rule, held everywhere: ${rule8.modals} dialogs whose close waits on a request withhold their ✕ (in the corner, or in the header with its box kept), and ${rule8.confirms} confirms kept open across their request wear \`loading\``,
     rule8.problems.length === 0 && rule8.modals >= MODALS_FLOOR && rule8.confirms >= CONFIRMS_FLOOR, rule8.problems.join(" | "));

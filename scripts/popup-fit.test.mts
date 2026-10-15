@@ -268,7 +268,6 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/markets/emergency-void-control.tsx",
   "src/app/admin/objections/objection-decision.tsx",
   "src/app/admin/payments/reconcile-controls.tsx",
-  "src/app/admin/payments/stuck-payout-controls.tsx",
   "src/app/admin/players/[id]/balance-adjust-controls.tsx",
   "src/app/admin/players/[id]/reset-password-button.tsx",
   "src/app/admin/players/[id]/set-email-form.tsx",

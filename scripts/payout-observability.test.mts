@@ -130,25 +130,17 @@ ok("other HTTP errors stay AMBIGUOUS (a timeout may really be in flight)",
 ok("a PROVIDER_DOWN tells the player the rail is down, not that they failed",
   /PROVIDER_DOWN[\s\S]{0,200}temporarily unavailable/.test(wallet));
 
-// And the escape hatch for payouts already frozen under the old behaviour.
+// Legacy callers must not return money on an inconclusive status query.
 const actions = readFileSync(new URL("../src/app/admin/payments/payment-actions.ts", import.meta.url), "utf8");
-const reverseFn = actions.slice(actions.indexOf("export async function reverseStuckPayoutAction"));
-ok("an officer can release a frozen payout", reverseFn.length > 0);
-ok("it only touches a PROCESSING withdrawal",
+const reverseFn = actions.slice(actions.indexOf("export async function reverseStuckPayoutAction"), actions.indexOf("/** PSP reconciliation", actions.indexOf("export async function reverseStuckPayoutAction")));
+ok("legacy staff action remains gated", reverseFn.length > 0);
+ok("it only reviews a PROCESSING withdrawal",
   /t\.type !== "WITHDRAWAL"/.test(reverseFn) && /t\.status !== "PROCESSING"/.test(reverseFn));
-// Anchored at BOTH ends — it must re-query, branch on CONFIRMED, and bail out. The
-// window only spans the audit call that sits between the branch and the return.
-ok("⛔ it RE-QUERIES the provider and REFUSES on CONFIRMED",
-  /verifyWithdrawalStatus[\s\S]{0,400}if \(v\.status === "CONFIRMED"\)[\s\S]{0,700}return \{ ok: false/.test(reverseFn),
-  "reversing a settled payout would pay the player twice");
-// …and the refusal must come BEFORE anything that could move money.
-ok("the CONFIRMED refusal precedes the reversal call",
-  reverseFn.indexOf('v.status === "CONFIRMED"') < reverseFn.indexOf("settleWithdrawalFailed"));
+ok("it queries the recorded payout rail for review evidence",
+  /verifyWithdrawalStatus\(t\.providerRef, t\.payoutRail\)/.test(reverseFn));
 ok("it demands a typed reason", /reason\.length < 10/.test(reverseFn));
-ok("it reverses through the idempotent shared path", reverseFn.includes("settleWithdrawalFailed"));
-ok("it records a watched COMPLIANCE audit entry",
-  /category: "COMPLIANCE"[\s\S]{0,120}payout_reversed/.test(reverseFn));
-ok("a refusal is audited too, not silently swallowed",
+ok("it has no refund path for a broad status verdict", !reverseFn.includes("settleWithdrawalFailed"));
+ok("the refusal is audited, not silently swallowed",
   /payout_reverse_refused/.test(reverseFn));
 
 console.log("\n── 5 · No credential can leak through the new detail ───────────");

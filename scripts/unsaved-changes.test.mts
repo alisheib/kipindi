@@ -168,7 +168,6 @@ const EXEMPT: Record<string, string> = {
    *    free fields (never the number alone, so a duplicate's "Open the existing contact" asks nothing when only the
    *    number was typed), beside its own in-dialog ask on ✕ and Cancel. The list only shrinks. */
   "app/admin/payments/reconcile-controls.tsx": "① fields open inside <Modal>",
-  "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/wallet-freeze-controls.tsx": "① fields open inside <Modal> (the reason for a freeze, an unfreeze or a stale identity-hold lift)",
   "app/admin/kyc/[id]/reopen-refusal-control.tsx": "① fields open inside <Modal> (the reason for re-opening a final refusal)",

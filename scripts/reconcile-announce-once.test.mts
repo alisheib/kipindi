@@ -137,8 +137,8 @@ console.log("\n── 3 · a terminal transition forgets it, so a LATER stall sp
 const wallet = (await import("node:fs")).readFileSync(new URL("../src/lib/server/wallet-service.ts", import.meta.url), "utf8");
 const fn = wallet.slice(wallet.indexOf("export async function reconcileStalePayments"));
 const body = fn.slice(0, fn.indexOf("\nexport ") === -1 ? fn.length : fn.indexOf("\nexport "));
-ok("every terminal branch in the sweep forgets the transaction",
-  (body.match(/clearNeedsReview\(/g) ?? []).length >= 4,
+ok("terminal branches in the sweep forget the transaction; broad FAILED payout stays in review",
+  (body.match(/clearNeedsReview\(/g) ?? []).length >= 3,
   `${(body.match(/clearNeedsReview\(/g) ?? []).length} clear site(s)`);
 ok("⛔ no raw needs-review audit() survives outside the helper",
   (wallet.match(/action: "payments\.reconcile_needs_review"/g) ?? []).length === 1);
