@@ -49,7 +49,7 @@ When the read record is real, set `productionStaffJourney.fundingMode`, `betRefe
 
 ## Agency preview and written decision
 
-The integrator prepares a seven-day revocable visitor link and a side-by-side PDF made from the **actual integrated production preview screens** and the five agency frames. The Owner or an explicitly authorized sender shares them privately with the agency. A draft or unsent link is not sign-off. Do not commit the link token or unredacted player screens.
+The Owner creates the seven-day revocable visitor link in `/admin/journey`; the integrator prepares a side-by-side PDF made from the **actual integrated production preview screens** and the five agency frames. The Owner or an explicitly authorized sender shares them privately with the agency. A draft or unsent link is not sign-off. Do not commit the link token or unredacted player screens.
 
 **Copy for Ali to send after the material exists:**
 
