@@ -23,6 +23,8 @@ import { ogLines, renderOgPicture } from "./build-og-picture.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
 const ROOT = process.cwd();
+/** The parked S15 copy branch flips this beside the generated pictures. */
+const PUBLISHED_AT_S15 = true;
 let bad = 0;
 
 console.log("== 1. master SVGs: generated vs committed ==");
@@ -165,6 +167,13 @@ console.log("\n== 4. the unpublished share-picture generator (S11 WP8) ==");
     && generator.includes('markSvg({ variant: "color" })');
   if (!fromKey || !same || !fromMark) bad++;
   console.log(`  ${fromKey && same && fromMark ? "IN SYNC " : "DRIFTED "} two renders are pixel-identical, the lines read the named dictionary key, and the mark reads brand-mark.ts`);
+  if (PUBLISHED_AT_S15) {
+    const served = await rawOf(readFileSync(resolve(ROOT, "public/og/og-1200x630.png")));
+    const published = served.width === firstPx.width && served.height === firstPx.height && served.channels === firstPx.channels
+      && served.data.equals(firstPx.data);
+    if (!published) bad++;
+    console.log(`  ${published ? "IN SYNC " : "DRIFTED "} published 1200×630 picture equals the tracked generator, pixel for pixel`);
+  }
 }
 
 console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts, the X card is the share picture's middle, and the unpublished picture generator is deterministic" : bad + " asset(s) DRIFTED from the source of truth"}`);

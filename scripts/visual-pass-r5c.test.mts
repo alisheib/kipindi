@@ -227,7 +227,6 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/ui/language-menu.tsx": [1, "OWNER — the classic header's current-language tick (the journey's is brand)"],
   "src/app/legal/_components.tsx": [2, "the regulator-letter frame's corners — CLARET ink (§B4), the GiltCorner component counted"],
   "src/app/legal/responsible-gambling/page.tsx": [6, "OWNER — the RG links' gold: the binding English is hashed (RG_EN_SHA), so the recolour ships with the next policy version"],
-  "src/app/legal/terms/page.tsx": [12, "OWNER — the RG links' gold: `content()` is hashed (TERMS_TEXT_SHA), so the recolour ships with the next Terms version"],
   "src/lib/offline-document.ts": [3, "the offline page's tokens and its copy of the footer's claret rule (R5-D's area; follows `.claret-rule`, OWNER)"],
 };
 
@@ -550,8 +549,10 @@ section("7 · the owner's items, pinned as they stand — classic chrome (frozen
     /const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
       && /<LanguageMenu journey \/>/.test(read("src/components/journey/journey-top-bar.tsx")) && /<NotificationsPanel journey \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
   ok("7.4 · the session-ended notice is the warning family (the player must sign in again — §B11) — amber, not gilt, since Ali's ruling (1) of 2026-10-10", /tone="warning"\s*glyph="alertCircle"\s*testId="session-ended-notice"/.test(read("src/components/layout/app-shell.tsx")));
-  ok("7.5 · OWNER · the legal RG links are gold and HASHED (RG_EN_SHA, TERMS_TEXT_SHA): the recolour ships with a new version",
-    /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/responsible-gambling/page.tsx")) && /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/terms/page.tsx")));
+  ok("7.5 · legal RG keeps its hashed gold links; the S15 Terms links use the approved blue, with a remeasured text hash",
+    /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/responsible-gambling/page.tsx"))
+      && /text-brand-300 hover:text-brand-200/.test(read("src/app/legal/terms/page.tsx"))
+      && !/text-gold-300 hover:text-gold-200/.test(read("src/app/legal/terms/page.tsx")));
   ok("7.6 · the regulator-letter frame's corners are claret (§B4), not gilt", (read("src/app/legal/_components.tsx").match(/ink="var\(--claret-400\)"/g) ?? []).length === 2);
   // 7.7 · the "coming soon" tag renders in the classic header, rail and avatar menu (frozen chrome) AND in page bodies
   // (the propose promo, /proposals). Bodies and the journey wear the neutral tag; the classic chrome keeps its tint.
