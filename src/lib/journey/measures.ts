@@ -647,6 +647,12 @@ export function countText(n: number): string {
   return Math.round(n).toLocaleString("en-US");
 }
 
+/** A per-day average is not an event count. Keep fractions visible, including a one-in-14-days baseline. */
+export function dailyMeanText(n: number | null): string {
+  if (n === null || !Number.isFinite(n) || n < 0) return "Could not be read";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 /** "12 min", "1 h 12 min" — the median time to a first bet. */
 export function minutesText(m: number | null): string {
   if (m === null || !Number.isFinite(m)) return "—";

@@ -202,6 +202,9 @@ async function run(impl: Mod, log: (l: string) => void): Promise<string[]> {
   }
   ok("4.renderers · the fraction a numeric cell carries prints exactly the screen's words through the PDF renderer's rule (every n ≤ d ≤ 400)", agree);
   ok("4.counts · counts print with thousands separators", impl.countText(1234567) === "1,234,567" && impl.countText(0) === "0");
+  ok("4.daily-mean · a safety baseline is an average, never rounded to a whole event",
+    impl.dailyMeanText(1 / 14) === "0.07" && impl.dailyMeanText(1 / 2) === "0.50"
+      && impl.dailyMeanText(0) === "0.00" && impl.dailyMeanText(null) === "Could not be read");
   ok("4.minutes · the median time reads in minutes and hours", impl.minutesText(12) === "12 min" && impl.minutesText(72) === "1 h 12 min" && impl.minutesText(null) === "—");
 
   /* §5 · the change */
@@ -299,6 +302,8 @@ if (!PROVE_RED) {
       impl: { ...M, percentText: (t) => `${(t / 10).toFixed(2)}%` } },
     { name: "the numeric cell carries a value that prints differently from the screen", expect: /^4\.renderers /,
       impl: { ...M, shareFraction: (t) => t / 1000 + 0.0006 } },
+    { name: "a safety baseline mean rounded to a whole event", expect: /^4\.daily-mean /,
+      impl: { ...M, dailyMeanText: (n) => n === null ? "Could not be read" : M.countText(n) } },
     { name: "an unreadable source printed as 0%", expect: /^3\.unreadable /,
       impl: { ...M, cellFor: (n, d, c) => (c.readable ? M.cellFor(n, d, c) : { ...M.cellFor(0, Math.max(1, d ?? 1), { ...c, readable: true }) }) } },
     { name: "S9's absent records printed as a counted 0", expect: /^3\.unavailable /,
