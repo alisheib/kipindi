@@ -439,7 +439,7 @@ function BonusWalletCard({
                     player can share or come back to. */}
                 {grantsToggleHref && (
                   <p className="text-center">
-                    <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-brand-300 underline underline-offset-2 hover:text-brand-200">
+                    <Link href={grantsToggleHref as never} replace scroll={false} className="mx-auto flex min-h-[var(--tap-min)] min-w-[var(--tap-min)] w-fit items-center justify-center px-2 font-mono text-[11px] text-brand-300 underline underline-offset-2 hover:text-brand-200">
                       {showAllGrants ? t.wallet.grantsShowLive : t.wallet.grantsShowAll}
                     </Link>
                   </p>
