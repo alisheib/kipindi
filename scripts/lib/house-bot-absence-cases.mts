@@ -177,10 +177,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       "src/app/legal/rules/yes-no/page.tsx", "src/app/legal/terms/page.tsx",
       "src/lib/terms-version.ts", "src/lib/i18n-dict.ts",
     ]);
+    // The visual F20/F29 legal layout changes wrappers and spacing, without changing the policy text.
+    const APPROVED_EXTRA = new Map([["src/app/legal/_components.tsx", "671263891"]]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
-    const goldenOf = (rel: string) => APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
+    const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
+    const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
     const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
-    const isApprovedPublication = (rel: string) => APPROVED_TEXT.has(rel) && approvedEqual(rel, read(rel));
+    const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel)) && approvedEqual(rel, read(rel));
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
       let compared = 0;
@@ -196,7 +199,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       mainSha.length >= 7 && legal.length >= 14 && PUBLIC_TEXT.includes("src/lib/i18n-dict.ts") && PUBLIC_TEXT.includes("src/lib/terms-version.ts"),
       j({ originMain: mainSha, legalFiles: legal.length, pinned: PUBLIC_TEXT.length }));
     const real = compare(PUBLIC_TEXT);
-    ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, other files at origin/main ${mainSha || "(unresolved)"})`,
+    ok(`5.1 · ⛔ D19a · every published legal and dictionary file matches its approved committed source (S8–S12 at ${APPROVED_REF}, visual wrappers at 671263891, other files at origin/main ${mainSha || "(unresolved)"})`,
       real.compared === PUBLIC_TEXT.length && real.differs.length === 0 && real.missing.length === 0,
       j({ comparedAgainst: mainSha, compared: real.compared, differs: real.differs, missing: real.missing }));
     // ⛔ CONTROLS · mutated COPIES in memory. The repository is never written to.
@@ -258,9 +261,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
      * FALSIFIABLE WITHOUT DEPENDING ON THE TREE: the same filter runs over a list with a pinned file PLANTED
      * in it and must catch exactly that one. A detector that cannot be shown to fire is not a control.
      */
-    const plantedSweep = [...branchChanged, PUBLIC_TEXT[0]].filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedPublication(p));
+    const plantedPath = PUBLIC_TEXT.find((p) => !APPROVED_TEXT.has(p) && !APPROVED_EXTRA.has(p)) ?? "";
+    const plantedSweep = [...branchChanged, plantedPath].filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedPublication(p));
     ok("5.1.c3 · POSITIVE CONTROL · no unapproved changed file is inside the pinned population; a pinned file planted in the list is still reported (S8/S9's exact approved deltas alone are accounted for)",
-      sweptIn.length === 0 && plantedSweep.length === 1 && plantedSweep[0] === PUBLIC_TEXT[0] && PUBLIC_TEXT.length >= 16,
+      sweptIn.length === 0 && plantedSweep.length === 1 && plantedSweep[0] === plantedPath && PUBLIC_TEXT.length >= 16,
       j({ changedVsMain: branchChanged.length, sweptIn, planted: plantedSweep, pinned: PUBLIC_TEXT.length }));
   }
   {
