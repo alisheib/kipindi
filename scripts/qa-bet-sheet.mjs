@@ -140,7 +140,9 @@ async function tile(page, label) {
     },S.root);
   }
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
-  await page.screenshot({ path: join(OUT, filename), fullPage: false });
+  // Playwright's default caret hiding writes an inline style on hidden preview-form inputs.
+  // A screenshot during hydration then creates a mismatch that the app did not render.
+  await page.screenshot({ path: join(OUT, filename), fullPage: false, caret: "initial" });
   results.push({ label, state: "TILE", file: filename });
   if (process.env.KP_TRACE === "1") observations.push({ label, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
 }
