@@ -4160,8 +4160,10 @@ await guard("17", async () => {
     ok("17.101 · N3 · the panel tells the officer the account behind is waiting for the draw — \"more likely to be drawn first\", \"nothing needs changing\" — and counts it in the scanned sentence",
       /more likely to be drawn first/.test(behindWords?.headline ?? "") && /nothing needs changing/.test(behindWords?.headline ?? "")
         && /more likely to be drawn first/.test(behindWords?.scanned ?? ""), j(behindWords));
-    ok("17.102 · N3 · CONTROL · the account ahead is told it is working, with no queue sentence",
-      /would stake right now/.test(aheadWords?.headline ?? "") && !/drawn first/.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`), j(aheadWords));
+    ok("17.102 · N3/N6 · CONTROL · the account ahead is told it would open or fill now, with no queue sentence, and the panel excludes pairing",
+      /would place an opening or filling stake right now/.test(aheadWords?.headline ?? "")
+        && /pairing is outside this check/i.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`)
+        && !/drawn first/.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`), j(aheadWords));
     await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
     for (const id of paused) await S.houseBotStore.setStatus(id, { from: ["PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
   }

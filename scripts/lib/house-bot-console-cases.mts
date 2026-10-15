@@ -2051,7 +2051,8 @@ section("§2 · the strip, the band, the roster and every failure");
       j(pairLimitRows.map((l: Any) => l.key).sort()) === j(["pair-rounds-per-day", "pair-tzs-per-day"].sort())
         && pairLimitRows.every((l: Any) => l.optional === true && l.recommended === ""
           && typeof l.hint === "string" && l.hint.includes("Empty = no two-sided desk play.")
-          && l.hint.includes("Counter answers") && l.name.startsWith("Two-sided desk ")),
+          && l.hint.includes("second-account") && l.hint.includes("opposite side")
+          && l.name.startsWith("Two-sided desk ")),
       j(pairLimitRows.map((l: Any) => [l.key, l.name, l.optional, l.recommended, l.hint])));
     /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
      * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one

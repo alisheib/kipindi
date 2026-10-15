@@ -1467,6 +1467,8 @@ const CONSOLE_LIMIT_HINT: Readonly<Record<string, string>> = {
   gTargetsMaxActive: "Across every account. The master switch does not need this limit.",
   gStaffChosenMaxCounterpartyShare: "A manual stake is refused when one player already holds more than this share of the players' locked money it would add to. The master switch does not need this limit.",
   bellAlertsPerHour: "How many bet rows each admin can be sent in an hour, on top of summaries and the pause, money and switch alerts.",
+  gCapPairRoundsPerDay: "Every account together, this EAT day. Counts empty-round pairs and second-account answers to player stakes on the opposite side. Empty = no two-sided desk play.",
+  gCapPairDailyTzs: "Every account together, this EAT day. Counts second-account stakes in TZS for empty-round pairs and answers to player stakes on the opposite side. Empty = no two-sided desk play.",
 };
 
 /**
@@ -8403,7 +8405,7 @@ const WHY_IDLE_COPY = {
   working: "This account would place an opening or filling stake right now. The desk plans these stakes each pass; pairing is outside this check.",
   /* ⭐ N3 · THE ANSWER THIS PANEL COULD NOT GIVE. It walked the account alone, so an account that never reached the
      front of the queue was told it "would stake right now" while it placed nothing for fifteen days. */
-  waitingTurn: "This account could open or fill now, but another account is more likely to be drawn first on these markets. Accounts are drawn at random, weighted by waiting time. Pairing is outside this check.",
+  waitingTurn: "This account could open or fill now, but another account is more likely to be drawn first on these markets. Accounts are drawn at random, weighted by waiting time; nothing needs changing. Pairing is outside this check.",
   refused: "None of the opening or filling markets looked at could be staked right now. The reasons are below, commonest first. Pairing is outside this check.",
   /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the engine —
      and this panel returned nothing at all — the officer clicked and the page did not change. */
