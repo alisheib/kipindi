@@ -80,6 +80,9 @@ export default async function DepositReturnPage({
   // The ONLY thing we take from the URL: which order to ask Selcom about (trimmed, capped, and cut at a stray `?`).
   const orderId = cardReturnOrderId(sp.order_id);
   const outcome = await settleDepositFromReturn(session.userId, orderId);
+  // The hosted Card return and mobile-money wait use one owned, signed-status experience in the journey.
+  // An unknown order retains the existing indistinguishable return page rather than exposing a row.
+  if (journey && outcome.txn) redirect(`/wallet/deposit/wait/${outcome.txn.id}` as never);
 
   // ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE, IN THE CONFIRMED STATE ONLY (2026-09-13). The ONE rule
   // (`firstDepositNoticeDue`, shared with /wallet): not dismissed by THIS player in this browser · nothing
@@ -99,6 +102,7 @@ export default async function DepositReturnPage({
     outcome.state === "PAID" ? t.wallet.returnPaidTitle :
     outcome.state === "FAILED" ? t.wallet.returnFailedTitle :
     outcome.state === "REVERSED" ? t.wallet.returnReversedTitle :
+    outcome.state === "REVIEW" ? t.wallet.returnReviewTitle :
     outcome.state === "UNKNOWN" ? t.wallet.returnUnknownTitle :
     t.wallet.returnPendingTitle;
 
@@ -106,6 +110,7 @@ export default async function DepositReturnPage({
     outcome.state === "PAID" ? t.wallet.returnPaidBody :
     outcome.state === "FAILED" ? t.wallet.returnFailedBody :
     outcome.state === "REVERSED" ? t.wallet.returnReversedBody :
+    outcome.state === "REVIEW" ? t.wallet.returnReviewBody :
     outcome.state === "UNKNOWN" ? t.wallet.returnUnknownBody :
     t.wallet.returnPendingBody;
 
@@ -180,7 +185,7 @@ export default async function DepositReturnPage({
           {/* Balance is shown ONLY when the deposit actually landed — printing a
               balance next to a pending payment invites the reading that it
               already counted. */}
-          {outcome.state === "PAID" && (
+          {outcome.state === "PAID" && outcome.balance !== null && (
             <Row label={t.wallet.newBalance}>
               <span className="amount font-semibold text-text"><Cash>{formatTzs(outcome.balance)}</Cash></span>
             </Row>
@@ -207,10 +212,10 @@ export default async function DepositReturnPage({
             waiting is precisely the one who needs a stable, bookmarkable page
             carrying both references — the receipt updates itself as the deposit
             settles, so sending them there beats sending them to a wallet list
-            they have to search. And on REVERSED: its receipt is the record of the
-            money going back. Withheld only on FAILED/UNKNOWN, where there is
+            they have to search. On held/review outcomes its receipt keeps the references for support;
+            a rejection date does not prove a refund arrived. Withheld only on FAILED/UNKNOWN, where there is
             either nothing to track or no transaction we can vouch for. */}
-        {(outcome.state === "PAID" || outcome.state === "PENDING" || outcome.state === "REVERSED") && outcome.txn && (
+        {(outcome.state === "PAID" || outcome.state === "PENDING" || outcome.state === "REVERSED" || outcome.state === "REVIEW") && outcome.txn && (
           <Link
             href={`/wallet/receipt/${outcome.txn.id}` as never}
             className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"

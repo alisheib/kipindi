@@ -25,6 +25,8 @@ export function ProviderRadioGrid({
   providers,
   defaultProvider,
   unavailableLabel,
+  layout = "tiles",
+  noDefault = false,
 }: {
   providers: readonly ProviderOption[];
   /** Pre-selects this provider (e.g. round-tripped after a validation error);
@@ -32,6 +34,10 @@ export function ProviderRadioGrid({
   defaultProvider?: string;
   /** Localized "Temporarily unavailable" for the disabled state. */
   unavailableLabel: string;
+  /** Journey payment chooser uses one readable row per mobile wallet. */
+  layout?: "tiles" | "rows";
+  /** A new journey payment must be an explicit rail choice when there is no confirmed history. */
+  noDefault?: boolean;
 }) {
   const firstSelectable = providers.findIndex((p) => !p.unavailable);
   // 2026-09-13 · COLUMNS FOLLOW THE COUNT. Withdraw passes four rails and drew 3 + 1 (Mixx by Yas
@@ -42,11 +48,11 @@ export function ProviderRadioGrid({
   // beside Card at 1280 (x733–894), and five in two left Card alone in a half-width cell on a phone. `.kp-provgrid`
   // (globals.css) lets the last row's tiles take its width — a lone last tile spans the row; from sm, the three-column
   // grid is six tracks, so a last row of two takes three tracks each. Pure CSS on the count, no client state.
-  const cols = providers.length === 4 ? "kp-provgrid kp-provgrid--quarters" : "kp-provgrid kp-provgrid--thirds";
+  const cols = layout === "rows" ? "grid gap-2" : providers.length === 4 ? "kp-provgrid kp-provgrid--quarters" : "kp-provgrid kp-provgrid--thirds";
   return (
     <div className={cols}>
       {providers.map((p, i) => {
-        const checked = defaultProvider ? p.id === defaultProvider : i === firstSelectable;
+        const checked = defaultProvider ? p.id === defaultProvider : !noDefault && i === firstSelectable;
         // §A3 — the real control is `sr-only`, and `sr-only` clips to a 1×1 box, so the
         // catch-all focus outline in globals.css was being drawn on something a player
         // cannot see: tabbing through HOW THEY GET PAID showed nothing at all. The ring
@@ -61,7 +67,7 @@ export function ProviderRadioGrid({
         return (
           <label
             key={p.id}
-            className={`group/tile relative flex flex-col items-center gap-2 px-2 py-3.5 rounded-md border border-border transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)] ${
+            className={`group/tile relative flex ${layout === "rows" ? "min-h-[60px] flex-row justify-start gap-3 px-4 py-2.5" : "flex-col items-center gap-2 px-2 py-3.5"} rounded-md border border-border transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)] ${
               p.unavailable ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:border-border-strong"
             }`}
             style={{ background: "var(--bg-inset)" }}
@@ -103,8 +109,8 @@ export function ProviderRadioGrid({
             >
               <I.check s={11} />
             </span>
-            <PaymentLogo id={p.id} name={p.name} hue={p.hue} size={48} />
-            <span className="font-medium text-body-sm text-text text-center leading-tight">{p.name}</span>
+            <PaymentLogo id={p.id} name={p.name} hue={p.hue} size={layout === "rows" ? 40 : 48} />
+            <span className={`font-medium text-body-sm text-text leading-tight ${layout === "rows" ? "text-left" : "text-center"}`}>{p.name}</span>
             {p.unavailable && (
               <span className="text-body-sm text-text-subtle text-center leading-tight">{unavailableLabel}</span>
             )}

@@ -15,6 +15,11 @@ import { getServerT } from "@/lib/i18n-server";
 import { errorCopy } from "@/lib/error-copy";
 import { formatBreakEnd } from "@/lib/break-end";
 import { formatNumber } from "@/lib/utils";
+import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { isMobileMoneyMethodId } from "@/lib/payment-providers";
+import { beginDepositActionClaim, depositRefusalDisposition } from "@/lib/server/deposit-action-recovery";
+import { isFundingUuid } from "@/lib/journey/funding-storage";
 
 /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
  *  the real public host — a relative path is meaningless to the gateway. */
@@ -27,6 +32,15 @@ export async function depositAction(formData: FormData) {
   // B-7 — every refusal this action redirects with is rendered verbatim by the
   // deposit page, so it must be minted in the player's own language, here.
   const { t, locale } = await getServerT();
+  const requestedFlow = String(formData.get("flow") ?? "");
+  const { journey } = await resolveSimpleJourney();
+  const journeyFlow = requestedFlow === "journey" && journey;
+  const cardFlow = requestedFlow === "card";
+  const formPath = cardFlow ? "/wallet/deposit/card" : "/wallet/deposit";
+  // A cached payment form from account A cannot dispatch under account B after a session switch.
+  if ((requestedFlow === "journey" || cardFlow) && formData.get("expectedOwner") !== session.userId) {
+    redirect(`/wallet/deposit?error=${encodeURIComponent(signFlash("deposit-error", t.error.somethingDidntWork))}` as never);
+  }
 
   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
@@ -52,6 +66,15 @@ export async function depositAction(formData: FormData) {
   carry.set("provider", provider);
   carry.set("amount", String(amount));
   if (msisdn) carry.set("msisdn", msisdn);
+  const rawPendingBet = formData.get("pendingBet");
+  let pendingBet = null;
+  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && rawPendingBet.length <= 512) {
+    try { pendingBet = parseSavedDepositBet(JSON.parse(rawPendingBet)); } catch { /* rejected below */ }
+  }
+  if (pendingBet) {
+    carry.set("bet", pendingBet.bet);
+    carry.set("returnPath", pendingBet.returnPath);
+  }
   if (isCard) {
     if (billing.firstName) carry.set("bFirst", billing.firstName);
     if (billing.lastName) carry.set("bLast", billing.lastName);
@@ -60,16 +83,44 @@ export async function depositAction(formData: FormData) {
     if (billing.region) carry.set("bRegion", billing.region);
     if (billing.postcode) carry.set("bPost", billing.postcode);
   }
-  const fail = (message: string): never =>
-    // ⛔ SIGNED (2026-10-06): the page prints only a sentence this server wrote (`flash-message.ts`).
-    redirect((`/wallet/deposit?error=${encodeURIComponent(signFlash("deposit-error", message))}&${carry.toString()}`) as never);
+  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  const validKey = !!idempotencyKey && isFundingUuid(idempotencyKey);
+  const focusedIntent = requestedFlow === "journey" || cardFlow;
+  const fail = async (message: string): Promise<never> => {
+    let suffix = "";
+    if (validKey && idempotencyKey) {
+      let disposition: "release" | "recover" | "conflict" = "recover";
+      try { disposition = await depositRefusalDisposition(session.userId, idempotencyKey); }
+      catch { /* A failed lookup cannot prove that an order was never reserved. */ }
+      if (focusedIntent && disposition === "recover") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+      if (focusedIntent && disposition === "release") {
+        const bound = `${session.userId}:${idempotencyKey}`;
+        suffix = `&release=${encodeURIComponent(signFlash("deposit-release-key", bound))}`;
+      }
+    }
+    // The page prints only a sentence this server wrote. A release token is bound to owner + exact key.
+    redirect((`${formPath}?error=${encodeURIComponent(signFlash("deposit-error", message))}${suffix}&${carry.toString()}`) as never);
+  };
+
+  if (validKey && idempotencyKey) {
+    const claim = await beginDepositActionClaim(session.userId, idempotencyKey);
+    if (claim === "uncertain") redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey)}` as never);
+    if (claim === "conflict" || claim === "refused") await fail(t.error.somethingDidntWork);
+  }
+
+  if (requestedFlow === "journey" && !journey) await fail(t.error.somethingDidntWork);
+  // Every rail needs a recoverable funding identity. A missing key must never dispatch an unkeyed charge.
+  if (!validKey) await fail(t.error.somethingDidntWork);
+  if (journeyFlow && !isMobileMoneyMethodId(provider)) await fail(t.error.somethingDidntWork);
+  if (cardFlow && provider !== "CARD") await fail(t.error.somethingDidntWork);
+  if (typeof rawPendingBet === "string" && rawPendingBet.length > 0 && !pendingBet) await fail(t.error.somethingDidntWork);
 
   // B-23 — the bounds are IMPORTED from validators.ts (the schema's own
   // constants), not restated. The old literals here were a second definition
   // that would silently drift the moment the schema was retuned. The copy
   // fills the same constants, so the message can never disagree either.
   if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_TZS || amount > DEPOSIT_MAX_TZS) {
-    fail(t.wallet.depositBounds
+    await fail(t.wallet.depositBounds
       // One grouping for every figure (`formatNumber`, R5-J) — the withdraw action fills its own bounds the same way.
       .replace("{min}", formatNumber(DEPOSIT_MIN_TZS))
       .replace("{max}", formatNumber(DEPOSIT_MAX_TZS)));
@@ -97,10 +148,10 @@ export async function depositAction(formData: FormData) {
     // B-7 — the form highlights its own empty fields; the localized line names
     // the requirement rather than the field (the English field name helped no
     // SW/ZH player). `missing` still gates, so behaviour is unchanged.
-    if (missing) fail(t.wallet.billingIncomplete);
+    if (missing) await fail(t.wallet.billingIncomplete);
 
     const user = await db.user.findById(session.userId);
-    if (!user) fail(t.error.somethingDidntWork);
+    if (!user) await fail(t.error.somethingDidntWork);
 
     // `order_id` is pre-seeded by US — Selcom appends payment_status + transid on
     // the return but does NOT echo order_id back. Without this the return page
@@ -131,11 +182,10 @@ export async function depositAction(formData: FormData) {
   } else if (!msisdn) {
     // Mobile money has nowhere to push the USSD prompt without a number. The
     // adapter would return a bare DECLINED; say the useful thing instead.
-    fail(t.wallet.msisdnRequired);
+    await fail(t.wallet.msisdnRequired);
   }
 
-  const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
-  const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card);
+  const result = await deposit(session.userId, { provider, amount, msisdn, ...(origin ? { origin } : {}) }, idempotencyKey, card, pendingBet);
   revalidatePath("/wallet");
 
   if (!result.ok) {
@@ -154,6 +204,11 @@ export async function depositAction(formData: FormData) {
   // providerRef stored, so whatever happens next (they pay, cancel, or close the
   // tab) the return leg and the reconcile sweep can both resolve it.
   if (data.redirectUrl) redirect(data.redirectUrl as never);
+
+  // A provider may already hold this order after an uncertain dispatch answer. Keep this exact key.
+  if (data.recoveryRequired) redirect(`/wallet/deposit/wait?key=${encodeURIComponent(idempotencyKey!)}` as never);
+
+  if (journeyFlow) redirect(`/wallet/deposit/wait/${data.txnId}` as never);
 
   // status is CONFIRMED for synchronous providers, PROCESSING when the provider
   // collects asynchronously (we credit on the webhook). The modal reflects both.

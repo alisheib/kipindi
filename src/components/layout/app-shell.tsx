@@ -69,6 +69,7 @@ import { isOptOutPath } from "@/lib/marketing/optout";
 import type { Dict } from "@/lib/i18n-server";
 import { isSafePath } from "@/lib/safe-next";
 import { breakStateFromTimers, type BreakState } from "@/lib/break-end";
+import { isFocusedJourneyPaymentPath } from "@/lib/surfaces";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const { t, locale } = await getServerT();
@@ -167,6 +168,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // ⛔ A classic request never meets it, its journey term being false: its `/markets` is today's board, at 200.
   // `test:markets-redirect` §2 holds this line and the page's.
   if (pathname === "/markets" && h.get("x-kp-document") === "1" && (await journeyRead).journey) redirect(journeyMarketsTarget(h.get("x-href") ?? pathname) as never);
+  if (isFocusedJourneyPaymentPath(pathname) && (await journeyRead).journey) {
+    const preview = (await journeyRead).preview;
+    return <div className="min-h-screen flex flex-col bg-bg-base text-text" data-focused-payment="">
+      <SkipToContent label={t.common.skipToContent} />
+      <KeyGuard />
+      {preview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+      <span hidden id={JOURNEY_SHELL_MARK} />
+      <LazyJourneyFlag />
+      <MainLandmark><RouteTransition>{children}</RouteTransition></MainLandmark>
+      {session && <SessionPresence viewerId={session.userId} />}
+    </div>;
+  }
   let topUser: {
     initials: string;
     name: string;

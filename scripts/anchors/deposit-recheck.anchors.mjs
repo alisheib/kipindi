@@ -1,0 +1,85 @@
+const file = "src/lib/server/deposit-recheck.ts";
+const route = "src/app/api/wallet/deposits/[id]/recheck/route.ts";
+const m = (name, from, to, expect) => ({ name, file, from, to, expect });
+const ORIGINAL_BIND = '\n        || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)';
+const INITIAL_BIND = 'let fresh = await db.txn.findById(initial.id, tx);\n      if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)\n        || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey' + ORIGINAL_BIND + ') return unknown();';
+const binding = (name, from, to, expect) => m(name, INITIAL_BIND, INITIAL_BIND.replace(from, to).replace(ORIGINAL_BIND, ''), expect);
+const WALLET_GUARD = 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0\n        || !Number.isFinite(bonus) || bonus < 0) return unknown();';
+const WALLET_READ = '      const wallet = await db.wallet.findByUserId(userId, tx);\n      const bonus = wallet?.bonusBalance ?? 0;\n      ' + WALLET_GUARD + '\n';
+const CLAIM = `      const opposed = (fresh.status === "FAILED" && verifiedTerminal === "CONFIRMED")
+        || (fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED");
+      if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") {
+        // Claim only after fresh canonical binding, including any drift during provider I/O. The existing claim
+        // reenters this SAME wallet lock; it records review, never a debit/reversal or a new collection.
+        await settlePaymentWebhook({ providerRef: fresh.providerRef!, status: verifiedTerminal!,
+          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) }, binding);
+        fresh = await db.txn.findById(initial.id, tx);
+        if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)
+          || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey
+          || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)) return unknown();
+        projection = depositProjection(userId, fresh, Date.now());
+      }
+      if (projection.state === "UNKNOWN" || projection.state === "PENDING" || projection.state === "RETURNED") return unknown();
+      if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") return unknown();
+      if (projection.state === "FAILED" && (verifiedTerminal !== "FAILED" || fresh.status !== "FAILED")) return unknown();
+`;
+export const MUTATIONS = [
+  m("caller-budget-skipped", "if (!callerRate.allowed) return unknown(callerRate.retryAfterSec, true);", "", "rate.caller"),
+  m("caller-budget-on-submitted-id", 'rateCheckAsync(userId, "deposit.status")', 'rateCheckAsync(txnId, "deposit.status")', "rate.caller-key"),
+  m("caller-rebound-to-posted-owner", "if (!userId) return unknown();", "if (!userId) return unknown(); userId = (expected as any)?.owner ?? userId;", "capsule.foreign-owner"),
+  m("invalid-identifier-refusal-not-audited", '      await audit({ category: "SECURITY", action: "deposit.recheck.lookup_refused", actorId: userId,\n        targetType: "Transaction", targetId: null, payload: { reason: "invalid-identifier" } });', '', "scope.invalid-audit"),
+  m("malformed-saved-intent-erased", "const stored = await db.txn.findById(txnId);", "let stored = await db.txn.findById(txnId); if (stored) stored = { ...stored, pendingBet: null };", "scope.canonical"),
+  m("posted-owner-looked-up-before-match", 'if (!binding || binding.owner !== userId || binding.txnId !== txnId) return unknown();', 'if (!binding || binding.txnId !== txnId) return unknown();', "capsule.foreign-owner"),
+  m("original-binding-ignored-before-probe", ' || !matchesDepositRecheckBinding(userId, txnId, binding, stored)', '', "capsule.key-mismatch"),
+  m("probe-budget-skipped", "if (!probeRate.allowed) return unknown(probeRate.retryAfterSec, true);", "", "rate.probe"),
+  m("probe-budget-on-caller", 'rateCheckAsync(initial.id, "deposit.probe")', 'rateCheckAsync(userId, "deposit.probe")', "rate.probe"),
+  m("legacy-provider-terminal-probe", ' || (initial.provider !== "CARD" && !isMobileMoneyMethodId(initial.provider))', '', "scope.legacy-rail"),
+  m("unsupported-promoted-to-failed", 'const verified = await verifyDepositStatus(initial.providerRef);', 'const verified = await verifyDepositStatus(initial.providerRef); if (verified.status === "UNSUPPORTED") verified.status = "FAILED";', "authority.UNSUPPORTED"),
+  m("provided-amount-not-checked", "if (verified.amount !== undefined && (!Number.isSafeInteger(verified.amount) || verified.amount <= 0 || verified.amount !== initial.amount)) return unknown();", "", "authority.amount"),
+  m("contradiction-not-persisted", 'await settlePaymentWebhook({ providerRef: fresh.providerRef!, status: verifiedTerminal!,\n          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) }, binding);', '', "review.confirmed"),
+  binding("changed-canonical-intent-accepted", " || !sameDepositFunding(initial, fresh)", "", "fresh.amount"),
+  binding("changed-reference-accepted", "fresh.providerRef !== initial.providerRef || ", "", "fresh.providerRef"),
+  binding("changed-funding-key-accepted", " || fresh.idempotencyKey !== initial.idempotencyKey", "", "fresh.key"),
+  m("fresh-signed-opposition-not-recorded", '(fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED")', 'false', "review.fresh-confirmed-opposes-failed"),
+  m("fresh-marker-ignored", 'let projection = depositProjection(userId, fresh, Date.now());', 'let projection = depositProjection(userId, { ...fresh, providerStatus: null }, Date.now());', "fresh.review"),
+  m("missing-wallet-fabricates-zero", WALLET_GUARD, 'if (!wallet) return { view: { ...projection, balance: 0, retryAfterSec: 0, failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };', "wallet.missing"),
+  m("invalid-wallet-allows-review-claim", WALLET_GUARD, '', "wallet.opposed.wrong-currency"),
+  m("wallet-validated-after-review-claim", WALLET_READ + CLAIM, CLAIM + WALLET_READ, "wallet.opposed.wrong-currency"),
+  // H2 (S9 root review): a Decimal(18,2) wallet is a valid wallet; the whole-shilling rule refused to record a real contradiction.
+  m("recheck-requires-whole-shillings", WALLET_GUARD, WALLET_GUARD.replace('Number.isFinite(wallet.balance)', 'Number.isSafeInteger(wallet.balance)'), "wallet.opposed.fractional-records-review"),
+  // M4: the browser-POSTED capsule keeps the UUID-or-null key shape and is refused before any lookup (stored keys are opaque).
+  { name: "posted-capsule-accepts-any-stored-key", file: "src/lib/journey/deposit-recheck-binding.ts", from: "return binding && (binding.fundingKey === null || UUID.test(binding.fundingKey)) ? binding : null;", to: "return binding;", expect: "capsule.invalid-key" },
+  { name: "review-marker-write-escapes-tx", file: "src/lib/server/wallet-service.ts", from: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);', to: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });', expect: "review.reentrant-same-tx" },
+  m("review-reread-escapes-tx", '        fresh = await db.txn.findById(initial.id, tx);', '        fresh = await db.txn.findById(initial.id);', "review.reentrant-same-tx"),
+  m("final-read-outside-wallet-lock", 'return await withLock(', 'return await (async (_key: string, callback: any) => callback(null))(', "safe.MPESA"),
+  m("unsafe-failed-authority-missing", 'failureAuthority: "signed-recheck" as const', 'failureAuthority: "stored-failed" as any', "safe.MPESA"),
+  { name: "same-origin-gate-skipped", file: route, from: 'req.headers.get("sec-fetch-site") !== "same-origin"', to: "false", expect: "route.cross-site" },
+  { name: "custom-fetch-header-skipped", file: route, from: 'req.headers.get("x-kp-deposit-recheck") !== "1"', to: "false", expect: "route.no-header" },
+  { name: "streamed-body-cap-skipped", file: route, from: 'if (bytes > DEPOSIT_RECHECK_MAX_BYTES)', to: 'if (false)', expect: "route.body.body-over-cap" },
+  { name: "declared-body-cap-skipped", file: route, from: 'Number(declared) > DEPOSIT_RECHECK_MAX_BYTES', to: 'false', expect: "route.body.declared-over-cap" },
+  { name: "capsule-extra-status-accepted", file: "src/lib/journey/deposit-recheck-binding.ts", from: 'Object.keys(raw).sort().join(",") !== "funding,fundingKey,owner,providerRef,txnId,v" || ', to: '', expect: "capsule.extra-status" },
+  m("restricted-claim-binding-dropped", '          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) }, binding);', '          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) });', "claim.duplicate.foreign-failed"),
+  { name: "restricted-claim-uses-global-ref", file: "src/lib/server/wallet-service.ts", from: 'const txn = restriction ? await db.txn.findById(restriction.txnId, currentLockTx()) : await db.txn.findByProviderRef(input.providerRef, currentLockTx());', to: 'const txn = await db.txn.findByProviderRef(input.providerRef, currentLockTx());', expect: "claim.duplicate.foreign-failed" },
+  { name: "malformed-restriction-falls-through", file: "src/lib/server/wallet-service.ts", from: 'if (expected !== undefined && (!restriction || restriction.providerRef !== input.providerRef)) return { handled: false, reason: "scope-mismatch" };', to: '', expect: "claim.malformed-restriction" },
+  { name: "claim-selection-ignores-original-binding", file: "src/lib/server/wallet-service.ts", from: 'if (restriction && !matchesDepositRecheckBinding(restriction.owner, restriction.txnId, restriction, txn)) return { handled: false, reason: "scope-mismatch" };', to: '', expect: "claim.drift.selection.key" },
+  { name: "marker-fresh-ignores-original-binding", file: "src/lib/server/wallet-service.ts", from: 'if (restriction && !matchesDepositRecheckBinding(restriction.owner, txnId, restriction, fresh)) return false;', to: '', expect: "claim.drift.marker.key" },
+  { name: "restricted-door-credits-processing", file: "src/lib/server/wallet-service.ts", from: 'if (restriction && txn.status === "PROCESSING") return { handled: false, reason: "scope-mismatch" };', to: '', expect: "claim.processing-restriction-refused" },
+  m("signed-failed-reference-not-unique", '      if (projection.state === "FAILED") {\n        const referenced = await db.txn.findByProviderRef(fresh.providerRef!, tx);\n        if (!referenced || referenced.id !== fresh.id) return unknown();\n      }', '', "safe.reference.duplicate"),
+  { name: "memory-reference-picks-arbitrary-owner", file: "src/lib/server/store.ts", from: 'if (match) throw new Error("Payment reference is ambiguous.");', to: 'if (match) return match;', expect: "reference.ambiguous.DEPOSIT-DEPOSIT.CONFIRMED" },
+  { name: "deposit-credit-reference-check-skipped", file: "src/lib/server/wallet-service.ts", from: '    if (!t) return { credited: false, balance: 0 };\n    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);', to: '    if (!t) return { credited: false, balance: 0 };', expect: "reference.late.deposit-confirm" },
+  { name: "deposit-fail-reference-check-skipped", file: "src/lib/server/wallet-service.ts", from: 'const done = await withLock(`wallet:${pre.userId}`, async () => {\n    const t = await db.txn.findById(txnId, currentLockTx());\n    if (!t || t.status !== "PROCESSING") return null;\n    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);', to: 'const done = await withLock(`wallet:${pre.userId}`, async () => {\n    const t = await db.txn.findById(txnId, currentLockTx());\n    if (!t || t.status !== "PROCESSING") return null;', expect: "reference.late.deposit-fail" },
+  { name: "withdraw-confirm-reference-check-skipped", file: "src/lib/server/wallet-service.ts", from: 'const done = await withLock(`wallet:${pre.userId}`, async (): Promise<{ txn: StoredTxn; gatewayShare: number } | null> => {\n    const t = await db.txn.findById(txnId, currentLockTx());\n    if (!t || t.status !== "PROCESSING") return null;\n    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);', to: 'const done = await withLock(`wallet:${pre.userId}`, async (): Promise<{ txn: StoredTxn; gatewayShare: number } | null> => {\n    const t = await db.txn.findById(txnId, currentLockTx());\n    if (!t || t.status !== "PROCESSING") return null;', expect: "reference.late.withdraw-confirm" },
+  { name: "withdraw-refund-reference-check-skipped", file: "src/lib/server/wallet-service.ts", from: 'const done = await withLock(`wallet:${pre.userId}`, async (tx): Promise<StoredTxn | null> => {\n    const t = await db.txn.findById(txnId, tx);\n    if (!t || t.status !== "PROCESSING") return null;\n    if (expectedProviderRef !== undefined) await assertUniquePaymentReference(t, expectedProviderRef, expectedFunding);', to: 'const done = await withLock(`wallet:${pre.userId}`, async (tx): Promise<StoredTxn | null> => {\n    const t = await db.txn.findById(txnId, tx);\n    if (!t || t.status !== "PROCESSING") return null;', expect: "reference.late.withdraw-fail" },
+  { name: "ordinary-review-reference-check-skipped", file: "src/lib/server/wallet-service.ts", from: 'if (expectedProviderRef !== undefined) await assertUniquePaymentReference(fresh, expectedProviderRef, restriction);', to: '', expect: "reference.late.deposit-review" },
+  { name: "reference-fresh-read-escapes-wallet-tx", file: "src/lib/server/wallet-service.ts", from: 'const selected = await db.txn.findByProviderRef(providerRef, currentLockTx());', to: 'const selected = await db.txn.findByProviderRef(providerRef);', expect: "reference.late.deposit-confirm" },
+  { name: "probe-collision-reread-skipped", file: "src/lib/server/deposit-status.ts", from: '    if (eligible) {\n      if (!original || !matchesDepositRecheckBinding(userId, original.txnId, original, txn)) return unknown(retryAfterSec);\n      const referenced = await db.txn.findByProviderRef(original.providerRef);\n      if (!referenced || referenced.id !== original.txnId) return unknown(retryAfterSec);\n    }', to: '', expect: "reference.probe-race-unknown" },
+  { name: "owned-probe-uses-unbound-common-claim", file: "src/lib/server/deposit-status.ts", from: 'await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: verified.amount }, undefined, original);', to: 'await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: verified.amount });', expect: "reference.original.move-to-foreign" },
+  { name: "processing-global-selection-ignores-original", file: "src/lib/server/wallet-service.ts", from: 'if (original && !matchesProcessingProbeBinding(original, txn)) return { handled: false, reason: "scope-mismatch" };', to: '', expect: "reference.original.move-to-foreign-terminal" },
+  { name: "processing-wallet-claim-ignores-original", file: "src/lib/server/wallet-service.ts", from: '  if (expected && (!matchesProcessingProbeBinding(expected, selected)\n    || !matchesProcessingProbeBinding(expected, txn))) throw new Error("Payment funding could not be verified.");', to: '', expect: "reference.original.claim.amount" },
+  { name: "owned-probe-retains-mutable-reference", file: "src/lib/server/deposit-status.ts", from: 'original = depositRecheckBinding(userId, txn);', to: 'original = depositRecheckBinding(userId, txn); if (original) Object.defineProperty(original, "providerRef", { get: () => txn!.providerRef });', expect: "reference.original.raw-mutable" },
+];
+// These plants need actual SQL selection/visibility and rollback; Maps cannot supply that evidence.
+export const PG_MUTATIONS = [
+  { name: "review-marker-autocommits-before-outer-rollback", file: "src/lib/server/wallet-service.ts", from: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);', to: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });', expect: "review.pg-rollback-no-partial-marker" },
+  { name: "review-notice-escapes-rollback", file: "src/lib/server/wallet-service.ts", from: 'if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,\n          savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));', to: 'if (reviewAdded) notifyDeposit(txn.userId,\n        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,\n          savedReturn: !!parseSavedDepositBet(txn.pendingBet) });', expect: "review.pg-rollback-no-review-notice" },
+];

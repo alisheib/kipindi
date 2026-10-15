@@ -115,7 +115,9 @@ export type ServiceResult<T = void> =
   // RATE_LIMITED — waiting will not help, because the gateway is the thing that is down.
   // With OTP as a login path, this is the code that must route the player to the password
   // door instead of to an OTP screen waiting for a code that was never sent.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY" | "SMS_UNDELIVERABLE"; retryAfterSec?: number; reason?: FailureReason | HouseSeamReason; detail?: FailureDetail; field?: string };
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY" | "SMS_UNDELIVERABLE"; retryAfterSec?: number; reason?: FailureReason | HouseSeamReason; detail?: FailureDetail; field?: string;
+      /** An already-reserved payout whose provider answer needs review. UI opens this owned row, never a fresh request. */
+      txnId?: string };
 
 /**
  * THE ONE ACCOUNT-STATUS GATE EVERY SIGN-IN PATH MUST PASS (E-240, E-238).

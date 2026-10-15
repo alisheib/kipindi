@@ -212,6 +212,7 @@ function toStoredPosition(r: any): StoredPosition {
     settledAt: iso(r.settledAt),
     idempotencyKey: r.idempotencyKey ?? null,
     houseBotId: r.houseBotId ?? null,
+    origin: r.origin ?? null,
   };
 }
 
@@ -823,7 +824,7 @@ const memoryPositions: PositionStore = {
     // full-row write never changes its marker, in either direction. The commit-7 remark uses its
     // own statement, never set.
     const prev = positions.get(p.id);
-    positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? null } : p);
+    positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? null, origin: prev.origin ?? null } : { ...p, origin: p.origin ?? null });
   },
   async values() { return Array.from(positions.values()); },
   async attribution(ids) {
@@ -1397,6 +1398,7 @@ const prismaPositions: PositionStore = {
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
         idempotencyKey: p.idempotencyKey ?? null,
         houseBotId: p.houseBotId ?? null,
+        origin: p.origin ?? null,
       },
       // Mirror the full mutable field set so this DAL matches the in-memory
       // store's full-replace semantics (positions.set(p.id, p)). Previously only

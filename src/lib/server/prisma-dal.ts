@@ -18,6 +18,7 @@ import type { PrismaClient, Prisma } from "@prisma/client";
 // U43b-2 · DC-4 · the ONE runtime value this twin takes from the client: the Json-null sentinel a WHERE needs to ask "no
 // trail written yet" (`AnyNull` — a plain `null` is no Json filter on Postgres; see `ai-poll-generation.ts`).
 import { Prisma as PrismaRuntime } from "@prisma/client";
+import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 
 // A money-path write can pass a Prisma transaction client (audit C3) so the
 // wallet mutation, its Transaction row, and its ledger entries commit together
@@ -70,6 +71,7 @@ import type {
   StoredOtp,
   StoredWallet,
   StoredTxn,
+  StoredDepositFundingClaim,
   StoredResponsibleGambling,
   StoredNotification,
   StoredSourceOfFunds,
@@ -1119,7 +1121,7 @@ function toStoredWallet(w: any): StoredWallet {
     pending: num(w.pending),
     hold: num(w.hold),
     bonusBalance: num(w.bonusBalance),
-    currency: "TZS",
+    currency: w.currency,
     status: w.status,
     freezeReasons: Array.isArray(w.freezeReasons) ? [...w.freezeReasons] : [],
     createdAt: iso(w.createdAt)!,
@@ -1161,7 +1163,8 @@ function toStoredTxn(t: any): StoredTxn {
     fee: num(t.fee),
     taxWithheld: num(t.taxWithheld),
     balanceAfter: numOrNull(t.balanceAfter),
-    currency: "TZS",
+    // Preserve stored currency so funding recovery can refuse a non-TZS row instead of relabelling it.
+    currency: t.currency,
     provider: t.provider ?? null,
     providerRef: t.providerRef,
     providerStatus: t.providerStatus ?? null,
@@ -1177,6 +1180,7 @@ function toStoredTxn(t: any): StoredTxn {
     pendingNotifiedAt: iso(t.pendingNotifiedAt),
     houseBotId: t.houseBotId ?? null,
     origin: t.origin ?? null,
+    pendingBet: t.pendingBet ?? null,
   };
 }
 
@@ -2411,6 +2415,25 @@ export const prismaDb = {
     },
   },
 
+  // ── DURABLE DEPOSIT ACTION CLAIM ─────────────────────────────────────────
+  depositFundingClaim: {
+    findByKey: async (key: string, tx?: Prisma.TransactionClient | null): Promise<StoredDepositFundingClaim | null> => {
+      const row = await (tx ?? pc()).depositFundingClaim.findUnique({ where: { key } });
+      return row ? { key: row.key, userId: row.userId, state: row.state as StoredDepositFundingClaim["state"],
+        createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() } : null;
+    },
+    create: async (key: string, userId: string, tx?: Prisma.TransactionClient | null): Promise<StoredDepositFundingClaim> => {
+      const row = await (tx ?? pc()).depositFundingClaim.create({ data: { key, userId, state: "CLAIMED" } });
+      return { key: row.key, userId: row.userId, state: "CLAIMED", createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+    },
+    markRefused: async (key: string, userId: string, tx?: Prisma.TransactionClient | null): Promise<boolean> => {
+      const result = await (tx ?? pc()).depositFundingClaim.updateMany({
+        where: { key, userId, state: "CLAIMED" }, data: { state: "REFUSED" },
+      });
+      return result.count === 1;
+    },
+  },
+
   // ── TRANSACTION ───────────────────────────────────────────────────────────
   txn: {
     create: async (t: StoredTxn, tx?: Prisma.TransactionClient | null): Promise<StoredTxn> => {
@@ -2440,6 +2463,8 @@ export const prismaDb = {
           houseBotId: t.houseBotId ?? null,
           // The journey funnel's deposit origin (S3b) — create-only too.
           origin: t.origin ?? null,
+          // Raw JSON stays visible to the caller's parser: malformed legacy data must not masquerade as a null intent.
+          pendingBet: t.pendingBet == null ? PrismaRuntime.DbNull : t.pendingBet as Prisma.InputJsonValue,
         },
       });
       return toStoredTxn(row);
@@ -2485,13 +2510,24 @@ export const prismaDb = {
       });
       return rows.map(toStoredTxn);
     },
-    findById: async (id: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findUnique({ where: { id } });
+    /** One row through SQL; never a full history download followed by client-side rail/status guessing. */
+    latestConfirmedMobileDeposit: async (userId: string): Promise<StoredTxn | null> => {
+      const row = await pc().transaction.findFirst({
+        where: { userId, type: "DEPOSIT", status: "CONFIRMED", currency: "TZS", houseBotId: null, provider: { in: MOBILE_MONEY_METHODS.map((m) => m.id) } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
       return row ? toStoredTxn(row) : null;
     },
-    findByProviderRef: async (providerRef: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findFirst({ where: { providerRef } });
+    findById: async (id: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findUnique({ where: { id } });
       return row ? toStoredTxn(row) : null;
+    },
+    findByProviderRef: async (providerRef: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      // A reference alone must identify ONE row across owners, rails and transaction types. The declared compound
+      // schema constraint is not installed by the migration history and would not make this single-field read unique.
+      const rows = await (tx ?? pc()).transaction.findMany({ where: { providerRef }, take: 2 });
+      if (rows.length > 1) throw new Error("Payment reference is ambiguous.");
+      return rows[0] ? toStoredTxn(rows[0]) : null;
     },
     update: async (id: string, patch: Partial<StoredTxn>, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
       const db: Db = tx ?? pc();
@@ -2508,7 +2544,7 @@ export const prismaDb = {
           // `.txn.create(` sites only, so nothing would report it. The two keys are create-only together or neither
           // is. Measured when this landed: 28 `db.txn.update(` call sites in `src/`, none naming either key. The
           // memory twin drops both the same way; the pin is `test:house-bot-reports` 0.232.4.
-          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId" || k === "origin") continue;
+          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId" || k === "positionId" || k === "origin" || k === "pendingBet") continue;
           if (k === "completedAt" || k === "pendingNotifiedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {
@@ -2649,8 +2685,16 @@ export const prismaDb = {
       }) as unknown as StoredTxn));
       return { rows: rows.map(toStoredTxn), total, summary };
     },
-    findByIdempotencyKey: async (key: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findUnique({ where: { idempotencyKey: key } });
+    findByIdempotencyKey: async (key: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findUnique({ where: { idempotencyKey: key } });
+      return row ? toStoredTxn(row) : null;
+    },
+    findProcessingWithdrawalMissingIdentity: async (userId: string, requireRail: boolean, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findFirst({
+        where: { userId, type: "WITHDRAWAL", status: "PROCESSING",
+          OR: requireRail ? [{ providerRef: null }, { payoutRail: null }] : [{ providerRef: null }] },
+        orderBy: { createdAt: "asc" },
+      });
       return row ? toStoredTxn(row) : null;
     },
     sumDepositsSince: async (userId: string, sinceMs: number, includePending = false): Promise<number> => {

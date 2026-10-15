@@ -712,17 +712,34 @@ export function notifySelectionClosed(userId: string, opts: {
 export function notifyDeposit(
   userId: string,
   opts: {
-    status: "PROCESSING" | "CONFIRMED" | "FAILED" | "REVERSED";
+    status: "PROCESSING" | "CONFIRMED" | "FAILED" | "REVERSED" | "AML_REVIEW";
     amount: number;
     provider: string;
     /** Internal txn id — makes the notification deep-link to its own receipt. */
     txnId?: string;
+    /** Parsed from the owned transaction's stored intent, never from a URL. */
+    savedReturn?: boolean;
     /** Friendly, player-safe reason. Never a raw gateway code. */
     reason?: string;
   },
 ) {
   const amt = formatTzs(opts.amount);
-  const href = opts.txnId ? `/wallet/receipt/${opts.txnId}` : "/wallet";
+  const href = opts.txnId ? (opts.savedReturn && (opts.status === "PROCESSING" || opts.status === "CONFIRMED")
+    ? `/wallet/deposit/wait/${opts.txnId}` : `/wallet/receipt/${opts.txnId}`) : "/wallet";
+
+  if (opts.status === "AML_REVIEW") {
+    return notify({
+      userId,
+      kind: "DEPOSIT",
+      titleEn: `Deposit under review · ${amt}`,
+      titleSw: `Amana inakaguliwa · ${amt}`,
+      titleZh: `充值待核查 · ${amt}`,
+      bodyEn: "Your provider reported conflicting payment results. We're checking the payment. Don't pay again; open the receipt for its references.",
+      bodySw: "Mtoa huduma ameripoti matokeo ya malipo yanayokinzana. Tunakagua malipo. Usilipe tena; fungua risiti kuona kumbukumbu zake.",
+      bodyZh: "支付服务商报告了相互矛盾的结果，我们正在核查此笔付款。请勿重复支付；可打开凭据查看参考编号。",
+      href,
+    });
+  }
 
   if (opts.status === "CONFIRMED") {
     return notify({
@@ -773,16 +790,20 @@ export function notifyDeposit(
     });
   }
 
-  // REVERSED — arrived while the account was self-excluded / cooling off.
+  // REVERSED — arrived while the account was self-excluded / cooling off: the money is HELD FOR RETURN.
+  // ⛔ THE TITLE MATCHES THE BODY (Ali, 2026-10-14 — superseding the 2026-10-07 "Reversed" label for held deposits): it says
+  // held for return in all three languages, as the card return, the receipt, the email and the /wallet row now do. The
+  // BODY (approved as written) says what is true while it waits: not added, held for return, no claim that a return has
+  // been delivered (the 2026-10-07 entry records "returned to the account it came from", sent while still held, as untrue).
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Deposit reversed · ${amt}`,
-    titleSw: `Amana imerudishwa · ${amt}`,
-    titleZh: `充值已退回 · ${amt}`,
-    bodyEn: "Your account is self-excluded, so this deposit was not added. It has been returned to where it came from.",
-    bodySw: "Akaunti yako imejifungia, hivyo amana hii haikuongezwa. Imerudishwa ilikotoka.",
-    bodyZh: "您的账户处于自我限制状态，此笔充值未入账，已原路退回。",
+    titleEn: `Deposit held for return · ${amt}`,
+    titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,
+    titleZh: `充值暂扣待退还 · ${amt}`,
+    bodyEn: "Your account could not accept this deposit, so it was not added. The money is held for return; contact support using this receipt.",
+    bodySw: "Akaunti yako haikuweza kupokea amana hii, hivyo haikuongezwa. Pesa zinashikiliwa ili zirudishwe; wasiliana na usaidizi ukitumia risiti hii.",
+    bodyZh: "您的账户当时无法接收此笔充值，款项未入账，现正保留待退还。请凭此收据联系支持。",
     href,
   });
 }

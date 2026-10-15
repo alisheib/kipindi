@@ -145,12 +145,14 @@ const REG = "+255712000101";
   ok("4: …carrying the SUBMITTED number, which the player is never shown",
      /submittedMsisdn: parse\.data\.msisdn \?\? null/.test(walletSvc));
 
-  // ⛔ THE OPERATOR PATHS ARE BOUND BY THE SAME RULE. Both admin retries replay the ORIGINAL
-  // destination, so a retry of one of the historical mismatched rows must be refused too —
-  // and it is, because they call `withdraw()` rather than reaching the gateway themselves.
-  ok("4: ⛔ the operator retry paths go through `withdraw()`, so the seal binds them too",
-     (paymentActs.match(/await withdraw\(/g) ?? []).length >= 2,
-     `${(paymentActs.match(/await withdraw\(/g) ?? []).length} call sites`);
+  // S9: FAILED withdrawals can include a provider-ambiguous officer reversal.
+  // Admin retry is therefore closed before any new `withdraw()` call; normal player
+  // withdrawals still run through the destination seal above.
+  ok("4: ⛔ admin failed-payout retry cannot bypass the destination seal with a new dispatch",
+     (paymentActs.match(/await withdraw\(/g) ?? []).length === 0
+       && paymentActs.includes("This failed payout needs manual provider review. Automatic retry is unavailable.")
+       && paymentActs.includes('filter((t) => t.type === "DEPOSIT")'),
+     `${(paymentActs.match(/await withdraw\(/g) ?? []).length} admin withdrawal dispatch calls`);
 }
 
 // ── 5 · THE REFUSAL IS LEGIBLE, IN ALL THREE LANGUAGES ─────────────────────

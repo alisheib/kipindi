@@ -915,8 +915,8 @@ function withdrawRefRows(reference: string, gatewayRef?: string | null, railLabe
   ];
 }
 
-export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance }: {
-  amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number;
+export function depositConfirmedHtml({ amount, method, reference, gatewayRef, balance, savedReturn }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; balance: number; savedReturn?: boolean;
 }): string {
   return wrapGold(`
     ${eyebrow("Deposit confirmed", "Amana imethibitishwa", true)}
@@ -928,7 +928,7 @@ export function depositConfirmedHtml({ amount, method, reference, gatewayRef, ba
       ...depositRefRows(reference, gatewayRef),
       { label: "New balance", value: formatTzs(balance) },
     ])}
-    ${ctaButton("/wallet", "View wallet · Tazama pochi")}
+    ${ctaButton(savedReturn ? `/wallet/deposit/wait/${encodeURIComponent(reference)}` : "/wallet", savedReturn ? "Return to your choice · Rudi kwenye chaguo" : "View wallet · Tazama pochi")}
     ${refNote()}
   `);
 }
@@ -944,8 +944,8 @@ export function depositConfirmedHtml({ amount, method, reference, gatewayRef, ba
  * is reserved for money that has actually ARRIVED (gold discipline), and this
  * money has not.
  */
-export function depositPendingHtml({ amount, method, reference, gatewayRef }: {
-  amount: number; method: string; reference: string; gatewayRef?: string | null;
+export function depositPendingHtml({ amount, method, reference, gatewayRef, savedReturn }: {
+  amount: number; method: string; reference: string; gatewayRef?: string | null; savedReturn?: boolean;
 }): string {
   return wrap(`
     ${eyebrow("Payment processing", "Malipo yanashughulikiwa")}
@@ -960,7 +960,7 @@ export function depositPendingHtml({ amount, method, reference, gatewayRef }: {
     ])}
     ${subtitle("Please do NOT pay again — a second attempt would take a second payment from you. We'll email you the moment it clears, or if it fails.")}
     ${subtitleSw("TAFADHALI usilipe tena — jaribio la pili litachukua malipo ya pili kutoka kwako. Tutakutumia barua pepe mara itakapokamilika, au ikishindikana.")}
-    ${ctaButton("/wallet", "Check your wallet · Angalia pochi")}
+    ${ctaButton(savedReturn ? `/wallet/deposit/wait/${encodeURIComponent(reference)}` : "/wallet", savedReturn ? "Track this payment · Fuatilia malipo" : "Check your wallet · Angalia pochi")}
     ${refNote()}
   `);
 }
@@ -1001,25 +1001,30 @@ export function depositFailedHtml({ amount, method, reference, gatewayRef, reaso
  * This used to send nothing at all. A self-excluded player is precisely the
  * player who must never be left wondering where their money went — the silence
  * reads as a platform that kept it. We state plainly that it was not credited
- * and that it goes back the way it came, and we deliberately do NOT invite them
+ * and that it is held for return, and we deliberately do NOT invite them
  * to deposit again: there is no CTA into the deposit flow on this one.
+ *
+ * ⛔ The eyebrow, heading and Status row MATCH THE BODY — held for return (Ali, 2026-10-14, superseding the 2026-10-07
+ * "Reversed" label for held deposits). The sentences (approved as written) say what is true while the money waits: no
+ * claim that it was "returned to the account it came from" and no delivery deadline (the 2026-10-07 entry records that
+ * letter, sent while the money was still held, as untrue).
  */
 export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
   amount: number; method: string; reference: string; gatewayRef?: string | null;
 }): string {
   return wrap(`
-    ${eyebrow("Deposit reversed", "Amana imerudishwa")}
-    ${heading("This deposit was reversed")}
-    ${subtitle("Your account is currently self-excluded or in a cooling-off period, so we could not add these funds. The deposit has been reversed and returned to the account it came from.")}
-    ${subtitleSw("Akaunti yako kwa sasa imejifungia au iko katika kipindi cha kupumzika, hivyo hatukuweza kuongeza pesa hizi. Amana imerudishwa kwenye akaunti iliyotoka.")}
+    ${eyebrow("Deposit held for return", "Amana imeshikiliwa ili irudishwe")}
+    ${heading("This deposit is held for return")}
+    ${subtitle("Your account is self-excluded or in a cooling-off period, so these funds were not added. The money is held for return; delivery of a return has not been confirmed. Contact support using the references below.")}
+    ${subtitleSw("Akaunti yako imejifungia au iko katika kipindi cha kupumzika, hivyo hatukuweza kuongeza pesa hizi. Pesa zinashikiliwa ili zirudishwe; hatujathibitisha kuwa marejesho yamekufikia. Wasiliana na usaidizi ukitumia kumbukumbu zilizo hapa chini.")}
     ${detailRows([
       { label: "Amount", value: formatTzs(amount) },
       { label: "Method", value: method },
       ...depositRefRows(reference, gatewayRef),
-      { label: "Status", value: "Reversed" },
+      { label: "Status", value: "Held for return" },
     ])}
-    ${subtitle("Your exclusion stays in place — this is the protection working as intended. If a refund has not reached you within 5 working days, quote the references above and we'll trace it.")}
-    ${subtitleSw("Kujifungia kwako kunaendelea — hii ni ulinzi ukifanya kazi ipasavyo. Kama marejesho hayajakufikia ndani ya siku 5 za kazi, tutumie kumbukumbu zilizo hapo juu.")}
+    ${subtitle("Your exclusion stays in place. Contact support with these references to check the return.")}
+    ${subtitleSw("Kujifungia kwako kunaendelea. Wasiliana na usaidizi ukitumia kumbukumbu hizi ili kufuatilia marejesho.")}
     ${refNote()}
   `);
 }

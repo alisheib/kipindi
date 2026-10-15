@@ -45,7 +45,8 @@ import { decomment } from "./decomment.mts";
 import { srcFiles } from "./tracked-files.mts";
 import { printedTexts, playerRenderedFiles, isPlayerRendered } from "./player-surface-text.mts";
 import { houseHitsByFamily, HOUSE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
-import { sameS8PublishedWords, s8PublishedWords, S8_PUBLICATION_FILES } from "./s8-published-words.mts";
+import { s8PublishedWords, S8_PUBLICATION_FILES } from "./s8-published-words.mts";
+import { sameS8S9PublishedWords, s9PublishedWords } from "./s9-published-words.mts";
 
 type Ok = (label: string, cond: boolean, detail?: string) => void;
 type Section = (title: string) => void;
@@ -167,9 +168,9 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const legal = tracked.filter((p) => p.startsWith("src/app/legal/"));
     const PUBLIC_TEXT = [...legal, "src/lib/terms-version.ts", "src/lib/i18n-dict.ts"];
     const blobOf = (rel: string) => { try { return lf(git("cat-file", "blob", `origin/main:${rel}`)); } catch { return null; } };
-    const isApprovedS8 = (rel: string) => {
+    const isApprovedPublication = (rel: string) => {
       const golden = blobOf(rel);
-      return (S8_PUBLICATION_FILES as readonly string[]).includes(rel) && golden !== null && sameS8PublishedWords(rel, read(rel), golden);
+      return (S8_PUBLICATION_FILES as readonly string[]).includes(rel) && golden !== null && sameS8S9PublishedWords(rel, read(rel), golden);
     };
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
@@ -178,7 +179,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
         const blob = blobOf(rel);
         if (blob === null || !existsSync(join(ROOT, rel))) { missing.push(rel); continue; }
         compared++;
-        if (!sameS8PublishedWords(rel, lf(read(rel)), blob)) differs.push(rel);
+        if (!sameS8S9PublishedWords(rel, lf(read(rel)), blob)) differs.push(rel);
       }
       return { compared, missing, differs };
     };
@@ -186,7 +187,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       mainSha.length >= 7 && legal.length >= 14 && PUBLIC_TEXT.includes("src/lib/i18n-dict.ts") && PUBLIC_TEXT.includes("src/lib/terms-version.ts"),
       j({ originMain: mainSha, legalFiles: legal.length, pinned: PUBLIC_TEXT.length }));
     const real = compare(PUBLIC_TEXT);
-    ok(`5.1 · ⛔ D19a · every original published clause and dictionary entry is \`origin/main\`'s own; only S8's exact approved marker paragraph/version and new journey keys are separately pinned — the golden is ${mainSha || "(unresolved)"}`,
+    ok(`5.1 · ⛔ D19a · every original published clause and dictionary entry is \`origin/main\`'s own; only S8's exact approved notice/keys and S9's exact payment-truth literals are separately pinned — the golden is ${mainSha || "(unresolved)"}`,
       real.compared === PUBLIC_TEXT.length && real.differs.length === 0 && real.missing.length === 0,
       j({ comparedAgainst: mainSha, compared: real.compared, differs: real.differs, missing: real.missing }));
     // ⛔ CONTROLS · mutated COPIES in memory. The repository is never written to.
@@ -198,25 +199,38 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     ok("5.1.c2 · CONTROL · a deliberately WRONG path list compares ZERO files and reports every one as missing — a clean tree and a blind pin print the same green, and this is the difference between them",
       wrongList.compared === 0 && wrongList.missing.length === 2, j(wrongList));
     const branchChanged = git("diff", "--name-only", "origin/main").split("\n").map((s) => s.trim()).filter(Boolean);
-    const sweptIn = branchChanged.filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedS8(p));
+    const sweptIn = branchChanged.filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedPublication(p));
     const privacyRel = "src/app/legal/privacy/page.tsx", dictionaryRel = "src/lib/i18n-dict.ts";
     const privacyNow = read(privacyRel), dictionaryNow = read(dictionaryRel);
     const oldClauses = [privacyNow.replace("No advertising cookies.", "We use advertising cookies."), privacyNow.replace("No advertising cookies.", "")];
     const oldEntries = [dictionaryNow.replace('hubSearchPlaceholder: "Search questions",', 'hubSearchPlaceholder: "Wrong questions",'), dictionaryNow.replace('hubSearchPlaceholder: "Search questions",', "")];
-    ok("5.1.s8.c1 · CONTROL · changing or deleting an OLD policy clause or dictionary entry remains red after only the approved S8 additions are stripped",
-      oldClauses.every((s) => s !== privacyNow && !sameS8PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
-        && oldEntries.every((s) => s !== dictionaryNow && !sameS8PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
+    ok("5.1.s8.c1 · CONTROL · changing or deleting an OLD policy clause or dictionary entry remains red after only the exact approved S8/S9 deltas are accounted for",
+      oldClauses.every((s) => s !== privacyNow && !sameS8S9PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
+        && oldEntries.every((s) => s !== dictionaryNow && !sameS8S9PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
     const markerChanged = privacyNow.replace("the question, side and amount you chose", "the question and side you chose");
     const markerDropped = privacyNow.replace(/\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/, "");
     const wordChanged = dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "A fabricated claim",');
     const wordDropped = dictionaryNow.replace('sheetChosen: "You picked {side}",', "");
-    ok("5.1.s8.c2 · CONTROL · the approved NEW notice and dictionary words are not an exemption: changing or deleting either is red too",
-      [markerChanged, markerDropped].every((s) => s !== privacyNow && !sameS8PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
-        && [wordChanged, wordDropped].every((s) => s !== dictionaryNow && !sameS8PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
-    ok("5.1.s8.c3 · CONTROL · an unapproved journey key and a second marked paragraph are rejected, with the population found in all three languages",
-      s8PublishedWords(dictionaryRel, dictionaryNow).count === 177 && s8PublishedWords(privacyRel, privacyNow).count === 3
-        && !sameS8PublishedWords(dictionaryRel, dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "You picked {side}",\n      unapprovedJourneyWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
-        && !sameS8PublishedWords(privacyRel, privacyNow + '\n        <p data-policy-addition="pending-bet">\n          Another unreviewed sentence.\n        </p>', blobOf(privacyRel) ?? ""));
+    // ⚠️ RE-TARGETED 2026-10-14 (S9 release candidate). Each plant must CHANGE the text (a no-op plant proves nothing, and
+    // `s !== dictionaryNow` says so — that premise is how a stale title literal was caught once already). Ali's decision of
+    // 2026-10-14 makes the held title "Payment held for return" again; the held BODY (the delivered-refund claim this stack
+    // removed), the held chip word ("Reversed" must never come back) and L6's under-review sentence each get a plant.
+    const s9WordsChanged = [dictionaryNow.replace('returnReversedTitle: "Payment held for return",', 'returnReversedTitle: "Payment reversed",'),
+      dictionaryNow.replace('returnReversedTitle: "Payment held for return",', ""),
+      dictionaryNow.replace("The money is held for return; contact support using this receipt.", "It goes back to the card it came from."),
+      dictionaryNow.replace('txnStatusHeld: "Held for return",', 'txnStatusHeld: "Reversed",'),
+      dictionaryNow.replace("We're checking this payment. Nothing is lost;", "This payment failed. Pay again;"),
+      dictionaryNow.replace("We need to review this payment's result. Don't pay again.", "Payment failed. Pay again."),
+      dictionaryNow.replace(/\n {6}returnReviewBody: "We need to review[^\n]+/, "")];
+    ok("5.1.s8.c2 · CONTROL · the approved NEW notice and S8/S9 dictionary words are not an exemption: changing or deleting notice, held or review truth is red too",
+      [markerChanged, markerDropped].every((s) => s !== privacyNow && !sameS8S9PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
+        && [wordChanged, wordDropped, ...s9WordsChanged].every((s) => s !== dictionaryNow && !sameS8S9PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
+    ok("5.1.s8.c3 · CONTROL · unapproved journey/wallet keys, a duplicate review word and a second marked paragraph are rejected, with exact populations in all three languages",
+      s8PublishedWords(dictionaryRel, dictionaryNow).count === 177 && s8PublishedWords(privacyRel, privacyNow).count === 3 && s9PublishedWords(dictionaryRel, dictionaryNow).count === 18
+        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "You picked {side}",\n      unapprovedJourneyWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
+        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      unapprovedWalletWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
+        && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      returnReviewTitle: "Payment under review",'), blobOf(dictionaryRel) ?? "")
+        && !sameS8S9PublishedWords(privacyRel, privacyNow + '\n        <p data-policy-addition="pending-bet">\n          Another unreviewed sentence.\n        </p>', blobOf(privacyRel) ?? ""));
     /**
      * ⛔ THIS ASSERTED `branchChanged.length >= 10`, AND THAT MEASURED THE WORKING TREE, NOT THE CLAIM
      * (repaired 2026-09-21).
@@ -235,8 +249,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
      * FALSIFIABLE WITHOUT DEPENDING ON THE TREE: the same filter runs over a list with a pinned file PLANTED
      * in it and must catch exactly that one. A detector that cannot be shown to fire is not a control.
      */
-    const plantedSweep = [...branchChanged, PUBLIC_TEXT[0]].filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedS8(p));
-    ok("5.1.c3 · POSITIVE CONTROL · no unapproved changed file is inside the pinned population; a pinned file planted in the list is still reported (S8's two exact approved deltas alone are accounted for)",
+    const plantedSweep = [...branchChanged, PUBLIC_TEXT[0]].filter((p) => PUBLIC_TEXT.includes(p) && !isApprovedPublication(p));
+    ok("5.1.c3 · POSITIVE CONTROL · no unapproved changed file is inside the pinned population; a pinned file planted in the list is still reported (S8/S9's exact approved deltas alone are accounted for)",
       sweptIn.length === 0 && plantedSweep.length === 1 && plantedSweep[0] === PUBLIC_TEXT[0] && PUBLIC_TEXT.length >= 16,
       j({ changedVsMain: branchChanged.length, sweptIn, planted: plantedSweep, pinned: PUBLIC_TEXT.length }));
   }

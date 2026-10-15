@@ -169,6 +169,13 @@ export function sheetPreset(bounds: SheetBounds, allowedFromUrl: number | null):
     : bounds.min;
 }
 
+/** On a verified deposit return, preserve the selected amount as far as today's legal bounds allow and disclose any change. */
+export function returnedSheetPreset(bounds: SheetBounds, selected: number | null): { stake: number; changed: { from: number; to: number } | null } {
+  if (selected === null || !Number.isSafeInteger(selected) || selected <= 0) return { stake: bounds.min, changed: null };
+  const stake = Math.min(bounds.max, Math.max(bounds.min, selected));
+  return { stake, changed: stake === selected ? null : { from: selected, to: stake } };
+}
+
 /**
  * THE CHIPS: `quickStakes(min, max)` — filtered to the bounds, never to the balance (SJ-10) — less every chip above the
  * loss room when the plan is the loss room (the panel's A3). Full figures: the label is the component's `formatTzs`,

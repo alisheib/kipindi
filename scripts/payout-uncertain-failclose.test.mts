@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { railOf, selcomVerifyPayout } from "../src/lib/server/selcom.ts";
+import { matchesProcessingProbeBinding, withdrawalProbeBinding } from "../src/lib/server/payment-probe-binding.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8").replaceAll("\r\n", "\n");
 const actions = read("../src/app/admin/payments/payment-actions.ts");
@@ -70,23 +71,39 @@ if (process.argv.includes("--prove-red")) {
   process.exit(0);
 }
 
-async function runSweep(verdict: Verdict, providerRef: string | null, failStatusWrite = false) {
+async function runSweep(
+  verdict: Verdict,
+  providerRef: string | null,
+  failStatusWrite = false,
+  duringQuery?: (row: { status: string; providerRef: string | null }) => void,
+  initialProviderStatus: string | null = null,
+) {
   const row = { id: "wdr_live_2", userId: "player_2", type: "WITHDRAWAL", status: "PROCESSING", amount: -1000,
-    providerRef, payoutRail: "WALLET_CASHIN", providerStatus: null as string | null, createdAt: new Date(0).toISOString() };
+    walletId: "wallet_2", currency: "TZS", fee: 0, provider: "MPESA", msisdn: "255700000002", idempotencyKey: "payout_key_2",
+    houseBotId: null, pendingBet: null, providerRef, payoutRail: "WALLET_CASHIN", providerStatus: initialProviderStatus,
+    createdAt: new Date(0).toISOString() };
   let hold = 1000, balance = 0, refunds = 0, settlements = 0, reviews = 0;
   const sweep = compile<(olderThanMs?: number) => Promise<{ withdrawalsReversed: number; withdrawalsConfirmed: number; leftPending: number }>>(
     sweepBody, "reconcileStalePayments", {
-      db: { txn: { listByStatus: async () => [row], update: async (_id: string, patch: { providerStatus?: string }) => {
+      db: { txn: { listByStatus: async () => [row], findById: async () => row, update: async (_id: string, patch: { providerStatus?: string }) => {
         if (failStatusWrite) throw new Error("status trail unavailable");
         return Object.assign(row, patch);
       } } },
-      verifyWithdrawalStatus: async () => ({ status: verdict, detail: "generic provider result" }),
+      withdrawalProbeBinding,
+      matchesProcessingProbeBinding,
+      withLock: async (_key: string, work: (tx: object) => Promise<unknown>) => work({}),
+      isLiveMoneyMode: () => true,
+      assertUniquePaymentReference: async () => {},
+      verifyWithdrawalStatus: async () => {
+        duringQuery?.(row);
+        return { status: verdict, detail: "generic provider result" };
+      },
       settleWithdrawalFailed: async () => { refunds++; hold -= 1000; balance += 1000; row.status = "FAILED"; return true; },
       settlePaymentWebhook: async () => { settlements++; hold = 0; row.status = "CONFIRMED"; return { handled: true }; },
       auditNeedsReviewOnce: () => { reviews++; },
       clearNeedsReview: () => {},
       audit: () => {},
-      console: { log: () => {} },
+      console: { log: () => {}, error: () => {} },
     },
   );
   const result = await sweep();
@@ -165,6 +182,16 @@ const writeFailure = await runSweep("FAILED", "selcom_ref_2", true);
 assert.equal(writeFailure.refunds, 0, "a failed status-trail write must never refund");
 assert.equal(writeFailure.result.leftPending, 1, "a failed status-trail write must not abort the sweep");
 assert.equal(writeFailure.reviews, 1, "a failed status-trail write must still alert operators");
+const callbackRace = await runSweep("FAILED", "selcom_ref_2", false, (row) => { row.status = "CONFIRMED"; });
+assert.equal(callbackRace.row.status, "CONFIRMED", "a concurrent confirmed callback must keep its terminal status");
+assert.equal(callbackRace.row.providerStatus, null, "stale FAILED review must not overwrite a confirmed row");
+assert.equal(callbackRace.refunds, 0, "a query racing a confirmed callback must not refund");
+const refRace = await runSweep("FAILED", "selcom_ref_2", false, (row) => { row.providerRef = "different_ref"; });
+assert.equal(refRace.row.providerStatus, null, "a changed payout identity must block the stale review write");
+assert.equal(refRace.refunds, 0, "a changed payout identity must not refund");
+const priorFailure = "REVIEW REQUIRED: payout query said FAILED; nonpayment unproven";
+const laterPending = await runSweep("PENDING", "selcom_ref_2", false, undefined, priorFailure);
+assert.equal(laterPending.row.providerStatus, priorFailure, "a later generic PENDING answer must not erase prior failure review");
 
 for (const envelope of [
   { resultcode: "038", result: "FAIL", transid: "wdr_callback_1" },

@@ -67,3 +67,11 @@ const JOURNEY_ROUTE = [
 export function isJourneySurface(path: string | null): boolean {
   return !!path && JOURNEY_ROUTE.some((re) => re.test(path));
 }
+
+/** S9's payment focus is an exact route family, used before the player shell paints any chrome. */
+export function isFocusedJourneyPaymentPath(path: string | null): boolean {
+  return !!path && (
+    path === "/wallet/deposit" || path === "/wallet/deposit/card" || path === "/wallet/deposit/return"
+    || path === "/wallet/deposit/wait" || /^\/wallet\/deposit\/wait\/[^/]+$/.test(path)
+  );
+}

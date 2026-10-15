@@ -80,12 +80,15 @@ export function KycNoticeDismissScope({ value, children }: { value: string | nul
 export function KycFirstDepositNotice({
   dismissValue,
   variant = "identity",
+  documentNavigation = false,
 }: {
   /** The server's per-player value to write on dismiss (`kycNoticeDismissValue`). Falls back to the
    *  nearest `KycNoticeDismissScope`. */
   dismissValue?: string | null;
   /** What is still owed before a withdrawal — the server's answer (`firstDepositNotice`). */
   variant?: FirstDepositNotice;
+  /** Focused payment routes use a document navigation so the normal app shell returns on exit. */
+  documentNavigation?: boolean;
 } = {}) {
   const { t } = useT();
   const v = VARIANT[variant];
@@ -120,12 +123,10 @@ export function KycFirstDepositNotice({
           {/* ⚠️ Plain /profile/kyc, NOT `?next=/wallet/withdraw`. The KYC page honours a safe `next`,
               but only as a "Continue" on the approved state, and none of its form actions carry it
               forward — and this line answers no refused action, so there is nothing to return to. */}
-          <Link
-            href={v.href as never}
-            className="whitespace-nowrap font-semibold text-brand-300 underline underline-offset-2 hover:text-brand-200"
-          >
-            {cta}
-          </Link>
+          {documentNavigation ? <a href={v.href}
+            className="whitespace-nowrap font-semibold text-brand-300 underline underline-offset-2 hover:text-brand-200">{cta}</a>
+            : <Link href={v.href as never}
+              className="whitespace-nowrap font-semibold text-brand-300 underline underline-offset-2 hover:text-brand-200">{cta}</Link>}
         </p>
       </Callout>
       {/* ⭐ A 44px target with a 14px mark: the size is for the thumb, not the eye. Transparent until

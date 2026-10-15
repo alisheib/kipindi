@@ -664,7 +664,7 @@ model Transaction {
   balanceAfter      Decimal?         @db.Decimal(18, 2)
   currency          String           @default("TZS")
   provider          PaymentProvider?
-  providerRef       String?
+  providerRef       String?          @unique
   providerStatus    String?
   // WHICH Selcom payout rail this withdrawal actually went out on — one of
   // PayoutRail in src/lib/server/selcom.ts (WALLET_CASHIN | SELCOM_PESA |
@@ -699,6 +699,10 @@ model Transaction {
   /// player came from a not-enough-money state, else NULL. Counted when the deposit is CONFIRMED. ⛔ Create-only (both
   /// `txn.update` implementations skip it), like `houseBotId`.
   origin            String?
+  /// S9's versioned chosen-bet envelope, validated by parseSavedDepositBet on use. NULL on legacy/direct deposits.
+  /// Contains the canonical bet and permitted return path only; never a phone, query bag or unfinished bet key.
+  /// Create-only: ordinary Transaction updates cannot replace the intent behind a payment's funding key.
+  pendingBet        Json?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
   amlReason         String?
@@ -715,10 +719,9 @@ model Transaction {
   // Market.selectionClosedNotifiedAt. Null = not yet told / not applicable.
   pendingNotifiedAt DateTime?
 
-  // Prevent duplicate deposits/withdrawals from the same payment provider
-  // transaction. A retried webhook with the same providerRef must not
-  // create a second ledger entry. Nulls are excluded (internal txns).
-  @@unique([provider, providerRef])
+  // Webhooks and status reads select by bare providerRef across all providers,
+  // so every non-null reference must identify one ledger row globally. PostgreSQL
+  // permits multiple nulls for unreferenced/internal transactions.
   @@index([userId, createdAt])
   @@index([walletId, createdAt])
   @@index([type, status])
@@ -729,6 +732,17 @@ model Transaction {
   /// (scripts/load/s13-scale-ceilings.mts): a 30-day window went 1,889 ms → 54 ms.
   @@index([createdAt])
   @@index([providerRef])
+}
+
+/// A keyed deposit action claims its UUID before any asynchronous preflight. A
+/// no-row refusal is terminal only after this claim is marked REFUSED under the
+/// wallet lock. An interrupted CLAIMED request stays uncertain; age never frees it.
+model DepositFundingClaim {
+  key       String   @id @db.VarChar(36)
+  userId    String
+  state     String   @default("CLAIMED") @db.VarChar(16)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================================================
@@ -1903,6 +1917,9 @@ model Position {
   ///   "Position_marketId_marked_idx" (marketId)                        — house money per market
   ///   "Position_houseBotId_open_idx" (houseBotId) AND status='OPEN'    — open exposure (04 A24)
   houseBotId      String?
+  /// S9's verified manual-return attribution ("deposit_return"). NULL on legacy/direct/house bets; no backfill.
+  /// Create-only: cash-out, settle, void and keyed replay cannot rewrite where the original bet came from.
+  origin          String?
 
   @@index([userId, marketId])
   @@index([marketId, status])

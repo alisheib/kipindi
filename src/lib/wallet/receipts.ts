@@ -31,6 +31,8 @@ import { emptyKind, relaxations, type EmptyKind, type ExitCandidate, type Relaxa
 import { paymentMethodName } from "@/lib/payment-providers";
 import { LEDGER_STATES, LENS_TYPES, STATE_STATUSES, type LedgerState, type TxnStatusValue, type TxnTypeValue } from "./ledger";
 import type { Dict } from "@/lib/i18n-dict";
+import { hasDepositStatusReview } from "./deposit-review";
+export { hasDepositStatusReview } from "./deposit-review";
 
 /* ─────────────────────────────── what has a receipt ──────────────────────────────── */
 
@@ -44,6 +46,33 @@ export function hasReceipt(type: string | null | undefined): type is ReceiptType
 
 /** The mark a deposit held for RETURN carries in `amlReason` (`wallet-service.ts`, an excluded or resting account). */
 export const RG_RETURN_MARK = "rg_refund_due_";
+
+/** The recorded collection is owed back; FAILED/rejection alone is not durable proof of an outbound refund. */
+export function isRgHeldDeposit(row: { type: string; status: string; amlReason?: string | null }): boolean {
+  return row.type === "DEPOSIT" && ["AML_REVIEW", "FAILED", "REVERSED"].includes(row.status)
+    && (row.amlReason ?? "").startsWith(RG_RETURN_MARK);
+}
+
+/** Matching service recovery must not turn disputed or still-owed money into a safe-new-payment result. */
+export function depositResultStatus<T extends string>(row: { type: string; status: T; amlReason?: string | null; providerStatus?: string | null }): T | "AML_REVIEW" {
+  return hasDepositStatusReview(row) || isRgHeldDeposit(row) ? "AML_REVIEW" : row.status;
+}
+
+/**
+ * Which words the /wallet RESULT owes a deposit whose stored status is not the whole truth (S9 release candidate, Ali
+ * 2026-10-14). Decided on the server from the stored row, handed to the client modal (`walletResultCopy`):
+ *   · "review" — a recorded payment-result dispute (whatever terminal status is stored), or a deposit in AML_REVIEW
+ *     without the return mark: UNDER-REVIEW words (L6), never "Failed", "Funds added" or "Reversed";
+ *   · "held"   — the return mark: HELD-FOR-RETURN words, never "Reversed" (the title matches the body);
+ *   · null     — every other deposit, and every withdrawal, keeps its stored-status reading.
+ */
+export type DepositResultKind = "review" | "held";
+export function depositResultKind(row: { type: string; status: string; amlReason?: string | null; providerStatus?: string | null }): DepositResultKind | null {
+  if (row.type !== "DEPOSIT") return null;
+  if (hasDepositStatusReview(row)) return "review";
+  if (isRgHeldDeposit(row)) return "held";
+  return row.status === "AML_REVIEW" ? "review" : null;
+}
 
 /**
  * THE STATUS A PLAYER IS SHOWN for their own transaction — the stored status, with ONE translation: a deposit held for
@@ -59,8 +88,12 @@ export const RG_RETURN_MARK = "rg_refund_due_";
  * ⛔ Receipts' filters, counts and chips, the receipt page, the card-return page AND /wallet's rows and state lens all
  * read THIS, so no surface files a reversed deposit under "in flight" or "failed" while another calls it reversed.
  * Officer surfaces keep the stored word.
+ * ⭐ THE WORD IS NOT THE GROUPING (Ali, 2026-10-14): a held deposit is still FILED with the reversed ones (this status: the
+ * filters, counts and tones are unchanged), but every surface NAMES it "Held for return" (`txnStatusHeld`, through
+ * `receiptStatusWord(…, held)`), never "Reversed" — the title matches the body that says the money is held for return.
  */
-export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null }): TxnStatusValue {
+export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null; providerStatus?: string | null }): TxnStatusValue {
+  if (hasDepositStatusReview(row)) return "AML_REVIEW";
   if (row.type !== "DEPOSIT") return row.status;
   if (row.status === "AML_REVIEW") return "REVERSED";
   if (row.status === "FAILED" && (row.amlReason ?? "").startsWith(RG_RETURN_MARK)) return "REVERSED";
@@ -75,6 +108,8 @@ export type ReceiptRowData = {
   amount: number;
   provider: string | null;
   createdAtMs: number;
+  /** A deposit held for return (`isRgHeldDeposit`): filed under its presented status, NAMED "Held for return". */
+  held?: boolean;
 };
 
 /* ─────────────────────────────── the URL contract ──────────────────────────────── */
@@ -188,8 +223,10 @@ export function receiptTypeWord(t: Dict, type: ReceiptType): string {
   return type === "DEPOSIT" ? t.wallet.receiptTypeDeposit : t.wallet.receiptTypeWithdrawal;
 }
 
-/** The shared wallet lexicon, 1:1 with the stored status — the list row, the receipt page and /wallet say one word. */
-export function receiptStatusWord(t: Dict, status: TxnStatusValue): string {
+/** The shared wallet lexicon, 1:1 with the stored status — the list row, the receipt page and /wallet say one word.
+ *  ⭐ `held` (Ali, 2026-10-14): a deposit held for return is named "Held for return", whatever status it is filed under. */
+export function receiptStatusWord(t: Dict, status: TxnStatusValue, held = false): string {
+  if (held) return t.wallet.txnStatusHeld;
   switch (status) {
     case "PENDING": return t.wallet.txnStatusPending;
     case "PROCESSING": return t.wallet.txnStatusProcessing;

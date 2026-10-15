@@ -20,6 +20,7 @@ import { DWELL_BET_RECEIPT_MS } from "@/lib/feedback-timing";
 import { sheetEstimate, type SheetFrame, type SheetLine, type SheetSeed, type SheetSide } from "@/lib/journey/sheet-state";
 import { depositLeftAfterFor } from "@/lib/journey/shortfall";
 import { nextSheetFocus, type SheetFocusState } from "@/lib/journey/sheet-focus";
+import type { ReturnChoice } from "@/lib/journey/return-choice";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
 
 export type BetSheetProps = {
@@ -31,6 +32,8 @@ export type BetSheetProps = {
   stakeText: string;
   estimateUpdated: boolean;
   railNames?: readonly string[];
+  returnContext?: ReturnChoice | null;
+  returnBoundsChange?: { from: number; to: number } | null;
   onStakeChange: (value: string) => void;
   onPlace: () => void;
   onBetInstead: () => void;
@@ -56,7 +59,7 @@ type BodyProps = BetSheetProps & {
 export function BetSheetBody(props: BodyProps) {
   const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false,
     headingRef, closeRef, onStakeChange, onPlace, onBetInstead, onDeposit, onClose, onStakeFocus, onStakeBlur,
-    depositAmount, onDepositAmount } = props;
+    depositAmount, onDepositAmount, returnContext, returnBoundsChange } = props;
   const placing = frame.frame === "placing";
   const receipt = frame.frame === "receipt";
   const terminal = frame.frame === "blocked" || frame.frame === "closed";
@@ -88,10 +91,24 @@ export function BetSheetBody(props: BodyProps) {
         {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
           : frame.frame === "blocked" && frame.block ? sheetTemplate(t, frame.block.title) : frame.frame === "closed" ? t.journey.sheetClosedTitle : title}
       </h2>
-      {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <div id={calloutId} role="alert" className="kp-bsheet__terminal">
-        {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
-      </div> : <>
+      {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <>
+        <div id={calloutId} role="alert" className="kp-bsheet__terminal">
+          {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
+        </div>
+        {frame.frame === "closed" && returnContext?.walletBalance !== null && returnContext?.walletBalance !== undefined &&
+          <p role="status" className="mt-4 text-body-sm text-text-muted">{fill(t.journey.depositClosedWallet, { amount: formatTzs(returnContext.walletBalance) })}</p>}
+        {frame.frame === "closed" && returnContext && returnContext.similar.length > 0 && <div className="mt-5 space-y-2">
+          <h3 className="font-display font-semibold text-text">{t.journey.similarTitle}</h3>
+          {returnContext.similar.map((question) => <a key={question.id} href={`/markets/${encodeURIComponent(question.id)}`}
+            className="block rounded-md border border-border bg-bg-inset px-4 py-3 text-body-sm text-text hover:border-border-strong">
+            {question.title}<I.chevronRight s={16} edge="end" text="body-400" />
+          </a>)}
+        </div>}
+      </> : <>
         <HolderNote {...parts} />
+        {returnBoundsChange && <p role="status" className="text-body-sm text-text-muted">
+          {fill(t.journey.depositStakeChanged, { old: formatTzs(returnBoundsChange.from), amount: formatTzs(returnBoundsChange.to) })}
+        </p>}
         <div className="kp-bsheet__stake">
           <label htmlFor={`${id}-stake`}>{t.journey.stakeLabel}</label>
           <Input id={`${id}-stake`} data-testid="journey-sheet-stake" size="xl" grouped mono attention={frame.attention} prefix="TZS" inputMode="numeric" enterKeyHint="done"
