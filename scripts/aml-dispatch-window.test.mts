@@ -72,13 +72,16 @@ function holdsUnprovenFailedPayout(src: string): boolean {
   const arm = sweep.slice(Math.max(0, sweep.indexOf('} else if (t.type === "WITHDRAWAL") {')));
   const bound = arm.indexOf("const original = withdrawalProbeBinding(t);");
   const asked = arm.indexOf("const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);");
+  const reviewLockAt = arm.indexOf("const recordStatus = async");
   const failedAt = arm.indexOf('} else if (v.status === "FAILED") {');
   const nextAt = arm.indexOf('} else if (v.status === "UNSUPPORTED") {', failedAt);
   const failed = failedAt < 0 || nextAt < 0 ? "" : arm.slice(failedAt, nextAt);
-  return sweep.length > 0 && bound >= 0 && asked > bound && failedAt > asked &&
-    /await recordStatus\(reviewStatus\)/.test(failed) &&
+  const reviewLock = reviewLockAt < 0 || failedAt < 0 ? "" : arm.slice(reviewLockAt, failedAt);
+  return sweep.length > 0 && bound >= 0 && asked > bound && reviewLockAt > asked && failedAt > reviewLockAt &&
+    /if \(!fresh \|\| fresh\.status !== "PROCESSING" \|\| !matchesProcessingProbeBinding\(original, fresh\)\) return false/.test(reviewLock) &&
+    /if \(review\) auditNeedsReviewOnce\(t\.id, review\.reason, review\.payload\)/.test(reviewLock) &&
+    /if \(await recordStatus\(reviewStatus, \{\s*reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed"/.test(failed) &&
     /leftPending\+\+/.test(failed) &&
-    /auditNeedsReviewOnce\(t\.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed"/.test(failed) &&
     !/settlePaymentWebhook|settleWithdrawalFailed|withdrawalsReversed\+\+/.test(failed);
 }
 
@@ -161,10 +164,10 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
     if (wallet.split(from).length !== 2) return null;   // the plant must land exactly once, or the control proves nothing
     return wallet.replace(from, to);
   };
-  const unsafeRefund = plant('const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);\n        await recordStatus(reviewStatus);\n        leftPending++;',
+  const unsafeRefund = plant('const reviewStatus = `REVIEW REQUIRED: payout query said FAILED; nonpayment unproven${v.detail ? ` — ${v.detail}` : ""}`.slice(0, 500);\n        if (await recordStatus(reviewStatus, {\n          reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed",\n          payload: { providerRef: ref, payoutRail: t.payoutRail, detail: v.detail ?? null },\n        })) leftPending++;',
     'await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);\n        withdrawalsReversed++;');
-  const noReview = plant('auditNeedsReviewOnce(t.id, "payout query returned FAILED without proof of nonpayment — never auto-reversed", {',
-    'auditNeedsReviewOnce(t.id, "payout status unknown", {');
+  const noReview = plant('reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed",',
+    'reason: "payout status unknown",');
   const unbound = plant('const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);\n      const recordStatus',
     'const v = await verifyWithdrawalStatus(ref, t.payoutRail);\n      const recordStatus');
   ok("4.4  3.2 accepts the current source", holdsUnprovenFailedPayout(wallet));

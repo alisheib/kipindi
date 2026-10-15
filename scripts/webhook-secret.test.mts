@@ -4,20 +4,16 @@
  *   npx tsx scripts/webhook-secret.test.mts   (npm run test:webhook-secret)
  *
  * 🔴 E-331. `boot-checks.ts` warned when a payment webhook secret was "not set", and it
- * tested `!process.env[name]` — PRESENCE, not validity. Production has been carrying
- * `SELCOM_WEBHOOK_SECRET=PASTE_ANOTHER_GENERATED_VALUE` — the literal placeholder from the
- * setup template — straight past it, because a placeholder is a truthy string.
+ * tested `!process.env[name]` — PRESENCE, not validity. A template placeholder is
+ * truthy but cannot verify a generic provider's HMAC callback.
  *
- * ⭐ A PLACEHOLDER IS FUNCTIONALLY ABSENT. The vendor signs with the real shared secret, so
- * every HMAC comparison fails and the receiver 401s exactly as it would with no secret at
- * all — the outcome the warning already describes in capitals, for the one case that was
- * actually true. The standing question ("would this still pass if the thing it checks for
- * were absent?") answered YES for 40+ days.
+ * ⭐ A PLACEHOLDER IS FUNCTIONALLY ABSENT for generic AzamPay/Mixx callbacks. Selcom is
+ * routed separately and verifies its Digest with PAYMENT_API_SECRET. Its unused legacy
+ * SELCOM_WEBHOOK_SECRET must not appear in a warning that says deposits cannot credit.
  *
- * ⚠️ NOT a live outage, and that was measured rather than assumed: `webhook.payment.received`
- * last fired 2026-08-01, while `payments.fast_credit` (42) and `payments.reconcile_sweep`
- * (2,529) are current — money credits through the reconcile path. A latent door, not a leak.
+ * The source pins below keep the boot warning aligned with the receiver's routing.
  */
+import { readFileSync } from "node:fs";
 import { webhookSecretUnusable } from "../src/lib/server/boot-checks.ts";
 
 let pass = 0, fail = 0;
@@ -63,6 +59,17 @@ for (const v of [
 // ── §4 — a short-but-real-looking value is still rejected: 15 chars is not a secret.
 ok("§4 a 15-char value is rejected", webhookSecretUnusable("abc123def456gh0"));
 ok("§4 a 16-char value is accepted", !webhookSecretUnusable("abc123def456gh01"));
+
+// ── §5 — the boot warning must follow the actual receiver, not a legacy env name.
+const boot = readFileSync(new URL("../src/lib/server/boot-checks.ts", import.meta.url), "utf8");
+const route = readFileSync(new URL("../src/app/api/webhooks/payments/route.ts", import.meta.url), "utf8");
+const genericMap = route.slice(route.indexOf("const KNOWN_PROVIDERS"), route.indexOf("const AUTHORITATIVE_ONLY"));
+ok("§5 boot checks only generic callback secrets",
+  /const GENERIC_WEBHOOK_SECRET_ENVS = \["AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"\]/.test(boot)
+  && /GENERIC_WEBHOOK_SECRET_ENVS\.filter\(\(name\) => webhookSecretUnusable\(process\.env\[name\]\)\)/.test(boot));
+ok("§5 Selcom uses its signed dedicated handler",
+  !/selcom\s*:/.test(genericMap) && /const AUTHORITATIVE_ONLY = new Set\(\["selcom"\]\)/.test(route)
+  && route.includes("apiSecret: env.apiSecret") && boot.includes("Selcom uses PAYMENT_API_SECRET"));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

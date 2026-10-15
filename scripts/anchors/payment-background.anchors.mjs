@@ -31,6 +31,7 @@ export const MUTATIONS = [
   // L3: the sweep's verified FAILED loses its own reason on the bound path.
   m("sweep-deposit-failure-reason-lost", 'const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");\n        if (r.handled && r.reason === "deposit-failed")', 'const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);\n        if (r.handled && r.reason === "deposit-failed")', "background.reason.stale-deposit-fail"),
   m("sweep-payout-review-marker-lost", 'if (await recordStatus(reviewStatus, {\n          reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed",', 'if (await recordStatus(null, {\n          reason: "payout query returned FAILED without proof of nonpayment — never auto-reversed",', "background.reason.stale-withdraw-fail"),
+  m("sweep-payout-review-rechecks-terminal-status", 'if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return false;', 'if (!fresh || !matchesProcessingProbeBinding(original, fresh)) return false;', "background.race.withdraw-failed-query-no-stale-review"),
   // M4: the server-built binding refuses a stored non-UUID key again (a PAID deposit is never auto-settled).
   { name: "binding-requires-uuid-key", file: binding, from: "    || !storedKey(raw.fundingKey)\n", to: '    || (raw.fundingKey !== null && (typeof raw.fundingKey !== "string" || !UUID.test(raw.fundingKey)))\n', expect: "background.opaque-key.sweep" },
   // M4: deposit() stores a key the binding cannot carry.
@@ -38,7 +39,7 @@ export const MUTATIONS = [
 ];
 // Actual enclosing SQL transactions prove publication/rollback; memory Maps cannot.
 export const PG_MUTATIONS = [
-  m("deposit-fail-write-escapes-wallet-tx", 'await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` }, currentLockTx());', 'await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });', "background.pg-outer.DEPOSIT.FAILED.rollback"),
+  m("deposit-fail-write-escapes-wallet-tx", '      ...(finalNegative ? { providerStatus: DEPOSIT_FINAL_NEGATIVE_MARK } : {}) }, currentLockTx());', '      ...(finalNegative ? { providerStatus: DEPOSIT_FINAL_NEGATIVE_MARK } : {}) });', "background.pg-outer.DEPOSIT.FAILED.rollback"),
   m("deposit-fail-publishes-before-commit", '  if (!done) return false;\n  const t = done;\n  afterCommit(currentLockTx(), () => {', '  if (!done) return false;\n  const t = done;\n  ((_tx, callback) => callback())(currentLockTx(), () => {', "background.pg-outer.DEPOSIT.FAILED.rollback"),
   m("deposit-confirm-publishes-before-commit", '  if (enclosingTx) afterCommit(enclosingTx, () => { void publish().catch(() => {}); });\n  else await publish();', '  await publish();', "background.pg-outer.DEPOSIT.CONFIRMED.rollback"),
   m("withdraw-confirm-publishes-before-commit", '  if (done) {\n    afterCommit(currentLockTx(), () => {\n    const t = done.txn;', '  if (done) {\n    ((_tx, callback) => callback())(currentLockTx(), () => {\n    const t = done.txn;', "background.pg-outer.WITHDRAWAL.CONFIRMED.rollback"),
