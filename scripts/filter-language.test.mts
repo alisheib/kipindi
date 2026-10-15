@@ -251,6 +251,7 @@ const SURFACES = [
  * what makes §6.6 demand the dense rank at those call sites.
  */
 const ADMIN_SURFACES = [
+  "src/app/admin/insights/measures-rail.tsx", // S13 campaign rail; server-built hrefs, dense shared pills
   "src/app/admin/ai-polls/poll-filters.tsx",        // /admin/ai-polls — state + category + window
   "src/app/admin/candidates/candidate-filters.tsx", // /admin/candidates — state + category + window
   "src/components/admin/card-sort-control.tsx",     // the hoisted card SORT rail (both consoles, and the desk's two ledgers below `sm` — its rank is a prop, see RANK_PROP_RAILS)

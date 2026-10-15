@@ -720,6 +720,8 @@
     "red:journey-measures": "tsx scripts/journey-measures.test.mts --prove-red",
     "test:journey-measures-view": "tsx scripts/journey-measures-view.test.mts",
     "red:journey-measures-view": "tsx scripts/journey-measures-view.test.mts --prove-red",
+    "test:journey-measures-export": "tsx scripts/journey-measures-export.test.mts",
+    "red:journey-measures-export": "tsx scripts/journey-measures-export.test.mts --prove-red",
     "test:journey-in-bounds": "tsx scripts/journey-in-bounds.test.mts",
     "red:journey-in-bounds": "tsx scripts/journey-in-bounds.test.mts --prove-red",
     "test:journey-shell": "tsx scripts/journey-shell.test.mts",
