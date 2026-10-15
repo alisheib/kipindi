@@ -6,6 +6,12 @@ and 42/42 desktop assertions on local in-memory mock rails at `4c7327bcdd31a5562
 the final release commit still needs its own exact-tip proof. No real staff payment, agency sign-off, owner override,
 S15 go, or S16 elapsed period is recorded here. The [13-day production counter preflight](vodacom-s15-baseline-preflight-20261015.md)
 found no daily row gap from October 2–14; the required fourteenth complete day ends at 2026-10-16 00:00 EAT.
+**Local update, 2026-10-15 17:21 UTC:** an isolated S8–S13 candidate also passed
+`e2e:journey` **43/0** on a disposable mock rail, including a return before confirmation,
+plus the focused adversarial and mutation checks in
+[`s14-adversarial-gate-census-20261015.md`](s14-adversarial-gate-census-20261015.md).
+This does not close the final-SHA visual matrix, staff transaction, agency sign-off,
+S15 gate rewrites, or production evidence. Their JSON entries remain open.
 The [staff proof and agency decision packet](vodacom-s14-staff-proof-packet-20261015.md) is the operator handoff to use
 after the integrated preview passes its local and production preflight. Its blank fields are not completion evidence.
 
