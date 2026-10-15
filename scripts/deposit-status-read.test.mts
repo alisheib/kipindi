@@ -931,6 +931,31 @@ async function run(src = sources): Promise<Check[]> {
   }
   const classicReview = await s.money.settleDepositFromReturn(me, generic.providerRef!);
   ok("card.adapter-review", classicReview.state === "REVIEW" && classicReview.balance === 0 && classicReview.txn.id === generic.id);
+  const amountOwner = await player(), amountRow = await txn(amountOwner), a = system(src);
+  await a.money.settlePaymentWebhook({ providerRef: amountRow.providerRef!, status: "CONFIRMED", amount: amountRow.amount });
+  const sameAmount = await a.money.settlePaymentWebhook({ providerRef: amountRow.providerRef!, status: "CONFIRMED", amount: amountRow.amount });
+  ok("money.terminal-same-amount-duplicate", sameAmount.handled && sameAmount.reason === "already-confirmed"
+    && !Review.hasDepositStatusReview((await db.txn.findById(amountRow.id))!));
+  const changedAmount = await a.money.settlePaymentWebhook({ providerRef: amountRow.providerRef!, status: "CONFIRMED", amount: amountRow.amount + 1000 });
+  await new Promise(r => setImmediate(r));
+  ok("money.terminal-changed-amount-review", !changedAmount.handled && changedAmount.reason === "amount-mismatch"
+    && a.seen.audits.some(entry => entry.action === "webhook.amount_mismatch" && entry.targetId === amountRow.id
+      && entry.payload.got === amountRow.amount + 1000)
+    && a.seen.audits.some(entry => entry.action === "payments.reconcile_needs_review" && entry.targetId === amountRow.id)
+    && Review.hasDepositStatusReview((await db.txn.findById(amountRow.id))!)
+    && (await db.wallet.findByUserId(amountOwner))?.balance === amountRow.amount
+    && a.seen.groups.join() === `dep_${amountRow.id}`
+    && a.seen.notices.filter(n => n.status === "AML_REVIEW").length === 1);
+  const failedAmountOwner = await player(), failedAmountRow = await txn(failedAmountOwner, { status: "FAILED" }), af = system(src);
+  const sameFailedAmount = await af.money.settlePaymentWebhook({ providerRef: failedAmountRow.providerRef!, status: "FAILED", amount: failedAmountRow.amount });
+  ok("money.failed-same-amount-duplicate", sameFailedAmount.handled && sameFailedAmount.reason === "already-failed"
+    && !Review.hasDepositStatusReview((await db.txn.findById(failedAmountRow.id))!));
+  const changedFailedAmount = await af.money.settlePaymentWebhook({ providerRef: failedAmountRow.providerRef!, status: "FAILED", amount: failedAmountRow.amount + 1000 });
+  await new Promise(r => setImmediate(r));
+  ok("money.failed-changed-amount-review", !changedFailedAmount.handled && changedFailedAmount.reason === "amount-mismatch"
+    && Review.hasDepositStatusReview((await db.txn.findById(failedAmountRow.id))!)
+    && (await db.wallet.findByUserId(failedAmountOwner))?.balance === 0 && af.seen.groups.length === 0
+    && af.seen.notices.filter(n => n.status === "AML_REVIEW").length === 1);
   const contradicted = await p.money.settlePaymentWebhook({ providerRef: paid.providerRef!, status: "FAILED" });
   ok("money.contradiction-escalated", !contradicted.handled && p.seen.audits.some(a => a.action === "webhook.terminal_contradicted")
     && (await db.wallet.findByUserId(paidOwner))?.balance === 5000 && (await db.txn.findById(paid.id))?.status === "CONFIRMED");
