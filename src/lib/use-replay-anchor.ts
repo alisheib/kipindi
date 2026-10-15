@@ -14,24 +14,30 @@
  * moved this platform's countdowns OFF the device clock for exactly that reason. `performance.now()` is
  * monotonic, so no wall-clock setting can move it.
  *
- * ⛔ CALL IT ONCE PER RENDERED INSTANT. The first call for an instant records it and returns it
- * unchanged; every later call reads it as a replay and adds the elapsed time. Two leaves each calling it
- * during the SAME hydration would therefore disagree by the hydration gap — the second one's markup no
- * longer matching the server's. The match calls it in its wrapper (`UpdownMatchState`) and hands the one
- * anchor to its digits and its playhead.
+ * ⛔ HYDRATE BEFORE ADVANCING. A cached page's server markup still contains its original clock text.
+ * Applying elapsed time during the client's first render changes that text and React discards the
+ * hydrated tree (#418). The first render always uses the server instant; a layout effect records first
+ * sight or advances a replay before paint. The match calls this once in `UpdownMatchState` and hands
+ * the one anchor to its digits and playhead.
  *
  * On the server (and so in the markup) it is `serverNowMs` exactly.
  */
-import { useMemo } from "react";
+import { useLayoutEffect, useState } from "react";
 
 /** Per page session: server instant → `performance.now()` when it was first seen. Client-only. */
 const FIRST_SEEN = new Map<number, number>();
 
 export function useReplayAnchor(serverNowMs: number): number {
-  return useMemo(() => {
-    if (typeof window === "undefined" || typeof performance === "undefined") return serverNowMs;
+  // React may render a hydrated component more than once before committing. A module Map read in render
+  // makes that render impure; a cached visit is worse, because its first client text differs from SSR.
+  const [anchor, setAnchor] = useState(serverNowMs);
+  useLayoutEffect(() => {
     const first = FIRST_SEEN.get(serverNowMs);
-    if (first == null) { FIRST_SEEN.set(serverNowMs, performance.now()); return serverNowMs; }
-    return serverNowMs + Math.max(0, performance.now() - first);
+    if (first == null) {
+      FIRST_SEEN.set(serverNowMs, performance.now());
+    } else {
+      setAnchor(serverNowMs + Math.max(0, performance.now() - first));
+    }
   }, [serverNowMs]);
+  return anchor;
 }
