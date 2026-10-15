@@ -711,6 +711,16 @@ async function capture(): Promise<void> {
       const path = join(dir, `${frame}-${width}-${locale}.png`);
       await page.screenshot({ path, animations: "disabled" });
       console.log(`  SHOT ${path}`);
+      if (frame === "low" && width === 360 && locale === "sw") {
+        await page.evaluate(() => {
+          const middle = document.querySelector<HTMLElement>(".kp-bsheet__scroll")!;
+          middle.scrollTop = middle.scrollHeight;
+        });
+        await page.evaluate(() => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+        const bottom = join(dir, "low-360-sw-bottom.png");
+        await page.screenshot({ path: bottom, animations: "disabled" });
+        console.log(`  SHOT ${bottom}`);
+      }
     }
   } finally { await page.close(); }
 }
