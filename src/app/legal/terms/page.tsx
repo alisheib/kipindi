@@ -201,9 +201,10 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           pool is shown, in shillings, on that market&apos;s resolution panel.
         </p>
         <p>
-          The probabilities shown on the dial are <em>implied</em> by the current pool composition and update with
-          every new bet — they are not guaranteed odds. While betting is open your final payout is not yet
-          determined, because the pools are still moving. <strong className="text-text">The moment betting closes,
+          Before you bet, a market may show what its pools imply — the share of the pool on each side, or an estimate
+          of what a bet would return if its side wins. Neither is guaranteed odds: both change with every new bet,
+          and while betting is open your final payout is not yet determined, because the pools are still moving.
+          <strong className="text-text">The moment betting closes,
           the pools are final and we notify you of the exact amount you will receive if your side wins.</strong>
         </p>
         <p>
@@ -244,8 +245,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="7" title="Responsible gambling">
         <p>
           You can set deposit limits, take a break, or self-exclude in{" "}
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
-          See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
+          <a href="/profile/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
+          See the dedicated <a href="/legal/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
         </p>
       </LegalSection>
 
@@ -348,17 +349,17 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="4" title="Jinsi masoko ya ushindani wa bei yanavyofanya kazi">
         <p>
           50pick inaendesha mfumo wa soko wa <strong className="text-text">Ushindani wa Bei wa kibwawa-kizima (whole-pool)</strong>.
-          Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja. Tunatoza kamisheni yetu, na salio la bwawa
+          Madau yote — NDIO na HAPANA — yanakusanywa kwenye bwawa moja. Tunatoza kamisheni yetu, na salio la bwawa
           linagawanywa kwa upande ulioshinda, kwa uwiano wa mchango wa kila dau sahihi katika bwawa la upande ulioshinda.
         </p>
         <p>
-          <strong className="text-text">Kamisheni yetu ni 13% ya upande ulioshindwa.</strong> Dau za upande ulioshinda
-          zinarudishwa zote na haziguswi kamwe; kamisheni yetu inatoka tu kwenye fedha zilizowekwa kwenye matokeo
+          <strong className="text-text">Kamisheni yetu ni 13% ya upande ulioshindwa.</strong> Madau ya upande ulioshinda
+          yanarudishwa yote na hayaguswi kamwe; kamisheni yetu inatoka tu kwenye fedha zilizowekwa kwenye matokeo
           yasiyotokea. Kwa hiyo{" "}
           <strong className="text-text">dau lililoshinda halilipwi chini ya dau lake kamwe</strong>.
         </p>
         <p>
-          Kama dau zote ziko upande mmoja, hakuna upande ulioshindwa, kwa hiyo hatutozi chochote na kila dau
+          Kama madau yote yapo upande mmoja, hakuna upande ulioshindwa, kwa hiyo hatutozi chochote na kila dau
           linarudishwa lote. Vivyo hivyo kwa soko lililofutwa.
         </p>
         <p>
@@ -368,10 +369,11 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           paneli ya matokeo ya soko hilo.
         </p>
         <p>
-          Uwezekano unaoonyeshwa kwenye kipima-dau <em>unadokezwa</em> na muundo wa sasa wa bwawa na hubadilika kila
-          linapowekwa dau jipya — si bei (odds) za uhakika. Wakati dau bado liko wazi, malipo yako ya mwisho bado
-          hayajapangwa kwa sababu bwawa bado linabadilika.{" "}
-          <strong className="text-text">Mara dau litakapofungwa, bwawa litakuwa la mwisho na tutakujulisha kiasi kamili
+          Kabla hujaweka dau, soko linaweza kuonyesha kile ambacho mabwawa yake yanadokeza — sehemu ya bwawa iliyo kila
+          upande, au makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Vyote viwili si bei (odds) za uhakika:
+          vyote hubadilika kila linapowekwa dau jipya, na wakati uwekaji dau bado uko wazi, malipo yako ya mwisho bado
+          hayajapangwa kwa sababu mabwawa bado yanabadilika.{" "}
+          <strong className="text-text">Mara uwekaji dau utakapofungwa, mabwawa yatakuwa ya mwisho na tutakujulisha kiasi kamili
           utakachopata iwapo upande wako utashinda.</strong>
         </p>
         <p>
@@ -411,8 +413,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="7" title="Mchezo salama wa kubahatisha">
         <p>
           Unaweza kuweka mipaka ya kuweka fedha, kuchukua mapumziko, au kujizuia mwenyewe katika{" "}
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
-          Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
+          <a href="/profile/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
+          Angalia <a href="/legal/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
         </p>
       </LegalSection>
 
@@ -505,7 +507,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
         </p>
         <p>
-          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。
+          下注前，市场可能会显示其资金池所隐含的信息——各方在资金池中所占的份额，或若所选一方获胜时某笔投注可获回报的预估。两者均非保证的赔率：它们会随每一笔新下注而变化；在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。
           <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
         </p>
         <p>
@@ -534,8 +536,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="7" title="负责任博彩">
         <p>
           您可以在
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
-          中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
+          <a href="/profile/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">负责任博彩</a>
+          中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
         </p>
       </LegalSection>
 

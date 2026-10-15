@@ -8,6 +8,22 @@
 
 ---
 
+## S15 publication draft · How to Play estimates, legal wording and share tagline (Vodacom S11)
+
+**Status: parked on `codex/vodacom-s15-copy`; date this entry and the legal versions when S15 publishes.**
+Ali accepted the S11-PLAN "Points for Ali" on 2026-10-14 (the owner decision entry below). The Rules and Terms
+describe the estimated return that a player may see before betting, how it can change with later bets, and when the
+final payout is fixed. The Swahili Rules and Terms correct *dau/madau* and the YES/NO spelling. The six Terms links
+to responsible gambling, privacy and related pages use the approved blue link colour so they are legible.
+
+These edits explain the existing operation and correct wording; they narrow no player right. Terms §10's 14-day
+notice for a rights reduction does not apply, and existing players are not asked to accept the Terms again. On the
+publication day, set `TERMS_VERSION`, the Rules page's displayed version, and this entry's date together, then run
+`test:terms-binding` and the S15 legal gates. The website, manifest and share previews take the approved tagline
+"Pick. See what you win. Play." in English, with the reviewed Swahili and Chinese equivalents.
+
+---
+
 ## 2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted
 
 **Authority.** Ali, 2026-10-14, answering the consolidated list (VODACOM-PLAN §0 "WAITING ON ALI") in this session's

@@ -102,7 +102,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li>
               Stakes are bounded: minimum <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>,
-              maximum <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> per position.
+              maximum <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> per bet.
             </li>
           </ul>
         </LegalSection>
@@ -124,7 +124,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
               Every market carries a <strong className="text-text">named public source</strong> it will be settled
               against and a clear closing deadline, both displayed before you stake.
             </li>
-            <li>The conviction indicator shows where the crowd&apos;s money sits. It is information, not advice.</li>
+            <li>What a market shows before you bet — where the money sits, or an estimate of what a bet would return — is information, not advice.</li>
           </ul>
         </LegalSection>
 
@@ -141,6 +141,12 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             The commission is taken <strong className="text-text">only from the losing side</strong>, so a winning
             bet is never paid less than it staked. If every stake is on one side there is no losing side, so we
             charge nothing and every stake is refunded in full. The same applies to a voided market.
+          </p>
+          <p>
+            <strong className="text-text">Estimates shown before you bet.</strong> Before you bet, a market may show an
+            estimate of what a bet would return if its side wins. An estimate is information, not a promise: it changes
+            as other players bet, and what a winning bet is paid is fixed only when betting closes, from the final pools
+            and after our commission.
           </p>
           <p>
             <strong className="text-text">Cash-out.</strong> Within the first{" "}
@@ -256,7 +262,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             Huduma inaendeshwa na 50pick Ltd, iliyosajiliwa katika Jamhuri ya Muungano wa Tanzania, chini ya leseni
             kutoka Bodi ya Michezo ya Kubahatisha Tanzania, namba ya leseni{" "}
             <span className="font-mono tabular-nums text-text">{LICENCE_NUMBER()}</span>. Kanuni hizi zinasimamia kila
-            soko la NDIYO/HAPANA na ni makubaliano yenye nguvu kati ya Uongozi wa 50pick na kila mchezaji.
+            soko la {w.sw.yes}/{w.sw.no} na ni makubaliano yenye nguvu kati ya Uongozi wa 50pick na kila mchezaji.
           </p>
         </LegalSection>
 
@@ -277,7 +283,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>
               Dau lina mipaka: kiwango cha chini{" "}
               <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>, cha juu{" "}
-              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> kwa kila nafasi.
+              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> kwa kila dau.
             </li>
           </ul>
         </LegalSection>
@@ -298,7 +304,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
               Kila soko lina <strong className="text-text">chanzo rasmi kilichotajwa</strong> na muda wa kufunga, vyote
               vikionyeshwa kabla hujaweka dau.
             </li>
-            <li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li>
+            <li>Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri.</li>
           </ul>
         </LegalSection>
 
@@ -312,15 +318,21 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             Kamisheni huchukuliwa <strong className="text-text">kutoka upande ulioshindwa pekee</strong>, hivyo dau
-            lililoshinda halilipwi pungufu ya kilichowekwa. Kama dau zote zipo upande mmoja, hakuna upande ulioshindwa,
+            lililoshinda halilipwi pungufu ya kilichowekwa. Kama madau yote yapo upande mmoja, hakuna upande ulioshindwa,
             hivyo hatutozi chochote na kila dau hurudishwa kamili. Vivyo hivyo kwa soko lililobatilishwa.
+          </p>
+          <p>
+            <strong className="text-text">Makadirio yanayoonyeshwa kabla ya kuweka dau.</strong> Kabla hujaweka dau, soko
+            linaweza kuonyesha makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Makadirio ni taarifa, si
+            ahadi: hubadilika wachezaji wengine wanapoweka dau, na kiasi ambacho dau lililoshinda hulipwa huamuliwa tu
+            uwekaji dau unapofungwa, kutokana na mabwawa ya mwisho na baada ya kamisheni yetu.
           </p>
           <p>
             <strong className="text-text">Kuuza dau mapema.</strong> Ndani ya dakika{" "}
             <span className="font-mono tabular-nums text-text">{r.freeExitMinutes}</span> za kwanza baada ya kuweka dau
             unaweza kuliuza na kurudishiwa kamili bila gharama — <strong>ikiwa, wakati ulipoliweka, kulikuwa bado na
-            angalau dakika {r.freeExitMinutes} za kuweka dau kwenye soko hilo</strong>, na ikiwa nafasi hiyo
-            haikugharamiwa na bonasi. Baada ya muda huo dau linafungwa hadi kutatuliwa.
+            angalau dakika {r.freeExitMinutes} za kuweka dau kwenye soko hilo</strong>, na ikiwa dau hilo
+            halikugharamiwa na bonasi. Baada ya muda huo dau linafungwa hadi kutatuliwa.
           </p>
           <p>
             <strong className="text-text">Ada ya kutoa pesa.</strong> Kutoa pesa kwenye pochi yako kuna ada ya{" "}
@@ -455,7 +467,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li>每个市场为一个问题，仅有两个答案：{w.zh.yes}或{w.zh.no}。</li>
             <li>每个市场都载明<strong className="text-text">具名的公开来源</strong>与明确的截止时间，两者均在您下注前展示。</li>
-            <li>信心指示器显示资金分布，仅供参考，不构成建议。</li>
+            <li>市场在您下注前显示的内容——资金分布，或某笔投注可获回报的预估——仅供参考，不构成建议。</li>
           </ul>
         </LegalSection>
 
@@ -469,6 +481,9 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             佣金<strong className="text-text">仅从失败方扣取</strong>，因此获胜的下注所得永不低于本金。若全部资金都在同一方，则不存在失败方，我们不收取任何费用，所有下注全额退还。市场作废时亦同。
+          </p>
+          <p>
+            <strong className="text-text">下注前显示的预估。</strong>下注前，市场可能会显示若所选一方获胜时某笔投注可获回报的预估。预估仅供参考，并非承诺：它会随其他玩家下注而变化；获胜投注的实际派彩仅在投注关闭时，依据最终奖池并扣除我们的佣金后确定。
           </p>
           <p>
             <strong className="text-text">提前卖出。</strong>下注后的前{" "}

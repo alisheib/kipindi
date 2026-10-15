@@ -63,11 +63,13 @@ export const TERMS_VERSION = "2026-10-10";
  * ⚠️ NOT covered, by design: values filled in at runtime from officer config — the §6 objection window and the
  * dispute address. They are rebuilt for any date from the `config.*` audit trail.
  *
- * ⛔ **IT MOVES ONLY TOGETHER WITH `TERMS_VERSION` ABOVE.** If §2.1 fails, do NOT paste the new hash and
+ * ⛔ **A PUBLISHED CHANGE MOVES THIS WITH `TERMS_VERSION` ABOVE.** If §2.1 fails, do NOT paste the new hash and
  * move on: a failure means the binding text changed, which is exactly the event the version exists to
- * record. Change both in one commit — or, for a same-day player-favourable amendment inside a version
- * published that day, record it in `COMPLIANCE-DECISIONS.md` and move only the hash.
+ * record. The sole preparation exception is the isolated, unpublished S15 copy branch: it pins the reviewed
+ * future text now; the publication commit MUST date TERMS_VERSION and the Rules metadata before merging it.
+ * For a same-day player-favourable amendment inside a version published that day, record it in
+ * `COMPLIANCE-DECISIONS.md` and move only the hash.
  */
-// 2026-10-10 · re-pinned WITH `TERMS_VERSION` 2026-10-10 (typed-only identity: §3/§3a — COMPLIANCE-DECISIONS, the
-// 2026-10-10 entry), measured by `test:terms-binding` §2 over the new binding text.
-export const TERMS_TEXT_SHA = "06208a18691e";
+// S15 COPY PREPARATION ONLY, NEVER PUBLISH AT THIS VERSION. S11 WP9 measured the reviewed future text at
+// e7ad62b49c77; the S15 publication commit dates TERMS_VERSION and the Rules metadata together with the copy.
+export const TERMS_TEXT_SHA = "e7ad62b49c77";

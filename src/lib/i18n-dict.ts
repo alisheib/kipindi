@@ -504,7 +504,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "Sign in", signUpTitle: "Create account",
-      railTagline: "Predict events. Not chance.",
+      railTagline: "Pick. See what you win. Play.",
       /** The brand lockup's accessible name on the auth screens. It was a hardcoded English
        *  `aria-label` on a link whose only content is an SVG — so the ONE landmark a
        *  screen-reader user has for getting off a half-finished sign-up announced itself in
@@ -3676,7 +3676,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "Ingia", signUpTitle: "Fungua akaunti",
-      railTagline: "Tabiri matukio. Si bahati.",
+      railTagline: "Chagua. Ona unachoweza kushinda. Cheza.",
       brandHomeAria: "Mwanzo wa 50pick",
       continueWithPhone: "Endelea na simu yako",
       enterPhonePassword: "Weka simu na nenosiri.",
@@ -6167,7 +6167,7 @@ export const dict = {
     },
     auth: {
       signInTitle: "登录", signUpTitle: "创建账户",
-      railTagline: "预测事件，而非运气。",
+      railTagline: "选择。看看您能赢多少。开始玩。",
       brandHomeAria: "50pick 首页",
       continueWithPhone: "使用手机号继续",
       enterPhonePassword: "输入您的手机号和密码。",
