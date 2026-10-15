@@ -1116,7 +1116,7 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP1 · the X card | Done, every player, its own release. Proof at its commit: `test:brand-assets` §3 IN SYNC + 3 controls refused (red before: 600/600 rows differ), `test:static-cache-scope` 23/23, typecheck 0, `next build` 0 (186 s, `build.sh` at the exact commit), local `qa:live` 376/376 (port 3101); both pictures read at full size and the corners zoomed: no badge, no bubble. Production read-back is the coordinator's | `0986baa5a` |
 | WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
 | WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | `65ad04b0c` |
-| WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | `b144a6a93` (+ `3b063f8bb`: the records rule, the version) |
+| WP4 · the How-to host | Done in source and in process (below); the Privacy v2026-10-15 decision is filed; its browser drives are WP10's | `b144a6a93` (+ `3b063f8bb`: the records rule, the version) |
 | WP5 · the FAQ | Done (below) | `8ba6a0c50` |
 | WP6 · the chat | Done (below) | `a97374dfa` |
 | F36 · the How-to sheet's two columns, its 13% | Done (below: the coordinator's audit item of 2026-10-15) | `978acf225` |
@@ -1135,8 +1135,8 @@ is built as decided, not pending:
    2026-10-14.
 2. **The X picture fixed now, for everyone, in its own release** — WP1, commit `0986baa5a` (its message predates the
    answer and says the ruling is owed: it is accepted). Accepted by Ali, 2026-10-14.
-3. **Privacy §7 names the How-to seen note, with a new version** — WP4; the proposed COMPLIANCE-DECISIONS entry "Privacy v2026-10-15"
-   records the acceptance. Accepted by Ali, 2026-10-14.
+3. **Privacy §7 names the How-to seen note, with a new version** — WP4; COMPLIANCE-DECISIONS now has the
+   "Privacy v2026-10-15" entry. Accepted by Ali, 2026-10-14.
 4. **The new Terms and rules prepared now and published at launch** — WP9, parked on `codex/vodacom-s15-copy`. Accepted
    by Ali, 2026-10-14.
 5. **No 14-day notice for the Terms change** (it describes a display and narrows no right) — recorded in WP9's drafted
@@ -1303,3 +1303,29 @@ is built as decided, not pending:
 - **Found for the next commit:** `scripts/lib/s8-published-words.mts` pins S8's privacy version (2026-10-14) in its
   `accepted` test, and `test:sheet-owner-recovery` plants the phrase "Version 2026-10-14": WP4's v2026-10-15 would leave
   `test:house-bot-disclosure` 5.1, `test:visual-pass-r5g` 4.14′ and `test:sheet-owner-recovery` red AFTER landing too.
+
+### Resumption (2026-10-15) — WP7, WP8 and the S15 copy checkpoint
+
+- **WP7:** the tagline's live readers share `auth.railTagline` without changing its current values. `test:flip-copy`
+  enumerates the readers and checks the current legal/manifest stage. Its 37 planted defects are caught by
+  `red:flip-copy`; `test:visual-pass-r4h` 81/0, `test:share-preview`, `test:labels` and typecheck passed.
+- **WP8:** `npm run build:og -- --key auth.railTagline --out <directory>` renders the share picture only into the given
+  directory. It reads tracked Sora, Inter and JetBrains Mono TTFs, the mark from `brand-mark.ts` and the named dictionary
+  value. `test:brand-assets` renders twice and compares pixels; on the S11 branch it leaves the published OG picture
+  held. The scratch picture was read at 1200×630 alongside the current picture: no dev badge, chat bubble, clipping or
+  false line. `test:brand-assets` passed with all three X-card red controls.
+- **WP9:** `codex/vodacom-s15-copy` @ `d5aa8bc02` is pushed, based on WP8, and parked until S15. It carries the three
+  language Rules/Terms updates, the approved tagline values, the manifest, generic share card and two regenerated PNGs,
+  plus the revised source guards, brand authority and an explicitly undated compliance draft. The generated S15 picture
+  was read at full size. `test:terms-binding` 17/0 (new `TERMS_TEXT_SHA`), `test:terms-cancellation` 12/0,
+  `test:rules-copy` 72/0, `test:visual-pass-r5c` 97/0, r7a 43/0, r8a 88/0, `test:flip-copy`, `red:flip-copy` 37/37,
+  `test:brand-assets`, `test:labels`, `red:labels` 14/14, `test:rate-copy` 40/0, `red:rate-copy` 12/12,
+  `test:kyc-copy-truth` 499/0, `test:withdraw-email-gate` 84/0, `test:support-contact` 79/0 and
+  `test:static-cache-scope` 23/0 passed. `test:visual-pass-r5g` 63/1 and `test:house-bot-disclosure` 119/3 compare the
+  branch's changed legal/privacy/chat files to `origin/main`; they remain red until the changes are published there.
+  The Terms and Rules displayed dates stay at their old published values in this parked commit; S15 sets both to the
+  actual publication day and dates the compliance draft before merge.
+- **WP10 source checkpoint:** `qa:howto` is written and listed by `test:orphans`; `node --check`, `test:howto`,
+  `test:orphans` and `test:docs` pass. Its real-browser cells and the 72 numbered tiles remain **NOT MEASURED** until the
+  isolated local Next server can run without contending with the coordinator's livefix test battery. No WP10 visual
+  verdict follows from the source gates alone.

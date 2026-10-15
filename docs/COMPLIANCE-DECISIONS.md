@@ -8,6 +8,17 @@
 
 ---
 
+## 2026-10-15 · Privacy v2026-10-15 — How to Play's local seen note (Vodacom S11)
+
+**Authority.** Ali accepted S11-PLAN's recommended privacy wording on 2026-10-14 (the owner decision entry below).
+Privacy §7 now names `50pick-howto-seen` in English, Swahili and Chinese. The guide writes `"1"` in this browser's
+local storage when a player leaves it, so it opens by itself only once in that browser. The note stays on the player's
+device. This adds no account data, analytics permission, or third-party recipient. The published Privacy version moves
+from 2026-10-14 to 2026-10-15 with the three language disclosures; `test:privacy-notice` pins the version and the
+actual browser write.
+
+---
+
 ## 2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted
 
 **Authority.** Ali, 2026-10-14, answering the consolidated list (VODACOM-PLAN §0 "WAITING ON ALI") in this session's
