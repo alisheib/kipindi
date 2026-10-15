@@ -238,9 +238,10 @@ try { browser = await chromium.launch({ executablePath: chrome, headless: true }
 catch (error) { refuse(`Chrome launch unavailable: ${scrub(error.message)}`); }
 const browserVersion = browser.version();
 const actionManifest = JSON.parse(readFileSync(join(NEXT, "server", "server-reference-manifest.json"), "utf8"));
-const context = async (preview = true, js = true) => {
+const context = async (preview = true, js = true, signedIn = true) => {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, javaScriptEnabled: js }); contexts.add(ctx);
-  await ctx.addCookies(fixture.cookies.filter(c => preview || c.name !== "kp_preview").map(c => ({ name: c.name, value: c.value, url: BASE })));
+  await ctx.addCookies(fixture.cookies.filter(c => (preview || c.name !== "kp_preview") && (signedIn || c.name !== "kp_session"))
+    .map(c => ({ name: c.name, value: c.value, url: BASE })));
   return ctx;
 };
 const close = async ctx => { await ctx.close(); contexts.delete(ctx); };
@@ -347,6 +348,39 @@ try {
     ok(`${route}: render-only drive submitted no money or unclassified action`, actions.every(action => action.allowedRead),
       { backgroundReadRequests: actions.filter(action => action.allowedRead).length, blockedRequests: actions.filter(action => !action.allowedRead) });
     await page.unrouteAll({ behavior: "wait" }); // let delayed read handlers finish before intentionally closing their page
+    await cdp.detach(); await close(ctx);
+  }
+  // S10 WP8a O: the same production frame budget for a journey reader. Only the preview cookie is carried; this
+  // context has no account, so a public read may run but no private read or money action belongs to this tap.
+  for (const route of ["/", "/live"]) for (let sample = 1; sample <= 3; sample++) {
+    const ctx = await context(true, true, false), page = await ctx.newPage(), actions = [];
+    page.on("pageerror", error => { errors.push({ route, sample, guest: true, kind: "pageerror", message: scrub(error.message) }); });
+    page.on("console", message => { if (message.type() === "error") errors.push({ route, sample, guest: true, kind: "console", message: scrub(message.text()) }); });
+    page.on("request", request => { if (request.method() === "POST") actions.push(new URL(request.url()).pathname); });
+    await page.addInitScript(installProbe, { pick: S.pick, root: S.root });
+    const cdp = await ctx.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_RATE });
+    await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    const anchor = page.locator(`${S.pick}[data-bet-side="YES"]`).first();
+    await anchor.waitFor({ state: "visible", timeout: 30_000 });
+    // The seed and pick are server rendered; React's props on the pick tell us its client island is hydrated.
+    await page.waitForFunction(selector => {
+      const pick = document.querySelector(selector);
+      return !!pick && Object.keys(pick).some(key => key.startsWith("__reactProps$"));
+    }, `${S.pick}[data-bet-side="YES"]`, { timeout: 30_000 });
+    const title = await anchor.evaluate(a => a.closest("[data-sheet]")?.getAttribute("data-sheet-title"));
+    if (!title) throw new Error("guest selected card did not carry its localized sheet heading");
+    const originalDocument = await page.evaluate(() => window.__productionSheetDocument);
+    await anchor.click();
+    await page.waitForFunction(() => Number.isFinite(window.__productionSheetTap?.ms) && Number.isFinite(window.__productionSheetTap?.confirmedAt), null, { timeout: 10_000 });
+    const probe = await page.evaluate(() => window.__productionSheetTap), verdict = tapErrors(probe, { title, route });
+    ok(`${route}: guest production heading frame sample ${sample} at 4× CPU`, verdict.length === 0 && probe.remainedVisible === true,
+      { ...probe, verdict, cpuRate: CPU_RATE, viewport: "360x640", signedIn: false });
+    ok(`${route}: guest sample ${sample} opens only the public face without a money action`,
+      await page.locator(`${S.root}[data-guest]`).count() === 1 && await page.locator(`${S.root} [data-testid="journey-sheet-place"]`).count() === 0
+        && actions.length === 0 && originalDocument === await page.evaluate(() => window.__productionSheetDocument),
+      { actions, originalDocument });
+    await page.screenshot({ path: join(OUT, `${route === "/" ? "home" : "live"}-guest-tap-${sample}.png`) });
     await cdp.detach(); await close(ctx);
   }
   ok("production drive had no uncaught browser or console errors", errors.length === 0, { errors });

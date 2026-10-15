@@ -305,8 +305,11 @@ try {
     const pick = page.locator('a.kp-jcard__pick').first();
     if (await pick.count()) {
       const href = await pick.getAttribute("href"); await pick.click();
-      await page.waitForURL(url => url.pathname.startsWith("/markets/"));
-      ok("journey guest pick navigates, never opens a sheet", !(await page.locator(S.root).count()) && !!href);
+      await page.locator(`${S.root}[data-guest]`).waitFor({ state: "visible", timeout: 30_000 });
+      const address = new URL(page.url());
+      ok("journey guest pick opens the public sheet in place", !!href && address.pathname === "/"
+        && address.searchParams.has("bet") && await page.locator(`${S.root} [data-testid="journey-sheet-signup"]`).count() === 1
+        && await page.locator(`${S.root} [data-testid="journey-sheet-place"]`).count() === 0);
     } else nm("journey guest pick", "no pick on seeded guest home");
     await guest.close(); contexts.delete(guest);
   }
