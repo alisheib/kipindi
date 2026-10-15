@@ -15,11 +15,6 @@ import { DEPOSIT_MIN_TZS } from "@/lib/server/validators";
 import { depositAction } from "./actions";
 import { fundingStorageKey, parseStoredFunding, writeStoredFunding, type StoredFundingIdentity } from "@/lib/journey/funding-storage";
 
-type SavedFunding = StoredFundingIdentity & {
-  amount: number; provider: string; msisdn: string;
-  pendingBet: SavedDepositBet | null;
-};
-
 export function JourneyDepositForm({
   ownerId, rawBet, returnPath, initialAmount, initialPhone, registeredPhone, initialProvider,
   providers, maxAmount, quickAmounts, spendable, fromLowBalance, preflightKey,
@@ -121,8 +116,8 @@ export function JourneyDepositForm({
         if (!field) throw new Error("Missing bet field");
         field.value = JSON.stringify(chosenBet);
       }
-      const funding: SavedFunding = { v: 1, key, owner: ownerId, amount: amountNow, provider, msisdn,
-        pendingBet: chosenBet, startedAt: Date.now(), attempts: 1 };
+      // Tab recovery needs the payment identity only. Phone, amount and chosen bet live in the owned server row.
+      const funding: StoredFundingIdentity = { v: 1, key, owner: ownerId, startedAt: Date.now(), attempts: 1 };
       if (!writeStoredFunding(window.sessionStorage, ownerId, funding)) throw new Error("Funding key unavailable");
       const keyField = form.elements.namedItem("idempotencyKey") as HTMLInputElement | null;
       if (!keyField) throw new Error("Missing funding key field");
