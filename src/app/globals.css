@@ -309,10 +309,8 @@
      floor that is INSTRUMENTED, not merely written down — scripts/responsive-audit.mjs
      raised its soft tap-target threshold from 38 to 40 in the same change, which is
      the raise its own comment had promised "once the control-height tokens bump".
-     ⚠️ This preamble used to schedule ".mcardp-actions 36→40" alongside the tokens.
-     That shipped SEPARATELY and is DONE — the rule reads `height: var(--tap-min)`
-     further down this file — so the clause is deleted rather than left to invite a
-     future session to "finish" something already finished.
+     The classic market card's btn-md action reads --h-control-md (44px), like
+     the same action on the landing's question rows (V2a F53).
      --tap-min is the 40px finger/primary/money floor (Law 9). --h-control-xs stays
      at 32px: it is the documented dense, MOUSE-ONLY admin exception — not one call
      site is a finger, primary or money control, which is the only thing §A2's floor
@@ -906,34 +904,33 @@
      commit. --mcard-h is the SUM of the tokens the card itself reads, so the
      skeleton follows the card by construction rather than by memory.
 
-     --mcard-base IS THE ONE MEASURED NUMBER: everything the tokens below do
-     NOT move (chip row, title block, conviction bar, stats row, footer row,
-     side padding). Measured in a real browser on production, 360 SW,
-     2026-09-23: the cold-start card is 347.44px, and
-       347.44 − 14 − (8 × 10) − 11 − 9 − 24 − 0 = 209.44 → 209.
-     The closed/resolved card is 278px with two fewer children (6 gaps):
-       278 − 14 − (6 × 10) − 11 − 9 − 24 − 0 = 160.
-     Re-measure these the same way if the card's CONTENT changes. Never
-     re-type a height.
+     --mcard-base IS THE ONE MEASURED RESIDUAL: the chip row, title block,
+     conviction bar, stats row, footer row and fixed card padding. The
+     2026-09-23 browser baseline at 360 SW was 347.44px
+     for a cold-start card and 278px for a closed card. V2a moves the layout
+     spacing to --sp-* rungs and makes the action the shared 44px md control.
+     The base rises by 7px: +4px action height, +3px bottom padding. The
+     resulting 372px / 299px Comfortable and 326px / 261px Compact heights
+     are arithmetic targets pending the local browser re-measurement.
 
      THE OVERRIDES MUST LAND ON `html` ITSELF (see the Compact block beside the
      card rules). A custom property resolves against the element it is DECLARED
      on: put them on .mcardp and the CARD shrinks while --mcard-h keeps reading
      the comfortable sum — exactly the skeleton-lies defect above, rebuilt. */
-  --mcard-pt: 14px;
-  --mcard-gap: 10px;
-  --mcard-act-mt: 11px;
-  --mcard-act-mb: 9px;
-  --mcard-traders-h: 24px;
+  --mcard-pt: var(--sp-4);
+  --mcard-gap: var(--sp-3);
+  --mcard-act-mt: var(--sp-3);
+  --mcard-act-mb: var(--sp-2);
+  --mcard-traders-h: var(--sp-6);
   --mcard-spark-h: 28px;
   --mcard-meta-mb: 0px;
-  --mcard-base: 209px;
-  --mcard-base-closed: 160px;
+  --mcard-base: 216px;
+  --mcard-base-closed: 167px;
   --mcard-h: calc(var(--mcard-base) + var(--mcard-pt) + 8 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
   --mcard-h-closed: calc(var(--mcard-base-closed) + var(--mcard-pt) + 6 * var(--mcard-gap) + var(--mcard-act-mt) + var(--mcard-act-mb) + var(--mcard-traders-h) + var(--mcard-meta-mb));
   /* How far the cold-start pair ("No bets yet" / "Be the first to predict") is lowered to sit mid-way between the rail and
      the pick — derived from the two tokens that differ between the densities, like --mcard-h, so Compact gets its own
-     (4.8px Comfortable, 1.8px Compact). It moves the pair, never the card: see `.mcardp-nobets` below. */
+     (5.3px Comfortable, 2.8px Compact). It moves the pair, never the card: see `.mcardp-nobets` below. */
   --mcard-empty-drop: calc((var(--mcard-traders-h) / 2 + var(--mcard-act-mt) - 13.4px) / 2);
   /* UP & DOWN CARD RHYTHM (U3). The round card is a `.mcardp` too, so it already follows
      --mcard-gap and --mcard-pt. These four are the spacing INSIDE it, which the market card
@@ -5279,7 +5276,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    ⚠️ `--border-control on --wash-raised` reads **3.04** against a 3.0 floor — a form
    control on a card has 0.04 of margin, so the wash's light stop cannot rise
    without breaking it. Five new pairs in `test:contrast` hold all of this. */
-.mcardp { position: relative; display: flex; flex-direction: column; gap: var(--mcard-gap); padding: var(--mcard-pt) 15px 13px; border-radius: var(--r-lg);
+.mcardp { position: relative; display: flex; flex-direction: column; gap: var(--mcard-gap); padding: var(--mcard-pt) var(--sp-4) var(--sp-4); border-radius: var(--r-lg);
   background: var(--wash-raised);
   border: 1px solid var(--border);
   /* Rung 1, and the `--mat-tint` slot so a state accent can compose without
@@ -5330,7 +5327,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; }
 .mcardp-watermark svg { width: 140px; height: 140px; }
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
-.mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
+.mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: var(--sp-1); min-height: var(--sp-5); }
 /* 🔴 D65 · AT LARGE TEXT THIS ROW CUT THE CATEGORY WORD TO A SINGLE LETTER.
    `UTAMADUNI` painted as `UTAMA…` at an effective 277px and as `U…` at 246 — which is 360 and 320 with
    Android text at 130%. ⚠️ NOT a word-length problem: the slot is clamped to the SAME 43px at 277 and 12px
@@ -5376,18 +5373,18 @@ html[data-sheet-open] .route-enter { animation: none; }
    ⭐ The glyph's 2px nudge is now the margin of whatever precedes the tail: it separates the glyph from the
    chip before it exactly as before, and it no longer indents the glyph when the tail starts a line.
    2026-10-09 · round 4, G1 [045 077 089 102] · THE CATEGORY AND THE TIME ARE TWO FACTS, NEVER ONE PHRASE. With the
-   row's 5px between them the tail fitted the chips' line at sw 390 with 9px of ink between "UCHUMI" and "masaa 1
+   row's old 5px between them the tail fitted the chips' line at sw 390 with 9px of ink between "UCHUMI" and "masaa 1
    yamebaki" — one word space plus 2px, so it read as one phrase (31px at 412, 124 in English at 390). The tail's
    COLUMN gap is now the scale's 16 (`--sp-4`): it holds the line only while the time can stand at least 16px clear of
    the category (~18px of ink), and otherwise drops down whole, as at 320–360 — category left, time right. Its ROW gap
-   stays the row's 5px, so the D65 stack (time under its category) is unchanged. Only the featured card's tail has two
+   is now the row's --sp-1 (4px), one pixel tighter when the D65 stack puts time under category. Only the featured card's tail has two
    items, so no other card can move. */
-.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: 5px var(--sp-4); flex: 1 1 auto; min-width: 0; }
-.mcardp-catgrp { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.mcardp-tail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-4); flex: 1 1 auto; min-width: 0; }
+.mcardp-catgrp { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
 .mcardp-top > :has(+ .mcardp-tail) { margin-right: 2px; }
 /* §T3 0.14em, was 0.12 — tracking in the shared eyebrow rule beside `.amount`. */
 .mcardp-cat { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex: 1 1 auto; }
+.mcardp-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex: 1 1 auto; }
 .mcardp-qwrap { flex: 1 1 auto; min-width: 0; }
 .mcardp-q { font-family: var(--font-display); font-weight: 600; font-size: 15px; line-height: 1.34; letter-spacing: -0.015em; color: var(--text); text-wrap: balance; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height: calc(2 * 1.34em); }
 .mcardp-q-sw { margin-top: 1px; font-size: 10px; font-style: italic; color: var(--text-subtle); display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
@@ -5453,7 +5450,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-gtext { stroke-width: var(--g-stem); }
 .kp-gtext * { vector-effect: non-scaling-stroke; }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
-.mcardp-traders { display:flex; align-items:center; gap:7px; }
+.mcardp-traders { display:flex; align-items:center; gap:var(--sp-2); }
 .av-stack { display:flex; }
 .av-stack > * { margin-left: -7px; border-radius: 50%; box-shadow: 0 0 0 2px var(--bg-elevated); }
 .av-stack > *:first-child { margin-left: 0; }
@@ -5462,7 +5459,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-traders .t-txt b { color: var(--text); font-weight:600; }
 /* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
    or "One side only". */
-.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:12px; margin:-3px 0 -5px; }
+.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:var(--sp-3); margin:calc(-1 * var(--sp-1)) 0; }
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
 .mcardp-spark { margin-top:-4px; height: var(--mcard-spark-h); }
@@ -5470,48 +5467,36 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
-/* margin 13/11 → 11/9 absorbs the 36→40px button bump below, so card height is
-   unchanged and the live vs resolved branches stay in parity.
+/* The action margins use the spacing scale in both card densities. The md control
+   below is 44px, matching the landing question rows; the skeleton base includes
+   that extra 4px and the 3px increase in bottom padding.
    ⭐ ONE GAP FOR A PAIR OF BUTTONS, 12px (R9-A5, round 9 of the visual pass, 2026-10-11; three readers, tiles 159 160 194):
    the card's YES and NO stood 8px apart (159: x191–198) where every other pair stands 12 — the market page's two sides,
    the sheets', the Wallet's, Up & Down's (R6-C's rule, `gap-2` on the override scale). `--sp-3` is that 12px. At 320 the
-   card's content box is 256px, so each button is 122px (124 before). */
+   card's content box is 254px, so each button is 121px. */
 .mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: var(--sp-3); margin: var(--mcard-act-mt) 0 var(--mcard-act-mb); }
 /* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
    the live YES/NO row, so card heights match across a mixed grid. */
 .mcardp-actions--single { grid-template-columns: 1fr; }
-/* 36 → 40px (POLISH-BACKLOG §1.4). These are the product's most-tapped money
-   controls and they sat BELOW the 40px tap floor law 9 sets — on a card, on a
-   phone, for the two buttons that place a bet. --tap-min is that floor's one
-   definition site, so this reads it rather than restating 40.
-   ⚠️ CORRECTED — this comment used to close with "The kit floor at --h-control-* is
-   deliberately NOT touched: 148 call sites including admin." Both halves are now
-   wrong. The kit floor HAS been touched (Phase 3: sm 40 · md 44 · lg 48), and 148
-   was never the real number — it is what a naive grep for literal `btn-*` class
-   strings returns. Measured at HEAD the true count is 333: 192 literal `btn-*`
-   classNames PLUS 141 <Button>/<SubmitButton> tags that resolve through their own
-   defaults (<Button> defaults to size="md"; <SubmitButton> defaults to "lg" and
-   composes its class as `btn-${size}`), so no text search can ever see them. The
-   decision this line was used to justify was taken on roughly half the truth.
-   ⭐ The card is unaffected by that bump either way: `.mcardp-actions .btn` is
-   (0,2,0) against `.btn-md`'s (0,1,0), so these stay pinned at --tap-min (40px)
-   and MARKET_CARD_H does not move. Verify with `npm run qa:card-geometry`. */
+/* F53: these are btn-md money controls. The card's more specific selector must
+   keep the kit's 44px md height, matching the same YES/NO buttons on home rows.
+   The resulting card and skeleton geometry is checked by qa:card-geometry. */
 /* `.12s` / `.16s` / `.12s` → `--t-quick` (140): 120 and 160 both land on that one
    rung, so what looked like two tuned speeds was one. The `filter` leg had a
    duration and NO easing at all (B5 rule 3 wants the pair stated); neither it nor
    the shadow travels, so both take `linear`. */
 /* The label's room (R9-A5): the widest label at 320 is Swahili's priced NO, "HAPANA @ 99%" — Inter 600 13px with the
    0.52px tracking, the price in JetBrains Mono 11.5px, which inherits that tracking — about 104px (Inter's Medium and Bold
-   advances averaged, no kerning: an upper bound). In a 122px button 10px of padding a side left it 100px, so the label
-   ran 2px into the padding each side (it ran 1px into it at the old 8px gap too); 8px a side — the home question rows'
-   own (`.kp-qrow__btn`) — leaves it 104px, and the label keeps 8px from each border as before. The label is centred, so
+   advances averaged, no kerning: an upper bound). In the old 122px button 10px of padding a side left it 100px, so the label
+   ran 2px into the padding each side; 8px a side — the home question rows'
+   own (`.kp-qrow__btn`) — leaves 105px in the new 121px button, and the label keeps 8px from each border. The label is centred, so
    wherever it fits nothing moves. */
-.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 var(--sp-2); letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
+.mcardp-actions .btn { height: var(--h-control-md); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 var(--sp-2); letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto
    wrapped to a variable number of lines, making cards different heights). */
-.mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 5px 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); min-width: 0; margin-top: auto; margin-bottom: var(--mcard-meta-mb); }
+.mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: var(--sp-1) var(--sp-2); font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); min-width: 0; margin-top: auto; margin-bottom: var(--mcard-meta-mb); }
 /* 🔴 D35 · AT LARGE TEXT THE POOL FIGURE WAS THE ONLY THING ON THE CARD ALLOWED TO SHRINK.
    The pool is the number that says how much money is on a market — it is the reason to tap the card. At an
    effective 277px it read `TZS 79,…`; at 246 it read `TZS…`, the currency code alone, the amount entirely
@@ -5533,7 +5518,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 /* 2026-09-14 (register E-400 ⑦f): the time left on a live card was painted `--yes-300`, directly under the YES/NO
    buttons, where betting-YES green reads as a side (§B2a). A player's LIVE signal is the broadcast red dot and chip
    (§B11), so the countdown text takes the brighter neutral ink the meta row does not otherwise use. */
-.mcardp-meta .live { color: var(--text-muted); display:inline-flex; align-items:center; gap:5px; }
+.mcardp-meta .live { color: var(--text-muted); display:inline-flex; align-items:center; gap:var(--sp-1); }
 .mcardp-meta-right { margin-left:auto; display:inline-flex; align-items:center; flex-shrink:0; }
 /* The "how it works" trigger. Was 8 inline style props plus two onMouseEnter/
    onMouseLeave handlers that re-typed four colours in JS to fake :hover — a hover
@@ -5583,11 +5568,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    verified, not assumed: card heights, every card's row offset and the document height are
    byte-identical before and after at 360/1280/1920 on both /markets and the landing.
    ⛔ THE UPWARD REACH IS CAPPED BY A NEIGHBOUR, NOT BY TASTE. `.mcardp-info` (44px, was 46 —
-   PV-13b) sits in the meta row with exactly 10px of clearance above this row (RE-MEASURED after
-   the shrink: unchanged — the row above absorbed it, not the gap), and it opens an explainer rather than
-   the market — swallowing its clicks would trade one defect for another. Measured room: 10 above,
-   14 below (the card's 13px padding-bottom plus the gap). 9 + 17 + 14 = 40px = `--tap-min`, Law 9's
-   floor, leaving 1px clear beneath the info button. If `--tap-min` is ever raised, this cannot
+   PV-13b) sits in the meta row with 12px of calculated clearance above this row in
+   both densities (Compact's 8px gap plus 4px meta margin). It opens an explainer rather than
+   the market — swallowing its clicks would trade one defect for another. Calculated room: 12 above,
+   17 below (the card's 16px padding-bottom plus the gap). 9 + 17 + 14 = 40px = `--tap-min`, Law 9's
+   floor, leaving 3px clear beneath the info button. If `--tap-min` is ever raised, this cannot
    simply consume the difference upward — re-measure the neighbour first.
    ⚠️ THE POSITIONING CONTEXT USED TO COME FROM `.mcardp > *` (globals.css:3149) and this note
    used to say it deliberately did not restate it. That stopped being true on 2026-08-25, when a
@@ -8395,28 +8380,23 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    these onto .mcardp and the CARD would shrink while the SKELETON kept reading the comfortable
    sum — the skeleton-lies defect the token route exists to make impossible.
 
-   --mcard-meta-mb IS THE FOOTER'S 10px, GIVEN BACK. The card's row gap drops 10 → 6, which would
-   also close the gap above the footer row; §6 says that 10px must not change (the Details and
-   share reaches are measured from it), so the stats row carries the missing 4px as a margin.
-
-   Measured at 360 SW on production's five card shapes, 2026-09-23:
-     live + band   353.5 → 301.5      cold start   347.44 → 303.44
-     live, no band 319.5 → 279.5      resolved + band 312 → 264      resolved 278 → 242
-   The written target "every state >= 45px shorter" is arithmetic these deltas cannot meet for
-   the two no-band shapes (-40 and -36); it is restated per state in §2 rather than missed. */
+   The compact row gap is --sp-2, four pixels below Comfortable's --sp-3.
+   --mcard-meta-mb returns those four pixels above the footer so its reach
+   stays separated from the prior row. V2a's new geometry targets are 326px
+   cold start and 261px closed at 360 SW; browser re-measurement remains due. */
 @media (max-width: 639.98px) {
   html:not([data-density="comfortable"]) {
-    --mcard-pt: 10px;
-    --mcard-gap: 6px;
-    --mcard-act-mt: 6px;
-    --mcard-act-mb: 4px;
+    --mcard-pt: var(--sp-2);
+    --mcard-gap: var(--sp-2);
+    --mcard-act-mt: var(--sp-2);
+    --mcard-act-mb: var(--sp-1);
     --mcard-traders-h: 22px;
     /* D49 is BY DESIGN (§4 decision 11, Ali 2026-09-23): the band STAYS wherever real history
        exists and is only trimmed here. It is never removed and its space is never reserved. */
     --mcard-spark-h: 20px;
-    --mcard-meta-mb: 4px;
+    --mcard-meta-mb: var(--sp-1);
   }
-  html:not([data-density="comfortable"]) .market-grid { gap: 10px; }
+  html:not([data-density="comfortable"]) .market-grid { gap: var(--sp-3); }
 
   /* The Up & Down card, one rung down each. Its height follows the LIVE ROUND (U1 measured the
      same card at 468 and 660px minutes apart), so its target is stated per phase in §2 and read

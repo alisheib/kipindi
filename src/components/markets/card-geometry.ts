@@ -15,10 +15,12 @@
  * (globals.css, :root). The skeleton follows the card by construction — change a token and
  * both move together, in both densities, with nothing to remember.
  *
- * Measured on production at 360 SW, 2026-09-23, and re-measured after the change:
- *   --mcard-h         347px comfortable · 303px compact   (the /markets cold-start card:
- *                     347.44 → 303.44, so the skeleton matches the card within half a pixel)
- *   --mcard-h-closed  278px comfortable · 242px compact   (the /results resolved card)
+ * Production baseline at 360 SW, 2026-09-23: 347.44px comfortable / 303.44px
+ * compact cold start, 278px / 242px closed. V2a puts the card's layout space on
+ * the --sp-* scale and matches its action to btn-md's 44px height. The resulting
+ * arithmetic targets, pending browser re-measurement, are:
+ *   --mcard-h         372px comfortable · 326px compact (cold start)
+ *   --mcard-h-closed  299px comfortable · 261px compact (closed)
  *
  * Do not re-type either number anywhere. If the card's CONTENT changes, re-measure in a real
  * browser and move `--mcard-base` / `--mcard-base-closed`, which is where the one measured

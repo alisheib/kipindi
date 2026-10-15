@@ -436,9 +436,9 @@ const lines = (ps: Piece[], ends: number[]) => {
   for (const e of ends) { out.push({ text: ps.slice(s, e + 1).map((p, k) => p.text + (k < e - s && p.space > 0 ? " " : "")).join(""), w: lineW(ps, s, e) }); s = e + 1; }
   return out;
 };
-/** The featured card's question column: the card (viewport - 32, the hero's 456px from 1024) - 2 border - 30 padding -
- *  14 gap - the 22px mono dash (0.6em - 0.02em tracking); its type 15px/600 below 640, h4 (17px) 700, h3 (20px) from 1024. */
-const FEAT_COL = (vw: number) => (vw >= 1024 ? 456 : vw - 32) - 2 - 30 - 14 - 22 * (0.6 - 0.02);
+/** The featured card's question column: the card (viewport - 32, the hero's 456px from 1024) - 2 border - 32 padding -
+ *  12 gap - the 22px mono dash (0.6em - 0.02em tracking); its type 15px/600 below 640, h4 (17px) 700, h3 (20px) from 1024. */
+const FEAT_COL = (vw: number) => (vw >= 1024 ? 456 : vw - 32) - 2 - 32 - 12 - 22 * (0.6 - 0.02);
 const FEAT_BOX = (vw: number): Box => (vw >= 1024 ? { size: 20, wght: 700, ls: -0.015 } : vw >= 640 ? { size: 17, wght: 700, ls: -0.015 } : { size: 15, wght: 600, ls: -0.015 });
 const feat = (t: string, vw: number, mode: "greedy" | "pretty" | "balance") => {
   const b = FEAT_BOX(vw), W = FEAT_COL(vw), ps = pieces(html(keepFigures(t)), b);

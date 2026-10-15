@@ -214,16 +214,16 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   // Round 4 (2026-10-09) — three more measured tile defects on the featured card.
   // 2.16 · G1: at sw 390 the tail fitted the chips' line with "UCHUMI" and "masaa 1 yamebaki" 9px apart (tiles 045 077 089 102)
   // — a word space and 2px, one phrase. The tail's COLUMN gap is the scale's 16, so the time keeps 16px from its category or
-  // the whole tail takes the next line; its ROW gap stays the row's 5px (the D65 stack); the time is still pushed right.
+  // the whole tail takes the next line; its ROW gap is the nearest kit rung, 4px; the time is still pushed right.
   const ruleOf = (src: string, sel: string) => { const at = src.indexOf(`\n${sel} {`); return at < 0 ? "" : src.slice(at + 1, src.indexOf("}", at) + 1); };
   const tailOk = (src: string) => {
     const tail = ruleOf(src, ".mcardp-tail");
-    return tail.includes("gap: 5px var(--sp-4);") && tail.includes("flex-wrap: wrap;") && (src.match(/\n\.mcardp-tail \{/g) ?? []).length === 1
+    return tail.includes("gap: var(--sp-1) var(--sp-4);") && tail.includes("flex-wrap: wrap;") && (src.match(/\n\.mcardp-tail \{/g) ?? []).length === 1
       && ruleOf(src, ".mcardp-closes").includes("margin-left: auto;") && /--sp-4: 16px;/.test(src);
   };
-  check("2.16 the featured card's time keeps at least 16px from its category — the tail's column gap is --sp-4 (16px), its row gap the row's 5px, the time still pushed right, and the glyph, word and time still one tail",
+  check("2.16 the featured card's time keeps at least 16px from its category — the tail's column gap is --sp-4 (16px), its row gap --sp-1 (4px), the time still pushed right, and the glyph, word and time still one tail",
     tailOk(css) && /<span className="mcardp-tail">\s*<span className="mcardp-catgrp">/.test(card), ruleOf(css, ".mcardp-tail"));
-  check("2.16-control the round-3 tail (5px both ways) IS detected", !tailOk(css.replace("gap: 5px var(--sp-4);", "gap: 5px;")));
+  check("2.16-control the round-3 tail (5px both ways) IS detected", !tailOk(css.replace("gap: var(--sp-1) var(--sp-4);", "gap: 5px;")));
 
   // 2.17 · G5: "Hakuna dau bado" / "Kuwa wa kwanza kutabiri" sat 18px under the rail and 28px over YES/NO from 640 (tile 020:
   // bar to y369, ink 388–425, buttons y454), 14 / 18 in Compact (013 015). The pair is lowered by --mcard-empty-drop, derived
@@ -233,7 +233,11 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   const pairRules = (src: string) => src.includes("\n.mcardp-nobets:has(+ .mcardp-traders .mcardp-befirst) { margin-top: calc(6px + var(--mcard-empty-drop)); }")
     && src.includes("\n.mcardp-nobets + .mcardp-traders:has(.mcardp-befirst) { margin-bottom: calc(-1 * var(--mcard-empty-drop)); }");
   const DROP = /\n {2}--mcard-empty-drop: calc\(\(var\(--mcard-traders-h\) \/ 2 \+ var\(--mcard-act-mt\) - (\d+(?:\.\d+)?)px\) \/ 2\);/;
-  const tok = (src: string, name: string, from: number) => Number(new RegExp(`--${name}: (\\d+(?:\\.\\d+)?)px;`).exec(src.slice(from))?.[1] ?? NaN);
+  const tok = (src: string, name: string, from: number) => {
+    const raw = new RegExp(`--${name}: (var\\(--sp-\\d+\\)|\\d+(?:\\.\\d+)?px);`).exec(src.slice(from))?.[1];
+    const rung = /var\(--(sp-\d+)\)/.exec(raw ?? "")?.[1];
+    return Number((rung ? new RegExp(`--${rung}: (\\d+(?:\\.\\d+)?)px;`).exec(src)?.[1] : raw?.replace("px", "")) ?? NaN);
+  };
   const centred = (src: string) => {
     const k = Number(DROP.exec(src)?.[1] ?? NaN);
     const nbMt = Number(/margin-top: (\d+)px;/.exec(ruleOf(src, ".mcardp-nobets"))?.[1] ?? NaN);
