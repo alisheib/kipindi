@@ -1105,6 +1105,27 @@ export async function settlePaymentWebhook(
       }
       return { handled: true, reason: "already-rg-held" };
     }
+    // A repeated terminal verdict is benign only when it still names the SAME collection amount. The signed
+    // order-status answer can correct an earlier amount without changing its CONFIRMED/FAILED word; silently
+    // acknowledging that as a duplicate hides money received or credited at the wrong amount. Record review,
+    // but never change the settled wallet, ledger or transaction status from this callback.
+    const sameTerminalDeposit = txn.type === "DEPOSIT"
+      && ((txn.status === "CONFIRMED" && input.status === "CONFIRMED")
+        || (txn.status === "FAILED" && input.status === "FAILED"));
+    if (sameTerminalDeposit && input.amount != null && Math.abs(input.amount) !== Math.abs(txn.amount)) {
+      const depositClaim = restriction ?? (original && !("kind" in original) ? original : undefined);
+      const reviewAdded = await markDepositStatusReview(txn.id, input.status, depositClaim,
+        restriction ? undefined : input.providerRef, input.amount);
+      if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
+        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id,
+          savedReturn: !!parseSavedDepositBet(txn.pendingBet) }));
+      audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id,
+        payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef, was: txn.status } });
+      auditNeedsReviewOnce(txn.id, "provider reported a DIFFERENT amount for a terminal deposit — no money changed automatically", {
+        providerRef: input.providerRef, expected: txn.amount, got: input.amount, type: txn.type,
+      });
+      return { handled: false, reason: "amount-mismatch" };
+    }
     // 🔴 A TERMINAL TRANSACTION BEING TOLD THE OPPOSITE IS NOT A DUPLICATE CALLBACK.
     // Every non-PROCESSING txn used to return `already-<status>` with `handled: true`,
     // which is right for a provider's at-least-once retry and WRONG for a contradiction:
@@ -1201,7 +1222,7 @@ export async function settlePaymentWebhook(
 
 /** One durable deposit-only review signal, claimed under its wallet lock. No terminal status, amount or ledger changes.
  * Matching callbacks/retries do not clear it. An officer's actual resolution needs a separate reviewed action. */
-async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "FAILED", restriction?: DepositRecheckBinding, expectedProviderRef?: string): Promise<boolean> {
+async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "FAILED", restriction?: DepositRecheckBinding, expectedProviderRef?: string, reportedAmount?: number): Promise<boolean> {
   const pre = await db.txn.findById(txnId, currentLockTx());
   if (!pre || pre.type !== "DEPOSIT" || pre.currency !== "TZS" || pre.houseBotId != null) return false;
   if (restriction && !matchesDepositRecheckBinding(restriction.owner, txnId, restriction, pre)) return false;
@@ -1211,8 +1232,11 @@ async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "F
     if (restriction && !matchesDepositRecheckBinding(restriction.owner, txnId, restriction, fresh)) return false;
     if (expectedProviderRef !== undefined) await assertUniquePaymentReference(fresh, expectedProviderRef, restriction);
     if (fresh.userId !== pre.userId || (isRgHeldDeposit(fresh) && reported === "CONFIRMED")) return false;
-    const opposed = (fresh.status === "CONFIRMED" && reported === "FAILED")
+    const opposedStatus = (fresh.status === "CONFIRMED" && reported === "FAILED")
       || ((fresh.status === "FAILED" || fresh.status === "REVERSED" || fresh.status === "CANCELLED") && reported === "CONFIRMED");
+    const amountChanged = reportedAmount != null && Math.abs(reportedAmount) !== Math.abs(fresh.amount)
+      && ((fresh.status === "CONFIRMED" && reported === "CONFIRMED") || (fresh.status === "FAILED" && reported === "FAILED"));
+    const opposed = opposedStatus || amountChanged;
     if (!opposed) return false;
     const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);
     if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
