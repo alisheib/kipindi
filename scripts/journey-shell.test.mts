@@ -1564,8 +1564,14 @@ function g7Header(W: World, ok: Ok) {
     auth.includes("padding-inline: 14px") && auth.includes("font-size: var(--type-small)") && tokenValue(css, "type-small") === "13px"
       && !css.includes("{ .kp-jhdr__auth {")
       && bar.includes(`className="btn btn-ghost btn-md btn-pill kp-jhdr__auth"`) && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__auth"`)
-      && bar.includes(`href={"/auth/login" as never}`) && bar.includes(`href={"/auth/register" as never}`),
+      && bar.includes(`signIn="/auth/login" signUp="/auth/register"`) && bar.includes(`href={signIn as never}`) && bar.includes(`href={signUp as never}`),
     auth);
+  ok("7.auth.carry · journey header guest pills use the classic page-aware auth rule, with a bare pair while the query resolves",
+    bar.includes(`import { authDoorHrefs } from "@/lib/auth-landing";`)
+      && bar.includes(`const search = useSearchParams();`)
+      && bar.includes(`authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`)
+      && bar.includes(`<Suspense fallback={<JourneyGuestAuthPills signIn="/auth/login" signUp="/auth/register" />}>`)
+      && bar.includes(`<JourneyGuestAuthDoors />`));
   ok("7.state · the bar asks journeyHeaderState once and renders its three answers: the capsule, the pill and the guest pills",
     count(bar, "journeyHeaderState({") === 1 && bar.includes(`{state.capsule !== "none" && (`) && bar.includes("{state.pill && (")
       && bar.includes("{state.authPills && (") && bar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"));
@@ -1797,9 +1803,15 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     isClient(sheet) && count(sheet, "<Modal") === 1 && sheet.includes("labelledBy={titleId}") && sheet.includes(`sheetUntil="lg"`)
       && sheet.includes("maxWidth={440}") && sheet.includes(`panelClassName="kp-wsheet"`) && !sheet.includes("showClose={false}")
       && sheet.includes(`<h2 id={titleId} className="kp-jsheet__title">{t.journey.ticketsGuestTitle}</h2>`)
-      && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) < sheet.indexOf(`"/auth/login?next=%2Fpositions"`)
+      && sheet.indexOf(`signUp="/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`signUp="/auth/register?next=%2Fpositions"`) < sheet.indexOf(`signIn="/auth/login?next=%2Fpositions"`)
       && sheet.includes(`className="btn btn-primary btn-lg kp-wsheet__act"`) && sheet.includes(`className="btn btn-ghost btn-lg kp-wsheet__act"`)
       && count(sheet, "onClick={onClose}") === 2);
+  ok("8.sheet.carry · guest Tiketi doors keep positions as next and carry this page's codes through the shared rule",
+    sheet.includes(`import { doorHrefsFor } from "@/lib/auth-landing";`)
+      && sheet.includes(`const search = useSearchParams();`)
+      && sheet.includes(`doorHrefsFor("/positions", new URLSearchParams(search?.toString() ?? ""))`)
+      && sheet.includes(`<Suspense fallback={<TicketsGuestLinks signUp="/auth/register?next=%2Fpositions" signIn="/auth/login?next=%2Fpositions" onClose={onClose} />}>`)
+      && sheet.includes(`<TicketsGuestDoors onClose={onClose} />`));
   ok("8.sheet.portal · the sheet opens through the kit Modal, which portals to the document body — so it sits on the dialog rung, not sealed in the bar or the rail (A13)",
     rendersSymbol(sheet, "Modal") && portalsOut(text(W, MODAL)) && !portalsOut(sheet) && !sheet.includes("fixed"));
   const journeyPopups = [...W.files.keys()].filter((p) => JOURNEY_POPUP_HOMES.some((home) => p.startsWith(home)) && p.endsWith(".tsx") && IS_POPUP.test(text(W, p))).sort();
@@ -1990,8 +2002,8 @@ const JOURNEY_HEADER_DOORS: ReadonlyArray<{ href: string; when: "always" | "pill
   { href: "/auth/register", when: "authPills" },
   { href: "/notifications", when: "desktop" },
 ];
-/** What a guest's Tiketi zangu opens: the guest sheet's two doors, each returning to the tickets. */
-const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions"];
+/** The guest Tiketi sheet's two auth doors and their named return page. */
+const GUEST_SHEET_DOORS: readonly string[] = ["/auth/register?next=%2Fpositions", "/auth/login?next=%2Fpositions", "/positions"];
 /**
  * The entrances no door on a page can be: a link a player is SENT, or an address the platform answers on its own. Each
  * names the file that generates it and the text there that does; ⛔ an entry EXPIRES the day a journey door reaches its
@@ -3030,6 +3042,9 @@ ${s}`);
     const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`, "<LanguageMenu journey />"));
+    const headerForgetsCodes = withFile(WORLD, JHDR, (s) => s.replace(
+      `authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`,
+      `authDoorHrefs(pathname ?? "/", new URLSearchParams())`));
     const inlineHeight = withFile(WORLD, JHDR, (s) => s.replace(`data-testid="journey-top-bar"`, `data-testid="journey-top-bar" style={{ height: 64 }}`));
     const bellEverywhere = withFile(WORLD, JHDR, (s) => s.replace("{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}", "<NotificationsPanel journey />"));
     // 7.bell's plants (2026-10-09): the slot loses its 4px, the pip hangs by its right edge again, the override loses
@@ -3050,6 +3065,9 @@ ${s}`);
     const dotOnDesktop = withFile(WORLD, JTABS, (s) => s.replace(" && pollers.dot", ""));
     const sheetHandRolled = withFile(WORLD, GUEST_SHEET, (s) => s.replace("<Modal", `<div role="dialog" className="fixed inset-0"`).replace("</Modal>", "</div>"));
     const sheetForgetsTickets = withFile(WORLD, GUEST_SHEET, (s) => s.replace("/auth/register?next=%2Fpositions", "/auth/register"));
+    const sheetForgetsCodes = withFile(WORLD, GUEST_SHEET, (s) => s.replace(
+      `doorHrefsFor("/positions", new URLSearchParams(search?.toString() ?? ""))`,
+      `doorHrefsFor("/positions", new URLSearchParams())`));
     const classicMountsRail = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}export const leak = <JourneyTabs userId={null} />;${LF}`);
     // §9 — the census (WP6b): pages nothing reaches, a door only in a comment, a door removed, a tab and a hub row
     // gone, an external entrance lost or stale, a classic door unknown to the census or gone from its file, a pin lost.
@@ -3456,6 +3474,8 @@ ${s}`);
         world: homeFlush, landed: cssChanged(homeFlush), landedAs: "the 44px link takes 18px of the row it was lent" },
       { name: "the guest pills pad 20px", expect: at("7.auth ·"),
         world: authPad20, landed: cssChanged(authPad20), landedAs: "Ingia and Jisajili 12px wider at 320 (E-276 measured them at the edge)" },
+      { name: "the journey header drops the page's referral and invite", expect: at("7.auth.carry ·"),
+        world: headerForgetsCodes, landed: changed(headerForgetsCodes, JHDR), landedAs: "a journey guest's codes are absent from both auth doors" },
       { name: "the pill keeps the kit button's 16px padding below 360", expect: at("7.pill ·"),
         world: pillPad16, landed: cssChanged(pillPad16), landedAs: "+ Weka pesa 8px wider on the narrowest phone" },
       { name: "the lockup returns at 1024", expect: at("7.brand ·"),
@@ -3532,6 +3552,8 @@ ${s}`);
         world: sheetHandRolled, landed: changed(sheetHandRolled, GUEST_SHEET), landedAs: "a dialog sealed at the rail's rung, under the Needle" },
       { name: "the guest sheet's Jisajili forgets Tiketi zangu", expect: at("8.sheet ·"),
         world: sheetForgetsTickets, landed: changed(sheetForgetsTickets, GUEST_SHEET), landedAs: "a new player lands on the board, not on the tickets they asked for" },
+      { name: "the guest Tiketi sheet drops the referral and invite", expect: at("8.sheet.carry ·"),
+        world: sheetForgetsCodes, landed: changed(sheetForgetsCodes, GUEST_SHEET), landedAs: "a guest's code disappears before registration" },
       { name: "the guest sheet leaves popup-fit's review record", expect: at("8.popup ·"),
         world: sheetUnreviewed, landed: sheetUnreviewed.popupFit !== WORLD.popupFit, landedAs: "a popup no one has judged against Ali's rule" },
       { name: "the hub's sign-out row leaves popup-fit's review record (A13)", expect: at("8.popup ·"),
