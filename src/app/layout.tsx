@@ -12,6 +12,7 @@ import { GoogleTag } from "@/components/analytics/google-tag";
 import { DomTranslationGuard } from "@/components/layout/dom-translation-guard";
 import { SiteVisitBeacon } from "@/components/analytics/site-visit-beacon";
 import { appUrl } from "@/lib/app-url";
+import { dict, localeOrDefault } from "@/lib/i18n-dict";
 import "./globals.css";
 import "./state-tokens.css";
 import "./motion.css";
@@ -87,6 +88,8 @@ const jbm = JetBrains_Mono({
 // duplicate app-url.ts and the two could drift independently.
 const APP_URL = appUrl();
 const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real events — winners share the pool minus our commission. Mobile-first, trilingual EN/SW/ZH.";
+/** The site's title reads the tagline's single dictionary key. */
+const SITE_TITLE = `50pick — ${dict.en.auth.railTagline}`;
 
 /**
  * 🔴 EXPORTED SO A ROUTE CAN SPREAD IT, AND THAT IS NOT TIDINESS — IT IS A REGRESSION FIX.
@@ -100,7 +103,7 @@ const APP_DESC = "Tanzania-licensed prediction markets. Pick YES or NO on real e
 export const ROOT_OPEN_GRAPH = {
     type: "website" as const,
     siteName: "50pick",
-    title: "50pick — Predict events. Not chance.",
+    title: SITE_TITLE,
     description: APP_DESC,
     // 🔴 THIS SAID `en_US` ON A SWAHILI-DEFAULT PRODUCT. Since 8822b648 a visitor with no
     // language cookie gets Swahili, so every link shared into WhatsApp — the main way players
@@ -117,7 +120,7 @@ export const ROOT_OPEN_GRAPH = {
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "50pick — Predict events. Not chance.",
+    default: SITE_TITLE,
     template: "%s · 50pick",
   },
   description: APP_DESC,
@@ -168,7 +171,7 @@ export const metadata: Metadata = {
   openGraph: ROOT_OPEN_GRAPH,
   twitter: {
     card: "summary_large_image",
-    title: "50pick — Predict events. Not chance.",
+    title: SITE_TITLE,
     description: APP_DESC,
     images: ["/og/twitter-1200x600.png"],
   },
@@ -190,7 +193,6 @@ export const viewport: Viewport = {
 import { cookies } from "next/headers";
 import { journeyShellShown } from "@/lib/server/journey-preview";
 import { NOT_FOUND_WATCH_SCRIPT } from "@/lib/not-found-watch";
-import { localeOrDefault } from "@/lib/i18n-dict";
 import { CARD_SPACING_COOKIE, cardSpacingFromCookie } from "@/lib/card-spacing";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

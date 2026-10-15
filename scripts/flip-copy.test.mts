@@ -6,6 +6,17 @@
  *   npm run test:flip-copy     (in test:all; run at each S11 push — S11-PLAN Open point 22)
  *   npm run red:flip-copy      (--prove-red: every defect below is planted IN MEMORY, and each must turn its own check red)
  *
+ *   §0 THE POPULATION: every src file (decommented), every text file under public/, the whole dictionary in three languages.
+ *   §1 THE DIAL WORDS (WP7): the keys whose English names the dial or the conviction are an allowlist exactly — each row its
+ *      readers and the reason it stands until the flip (a shelved surface, S15's convergence, S16's sweep), shrink-only; the
+ *      Swahili and Chinese backstops find no key outside it; no file a journey reader alone is served reads one; and the
+ *      three a journey reader could still meet today (chat.helpline, chat.starterDial, help.faq2a) are read in classic arms.
+ *   §2 THE RETIRED SLOGAN (WP7): no file spells it outside the dictionary but the manifest's two named lines; the tagline's
+ *      one home, auth.railTagline, is read by exactly the surfaces of S11-PLAN "The tagline"; the manifest's name is
+ *      "50pick — " + the English key; in the dictionary only the key itself and the shelved primer.card1Title spell it.
+ *   §3 THE LEGAL FLIP LINES (WP7): Terms §4's dial paragraph and Rules §3's indicator line once each in three languages, and
+ *      none of the parked S15 lines published early (`PUBLISHED_AT_S15` flips both, in the S15 commit).
+ *   §4 THE OVERCLAIM PATTERN (WP7): test:hero-copy's own pattern, read from its one definition, over S11's words.
  *   §5 /HELP FOR A JOURNEY READER (WP5): the FAQ's journey copies — faq2's question and answer, faq3, faq5 and faq6 — are
  *      read in the SAME slots as today's keys, for a reader the journey is shown to and for no other: the journey arm first,
  *      today's expression the else arm, word for word; the keys exist in three languages, name none of the surfaces a
@@ -16,13 +27,13 @@
  *      teaching betting by the How-to steps with /?howto=1, and giving the journey's doors; the panel's words by the reader.
  * ⛔ No backslash in this file: an editing tool decodes them (`test:source-bytes`). Patterns use character classes.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { transformSync } from "esbuild";
 import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { REPO_ROOT } from "./lib/tracked-files.mts";
+import { REPO_ROOT, srcFiles } from "./lib/tracked-files.mts";
 import { decomment } from "./lib/decomment.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { fillNodes } from "../src/lib/fill-nodes.tsx";
@@ -51,12 +62,38 @@ const STUB = "src/lib/chat/send-message.ts";
 const EMPTY = "src/components/chat/messages/EmptyState.tsx";
 const CHAT_ROOT = "src/components/chat/ChatRoot.tsx";
 /** `base`: files as they stand at the merge base with origin/main (what a classic reader is served today). */
-type World = { files: Map<string, string>; journey: Record<Loc, JourneyWords>; base: Map<string, string>; baseSha: string };
+/** `files`: every src file, every text file under public/ and test:hero-copy, as written; `words`: the dictionary, flattened
+ *  ("ns.key" → text) per language; `base`: files as they stand at the merge base with origin/main. */
+type World = { files: Map<string, string>; journey: Record<Loc, JourneyWords>; base: Map<string, string>; baseSha: string;
+  words: Record<Loc, Record<string, string>> };
+
+/** The text files under public/ — a static file a reader is served as written (the manifest, the service worker, the SVGs). */
+const PUBLIC_TEXT = /[.](json|js|mjs|svg|txt|html|css|xml|webmanifest)$/;
+function publicTextFiles(): string[] {
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const e of readdirSync(join(REPO_ROOT, d), { withFileTypes: true })) {
+      const rel = `${d}/${e.name}`;
+      if (e.isDirectory()) walk(rel);
+      else if (PUBLIC_TEXT.test(e.name)) out.push(rel);
+    }
+  };
+  walk("public");
+  return out.sort();
+}
+/** The dictionary of one language, flattened: "ns.key" (and "ns.list.0") → its text. */
+function flatten(t: unknown, prefix = "", out: Record<string, string> = {}): Record<string, string> {
+  if (typeof t === "string") out[prefix] = t;
+  else if (t && typeof t === "object") for (const [k, v] of Object.entries(t)) flatten(v, prefix ? `${prefix}.${k}` : k, out);
+  return out;
+}
 
 const git = (...args: string[]) => execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], maxBuffer: 32 * 1024 * 1024 });
 function load(): World {
   const files = new Map<string, string>();
-  for (const f of [HELP, CHAT, STUB, EMPTY, CHAT_ROOT]) files.set(f, read(f));
+  for (const f of [...srcFiles(), ...publicTextFiles(), "scripts/hero-copy.test.mts"]) files.set(f, read(f));
+  for (const f of [HELP, CHAT, STUB, EMPTY, CHAT_ROOT]) if (!files.has(f)) files.set(f, read(f));
+  const words = Object.fromEntries(LOCS.map((l) => [l, flatten(dict[l])])) as Record<Loc, Record<string, string>>;
   const journey = Object.fromEntries(LOCS.map((l) => [l, { ...(dict[l].journey as Record<string, string>) }])) as Record<Loc, JourneyWords>;
   const base = new Map<string, string>();
   let baseSha = "";
@@ -64,11 +101,239 @@ function load(): World {
     baseSha = git("merge-base", "HEAD", "origin/main").trim();
     base.set(STUB, git("show", `${baseSha}:${STUB}`).split(CR + LF).join(LF));
   } catch { /* no history here: §6's classic check reports NOT MEASURED and fails */ }
-  return { files, journey, base, baseSha };
+  return { files, journey, base, baseSha, words };
 }
 const text = (w: World, f: string) => w.files.get(f) ?? "";
 
 type Ok = (id: string, label: string, cond: boolean, detail?: string) => void;
+
+/* ══ §1-§4 · THE CENSUS OF WHAT THE FLIP MUST STILL CHANGE (WP7) ═════════════════════════════════════════════════════ */
+
+/**
+ * ⭐ THE STAGE. False until the S15 commit publishes the parked copy (`codex/vodacom-s15-copy`, S11 WP9), which flips it in
+ * the same commit as the words it describes: §2's retired slogan leaves the tagline's key and the manifest, §3's legal lines
+ * trade places and §4 reads the tagline too. A census that cannot tell "before" from "after" would pass either way.
+ */
+const PUBLISHED_AT_S15 = false;
+
+const QUOTES = String.fromCharCode(34, 39, 96);
+/** Whether code reads dictionary key `ns.k`: `t.ns.k`, `dict.en.ns.k`, or the key named whole in quotes. */
+function readsKey(code: string, key: string): boolean {
+  const [ns, k] = key.split(".");
+  return new RegExp(`[.]${ns}[.]${k}(?![A-Za-z0-9_])|[${QUOTES}]${ns}[.]${k}[${QUOTES}]`).test(code);
+}
+const decommented = new Map<string, string>();
+/** A file as code: comments gone for a script or a component (a census never counts a comment's words); data as written. */
+function codeOf(w: World, f: string): string {
+  const raw = text(w, f);
+  if (!/[.](tsx?|m?ts|[cm]?js)$/.test(f)) return raw;
+  let c = decommented.get(raw);
+  if (c === undefined) { c = decomment(raw); decommented.set(raw, c); }
+  return c;
+}
+const SRC_FILES = (w: World) => [...w.files.keys()].filter((f) => f.startsWith("src/") && f !== "src/lib/i18n-dict.ts");
+/** The files that read a key — a substring test first, since most files never name it. */
+function readersOf(w: World, key: string): string[] {
+  const last = key.slice(key.lastIndexOf(".") + 1);
+  return SRC_FILES(w).filter((f) => { const c = codeOf(w, f); return c.includes(last) && readsKey(c, key); }).sort();
+}
+
+/* ── §1 · the dial words ─────────────────────────────────────────────────────────────────────────────────────────── */
+
+/** A key's English names the dial or the conviction. */
+const DIAL_EN = /(?<![A-Za-z])dial(?![A-Za-z])|conviction/i;
+/** The backstops in the other two languages (the English loan "dial" too): a key whose English escaped the census.
+ *  ⚠️ Swahili's is kipima-dau, never bare "kipima", which is ordinary Swahili for a meter or a timer too (Amendment B9). */
+const DIAL_BACKSTOP: Record<Loc, RegExp> = {
+  en: DIAL_EN,
+  sw: /kidhibiti|imani|kipima-dau|(?<![A-Za-z])dial(?![A-Za-z])/i,
+  zh: /刻度盘|转盘|信念|(?<![A-Za-z])dial(?![A-Za-z])/i,
+};
+const DIAL_FILE = "src/components/markets/conviction-dial.tsx";
+const CONFIRM = "src/components/markets/bet-confirm-modal.tsx";
+const PRIMER = "src/components/onboarding/first-visit-primer.tsx";
+const LANDING_BAND = "src/components/home/how-it-works.tsx";
+/** Why a key that still names the dial may stand until the flip: its readers, exactly, and when it goes. */
+type DialEntry = { readers: readonly string[]; why: string };
+const DIAL_ITSELF = "a shelved surface — the conviction dial (docs/SHELVED.md at the S15 flip, the bet sheet replaces it everywhere; test:dial-stake keeps it running)";
+const CONFIRM_MODAL = "a shelved surface — BetConfirmModal (docs/SHELVED.md at the S15 flip: the bet sheet's named-amount CTA confirms a bet)";
+const PRIMER_CARD = "a shelved surface — the first-visit primer (docs/SHELVED.md, S11 WP2)";
+/**
+ * ⭐ THE ALLOWLIST — exactly the keys whose English names the dial or the conviction today, each with its readers and the
+ * reason it may stand until the flip. SHRINK-ONLY: a key the census no longer finds must leave this table (a stale row is a
+ * failure), and a key it finds that is not here is a failure — so the table is always the flip's own to-do list.
+ */
+const DIAL_KEYS: Record<string, DialEntry> = {
+  "common.noConviction": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "common.dragTheDial": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "common.highConvictionHint": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.dragSetSide": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.dialUnlock": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.lockDialAria": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.unlockDialAria": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.stakeInputAria": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "market.multInputAria": { readers: [DIAL_FILE], why: DIAL_ITSELF },
+  "dialog.conviction": { readers: [CONFIRM], why: CONFIRM_MODAL },
+  "dialog.thenReaim": { readers: [CONFIRM], why: CONFIRM_MODAL },
+  "market.chooseSideHelp": { readers: ["src/components/markets/side-picker.tsx"], why: "a shelved surface — the “Pick your side” gate (at the S15 flip the market page shows the two big buttons)" },
+  "primer.card2Title": { readers: [PRIMER], why: PRIMER_CARD },
+  "primer.card2Body": { readers: [PRIMER], why: PRIMER_CARD },
+  "primer.card1Body": { readers: [LANDING_BAND, PRIMER].sort(), why: "the shelved primer, and the classic landing's how-it-works band — S15: the journey home replaces the landing for every reader" },
+  "home.howStep1B": { readers: [LANDING_BAND], why: "the classic landing's how-it-works band — S15: the journey home replaces it for every reader" },
+  "market.noBetYet": { readers: ["src/app/markets/[id]/page.tsx"], why: "the classic market page's own positions box (a journey reader is shown JourneyHolder) — S15: the dictionary's convergence of the classic keys" },
+  "positions.noOpenBody": { readers: ["src/app/positions/page.tsx"], why: "the classic positions list's empty state (a journey reader's /positions is Tiketi zangu, returned first) — S15: the convergence" },
+  "chat.helpline": { readers: [EMPTY], why: "the chat panel's classic arm (S11 WP6: a journey reader is shown journey.chatIntro) — S16, with the classic chat keys" },
+  "chat.starterDial": { readers: [EMPTY], why: "the chat panel's classic arm (S11 WP6: a journey reader is shown journey.chatStarterHowTo) — S16" },
+  "help.faq2a": { readers: [HELP], why: "/help's classic arm, read by its key's name (S11 WP5: a journey reader is shown journey.faq2a) — S16" },
+  "lipa.ussdLabel": { readers: ["src/components/pay/lipa-qr-panel.tsx"], why: "the verb — dial a USSD code — never the conviction dial: it stays" },
+  "home.priceCompetitionPool": { readers: [], why: "no reader: a dead key — S16's sweep" },
+};
+/** Keys read by their name built at run time, never spelled whole: how each reader names it. */
+const DYNAMIC_READS: Record<string, { file: string; spelled: string }> = {
+  "help.faq2a": { file: HELP, spelled: "t.help[`${key}a` as keyof typeof t.help]" },
+};
+/** Files a journey reader alone is served: none may read a key above. */
+const JOURNEY_ONLY = (f: string) => f.startsWith("src/components/journey/") || f.startsWith("src/lib/journey/")
+  || f === "src/components/onboarding/how-to-play-sheet.tsx" || f === "src/components/onboarding/how-to-host.tsx";
+
+function s1(w: World, ok: Ok) {
+  const keys = Object.keys(w.words.en).sort();
+  const found = keys.filter((k) => DIAL_EN.test(w.words.en[k] ?? ""));
+  const listed = Object.keys(DIAL_KEYS).sort();
+  const unlisted = found.filter((k) => !DIAL_KEYS[k]), stale = listed.filter((k) => !found.includes(k));
+  ok("1.census", `the keys whose English names the dial or the conviction are the allowlist exactly — ${found.length} today, each with its readers and the reason it stands until the flip (shrink-only: a key found and not listed fails, and so does a listed key no longer found)`,
+    found.length >= 1 && unlisted.length === 0 && stale.length === 0, j({ unlisted, stale }));
+  const outside = LOCS.flatMap((l) => Object.keys(w.words[l]).filter((k) => DIAL_BACKSTOP[l].test(w.words[l][k] ?? "") && !DIAL_KEYS[k]).map((k) => `${l}.${k}`));
+  ok("1.backstop", "the Swahili and Chinese backstops (kidhibiti, imani, kipima-dau, 刻度盘, 转盘, 信念, and the loan “dial”) find no key outside the allowlist", outside.length === 0, j(outside));
+  const drift: string[] = [];
+  for (const [key, entry] of Object.entries(DIAL_KEYS)) {
+    const dyn = DYNAMIC_READS[key];
+    const readers = dyn ? (count(squash(codeOf(w, dyn.file)), dyn.spelled) === 1 ? [dyn.file] : []) : readersOf(w, key);
+    if (j(readers) !== j([...entry.readers].sort())) drift.push(`${key}: ${j(readers)}`);
+  }
+  ok("1.readers", "each allowlisted key is read by exactly the files its row names (help.faq2a by its name built from the FAQ's key)", drift.length === 0, drift.join("; "));
+  const journeyReads = SRC_FILES(w).filter(JOURNEY_ONLY).flatMap((f) => listed.filter((k) => readsKey(codeOf(w, f), k)).map((k) => `${f}: ${k}`));
+  ok("1.journey", "no file a journey reader alone is served reads one (src/components/journey, src/lib/journey, the How-to sheet and host)", journeyReads.length === 0, j(journeyReads));
+  const empty = squash(codeOf(w, EMPTY)), help = squash(codeOf(w, HELP));
+  const arms = {
+    starterDial: count(empty, "t.chat.starterDial") === 1 && count(empty, "journeyOn ? t.journey.chatStarterHowTo : t.chat.starterDial,") === 1,
+    helpline: count(empty, "t.chat.helpline") === 1 && count(empty, "{journeyOn ? t.journey.chatIntro : t.chat.helpline}") === 1,
+    faq2a: count(help, DYNAMIC_READS["help.faq2a"].spelled) === 1 && count(help, `faq2: { q: "faq2q", a: "faq2a" },`) === 1
+      && count(help, "const own = journey ? JOURNEY_FAQ[key] : undefined;") === 1 && count(help, "{own ? fillNodes(t.journey[own.a]") === 1,
+  };
+  ok("1.arms", "the three a journey reader could still meet today — chat.helpline, chat.starterDial and help.faq2a — are read once each, in their classic arms only (the journey's words are the other arm)",
+    Object.values(arms).every(Boolean), j(arms));
+}
+
+/* ── §2 · the retired slogan ─────────────────────────────────────────────────────────────────────────────────────── */
+
+/** The retired slogan as it is spelled anywhere (SJ-20 retires it; the deck's tagline replaces it at S15) — and the
+ *  manifest's wide-screenshot variant and the shelved primer's Chinese card, so a copy of either is found too. */
+const RETIRED = ["Predict events. Not chance.", "Predict events, not chance", "Tabiri matukio. Si bahati.", "预测事件，而非运气。", "预测事件。不是碰运气。"];
+const spells = (s: string) => RETIRED.filter((r) => s.toLowerCase().includes(r.toLowerCase()));
+const MANIFEST = "public/manifest.json";
+/** Every reader of the tagline's one home (S11-PLAN "The tagline" rows 1-9), exactly. */
+const TAGLINE_READERS = [
+  "src/app/layout.tsx",                         // og:title, the default <title>, twitter:title (SITE_TITLE)
+  "src/components/auth/auth-shell.tsx",         // the auth rail, from 1024
+  "src/app/page.tsx",                           // the home's own tab title
+  "src/app/auth/register/page.tsx",             // the sign-up share card's sub-line
+  "src/app/api/og/market/[id]/route.tsx",       // the market share card's footer, twice
+  "src/lib/server/reports/brand.ts",            // the officers' PDF and XLSX reports
+  "src/app/legal/rules/yes-no/page.tsx",        // the rules page's subtitle
+].sort();
+
+function s2(w: World, ok: Ok) {
+  const spelled = [...w.files.keys()].filter((f) => f.startsWith("src/") || f.startsWith("public/"))
+    .filter((f) => f !== "src/lib/i18n-dict.ts").flatMap((f) => spells(codeOf(w, f)).map((r) => `${f}: ${r}`));
+  let manifest: { name?: string; screenshots?: Array<{ form_factor?: string; label?: string }> } = {};
+  try { manifest = JSON.parse(text(w, MANIFEST)); } catch { /* reported below */ }
+  const wide = (manifest.screenshots ?? []).filter((s) => s.form_factor === "wide").map((s) => s.label ?? "");
+  const named = PUBLISHED_AT_S15 ? [] : [`${MANIFEST}: Predict events. Not chance.`, `${MANIFEST}: Predict events, not chance`];
+  ok("2.files", PUBLISHED_AT_S15
+      ? "no file in src/ or public/ spells the retired slogan outside the dictionary (decommented: page.tsx and not-found.tsx spell it in comments)"
+      : "no file in src/ or public/ spells the retired slogan outside the dictionary but the manifest's name and its wide screenshot's label, each named (decommented: page.tsx and not-found.tsx spell it in comments)",
+    j(spelled.sort()) === j(named.sort()) && (PUBLISHED_AT_S15 || (spells(manifest.name ?? "").length === 1 && wide.length === 1 && spells(wide[0]).length === 1)),
+    j({ spelled, name: manifest.name, wide }));
+  const readers = readersOf(w, "auth.railTagline");
+  ok("2.readers", `every surface of the tagline reads its one home, auth.railTagline — exactly ${TAGLINE_READERS.length} readers: the site's titles, the auth rail, the home's tab, the sign-up card, the market card, the reports and the rules page`,
+    j(readers) === j(TAGLINE_READERS), j(readers));
+  ok("2.manifest", "the manifest's name is “50pick — ” + the English tagline (a static file the parked commit edits by hand: this is what holds it to the key)",
+    manifest.name === `50pick — ${w.words.en["auth.railTagline"]}`, j({ name: manifest.name, key: w.words.en["auth.railTagline"] }));
+  const inDict = [...new Set(LOCS.flatMap((l) => Object.keys(w.words[l]).filter((k) => spells(w.words[l][k] ?? "").length > 0)))].sort();
+  const exceptions = PUBLISHED_AT_S15 ? ["primer.card1Title"] : ["auth.railTagline", "primer.card1Title"];
+  const primerReaders = readersOf(w, "primer.card1Title");
+  ok("2.dictionary", PUBLISHED_AT_S15
+      ? "in the dictionary only primer.card1Title still spells it: the named shelved exception, read by the shelved primer and the classic landing's band alone (Open point 17)"
+      : "in the dictionary only auth.railTagline (until the S15 commit) and primer.card1Title spell it — the named shelved exception, read by the shelved primer and the classic landing's band alone (Open point 17)",
+    j(inDict) === j(exceptions) && j(primerReaders) === j([LANDING_BAND, PRIMER].sort()), j({ inDict, primerReaders }));
+}
+
+/* ── §3 · the legal flip lines ───────────────────────────────────────────────────────────────────────────────────── */
+
+const TERMS = "src/app/legal/terms/page.tsx";
+const RULES_YN = "src/app/legal/rules/_content-yes-no.tsx";
+/** Today's lines the flip replaces — Terms §4's dial paragraph and Rules §3's indicator — and the parked lines that take
+ *  their place (S11-PLAN "The rules page" and "The Terms"), each by its opening words, in en, sw and zh. */
+const LEGAL_TODAY: ReadonlyArray<readonly [string, string]> = [
+  [TERMS, "The probabilities shown on the dial are <em>implied</em>"],
+  [TERMS, "Uwezekano unaoonyeshwa kwenye kipima-dau <em>unadokezwa</em>"],
+  [TERMS, "转盘上显示的概率是由当前资金池构成所<em>隐含</em>的"],
+  [RULES_YN, "The conviction indicator shows where the crowd&apos;s money sits. It is information, not advice."],
+  [RULES_YN, "Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri."],
+  [RULES_YN, "信心指示器显示资金分布，仅供参考，不构成建议。"],
+];
+const LEGAL_S15: ReadonlyArray<readonly [string, string]> = [
+  [TERMS, "Before you bet, a market may show what its pools imply"],
+  [TERMS, "Kabla hujaweka dau, soko linaweza kuonyesha kile ambacho mabwawa yake yanadokeza"],
+  [TERMS, "下注前，市场可能会显示其资金池所隐含的信息"],
+  [RULES_YN, "What a market shows before you bet"],
+  [RULES_YN, "Kile ambacho soko linaonyesha kabla hujaweka dau"],
+  [RULES_YN, "市场在您下注前显示的内容"],
+];
+
+function s3(w: World, ok: Ok) {
+  const [present, absent] = PUBLISHED_AT_S15 ? [LEGAL_S15, LEGAL_TODAY] : [LEGAL_TODAY, LEGAL_S15];
+  const bad = [
+    ...present.filter(([f, s]) => count(squash(codeOf(w, f)), s) !== 1).map(([f, s]) => `not once: ${f}: ${s}`),
+    ...absent.filter(([f, s]) => count(squash(codeOf(w, f)), s) !== 0).map(([f, s]) => `present: ${f}: ${s}`),
+  ];
+  ok("3.legal", PUBLISHED_AT_S15
+      ? "Terms §4 and Rules §3 read the parked lines once each in en, sw and zh, and today's dial paragraph and indicator line are gone"
+      : "Terms §4's dial paragraph and Rules §3's indicator line are each present exactly once in en, sw and zh, and none of the parked lines is published before S15",
+    bad.length === 0, bad.join("; "));
+}
+
+/* ── §4 · the overclaim pattern ─────────────────────────────────────────────────────────────────────────────────── */
+
+const HERO_COPY = "scripts/hero-copy.test.mts";
+/** S11's words: the seven journey keys it added (every language) and the four Chinese How-to values it corrected. */
+const S11_KEYS = ["faq2q", "faq2a", "faq3a", "faq5a", "faq6a", "chatIntro", "chatStarterHowTo"];
+const S11_ZH_CORRECTED = ["howStep1Body", "howStep2Title", "howStep3Body", "howExampleBody"];
+/** The pattern, read from `test:hero-copy` itself (its one definition: an official source, a machine, the crowd, chance). */
+function overclaimOf(w: World): RegExp | null {
+  const line = text(w, HERO_COPY).split(LF).find((l) => l.startsWith("const OVERCLAIM = /"));
+  if (!line) return null;
+  const body = line.slice("const OVERCLAIM = /".length, line.lastIndexOf("/"));
+  try { return new RegExp(body, line.slice(line.lastIndexOf("/") + 1).replace(";", "").trim()); } catch { return null; }
+}
+
+function s4(w: World, ok: Ok) {
+  const re = overclaimOf(w);
+  ok("4.pattern", "test:hero-copy's OVERCLAIM pattern is read from its one definition, and it still finds what it names (official, rasmi, the crowd, chance)",
+    re !== null && ["official", "chanzo rasmi", "the crowd", "umati", "群众", "not chance", "bahati"].every((s) => re.test(s)) && !re.test("Pick. See what you win."), String(re));
+  if (re === null) return;
+  const texts: Array<[string, string]> = [
+    ...LOCS.flatMap((l) => S11_KEYS.map((k) => [`${l}.journey.${k}`, w.journey[l][k] ?? ""] as [string, string])),
+    ...S11_ZH_CORRECTED.map((k) => [`zh.journey.${k}`, w.journey.zh[k] ?? ""] as [string, string]),
+    ...(PUBLISHED_AT_S15 ? LOCS.map((l) => [`${l}.auth.railTagline`, w.words[l]["auth.railTagline"] ?? ""] as [string, string]) : []),
+  ];
+  const claims = texts.filter(([, v]) => v === "" || re.test(v)).map(([k, v]) => `${k}: ${v === "" ? "missing" : v.match(re)?.[0]}`);
+  ok("4.overclaim", PUBLISHED_AT_S15
+      ? `none of S11's words (${texts.length} texts) nor the new tagline claims an official source, a machine, the crowd or chance`
+      : `none of S11's words (${texts.length} texts: the seven journey keys in three languages, the four corrected Chinese How-to values) claims an official source, a machine, the crowd or chance`,
+    claims.length === 0, j(claims));
+}
 
 /* ══ §5 · /HELP FOR A JOURNEY READER ════════════════════════════════════════════════════════════════════════════════ */
 
@@ -266,6 +531,19 @@ async function run(w: World, log: (l: string) => void): Promise<string[]> {
     if (!cond) failures.push(`${id} · ${label}`);
     log(`${cond ? "PASS" : "FAIL"} ${id} · ${label}${!cond && detail ? ` — ${detail}` : ""}`);
   };
+  log("§0 · the population");
+  const srcCount = SRC_FILES(w).length, pubCount = [...w.files.keys()].filter((f) => f.startsWith("public/")).length;
+  const keyCount = Object.keys(w.words.en).length;
+  ok("0.population", `the census reads ${srcCount} src files, ${pubCount} text files under public/ (the manifest among them) and the whole dictionary (${keyCount} English keys) — a census over nothing would pass`,
+    srcCount >= 700 && pubCount >= 3 && w.files.has(MANIFEST) && keyCount >= 2000 && LOCS.every((l) => Object.keys(w.words[l]).length >= 2000), j({ srcCount, pubCount, keyCount }));
+  log("§1 · the dial words");
+  s1(w, ok);
+  log("§2 · the retired slogan");
+  s2(w, ok);
+  log("§3 · the legal flip lines");
+  s3(w, ok);
+  log("§4 · the overclaim pattern");
+  s4(w, ok);
   log("§5 · /help for a journey reader");
   s5(w, ok);
   log("§6 · the chat");
@@ -282,12 +560,62 @@ function swap(t: string, from: string, to: string): string {
   return t.replace(from, () => to);
 }
 const edit = (f: string, from: string, to: string) => (w: World): World => ({ ...w, files: new Map(w.files).set(f, swap(text(w, f), from, to)) });
+const add = (f: string, body: string) => (w: World): World => ({ ...w, files: new Map(w.files).set(f, body) });
+const dictWord = (l: Loc, k: string, v: (old: string) => string) => (w: World): World => ({
+  ...w, words: { ...w.words, [l]: { ...w.words[l], [k]: v(w.words[l][k] ?? "") } },
+});
 const word = (l: Loc, k: string, v: (old: string) => string) => (w: World): World => ({
   ...w, journey: { ...w.journey, [l]: { ...w.journey[l], [k]: v(w.journey[l][k] ?? "") } },
 });
 
 const PLANTS: Plant[] = [
-  { name: "a classic reader handed the journey copies (the resolver's answer dropped)", expect: /^5[.]slot /, alone: true,
+  // §1
+  { name: "a new key names the dial (a journey hint: “Drag the dial”)", expect: /^1[.]census /,
+    plant: dictWord("en", "journey.dialHint", () => "Drag the dial to set your stake") },
+  { name: "an allowlisted key leaves the dictionary and stays in the table (a stale row)", expect: /^1[.]census /, alone: true,
+    plant: (w) => ({ ...w, words: Object.fromEntries(LOCS.map((l) => { const c = { ...w.words[l] }; delete c["market.dialUnlock"]; return [l, c]; })) as World["words"] }) },
+  { name: "a Swahili word says kidhibiti where its English names nothing", expect: /^1[.]backstop /, alone: true,
+    plant: dictWord("sw", "journey.howCta", (o) => `${o} (kidhibiti)`) },
+  { name: "a Chinese word says 转盘 where its English names nothing", expect: /^1[.]backstop /, alone: true,
+    plant: dictWord("zh", "journey.howCta", (o) => `${o}（转盘）`) },
+  { name: "a journey file reads a dial key (a hint under the How-to card)", expect: /^1[.](readers|journey) /,
+    plant: add("src/components/journey/home/dial-hint.tsx", "export const dialHint = (t: { market: { dialUnlock: string } }) => t.market.dialUnlock;") },
+  { name: "the chat chip's two arms both read starterDial (a journey reader offered the dial)", expect: /^(1[.]arms|6[.]panel) /,
+    plant: edit(EMPTY, "journeyOn ? t.journey.chatStarterHowTo : t.chat.starterDial,", "journeyOn ? t.chat.starterDial : t.chat.starterDial,") },
+  { name: "faq2 leaves the journey's table (a journey reader handed faq2a, the dial's answer)", expect: /^(1[.]arms|5[.]table) /,
+    plant: edit(HELP, `  faq2: { q: "faq2q", a: "faq2a" },${LF}`, "") },
+  // §2
+  { name: "a new strip types the retired slogan", expect: /^2[.]files /, alone: true,
+    plant: add("src/components/layout/tagline-strip.tsx", "export const TaglineStrip = () => <p>Predict events. Not chance.</p>;") },
+  { name: "the layout types its title again (SITE_TITLE a literal)", expect: /^2[.](files|readers) /,
+    plant: edit("src/app/layout.tsx", "const SITE_TITLE = `50pick — ${dict.en.auth.railTagline}`;", 'const SITE_TITLE = "50pick — Predict events. Not chance.";') },
+  { name: "the market card's footer types the slogan again", expect: /^2[.](files|readers) /,
+    plant: (w) => ({ ...w, files: new Map(w.files).set("src/app/api/og/market/[id]/route.tsx",
+      text(w, "src/app/api/og/market/[id]/route.tsx").split("<span>{dict.en.auth.railTagline}</span>").join("<span>Predict events. Not chance.</span>")) }) },
+  { name: "a new surface reads the tagline outside the table", expect: /^2[.]readers /, alone: true,
+    plant: add("src/components/markets/tagline-chip.tsx", "export const chip = (t: { auth: { railTagline: string } }) => t.auth.railTagline;") },
+  { name: "the manifest's name drifts from the key", expect: /^2[.](manifest|files) /,
+    plant: edit(MANIFEST, '"name": "50pick — Predict events. Not chance.",', '"name": "50pick — Predict events",') },
+  { name: "a second dictionary key spells the slogan (a hero line)", expect: /^2[.]dictionary /, alone: true,
+    plant: dictWord("en", "journey.heroTagline", () => "Predict events. Not chance.") },
+  // §3
+  { name: "Terms §4's dial paragraph rewritten before S15 (the parked text half-applied)", expect: /^3[.]legal /, alone: true,
+    plant: edit(TERMS, "The probabilities shown on the dial are <em>implied</em>", "The probabilities are <em>implied</em>") },
+  { name: "a parked rules line published before S15", expect: /^3[.]legal /, alone: true,
+    plant: edit(RULES_YN, "<li>信心指示器显示资金分布，仅供参考，不构成建议。</li>", "<li>信心指示器显示资金分布，仅供参考，不构成建议。</li><li>市场在您下注前显示的内容——资金分布——仅供参考。</li>") },
+  { name: "the Swahili indicator line doubled", expect: /^3[.]legal /, alone: true,
+    plant: edit(RULES_YN, "<li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li>", "<li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li><li>Kipimo cha msimamo huonyesha pesa za umati zilipo. Ni taarifa, si ushauri.</li>") },
+  // §4
+  { name: "an S11 word claims the crowd (the chat's intro)", expect: /^4[.]overclaim /, alone: true,
+    plant: word("en", "chatIntro", (o) => `${o} The crowd knows best.`) },
+  { name: "a corrected Chinese How-to value claims chance (运气)", expect: /^4[.]overclaim /, alone: true,
+    plant: word("zh", "howStep3Body", (o) => `${o}全凭运气。`) },
+  { name: "test:hero-copy's pattern renamed (the census would read nothing)", expect: /^4[.]pattern /, alone: true,
+    plant: edit(HERO_COPY, "const OVERCLAIM = /", "const OVERCLAIMS = /") },
+  // §0
+  { name: "the census reads no src file (a walker gone blind)", expect: /^0[.]population /,
+    plant: (w) => ({ ...w, files: new Map([...w.files].filter(([f]) => !f.startsWith("src/") || [HELP, CHAT, STUB, EMPTY, CHAT_ROOT].includes(f))) }) },
+  { name: "a classic reader handed the journey copies (the resolver's answer dropped)", expect: /^5[.]slot /,
     plant: edit(HELP, "const own = journey ? JOURNEY_FAQ[key] : undefined;", "const own = JOURNEY_FAQ[key];") },
   { name: "the question slot reads the classic key in its journey arm", expect: /^5[.]slot /, alone: true,
     plant: edit(HELP, "<span>{own?.q ? t.journey[own.q] :", "<span>{own?.q ? t.help.faq2q :") },
@@ -316,7 +644,7 @@ const PLANTS: Plant[] = [
     plant: edit(STUB, ': "1. Open your **Wallet** and tap **Deposit**[1]",', ': "1. Open **Wallet** and tap **Deposit**[1]",') },
   { name: "the journey's Chinese hand-off says “human” again", expect: /^6[.]stub /, alone: true,
     plant: edit(STUB, "如需进一步协助，我可以为您转接支持团队。", "如需人工协助，我可以为您转接支持团队。") },
-  { name: "the panel's chip offers the journey's words to every reader", expect: /^6[.]panel /, alone: true,
+  { name: "the panel's chip offers the journey's words to every reader", expect: /^6[.]panel /,
     plant: edit(EMPTY, "journeyOn ? t.journey.chatStarterHowTo : t.chat.starterDial,", "t.journey.chatStarterHowTo,") },
   { name: "ChatRoot no longer hands the helper the reader's answer", expect: /^6[.](panel|stub) /,
     plant: edit(CHAT_ROOT, "await sendMessage([...messages, user], text, { journey: journeyOn });", "await sendMessage([...messages, user], text);") },

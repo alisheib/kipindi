@@ -765,11 +765,13 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
     unclassified.length === 0 && files.length >= 15, `unclassified: ${j(unclassified)} · files: ${j(files)}`);
   ok("4.12′ PLANT · a new line printing the name (the dashboard's licence strip, say) is reported as unclassified", !CLASS["src/app/agent/page.tsx"]);
   // The lines that cannot split, measured.
-  const og = widthOf("Predict events. Not chance.", 14, 0, monoReg) + widthOf("Licensed by the Gaming Board of Tanzania · 18+", 14, 0, monoReg);
+  // The OG card's left line is the tagline's one home (the Vodacom plan S11 WP7), so its width is the key's, whatever its words.
+  const og = widthOf(String(at(dict.en, "auth.railTagline")), 14, 0, monoReg) + widthOf("Licensed by the Gaming Board of Tanzania · 18+", 14, 0, monoReg);
   const email = widthOf("18+ · Licensed by Gaming Board of Tanzania", 11, 0);
   const wf = LOCALES.map((l) => ({ l, starts: String(at(dict[l], "agent.wfGbt")).search(/Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚博彩/u) === 0 }));
   ok(`4.13 · the lines left alone cannot tear the name: the OG card's row ${og.toFixed(0)} of 1080px; the email's line ${email.toFixed(0)} of 300px at 320; the waterfall's label begins with the name in every language`,
     og < 1080 && email < 300 && wf.every((w) => w.starts) && has("src/app/api/og/market/[id]/route.tsx", "<span>Licensed by the Gaming Board of Tanzania · 18+</span>")
+      && has("src/app/api/og/market/[id]/route.tsx", "<span>{dict.en.auth.railTagline}</span>")
       && has("src/lib/server/email.ts", "18+ · Licensed by Gaming Board of Tanzania<br>"), j(wf));
   // Legal prose is left as published: no keep span or size container in the legal tree (D19a pins it to main; a policy
   // version ships any change), and this item's own diff touches none of it.
