@@ -5,6 +5,8 @@
 [`VODACOM-PLAN.md`](../VODACOM-PLAN.md) §5 S14, but no package command by that name exists on the `c8a982cd7` base of this
 record. The S10 build lane may supply part of that drive; inspect its merged result before creating another. No real
 staff payment, agency sign-off, owner override, S15 go, or S16 elapsed period is recorded here.
+The [staff proof and agency decision packet](vodacom-s14-staff-proof-packet-20261015.md) is the operator handoff to use
+after the integrated preview passes its local and production preflight. Its blank fields are not completion evidence.
 
 **Ali's coordination decisions, 2026-10-15:** Ali will arrange the S14 staff operator and the agency's written
 sign-off when the preview is ready. Admin two-factor authentication is to **remain deactivated during staff preview**;
