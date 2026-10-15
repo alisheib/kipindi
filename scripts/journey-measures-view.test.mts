@@ -308,7 +308,7 @@ if (!PROVE_RED) {
     { name: "harm rows given to every viewer", expect: /^V\.11 /,
       fns: { ...REAL, view: (o?: O) => REAL.view({ ...o, includeHarm: true }) } },
     { name: "S9's live after figure suppressed as unavailable", expect: /^V\.12 /,
-      fns: mapRows((r) => ({ ...r, after: Object.fromEntries(Object.entries(r.after).map(([k, c]) => [k, r.key === "shortToDeposit" && c.status === "figure" ? { ...c, status: "unavailable" } : c])) as typeof r.after })) },
+      fns: mapRows((r) => ({ ...r, after: Object.fromEntries(Object.entries(r.after).map(([k, c]) => [k, r.def.key === "shortToDeposit" && c.status === "figure" ? { ...c, status: "unavailable" } : c])) as typeof r.after })) },
     { name: "a counting gap read as a day of zeros", expect: /^V\.13 /,
       fns: mapRows((r) => ({ ...r, before: { ...r.before, notCounted: [] } })) },
     { name: "an unfinished follow-up counted as 'no bet'", expect: /^V\.14 /,
