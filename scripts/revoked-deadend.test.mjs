@@ -76,13 +76,27 @@ const browser = await chromium.launch(
   };
 }
 
-const readPage = (p) => p.evaluate(() => ({
-  path: location.pathname,
-  search: location.search,
-  textLen: document.body.innerText.trim().length,
-  text: document.body.innerText,
-  hasPassword: !!document.querySelector('input[type="password"]'),
-}));
+const readPage = async (p) => {
+  // App Router may finish a document navigation after DOMContentLoaded, especially on a
+  // cold dev server. Retry only the destroyed execution context; the caller still checks
+  // the final URL and visible content, so a genuine redirect or blank page stays red.
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      return await p.evaluate(() => ({
+        path: location.pathname,
+        search: location.search,
+        textLen: document.body.innerText.trim().length,
+        text: document.body.innerText,
+        hasPassword: !!document.querySelector('input[type="password"]'),
+      }));
+    } catch (error) {
+      if (!/Execution context was destroyed|Cannot find context with specified id/.test(String(error))) throw error;
+      if (attempt === 9) throw error;
+      await p.waitForLoadState("domcontentloaded").catch(() => {});
+      await wait(250);
+    }
+  }
+};
 const sessionCookie = async (ctx) => (await ctx.cookies()).find((c) => c.name === "kp_session");
 
 console.log("\n[revoked-deadend] §1 a displaced session must still see a page");
@@ -96,8 +110,9 @@ await a.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
 await wait(1200);
 await a.goto(BASE + "/wallet", { waitUntil: "domcontentloaded" });
 await wait(1500);
-const liveLen = await a.evaluate(() => document.body.innerText.trim().length);
-ok("baseline · /wallet renders while the session is the active one", liveLen > 100, `(text=${liveLen})`);
+const livePage = await readPage(a);
+ok("baseline · /wallet renders while the session is the active one", livePage.path === "/wallet" && livePage.textLen > 100,
+  `(path=${livePage.path} text=${livePage.textLen})`);
 
 const B = await browser.newContext();
 const b = await B.newPage();
