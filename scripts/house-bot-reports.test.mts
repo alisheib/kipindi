@@ -71,7 +71,9 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 251, postgres: 80 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 252, postgres: 81 }, dbPrefix: "hb_reports" });
+// 2026-10-15 integrated AML gate repair: this run printed 252/0 memory and
+// 81/0 Postgres after 4.260.aml proved denial before designation lookup.
 // ⭐ 249 → 251 MEMORY (2026-09-26, house-bots build step 4), the count that run PRINTED: c6c637c1 (the finance lane)
 // gave `censusUnverifiable` a bounded `sample` of `UnverifiableRow` and exported that type. 0.260.1 classifies the
 // type (a shape, not a reader); 0.260.2's census pin now names the sample, and asserts its row carries identity only

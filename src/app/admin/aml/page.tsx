@@ -12,7 +12,8 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
-import { escalateDeskAmlFlags } from "@/lib/server/house-bot/aml-escalation";
+import { houseAmlOwnerFlagsForConsole } from "@/lib/server/house-console-read";
+import { currentSession } from "@/lib/server/auth-service";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { listFirstSignatures } from "./stage1-store";
@@ -42,10 +43,12 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
   try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   let flagsFailed = false;
   const flagsAll = await detectSuspiciousBets().catch(() => { flagsFailed = true; return []; });
-  const ownerReview = flagsFailed ? new Set<string>() : await escalateDeskAmlFlags(flagsAll).catch(() => {
-    flagsFailed = true;
-    return new Set<string>();
-  });
+  const viewer = await currentSession().catch(() => null);
+  const ownerReviewRead = flagsFailed ? null : await houseAmlOwnerFlagsForConsole(
+    viewer?.userId ?? null, "/admin/aml", flagsAll,
+  ).catch(() => { flagsFailed = true; return null; });
+  if (!ownerReviewRead) flagsFailed = true;
+  const ownerReview = ownerReviewRead ?? new Set<string>();
   // B-9: which txns already carry a stage-1 signature (awaiting the second
   // officer) — read from the DURABLE config-store the actions write, not the
   // audit ring. The old getAuditPage({category:"ADMIN"}) scan was doubly wrong:

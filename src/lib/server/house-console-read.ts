@@ -38,6 +38,7 @@
  */
 import { cache } from "react";
 import { db } from "./store";
+import { escalateDeskAmlFlags } from "./house-bot/aml-escalation";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
@@ -157,6 +158,18 @@ export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUse
   if (rows == null || (await houseConsoleAudience(viewerUserId, route))) return rows;
   if (Array.isArray(rows)) return [] as unknown as T;
   return { ...rows, entries: [], ...("total" in rows ? { total: 0 } : {}), ...("truncated" in rows ? { truncated: false } : {}) } as T;
+}
+
+/** The AML page's owner-review flags and alert are house reads. Resolve the
+ * viewer's stored-role audience before querying designations or claiming alerts;
+ * a refused render receives no house key and performs no notification work. */
+export async function houseAmlOwnerFlagsForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  flags: readonly { userId: string; txnId: string; type: "STAKE_SPIKE" | "VELOCITY" }[],
+): Promise<ReadonlySet<string> | null> {
+  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+  return escalateDeskAmlFlags(flags);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
