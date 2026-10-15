@@ -17,7 +17,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const sections = ["core", "tiles", "classic"];
+const sections = ["core", "tiles", "classic", "codes"];
 const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
 const run = s => !only.length || only.includes(s);
@@ -275,6 +275,55 @@ try {
     record("E one signed-in tap writes one bet", loginAfter.positionCount === 1 && loginAfter.betPlacedCount === 1);
     await returning.close(); contexts.delete(returning);
   }
+  if (run("codes")) {
+    // F: bind two REAL codes through their existing doors. A player referral exercises the shared `ref` binding;
+    // the verified-agent badge still needs the agent programme's approval workflow and is recorded separately below.
+    const refSuffix = randomBytes(5).toString("hex");
+    const refLocal = `71${String(BigInt(`0x${refSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const referrer = await context("en", 1280, false);
+    await post(referrer, "seed-admin", { role: "PLAYER", phone: `+255${refLocal}`, name: "Visitor QA Referrer", balance: 0 });
+    const refPage = await pageIn(referrer, "/profile/invite");
+    const refCode = (await refPage.locator("main span.font-mono.font-bold").first().textContent())?.trim() ?? "";
+    record("F premise: real player referral code shown in owner's invite page", /^[A-Z0-9-]{4,32}$/.test(refCode));
+    const adminSuffix = randomBytes(5).toString("hex");
+    const adminLocal = `71${String(BigInt(`0x${adminSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    await post(admin, "seed-admin", { role: "ADMIN", phone: `+255${adminLocal}`, name: "Visitor QA Invite Admin" });
+    const inviteAdmin = await pageIn(admin, "/admin/invites");
+    const campaignName = `Visitor path ${randomBytes(3).toString("hex")}`;
+    await inviteAdmin.getByRole("textbox", { name: "Campaign name" }).fill(campaignName);
+    await inviteAdmin.getByRole("button", { name: "Create campaign", exact: true }).click();
+    await inviteAdmin.waitForURL(url => /^\/admin\/invites\/inv_/.test(url.pathname), { timeout: 60_000 });
+    const campaignId = new URL(inviteAdmin.url()).pathname.split("/").at(-1);
+    const campaignCode = (await inviteAdmin.locator("main header").first().innerText()).match(/\bCode ([A-Z0-9]{6,16})\b/)?.[1] ?? "";
+    record("F premise: real campaign invite code shown in admin detail", !!campaignId && /^[A-Z0-9]{6,16}$/.test(campaignCode));
+    const joiner = await context("sw");
+    const joinedPage = await pageIn(joiner, `/?ref=${encodeURIComponent(refCode)}&invite=${encodeURIComponent(campaignCode)}`);
+    await joinedPage.locator('[data-sheet] a[data-bet-side="YES"]').first().click();
+    await joinedPage.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await joinedPage.getByTestId("journey-sheet-signup").click();
+    await joinedPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const codeDoor = new URL(joinedPage.url());
+    const codeInputs = await joinedPage.evaluate(() => ({
+      ref: document.querySelector('form input[name="ref"]')?.value ?? null,
+      invite: document.querySelector('form input[name="invite"]')?.value ?? null,
+    }));
+    record("F both real codes and bet reach the register form", codeDoor.searchParams.get("ref") === refCode
+      && codeDoor.searchParams.get("invite") === campaignCode && codeDoor.searchParams.has("next")
+      && codeInputs.ref === refCode && codeInputs.invite === campaignCode);
+    await screenshot(joinedPage, "codes-register-both-banners-sw-390");
+    const joinSuffix = randomBytes(5).toString("hex");
+    const joinLocal = `71${String(BigInt(`0x${joinSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+    await fillRegister(joinedPage, joinLocal, `visitor-codes-${joinSuffix}@example.com`, `Voda2026!${joinSuffix}Aa`);
+    await Promise.all([joinedPage.waitForURL(url => url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+      joinedPage.locator('button[type="submit"]').click()]);
+    await inviteAdmin.goto(`${BASE}/admin/invites/${campaignId}`, { waitUntil: "domcontentloaded" });
+    const registered = (await inviteAdmin.locator('.admin-kpi:has(span[title="Registered"]) .amount').first().textContent())?.trim();
+    record("F campaign invite bound after real registration", registered === "1");
+    await refPage.reload({ waitUntil: "domcontentloaded" });
+    record("F player referral bound in referrer's own list", await refPage.locator('main [data-empty-state-scope] .glass-panel > div').count() === 1);
+    await joiner.close(); contexts.delete(joiner);
+    await referrer.close(); contexts.delete(referrer);
+  }
   if (run("classic")) {
     if (pre.health.simpleJourney?.state === "ACTIVE") missing("H classic no-pass control", "ACTIVE shows journey to every guest; run a STAFF_PREVIEW or WITHDRAWN local server");
     else {
@@ -331,7 +380,7 @@ try {
   }
   if (run("core") || run("tiles")) {
     missing("A closed, one-sided, moved-pool and keyboard matrix", "Needs the host's controlled market states and WebKit run");
-    missing("F valid bound codes, G refusals and I second flag state", "Next WP8a package");
+    missing("F verified-agent binding, G refusals and I second flag state", "Requires the agent approval workflow and a second controlled local server");
     missing("K ended-session, L focus/keyboard and O production tap frame", "Next WP8a package");
   }
 } catch (error) {
