@@ -683,7 +683,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
               </ScrollX>
             )}
             {/* ⭐ STEP 9 · THE KIT PAGER, TWENTY TO A PAGE, OVER THE READER'S COUNT (344) — `rpage`, the roster's own word.
-                At the configured ceiling of twenty it draws nothing; it is here so the table can never outgrow a page. */}
+                It draws once the roster passes twenty — the ceiling is 1–100 since N5 — so the table never outgrows a page. */}
             {rosterRows !== null && rosterView.rosterTotal !== null && (
               <div className="p-4 pt-0">
                 <AdminPagination
@@ -1174,9 +1174,10 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
           {resultsView !== null && (<>
           {/* ⭐ C7 437 · WHAT THE DESK'S FINISHED STAKES CAME TO — D20b AMENDED FOR THIS ONE VIEW, under the owner's
               delegation of 2026-09-26 (`docs/COMPLIANCE-DECISIONS.md`, the entry headed `· D20b AMENDED`).
-              ⛔ WORDS, NEVER SIGNS: every figure is a magnitude beside "Profit" or "Loss" (361). ⛔ NO PAGER, NO
-              EXPORT, NO LINK TO ANY REPORT: seven fixed days and a bounded roster, and a VIEW is all the amendment
-              permits. ⛔ MONEY IS THE SECOND COLUMN in both tables (373), and each figure is `.amount` in a cell that
+              ⛔ WORDS, NEVER SIGNS: every figure is a magnitude beside "Profit" or "Loss" (361). ⛔ NO
+              EXPORT, NO LINK TO ANY REPORT: a VIEW is all the amendment permits. By account pages past twenty (N5 — the
+              roster may pass twenty now, and paging a view is not a report or an export); By day is seven fixed rows.
+              ⛔ MONEY IS THE SECOND COLUMN in both tables (373), and each figure is `.amount` in a cell that
               may wrap between the word and the figure — never inside the figure (409, 432(b)).
               ⭐ BELOW `sm` EACH TABLE FOLDS ITS LAST COLUMN UNDER ITS FIRST, from the same painted field: one view
               model, two layouts, so the phone and the wide screen cannot say different things about one day. */}
@@ -1256,6 +1257,19 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     </tbody>
                   </table>
                 </ScrollX>
+              )}
+              {/* ⭐ N5 · THE KIT PAGER, TWENTY TO A PAGE, OVER THE READER'S COUNT — `apage`. It draws only past twenty lines
+                  (the roster may pass twenty since N5), so the table never outgrows a page; a sort link drops the page. */}
+              {resultAccounts !== null && resultsView.resultAccountsTotal !== null && (
+                <div className="p-4 pt-0">
+                  <AdminPagination
+                    total={resultsView.resultAccountsTotal}
+                    page={resultsView.resultAccountsPage}
+                    perPage={resultsView.resultAccountsPerPage}
+                    param="apage"
+                    baseHref={buildBaseHref(CONSOLE_ROUTE, resultsView.resultsParams, "apage")}
+                  />
+                </div>
               )}
             </AdminCard>
           </div>

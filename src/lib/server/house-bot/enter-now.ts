@@ -182,12 +182,20 @@ export type MarketHeld =
  * `ignoreDeadOpeners` (N3) is for a caller that knows the market already holds money: a queued OPENER there can never
  * place (H3 refuses an opener on anything but two empty pools), so it holds nothing — for any account, its own included.
  */
-export async function marketHeld(botId: string, marketId: string, opts: { ignoreIntentId?: string | null; ignoreDeadOpeners?: boolean } = {}): Promise<MarketHeld> {
+export async function marketHeld(botId: string, marketId: string, opts: {
+  ignoreIntentId?: string | null;
+  ignoreDeadOpeners?: boolean;
+  /** A PAIR with player money cannot fire, just as an opener with a nonempty pool cannot. */
+  ignoreDeadPairs?: boolean;
+  /** Only an opted-in untargeted reaction or PAIR may share a market on the opposite side. */
+  sideAwareSide?: "YES" | "NO";
+} = {}): Promise<MarketHeld> {
   const bot = await houseBotStore.get(botId);
   if (!bot) throw new Error(`marketHeld: no bot ${botId}`);
   // One read at a time, as the loader (pooled connections belong to players' bets first).
   const mine = await positionStore.listForUserAndMarket(bot.userId, marketId);
-  const live = (await houseBotIntentStore.listLiveOnMarket(marketId)).filter((i) => !(opts.ignoreDeadOpeners && i.kind === "OPENER"));
+  const live = (await houseBotIntentStore.listLiveOnMarket(marketId)).filter((i) =>
+    !(opts.ignoreDeadOpeners && i.kind === "OPENER") && !(opts.ignoreDeadPairs && i.kind === "PAIR"));
   const target = await targetStore.activeForMarket(marketId);
   const onMarket = await houseSeamStore.marketUsage({ houseBotId: botId, marketId });
   const usage = await houseSeamStore.botUsage({ houseBotId: botId, marketId });
@@ -196,10 +204,12 @@ export async function marketHeld(botId: string, marketId: string, opts: { ignore
   if (mine.some((p) => p.status === "OPEN" && p.houseBotId == null)) return { held: true, code: "OWNER_POSITION" };
 
   // b · another bot: a live intent, an ACTIVE target, or an OPEN house position (I3; H3 OTHER_BOT).
-  const liveOther = live.find((i) => i.houseBotId !== botId);
+  const liveOther = live.find((i) => i.houseBotId !== botId && (opts.sideAwareSide == null || i.side === opts.sideAwareSide));
   if (liveOther) return { held: true, code: "OTHER_BOT", botId: liveOther.houseBotId };
   if (target && target.houseBotId !== botId) return { held: true, code: "OTHER_BOT", botId: target.houseBotId };
-  if (onMarket.otherBotOpen) return { held: true, code: "OTHER_BOT", botId: null };
+  if (opts.sideAwareSide === "YES" ? onMarket.otherBotYesOpen : opts.sideAwareSide === "NO" ? onMarket.otherBotNoOpen : onMarket.otherBotOpen) {
+    return { held: true, code: "OTHER_BOT", botId: null };
+  }
 
   // c · this bot's own live intent of any kind, other than the row being fired.
   const own = live.find((i) => i.houseBotId === botId && i.id !== opts.ignoreIntentId);

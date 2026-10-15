@@ -4666,3 +4666,84 @@ in `docs/HOUSE-BOTS.md` §12.19.
 4. A player who bets while a bot's first bet is still waiting is now answered instead of refunded.
 5. The "Why is it not staking?" button now says when another bot is simply ahead in the queue.
 6. Still one bot per round: letting bots bet against each other is the next releases, as you ruled.
+
+# House bots: amendment N5 (the roster past 20 · a higher per-minute ceiling · the desk-against-desk schema) — 2026-10-15
+
+**Authority.** Ali, 2026-10-14: *"More than 20"* desk accounts, then a hard ceiling of **100** (offered 50, 100 and 200),
+and desk-against-desk staking *"Yes, with a daily budget"* with one switch that stops all of it — all recorded in
+`docs/COMPLIANCE-DECISIONS.md` § 2026-10-14. This amendment is the MIGRATION those answers need and the code that reads
+it; it changes no behaviour of the build that applies it. What makes a pair legal (who, when, how much, the budget's
+checks) is N6, with its own amendment, which amends PLAN I3 and `docs/RULES.md` §2.11 in the same commit as its code.
+
+**The file.** `prisma/migrations/20261015120000_house_bot_pairs_roster/migration.sql` — the third house folder, applied
+from the operator's machine before the push (REL-2's exception, named in the owner's go), under the migration law (04 S1
++ A23): `SET LOCAL lock_timeout = '3s'` first, one transaction, every statement re-runnable, no CONCURRENTLY, no rename,
+nothing made NOT NULL, and `@drops` headers for the three CHECKs it re-defines (`test:migration-ownership`).
+
+## N5-1 · PLAN §5 — the roster ceiling is 100
+**Amends** PLAN §5's "max designated bots 1–20" and the first migration's `HouseBotControl_maxDesignatedBots_check`. The
+CHECK is dropped and re-added under the SAME name `BETWEEN 1 AND 100`; the working number stays `maxDesignatedBots` on
+the Limits tab (default 5, never below the current count). Past twenty accounts the console pages: the roster at twenty
+(`rpage`, step 9's pager, which until now could never draw) and the Results tab's By account at twenty (`apage`, new —
+paging one VIEW, which D20b's amendment permits; it exports and reports nothing). `test:grid-paging`'s fixed-grid entry
+for the desk is retired, as its own last lines said it would be the day the ceiling rose.
+
+## N5-2 · PLAN §5 — bets a minute 1–120
+**Amends** PLAN §5's "bets/minute 1–20" (recommended 6). The CHECK becomes `IS NULL OR BETWEEN 1 AND 120`; the field's
+recommended value is 12, the desk guide's. ⚠️ What actually bounds the desk's rate is the poller
+(`MAX_FIRES_PER_PROCESS` = 2 per 2 s pass, about 60 a minute per process) and each account's own `bet.place` bucket
+(about 3 a minute) — the ceiling bounds only what an officer may type, so the cap can be set ABOVE the rate the engine
+reaches and stop refusing the :00 / :30 opener burst (`GLOBAL_BETS_PER_MINUTE` cannot defer on Up & Down, N3-7).
+
+## N5-3 · The PAIR kind and its anchor (schema only)
+`HouseBotIntent_kind_check` is re-added with `PAIR` appended LAST (the order `INTENT_KINDS` is pinned in); two new CHECKs
+— `HouseBotIntent_pair_anchor_check` (`anchorKey = 'pair:' || marketId`) and `HouseBotIntent_pair_updown_check` (a pair
+is Up & Down only, the ruling's own reach) — and `hbi_pair_anchor_uq` (`(anchorKey) WHERE kind = 'PAIR' AND status <>
+'CANCELLED'`): one live pair per round, planned again only after CANCELLED, FILL/OPENER's rule. The `pair:` prefix keeps
+a PAIR duplicate from reading as a COUNTER one (both indexes are on `"anchorKey"`; `UNIQUE_BY_KEY` tells them apart by
+it), and the memory twin mirrors every one of them (`MEM_CHECKS`, `MEM_UNIQUES`, `memAnchorTaken`, `anchorConflictSql`).
+**Until N6:** nothing writes a PAIR row; the seam refuses one as a lost condition (`conditionGone("PAIR")`, after
+OTHER_BOT), and the activity rail does not offer the kind (a chip that can only select nothing is 432(a)'s dead
+control) while the feed's word for one, "Pairing", keeps such a row from ever rendering blank.
+
+## N5-4 · The budget's columns (schema only)
+`HouseBotControl.gCapPairRoundsPerDay` (INTEGER, 1–28,800) and `gCapPairDailyTzs` (BIGINT, 0–1,000,000,000), both
+NULLABLE with no default — **NULL means never**, so the owner's one stop switch is clearing either. They are read by
+nothing until N6 checks both inside the bet's own locks (H4) and adds them to the Limits form; until then they are not
+writable through the DAL (`PAIR_BUDGET_BOUNDS` probes them in raw SQL only).
+
+## N5-5 · Deferred, with its reasons — the counter hand-off
+The plan's Phase 3 item 3 (give `hbi_counter_anchor_uq` a CANCELLED exception so a COUNTER lost to one account's own
+limit can pass to the next) is **NOT built**, and the index is untouched:
+1. **It would break the build still serving during the deploy.** That build's COUNTER insert says
+   `ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER'`; Postgres infers an arbiter only from a partial index whose
+   predicate that clause implies, and `kind = 'COUNTER'` does not imply `kind = 'COUNTER' AND status <> 'CANCELLED'` —
+   every COUNTER insert would fail with 42P10 until the new container took traffic, and again on any rollback.
+2. **There is nothing measured to recover.** N3's first eleven hours on production refused no COUNTER at fire; all 22
+   were refused by the accounts' own rules when decided, which a hand-off at fire cannot change.
+3. **A counter's window is short.** The trigger's 90 s lookback rarely still holds the player's stake by the time a
+   hand-off would be decided, and a late re-decision is inserted EXPIRED.
+4. **Many CANCELLED reasons must stay final** (an officer's cancel, a removed account, a voided consent), so a bare
+   CANCELLED exception would re-open counters a human closed.
+
+A future release that wants it adds a SECOND index (expand), moves the insert to it, and drops the first only after no
+build names it (contract) — two releases, never one.
+
+## N5-6 · The release's gates, as changed
+- `ops-preflight-house-bot-migrations` finds the three folders by NAME and, once `_prisma_migrations` records the third
+  as applied, checks every object it makes (§4b): the two columns, a VALID `hbi_pair_anchor_uq`, the four new CHECKs,
+  PAIR in the kinds, 100 and 120 in the widened CHECKs.
+- `ops-release-migration-parity` keeps the September pair's own reading and counts exactly three house folders; the
+  third is named as THIS release's apply.
+- `test:house-bot-migrations` §b3: with the control row held by a bet, the file fails with 55P03 inside its 3 s
+  lock_timeout, the queue behind it resumes, nothing is left, the control apply succeeds, and a bet's own lock order
+  (control, then intent) cannot meet the file in a deadlock — the file takes the tables in that same order.
+- `verify:house-bot-migrations-old-build`, re-pointed for N5: the OLD build is production, with the two September
+  folders, and its own house suites (engine, money, caps, designation, console) run on the N5 schema.
+
+## N5 · Owner summary
+1. The desk can now hold up to 100 accounts (the number you actually use is still set on the Limits tab). Past 20, the
+   account list and the Results tab's "By account" table show 20 at a time, with page buttons.
+2. The "bets a minute" limit can now go up to 120, so the burst at the start of each round no longer has to be refused.
+3. The database is ready for accounts to bet against each other within a daily budget — but nothing does that yet.
+   That is the next release, and it starts switched off.

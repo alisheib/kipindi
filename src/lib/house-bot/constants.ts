@@ -190,8 +190,8 @@ export const PASSWORD_SET_VIA = ["REGISTRATION", "SELF_CHANGE", "RESET_LINK", "O
 export type PasswordSetVia = (typeof PASSWORD_SET_VIA)[number];
 export const isPasswordSetVia = closedListGuard(PASSWORD_SET_VIA);
 
-/** `HouseBotIntent.kind` (N1 §2 adds MANUAL — an Enter now press). */
-export const INTENT_KINDS = ["COUNTER", "FILL", "OPENER", "MANUAL"] as const;
+/** `HouseBotIntent.kind` (N1 §2 adds MANUAL — an Enter now press; N5 adds PAIR, the second leg of a desk-against-desk round, written from N6 — LAST, because test:house-bot-migrations compares this list to the live CHECK in order). */
+export const INTENT_KINDS = ["COUNTER", "FILL", "OPENER", "MANUAL", "PAIR"] as const;
 export type IntentKind = (typeof INTENT_KINDS)[number];
 export const isIntentKind = closedListGuard(INTENT_KINDS);
 
@@ -357,6 +357,7 @@ export const ENGINE_CODES = [
   "UD_NO_PRICE",
   "PENALTY_BOX",
   "MARKET_HELD",
+  "SAME_HOLDER",
   "NO_ELIGIBLE_BOT",
   "STAKE_BELOW_MIN",
   "MAINTENANCE",
@@ -440,6 +441,9 @@ export const H4_CAP_CODES = [
   "COUNTERPARTY_TZS",
   "GLOBAL_STAFF_CHOSEN_PER_DAY",
   "GLOBAL_STAFF_CHOSEN_DAILY_STAKE",
+  "PAIR_ROUNDS_PER_DAY",
+  "PAIR_DAILY_TZS",
+  "PAIR_ACCOUNT_PER_DAY",
 ] as const;
 
 export type CapCode = (typeof H2_CAP_CODES)[number] | (typeof H3_CAP_CODES)[number] | (typeof H4_CAP_CODES)[number];
@@ -489,6 +493,7 @@ export const HANDOFF_CODES = [
   "STAKE_BOUNDS_CHANGED",
   // The account's own `closenessPct`: another account's wider band may still take the round.
   "UD_CLOSENESS",
+  "SAME_HOLDER",
 ] as const satisfies readonly EngineCode[];
 export const isHandoffCode = (code: string): boolean => (HANDOFF_CODES as readonly string[]).includes(code);
 
@@ -519,7 +524,7 @@ export const TURN_BUSY_HORIZON_SEC = 60;
 export const UD_PRICE_FIRE_MARGIN_SEC = 10;
 
 /** `house_market_conflict{…}` details (PLAN §3). */
-export const CONFLICT_CODES = ["OWNER_POSITION", "OPPOSITE_SIDE", "OTHER_BOT", "TRIGGER_BOTH_SIDES"] as const;
+export const CONFLICT_CODES = ["OWNER_POSITION", "OPPOSITE_SIDE", "OTHER_BOT", "TRIGGER_BOTH_SIDES", "SAME_HOLDER"] as const;
 export type ConflictCode = (typeof CONFLICT_CODES)[number];
 
 export type EngineCode = (typeof ENGINE_CODES)[number] | `CAP_${CapCode}`;

@@ -188,6 +188,20 @@ const rosterEvery = async (viewer: string): Promise<Any> => {
   for (let n = 2; n <= pages; n++) rows.push(...(((await GATEM.houseRosterForConsole(viewer, "/admin/desk", { rpage: String(n) })) as Any)?.rows ?? []));
   return { ...first, rows };
 };
+/**
+ * ⭐ N5 · …AND SO DOES THE RESULTS TAB'S BY ACCOUNT (2026-10-15). The roster may pass twenty since N5 (ceiling 1–100), so
+ * the account lines page at twenty under `apage`. A case that ADDS the lines up, finds one account's line or scans their
+ * words reads every page through the door the same way and gets page 1's view carrying every page's lines. A case that
+ * COUNTS the reader's own reads (1.437a, 1.437f, 1.437g) keeps one call, so its count stays one render's.
+ */
+const resultsEvery = async (viewer: string): Promise<Any> => {
+  const first: Any = await GATEM.houseResultsForConsole(viewer, "/admin/desk");
+  if (first == null || !Array.isArray(first.resultAccounts) || typeof first.resultAccountsTotal !== "number") return first;
+  const pages = Math.max(1, Math.ceil(first.resultAccountsTotal / first.resultAccountsPerPage));
+  const lines: Any[] = [...first.resultAccounts];
+  for (let n = 2; n <= pages; n++) lines.push(...(((await GATEM.houseResultsForConsole(viewer, "/admin/desk", { apage: String(n) })) as Any)?.resultAccounts ?? []));
+  return { ...first, resultAccounts: lines };
+};
 const ROLES: Any = await import("../../src/lib/server/roles.ts");
 const RBAC: Any = await import("../../src/lib/server/rbac.ts");
 /** ⭐ C7 step 6 · the picker's own bucket (387(e)) — named here because `rateCheckAsync` FAILS OPEN on a key it
@@ -1901,6 +1915,9 @@ section("§2 · the strip, the band, the roster and every failure");
       REQ.length >= 8 && REQ.every((f) => off(f) === MASTER), j(REQ.filter((f) => off(f) !== MASTER)));
     ok("1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption — the blanket sentence would be a LIE on a staff-chosen cap",
       EXEMPT.length >= 7 && EXEMPT.every((f) => off(f) === TARGETED), j(EXEMPT.filter((f) => off(f) !== TARGETED)));
+    const PAIR_BUDGETS = ["gCapPairRoundsPerDay", "gCapPairDailyTzs"];
+    ok("1.364 · either empty two-sided desk budget stops the second account, and neither enters CLEAR_EXEMPT",
+      PAIR_BUDGETS.every((f) => !EXEMPT.includes(f) && off(f) === "Not set — no second desk account can take the other side."));
     ok("1.364 · every cap the seam reads UNCONDITIONALLY gets the third caption, and it says `account` — ruling 453 outranks 364's own wording",
       UNCONDITIONAL.every((f) => off(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => off(f))));
     /* ━━ 1.547 · RULING 306's DEFECT, ONE CARD LOWER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2021,14 +2038,21 @@ section("§2 · the strip, the band, the roster and every failure");
         && u2.unsetRequired === 2,
       j({ one: u2one.unsetRequired, two: u2.unsetRequired }));
     /* ⛔ WITH EVERY LIMIT SET, NO ROW CARRIES IT — an anchor that always renders is an anchor that means nothing. */
-    /* ⚠️ `gTargetsMaxActive` is NOT in the world's OPEN_LIMITS, so it is set explicitly here: an "everything set"
-       control that leaves one field null is not the control it claims to be. */
-    await w.limits({ gTargetsMaxActive: 50 });
+    /* These optional limits are intentionally absent from the world's OPEN_LIMITS, so set them
+       explicitly before asserting that every field is filled. */
+    await w.limits({ gTargetsMaxActive: 50, gCapPairRoundsPerDay: 50, gCapPairDailyTzs: 500_000 });
     const u3 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     ok("1.306 · CONTROL · with every limit set no row carries the anchor and no row carries a caption",
       u3.limits.every((l: Any) => l.firstUnset === false && l.unset === false && l.caption === null)
         && u3.limits.length === (R.LIMIT_FIELDS as readonly string[]).length,
       j({ rows: u3.limits.length, want: (R.LIMIT_FIELDS as readonly string[]).length }));
+    const pairLimitRows = u3.limits.filter((l: Any) => l.section === "Pairing");
+    ok("1.pair.limits · both two-sided desk budgets are optional Limits controls with neutral keys, useful help and no recommendation",
+      j(pairLimitRows.map((l: Any) => l.key).sort()) === j(["pair-rounds-per-day", "pair-tzs-per-day"].sort())
+        && pairLimitRows.every((l: Any) => l.optional === true && l.recommended === ""
+          && typeof l.hint === "string" && l.hint.includes("Empty = no two-sided desk play.")
+          && l.hint.includes("Counter answers") && l.name.startsWith("Two-sided desk ")),
+      j(pairLimitRows.map((l: Any) => [l.key, l.name, l.optional, l.recommended, l.hint])));
     /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
      * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one
      * ruling 364 requires a USAGE ROW for — is the one 432(f) missed. */
@@ -3340,7 +3364,7 @@ try {
      * added to the document then lands on this card and in this count together, and a card that quietly
      * stopped painting a section would be red here rather than merely smaller.
      */
-    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 5
+    const expectedRecordRows = (R.CAP_FIELDS as readonly string[]).length + 6
       + (R.SCOPE_PRODUCTS as readonly string[]).length * (R.ENTRY_MODES as readonly string[]).length
       + (R.RULE_NUMBER_FIELDS as readonly string[]).length + 1;
     ok("1.508 · the rules panel lists every saved cap, the five scope facts, the six entry modes, EVERY numeric rule and the schedule, as VALUES — the record the overview, a REMOVED account and the unparseable fallback all read",
@@ -3365,10 +3389,10 @@ try {
      * the save is conditional on, and the reason naming what Start needs. The old sentence is asserted ABSENT,
      * so the read-only state cannot come back green.
      */
-    ok("1.508 · …and the same facts arrive as INPUTS: one named field per cap, the ten switches, the version the save is conditional on, and a reason that says what Start needs",
+    ok("1.508 · …and the same facts arrive as INPUTS: one named field per cap, eleven switches, the version the save is conditional on, and a reason that says what Start needs",
       v.rulesForm !== null
         && v.rulesForm.caps.length === (R.CAP_FIELDS as readonly string[]).length
-        && v.rulesForm.flags.length === 10
+        && v.rulesForm.flags.length === 11
         /* ⛔ THE VERSION IS READ OFF THE ROW, NOT TYPED AS `1`. The save is CONDITIONAL on this number, so the
            claim is that the form carries the account's CURRENT version — a literal would pass on a fixture
            that happens to be unsaved and say nothing about the one property the CAS depends on. */
@@ -4061,12 +4085,19 @@ try {
     /* ── THE RAIL IS BUILT FROM THE SAME PARSE, SO THE CONTROL AND THE READ CANNOT DISAGREE ──────────────── */
     const railed = await feedView({ outcome: "failed" });
     const groups = railed.feedFilters as Any[];
+    /* N6 writes PAIR rows, so every intent kind now has a Type option. */
+    const RAIL_KINDS = K_INTENT_KINDS as string[];
     ok("1.410 · the rail is THREE axes, each an 'Any …' option plus one per member of its own closed list, with the live one marked",
       groups.length === 3 && all(groups.map((g) => g.param)) === all(["kind", "product", "outcome"])
-        && groups[0].options.length === 1 + (K_INTENT_KINDS as string[]).length
+        && groups[0].options.length === 1 + RAIL_KINDS.length
         && groups[2].options.some((o: Any) => o.on === true && o.key === "failed")
         && groups[0].options.filter((o: Any) => o.on).length === 1,
       j(groups.map((g) => ({ param: g.param, options: g.options.length, on: g.options.filter((o: Any) => o.on).length }))));
+    ok("1.410 · N6 · the Type axis offers Pairing for the PAIR rows that can now be written",
+      (K_INTENT_KINDS as string[]).includes("PAIR") && RAIL_KINDS.length === (K_INTENT_KINDS as string[]).length
+        && groups[0].options.some((o: Any) => o.label === "Pairing" && o.key === "pairing")
+        && GATEM.CONSOLE_FEED_AXES.kind.word.PAIR === "Pairing" && GATEM.CONSOLE_FEED_AXES.kind.members.includes("PAIR"),
+      j({ kinds: K_INTENT_KINDS, options: groups[0].options.map((o: Any) => o.label), word: GATEM.CONSOLE_FEED_AXES.kind.word.PAIR }));
     ok("1.411 · every rail link carries the tab and every OTHER live filter, and DROPS the page — a filter change that kept the page lands on one the narrowed list no longer has",
       groups.every((g) => g.options.every((o: Any) => o.href.includes("tab=activity") && !/[?&]page=/.test(o.href)))
         && groups[0].options.some((o: Any) => o.href.includes("outcome=failed")),
@@ -5315,11 +5346,12 @@ section("§2e3 · the desk landing page's activity and history panels");
       && /param="page"/.test(landing) && /param="hpage"/.test(landing)
       && !/baseHref=\{buildBaseHref\(CONSOLE_ROUTE, \{/.test(landing),
     "");
-  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty). */
-  ok("1.411 · the three paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
-    (landing.match(/<AdminPagination/g) ?? []).length === 3
+  /* ⭐ STEP 9 · THREE: the roster pages too, over its reader's own count (and draws nothing at the ceiling of twenty).
+     ⭐ N5 · FOUR: the roster may pass twenty now (ceiling 1–100), so the Results tab's By account pages as well. */
+  ok("1.411 · the four paged landing panels draw the shared `AdminPagination`, each total is a COUNTING field of its view, and none is a rendered array's length",
+    (landing.match(/<AdminPagination/g) ?? []).length === 4
       && /total=\{feedView\.feedTotal\}/.test(landing) && /total=\{historyView\.historyTotal\}/.test(landing)
-      && /total=\{rosterView\.rosterTotal\}/.test(landing)
+      && /total=\{rosterView\.rosterTotal\}/.test(landing) && /total=\{resultsView\.resultAccountsTotal\}/.test(landing)
       && !/total=\{[^}]*\.length\}/.test(landing)
       && !/parsePage/.test(landing)
       && /page=\{feedView\.feedPage\}/.test(landing) && /perPage=\{feedView\.feedPerPage\}/.test(landing),
@@ -5333,11 +5365,18 @@ section("§2e3 · the desk landing page's activity and history panels");
      at the configured ceiling of twenty it renders nothing (the kit pager returns null on one page — ruling 411's own
      reason the loader draws no ghost for it), and the day that ceiling moves it is a real pager, not a longer table.
      The limits and Results panels still draw none, for the reasons above. */
-  ok("1.411 · the limits and results panels draw NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's is the kit pager over its reader's own count, its own page word and its validated parameters",
+  /* ⭐ N5 · THE RESULTS PANEL LEFT THIS LIST TOO, for the roster's reason: its By account has one line per account, the
+     roster may pass twenty since N5, and no desk table grows past a page. It pages THAT table only — By day is seven
+     fixed rows — under its own word `apage`, over its reader's count, from the reader's own parameters (D20b's
+     amendment permits one VIEW; paging the view exports and reports nothing). The limits panel still draws none. */
+  ok("1.411 · the limits panel draws NO pager — a numbered control over a list that is never paged is a control with nothing behind it — and the roster's and the Results By account's are the kit pager over their reader's own count, their own page word and their validated parameters",
     /<AdminPagination/.test(panelOf("roster")) && /param="rpage"/.test(panelOf("roster"))
       && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, rosterView\.rosterParams, "rpage"\)\}/.test(panelOf("roster"))
       && !/<AdminPagination/.test(panelOf("limits"))
-      && !/<AdminPagination/.test(panelOf("results")) && panelOf("results").length > 200
+      && (panelOf("results").match(/<AdminPagination/g) ?? []).length === 1 && /param="apage"/.test(panelOf("results"))
+      && /baseHref=\{buildBaseHref\(CONSOLE_ROUTE, resultsView\.resultsParams, "apage"\)\}/.test(panelOf("results"))
+      && /page=\{resultsView\.resultAccountsPage\}/.test(panelOf("results")) && /perPage=\{resultsView\.resultAccountsPerPage\}/.test(panelOf("results"))
+      && panelOf("results").length > 200
       && /<AdminPagination/.test(panelOf("activity")) && /<AdminPagination/.test(panelOf("history")),
     "");
   /* ⛔ EACH PANEL'S EMPTY STATE IS THE KIT'S AND IS REACHED ONLY BY A `length === 0` BRANCH; THE FAILURE STATE IS
@@ -6781,7 +6820,7 @@ try {
   /* ━━ THE SAVE: THE LISTS ROUND-TRIP, THE SCOPE ROW MARKS THE GROUP, A STRANGER IS STALE ━━━━━━━━━━━━━━━━━━ */
   {
     const acct = await w.bot({ caps: { freqMinGapSec: 20 } });
-    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes"].map((k) => [k, false]));
+    const flagsOff: Record<string, boolean> = Object.fromEntries(["product-updown", "product-polls", "updown-react", "updown-fill", "updown-opener", "polls-react", "polls-fill", "polls-opener", "enter-now", "targeted-stakes", "answer-other-side"].map((k) => [k, false]));
     /* ⚠️ The world's open caps put `stakeMaxTzs` ABOVE the live maximum stake, which the validator correctly
        refuses — so the form's own values are posted with that one cap brought inside the live bound. */
     /**
@@ -6903,6 +6942,15 @@ try {
         && (formCache.rules as Any[]).every((r: Any) => typeof r.section === "string" && r.section.length > 0)
         && new Set((formCache.rules as Any[]).map((r: Any) => r.key)).size === RULE_IDS.length,
       j({ rows: formCache.rules?.length, leaves: RULE_IDS.length }));
+    const pairFlag = (formCache.flags as Any[]).find((f: Any) => f.key === "answer-other-side");
+    const pairPct = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-round-share");
+    const pairPerDay = (formCache.rules as Any[]).find((r: Any) => r.key === "pair-rounds-account-per-day");
+    ok("2h.pair.model · the switch and both account pairing numbers start off, have separate controls, and explain their effect",
+      pairFlag?.section === "Pairing" && pairFlag?.on === false
+        && pairFlag?.help?.includes("Both desk Pairing limits must allow it.")
+        && pairPct?.section === "Pairing" && pairPct?.value === "0" && pairPct?.help?.length >= 30
+        && pairPerDay?.section === "Pairing" && pairPerDay?.value === "0" && pairPerDay?.help?.length >= 30,
+      j({ flag: pairFlag, pct: pairPct, perDay: pairPerDay }));
     /* ⛔ THE SECTION HEADINGS ARE THE ONE WORD HOME'S (453 keeps `FIELD_META`'s own words off this screen). */
     ok("2h.model · the section headings are the console's own words — the three entry sections read `ENTRY_MODE_WORDS`, so a heading and the switch above it cannot be two spellings of one control",
       (R.ENTRY_MODES as string[]).every((m: string) => (formCache.rules as Any[]).some((r: Any) => r.section === R.ENTRY_MODE_WORDS[m]))
@@ -7064,6 +7112,20 @@ try {
       [partial, noSchedule, stranger].every((r: Any) => r.ok === false && r.field === undefined
         && r.error === "This form is out of date. Reload the page and make the change again — nothing was saved."),
       j([partial.error, noSchedule.error, stranger.error]));
+    const pairWithoutSwitch = await send({ "pair-round-share": "25", "pair-rounds-account-per-day": "2" });
+    const pairFlags = Object.fromEntries(((await form()).flags as Any[]).map((f: Any) => [f.key, f.on]));
+    const pairSaved = await send({ "pair-round-share": "25", "pair-rounds-account-per-day": "2" },
+      { flags: { ...pairFlags, "answer-other-side": true } });
+    const pairStored: Any = await w.dal.houseBotStore.get(acct.botId);
+    const pairBack: Any = await form();
+    ok("2h.pair.save · a positive pair share requires the other-side switch, then all three leaves round-trip",
+      pairWithoutSwitch.ok === false && pairWithoutSwitch.field === "pair-round-share"
+        && pairSaved.ok === true && pairStored.rules?.share?.otherSide === true
+        && pairStored.rules?.share?.matchPct === 25 && pairStored.rules?.share?.matchPerDay === 2
+        && (pairBack.flags as Any[]).find((f: Any) => f.key === "answer-other-side")?.on === true
+        && (pairBack.rules as Any[]).find((r: Any) => r.key === "pair-round-share")?.value === "25"
+        && (pairBack.rules as Any[]).find((r: Any) => r.key === "pair-rounds-account-per-day")?.value === "2",
+      j({ refused: pairWithoutSwitch, saved: pairSaved, share: pairStored.rules?.share }));
     STATES.push(["rules-form-numeric", await detail(acct.botId)]);
   }
 
@@ -7073,7 +7135,7 @@ try {
       try { return await GATEM.houseAccountActForConsole(OFFICER, "/admin/desk", input); }
       catch (e) { return { ok: false, error: "", threw: String((e as Error)?.message ?? e) }; }
     };
-    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 } });
+    const pollsOnly = await w.bot({ caps: { freqMinGapSec: 20 }, label: "Case account" });
     await w.setUserFields(pollsOnly.userId, { passwordSalt: "case-salt-for-2g" });
     await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     /* ⛔ THE PRODUCTION SHAPE ITSELF (review finding 2026-09-22): both products ticked, every automatic mode on, BOTH
@@ -7156,6 +7218,22 @@ try {
         && typeof warned.note === "string" && warned.note.includes(R.START_COPY.allImpossible)
         && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
       j(warned));
+    await w.dal.houseBotStore.setStatus(pollsOnly.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    await writeRules(pollsOnly.botId, ruleDoc((r) => {
+      r.scope.products = { updown: true, polls: false };
+      r.scope.chains = [CHAIN_KEY];
+      r.share = { otherSide: true, matchPct: 50, matchPerDay: 1 };
+    }));
+    const pairStarted = await act({ id: pollsOnly.botId, act: "START" });
+    ok("2g.pair.start · a pair-only account Starts with a budget warning that reaches the console without a forbidden word or an unusable by-hand promise",
+      pairStarted.ok === true && pairStarted.warn === true
+        && typeof pairStarted.note === "string"
+        && pairStarted.note.includes("uses pairing as its only automatic entry")
+        && pairStarted.note.includes("both pair budgets allow")
+        && !NEUTRAL.test(pairStarted.note)
+        && !/press Enter now|target reacts/.test(pairStarted.note)
+        && (await w.dal.houseBotStore.get(pollsOnly.botId)).status === "ACTIVE",
+      j(pairStarted));
   }
 
   /* ━━ THE BY-HAND-ONLY ACCOUNT, ON EVERY SURFACE (review finding 2026-09-22) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -7686,7 +7764,7 @@ try {
      * ⭐ 437(d): the tab's day figure is `book.ts`'s own settled figure with the sign turned — the one the Limits tab's
      * settled row and both automatic stops act on — so no two readings of it can disagree. Measured here over EVERY
      * stake on the desk today, whoever placed it, so the identity is not a property of this fixture's population. */
-    const wholeView: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const wholeView: Any = await resultsEvery(OFFICER);
     const wholeBook: Any = await BOOK.houseDayBook(wholeView.dayKey, null);
     const wholeUsage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     const oneArithmetic = (view: Any, bookLoss: number, settledUsed: number | null): boolean => {
@@ -7710,7 +7788,9 @@ try {
       return rows.filter((r: Any) => MINE.has(r.houseBotId));
     };
     const isolated = w.dal.houseBookStore.dayRows;
-    const v: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const v: Any = await resultsEvery(OFFICER);
+    /* ⛔ 1.437g compares ONE render with one planted failure against the same render without it — page 1 of each. */
+    const vFirst: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
     const book: Any = await BOOK.houseDayBook(v.dayKey, null);
     const usage: Any = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     const desk = deskOf(v);
@@ -7943,9 +8023,9 @@ try {
       j({ failedCalls, row: g2, weeks: gView?.resultAccounts?.map((r: Any) => r.week?.text) }));
     ok("1.437g · …and everything else is REAL: the six other days and every account's Today are exactly what they are with no failure",
       gView !== null && [0, 1, 3, 4, 5, 6].every((i) => all(gView.resultDays[i]) === all(v.resultDays[i]))
-        && gView.resultAccounts.length === v.resultAccounts.length
-        && gView.resultAccounts.every((r: Any, i: number) => all(r.today) === all(v.resultAccounts[i].today) && r.accountName === v.resultAccounts[i].accountName),
-      j({ lines: [gView?.resultAccounts?.length, v.resultAccounts.length] }));
+        && gView.resultAccounts.length === vFirst.resultAccounts.length && gView.resultAccounts.length > 0
+        && gView.resultAccounts.every((r: Any, i: number) => all(r.today) === all(vFirst.resultAccounts[i].today) && r.accountName === vFirst.resultAccounts[i].accountName),
+      j({ lines: [gView?.resultAccounts?.length, vFirst.resultAccounts.length] }));
     ok("1.437g · CONTROL · the failed row is not blank, not Even, not No stakes and not — (each would read as a zero), and the same row without the failure is the real Even",
       typeof g2?.result?.text === "string" && g2.result.text !== "" && !["Even", "No stakes", "—", "Nothing settled"].includes(g2.result.text)
         && g2.result.figure === null && v.resultDays[2].result.text === "Even",
@@ -7973,7 +8053,7 @@ try {
     /* A SECOND removed account that staked in the window turns the one line plural. D is removed here (C already is);
        both still give their slots back in the teardown, which removes whatever is left. */
     await w.dal.houseBotStore.setStatus(accD.botId, { from: ["ACTIVE"], ...REMOVE });
-    const vMany: Any = await GATEM.houseResultsForConsole(OFFICER, "/admin/desk");
+    const vMany: Any = await resultsEvery(OFFICER);
     const glMany: Any = goneRow(vMany);
     ok("1.437h · with a SECOND removed account in the window the line reads `Accounts no longer on the desk` — still ONE line, carrying both accounts' money, with every total unchanged",
       glMany?.accountName === GONE_MANY && vMany.resultAccounts.filter((r: Any) => r.accountHref === null).length === 1
@@ -9767,21 +9847,42 @@ try {
     }
     ok("1.s9 · results · By day's Result, Stakes placed and State order the seven days both ways by what each cell paints — a day with no result LAST both ways — each tie in the table's own order",
       dayBad.length === 0 && resBare.resultDays.some((d: Any) => resultOf(d.result) !== null), j(dayBad));
-    const acctAt = new Map((resBare.resultAccounts ?? []).map((a: Any, i: number) => [a.accountName, i]));
+    /* ⭐ N5 · By account PAGES at twenty under `apage` (the roster may pass twenty now), so every property of its order is
+       measured over EVERY page, concatenated — the walk the roster and the ledger already take. */
+    const walkAcct = (q: Record<string, unknown>) => walk9(readRes, q, "apage", (v) => v.resultAccounts, (v) => v.resultAccountsTotal);
+    const acctBare = await walkAcct({});
+    const acctAt = new Map(acctBare.rows.map((a: Any, i: number) => [a.accountName, i]));
     const acctTie = (a: Any, b: Any) => (acctAt.get(a.accountName) ?? 0) < (acctAt.get(b.accountName) ?? 0);
     const acctBad: string[] = [];
     for (const [token, key] of [["account", (a: Any) => (a.accountIsOperatorText ? a.accountName : null)], ["today", (a: Any) => resultOf(a.today)], ["last-7-days", (a: Any) => resultOf(a.week)]] as Array<[string, (a: Any) => number | string | null]>) {
       for (const dir of ["asc", "desc"] as const) {
-        const v = await readRes({ acctsort: token, acctdir: dir });
-        if (pairsOut(v.resultAccounts ?? [], key, dir, acctTie).length > 0 || (v.resultAccounts ?? []).length !== (resBare.resultAccounts ?? []).length) acctBad.push(`${token}:${dir}`);
+        const v = await walkAcct({ acctsort: token, acctdir: dir });
+        if (pairsOut(v.rows, key, dir, acctTie).length > 0 || v.rows.length !== acctBare.rows.length) acctBad.push(`${token}:${dir}`);
       }
     }
-    const acctAsc = await readRes({ acctsort: "account", acctdir: "asc" });
-    const acctDesc = await readRes({ acctsort: "account", acctdir: "desc" });
+    const acctAsc = await walkAcct({ acctsort: "account", acctdir: "asc" });
+    const acctDesc = await walkAcct({ acctsort: "account", acctdir: "desc" });
     ok("1.s9 · results · By account orders by the account's label, today's result and the week's both ways — and the line folding every account no longer on the desk has no label and sorts LAST in both directions",
-      acctBad.length === 0 && (resBare.resultAccounts ?? []).some((a: Any) => !a.accountIsOperatorText)
-        && !acctAsc.resultAccounts.at(-1).accountIsOperatorText && !acctDesc.resultAccounts.at(-1).accountIsOperatorText,
+      acctBad.length === 0 && acctBare.rows.some((a: Any) => !a.accountIsOperatorText)
+        && !acctAsc.rows.at(-1).accountIsOperatorText && !acctDesc.rows.at(-1).accountIsOperatorText,
       j({ acctBad }));
+    /* ━━ N5 · BY ACCOUNT'S PAGER — the roster pager's own rules, over this table's count ━━ */
+    const acctPast = await readRes({ apage: "999", acctsort: "today" });
+    const acctBadPage = await readRes({ apage: "x" });
+    const lineKey = (a: Any) => a.accountHref ?? "the removed-accounts line";
+    ok("1.s9 · results pager · N5 · By account is twenty to a page over the WHOLE list's count — never the page's length — the pages together are every line exactly once, a page past the end is the last page with its lines, and the parameters a link is built from carry no page",
+      acctBare.rows.length > 20 && acctBare.pages[0].resultAccounts.length === 20
+        && acctBare.pages[0].resultAccountsTotal === acctBare.rows.length && acctBare.pages[0].resultAccountsPerPage === 20
+        && acctBare.pages.length === Math.ceil(acctBare.rows.length / 20)
+        && new Set(acctBare.rows.map(lineKey)).size === acctBare.rows.length
+        && acctPast.resultAccountsPage === acctBare.pages.length
+        && acctPast.resultAccounts.length === acctBare.rows.length - 20 * (acctBare.pages.length - 1)
+        && acctBare.pages[1]?.resultAccountsPage === 2 && acctBare.pages[1].resultsParams.apage === undefined
+        && acctPast.resultsParams.acctsort === "today" && acctPast.resultsParams.apage === undefined
+        && acctBare.pages.every((p: Any) => p.resultDays.length === 7),
+      j({ total: acctBare.pages[0]?.resultAccountsTotal, lines: acctBare.rows.length, past: acctPast.resultAccountsPage, params: acctPast.resultsParams }));
+    ok("1.s9 · results pager · N5 · CONTROL · a page that is not a whole number is refused BY NAME and page 1 is served",
+      acctBadPage.resultAccountsPage === 1 && acctBadPage.queryRefusal === one("page") && acctBadPage.resultAccounts.length === 20, j(acctBadPage.queryRefusal));
     const both = await readRes({ daysort: "stakes-placed", daydir: "asc", acctsort: "today" });
     ok("1.s9 · results · the two tables sort INDEPENDENTLY on one address — each keeps the other's order in its parameters, the tab rides both, and each header row marks its own column",
       both.daySort.current === "stakes-placed" && both.daySort.dir === "asc" && both.acctSort.current === "today" && both.acctSort.dir === "desc"

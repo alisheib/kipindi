@@ -62,4 +62,46 @@ export const MUTATIONS = [
     suite: "dal-mem",
     sections: "c13",
   },
+
+  /* ⭐ N5 (2026-10-15) · THE PAIR KIND'S TWINS. N5 adds a fourth engine anchor (`hbi_pair_anchor_uq`, `pair:<market>`, the
+     FILL/OPENER rule), and each twin states it twice — the memory unique and the memory "already decided" read, the
+     Postgres partial-index inference — plus a CHECK the memory twin must mirror. Each mutation strands ONE of those
+     limbs; group c04p (and c10 for the CHECK) is the case list that must stop matching `EXPECTED`. Driven by hand like
+     the three above (inject, run the group on its store, restore byte-for-byte) — the record is HOUSE-BOTS §12.20. */
+  {
+    name: "N5-pair-cancelled-blocks-mem · the memory twin's PAIR unique forgets the CANCELLED exception, so a round whose pair was cancelled can never be paired again",
+    file: DAL,
+    from: `    { name: "hbi_pair_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "PAIR" && r.status !== "CANCELLED" },`,
+    to: `    { name: "hbi_pair_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "PAIR" },`,
+    expect: "c04p.e re-plan after CANCELLED",
+    suite: "dal-mem",
+    sections: "c04p",
+  },
+  {
+    name: "N5-pair-taken-blind-mem · the memory twin's \"already decided\" read never sees a live PAIR, so the sweep insert throws on the clash instead of swallowing it",
+    file: DAL,
+    from: `    return [...memIntents.values()].some((i) => i.kind === "PAIR" && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");`,
+    to: `    return false;`,
+    expect: "c04p.c the sweep insert swallows the same clash",
+    suite: "dal-mem",
+    sections: "c04p",
+  },
+  {
+    name: "N5-pair-check-blind-mem · the memory twin stops mirroring the PAIR anchor CHECK, so a malformed pair passes in memory and fails on Postgres",
+    file: DAL,
+    from: "    { name: \"HouseBotIntent_pair_anchor_check\", ok: (r) => r.kind !== \"PAIR\" || r.anchorKey === `pair:${r.marketId}` },",
+    to: "    { name: \"HouseBotIntent_pair_anchor_check\", ok: () => true },",
+    expect: "c10.j a PAIR whose anchor is not pair:<its market>",
+    suite: "dal-mem",
+    sections: "c10",
+  },
+  {
+    name: "N5-pair-conflict-pg · the Postgres engine insert infers the COUNTER index for a PAIR row, so the pair clash it should swallow is thrown",
+    file: DAL,
+    from: "  if (kind === \"PAIR\") return `ON CONFLICT (\"anchorKey\") WHERE \"kind\" = 'PAIR' AND \"status\" <> 'CANCELLED' DO NOTHING RETURNING *`;",
+    to: "  if (kind === \"PAIR\") return `ON CONFLICT (\"anchorKey\") WHERE \"kind\" = 'COUNTER' DO NOTHING RETURNING *`;",
+    expect: "c04p.c the sweep insert swallows the same clash",
+    suite: "dal-pg",
+    sections: "c04p",
+  },
 ];

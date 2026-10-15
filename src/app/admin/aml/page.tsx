@@ -12,6 +12,7 @@ import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
+import { escalateDeskAmlFlags } from "@/lib/server/house-bot/aml-escalation";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { listFirstSignatures } from "./stage1-store";
@@ -41,6 +42,10 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
   try { inReviewAll = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   let flagsFailed = false;
   const flagsAll = await detectSuspiciousBets().catch(() => { flagsFailed = true; return []; });
+  const ownerReview = flagsFailed ? new Set<string>() : await escalateDeskAmlFlags(flagsAll).catch(() => {
+    flagsFailed = true;
+    return new Set<string>();
+  });
   // B-9: which txns already carry a stage-1 signature (awaiting the second
   // officer) — read from the DURABLE config-store the actions write, not the
   // audit ring. The old getAuditPage({category:"ADMIN"}) scan was doubly wrong:
@@ -222,6 +227,9 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
                       <a href={`/admin/players?q=${encodeURIComponent(f.userId)}`} className="hover:text-royal-300 hover:underline">
                         {f.userId.slice(0, 16)}
                       </a>
+                      {ownerReview.has(`${f.userId}:${f.txnId}:${f.type}`) && (
+                        <span className="block text-micro text-warning mt-1">Owner review before closure</span>
+                      )}
                     </td>
                     <td>
                       {/* ⛔ WAS `{f.type}` — the chip printed the storage token STAKE_SPIKE at

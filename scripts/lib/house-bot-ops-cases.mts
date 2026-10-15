@@ -62,6 +62,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, rmSync } from "node:fs";
 import { join, posix } from "node:path";
 import { tmpdir } from "node:os";
@@ -1055,6 +1056,54 @@ if (STORE === "postgres") {
         after.code === 0 && /✅ GO/.test(after.out) && /8\/8 present/.test(after.out) && /7\/7 present/.test(after.out),
         `exit ${after.code}`);
 
+      // Prisma migrate resolve --rolled-back retains the failed attempt and a successful
+      // migrate deploy retry adds a second row. A historical attempt must not cause NO-GO;
+      // an unresolved failed attempt still blocks deploy with P3009.
+      const rolledId = randomUUID();
+      const failedId = randomUUID();
+      let retriedMigration = "";
+      try {
+        await onDb(async (c2) => {
+          const applied = await c2.query(`SELECT migration_name FROM "_prisma_migrations"
+            WHERE migration_name LIKE '%_house_bot_pairs_roster' AND finished_at IS NOT NULL AND rolled_back_at IS NULL`);
+          if (applied.rowCount !== 1) throw new Error("expected one successful N5 migration in scratch history");
+          retriedMigration = applied.rows[0].migration_name as string;
+          await c2.query(`INSERT INTO "_prisma_migrations"
+            (id, checksum, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
+            SELECT $1, checksum, migration_name, 'scratch resolved rollback', now() - interval '1 minute',
+              started_at - interval '1 minute', 0 FROM "_prisma_migrations"
+            WHERE migration_name = $2 AND finished_at IS NOT NULL AND rolled_back_at IS NULL`,
+            [rolledId, retriedMigration]);
+        });
+        const retried = run();
+        ok("pre.retry · a resolved rolled-back attempt plus a later successful row is GO — Prisma retains both history rows after migrate resolve and retry",
+          retried.code === 0 && /✅ GO/.test(retried.out)
+          && /unresolved unfinished migrations … 0/.test(retried.out)
+          && retried.out.includes(`${retriedMigration} … recorded as applied after 1 rolled-back attempt(s)`),
+          `exit ${retried.code}`);
+
+        await onDb(async (c2) => {
+          await c2.query(`INSERT INTO "_prisma_migrations"
+            (id, checksum, migration_name, logs, started_at, applied_steps_count)
+            SELECT $1, checksum, migration_name, 'scratch unresolved failure', now(), 0
+            FROM "_prisma_migrations" WHERE id = $2`, [failedId, rolledId]);
+        });
+        const failed = run();
+        ok("pre.p3009 · an unresolved failed attempt is NO-GO even when a successful row also exists — migrate deploy would stop at P3009",
+          failed.code === 1 && /NO-GO/.test(failed.out)
+          && /unresolved unfinished migrations … 1/.test(failed.out)
+          && failed.out.includes(`blocked by an unclean migration: ${retriedMigration}`),
+          `exit ${failed.code}`);
+      } finally {
+        await onDb(async (c2) => {
+          await c2.query(`DELETE FROM "_prisma_migrations" WHERE id = ANY($1::text[])`, [[rolledId, failedId]]);
+        });
+      }
+      const cleaned = run();
+      ok("pre.retry-clean · after removing only the two scratch history rows, the GO returns",
+        cleaned.code === 0 && /✅ GO/.test(cleaned.out) && /unresolved unfinished migrations … 0/.test(cleaned.out),
+        `exit ${cleaned.code}`);
+
       // The five names, taken from the script's OWN derivation rather than typed here a second time.
       const named = /indexes named by that file … (\d+): ([^\n]+)/.exec(after.out);
       const idxNames = named ? named[2].split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -1301,7 +1350,7 @@ if (STORE === "memory") {
 
       const houseDirs = (git(["ls-tree", "--name-only", "HEAD", `${MIGS}/`]).split("\n"))
         .map((l) => l.trim().replace(`${MIGS}/`, "")).filter((f) => /_house_bot_(?:tables|markers)$/.test(f)).sort();
-      ok("rel.0 · the two house migration folders are read OUT of the tree, never typed into this suite",
+      ok("rel.0 · the two September house migration folders (tables, markers — N5 added a third, read by the script itself) are read OUT of the tree, never typed into this suite",
         houseDirs.length === 2, j(houseDirs));
       const target = `${MIGS}/${houseDirs[1] ?? houseDirs[0]}/migration.sql`;
       const original = execFileSync("git", ["show", `HEAD:${target}`], { cwd: REPO_ROOT, maxBuffer: 64 * 1024 * 1024 });

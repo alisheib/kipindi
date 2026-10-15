@@ -152,6 +152,9 @@ export type StoredHouseBotControl = {
   gCapStaffChosenDailyTzs: number | null;
   gTargetsMaxActive: number | null;
   gStaffChosenMaxCounterpartyShare: number | null;
+  /** N5 · the daily budget for desk-against-desk pairs; NULL = never. Nothing reads either before N6. */
+  gCapPairRoundsPerDay: number | null;
+  gCapPairDailyTzs: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -527,6 +530,8 @@ export const HOUSE_BOT_CONTROL_COLUMNS: Record<keyof StoredHouseBotControl, Colu
   gCapStaffChosenDailyTzs: { col: "gCapStaffChosenDailyTzs", kind: "bigint" },
   gTargetsMaxActive: { col: "gTargetsMaxActive", kind: "int" },
   gStaffChosenMaxCounterpartyShare: { col: "gStaffChosenMaxCounterpartyShare", kind: "int" },
+  gCapPairRoundsPerDay: { col: "gCapPairRoundsPerDay", kind: "int" },
+  gCapPairDailyTzs: { col: "gCapPairDailyTzs", kind: "bigint" },
   createdAt: { col: "createdAt", kind: "ts" },
   updatedAt: { col: "updatedAt", kind: "ts" },
 };
@@ -700,6 +705,8 @@ export const HOUSE_UNIQUE_INDEXES = [
   "hbi_manual_live_market_uq",
   "hbt_active_market_uq",
   "hbp_actor_submit_uq",
+  /* N5 · created by the THIRD house migration, so Postgres checks it after every index above. */
+  "hbi_pair_anchor_uq",
 ] as const;
 export type HouseUniqueIndex = (typeof HOUSE_UNIQUE_INDEXES)[number];
 
@@ -728,6 +735,7 @@ const MEM_UNIQUES: { [T in HouseTable]: ReadonlyArray<MemUnique<HouseRows[T]>> }
     { name: "hbi_fill_opener_anchor_uq", cols: ["kind", "anchorKey"], where: (r) => (r.kind === "FILL" || r.kind === "OPENER") && r.status !== "CANCELLED" },
     { name: "hbi_manual_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "MANUAL" },
     { name: "hbi_manual_live_market_uq", cols: ["marketId"], where: (r) => r.kind === "MANUAL" && LIVE_STATUSES.includes(r.status) },
+    { name: "hbi_pair_anchor_uq", cols: ["anchorKey"], where: (r) => r.kind === "PAIR" && r.status !== "CANCELLED" },
   ],
   HouseBotTarget: [
     { name: "hbt_active_market_uq", cols: ["marketId"], where: (r) => r.status === "ACTIVE" },
@@ -798,16 +806,18 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
     { name: "HouseBotControl_gCapDailyLossTzs_check", ok: (r) => between(r.gCapDailyLossTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gCapOpenExposureTzs_check", ok: (r) => between(r.gCapOpenExposureTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gCapPerMarketTzs_check", ok: (r) => between(r.gCapPerMarketTzs, 0, TZS_MAX) },
-    { name: "HouseBotControl_gMaxBetsPerMinute_check", ok: (r) => between(r.gMaxBetsPerMinute, 1, 20) },
+    { name: "HouseBotControl_gMaxBetsPerMinute_check", ok: (r) => between(r.gMaxBetsPerMinute, 1, 120) },
     { name: "HouseBotControl_gMaxBetsPerDay_check", ok: (r) => between(r.gMaxBetsPerDay, 1, 28800) },
     { name: "HouseBotControl_gCounterPerPlayerPerDay_check", ok: (r) => between(r.gCounterPerPlayerPerDay, 1, 1440) },
     { name: "HouseBotControl_gCounterPerPlayerTzsPerDay_check", ok: (r) => between(r.gCounterPerPlayerTzsPerDay, 0, TZS_MAX) },
-    { name: "HouseBotControl_maxDesignatedBots_check", ok: (r) => between(r.maxDesignatedBots, 1, 20) },
+    { name: "HouseBotControl_maxDesignatedBots_check", ok: (r) => between(r.maxDesignatedBots, 1, 100) },
     { name: "HouseBotControl_bellAlertsPerHour_check", ok: (r) => between(r.bellAlertsPerHour, 0, 60) },
     { name: "HouseBotControl_gCapStaffChosenPerDay_check", ok: (r) => between(r.gCapStaffChosenPerDay, 1, 200) },
     { name: "HouseBotControl_gCapStaffChosenDailyTzs_check", ok: (r) => between(r.gCapStaffChosenDailyTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gTargetsMaxActive_check", ok: (r) => between(r.gTargetsMaxActive, 1, 200) },
     { name: "HouseBotControl_gStaffChosenMaxCounterpartyShare_check", ok: (r) => between(r.gStaffChosenMaxCounterpartyShare, 10, 100) },
+    { name: "HouseBotControl_gCapPairRoundsPerDay_check", ok: (r) => between(r.gCapPairRoundsPerDay, 1, 28800) },
+    { name: "HouseBotControl_gCapPairDailyTzs_check", ok: (r) => between(r.gCapPairDailyTzs, 0, TZS_MAX) },
   ],
   HouseBotRuntime: [
     { name: "HouseBotRuntime_key_check", ok: (r) => r.key === "global" || r.key === "beat:planner"
@@ -836,6 +846,8 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
       || (r.triggerPositionId != null && r.anchorKey === r.triggerPositionId) },
     { name: "HouseBotIntent_market_anchor_check", ok: (r) => !(r.kind === "FILL" || r.kind === "OPENER") || r.anchorKey === r.marketId },
     { name: "HouseBotIntent_manual_anchor_check", ok: (r) => r.kind !== "MANUAL" || manualAnchorOk(r.anchorKey, r.requestedById) },
+    { name: "HouseBotIntent_pair_anchor_check", ok: (r) => r.kind !== "PAIR" || r.anchorKey === `pair:${r.marketId}` },
+    { name: "HouseBotIntent_pair_updown_check", ok: (r) => r.kind !== "PAIR" || r.productLine === "UPDOWN" },
     { name: "HouseBotIntent_idempotencyKey_check", ok: (r) => r.idempotencyKey === `hb:${r.id}` },
     { name: "HouseBotIntent_placed_check", ok: (r) => r.status !== "PLACED" || r.positionId != null },
   ],
@@ -939,9 +951,9 @@ export function checkViolation(err: unknown): string | null {
 
 /**
  * Each house unique index by the table it lives on and the key columns Postgres's DETAIL lists
- * (in index order). Two indexes share `("anchorKey")` on intents; the key's value tells them apart,
- * because a MANUAL anchor always starts "manual:" (`HouseBotIntent_manual_anchor_check`) and a
- * COUNTER anchor is a position id.
+ * (in index order). Three indexes share `("anchorKey")` on intents; the key's value tells them apart, because a
+ * MANUAL anchor always starts "manual:" (`HouseBotIntent_manual_anchor_check`), a PAIR anchor always starts "pair:"
+ * (`HouseBotIntent_pair_anchor_check`, N5) and a COUNTER anchor is a position id.
  */
 const UNIQUE_BY_KEY: Readonly<Partial<Record<HouseTable, readonly { cols: string; name: HouseUniqueIndex; value?: (v: string) => boolean }[]>>> = {
   HouseBot: [
@@ -950,7 +962,8 @@ const UNIQUE_BY_KEY: Readonly<Partial<Record<HouseTable, readonly { cols: string
   ],
   HouseBotIntent: [
     { cols: "anchorKey", name: "hbi_manual_anchor_uq", value: (v) => v.startsWith("manual:") },
-    { cols: "anchorKey", name: "hbi_counter_anchor_uq", value: (v) => !v.startsWith("manual:") },
+    { cols: "anchorKey", name: "hbi_pair_anchor_uq", value: (v) => v.startsWith("pair:") },
+    { cols: "anchorKey", name: "hbi_counter_anchor_uq", value: (v) => !v.startsWith("manual:") && !v.startsWith("pair:") },
     { cols: "kind,anchorKey", name: "hbi_fill_opener_anchor_uq" },
     { cols: "marketId", name: "hbi_manual_live_market_uq" },
     { cols: "positionId", name: "HouseBotIntent_positionId_key" },
@@ -1210,6 +1223,8 @@ function toHouseBotControl(r: any): StoredHouseBotControl {
     gCapStaffChosenDailyTzs: big(r.gCapStaffChosenDailyTzs),
     gTargetsMaxActive: int(r.gTargetsMaxActive),
     gStaffChosenMaxCounterpartyShare: int(r.gStaffChosenMaxCounterpartyShare),
+    gCapPairRoundsPerDay: int(r.gCapPairRoundsPerDay),
+    gCapPairDailyTzs: big(r.gCapPairDailyTzs),
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
   };
@@ -1415,6 +1430,8 @@ export interface HouseBotStore {
   listByUserId(userId: string, tx?: HouseTx): Promise<StoredHouseBot[]>;
   /** Every non-REMOVED bot, oldest designation first. */
   listNonRemoved(tx?: HouseTx): Promise<StoredHouseBot[]>;
+  /** Every account ever designated, including REMOVED records retained for AML review. */
+  listEverDesignatedUserIds(tx?: HouseTx): Promise<string[]>;
   countLive(tx?: HouseTx): Promise<number>;
   /** Status move conditional on `from`. A removal stamps `removedAt` on the database clock. */
   setStatus(id: string, input: SetStatusInput, tx?: HouseTx): Promise<StoredHouseBot | null>;
@@ -1614,7 +1631,11 @@ export interface HouseBotIntentStore {
    * cancelled, expired or placed by someone else. `counterparties` is MANUAL THIN's pro-rata
    * attribution, written in the same statement (N1 §3 H4).
    */
-  markPlaced(id: string, positionId: string, tx: HouseTx, opts?: { counterparties?: ReadonlyArray<Record<string, unknown>> }): Promise<boolean>;
+  markPlaced(id: string, positionId: string, tx: HouseTx, opts?: {
+    counterparties?: ReadonlyArray<Record<string, unknown>>;
+    /** Persisted with PLACED: this stake became the second desk leg under H3's market lock. */
+    twoSidedDesk?: boolean;
+  }): Promise<boolean>;
   /** Transient requeue (MON-10): `attempts` back, `transientAttempts` up. Null means no time is
    *  left before `staleAt` or the deadline, and the caller writes it terminal. */
   requeueTransient(id: string, me: string, backoffMs: number): Promise<StoredHouseBotIntent | null>;
@@ -1672,6 +1693,12 @@ export interface HouseBotIntentStore {
    * `test:dal-parity` holds.
    */
   staffChosenPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
+  /** PAIR rows placed in one EAT day. A passed day key is never re-derived. */
+  pairPlacedToday(input: { houseBotId: string | null; dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
+  /** PAIRs and marked shared COUNTERs placed in one EAT day; the desk-wide two-sided budget. */
+  twoSidedPlacedToday(input: { dayKey?: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
+  /** Live PAIR reservations whose possible fire window overlaps one EAT day. */
+  pairLiveToday(input: { houseBotId: string | null; dayKey: string }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** The activity feed, newest first, keyset-paged, and `offset`-paged for a numbered pager (C7, ruling 345). */
   listFeed(filter: IntentFeedFilter, tx?: HouseTx): Promise<Page<StoredHouseBotIntent>>;
   /**
@@ -1797,7 +1824,7 @@ export type PlacedInWindow = { houseBotId: string; count: number; stakeTzs: numb
 export type LiveIntentSummary = { houseBotId: string; count: number; stakeTzs: number; minDueAt: string | null; maxDueAt: string | null };
 
 export type PlannableMarketsInput = {
-  kind: "FILL" | "OPENER";
+  kind: "FILL" | "OPENER" | "PAIR";
   productLine: "MARKET" | "UPDOWN";
   fromIso: string;
   toIso: string | null;
@@ -1834,8 +1861,34 @@ export type HouseBotUsage = {
 export type HouseMarketUsage = {
   /** Another bot holds an OPEN marked position here (OTHER_BOT, PLAN I3). */
   otherBotOpen: boolean;
+  /** OPEN positions of other designated accounts, split by side for I3. */
+  otherBotYesOpen: boolean;
+  otherBotNoOpen: boolean;
+  /** Distinct other designated accounts with OPEN positions. */
+  otherBotCount: number;
+  /** Present only when exactly one other account holds the market. */
+  otherBotId: string | null;
+  otherBotUserId: string | null;
+  otherBotOpenStakeTzs: number;
+  /** This account already holds an OPEN marked position on the market. */
+  ownBotOpen: boolean;
+  /** Any OPEN unmarked position on either side. */
+  playerOpen: boolean;
   /** All bots' OPEN marked stake here (GLOBAL_PER_MARKET). */
   houseOpenStakeTzs: number;
+};
+
+/** Only the identity facts needed to keep two designated accounts on different holders. */
+export type HouseHolderFacts = {
+  userId: string;
+  email: string | null;
+  emailVerified: boolean;
+  idType: string | null;
+  idNumber: string | null;
+  idFingerprint: string | null;
+  documentVerified: boolean;
+  fullName: string | null;
+  dob: string | null;
 };
 
 /** Every bot's marked positions in rolling windows (H4 GLOBAL_BETS_PER_MINUTE / _PER_DAY). */
@@ -1940,6 +1993,8 @@ export type HouseBlackoutRow = {
 export interface HouseSeamStore {
   botUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseBotUsage>;
   marketUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseMarketUsage>;
+  /** All KYC identities and confirmed email for each holder; plain SELECT on the bet's transaction. */
+  holderFacts(input: { userIds: readonly string[] }, tx?: HouseTx): Promise<HouseHolderFacts[]>;
   globalUsage(tx?: HouseTx): Promise<HouseGlobalUsage>;
   /**
    * ⭐ C7 STEP 4 (C7-SPEC ruling 351). Every bot's market-free rate usage in ONE statement, ordered by `houseBotId`:
@@ -2085,7 +2140,7 @@ function seededControl(now: string): StoredHouseBotControl {
     gMaxBetsPerMinute: null, gMaxBetsPerDay: null, gCounterPerPlayerPerDay: null, gCounterPerPlayerTzsPerDay: null,
     maxDesignatedBots: 5, bellAlertsPerHour: 20,
     gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null,
-    gStaffChosenMaxCounterpartyShare: null,
+    gStaffChosenMaxCounterpartyShare: null, gCapPairRoundsPerDay: null, gCapPairDailyTzs: null,
     createdAt: now, updatedAt: now,
   };
 }
@@ -2412,6 +2467,9 @@ const memoryHouseBots: HouseBotStore = {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED")
       .sort((a, b) => ms(a.designatedAt) - ms(b.designatedAt)).map(clone);
   },
+  async listEverDesignatedUserIds() {
+    return [...new Set([...memBots.values()].map((b) => b.userId))].sort();
+  },
   async countLive() {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED").length;
   },
@@ -2724,14 +2782,17 @@ const toIntentRow = (row: NewHouseBotIntent, createdAt: string): StoredHouseBotI
 
 /**
  * Ruling 97 · the memory twin of `ON CONFLICT (<the row's anchor index>) DO NOTHING`: is the row's OWN anchor taken?
- * `hbi_counter_anchor_uq` covers every COUNTER; `hbi_fill_opener_anchor_uq` a FILL/OPENER that is not CANCELLED.
+ * `hbi_counter_anchor_uq` covers every COUNTER; `hbi_fill_opener_anchor_uq` a FILL/OPENER that is not CANCELLED; `hbi_pair_anchor_uq` (N5) a PAIR that is not CANCELLED.
  */
 function memAnchorTaken(row: NewHouseBotIntent): boolean {
   if (row.kind === "COUNTER") return [...memIntents.values()].some((i) => i.kind === "COUNTER" && i.anchorKey === row.anchorKey);
   if (row.kind === "FILL" || row.kind === "OPENER") {
     return [...memIntents.values()].some((i) => i.kind === row.kind && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");
   }
-  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+  if (row.kind === "PAIR") {
+    return [...memIntents.values()].some((i) => i.kind === "PAIR" && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");
+  }
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL, OPENER or PAIR rows only (C4-SPEC ruling 97; N5)");
 }
 
 /** Ruling 97 · the anchor index a Postgres engine insert may treat as "already decided" — partial-index inference. */
@@ -2740,7 +2801,8 @@ function anchorConflictSql(kind: IntentKind): string {
   if (kind === "FILL" || kind === "OPENER") {
     return `ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING RETURNING *`;
   }
-  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+  if (kind === "PAIR") return `ON CONFLICT ("anchorKey") WHERE "kind" = 'PAIR' AND "status" <> 'CANCELLED' DO NOTHING RETURNING *`;
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL, OPENER or PAIR rows only (C4-SPEC ruling 97; N5)");
 }
 
 /** A planner scan row's market is out of every house scope when its title marks a demo (`isDemoMarket`'s prefix). */
@@ -2792,7 +2854,10 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   },
   async findByAnchor(kind, anchorKey) {
     const r = [...memIntents.values()].filter((i) => i.kind === kind && i.anchorKey === anchorKey)
-      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : -1))[0];
+      // Only PAIR re-plans can expose a cancelled predecessor under this anchor.
+      // Prefer the sole non-cancelled row even if the two writes share one millisecond.
+      .sort((a, b) => (kind === "PAIR" ? Number(b.status !== "CANCELLED") - Number(a.status !== "CANCELLED") : 0)
+        || ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : -1))[0];
     return r ? clone(r) : null;
   },
   async listLiveOnMarket(marketId) {
@@ -2857,7 +2922,10 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   async markPlaced(id, positionId, _tx, opts) {
     const i = memIntents.get(id);
     if (!i || i.status !== "CLAIMED" || i.positionId != null) return false;
-    const decision = opts?.counterparties ? { ...i.decision, counterparties: opts.counterparties } : i.decision;
+    const decision = opts?.counterparties || opts?.twoSidedDesk
+      ? { ...i.decision, ...(opts.counterparties ? { counterparties: opts.counterparties } : {}),
+        ...(opts.twoSidedDesk ? { twoSidedDesk: true } : {}) }
+      : i.decision;
     memWrite("HouseBotIntent", { ...i, status: "PLACED", positionId, finishedAt: nowIso(), decision }, "update");
     return true;
   },
@@ -2998,6 +3066,47 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     return memoryHouseBotIntents.staffChosenPlaced({
       houseBotId, fromIso: new Date(w.fromMs).toISOString(), toIso: new Date(w.toMs).toISOString(),
     });
+  },
+  async pairPlacedToday({ houseBotId, dayKey }) {
+    const w = eatDayWindow(dayKey ?? eatDayKey(Date.now()));
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey ?? "(now)")}`);
+    let count = 0, stakeTzs = 0;
+    for (const i of memIntents.values()) {
+      if (i.kind !== "PAIR" || i.status !== "PLACED" || i.finishedAt == null
+        || (houseBotId != null && i.houseBotId !== houseBotId)) continue;
+      const at = ms(i.finishedAt);
+      if (at < w.fromMs || at >= w.toMs) continue;
+      count++;
+      stakeTzs += i.stakeTzs;
+    }
+    return { count, stakeTzs };
+  },
+  async twoSidedPlacedToday({ dayKey }) {
+    const w = eatDayWindow(dayKey ?? eatDayKey(Date.now()));
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey ?? "(now)")}`);
+    let count = 0, stakeTzs = 0;
+    for (const i of memIntents.values()) {
+      if (i.status !== "PLACED" || i.finishedAt == null
+        || !(i.kind === "PAIR" || (i.kind === "COUNTER" && i.decision?.twoSidedDesk === true))) continue;
+      const at = ms(i.finishedAt);
+      if (at < w.fromMs || at >= w.toMs) continue;
+      count++;
+      stakeTzs += i.stakeTzs;
+    }
+    return { count, stakeTzs };
+  },
+  async pairLiveToday({ houseBotId, dayKey }) {
+    const w = eatDayWindow(dayKey);
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+    let count = 0, stakeTzs = 0;
+    for (const i of memIntents.values()) {
+      if (i.kind !== "PAIR" || (i.status !== "PENDING" && i.status !== "CLAIMED")
+        || (houseBotId != null && i.houseBotId !== houseBotId)) continue;
+      if (ms(i.dueAt) >= w.toMs || ms(i.staleAt) <= w.fromMs) continue;
+      count++;
+      stakeTzs += i.stakeTzs;
+    }
+    return { count, stakeTzs };
   },
   async listFeed(filter) {
     const rows = [...memIntents.values()].filter(memFeedMatches(filter));
@@ -3298,13 +3407,42 @@ const memoryHouseSeam: HouseSeamStore = {
     return { lastPlacedAt: lastPlacedAt == null ? null : new Date(ms(lastPlacedAt)).toISOString(), placedLastHour, placedLastDay, countOnMarket, stakeOnMarket };
   },
   async marketUsage({ houseBotId, marketId }) {
-    let otherBotOpen = false, houseOpenStakeTzs = 0;
+    let houseOpenStakeTzs = 0, otherBotOpenStakeTzs = 0;
+    let otherBotYesOpen = false, otherBotNoOpen = false, playerOpen = false, ownBotOpen = false;
+    const others = new Map<string, string>();
     for (const p of await positionStore.listForMarket(marketId)) {
-      if (p.houseBotId == null || p.status !== "OPEN") continue;
+      if (p.status !== "OPEN") continue;
+      if (p.houseBotId == null) { playerOpen = true; continue; }
       houseOpenStakeTzs += p.stake;
-      if (p.houseBotId !== houseBotId) otherBotOpen = true;
+      if (p.houseBotId === houseBotId) ownBotOpen = true;
+      if (p.houseBotId !== houseBotId) {
+        others.set(p.houseBotId, p.userId);
+        otherBotOpenStakeTzs += p.stake;
+        if (p.side === "YES") otherBotYesOpen = true;
+        else otherBotNoOpen = true;
+      }
     }
-    return { otherBotOpen, houseOpenStakeTzs };
+    const only = others.size === 1 ? [...others.entries()][0] : null;
+    return { otherBotOpen: others.size > 0, otherBotYesOpen, otherBotNoOpen,
+      otherBotCount: others.size, otherBotId: only?.[0] ?? null, otherBotUserId: only?.[1] ?? null,
+      otherBotOpenStakeTzs, playerOpen, ownBotOpen, houseOpenStakeTzs };
+  },
+  async holderFacts({ userIds }) {
+    const out: HouseHolderFacts[] = [];
+    for (const userId of new Set(userIds)) {
+      const u = await db.user.findById(userId);
+      if (!u) continue;
+      const identities = await db.kyc.listByUser(userId);
+      for (const k of identities.length > 0 ? identities : [null]) {
+        out.push({
+          userId, email: u.email ?? null, emailVerified: u.emailVerifiedAt != null,
+          idType: k?.idType ?? null, idNumber: k?.idNumber ?? null,
+          idFingerprint: k?.idFingerprint ?? null, documentVerified: k?.idVerifiedAt != null,
+          fullName: k?.fullName ?? null, dob: k?.dob ?? null,
+        });
+      }
+    }
+    return out;
   },
   async globalUsage() {
     const now = Date.now();
@@ -3460,8 +3598,11 @@ const memoryHouseSeam: HouseSeamStore = {
         cutoffMs = ms(m.selectionClosedAt);
       }
       if (kind === "OPENER" && (Number(m.yesPool) !== 0 || Number(m.noPool) !== 0)) continue;
+      if (kind === "PAIR" && (productLine !== "UPDOWN"
+        || ((Number(m.yesPool) > 0) === (Number(m.noPool) > 0)))) continue;
       if (!(cutoffMs > from) || cutoffMs > to) continue;
-      const planned = [...memIntents.values()].some((i) => i.kind === kind && i.anchorKey === m.id && (i.status !== "CANCELLED" || i.reasonCode === "CANCELLED_BY_ADMIN"));
+      const anchorKey = kind === "PAIR" ? `pair:${m.id}` : m.id;
+      const planned = [...memIntents.values()].some((i) => i.kind === kind && i.anchorKey === anchorKey && (i.status !== "CANCELLED" || i.reasonCode === "CANCELLED_BY_ADMIN"));
       if (planned) continue;
       out.push({ id: m.id, cutoff: new Date(cutoffMs).toISOString() });
     }
@@ -3502,7 +3643,12 @@ const memoryHouseSeam: HouseSeamStore = {
   async revertPlacedInMemory(id, positionId) {
     const i = memIntents.get(id);
     if (!i || i.status !== "PLACED" || i.positionId !== positionId) return false;
-    memWrite("HouseBotIntent", { ...i, status: "CLAIMED", positionId: null, finishedAt: null }, "update");
+    // Memory's no-funds compensation undoes the placement marker too. The SQL twin rolls
+    // the whole transaction back, including its JSONB merge in markPlaced.
+    const decision = { ...i.decision };
+    delete decision.twoSidedDesk;
+    delete decision.counterparties;
+    memWrite("HouseBotIntent", { ...i, status: "CLAIMED", positionId: null, finishedAt: null, decision }, "update");
     return true;
   },
 };
@@ -3703,6 +3849,10 @@ const prismaHouseBots: HouseBotStore = {
   async listNonRemoved(tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "status" <> 'REMOVED' ORDER BY "designatedAt" ASC`, []);
     return rows.map(toHouseBot);
+  },
+  async listEverDesignatedUserIds(tx) {
+    const rows = await sql(tx, `SELECT DISTINCT "userId" FROM "HouseBot" ORDER BY "userId"`, []);
+    return rows.map((r) => String(r.userId));
   },
   async countLive(tx) {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBot" WHERE "status" <> 'REMOVED'`, []);
@@ -4067,6 +4217,26 @@ async function staffChosenSums(tx: HouseTx | undefined, houseBotId: string | nul
   return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
 }
 
+async function pairSums(tx: HouseTx | undefined, houseBotId: string | null, rangeSql: (p: Params) => string, live = false): Promise<{ count: number; stakeTzs: number }> {
+  const p = new Params();
+  // The partial hbi_pair_anchor_uq contains all non-CANCELLED PAIR rows, including PLACED and live.
+  const where = [`"kind" = 'PAIR'`, live ? `"status" IN ('PENDING', 'CLAIMED')` : `"status" = 'PLACED'`, rangeSql(p)];
+  if (houseBotId != null) where.push(`"houseBotId" = ${p.raw(houseBotId, "text")}`);
+  const rows = await sql(tx, `SELECT count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs"`
+    + ` FROM "HouseBotIntent" WHERE ${where.join(" AND ")}`, p.values);
+  return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
+}
+
+/** The global two-sided budget counts the durable placement marker, never current OPEN positions. */
+async function twoSidedSums(tx: HouseTx | undefined, rangeSql: (p: Params) => string): Promise<{ count: number; stakeTzs: number }> {
+  const p = new Params();
+  const rows = await sql(tx, `SELECT count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs"`
+    + ` FROM "HouseBotIntent" WHERE "status" = 'PLACED'`
+    + ` AND ("kind" = 'PAIR' OR ("kind" = 'COUNTER' AND "decision"->>'twoSidedDesk' = 'true'))`
+    + ` AND ${rangeSql(p)}`, p.values);
+  return { count: Number(rows[0]?.n ?? 0), stakeTzs: Number(rows[0]?.tzs ?? 0) };
+}
+
 /**
  * ⭐ THE ACTIVITY FEED'S ONE PREDICATE, POSTGRES SIDE (C7 step 5, ruling 345; ruling 177's shape).
  * `listFeed` and `countFeed` both build their `WHERE` from here, binding into the SAME `Params` the caller
@@ -4131,7 +4301,8 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async findByAnchor(kind, anchorKey, tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBotIntent" WHERE "kind" = $1::text AND "anchorKey" = $2::text`
-      + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT 1`, [kind, anchorKey]);
+      + ` ORDER BY CASE WHEN $1::text = 'PAIR' AND "status" <> 'CANCELLED' THEN 0 ELSE 1 END,`
+      + ` "createdAt" DESC, "id" DESC LIMIT 1`, [kind, anchorKey]);
     return rows[0] ? toHouseBotIntent(rows[0]) : null;
   },
   async listLiveOnMarket(marketId, tx) {
@@ -4203,8 +4374,10 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
       `"positionId" = ${p.col("HouseBotIntent", "positionId", positionId)}`,
       `"finishedAt" = now()`,
     ];
-    if (opts?.counterparties) {
-      sets.push(`"decision" = "decision" || jsonb_build_object('counterparties', ${p.raw(JSON.stringify(opts.counterparties), "jsonb")})`);
+    if (opts?.counterparties || opts?.twoSidedDesk) {
+      const extra = { ...(opts.counterparties ? { counterparties: opts.counterparties } : {}),
+        ...(opts.twoSidedDesk ? { twoSidedDesk: true } : {}) };
+      sets.push(`"decision" = "decision" || ${p.raw(JSON.stringify(extra), "jsonb")}`);
     }
     const text = updateSql("HouseBotIntent", sets,
       `"id" = ${p.raw(id, "text")} AND "status" = 'CLAIMED' AND "positionId" IS NULL`, { returning: `"id"` });
@@ -4372,6 +4545,36 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
         `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
     }
     return staffChosenSums(tx, houseBotId, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
+  },
+  async pairPlacedToday({ houseBotId, dayKey }, tx) {
+    if (dayKey != null) {
+      const w = eatDayWindow(dayKey);
+      if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+      const fromIso = new Date(w.fromMs).toISOString();
+      const toIso = new Date(w.toMs).toISOString();
+      return pairSums(tx, houseBotId, (p) =>
+        `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
+    }
+    return pairSums(tx, houseBotId, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
+  },
+  async twoSidedPlacedToday({ dayKey }, tx) {
+    if (dayKey != null) {
+      const w = eatDayWindow(dayKey);
+      if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+      const fromIso = new Date(w.fromMs).toISOString();
+      const toIso = new Date(w.toMs).toISOString();
+      return twoSidedSums(tx, (p) =>
+        `"finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)} AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)}`);
+    }
+    return twoSidedSums(tx, () => `"finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`);
+  },
+  async pairLiveToday({ houseBotId, dayKey }, tx) {
+    const w = eatDayWindow(dayKey);
+    if (!w) throw new Error(`house-bot-dal: could not compute the EAT day ${JSON.stringify(dayKey)}`);
+    const fromIso = new Date(w.fromMs).toISOString();
+    const toIso = new Date(w.toMs).toISOString();
+    return pairSums(tx, houseBotId, (p) =>
+      `"dueAt" < ${p.col("HouseBotIntent", "dueAt", toIso)} AND "staleAt" > ${p.col("HouseBotIntent", "staleAt", fromIso)}`, true);
   },
   async listFeed(filter, tx) {
     const p = new Params();
@@ -4689,10 +4892,37 @@ const prismaHouseSeam: HouseSeamStore = {
     };
   },
   async marketUsage({ houseBotId, marketId }, tx) {
-    const rows = await sql(tx, `SELECT coalesce(bool_or("houseBotId" <> $2::text), false) AS "other",`
-      + ` coalesce(sum("stake"), 0)::text AS "open"`
-      + ` FROM "Position" WHERE "marketId" = $1::text AND "status"::text = 'OPEN' AND "houseBotId" IS NOT NULL`, [marketId, houseBotId]);
-    return { otherBotOpen: rows[0].other === true, houseOpenStakeTzs: Number(rows[0].open) };
+    const other = `"houseBotId" IS NOT NULL AND "houseBotId" <> $2::text`;
+    const rows = await sql(tx, `SELECT count(DISTINCT "houseBotId") FILTER (WHERE ${other})::int AS "otherCount",`
+      + ` min("houseBotId") FILTER (WHERE ${other}) AS "otherId",`
+      + ` min("userId") FILTER (WHERE ${other}) AS "otherUserId",`
+      + ` coalesce(bool_or((${other}) AND "side"::text = 'YES'), false) AS "otherYes",`
+      + ` coalesce(bool_or((${other}) AND "side"::text = 'NO'), false) AS "otherNo",`
+      + ` coalesce(bool_or("houseBotId" IS NULL), false) AS "playerOpen",`
+      + ` coalesce(bool_or("houseBotId" = $2::text), false) AS "ownOpen",`
+      + ` coalesce(sum("stake") FILTER (WHERE ${other}), 0)::text AS "otherStake",`
+      + ` coalesce(sum("stake") FILTER (WHERE "houseBotId" IS NOT NULL), 0)::text AS "open"`
+      + ` FROM "Position" WHERE "marketId" = $1::text AND "status"::text = 'OPEN'`, [marketId, houseBotId]);
+    const r = rows[0];
+    const otherBotCount = Number(r.otherCount);
+    return { otherBotOpen: otherBotCount > 0, otherBotYesOpen: r.otherYes === true, otherBotNoOpen: r.otherNo === true,
+      otherBotCount, otherBotId: otherBotCount === 1 ? String(r.otherId) : null,
+      otherBotUserId: otherBotCount === 1 ? String(r.otherUserId) : null,
+      otherBotOpenStakeTzs: Number(r.otherStake), playerOpen: r.playerOpen === true, ownBotOpen: r.ownOpen === true,
+      houseOpenStakeTzs: Number(r.open) };
+  },
+  async holderFacts({ userIds }, tx) {
+    if (userIds.length === 0) return [];
+    const rows = await sql(tx, `SELECT u."id", u."email", (u."emailVerifiedAt" IS NOT NULL) AS "emailVerified",`
+      + ` k."idType", k."idNumber", k."idFingerprint", (k."idVerifiedAt" IS NOT NULL) AS "documentVerified",`
+      + ` k."fullName", k."dob" FROM "User" u LEFT JOIN "KycSubmission" k ON k."userId" = u."id"`
+      + ` WHERE u."id" = ANY($1::text[]) ORDER BY u."id", k."createdAt" DESC, k."id" DESC`, [[...new Set(userIds)]]);
+    return rows.map((r) => ({
+      userId: String(r.id), email: r.email == null ? null : String(r.email), emailVerified: r.emailVerified === true,
+      idType: r.idType == null ? null : String(r.idType), idNumber: r.idNumber == null ? null : String(r.idNumber),
+      idFingerprint: r.idFingerprint == null ? null : String(r.idFingerprint), documentVerified: r.documentVerified === true,
+      fullName: r.fullName == null ? null : String(r.fullName), dob: r.dob == null ? null : iso(r.dob),
+    }));
   },
   async globalUsage(tx) {
     const rows = await sql(tx, `SELECT count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 minute')::int AS "minute",`
@@ -4861,7 +5091,9 @@ const prismaHouseSeam: HouseSeamStore = {
       + ` AND (($1::text = 'MARKET' AND m."selectionClosedAt" IS NOT NULL)`
       + ` OR ($1::text = 'UPDOWN' AND r."id" IS NOT NULL AND c."state"::text = 'RUNNING' AND a."enabled" = true))`
       + ` AND ($2::text <> 'OPENER' OR (m."yesPool" = 0 AND m."noPool" = 0))`
-      + ` AND NOT EXISTS (SELECT 1 FROM "HouseBotIntent" i WHERE i."kind" = $2::text AND i."anchorKey" = m."id"`
+      + ` AND ($2::text <> 'PAIR' OR ($1::text = 'UPDOWN' AND ((m."yesPool" > 0 AND m."noPool" = 0) OR (m."noPool" > 0 AND m."yesPool" = 0))))`
+      + ` AND NOT EXISTS (SELECT 1 FROM "HouseBotIntent" i WHERE i."kind" = $2::text`
+      + ` AND i."anchorKey" = CASE WHEN $2::text = 'PAIR' THEN 'pair:' || m."id" ELSE m."id" END`
       + ` AND (i."status" <> 'CANCELLED' OR i."reasonCode" = 'CANCELLED_BY_ADMIN'))) x`
       + ` WHERE x."cutoff" > $3::timestamp AND ($4::timestamp IS NULL OR x."cutoff" <= $4::timestamp)`
       + ` AND ($5::timestamp IS NULL OR (x."cutoff", x."id") > ($5::timestamp, $6::text))`

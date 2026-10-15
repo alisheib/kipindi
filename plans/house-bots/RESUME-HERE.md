@@ -295,7 +295,12 @@ baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS
 `10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
 quotes that line byte-for-byte — both move in the same commit as the flag.
 
-## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · ✅ PHASE 1 LIVE `8cb4bff0c` 2026-10-14 22:24 EAT (read back: `docs/HOUSE-BOTS.md` §12.19) · PHASE 2 HELD (Ali) · PHASE 3 NEXT — board row ▶ 0h
+## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · ✅ PHASE 1 LIVE `8cb4bff0c` 2026-10-14 22:24 EAT (read back: `docs/HOUSE-BOTS.md` §12.19) · PHASE 2 HELD (Ali) · PHASE 3 BUILT, GATE RUNNING (`house-bots-n5` `fd9034e25`) · PHASE 4 DESIGNED — board row ▶ 0h
+
+> ⭐ **2026-10-15 — HANDED TO A CODEX SESSION (Ali): start at [`HANDOFF-CODEX-2026-10-15.md`](HANDOFF-CODEX-2026-10-15.md).**
+> It holds the N5 release steps (the gate, the read-only production preflight, the ONE migration apply with its
+> line-ending checksum trap and its P3009 recovery, the push, the live checks) and the N6 design with every place it
+> plugs in. Where it and the text below disagree, the handoff is newer.
 
 **Ali's words, verbatim:** *"lets analye it and fid a way to allow as much as we wnat bots to work with each othr, eve
 et agasint eac hother … so on bot blcks in queu th ebot afetr it etc whast do u reocmmed for full workign expeirence.
@@ -319,7 +324,7 @@ daily budget, may fetch their own price, and the roster may pass 20".
 |---|---|---|---|
 | 0 | Settings Ali saves: opener delay max 90 → 45 s; gMaxBetsPerDay → 1,000; gMaxBetsPerMinute → 12; freqMaxPerMarket ≥ 2; freqMinGapSec 20–30; floats above their floors | Ali, on the desk | ⏳ told to Ali 2026-10-14 (in the session's report and the desk guide) |
 | **1** | **N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel** (`04-amendments.md` § N3) | engineering only | ✅ **LIVE `8cb4bff0c`** 2026-10-14 22:24 EAT — gate green at `974e36956` on the SSD worktree, read back on production (`docs/HOUSE-BOTS.md` §12.19). NEXT ON IT: the day's production read (the probe's tables in §12.19's last row), then Ali's Phase 2 decision |
-| 2 | The desk's own fresh price — a TwelveData refresher on the engine's leader, its own cache, a daily credit ceiling (amends A15) | Ali ✅ (ruled) | ⏸ **HELD** — Ali asked why before deciding (`COMPLIANCE-DECISIONS.md` 2026-10-14, "Later the same day"); measure a day of N3 live, then ask him. WIP parked, local branch `house-bots-p2-desk-price` at `14275ddea` (`fetchVendorBars`, `deskBars`/`publishDeskBar`, `house-bot/desk-price.ts`; not wired, no tests) |
+| 2 | The desk's own fresh price — a TwelveData refresher on the engine's leader, its own cache, a daily credit ceiling (amends A15) | Ali ✅ (ruled) | ⏸ **HELD, AND NOT NEEDED FOR NOW** — the first eleven hours live lost 0 rounds to a stale price (was 3.8 an hour; `docs/HOUSE-BOTS.md` §12.19), so the recommendation to Ali is to keep it parked at no cost. Ali asked why before deciding (`COMPLIANCE-DECISIONS.md` 2026-10-14, "Later the same day"); measure a day of N3 live, then ask him. WIP parked, local branch `house-bots-p2-desk-price` at `14275ddea` (`fetchVendorBars`, `deskBars`/`publishDeskBar`, `house-bot/desk-price.ts`; not wired, no tests) |
 | 3 | One house migration: `gCapPairRoundsPerDay` / `gCapBothSidesDailyTzs` (NULL = never; checked in H4), a `PAIR` kind with its own anchor, a CANCELLED exception on `hbi_counter_anchor_uq`, CHECKs past 20 accounts and 20 bets a minute; the four "exactly two house folders" gates rewritten | Ali ✅ (ruled) | ⏳ **NEXT** — roster ceiling **100** (Ali, 2026-10-14) |
 | 4 | Two-sided play: 4a answer a player from another account (same-side-only OTHER_BOT for an opted-in untargeted COUNTER); 4b pair empty Up & Down rounds within the budget (PAIR branches in H2/H3/fire, in-lock) — amends I3 and RULES.md §2.11 in the same commit | Ali ✅ (ruled) + the written AML officer procedure | ⏳ — pairs only between DIFFERENT holders, enforced in code; every AML flag on a desk pair goes to Ali before it is closed (Ali, 2026-10-14) |
 

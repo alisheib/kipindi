@@ -67,7 +67,7 @@ How this plan was produced: an 8-agent code map, 3 slice designs, 3 adversarial 
 |---|---|
 | I1 | Bot bets go only through the bet service. `placeHouseBet` may only **add** refusals and markers, and only `house-bot/fire.ts` may import it (source pin). |
 | I2 | The engine reads only what players can see: pools, status, cutoff/open times, the public Up & Down board (`livePrice`, `openPrice`, targets), and the triggering position plus that account's own positions on that market (anti-abuse). It **never** reads Sentinel fields, staged outcomes, objections, observations or oracle modules, drafts or AI data. |
-| I3 | Never bot-vs-bot. Never react to house positions, designated accounts, staff or AGENT accounts. One bot per market, one side per market. |
+| I3 | At most one desk account per SIDE of a market, and one side per account (OPPOSITE_SIDE). An untargeted answer to a player may use the unheld opposite side only when that account's `share.otherSide` is on; its size still follows the player's locked money alone. On an Up & Down round with no player stake, a second account of a DIFFERENT holder may take the opposite side only when its own pairing rules allow it. Both second-leg routes require the two desk-wide daily budgets: each placed PAIR or opposite-side shared COUNTER consumes one EAT-day bet and its stake from the same budget. Clearing either budget stops new second legs; a player-only COUNTER is unaffected. A desk, staff or AGENT stake never triggers another desk answer. Openers, fills, Enter now and targets keep the whole-market hold. Amended under the 2026-10-14 owner ruling; see `docs/COMPLIANCE-DECISIONS.md` § 2026-10-15. |
 | I4 | Exactly once. A durable intent with a stable key `hb:<intentId>` is written **before** the bet. A duplicate fire is a no-op; a lost timer only delays. |
 | I5 | Master switch and bot state are read fresh at fire time and authoritatively inside the bet's locks. A failed read means no bet. |
 | I6 | **Every** cap (money and count) is enforced inside the bet's own locks, never only in the engine. |
@@ -369,9 +369,9 @@ RETURNING *;
 | daily loss (realised stops the master) | 100,000 | ≤ daily stake |
 | open exposure | 300,000 | ≥ every bot's per-market cap |
 | per market | 30,000 | ≥ every bot's stake max |
-| bets/minute | 6 | 1–20 |
+| bets/minute | ~~6~~ 12 | ~~1–20~~ 1–120 (amended by N5, 2026-10-15: the CHECK is `BETWEEN 1 AND 120`; the recommended value is the desk guide's 12) |
 | counters per player per day | 3 and 30,000 | — |
-| max designated bots | 5 | 1–20, ≥ current count |
+| max designated bots | 5 | ~~1–20~~ 1–100, ≥ current count (amended by N5, 2026-10-15: Ali's ceiling of 100) |
 | bell alerts/hour | 20 | 0–60 |
 | ~~holder notices/hour~~ | ~~6~~ | ~~0–60 (0 = summary only)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** removed before it shipped; the holder is told nothing, so the limit had no reader (D19c; C4 ruling 153). |
 

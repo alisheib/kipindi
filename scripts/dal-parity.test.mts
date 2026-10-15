@@ -535,6 +535,22 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("6.seam.sql · prismaHouseSeam takes no row lock (no FOR UPDATE / FOR SHARE)", priSeam.length > 500 && !/FOR\s+(UPDATE|SHARE|NO KEY UPDATE)/i.test(priSeam), `region ${priSeam.length} chars`);
     ok("6.seam.sql · intentFreshness reads staleAt on clock_timestamp(), never now() (N1 §3)",
       /"staleAt" > clock_timestamp\(\)/.test(objectMethod(priSeam, "intentFreshness")));
+    const marketMem = objectMethod(region(houseDalSrc, "const memoryHouseSeam:"), "marketUsage");
+    const marketPri = objectMethod(priSeam, "marketUsage");
+    ok("6.pair.market · both marketUsage twins aggregate player presence, other account side and stake",
+      /playerOpen/.test(marketMem) && /otherBotYesOpen/.test(marketMem) && /otherBotNoOpen/.test(marketMem)
+        && /otherBotOpenStakeTzs/.test(marketMem) && /otherBotCount/.test(marketMem)
+        && /playerOpen/.test(marketPri) && /otherYes/.test(marketPri) && /otherNo/.test(marketPri)
+        && /otherStake/.test(marketPri) && /otherCount/.test(marketPri));
+    ok("6.pair.holder · both holderFacts twins read KYC history and confirmed email without a row lock",
+      /listByUser/.test(objectMethod(region(houseDalSrc, "const memoryHouseSeam:"), "holderFacts"))
+        && /KycSubmission/.test(objectMethod(priSeam, "holderFacts"))
+        && /emailVerifiedAt/.test(objectMethod(priSeam, "holderFacts")));
+    const planMem = objectMethod(region(houseDalSrc, "const memoryHouseSeam:"), "plannableMarkets");
+    const planPri = objectMethod(priSeam, "plannableMarkets");
+    ok("6.pair.scan · both plannableMarkets twins require one UPDOWN side and the pair: anchor",
+      /kind === "PAIR"/.test(planMem) && /productLine !== "UPDOWN"/.test(planMem) && /`pair:\$\{m\.id\}`/.test(planMem)
+        && /\$2::text <> 'PAIR'/.test(planPri) && /'pair:' \|\| m\."id"/.test(planPri));
     ok("6.seam.c1 · CONTROL · a planted FOR UPDATE is caught", /FOR\s+(UPDATE|SHARE|NO KEY UPDATE)/i.test(`SELECT 1 FROM "Position" FOR UPDATE`));
   }
 
@@ -587,10 +603,12 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("6.sealed.sql · insertTargetedIfActive holds the target FOR SHARE before inserting",
     /FOR SHARE[\s\S]*insertSql\("HouseBotIntent"[\s\S]*anchorConflictSql\(row\.kind\)/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertTargetedIfActive")));
   {
-    const conflict = houseDalSrc.slice(houseDalSrc.indexOf("function anchorConflictSql("), houseDalSrc.indexOf("function anchorConflictSql(") + 900);
+    const conflict = houseDalSrc.slice(houseDalSrc.indexOf("function anchorConflictSql("), houseDalSrc.indexOf("function anchorConflictSql(") + 1400);
     ok("6.sealed.sql · ruling 97 · the engine insert swallows only its own anchor index (partial-index inference, never a bare ON CONFLICT DO NOTHING)",
       conflict.includes(`ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER' DO NOTHING`)
         && conflict.includes(`ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING`)
+        // N5 · the PAIR anchor index, the FILL/OPENER rule (a CANCELLED pair may be planned again).
+        && conflict.includes(`ON CONFLICT ("anchorKey") WHERE "kind" = 'PAIR' AND "status" <> 'CANCELLED' DO NOTHING`)
         && !/ON CONFLICT DO NOTHING/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertIgnoringConflict")));
   }
   {
@@ -617,11 +635,39 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("6.twin.348 · CONTROL · both method bodies were really found, and the DB-clock branch is still there for the callers that ask for TODAY",
       memToday.length > 60 && priToday.length > 120 && /EAT_TODAY_FROM_SQL/.test(priToday),
       `memory ${memToday.length} · prisma ${priToday.length}`);
+    const priPair = objectMethod(priIntents, "pairPlacedToday");
+    const memPair = objectMethod(memIntentsSrc, "pairPlacedToday");
+    ok("6.pair.day · both pairPlacedToday twins use the caller's EAT day and count PLACED PAIR stakes",
+      /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memPair)
+        && /i\.kind !== "PAIR" \|\| i\.status !== "PLACED"/.test(memPair)
+        && /eatDayWindow\(dayKey\)/.test(priPair) && /pairSums/.test(priPair));
+    const priTwoSided = objectMethod(priIntents, "twoSidedPlacedToday");
+    const memTwoSided = objectMethod(memIntentsSrc, "twoSidedPlacedToday");
+    const twoSidedAt = houseDalSrc.indexOf("async function twoSidedSums(");
+    const sqlTwoSided = twoSidedAt < 0 ? "" : houseDalSrc.slice(twoSidedAt, houseDalSrc.indexOf("\n/**", twoSidedAt));
+    ok("6.pair.shared · both desk budget twins count PLACED PAIRs and durably marked COUNTERs on the caller's EAT day",
+      /eatDayWindow\(dayKey \?\? eatDayKey\(Date\.now\(\)\)\)/.test(memTwoSided)
+        && /i\.kind === "PAIR"/.test(memTwoSided) && /i\.kind === "COUNTER" && i\.decision\?\.twoSidedDesk === true/.test(memTwoSided)
+        && /twoSidedSums/.test(priTwoSided) && /eatDayWindow\(dayKey\)/.test(priTwoSided)
+        && /"kind" = 'PAIR'/.test(sqlTwoSided) && /"kind" = 'COUNTER'/.test(sqlTwoSided)
+        && /"decision"->>'twoSidedDesk' = 'true'/.test(sqlTwoSided));
+    const priLive = objectMethod(priIntents, "pairLiveToday");
+    const memLive = objectMethod(memIntentsSrc, "pairLiveToday");
+    ok("6.pair.live · both pairLiveToday twins count queued PAIRs whose fire window overlaps the caller's EAT day",
+      /i\.status !== "PENDING" && i\.status !== "CLAIMED"/.test(memLive)
+        && /i\.dueAt/.test(memLive) && /i\.staleAt/.test(memLive) && /eatDayWindow\(dayKey\)/.test(memLive)
+        && /dueAt/.test(priLive) && /staleAt/.test(priLive) && /pairSums/.test(priLive) && /eatDayWindow\(dayKey\)/.test(priLive));
+    ok("6.pair.anchor · both findByAnchor twins prefer the sole live PAIR over a cancelled timestamp tie",
+      /kind === "PAIR"/.test(objectMethod(memIntentsSrc, "findByAnchor"))
+        && /status !== "CANCELLED"/.test(objectMethod(memIntentsSrc, "findByAnchor"))
+        && /CASE WHEN \$1::text = 'PAIR' AND "status" <> 'CANCELLED'/.test(objectMethod(priIntents, "findByAnchor")));
   }
 
-  // Every name the migrations fix, mirrored for the memory twin — no database needed to compare.
+  // Every name the migrations fix, mirrored for the memory twin — no database needed to compare. ⭐ N5 · EVERY house
+  // folder, in creation order (the third, `…_house_bot_pairs_roster`, adds the PAIR index and checks). A CHECK it drops and
+  // re-adds under the same name appears twice in the text; the comparison below is by SET, so that is one name.
   const migDir = join(ROOT, "prisma/migrations");
-  const houseSql = readdirSync(migDir).filter((f) => /^\d{14}_house_bot_(tables|markers)$/.test(f)).sort()
+  const houseSql = readdirSync(migDir).filter((f) => /^\d{14}_house_bot_\w+$/.test(f)).sort()
     .map((f) => readFileSync(join(migDir, f, "migration.sql"), "utf8").replace(/--.*$/gm, "")).join("\n");
   const listAt = houseDalSrc.indexOf("export const HOUSE_UNIQUE_INDEXES = [");
   const exportedUniques = listAt < 0 ? [] : [...houseDalSrc.slice(listAt, houseDalSrc.indexOf("] as const;", listAt)).matchAll(/"(\w+)"/g)].map((m) => m[1]);

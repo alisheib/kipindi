@@ -19,7 +19,9 @@ import { SkCard, SkChip, SkKpiRow, SkTableCard } from "@/components/admin/admin-
  * way-out and Last bet columns their page and their reader — rulings 432(h), 432(g)) (`p-3` on every cell, which is 16px on this
  * repo's overridden spacing scale — see the call site below, where that number is stated once and measured by
  * `test:house-bot-console` 1.417).
- * ⛔ NO PAGER GHOST: the roster is bounded by the configured maximum (1–20), so it renders none.
+ * ⛔ NO PAGER GHOST. Until N5 the roster was bounded at twenty, one page; since N5 (ceiling 1–100) the kit PAGER draws
+ *   past twenty accounts — but it sits BELOW the rows, so its arrival moves nothing above it, while a ghost would paint
+ *   a PAGER the common desk (twenty accounts or fewer) never has and then vanish. So still none, now for that reason.
  */
 export default function AdminDeskLoading() {
   return (

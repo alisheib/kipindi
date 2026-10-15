@@ -2705,6 +2705,23 @@ async function fanOutHouseAdmin(recipients: Array<{ id: string; email?: string |
   return delivered;
 }
 
+/** An AML finding on a designated desk account is sent to the owner once before an officer handles it. */
+export async function notifyAdminsDeskAmlFlag(opts: { type: "STAKE_SPIKE" | "VELOCITY" }): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const kind = opts.type === "STAKE_SPIKE" ? "stake spike" : "high frequency";
+  return fanOutHouseAdmin(recipients, {
+    titleEn: "AML finding · owner review",
+    titleSw: "Taarifa ya AML · ukaguzi wa mmiliki",
+    titleZh: "反洗钱警示 · 负责人审核",
+    bodyEn: `A designated desk account has a ${kind} finding. Review it in the AML queue; confirm whether a second designated account took the opposite side before closing it.`,
+    bodySw: "Akaunti ya dawati imepata taarifa ya AML. Kagua foleni na uthibitishe wahusika kabla ya kuifunga.",
+    bodyZh: "指定柜台账户出现反洗钱警示。关闭前请在队列中核查相关账户。",
+    href: "/admin/aml",
+    dedupe: false,
+  }, "desk-aml-owner");
+}
+
 /** Every automatic house stake, as it is placed (PLAN §7). Bell only, never email, never SMS (04 C13). */
 export async function notifyAdminsHouseBotBet(opts: {
   botId: string; label: string; side: string; stakeTzs: number; marketTitle: string; marketId: string; intentId: string; at: string;

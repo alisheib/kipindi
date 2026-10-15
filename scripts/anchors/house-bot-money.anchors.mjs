@@ -182,10 +182,18 @@ export const MUTATIONS = [
   {
     name: "I3 · a second bot may join a market another bot holds",
     file: SEAM,
-    from: `  if (market.otherBotOpen) return refuse(conflict("OTHER_BOT"));`,
-    to: `  void market.otherBotOpen;`,
+    from: `  if (market.otherBotOpen && (!mayShare || sideTakenByOther || market.otherBotCount !== 1)) return refuse(conflict("OTHER_BOT"));`,
+    to: `  if (false) return refuse(conflict("OTHER_BOT"));`,
     expect: "3.8 · bot B on the same market → house_market_conflict{OTHER_BOT}",
     suite: "money-mem",
+  },
+  {
+    name: "N6 · a paired round's settlement drops both statutory levies from the fee",
+    file: SVC,
+    from: `  const settleLevies = levySplit(settleFee.fee, settleCfg);`,
+    to: `  const settleLevies = levySplit(0, settleCfg);`,
+    expect: "5n6.6 · pool clears and TRA plus GBT are booked on the fee",
+    suite: "money-pg",
   },
   {
     name: "N1 §3 · the blackout ignores a reopened market",
