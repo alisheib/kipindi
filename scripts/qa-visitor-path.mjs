@@ -1,6 +1,6 @@
 /** S10 WP8a: local, in-memory browser drive from a journey guest's pick through a real registration and first bet.
  * KP_BASE=http://localhost:3043 npm run qa:visitor-path -- [OUTSIDE_REPO_OUTPUT]
- * KP_ONLY=core,tiles,keyboard,states selects groups. ENGINE=webkit runs the same browser controls in WebKit.
+ * KP_ONLY=core,tiles,keyboard,states,refusals selects groups. ENGINE=webkit runs the same browser controls in WebKit.
  * KP_NO_PASS=1 exercises ACTIVE without a staff pass; STAFF_PREVIEW uses the real officer door.
  * Requires a local dev server with DISABLE_ADMIN_TOTP=true. Production and configured databases are refused.
  */
@@ -18,7 +18,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-visitor-path-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const sections = ["core", "tiles", "classic", "codes", "keyboard", "states"];
+const sections = ["core", "tiles", "classic", "codes", "keyboard", "states", "refusals"];
 const only = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (only.some(s => !sections.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${sections.join(",")}`); process.exit(2); }
 const run = s => !only.length || only.includes(s);
@@ -395,6 +395,58 @@ try {
     await joiner.close(); contexts.delete(joiner);
     await referrer.close(); contexts.delete(referrer);
   }
+  if (run("refusals")) {
+    const ref = "50PICK-AG-ABC123", invite = "INV-9";
+    const suffix = randomBytes(5).toString("hex");
+    const local = `71${String(BigInt(`0x${suffix}`) % 10_000_000n).padStart(7, "0")}`;
+    const password = `Voda2026!${suffix}Aa`;
+    const existing = await post(admin, "seed-admin", { role: "PLAYER", phone: `+255${local}`,
+      name: "Visitor QA Existing Player", password, balance: 0 });
+    if (!existing.userId || existing.note) throw new Error("G premise: fresh existing phone could not be seeded");
+    const refused = await context("sw");
+    const page = await pageIn(refused, `/?ref=${ref}&invite=${invite}`);
+    const pick = page.locator('[data-sheet] a[data-bet-side="YES"]').first();
+    await pick.waitFor({ timeout: 30_000 });
+    const seed = await pick.locator("xpath=ancestor::*[@data-sheet][1]").getAttribute("data-sheet").then(JSON.parse);
+    if (!seed?.bettable || !seed?.min) throw new Error("G premise: home pick must be bettable");
+    await pick.click();
+    await page.locator('[data-testid="journey-bet-sheet"][data-guest]').waitFor({ timeout: 30_000 });
+    await page.getByTestId("journey-sheet-signup").click();
+    await page.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+    const next = `/?bet=${seed.id}.YES.${seed.min}`;
+    await fillRegister(page, local, `visitor-refusal-${suffix}@example.com`, password);
+    await page.locator('button[type="submit"]').click();
+    const existsPanel = page.locator('[data-refusal="exists"][role="alert"]');
+    await existsPanel.waitFor({ timeout: 60_000 });
+    const signIn = existsPanel.locator('a[href^="/auth/login"]');
+    const signInHref = new URL(await signIn.getAttribute("href") ?? "/", BASE);
+    record("G taken phone offers sign-in with page and codes", signInHref.pathname === "/auth/login"
+      && signInHref.searchParams.get("next") === next && signInHref.searchParams.get("ref") === ref
+      && signInHref.searchParams.get("invite") === invite);
+    await screenshot(page, "refusal-taken-phone-sw-390");
+    await signIn.click();
+    await page.waitForURL(url => url.pathname === "/auth/login", { timeout: 60_000 });
+    const login = new URL(page.url());
+    record("G taken-phone sign-in door keeps the choice and codes", login.searchParams.get("next") === next
+      && login.searchParams.get("ref") === ref && login.searchParams.get("invite") === invite);
+    await page.locator("#identifier").fill(local);
+    await page.waitForFunction(value => document.querySelector('input[type="hidden"][name="identifier"]')?.value === value,
+      local, { timeout: 30_000 });
+    await page.locator("#password").fill(`Wrong!${suffix}Aa`);
+    await Promise.all([page.waitForURL(url => url.pathname === "/auth/login" && url.searchParams.get("error") === "wrong_credentials",
+      { timeout: 60_000 }), page.locator('form:has(input[name="password"]) button[type="submit"]').click()]);
+    const retry = new URL(page.url());
+    record("G wrong-password hop keeps page and codes", retry.searchParams.get("next") === next
+      && retry.searchParams.get("ref") === ref && retry.searchParams.get("invite") === invite
+      && await page.locator('[role="alert"]').count() === 1);
+    const create = page.locator('a[href^="/auth/register"]').first();
+    const createHref = new URL(await create.getAttribute("href") ?? "/", BASE);
+    record("G wrong-password Create one keeps page and codes", createHref.searchParams.get("next") === next
+      && createHref.searchParams.get("ref") === ref && createHref.searchParams.get("invite") === invite);
+    await screenshot(page, "refusal-wrong-password-sw-390");
+    await refused.close(); contexts.delete(refused);
+    missing("G cooling-off and maintenance at landing", "Run the controlled RG and officer-maintenance subcells after local browser stability is restored");
+  }
   if (run("classic")) {
     if (pre.health.simpleJourney?.state === "ACTIVE") missing("H classic no-pass control", "ACTIVE shows journey to every guest; run a STAFF_PREVIEW or WITHDRAWN local server");
     else {
@@ -524,7 +576,8 @@ try {
   }
   if (run("core") || run("tiles")) {
     if (!run("states")) missing("A closed, one-sided and moved-pool", "Run KP_ONLY=states on a local preview server");
-    missing("F verified-agent binding, G refusals and I second flag state", "Requires the agent approval workflow and a second controlled local server");
+    if (!run("refusals")) missing("G taken phone and wrong password", "Run KP_ONLY=refusals on a local preview server");
+    missing("F verified-agent binding and I second flag state", "Requires the agent approval workflow and a second controlled local server");
     missing("K ended-session and O production tap frame", "Next WP8a package");
     if (!run("keyboard")) missing("L focus/keyboard", "Run KP_ONLY=keyboard in Chromium and WebKit");
   }
