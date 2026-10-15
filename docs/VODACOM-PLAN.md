@@ -393,16 +393,14 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S8 — the bet sheet and low balance — is in progress (§0k): the saved implementation checkpoint is live;
-finish the strict150ms tap failure, the six outstanding browser scenarios, current responsive/chunk diagnostics,
-then the final WP11/WP12 closure and relevant parity ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md),
-its Amendments A1–A24 overriding its body). (2) S7 is closed (§0j): WP0–WP12 live, the close at `a590790c` (2026-10-13
-01:39 EAT); the current temporary zero-wallet PLAYER proves E3 page isolation (§0k), while existing mobile01 remains
-unused and notification transport is not proved by its blocked requests. S7 is ✅
-only at S14. (3) The two classic gaps Ali ruled "fix now" are live, each its own release: L3 `c604343b` (§0h point 80)
-and L2 `9c167bef` (§0h point 81). OMEGA's own 2026-10-07/08 S7 WP1 is on origin for reference only as
-`vodacom-s7-wp1-omega`, never to be merged (§0h point 66). (4) When Ali says so, and not before (nothing turns on until
-the plan is done): an officer approves the S2 short titles, and Ali presses S1's preview switch.
+**Next:** (1) Release the three validated live fixes, then V1's visual changes. (2) Close S8 (§0k): re-measure A21 at
+V1's exact release tip on a quiet machine, compare classic parity v4 cell by cell, run the closing battery with the
+database suites and record the result; [E3] was measured 385/0 under Ali's one-attempt authorization. (3) Complete
+S9's funding-key and provider-reference safety work, migration and backup-schema/PG proofs before its own release.
+(4) Complete and release S10–S13 one lane at a time with each lane's browser, visual, mutation, money and production
+proof. (5) Prepare S14's preview, identity checklist and real TZS 1,000 staff journey for Ali and the agency; S15 needs
+Ali's later go after the actual gates, and S16 waits at least seven real days after launch. Keep `STAFF_PREVIEW` until
+that go and keep the 6/18 session count until a board row actually closes.
 
 Session law, the same for every session — ⭐ Ali, 2026-10-10: *"eliminate any checks that are never expected to be wrong,
 or that are very repetitive … maximum efficiency of our time through this plan"*:
