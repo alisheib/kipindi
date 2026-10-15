@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  SHELVED_ITEMS, validateShelvedInventory, validateShelvedSource, readShelvedSource,
+  SHELVED_ITEMS, validatePositionsShelving, validateShelvedInventory, validateShelvedSource, readShelvedSource,
 } from "./lib/s16-shelved.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,7 +40,35 @@ if (mode === "--prove-red") {
     }
     passed++;
   }
-  console.log(`red:shelved ${passed}/${cases.length + 4}: inventory mutations and still-mounted source refused`);
+  // Build the future parked shape from the actual retained classic JSX. Once
+  // S16 lands, the real page itself becomes the control. Neither plant edits
+  // the checkout: one calls the parked helper again; the other deletes a
+  // retained classic piece that SHELVED.md promises can be re-mounted.
+  const positions = read("src/app/positions/page.tsx");
+  let parkedControl = positions;
+  if (validatePositionsShelving(positions).length) {
+    const open = positions.indexOf("<PageContainer");
+    const close = positions.lastIndexOf("</PageContainer>");
+    if (open < 0 || close <= open) throw new Error("classic positions JSX control missing");
+    const classic = positions.slice(open, close + "</PageContainer>".length);
+    parkedControl = `export default async function PositionsPage() { return <TicketsView />; }\nfunction ShelvedClassicPositionsPage() { return (${classic}); }`;
+  }
+  const controlErrors = validatePositionsShelving(parkedControl);
+  if (controlErrors.length) throw new Error(`parked positions control failed: ${controlErrors.join("; ")}`);
+  const body = /export default async function PositionsPage\([\s\S]*?\)\s*\{/.exec(parkedControl);
+  if (!body) throw new Error("exported positions function body not found");
+  const at = body.index + body[0].length;
+  const remounted = `${parkedControl.slice(0, at)}\nreturn ShelvedClassicPositionsPage();${parkedControl.slice(at)}`;
+  if (!validatePositionsShelving(remounted).some((error) => error.includes("can still reach classic JSX"))) {
+    throw new Error("calling the parked classic positions view escaped the guard");
+  }
+  passed++;
+  const removed = parkedControl.replace("<PnlSummaryStrip", "<RemovedPnlSummaryStrip");
+  if (!validatePositionsShelving(removed).some((error) => error.includes("parked classic JSX lost <PnlSummaryStrip"))) {
+    throw new Error("deleting the parked P&L strip escaped the guard");
+  }
+  passed++;
+  console.log(`red:shelved ${passed}/${cases.length + 6}: inventory mutations, classic re-mount, retained-code loss and pre-S16 source refused`);
   process.exit(0);
 }
 

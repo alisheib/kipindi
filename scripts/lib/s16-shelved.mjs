@@ -102,6 +102,29 @@ export function validateShelvedInventory(markdown, scripts, { root = process.cwd
 
 function has(source, pattern) { return typeof pattern === "string" ? source.includes(pattern) : pattern.test(source); }
 
+/**
+ * Keep the old positions JSX in this same file as a parked helper, while the
+ * exported page takes the journey path. A direct call to that helper from the
+ * exported page would re-mount the old money and navigation UI.
+ */
+export function validatePositionsShelving(source) {
+  const errors = [];
+  const liveAt = source.indexOf("export default async function PositionsPage(");
+  const parkedAt = source.indexOf("function ShelvedClassicPositionsPage(");
+  if (liveAt < 0 || parkedAt <= liveAt) return ["positions: exported page or in-place shelved classic helper is missing"];
+  const live = source.slice(liveAt, parkedAt);
+  const parked = source.slice(parkedAt);
+  if (!has(live, /<TicketsView\b/) || has(live, /\bif\s*\(\s*!?journey\s*\)/)
+    || has(live, /\bShelvedClassicPositionsPage\s*\(|<ShelvedClassicPositionsPage\b/)
+    || has(live, /<PnlSummaryStrip\b|<SearchBox\b|<PositionsBar\b|<PositionCard\b|<CountdownRing\b|<PageHeader\b|<Empty\b/)) {
+    errors.push("positions: exported page can still reach classic JSX or does not unconditionally render TicketsView");
+  }
+  for (const marker of ["<PageHeader", "<PnlSummaryStrip", "openYesStake", "openNoStake", "<SearchBox", "<PositionsBar", "<Empty", "<PositionCard", "<CountdownRing"]) {
+    if (!has(parked, marker)) errors.push(`positions: parked classic JSX lost ${marker}`);
+  }
+  return errors;
+}
+
 /** Final S16 source verdict. Grouping gives every inventory row a concrete parent check. */
 export function validateShelvedSource(read) {
   const errors = [];
@@ -116,8 +139,8 @@ export function validateShelvedSource(read) {
   check("floating", "src/components/layout/needle.tsx", (s) => has(s, "isJourneySurface(pathname)"), "Needle's journey-surface suppression is missing");
   check("floating", "src/components/social/channels-panel.tsx", (s) => has(s, "isJourneySurface(pathname)"), "channels' journey-surface suppression is missing");
   check("floating", "src/components/chat/ChatRoot.tsx", (s) => has(s, "isJourneySurface(pathname)"), "chat's journey-surface suppression is missing");
-  check("tickets", "src/app/positions/page.tsx", (s) => has(s, "<TicketsView")
-    && !has(s, /<PnlSummaryStrip\b|<SearchBox\b|<PositionsBar\b|<PositionCard\b|<CountdownRing\b|<PageHeader\b|<Empty\b/), "classic ticket branches still mount");
+  check("tickets", "src/app/positions/page.tsx", (s) => validatePositionsShelving(s).length === 0,
+    "classic positions JSX must stay in place as an uncalled helper while the exported page renders TicketsView");
   check("tickets", "src/components/journey/tickets/tickets-view.tsx", (s) => has(s, "<PositionsBarJourney")
     && has(s, "<TicketCard") && has(s, "/positions/performance")
     && !has(s, /<PnlSummaryStrip\b|<SearchBox\b|<PositionsBar\b|<PositionCard\b|<PositionShare\b|<CountdownRing\b/), "journey ticket view re-mounts a classic piece or loses the performance door");

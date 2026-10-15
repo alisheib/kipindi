@@ -29,8 +29,9 @@ deployed. `docs/VODACOM-PLAN.md` §5 S16 and the 2026-10-14 owner decision in
   evidence shape check and the source/inventory checks. This gate is first in
   `predeploy` **on this parked branch** and is deliberately red.
 - `red:shelved` catches deleted inventory rows, lost source files, unwired
-  tests, false dates, absent re-mount instructions, and still-mounted preview
-  source. `red:s16-release` catches a six-day observation, early proof,
+  tests, false dates, absent re-mount instructions, still-mounted preview
+  source, a call that re-mounts parked classic positions JSX, and deletion of
+  that parked JSX. `red:s16-release` catches a six-day observation, early proof,
   out-of-bounds verdict, omitted harm marker, rollback event, missing agency
   acknowledgment and an early S15 production read-back.
 
@@ -55,7 +56,11 @@ underlying records, not automated authentication of a human decision.
    its two measures with no pre-launch figure by design remain explicitly
    excluded, never treated as zero.
 2. Unmount classic branches from active routes, keeping their component files
-   and unit tests in place. Replace both `/markets` document and flight
+   and unit tests in place. The inline classic JSX in `src/app/positions/page.tsx`
+   must remain in that file as an uncalled `ShelvedClassicPositionsPage` helper;
+   the exported page must render `TicketsView` without a classic branch. The
+   source guard checks both sides, and `typecheck` compiles the parked helper.
+   Replace both `/markets` document and flight
    redirects with real 308 behavior. Restrict ticker routes to `/live` and
    `/results`. Keep the separate Card route operational when changing the
    direct mobile-money deposit page.
@@ -75,6 +80,6 @@ underlying records, not automated authentication of a human decision.
 
 **Current source check:** `test:shelved-inventory` passes 34/34. The final
 source check refuses 31 still-mounted/preview conditions at this checkpoint.
-`red:shelved` passes 9/9 and `red:s16-release` passes 7/7. A final
+`red:shelved` passes 11/11 and `red:s16-release` passes 7/7. A final
 `test:shelved` pass is not claimed; it must wait for the source pass above and
 the seven actual days.
