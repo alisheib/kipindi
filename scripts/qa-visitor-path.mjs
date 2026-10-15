@@ -288,7 +288,32 @@ try {
         && await oldPage.locator('[data-testid="journey-bet-sheet"][data-guest]').count() === 0
         && await oldPage.locator('[data-testid="side-picker"]').count() === 1);
       await screenshot(oldPage, "classic-question-guest-sw-390");
+      const classicDoor = oldPage.locator('aside[aria-labelledby="bet-panel-heading"] a[href^="/auth/register"]').first();
+      await classicDoor.click();
+      await oldPage.waitForURL(url => url.pathname === "/auth/register", { timeout: 60_000 });
+      const classicNext = `/markets/${catalogue.ids[0].id}?side=YES`;
+      record("H classic question sign-up carries its side", new URL(oldPage.url()).searchParams.get("next") === classicNext);
+      const classicSuffix = randomBytes(5).toString("hex");
+      const classicLocal = `71${String(BigInt(`0x${classicSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+      await fillRegister(oldPage, classicLocal, `classic-${classicSuffix}@example.com`, `Voda2026!${classicSuffix}Aa`);
+      await Promise.all([oldPage.waitForURL(url => url.pathname === `/markets/${catalogue.ids[0].id}` && url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+        oldPage.locator('button[type="submit"]').click()]);
+      const classicLanding = new URL(oldPage.url());
+      record("H classic registration returns to the question dial", classicLanding.searchParams.get("side") === "YES"
+        && await oldPage.locator('[data-testid="dial-lock-toggle"]').count() === 1
+        && await oldPage.locator('[data-testid="journey-bet-sheet"]').count() === 0);
+      await screenshot(oldPage, "classic-question-registered-sw-390");
       await classic.close(); contexts.delete(classic);
+      const direct = await context("sw", 390, pre.health.simpleJourney?.state === "WITHDRAWN");
+      const directPage = await pageIn(direct, "/auth/register");
+      const directSuffix = randomBytes(5).toString("hex");
+      const directLocal = `71${String(BigInt(`0x${directSuffix}`) % 10_000_000n).padStart(7, "0")}`;
+      await fillRegister(directPage, directLocal, `classic-direct-${directSuffix}@example.com`, `Voda2026!${directSuffix}Aa`);
+      await Promise.all([directPage.waitForURL(url => url.pathname === "/" && url.searchParams.get("welcome") === "new", { timeout: 120_000 }),
+        directPage.locator('button[type="submit"]').click()]);
+      record("H classic direct sign-up with no next returns home", await directPage.locator('[data-testid="journey-bet-sheet"]').count() === 0
+        && await directPage.locator('[data-testid="journey-card"]').count() === 0);
+      await direct.close(); contexts.delete(direct);
     }
   }
   if (run("tiles")) for (const locale of locales) for (const width of widths) {
