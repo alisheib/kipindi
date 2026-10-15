@@ -340,7 +340,8 @@ async function runBackground(src = sources): Promise<Check[]> {
   }
   // The opposing callback may win after the background lane read PROCESSING. Deposits durably require review;
   // withdrawals keep the winning money decision and alarm, with no invented second payout/refund.
-  for (const type of ["DEPOSIT", "WITHDRAWAL"] as const) for (const reported of ["CONFIRMED", "FAILED"] as const) {
+  for (const type of ["DEPOSIT", "WITHDRAWAL"] as const) for (const reported of (type === "WITHDRAWAL"
+    ? ["CONFIRMED", "FAILED", "PENDING", "UNSUPPORTED"] : ["CONFIRMED", "FAILED"]) as Array<"CONFIRMED" | "FAILED" | "PENDING" | "UNSUPPORTED">) {
     const owner = await player(), row = await txn(owner, { type, amount: type === "WITHDRAWAL" ? -5000 : 5000,
       createdAt: new Date(Date.now() - 31 * 60_000).toISOString() });
     if (type === "WITHDRAWAL") await db.wallet.adjust(`wlt_${owner}`, { hold: 5000 });
@@ -354,15 +355,15 @@ async function runBackground(src = sources): Promise<Check[]> {
       } } } as typeof db;
     const s = system(src, data), other = system(src);
     const winner = reported === "CONFIRMED" ? "FAILED" : "CONFIRMED";
-    const callbackDuringProbe = type === "WITHDRAWAL" && reported === "FAILED";
+    const callbackDuringProbe = type === "WITHDRAWAL" && reported !== "CONFIRMED";
     s.verify(async () => {
       // This S9 lane only records a review marker; it does not call the terminal
       // settle path whose pre-lock read the older race fixture delayed.
       if (callbackDuringProbe) await other.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: winner, amount: 5000 });
       return { status: reported, amount: 5000 };
     });
-    let failed = false;
-    const later = s.money.reconcileStalePayments().then(() => {}, () => { failed = true; });
+    let failed = false, sweep: any = null;
+    const later = s.money.reconcileStalePayments().then((result: any) => { sweep = result; }, () => { failed = true; });
     const reached = callbackDuringProbe ? (await later, true) : await Promise.race([entered.then(() => true), later.then(() => false)]);
     try { if (reached && !callbackDuringProbe) await other.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: winner, amount: 5000 }); }
     finally { release(); }
@@ -373,9 +374,12 @@ async function runBackground(src = sources): Promise<Check[]> {
       && s.seen.groups.length === 0 && other.seen.groups.length === (winner === "CONFIRMED" ? 1 : 0)
       && s.seen.notices.length === (type === "DEPOSIT" ? 1 : 0) && other.seen.notices.length === 1
       && (type === "DEPOSIT" ? fresh.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK : fresh.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK)
-      && (type === "WITHDRAWAL" && reported === "FAILED"
+      && (callbackDuringProbe
         ? !s.seen.audits.some(a => a.action === "webhook.terminal_contradicted")
         : s.seen.audits.some(a => a.action === "webhook.terminal_contradicted")));
+    if (callbackDuringProbe) ok(`background.race.withdraw-${reported.toLowerCase()}-query-no-stale-review`, sweep?.leftPending === 0
+      && !fresh?.providerStatus?.startsWith("REVIEW REQUIRED:")
+      && !s.seen.audits.some(a => a.action === "payments.reconcile_needs_review" && a.targetId === row.id));
   }
   for (const [type, reported] of [["DEPOSIT", "CONFIRMED"], ["WITHDRAWAL", "CONFIRMED"], ["WITHDRAWAL", "FAILED"]] as const) {
     // H2 (S9 root review): the balance refusals that remain are the impossible ones — negative, NaN, infinite. A fractional
