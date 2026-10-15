@@ -722,6 +722,8 @@
     "test:visual-pass-r4e": "tsx scripts/visual-pass-r4e.test.mts",
     "test:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts",
     "red:visual-pass-r4k": "tsx scripts/visual-pass-r4k.test.mts --prove",
+    "test:visual-v2b": "node scripts/visual-v2b.test.mjs",
+    "red:visual-v2b": "node scripts/visual-v2b.test.mjs --prove-red",
     "test:visual-pass-r4h": "tsx scripts/visual-pass-r4h.test.mts",
     "test:visual-pass-r5a": "tsx scripts/visual-pass-r5a.test.mts",
     "test:visual-pass-r5b": "tsx scripts/visual-pass-r5b.test.mts",

@@ -242,6 +242,7 @@ export function RegisterForm({
           <DateSelect
             name="dob"
             id="dob"
+            size="lg"
             required
             min="1930-01-01"
             max={dobMax}
@@ -271,9 +272,9 @@ export function RegisterForm({
           {/* No separator dots in the flow: on a phone the row wraps, and a dot ends up stranded at a line start
               or end either way (visual passes 2 and 2b). The gap separates the three links instead. */}
           <p className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5 text-body-sm text-text-subtle">
-            <Link href={"/legal/terms" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.terms}</Link>
-            <Link href={"/legal/privacy" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.privacy}</Link>
-            <Link href={"/legal/responsible-gambling" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.responsibleGambling}</Link>
+            <Link href={"/legal/terms" as never} className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.terms}</Link>
+            <Link href={"/legal/privacy" as never} className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.privacy}</Link>
+            <Link href={"/legal/responsible-gambling" as never} className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{copy.responsibleGambling}</Link>
           </p>
         </fieldset>
 

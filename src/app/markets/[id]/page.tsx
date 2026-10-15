@@ -993,7 +993,7 @@ export default async function MarketDetail({
 
           {/* 3b. Countdown — selection close + resolution (live only) */}
           {!isResolved && (
-            <div className="glass-panel p-4 space-y-2.5">
+            <div className="glass-panel p-5 space-y-2.5">
               {m.selectionClosedAt && !isSelectionClosed(m) && (
                 <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />
               )}

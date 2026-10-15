@@ -16,10 +16,10 @@ import { I } from "@/components/ui/glyphs";
 import { listPositionsForUser } from "@/lib/server/market-service";
 import { positionStore, roiOf } from "@/lib/server/market-dal";
 import { VolumeSparkline } from "@/components/charts/volume-spark";
-import { Tooltip } from "@/components/ui/tooltip";
+import { TierHint } from "./tier-hint";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Avatar, TierBadge as KitTierBadge } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { PageRibbon } from "@/components/layout/page-ribbon";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -31,6 +31,7 @@ import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
 import { FilterPill } from "@/components/ui/filter-pill";
+import { StripAutoScroll } from "@/components/ui/strip-autoscroll";
 import {
   LEADER_NATURAL_DIR,
   LEADER_PRODUCTS,
@@ -391,7 +392,8 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         * six of the eight fail SILENTLY when a route is missing, reporting a clean pass over a
         * page they never opened.
         */}
-      <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1" aria-label={t.leaderboard.productAria} data-filter-rail>
+      <nav className="kp-thin-scroll kp-strip-fade flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0" aria-label={t.leaderboard.productAria} data-filter-rail data-strip-autoscroll>
+        <StripAutoScroll />
         {LEADER_PRODUCTS.map((p) => (
           <FilterPill
             key={p}
@@ -544,7 +546,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 function HotChip({ streak, t }: { streak: number; t: Dict }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-pill border px-2 py-0.5 font-mono text-[10px] font-bold"
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill border px-2 py-0.5 font-mono text-[10px] font-bold"
       style={{ borderColor: "color-mix(in oklab, var(--metal-gold) 50%, transparent)", background: "color-mix(in oklab, var(--metal-gold) 10%, transparent)", color: "var(--metal-gold)" }}
     >
       <I.hot s={11} />
@@ -665,7 +667,7 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
               {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}
               {/* Round 5 (F12): a count's word is the dictionary's sentence word (`results.resolved`, "5 imetatuliwa" — the
                   /results tally's), never a column label lower-cased in code; the count grouped by `formatNumber`. */}
-              <span className="mt-1 font-mono text-[10px] text-text-subtle">
+              <span className="mt-1 whitespace-nowrap font-mono text-[10px] text-text-subtle">
                 {formatNumber(r.resolved)} {t.results.resolved}
               </span>
             </div>
@@ -676,8 +678,8 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
   );
 }
 
-// Uses the canonical <TierBadge> atom (one heraldic look platform-wide), wrapped
-// in the leaderboard's richer tooltip describing each tier's threshold.
+// The canonical badge and its disclosure share one 40px trigger; the explanation
+// stays in the row's flow, where a phone can wrap and scroll to every word.
 function TierBadge({ tier, t }: { tier: Tier; t: Dict }) {
   const desc = {
     sovereign: fill(t.leaderboard.tierSovereign, TIER_THRESHOLDS.sovereign),
@@ -686,11 +688,5 @@ function TierBadge({ tier, t }: { tier: Tier; t: Dict }) {
     silver:    t.leaderboard.tierSilver,
     bronze:    t.leaderboard.tierBronze,
   }[tier];
-  return (
-    <Tooltip label={desc}>
-      <span aria-label={tier}>
-        <KitTierBadge tier={tier} />
-      </span>
-    </Tooltip>
-  );
+  return <TierHint tier={tier} description={desc} />;
 }

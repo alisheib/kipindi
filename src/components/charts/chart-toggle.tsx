@@ -76,7 +76,7 @@ export function ChartToggle({
       <button
         type="button"
         onClick={toggle}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition-colors"
+        className="w-full flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-white/[0.03] transition-colors"
         aria-expanded={open}
       >
         <h2 id={HEADING_ID} className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
@@ -99,7 +99,7 @@ export function ChartToggle({
       </button>
 
       {open && (
-        <div className="px-4 pb-4 w-full overflow-hidden border-t border-border/40">
+        <div className="px-5 pb-4 w-full overflow-hidden border-t border-border/40">
           <div className="pt-3">
             <MarketCurve
               series={series}

@@ -34,10 +34,8 @@
  * which CSS cannot know here (`anchor-name` is past this product's browser floor, U29) — so it
  * would need JS geometry on every open, for a box that reads better in flow anyway.
  *
- * ⚠️ `Tooltip` (`./tooltip`) is UNCHANGED and still has all of this, because `/leaderboard`'s
- * badge tiers are its other consumer and they are a different unit's surface. Measured there at
- * 320 sw: 14 triggers at 22x22, popovers 264-380px, overflowing the right edge by up to 72px.
- * Filed, not fixed here.
+ * The leaderboard's tier badges also use this trigger and an in-flow panel now; their former
+ * tooltip cut descriptions at the phone edge and exposed a 22px hit area.
  */
 
 import type { ReactNode } from "react";

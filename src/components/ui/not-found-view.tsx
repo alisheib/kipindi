@@ -117,7 +117,7 @@ export function NotFoundView({
         </nav>
         <Link
           href={out.href as never}
-          className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
+          className="mt-6 inline-flex min-h-[var(--tap-min)] items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
         >
           {/* R9-A4 (2026-10-11): a centred run is centred by its INK — both marks pull their box padding out (`edge`), so
               the globe's 1.03px and the arrow's 2.0px no longer set the link 0.5px right of the column's centre. */}

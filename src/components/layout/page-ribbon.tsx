@@ -10,8 +10,8 @@
  * gets treated as load-bearing and left un-refactored, and it is the same
  * defect class as a doc citing a deleted file.
  *
- * Stats render as a horizontal row of slim "pill" capsules, mono
- * numerals. Wraps on narrow viewports.
+ * Stats render as label-over-value pairs on a two-column mobile grid, three
+ * columns once the reading measure allows it. Figures stay in mono.
  *
  * ⛔ NO GOLD ACCENT (2026-10-09, round 3, tiles 177 178 203). It had one, and its one use was the leaderboard's top tier:
  * "Fedha" — silver — struck in the money ink. Gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5);
@@ -41,12 +41,12 @@ export function PageRibbon({
     <div
       className={cn(
         "rounded-xl border border-border bg-bg-elevated/60 px-4 py-3",
-        "flex flex-wrap items-baseline gap-x-6 gap-y-2",
+        "grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3",
         className,
       )}
     >
       {stats.map((s, i) => (
-        <div key={i} className="flex items-baseline gap-2 min-w-0">
+        <div key={i} className="flex min-w-0 flex-col items-start gap-1">
           <div className="flex flex-col gap-0.5 min-w-0">
             <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle whitespace-nowrap">
               {s.label}

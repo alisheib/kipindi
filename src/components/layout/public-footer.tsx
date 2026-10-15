@@ -137,10 +137,10 @@ export function PublicFooter({
    * html element's scroll padding reads too — the classic tab bar and the journey's four tabs take the same room.
    */
   return (
-    <footer className="mt-8 lg:mt-12 bg-bg-elevated/40 pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))] lg:pb-0">
+    <footer className="mt-8 lg:mt-[var(--rh-close)] bg-bg-elevated/40 pb-[calc(var(--rail-h)+env(safe-area-inset-bottom))] lg:pb-0">
       {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
       <div aria-hidden className="claret-rule mx-auto max-w-board" />
-      <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">
+      <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-[12px]">
         {/* Brand + license */}
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
@@ -240,7 +240,7 @@ export function PublicFooter({
             <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors inline-flex flex-wrap items-center gap-x-[0.28em] min-h-[44px]">
               {/* 2026-09-14 — the value never splits (at 768 the sw column broke a number in two), and the separator
                   stays with its LABEL, so a wrapped row reads "Wasiliana nasi ·" / the number (visual pass 2b). */}
-              <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap">{supportPhone}</span>
+              <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap font-mono tabular-nums">{supportPhone}</span>
             </a>
           </li>
           <li>
@@ -255,7 +255,7 @@ export function PublicFooter({
               <span className="whitespace-nowrap">{t.footer.email} ·</span>{" "}<span className="whitespace-nowrap">{supportEmail}</span>
             </a>
           </li>
-          <li className="italic text-text-subtle text-body-sm text-balance break-keep">
+          <li className="flex min-h-[var(--tap-min)] items-center italic text-text-subtle text-body-sm text-balance break-keep">
             {t.footer.stopGambling}
           </li>
         </FooterCol>
