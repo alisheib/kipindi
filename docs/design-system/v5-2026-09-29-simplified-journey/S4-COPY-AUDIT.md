@@ -283,6 +283,22 @@ the pending body under 10 minutes is `common.depositPendingBody`; and the rest o
 - `journey.lowPendingLateBody` · "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa." · its approved sentence (review 3; s4-6-wait-over30), now a key — shown only from 30 minutes, where "Imepita dakika 30" is true.
 - `journey.ticketsHere` · "Tiketi zako" · the question page's holder block (s4-10-market).
 
+## S11 drafts (2026-10-14) — for the native review
+
+Added by S11 WP3 (`S11-PLAN.md` WP3, "New dictionary keys") as keys of the `journey` namespace — /help and the chat panel
+read them for a journey reader only (WP5, WP6), so no classic word changed (§3.9) — beside the chat's offline journey
+words (WP6, code strings in `send-message.ts`), the privacy line (WP4), the legal texts parked for the S15 commit (WP9)
+and the tagline's sw and zh (SJ-20, carried by WP9). Each line: key · sw · where it comes from. The dictionary stays the
+truth; `{max}` is `WITHDRAW_MAX_TZS`, formatted. All signed in review 9 below, its corrections applied.
+- `journey.faq2q` · "Makadirio yanabadilika baada ya kuweka dau?" · faq2's question in the journey's word, the estimate, not "odds" (deck slide 3).
+- `journey.faq2a` · "Kabla ya kuweka dau, swali linaonyesha makadirio ya unachoweza kushinda: pale yanapoweza kukadiriwa, …" · faq2's answer without the shelved dial and confirm popup.
+- `journey.faq3a` · "Bonyeza salio lako juu kisha uchague Toa pesa — au fungua Akaunti → Toa pesa — …" · the journey's two withdraw doors (the capsule's sheet, Akaunti's row).
+- `journey.faq5a` · "Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana, hasara na muda, kupumzika, au kujizuia." · the at-risk answer's shortest true path.
+- `journey.faq6a` · "Unaweza, kwa muda mfupi. Mara baada ya kuweka dau, tiketi yake kwenye Tiketi zangu inaonyesha Uza bila ada …" · the journey Sell look's words, with no typed minutes.
+- `journey.chatIntro` · "Niulize kuhusu amana, kuweka dau, malipo, au chochote usichokipata kwenye Msaada." · the chat panel's intro, without "dial".
+- `journey.chatStarterHowTo` · "Ninawezaje kucheza?" · the starter chip, in place of "Dial ya imani ni nini?".
+- The four zh How-to values (`howStep1Body`, `howStep2Title`, `howStep3Body`, `howExampleBody`) take the corrections the
+  "Chinese How-to" line above recorded: the side words in 「」, and 赢家按投注比例分享奖池 (pro rata, never "equally").
 ## S10 drafts (2026-10-15) — for the native review
 
 Added by S10 WP2 (`S10-PLAN.md` "New dictionary keys") as one key of the `journey` namespace; only the journey's guest bet
@@ -441,6 +457,39 @@ word was introduced.
 - `journey.ticketsHere` · sw "Tiketi zako" · en "Your tickets" · zh "您的注单" — *tiketi* (class 10) takes *zako*, as `journey.tabTickets` "Tiketi zangu" does.
 - Chinese: formal 您 wherever the player is addressed, 充值 for a deposit, 投注 for a bet, 注单 for a ticket (as S6's
   Tiketi zangu), and full-width punctuation between Chinese clauses.
+**9. S11's words (2026-10-14, S11 WP3; journey.*, the chat's offline journey words, the privacy line, the parked legal
+texts and the tagline) — independently reviewed and signed by Claude, the AI reviewer, under Ali's existing delegation of
+the Swahili-speaker role (2026-10-02, quoted in this section's heading).** This is the reviewer's sign-off, not a human or
+owner signature. 54 strings were read against the deck's binding words, the screen labels they name (`footer.setLimits`,
+`journey.withdrawAction`, `journey.tabAccount`, `journey.tabTickets`, `journey.sellFreeCta`, `journey.depositAction`,
+`journey.howToTitle`, `profile.kycIdentityVerification`), this audit's rules and S11-PLAN: 42 approved as drafted and 12
+corrected. The corrections are applied in the dictionary, `send-message.ts`, the privacy page and the parked texts, and
+S11-PLAN's tables take them:
+- `journey.faq2a` sw — *hasa kama* and *kamwe* restore the English's "exactly" and "never", two money promises the draft
+  dropped. And in all three languages the button multiple is qualified "where it can be worked out" (*pale yanapoweza
+  kukadiriwa* · 在可以估算时): the card prints a multiple only on its priced faces (journey-card.tsx `pickWords`).
+- `journey.faq2a` zh — 奖池 for 资金池: the product's Chinese word for the pool (faq1a beside it, howStep3Body, estimateNote).
+- `journey.faq3a` sw — *Bonyeza* for *Gusa*: the journey's tap word (review 3's "Bonyeza Juu au Chini", howStep2Title).
+- `journey.chatStarterHowTo` sw — "Ninawezaje kucheza?": a chip puts the player's own question as *Ninawezaje …?*, and
+  "Jinsi ya kucheza?" is the guide's title with a question mark. The chat's How-to intent matches *kucheza*.
+- `journey.faq5a` (en, sw, zh) — the loss limit named beside the deposit and time limits: the limits page offers it
+  (`rg.dailyLoss`), and the at-risk answer names every door it has.
+- The chat's identity step 1 and invites (sw) — *Nenda kwenye*: review 3's rule, *kwenda* to a place takes *kwenye*.
+- The chat's zh hand-off — 进一步协助 for 人工协助: the chat never says "human" (`send-message.ts`'s own rule).
+- The privacy line (sw) — *ufunguke wenyewe* for *ujifungue wenyewe*: *kujifungua* is "to give birth"; "opens by itself"
+  is the stative *kufunguka* (*mwongozo*, class 3).
+- Rules §4's new paragraph — sw *kutokana na mabwawa ya mwisho* (*kutoka kwa* takes a person); zh 奖池 (the page's word).
+- Terms §4's estimate paragraph (sw) — *Vyote viwili si bei (odds) za uhakika* for *Hivyo si …*: a sentence-initial
+  *Hivyo* reads "therefore"; *vyote viwili* (class 8) agrees with the next clause's *vyote*.
+- Terms §4 (sw) — "Kama madau yote yapo upande mmoja" for "… yako …": after *madau yote*, *yako* also reads "your", which
+  would misstate a money rule; *yapo* is the Rules' own word.
+- The tagline — sw "Chagua. Ona unachoweza kushinda. Cheza." is signed over SJ-20's "Ona unachoshinda": *unachoshinda*
+  ("what you are winning") promises a result before there is one; an estimate is what you *can* win, How-to step 2's own
+  words. zh "选择。看看您能赢多少。开始玩。" approved (您, full-width stops; it echoes the guide's 选择问题 and 您可赢取).
+Checked clean: no NDIYO; no class-10 "dau zote"; no typed figure, rate, ×, % or TZS (placeholders and ≈ only); no
+helpline; Chinese 您, 充值, 投注, 注单 and full-width punctuation; the journey says swali/maswali, the legal texts keep their
+defined soko/market. Noted, not changed (outside S11's strings): the deposit and payout chat intents answer a Swahili
+question in English, and the unchanged paragraphs of Terms §4 type "13%" and "5 minutes".
 
 **10. S10 dictionary key (2026-10-15, S10 WP2; journey.*, not shown to anyone until S15) — reviewed and signed by Claude,
 the AI reviewer, under Ali's existing delegation of the Swahili-speaker role (2026-10-02, quoted in this section's

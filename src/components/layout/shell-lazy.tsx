@@ -74,3 +74,6 @@ export const LazyJourneyTabs = dynamic(() => import("@/components/journey/journe
 export const LazyBetSheetHost = dynamic(() => import("@/components/journey/bet-sheet/bet-sheet-host").then((m) => m.BetSheetHost).catch(nothingIfLost));
 // S10 · the journey's bet sheet for a reader who is not signed in: AppShell's same slot, the session's other arm.
 export const LazyGuestSheetHost = dynamic(() => import("@/components/journey/bet-sheet/guest-sheet-host").then((m) => m.GuestSheetHost).catch(nothingIfLost));
+// How to Play's host (S11 WP4): mounted beside the flag for a journey request only; it opens the sheet by itself once per
+// browser on the four lobby routes, and at /?howto=1. A page the journey is not shown to never fetches it.
+export const LazyHowToHost = dynamic(() => import("@/components/onboarding/how-to-host").then((m) => m.HowToHost).catch(nothingIfLost));

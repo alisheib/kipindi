@@ -14,14 +14,19 @@
 
 import { FiftyMark } from "@/components/brand";
 import { useT } from "@/lib/i18n";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 
 export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   const { t } = useT();
+  /* ⭐ S11 WP6 · a journey reader meets no dial (the bet sheet replaced it): the intro names betting, and the second chip asks
+     how to play — its answer teaches the How-to sheet's steps and links to it (send-message.ts). Everybody else, and the
+     server, reads today's two keys. */
+  const journeyOn = useJourneyOn();
 
   /* Four starter chips, all in the active locale. */
   const starters: string[] = [
     t.chat.starterDeposit,
-    t.chat.starterDial,
+    journeyOn ? t.journey.chatStarterHowTo : t.chat.starterDial,
     t.chat.starterPayout,
     t.chat.starterWithdraw,
   ];
@@ -35,7 +40,7 @@ export function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         {t.chat.greeting}
         <span className="cm-sw">{t.chat.greetingHint}</span>
       </div>
-      <div className="cm-empty-sub">{t.chat.helpline}</div>
+      <div className="cm-empty-sub">{journeyOn ? t.journey.chatIntro : t.chat.helpline}</div>
       <div className="cm-empty-starters">
         {starters.map((s, i) => (
           <button

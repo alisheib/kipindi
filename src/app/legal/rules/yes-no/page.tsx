@@ -37,11 +37,6 @@ const TITLE = (locale: Locale): string => {
     default:   return `${yes}/${no} Market Rules`;
   }
 };
-const SUBTITLE: Record<Locale, string> = {
-  en: "Predict events. Not chance.",
-  sw: "Tabiri matukio. Si bahati.",
-  zh: "预测事件，而非运气。",
-};
 /**
  * ⚠️ DATED, like every other document under `/legal` — not marketing's "Version 1.0". A dated
  * version is the only kind that signals when the binding text last moved, and `/legal/terms:22-25`
@@ -56,7 +51,9 @@ const META: Record<Locale, string> = {
 };
 
 export default async function YesNoRulesPage() {
-  const { locale } = await getServerT();
+  // `t` for the subtitle, the tagline's one home `auth.railTagline` (the Vodacom plan S11 WP7): the three strings this page
+  // typed until then, read from the key, so the S15 flip moves it with every other reader.
+  const { t, locale } = await getServerT();
   const r = ratesFrom(await getGlobalConfig());
 
   return (
@@ -64,7 +61,7 @@ export default async function YesNoRulesPage() {
       <LegalHeader
         eyebrow={EYEBROW[locale]}
         title={TITLE(locale)}
-        subtitle={SUBTITLE[locale]}
+        subtitle={t.auth.railTagline}
         meta={META[locale]}
         glyph="listChecks"
       />

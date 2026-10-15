@@ -5,6 +5,7 @@
  * gilt accents, and embedded Inter + JetBrains Mono fonts.
  * Designed for government/regulator submission — prints clean.
  */
+import { dict } from "@/lib/i18n-dict";
 
 export const BRAND = {
   // ── Page canvas (white for print / government) ──
@@ -44,7 +45,8 @@ export const BRAND = {
 
 export const COMPANY = {
   name: "50pick Africa",
-  tagline: "Predict events. Not chance.",
+  // The tagline's one home (the Vodacom plan S11 WP7): the reports print what the site's title and share cards print.
+  tagline: dict.en.auth.railTagline,
   tld: "50pick.tz",
   jurisdiction: "Tanzania",
 } as const;

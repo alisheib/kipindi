@@ -280,9 +280,10 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
     `${chatDecommented.length} chars comment-free → ${chatCode.length} chars with literals blanked · call site ${chatCode.includes("messages.create(") ? "found" : "LOST"} · keys [${createKeys.join(", ")}] · tool-ish names found [${toolish.join(", ") || "none"}] of ${TOOLISH.length} swept`,
   );
   const msgShape = /const messages = \[\s*\.\.\.history\.slice\(-10\),\s*\{ role: "user" as const, content: userText \},\s*\];/.test(chatSrc);
-  const systemShape = /system: buildSystemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours\),/.test(chatSrc);
+  // S11 WP6: the third argument is the GLOBAL rollout's state — a setting, never the reader (privacy-notice §2c).
+  const systemShape = /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\),/.test(chatSrc);
   ok(
-    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare buildSystemPrompt call with no concatenation and no appended context",
+    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare call — `systemPrompt`, today's `buildSystemPrompt` template or (from the S15 flip, by the global rollout) the journey's fixed swaps over it — with no concatenation and no appended context",
     msgShape && systemShape,
     `messages shape ${msgShape ? "pinned" : "MOVED"} · system shape ${systemShape ? "pinned" : "MOVED"}`,
   );

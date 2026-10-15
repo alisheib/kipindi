@@ -119,7 +119,7 @@ export async function GET(
           </div>
 
           <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
-            <span>Predict events. Not chance.</span>
+            <span>{dict.en.auth.railTagline}</span>
             <span>Licensed by the Gaming Board of Tanzania · 18+</span>
           </div>
         </div>
@@ -233,7 +233,7 @@ export async function GET(
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 14, opacity: 0.6, fontFamily: "JetBrains Mono, monospace" }}>
-            <span>Predict events. Not chance.</span>
+            <span>{dict.en.auth.railTagline}</span>
             {/* 🔴 THIS PRINTED THE CURRENCY TWICE. `tzs()` above already prefixes "TZS ", and the
                 line appended it again, so every shared market card read "TZS 21,000 TZS volume".
                 A share card is the first thing many players ever see of this platform and the only

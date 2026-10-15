@@ -1091,6 +1091,8 @@ const DIRECTIVE = /["']use (?:client|server)["']/;
  * ⚠️ No escape a tool could decode: quotes and line breaks are built from their code points, patterns use classes. */
 const HT_CARD = "src/components/journey/home/howto-card.tsx";
 const HT_SHEET = "src/components/onboarding/how-to-play-sheet.tsx";
+/** S11 WP4: the How-to host, the sheet's second importer (it opens the sheet by itself; `test:howto` holds it). */
+const HT_HOST = "src/components/onboarding/how-to-host.tsx";
 const HT_LAZY = "src/components/journey/home/home-lazy.tsx";
 /** WP7's server home: the home's lazy module's one importer. */
 const HT_HOME = "src/components/journey/home/journey-home.tsx";
@@ -1144,6 +1146,7 @@ type HowToWorld = {
   lazy: string;
   guard: string;
   css: string;                   // src/app/globals.css, its comments blanked
+  callout: string;               // src/components/ui/callout.tsx, decommented: the kit row MFANO re-spaces (5.align)
   popupFit: string;              // scripts/popup-fit.test.mts, decommented: the review record the sheet must be on
   naming: Map<string, string>;   // every OTHER file under src/ whose text names one of the three modules: the census's subjects
   rendered: HowToRendered;
@@ -1162,7 +1165,7 @@ function loadHowTo(all: readonly string[]): HowToWorld {
   const { rendered, truth } = renderHowTo();
   return {
     card: read(HT_CARD), sheet: read(HT_SHEET), lazy: read(HT_LAZY), guard: read(HT_GUARD),
-    css: decommentCss(read("src/app/globals.css")), popupFit: decomment(read(HT_POPUP_FIT)), naming, rendered, truth,
+    css: decommentCss(read("src/app/globals.css")), callout: decomment(read("src/components/ui/callout.tsx")), popupFit: decomment(read(HT_POPUP_FIT)), naming, rendered, truth,
   };
 }
 
@@ -1308,7 +1311,7 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // 5.frame — WP6 step 4, the frame; Open point 20.
   const modalTag = sheetFlat.match(/<Modal[^>]*>/)?.[0] ?? "";
   const frameSrc = count(sheet, "<Modal") === 1
-    && ["open={open}", "onClose={onClose}", "labelledBy={titleId}", " sheet ", `sheetUntil="lg"`, "maxWidth={440}", `panelClassName="kp-wsheet kp-howto"`].every((p) => modalTag.includes(p))
+    && ["open={open}", "onClose={close}", "labelledBy={titleId}", " sheet ", `sheetUntil="lg"`, "maxWidth={440}", `panelClassName="kp-wsheet kp-howto"`].every((p) => modalTag.includes(p))
     && !modalTag.includes("zIndex") && !modalTag.includes("showClose") && sheet.includes("const titleId = useId();")
     && sheet.includes(`<div aria-hidden className="kp-wsheet__grab" />`) && sheet.includes(`data-testid="journey-howto-sheet"`);
   const frameOf = (html: string): Record<string, unknown> | null => {
@@ -1370,12 +1373,15 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const figuresSrc = count(sheet, "estimateFor({ ...HOW_TO_EXAMPLE, bettable: true })") === 1 && count(sheet, "loserSharePct(HOW_TO_EXAMPLE.rates)") === 1
     && sheet.includes("formatTzs(HOW_TO_EXAMPLE.stake)") && sheet.includes("formatTzs(EXAMPLE.payout)") && typed.length === 0
     // the multiple is handed only to a step whose body writes {mult} (step 2): steps 1 and 3 get no figure to look for
-    && sheet.includes(`const holdsMult = body.includes("{mult}");`) && sheetFlat.includes(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`);
+    && sheet.includes(`const holdsMult = body.includes("{mult}");`) && sheetFlat.includes(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`)
+    && sheetFlat.includes("{noticeBody(held(fill(body, { ...sides, mult }), figures), drawn(figures))}");
   const golden = T !== null && T.stake === "TZS 1,000" && T.mult === "2.7" && T.payout === "TZS 2,700" && T.pct === 13;
   const figuresDrawn = T !== null && sheets.every(([, html]) => count(html, `<span class="amount">${T.stake}</span>`) === 1
     && count(html, `<span class="amount">${T.payout}</span>`) === 1 && count(html, `<span class="kp-howto__mult">≈${T.mult}×</span>`) === 2
-    && htText(html.slice(html.indexOf(`class="kp-howto__note`))).includes(`${T.pct}%`));
-  ok("5.figures · every figure is the engine's: HOW_TO_EXAMPLE through estimateFor and {pct} from loserSharePct(HOW_TO_EXAMPLE.rates), none typed in the sheet — SJ-21's TZS 1,000 → ≈2.7× → TZS 2,700 at 13% — drawn with the two sums as .amount spans and the multiple one mono unit with its ≈ and × (step 2 and MFANO), handed only to the step whose words write {mult}",
+    && htText(html.slice(html.indexOf(`class="kp-howto__note`))).includes(`${T.pct}%`)
+    // the note's commission, one mono unit with its sign (§T5; the audit's F36, 2026-10-14: it stood in the body face)
+    && count(html, `<span class="amount">${T.pct}%</span>`) === 1 && count(html.slice(html.indexOf(`class="kp-howto__note`)), `<span class="amount">${T.pct}%</span>`) === 1);
+  ok("5.figures · every figure is the engine's: HOW_TO_EXAMPLE through estimateFor and {pct} from loserSharePct(HOW_TO_EXAMPLE.rates), none typed in the sheet — SJ-21's TZS 1,000 → ≈2.7× → TZS 2,700 at 13% — drawn with the two sums as .amount spans, the multiple one mono unit with its ≈ and × (step 2 and MFANO), handed only to the step whose words write {mult}, and the note's 13% one .amount unit with its sign (S11; the audit's F36)",
     figuresSrc && golden && figuresDrawn, j({ figuresSrc, typed, golden, figuresDrawn, truth: T && { stake: T.stake, mult: T.mult, payout: T.payout, pct: T.pct } }));
 
   // 5.helpline — A6 item 4; A24 item 4.
@@ -1393,7 +1399,7 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
 
   // 5.limits — A6 item 1: Weka mipaka alone.
   const limitsSrc = sheet.includes(`const LIMITS = { signedIn: "/profile/responsible-gambling", signedOut: "/legal/responsible-gambling" } as const;`)
-    && sheetFlat.includes(`<Link href={signedIn ? LIMITS.signedIn : LIMITS.signedOut} onClick={onClose} className="kp-wsheet__link">`)
+    && sheetFlat.includes(`<Link href={signedIn ? LIMITS.signedIn : LIMITS.signedOut} onClick={close} className="kp-wsheet__link">`)
     && sheet.includes("{t.rg.setLimits}") && count(sheet, "<Link") === 1 && cv(".kp-wsheet__link", "min-height") === "var(--h-control-md)";
   const linkOf = (html: string) => html.slice(html.indexOf("<a "), html.indexOf("</a>") + 4);
   const limitsDrawn = T !== null && HT_LOCALES.every((l) => {
@@ -1405,7 +1411,7 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
     limitsSrc && limitsDrawn, j({ limitsSrc, limitsDrawn }));
 
   // 5.cta — WP6 step 4 item 4; test:ui-consistency's rule (the kit Button, never a raw btn button).
-  const ctaSrc = sheetFlat.includes(`<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={onClose}> {t.journey.howCta} </Button>`)
+  const ctaSrc = sheetFlat.includes(`<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={close}> {t.journey.howCta} </Button>`)
     && !sheet.includes("<button") && cv(".kp-wsheet__act", "width") === "100%";
   const ctaDrawn = T !== null && sheets.every(([l, html]) => {
     const at = html.indexOf("<button ");
@@ -1415,12 +1421,17 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   ok(`5.cta · "Nimeelewa, anza" (journey.howCta) is a full-width kit Button in the primary material (the Wallet's 56px sheet action), and it closes the sheet — never a raw btn button`,
     ctaSrc && ctaDrawn, j({ ctaSrc, ctaDrawn }));
 
-  // 5.storage — Open point 18.
+  // 5.storage — S7 Open point 18, then the Vodacom plan S11 WP4 (S11-PLAN Open point 5): the sheet writes ONE key, How to play's seen
+  // key, through `markSeen` (primer-keys.ts) from its one close — never on open, never directly — and the card and the home's lazy module
+  // write nothing. Privacy §7 names the key (`test:privacy-notice` §4n); `test:howto` §3 runs every exit.
   const STORES = ["localStorage", "sessionStorage", "document.cookie", "indexedDB"];
   const writes = ([[HT_CARD, card], [HT_SHEET, sheet], [HT_LAZY, lazy]] as Array<[string, string]>)
     .flatMap(([f, s]) => STORES.filter((w) => s.includes(w)).map((w) => `${f}: ${w}`));
-  ok("5.storage · nothing writes to storage: no localStorage, sessionStorage, cookie or IndexedDB in the card, the sheet or the home's lazy module — no seen key (Open point 18: it is S11's, with the auto-open), so Privacy §7 is unchanged",
-    writes.length === 0, j(writes));
+  const sheetMarks = [...sheet.matchAll(/markSeen[(]([^)]*)[)]/g)].map((m) => m[1].trim());
+  const oneClose = count(sheetFlat, "const close = useCallback(() => { markSeen(HOWTO_SEEN_KEY); onClose(); }, [onClose]);") === 1;
+  const elsewhere = [card, lazy].filter((s) => s.includes("markSeen")).length;
+  ok("5.storage · the sheet writes one key, 50pick-howto-seen, through markSeen from its one close (the key, then the opener) and never on open; nothing writes storage directly in the card, the sheet or the home's lazy module, and the card and the lazy module write nothing",
+    writes.length === 0 && j(sheetMarks) === j(["HOWTO_SEEN_KEY"]) && oneClose && elsewhere === 0, j({ writes, sheetMarks, oneClose, elsewhere }));
 
   // 5.cap — WP6 step 4, sizing; Open point 20. The chain the cap runs down is the block's own (the review of 2026-10-12):
   // the panel a flex column itself, never leaning on .kp-wsheet; the sheet in it a flex column that may shrink below its
@@ -1452,7 +1463,9 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // ruling (3) of 2026-10-10 (`test:visual-pass-r8b` §1 holds every eyebrow to it), which the canvas's info-blue predates.
   const mfanoSrc = count(sheet, `<Callout tone="info" className="kp-howto__ex">`) === 1
     && sheet.includes(`<p className="kp-howto__ex-label eyebrow font-mono text-caption font-semibold uppercase text-text-subtle">{t.journey.howExampleLabel}</p>`)
-    && sheet.includes("{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}");
+    && sheetFlat.includes('const noteFigures: readonly Figure[] = PCT === null ? [] : [{ text: pctUnit(t.journey.estimateNote, PCT), className: "amount" }];')
+    && sheetFlat.includes("{noticeBody(held(fill(t.journey.estimateNote, { pct: PCT }), noteFigures), drawn(noteFigures))}")
+    && sheet.includes("const PCT_UNIT = /[{]pct[}]%?/;");
   const mfanoDrawn = T !== null && sheets.every(([l, html]) => {
     const at = html.indexOf(`<div role="note"`), end = at < 0 ? -1 : htCloseOf(html, at);
     const d = T.dict[l].journey;
@@ -1467,6 +1480,23 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const ZH = ".kp-howto__ex-label:lang(zh)", zh = { face: cv(ZH, "font-family"), tracking: cv(ZH, "letter-spacing"), transform: cv(ZH, "text-transform") };
   ok("5.eyebrow.zh · MFANO's label is uppercase and mono for Latin words, and for zh 示例 neither, nor tracked: .kp-howto__ex-label:lang(zh) sets the body face, no letter-spacing and no transform",
     zh.face === "var(--font-body)" && zh.tracking === "0" && zh.transform === "none", j(zh));
+
+  // 5.align — the Vodacom plan S11; the audit's F36 (2026-10-14): ONE MARKER COLUMN, ONE TEXT EDGE. The kit Callout's own row
+  // (a 1px border, 16px padding, a 14px glyph, a 10px gap) put MFANO's (i) 6px right of the step badges' centre line and its
+  // words 9px left of the steps' words. The badge's two numbers are named once, the steps read them, and MFANO's row is
+  // re-spaced from them: the arithmetic here, from the declared values and the kit's own glyph; `qa:howto` measures it drawn.
+  const pxOf = (v: string | null) => (v !== null && /^[0-9.]+px$/.test(v) ? Number(v.slice(0, -2)) : NaN);
+  const badgePx = pxOf(cv(".kp-howto", "--howto-badge")), badgeGap = pxOf(cv(".kp-howto", "--howto-badge-gap")), glyphPx = pxOf(cv(".kp-howto__ex", "--howto-ex-glyph"));
+  const kitGlyph = Number(/\bsm:\s*\{\s*box:\s*"[^"]+",\s*icon:\s*(\d+),/.exec(hw.callout)?.[1] ?? NaN);
+  const kitBorder = hw.callout.includes(`"flex items-start border",`) && !hw.callout.includes(`"flex items-start border-2",`) ? 1 : NaN;
+  const stepsRead = cv(".kp-howto__step", "gap") === "var(--howto-badge-gap)" && cv(".kp-howto__num", "width") === "var(--howto-badge)" && cv(".kp-howto__num", "height") === "var(--howto-badge)";
+  const rowRead = cv(".kp-howto__ex", "padding-left") === "calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 - 1px)"
+    && cv(".kp-howto__ex", "column-gap") === "calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 + var(--howto-badge-gap))";
+  const padPx = (badgePx - glyphPx) / 2 - 1, colPx = (badgePx - glyphPx) / 2 + badgeGap;
+  const textEdge = kitBorder + padPx + glyphPx + colPx, centre = kitBorder + padPx + glyphPx / 2;
+  ok("5.align · ONE MARKER COLUMN, ONE TEXT EDGE (S11; the audit's F36): the steps read the badge's two numbers (--howto-badge, --howto-badge-gap) and MFANO's row is re-spaced from them — its (i), the kit Callout's own sm glyph, centred on the badges' centre line and its words on the steps' text edge (the kit's row put them 6px right and 9px left)",
+    stepsRead && rowRead && glyphPx === kitGlyph && padPx >= 0 && textEdge === badgePx + badgeGap && centre === badgePx / 2,
+    j({ stepsRead, rowRead, badgePx, badgeGap, glyphPx, kitGlyph, kitBorder, padPx, colPx, textEdge, centre }));
 
   // 5.lazy — WP6 step 2; A13(a); WP7 (its two parts, its one importer, each part named).
   const statics = [...lazy.matchAll(/^[ ]*import[ ]+([^;]*?)[ ]+from[ ]+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
@@ -1485,8 +1515,8 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   // No other home file reaches ANY part's module around the lazy one (a static import would put it in `/`'s first load).
   const partNames = HT_PARTS.map(([, spec]) => spec.slice(spec.lastIndexOf("/") + 1));
   const around = homeFiles.filter(([, s]) => partNames.some((n) => htImports(s, n))).map(([f]) => f);
-  ok("5.lazy · the home's lazy module is client code whose static imports are next/dynamic and the app's one lost-chunk guard, declaring exactly its parts (LazyHowToCard, LazyRefreshPoller, and WP7's LazyEmptyState and LazyStripAutoScroll), each one line with no option object, its loader ending in .catch(nothingIfLost), each named JourneyHome.<part>; it is the card's one loader (the sheet's is the card), no other home file reaches a part's module around it, and journey-home.tsx (WP7) is its one importer",
-    lazyShape && j(lazyHome) === j([HT_HOME]) && j(cardHome) === j([HT_LAZY]) && j(sheetHome) === j([HT_CARD]) && around.length === 0,
+  ok("5.lazy · the home's lazy module is client code whose static imports are next/dynamic and the app's one lost-chunk guard, declaring exactly its parts (LazyHowToCard, LazyRefreshPoller, and WP7's LazyEmptyState and LazyStripAutoScroll), each one line with no option object, its loader ending in .catch(nothingIfLost), each named JourneyHome.<part>; it is the card's one loader (the sheet's importers are the card and, since S11 WP4, the How-to host), no other home file reaches a part's module around it, and journey-home.tsx (WP7) is its one importer",
+    lazyShape && j(lazyHome) === j([HT_HOME]) && j(cardHome) === j([HT_LAZY]) && j(sheetHome) === j([HT_CARD, HT_HOST].sort()) && around.length === 0,
     j({ lazyShape, statics, unnamed, lazyHome, cardHome, sheetHome, around }));
 
   // 5.popup — WP6 step 5; A13's pattern (popup-review.mts).
@@ -1572,12 +1602,18 @@ function howToDefects(): HtPlant[] {
     { name: "the guest's sheet drawn with the signed-in door", expect: /^5[.]limits /,
       plant: (w) => htDrawn(w, "sheetOut", "sw", (html) => htSwap(html, `href="/legal/responsible-gambling"`, `href="/profile/responsible-gambling"`)) },
     { name: "the CTA a raw btn button (test:ui-consistency's rule)", expect: /^5[.]cta /,
-      plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={onClose}>`,
-        `<button type="button" className="btn btn-primary btn-lg kp-wsheet__act" onClick={onClose}>`), "</Button>", "</button>") }) },
+      plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={close}>`,
+        `<button type="button" className="btn btn-primary btn-lg kp-wsheet__act" onClick={close}>`), "</Button>", "</button>") }) },
     { name: "the CTA no longer closes the sheet", expect: /^5[.]cta /,
-      plant: htSheet(`className="kp-wsheet__act" onClick={onClose}>`, `className="kp-wsheet__act">`) },
-    { name: "a seen key written on open (S11's, Open point 18)", expect: /^5[.]storage /,
+      plant: htSheet(`className="kp-wsheet__act" onClick={close}>`, `className="kp-wsheet__act">`) },
+    { name: "a seen key written straight to storage on open", expect: /^5[.]storage /,
       plant: htSheet("const titleId = useId();", `const titleId = useId();${LF}  localStorage.setItem("50pick-howto-seen", "1");`) },
+    { name: "the seen key marked when the sheet is drawn (S11 WP4: only an exit writes it)", expect: /^5[.]storage /,
+      plant: htSheet("const titleId = useId();", `const titleId = useId();${LF}  markSeen(HOWTO_SEEN_KEY);`) },
+    { name: "a second key written by the close (the primer's)", expect: /^5[.]storage /,
+      plant: htSheet("    markSeen(HOWTO_SEEN_KEY);${LF}    onClose();".replace("${LF}", LF), `    markSeen(HOWTO_SEEN_KEY);${LF}    markSeen("50pick-primer-seen");${LF}    onClose();`) },
+    { name: "the close calls the opener before the key", expect: /^5[.]storage /,
+      plant: htSheet("    markSeen(HOWTO_SEEN_KEY);${LF}    onClose();".replace("${LF}", LF), `    onClose();${LF}    markSeen(HOWTO_SEEN_KEY);`) },
     { name: "a later rule lifts the panel's cap from 1024 (an at-rule after it: max-height none)", expect: /^5[.]cap /,
       plant: (w) => htWith(w, { css: `${w.howto.css}${LF}@media (min-width: 1024px) { .kp-howto { max-height: none; } }${LF}` }) },
     { name: "the panel's cap dropped (a tall sheet's top unreachable on a short phone)", expect: /^5[.]cap /,
@@ -1592,6 +1628,18 @@ function howToDefects(): HtPlant[] {
       plant: htCss(".kp-howto__scroll { display: flex;", ".kp-howto__scroll { mask-image: linear-gradient(to bottom, #000 80%, transparent); display: flex;") },
     { name: "MFANO a hand-rolled box instead of the kit Callout", expect: /^5[.]mfano /,
       plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Callout tone="info" className="kp-howto__ex">`, `<div className="kp-howto__ex">`), "</Callout>", "</div>") }) },
+    { name: "the note's commission back in the body face (noticeBody, its 13% bare: the audit's F36)", expect: /^5[.]mfano /,
+      plant: htSheet("{noticeBody(held(fill(t.journey.estimateNote, { pct: PCT }), noteFigures), drawn(noteFigures))}", "{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}") },
+    { name: "the Chinese note draws 13% bare", expect: /^5[.]figures /,
+      plant: (w) => htDrawn(w, "sheetIn", "zh", (html) => htSwap(html, `<span class="amount">13%</span>`, "13%")) },
+    { name: "MFANO's row left as the kit draws it (its words 9px left of the steps', its (i) 6px right: F36)", expect: /^5[.]align /,
+      plant: htCss('.kp-howto__ex { --howto-ex-glyph: 14px; padding-left: calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 - 1px); column-gap: calc((var(--howto-badge) - var(--howto-ex-glyph)) / 2 + var(--howto-badge-gap)); }', "") },
+    { name: "the steps' gap re-typed as 16px (MFANO's words left on the old edge)", expect: /^5[.]align /,
+      plant: htCss(".kp-howto__step { display: flex; align-items: flex-start; gap: var(--howto-badge-gap); }", ".kp-howto__step { display: flex; align-items: flex-start; gap: 16px; }") },
+    { name: "the kit Callout's glyph grows to 16px (the row's 14 no longer the kit's)", expect: /^5[.]align /,
+      plant: (w) => htWith(w, { callout: htSwap(w.howto.callout, "icon: 14,", "icon: 16,") }) },
+    { name: "the badge grows to 40px without its column (the badge's number typed, not read)", expect: /^5[.]align /,
+      plant: htCss("width: var(--howto-badge); height: var(--howto-badge);", "width: 40px; height: 40px;") },
     { name: "the Chinese label left mono and tracked (示例 spaced apart)", expect: /^5[.]eyebrow[.]zh /,
       plant: htCss(".kp-howto__ex-label:lang(zh) { font-family: var(--font-body); letter-spacing: 0; text-transform: none; }", "") },
     { name: "the How-to card loaded with ssr: false (its HTML leaves the home's first paint)", expect: /^5[.]lazy /,

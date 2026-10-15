@@ -200,11 +200,18 @@ top leans **left** of centre. ⚠️ `@keyframes m-axis-sweep` in `motion.css` w
 the one place the number is duplicated and it must move with the axis.
 
 ⛔ **Never hand-edit a GENERATED brand asset.** `scripts/build-brand-assets.mts`
-(`npm run build:brand`) writes exactly eleven files from `brand-mark.ts`, and its own header
-lists them: `public/brand/mark-{color,white,dark,simplified}.svg`, plus
+(`npm run build:brand`) writes exactly twelve files, and its own header lists them: eleven from
+`brand-mark.ts` — `public/brand/mark-{color,white,dark,simplified}.svg`, plus
 `public/icons/{mark-color,mark-white,mark-dark,maskable,tile}-512.png`, `icon-192.png` and
-`apple-touch-180.png`. Editing one of **those** directly is how the PWA icon and every outbound
-email once shipped the superseded round-1 logo. **Change the source, regenerate.**
+`apple-touch-180.png` — and the X card `public/og/twitter-1200x600.png`, cut (the centred 1200×600)
+from the share picture `public/og/og-1200x630.png`. Editing one of **those** directly is how the PWA
+icon and every outbound email once shipped the superseded round-1 logo. **Change the source, regenerate.**
+
+⚠️ **The X card is cut, never captured (Vodacom S11 WP1, 2026-10-14).** It used to be a separate capture
+of a development page, and it kept what that page drew over itself: the Next.js dev-tools badge in one
+corner and the chat bubble in the other, on every X preview of 50pick. `npm run test:brand-assets` §3
+holds it equal to the share picture's middle rows, pixel for pixel. The 1200×630 share picture itself
+(also the manifest's wide screenshot) is **held**: `build:brand` reads it and never writes it.
 
 ⚠️ **Corrected 2026-08-21, and the error ran in the dangerous direction.** This rule read
 *"Every SVG and PNG under `public/brand/` and `public/icons/` is generated"* — which promises a
