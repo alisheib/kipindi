@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 // The 20c49f568 build emitted these same faces and Latin preloads. Keep all
 // subsets so non-Latin names retain glyph coverage, while builds stay offline.
@@ -19,7 +20,12 @@ assert(layout.includes('import "./fonts.css";'), "Vendored font CSS is not impor
 assert(layout.includes('className="notranslate kp-local-fonts"'), "Font variables are not applied to html");
 assert(config.includes('"/fonts/:path*"'), "Content-addressed fonts need immutable cache headers");
 
-const faces = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((match) => match[1]);
+const faceMatches = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)];
+const faces = faceMatches.map((match) => match[1]);
+// Frozen baseline digests detect any unnoticed range, face-order, fallback
+// metric, or asset change while permitting unrelated CSS comments to evolve.
+assert.equal(createHash("sha256").update(faceMatches.map((match) => match[0]).join("\n")).digest("hex"),
+  "5158d415c49fdff34256899c8ce8e8be905f7879a0a3c43981d52d6b3869ccfc", "Original 59 face definitions changed");
 const expectedFiles = new Set();
 for (const [family, spec] of expected) {
   const familyFaces = faces.filter((face) => face.includes(`font-family:${family};`));
@@ -46,11 +52,16 @@ for (const [family, spec] of expected) {
   assert(existsSync(join(root, "public/fonts", spec.license)), `${family} OFL license`);
 }
 assert.equal(expectedFiles.size, 15, "Expected two Sora, seven Inter and six JetBrains Mono subset files");
-for (const file of expectedFiles) {
+const assetHash = createHash("sha256");
+for (const file of [...expectedFiles].sort()) {
   const path = join(root, "public/fonts", file);
   assert(existsSync(path), `${file} exists`);
-  assert.equal(readFileSync(path).subarray(0, 4).toString("ascii"), "wOF2", `${file} is WOFF2`);
+  const bytes = readFileSync(path);
+  assert.equal(bytes.subarray(0, 4).toString("ascii"), "wOF2", `${file} is WOFF2`);
+  assetHash.update(file).update(bytes);
 }
+assert.equal(assetHash.digest("hex"), "c6082c6972d2219ce448752bcdd95b348a3889fcede98c463884232e060dbb21",
+  "Original 15 font binaries changed");
 
 const preloads = [...layout.matchAll(/<link rel="preload" href="\/fonts\/([^"/]+\.woff2)" as="font" type="font\/woff2" crossOrigin="anonymous" \/>/g)].map((match) => match[1]);
 const latin = [...expectedFiles].filter((file) => file.includes("-s.p."));
