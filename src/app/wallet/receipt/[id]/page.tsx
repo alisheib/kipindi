@@ -55,6 +55,7 @@ import { Cash } from "@/components/ui/cash";
 import { keepIdRuns } from "@/components/ui/keep-words";
 import { PageContainer } from "@/components/layout/page-container";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -117,7 +118,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       {(heldForReturn || needsReview) && (
         <Callout tone="info">
-          {needsReview ? t.wallet.returnReviewBody : t.wallet.returnReversedBody}
+          {noticeBody(needsReview ? t.wallet.returnReviewBody : t.wallet.returnReversedBody)}
         </Callout>
       )}
 

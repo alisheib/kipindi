@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { Button } from "@/components/ui/button";
 import { Cash } from "@/components/ui/cash";
 import { useT } from "@/lib/i18n";
@@ -235,7 +236,7 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
   return <PageContainer tier="receipt" className="space-y-5 pb-16" >
     <PageHero><PageHeader icon={view.state === "PAID" ? <I.checkCircle s={14} className="text-success-fg" /> : <I.clock s={14} className="text-brand-300" />}
       eyebrow={t.journey.depositWaitEyebrow} title={title} subtitle={body} /></PageHero>
-    {view.state === "PENDING" && <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>{t.wallet.returnPendingWarnBody}</Callout>}
+    {view.state === "PENDING" && <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>{noticeBody(t.wallet.returnPendingWarnBody)}</Callout>}
     {existingMoneyChoice && <Button type="button" variant="ghost" size="lg" fullWidth onClick={returnToChoice}>
       {t.journey.depositUseExistingMoney}
     </Button>}
@@ -245,8 +246,8 @@ export function DepositWaitingClient({ ownerId, initial, lookupUrl, paymentKey, 
       <div className="flex justify-between gap-4 px-4 py-3 text-body-sm"><span className="text-text-muted">{t.wallet.amount}</span><span className="amount text-text"><Cash>{formatTzs(view.amount)}</Cash></span></div>
       <div className="flex justify-between gap-4 px-4 py-3 text-body-sm"><span className="text-text-muted">{t.wallet.transactionId}</span><span className="font-mono text-text break-all text-right">{view.txnId}</span></div>
     </div>}
-    {view.state === "PAID" && returnBlocked && <Callout tone="neutral" title={t.journey.depositReturnNeedsTab}>{t.journey.depositReturnNeedsTabBody}</Callout>}
-    {view.state === "PAID" && returnTapReason === "new-tab" && !returnBlocked && <Callout tone="info" title={t.journey.depositNewTabTitle}>{t.journey.depositNewTabBody}</Callout>}
+    {view.state === "PAID" && returnBlocked && <Callout tone="neutral" title={t.journey.depositReturnNeedsTab}>{noticeBody(t.journey.depositReturnNeedsTabBody)}</Callout>}
+    {view.state === "PAID" && returnTapReason === "new-tab" && !returnBlocked && <Callout tone="info" title={t.journey.depositNewTabTitle}>{noticeBody(t.journey.depositNewTabBody)}</Callout>}
     {view.state === "PAID" && returnTapReason && !returnBlocked && <Button type="button" size="lg" fullWidth onClick={returnToChoice}>{t.journey.depositReturnToChoice}</Button>}
     {view.state === "FAILED" && !failureReleased && <Button type="button" size="lg" fullWidth disabled={checkingFailure} onClick={() => { void recheckFailure(); }}
       className="disabled:opacity-50">{t.journey.depositCheckPayment}</Button>}
