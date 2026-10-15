@@ -78,13 +78,14 @@ an email, payment or human approval. The integrator reads every linked artifact 
 `npm run gate:s15` also requires four redacted records: (1) a full **14-day pre-launch** baseline of the five agency
 measures; (2) the integrated S8–S13 exact-tip proof; (3) production configuration, including admin TOTP and signing
 secrets for each enabled payment webhook; (4) the ready kill/rollback procedure. The separate `ownerGo` record must
-name **Ali**. As observed on 2026-10-15, production had `DISABLE_ADMIN_TOTP=true` and absent or placeholder
-SELCOM/AZAMPAY/MIXX webhook secrets. Ali chose to keep admin two-factor authentication deactivated during the
-staff-preview period and deferred changes to those settings. His Railway access grant permits inspection of the
-configuration; it is not a request to enable two-factor authentication or change a variable. Before the public flip,
-review the then-current security posture and each enabled provider's webhook signing with Ali, record the decision
-and masked ops read-back, and obtain his fresh S15 go. The production-configuration evidence stays open. Never put
-secret values in the evidence file.
+name **Ali**. The [masked production read](selcom-production-read-20261015.md) found
+`PAYMENT_AGGREGATOR=selcom` with its API credentials, vendor PIN and callback URL set. Selcom verifies callbacks
+with `PAYMENT_API_SECRET`; its old `SELCOM_WEBHOOK_SECRET` variable is unused. The generic AzamPay/Mixx webhook
+secrets are absent, and those providers are not the selected production aggregator. `DISABLE_ADMIN_TOTP` remains
+set. Ali chose to keep admin two-factor authentication deactivated during the staff-preview period and deferred
+settings changes. Before the public flip, review the then-current security posture and each enabled provider's
+webhook signing with Ali, record the decision and masked ops read-back, and obtain his fresh S15 go. The
+production-configuration evidence stays open. Never put secret values in the evidence file.
 
 Only after those records and the S14 gate pass, prepare the one S15 flip commit (`simpleJourney=ACTIVE` plus all paired
 copy, legal version, redirects, service-worker cache, manifest and gate rewrites in the plan). Verify the exact deployed
