@@ -276,7 +276,8 @@ export const NOT_EYEBROW = new Map([
   ["app/results/page.tsx :: <span className=\"sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={1", "STATUS_CHIP"],
   // R5-L (2026-10-09): the notable card's GHOST sets the same flag, its words not shown, so the chip row wraps where the
   // page's does on a phone (the flag's 0.16em is part of its width). The same role as the page's.
-  ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13", "STATUS_CHIP"],
+  // The results ghost uses the same non-interactive status flag as the live card; `sm:` only changes its phone alignment.
+  ["app/results/loading.tsx :: <span className=\"sm:ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
   // Round 7 (R7-C): re-signed — the last-round door ends on its row's edge (`kp-track-end--08`); same role.
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em] kp-track-end kp-track-end--08\" ↵ style={{ color: \"var(--brand-3", "CONTROL_LABEL"],

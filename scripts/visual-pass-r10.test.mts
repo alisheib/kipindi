@@ -942,12 +942,14 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
     "src/components/journey/home/home-chips.tsx": "the journey home's chips: the fade, the hook",
     "src/components/journey/home/journey-home-ghost.tsx": "the journey home's ghost: its chips' strip, aria-hidden",
     "src/app/leaderboard/page.tsx": "the leaderboard product tabs use the same fade and StripAutoScroll hook",
+    "src/app/leaderboard/loading.tsx": "the leaderboard's aria-hidden static product-pill ghost",
   };
   const holders = PLAYER_TSX.filter((f) => code(f).includes("kp-strip-fade"));
   const stripsOk = (files: string[]) => files.every((f) => f in STRIP_FILES);
   ok("10.4′ · every scrolling strip is one of these: the one class (`QUERY_STRIP_CLASS`), the one hook (`data-strip-autoscroll`) — /results, /wallet, /markets, /positions, /updown history, /proposals, /watchlist, /notifications, receipts — and the journey home's chips, registered with the hook (S7 WP7)",
     code("src/components/ui/query-bar.tsx").includes('"kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0"')
       && stripsOk(holders) && squash(code("src/components/journey/home/home-chips.tsx")).includes('data-filter-rail data-strip-autoscroll className="kp-thin-scroll kp-strip-fade kp-jhome__chips"')
+      && squash(code("src/app/leaderboard/loading.tsx")).includes('className="kp-thin-scroll kp-strip-fade flex w-full min-w-0 items-center gap-1.5 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0" aria-hidden')
       && /<nav className="kp-thin-scroll kp-strip-fade[^\"]*"[^>]*data-strip-autoscroll>\s*<StripAutoScroll \/>/.test(code("src/app/leaderboard/page.tsx")),
     j(holders.filter((f) => !(f in STRIP_FILES))));
   ok("10.4″ PLANT · the strip class typed in a player file nobody registered is reported", !stripsOk([...holders, "src/components/home/landing-hero.tsx"]));
