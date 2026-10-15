@@ -949,7 +949,7 @@ Before integration: rerun the read-only production preflight, then run the full 
 release review on the exact integrated tip. After the
 root-controlled deployment, repeat production read-back and owner-visible visual and logical checks.
 
-### §5p · Dispatch recovery and Card checkout candidate (2026-10-15)
+### §5p · Dispatch recovery and Card checkout hold (2026-10-15)
 
 The next isolated S9 checkpoint repairs three release findings. Every deposit form must submit its original
 UUID before dispatch, including the classic form. If an accepted provider order cannot save its returned
@@ -959,22 +959,18 @@ processing order also enters owned recovery. A dispatch-time failure claims FAIL
 lock as confirmation, after checking the fresh PROCESSING row and original reference. A confirmed callback
 that won the lock remains CONFIRMED and credited.
 
-Selcom Card's validated HTTPS checkout URL is stored in the new nullable `Transaction.cardCheckoutUrl`
-column in the same write as the returned reference, before the first redirect. The exact accepted hosts are
-`checkout.selcommobile.com`, `checkout.selcom.net`, and `selcompay.me`; an unexpected provider host requires
-review before it may be added. These hosts come from repository fixtures, **not** a verified Selcom order:
-the current [Selcom Checkout API reference](https://developers.selcommobile.com/) documents
-`payment_gateway_url` using an example.com placeholder
-and does not state live or sandbox checkout hosts. A controlled provider response must establish the actual
-host before release. A matching same-key Card replay returns that existing URL without creating
-another order. The waiting page offers a deliberate continuation link only while the owned Card transaction
-is PROCESSING and not marked for review. Its server route repeats owner, rail, currency, status, review and
-host checks before redirecting; neither status JSON nor audit records contain the URL.
+Card checkout recovery remains held on `codex/s9-card-held`. The current
+[Selcom Checkout API reference](https://developers.selcommobile.com/) shows the
+`payment_gateway_url` only on create-order and gives an example.com placeholder;
+its read-only order-status and list-orders responses do not include the URL. Repository
+fixtures are not evidence of the production redirect host. The core release therefore
+has no Card URL column, resume route or checkout continuation button. A first Card
+response can still redirect the buyer as before; a lost redirect stays on the owned
+status/review path and must not create a second order. A controlled Selcom response
+or written provider confirmation of the host is required before promoting the held branch.
 
-Focused memory proof on this checkpoint: typecheck, deposit replay **57/57** with **17/17** red plants,
+Focused memory proof on the held checkpoint: typecheck, deposit replay **57/57** with **17/17** red plants,
 provider-reference **30/30** with **3/3** red plants, and deposit-return **28/28** including its ambiguity
 plant. The race test runs the signed CONFIRMED callback between provider dispatch and the synchronous
-failure arm, then checks one credit, CONFIRMED status and no failure audit. The Card test checks the
-persisted URL, same-key no-dispatch replay, foreign and terminal denial, owned route and exact-host
-validation. The new nullable migration is `20261015123000_card_checkout_url`. Its actual PostgreSQL race,
-migration/backup-schema proof and integrated browser/release gates remain required before merge or deployment.
+failure arm, then checks one credit, CONFIRMED status and no failure audit. The core branch must rerun
+these proofs without the held Card capability and then complete the PostgreSQL/browser release gates.

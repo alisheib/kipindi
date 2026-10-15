@@ -51,7 +51,6 @@ import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { parseSavedDepositBet, sameDepositFunding, type SavedDepositBet } from "@/lib/journey/deposit-state";
-import { activeCardCheckoutUrl, trustedCardCheckoutUrl } from "@/lib/card-checkout-url";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -103,7 +102,7 @@ export async function deposit(
       if (!matchesFunding(existing)) return keyConflict();
       const w = await db.wallet.findByUserId(userId);
       return { ok: true, data: { txnId: existing.id, status: depositResultStatus(existing), balance: w?.balance ?? 0,
-        redirectUrl: activeCardCheckoutUrl(userId, existing) ?? undefined, recoveryRequired: existing.status === "PROCESSING" } };
+        recoveryRequired: existing.status === "PROCESSING" } };
     }
   }
 
@@ -313,7 +312,7 @@ export async function deposit(
     // Idempotent replay — the deposit was already initiated; don't dispatch again.
     const w = await db.wallet.findByUserId(userId);
     return { ok: true, data: { txnId, status: depositResultStatus(txn), balance: w?.balance ?? 0,
-      redirectUrl: activeCardCheckoutUrl(userId, txn) ?? undefined, recoveryRequired: txn.status === "PROCESSING" } };
+      recoveryRequired: txn.status === "PROCESSING" } };
   }
   // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATES: the account's identity standing (2026-09-13) and
   // its email standing (2026-10-07), as fields on the row every deposit already writes. Stamped on
@@ -385,15 +384,8 @@ export async function deposit(
   // write above guarantees SOME reference exists even if we crash here; this write
   // makes it the authoritative one, because the mock and AML branches return a
   // different value from the correlation id we minted. Keep both writes.
-  const cardCheckoutUrl = parse.data.provider === "CARD" && result.status === "PENDING"
-    ? trustedCardCheckoutUrl(result.redirectUrl) : null;
-  if (parse.data.provider === "CARD" && result.status === "PENDING" && !cardCheckoutUrl) {
-    auditNeedsReviewOnce(txnId, "provider accepted card order without a trusted checkout URL", { correlationId });
-    return { ok: true, data: { txnId, status: "PROCESSING", balance: wallet.balance, recoveryRequired: true } };
-  }
-  const returnedReference = await db.txn.update(txnId, { providerRef: result.providerRef,
-    ...(cardCheckoutUrl ? { cardCheckoutUrl } : {}) });
-  if (returnedReference?.providerRef !== result.providerRef || (cardCheckoutUrl && returnedReference.cardCheckoutUrl !== cardCheckoutUrl)) {
+  const returnedReference = await db.txn.update(txnId, { providerRef: result.providerRef });
+  if (returnedReference?.providerRef !== result.providerRef) {
     auditNeedsReviewOnce(txnId, "provider accepted deposit but its returned reference could not be persisted", { correlationId, providerRef: result.providerRef });
     return { ok: true, data: { txnId, status: "PROCESSING", balance: wallet.balance, recoveryRequired: true } };
   }
@@ -419,9 +411,9 @@ export async function deposit(
     notifyDeposit(userId, { status: "PROCESSING", amount: parse.data.amount, provider: friendlyProvider(parse.data.provider), txnId,
       savedReturn: !!pendingBet });
     const cur = await db.wallet.findByUserId(userId);
-    // Use the stored, validated capability so a lost response and a replay can reach the SAME hosted order.
-    // It carries no money meaning; only the signed order-status re-query credits.
-    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0, redirectUrl: cardCheckoutUrl ?? undefined } };
+    // The provider's Card redirect is available on this initial answer. A lost answer has no
+    // replayable URL on this core branch; keep the existing order in owned recovery.
+    return { ok: true, data: { txnId, status: "PROCESSING", balance: cur?.balance ?? 0, redirectUrl: result.redirectUrl } };
   }
 
   // Synchronous provider (or the dev mock): the collection already settled, so

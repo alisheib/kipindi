@@ -666,8 +666,6 @@ model Transaction {
   provider          PaymentProvider?
   providerRef       String?          @unique
   providerStatus    String?
-  /// Hosted Card checkout capability from Selcom. Read only for the owned, still-processing order.
-  cardCheckoutUrl   String?
   // WHICH Selcom payout rail this withdrawal actually went out on — one of
   // PayoutRail in src/lib/server/selcom.ts (WALLET_CASHIN | SELCOM_PESA |
   // HUDUMA_AGENT). Deposits leave it null.

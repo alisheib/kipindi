@@ -17,14 +17,12 @@ import { paymentMethodName } from "../src/lib/payment-providers.ts";
 import { presentedStatus } from "../src/lib/wallet/receipts.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
-import { activeCardCheckoutUrl, trustedCardCheckoutUrl } from "../src/lib/card-checkout-url.ts";
 import { MUTATIONS } from "./anchors/deposit-replay.anchors.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE = readFileSync(join(ROOT, "src/lib/server/wallet-service.ts"), "utf8");
 const MAPPER = readFileSync(join(ROOT, "src/lib/server/prisma-dal.ts"), "utf8");
 const STATUS = readFileSync(join(ROOT, "src/lib/server/deposit-status.ts"), "utf8");
-const CHECKOUT_ROUTE = readFileSync(join(ROOT, "src/app/wallet/deposit/checkout/[id]/route.ts"), "utf8");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) {
   throw new Error("deposit-replay requires memory with DATABASE_URL unset, or explicit --pg on its own scratch cluster");
@@ -67,7 +65,7 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
   const counters = { dispatches: 0, dispatchIntents: [] as unknown[], verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
   const dependencies = {
     db: data, withLock, parseSavedDepositBet, sameDepositFunding, depositResultStatus, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
-    isStoredFundingKey: DepositBinding.isStoredFundingKey, activeCardCheckoutUrl, trustedCardCheckoutUrl,
+    isStoredFundingKey: DepositBinding.isStoredFundingKey,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     audit: (entry: unknown) => counters.audit.push(entry), auditNeedsReviewOnce: () => {}, isMaintenanceMode: async () => counters.maintenance,
     maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
@@ -76,7 +74,7 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
     readIdentityStanding: async () => ({ kycStatus: "NOT_STARTED", everApproved: false }),
     dispatchDeposit: async ({ correlationId }: { correlationId: string }) => {
       counters.dispatches++; counters.dispatchIntents.push((await data.txn.findByProviderRef(correlationId))?.pendingBet ?? null);
-      return { ok: true, providerRef: correlationId, correlationId, status: "PENDING", redirectUrl: "https://checkout.selcommobile.com/pg/original" };
+      return { ok: true, providerRef: correlationId, correlationId, status: "PENDING", redirectUrl: "https://checkout.example.test/original" };
     },
     verifyDepositStatus: async () => { counters.verifies++; return { status: "PENDING" }; },
     settlePaymentWebhook: async () => { counters.settles++; throw new Error("Unexpected settlement in replay/scope proof"); },
@@ -84,7 +82,6 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
   };
   const statusImports: Record<string, unknown> = { "./store": { db: data }, "./audit": { audit: dependencies.audit },
     "./rate-limit": { rateCheckAsync: dependencies.rateCheckAsync }, "./payments": { verifyDepositStatus: dependencies.verifyDepositStatus },
-    "@/lib/card-checkout-url": { activeCardCheckoutUrl },
     "./wallet-service": { settlePaymentWebhook: dependencies.settlePaymentWebhook }, "@/lib/journey/deposit-state": DepositState,
     "@/lib/journey/deposit-recheck-binding": DepositBinding };
   const statusModule = { exports: {} as any };
@@ -102,7 +99,7 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
     deposit: (userId: string, input: any, key?: string, card?: any, savedBet?: any) => Promise<any>;
     settleDepositFromReturn: (userId: string, reference: string) => Promise<any>;
   };
-  return { ...exports, counters, read: statusModule.exports.readDepositStatus as (id: string, lookup: unknown) => Promise<any> };
+  return { ...exports, counters };
 }
 /**
  * The withdrawal KEY DOOR (S9 release candidate, Ali 2026-10-14): the shipped `withdraw` body, executed with its rate check
@@ -146,7 +143,7 @@ function hiddenBeforeCreate() {
     },
   } };
 }
-async function run(source: string, mapper = MAPPER, statusSource = STATUS, checkoutRoute = CHECKOUT_ROUTE): Promise<Check[]> {
+async function run(source: string, mapper = MAPPER, statusSource = STATUS): Promise<Check[]> {
   const service = (text: string, data = db) => serviceFor(text, data, statusSource);
   const checks: Check[] = [], ok = (name: string, pass: boolean) => checks.push({ name, pass });
   const mapperJs = ts.transpileModule(body(mapper, "toStoredTxn"), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -180,52 +177,6 @@ async function run(source: string, mapper = MAPPER, statusSource = STATUS, check
     const recovered = await cardService.deposit(me, { provider: "CARD", amount: 5000 }, card.idempotencyKey!, { billing });
     ok(`early.card-original-order-${i}`, recovered.ok && recovered.data.txnId === card.id && recovered.data.redirectUrl === undefined && cardService.counters.dispatches === 0);
   }
-  const cardKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
-  const cardFirst = await cardService.deposit(me, { provider: "CARD", amount: 5000 }, cardKey, { billing: { city: "Original" } });
-  const cardRow = cardFirst.ok ? await db.txn.findById(cardFirst.data.txnId) : null;
-  const cardAgain = await cardService.deposit(me, { provider: "CARD", amount: 5000 }, cardKey, { billing: { city: "Edited" } });
-  ok("card.replay-url", cardFirst.ok && cardAgain.ok && cardFirst.data.redirectUrl === "https://checkout.selcommobile.com/pg/original"
-    && cardAgain.data.redirectUrl === cardFirst.data.redirectUrl && cardRow?.cardCheckoutUrl === cardFirst.data.redirectUrl
-    && cardService.counters.dispatches === 1);
-  const cardStatus = await cardService.read(me, { kind: "funding-key", value: cardKey });
-  ok("card.wait-offers-checkout", cardStatus.view.state === "PENDING" && cardStatus.view.checkoutAvailable === true);
-  const cardForeign = await cardService.deposit(other, { provider: "CARD", amount: 5000 }, cardKey, { billing: { city: "Edited" } });
-  ok("card.foreign-no-url", !cardForeign.ok && !cardForeign.data && cardService.counters.dispatches === 1);
-  ok("card.url-owner-and-status", !!cardRow && activeCardCheckoutUrl(me, cardRow) === cardFirst.data?.redirectUrl
-    && activeCardCheckoutUrl(other, cardRow) === null
-    && activeCardCheckoutUrl(me, { ...cardRow, status: "FAILED" }) === null
-    && activeCardCheckoutUrl(me, { ...cardRow, providerRef: null }) === null
-    && activeCardCheckoutUrl(me, { ...cardRow, providerStatus: "deposit-terminal-review:v1" }) === null);
-  let routeOwner: string | null = me;
-  const routeModule = { exports: {} as any };
-  const routeJs = ts.transpileModule(checkoutRoute, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-  new Function("require", "module", "exports", routeJs)((id: string) => {
-    if (id === "next/server") return { NextResponse: { redirect: (url: string | URL, init?: ResponseInit) =>
-      new Response(null, { status: init?.status ?? 307, headers: { location: String(url), ...Object.fromEntries(new Headers(init?.headers).entries()) } }) } };
-    if (id === "@/lib/server/auth-service") return { currentSession: async () => routeOwner ? { userId: routeOwner } : null };
-    if (id === "@/lib/server/store") return { db };
-    if (id === "@/lib/card-checkout-url") return { activeCardCheckoutUrl };
-    throw new Error(`Unexpected checkout-route import ${id}`);
-  }, routeModule, routeModule.exports);
-  const checkout = (id: string) => routeModule.exports.GET(new Request(`https://www.50pick.tz/wallet/deposit/checkout/${id}`), { params: Promise.resolve({ id }) }) as Promise<Response>;
-  const ownedCheckout = await checkout(cardRow!.id);
-  ok("card.route-owned", ownedCheckout.status === 303 && ownedCheckout.headers.get("location") === cardFirst.data?.redirectUrl
-    && ownedCheckout.headers.get("cache-control") === "no-store" && ownedCheckout.headers.get("referrer-policy") === "no-referrer");
-  routeOwner = other;
-  const foreignCheckout = await checkout(cardRow!.id);
-  ok("card.route-foreign", foreignCheckout.status === 404 && !foreignCheckout.headers.get("location"));
-  routeOwner = me;
-  if (cardRow) await db.txn.update(cardRow.id, { status: "CONFIRMED" });
-  const paidCheckout = await checkout(cardRow!.id);
-  ok("card.route-terminal", paidCheckout.headers.get("location")?.endsWith(`/wallet/deposit/wait/${cardRow!.id}`) === true);
-  const cardPaid = await cardService.deposit(me, { provider: "CARD", amount: 5000 }, cardKey, { billing: { city: "Edited" } });
-  ok("card.paid-no-checkout", cardPaid.ok && !cardPaid.data.redirectUrl && cardService.counters.dispatches === 1);
-  ok("card.url-host-guard", trustedCardCheckoutUrl("https://checkout.selcommobile.com/pg/x") !== null
-    && trustedCardCheckoutUrl("http://checkout.selcommobile.com/pg/x") === null
-    && trustedCardCheckoutUrl("https://checkout.selcommobile.com.evil.test/pg/x") === null
-    && trustedCardCheckoutUrl("https://unexpected.selcommobile.com/pg/x") === null
-    && trustedCardCheckoutUrl("https://u:p@checkout.selcommobile.com/pg/x") === null
-    && trustedCardCheckoutUrl("https://checkout.selcommobile.com:444/pg/x") === null);
   ok("early.create-only-origin", (await db.txn.findById(base.id))?.origin === "low_balance" && (await db.wallet.findByUserId(me))?.balance === 77_000);
 
   for (const [name, caller, input] of [["match", me, request], ["owner", other, request], ["amount", me, { ...request, amount: 6000 }]] as const) {
@@ -301,8 +252,7 @@ async function run(source: string, mapper = MAPPER, statusSource = STATUS, check
 
 try {
   for (const mutation of MUTATIONS) {
-    const anchor = resolveAnchor(mutation.file.endsWith("prisma-dal.ts") ? MAPPER : mutation.file.endsWith("deposit-status.ts") ? STATUS
-      : mutation.file.endsWith("/checkout/[id]/route.ts") ? CHECKOUT_ROUTE : SOURCE, mutation.from);
+    const anchor = resolveAnchor(mutation.file.endsWith("prisma-dal.ts") ? MAPPER : mutation.file.endsWith("deposit-status.ts") ? STATUS : SOURCE, mutation.from);
     if (!anchor.ok) throw new Error(`${mutation.name}: ${anchor.reason}`);
   }
   const green = await run(SOURCE), failed = green.filter(c => !c.pass);
@@ -313,7 +263,6 @@ try {
     for (const mutation of MUTATIONS) {
       const planted = mutation.file.endsWith("prisma-dal.ts") ? await run(SOURCE, injectDefect(MAPPER, mutation.from, mutation.to))
         : mutation.file.endsWith("deposit-status.ts") ? await run(SOURCE, MAPPER, injectDefect(STATUS, mutation.from, mutation.to))
-        : mutation.file.endsWith("/checkout/[id]/route.ts") ? await run(SOURCE, MAPPER, STATUS, injectDefect(CHECKOUT_ROUTE, mutation.from, mutation.to))
         : await run(injectDefect(SOURCE, mutation.from, mutation.to));
       if (!planted.some(c => c.name === mutation.expect && !c.pass)) throw new Error(`SURVIVED ${mutation.name}: expected ${mutation.expect}`);
       console.log(`PASS PLANT ${mutation.name}`);
