@@ -7,9 +7,11 @@ record. The S10 build lane may supply part of that drive; inspect its merged res
 staff payment, agency sign-off, owner override, S15 go, or S16 elapsed period is recorded here.
 
 **Ali's coordination decisions, 2026-10-15:** Ali will arrange the S14 staff operator and the agency's written
-sign-off when the preview is ready. He has deferred production admin TOTP and payment-webhook secret setting changes
-for now. These are decisions about timing and responsibility; they do not complete the real-money journey, supply
-agency approval, clear the production configuration gate, or authorize S15. Their evidence fields remain `null`.
+sign-off when the preview is ready. Admin two-factor authentication is to **remain deactivated during staff preview**;
+Ali has authorized read-only Railway inspection of the relevant configuration. Payment-webhook secret setting
+changes are deferred for now. These are interim decisions about timing and access; they do not complete the
+real-money journey, supply agency approval, clear the S15 production-configuration gate, or authorize the public
+flip. Their evidence fields remain `null`.
 
 The plan and its dated amendments control behavior. The five agency PNGs control **element order and intended copy**;
 [`DESIGN_AUTHORITY.md`](../DESIGN_AUTHORITY.md) controls 50pick appearance. In particular, use the later NDIO wording in
@@ -68,9 +70,12 @@ an email, payment or human approval. The integrator reads every linked artifact 
 measures; (2) the integrated S8–S13 exact-tip proof; (3) production configuration, including admin TOTP and signing
 secrets for each enabled payment webhook; (4) the ready kill/rollback procedure. The separate `ownerGo` record must
 name **Ali**. As observed on 2026-10-15, production had `DISABLE_ADMIN_TOTP=true` and absent or placeholder
-SELCOM/AZAMPAY/MIXX webhook secrets; the owner and ops must resolve which rails are enabled and the safe configuration
-before a public flip. Ali deferred those settings on 2026-10-15; this checkpoint makes no Railway variable change and
-the production-configuration evidence stays open. Never put the secret values in the evidence file.
+SELCOM/AZAMPAY/MIXX webhook secrets. Ali chose to keep admin two-factor authentication deactivated during the
+staff-preview period and deferred changes to those settings. His Railway access grant permits inspection of the
+configuration; it is not a request to enable two-factor authentication or change a variable. Before the public flip,
+review the then-current security posture and each enabled provider's webhook signing with Ali, record the decision
+and masked ops read-back, and obtain his fresh S15 go. The production-configuration evidence stays open. Never put
+secret values in the evidence file.
 
 Only after those records and the S14 gate pass, prepare the one S15 flip commit (`simpleJourney=ACTIVE` plus all paired
 copy, legal version, redirects, service-worker cache, manifest and gate rewrites in the plan). Verify the exact deployed
@@ -94,6 +99,6 @@ above its own baseline, per the 2026-10-14 owner ruling in
 | --- | --- |
 | Name the staff operator, account and funding path for S14 | Ali will arrange the operator when the preview is ready; then file the real TZS 1,000 preview-journey record with redacted money references. |
 | Agency written sign-off, or Ali's explicit override | Ali will arrange sign-off when the preview is ready; retain the original privately and commit a redacted decision record. No approval exists yet. |
-| Resolve admin TOTP and each enabled provider's webhook-signing configuration | Ali deferred settings for now; before S15, file an ops read-back with values masked. |
+| Review admin two-factor authentication and each enabled provider's webhook-signing configuration | Ali requires two-factor authentication to remain off during staff preview and permits read-only Railway inspection. Settings changes are deferred; before S15, file a reviewed security decision and masked ops read-back. |
 | Ali's S15 go after reviewing the complete S14 and baseline evidence | Still pending; needs explicit dated approval. |
 | At least seven real days after S15, healthy measures and agency acknowledgment | Dated S16 report and `test:shelved` proof |
