@@ -548,8 +548,8 @@ ok(`1.1 · THE CENSUS: of the ${NOW.animated} animations (any fill, infinite one
 }
 
 /* ══ §2 · C2 · EVERY PAGER'S DOTS ══════════════════════════════════════════════════════════════════════════════════════ */
-section("2 · C2 every pager's dots stand equally apart, the pill growing where it stands, round, on the ladder (/live 12 | 18 | 18)");
-type Rail = { pads: number[]; widths: number[]; heights: number[]; boxH: number[]; drawCls: string[]; railCls: string };
+section("2 · C2 every carousel target meets the 40px floor and its dot stays centred");
+type Rail = { pads: number[]; mins: number[]; widths: number[]; heights: number[]; boxH: number[]; drawCls: string[]; railCls: string };
 /** A rendered rail: each target's horizontal padding, its drawing's width (inline) and height (class). */
 function railOf(html: string, railClassRe: RegExp): Rail | null {
   const m = railClassRe.exec(html);
@@ -560,29 +560,30 @@ function railOf(html: string, railClassRe: RegExp): Rail | null {
   return {
     railCls: m[1] ?? "",
     pads: targets.map((t) => Number(/(?:^|\s)px-\[(\d+)px\]/.exec(t[1])?.[1] ?? NaN)),
+    mins: targets.map((t) => Number(/(?:^|\s)min-w-\[(\d+)px\]/.exec(t[1])?.[1] ?? NaN)),
     boxH: targets.map((t) => Number(t[2])),
     drawCls: targets.map((t) => t[3]),
     heights: targets.map((t) => Number(/(?:^|\s)h-\[(\d+)px\]/.exec(t[3])?.[1] ?? NaN)),
     widths: targets.map((t) => Number(t[4])),
   };
 }
-/** The drawings' left and right edges for a rail of `n` with the pill at `cur`: each target its drawing and its padding. */
-function edges(pad: number, on: number, off: number, n: number, cur: number) {
+/** The drawings' edges for a rail of `n`; the 40px boxes own the hit area. */
+function edges(pad: number, on: number, off: number, n: number, cur: number, floor = 40) {
   let x = 0;
   const out: Array<[number, number]> = [];
-  for (let i = 0; i < n; i++) { const w = i === cur ? on : off; out.push([x + pad, x + pad + w]); x += w + 2 * pad; }
+  for (let i = 0; i < n; i++) { const w = i === cur ? on : off; const box = Math.max(floor, w + 2 * pad); out.push([x + (box - w) / 2, x + (box + w) / 2]); x += box; }
   return { out, length: x };
 }
 {
   const markets = Array.from({ length: 4 }, (_, i) => ({ id: `m${i}`, title: `Swali ${i + 1}`, yesPct: 40 + i, productLine: "MARKET" as const, roundId: null }));
   const { FeaturedContest } = req("../src/app/live/featured-contest.tsx") as { FeaturedContest: unknown };
   const { NotableCarousel } = req("../src/app/results/notable-carousel.tsx") as { NotableCarousel: unknown };
-  const live = railOf(inLocale("sw", "/live", h(FeaturedContest as never, { markets, eyebrow: "x", openLabel: word("sw", "market.openMarket") } as never)), /<div class="(-ml-\[9px\] flex items-center)">/);
+  const live = railOf(inLocale("sw", "/live", h(FeaturedContest as never, { markets, eyebrow: "x", openLabel: word("sw", "market.openMarket") } as never)), /<div class="(flex basis-full items-center justify-center sm:-ml-\[9px\] sm:basis-auto)">/);
   const notable = railOf(inLocale("sw", "/results", h(NotableCarousel as never, { slides: [h("i", { key: 1 }, "a"), h("i", { key: 2 }, "b"), h("i", { key: 3 }, "c")], label: "l", prevLabel: "p", nextLabel: "n" } as never)), /<div class="(mt-2\.5 flex items-center justify-center)" aria-hidden="true">/);
   const rails = { live, notable };
   const shape = (r: Rail | null, n: number) => !!r && r.widths.length === n && r.widths[0] === 18 && r.widths.slice(1).every((w) => w === 6)
-    && r.pads.every((p) => p === 9) && r.heights.every((x) => x === 6) && r.boxH.every((x) => x === 40);
-  ok("2.1 · RENDERED: /live's rail (4 slides) and /results' (3): each target its drawing and 9px either side, 40px tall; the drawing 6px tall — a round 6px dot, the current slide an 18 × 6 pill",
+    && r.pads.every((p) => p === 9) && r.mins.every((w) => w === 40) && r.heights.every((x) => x === 6) && r.boxH.every((x) => x === 40);
+  ok("2.1 · RENDERED: /live and /results targets are at least 40×40, with a 6px dot and an 18px active pill",
     shape(live, 4) && shape(notable, 3), j(rails));
   // Every current slide, every rail length the carousels can hold (liveContest's six; /results' three): equal gaps, a
   // constant length — so a change of slide moves only the dots between the two that trade width.
@@ -592,24 +593,23 @@ function edges(pad: number, on: number, off: number, n: number, cur: number) {
     for (let cur = 0; cur < n; cur++) {
       const { out, length } = edges(9, 18, 6, n, cur);
       lengths.add(length);
-      const gaps = out.slice(1).map((e, i) => e[0] - out[i][1]);
-      if (!gaps.every((g) => g === 18)) bad.push(`n${n} cur${cur} gaps ${j(gaps)}`);
-      if (Math.min(...out.map(([a, b]) => b - a + 18)) < 24) bad.push(`n${n} a target under 24px`);
+      const centres = out.map(([a, b]) => (a + b) / 2);
+      if (!centres.slice(1).every((c, i) => c - centres[i] === 40)) bad.push(`n${n} cur${cur} centres ${j(centres)}`);
     }
-    if (lengths.size !== 1 || [...lengths][0] !== 24 * n + 12) bad.push(`n${n} lengths ${j([...lengths])}`);
+    if (lengths.size !== 1 || [...lengths][0] !== 40 * n) bad.push(`n${n} lengths ${j([...lengths])}`);
   }
-  ok("2.2 · for every rail of 2–6 slides and every current slide: every two drawings stand 18px apart, every target is at least 24px wide (a dot's 24, the pill's 36), and the rail's length is 24n + 12 whichever slide is current", bad.length === 0, j(bad));
+  ok("2.2 · for every rail of 2–6 slides and every current slide: centres stand 40px apart and the rail's width never changes", bad.length === 0, j(bad));
   const before = edges(9, 18, 6, 4, 0);   // the 390 tile's geometry, as a CONTROL: fixed 24px targets, the pill centred in one
   const fixed = [[3, 21], [33, 39], [57, 63], [81, 87]];
   const fixedGaps = fixed.slice(1).map((e, i) => e[0] - fixed[i][1]);
-  ok(`2.2′ CONTROL · the fixed 24px targets drew gaps of ${j(fixedGaps)} (the tile's 12 | 18 | 18: x197–214 · 227–232 · 251–256 · 275–280); now ${j(before.out.slice(1).map((e, i) => e[0] - before.out[i][1]))}`,
-    j(fixedGaps) === j([12, 18, 18]) && 197 + 18 + 12 === 227);
+  ok(`2.2′ CONTROL · the old 24px targets drew uneven gaps ${j(fixedGaps)}; fixed 40px targets centre the dots at 20, 60, 100, 140`,
+    j(fixedGaps) === j([12, 18, 18]) && j(before.out.map(([a, b]) => (a + b) / 2)) === j([20, 60, 100, 140]));
   const DRAW = "block h-[6px] rounded-full transition-[width,background-color] duration-quick ease-glide";
   const cfgOk = /quick: "var\(--t-quick\)"/.test(TW) && /glide: "var\(--m-glide\)"/.test(TW);
   ok("2.3 · the pill and the dot it trades with change width together on the ladder (`duration-quick` = --t-quick, `ease-glide` = --m-glide) — `transition-all`'s off-ladder 150ms gone from every dot",
     cfgOk && [live, notable].every((r) => !!r && r.drawCls.every((c) => c === DRAW)), j([live?.drawCls[0], notable?.drawCls[0]]));
-  // /live: the rail takes its first target's 9px back into the row's gap, so the first drawing stands the row's 16px
-  // after the button, and the six-slide rail shares a 390 line with the button in every language.
+  // The wider hit targets make six slides too wide beside the action at 390, so the phone rail
+  // deliberately takes a centred second line. The desktop rail keeps its old -9px alignment.
   const rowGap = /<div className="mt-4 flex flex-wrap items-center gap-(\d+(?:\.\d+)?)">/.exec(code("src/app/live/featured-contest.tsx"))?.[1] ?? "";
   const fontkit = req("fontkit") as { openSync: (p: string) => { layout: (s: string) => { glyphs: Array<{ advanceWidth: number }> }; unitsPerEm: number } };
   const F = (n: string) => fontkit.openSync(`src/lib/server/reports/fonts/${n}`);
@@ -617,16 +617,16 @@ function edges(pad: number, on: number, off: number, n: number, cur: number) {
   const wOf = (font: ReturnType<typeof F>, s: string, px: number) => font.layout(s).glyphs.reduce((a, g) => a + g.advanceWidth, 0) / font.unitsPerEm * px;
   const HAN = /[　-鿿＀-￯]/;
   const sans = (s: string, px: number) => [...s].reduce((a, ch) => a + (HAN.test(ch) ? px : (wOf(interM, ch, px) + wOf(interB, ch, px)) / 2), 0);
-  const six = edges(9, 18, 6, 6, 0).length - 9;
+  const six = edges(9, 18, 6, 6, 0).length;
   const room = 390 - 82;   // the hero at 390: its frame and padding (visual-pass-r5l §10.2)
   const rows = LOCALES.map((l) => ({ l, need: Math.ceil(2 + 32 + sans(word(l, "market.openMarket"), 14) + tw(rowGap) + six) }));
-  ok(`2.4 · /live's rail \`-ml-[9px]\`: the first drawing stands the row's ${tw(rowGap)}px after the button (it stood 19 or 25 by the current slide) and on the content's edge when the row wraps; with six slides the button and rail need ${rows.map((r) => `${r.l} ${r.need}`).join(" · ")} of ${room}px at 390 — one line`,
-    live?.railCls === "-ml-[9px] flex items-center" && tw(rowGap) === 16 && six === 147 && rows.every((r) => r.need <= room), j(rows));
-  // The loading drawings draw the pages' rails: the same target, the same 6px drawing, /live's rail its -9px.
+  ok(`2.4 · /live's 240px six-slide rail takes a centred second line on phones; at 390 it needs ${rows.map((r) => `${r.l} ${r.need}`).join(" · ")} of ${room}px beside the action`,
+    live?.railCls === "flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto" && tw(rowGap) === 16 && six === 240 && rows.every((r) => r.need > room), j(rows));
+  // The loading drawings reserve the same targets and phone line as the loaded pages.
   const LG = code("src/app/live/loading.tsx"), RG = code("src/app/results/loading.tsx");
-  ok("2.5 · the two loading drawings draw the pages' rails: targets `grid h-[40px] place-items-center px-[9px]`, the 6px drawing at 18 / 6, /live's rail `-ml-[9px]`",
-    [LG, RG].every((g) => g.includes('className="grid h-[40px] place-items-center px-[9px]"') && g.includes('className="block h-[6px] rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }}'))
-      && LG.includes('<div className="-ml-[9px] flex items-center">') && !/w-\[24px\]|h-1\.5 rounded-full/.test(LG + RG));
+  ok("2.5 · both loading drawings reserve 40×40 dot targets; /live's drawing uses the same centred phone row",
+    [LG, RG].every((g) => g.includes('className="grid h-[40px] min-w-[40px] place-items-center px-[9px]"') && g.includes('className="block h-[6px] rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }}'))
+      && LG.includes('<div className="flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto">') && !/w-\[24px\]|h-1\.5 rounded-full/.test(LG + RG));
   // The first-visit primer's step dots: the same convention (they are not targets, so their gap is the row's own 8px).
   const PR = "src/components/onboarding/first-visit-primer.tsx";
   const dots = parse(PR).filter((e) => e.tag === "span" && e.cls.includes("rounded-full") && /width: i === step/.test(e.style));
@@ -640,16 +640,16 @@ function edges(pad: number, on: number, off: number, n: number, cur: number) {
   const railCensus = (over: Record<string, string> = {}) => {
     const srcOf = (f: string) => over[f] ?? raw(f);
     const dotsIn = PLAYER_TSX.flatMap((f) => parse(f, srcOf(f)).filter((e) => /width: i === \w+ \? 18 : 6/.test(e.style)).map((e) => ({ f, cls: e.cls.join(" "), box: e.parent?.cls.join(" ") ?? "" })));
-    const bad = dotsIn.filter((d) => !d.cls.includes("h-[6px]") || d.cls.includes("h-1.5") || (d.f !== "src/components/onboarding/first-visit-primer.tsx" && !/(?:^| )px-\[9px\](?: |$)/.test(d.box)) || /w-\[24px\]/.test(d.box));
+    const bad = dotsIn.filter((d) => !d.cls.includes("h-[6px]") || d.cls.includes("h-1.5") || (d.f !== "src/components/onboarding/first-visit-primer.tsx" && (!/(?:^| )px-\[9px\](?: |$)/.test(d.box) || !/(?:^| )min-w-\[40px\](?: |$)/.test(d.box))) || /w-\[24px\]/.test(d.box));
     return { dotsIn, bad };
   };
   const RC = railCensus();
-  ok(`2.7 · every dot rail in player code (${RC.dotsIn.length}: the two carousels, their two drawings, the primer) draws a 6px-tall dot — none an 8px capsule — in a target that is its drawing and 9px either side (the primer's dots are not targets): none keeps a fixed 24px target`,
+  ok(`2.7 · all ${RC.dotsIn.length} player dot rails use 6px drawings; carousel targets hold the 40px floor`,
     RC.dotsIn.length === 5 && RC.bad.length === 0, j(RC));
   // PLANTS — on the source, read by the same census
   const FCP = "src/app/live/featured-contest.tsx";
-  const fixedBack = railCensus({ [FCP]: raw(FCP).replace('className="grid h-[40px] place-items-center rounded-md px-[9px]"', 'className="grid h-[40px] w-[24px] place-items-center rounded-md"') });
-  ok("2.2″ PLANT · /live's fixed 24px target back (the 12 | 18 | 18 rail) is reported", fixedBack.bad.some((d) => d.f === FCP && /w-\[24px\]/.test(d.box)), j(fixedBack.bad));
+  const fixedBack = railCensus({ [FCP]: raw(FCP).replace('className="grid h-[40px] min-w-[40px] place-items-center rounded-md px-[9px]"', 'className="grid h-[40px] place-items-center rounded-md px-[9px]"') });
+  ok("2.2″ PLANT · removing /live's 40px width floor is reported", fixedBack.bad.some((d) => d.f === FCP && !/min-w-\[40px\]/.test(d.box)), j(fixedBack.bad));
   const capsule = railCensus({ "src/app/results/notable-carousel.tsx": raw("src/app/results/notable-carousel.tsx").replace('"block h-[6px] rounded-full transition-[width,background-color] duration-quick ease-glide"', '"block h-1.5 rounded-full transition-all"') });
   ok("2.7′ PLANT · /results' 6 × 8 capsule back (`h-1.5` is 8px here) is reported", capsule.bad.some((d) => /notable-carousel/.test(d.f)), j(capsule.bad));
   const oval = railOf(inLocale("sw", "/results", h(NotableCarousel as never, { slides: [h("i", { key: 1 }, "a"), h("i", { key: 2 }, "b")], label: "l", prevLabel: "p", nextLabel: "n" } as never)).replace(/h-\[6px\]/g, "h-1.5"), /<div class="(mt-2\.5 flex items-center justify-center)" aria-hidden="true">/);

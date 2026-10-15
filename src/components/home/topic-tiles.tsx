@@ -24,6 +24,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { categoryLabel } from "@/lib/markets/category-label";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
 import { stemOf } from "@/lib/display-stem";
 import type { MarketCategory } from "@/lib/server/market-service";
@@ -80,18 +81,18 @@ export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict })
             className="kp-topic"
           >
             <span className="kp-topic__n">{categoryLabel(t, tp.id as MarketCategory)}</span>
-            <span className="kp-topic__m">
-              <span className="kp-topic__live">{fill(t.home.topicLive, { n: formatNumber(tp.count) })}</span>
-              {/* 🔴 A ZERO POOL IS NOT STATED: 3 of the 7 tiles read "TZS 0" on production (2026-09-24),
-                  turning the band whose job is to show a live book into an advertisement that it is
-                  empty. ⛔ This is not the cold-start rule relaxed — that rule forbids INVENTING a
-                  figure; omitting a true zero states nothing false, and the count is never omitted.
-                  🔴 D33 · when it IS drawn the figure stays WRAPPED as one unbreakable token, so it
-                  cannot split at its own space ("TZS" over "8K"). */}
-              {tp.poolTzs > 0 && (
-                <>{" · "}<span className="kp-topic__pool">{formatTzsCompact(tp.poolTzs)}</span></>
-              )}
-            </span>
+            {/* F52: the count and any pool are complete facts. DotSeq keeps a dot from ending
+                or opening a wrapped line at 320px. A zero pool remains unstated (D33). */}
+            <DotSeq
+              className="kp-topic__m"
+              mono
+              text={tp.poolTzs > 0
+                ? `${fill(t.home.topicLive, { n: formatNumber(tp.count) })} · ${formatTzsCompact(tp.poolTzs)}`
+                : fill(t.home.topicLive, { n: formatNumber(tp.count) })}
+              renderPart={(part) => part === formatTzsCompact(tp.poolTzs)
+                ? <span className="kp-topic__pool">{part}</span>
+                : <span className="kp-topic__live">{part}</span>}
+            />
           </Link>
         ))}
       </div>

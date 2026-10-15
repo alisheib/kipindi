@@ -108,37 +108,7 @@ export function NotableCarousel({
         ))}
       </div>
 
-      {/* ⭐ DG-P-07 · §A2 — THE DOT WAS THE BUTTON, SO THE TARGET WAS 6×8px.
-          Re-derived: `h-1.5` is 8px on the OVERRIDDEN spacing scale (tailwind.config.ts:207),
-          and the inline `width` was 6 inactive / 18 active — so the whole tappable box was the
-          paint. ⭐ THE TARGET IS PADDED; THE DOT IS NOT THICKENED. This is the treatment its
-          own declared twin already carries — `live/featured-contest.tsx:155-163`, whose comment
-          reads "THE HIT AREA IS PADDING, NOT A BIGGER DOT (§A2) … a 40px dot is a different
-          design", and which then says this file "still carries the old shape … the two are
-          knowingly out of step until it gets the same treatment". This IS that treatment, so
-          ⛔ that paragraph in `featured-contest.tsx` is now stale and must be retired.
-          ⛔ THE `gap` GOES, and the twin says why in its own words: the 24px button supplies the
-          separation, so a gap would stack on top of it and widen the rail a second time.
-          ⚠️ 24px WIDE IS THE TWIN'S NUMBER, NOT §A2's. §A2 names ONE number — 40 — while
-          `responsive-audit.mjs:292` instruments `height < 40 || width < 24`, and the twin was
-          tuned to the guard. Matching the twin keeps two carousels identical and leaves the
-          40-vs-24 width question where it belongs: a ruling for Ali, not an edit smuggled in
-          by whichever of the two files was touched last.
-          ⚠️ WHAT MOVES: the rail goes 8px → 40px tall (+32px under the featured card) and
-          46px → 72px wide, still `justify-center`. A bounding box CANNOT prove this fix works
-          (globals.css:4788 records exactly that trap) — the 40×24 wrapper measures 40×24
-          whether or not the inner span steals the click, so re-prove it with
-          `document.elementFromPoint`, the way `qa:toggle-hit` does.
-          ⚠️ THE A11Y DIVERGENCE IS LEFT AS FOUND AND REPORTED, NOT SETTLED HERE: this row is
-          `aria-hidden` with `tabIndex={-1}` (so the `aria-label` is dead weight) while the twin
-          is in the a11y tree with `aria-current`. Two carousels must not disagree about that —
-          but that is a semantics ruling, not the tap floor, and it needs one decision applied
-          to BOTH files in one pass. */}
-      {/* ⭐ EQUAL GAPS, THE PILL GROWING IN PLACE (round 9 of the visual pass, R9-C, 2026-10-11) — the /live twin's rail,
-          drawn one way: a target is its drawing and 9px either side, so every two drawings stand 18px apart (a fixed 24px
-          target put 12px beside the 18px pill and 18 between dots), the dot is 6px round (`h-1.5` is 8px here), and the
-          pill and the dot it trades with change width together on the ladder, so the centred rail's length holds and
-          nothing re-centres. The twin also takes its first 9px back into its row's gap; this rail is centred alone. */}
+      {/* F05: the dot remains 6px (18px active), centred inside a 40×40 target. The loading drawing uses the same target size. */}
       {multi && (
         <div className="mt-2.5 flex items-center justify-center" aria-hidden>
           {slides.map((_, i) => (
@@ -148,7 +118,7 @@ export function NotableCarousel({
               onClick={() => setIdx(i)}
               tabIndex={-1}
               aria-label={t.market.showResultN.replace("{n}", String(i + 1))} /* V-7 */
-              className="grid h-[40px] place-items-center rounded-md px-[9px]"
+              className="grid h-[40px] min-w-[40px] place-items-center rounded-md px-[9px]"
             >
               {/* The current slide is "this one": the brand family's pip (`--brand-400`, the journey rail's dot), never gold
                   — a carousel's place is not money (Q5; R5-C, the second gold audit, 2026-10-09). The /live twin

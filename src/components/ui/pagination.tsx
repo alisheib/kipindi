@@ -176,7 +176,7 @@ export function Pagination({
     );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
+    <div data-pager-root className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3 border-t border-border">
       {/* ⭐ The range is grouped by `formatNumber`, the platform's one count grouping (R5-J, round 5). `toLocaleString()` grouped
           by the runtime's locale — the server's on a server page, the browser's on the wallet's client pager — so one total
           could print two ways ("12,479" / "12.479"). The page buttons below stay bare: each names a page, `?page=1040`. */}

@@ -210,53 +210,15 @@ export function FeaturedContest({
             {openLabel}
             <I.arrowRight s={14} edge="end" text="body-600" />
           </Link>
-          {/* 🔴 THE PAGER SAID TWO OPPOSITE THINGS ABOUT ITSELF, AND SHIPPED BOTH.
-              The rail was `aria-hidden` — "there is nothing here" — while every dot inside it
-              carried an `aria-label` and an `onClick`, which is a claim that each one is a
-              named control. Written together, those cancel: the labels were unreachable (an
-              aria-hidden subtree is removed from the tree wholesale, `tabIndex={-1}` or not),
-              so a screen-reader user exploring by touch on a phone landed on six live buttons
-              that announced nothing at all. The dots are REAL — they jump the carousel — so
-              the contradiction is resolved in the direction of the truth: the subtree is
-              exposed, the labels do their job, and `aria-current` carries the selected state
-              that was previously signalled by colour and width alone (§A4).
-
-              ⭐ THE HIT AREA IS PADDING, NOT A BIGGER DOT (§A2). The dot keeps its drawn size —
-              6px wide, 18px when active — because a 40px dot is a different design. The BUTTON
-              around it is 40px tall and at least 24px wide (a dot's 24, the pill's 36 since R9-C, below), the floor
-              this repo actually instruments (`responsive-audit.mjs`: `height < 40 || width < 24`). The row's `gap`
-              is dropped because the padding now provides the separation; ⛔ do not re-add one,
-              it would stack on top of the padding and widen the rail a second time.
-              ✅ `results/notable-carousel.tsx` — this component's declared twin — GOT THE SAME
-              TREATMENT on 2026-08-30 (DG-P-07), so the paragraph that used to sit here saying
-              the two were "knowingly out of step until it gets the same treatment" is retired
-              rather than left to read as a live caveat. ⛔ A note describing a divergence that
-              has been closed is indistinguishable from one describing a live one, and this file
-              is the one a session reads to learn the shape.
-              ⚠️ ONE DIVERGENCE GENUINELY REMAINS AND IT IS NOT THE TAP FLOOR: this row is in
-              the a11y tree with `aria-current`, while the twin is `aria-hidden` with
-              `tabIndex={-1}`. Two carousels must not disagree about that — but it is a
-              semantics ruling that has to be applied to BOTH files in one pass, not smuggled
-              in by whichever was touched last. */}
-          {/* ⭐ EQUAL GAPS, THE PILL GROWING IN PLACE (round 9 of the visual pass, R9-C, 2026-10-11; R5-F5, tiles 175 176 202).
-              Each target was a fixed 24px with its drawing centred in it, so the 18px pill ate 6px of its neighbours' room:
-              12px beside the pill, 18px between two dots (390: x197–214 · 227–232 · 251–256 · 275–280). Now a target is
-              its drawing and 9px either side (`px-[9px]`): a dot's target is 24px (the floor `responsive-audit` holds), the
-              pill's 36, and every two drawings stand 9 + 9 = 18px apart, whichever slide is current. The pill and the dot
-              it trades with change width together on one curve, so the rail's length holds (6 × 24 + 12) and only the dots
-              between the two glide — the pill grows where it stands. The dot is 6px round: `h-1.5` is 8px on this
-              repo's scale, so it was a 6 × 8 capsule. The rail takes its first target's 9px back into the row's gap
-              (`-ml-[9px]`): the first drawing stands the row's 16px after the button (it stood 19 or 25 by which slide was
-              current), on the content's edge when the row wraps, and the six-slide rail still shares a 390 line with
-              "Fungua soko" in Swahili (`test:visual-pass-r9c` §2). */}
+          {/* F05: six 40px targets keep the small dots and active pill centred. On phones the rail takes a deliberate second row; both carousel loading drawings reserve the same space. */}
           {multi && (
-            <div className="-ml-[9px] flex items-center">
+            <div className="flex basis-full items-center justify-center sm:-ml-[9px] sm:basis-auto">
               {markets.map((mm, i) => (
                 <button
                   key={mm.id}
                   type="button"
                   onClick={() => setIdx(i)}
-                  className="grid h-[40px] place-items-center rounded-md px-[9px]"
+                  className="grid h-[40px] min-w-[40px] place-items-center rounded-md px-[9px]"
                   aria-current={i === idx ? "true" : undefined}
                   aria-label={t.market.showMarketN.replace("{n}", String(i + 1))}
                 >

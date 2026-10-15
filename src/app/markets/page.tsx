@@ -199,12 +199,12 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       {/* Odds, volumes and time-left stay current without an F5. Pauses when backgrounded. */}
       <RefreshPoller intervalMs={30_000} />
 
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">
           {t.market.title}
         </p>
         {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}
-        <p className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
+        <p className="ml-auto flex max-w-full items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
           <SignalPip size={7} className="mr-0.5" />
           <span className="font-semibold text-text">{formatNumber(openMarkets.length)}</span>
           <span className="text-text-subtle">{t.market.liveCount}</span>
