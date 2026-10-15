@@ -279,9 +279,11 @@ export type ModalProps = {
    * dialog is open, it gives focus to its first target again (`initialFocus`) through the very `focusIn` an opening uses:
    * only while it is the top dialog, never on a control that cannot be pressed, its beat armed. `undefined` is "not now"
    * (a caller holds it back while something is in flight). A caller re-keying the dialog instead would tear it down: this
-   * component draws nothing on its first commit, so the dialog would blink.
+   * component normally draws nothing on its first commit, so the dialog would blink.
    */
   refocusKey?: string | number;
+  /** For a dialog whose owner renders it only after hydration, supply the portal in its first commit. */
+  clientOnlyPortal?: boolean;
 };
 
 /** The shared centered-dialog shell. Controlled — the caller owns `open`. */
@@ -306,9 +308,10 @@ export function Modal({
   sheetUntil = "sm",
   anchorRef,
   refocusKey,
+  clientOnlyPortal = false,
 }: ModalProps) {
   const { t } = useT();
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted] = React.useState(() => clientOnlyPortal && typeof document !== "undefined");
   const tall = sheet && sheetUntil === "lg";
   const anchored = tall && !!anchorRef;
   /* The panel's place under its trigger, read from the trigger itself — on open and on resize, so
@@ -336,8 +339,8 @@ export function Modal({
   const { present, exiting } = useExitPhase(open, "--t-quick");
 
   useModalLock(open);
-  // Keep SSR's first render empty, then supply the portal refs before the first browser paint.
-  React.useLayoutEffect(() => { setMounted(true); }, []);
+  // Keep SSR's first render empty. A client-only host can supply refs in its first commit.
+  React.useLayoutEffect(() => { if (!mounted) setMounted(true); }, [mounted]);
   /* ⭐ S6 A8i-2 · THE KEY GUARD STANDS WHEREVER A DIALOG CAN OPEN (`key-guard.tsx`). AppShell installs it on every player
      page; a page outside the shell (the console) gets it from the first dialog it mounts, open or not, so it already
      stands when one opens. It is installed once per page, by whichever asks first. */

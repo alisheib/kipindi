@@ -323,8 +323,9 @@ export function BetSheet(props: BetSheetProps) {
     setLive(message);
   }, [open, props.frame, props.estimateUpdated, t, locale, receiptId, nowMs]);
   const terminal = props.frame.frame === "closed" || props.frame.frame === "blocked";
+  // The host first opens this sheet from an effect or a hydrated card tap; there is no server portal to hydrate.
   return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
-    sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
+    sheet sheetUntil="lg" clientOnlyPortal maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
     refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
     <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-guest={props.guest ? "" : undefined} data-ptr-skip=""
       onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
