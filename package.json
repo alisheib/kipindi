@@ -401,6 +401,7 @@
     "test:events": "tsx scripts/events-calendar.test.mts",
     "test:killswitch": "tsx scripts/payment-killswitch.test.mts",
     "test:fast-payout": "tsx scripts/fast-payout.test.mts",
+    "test:fast-deposit": "tsx scripts/fast-deposit.test.mts",
     "selcom:capture": "node scripts/selcom-capture.mjs",
     "test:monitoring": "tsx scripts/monitoring.test.mts",
     "test:alerting": "tsx scripts/alerting.test.mts",

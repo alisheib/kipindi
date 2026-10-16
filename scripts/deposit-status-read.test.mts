@@ -171,7 +171,7 @@ function system(src = sources, data = db) {
     sendEmailToUser: async () => {}, depositConfirmedHtml: () => "", depositReversedHtml: () => "", depositFailedHtml: () => "",
     require: requireFixture,
   };
-  const names = ["deposit", "creditConfirmedDeposits", "settleConfirmedWithdrawals", "isFastPayoutCandidate", "reconcileStalePayments", "clearNeedsReview", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settleWithdrawalConfirmed", "settleWithdrawalFailed", "settlePaymentWebhook", "markDepositStatusReview", "assertUniquePaymentReference", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
+  const names = ["deposit", "isFastDepositCandidate", "creditConfirmedDeposits", "settleConfirmedWithdrawals", "isFastPayoutCandidate", "reconcileStalePayments", "clearNeedsReview", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settleWithdrawalConfirmed", "settleWithdrawalFailed", "settlePaymentWebhook", "markDepositStatusReview", "assertUniquePaymentReference", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
   const walletText = "const NEEDS_REVIEW_SEEN = new Set(); const NEEDS_REVIEW_CAP = 5000;\n" + names.map(name => fn(src[files[1]], name)).join("\n");
   const code = ts.transpileModule(walletText, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   // Wrap only the entry counter; the compiled marker's actual source body and all real DAL/lock work stay intact.

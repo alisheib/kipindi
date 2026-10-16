@@ -70,8 +70,9 @@ visibility). A change updates the document that owns its subject in the same com
 - Before any commit: `git branch --show-current`. Stage files **by name** (`git add <paths>`); never `git add -A` or
   `git add .` — another session's half-finished files would ride along. Commit a type and its users together. Never
   force-push `main`. On a Windows command line, never put a `#` comment after a command.
-- **Each change:** its own guard and a mutation proof (the guard fails when the change is undone); the suites that read
-  the changed files; both stores (memory and PostgreSQL) for any money or data path.
+- **Each change:** its own guard and a mutation proof (the guard fails when the change is undone); every script that
+  reads a changed file — `test:*`, and the `qa:*` and `red:*` ones too, whose plants pin exact lines (grep `scripts/`
+  for the path); both stores (memory and PostgreSQL) for any money or data path.
 - **Each push:** typecheck; `next build` at the exact commit; local `qa:live` (a build is not a render). Then, after
   Railway deploys: `?dpl=<sha>` on www, apex and the Railway host; `/api/health` (database reachable and migrated);
   `npm run qa:chunks-prod -- --origin <url>` on both public origins; production `qa:live`

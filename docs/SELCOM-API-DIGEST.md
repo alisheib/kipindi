@@ -162,16 +162,17 @@ Both money movements settle from a SIGNED status re-query, not from trusting the
 the intended fast path, and credit does not depend on it: observed 2026-07-20, a genuinely paid deposit sat PROCESSING
 with no webhook ever arriving.
 - **The fast lane** — its own timer, every 15 s (`DEPOSIT_POLL_MS`), separate from the 60 s lifecycle tick and guarded
-  against overlap. One pass re-queries in-flight deposits (`creditConfirmedDeposits`: from 8 s to 10 minutes old) and
-  then in-flight payouts (`settleConfirmedWithdrawals`: from 8 s to 30 minutes old).
+  against overlap. One pass re-queries in-flight deposits (`creditConfirmedDeposits`: from 8 s to 30 minutes old) and
+  then in-flight payouts (`settleConfirmedWithdrawals`: from 8 s to 30 minutes old). Both windows end where the stale
+  sweep begins (`test:fast-deposit`, `test:fast-payout`). ⚠️ Until 2026-10-16 the deposit window was 10 minutes, so a
+  deposit 10–30 minutes old was re-queried by nobody and a late provider confirmation waited for the sweep.
 - ⛔ **The fast lane can only CONFIRM.** It never fails, reverses or terminalises anything: a PENDING, FAILED or
   UNSUPPORTED answer is left alone. That asymmetry is what makes polling four times a minute safe — a slow but valid
   payment can never be turned into a failed one, and a payout can never be refunded while its money may still be on the
   way. Do not "simplify" it into one lane.
 - **The stale sweep** (`reconcileStalePayments`, every 5 minutes, on rows older than its 30-minute cutoff) owns every
   terminal decision: credit a late confirmation, fail a verified failure, reverse a failed payout, and leave anything it
-  cannot prove (no reference, no answer in LIVE money mode) in front of an officer instead of guessing. A deposit older
-  than the fast lane's window and younger than the cutoff waits for the callback or the sweep.
+  cannot prove (no reference, no answer in LIVE money mode) in front of an officer instead of guessing.
 - Every door — the callback, the card return page, the fast lane and the sweep — settles through
   `settlePaymentWebhook`, so a confirmation arriving twice credits once (`docs/DATA-LAYER.md` § Money-path mechanics).
 
