@@ -173,7 +173,9 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     if (truth.seed && truth.viewer) {
       const parsedStake = Number(after.stakeText);
       const moved = estimateMoved({ stake: parsedStake, estimate: sheetEstimate(after.seed, after.side, parsedStake) }, { stake: parsedStake, estimate: sheetEstimate(truth.seed, after.side, parsedStake) });
-      const transient = after.settled && ["lowNoRead", "plan", "lossRoom"].includes(after.settled.view.kind);
+      // A refusal the facts carry (maintenance, A25 item 2) yields to this fresh read: the plan then shows it, or lifts it.
+      const transient = after.settled && (["lowNoRead", "plan", "lossRoom"].includes(after.settled.view.kind)
+        || (after.settled.view.kind === "inline" && after.settled.view.byFacts === true));
       const legalBefore = Number.isSafeInteger(parsedStake) && parsedStake >= after.seed.min && parsedStake <= after.seed.max;
       const boundsMoved = truth.seed.min !== after.seed.min || truth.seed.max !== after.seed.max;
       // A background reread may adjust a previously legal returned choice when the market's bounds move.
@@ -386,7 +388,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       requests.current.delete(chosen.key);
       if (old) pending.current.set(identity(chosen.quote), old); else pending.current.delete(identity(chosen.quote));
       selected.current = oldSelected;
-      show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } });
+      show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" }, hold: { kind: "change" } }, retry: "new", doubt: "none", marker: "dropKey" } });
       return;
     }
     window.history.replaceState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
@@ -424,8 +426,10 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
         return;
       }
       if (next?.phase === "inDoubt") void readKey(record);
+      // A refusal the facts carry is re-read at once, so its line and its hold follow the facts, not the tap (A25 item 2).
+      else if (settled.view.kind === "inline" && settled.view.byFacts) void refreshed();
     });
-  }, [readKey, readTruth, receipt, revise, save, show, viewerId, recoveryBlocked, invalidateOwner]);
+  }, [readKey, readTruth, receipt, refreshed, revise, save, show, viewerId, recoveryBlocked, invalidateOwner]);
 
   const deposit = useCallback((amount?: number) => {
     if (!mounted.current) return;
@@ -442,7 +446,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     selected.current = readMarker(writeMarker(bet, stamp,
       returnAttribution(a, selected.current, viewerId, new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
     window.history.replaceState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
-    if (!save()) { show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } }); return; }
+    if (!save()) { show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" }, hold: { kind: "change" } }, retry: "new", doubt: "none", marker: "dropKey" } }); return; }
     show(null);
     const query = new URLSearchParams({ amount: String(chosen), bet: `${bet.id}.${bet.side}.${bet.stake}`, from: "low-balance", returnPath: window.location.pathname });
     // Payment focus is selected in the root shell on a document request. A soft route would retain the board's chrome.

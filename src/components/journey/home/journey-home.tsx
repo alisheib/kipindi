@@ -115,7 +115,9 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
         {onBreak && (() => {
           const date = formatBreakEnd(Date.parse(onBreak.until), nowMs, t.common.monthsShort, locale);
           return <div className="kp-jhome__break rounded-xl border border-border bg-bg-elevated p-4 text-body-sm" role="status" data-testid="journey-home-break">
-            <p className="font-semibold text-text flex items-start gap-2"><I.lock s={16} />{keepText(fill(onBreak.exclusion ? t.rg.exclusionActive : t.journey.homeBreakTitle, { date }), [date])}</p>
+            {/* The sentence is ONE flex item (S8-PLAN A25 item 16, tile 059): its kept runs were each their own item, so the
+                row's 8px gap opened between "until" and its date — a 12px hole in a sentence. */}
+            <p className="font-semibold text-text flex items-start gap-2"><I.lock s={16} /><span>{keepText(fill(onBreak.exclusion ? t.rg.exclusionActive : t.journey.homeBreakTitle, { date }), [date])}</span></p>
             {!onBreak.exclusion && <p className="mt-1 text-text-muted">{t.journey.homeBreakBody}</p>}
           </div>;
         })()}

@@ -9,6 +9,8 @@ import { Cash } from "@/components/ui/cash";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { fillNodes } from "@/lib/fill-nodes";
+import { noticeBody } from "@/components/ui/empty-state-text";
+import { hangCjkOpening } from "@/lib/cjk-marks";
 import { formatBreakEnd } from "@/lib/break-end";
 import { fill, formatTzs } from "@/lib/utils";
 import { sideWord } from "@/lib/side-label";
@@ -35,11 +37,16 @@ export function sheetLineText(t: Dict, locale: Locale, line: SheetLine, nowMs: n
   return fill(sheetTemplate(t, line.key), values);
 }
 
-export function SheetSentence({ t, locale, line, nowMs }: { t: Dict; locale: Locale; line: SheetLine; nowMs: number }) {
+/**
+ * A sentence of the sheet's vocabulary. `cash` (S8-PLAN A25 item 5): the money values it names are figures DERIVED from
+ * the balance, so they are masked whenever the balance is (`<Cash hidden>`), never printed beside a hidden one.
+ */
+export function SheetSentence({ t, locale, line, nowMs, cash }: { t: Dict; locale: Locale; line: SheetLine; nowMs: number; cash?: { hidden: boolean; vars: readonly string[] } }) {
   const values: Record<string, ReactNode> = {};
   for (const [key, value] of Object.entries(line.vars ?? {})) {
     values[key] = typeof value === "number"
-      ? <span className="amount">{MONEY_VARS.has(key) ? formatTzs(value) : value}</span>
+      ? cash && MONEY_VARS.has(key) && cash.vars.includes(key) ? <Cash hidden={cash.hidden} className="amount">{formatTzs(value)}</Cash>
+        : <span className="amount">{MONEY_VARS.has(key) ? formatTzs(value) : value}</span>
       : (key === "until" || key === "untilAt") && typeof value === "string" && Number.isFinite(Date.parse(value))
         ? formatBreakEnd(Date.parse(value), nowMs, t.common.monthsShort, locale) : value;
   }
@@ -48,6 +55,13 @@ export function SheetSentence({ t, locale, line, nowMs }: { t: Dict; locale: Loc
   if (line.key === "journey.lowMinNote" && template.includes("{min} — ") && Object.prototype.hasOwnProperty.call(values, "min")) {
     values.min = <span className="whitespace-nowrap">{values.min} —</span>;
     return <>{fillNodes(template.replace("{min} — ", "{min} "), values)}</>;
+  }
+  // ⭐ A COMMIT'S SEPARATOR TRAVELS WITH ITS AMOUNT (A25 item 10): "Weka dau" / "· TZS 1,000,000" at 320, never
+  // "Weka dau ·" / "TZS 1,000,000" — a line that ends on a dot reads as a sentence cut off. Held by an element, never
+  // by a character slipped into the words (keep-words.tsx).
+  if (template.includes(" · {amount}") && Object.prototype.hasOwnProperty.call(values, "amount")) {
+    values.amount = <span className="whitespace-nowrap">· {values.amount}</span>;
+    return <>{fillNodes(template.replace(" · {amount}", " {amount}"), values)}</>;
   }
   return <>{fillNodes(template, values)}</>;
 }
@@ -107,27 +121,33 @@ export function HolderNote({ t, locale, frame, side, nowMs }: Pick<Parts, "t" | 
   if (frame.holder === "none") return null;
   const held = frame.holder === "other" ? (side === "YES" ? "NO" : "YES") : side;
   const body = frame.holder === "both" ? t.journey.sheetHedgeBothBody : frame.holder === "other" ? t.journey.sheetHedgeBody : t.journey.sheetHoldAddBody;
+  // A notice's body through the keep (noticeBody): its last two words — in Chinese its last two ideographs and their
+  // stop — never alone on a line ("…上的投" / "注。", tile 019; A25 item 11).
   return <Callout tone="info" role="note" className="kp-bsheet__holder" title={frame.holder === "both" ? undefined : fill(t.journey.sheetHolds, { side: sideWord(t, held, "MARKET") })}>
-    <p>{body}</p>
+    <p>{noticeBody(body)}</p>
     {frame.bonusWager && <p className="kp-bsheet__bonus"><SheetSentence t={t} locale={locale} nowMs={nowMs} line={{ key: "journey.sheetBonusWager", vars: { remaining: frame.bonusWager.remaining } }} /></p>}
   </Callout>;
 }
 
-export function EstimateBox({ t, seed, side, frame, compact = false }: Pick<Parts, "t" | "seed" | "side" | "frame"> & { compact?: boolean }) {
+export function EstimateBox({ t, seed, side, frame, compact = false, keyboard = false }: Pick<Parts, "t" | "seed" | "side" | "frame"> & { compact?: boolean; keyboard?: boolean }) {
   const estimate = frame.estimate;
   if (!estimate) return null;
   const emptySide = estimate.emptySide === "YES" || estimate.emptySide === "NO" ? estimate.emptySide : side === "YES" ? "NO" : "YES";
   const note = seed.feePct === null ? null : fillNodes(compact ? t.journey.estimateNoteCompact : t.journey.estimateNote, { pct: <span className="amount">{seed.feePct}</span> });
   const priced = estimate.payout !== null;
-  if (compact && priced) return <div className="kp-bsheet__compact" data-testid="journey-sheet-estimate-compact">
+  // ⭐ COMPACT PRINTS A FIGURE OR NOTHING (A22 item 1's "or nothing", taken in A25): the low frames and the keyboard's frame
+  // drew the whole unpriced box here — the sliver under the stake with the keyboard up (tiles 002–022) and the height that
+  // pushed the low frame's second option under its footer (034–041). With the keyboard up the line drops its note too.
+  if (compact && !priced) return null;
+  if (compact) return <div className="kp-bsheet__compact" data-testid="journey-sheet-estimate-compact">
     <p>{fillNodes(t.journey.estimateCompact, { amount: <span className="amount">{formatTzs(estimate.payout!)}</span> })}<span className="kp-bsheet__compact-mult amount">{fill(t.journey.multOnly, { mult: estimate.multText ?? "—" })}</span></p>
-    {note && <p className="kp-bsheet__note">{note}</p>}
+    {note && !keyboard && <p className="kp-bsheet__note">{note}</p>}
   </div>;
   return <div className="kp-bsheet__estimate" data-estimate-state={estimate.state}>
     {estimate.state === "emptyPool" ? <>
       <p className="kp-bsheet__estimate-label">{t.market.noBetsYet}</p><p>{t.journey.sheetEmptyPoolBody}</p><p className="kp-bsheet__note">{t.journey.sheetRefundRule}</p>
     </> : estimate.state === "oneSidedRefund" ? <>
-      <p className="kp-bsheet__estimate-label">{t.market.oneSideOnly}</p><p>{fill(t.market.oneSidedNote, { side: sideWord(t, emptySide, "MARKET") })}</p>
+      <p className="kp-bsheet__estimate-label">{t.market.oneSideOnly}</p><p>{hangCjkOpening(fill(t.market.oneSidedNote, { side: sideWord(t, emptySide, "MARKET") }))}</p>
     </> : estimate.state === "hidden" ? <>
       <p className="kp-bsheet__estimate-label">{t.journey.ticketPayout}</p><p>{t.journey.sheetLegacyBody}</p>
       {seed.rates?.feeModel === "capped-commission" && seed.feePct !== null && <p className="kp-bsheet__note">{fillNodes(t.journey.sheetLegacyFee, { pct: <span className="amount">{seed.feePct}</span> })}</p>}

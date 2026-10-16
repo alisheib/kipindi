@@ -83,6 +83,53 @@ export function betSheetDomVerdict(probe, { frame = null, focus = false, trap = 
   }
   return errors;
 }
+/**
+ * Round V2 (S8-PLAN A25) · the geometry the close's tile read judged by eye, measured: the grab's height (item 7), the
+ * middle's top edge against every text line and control (item 8), whether the middle hides anything at either edge
+ * (item 9), each option of the low frame inside the middle and above the footer (item 4), the reason line above the
+ * commit (item 3), the commit's separator on its amount's line (item 10), the deposit amounts' pill radius (item 18).
+ * Serializes into a browser; every selector is passed in.
+ */
+export function betSheetLayoutProbe(selectors) {
+  const root = document.querySelector(selectors.root);
+  if (!root) return { present: false };
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height }; };
+  const scroller = root.querySelector(selectors.scroll), port = box(scroller), footer = box(root.querySelector(".kp-bsheet__footer"));
+  const rows = [];
+  if (scroller) {
+    const range = document.createRange(), walker = document.createTreeWalker(scroller, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (!n.textContent.trim() || n.parentElement?.closest(".sr-only")) continue;
+      range.selectNodeContents(n);
+      for (const r of range.getClientRects()) if (r.height > 0) rows.push({ top: r.top, bottom: r.bottom, what: n.textContent.trim().slice(0, 24) });
+    }
+    for (const el of scroller.querySelectorAll("input, button")) { const r = el.getBoundingClientRect(); if (r.height > 0) rows.push({ top: r.top, bottom: r.bottom, what: el.tagName }); }
+  }
+  const cutTop = port ? rows.filter((r) => r.top < port.top - 0.5 && r.bottom > port.top + 0.5) : [];
+  const inside = (el) => { const b = box(el); return !!b && !!port && b.top >= port.top - 0.5 && b.bottom <= port.bottom + 0.5 && (!footer || b.bottom <= footer.top + 0.5); };
+  const option = (selector) => { const el = root.querySelector(selector); return el ? { box: box(el), inside: inside(el) } : null; };
+  const place = root.querySelector(selectors.place), reason = root.querySelector('[data-testid="journey-sheet-reason"]');
+  let separatorWithAmount = null;
+  const held = place?.querySelector("span.whitespace-nowrap");
+  if (held?.firstChild) {
+    const dot = document.createRange(); dot.setStart(held.firstChild, 0); dot.setEnd(held.firstChild, 1);
+    const amount = held.querySelector(".amount");
+    separatorWithAmount = !!amount && Math.abs(dot.getBoundingClientRect().top - amount.getClientRects()[0].top) < 2;
+  }
+  const pill = root.querySelector('[data-testid="journey-sheet-deposit-amounts"] button');
+  return {
+    present: true, frame: root.dataset.frame,
+    grabHeight: box(root.querySelector(".kp-wsheet__grab"))?.height ?? null,
+    port, footer, scrollTop: scroller?.scrollTop ?? null, overflowing: scroller ? scroller.scrollHeight > scroller.clientHeight + 1 : null,
+    cutTop: cutTop.map((r) => r.what),
+    deposit: option(selectors.deposit), instead: option(selectors.instead), amounts: option('[data-testid="journey-sheet-deposit-amounts"]'),
+    callout: option("[data-low-start]"),
+    reason: box(reason), reasonText: reason?.textContent ?? null, place: box(place), placeDisabled: place ? !!place.disabled : null,
+    separatorWithAmount,
+    pillRound: pill ? parseFloat(getComputedStyle(pill).borderTopLeftRadius) >= pill.getBoundingClientRect().height / 2 - 0.5 : null,
+    visualHeight: visualViewport?.height ?? innerHeight,
+  };
+}
 export function onceOnlyVerdict(before, after, requestCount, count = 1, expectedRequests = count) {
   const errors = [];
   if (requestCount !== expectedRequests) errors.push(`${requestCount} action requests, expected ${expectedRequests}`);

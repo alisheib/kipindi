@@ -577,8 +577,38 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
   },
 };
 
+/**
+ * ⭐ THE STAFF PREVIEW BAR STAYS VISIBLE UNDER A TOAST (the Vodacom plan S8, round V2, S8-PLAN A25 item 17; tile 059). In
+ * the journey the stack hangs at the header's foot (globals.css, `[data-toaster]`), which is where the staff preview bar
+ * stands at the top of a page: "Welcome back" covered the bar and its "Exit preview". While a page wears that bar, the
+ * stack's own box learns where the bar ends (`--toast-clear`, its viewport bottom) and the stylesheet hangs the stack
+ * below whichever is lower, the header or the bar — scrolled past the bar, the header again. Written on the stack's own
+ * element, never the document root (an inherited property on the root restyles every element), and only when it moved.
+ * A page without the bar — every player's — attaches nothing.
+ */
+function usePreviewClearance(ref: React.RefObject<HTMLDivElement | null>, shown: boolean) {
+  React.useEffect(() => {
+    const region = ref.current;
+    const bar = document.querySelector<HTMLElement>('[data-testid="journey-preview-marker"]');
+    if (!shown || !region || !bar) return;
+    let frame = 0;
+    const write = () => {
+      frame = 0;
+      const value = `${Math.max(0, Math.round(bar.getBoundingClientRect().bottom))}px`;
+      if (region.style.getPropertyValue("--toast-clear") !== value) region.style.setProperty("--toast-clear", value);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(write); };
+    write();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => { if (frame) cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); };
+  }, [ref, shown]);
+}
+
 function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }: { toasts: Toast[]; exiting: string[]; held: boolean; onDismiss: (id: string) => void; onPause: (id: string) => void; onResume: (id: string) => void }) {
   const { t } = useT();
+  const regionRef = React.useRef<HTMLDivElement>(null);
+  usePreviewClearance(regionRef, !held);
   // ⭐ §F1 · HELD, NOT DISCARDED. The stack still holds every toast and their countdowns are
   // paused, so nothing is lost and nothing expires unseen — the primary signal simply owns the
   // screen until it is dismissed. ⛔ Returning null here rather than restacking z-index keeps
@@ -587,6 +617,7 @@ function ToastViewport({ toasts, exiting, held, onDismiss, onPause, onResume }: 
   return (
     <div
       role="region"
+      ref={regionRef}
       aria-label={t.common.notifications}
       // ⭐ `data-toaster` is the journey's hook (round 4 of the visual pass, 2026-10-09, edges E34): in the journey the
       // stack hangs under the header instead of over its controls (globals.css, `:root:is([data-shell="journey"],

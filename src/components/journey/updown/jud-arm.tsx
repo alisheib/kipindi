@@ -39,6 +39,7 @@ import { fillNodes } from "@/lib/fill-nodes";
 import { sideWord } from "@/lib/side-label";
 import { useServerNowGated } from "@/lib/use-shared-second";
 import { LowBlock } from "@/components/journey/bet-sheet/bet-sheet";
+import { useCashHidden } from "@/components/ui/cash";
 import { SheetSentence, sheetTemplate } from "@/components/journey/bet-sheet/sheet-parts";
 import { usePlacePulse, type useUpDownQuickBet } from "@/components/updown/use-quick-bet";
 import { GLYPH_NO_SHRINK } from "@/components/updown/updown-stake-controls";
@@ -141,7 +142,7 @@ function StakeRows({ id, t, locale, nowMs, frame, text, setText, size, disabled 
   </>;
 }
 
-/** A frame that refuses the bet outright (a break, the account, a held wallet, the loss limit spent): its own callout. */
+/** A frame that refuses the bet outright (a break, the session limit, the account, a held wallet, the loss limit spent): its own callout. */
 function BlockedNote({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof useT>["t"]; locale: ReturnType<typeof useT>["locale"]; nowMs: number; frame: ReturnType<typeof judFrame>; id: string }) {
   if (frame.frame !== "blocked" || !frame.block) return null;
   return <div id={`${id}-callout`}><Callout tone="info" glyph="info" title={sheetTemplate(t, frame.block.title)}>
@@ -149,7 +150,7 @@ function BlockedNote({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof use
   </Callout></div>;
 }
 
-/** The inline lines the sheet stands above its CTA (maintenance, the session limit), and the empty-side sentence. */
+/** The inline lines the sheet stands above its CTA (maintenance; the session limit is a block since S8-PLAN A25), and the empty-side sentence. */
 function Lines({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof useT>["t"]; locale: ReturnType<typeof useT>["locale"]; nowMs: number; frame: ReturnType<typeof judFrame>; id: string }) {
   if (frame.lines.length === 0) return null;
   return <div id={`${id}-line`} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>;
@@ -175,6 +176,7 @@ function YoureIn({ t, bet }: { t: ReturnType<typeof useT>["t"]; bet: Bet }) {
 export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound, size = "card" }: ArmProps) {
   const { t, locale } = useT();
   const id = useId();
+  const cashHidden = useCashHidden();
   const [text, setText] = useStakeText(round, viewer, null);
   useFollowBox(bet, text);
   const nowMs = useArmClock(round, viewer);
@@ -200,7 +202,7 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
     <YoureIn t={t} bet={bet} />
     <StakeRows id={id} t={t} locale={locale} nowMs={nowMs} frame={frame} text={text} setText={setText} size={size} disabled={false} />
     <BlockedNote t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
-    <LowBlock t={t} locale={locale} nowMs={nowMs} frame={frame} calloutId={`${id}-callout`} railNames={live?.facts?.deposit.railNames ?? []}
+    <LowBlock t={t} locale={locale} nowMs={nowMs} frame={frame} calloutId={`${id}-callout`} railNames={live?.facts?.deposit.railNames ?? []} cashHidden={cashHidden}
       depositAmount={depositAmount} onDepositAmount={setDepositAmount} onDeposit={(amount) => deposit("UP", frame.stake, amount)} onClose={() => {}}
       instead={instead && <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__instead" data-testid="jud-use-instead"
         onClick={() => setText(String(instead.stake))}><span>{fillNodes(t.journey.udUseInstead, { amount: <span className="amount">{formatTzs(instead.stake)}</span> })}</span></Button>} />
@@ -219,6 +221,7 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
 export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: ArmProps & { side: JudSide }) {
   const { t, locale } = useT();
   const id = useId();
+  const cashHidden = useCashHidden();
   const [text, setText] = useStakeText(round, viewer, side);
   useFollowBox(bet, text);
   const nowMs = useArmClock(round, viewer);
@@ -239,7 +242,7 @@ export function JudConfirm({ bet, round, viewer, assetName, receipt, side }: Arm
     <StakeRows id={id} t={t} locale={locale} nowMs={nowMs} frame={frame} text={text} setText={setText} size="detail" disabled={bet.pending} />
     {projected !== null && <p className="kp-bsheet__compact kp-jud__projection" data-testid="jud-projection">{fillNodes(t.journey.estimateCompact, { amount: <span className="amount">{formatTzs(projected)}</span> })}</p>}
     <BlockedNote t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
-    <LowBlock t={t} locale={locale} nowMs={nowMs} frame={frame} calloutId={`${id}-callout`} railNames={live?.facts?.deposit.railNames ?? []}
+    <LowBlock t={t} locale={locale} nowMs={nowMs} frame={frame} calloutId={`${id}-callout`} railNames={live?.facts?.deposit.railNames ?? []} cashHidden={cashHidden}
       depositAmount={depositAmount} onDepositAmount={setDepositAmount} onDeposit={(amount) => deposit(side, frame.stake, amount)} onClose={() => {}}
       instead={instead && <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__instead" data-testid="jud-use-instead"
         onClick={() => setText(String(instead.stake))}><span>{fillNodes(t.journey.udUseInstead, { amount: <span className="amount">{formatTzs(instead.stake)}</span> })}</span></Button>} />

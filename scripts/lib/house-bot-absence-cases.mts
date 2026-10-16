@@ -180,11 +180,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // F20/F29 and V2b change only legal presentation and the rulebook's test citation.
     // S14's local journey adds dictionary keys; pin the exact reviewed source
     // from 012aa885e (same blob as the integrated tip), not a blanket exemption.
+    // S8 round V2 (S8-PLAN A25 item 13, 2026-10-16) changes two zh sheet strings only — sheetHolds and
+    // sheetFirstOnSide bracket their side word 「{side}」 (DESIGN_AUTHORITY L4) — pinned at 95a00a9f5.
     // None of the versioned policy strings move.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "012aa885e"],
+      ["src/lib/i18n-dict.ts", "95a00a9f5"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

@@ -12,7 +12,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
-import { BET_SHEET_SELECTORS as S, NOT_DRIVEN_MATRIX, betSheetTracesIn, betSheetTracesControl, betSheetDomProbe, betSheetDomVerdict, onceOnlyVerdict } from "./live/bet-sheet-cells.mjs";
+import { BET_SHEET_SELECTORS as S, NOT_DRIVEN_MATRIX, betSheetTracesIn, betSheetTracesControl, betSheetDomProbe, betSheetDomVerdict, betSheetLayoutProbe, onceOnlyVerdict } from "./live/bet-sheet-cells.mjs";
 import { parseMultipart, actionFields, buildMultipart } from "./live/bet-sheet-gates.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3043";
@@ -56,6 +56,10 @@ const post = async (ctx, name, data = {}) => {
 const asCookie = c => ({ name: c.name, value: c.value, domain: new URL(BASE).hostname, path: c.path || "/" });
 await post(admin, "seed-admin", { role: "ADMIN", phone: "+255700000089", name: "Sheet QA Admin" });
 const catalogue = await post(admin, "seed-markets");
+// S8-PLAN A25 item 12 (round V2): the demo catalogue carries English and Swahili titles only, so every zh tile showed the
+// question in English — the board's own fallback, correct for a market with no zh title. The six real fixtures carry
+// all three, so the zh cells open one of them (`zhPick`) and read their question in Chinese.
+await post(admin, "seed-real-markets");
 await post(admin, "reset-rate-limits");
 if (!catalogue?.ids?.length) { console.error("REFUSED: seeded board has no market"); await browser.close(); process.exit(2); }
 let SESSION = await demoSession(browser, BASE);
@@ -73,11 +77,13 @@ async function pageIn(ctx, route = "/") {
   if (process.env.KP_TRACE === "1") page.on("framenavigated", frame => {
     if (frame === page.mainFrame()) consoleRows.push({ route, type: "document-navigation", text: frame.url() });
   });
+  // A25 item 20: each row names the tile it precedes (`nextTile`, the tile file's number), so a dev badge on a tile
+  // ("2 Issues", 057) is traced to its own messages rather than to a whole run's list.
   page.on("console", m => {
-    if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() });
+    if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text(), nextTile: tiles + 1, address: page.url().replace(BASE, "") });
     if (/hydrated but|hydration failed|server rendered HTML didn't match/i.test(m.text())) result(`${route}: hydration mismatch`, "FAIL", "Full console text, attribute and element retained in evidence.json");
   });
-  page.on("pageerror", error => { consoleRows.push({ route, type: "pageerror", text: error.message }); result(`${route}: uncaught page error`, "FAIL", error.message.slice(0, 180)); });
+  page.on("pageerror", error => { consoleRows.push({ route, type: "pageerror", text: error.message, nextTile: tiles + 1, address: page.url().replace(BASE, "") }); result(`${route}: uncaught page error`, "FAIL", error.message.slice(0, 180)); });
   await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 240_000 });
   await page.waitForFunction(() => document.querySelector("main"), { timeout: 90_000 });
   await page.waitForTimeout(1200);
@@ -139,12 +145,18 @@ async function tile(page, label) {
   const expectedReceipt = /(?:^|-)receipt$/.test(label);
   const receipt = await page.locator(`${S.root}[data-frame="receipt"]`).count() > 0;
   if (expectedReceipt && !receipt) throw new Error(`${label}: receipt frame vanished before capture at ${page.url()}`);
+  // A25 item 19: a resting pointer gave same-state tiles different hover paint; it leaves the page before the capture —
+  // except on a receipt, whose dwell the drive holds with that pointer on purpose (holdReceipt).
   if (receipt) await holdReceipt(page);
+  else await page.mouse.move(-1, -1);
+  // A25 item 6: every finite animation on the PAGE settles first, not only the dialog's — tile 058 caught the sign-in
+  // page mid-way through its entrance fade (0.73–0.81 at 150 ms, 1.0 from 400 ms) and read as half-transparent. Capped,
+  // so a long finite one (a toast's countdown bar) cannot hold the capture.
   await page.evaluate(async selector => {
     await document.fonts.ready;
     const root=document.querySelector(selector),dialog=root?.closest('[role="dialog"]');
-    const finite=(dialog?.getAnimations({subtree:true})??[]).filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity);
-    await Promise.all(finite.map(animation=>animation.finished.catch(()=>{})));
+    const finite=[...new Set([...(dialog?.getAnimations({subtree:true})??[]),...document.getAnimations()])].filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity);
+    await Promise.race([Promise.all(finite.map(animation=>animation.finished.catch(()=>{}))),new Promise(resolve=>setTimeout(resolve,1500))]);
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   },S.root);
   if(receipt){
@@ -169,7 +181,11 @@ async function tile(page, label) {
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
   // Playwright's default caret hiding writes an inline style on hidden preview-form inputs.
   // A screenshot during hydration then creates a mismatch that the app did not render.
+  // A25 item 19: Next's dev indicators ("N", "Rendering…", "2 Issues") stood over the commit in many tiles; they are hidden
+  // for the capture only. What they report is in evidence.json, each row naming the tile it precedes (`nextTile`).
+  const devIndicators = await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
   await page.screenshot({ path: join(OUT, filename), fullPage: false, caret: "initial" });
+  await devIndicators.evaluate(style => style.remove()).catch(() => {});
   if (expectedReceipt && !(await page.locator(`${S.root}[data-frame="receipt"]`).count()))
     throw new Error(`${label}: receipt frame vanished during capture at ${page.url()}`);
   results.push({ label, state: "TILE", file: filename });
@@ -200,6 +216,20 @@ async function open(page, wantedId = null, side = "YES") {
   ok("pick opens in place", new URL(page.url()).pathname === beforePath, new URL(page.url()).pathname === beforePath ? "" : `${beforePath}→${new URL(page.url()).pathname}`);
   return seed;
 }
+/** A25 item 12: the first card on the page whose question is in Chinese — one of the real fixtures seeded above. */
+async function zhPick(page) {
+  const id = await page.evaluate(selector => {
+    for (const a of document.querySelectorAll(selector)) {
+      const card = a.closest("[data-sheet]");
+      if (card && /[一-鿿]/.test(card.getAttribute("data-sheet-title") ?? "")) { try { return JSON.parse(card.getAttribute("data-sheet")).id; } catch { /* the next card */ } }
+    }
+    return null;
+  }, `${S.pick}[data-bet-side="YES"]`);
+  if (!id) throw new Error("No zh-titled question on the zh board: invalid premise (the real fixtures were not seeded)");
+  return id;
+}
+const pickFor = async (page, locale) => (locale === "zh" ? zhPick(page) : null);
+const chineseQuestion = async page => /[一-鿿]/.test(await page.locator(`${S.root} h2`).evaluate(h => h.textContent ?? ""));
 async function waitFrame(page, frame) {
   try { await page.waitForFunction(([selector, frame]) => document.querySelector(selector)?.getAttribute("data-frame") === frame, [S.root, frame], { timeout: 90_000 }); if (frame === "receipt") await holdReceipt(page); await page.waitForTimeout(200); }
   catch (error) { throw new Error(`Expected ${frame}; actual ${JSON.stringify((await probe(page)).got)}; ${error.message}`); }
@@ -317,6 +347,27 @@ async function coolingOffDrive(){
   try{await page.waitForURL(url=>url.pathname==="/",{timeout:90_000});}
   catch{await tile(page,"cooling-own-password-login-failure");throw new Error(`Synthetic owner login did not reach home: ${new URL(page.url()).pathname}; error=${new URL(page.url()).searchParams.get("error")??"none"}; identifier carrier digit count=${await page.locator('input[type="hidden"][name="identifier"]').inputValue().then(value=>value.length).catch(()=>-1)}`);}
   await page.getByTestId("journey-home-break").waitFor({state:"visible"});
+  // A25 item 17 (tile 059): the sign-in toast hangs under the staff preview bar, so "Exit preview" stays uncovered.
+  const toastUp=await page.locator('[data-toaster] [role="status"], [data-toaster] [role="alert"]').first().waitFor({state:"visible",timeout:15_000}).then(()=>true,()=>false);
+  if(!toastUp)nm("A25 item 17 — the sign-in toast over the preview bar","no sign-in toast appeared on this landing: the premise is absent, nothing measured");
+  else{
+    const exitClear=await page.evaluate(()=>{
+      const exit=document.querySelector('[data-testid="journey-preview-exit"]');if(!exit)return {exit:false};
+      const r=exit.getBoundingClientRect(),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+      return {exit:true,toast:!!document.querySelector("[data-toaster] > *"),clear:!!hit&&exit.contains(hit)};
+    });
+    ok("A25 item 17 — with the sign-in toast up, \"Exit preview\" stays uncovered",exitClear.exit&&exitClear.toast&&exitClear.clear,JSON.stringify(exitClear));
+  }
+  // A25 item 16: the break title's date follows "until" at a word space, not the row's 8px gap plus a space.
+  const breakGap=await page.getByTestId("journey-home-break").evaluate(box=>{
+    const title=box.querySelector("p"),date=[...title.querySelectorAll("span.whitespace-nowrap")].find(s=>/\d/.test(s.textContent));if(!date)return null;
+    const glyph=(node,at)=>{const r=document.createRange();r.setStart(node,at);r.setEnd(node,at+1);return r.getBoundingClientRect();};
+    const walker=document.createTreeWalker(title,NodeFilter.SHOW_TEXT);let last=null;
+    for(let n=walker.nextNode();n;n=walker.nextNode()){if(date.contains(n))break;for(let i=n.textContent.length-1;i>=0;i--)if(n.textContent[i].trim()){last=glyph(n,i);break;}}
+    const dateText=document.createTreeWalker(date,NodeFilter.SHOW_TEXT).nextNode();
+    return last&&dateText?glyph(dateText,0).left-last.right:null;
+  });
+  ok("A25 item 16 — the break title's date stands a word space after \"until\"",typeof breakGap==="number"&&breakGap>0&&breakGap<=6,String(breakGap));
   await page.getByTestId("journey-balance").getByText("TZS 100,000",{exact:true}).filter({visible:true}).waitFor();
   const after=await observed(player,seed.id);
   ok("cooling-off refused bet: real own password login preserves100000 wallet, break and own money rows",after.positionCount===before.positionCount&&after.betPlacedCount===before.betPlacedCount,"actual same-owner login, no seed reset; rendered break/balance and authenticated own positions/BET_PLACED recounted");
@@ -353,9 +404,11 @@ try {
     await guest.close(); contexts.delete(guest);
   }
 
-  if (run("keyboard")) for(const locale of LOCALES) for(const viewport of VIEWPORTS.filter(viewport=>viewport.width<=360)){
-    const {ctx}=await freshPlayer(100000,{locale,viewport}),page=await pageIn(ctx),seed=await open(page),watch=actionWatch(page);
+  // A25 item 3: the keyboard cells run at 320, 360 and 390 (the item names 320–390), each with the 340px visual viewport.
+  if (run("keyboard")) for(const locale of LOCALES) for(const viewport of VIEWPORTS.filter(viewport=>viewport.width<=390)){
+    const {ctx}=await freshPlayer(100000,{locale,viewport}),page=await pageIn(ctx),seed=await open(page,await pickFor(page,locale)),watch=actionWatch(page);
     const label=`${locale} ${viewport.width}x${viewport.height}`;
+    if(locale==="zh")ok(`${label}: A25 item 12 — the question in Chinese`,await chineseQuestion(page));
     await page.locator(`${S.root} .kp-bsheet__balance`).getByText("TZS 100,000",{exact:true}).waitFor();
     await page.locator(S.stake).focus();
     await page.evaluate(()=>{
@@ -368,7 +421,14 @@ try {
       await page.locator(S.stake).fill(String(stake));await page.waitForTimeout(250);
       const p=await probe(page,{keyboard:true}),focused=await page.locator(S.stake).evaluate(input=>document.activeElement===input);
       ok(`${label}: focused typing${stake} keeps field painted, CloseX and CTA above keyboard`,focused&&!p.errors.length,p.errors.length?`${p.errors.join(";")} ${JSON.stringify({stake:p.got.stake,scroll:p.got.scroll,place:p.got.place,close:p.got.close})}`:"real input changes with unchanged visual viewport; focus remains on field");
-      if(stake===seed.max)await tile(page,`keyboard-${label}-maximum-long-cta`);
+      if(stake===seed.max){
+        // A25 items 3, 7–10 at the maximum (a stake the 100,000 wallet cannot take): the reason above the dead commit.
+        const lay=await page.evaluate(betSheetLayoutProbe,S);
+        ok(`${label}: A25 item 3 — the held commit's reason stands directly above it, inside the visual viewport`,!!lay.reason&&!!lay.place&&lay.placeDisabled===true&&lay.reason.top>=0&&lay.reason.bottom<=lay.place.top+0.5&&lay.place.bottom<=lay.visualHeight+1,JSON.stringify({reason:lay.reason,reasonText:lay.reasonText,place:lay.place,vv:lay.visualHeight}));
+        ok(`${label}: A25 items 7–9 — the grab a 4px pill, no line cut under the header, nothing hidden at the middle's edges`,lay.grabHeight>=3.5&&lay.cutTop.length===0&&lay.overflowing===false,JSON.stringify({grab:lay.grabHeight,cut:lay.cutTop,overflowing:lay.overflowing}));
+        ok(`${label}: A25 item 10 — the commit's "·" stands on its amount's line`,lay.separatorWithAmount===true);
+        await tile(page,`keyboard-${label}-maximum-long-cta`);
+      }
     }
     const clipped=await page.addStyleTag({content:`${S.scroll}{max-height:20px!important;}`});
     ok(`${label}: RED clipped typed field fails same keyboard verdict`,(await probe(page,{keyboard:true})).errors.includes("stake is clipped by the sheet scroller"));
@@ -384,9 +444,10 @@ try {
   if (run("v20")) for (const locale of LOCALES) for (const viewport of VIEWPORTS) {
     const label = `${locale} ${viewport.width}x${viewport.height}`;
     const ctx = await context(locale, viewport), page = await pageIn(ctx);
-    const seed = await open(page);
+    const seed = await open(page, await pickFor(page, locale));
     const entry = await probe(page, { frame: "edit", focus: true });
     ok(`${label}: initial focus, no overflow`, !entry.errors.length, entry.errors.join(";"));
+    if (locale === "zh") ok(`${label}: A25 item 12 — the question in Chinese`, await chineseQuestion(page));
     for (const key of ["Tab", "Shift+Tab"]) {
       let trapped = true;
       for (let n = 0; n < 16; n++) { await page.keyboard.press(key); trapped &&= (await probe(page)).got.focusedInside; }
@@ -578,7 +639,7 @@ try {
     const hold = await post(ctx,"bet-sheet-hold",{operation:"hold",marketId:seed.id});
     if (!hold.held || hold.maxHoldMs !== 90_000) throw new Error("A24 actual market-mutex acknowledgement failed");
     let allowAbort; const abortGate = new Promise(resolve=>{allowAbort=resolve;});
-    let first = true,firstServer = null;
+    let first = true,firstServer = null,replayArmed = false,replayText = null;
     const keyedRead = route => {
       if (new URL(route.request().url()).searchParams.has("key")) { keyReads.push(route); return; }
       return route.continue();
@@ -586,6 +647,16 @@ try {
     await page.route("**/api/markets/*/sheet?**",keyedRead);
     await page.route("**/*",async route=>{
       const req=route.request();
+      if (replayArmed && req.method()==="POST" && req.headers()["next-action"] && req.postData()?.includes("idempotencyKey")) {
+        // The replay's answer is read where it is fetched (S8 round V2, A25 item 19): the browser's copy of an action body
+        // can be gone before CDP reads it (v2-2 stopped on Network.getResponseBody "No data found"). One request, the
+        // server's own bytes handed to the page unchanged; the decoded body travels without its transfer encoding.
+        replayArmed=false;
+        const response=await route.fetch({timeout:120_000});
+        replayText=await response.text();
+        const headers={...response.headers()}; delete headers["content-encoding"]; delete headers["content-length"];
+        return route.fulfill({status:response.status(),headers,body:replayText});
+      }
       if (!first || req.method()!=="POST" || !req.headers()["next-action"] || !req.postData()?.includes("idempotencyKey")) return route.fallback();
       first=false;
       firstServer=route.fetch({timeout:120_000}).catch(()=>null);
@@ -615,9 +686,11 @@ try {
       const landed=await observed(ctx,seed.id);
       if(landed.positionCount!==before.positionCount+1||landed.betPlacedCount!==before.betPlacedCount+1) throw new Error("A24 released real first action did not commit exactly once before replay");
       const replayResponse=page.waitForResponse(response=>{const request=response.request();return request.method()==="POST"&&!!request.headers()["next-action"]&&request.postData()?.includes("idempotencyKey");});
+      replayArmed=true;
       await page.locator(S.place).click();
+      await replayResponse;
       // Inspect the actual action envelope in memory; only the replay Boolean enters evidence, never raw RSC/session data.
-      const replayed=/"replayed"\s*:\s*true/.test(await (await replayResponse).text());
+      const replayed=/"replayed"\s*:\s*true/.test(replayText ?? "");
       ok("A24 committed-key retry under maintenance is actual replayed:true",replayed);
       await page.unroute("**/api/markets/*/sheet?**",keyedRead);
       for(const route of keyReads) await route.continue().catch(()=>{});
@@ -663,6 +736,24 @@ try {
       ok("deposit closes sheet; amount/bet/from retained without reopening there", !await page.locator(S.root).count() && url.searchParams.get("amount") === "1000" && url.searchParams.get("from") === "low-balance" && url.searchParams.has("bet"));
     }
     await ctx.close(); contexts.delete(ctx);
+  }
+
+  // A25 items 4, 8 and 18 (tiles 034, 035, 041, 062): on a 320×640 and a 360×640 phone, in sw, en and zh, a stake the
+  // wallet cannot take (TZS 5,000 on 1,200, set by its chip as a player sets it) stands the reason and every option in
+  // view — none under the footer, no line cut at the middle's top — and the deposit amounts are the kit's pills.
+  if (run("low")) for (const locale of LOCALES) for (const viewport of VIEWPORTS.filter(v => v.width <= 360)) {
+    const label = `${locale} ${viewport.width}x${viewport.height}`;
+    const { ctx } = await freshPlayer(1200, { locale, viewport }), page = await pageIn(ctx);
+    await open(page, await pickFor(page, locale));
+    await page.locator(`${S.root} .kp-bsheet__chip`).filter({ hasText: /^5,000$/ }).click();
+    await waitFrame(page, "low"); await page.waitForTimeout(400);
+    const lay = await page.evaluate(betSheetLayoutProbe, S);
+    ok(`low ${label}: A25 item 4 — the reason and every option in view, none under the footer`,
+      !!(lay.callout?.inside && lay.deposit?.inside && lay.amounts?.inside && lay.instead?.inside),
+      JSON.stringify({ callout: lay.callout, deposit: lay.deposit, amounts: lay.amounts, instead: lay.instead, port: lay.port, footer: lay.footer }));
+    ok(`low ${label}: A25 item 8 — no line cut at the middle's top`, lay.cutTop.length === 0, JSON.stringify(lay.cutTop));
+    ok(`low ${label}: A25 item 18 — the deposit amounts are the kit's pills`, lay.pillRound === true);
+    await tile(page, `low-two-options-${label}`); await closeContext(ctx);
   }
 
   if (run("lifecycle")) {
@@ -840,7 +931,7 @@ try {
       await tile(page, "host-held60-closed-landed-receipt"); watch.stop(); await closeContext(ctx);
     }
     {
-      const ctx = await context(), page = await pageIn(ctx); await open(page);
+      const ctx = await context(), page = await pageIn(ctx), seed = await open(page);
       let hold = false, caughtResolve;
       const caught = new Promise(resolve => { caughtResolve = resolve; });
       await page.route("**/api/markets/*/sheet?**", async route => {
@@ -866,7 +957,27 @@ try {
       ok("null key query sent9m59, answered10m01 keeps doubt: read time is request time", after.frame === "inDoubt" && keysBefore.every(key => after.keys.includes(key)));
       // The criterion is measured above. Release the diagnostic clock so tile's two paint frames can complete.
       await page.clock.resume();
-      await tile(page, "host-slow-null-key-read"); await ctx.close(); contexts.delete(ctx);
+      await tile(page, "host-slow-null-key-read");
+      // A25 item 20 · tile 044's "Try again" beside 99,500: the balance is the held-60 s cell's one landed 500 on this same
+      // demo session (its /auth/demo visit set 100,000); this cell's own request was aborted before it left the browser.
+      // The retry sends the doubt's own key, so it places that one bet once — never a second.
+      await page.unrouteAll({ behavior: "ignoreErrors" });
+      if ((await probe(page)).got.frame !== "inDoubt") nm("A25 item 20 — tile 044's retry", "the doubt had already ended before the retry (a key read past the window): a later tap is a new bet by design (A2)");
+      else {
+        const beforeRetry = await observed(ctx, seed.id), retryWatch = actionWatch(page);
+        await page.locator(S.place).click(); await waitFrame(page, "receipt");
+        const afterRetry = await observed(ctx, seed.id);
+        const sent = await Promise.all(retryWatch.requests.map(async r => {
+          const parsed = parseMultipart(r.postDataBuffer(), (await r.allHeaders())["content-type"]), fields = actionFields(parsed);
+          return fields.ok ? fields.fields.idempotencyKey : null;
+        }));
+        const placed = afterRetry.positions.filter(p => !beforeRetry.positions.some(b => b.positionId === p.positionId));
+        ok("A25 item 20 — tile 044's retry sends the doubt's own key and places exactly one bet",
+          !onceOnlyVerdict(beforeRetry, afterRetry, retryWatch.requests.length).length && sent.length === 1 && keysBefore.includes(sent[0]) && placed.length === 1 && placed[0].key === sent[0],
+          JSON.stringify({ requests: sent.length, keyIsTheDoubts: keysBefore.includes(sent[0]), placed: placed.length }));
+        retryWatch.stop();
+      }
+      await ctx.close(); contexts.delete(ctx);
     }
   }
 
@@ -880,7 +991,17 @@ try {
     const maintenanceProbe = (await probe(page)).got, afterMaintenance = await observed(ctx, seed.id);
     ok("real maintenance refusal stays inline and does not place", maintenanceProbe.frame === "edit" && /maintenance|paused/i.test(maintenanceProbe.text)
       && afterMaintenance.positionCount === beforeMaintenance.positionCount && afterMaintenance.betPlacedCount === beforeMaintenance.betPlacedCount);
+    ok("A25 item 2 — maintenance holds the commit: disabled under its line (tile 045 drew it enabled)", await page.locator(S.place).isDisabled());
+    ok("A25 item 14 — the refusal line wears the notice box with its glyph", await page.evaluate(root => {
+      const line = document.querySelector(`${root} .kp-bsheet__lines [role="status"]`);
+      return !!line && parseFloat(getComputedStyle(line).borderTopWidth) >= 1 && !!line.querySelector("svg");
+    }, S.root));
     await tile(page, "matrix-maintenance"); await setMaintenance(false);
+    // A25 item 2: the line follows the facts — the next fresh read (here a focus) takes it away and gives the commit back.
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    const lifted = await page.waitForFunction(([root, place]) => document.querySelector(place)?.disabled === false && !document.querySelector(`${root} .kp-bsheet__lines`),
+      [S.root, S.place], { timeout: 30_000 }).then(() => true, () => false);
+    ok("A25 item 2 — maintenance lifted: a fresh read takes its line away and gives the commit back", lifted);
     await ctx.close(); contexts.delete(ctx);
     SESSION = await demoSession(browser, BASE, { query: "?hold=officer" });
     const held = await context(), hp = await pageIn(held); await open(hp);
@@ -967,6 +1088,13 @@ try {
         await deposit.goto(BASE, { waitUntil: "domcontentloaded" }); await deposit.waitForTimeout(1200); await open(deposit); await waitFrame(deposit, "pending");
         const p = await probe(deposit, { frame: "pending" });
         ok("real mock async PROCESSING deposit credits nothing: fresh pending frame, no second deposit", !p.errors.length && !p.got.visibleDeposit && !p.got.visibleInstead, p.errors.join(";"));
+        // A25 item 15 (tile 054): the Track link's first glyph stands on the body's text edge, measured on the glyphs.
+        const edge = await deposit.evaluate(root => {
+          const link = document.querySelector(`${root} .kp-bsheet__link--lead`), body = link?.previousElementSibling;
+          const firstGlyph = el => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); for (let n = w.nextNode(); n; n = w.nextNode()) if (n.textContent.trim()) { const r = document.createRange(); r.setStart(n, 0); r.setEnd(n, 1); return r.getBoundingClientRect().left; } return null; };
+          return link && body ? { link: firstGlyph(link), body: firstGlyph(body) } : null;
+        }, S.root);
+        ok("A25 item 15 — \"Track the payment ›\" starts on the body's text edge", !!edge && edge.link !== null && edge.body !== null && Math.abs(edge.link - edge.body) <= 1, JSON.stringify(edge));
         await tile(deposit, "matrix-pending-fresh-real-rail"); await closeContext(player);
       } finally {
         if (!wasOn && await asyncSwitch.getAttribute("aria-label") === "Demo async (test): on") { await asyncSwitch.click(); await officer.locator('[aria-label="Demo async (test): off"]').waitFor(); }
@@ -997,6 +1125,12 @@ try {
       await page.locator(S.place).click(); await waitFrame(page, "receipt");
       const request = watch.requests[0]; if (!request) throw new Error("Rate cell lacks first real action");
       const headers = await request.allHeaders(); delete headers["content-length"]; delete headers.host; delete headers.connection;
+      // A25 item 20 (tile 057's "2 Issues"): Next's dev server sends each request's React debug chunks over the page's HMR
+      // socket, addressed by these two headers. Copied, every replay wrote into the first action's stream, closed when that
+      // answer ended — 160 "Cannot write to a CLOSED writable stream" and 35 "Cannot close…", logged by Next's dev client.
+      // A replay is its own request: it carries no page's ids, so nothing is sent to the page (dev only; nothing in production).
+      delete headers["x-nextjs-request-id"]; delete headers["x-nextjs-html-request-id"];
+      const consoleBefore = consoleRows.length;
       // A replayed key can be answered with its landed receipt even after the rate gate refuses it.
       // Change ONLY the key in the captured real action, so each drive is a distinct local bet.
       const parsed = parseMultipart(request.postDataBuffer(), headers["content-type"]), action = actionFields(parsed);
@@ -1060,10 +1194,25 @@ try {
       if (!nextId) throw new Error("Rate-capacity cell needs a second visible open question; the first side is already held");
       const before = await observed(player, nextId);
       await open(page, nextId); await waitFrame(page, "edit");
+      // The bucket refills a token every 6 s (10 a minute), and one can come back while the fresh question opens (an
+      // isolated run of this cell placed the tap's bet so). Spend it with the same distinct-key actions first, so the tap
+      // meets the spent bucket rather than a race with the refill.
+      for (let n = 0; n < 5; n++) {
+        const drained = await player.request.post(request.url(), { headers, data: keyedBody(crypto.randomUUID()), timeout: 90_000 });
+        if ((await drained.text()).includes("RATE_LIMITED")) break;
+      }
       await page.locator(S.place).click(); await page.waitForTimeout(300);
       const p = (await probe(page)).got, after = await observed(player, nextId);
       ok("real bet.place capacity exhausted by distinct service actions: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
-      await tile(page, "matrix-rate-capacity"); await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
+      // A25 item 2: the rate limit holds the commit until the wait it names has passed, then gives it back.
+      const rateHeld = await page.locator(S.place).isDisabled();
+      const waitSec = Number(/(\d+)/.exec(await page.locator(`${S.root} .kp-bsheet__lines`).innerText())?.[1] ?? "1");
+      const closedStream = consoleRows.slice(consoleBefore).filter(row => /CLOSED writable stream/.test(row.text)).length;
+      ok("A25 item 20 — the replayed actions write nothing into the page's dev debug streams (tile 057's \"2 Issues\")", closedStream === 0, `${closedStream} rows`);
+      await tile(page, "matrix-rate-capacity");
+      const rateBack = await page.waitForFunction(place => document.querySelector(place)?.disabled === false, S.place, { timeout: waitSec * 1_000 + 5_000 }).then(() => true, () => false);
+      ok("A25 item 2 — the rate limit holds the commit until its wait has passed, then gives it back", rateHeld && rateBack, JSON.stringify({ rateHeld, rateBack, waitSec }));
+      await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
     }
     if (!MATRIX_ONLY) {
     await coolingOffDrive();
@@ -1093,7 +1242,11 @@ try {
       await open(page); await page.locator(S.stake).fill("5000"); await waitFrame(page, "low");
       const p = (await probe(page)).got;
       const masked = await page.locator(`${S.root} [aria-label="balance hidden"]`).allTextContents();
-      ok("actual CashEye masks personal figures throughout sheet, keeps commitment/shortfall amounts visible", masked.length >= 1 && masked.every(text => text.includes("•") && !/\d/.test(text)) && p.stakeValue === "5,000" && /3[,\s]800/.test(p.text) && /1[,\s]200/.test(p.text));
+      // A25 item 5 (tile 062) — this assertion's premise is reversed by it: the shortfall (3,800 = 5,000 − 1,200) and
+      // "bet 1,200 instead" each gave the hidden balance away, so they are masked or withheld now, never shown.
+      ok("A25 item 5 — CashEye masks the balance and every figure derived from it: no shortfall, deposit amount or bet-instead; the stake stays",
+        masked.length >= 3 && masked.every(text => text.includes("•") && !/\d/.test(text)) && p.stakeValue === "5,000" && !/3[,\s]800|1[,\s]200/.test(p.text)
+          && !p.visibleInstead && await page.locator('[data-testid="journey-sheet-deposit-amounts"]').count() === 0, JSON.stringify({ masked, text: p.text.slice(0, 400) }));
       await tile(page, "doors-personal-cash-hidden"); await closeContext(ctx);
     }
     {
@@ -1131,6 +1284,9 @@ try {
       await page.locator(S.place).click(); await page.waitForTimeout(500); await waitFrame(page, "edit"); page.off("framenavigated", count);
       const after = await observed(ctx, seed.id), text = (await probe(page)).got.text;
       ok("spent skew reload stays unavailable, zero bets, no check-wallet money claim", sameDocument === await page.evaluate(() => window.__sheetDocument) && /unavailable/i.test(text) && !/check.*wallet/i.test(text) && before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount, `document identity retained across${navigations} main history events, positionsΔ=${after.positionCount-before.positionCount}, ledgerΔ=${after.betPlacedCount-before.betPlacedCount}`);
+      // A25 item 2 (tile 064 against 040 and 063): one state, one rendering — the stake locked, the commit bare and disabled.
+      ok("A25 item 2 — the spent reload is drawn as the recovery hold: stake locked, commit bare and disabled",
+        await page.locator(S.place).isDisabled() && await page.locator(S.stake).isDisabled() && !/·/.test(await page.locator(S.place).innerText()));
       await tile(page, "doors-skew-reload-spent"); await closeContext(ctx);
     }
     {
@@ -1138,9 +1294,13 @@ try {
       await limitsIn(other, { sessionTimeLimitMin: 15 });
       ok("real limits form accepts and persists typed15-minute floor", true, "limitsIn reopens the actual field after saved redirect and verifies15");
       await post(ctx, "bet-sheet-clock", { elapsedMin: 16 });
-      await page.locator(S.place).click(); await page.waitForTimeout(350); await waitFrame(page, "edit");
-      const after = await observed(ctx, seed.id), p = (await probe(page)).got;
-      ok("real15-minute sitting advanced through actual gate: inline refusal, no bet", /session|15/.test(p.text) && before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount);
+      await page.locator(S.place).click(); await waitFrame(page, "blocked");
+      const after = await observed(ctx, seed.id), alert = await page.locator(`${S.root} [role="alert"]`).innerText();
+      // A25 item 1 (tile 065): a player on the break they set is shown the limit and its doors, never a commit.
+      ok("real15-minute sitting advanced through actual gate: A25 item 1 — the session-limit block (its 15 minutes, Set limits, Got it), no commit, no bet",
+        /15/.test(alert) && await page.locator(S.place).count() === 0 && await page.locator(S.stake).count() === 0
+          && await page.locator(`${S.root} a[href="/profile/responsible-gambling"]`).count() === 1 && await page.locator(S.root).getByRole("button", { name: "Got it", exact: true }).count() === 1
+          && before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount, alert);
       await tile(page, "doors-session15-real-gate"); await closeContext(other); await closeContext(ctx);
     }
     {

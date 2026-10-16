@@ -388,7 +388,19 @@ async function privateRefreshChecks(source: string) {
     const late = unmount.refresh(), retained = unmount.current.current;
     unmount.mounted.current = false; resolveUnmount(fresh); await late;
     const unmounted = unmount.shown.length === 0 && unmount.current.current === retained;
-    return { faultClosed, serialProtected, sequenceProtected, restored, unmounted };
+    // S8-PLAN A25 item 2: a refusal the facts carry (maintenance, `byFacts`) yields to a fresh read — the plan then shows
+    // it or lifts it; any other inline line (a missing wallet) stands until the player edits or closes.
+    const maintenance = { row: 6, view: { kind: "inline", line: { key: "error.failMaintenance" }, hold: { kind: "change" }, byFacts: true } };
+    const yieldRun = create(async () => fresh);
+    yieldRun.current.current = { ...before(), settled: maintenance };
+    await yieldRun.refresh();
+    const factsYield = yieldRun.shown.length === 1 && yieldRun.current.current.settled === null;
+    const missing = { row: 18, view: { kind: "inline", line: { key: "error.failWalletMissing" }, hold: { kind: "change" } } };
+    const keepRun = create(async () => fresh);
+    keepRun.current.current = { ...before(), settled: missing };
+    await keepRun.refresh();
+    const otherKept = keepRun.shown.length === 1 && keepRun.current.current.settled === missing;
+    return { faultClosed, serialProtected, sequenceProtected, restored, unmounted, factsYield, otherKept };
   } catch { return null; }
 }
 type WarmPage = { seed: unknown; title?: string } | null;
@@ -585,6 +597,9 @@ async function checks(x: Impl): Promise<Check[]> {
   ok("host.private-read-race", refresh?.serialProtected === true && refresh?.sequenceProtected === true);
   ok("host.private-read-restore", refresh?.restored === true);
   ok("host.private-read-unmounted", refresh?.unmounted === true);
+  // A25 item 2: maintenance's line yields to the next fresh read, and the refusal asks for that read at once.
+  ok("host.facts-yield", refresh?.factsYield === true && refresh?.otherKept === true
+    && /else if \(settled\.view\.kind === "inline" && settled\.view\.byFacts\) void refreshed\(\);/.test(commit));
   ok("host.layout-lifecycle", layoutLifecycle(h));
   const life = await lifecycleChecks(h);
   ok("host.unmounted-receipt-storage-address", life?.lateReceipt === true);
@@ -719,6 +734,9 @@ if (process.argv.includes("--prove-red")) {
       ["host.private-read-race", "readSequences.current.get(id) !== seq", "false"],
       ["host.private-read-restore", 'viewer: { state: "read", viewer: truth.viewer }', 'viewer: { state: "failed" }'],
       ["host.private-read-unmounted", "!mounted.current || !after", "!after"],
+      // A25 item 2: maintenance's line kept over a fresh read (a stale "paused" after it lifts), and no read asked for.
+      ["host.facts-yield", '|| (after.settled.view.kind === "inline" && after.settled.view.byFacts === true)', ""],
+      ["host.facts-yield", 'else if (settled.view.kind === "inline" && settled.view.byFacts) void refreshed();', ""],
       ["host.layout-lifecycle", "useLayoutEffect(() => {", "useEffect(() => {"],
       ["host.exit-frozen-drawing", "active && frame ? { active, frame } : present ? lastView.current : null", "active && frame ? { active, frame } : null"],
       ["host.exit-frozen-drawing", "<BetSheet open={active !== null}", "<BetSheet open={view !== null}"],
