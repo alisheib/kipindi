@@ -50,7 +50,19 @@ The Authorization token here is byte-identical to the official docs example.
 - Production: `https://apigw.selcommobile.com/v1/`  (host string CONFIRMED across community SDKs; verify your exact live host + `vendor` till with Selcom onboarding)
 
 ## 3. Collection (money IN) — create order → USSD push
-- `POST /v1/checkout/create-order-minimal` — `{ vendor, order_id, buyer_email, buyer_name, buyer_phone, amount, currency, webhook, ... }`. `webhook`/`redirect_url`/`cancel_url` are **base64-encoded**. Signed-Fields = all keys.
+- `POST /v1/checkout/create-order-minimal` — `{ vendor, order_id, buyer_email, buyer_name, buyer_phone, amount, currency, no_of_items, webhook }`, in that order (`selcomDeposit`, `src/lib/server/selcom.ts`). `webhook`/`redirect_url`/`cancel_url` are **base64-encoded**. Signed-Fields = all keys.
+- 🔴 **`no_of_items` is mandatory, and no Selcom document we were given says so.** Without it the gateway answers
+  `HTTP 412 · resultcode=412 · "Parameter no_of_items is invalid or missing"`. Measured on the live gateway 2026-07-20:
+  every mobile-money deposit had failed there, because only the card path (`selcomCardCheckout`) sent the field and this
+  digest's field list hid it behind a trailing "...". Both builders send `no_of_items: 1`, last before `webhook` (key
+  order is the Signed-Fields order).
+- **Selcom's own words are kept.** A refusal at `create-order-minimal` is definitive (no USSD push has gone out, so the
+  deposit fails at once); a `wallet-payment` decline is too; a transport or HTTP error AFTER the push is AMBIGUOUS and
+  the deposit stays PROCESSING for a re-query to settle (§8). On a definitive refusal the adapter returns Selcom's reply —
+  HTTP status, `resultcode`, `result`, `message` (`describeSelcom`) — as `detail`, and `wallet-service.deposit()` writes it
+  into the `deposit.failed` audit payload beside the reason, so a failed deposit stays explainable after the container's
+  logs rotate. (On 2026-07-20 a real failed deposit left only `PROVIDER_DOWN` behind.) ⚠️ The card rail's refusal
+  (`selcomCardCheckout`) still carries no `detail`: its audit row names the reason only.
 - `POST /v1/checkout/wallet-payment` — `{ transid, order_id, msisdn }` → pushes the USSD PIN prompt. Async: sync response `resultcode:"111", result:"PENDING"`; final status by webhook.
 - Response envelope: `{ reference, resultcode, result, message, data[] }`. Codes: `000`=SUCCESS · `111`=PENDING · `999`=AMBIGUOUS (must query order-status) · other=FAIL.
 - The network is inferred from the buyer `msisdn` — the confirmed flow does NOT pass a collection channel string.
@@ -145,6 +157,23 @@ Both money movements settle from a SIGNED status re-query, not from trusting the
   inside the Railway container (`railway ssh …`), never from a laptop.
 - Cashin `utilitycode` codes are all **CONFIRMED** in the Wallet Cashin utilitycode table:
   `VMCASHIN`, `AMCASHIN`, `TPCASHIN` (Mixx by Yas), `EZCASHIN`, `HPCASHIN`, `TTCASHIN`, `CASHIN` (auto-route).
+
+**Who asks, and when** (`src/lib/server/lifecycle.ts`; the functions are in `wallet-service.ts`). The callback is only
+the intended fast path, and credit does not depend on it: observed 2026-07-20, a genuinely paid deposit sat PROCESSING
+with no webhook ever arriving.
+- **The fast lane** — its own timer, every 15 s (`DEPOSIT_POLL_MS`), separate from the 60 s lifecycle tick and guarded
+  against overlap. One pass re-queries in-flight deposits (`creditConfirmedDeposits`: from 8 s to 10 minutes old) and
+  then in-flight payouts (`settleConfirmedWithdrawals`: from 8 s to 30 minutes old).
+- ⛔ **The fast lane can only CONFIRM.** It never fails, reverses or terminalises anything: a PENDING, FAILED or
+  UNSUPPORTED answer is left alone. That asymmetry is what makes polling four times a minute safe — a slow but valid
+  payment can never be turned into a failed one, and a payout can never be refunded while its money may still be on the
+  way. Do not "simplify" it into one lane.
+- **The stale sweep** (`reconcileStalePayments`, every 5 minutes, on rows older than its 30-minute cutoff) owns every
+  terminal decision: credit a late confirmation, fail a verified failure, reverse a failed payout, and leave anything it
+  cannot prove (no reference, no answer in LIVE money mode) in front of an officer instead of guessing. A deposit older
+  than the fast lane's window and younger than the cutoff waits for the callback or the sweep.
+- Every door — the callback, the card return page, the fast lane and the sweep — settles through
+  `settlePaymentWebhook`, so a confirmation arriving twice credits once (`docs/DATA-LAYER.md` § Money-path mechanics).
 
 ## 9. ⚠️ Still to confirm with Selcom before flipping to `selcom` in production
 1. **Live host string + your `vendor` till id + float `pin`** — needed to authenticate at all.

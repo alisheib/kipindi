@@ -86,6 +86,30 @@ Default seeded sources (first boot): `bot.go.tz`, `tra.go.tz` (macro) ·
 (crypto) · `itv.co.tz` (culture) · `tcra.go.tz` (tech). So `other` is **not**
 generatable until you add an `other` source.
 
+## Activating the AI features
+
+One key, `ANTHROPIC_API_KEY` (Railway → the 50pick service → Variables; `RAILWAY.md`), powers every AI feature: the
+help chat, AI poll generation (this file) and the market-resolution check (the sentinel, `market-sentinel.ts`).
+Verified in the code 2026-10-16.
+
+- **Unset, nothing calls Anthropic.** The help chat answers from its offline keyword helper
+  (`src/lib/chat/send-message.ts`); poll generation runs the mock provider — `getAIProvider()` returns
+  `MockClaudeProvider`, and `/admin/ai-polls` names the provider and warns; the sentinel does not run
+  (`sentinelEnabled()`).
+- **Set, the real provider is chosen automatically.** `getAIProvider()` (`src/lib/server/ai-provider.ts`) returns
+  `ClaudeProvider` the moment the key is present, and the chat's server action (`chatWithClaude`,
+  `src/app/_actions/chat.ts`) calls the model. ⛔ There is no factory to uncomment — an older note said there was.
+  The models are named in those files; what they cost is on `/admin/ai-usage`.
+- **The operator's switches sit on top of the key.** The AI toolkit (`src/lib/server/ai-controls.ts`) turns the
+  chatbot and poll generation off without a deploy (no saved setting = both on); the resolution check has its own
+  pause. The live chat also needs a signed-in player and stays inside a burst limit (`chat.send`) and a daily quota; a
+  signed-out player is answered by the offline helper.
+- **What the chat will never do, in either mode.** It never recommends YES or NO — RULE 1 of the model's system prompt,
+  and the offline helper's own answer to "which side should I pick?". At-risk language ("I can't stop", chasing losses —
+  in English, Swahili or Chinese) never reaches either backend: `ChatRoot` checks it first (`atRiskReply`) and answers
+  with the responsible-gambling card (`RgRedirectCard`: the limits and breaks at `/profile/responsible-gambling` first,
+  help second), never free text. Guard: `npm run test:chat-safety`.
+
 ## Tests
 
 `npm run test:ai-source-allowlist`

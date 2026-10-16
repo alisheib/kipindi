@@ -40,7 +40,8 @@
  * So the honest shape of the matrix is:
  *
  *   IN_APP  · 36 emitters · 3 language fields per row (en/sw/zh) · the bell
- *   EMAIL   · 47 templates · ONE bilingual EN+SW message, locale-independent
+ *   EMAIL   · every `EMAIL_TEMPLATES` entry below — the count is `test:cert-c1` §1's to measure (this line said
+ *             47 long after the inventory outgrew it) · ONE bilingual EN+SW message, locale-independent
  *   PUSH    · fan-out of the IN_APP row, in the recipient's locale, no record
  *   SMS     · OTP + invite campaigns, outside this module (`sms.ts` / `sms-blackball.ts`),
  *             with its own record on `SmsMessage` and its own delivery receipts — and

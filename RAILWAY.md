@@ -18,8 +18,15 @@ var points to a Railway-managed Postgres service. No disk volumes needed.
 | `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | with blackball | From the portal, Configurations → API Configurations. |
 | `BLACKBALL_WEBHOOK_SECRET` | with blackball | >= 16 chars. Register the DLR URL as `https://<host>/api/webhooks/blackball?token=<this>`. |
 | `OTP_ENABLED` | optional | `1` opens phone-code SIGN-IN: the `/auth/otp` page and the code actions (`otp-door.ts`); no login UI links to it yet (docs/BLACKBALL-SMS.md section 7 step 6). Leave unset until that UI ships. |
-| `NEXT_PUBLIC_APP_URL` | yes | Public URL of the app (e.g. `https://kipindi-production.up.railway.app`). |
-| `NEXT_PUBLIC_LICENSE_REF` | optional | Footer license reference. |
+| `NEXT_PUBLIC_APP_URL` | yes | Public URL of the app, for absolute links in email, SMS and share images (`appUrl()`, `src/lib/app-url.ts`; `https://www.50pick.tz` when unset). |
+| `NEXT_PUBLIC_LICENSE_REF` | not read | ⛔ Nothing reads it any more. The footer's licence number is `LICENCE_NUMBER()` (`src/lib/support-config.ts`), saved in Admin → System; setting this variable changes nothing. |
+| `NODE_ENV` | yes | `production` on Railway. Everything production-only keys off it: a missing `SESSION_SECRET` or `OTP_PEPPER` is FATAL at first use, the session cookie is `Secure`, `/api/dev-test/*` and `/auth/demo` answer 404, and real money is live when it is `production` AND `TEST_FUNDING` is not `"true"` (`isLiveMoneyMode()`, `src/lib/server/runtime-mode.ts`). |
+| `ADMIN_BOOTSTRAP_PHONES` | optional | Comma-separated E.164 list (`+255712345678,+255700000000`). A listed phone is created ADMIN at sign-up; an existing non-admin account on the list is promoted ONCE, at its next password sign-in, and the promotion is recorded durably, so a demoted admin is never promoted again by the list. Never demotes. Admin → System shows how many phones it holds. |
+| `TESTER_BOOTSTRAP_PHONES` | optional | Comma-separated E.164 list. A listed phone's new wallet gets a test starter balance at sign-up — except in LIVE money mode, where every starter credit is forced to 0 (it would be money with no ledger entry) and the refusal is audited `wallet.starter_credit_refused_live`. |
+| `ADMIN_TEST_DEPOSITS` | optional | Off production only: ADMIN, COMPLIANCE and MODERATOR accounts may make uncapped test deposits that skip the source-of-funds and deposit-limit gates — on by default there, off with `false`. ⛔ In production it enables NOTHING, whatever its value: `NODE_ENV=production` short-circuits it (`wallet-service.deposit()` and the deposit page). |
+| `ANTHROPIC_API_KEY` | optional | One key for every AI feature: the help chat, AI poll generation and the market-resolution check (the sentinel). Unset: the chat answers from its offline keyword helper, generation runs the mock provider (`/admin/ai-polls` names it), and the sentinel does not run. Set: the real provider is chosen automatically — no code change. `docs/AI-POLL-SOURCES.md` § Activating the AI features. |
+| `POSTMARK_API_KEY` | yes | Postmark server token — the transactional email rail (`docs/EMAIL.md`). Unset: every send is only logged (`[email-stub]`) and returns the reason `stub`; nothing is delivered. |
+| `PHONE_EMAIL_MAP` | legacy | `+255…:a@b.com,+255…:c@d.com`. A READ-ONLY delivery fallback: for an account with NO email on file, a listed phone's non-money mail (the sign-in notice, officer alert lists) goes to the mapped address. It never writes `user.email`, never receives money mail (`confirmedOnly`) and never a password-reset link. Removing it is a go-live step (`docs/LAUNCH-GO-NO-GO.md` §5). |
 | `SELCOM_WEBHOOK_SECRET` | per-provider | HMAC secret for Selcom payment callbacks. **Exact name** — read by `api/webhooks/payments/route.ts`. |
 | `AZAMPAY_WEBHOOK_SECRET` | per-provider | HMAC secret for Azampay payment callbacks. |
 | `MIXX_WEBHOOK_SECRET` | per-provider | HMAC secret for Mixx-by-Yas payment callbacks. |
@@ -46,14 +53,12 @@ var points to a Railway-managed Postgres service. No disk volumes needed.
 
 ## Schema migrations
 
-After changing `prisma/schema.prisma`, generate a migration locally:
-
-```bash
-npx prisma migrate dev --name describe_change
-```
-
-Push to main — Railway's build step runs `prisma migrate deploy` automatically
-(configured in the build command).
+A schema change ships ONLY as a migration file in `prisma/migrations/`, committed with the change. Every deploy
+starts the container with `prisma migrate deploy && next start` (the `start` script in `package.json`), so pending
+migrations are applied at boot, before the app serves. ⛔ Never point `prisma migrate dev` at production, and use it
+at all only against a throwaway database — it is interactive and diffs against a shadow database. The protocol (write
+the SQL by hand, apply it to a disposable Postgres, `npm run verify:backup-schema`, commit) is
+`.claude/skills/50pick-audit/SKILL.md` §4; `docs/DATA-LAYER.md` says the same.
 
 ## Data layer
 

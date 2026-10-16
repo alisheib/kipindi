@@ -3,8 +3,10 @@ STATUS: 🟢 **LAW** — how to get 50pick running on a machine that has never s
 
 # Setting up on a new machine
 
-**50pick is LIVE at `www.50pick.tz` in TEST money mode, and every push to `main` deploys it.**
-Read that sentence twice before you run anything.
+**50pick is LIVE at `www.50pick.tz` with real money, and every push to `main` deploys it.**
+Read that sentence twice before you run anything. (It is in LIVE money mode — `NODE_ENV=production` with `TEST_FUNDING`
+unset, read off the live service 2026-09-09: `docs/RULES.md`, and `isLiveMoneyMode()` in
+`src/lib/server/runtime-mode.ts`. This line said "TEST money mode" until 2026-10-16.)
 
 ---
 
@@ -12,9 +14,9 @@ Read that sentence twice before you run anything.
 
 | | |
 |---|---|
-| [`docs/README.md`](README.md) | The doc index. 42 docs, each with a status (LAW / LIVE / RECORD / OPEN / DESIGN / HISTORICAL). **From the outside, a snapshot of a Tuesday in May looks identical to a law.** |
+| [`docs/README.md`](README.md) | The doc index: every doc, each with a status (LAW / LIVE / RECORD / OPEN / DESIGN / HISTORICAL). **From the outside, a snapshot of a Tuesday in May looks identical to a law.** |
 | [`docs/NEXT-PLAN.md`](NEXT-PLAN.md) | Opens with **PICK UP HERE** — the state at the close of the last session and what to start on. |
-| [`docs/MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | The programme that finishes the platform: 52 modules, 8 gates, the laws. |
+| [`docs/MODULE-CERTIFICATION-PROGRAM.md`](MODULE-CERTIFICATION-PROGRAM.md) | The programme that finishes the platform: its modules, its gates, the laws. |
 | [`CLAUDE.md`](../CLAUDE.md) | How the codebase works. ⚠️ Its top ~140 lines are an accumulated status log and parts are stale — trust `NEXT-PLAN.md` over it for *current state*, and CLAUDE.md for *how things work*. |
 | [`docs/AGENT-ACCESS.md`](AGENT-ACCESS.md) | Credentials, and the two kinds of block that look identical. |
 
@@ -71,17 +73,30 @@ Then open `http://localhost:3000`.
 
 - **`/auth/demo`** logs you in as a seeded demo player instantly. Use it; do not hand-craft
   sessions.
-- **`api/dev-test/*`** (35 routes) seed wallets, markets and admins. They **404 in production** —
-  enforced by `npm run test:cert-devroutes`, not by convention.
+- **`/api/dev-test/*`** seed wallets, markets and admins — the full set is the folders under
+  `src/app/api/dev-test/`, and the ones worth knowing are below. They **404 in production** (each route checks
+  `NODE_ENV`, and the edge blocks the whole tree) — enforced by `npm run test:cert-devroutes`, not by convention.
 
-⚠️ **`npm start` is NOT the local command.** It runs `prisma migrate deploy` and the float
-seeder — it is the production entrypoint. For a local production build use
-`npm run build` then `npx next start`.
+⚠️ **`npm start` is NOT the local command.** It runs `prisma migrate deploy` before `next start` — it is the
+production entrypoint. For a local production build use `npm run build` then `npx next start`.
+
+### The dev helpers worth knowing
+
+| Helper | What it does |
+|---|---|
+| `GET /auth/demo` | Creates (or reuses) a fixed demo player with a funded wallet and signs you in. `?email=unverified` or `?email=none` lands on the other sides of the withdrawal's email step |
+| `POST /api/dev-test/promote-admin` `{ phone }` | Makes a registered phone ADMIN (audited `dev_test.admin_promotion`), for admin pages without `ADMIN_BOOTSTRAP_PHONES` |
+| `POST /api/dev-test/seed-wallet` `{ phone, amount }` | Adds to that wallet's balance directly — no deposit row, no ledger entry, capped per call |
+| `POST /api/dev-test/seed-real-markets` | Creates a handful of REAL (non-demo) live markets across categories, so the board, a market page and its similar-markets rail have something to show (demo markets are kept off the board); skips a title that exists |
+| `POST /api/dev-test/seed-player-portfolio` `{ markets?, stake? }` | Gives the SIGNED-IN player (sign in at `/auth/demo` first) a position in every status, through the real service: buy, cash out, resolve, void |
+| `POST /api/dev-test/updown-seed` `{ durations?, feedProvider? }` | Stands up running Up & Down chains through the same service calls the console makes. Pass `feedProvider: "mock-bars"` for DECISIVE local settles: the default `mock` quotes one constant price per symbol, so every round voids on no move |
+| `POST /api/dev-test/updown-advance` | Drives every RUNNING chain across one boundary through the scheduler's own `runDueChainTransitions`, instead of waiting for it. It moves no money by itself: a boundary with no confirmed price leaves the round pending, as in production |
+| `GET /api/dev-test/last-otp?phone=…` or `?email=…` | The last code sent to that person: `phone` reads the SMS facade's in-memory ring (any provider), `email` the captured outbox, which needs `EMAIL_OUTBOX_CAPTURE=1` on the server |
 
 ### Two things that will confuse you once
 
-- **Locale is the `kp-locale` cookie**, not `?lang=`. Setting a query param renders English and
-  looks like a translation bug. (`src/lib/i18n-server.ts:18`.)
+- **Locale is the `kp-locale` cookie**, not `?lang=`. A query param is ignored, and with no cookie a page renders in
+  Swahili, the default (`DEFAULT_LOCALE` in `src/lib/i18n-dict.ts`, read by `getServerT` in `src/lib/i18n-server.ts`).
 - **Config caches live on `globalThis`** and survive hot-reload by design. Changing a config
   *default* needs a full dev-server restart, not a save.
 
@@ -89,8 +104,9 @@ seeder — it is the production entrypoint. For a local production build use
 
 ## 4 · Environment variables
 
-`.env.example` lists all 42. For local development you need **none of them** — the in-memory
-store, console SMS and mock payments cover everything.
+`.env.example` names the variables, each with a comment, and [`RAILWAY.md`](../RAILWAY.md) says what each one does
+in production. For local development you need **none of them** — the in-memory store, console SMS and mock payments
+cover everything.
 
 Real values live in **Railway**, never in the repo:
 
@@ -130,17 +146,52 @@ railway ssh "node scripts/admin-2fa-readiness.mjs"   # ✅ correct shape
 ## 6 · The commands worth knowing
 
 ```bash
-npm run test:all                          # 113 suites, the safety net
+npm run test:all                          # typecheck + every test:* suite in package.json; the run prints its count
 npm run test:all -- --skip responsive,motion   # …without a running server
 npm run typecheck
 npm run test:docs                         # every link/script/npm ref in docs/ must resolve
 npm run test:orphans                      # no script may claim coverage nothing runs
-npm run qa:live                           # pre-deploy check against the live site
+npm run qa:live                           # the pre-deploy browser gauntlet — localhost:3009 unless BASE says otherwise
 ```
 
 ⚠️ **`test:responsive` and `test:motion` need a server on `:3000`** — start the app first or they
 fail on navigation and read as real regressions. `test:responsive` is thousands of browser page
 loads; against a *dev* server it ran 40+ minutes without finishing. Use a production build.
+
+**The runnable inventory is `package.json`** — its `test:*`, `qa:*`, `e2e:*`, `ops:*`, `red:*` and `verify:*`
+scripts — **plus `scripts/orphan-allowlist.json`**, the by-hand drivers no gate runs (a list that may only shrink).
+Trust those two, not a prose table of scripts; count them there when you need a number.
+
+### `qa:live` — the pre-deploy gauntlet
+
+`scripts/pre-deploy-live-check.mjs` fails on any console, page or 5xx error, a real Next error overlay, a broken
+internal link, horizontal overflow at phone width, a clipped date segment or a mis-handled date. `npm run predeploy`
+runs it last, after the build, and always against localhost: it passes no `BASE`.
+
+**Locally**, against an in-memory dev server on the gauntlet's default port:
+
+```bash
+# terminal 1 — no DATABASE_URL (the memory store), throwaway secrets, the console's two-step check off
+DATABASE_URL="" SESSION_SECRET="$(openssl rand -hex 32)" OTP_PEPPER="$(openssl rand -hex 16)" \
+  DISABLE_ADMIN_TOTP=true npx next dev -p 3009
+# terminal 2
+npm run qa:live
+```
+
+- `DISABLE_ADMIN_TOTP=true` lets the local server mint a staff preview pass, so section [E2] can first prove that its
+  checks SEE the journey shell when it is served. Without it that control prints a SKIP — never a pass.
+- The signed-in sections sign in through `/auth/demo` (above).
+- Run it on a WARM server: the gauntlet warms the heaviest routes first, but a just-restarted instance can still race.
+
+**Against production** — `BASE=https://www.50pick.tz npm run qa:live` — the run is read-only except section [E3]:
+
+- [E3] signs the QA player `mobile01` in through the real form ONLY when `QA_SIGNED_IN=mobile01` is set as well and
+  `QA_MOBILE01_PASSWORD` is in `.env.qa.local` at the checkout root. Otherwise it prints NOT MEASURED — neither a pass
+  nor a failure — and never touches the form.
+- ⛔ Set it only with the owner's go-ahead, and only while no other drive uses `mobile01`: the sign-in writes a session
+  that ENDS any other `mobile01` session. It is ONE attempt — a failed sign-in stops the run (exit 1) and is never
+  retried, because each wrong try counts toward the account's lockout.
+- The demo sign-in section ([F]) is skipped: `/auth/demo` does not exist in production.
 
 **Ops tools** (`ops:*` never runs in `test:all` — they need live credentials):
 
@@ -179,6 +230,6 @@ anything.
 | Playwright "browser not found" | `npx playwright install chromium` |
 | Selcom says nothing is provisioned | You used `railway run`; use `railway ssh` |
 | `getaddrinfo ENOTFOUND postgres.railway.internal` | Internal host used from outside Railway |
-| Swahili/Chinese page renders English | You set `?lang=`; it is the `kp-locale` cookie |
+| A page ignores `?lang=` and opens in Swahili | The language is the `kp-locale` cookie, and Swahili is the default |
 | A config default change has no effect | `globalThis` cache — restart the dev server |
 | A build warning about `node:crypto` in Edge Runtime | Pre-existing, confirmed on a clean tree |
