@@ -83,6 +83,10 @@ battery. S9 core and S10–S13 remain on checkpoint branches; Card checkout reco
 verification. The current release record and blockers are in VODACOM-PLAN §0 and §0k. The completed-session count
 remains **6/18**.
 
+**2026-10-16:** Claude took integration and releases back from Codex (Ali's choice). Stage 1, S8's close release
+`a3c4d3195` (V1's visual corrections), is pushed with its proof; stage 2 (S9 core + S10–S13 + the visual round) is being
+validated for S9's zero-overlap cutover, which Ali approved as soon as it validates. Continue from VODACOM-PLAN §0.
+
 **2026-10-15 ~08:15 UTC:** release `331048acb` is LIVE and read back (Claude, OMEGA-COMPILE01): A21's root-`:has()` fix
 with main's house-bots N3. **A21 passes** at that exact commit on a quiet machine (`qa:bet-sheet-production` 78/0; the six
 4×-CPU heading frames 81–112 ms against 150) and **exact-tip CI passes** (run 38697728924). **S2 is ✅** — Ali signed in

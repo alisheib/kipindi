@@ -16,6 +16,16 @@
 
 ## §0 · RESUME AT
 
+**State (2026-10-16):** Claude (OMEGA-COMPILE01) took integration and releases back from Codex at Ali's choice
+(2026-10-16), Codex having stopped. **Stage 1 — S8's close release `a3c4d3195`** (Codex's `codex/s8-close-candidate-1015`:
+V1's visual corrections — the bet sheet's scroll edges and gutter-aligned footer, the low-balance rails line, the sheet
+titles, the kit Callout sm at 13px, `.btn-xl` on the type ladder — and the comments sign-in's question context; merged with
+live main) is pushed with its proof (§0k "2026-10-16 Claude — stage 1"). **Stage 2** — S9 core + S10–S13 + Codex's visual
+round, one integrated candidate (`codex/release-s9-s13-1016b`) — is being validated for S9's zero-overlap cutover, which
+Ali approved "as soon as validated" (a planned outage of ~12–15 minutes: the app stopped, a backup, the three migrations by
+the deploy, the new code alone; `qa/s9-zero-overlap-release-20261015.md`). S9's Card checkout recovery stays held on
+`codex/s9-card-held` until Selcom confirms the checkout host. S14–S16 wait on Ali.
+
 **State (2026-10-15):** At 12:40 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
 `0229b2140c00208a1b873b112dc0c2713008d47b` fixes three player-facing defects: the question bet panel's guest sign-in
 doors preserve their return path, Up & Down's stake preflight counts cash plus bonus, and a locked round stays visible on
@@ -1119,6 +1129,33 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   A separate production read-only GET with a safe `side`, `ref` and `invite` query verified the header and bet-panel
   doors carry all three. The comments section's guest sign-in link still carries only the market path; S10's visitor
   door census must repair and prove that remaining link before its release.
+- **2026-10-16 Claude — stage 1: S8's close release `a3c4d3195`.** Built from Codex's `codex/s8-close-candidate-1015`
+  (S8 + V1, before S9 joined) merged with live main `18b54a37b`, plus two of Codex's own later commits: `096e93fb3`
+  (registers the receipt-matrix commands — `test:orphans` named both scripts as undeclared without it) and `05e322b80`
+  (the drive's rate-capacity cell picks its second question from the bet buttons actually visible and proves the refusal
+  with distinct keys; the older cell stopped on "No visible pick").
+  - *A21 at the exact app code, quiet machine (06:54 UTC):* `qa:bet-sheet-production` 78/0 — `/` 88.1 / 111.1 / 82.4 ms,
+    `/live` 79.3 / 90.5 / 82.1 ms (limit 150); every RED delayed control fails as it must.
+  - *Battery:* `test:all --jobs 4` 529 green; every other suite green on its own rerun — the 18 database suites 18/18 (the
+    first pass died at `initdb` with 0xC0000135: a fresh `embedded-postgres` install lacks the VC++ runtime DLLs this PC
+    has no system copy of; `msvcp140.dll`, `vcruntime140.dll` and `vcruntime140_1.dll` copied into its `native/bin` from
+    the working install), needle-rest 92/0, admin-section-gate 21/0, revoked-deadend 46/0, motion and responsive green, and
+    `test:orphans` green with `096e93fb3`. Typecheck 0; `next build` 0 at the exact commit.
+  - *Classic parity v4* against the `ff8c731e2` baseline: 64/67, and every difference is V1's — the Callout sm box (`gap-3
+    rounded-control px-4 py-3`) and body (`text-body-sm`) in the 2 Sell-confirm cells and the 8 player question-panel cells
+    (each region's HTML byte-identical once those two classes are swapped back; its layout lines move with the taller
+    notice), and `.btn-xl` 16.5 → 17px on the guest home's two hero CTAs (4 lines in each of the 4 cells: the two buttons
+    and the first one's arrow). The 224 shell cells, the other book cells and every guest question cell are identical, and
+    the "Recently resolved" strip no longer moves (the seed clock fix).
+  - *Drives:* local `qa:live` 376/0 (a first run read `/account` once as the sign-in page — the demo session had ended
+    mid-run; three direct reads showed the not-found page signed in, and the rerun passed). `qa:bet-sheet`: controls, V20,
+    keyboard, once, lock, host, lifecycle and low 397 passed (a first run under full machine load failed zh 360 keyboard once
+    — 2/2 alone — and stopped on a CDP response-body error); matrix, cooling, doors and tap 52/0 after `05e322b80`; the
+    outstanding cells are the documented ones (matrix rows 11, 18 and 23 ×2 proven in-process; the pending-age bands and the
+    BUSY storm driven on their own 2026-10-14; the dev tap frame, which A21 measures on the production build).
+  - *[E3]* was measured on `50b586d50` (385/0, Ali's one-attempt authorization); this release touches no shell gating — its
+    eight source files are the sheet, Callout, scroll edges, the How-to sheet, strip autoscroll, `globals.css` and the
+    question page's comments link.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
