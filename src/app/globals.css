@@ -8614,6 +8614,18 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    supplies only geometry: `translate` is independent of Modal's transform animation, so neither undoes the other. */
 .kp-bsheet { max-height: min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)); overflow: hidden; translate: 0 calc(-1 * var(--bsheet-keyboard-lift, 0px)); }
 .kp-bsheet__shell { display: flex; flex-direction: column; min-height: 0; max-height: calc(min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)) - var(--sp-3) - var(--sp-5) - env(safe-area-inset-bottom, 0px)); gap: var(--sp-3); }
+/* The first, already-modal frame holds the edit sheet's footprint while its form mounts after paint. These are
+   inert silhouettes, not money controls; they keep the backdrop and header from jumping between two frames. */
+.kp-bsheet__shell[data-staged] { min-height: min(36rem, calc(min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)) - var(--sp-3) - var(--sp-5) - env(safe-area-inset-bottom, 0px))); }
+.kp-bsheet__shell[data-staged][data-guest] { min-height: min(37.25rem, calc(min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)) - var(--sp-3) - var(--sp-5) - env(safe-area-inset-bottom, 0px))); }
+.kp-bsheet__shell[data-staged] .kp-bsheet__scroll { flex: 1; }
+.kp-bsheet__stage { display: flex; flex-direction: column; gap: var(--sp-3); }
+.kp-bsheet__stage-line { width: 68%; height: var(--sp-4); border-radius: var(--r-sm); background: var(--bg-inset); }
+.kp-bsheet__stage-label { width: 34%; height: var(--sp-4); margin-top: var(--sp-2); border-radius: var(--r-sm); background: var(--bg-inset); }
+.kp-bsheet__stage-field { height: var(--h-control-xl); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-inset); }
+.kp-bsheet__stage-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-2); }
+.kp-bsheet__stage-chips > i { height: var(--h-control-md); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-inset); }
+.kp-bsheet__stage-commit { min-height: var(--h-control-xl); border-radius: var(--r-md); background: var(--bg-inset); }
 .kp-bsheet__header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .kp-bsheet__close { flex: none; }
 .kp-bsheet__chosen { max-width: calc(100% - var(--sp-12) - var(--sp-2)); }

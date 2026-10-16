@@ -59,6 +59,7 @@ type BodyProps = BetSheetProps & {
   id: string;
   nowMs: number;
   keyboard?: boolean;
+  detailsReady?: boolean;
   headingRef?: RefObject<HTMLHeadingElement | null>;
   closeRef?: RefObject<HTMLButtonElement | null>;
   onStakeFocus?: () => void;
@@ -122,7 +123,7 @@ export function LowBlock({ t, locale, nowMs, frame, calloutId, railNames, deposi
 
 /** A pure body for the three-language frame render proof: Modal's portal is not a substitute for rendering each frame. */
 export function BetSheetBody(props: BodyProps) {
-  const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false,
+  const { seed, side, title, frame, stakeText, estimateUpdated, railNames = [], t, locale, id, nowMs, keyboard = false, detailsReady = true,
     headingRef, closeRef, onStakeChange, onPlace, onBetInstead, onDeposit, onClose, onStakeFocus, onStakeBlur,
     depositAmount, onDepositAmount, returnContext, returnBoundsChange, guest } = props;
   const placing = frame.frame === "placing";
@@ -154,7 +155,13 @@ export function BetSheetBody(props: BodyProps) {
         {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
           : frame.frame === "blocked" && frame.block ? sheetTemplate(t, frame.block.title) : frame.frame === "closed" ? t.journey.sheetClosedTitle : title}
       </h2>
-      {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <>
+      {!detailsReady && <div className="kp-bsheet__stage" aria-hidden="true">
+        <span className="kp-bsheet__stage-line" />
+        <span className="kp-bsheet__stage-label" />
+        <span className="kp-bsheet__stage-field" />
+        <span className="kp-bsheet__stage-chips"><i /><i /><i /><i /></span>
+      </div>}
+      {detailsReady && (receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <>
         <div id={calloutId} role="alert" className="kp-bsheet__terminal">
           {frame.block ? <SheetSentence t={t} locale={locale} nowMs={nowMs} line={frame.block.body} /> : frame.closedBody ? sheetTemplate(t, frame.closedBody) : null}
         </div>
@@ -189,14 +196,15 @@ export function BetSheetBody(props: BodyProps) {
           depositAmount={depositAmount} onDepositAmount={onDepositAmount} onDeposit={onDeposit} onClose={onClose}
           instead={instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />} />
         {frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}
-      </>}
+      </>)}
     </div>
     {/* ⭐ The placing status and the inline refusal line stand in the footer, directly above the CTA they explain
         (S8-PLAN's refusal matrix: "one line in the sheet's last rows, above the CTA", s4-4-inline-refusals). As the last
         rows of the scrolling middle they fell below the fold on a 360×640 phone while the CTA stayed pinned: the player
         saw "Try again" without its reason (S8 BUSY and row-23 drives, 2026-10-14). */}
     <div className="kp-bsheet__footer">
-      {receipt ? <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__continue" onClick={onClose}>{t.market.udRcKeepPlaying}</Button>
+      {!detailsReady && <div className="kp-bsheet__stage-commit" aria-hidden="true" />}
+      {detailsReady && (receipt ? <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__continue" onClick={onClose}>{t.market.udRcKeepPlaying}</Button>
         : terminal ? <>
           {frame.block?.actions.includes("setLimits") && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}</Link>}
           {frame.block?.actions.includes("contactSupport") && <Link className="kp-bsheet__link" href="/help" onClick={onClose}>{t.kycGate.frozenCta}</Link>}
@@ -208,7 +216,7 @@ export function BetSheetBody(props: BodyProps) {
           {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}
           {frame.lines.length > 0 && <div id={lineId} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>}
           {footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
-        </>}
+        </>)}
     </div>
   </>;
 }
@@ -221,6 +229,16 @@ export function BetSheet(props: BetSheetProps) {
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null), closeRef = useRef<HTMLButtonElement>(null), shellRef = useRef<HTMLDivElement>(null);
   const [stakeFocused, setStakeFocused] = useState(false), [keyboard, setKeyboard] = useState(false);
+  // A card tap first opens the public edit frame. Other entry frames keep their complete first drawing.
+  const [detailsReady, setDetailsReady] = useState(() => props.frame.frame !== "edit");
+  useEffect(() => {
+    if (!open || detailsReady) return;
+    // The first frame is the real modal, its real heading and close control. Wait until that frame has painted before
+    // mounting the form and any actionable money controls; a layout effect or one rAF can still run before that paint.
+    let second = 0;
+    const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => setDetailsReady(true)); });
+    return () => { cancelAnimationFrame(first); if (second) cancelAnimationFrame(second); };
+  }, [open, detailsReady]);
   const focusIdentity = JSON.stringify([props.seed.id, props.side, props.frame.receipt?.positionId ?? null]);
   const [focusState, setFocusState] = useState<SheetFocusState>(() => ({ identity: focusIdentity, frame: props.frame.frame, revision: 0 }));
   const nextFocus = nextSheetFocus(focusState, focusIdentity, props.frame.frame, stakeFocused);
@@ -323,15 +341,16 @@ export function BetSheet(props: BetSheetProps) {
     setLive(message);
   }, [open, props.frame, props.estimateUpdated, t, locale, receiptId, nowMs]);
   const terminal = props.frame.frame === "closed" || props.frame.frame === "blocked";
+  // The host first opens this sheet from an effect or a hydrated card tap; there is no server portal to hydrate.
   return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
-    sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
-    refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
-    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-guest={props.guest ? "" : undefined} data-ptr-skip=""
+    sheet sheetUntil="lg" clientOnlyPortal maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
+    refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={!detailsReady || props.frame.frame === "placing"}>
+    <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-guest={props.guest ? "" : undefined} data-staged={!detailsReady ? "" : undefined} data-ptr-skip=""
       onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
       onBlurCapture={(event) => { if (open && !event.currentTarget.contains(event.relatedTarget)) release("focus"); }}
       onPointerMove={(event) => { if (!open || !receiptId) return; const prior = pointer.current; pointer.current = { x: event.clientX, y: event.clientY }; if (prior && (prior.x !== event.clientX || prior.y !== event.clientY)) hold("pointer"); }}
       onPointerLeave={() => { if (open) { pointer.current = null; release("pointer"); } }}>
-      <BetSheetBody {...props} t={t} locale={locale} id={id} nowMs={nowMs} keyboard={keyboard} headingRef={headingRef} closeRef={closeRef}
+      <BetSheetBody {...props} t={t} locale={locale} id={id} nowMs={nowMs} keyboard={keyboard} detailsReady={detailsReady} headingRef={headingRef} closeRef={closeRef}
         depositAmount={depositAmount} onDepositAmount={setDepositAmount} onStakeFocus={() => { if (open) setStakeFocused(true); }} onStakeBlur={() => { if (open) setStakeFocused(false); }} />
       {open && <p className="sr-only" aria-live="polite" aria-atomic="true">{live}</p>}
     </div>
