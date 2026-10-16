@@ -38,8 +38,9 @@ const MUTATIONS = [
     check: "2.2",
     file: "src/components/layout/lazy-overlays.tsx",
     // ⚠️ Re-anchored 2026-09-27: the mount gained `supportEmail` (7a472dfe) and this anchor stopped resolving.
-    from: `      {chatbotEnabled && <ChatRoot supportEmail={supportEmail} />}`,
-    to: `      <ChatRoot supportEmail={supportEmail} />`,
+    // ⚠️ Re-anchored again 2026-10-16: the mount gained `chatOwner` (becd77e66, `test:chat-owner`).
+    from: `      {chatbotEnabled && <ChatRoot supportEmail={supportEmail} chatOwner={chatOwner} />}`,
+    to: `      <ChatRoot supportEmail={supportEmail} chatOwner={chatOwner} />`,
   },
   {
     // ⭐ THE ZERO-COVERAGE CASE. Rename the promise key and rule 1.1 has nothing

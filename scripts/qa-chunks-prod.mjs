@@ -795,7 +795,7 @@ export async function selfTest({ root = process.cwd() } = {}) {
   const relabelled = (owner) => [RAIL, RAIL_LOADER, `.then((m) => m.Tabs).catch(nothingIfLost), { ssr: false, loading: () => <template ${OWNER_ATTR}="${owner}" /> });`];
   const CHAT_OPTS = `{ ssr: false, loading: () => <template ${OWNER_ATTR}="chat-root" /> }`;
   const PRIMER_OPTS = `{ ssr: false, loading: () => <template ${OWNER_ATTR}="first-visit-primer" /> }`;
-  const CHAT_MOUNT = "{chatbotEnabled && <ChatRoot supportEmail={supportEmail} />}";
+  const CHAT_MOUNT = "{chatbotEnabled && <ChatRoot supportEmail={supportEmail} chatOwner={chatOwner} />}";
   const swapped = (() => {
     const s = world.get(OVERLAY_SOURCE);
     if (typeof s !== "string" || !s.includes(CHAT_OPTS) || !s.includes(PRIMER_OPTS)) return null;
@@ -813,7 +813,7 @@ export async function selfTest({ root = process.cwd() } = {}) {
     { id: "O6 the primer's mark dropped from its loader FAILS", world: ownerWorld([[OVERLAY_SOURCE, PRIMER_OPTS, "{ ssr: false }"]]), expect: "a dynamic( call that is not" },
     { id: "O7 a third mark drawn in lazy-overlays.tsx, outside any loader FAILS",
       world: ownerWorld([[OVERLAY_SOURCE, "<FirstVisitPrimer />", `<FirstVisitPrimer />\n      <template ${OWNER_ATTR}="chat-root" />`]]), expect: "draws 3 owner mark(s) for 2 loader(s)" },
-    { id: "O8 the chat bubble mounted without its chatbotEnabled gate FAILS", world: ownerWorld([[OVERLAY_SOURCE, CHAT_MOUNT, "<ChatRoot supportEmail={supportEmail} />"]]), expect: "chat-root: <ChatRoot> is mounted" },
+    { id: "O8 the chat bubble mounted without its chatbotEnabled gate FAILS", world: ownerWorld([[OVERLAY_SOURCE, CHAT_MOUNT, "<ChatRoot supportEmail={supportEmail} chatOwner={chatOwner} />"]]), expect: "chat-root: <ChatRoot> is mounted" },
     { id: "O9 the primer mounted behind a condition FAILS",
       world: ownerWorld([[OVERLAY_SOURCE, "<FirstVisitPrimer />", "{chatbotEnabled && <FirstVisitPrimer />}"]]), expect: "first-visit-primer: <FirstVisitPrimer> is mounted" },
     { id: "O10 `ssr: false` dropped from the chat bubble's loader FAILS", world: ownerWorld([[OVERLAY_SOURCE, CHAT_OPTS, `{ loading: () => <template ${OWNER_ATTR}="chat-root" /> }`]]), expect: "a dynamic( call that is not" },
