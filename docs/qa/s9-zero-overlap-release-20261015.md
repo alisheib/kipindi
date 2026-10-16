@@ -5,6 +5,16 @@ lost-redirect recovery is held until the real Selcom Card checkout host is verif
 Do not run this for the S9 checkpoint alone. Record the exact source SHA and full test,
 backup-schema, build, browser, and money-gate results before the cutover.
 
+**2026-10-16 — the execution plan (Claude; Ali approved the outage "as soon as validated").** The candidate is stage 2
+(VODACOM-PLAN §0k "2026-10-16 Claude — stage 2", where its proof is recorded). One step differs, by decision: the three
+migrations run in the deploy's own start command (`prisma migrate deploy && next start`) instead of step 4's local apply
+through the public proxy. The project's migration law (`50pick-audit` §4: production gets a migration through the normal
+deploy, never by hand) and the stopped app give the same guarantee — no old writer runs while they apply — and a failed
+migration leaves the app stopped, step 4's own failure rule. That the deploy applies the three onto production's exact
+set (main's 103, one of which sorts between two of S9's) was proven on a scratch PostgreSQL 18.3 first. The stopped-writer
+backup is the `backup-nightly` workflow, run on demand while the app is stopped. The steps below are otherwise run as
+written; the outcome is recorded at the end of this file.
+
 At 2026-10-15 14:14:45 UTC, the SELECT-only `qa:provider-ref-uniqueness` read on the
 Railway production proxy found **0** duplicate non-null `providerRef` groups, **0**
 excess rows, **0** cross-provider groups, and **0** same-provider groups. Only the old

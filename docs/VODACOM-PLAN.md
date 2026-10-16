@@ -17,14 +17,16 @@
 ## §0 · RESUME AT
 
 **State (2026-10-16):** Claude (OMEGA-COMPILE01) took integration and releases back from Codex at Ali's choice
-(2026-10-16), Codex having stopped. **Stage 1 — S8's close release `a3c4d3195`** (Codex's `codex/s8-close-candidate-1015`:
-V1's visual corrections — the bet sheet's scroll edges and gutter-aligned footer, the low-balance rails line, the sheet
-titles, the kit Callout sm at 13px, `.btn-xl` on the type ladder — and the comments sign-in's question context; merged with
-live main) is pushed with its proof (§0k "2026-10-16 Claude — stage 1"). **Stage 2** — S9 core + S10–S13 + Codex's visual
-round, one integrated candidate (`codex/release-s9-s13-1016b`) — is being validated for S9's zero-overlap cutover, which
-Ali approved "as soon as validated" (a planned outage of ~12–15 minutes: the app stopped, a backup, the three migrations by
-the deploy, the new code alone; `qa/s9-zero-overlap-release-20261015.md`). S9's Card checkout recovery stays held on
-`codex/s9-card-held` until Selcom confirms the checkout host. S14–S16 wait on Ali.
+(2026-10-16), Codex having stopped. **Stage 1 — S8's close release — is LIVE** (`5dee680d0`, served on all three hosts
+from 08:12 UTC and read back; §0k "2026-10-16 Claude — stage 1 LIVE"). S8 stays 🔨: the close's tile read (the bet
+sheet's 69 tiles, read one by one) found 20 items on the flagged sheet — the worst a session-limit refusal shown above an
+enabled "Place bet" — and S8 round V2 fixes them before S8 turns ✅. **Stage 2** — S9 core + S10–S13 + Codex's visual
+round, one integrated candidate (`codex/release-s9-s13-1016b`: `4114d06cc` and this record) — is validated (§0k
+"2026-10-16 Claude — stage 2") and goes live through S9's zero-overlap cutover, which Ali approved "as soon as
+validated": the app stopped, a stopped-writer backup, the three migrations applied by the deploy's own start command
+with no old writer running, the new code alone (`qa/s9-zero-overlap-release-20261015.md`). Nothing in it shows a
+player the journey: `STAFF_PREVIEW` stays until S15. S9's Card checkout recovery stays held until Selcom confirms the
+checkout host. S14–S16 wait on Ali.
 
 **State (2026-10-15):** At 12:40 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
 `0229b2140c00208a1b873b112dc0c2713008d47b` fixes three player-facing defects: the question bet panel's guest sign-in
@@ -407,15 +409,16 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) Finish the `0229b2140` production/CI read-back, then release V1's visual changes. (2) Close S8 (§0k): re-measure A21 at
-V1's exact release tip on a quiet machine, compare classic parity v4 cell by cell, run the closing battery with the
-database suites and record the result; [E3] was measured 385/0 under Ali's one-attempt authorization. (3) Complete
-S9's funding-key and provider-reference safety work, migration and backup-schema/PG proofs before its own release;
-hold Card checkout recovery until the actual Selcom redirect host is verified, as Ali directed.
-(4) Complete and release S10–S13 one lane at a time with each lane's browser, visual, mutation, money and production
-proof. (5) Prepare S14's preview, identity checklist and real TZS 1,000 staff journey for Ali and the agency; S15 needs
-Ali's later go after the actual gates, and S16 waits at least seven real days after launch. Keep `STAFF_PREVIEW` until
-that go and keep the 6/18 session count until a board row actually closes.
+**Next:** (1) S9's cutover of stage 2 and its read-back (schema, boot, hosts, health, chunks, `qa:live`, the classic
+money screens); then S9's remaining WP8 items — its tiles in three engines and the independent funding-bridge review
+(S9-PLAN WP8) — before S9 turns ✅. Card checkout recovery waits for Selcom's host. (2) S8 round V2: the close's 20
+tile-read items (§0k), then S8 ✅. (3) The classic `/positions` head at 320 (a player holding positions: "View
+performance" runs 37px past the viewport — live main has it too) in its own small release. (4) S10–S13 finish what each
+plan still owes, each with its own proof: S10 WP8b and its drive's cells, S11 WP10's cells and tiles, S12's parity v5
+and release P, S13 WP4, its WP9 drive and its build record — and a fresh classic-parity baseline at stage 2's release
+(the visual round moved every shell cell). (5) S14's preview, identity checklist and real TZS 1,000 staff journey for
+Ali and the agency; S15 needs Ali's go after the actual gates, and S16 waits at least seven real days after launch.
+Keep `STAFF_PREVIEW` until that go and keep the 6/18 session count until a board row actually closes.
 
 Session law, the same for every session — ⭐ Ali, 2026-10-10: *"eliminate any checks that are never expected to be wrong,
 or that are very repetitive … maximum efficiency of our time through this plan"*:
@@ -1127,8 +1130,8 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   fixes live defects, **not S8 acceptance**: V1, exact-tip A21, parity v4 and S8's own closing battery remain; its real
   staff money proof transfers to S14.
   A separate production read-only GET with a safe `side`, `ref` and `invite` query verified the header and bet-panel
-  doors carry all three. The comments section's guest sign-in link still carries only the market path; S10's visitor
-  door census must repair and prove that remaining link before its release.
+  doors carry all three. The comments section's guest sign-in link still carried only the market path; `9931bbd31` gives it the
+  question's context and is live with stage 1 (`5dee680d0`); S10's visitor-door drive still proves it.
 - **2026-10-16 Claude — stage 1: S8's close release `a3c4d3195`.** Built from Codex's `codex/s8-close-candidate-1015`
   (S8 + V1, before S9 joined) merged with live main `18b54a37b`, plus two of Codex's own later commits: `096e93fb3`
   (registers the receipt-matrix commands — `test:orphans` named both scripts as undeclared without it) and `05e322b80`
@@ -1156,6 +1159,81 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   - *[E3]* was measured on `50b586d50` (385/0, Ali's one-attempt authorization); this release touches no shell gating — its
     eight source files are the sheet, Callout, scroll edges, the How-to sheet, strip autoscroll, `globals.css` and the
     question page's comments link.
+- **2026-10-16 Claude — stage 1 LIVE and read back; its tile read keeps S8 open.** `5dee680d0` (stage 1 and its record)
+  was pushed at 08:09 UTC; Railway deployment `d798a850` served it on www, apex and the Railway host from 08:12:47 UTC
+  (`?dpl=5dee680d0189…`), `/api/health` ok with the database reachable and migrated and `STAFF_PREVIEW` on all three;
+  `qa:chunks-prod` 6/6 routes on both public origins (125 GETs each); production `qa:live` 350/0 (signed out); the guest
+  hero read by eye on production at 360 and 1280 in en and sw (`.btn-xl` at 17px, no overflow). Exact-tip CI run
+  38871815464 passed every step (08:45 UTC). **The close's tile read found 20 items, so S8 is not ✅ yet.** The bet-sheet
+  drive at stage 2's tip (the sheet is stage 1's, with the visual round's tokens) wrote 69 tiles; read one by one, they
+  show on the flagged sheet:
+  - *high:* a 15-minute session-limit refusal shown as text above an enabled gold "Place bet" (tile 065) — the daily loss
+    limit swaps the form for a "Got it" panel (048), and the session limit must do the same;
+  - *medium:* maintenance (045) and "Temporarily unavailable" (064) shown above an enabled "Place bet", where 040 and 063
+    disable it for the same message; at a TZS 1,000,000 stake the disabled button's reason sits under the keyboard
+    (001–006); the low-balance sheet's second option and deposit chips sit under the fixed footer (034, 035, 041, 062); a
+    hidden balance ("TZS •••••") is given away by "You need TZS 3,800 more" and "Bet TZS 1,200 instead" (062);
+  - *low:* the drag handle a 1–2px hairline under the keyboard; the first visible line cut under the header; a 10px
+    sliver of the next box above the button; "Place bet ·" leaving its dot at a line end at 320; zh breaks inside 投注 and
+    下注; the zh tiles' market question in English; 是 without 「」; the at-our-end failure lines without the notice box the
+    other refusals wear; "Track the payment ›" 8px off its text; a 12px gap in the break notice; the sign-in toast over
+    the preview bar; the deposit chips reading as stake chips.
+  The sign-in page's half opacity in tile 058 is its entrance fade caught mid-way (measured on the candidate: 0.73–0.81
+  at 150 ms, 1.0 from 400 ms). Round V2 fixes the list, with the drive's own capture fixes (Next's dev indicators off,
+  the pointer moved away before each tile); S8 turns ✅ after it.
+- **2026-10-16 Claude — stage 2: S9 core + S10–S13 + the visual round, validated for S9's cutover.** The candidate
+  `codex/release-s9-s13-1016b` at `4114d06cc` is Codex's integrated tip `b1f1ce32b` (its PR CI run 38793764693 green)
+  with `051f8e1df` (the CJK fallback restored after the local faces) and live main merged twice (`0d75dd136` took
+  `18b54a37b`, `4114d06cc` took stage 1): 217 commits ahead of main, a fast-forward. An earlier integration
+  (`17d89a96b`) carried a staged-sheet experiment that broke three guards (enter-where-pressed, visual-pass-r9a,
+  visual-v1); it was dropped, not shipped. Every build input — `src`, `prisma`, `public`, the package files and the
+  configs — is byte-identical in `0d75dd136` and `4114d06cc` (the last merge brought docs and the drive's caret fix), so
+  a proof on either is a proof of the app.
+  - *Build and types:* typecheck 0; `next build` 0 at `4114d06cc` (118 s; the deployment id is the commit).
+  - *Battery:* `test:all` at `17d89a96b` 581/589 — its eight reds the five suites that need a server and the experiment's
+    three; at `0d75dd136`, the 126 suites that read a file changed since, those three among them, 126/126. Server suites
+    at the candidate: revoked-deadend 46/0, motion 43/0, needle-rest 92/0, admin-section-gate 21/0; responsive below.
+  - *Money gates on PostgreSQL 18.3* (a throwaway local cluster, a fresh migrate per gate): `e2e:money` 64/0,
+    `e2e:fault` 34/0, `e2e:card` 100/0 (its first start found yesterday's stub gateway still holding port 4599 —
+    Codex's S9 visual server; stopped, rerun). `verify:backup-schema` exit 0 with the three new migrations.
+  - *The migrations onto production's schema:* on a database holding main's 103 migrations —
+    `20261015120000_house_bot_pairs_roster` among them, sorting between two of S9's — the candidate's `prisma migrate
+    deploy` applied exactly the three (`20261013160000_deposit_return_intent`, `20261015111500_provider_ref_global_unique`,
+    `20261015133000_deposit_funding_claim`); status up to date; `Position.origin` text, `Transaction.pendingBet` jsonb,
+    `DepositFundingClaim_pkey`, `Transaction_providerRef_key` UNIQUE; no failed row.
+  - *Drives:* local `qa:live` 376/0; `qa:bet-sheet` 423 passed, 0 failed, its 20 outstanding cells the documented ones.
+    A21 on a quiet machine at the exact build: `qa:bet-sheet-production` 90/0 — signed-in `/` 90.7 / 100.6 / 96.4 ms and
+    `/live` 96.4 / 96.0 / 84.3 ms, guest `/` 95.0 / 122.2 / 122.5 ms and `/live` 94.0 / 91.0 / 103.0 ms (limit 150);
+    every RED delayed control fails as it must.
+  - *Responsive:* 7275 passed, 1 failed — `/positions` at 320 in English, where "View performance" spans 195–357px.
+    **Live main has the same defect:** the page and `PageHeader` are unchanged, and the same probe on `5dee680d0` with a
+    seeded portfolio measures the same box (195–357 at 320; inside at 360 and 390; sw and zh inside at all three). Stage
+    1's run never saw it because its player held no position. It is fixed in its own release after the cutover.
+  - *Classic parity v4* against `ff8c731e2`: 62/67 — 942 regions compared, 576 differ, 87 distinct changes, every one
+    traced to its commit: the shell (header gutters `sm:px-3 lg:px-6`, the logo link's tap box, the guest sign-in
+    buttons `btn-md`; the footer's gap, two-column md grid, "© 2026 50pick · Tanzania" and "Licence: OUS00000202602" in
+    mono, tap-height rows) and the question page's panels (`p-5`, the countdown's flexible digits, the discussion box) —
+    `c3e28b473`; chips on the kit's type ladder (9 → 9.5, 10.5 → 11, 12 and 12.5 → 13px) — `7f9fcc9bb`; `/markets`,
+    `/live` and `/results` geometry (the pager root, the typed arrow drawn as a glyph, wrapping meta rows, 40px buttons) —
+    `079cdffae`, `0b1dc4991`, `7776bf1f7`, `635feb278`, `9ceb67b1d`; the Swahili words Ali accepted on 2026-10-14
+    (NDIYO → NDIO, hai → mubashara, Kiasi → Bwawa, "saa 1 imebaki", Imewekwa, madau) — S12 WP2–WP5 (`3be164909`,
+    `5a555007a`, `0c6567c96`, `9796bcc70`, `3aca1ebd5`, `4d3598d66`); the modal sheet's inline `<style>` moved into
+    loaded CSS — `97d0aec19`; and V1's Callout sm, live with stage 1. Nothing is unexplained; the next compare needs a
+    new baseline at this release.
+  - *Rehearsal:* the private rehearsal project ran stop → push → deploy on this app source (`0d75dd136`): deployment
+    `fc93849c` SUCCESS at 08:14:17 UTC, then stopped again with the stopped gate passing.
+  - *Production, read only, before the outage (08:46 UTC):* 0 duplicate non-null `providerRef` groups (repeated with the
+    app stopped); 103 migrations finished, none unfinished; no DEPOSIT or WITHDRAWAL pending, processing or in AML review.
+  - *By decision, one step differs from the cutover doc:* the three migrations run in the deploy's own start command
+    (`prisma migrate deploy && next start`), not as a local apply through the public proxy (its step 4). The project's
+    migration law (`50pick-audit` §4: production gets a migration through the normal deploy, never by hand) and the
+    stopped app give the same guarantee — no old writer runs while they apply — and a migration that fails leaves the
+    app stopped, which is step 4's own failure rule. Steps 1–3, 5 and 6 run as written; the stopped-writer backup is the
+    `backup-nightly` workflow (dump → R2 → restore into a throwaway Postgres → trial balance and audit chain) run on
+    demand while the app is stopped.
+  - *Still owed, flagged and not for players:* the bet sheet's tile-read items (above); S9's tiles in three engines and
+    its independent funding-bridge review (S9-PLAN WP8) before S9 turns ✅; S10 WP8b, S11 WP10's cells and tiles, S12's
+    parity v5 and release P, S13 WP4 and its WP9 drive — each recorded on its own plan.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
@@ -4094,12 +4172,12 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); [E3] measured 385/0 on 2026-10-15 under Ali's one-attempt authorization. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
-| S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0–WP11 implementation live behind the flag; V1, A21, parity v4 and the close battery remain. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
-| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
-| S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states; `qa:visitor-path` drives the local browser path. |
-| S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
-| S12 | Consistency sweep | ⬜ | Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
-| S13 | Measures panel and reporting | ⬜ | The panel shows before vs after. The CSV/PDF export and its definitions are sent to the agency. |
+| S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0–WP11 live behind the flag; its close release (V1, A21, parity v4, the battery) LIVE `5dee680d0` 2026-10-16 and read back (§0k); round V2 — the close's 20 tile-read items — remains. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
+| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | 🔨 | Built ([`S9-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S9-PLAN.md)); S9 core goes live with stage 2 through the zero-overlap cutover (§0k); WP8's tiles in three engines and the independent funding-bridge review remain; Card checkout recovery is held until Selcom confirms its host. `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
+| S10 | Visitor path | 🔨 | WP1–WP8a built ([`S10-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S10-PLAN.md); its Open point 2 amends this row), in stage 2 behind the flag; WP8b (needs S9 on main) and the drive's remaining cells remain. guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states; `qa:visitor-path` drives the local browser path. |
+| S11 | How to Play complete + copy ready for the flip | 🔨 | WP0–WP9 built ([`S11-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S11-PLAN.md); its amended done-when governs), in stage 2 behind the flag; WP10's browser cells and tiles remain; the S15 copy waits on `codex/vodacom-s15-copy`. Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
+| S12 | Consistency sweep | 🔨 | Built ([`S12-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S12-PLAN.md); its Open point 2 replaces this row's last clause): NDIO, admin ink, Juu/Chini and the outside-site work in stage 2, the classic words Ali accepted live with it; parity v5 and release P remain. Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |
+| S13 | Measures panel and reporting | 🔨 | WP1–WP3, WP5, WP6 and the panel built ([`S13-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S13-PLAN.md); its Open point 2 amends this row: the report is made ready and Ali sends it), in stage 2; WP4, the WP9 drive and the build record remain. The panel shows before vs after. The CSV/PDF export and its definitions are sent to the agency. |
 | S14 | Proof before the flip | ⬜ | `e2e:journey` is green. The identity checklist is ticked. A real TZS 1,000 journey works on production. The agency has signed off. |
 | S15 | Launch | ⬜ | The flip commit is live and re-measured as a real player. Rollback triggers are watched. |
 | S16 | Shelve (≥7 days after launch) | ⬜ | Old branches are unmounted and every SHELVED.md row is green under `test:shelved`. |
