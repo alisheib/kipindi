@@ -30,6 +30,23 @@ export function cutsRow(top: number, rows: readonly SheetRow[]): boolean {
 }
 
 /**
+ * ⭐ WHERE THE LOW BLOCK'S TOP STANDS — from its top less the column's gap, unless its foot would then be hidden (the round
+ * V2 drive at 320×640 in sw: a priced "bet instead" grew the block to 404px in a 414px middle, and its last 2px went under
+ * the footer, its estimate line under the end fade). A block that fits only without the whole gap stands the middle at
+ * its END — the column's own padding included, so no end fade dims its last option; one that fits only with that padding
+ * hidden stands from its very top; one taller than the middle stands from its top less the gap, the rest a scroll away.
+ * The callout's top is never passed. Content coordinates: `blockTop` is the block's top (its callout), `foot` the
+ * content's end (`scrollHeight`: the low block is the middle's last content), `view` the middle's height, `padEnd` its
+ * padding at the foot.
+ */
+export function lowBlockWant(blockTop: number, foot: number, view: number, gap: number, padEnd = 0): number {
+  const preferred = blockTop - gap, atEnd = foot - view;
+  if (atEnd <= blockTop) return Math.max(preferred, atEnd);
+  if (atEnd - padEnd <= blockTop) return blockTop;
+  return preferred;
+}
+
+/**
  * The middle's scroll offset for a wanted top, and the height it gives up: the wanted top clamped to the middle's range
  * (`max` = scrollHeight − clientHeight), then pushed down past every row that straddles it; `trim` is how far that push
  * runs past `max` — the middle shortened by it reaches the pushed offset with its foot still on the content's end.

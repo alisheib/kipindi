@@ -21,7 +21,7 @@ import { DWELL_BET_RECEIPT_MS } from "@/lib/feedback-timing";
 import { sheetEstimate, type SheetFrame, type SheetLine, type SheetSeed, type SheetSide } from "@/lib/journey/sheet-state";
 import { depositLeftAfterFor } from "@/lib/journey/shortfall";
 import { nextSheetFocus, type SheetFocusState } from "@/lib/journey/sheet-focus";
-import { settledScrollTop, type SheetRow } from "@/lib/journey/sheet-scroll";
+import { lowBlockWant, settledScrollTop, type SheetRow } from "@/lib/journey/sheet-scroll";
 import type { ReturnChoice } from "@/lib/journey/return-choice";
 import { keepText } from "@/components/ui/keep-run";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
@@ -158,14 +158,16 @@ function sheetRows(middle: HTMLElement, base: number): SheetRow[] {
 }
 
 /**
- * A25 items 4 and 8: the low block in view from its top (its callout, less the column's gap), the top edge clean. Where
- * the clean edge runs past the middle's range, the middle gives up exactly that much at its foot (`trim`): the sheet is
- * that much shorter, its bottom edge still the end of the content — never an empty band inside it.
+ * A25 items 4 and 8: the low block in view from its top (its callout, less the column's gap — or less only what leaves its
+ * foot in view, `lowBlockWant`), the top edge clean. Where the clean edge runs past the middle's range, the middle gives up
+ * exactly that much at its foot (`trim`): the sheet is that much shorter, its bottom edge still the end of the content —
+ * never an empty band inside it.
  */
 function revealLowBlock(middle: HTMLElement, start: HTMLElement) {
   const base = middle.getBoundingClientRect().top - middle.scrollTop;
-  const gap = parseFloat(getComputedStyle(middle).rowGap) || 0;
-  const want = start.getBoundingClientRect().top - base - gap;
+  const style = getComputedStyle(middle);
+  const want = lowBlockWant(start.getBoundingClientRect().top - base, middle.scrollHeight, middle.clientHeight,
+    parseFloat(style.rowGap) || 0, parseFloat(style.paddingBottom) || 0);
   const { top, trim } = settledScrollTop(want, middle.scrollHeight - middle.clientHeight, sheetRows(middle, base));
   if (trim > 0) middle.style.maxHeight = `${Math.max(0, middle.clientHeight - Math.ceil(trim))}px`;
   middle.scrollTop = top;

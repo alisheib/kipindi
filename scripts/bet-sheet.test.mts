@@ -1192,6 +1192,19 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     j(placed) === j([{ top: 40, trim: 0 }, { top: 156, trim: 0 }, { top: 156, trim: 26 }, { top: 196, trim: 0 }, { top: 0, trim: 0 }])
       && sc.cutsRow(120, rowsV2) && !sc.cutsRow(156, rowsV2) && wiring, j({ placed, wiring }));
 
+  // A25 item 4, the round's own drive (v2-4, sw 320×640): a priced "bet instead" made the block 404px in a 414px middle;
+  // stood from its top less the 12px gap, its last option went 2px under the footer and its estimate under the end fade.
+  // The block's top is chosen against its foot (`lowBlockWant`): callout at 300, gap 12, the middle's padding 4.
+  const wants = [
+    sc.lowBlockWant(300, 600, 400, 12, 4), // fits with the gap → from its top less the gap (288)
+    sc.lowBlockWant(300, 708, 414, 12, 4), // fits only without the whole gap → the middle at its end (294)
+    sc.lowBlockWant(300, 716, 414, 12, 4), // fits only with the padding hidden → from its very top (300)
+    sc.lowBlockWant(300, 900, 414, 12, 4), // taller than the middle → from its top less the gap (288), the rest a scroll away
+  ];
+  const footWiring = sheetSrc.includes("const want = lowBlockWant(start.getBoundingClientRect().top - base, middle.scrollHeight, middle.clientHeight,\n    parseFloat(style.rowGap) || 0, parseFloat(style.paddingBottom) || 0);");
+  ok("11.reveal-foot · A25 item 4: the low block's top stands against its foot — at the middle's end when it fits only without the whole gap, from its very top when only the padding is left out, never past its callout",
+    j(wants) === j([288, 294, 300, 288]) && footWiring, j({ wants, footWiring }));
+
   // A25 item 16 (tile 059): the break notice's sentence is one flex item.
   ok("11.break-gap · A25 item 16: the home's break title is ONE text item beside its lock — its kept runs no longer each take the row's 8px gap",
     strip(impl.src.home).includes('<p className="font-semibold text-text flex items-start gap-2"><I.lock s={16} /><span>{keepText(fill(onBreak.exclusion ? t.rg.exclusionActive : t.journey.homeBreakTitle, { date }), [date])}</span></p>'));
@@ -1482,6 +1495,10 @@ if (!PROVE_RED) {
       impl: { ...REAL, scroll: { ...SC, settledScrollTop: (want, max, rows) => ({ ...SC.settledScrollTop(want, max, rows), trim: 0 }) } } },
     { name: "the reveal run while typing (it would scroll the typed field away)", expect: /^11\.reveal /,
       impl: withSrc({ sheet: SOURCES.sheet.replace("}, [open, keyboard, lowKey]);", "}, [open, lowKey]);").replace("if (!open || keyboard || lowKey === null) return;", "if (!open || lowKey === null) return;") }) },
+    { name: "the low block stood from its top less the gap whatever its foot (the v2-4 drive: its last option under the footer)", expect: /^11\.reveal-foot /,
+      impl: { ...REAL, scroll: { ...SC, lowBlockWant: (blockTop, _foot, _view, gap) => blockTop - gap } } },
+    { name: "the reveal reading the old want again, the foot unread", expect: /^11\.reveal-foot /,
+      impl: withSrc({ sheet: SOURCES.sheet.replace("const want = lowBlockWant(start.getBoundingClientRect().top - base, middle.scrollHeight, middle.clientHeight,\n    parseFloat(style.rowGap) || 0, parseFloat(style.paddingBottom) || 0);", "const want = start.getBoundingClientRect().top - base - (parseFloat(style.rowGap) || 0);") }) },
     { name: "the reveal in a layout effect (the dialog's later re-arm scrolls it back)", expect: /^11\.reveal /,
       impl: withSrc({ sheet: SOURCES.sheet.replace('useEffect(() => {\n    const middle = shellRef.current?.querySelector<HTMLElement>(".kp-bsheet__scroll");', 'useLayoutEffect(() => {\n    const middle = shellRef.current?.querySelector<HTMLElement>(".kp-bsheet__scroll");') }) },
     { name: "the break title's runs back as separate flex items (the 12px hole, tile 059)", expect: /^11\.break-gap /,
