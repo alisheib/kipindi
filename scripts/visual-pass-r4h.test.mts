@@ -463,8 +463,18 @@ section("9 · E34 the journey's toaster hangs under its header (tiles 203 218 23
   const viewport = /<div\s+role="region"[\s\S]*?className="([^"]+)"\s*>/.exec(toast);
   ok("9.1 · the toaster carries the hook as an attribute, its classes unchanged (the classic overlay census names classes, not data attributes)",
     !!viewport && /data-toaster=""/.test(viewport[0]) && viewport[1] === "pointer-events-none fixed inset-x-0 top-0 z-[1800] flex flex-col items-center gap-2 px-3 pt-3 sm:inset-x-auto sm:right-4 sm:top-4 sm:items-end sm:pt-0", viewport?.[1]);
-  const base = /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: 56px; \}/.test(CSS);
-  const sm = /@media \(min-width: 640px\) \{ :root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: calc\(56px \+ var\(--sp-2\)\); \} \}/.test(CSS);
+  // S8-PLAN A25 item 17 (round V2, tile 059): the foot is the header's 56px or the staff preview bar's, whichever is lower
+  // (`--toast-clear`, written only on a page that wears the bar; unset, these read 56 and 64 exactly as before).
+  const base = /:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: max\(56px, var\(--toast-clear, 0px\)\); \}/.test(CSS);
+  const sm = /@media \(min-width: 640px\) \{ :root:is\(\[data-shell="journey"\], #kp-journey-shell\) \[data-toaster\] \{ top: calc\(max\(56px, var\(--toast-clear, 0px\)\) \+ var\(--sp-2\)\); \} \}/.test(CSS);
+  const clear = toast.slice(toast.indexOf("function usePreviewClearance"), toast.indexOf("function ToastViewport"));
+  ok("9.4 · A25 item 17: the stack learns where the staff preview bar ends only on a page that wears it, writes it on its own box (never the root) and only when it moved",
+    /document\.querySelector<HTMLElement>\('\[data-testid="journey-preview-marker"\]'\)/.test(clear) && /if \(!shown \|\| !region \|\| !bar\) return;/.test(clear)
+      && /region\.style\.setProperty\("--toast-clear", value\)/.test(clear) && !/documentElement/.test(clear)
+      && /if \(region\.style\.getPropertyValue\("--toast-clear"\) !== value\)/.test(clear) && /usePreviewClearance\(regionRef, !held\);/.test(toast));
+  const onRoot = clear.replace('region.style.setProperty("--toast-clear", value)', 'document.documentElement.style.setProperty("--toast-clear", value)');
+  ok("9.4′ PLANT · the clearance written on the document root (every element restyled on each scroll) is reported",
+    onRoot !== clear && (!/region\.style\.setProperty\("--toast-clear", value\)/.test(onRoot) || /documentElement/.test(onRoot)));
   const header = Number(/height:\s*(\d+)px/.exec(rule(CSS, ".kp-jhdr"))?.[1] ?? NaN);
   const menuPhone = /top-\[calc\(env\(safe-area-inset-top\)\+(\d+)px\)\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];
   const menuSm = /sm:top-\[(\d+)px\]/.exec(read("src/components/layout/avatar-menu.tsx"))?.[1];

@@ -69,19 +69,27 @@ export function useCashHidden(): boolean {
   return hidden;
 }
 
-/** Render a money string; mask the numeric part (keeping currency prefix + sign) when hidden. */
+/**
+ * Render a money string; mask the numeric part (keeping currency prefix + sign) when hidden.
+ * `hidden` (Vodacom S8 round V2, S8-PLAN A25 item 5): a caller that already reads the mask passes it, so a figure it
+ * DERIVED from the balance is masked by the same answer, in the same render, as the balance itself. Unset, the hook
+ * decides, exactly as before — every existing call site renders what it rendered.
+ */
 export function Cash({
   children,
   mask = "•••••",
   className,
   style,
+  hidden: given,
 }: {
   children: React.ReactNode;
   mask?: string;
   className?: string;
   style?: React.CSSProperties;
+  hidden?: boolean;
 }) {
-  const hidden = useCashHidden();
+  const fromHook = useCashHidden();
+  const hidden = given ?? fromHook;
   const text = String(children ?? "");
   if (!hidden) return <span className={className} style={style}>{text}</span>;
   // Preserve a leading non-numeric token (e.g. "TZS ", "+", "-") then mask the rest.

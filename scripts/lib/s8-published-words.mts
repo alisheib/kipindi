@@ -18,7 +18,9 @@ const KEYS = [
   "sheetSofRequired", "stakeLabel", "ticketsHere",
 ] as const;
 // Measured WP4 strings and the exact approved v2026-10-14 owner-recovery paragraphs; normal guards pin their semantics too.
-const WORD_HASH: Record<string, string> = { en: "c5a78e0f5c5a", sw: "7c5f547f68a6", zh: "53863b4a6af3" };
+// zh re-measured for S8 round V2 (S8-PLAN A25 item 13, 2026-10-16): sheetHolds and sheetFirstOnSide set the side word off as
+// 「{side}」, DESIGN_AUTHORITY L4's rule ("您已在此投注是" read the side as the copula); en and sw unchanged (53863b4a6af3 before).
+const WORD_HASH: Record<string, string> = { en: "c5a78e0f5c5a", sw: "7c5f547f68a6", zh: "8beb566c9da4" };
 const NOTICE_HASH: Record<string, string> = { en: "fb825bd6a8a3", sw: "8b4d6871dca3", zh: "6e4b8029bd17" };
 const NOTICE = /\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/g;
 // The privacy page's approved versions: S8's (2026-10-14), then the Vodacom plan S11's (2026-10-15 — Privacy §7 names How to

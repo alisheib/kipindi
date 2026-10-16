@@ -46,6 +46,8 @@ import { fill, formatTzs } from "../src/lib/utils.ts";
 import { DWELL_BET_RECEIPT_MS } from "../src/lib/feedback-timing.ts";
 import { nextSheetFocus, type SheetFocusState } from "../src/lib/journey/sheet-focus.ts";
 import { guestFrame } from "../src/lib/journey/guest-sheet.ts";
+import * as SC from "../src/lib/journey/sheet-scroll.ts";
+import { amountPillClass } from "../src/components/wallet/amount-field.tsx";
 import ts from "typescript";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -149,17 +151,23 @@ function sheetLifecycle(source: string) {
       body: { key: b === "late" ? "journey.lowPendingLateBody" : b === "long" ? "journey.lowPendingWaitBody" : "common.depositPendingBody" },
       betInstead: b === "late" ? { stake: 1_200 } : null } });
     for (const b of ["fresh", "fresh", "long", "long", "late"] as const) runCallback(announcement.body, { open: true, props: { frame: band(b), estimateUpdated: false },
-      lastFrame: lastSpoken, wasUpdated: wasUp, setLive: (value: string) => spokenLive.push(value), t, locale: "en", receiptId: null, nowMs: 0, sheetLineText, fill, formatTzs })();
+      lastFrame: lastSpoken, wasUpdated: wasUp, setLive: (value: string) => spokenLive.push(value), t, locale: "en", receiptId: null, nowMs: 0, sheetLineText, fill, formatTzs, cashHidden: false })();
     const said = (b: "fresh" | "long" | "late") => { const f = band(b).pending as { title: SS.SheetLine; body: SS.SheetLine; betInstead: { stake: number } | null };
       return `${sheetLineText(t, "en", f.title, 0)}. ${sheetLineText(t, "en", f.body, 0)}` + (f.betInstead ? ` ${fill(t.journey.lowBetInstead, { amount: formatTzs(f.betInstead.stake) })}` : ""); };
     const bandsSpoken = JSON.stringify(spokenLive) === JSON.stringify([said("fresh"), said("long"), said("late")]) && said("late").includes(formatTzs(1_200));
-    return { receiptCancelled, viewportClosed, liveClosed, unliftedQuiet, bandsSpoken };
+    // A25 item 5: with the balance hidden the late band is spoken without its offer — the offer's stake IS the balance.
+    const hiddenLive: string[] = [];
+    runCallback(announcement.body, { open: true, props: { frame: band("late"), estimateUpdated: false }, lastFrame: { current: null }, wasUpdated: { current: false },
+      setLive: (value: string) => hiddenLive.push(value), t, locale: "en", receiptId: null, nowMs: 0, sheetLineText, fill, formatTzs, cashHidden: true })();
+    const lateTitle = sheetLineText(t, "en", band("late").pending.title as SS.SheetLine, 0);
+    const bandsHidden = hiddenLive.length === 1 && hiddenLive[0].startsWith(lateTitle) && !hiddenLive[0].includes(formatTzs(1_200));
+    return { receiptCancelled, viewportClosed, liveClosed, unliftedQuiet, bandsSpoken, bandsHidden };
   } catch {
-    return { receiptCancelled: false, viewportClosed: false, liveClosed: false, unliftedQuiet: false, bandsSpoken: false };
+    return { receiptCancelled: false, viewportClosed: false, liveClosed: false, unliftedQuiet: false, bandsSpoken: false, bandsHidden: false };
   }
 }
 
-type Sources = { state: string; refusal: string; service: string; actions: string; admission: string; retry: string; prisma: string; locks: string; sheet: string; parts: string; css: string };
+type Sources = { state: string; refusal: string; service: string; actions: string; admission: string; retry: string; prisma: string; locks: string; sheet: string; parts: string; css: string; home: string; dict: string };
 const SOURCES: Sources = {
   state: read("src/lib/journey/sheet-state.ts"),
   refusal: read("src/lib/journey/sheet-refusal.ts"),
@@ -172,6 +180,8 @@ const SOURCES: Sources = {
   sheet: read("src/components/journey/bet-sheet/bet-sheet.tsx"),
   parts: read("src/components/journey/bet-sheet/sheet-parts.tsx"),
   css: read("src/app/globals.css"),
+  home: read("src/components/journey/home/journey-home.tsx"),
+  dict: read("src/lib/i18n-dict.ts"),
 };
 
 type Impl = {
@@ -183,6 +193,12 @@ type Impl = {
   draw?: (html: string) => string;
   /** S10 · applied to the guest face's markup only (§10's plants). */
   drawGuest?: (html: string) => string;
+  /** Round V2 · applied to §11's renders only, with the render's name (§11's plants). */
+  drawV2?: (html: string, name: string) => string;
+  /** Round V2 · the middle's positioning (A25 items 4 and 8). */
+  scroll?: typeof SC;
+  /** Round V2 · the zh journey words the bracket census reads (A25 item 13). */
+  zhJourney?: Record<string, unknown>;
 };
 const REAL: Impl = {
   focus: nextSheetFocus,
@@ -866,7 +882,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("7.order · every frame renders in all three languages; edit follows chosen side, question, stake, chips, estimate, balance, commit, while the low frame places its offer before the disabled commit",
     rendered.length === 36 && rendered.every((x) => x.html.includes('id="sheet-proof-title"'))
       && rendered.filter((x) => x.frame.frame === "edit").every((x) => order(x.html, ["kp-bsheet__chosen", "kp-bsheet__title", "kp-bsheet__stake", "kp-bsheet__chips", "kp-bsheet__estimate", "kp-bsheet__balance", "kp-bsheet__commit"]))
-      && rendered.filter((x) => x.frame.frame === "low").every((x) => order(x.html, ["kp-bsheet__stake", "kp-bsheet__compact", '<div id="sheet-proof-callout">', "journey-sheet-deposit", "journey-sheet-bet-instead", "kp-bsheet__commit"])));
+      && rendered.filter((x) => x.frame.frame === "low").every((x) => order(x.html, ["kp-bsheet__stake", "kp-bsheet__compact", '<div id="sheet-proof-callout"', "journey-sheet-deposit", "journey-sheet-bet-instead", "kp-bsheet__commit"])));
   ok("7.figures · every printed priced estimate and committed receipt stake is its pure frame's figure; receipt has the exact ticket link and no payout estimate, and no frame leaks an unfilled placeholder",
     rendered.every((x) => !/\{(?:amount|have|short|min|left|max|remaining|side|mult|pct|until)\}/.test(x.html)
       && (x.frame.estimate?.payout === null || x.frame.estimate?.payout === undefined || x.frame.frame === "blocked" || x.frame.frame === "closed" || x.html.includes(formatTzs(x.frame.estimate.payout)))
@@ -952,7 +968,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && sheetSrc.includes("if (stake.bottom > bottom) middle.scrollTop += stake.bottom - bottom;")
       && sheetSrc.includes("else if (stake.top < top) middle.scrollTop -= top - stake.top;"));
   ok("8.announcements · blocks/closed speak by their alert and describedBy, inline refusals by status, and the single polite region speaks only frame changes or an estimate update, never a keystroke",
-    sheetSrc.includes('role="alert"') && sheetSrc.includes('id={lineId} role="status"') && sheetSrc.includes('aria-live="polite" aria-atomic="true"')
+    sheetSrc.includes('role="alert"') && sheetSrc.includes('<div id={lineId} className="kp-bsheet__lines"><Callout tone="info" role="status">') && sheetSrc.includes('aria-live="polite" aria-atomic="true"')
       && sheetSrc.includes("describedBy={terminal ?") && sheetSrc.includes("if (!moved && !updated) return;")
       && !/frame\.frame === "blocked"\) message|frame\.frame === "closed"\) message/.test(sheetSrc));
   const lifecycle = sheetLifecycle(impl.src.sheet);
@@ -963,6 +979,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && /\{open && <p className="sr-only" aria-live="polite"/.test(sheetSrc), j(lifecycle));
   ok("8.live-bands · a pending deposit's age band is announced once when it arrives — fresh, long, then late with its offer to bet what is already there — never again within a band",
     lifecycle.bandsSpoken, j(lifecycle));
+  ok("8.live-hidden · A25 item 5: with the balance hidden the late band is spoken without its offer, whose stake is the balance",
+    lifecycle.bandsHidden, j(lifecycle));
   ok("8.viewport-quiet · an unlifted sheet only removes its keyboard properties: no inherited custom property is written onto the panel, which restyled the whole sheet inside the opening tap (A21)",
     lifecycle.unliftedQuiet && /translate: 0 calc\(-1 \* var\(--bsheet-keyboard-lift, 0px\)\)/.test(impl.src.css)
       && /var\(--bsheet-visible-height, 100dvh\)/.test(impl.src.css), j(lifecycle));
@@ -1042,12 +1060,141 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("10.money-face · the money face carries no trace of the guest's doors and keeps its balance row and commit on every edit frame",
     moneyMarks.length === 0 && moneyKept, j(moneyMarks.map((x) => `${x.locale}/${x.frame.frame}`)));
   ok("10.guest-src · the source draws the guest face from the one sheet: the balance row withheld only for a guest, the doors only in the guest arm (onClick = onPress, onNavigate = onLeave), the shell marked data-guest — and no second sheet component",
-    sheetSrc.includes("{frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}")
+    sheetSrc.includes("{!typing && frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}")
       && sheetSrc.includes('<Link href={guest.signUp as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-primary btn-xl w-full kp-bsheet__commit" data-testid="journey-sheet-signup"><span>{keepText(t.journey.sheetSignUp)}</span></Link>')
       && sheetSrc.includes('<Link href={guest.signIn as never} prefetch={false} onClick={guest.onPress} onNavigate={guest.onLeave} className="btn btn-ghost btn-lg w-full" data-testid="journey-sheet-signin">{t.common.signIn}</Link>')
       && sheetSrc.includes('data-guest={props.guest ? "" : undefined}')
       // S12 shares the LowBlock with the Juu/Chini arm; it is not a second sheet.
       && (sheetSrc.match(/export function \w+\(/g) ?? []).filter((name) => name !== "export function LowBlock(").length === 2);
+
+  /* §11 · ROUND V2 (S8-PLAN A25): what the close's tile read found, each held where it is drawn, in sw, en and zh. */
+  const V2_LANGS = ["sw", "en", "zh"] as const;
+  const v2Title = (locale: Locale) => (locale === "sw" ? "Je, Dodoma itapata mvua?" : locale === "zh" ? "多多马是否会下雨？" : "Will it rain in Dodoma?");
+  const drawV2 = (name: string, frame: SS.SheetFrame, locale: Locale, extra: Record<string, unknown> = {}, theSeed = seed()) => {
+    const html = renderToStaticMarkup(createElement(BetSheetBody, {
+      seed: theSeed, side: "YES", title: v2Title(locale), frame, stakeText: frame.stake === null ? "" : String(frame.stake), estimateUpdated: false,
+      railNames: ["M-Pesa", "Airtel Money"], t: dict[locale] as unknown as Dict, locale, id: "sheet-proof", nowMs: NOW,
+      onStakeChange: () => {}, onPlace: () => {}, onBetInstead: () => {}, onDeposit: () => {}, onClose: () => {}, ...extra,
+    } as never));
+    return impl.drawV2 ? impl.drawV2(html, name) : html;
+  };
+  const footOf = (html: string) => html.slice(html.indexOf('class="kp-bsheet__footer"'));
+  const midOf = (html: string) => html.slice(html.indexOf('data-testid="journey-sheet-scroll"'), html.indexOf('class="kp-bsheet__footer"'));
+  const lowV2 = frameAt({ viewer: viewer(facts({ wallet: wallet(1_200) })) });
+  const freshPending = { amount: 3_000, txnId: "txn_v2pend1", createdAt: new Date(NOW - 60_000).toISOString() };
+  const pendV2 = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), pendingDeposit: freshPending })) });
+  const emptyPool = seed({ yesPool: 0, noPool: 0 });
+
+  // A25 item 3 (tiles 001–006): with the keyboard up the reason a held commit gives stands directly above it.
+  const typingBad = V2_LANGS.flatMap((locale) => {
+    const t = dict[locale] as unknown as Dict, bad: string[] = [];
+    const low = drawV2("typing-low", lowV2, locale, { keyboard: true }), foot = footOf(low);
+    const reasonAt = foot.indexOf('data-testid="journey-sheet-reason"'), commitAt = foot.indexOf('data-testid="journey-sheet-place"');
+    if (!(reasonAt >= 0 && commitAt > reasonAt && foot.includes('<p id="sheet-proof-callout" role="status" class="kp-bsheet__bounds" data-testid="journey-sheet-reason">')
+      && text(foot).includes(t.journey.lowTitle))) bad.push("low: no reason above the commit");
+    if (/journey-sheet-deposit|journey-sheet-bet-instead|kp-bsheet__holder|kp-bsheet__balance|id="sheet-proof-callout"/.test(midOf(low))) bad.push("low: the middle keeps rows typing does not need");
+    if (!/<h2 id="sheet-proof-title"[^>]*class="kp-bsheet__title sr-only"/.test(low)) bad.push("the question is not kept as the dialog's name");
+    const above = drawV2("typing-bounds", frameAt({ stakeText: String(MAX + 1) }), locale, { keyboard: true });
+    if (!(footOf(above).includes('id="sheet-proof-bounds"') && !midOf(above).includes('id="sheet-proof-bounds"'))) bad.push("bounds: not above the commit");
+    const priced = drawV2("typing-priced", frameAt(), locale, { keyboard: true });
+    if (!(midOf(priced).includes("journey-sheet-estimate-compact") && !midOf(priced).includes("kp-bsheet__note") && !footOf(priced).includes("journey-sheet-reason"))) bad.push("edit: no figure line, its note kept, or a reason");
+    const unpriced = drawV2("typing-unpriced", frameAt({ seed: emptyPool }), locale, { keyboard: true }, emptyPool);
+    if (/kp-bsheet__estimate|kp-bsheet__compact/.test(unpriced)) bad.push("edit: an unpriced box under the stake");
+    const pend = drawV2("typing-pending", pendV2, locale, { keyboard: true });
+    if (!text(footOf(pend)).includes(sheetLineText(t, locale, pendV2.pending!.title, NOW))) bad.push("pending: its title is not the reason");
+    const rest = drawV2("typing-off", lowV2, locale);
+    if (rest.includes("journey-sheet-reason") || !midOf(rest).includes('id="sheet-proof-callout"')) bad.push("control: with the keyboard down the callout left the middle");
+    return bad.length ? [`${locale}: ${bad.join(", ")}`] : [];
+  });
+  ok("11.typing · A25 items 3, 8, 9: with the keyboard up the sheet keeps the stake, a priced estimate's figure line (no note, nothing when unpriced), the reason a held commit gives directly above it (the bounds line, or the frame's own title as the callout's id) and the commit; the question stays the dialog's name, visually hidden; with the keyboard down the callout returns to the middle",
+    typingBad.length === 0, j(typingBad));
+
+  // A25 item 5 (tile 062): a hidden balance stays hidden, and so does every figure derived from it.
+  const belowV2 = frameAt({ stakeText: "1500", viewer: viewer(facts({ wallet: wallet(1_200) })) });
+  const limitV2 = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), deposit: { ...facts().deposit, limits: { daily: 10_000, weekly: null, monthly: null }, usage: { day: 8_000, week: 8_000, month: 8_000 } } })) });
+  const lateV2 = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), pendingDeposit: { ...freshPending, createdAt: new Date(NOW - 31 * 60_000).toISOString() } })) });
+  const hiddenBad = V2_LANGS.flatMap((locale) => {
+    const t = dict[locale] as unknown as Dict, bad: string[] = [];
+    const h = drawV2("hidden-low", lowV2, locale, { cashHidden: true }), shown = drawV2("shown-low", lowV2, locale, { cashHidden: false });
+    for (const figure of ["1,200", "3,800"]) if (h.includes(figure)) bad.push(`prints ${figure}`);
+    if (!(h.includes("5,000") && (h.match(/•••••/g) ?? []).length >= 3)) bad.push("the stake or the masks missing");
+    if (/journey-sheet-bet-instead|journey-sheet-deposit-amounts/.test(h) || text(h).includes(t.journey.lowChoose)) bad.push("a balance-derived option drawn");
+    if (!(shown.includes("1,200") && shown.includes("3,800") && shown.includes("journey-sheet-bet-instead") && shown.includes("journey-sheet-deposit-amounts"))) bad.push("control: a shown balance lost its figures");
+    if (/(?<![\d,])700(?![\d,])|1,200/.test(text(drawV2("hidden-below", belowV2, locale, { cashHidden: true })))) bad.push("below the minimum: the remainder or the balance printed");
+    if (/3,000|2,000/.test(text(drawV2("hidden-limit", limitV2, locale, { cashHidden: true })))) bad.push("a refused deposit's amount or bet-instead printed");
+    const late = drawV2("hidden-late", lateV2, locale, { cashHidden: true });
+    if (late.includes("journey-sheet-bet-instead") || text(late).includes("2,000")) bad.push("the late pending frame offers bet instead");
+    return bad.length ? [`${locale}: ${bad.join(", ")}`] : [];
+  });
+  ok("11.hidden · A25 item 5: with the balance hidden the shortfall, the deposit amount, a refused deposit's amount and the remainder are masked like the balance; the deposit amounts and \"bet instead\" (its stake IS the balance) are withheld; the stake stays; a shown balance keeps every figure",
+    hiddenBad.length === 0, j(hiddenBad));
+
+  // A25 item 10 (tile 001): the commit's separator travels with its amount.
+  const sepBad = V2_LANGS.flatMap((locale) => ([["edit", frameAt()], ["low", lowV2], ["retry", frameAt({ intent: { quote: q(5_000), key: K1, phase: "inDoubt", sentAt: null, settledAt: NOW } })]] as const)
+    .flatMap(([name, f]) => {
+      const btn = /data-testid="journey-sheet-place"[^>]*>([^]*?)<\/button>/.exec(drawV2(`sep-${name}`, f, locale))?.[1] ?? "";
+      return /<span class="whitespace-nowrap">· <span class="amount">TZS 5,000<\/span><\/span>/.test(btn) && (btn.match(/·/g) ?? []).length === 1 ? [] : [`${locale}/${name}`];
+    }));
+  ok("11.separator · A25 item 10: every commit's \"·\" and its amount are one unbreakable run (\"Weka dau\" / \"· TZS 1,000,000\" at 320, never a line ending on the dot) — the place, the low frame's and the retry",
+    sepBad.length === 0, j(sepBad));
+
+  // A25 items 11 and 13 (tiles 019, 023): Chinese breaks between words, a corner bracket hangs, the side word is bracketed.
+  const zhJourney = (impl.zhJourney ?? (dict.zh as unknown as { journey: Record<string, unknown> }).journey) as Record<string, unknown>;
+  const unbracketed = Object.entries(zhJourney).filter(([k, v]) => typeof v === "string" && v.includes("{side}") && v.replaceAll("「{side}」", "").includes("{side}") && k !== "sheetChosen").map(([k]) => k);
+  const holderZh = drawV2("zh-holder", frameAt({ viewer: viewer(facts(), { heldSides: ["YES"] }) }), "zh");
+  const oneSided = seed({ yesPool: 3_000, noPool: 0 }), firstSide = seed({ yesPool: 0, noPool: 3_000 });
+  const oneZh = drawV2("zh-one-sided", frameAt({ seed: oneSided }), "zh", {}, oneSided);
+  const firstZh = drawV2("zh-first", frameAt({ seed: firstSide }), "zh", {}, firstSide);
+  const zh = {
+    keepAll: /\.kp-bsheet__shell:lang\(zh\) \{ word-break: keep-all; overflow-wrap: anywhere; \}/.test(impl.src.css),
+    tailHeld: /<span class="whitespace-nowrap">投注。<\/span>/.test(holderZh),
+    bracketHung: /<p><span class="kp-cjk-open">「<\/span>/.test(oneZh) && /\.kp-cjk-open \{ margin-inline-start: -0\.5em; \}/.test(impl.src.css),
+    sideBracketed: text(holderZh).includes("您已在此投注「是」") && text(firstZh).includes("您将是「是」方的第一位投注者") && unbracketed.length === 0,
+  };
+  ok("11.zh · A25 items 11 and 13: the sheet's Chinese breaks only between words (keep-all), a notice's last two ideographs and their stop stay together, a paragraph's opening corner bracket hangs its empty half, and a side word in prose is set off as 「是」 (the chip, sheetChosen, the rule's own exception)",
+    Object.values(zh).every(Boolean), j({ zh, unbracketed }));
+
+  // A25 item 14: an inline refusal wears the notice box every other refusal wears.
+  const maintV2 = frameAt({ settled: settle(R(fail({ code: "SUSPENDED", reason: "maintenance" }))) });
+  const boxBad = V2_LANGS.filter((locale) => !/<div id="sheet-proof-line" class="kp-bsheet__lines"><div role="status" class="flex items-start border[^"]*border-info-border bg-info-bg[^"]*"><span aria-hidden="true" class="shrink-0[^"]*"><svg/.test(footOf(drawV2("notice-box", maintV2, locale))));
+  ok("11.notice · A25 item 14: the inline refusal line (here maintenance) is the kit's info notice box with its glyph, the line's id on its wrapper, in all three languages",
+    boxBad.length === 0, j(boxBad));
+
+  // A25 item 15 (tile 054): the Track link's words stand on the body's text edge.
+  const trackHtml = drawV2("track", pendV2, "en");
+  const linkRule = /\.kp-bsheet__link, \.kp-bsheet__ticket-link \{[^}]*padding: var\(--sp-2\);/.test(impl.src.css);
+  ok("11.track · A25 item 15: \"Track the payment ›\" pulls its tap padding back past the text edge — the pull is exactly the padding",
+    trackHtml.includes('class="kp-bsheet__link kp-bsheet__link--lead"') && linkRule && /\.kp-bsheet__link--lead \{ margin-inline-start: calc\(-1 \* var\(--sp-2\)\); \}/.test(impl.src.css));
+
+  // A25 item 18: the deposit amounts are the kit's money-amount pills, never stake chips.
+  const pillsBad = V2_LANGS.filter((locale) => {
+    const row = /data-testid="journey-sheet-deposit-amounts">([^]*?)<\/div>/.exec(drawV2("pills", lowV2, locale))?.[1] ?? "";
+    return !(row.includes(`class="${amountPillClass(true)}"`) && row.includes(`class="${amountPillClass(false)}"`) && !row.includes("kp-bsheet__chip"));
+  });
+  ok("11.pills · A25 item 18: the deposit amounts under the deposit door are the deposit page's own pills (amountPillClass), the chosen one pressed, none a stake chip",
+    pillsBad.length === 0, j(pillsBad));
+
+  // A25 item 7: the grab holds its 4px pill.
+  ok("11.grab · A25 item 7: the grab never shrinks in the capped column (a 1px hairline under the keyboard, 2.4px at rest)",
+    /\.kp-bsheet__shell > \.kp-wsheet__grab \{ flex: none; \}/.test(impl.src.css));
+
+  // A25 items 4 and 8: where the sheet stands its middle — the low block in view, the top edge never through a line.
+  const sc = impl.scroll ?? SC;
+  const rowsV2: SC.SheetRow[] = [{ top: 100, bottom: 156 }, { top: 168, bottom: 190 }, { top: 168, bottom: 196 }];
+  const placed = [sc.settledScrollTop(40, 300, rowsV2), sc.settledScrollTop(120, 300, rowsV2), sc.settledScrollTop(500, 130, rowsV2), sc.settledScrollTop(180, 400, rowsV2), sc.settledScrollTop(-20, 300, rowsV2)];
+  const wiring = sheetSrc.includes("if (start) revealLowBlock(middle, start);")
+    && /useEffect\(\(\) => \{\s*const middle = shellRef\.current\?\.querySelector<HTMLElement>\("\.kp-bsheet__scroll"\);\s*if \(!middle\) return;\s*if \(middle\.style\.maxHeight\) middle\.style\.maxHeight = "";\s*if \(!open \|\| keyboard \|\| lowKey === null\) return;/.test(sheetSrc)
+    && /\}, \[open, keyboard, lowKey\]\);/.test(sheetSrc)
+    && sheetSrc.includes("const { top, trim } = settledScrollTop(want, middle.scrollHeight - middle.clientHeight, sheetRows(middle, base));")
+    && sheetSrc.includes("if (trim > 0) middle.style.maxHeight = `${Math.max(0, middle.clientHeight - Math.ceil(trim))}px`;")
+    && (sheetSrc.match(/data-low-start=""/g) ?? []).length === 3;
+  ok("11.reveal · A25 items 4 and 8: the low block stands in view from its callout; a line or control straddling the top edge pushes it to its foot; past the range the middle gives up exactly that at its foot (never an empty band); run after the dialog's re-arm, never while typing",
+    j(placed) === j([{ top: 40, trim: 0 }, { top: 156, trim: 0 }, { top: 156, trim: 26 }, { top: 196, trim: 0 }, { top: 0, trim: 0 }])
+      && sc.cutsRow(120, rowsV2) && !sc.cutsRow(156, rowsV2) && wiring, j({ placed, wiring }));
+
+  // A25 item 16 (tile 059): the break notice's sentence is one flex item.
+  ok("11.break-gap · A25 item 16: the home's break title is ONE text item beside its lock — its kept runs no longer each take the row's 8px gap",
+    strip(impl.src.home).includes('<p className="font-semibold text-text flex items-start gap-2"><I.lock s={16} /><span>{keepText(fill(onBreak.exclusion ? t.rg.exclusionActive : t.journey.homeBreakTitle, { date }), [date])}</span></p>'));
   return failed;
 }
 
@@ -1115,7 +1262,7 @@ if (!PROVE_RED) {
     { name: "padding on the figure shrinks the room its drawn box reports", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { padding-inline: var(--sp-2); min-width: 0;") }) },
     { name: "a size transition on the figure corrupts the in-place measurement", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { transition: font-size var(--t-quick); min-width: 0;") }) },
     { name: "the live region keyed by the frame alone (the long and late bands are never spoken)", expect: /^8\.live-bands /, impl: withSrc({ sheet: SOURCES.sheet.replace('const spoken = frame.pending ? `${frame.frame}:${frame.pending.band}` : frame.frame;', "const spoken = frame.frame;") }) },
-    { name: "the late band's offer to bet what is already there is left out of what is spoken", expect: /^8\.live-bands /, impl: withSrc({ sheet: SOURCES.sheet.replace("(frame.pending.betInstead ? ", "(false ? ") }) },
+    { name: "the late band's offer to bet what is already there is left out of what is spoken", expect: /^8\.live-bands /, impl: withSrc({ sheet: SOURCES.sheet.replace("(frame.pending.betInstead && !cashHidden ? ", "(false ? ") }) },
     { name: "an unlifted open writes the keyboard lift onto the panel (a whole-sheet restyle inside the tap)", expect: /^8\.viewport-quiet /, impl: withSrc({ sheet: SOURCES.sheet.replace('} else {\n        panel?.style.removeProperty("--bsheet-keyboard-lift");', '} else {\n        panel?.style.setProperty("--bsheet-keyboard-lift", "0px");') }) },
     { name: "the panel's lift loses its stylesheet fallback", expect: /^8\.viewport-quiet /, impl: withSrc({ css: SOURCES.css.replace("var(--bsheet-keyboard-lift, 0px)", "var(--bsheet-keyboard-lift)") }) },
     { name: "the iOS zoom rule shrinks the xl stake back to sixteen", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace('input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }', '') }) },
@@ -1130,7 +1277,7 @@ if (!PROVE_RED) {
     { name: "both doors at the same rung", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace("btn btn-ghost btn-lg w-full", "btn btn-ghost btn-xl w-full") } },
     { name: "the sign-up label drawn without its kept run", expect: /^10\.guest-doors /, impl: { ...REAL, drawGuest: (html) => html.replace(/(data-testid="journey-sheet-signup"[^>]*><span>[^]*?)<span class="whitespace-nowrap">([^<]*)<\/span>/, "$1$2") } },
     { name: "the money face gains the guest's mark", expect: /^10\.money-face /, impl: { ...REAL, draw: (html) => html.replace('class="kp-bsheet__header"', 'class="kp-bsheet__header" data-guest=""') } },
-    { name: "the balance row withheld from everybody", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet.replace("{frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}", "{false && <BalanceRow t={t} frame={frame} />}") }) },
+    { name: "the balance row withheld from everybody", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet.replace("{!typing && frame.showEstimate && !guest && <BalanceRow t={t} frame={frame} />}", "{false && <BalanceRow t={t} frame={frame} />}") }) },
     { name: "a door that navigates without its address beat (onNavigate dropped)", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet.replaceAll(" onNavigate={guest.onLeave}", "") }) },
     { name: "a second sheet component for the guest", expect: /^10\.guest-src /, impl: withSrc({ sheet: SOURCES.sheet + "\nexport function GuestBetSheet() { return null; }\n" }) },
     // §1
@@ -1300,6 +1447,45 @@ if (!PROVE_RED) {
       impl: withSrc({ state: SOURCES.state + "\nexport const nowish = () => Date.now();\n" }) },
     { name: "a key named that neither the dictionary nor WP4 has", expect: /^6\.client-safe /,
       impl: withSrc({ refusal: SOURCES.refusal + '\nexport const STRAY = { key: "journey.sheetNoSuchKey" };\n' }) },
+    // §11 · round V2 (S8-PLAN A25)
+    { name: "a hidden balance spoken in the late band's offer", expect: /^8\.live-hidden /,
+      impl: withSrc({ sheet: SOURCES.sheet.replace("(frame.pending.betInstead && !cashHidden ? ", "(frame.pending.betInstead ? ") }) },
+    { name: "the reason left under the keyboard beside a dead commit (tiles 001–006)", expect: /^11\.typing /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "typing-low" ? html.replace('data-testid="journey-sheet-reason"', 'data-testid="gone"') : html) } },
+    { name: "the question removed while typing instead of kept as the dialog's name", expect: /^11\.typing /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "typing-low" ? html.replace('class="kp-bsheet__title sr-only"', 'class="kp-bsheet__title" hidden=""') : html) } },
+    { name: "the unpriced box back under the stake with the keyboard up (the sliver, tiles 002–022)", expect: /^11\.typing /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "typing-unpriced" ? html.replace('<div class="kp-bsheet__stake">', '<div class="kp-bsheet__estimate"></div><div class="kp-bsheet__stake">') : html) } },
+    { name: "the shortfall printed beside a hidden balance (tile 062)", expect: /^11\.hidden /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "hidden-low" ? html.replace("•••••", "3,800") : html) } },
+    { name: "\"bet instead\" offered while the balance is hidden (its stake is the balance)", expect: /^11\.hidden /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "hidden-low" ? html.replace('<div class="kp-bsheet__footer">', '<button data-testid="journey-sheet-bet-instead"></button><div class="kp-bsheet__footer">') : html) } },
+    { name: "the separator left at the end of the commit's first line (tile 001)", expect: /^11\.separator /,
+      impl: { ...REAL, drawV2: (html, name) => (name.startsWith("sep-") ? html.replace('<span class="whitespace-nowrap">· ', '· <span class="whitespace-nowrap">') : html) } },
+    { name: "Chinese breaking inside 投注 and 下注 again (keep-all dropped)", expect: /^11\.zh /,
+      impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__shell:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }", "") }) },
+    { name: "the paragraph's corner bracket not hung (the indented first line, tile 023)", expect: /^11\.zh /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "zh-one-sided" ? html.replace('<span class="kp-cjk-open">「</span>', "「") : html) } },
+    { name: "是 run into its sentence (\"您已在此投注是\")", expect: /^11\.zh /,
+      impl: { ...REAL, zhJourney: { ...(dict.zh as unknown as { journey: Record<string, unknown> }).journey, sheetHolds: "您已在此投注{side}" } } },
+    { name: "the inline refusal drawn as plain secondary text again", expect: /^11\.notice /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "notice-box" ? html.replace(/<div role="status" class="flex items-start border[^"]*">/, '<div role="status">') : html) } },
+    { name: "the Track link standing its words 8px in (tile 054)", expect: /^11\.track /,
+      impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__link--lead { margin-inline-start: calc(-1 * var(--sp-2)); }", "") }) },
+    { name: "the deposit amounts drawn as stake chips (tiles 033–035)", expect: /^11\.pills /,
+      impl: { ...REAL, drawV2: (html, name) => (name === "pills" ? html.replaceAll(amountPillClass(false), "kp-bsheet__chip amount") : html) } },
+    { name: "the grab shrinking with the column again", expect: /^11\.grab /,
+      impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__shell > .kp-wsheet__grab { flex: none; }", "") }) },
+    { name: "the top edge left through a line (no push)", expect: /^11\.reveal /,
+      impl: { ...REAL, scroll: { ...SC, settledScrollTop: (want, max) => ({ top: Math.max(0, Math.min(want, max)), trim: 0 }) } } },
+    { name: "the push past the range without the trim (the edge cannot reach it)", expect: /^11\.reveal /,
+      impl: { ...REAL, scroll: { ...SC, settledScrollTop: (want, max, rows) => ({ ...SC.settledScrollTop(want, max, rows), trim: 0 }) } } },
+    { name: "the reveal run while typing (it would scroll the typed field away)", expect: /^11\.reveal /,
+      impl: withSrc({ sheet: SOURCES.sheet.replace("}, [open, keyboard, lowKey]);", "}, [open, lowKey]);").replace("if (!open || keyboard || lowKey === null) return;", "if (!open || lowKey === null) return;") }) },
+    { name: "the reveal in a layout effect (the dialog's later re-arm scrolls it back)", expect: /^11\.reveal /,
+      impl: withSrc({ sheet: SOURCES.sheet.replace('useEffect(() => {\n    const middle = shellRef.current?.querySelector<HTMLElement>(".kp-bsheet__scroll");', 'useLayoutEffect(() => {\n    const middle = shellRef.current?.querySelector<HTMLElement>(".kp-bsheet__scroll");') }) },
+    { name: "the break title's runs back as separate flex items (the 12px hole, tile 059)", expect: /^11\.break-gap /,
+      impl: withSrc({ home: SOURCES.home.replace("<I.lock s={16} /><span>{keepText(", "<I.lock s={16} />{keepText(").replace(", [date])}</span></p>", ", [date])}</p>") }) },
   ];
   let caught = 0, failN = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) failN++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

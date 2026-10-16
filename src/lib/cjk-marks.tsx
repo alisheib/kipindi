@@ -46,8 +46,25 @@ export const CJK_MARK_TRIM: Readonly<Record<string, "kp-cjk-mark" | "kp-cjk-mark
   "？": "kp-cjk-mark kp-cjk-mark--q", // ？
 };
 
-/** The trims in em, as the stylesheet writes them (`.kp-cjk-mark` / `--q`) — for the instruments. */
-export const CJK_TRIM_EM = { mark: 0.65, question: 0.5 } as const;
+/** The trims in em, as the stylesheet writes them (`.kp-cjk-mark` / `--q`, `.kp-cjk-open`) — for the instruments. */
+export const CJK_TRIM_EM = { mark: 0.65, question: 0.5, open: 0.5 } as const;
+
+/**
+ * ⭐ A PARAGRAPH THAT OPENS ON A CORNER BRACKET STANDS ITS INK ON THE EDGE (the Vodacom plan S8, round V2, S8-PLAN A25
+ * item 11; tile 023): "「否」方尚无投注…" read as an indented first line under the lines below it. The face draws an opening
+ * mark's ink in the RIGHT of its em — measured in the bet sheet's own zh text (Microsoft YaHei through the CJK fallback,
+ * 16px): 「 inks 9–16px of its 16px advance, 0.5625em in — so a paragraph that opens on it starts half an em in. The empty
+ * part is hung (`.kp-cjk-open`, 0.5em: the measured 0.5625 rounded DOWN, so the ink is never cut into), and only where it
+ * is known to open a line: the paragraph's first character. ⛔ Not `text-spacing-trim`: measured, `trim-start` moves
+ * nothing here — the face carries no `halt` the engine can use (the header above). The text is unchanged, character
+ * for character: the mark is wrapped, never replaced.
+ */
+const OPENERS = /^[「『（“【〈《〔]/u;
+export function hangCjkOpening(text: string): ReactNode {
+  const first = OPENERS.exec(text)?.[0];
+  if (!first) return text;
+  return <Fragment><span className="kp-cjk-open">{first}</span>{text.slice(first.length)}</Fragment>;
+}
 
 const isMark = (c: string | undefined) => c !== undefined && Object.prototype.hasOwnProperty.call(CJK_MARK_TRIM, c);
 /** A closing quote or bracket after a mark (“你好，”) belongs to it: the gap would open a break between them, and a line

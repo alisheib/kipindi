@@ -1824,6 +1824,8 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
 .kp-cjk-gap { font-family: var(--font-mono); line-height: 0; letter-spacing: 0; word-spacing: 0.05em; -webkit-user-select: none; user-select: none; }
 .kp-cjk-gap--q { word-spacing: -0.1em; }
 .kp-cjk-gap::after { content: " "; }
+/* A paragraph's opening corner bracket hangs its empty half (`hangCjkOpening`, cjk-marks.tsx; S8-PLAN A25 item 11). */
+.kp-cjk-open { margin-inline-start: -0.5em; }
 
 /* ⭐ AN EMPTY SLOT KEEPS ITS LINE WITH NO CHARACTER IN THE PAGE (round 5 of the visual pass, R5-J, 2026-10-09 — R5-E's
    named siblings). Four slots must not change height as their words come and go: the analytics choice before it mounts,
@@ -7446,8 +7448,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    at 72, and from 640 it stands 8px under the header (64), where the account menu hangs (`sm:top-[64px]`). The header is
    sticky at the top, so this holds at every scroll position. ⛔ Journey-only: the classic overlays are parity-captured
    chrome (`qa:classic-shell-parity`), and the hook is an attribute, which that census does not name. */
-:root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: 56px; }
-@media (min-width: 640px) { :root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: calc(56px + var(--sp-2)); } }
+/* ⭐ …and under the staff preview bar while it is in view (S8-PLAN A25 item 17; `usePreviewClearance`, toast.tsx, writes
+   `--toast-clear` only on a page that wears the bar — on every player's page it is unset and these read as before). */
+:root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: max(56px, var(--toast-clear, 0px)); }
+@media (min-width: 640px) { :root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: calc(max(56px, var(--toast-clear, 0px)) + var(--sp-2)); } }
 .kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
 /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
 .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
@@ -8614,6 +8618,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    supplies only geometry: `translate` is independent of Modal's transform animation, so neither undoes the other. */
 .kp-bsheet { max-height: min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)); overflow: hidden; translate: 0 calc(-1 * var(--bsheet-keyboard-lift, 0px)); }
 .kp-bsheet__shell { display: flex; flex-direction: column; min-height: 0; max-height: calc(min(calc(100dvh - var(--sp-12)), var(--bsheet-visible-height, 100dvh)) - var(--sp-3) - var(--sp-5) - env(safe-area-inset-bottom, 0px)); gap: var(--sp-3); }
+/* ⭐ The grab holds its 4px pill (S8-PLAN A25 item 7): a flex child shrinks with the capped column, and under a lifted
+   keyboard it was squeezed to a 1px hairline (tiles 001–022), 2.4px even at rest. */
+.kp-bsheet__shell > .kp-wsheet__grab { flex: none; }
 .kp-bsheet__header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: var(--sp-2); }
 .kp-bsheet__close { flex: none; }
 .kp-bsheet__chosen { max-width: calc(100% - var(--sp-12) - var(--sp-2)); }
@@ -8653,12 +8660,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__eyebrow { margin: 0; color: var(--text-subtle); font-family: var(--font-mono); font-size: var(--type-small); font-weight: 600; letter-spacing: .06em; }
 :lang(en) .kp-bsheet__eyebrow, :lang(sw) .kp-bsheet__eyebrow { text-transform: uppercase; }
 .kp-bsheet__deposit { height: auto; min-height: var(--h-control-xl); justify-content: space-between; border: 1px solid var(--border-control); padding-block: var(--sp-2); }
-.kp-bsheet__deposit + .kp-bsheet__chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* The deposit amounts: the kit's money-amount pills (AmountField's `amountPillClass`, A25 item 18), three to a row. */
+.kp-bsheet__amounts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
 .kp-bsheet__deposit-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: var(--sp-1); text-align: left; white-space: normal; }
 .kp-bsheet__rails { font-size: var(--type-small); font-weight: 500; line-height: 1.5; color: var(--gold-fg); }
 .kp-bsheet__instead { display: flex; flex-direction: column; height: auto; min-height: var(--h-control-xl); gap: var(--sp-1); border: 1px solid var(--border-control); padding-block: var(--sp-2); white-space: normal; }
 .kp-bsheet__instead-estimate { font-size: var(--type-small); font-weight: 400; color: var(--text-muted); }
 .kp-bsheet__link, .kp-bsheet__ticket-link { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--h-control-md); padding: var(--sp-2); color: var(--brand-300); font-size: var(--type-body); text-decoration: none; }
+/* A link that leads a block of words stands its words on their edge: its tap padding is pulled back past it (the edge rule,
+   R9-A4; A25 item 15 — "Track the payment ›" stood 8px right of the body above it, tile 054). */
+.kp-bsheet__link--lead { margin-inline-start: calc(-1 * var(--sp-2)); }
 .kp-bsheet__terminal, .kp-bsheet__lines { font-size: var(--type-body); line-height: 1.5; color: var(--text-muted); }
 .kp-bsheet__lines p { margin: 0; }
 .kp-bsheet__placing { margin: 0; font-size: var(--type-small); color: var(--text-muted); }
@@ -8680,6 +8691,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__receipt-rows dd { min-width: 0; margin: 0; text-align: right; font-size: var(--type-small); }
 .kp-bsheet__ticket-id.amount { overflow-wrap: anywhere; white-space: normal; }
 .kp-bsheet__good-luck { margin: 0; text-align: center; font-size: var(--type-body); }
+/* ⭐ CHINESE BREAKS BETWEEN WORDS, NOT INSIDE THEM (A25 item 11; tiles 019, 023): Chinese may break between any two
+   characters, so the sheet split 投注 and 下注 across lines. keep-all ends a Chinese line only at its punctuation (。，)
+   and its spaces — every sheet sentence is short clauses — and a run longer than its line still breaks rather than
+   overflow (`overflow-wrap: anywhere`), the `.kp-hub__sub:lang(zh)` rule. A sentence's last two ideographs and their stop
+   are held by its keep (noticeBody), so no line holds one character alone. */
+.kp-bsheet__shell:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
 
 /* S8 WP8–WP9 · the journey question's picks and the break's neutral view. Utility slots retain the classic layout. */
 .kp-jbet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
