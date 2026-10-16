@@ -1297,22 +1297,37 @@ async function assertUniquePaymentReference(txn: StoredTxn, providerRef: string,
  * amount-tamper-checked — identical to the webhook path. A callback arriving later
  * for the same reference is a no-op.
  */
+/**
+ * Which in-flight deposits the fast lane re-queries: older than `olderThanMs` (the dispatch may still be returning) and
+ * no older than `fastWindowMs`, INCLUSIVE, so the lane meets `reconcileStalePayments` exactly where its cutoff begins.
+ *
+ * ⛔ THE WINDOW MEETS THE SWEEP (2026-10-16). It was 10 minutes while the sweep owns only deposits older than 30, so a
+ * deposit between 10 and 30 minutes old was re-queried by nobody: a player whose provider confirmed at minute 12 waited
+ * until minute 30–35 for the credit (found while moving CLAUDE.md's mechanics into docs/SELCOM-API-DIGEST.md; the comment
+ * here claimed the sweep "already owned" it). Payouts' lane has always been 30 minutes (`isFastPayoutCandidate`). The
+ * cost is bounded by CONCURRENT deposits, and the lane can only confirm, so a wider window cannot fail a deposit.
+ * `test:fast-deposit` holds it.
+ */
+export function isFastDepositCandidate(
+  t: { type: string; providerRef?: string | null; createdAt: string },
+  nowMs: number,
+  olderThanMs: number,
+  fastWindowMs: number,
+): boolean {
+  if (t.type !== "DEPOSIT" || !t.providerRef) return false;
+  const at = Date.parse(t.createdAt);
+  if (!Number.isFinite(at)) return false;
+  return at < nowMs - olderThanMs && at >= nowMs - fastWindowMs;
+}
+
 export async function creditConfirmedDeposits(
   olderThanMs = 8_000,
-  fastWindowMs = 10 * 60 * 1000,
+  fastWindowMs = 30 * 60 * 1000,
 ): Promise<{ checked: number; confirmed: number }> {
   const now = Date.now();
-  const cutoff = now - olderThanMs;
-  // Poll only deposits inside the fast window. A deposit older than that is no
-  // longer someone staring at a spinner, and the 5-minute sweep plus the 30-minute
-  // reconcile already own it — so the number of gateway calls per poll stays bounded
-  // by CONCURRENT deposits, not by the size of the transaction table.
-  const windowStart = now - fastWindowMs;
-  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter((t) => {
-    if (t.type !== "DEPOSIT" || !t.providerRef) return false;
-    const at = Date.parse(t.createdAt);
-    return at < cutoff && at >= windowStart;
-  });
+  // Poll only deposits inside the fast window, so the number of gateway calls per poll stays bounded by CONCURRENT
+  // deposits, not by the size of the transaction table; past it, `reconcileStalePayments` owns them.
+  const inFlight = (await db.txn.listByStatus("PROCESSING")).filter((t) => isFastDepositCandidate(t, now, olderThanMs, fastWindowMs));
   let confirmed = 0;
   for (const t of inFlight) {
     try {
