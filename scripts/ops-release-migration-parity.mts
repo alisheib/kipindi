@@ -127,12 +127,20 @@ if (forward.length) {
 }
 // ⭐ THE OBSOLETE CONDITION, ANSWERED IN THE WORDS IT WAS WRITTEN IN, so that an officer reading the old
 // checklist row against this output is not left to reconcile two numbers on their own.
+/* The September pair (tables, markers) keeps its own reading: both are on production, so either one forward is the
+   2026-09 DDL never having merged. ⭐ N5 · the THIRD house folder (`…_house_bot_pairs_roster`) is the opposite case — it IS
+   new in its release, so it shows up in `forward` above, which already demands it be named in Ali's go (REL-2's
+   exception) and carried through the preflight (whose section 4b checks its objects once applied). It is counted here so a
+   fourth house folder cannot appear unread. */
 const houseFolders = [...mine.keys()].filter((f) => /_house_bot_(?:tables|markers)$/.test(f)).sort();
+const allHouseFolders = [...mine.keys()].filter((f) => /_house_bot_\w+$/.test(f)).sort();
 const houseForward = houseFolders.filter((f) => forward.includes(f));
 console.log(`\n   ⚠️ REL-0(c) as originally written — "the migrations diff shows exactly the 2 house folders" — reads ${houseForward.length} here, and ${houseForward.length === 0 ? "0 IS NOW THE CORRECT ANSWER" : "that is a change"}:`);
-console.log(`      the two house folders (${houseFolders.join(", ") || "none found"}) are ${houseForward.length === 0 ? `already on ${REF}` : `NOT yet on ${REF}`}.`);
-if (houseFolders.length !== 2) {
-  problems.push(`expected exactly 2 house migration folders on ${HEAD}, found ${houseFolders.length} (${houseFolders.join(", ") || "none"}) — the release documents, this script and the preflight are all written for two, and a split or renamed folder must be read before it is deployed`);
+console.log(`      the two September house folders (${houseFolders.join(", ") || "none found"}) are ${houseForward.length === 0 ? `already on ${REF}` : `NOT yet on ${REF}`}.`);
+const pairsFolder = allHouseFolders.find((f) => /_house_bot_pairs_roster$/.test(f));
+if (pairsFolder) console.log(`      N5's folder (${pairsFolder}) is ${forward.includes(pairsFolder) ? `NOT yet on ${REF} — this release applies it (REL-2; name it in the go)` : `already on ${REF}`}.`);
+if (houseFolders.length !== 2 || allHouseFolders.length !== 3 || !pairsFolder) {
+  problems.push(`expected exactly 3 house migration folders on ${HEAD} (tables, markers, pairs_roster), found ${allHouseFolders.length} (${allHouseFolders.join(", ") || "none"}) — the release documents, this script and the preflight are all written for those three, and a split, renamed or fourth folder must be read into all of them before this is trusted`);
 }
 for (const f of houseFolders) {
   if (!theirs.has(f)) problems.push(`${f} is on ${HEAD} but not on ${REF} — the house DDL has NOT merged, so REL-0(c)'s original reading applies after all and REL-2 must be re-instated rather than struck for this release`);

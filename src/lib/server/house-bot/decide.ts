@@ -102,7 +102,7 @@ export type DecideTarget = {
 export type DecidedRow = {
   houseBotId: string;
   botUserId: string;
-  kind: "COUNTER" | "FILL" | "OPENER";
+  kind: "COUNTER" | "FILL" | "OPENER" | "PAIR";
   marketId: string;
   productLine: "MARKET" | "UPDOWN";
   triggerPositionId: string | null;
@@ -260,7 +260,9 @@ const productOf = (view: PublicMarketView): "MARKET" | "UPDOWN" => (view.product
  * production the day before: a document with both products ticked and both lists empty reached `[].includes(x)`
  * here on every market, and nothing upstream had refused it.
  */
-export function rulesCover(r: HouseBotRulesV1, view: PublicMarketView, mode: "counter" | "fill" | "opener" | null): boolean {
+export function rulesCover(r: HouseBotRulesV1, view: PublicMarketView, mode: "counter" | "fill" | "opener" | "pair" | null): boolean {
+  if (mode === "pair") return view.productLine === "UPDOWN" && r.share.otherSide && r.share.matchPct > 0
+    && view.round != null && rulesCoverTarget(r, { product: "UPDOWN", chainKey: view.round.chainKey }, null);
   if (productOf(view) === "UPDOWN") {
     return view.round != null && rulesCoverTarget(r, { product: "UPDOWN", chainKey: view.round.chainKey }, mode);
   }
@@ -736,6 +738,72 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
       decision: {
         entry: "AUTO", delaySec, bettableFrom: bettableFrom(view),
         snapshot: { titleEn: view.titleEn, category: view.category, cutoff: cutoffOf(view), roundNumber: view.round?.roundNumber ?? null },
+      },
+    },
+  };
+}
+
+/**
+ * The second side of an Up & Down round. The caller proves that the first stake belongs to one
+ * placed desk account; this pure decision also refuses if the pool facts no longer describe that
+ * single stake. The seam repeats all of these checks under the bet's locks.
+ */
+export function planPair(
+  input: PlanInput & { otherSide: DecideSide; otherStakeTzs: number },
+  deps: { randomInt: RandomInt },
+): DecideResult {
+  const { view, bot, pools, otherSide, otherStakeTzs } = input;
+  const scope = scopeCode(view);
+  if (scope) return { row: null, code: scope };
+  if (view.productLine !== "UPDOWN" || !view.round) return { row: null, code: "OUT_OF_SCOPE" };
+  if (view.status !== "LIVE") return { row: null, code: "MARKET_NOT_LIVE" };
+  if (view.reopenedAt) return { row: null, code: "MARKET_REOPENED" };
+  if (!view.round.chainRunning || !view.round.assetEnabled) return { row: null, code: "CHAIN_NOT_RUNNING" };
+  if (!rulesCover(bot.rules, view, null) || !bot.rules.share.otherSide || bot.rules.share.matchPct <= 0) {
+    return { row: null, code: "OUT_OF_SCOPE" };
+  }
+  const pairSide = oppositeSide(otherSide);
+  if (pools.YES.nonHouse !== 0 || pools.NO.nonHouse !== 0 || otherStakeTzs <= 0
+      || pools[otherSide].raw !== otherStakeTzs || pools[pairSide].raw !== 0) {
+    return { row: null, code: "MARKET_NOT_EMPTY" };
+  }
+  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: "BEFORE_SCOPE" };
+  const fromMs = ms(bettableFrom(view));
+  if (fromMs < Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom))) return { row: null, code: "BEFORE_SCOPE" };
+
+  const r = bot.rules;
+  const passNowMs = ms(input.passNow);
+  const cutoffMs = ms(cutoffOf(view));
+  const deadlineMs = cutoffMs - guardsFor(r, "UPDOWN").minTimeToCutoffSec * 1000;
+  const close = udCloseness(view, input.price, r.updown.closenessPct);
+  if (close) return { row: null, code: close };
+  // Draw from this account's opener wait, bounded by the current price's remaining lifetime.
+  const maxAge = input.price!.source === "vendor_bar" ? UD_VENDOR_BAR_MAX_AGE_SEC : UD_OBSERVATION_MAX_AGE_SEC;
+  const latestDueMs = passNowMs + (maxAge - input.price!.ageSec - UD_PRICE_FIRE_MARGIN_SEC) * 1000;
+  const earliestDueMs = Math.max(fromMs + r.opener.delayUdMinSec * 1000, passNowMs);
+  if (earliestDueMs > deadlineMs) return { row: null, code: "CUTOFF" };
+  if (earliestDueMs > latestDueMs) return { row: null, code: "UD_STALE_PRICE" };
+  const maxDelaySec = Math.max(r.opener.delayUdMinSec,
+    Math.min(r.opener.delayUdMaxSec, Math.floor((latestDueMs - fromMs) / 1000)));
+  const delaySec = deps.randomInt(r.opener.delayUdMinSec, maxDelaySec);
+  const dueMs = Math.max(fromMs + delaySec * 1000, passNowMs);
+  if (dueMs > deadlineMs) return { row: null, code: "CUTOFF" };
+  if (dueMs > latestDueMs) return { row: null, code: "UD_STALE_PRICE" };
+  const guard = guardCode(bot, dueMs);
+  if (guard) return { row: null, code: guard };
+  const wanted = Math.floor(otherStakeTzs * r.share.matchPct / 100);
+  const clamped = clampStake(Math.min(wanted, otherStakeTzs), bot, input.bounds);
+  if (!clamped.ok) return { row: null, code: "STAKE_BELOW_MIN" };
+  return {
+    row: {
+      houseBotId: bot.botId, botUserId: bot.botUserId, kind: "PAIR", marketId: view.id, productLine: "UPDOWN",
+      triggerPositionId: null, triggerUserId: null, targetId: null, side: pairSide, stakeTzs: clamped.stake,
+      dueAt: iso(dueMs), deadlineAt: iso(deadlineMs), staleAt: iso(dueMs + STALE_AFTER_SEC.updown * 1000),
+      status: "PENDING", reasonCode: null,
+      why: `Pairing · ${bot.label} · opposite side ${pairSide} · ${formatWhole(clamped.stake)} after ${delaySec}s`,
+      decision: {
+        entry: "AUTO", matchPct: r.share.matchPct, otherStakeTzs, delaySec,
+        snapshot: { titleEn: view.titleEn, category: view.category, cutoff: cutoffOf(view), roundNumber: view.round.roundNumber },
       },
     },
   };

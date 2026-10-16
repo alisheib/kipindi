@@ -37,6 +37,7 @@ import { HOUSE_LIMITS_SCHEMA_VERSION, effectiveTargetTiming, minGapFloorSec, par
 import { getGlobalConfig } from "../market-config";
 import { RATE_RULES } from "../rate-limit";
 import { db } from "../store";
+import { positionStore } from "../market-dal";
 import { stakeBoundsForMarket } from "../market-service";
 import {
   houseBookStore, houseBotControlStore, houseBotEventStore, houseBotIntentStore, houseBotRuntimeStore, houseBotStore, houseSeamStore,
@@ -45,7 +46,7 @@ import {
 import { houseDayBook, houseDayBooks } from "./book";
 import { alertOnce, engineAudit, engineSwitchOff, stopBot, type EngineAlerts } from "./outcomes";
 import type { EngineState, EngineTicks, TickContext } from "./engine";
-import { botCovers, drawTurnRoll, guardsFor, intentRowOf, markBusy, orderBots, planFill, planOpener, type DecideBot, type DecideResult, type RandomInt, type UdPrice } from "./decide";
+import { botCovers, drawTurnRoll, guardsFor, intentRowOf, markBusy, orderBots, oppositeSide, planFill, planOpener, planPair, type DecideBot, type DecideResult, type RandomInt, type UdPrice } from "./decide";
 import type { EngineCode } from "@/lib/house-bot/constants";
 import { SCOPE_PRODUCTS } from "@/lib/house-bot/rules";
 import type { LockedPool, LockedPoolSide } from "../house-bot-dal";
@@ -59,6 +60,8 @@ import { loadParseContext } from "./rules-context";
 import { busyAtLoad, capAtDue, capPrecheck, loadCapFacts, loadRosterRates, noteQueued, rateFactsFor, type RateFacts } from "./cap-precheck";
 import { pressAuditEntry, writePressAudit } from "./press-audit";
 import { oversightPass } from "./oversight";
+import { sameHouseHolder } from "./same-holder";
+import { pairCapPrecheck } from "./pair-cap-precheck";
 
 /** How many repair rows one pass takes (presses, alerts); the rest wait for the next pass. */
 export const PLANNER_REPAIR_BATCH = 50;
@@ -83,7 +86,7 @@ export type PlannerDeps = {
 
 export type DutyName =
   | "deadline" | "stale" | "poison" | "press" | "pressAudit" | "alertRepair" | "endTargets" | "pendingLifecycle"
-  | "rulesOutcomes" | "revalidateLive" | "lossStops" | "walletMissing" | "fillOpener" | "oversight" | "hourly";
+  | "rulesOutcomes" | "revalidateLive" | "lossStops" | "walletMissing" | "fillOpener" | "pair" | "oversight" | "hourly";
 
 export type PlannerPass = {
   passNowIso: string;
@@ -194,6 +197,14 @@ export async function plannerPass(ctx: TickContext, deps: PlannerDeps): Promise<
     const r = await planFillAndOpener(nowMs, ctx.state, fresh, active, { randomInt, drawRandomInt: deps.drawRandomInt });
     count("filled", r.fill);
     count("opened", r.opener);
+  });
+  // 7g · a second, independently guarded planner duty: paired rounds are inert until both
+  // nullable desk budgets and per-account sharing rules have been explicitly set.
+  await run("pair", async () => {
+    const fresh = await houseBotControlStore.get();
+    if (!fresh.enabled || limitsAhead || fresh.gCapPairRoundsPerDay == null || fresh.gCapPairDailyTzs == null) return "skipped";
+    await loadActive();
+    count("paired", await planPairs(nowMs, ctx.state, fresh, active, { randomInt }));
   });
 
   // 8 · once a minute: oversight (ruling 77)
@@ -724,6 +735,121 @@ async function runMarket(
     return { placed: inserted != null, marketCode: null, byBot, winner: { botId: b.botId, dueAt: chosen.dueAt, stakeTzs: chosen.stakeTzs }, view, probe: probeInputs, tried };
   }
   return no(null);
+}
+
+/** N6 · scan rounds with one placed desk opener and offer their empty side to another holder. */
+export async function planPairs(
+  nowMs: number,
+  state: EngineState,
+  control: StoredHouseBotControl,
+  active: readonly ParsedBot[],
+  deps: { randomInt: RandomInt },
+): Promise<number> {
+  if (control.gCapPairRoundsPerDay == null || control.gCapPairDailyTzs == null) return 0;
+  const globalScopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null;
+  if (globalScopeFrom == null) return 0;
+  const roster = await loadPlanCandidates(active, nowMs);
+  const eligible = roster.filter((b) => b.rules.scope.products.updown && b.rules.share.otherSide
+    && b.rules.share.matchPct > 0 && b.rules.share.matchPerDay > 0);
+  if (eligible.length === 0) return 0;
+  let placed = 0;
+  const holderCache = new Map<string, boolean>();
+  const cursorKey = "PAIR:UPDOWN";
+  for (let page = 0; page < PLANNER_SCAN_MAX_PAGES; page++) {
+    const rows = await houseSeamStore.plannableMarkets({
+      kind: "PAIR", productLine: "UPDOWN", fromIso: iso(nowMs + PLANNER_MIN_CUTOFF_AHEAD_MS),
+      toIso: null, after: state.planner.scan[cursorKey] ?? null, limit: SWEEP_PAGE_SIZE,
+    });
+    for (const r of rows) {
+      const result = await runPairMarket(r.id, eligible, { nowMs, control, globalScopeFrom, randomInt: deps.randomInt, holderCache });
+      if (result.placed) {
+        placed++;
+        if (result.winner) takeTurn(roster, result.winner);
+      }
+    }
+    const full = rows.length === SWEEP_PAGE_SIZE;
+    state.planner.scan[cursorKey] = full ? rows[rows.length - 1] : null;
+    if (!full) break;
+  }
+  return placed;
+}
+
+async function runPairMarket(
+  marketId: string,
+  eligible: readonly PlanCandidate[],
+  o: { nowMs: number; control: StoredHouseBotControl; globalScopeFrom: string; randomInt: RandomInt; holderCache: Map<string, boolean> },
+): Promise<{ placed: boolean; winner: NonNullable<MarketExplain["winner"]> | null }> {
+  const none = { placed: false, winner: null };
+  const market = await houseSeamStore.marketView(marketId);
+  if (!market) return none;
+  const view = projectMarketView(market);
+  if (view.productLine !== "UPDOWN" || !view.round || scopeCode(view) || view.status !== "LIVE") return none;
+  const anchorKey = `pair:${view.id}`;
+  const prior = await houseBotIntentStore.findByAnchor("PAIR", anchorKey);
+  if (prior && prior.status !== "CANCELLED") return none;
+  const tried = triedAccounts(prior);
+  const untried = eligible.filter((b) => !tried.has(b.botId));
+  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES || untried.length === 0)) {
+    const passNowIso = iso(o.nowMs);
+    await houseBotIntentStore.insertIgnoringConflict(
+      intentRowOf({
+      houseBotId: prior.houseBotId, botUserId: prior.botUserId, kind: "PAIR", marketId: view.id,
+      productLine: "UPDOWN", triggerPositionId: null, triggerUserId: null, targetId: null,
+      side: prior.side, stakeTzs: prior.stakeTzs, dueAt: passNowIso, deadlineAt: prior.deadlineAt,
+      staleAt: passNowIso, status: "SKIPPED", reasonCode: "NO_ELIGIBLE_BOT",
+      why: `Pairing · no account left after ${tried.size} tried`,
+      decision: { triedBotIds: [...tried], handOffEnded: true, snapshot: (prior.decision as { snapshot?: unknown }).snapshot ?? null },
+      }, { id: newHouseId("intent"), anchorKey, nowIso: passNowIso }),
+    );
+    return none;
+  }
+  if (untried.length === 0) return none;
+
+  // Only an OPEN marked position of a PLACED opener may start a pair. Any player stake or
+  // second desk account already present makes this round ineligible before a row is written.
+  const opener = await houseBotIntentStore.findByAnchor("OPENER", view.id);
+  if (!opener || opener.status !== "PLACED" || opener.positionId == null) return none;
+  const open = (await positionStore.listForMarket(view.id)).filter((p) => p.status === "OPEN");
+  if (open.some((p) => p.houseBotId == null)) return none;
+  const house = open.filter((p) => p.houseBotId != null);
+  if (!house.some((p) => p.id === opener.positionId) || house.length === 0) return none;
+  if (house.some((p) => p.houseBotId !== opener.houseBotId || p.side !== opener.side)) return none;
+  const otherStakeTzs = house.reduce((sum, p) => sum + p.stake, 0);
+  if (otherStakeTzs <= 0) return none;
+  const pools = await lockedForHouse(view.id, lockedPoolInputsOfView(view));
+  if (pools.YES.nonHouse !== 0 || pools.NO.nonHouse !== 0) return none;
+  const price = await udPriceForDecision(assetIdOf(view.round.chainKey), { nowMs: o.nowMs });
+  const bounds = await stakeBoundsForMarket({ id: view.id, productLine: "UPDOWN" });
+  const passNow = iso(o.nowMs);
+  const ordered = orderBots(untried.map((b) => ({ ...b, turnRoll: drawTurnRoll(o.randomInt) })), o.nowMs);
+  for (const b of ordered) {
+    if (b.botId === opener.houseBotId) continue;
+    const holderKey = [b.botUserId, opener.botUserId].sort().join("\0");
+    let sameHolder = o.holderCache.get(holderKey);
+    if (sameHolder == null) {
+      sameHolder = await sameHouseHolder(b.botUserId, opener.botUserId);
+      o.holderCache.set(holderKey, sameHolder);
+    }
+    if (sameHolder) continue;
+    const decided = planPair({ view, bot: b, pools, price, bounds, globalScopeFrom: o.globalScopeFrom,
+      passNow, otherSide: opener.side, otherStakeTzs }, { randomInt: o.randomInt });
+    if (!decided.row) continue;
+    if ((await marketHeld(b.botId, view.id, { sideAwareSide: oppositeSide(opener.side) })).held) continue;
+    const facts = await loadCapFacts(b.stored, view.id, { control: o.control, nowMs: o.nowMs,
+      staffChosen: false, counterpartyUserId: null });
+    if (capPrecheck(facts, Math.max(b.stakeMinTzs ?? bounds.min, bounds.min))) continue;
+    if (capAtDue(b.stored, { balance: facts.balance, rates: b.rates }, decided.row)) continue;
+    if (await pairCapPrecheck({ control: o.control, houseBotId: b.botId, rules: b.rules,
+      stakeTzs: decided.row.stakeTzs, nowMs: Date.parse(decided.row.dueAt) })) continue;
+    const rowToWrite = tried.size > 0
+      ? { ...decided.row, decision: { ...decided.row.decision, triedBotIds: [...tried] } }
+      : decided.row;
+    const inserted = await houseBotIntentStore.insertIgnoringConflict(intentRowOf(rowToWrite,
+      { id: newHouseId("intent"), anchorKey, nowIso: passNow }));
+    if (inserted) return { placed: true, winner: { botId: b.botId, dueAt: decided.row.dueAt, stakeTzs: decided.row.stakeTzs } };
+    return none;
+  }
+  return none;
 }
 
 /* ═══ 8b · "why is this account not staking?" (2026-09-23) ═══════════════════════════════════════ */

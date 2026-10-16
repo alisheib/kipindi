@@ -827,6 +827,40 @@ await guard("7b", () => {
     j({ opener: openDecision, fillKeys: Object.keys(fillDecision ?? {}).sort() }));
 });
 
+/* ═══ §7c · the pure second-side decision ════════════════════════════════════════════════════════ */
+section("§7c · pairing decision");
+await guard("7c", () => {
+  const view = MV.projectMarketView(viewRow({ productLine: "UPDOWN", selectionClosedAt: at(240),
+    resolutionAt: at(900), exitGraceMin: 0, round: roundOf({ downTarget: 90 }) }));
+  const pairIn = (o: Any = {}) => merge({ view,
+    bot: botOf({ rules: rulesOf({ share: { otherSide: true, matchPct: 75, matchPerDay: 2 },
+      opener: { delayUdMinSec: 20, delayUdMaxSec: 90 } }) }),
+    pools: { YES: side({ raw: 10_000 }), NO: side() }, otherSide: "YES", otherStakeTzs: 10_000,
+    price: { price: 102, source: "observation", ageSec: 10 }, bounds: { min: 1_000, max: 1_000_000 },
+    globalScopeFrom: at(-86_400), passNow: NOW,
+  }, o);
+  const row = DE.planPair(pairIn(), { randomInt: minRand }).row;
+  ok("7c.1 · one placed side plans PAIR on the opposite side, floor(10,000×75%) to 7,000, never above the first stake",
+    row?.kind === "PAIR" && row.side === "NO" && row.stakeTzs === 7_000 && row.stakeTzs <= 10_000
+      && row.decision.matchPct === 75 && row.decision.otherStakeTzs === 10_000 && row.dueAt === NOW,
+    j(row));
+  ok("7c.2 · a player stake on either side prevents a PAIR row",
+    DE.planPair(pairIn({ pools: { YES: side({ raw: 11_000, nonHouse: 1_000 }), NO: side() } }), { randomInt: minRand }).row === null
+      && DE.planPair(pairIn({ pools: { YES: side({ raw: 10_000 }), NO: side({ raw: 1_000, nonHouse: 1_000 }) } }), { randomInt: minRand }).row === null);
+  ok("7c.3 · a second desk stake or a pool mismatch prevents a PAIR row",
+    DE.planPair(pairIn({ pools: { YES: side({ raw: 11_000 }), NO: side() } }), { randomInt: minRand }).row === null
+      && DE.planPair(pairIn({ pools: { YES: side({ raw: 10_000 }), NO: side({ raw: 1_000 }) } }), { randomInt: minRand }).row === null);
+  ok("7c.4 · the account's own share switch and percent are required",
+    DE.planPair(pairIn({ bot: botOf({ rules: rulesOf({ share: { otherSide: false, matchPct: 75, matchPerDay: 2 } }) }) }), { randomInt: minRand }).row === null
+      && DE.planPair(pairIn({ bot: botOf({ rules: rulesOf({ share: { otherSide: true, matchPct: 0, matchPerDay: 2 } }) }) }), { randomInt: minRand }).row === null);
+  ok("7c.5 · a price that cannot survive the minimum wait makes no row",
+    DE.planPair(pairIn({ price: { price: 102, source: "observation", ageSec: 20 },
+      bot: botOf({ rules: rulesOf({ share: { otherSide: true, matchPct: 75, matchPerDay: 2 },
+        opener: { delayUdMinSec: 120, delayUdMaxSec: 120 } }) }) }), { randomInt: minRand }).row === null);
+  const reverse = DE.planPair(pairIn({ pools: { YES: side(), NO: side({ raw: 10_000 }) }, otherSide: "NO" }), { randomInt: minRand }).row;
+  ok("7c.6 · the NO opener can only be paired by YES", reverse?.side === "YES" && reverse?.stakeTzs === 7_000, j(reverse));
+});
+
 /* ═══ §8 · source pins (memory child only) ═══════════════════════════════════════════════════════ */
 if (STORE === "memory") {
   section("§8 · source pins");
@@ -2117,12 +2151,22 @@ await guard("15", async () => {
   const b2 = await botWith();
   const byPosition = await ENL.marketHeld(b2.botId, m.id);
   ok("15.15 · another bot's OPEN house position → OTHER_BOT (an aggregate read: no bot id)", byPosition.held && byPosition.code === "OTHER_BOT" && byPosition.botId === null, j(byPosition));
+  const oppositePosition = await ENL.marketHeld(b2.botId, m.id, { sideAwareSide: "YES" });
+  const samePosition = await ENL.marketHeld(b2.botId, m.id, { sideAwareSide: "NO" });
+  ok("15.15a · other-side opt-in can use YES opposite a desk NO position, while NO remains held",
+    oppositePosition.held === false && samePosition.held === true && samePosition.code === "OTHER_BOT",
+    j({ oppositePosition, samePosition }));
 
   const m2 = await w.poll();
   ok("15.16 · CONTROL · an untouched poll is held for nobody", j(await ENL.marketHeld(b1.botId, m2.id)) === NOT_HELD && j(await ENL.marketHeld(b2.botId, m2.id)) === NOT_HELD);
   const i2 = await w.intent(b2, m2.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 });
   const byIntent = await ENL.marketHeld(b1.botId, m2.id);
   ok("15.17 · another bot's live intent → OTHER_BOT naming that bot", byIntent.held && byIntent.code === "OTHER_BOT" && byIntent.botId === b2.botId, j(byIntent));
+  const oppositeIntent = await ENL.marketHeld(b1.botId, m2.id, { sideAwareSide: "NO" });
+  const sameIntent = await ENL.marketHeld(b1.botId, m2.id, { sideAwareSide: "YES" });
+  ok("15.17a · other-side opt-in ignores a live YES intent for NO, but a second YES stays held",
+    oppositeIntent.held === false && sameIntent.held === true && sameIntent.code === "OTHER_BOT",
+    j({ oppositeIntent, sameIntent }));
   const ownIntent = await ENL.marketHeld(b2.botId, m2.id);
   ok("15.18 · the bot's own live intent → OWN_INTENT with its id, kind and due time",
     ownIntent.held && ownIntent.code === "OWN_INTENT" && ownIntent.intentId === i2.id && ownIntent.kind === "FILL" && ownIntent.dueAt === i2.dueAt, j(ownIntent));
@@ -2216,10 +2260,18 @@ await guard("15", async () => {
   ok("15.39 · the window is measured back from the database clock: a minute-old stake is inside 3,600 s, outside 30 s, and two days old is outside 86,400 s",
     in3600.length === 1 && in30.length === 0 && aged.length === 0, `${j(in3600)} · ${j(in30)} · ${j(aged)}`);
 
-  // §12 disables its asset at the end, so §15 creates an enabled one of its own (sources were seeded by §12).
+  // A red run may select §15 alone. Give it its own trusted source and both enabled/disabled chain fixtures.
   const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const { seedDefaultSources, listSources, addSource, setSourceEnabled }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  const approved = (await listSources({ category: "crypto" })).find((s: Any) => s.domain === "api.twelvedata.com");
+  if (approved && !approved.enabled) await setSourceEnabled(approved.id, true, WORLD_OFFICER);
+  if (!approved) await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
   const na = await cfg.createAsset({ key: `F${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
     priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  const disabled = await cfg.createAsset({ key: `G${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  const disabledChain = disabled.ok ? await cfg.createChain({ assetId: disabled.data.id, durationMinutes: 5 }, WORLD_OFFICER) : disabled;
   if (na.ok) {
     await cfg.setAssetEnabled(na.data.id, true, WORLD_OFFICER);
     await cfg.createChain({ assetId: na.data.id, durationMinutes: 5 }, WORLD_OFFICER);
@@ -2232,8 +2284,10 @@ await guard("15", async () => {
   const a0 = c0 ? assets.find((a) => a.id === c0.assetId) : null;
   ok("15.40 · fixture · an enabled asset with a chain exists (created here), and its id is not its symbol", !!a0 && a0.id !== a0.symbol && ofEnabled.some((c) => na.ok && c.assetId === na.data.id), j(a0 ?? na));
   const ofDisabled = chains.filter((c) => !assets.some((a) => a.id === c.assetId));
-  ok("15.41b · a chain of a disabled asset (§12's, disabled at its end) is left out of the context",
-    ofDisabled.length >= 1 && ofDisabled.every((c) => !ctx.chains.some((k: Any) => k.key === `${c.assetId}:${c.durationMinutes}`)), j(ofDisabled.map((c) => c.assetId)));
+  ok("15.41b · a chain of a disabled asset (created here) is left out of the context",
+    disabled.ok && disabledChain.ok && ofDisabled.some((c) => c.id === disabledChain.data.id)
+      && ofDisabled.every((c) => !ctx.chains.some((k: Any) => k.key === `${c.assetId}:${c.durationMinutes}`)),
+    j(disabledChain.ok ? ofDisabled.map((c) => c.assetId) : disabledChain));
   ok("15.41 · the parse context: chain keys <assetId>:<durationMinutes> for every chain of an enabled asset; the platform's categories and durations",
     j(ctx.chains.map((c: Any) => c.key).sort()) === j(ofEnabled.map((c) => `${c.assetId}:${c.durationMinutes}`).sort())
       && j(ctx.categories) === j(R.RULES_CONTEXT_LISTS.categories) && j(ctx.durations) === j(R.RULES_CONTEXT_LISTS.durations), j(ctx.chains));
@@ -4116,8 +4170,10 @@ await guard("17", async () => {
     ok("17.101 · N3 · the panel tells the officer the account behind is waiting for the draw — \"more likely to be drawn first\", \"nothing needs changing\" — and counts it in the scanned sentence",
       /more likely to be drawn first/.test(behindWords?.headline ?? "") && /nothing needs changing/.test(behindWords?.headline ?? "")
         && /more likely to be drawn first/.test(behindWords?.scanned ?? ""), j(behindWords));
-    ok("17.102 · N3 · CONTROL · the account ahead is told it is working, with no queue sentence",
-      /would stake right now/.test(aheadWords?.headline ?? "") && !/drawn first/.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`), j(aheadWords));
+    ok("17.102 · N3/N6 · CONTROL · the account ahead is told it would open or fill now, with no queue sentence, and the panel excludes pairing",
+      /would place an opening or filling stake right now/.test(aheadWords?.headline ?? "")
+        && /pairing is outside this check/i.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`)
+        && !/drawn first/.test(`${aheadWords?.headline ?? ""} ${aheadWords?.scanned ?? ""}`), j(aheadWords));
     await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
     for (const id of paused) await S.houseBotStore.setStatus(id, { from: ["PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
   }
@@ -4240,6 +4296,200 @@ await guard("17", async () => {
   ok("17.507f · a pass whose duties all held clears the record — the row mirrors the pass, so a duty that recovered is not reported as still broken",
     mirrors(clean, rowClean) && (failedOf(clean).length > 0 || rowClean?.pollerErrorCode === null),
     j({ failed: failedOf(clean), code: rowClean?.pollerErrorCode }));
+});
+
+/* ═══ §17n6 · one real Up & Down opener is paired by a second holder ══════════════════════════════ */
+section("§17n6 · second-side planning and fire");
+await guard("17n6", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits({ gCapPairRoundsPerDay: 2, gCapPairDailyTzs: 20_000 });
+  await w.switchOn();
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const uds: Any = await import("../../src/lib/server/updown-service.ts");
+  const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture", addedBy: "system" });
+  const asset = await cfg.createAsset({ key: `Q${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  if (!asset.ok) { ok("17n6.0 · fixture · a live Up & Down round exists", false, String(asset.error)); return; }
+  await cfg.setAssetEnabled(asset.data.id, true, WORLD_OFFICER);
+  const madeChain = await cfg.createChain({ assetId: asset.data.id, durationMinutes: 15 }, WORLD_OFFICER);
+  if (!madeChain.ok) { ok("17n6.0 · fixture · a live Up & Down round exists", false, String(madeChain.error)); return; }
+  await cfg.setChainState(madeChain.data.id, "RUNNING", WORLD_OFFICER);
+  const chain = await udd.chainStore.get(madeChain.data.id);
+  const secondChainMade = await cfg.createChain({ assetId: asset.data.id, durationMinutes: 30 }, WORLD_OFFICER);
+  if (!secondChainMade.ok) { ok("17n6.0b · fixture · a second live chain exists", false, String(secondChainMade.error)); return; }
+  await cfg.setChainState(secondChainMade.data.id, "RUNNING", WORLD_OFFICER);
+  const secondChain = await udd.chainStore.get(secondChainMade.data.id);
+  ok("17n6.0b · fixture · a second live chain exists", secondChain?.state === "RUNNING");
+  // The floor is deliberate: cleanGridAnchor rounds UP and can leave opensAt in the
+  // future, beyond the present bar's price lifetime even while the round is LIVE.
+  const boundary = new Date(Math.floor((Date.now() - 60_000) / (5 * 60_000)) * 5 * 60_000).toISOString();
+  const observation = await udd.observationStore.ensure(asset.data.id, boundary);
+  await udd.observationStore.confirm(observation.id, { price: 60_000, sourceUrl: "https://api.twelvedata.com/quote",
+    sourceQuotedAt: new Date().toISOString(), evidence: "BTC quoted 60000", confidence: 96,
+    model: "test-stub", rawHash: `n6_${process.pid}` });
+  const opened = await uds.openRound(chain, boundary, observation.id, 60_000);
+  ok("17n6.0 · fixture · a live Up & Down round exists", opened.ok === true, opened.ok ? "" : String(opened.error));
+  if (!opened.ok) return;
+  const round = await udd.roundStore.get(opened.data.id);
+  const marketId = round.marketId;
+  const first = await w.bot();
+  const second = await w.bot();
+  const sameHolder = await w.bot();
+  const third = await w.bot();
+  // The fixture's two holders have distinct typed identity facts. The product compares
+  // the same facts under its lock and refuses when either holder cannot be distinguished.
+  const identity = async (userId: string, fullName: string, dob: string) => {
+    const now = new Date().toISOString();
+    await w.db.kyc.upsert({ id: `kyc_${userId}`, userId, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
+      idType: null, idNumber: null, idVerifiedAt: null, fullName, dob, documents: [], extraRequests: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now });
+  };
+  await identity(first.userId, "Fixture Holder One", "1990-01-01");
+  await identity(second.userId, "Fixture Holder Two", "1991-01-01");
+  await identity(sameHolder.userId, "Fixture Holder One", "1990-01-01");
+  await identity(third.userId, "Fixture Holder Three", "1992-01-01");
+  const chainKey = `${asset.data.id}:15`;
+  const secondChainKey = `${asset.data.id}:30`;
+  const rulesFor = (share: Any) => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+    r.scope.products.updown = true;
+    r.scope.chains = [chainKey, secondChainKey];
+    r.modes.updown.opener = true;
+    r.updown.closenessPct = 100;
+    r.opener.delayUdMinSec = 1;
+    r.opener.delayUdMaxSec = 1;
+    r.shaping.roundToTzs = 1_000;
+    r.share = share;
+    return r;
+  };
+  for (const [b, share] of [[first, { otherSide: false, matchPct: 0, matchPerDay: 0 }],
+    [second, { otherSide: true, matchPct: 50, matchPerDay: 2 }],
+    [sameHolder, { otherSide: true, matchPct: 50, matchPerDay: 2 }],
+    [third, { otherSide: true, matchPct: 50, matchPerDay: 2 }]] as const) {
+    const cur: Any = await HDAL.houseBotStore.get(b.botId);
+    const saved = await HDAL.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules: rulesFor(share) });
+    if (!saved.ok) throw new Error("17n6: rules save failed");
+    await HDAL.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b.botId), { scopeFrom: new Date(Date.parse(boundary) - 1_000).toISOString() });
+  }
+  await HDAL.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: new Date(Date.parse(boundary) - 1_000).toISOString() });
+  const opener = await w.intent(first, marketId, { kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 10_000,
+    deadlineAt: new Date(Date.parse(boundary) + 15 * 60_000).toISOString(), staleAt: w.iso(60_000) });
+  const firstPlaced = await w.place(first, opener);
+  ok("17n6.1 · the first account's opener is placed and remains the only money on its side",
+    firstPlaced.ok === true && (await HDAL.houseBotIntentStore.get(opener.id))?.status === "PLACED"
+      && (await w.positionsOf(marketId)).filter((p: Any) => p.status === "OPEN").length === 1, j(firstPlaced));
+  if (!firstPlaced.ok) return;
+  VEN.publishOracleBar(asset.data.id, 60_000, new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString());
+  const parseCtx = await RC.loadParseContext();
+  const parsed = [];
+  for (const b of [first, second, sameHolder, third]) {
+    const bot: Any = await HDAL.houseBotStore.get(b.botId);
+    const r: Any = R.parseHouseBotRules(bot.rules, parseCtx);
+    if (!r.ok) throw new Error(`17n6: rules parse failed ${r.code}`);
+    parsed.push({ bot, rules: r.rules });
+  }
+  const control = await HDAL.houseBotControlStore.get();
+  const noBudget = await PL.planPairs((await HDAL.houseBotRuntimeStore.dbClock()).nowMs, EN2.engineState(),
+    { ...control, gCapPairRoundsPerDay: null }, parsed, { randomInt: (min: number) => min });
+  ok("17n6.2a · an empty desk round budget plans no pair", noBudget === 0
+    && (await HDAL.houseBotIntentStore.findByAnchor("PAIR", `pair:${marketId}`)) === null);
+  const sameOnly = await PL.planPairs((await HDAL.houseBotRuntimeStore.dbClock()).nowMs, EN2.engineState(), control,
+    [parsed[0], parsed[2]], { randomInt: (min: number) => min });
+  ok("17n6.2b · another account of the same holder cannot take the second side", sameOnly === 0
+    && (await HDAL.houseBotIntentStore.findByAnchor("PAIR", `pair:${marketId}`)) === null);
+  const planned = await PL.planPairs((await HDAL.houseBotRuntimeStore.dbClock()).nowMs, EN2.engineState(), control,
+    parsed.slice(0, 3), { randomInt: (min: number) => min });
+  const pair: Any = await HDAL.houseBotIntentStore.findByAnchor("PAIR", `pair:${marketId}`);
+  const pairCandidates = planned === 0 ? await HDAL.houseSeamStore.plannableMarkets({ kind: "PAIR", productLine: "UPDOWN",
+    fromIso: new Date(Date.now() + PL.PLANNER_MIN_CUTOFF_AHEAD_MS).toISOString(), toIso: null, after: null, limit: 200 }) : [];
+  const diagnostics = planned === 0 ? { same: await (await import("../../src/lib/server/house-bot/same-holder.ts")).sameHouseHolder(first.userId, second.userId),
+    held: await ENL.marketHeld(second.botId, marketId, { sideAwareSide: "NO" }),
+    view: await HDAL.houseSeamStore.marketView(marketId),
+    price: await UDP.udPriceForDecision(asset.data.id, { nowMs: Date.now() }),
+    rules: parsed[1].rules.share } : null;
+  ok("17n6.2 · planner gives the opposite side to the other holder at half the opener stake",
+    planned === 1 && pair?.status === "PENDING" && pair.houseBotId === second.botId && pair.side === "NO"
+      && pair.stakeTzs === 5_000 && pair.anchorKey === `pair:${marketId}`, j({ planned, pair: pair && [pair.status, pair.side, pair.stakeTzs], candidates: pairCandidates.length, diagnostics }));
+  if (!pair || pair.status !== "PENDING") return;
+  const claimed = await HDAL.houseBotIntentStore.claimById(pair.id, "n6");
+  const alerts = { placed: async () => {}, once: async () => {}, security: async () => {},
+    botStopped: async () => {}, switchedOff: async () => {} };
+  const refused = claimed ? await OC.applyOutcome({ intent: claimed, me: "n6",
+    answer: { ok: false, code: "REFUSED", reason: "house_cap_reached", detail: { cap: "BALANCE_FLOOR" } }, alerts }) : null;
+  const cancelled: Any = await HDAL.houseBotIntentStore.get(pair.id);
+  ok("17n6.2c · an account-owned refusal CANCELS the PAIR row for handoff, preserving its pair anchor",
+    refused?.kind === "terminal" && cancelled?.status === "CANCELLED" && cancelled.reasonCode === "CAP_BALANCE_FLOOR"
+      && cancelled.anchorKey === `pair:${marketId}`, j({ refused: refused?.kind, status: cancelled?.status, code: cancelled?.reasonCode }));
+  const replanned = await PL.planPairs((await HDAL.houseBotRuntimeStore.dbClock()).nowMs, EN2.engineState(), control,
+    parsed, { randomInt: (min: number) => min });
+  const next: Any = await HDAL.houseBotIntentStore.findByAnchor("PAIR", `pair:${marketId}`);
+  ok("17n6.2d · the next pass hands the same round to an untried different holder",
+    replanned === 1 && next?.status === "PENDING" && next.houseBotId === third.botId && next.side === "NO"
+      && next.stakeTzs === 5_000 && Array.isArray(next.decision?.triedBotIds)
+      && next.decision.triedBotIds.includes(second.botId),
+    j({ replanned, status: next?.status, handoff: next?.houseBotId === third.botId }));
+  if (!next || next.status !== "PENDING") return;
+  const nextClaimed = await HDAL.houseBotIntentStore.claimById(next.id, "n6");
+  const fired = nextClaimed ? await FI.fireClaimedIntent(nextClaimed, { me: "n6", alerts }) : null;
+  const final: Any = await HDAL.houseBotIntentStore.get(next.id);
+  const positions = (await w.positionsOf(marketId)).filter((p: Any) => p.status === "OPEN");
+  ok("17n6.3 · fire places the pair: two marked holders on opposite sides, neither stake exceeds the other",
+    fired?.kind === "outcome" && final?.status === "PLACED" && positions.length === 2
+      && positions.some((p: Any) => p.houseBotId === first.botId && p.side === "YES" && p.stake === 10_000)
+      && positions.some((p: Any) => p.houseBotId === third.botId && p.side === "NO" && p.stake === 5_000),
+    j({ fired: fired?.kind, status: final?.status, positions: positions.map((p: Any) => [p.side, p.stake]) }));
+  if (final?.status !== "PLACED") return;
+
+  // A second real round makes the budget and per-account daily ceilings observable AFTER one
+  // successful PAIR, without seeding fake PLACED rows or changing the production cap bounds.
+  const opened2 = await uds.openRound(secondChain, boundary, observation.id, 60_000);
+  ok("17n6.4 · fixture · a second round can test today's already-used pair budget", opened2.ok === true,
+    opened2.ok ? "" : String(opened2.error));
+  if (!opened2.ok) return;
+  const round2 = await udd.roundStore.get(opened2.data.id);
+  const market2 = round2.marketId;
+  const opener2 = await w.intent(first, market2, { kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 10_000,
+    deadlineAt: round2.closesAt, staleAt: w.iso(60_000) });
+  const placed2 = await w.place(first, opener2);
+  ok("17n6.4a · the second round has one marked opener before pairing limits are tested", placed2.ok === true, j(placed2));
+  if (!placed2.ok) return;
+  VEN.publishOracleBar(asset.data.id, 60_000, new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString());
+  const anchor2 = `pair:${market2}`;
+  const planAgain = (c: Any, bots: Any[]) => PL.planPairs(Date.now(), EN2.engineState(), c, bots,
+    { randomInt: (min: number) => min });
+  const noRounds = await planAgain({ ...control, gCapPairRoundsPerDay: 1 }, [parsed[0], parsed[1]]);
+  const noTzs = await planAgain({ ...control, gCapPairDailyTzs: 5_000 }, [parsed[0], parsed[1]]);
+  ok("17n6.4b · one placed pair uses a one-round desk budget and a 5,000 TZS desk budget; neither setting queues a second PAIR",
+    noRounds === 0 && noTzs === 0 && (await HDAL.houseBotIntentStore.findByAnchor("PAIR", anchor2)) === null,
+    j({ noRounds, noTzs }));
+  const noAccount = await planAgain(control, [parsed[0], { ...parsed[3], rules: {
+    ...parsed[3].rules, share: { ...parsed[3].rules.share, matchPerDay: 1 },
+  } }]);
+  ok("17n6.4c · the third holder's one placed pair uses its one-round-per-day rule, so it cannot take the second round",
+    noAccount === 0 && (await HDAL.houseBotIntentStore.findByAnchor("PAIR", anchor2)) === null,
+    j({ noAccount }));
+  const planned2 = await planAgain(control, [parsed[0], parsed[1]]);
+  const queued2: Any = await HDAL.houseBotIntentStore.findByAnchor("PAIR", anchor2);
+  ok("17n6.5a · a different holder may queue a second PAIR while the round has no player money",
+    planned2 === 1 && queued2?.status === "PENDING" && queued2.houseBotId === second.botId,
+    j({ planned2, status: queued2?.status ?? null }));
+  if (!queued2 || queued2.status !== "PENDING") return;
+  const player = await w.user({ balance: 1_000_000 });
+  const playerBet = await w.svc.buyPosition(player, { marketId: market2, side: "NO", stake: 1_000,
+    idempotencyKey: crypto.randomUUID() });
+  const claimed2 = await HDAL.houseBotIntentStore.claimById(queued2.id, "n6-player");
+  const out2 = claimed2 ? await FI.fireClaimedIntent(claimed2, { me: "n6-player", alerts }) : null;
+  const ended2: Any = await HDAL.houseBotIntentStore.get(queued2.id);
+  const afterPlayer = await w.positionsOf(market2);
+  ok("17n6.5b · a player's stake arriving after PAIR was queued makes its fire SKIPPED(CONDITION_GONE), with no second marked holder",
+    playerBet.ok === true && out2?.kind === "finished" && ended2?.status === "SKIPPED"
+      && ended2.reasonCode === "CONDITION_GONE" && afterPlayer.filter((p: Any) => p.houseBotId != null).length === 1,
+    j({ playerBet: playerBet.ok, fire: out2?.kind, status: ended2?.status, code: ended2?.reasonCode,
+      marked: afterPlayer.filter((p: Any) => p.houseBotId != null).length }));
 });
 
 /* ═══ §18 · the trigger: the post-commit hook and the sweep (PLAN §4.3, 04 A11, A12, A21, A24, R5, N2 §4; C4-SPEC rulings 90–110, 114–115) ═══ */

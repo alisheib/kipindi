@@ -241,6 +241,9 @@ export type ScopeDoc = {
 /** A `ScopeDoc` plus the two by-hand switches, which the reach and Start read as well. */
 export type EntryDoc = ScopeDoc & { enterNow: { enabled: boolean }; targeting: { enabled: boolean } };
 
+/** Start also considers the optional Up & Down pair route; old stored rules parse its leaves as off. */
+type PairEntryDoc = EntryDoc & Pick<HouseBotRulesV1, "share">;
+
 export const ROUND_TO_OPTIONS = [100, 500, 1000, 5000] as const;
 export type RoundToTzs = (typeof ROUND_TO_OPTIONS)[number];
 
@@ -295,6 +298,8 @@ export type HouseBotRulesV1 = {
   schedule: { days: Weekday[]; allDay: boolean; windows: ScheduleWindow[] };
   enterNow: { enabled: boolean; thinStakeTzs: number | null; openerStakeTzs: number | null };
   targeting: { enabled: boolean };
+  /** Both sharing routes start off for every existing and newly designated account. */
+  share: { otherSide: boolean; matchPct: number; matchPerDay: number };
   /**
    * Market cards (owner ruling, 2026-10-11 — docs/COMPLIANCE-DECISIONS.md, "A desk account may count as more than
    * one predictor in the count players see"). `countsAs` is how many predictors this account adds to the count
@@ -342,6 +347,8 @@ export const NULLABLE_LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
+  "gCapPairRoundsPerDay",
+  "gCapPairDailyTzs",
 ] as const;
 
 /** `HouseBotControl` limits that are NOT NULL with a seeded default. */
@@ -364,6 +371,8 @@ export const LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
+  "gCapPairRoundsPerDay",
+  "gCapPairDailyTzs",
 ] as const satisfies readonly (
   | (typeof NULLABLE_LIMIT_FIELDS)[number]
   | (typeof COUNT_LIMIT_FIELDS)[number]
@@ -423,6 +432,7 @@ export function DEFAULT_RULES_V1(ctx: Pick<RulesContext, "stakeBounds">): HouseB
     schedule: { days: [...WEEKDAYS], allDay: true, windows: [] },
     enterNow: { enabled: false, thinStakeTzs: null, openerStakeTzs: null },
     targeting: { enabled: false },
+    share: { otherSide: false, matchPct: 0, matchPerDay: 0 },
     display: { countsAs: 1 },
   };
 }
@@ -757,6 +767,10 @@ const RAW_FIELDS = {
     "Targets",
     "Targets use the Counter amount and trigger range below, and the staff-chosen limits.",
   ),
+  // Missing stored leaves take these off defaults; no enabled old mode can make them required.
+  "share.otherSide": toggle("rules", "Pairing", "Answer on the other side"),
+  "share.matchPct": num("rules", "Pairing", "Pair rounds · share of other stake", "%", 0, 100, { default: 0 }),
+  "share.matchPerDay": num("rules", "Pairing", "Pair rounds per day", "count", 0, 28_800, { default: 0 }),
   // Rules · market cards (owner ruling 2026-10-11). Display only: no mode reads it, so it has no `LEAF_USED_BY` entry
   // and a stored document without it reads as 1. Its sentence is the console's `CONSOLE_RULE_HELP` (no `hint` here:
   // the console paints a hint as a second line under the help).
@@ -835,9 +849,9 @@ const RAW_FIELDS = {
     nullable: true,
     recommended: 30_000,
   }),
-  gMaxBetsPerMinute: num("limits", "Global limits", "Bets per minute", "count", 1, 20, {
+  gMaxBetsPerMinute: num("limits", "Global limits", "Bets per minute", "count", 1, 120, {
     nullable: true,
-    recommended: 6,
+    recommended: 12,
     hint: "Rolling 60 seconds.",
   }),
   gMaxBetsPerDay: num("limits", "Global limits", "Bets per day", "count", 1, 28_800, {
@@ -859,7 +873,7 @@ const RAW_FIELDS = {
     TZS_RAIL_MAX,
     { nullable: true, recommended: 30_000, hint: RESETS_AT_MIDNIGHT_HINT },
   ),
-  maxDesignatedBots: num("limits", "Roster and alerts", "Max designated bots", "count", 1, 20, {
+  maxDesignatedBots: num("limits", "Roster and alerts", "Max designated bots", "count", 1, 100, {
     default: 5,
     recommended: 5,
   }),
@@ -886,6 +900,14 @@ const RAW_FIELDS = {
     nullable: true,
     recommended: 50,
     hint: "Enter now refuses when one player holds more than this share of the players' locked money it would add to. Not set = Enter now is off for every bot.",
+  }),
+  gCapPairRoundsPerDay: num("limits", "Pairing", "Two-sided desk bets per day", "count", 1, 28_800, {
+    nullable: true,
+    hint: "Empty = no two-sided desk play. Counts empty-round pairs and second-account Counter answers in the EAT day.",
+  }),
+  gCapPairDailyTzs: num("limits", "Pairing", "Two-sided desk TZS per day", "TZS", 0, TZS_RAIL_MAX, {
+    nullable: true,
+    hint: "Empty = no two-sided desk play. Counts the second account's stakes in empty-round pairs and Counter answers in the EAT day.",
   }),
 } satisfies Record<string, FieldSpec>;
 
@@ -974,6 +996,9 @@ export const CLEAR_EXEMPT = [
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
 ] as const satisfies readonly FieldId[];
+
+/** Clearing either desk pairing budget is its stop control, even with the desk on. */
+const CLEAR_WHILE_ON_TO_STOP_PAIRING = ["gCapPairRoundsPerDay", "gCapPairDailyTzs"] as const satisfies readonly LimitField[];
 
 export function isClearExempt(field: string): boolean {
   return (CLEAR_EXEMPT as readonly string[]).includes(field);
@@ -1612,6 +1637,15 @@ export const CROSS_FIELD_RULES = [
     messages: ["A pool maximum of 0 stops every counter: a counter answers a stake that is already in the pool, so the total is never 0. Leave it empty for no maximum."],
     source: "prod 2026-09-23",
   },
+  {
+    id: "R-PAIR-NEEDS-OTHER-SIDE",
+    scopes: ["RULES"],
+    kind: "REFUSE",
+    fields: ["share.matchPct", "share.otherSide"],
+    reportOn: "share.matchPct",
+    messages: ["Turn on Answer on the other side before setting a share for pair rounds."],
+    source: "2026-10-14 owner ruling, N6",
+  },
   /* ⛔ THE TWO SCOPE ROWS (prod finding 2026-09-22). An ACTIVE account on a switched-ON desk had matched nothing,
    * ever: both products ticked, both scope lists EMPTY, and the engine's predicate ends in `[].includes(x)`. No
    * screen wrote the lists and nothing refused the shape. Both rows are evaluated through `scopeShapeReasons` —
@@ -1925,6 +1959,7 @@ type RulesEvalInput = {
   amountKind: "PCT" | "FIXED";
   enterNow: boolean;
   targeting: boolean;
+  otherSide: boolean;
   limits: HouseBotLimits | null;
   label: string;
   prev: { status: string; caps: HouseBotCaps } | undefined;
@@ -1941,6 +1976,7 @@ const RULES_SCOPE_IDS = [
   "R-DAY-GE-HOUR",
   "R-POOL-BAND",
   "R-COUNTER-POOL-MAX-ZERO",
+  "R-PAIR-NEEDS-OTHER-SIDE",
   "R-PRODUCT-LIST",
   "R-MODE-PRODUCT",
   "N2-b",
@@ -2003,6 +2039,10 @@ const RULES_EVAL: Record<(typeof RULES_SCOPE_IDS)[number], (x: RulesEvalInput) =
   "R-COUNTER-POOL-MAX-ZERO": (x) =>
     x.num("scope.poolTotalMaxTzs") === 0 && (x.modes.updown.counter || x.modes.polls.counter)
       ? [{ field: "scope.poolTotalMaxTzs", message: ruleCopy("R-COUNTER-POOL-MAX-ZERO") }]
+      : [],
+  "R-PAIR-NEEDS-OTHER-SIDE": (x) =>
+    (x.num("share.matchPct") ?? 0) > 0 && !x.otherSide
+      ? [{ field: "share.matchPct", message: ruleCopy("R-PAIR-NEEDS-OTHER-SIDE") }]
       : [],
   "R-PRODUCT-LIST": (x) =>
     scopeShapeReasons(scopeDocOf(x), x.ctx)
@@ -2209,7 +2249,9 @@ const LIMITS_EVAL: Record<(typeof LIMITS_SCOPE_IDS)[number], (x: LimitsEvalInput
     const prev = x.prev;
     if (!prev || !prev.masterOn) return [];
     const prevLimits = prev.limits;
-    return NULLABLE_LIMIT_FIELDS.filter((k) => !isClearExempt(k) && prevLimits[k] !== null && x.unset(k)).map((k) => ({
+    return NULLABLE_LIMIT_FIELDS.filter((k) =>
+      !isClearExempt(k) && !(CLEAR_WHILE_ON_TO_STOP_PAIRING as readonly string[]).includes(k) && prevLimits[k] !== null && x.unset(k)
+    ).map((k) => ({
       field: k,
       message: ruleCopy("X-CLEAR-ON"),
     }));
@@ -2384,6 +2426,7 @@ export function validateHouseBotRules(
   };
   const enterNow = flag("enterNow.enabled");
   const targeting = flag("targeting.enabled");
+  const otherSide = flag("share.otherSide");
 
   const pickList = <T extends string>(path: FieldId, allowed: readonly T[]): T[] => {
     const v = getPath(raw, path);
@@ -2431,6 +2474,7 @@ export function validateHouseBotRules(
     amountKind,
     enterNow,
     targeting,
+    otherSide,
     limits: ctx.limits,
     label: input.label ?? prev?.label ?? DEFAULT_BOT_LABEL,
     prev,
@@ -2496,6 +2540,7 @@ export function validateHouseBotRules(
       openerStakeTzs: values.get("enterNow.openerStakeTzs") ?? null,
     },
     targeting: { enabled: targeting },
+    share: { otherSide, matchPct: n("share.matchPct"), matchPerDay: n("share.matchPerDay") },
     display: { countsAs: n("display.countsAs") },
   };
   const caps = {} as HouseBotCaps;
@@ -2739,6 +2784,11 @@ export function rulesReach(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "cate
   };
 }
 
+/** A pair-only account has a genuine route into a round only with all three leaves and a live chain. */
+function pairEntryReady(r: PairEntryDoc, ctx: Pick<RulesContext, "chains" | "categories">): boolean {
+  return r.share.otherSide && r.share.matchPct > 0 && r.share.matchPerDay > 0 && rulesReach(r, ctx).updown.chains.length > 0;
+}
+
 export type InertReasonCode =
   | "NO_PRODUCT"
   | "NO_MODE"
@@ -2814,28 +2864,29 @@ function scopeShapeReasons(r: EntryDoc, ctx: Pick<RulesContext, "chains" | "cate
 
 /**
  * Why this account cannot bet — one reason per cause, on the field that fixes it, in page order. Empty means it
- * can: every ticked product reaches a market with a mode that is on (or, for polls, a by-hand mode a screen can
- * press), no mode is on for a product that is off, and something is on at all.
+ * can: every ticked product reaches a market with a mode that is on (or, for Up & Down, a configured pair route;
+ * for polls, a by-hand mode a screen can press), no mode is on for a product that is off, and something is on at all.
  *
  * - NO_PRODUCT — neither product is ticked.
- * - NO_MODE — no automatic mode, and neither by-hand switch, is on (the per-product "no mode" reasons stand down:
- *   it is one fact).
+ * - NO_MODE — no ordinary mode, no configured pair route, and neither by-hand switch, is on (the per-product
+ *   "no mode" reasons stand down: it is one fact).
  * - PRODUCT_NO_LIST — a ticked product whose list reaches no member of the context (`rulesCoverTarget`, mode null).
- * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for polls only while no by-hand switch is
- *   on either, since Enter now and targets are polls entries.
+ * - PRODUCT_NO_MODE — a ticked product with none of its three modes on; for Up & Down a configured pair route
+ *   also counts, and for polls a by-hand switch counts only while a screen can press it.
  * - MODE_WITHOUT_PRODUCT — a mode on for a product that is off, one per mode.
  * - BY_HAND_NO_SCREEN — polls is on with no automatic polls mode, and the only entries on are by-hand switches no
  *   screen on this build can press (`opts.byHandScreens`, the honest default being `BY_HAND_SCREENS`).
  */
 export function rulesInertReasons(
-  r: EntryDoc,
+  r: PairEntryDoc,
   ctx: Pick<RulesContext, "chains" | "categories">,
   opts: { byHandScreens: ByHandScreens },
 ): InertReason[] {
   const out = scopeShapeReasons(r, ctx);
   const byHandOn = r.enterNow.enabled || r.targeting.enabled;
   const byHandUsable = (r.enterNow.enabled && opts.byHandScreens.enterNow) || (r.targeting.enabled && opts.byHandScreens.targeting);
-  const noEntryAtAll = !hasAnyEntryMode(r);
+  const pairReady = pairEntryReady(r, ctx);
+  const noEntryAtAll = !hasAnyEntryMode(r) && !pairReady;
   if (!r.scope.products.updown && !r.scope.products.polls) {
     out.push({ code: "NO_PRODUCT", field: "scope.products.updown", message: INERT_COPY.noProduct });
   }
@@ -2843,6 +2894,7 @@ export function rulesInertReasons(
   for (const product of SCOPE_PRODUCTS) {
     if (!r.scope.products[product] || noEntryAtAll) continue;
     if (ENTRY_MODES.some((mode) => r.modes[product][mode])) continue;
+    if (product === "updown" && pairReady) continue;
     if (product === "polls" && byHandOn) {
       if (!byHandUsable) {
         const both = r.enterNow.enabled && r.targeting.enabled;
@@ -2871,10 +2923,13 @@ export const START_COPY = {
 } as const;
 
 /**
- * The Start dialog's line when no automatic mode is on (N1 §5), or null when one is — or when
- * neither Enter now nor targets are on either, which Start refuses anyway.
+ * The Start dialog's line when no Counter, Fill or Opener mode is on (N1 §5), or null when
+ * none of the by-hand or pair routes is configured either, which Start refuses anyway.
  */
-export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; targets: boolean }): string | null => {
+export const NO_AUTOMATIC_MODE_LINE = (label: string, on: { enterNow: boolean; targets: boolean; pair?: boolean }): string | null => {
+  if (on.pair) {
+    return `${label} uses pairing as its only automatic entry: it can pair an empty Up & Down round only when the desk is on and both pair budgets allow.`;
+  }
   if (on.enterNow && on.targets) return `${label} has no automatic mode: it bets only when you press Enter now or a target reacts.`;
   if (on.enterNow) return `${label} has no automatic mode: it bets only when you press Enter now.`;
   if (on.targets) return `${label} has no automatic mode: it bets only when a target reacts.`;
@@ -2994,7 +3049,7 @@ export function rulesStartProblems(
 
   const warnings: string[] = [];
   if (!hasAnyAutomaticMode(r)) {
-    const line = NO_AUTOMATIC_MODE_LINE(label, { enterNow: r.enterNow.enabled, targets: r.targeting.enabled });
+    const line = NO_AUTOMATIC_MODE_LINE(label, { enterNow: r.enterNow.enabled, targets: r.targeting.enabled, pair: pairEntryReady(r, ctx) });
     if (line) warnings.push(line);
   }
   const timing = effectiveTiming(r, ctx);
@@ -3124,6 +3179,7 @@ function readStoredRulesV1(
     };
     const enterNowEnabled = bool("enterNow.enabled");
     const targetingEnabled = bool("targeting.enabled");
+    const otherSide = bool("share.otherSide");
     const state: ModeState = { modes, enterNow: enterNowEnabled, targeting: targetingEnabled };
 
     const strings = (path: string): string[] => {
@@ -3250,6 +3306,7 @@ function readStoredRulesV1(
       schedule: { days, allDay: bool("schedule.allDay"), windows },
       enterNow: { enabled: enterNowEnabled, thinStakeTzs: thin, openerStakeTzs: opener },
       targeting: { enabled: targetingEnabled },
+      share: { otherSide, matchPct: number("share.matchPct"), matchPerDay: number("share.matchPerDay") },
       display: { countsAs: number("display.countsAs") },
     };
 
@@ -3261,6 +3318,7 @@ function readStoredRulesV1(
       ["opener.delayPollsMinMin", rules.opener.delayPollsMinMin, rules.opener.delayPollsMaxMin],
       ["opener.stakeMinTzs", rules.opener.stakeMinTzs, rules.opener.stakeMaxTzs],
     ];
+    if (rules.share.matchPct > 0 && !rules.share.otherSide) invalidAt("share.matchPct");
     for (const [field, lo, hi] of ranges) {
       if (lo > hi && LEAF_USED_BY[field]?.(state)) invalidAt(field);
     }
@@ -3350,7 +3408,7 @@ function v0ToV1(json: Record<string, unknown>, ctx: ParseContext): Record<string
   for (const id of RULE_NUMBER_FIELDS) {
     // `display.*` did not exist in v0 and is left out, so it reads as its default (1). Clamping a stray value would
     // move it UP to the bound, and "Counts as" may never be raised by anything but an officer's save.
-    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.") || id.startsWith("display.")) continue;
+    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.") || id.startsWith("display.") || id.startsWith("share.")) continue;
     const fallback = getPath(defaults, id);
     setPath(out, id, clampStored(id, at(id), ctx.durations, typeof fallback === "number" ? fallback : null));
   }

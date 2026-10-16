@@ -102,7 +102,10 @@
  *     string was `const PORT = 5433;`, and `db-scratch.mts` had since made the port overridable, so the
  *     positive control (and the red proof's `ops.pop.walk`, 49/50) failed for a reason nobody read. Both
  *     now name the line the file really has; the red proof prints 50/50.
+ *   · memory 100, postgres 107 — N5 recovery: three driven preflight assertions prove a resolved
+ *     rolled-back attempt followed by a successful retry is GO, an unresolved attempt still gets
+ *     P3009 NO-GO, and removing only the scratch history rows restores GO.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 100, postgres: 104 }, dbPrefix: "hb_ops" });
+await runTwoStores({ suite: "test:house-bot-ops", casesFile: "scripts/lib/house-bot-ops-cases.mts", minPass: { memory: 100, postgres: 107 }, dbPrefix: "hb_ops" });

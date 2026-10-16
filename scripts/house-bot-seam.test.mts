@@ -237,6 +237,338 @@ await w.switchOn();
   })());
 }
 
+/* ═══ §3p · N6 — a PAIR row with no other open desk account fails closed inside the locks ═══ */
+section("§3p · N6 · a PAIR row without its opposite leg fails closed");
+{
+  // A row may lose its opposite leg between planning and H3. It must move no money.
+  const market = await w.poll({ graceMin: 0 });
+  const b = await w.bot();
+  const before = (await w.bal(b.userId)).balance;
+  const i = await w.intent(b, market.id, { kind: "PAIR", anchorKey: `pair:${market.id}`, productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 });
+  const r: Any = await w.place(b, i);
+  ok("3p.1 · a PAIR row is refused as a lost condition — CONDITION_GONE naming PAIR — inside the seam",
+    r.ok === false && r.reason === "house_condition_gone" && r.detail?.condition === "PAIR", `${r.reason} ${JSON.stringify(r.detail ?? null)}`);
+  ok("3p.2 · …and it moved no money", (await w.bal(b.userId)).balance === before);
+  // ⛔ CONTROL: the same account on the same market places an OPENER, so 3p.1 is the kind and not the fixture.
+  const o = await w.intent(b, market.id, { kind: "OPENER", side: "YES", stakeTzs: 1_000 });
+  const ro: Any = await w.place(b, o);
+  ok("3p.c1 · CONTROL · the same account places an OPENER on the same market", ro.ok === true, `${ro.code ?? ""} ${ro.reason ?? ""}`);
+}
+
+/* ═══ §3p2 · the PAIR's full market test runs under a real Up & Down round lock ════════════ */
+section("§3p2 · N6 · PAIR in-lock conditions");
+{
+  const cfg: Any = await import("../src/lib/server/updown-config.ts");
+  const uds: Any = await import("../src/lib/server/updown-service.ts");
+  const udd: Any = await import("../src/lib/server/updown-dal.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../src/lib/server/source-registry.ts");
+  const { houseH3 } = await import("../src/lib/server/house-bot/seam.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture", addedBy: "system" });
+  await w.limits({ gCapPairRoundsPerDay: 3, gCapPairDailyTzs: 30_000, gMaxBetsPerMinute: 120 });
+  const roundMarket = async (suffix: string) => {
+    const asset = await cfg.createAsset({ key: `S${process.pid}${suffix}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin",
+      iconKey: "crypto", priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2,
+      minMoveTicks: 2 }, OFFICER);
+    if (!asset.ok) throw new Error(`3p2 asset: ${asset.error}`);
+    await cfg.setAssetEnabled(asset.data.id, true, OFFICER);
+    const madeChain = await cfg.createChain({ assetId: asset.data.id, durationMinutes: 15 }, OFFICER);
+    if (!madeChain.ok) throw new Error(`3p2 chain: ${madeChain.error}`);
+    await cfg.setChainState(madeChain.data.id, "RUNNING", OFFICER);
+    const chain = await udd.chainStore.get(madeChain.data.id);
+    const boundary = new Date(cfg.cleanGridAnchor(Date.now() - 60_000)).toISOString();
+    const observation = await udd.observationStore.ensure(asset.data.id, boundary);
+    await udd.observationStore.confirm(observation.id, { price: 60_000, sourceUrl: "https://api.twelvedata.com/quote",
+      sourceQuotedAt: new Date().toISOString(), evidence: "BTC quoted 60000", confidence: 96,
+      model: "test-stub", rawHash: `seam_pair_${suffix}_${process.pid}` });
+    const round = await uds.openRound(chain, boundary, observation.id, 60_000);
+    if (!round.ok) throw new Error(`3p2 round: ${round.error}`);
+    return round.data.marketId as string;
+  };
+  const identity = async (userId: string, fullName: string, dob: string) => {
+    const now = new Date().toISOString();
+    await w.db.kyc.upsert({ id: `kyc_${userId}`, userId, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
+      idType: null, idNumber: null, idVerifiedAt: null, fullName, dob, documents: [], extraRequests: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now });
+  };
+  const openerBot = await w.bot();
+  const pairBot = await w.bot();
+  const sameHolderBot = await w.bot();
+  await identity(openerBot.userId, "Fixture Pair Holder One", "1990-01-02");
+  await identity(pairBot.userId, "Fixture Pair Holder Two", "1991-03-04");
+  await identity(sameHolderBot.userId, "Fixture Pair Holder One", "1990-01-02");
+  for (const b of [pairBot, sameHolderBot]) await w.setCaps(b.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 2 } } });
+  const first = await roundMarket("a");
+  const openedFirst: Any = await w.place(openerBot, await w.intent(openerBot, first, {
+    kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 10_000 }));
+  if (!openedFirst.ok) throw new Error(`3p2 first opener: ${openedFirst.reason ?? openedFirst.code}`);
+  const player = await w.user({ balance: 10_000 });
+  const playerBet: Any = await w.svc.buyPosition(player, { marketId: first, side: "NO", stake: 1_000,
+    idempotencyKey: crypto.randomUUID() });
+  if (!playerBet.ok) throw new Error(`3p2 player stake: ${playerBet.reason ?? playerBet.code}`);
+  const dirtyPair = await w.intent(pairBot, first, { kind: "PAIR", anchorKey: `pair:${first}`,
+    productLine: "UPDOWN", side: "NO", stakeTzs: 5_000 });
+  const dirty: Any = await w.place(pairBot, dirtyPair);
+  ok("3p2.1 · an OPEN player stake on either side kills a queued PAIR inside H3",
+    dirty.ok === false && dirty.reason === "house_condition_gone" && dirty.detail?.condition === "PAIR",
+    `${dirty.reason ?? dirty.code} ${JSON.stringify(dirty.detail ?? null)}`);
+  const dirtySameSide: Any = await houseH3({ tx: null,
+    ctx: { kind: "house", botId: pairBot.botId, intentId: dirtyPair.id },
+    intent: { ...dirtyPair, side: "YES" }, fresh: await w.svc.getMarket(first), side: "YES", stake: 5_000 });
+  ok("3p2.1b · player money ends a PAIR even if its requested side is also held by the other desk account",
+    dirtySameSide.refusal?.detail?.condition === "PAIR");
+
+  const second = await roundMarket("b");
+  const openedSecond: Any = await w.place(openerBot, await w.intent(openerBot, second, {
+    kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 10_000 }));
+  if (!openedSecond.ok) throw new Error(`3p2 second opener: ${openedSecond.reason ?? openedSecond.code}`);
+  const sameIntent = await w.intent(sameHolderBot, second, { kind: "PAIR", anchorKey: `pair:${second}`,
+    productLine: "UPDOWN", side: "NO", stakeTzs: 5_000 });
+  const same: Any = await w.place(sameHolderBot, sameIntent);
+  ok("3p2.2 · a second desk account with the opener's KYC name and DOB refuses SAME_HOLDER in H3",
+    same.ok === false && same.reason === "house_market_conflict" && same.detail?.conflict === "SAME_HOLDER",
+    `${same.reason ?? same.code} ${JSON.stringify(same.detail ?? null)}`);
+  await w.dal.houseBotIntentStore.cancelLive({ houseBotId: sameHolderBot.botId }, "CASE_DONE");
+  const pair = await w.intent(pairBot, second, { kind: "PAIR", anchorKey: `pair:${second}`,
+    productLine: "UPDOWN", side: "NO", stakeTzs: 5_000 });
+  const fresh = await w.svc.getMarket(second);
+  const context = { kind: "house" as const, botId: pairBot.botId, intentId: pair.id };
+  const sameSide: Any = await houseH3({ tx: null, ctx: context, intent: { ...pair, side: "YES" },
+    fresh, side: "YES", stake: 5_000 });
+  ok("3p2.3 · another desk account already holding YES blocks a same-side PAIR",
+    sameSide.refusal?.detail?.conflict === "OTHER_BOT");
+  const tooLarge: Any = await houseH3({ tx: null, ctx: context, intent: { ...pair, stakeTzs: 11_000 },
+    fresh, side: "NO", stake: 11_000 });
+  ok("3p2.4 · a PAIR stake larger than the opener's open stake loses its condition in H3",
+    tooLarge.refusal?.detail?.condition === "PAIR");
+  const aboveShare: Any = await houseH3({ tx: null, ctx: context, intent: { ...pair, stakeTzs: 6_000 },
+    fresh, side: "NO", stake: 6_000 });
+  ok("3p2.5 · a PAIR stake below the opposite 10,000 but above the current 50% share loses its condition in H3",
+    aboveShare.refusal?.detail?.condition === "PAIR");
+  const poolMismatch: Any = await houseH3({ tx: null, ctx: context, intent: pair,
+    fresh: { ...fresh, yesPool: 11_000 }, side: "NO", stake: 5_000 });
+  ok("3p2.6 · a pool that no longer equals the one other desk account's OPEN stake ends the PAIR condition",
+    poolMismatch.refusal?.detail?.condition === "PAIR");
+  const legal: Any = await w.place(pairBot, pair);
+  ok("3p2.c1 · CONTROL · a different holder legally places the opposite side at half the opener stake",
+    legal.ok === true && (await w.positionsOf(second)).some((p: Any) =>
+      p.houseBotId === pairBot.botId && p.side === "NO" && p.stake === 5_000),
+    legal.ok ? "placed" : `${legal.reason ?? legal.code}`);
+}
+
+/* ═══ §3h · two desk accounts must have different holders ═══════════════════════════════════ */
+section("§3h · N6 · different holders");
+{
+  const { sameHouseHolderFacts, sameHouseHolderFactSets } = await import("../src/lib/server/house-bot/same-holder.ts");
+  const a = { userId: "account_a", email: "a@example.test", emailVerified: true,
+    idType: "NIDA", idNumber: "doc-a", idFingerprint: "fp-a", documentVerified: true,
+    fullName: "Example Alpha", dob: "1990-01-02" };
+  const b = { ...a, userId: "account_b", email: "b@example.test", idNumber: "doc-b", idFingerprint: "fp-b",
+    fullName: "Example Beta", dob: "1991-03-04" };
+  ok("3h.1 · distinct confirmed identity facts permit two holders", !sameHouseHolderFacts(a, b));
+  ok("3h.2 · same verified document refuses the pair", sameHouseHolderFacts(a, { ...b, idFingerprint: a.idFingerprint }));
+  ok("3h.3 · same confirmed email refuses the pair", sameHouseHolderFacts(a, { ...b, email: "A@EXAMPLE.TEST" }));
+  ok("3h.4 · KYC-normalised name plus DOB refuses the pair", sameHouseHolderFacts(a, { ...b, fullName: "Alpha Example", dob: a.dob }));
+  ok("3h.5 · unconfirmed email alone does not claim two people are the same", !sameHouseHolderFacts(a, { ...b, email: a.email, emailVerified: false }));
+  ok("3h.6 · missing KYC identity fails closed", sameHouseHolderFacts(a, { ...b, fullName: null }));
+  ok("3h.7 · a prior matching KYC identity still refuses after one account corrected its latest submission",
+    sameHouseHolderFactSets([a], [b, { ...b, fullName: "Alpha Example", dob: a.dob }]));
+  ok("3h.c1 · CONTROL · changing a matching DOB makes the normalised-name pair distinct",
+    !sameHouseHolderFacts(a, { ...b, fullName: "Alpha Example", dob: "1992-01-02" }));
+  const { handoffStatus } = await import("../src/lib/server/house-bot/outcomes.ts");
+  ok("3h.8 · PAIR same-holder and ordinary account daily cap hand off to another account",
+    handoffStatus({ kind: "PAIR", targetId: null }, "SKIPPED", "SAME_HOLDER") === "CANCELLED"
+      && handoffStatus({ kind: "PAIR", targetId: null }, "SKIPPED", "CAP_PER_DAY") === "CANCELLED");
+  ok("3h.9 · pair-only budget codes do not hand a market on",
+    handoffStatus({ kind: "PAIR", targetId: null }, "SKIPPED", "CAP_PAIR_DAILY_TZS") === "SKIPPED"
+      && handoffStatus({ kind: "PAIR", targetId: null }, "SKIPPED", "CAP_PAIR_ACCOUNT_PER_DAY") === "SKIPPED");
+  ok("3h.10 · a COUNTER remains once-only even when its second desk account is the same holder",
+    handoffStatus({ kind: "COUNTER", targetId: null }, "SKIPPED", "SAME_HOLDER") === "SKIPPED");
+}
+
+/* ═══ §3c · an opted-in untargeted reaction may take the other desk side only ═══════════════ */
+section("§3c · N6 · a shared untargeted COUNTER is side-aware");
+{
+  const identity = async (userId: string, fullName: string, dob: string) => {
+    const now = new Date().toISOString();
+    await w.db.kyc.upsert({ id: `kyc_${userId}`, userId, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
+      idType: null, idNumber: null, idVerifiedAt: null, fullName, dob, documents: [], extraRequests: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now });
+  };
+  const anchor = await w.bot();
+  const reacting = await w.bot();
+  await identity(anchor.userId, "Fixture Counter Holder One", "1990-01-02");
+  await identity(reacting.userId, "Fixture Counter Holder Two", "1991-03-04");
+  await w.setCaps(reacting.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 2 } } });
+  await w.ageHouseMinute();
+
+  const make = async (playerSide: "YES" | "NO") => {
+    const market = await w.poll({ graceMin: 0 });
+    const opener = await w.intent(anchor, market.id, { kind: "OPENER", side: "YES", stakeTzs: 3_000 });
+    const opened: Any = await w.place(anchor, opener);
+    if (!opened.ok) throw new Error(`3c opener failed: ${opened.reason ?? opened.code}`);
+    const player = await w.user({ balance: 100_000 });
+    const trigger: Any = await w.svc.buyPosition(player, { marketId: market.id, side: playerSide,
+      stake: 5_000, idempotencyKey: crypto.randomUUID() });
+    if (!trigger.ok) throw new Error(`3c trigger failed: ${trigger.reason ?? trigger.code}`);
+    const side = playerSide === "YES" ? "NO" : "YES";
+    const intent = await w.intent(reacting, market.id, { kind: "COUNTER", side, stakeTzs: 1_000,
+      triggerPositionId: trigger.data.positionId, triggerUserId: player });
+    return { market, intent };
+  };
+
+  const blocked = await make("NO");
+  const before = (await w.bal(reacting.userId)).balance;
+  const sameSide: Any = await w.place(reacting, blocked.intent);
+  ok("3c.1 · an opted-in COUNTER cannot join another desk account on its YES side",
+    sameSide.ok === false && sameSide.reason === "house_market_conflict"
+      && sameSide.detail?.conflict === "OTHER_BOT" && (await w.bal(reacting.userId)).balance === before,
+    `${sameSide.reason ?? sameSide.code} ${JSON.stringify(sameSide.detail ?? null)}`);
+
+  const allowed = await make("YES");
+  const { houseH3, houseH4 } = await import("../src/lib/server/house-bot/seam.ts");
+  const h3: Any = await houseH3({ tx: null,
+    ctx: { kind: "house", botId: reacting.botId, intentId: allowed.intent.id },
+    intent: allowed.intent, fresh: await w.svc.getMarket(allowed.market.id), side: "NO", stake: 1_000 });
+  ok("3c.2 · H3 identifies the shared COUNTER as a second desk leg under the market lock",
+    h3.refusal === null && h3.twoSidedDesk === true);
+  const countBefore = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  const check = async () => houseH4({ tx: null,
+    ctx: { kind: "house", botId: reacting.botId, intentId: allowed.intent.id },
+    intent: allowed.intent, side: "NO", stake: 1_000, pool: h3.pool, twoSidedDesk: h3.twoSidedDesk }) as Promise<Any>;
+  await w.limits({ gCapPairRoundsPerDay: null,
+    gCapPairDailyTzs: countBefore.stakeTzs + 2_000, gMaxBetsPerMinute: 120 });
+  ok("3c.3 · clearing the desk's daily round budget blocks a shared COUNTER",
+    (await check()).refusal?.detail?.cap === "PAIR_ROUNDS_PER_DAY");
+  await w.limits({ gCapPairRoundsPerDay: countBefore.count + 2,
+    gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+  ok("3c.4 · clearing the desk's daily TZS budget blocks a shared COUNTER",
+    (await check()).refusal?.detail?.cap === "PAIR_DAILY_TZS");
+  await w.limits({ gCapPairRoundsPerDay: countBefore.count + 2,
+    gCapPairDailyTzs: countBefore.stakeTzs + 2_000, gMaxBetsPerMinute: 120 });
+  const oppositeSide: Any = await w.place(reacting, allowed.intent);
+  ok("3c.c1 · CONTROL · the same opted-in account may counter on the opposite desk side",
+    oppositeSide.ok === true && (await w.positionsOf(allowed.market.id)).some((p: Any) =>
+      p.houseBotId === reacting.botId && p.side === "NO"), `${oppositeSide.reason ?? oppositeSide.code ?? "placed"}`);
+  const stored = await w.dal.houseBotIntentStore.get(allowed.intent.id);
+  const countAfter = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.5 · shared COUNTER is durably marked and consumes one desk round and its TZS stake",
+    stored?.status === "PLACED" && stored.decision.twoSidedDesk === true
+      && countAfter.count === countBefore.count + 1 && countAfter.stakeTzs === countBefore.stakeTzs + 1_000);
+
+  await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+  const unsharedMarket = await w.poll({ graceMin: 0 });
+  const unsharedPlayer = await w.user({ balance: 100_000 });
+  const unsharedTrigger: Any = await w.svc.buyPosition(unsharedPlayer, { marketId: unsharedMarket.id,
+    side: "YES", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+  if (!unsharedTrigger.ok) throw new Error(`3c unshared trigger failed: ${unsharedTrigger.reason ?? unsharedTrigger.code}`);
+  const unsharedBot = await w.bot();
+  const unsharedIntent = await w.intent(unsharedBot, unsharedMarket.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
+    triggerPositionId: unsharedTrigger.data.positionId, triggerUserId: unsharedPlayer });
+  const unshared: Any = await w.place(unsharedBot, unsharedIntent);
+  const unsharedStored = await w.dal.houseBotIntentStore.get(unsharedIntent.id);
+  const afterUnshared = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.6 · a player-only COUNTER still places while both desk two-sided budgets are empty",
+    unshared.ok === true && unsharedStored?.status === "PLACED" && unsharedStored.decision.twoSidedDesk !== true
+      && afterUnshared.count === countAfter.count && afterUnshared.stakeTzs === countAfter.stakeTzs,
+    `${unshared.reason ?? unshared.code ?? "placed"}`);
+  const undoMarket = await w.poll({ graceMin: 0 });
+  const undoIntent = await w.intent(reacting, undoMarket.id, { kind: "COUNTER", side: "NO", stakeTzs: 1_000,
+    triggerPositionId: `fixture_undo_trigger_${process.pid}`, triggerUserId: unsharedPlayer });
+  const undoPositionId = `fixture_undo_position_${process.pid}`;
+  const marked = await w.dal.houseBotIntentStore.markPlaced(undoIntent.id, undoPositionId, null, { twoSidedDesk: true });
+  const reverted = await w.dal.houseSeamStore.revertPlacedInMemory(undoIntent.id, undoPositionId);
+  const undone = await w.dal.houseBotIntentStore.get(undoIntent.id);
+  const afterUndo = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  ok("3c.7 · memory no-funds compensation removes a second-leg marker with the rolled-back placement",
+    marked && reverted && undone?.status === "CLAIMED" && undone.decision.twoSidedDesk !== true
+      && afterUndo.count === afterUnshared.count && afterUndo.stakeTzs === afterUnshared.stakeTzs);
+}
+
+/* ═══ §3b · both kinds share one H4 desk budget under the control lock ════════════════════════ */
+section("§3b · N6 · shared second-leg daily budgets");
+{
+  const { houseH4 } = await import("../src/lib/server/house-bot/seam.ts");
+  const b = await w.bot();
+  await w.setCaps(b.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 2 } } });
+  const m = await w.poll({ graceMin: 0 });
+  const i = await w.intent(b, m.id, { kind: "PAIR", anchorKey: `pair:${m.id}`,
+    productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 });
+  const baseline = await w.dal.houseBotIntentStore.twoSidedPlacedToday({});
+  const pairOnly = await w.dal.houseBotIntentStore.pairPlacedToday({ houseBotId: null });
+  const check = async () => houseH4({ tx: null, ctx: { kind: "house", botId: b.botId, intentId: i.id },
+    intent: i, side: "YES", stake: 1_000, pool: null, twoSidedDesk: true }) as Promise<Any>;
+  const cap = (r: Any) => r.refusal?.detail?.cap;
+  ok("3b.0 · the desk aggregate includes the marked COUNTER but the account PAIR aggregate does not",
+    baseline.count === pairOnly.count + 1 && baseline.stakeTzs === pairOnly.stakeTzs + 1_000);
+  await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.1 · an empty pair-round budget refuses at H4", cap(await check()) === "PAIR_ROUNDS_PER_DAY");
+  await w.limits({ gCapPairRoundsPerDay: baseline.count + 2, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+  ok("3b.2 · an empty pair-stake budget refuses at H4", cap(await check()) === "PAIR_DAILY_TZS");
+  await w.limits({ gCapPairRoundsPerDay: baseline.count + 2,
+    gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.c1 · CONTROL · a fresh pair under both budgets passes H4", (await check()).refusal === null);
+  await w.limits({ gCapPairRoundsPerDay: baseline.count,
+    gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.2b · the prior marked COUNTER shares the daily count budget with a later PAIR",
+    cap(await check()) === "PAIR_ROUNDS_PER_DAY");
+
+  const priorMarket = await w.poll({ graceMin: 0 });
+  const prior = await w.intent(b, priorMarket.id, { kind: "PAIR", anchorKey: `pair:${priorMarket.id}`,
+    productLine: "UPDOWN", side: "NO", stakeTzs: 1_000 });
+  if (!(await w.dal.houseBotIntentStore.markPlaced(prior.id, `pos_pair_budget_${process.pid}`, null))) {
+    throw new Error("3b: could not seed the prior placed pair");
+  }
+  await w.limits({ gCapPairRoundsPerDay: baseline.count + 1,
+    gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.3 · a newly placed pair exhausts the desk's remaining round budget", cap(await check()) === "PAIR_ROUNDS_PER_DAY");
+  await w.limits({ gCapPairRoundsPerDay: baseline.count + 2,
+    gCapPairDailyTzs: baseline.stakeTzs + 1_000, gMaxBetsPerMinute: 120 });
+  ok("3b.4 · the prior 1,000 leaves no room in the desk's pair TZS budget",
+    cap(await check()) === "PAIR_DAILY_TZS");
+  await w.setCaps(b.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 1 } } });
+  await w.limits({ gCapPairRoundsPerDay: baseline.count + 2,
+    gCapPairDailyTzs: baseline.stakeTzs + 5_000, gMaxBetsPerMinute: 120 });
+  ok("3b.5 · the account's one-pair-per-day setting refuses its second pair",
+    cap(await check()) === "PAIR_ACCOUNT_PER_DAY");
+  await w.setCaps(b.botId, { rules: { schemaVersion: 1,
+    share: { otherSide: true, matchPct: 50, matchPerDay: 28_801 } } });
+  ok("3b.6 · a malformed raw daily account limit cannot open the in-lock PAIR gate",
+    cap(await check()) === "PAIR_ACCOUNT_PER_DAY");
+  await w.limits({ gCapPairRoundsPerDay: null, gCapPairDailyTzs: null, gMaxBetsPerMinute: 120 });
+}
+
+/* ═══ §3d · planning counts the EAT day in which a PAIR can fire ══════════════════════════ */
+section("§3d · N6 · PAIR reservation day at EAT midnight");
+{
+  const { pairCapPrecheck } = await import("../src/lib/server/house-bot/pair-cap-precheck.ts");
+  const b = await w.bot();
+  const control: Any = { ...await w.dal.houseBotControlStore.get(),
+    gCapPairRoundsPerDay: 1, gCapPairDailyTzs: 10_000 };
+  const rules: Any = { share: { matchPerDay: 1 } };
+  const beforeMidnight = "2099-09-16T20:59:59.000Z";
+  const midnight = "2099-09-16T21:00:00.000Z"; // 00:00:00 in EAT.
+  const check = (at: string) => pairCapPrecheck({ control, houseBotId: b.botId, rules,
+    stakeTzs: 1_000, nowMs: Date.parse(at) });
+  const m1 = await w.poll({ graceMin: 0 });
+  await w.intent(b, m1.id, { kind: "PAIR", anchorKey: `pair:${m1.id}`, productLine: "UPDOWN",
+    dueAt: beforeMidnight, staleAt: midnight, deadlineAt: "2099-09-17T00:00:00.000Z" });
+  ok("3d.1 · a reservation expiring exactly at EAT midnight uses the old day's pair budget only",
+    (await check(beforeMidnight)) === "CAP_PAIR_ROUNDS_PER_DAY" && (await check(midnight)) === null);
+  await w.dal.houseBotIntentStore.cancelLive({ houseBotId: b.botId }, "CASE_DONE");
+  const dueTomorrow = "2099-09-16T21:00:10.000Z";
+  const m2 = await w.poll({ graceMin: 0 });
+  await w.intent(b, m2.id, { kind: "PAIR", anchorKey: `pair:${m2.id}`, productLine: "UPDOWN",
+    dueAt: dueTomorrow, staleAt: "2099-09-16T21:01:00.000Z", deadlineAt: "2099-09-17T00:00:00.000Z" });
+  ok("3d.2 · a row due just after EAT midnight consumes the new day's budget, not the pass day's",
+    (await check(beforeMidnight)) === null && (await check(dueTomorrow)) === "CAP_PAIR_ROUNDS_PER_DAY");
+  await w.dal.houseBotIntentStore.cancelLive({ houseBotId: b.botId }, "CASE_DONE");
+}
+
 /* ═══ §4 · SEAM sites — no house branch outside an anchored site (04 F3) ════════════════════════ */
 section("§4 · SEAM sites");
 {
@@ -564,7 +896,8 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-seam: ${pas
  * The floor below is the count `npm run test:house-bot-seam` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
  * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
  */
-const MIN_ASSERTIONS = 98;
+/* N6: 143/0 printed on 2026-10-15 after side, holder, percentage, pool and shared two-sided cap cases. */
+const MIN_ASSERTIONS = 143;
 if (pass < MIN_ASSERTIONS) {
   console.error(`\n!! FLOOR — test:house-bot-seam ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);

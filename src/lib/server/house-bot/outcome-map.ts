@@ -41,7 +41,7 @@ export type OutcomeAction =
   | { kind: "rereadMarketOrAccount" }
   /** Re-read the market: not LIVE → SKIPPED(MARKET_NOT_LIVE), else EXPIRED(CUTOFF) (A10). */
   | { kind: "rereadMarketLive" }
-  /** `house_market_conflict{…}`: OPPOSITE_SIDE → SKIPPED(CAP_OPPOSITE_SIDE), the others → MARKET_HELD (N1 §4.6). */
+  /** `house_market_conflict{…}`: OPPOSITE_SIDE → CAP_OPPOSITE_SIDE, SAME_HOLDER → hand-off, others → MARKET_HELD. */
   | { kind: "conflict" }
   /** `house_cap_reached{code}`: a rate cap defers when its window frees before `staleAt`, else SKIPPED(CAP_<code>). */
   | { kind: "cap" };

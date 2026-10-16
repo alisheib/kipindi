@@ -19,8 +19,8 @@
  * unique to its case. Case order still matters where a case says so (c06 runs the STALE pass).
  *
  * Two places a fixture is PLANTED differently per store, because the DAL offers no way to write a
- * backdated row (and must not): the old AlertOnce keys in c18. The behaviour under test — the purge —
- * is the DAL's on both sides.
+ * backdated row (and must not): the old AlertOnce keys in c18 and tied anchor timestamps in c04p.m.
+ * The behaviour under test is the DAL's on both sides.
  *
  * Not covered here, on purpose:
  *   · `houseBotSchemaReady()` lands in build commit 4; its cases join this list then.
@@ -65,16 +65,18 @@ export const LIMIT_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCapDailyLossTzs", 0, 1_000_000_000],
   ["gCapOpenExposureTzs", 0, 1_000_000_000],
   ["gCapPerMarketTzs", 0, 1_000_000_000],
-  ["gMaxBetsPerMinute", 1, 20],
+  ["gMaxBetsPerMinute", 1, 120], // N5: 20 → 120
   ["gMaxBetsPerDay", 1, 28_800],
   ["gCounterPerPlayerPerDay", 1, 1_440],
   ["gCounterPerPlayerTzsPerDay", 0, 1_000_000_000],
-  ["maxDesignatedBots", 1, 20],
+  ["maxDesignatedBots", 1, 100], // N5: 20 → 100 (Ali, 2026-10-14)
   ["bellAlertsPerHour", 0, 60],
   ["gCapStaffChosenPerDay", 1, 200],
   ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
   ["gTargetsMaxActive", 1, 200],
   ["gStaffChosenMaxCounterpartyShare", 10, 100],
+  ["gCapPairRoundsPerDay", 1, 28_800],
+  ["gCapPairDailyTzs", 0, 1_000_000_000],
 ];
 
 /** A press id in the browser's `crypto.randomUUID()` shape, fixed per case. */
@@ -124,6 +126,35 @@ function buildExpected(): Record<string, string> {
     "c04.d claim and skip the re-plan": "CLAIMED:true",
     "c04.e re-plan after SKIPPED": "unique:hbi_fill_opener_anchor_uq",
     "c04.f an OPENER on the same market is its own anchor": "PENDING",
+    // c04p · N5 · PAIR — one live pair per Up & Down round, planned again only after CANCELLED (FILL/OPENER's rule)
+    "c04p.a PAIR planned": "PENDING",
+    "c04p.b a second live PAIR on the round": "unique:hbi_pair_anchor_uq",
+    "c04p.c the sweep insert swallows the same clash": "null",
+    "c04p.d cancel it": "CANCELLED",
+    "c04p.e re-plan after CANCELLED": "PENDING",
+    "c04p.f claim and skip the re-plan": "CLAIMED:true",
+    "c04p.g re-plan after SKIPPED": "unique:hbi_pair_anchor_uq",
+    "c04p.h a FILL and an OPENER on the same round are their own anchors": "PENDING:PENDING",
+    "c04p.i a COUNTER clash still names the counter index, never the pair one": "unique:hbi_counter_anchor_uq",
+    "c04p.j PLACED PAIR usage follows the caller's EAT day": "1:1700|0:0",
+    "c04p.k live PAIR reservations follow their due EAT day": "1:2300|0:0",
+    "c04p.l a live PAIR crossing EAT midnight reserves the next day too": "1:1200|0:0",
+    "c04p.m a live PAIR wins a timestamp tie with its cancelled predecessor": "PENDING:true",
+    "c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow": "1:0",
+    "c04p.o the desk budget counts PAIR and marked COUNTER, not ordinary COUNTER, on each EAT day": "2:2200|1:900|1:1700",
+    "c04p.p markPlaced keeps the decision and atomically marks a shared COUNTER": "true:PLACED:true:keep",
+    // c04q · N6 · the PAIR seam's exact two-store outputs (not only the planner's eventual result)
+    "c04q.a one-sided live rounds are PAIR candidates on both sides": "mkt_c04q_no:true,mkt_c04q_yes:true",
+    "c04q.b a live PAIR anchor removes only its own round": "mkt_c04q_yes:true",
+    "c04q.c a normally cancelled PAIR makes its round plannable again": "mkt_c04q_no:true,mkt_c04q_yes:true",
+    "c04q.d an admin-cancelled PAIR keeps its round excluded": "mkt_c04q_yes:true",
+    "c04q.e a disabled asset removes every PAIR candidate": "none",
+    "c04q.f a stopped chain removes every PAIR candidate": "none",
+    "c04q.g empty market usage has no marked side": "0:false:false:0:null:null:0:false:false:0",
+    "c04q.h a marked YES stake identifies the other holder and YES side": "1:true:false:1:hb_c04q_first:usr_c04q_first:1000:false:false:1000",
+    "c04q.i a second NO stake by that bot marks both sides but one holder": "1:true:true:1:hb_c04q_first:usr_c04q_first:3000:false:false:3000",
+    "c04q.j a different bot on NO removes the single-holder identity": "1:true:true:2:null:null:7000:false:false:7000",
+    "c04q.k player and own stakes are distinct; closed stakes do not count": "1:true:true:2:null:null:7000:true:true:7600",
     // c05 · a press id is used once, ever
     "c05.a Enter now queued": "PENDING",
     "c05.b cancel it": "CANCELLED",
@@ -186,6 +217,9 @@ function buildExpected(): Record<string, string> {
     "c10.g a zero stake": "check:HouseBotIntent_stakeTzs_check",
     "c10.h a PLACED row without its position": "check:HouseBotIntent_placed_check",
     "c10.i a fractional stake is refused before the database could round it": "error:house-bot-dal: HouseBotIntent.stakeTzs must be a whole number",
+    "c10.j a PAIR whose anchor is not pair:<its market>": "check:HouseBotIntent_pair_anchor_check",
+    "c10.k a PAIR on a poll": "check:HouseBotIntent_pair_updown_check",
+    "c10.l a kind outside the list": "check:HouseBotIntent_kind_check",
     // c11 · BIGINT round trip
     "c11.a a BIGINT bot cap reads back as a number": "true:number:1000000000",
     "c11.b BIGINT limits read back as numbers": "number:1000000000:number:1000000000",
@@ -198,6 +232,7 @@ function buildExpected(): Record<string, string> {
     "c12.d P2002 with a field list names nothing": "null",
     "c12.e a message naming two house indexes names nothing": "null",
     "c12.f a name inside a longer identifier is not that name": "null",
+    "c12.i a raw-SQL PAIR violation names the pair index": "hbi_pair_anchor_uq",
     "c12.g a CHECK violation names its constraint": "HouseBot_label_check",
     "c12.h a unique violation is not a CHECK": "null",
     // c13 · the claim
@@ -335,6 +370,7 @@ async function runCases(): Promise<void> {
   const dal: Any = await import("../../src/lib/server/house-bot-dal.ts");
   const { db }: Any = await import("../../src/lib/server/store.ts");
   const { marketStore, positionStore }: Any = await import("../../src/lib/server/market-dal.ts");
+  const { assetStore, chainStore, roundStore }: Any = await import("../../src/lib/server/updown-dal.ts");
   const book: Any = await import("../../src/lib/server/house-bot/book.ts");
   const { labelKey }: Any = await import("../../src/lib/house-bot/rules.ts");
   const { manualAnchorKey }: Any = await import("../../src/lib/house-bot/constants.ts");
@@ -423,6 +459,9 @@ async function runCases(): Promise<void> {
     intent({ id, kind: "COUNTER", anchorKey: pos, triggerPositionId: pos, marketId: `mkt_${id}`, ...o });
   const fill = (id: string, marketId: string, o: Record<string, unknown> = {}) =>
     intent({ id, kind: "FILL", anchorKey: marketId, marketId, ...o });
+  /** N5 · a PAIR is the second leg of an Up & Down round: its anchor is `pair:<market>` by CHECK. */
+  const pair = (id: string, marketId: string, o: Record<string, unknown> = {}) =>
+    intent({ id, kind: "PAIR", anchorKey: `pair:${marketId}`, marketId, productLine: "UPDOWN", ...o });
   const manual = (id: string, marketId: string, submitId: string, o: Record<string, unknown> = {}) =>
     intent({ id, kind: "MANUAL", anchorKey: manualAnchorKey(OFFICER, submitId), marketId, requestedById: OFFICER, entryCondition: "THIN", ...o });
   const claimAndSkip = async (id: string, me: string): Promise<string> => {
@@ -503,6 +542,169 @@ async function runCases(): Promise<void> {
     await rec("c04.e re-plan after SKIPPED", async () => (await intents.insert(fill("hbi_c04c", "mkt_c04"))).status);
     await rec("c04.f an OPENER on the same market is its own anchor", async () =>
       (await intents.insert(intent({ id: "hbi_c04d", kind: "OPENER", anchorKey: "mkt_c04", marketId: "mkt_c04" }))).status);
+  });
+
+  // ── c04p · N5 · PAIR — one live pair per round, planned again only after CANCELLED ───────────
+  // ⛔ Both PAIR and COUNTER keep a unique index on "anchorKey", so a duplicate on either must be told apart by NAME on the
+  // memory twin too (UNIQUE_BY_KEY reads the `pair:` prefix): c04p.b and c04p.i are the two directions.
+  await group("c04p", async () => {
+    await rec("c04p.a PAIR planned", async () => (await intents.insert(pair("hbi_c04pa", "mkt_c04p"))).status);
+    await rec("c04p.b a second live PAIR on the round", async () => (await intents.insert(pair("hbi_c04pb", "mkt_c04p"))).status);
+    await rec("c04p.c the sweep insert swallows the same clash", () => intents.insertIgnoringConflict(pair("hbi_c04pc", "mkt_c04p")));
+    await rec("c04p.d cancel it", async () => (await intents.cancelPending("hbi_c04pa", "CASE"))?.status ?? null);
+    await rec("c04p.e re-plan after CANCELLED", async () => (await intents.insert(pair("hbi_c04pd", "mkt_c04p"))).status);
+    await rec("c04p.f claim and skip the re-plan", () => claimAndSkip("hbi_c04pd", "w_c04p"));
+    await rec("c04p.g re-plan after SKIPPED", async () => (await intents.insert(pair("hbi_c04pe", "mkt_c04p"))).status);
+    await rec("c04p.h a FILL and an OPENER on the same round are their own anchors", async () => {
+      const f = await intents.insert(intent({ id: "hbi_c04pf", kind: "FILL", anchorKey: "mkt_c04p", marketId: "mkt_c04p", productLine: "UPDOWN" }));
+      const o = await intents.insert(intent({ id: "hbi_c04pg", kind: "OPENER", anchorKey: "mkt_c04p", marketId: "mkt_c04p", productLine: "UPDOWN" }));
+      return `${f.status}:${o.status}`;
+    });
+    await rec("c04p.i a COUNTER clash still names the counter index, never the pair one", async () => {
+      await intents.insert(counter("hbi_c04ph", "pos_c04p"));
+      return (await intents.insert(counter("hbi_c04pi", "pos_c04p"))).status;
+    });
+    await intents.insert(pair("hbi_c04pj", "mkt_c04pj", { status: "PLACED", stakeTzs: 1_700,
+      positionId: "pos_c04pj", finishedAt: "2026-09-14T10:00:00.000Z" }));
+    await rec("c04p.j PLACED PAIR usage follows the caller's EAT day", async () => {
+      const on = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-14" });
+      const off = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-15" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    await intents.insert(pair("hbi_c04pk", "mkt_c04pk", { stakeTzs: 2_300,
+      dueAt: "2099-09-14T10:00:00.000Z", deadlineAt: "2099-09-14T12:00:00.000Z", staleAt: "2099-09-14T12:00:00.000Z" }));
+    await rec("c04p.k live PAIR reservations follow their due EAT day", async () => {
+      const on = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-14" });
+      const off = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-15" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    await intents.insert(pair("hbi_c04pl", "mkt_c04pl", { stakeTzs: 1_200,
+      dueAt: "2099-09-14T20:59:45.000Z", deadlineAt: "2099-09-14T21:00:15.000Z", staleAt: "2099-09-14T21:00:15.000Z" }));
+    await rec("c04p.l a live PAIR crossing EAT midnight reserves the next day too", async () => {
+      const on = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-15" });
+      const off = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-16" });
+      return `${on.count}:${on.stakeTzs}|${off.count}:${off.stakeTzs}`;
+    });
+    // Both rows share an exact creation instant; the cancelled id sorts AFTER the
+    // new id. A plain timestamp/id reader would hand the planner the cancelled row.
+    const oldId = "hbi_c04pm_z", newId = "hbi_c04pm_a", anchor = "mkt_c04pm";
+    await intents.insert(pair(oldId, anchor));
+    await intents.cancelPending(oldId, "CASE");
+    await intents.insert(pair(newId, anchor));
+    const tiedAt = "2026-09-14T10:00:00.000Z";
+    if (onPostgres) {
+      await prisma().$executeRawUnsafe(`UPDATE "HouseBotIntent" SET "createdAt" = $1::timestamp WHERE "id" IN ($2::text, $3::text)`,
+        tiedAt, oldId, newId);
+    } else {
+      const map = (globalThis as Any).__50PICK_HB_INTENTS as Map<string, Any>;
+      map.get(oldId).createdAt = tiedAt;
+      map.get(newId).createdAt = tiedAt;
+    }
+    await rec("c04p.m a live PAIR wins a timestamp tie with its cancelled predecessor", async () => {
+      const found = await intents.findByAnchor("PAIR", `pair:${anchor}`);
+      return `${found?.status}:${found?.id === newId && oldId > newId}`;
+    });
+    await intents.insert(pair("hbi_c04pn", "mkt_c04pn", { stakeTzs: 1_000,
+      dueAt: "2099-09-16T20:59:45.000Z", deadlineAt: "2099-09-16T21:00:00.000Z",
+      staleAt: "2099-09-16T21:00:00.000Z" }));
+    await rec("c04p.n a PAIR expiring exactly at EAT midnight does not reserve tomorrow", async () => {
+      const before = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-16" });
+      const after = await intents.pairLiveToday({ houseBotId: null, dayKey: "2099-09-17" });
+      return `${before.count}:${after.count}`;
+    });
+    await intents.insert(counter("hbi_c04po", "pos_c04po_trigger", { status: "PLACED", stakeTzs: 500,
+      positionId: "pos_c04po", finishedAt: "2026-09-14T20:59:59.999Z", decision: { twoSidedDesk: true } }));
+    await intents.insert(counter("hbi_c04pp", "pos_c04pp_trigger", { status: "PLACED", stakeTzs: 800,
+      positionId: "pos_c04pp", finishedAt: "2026-09-14T20:59:59.999Z" }));
+    await intents.insert(counter("hbi_c04pq", "pos_c04pq_trigger", { status: "PLACED", stakeTzs: 900,
+      positionId: "pos_c04pq", finishedAt: "2026-09-14T21:00:00.000Z", decision: { twoSidedDesk: true } }));
+    await rec("c04p.o the desk budget counts PAIR and marked COUNTER, not ordinary COUNTER, on each EAT day", async () => {
+      const first = await intents.twoSidedPlacedToday({ dayKey: "2026-09-14" });
+      const second = await intents.twoSidedPlacedToday({ dayKey: "2026-09-15" });
+      const pairOnly = await intents.pairPlacedToday({ houseBotId: null, dayKey: "2026-09-14" });
+      return `${first.count}:${first.stakeTzs}|${second.count}:${second.stakeTzs}|${pairOnly.count}:${pairOnly.stakeTzs}`;
+    });
+    const marked = counter("hbi_c04pr", "pos_c04pr_trigger", {
+      dueAt: fromNow(-1_000), decision: { note: "keep" },
+    });
+    await intents.insert(marked);
+    await intents.claimById(marked.id, "w_c04pr");
+    await rec("c04p.p markPlaced keeps the decision and atomically marks a shared COUNTER", async () => {
+      const didMark = await intents.markPlaced(marked.id, "pos_c04pr", null, { twoSidedDesk: true });
+      const read = await intents.get(marked.id);
+      return `${didMark}:${read?.status}:${read?.decision?.twoSidedDesk}:${read?.decision?.note}`;
+    });
+  });
+
+  // ── c04q · N6 · PAIR candidate and per-side money reads, same answers on both stores ────
+  await group("c04q", async () => {
+    const now = new Date().toISOString();
+    const opensAt = fromNow(3_600_000);
+    const cutoff = new Date(Date.parse(opensAt) + 15 * 60_000).toISOString();
+    const resolvesAt = new Date(Date.parse(cutoff) + 60_000).toISOString();
+    const asset = {
+      id: "uda_c04q", key: "C04Q", symbol: "C04Q", nameEn: "Case asset", nameSw: "Mali ya jaribio", nameZh: null,
+      iconKey: "gold", priceSourceUrl: "https://example.com/c04q", sourceDomain: "example.com", category: "macro",
+      decimals: 2, minMoveTicks: 1, enabled: true, sortOrder: 0, createdBy: OFFICER, createdAt: now, updatedAt: now,
+    };
+    const chain = {
+      id: "udc_c04q", assetId: asset.id, durationMinutes: 15, state: "RUNNING",
+      gridAnchorAt: opensAt, nextBoundaryAt: cutoff, currentRoundId: null,
+      minStake: null, maxStake: null, rateProfile: null, marginBps: null,
+      createdBy: OFFICER, createdAt: now, updatedAt: now,
+    };
+    await assetStore.upsert(asset);
+    await chainStore.upsert(chain);
+    for (const [roundIndex, [name, yesPool, noPool]] of ([["no", 0, 2_000], ["yes", 1_000, 0], ["both", 1_000, 2_000], ["empty", 0, 0]] as const).entries()) {
+      const marketId = `mkt_c04q_${name}`;
+      await marketStore.set(market(marketId, { productLine: "UPDOWN", yesPool, noPool,
+        selectionClosedAt: cutoff, resolutionAt: resolvesAt }));
+      await roundStore.create({ id: `udr_c04q_${name}`, chainId: chain.id, marketId, roundNumber: roundIndex + 1,
+        opensAt, closesAt: cutoff, boundaryAt: cutoff,
+        openObservationId: null, closeObservationId: null, openPrice: null, closePrice: null,
+        marginBps: null, upTarget: null, downTarget: null, capturedSourceUrl: null, capturedSourceDomain: null,
+        outcome: null, voidReason: null, resolvedAt: null, settledAt: null, createdAt: now, updatedAt: now });
+    }
+    const candidates = async (): Promise<string> => {
+      const rows: Array<{ id: string; cutoff: string }> = await dal.houseSeamStore.plannableMarkets({
+        kind: "PAIR", productLine: "UPDOWN", fromIso: now, toIso: cutoff, after: null, limit: 200,
+      });
+      return rows.length ? rows.map((r) => `${r.id}:${r.cutoff === cutoff}`).join(",") : "none";
+    };
+    await rec("c04q.a one-sided live rounds are PAIR candidates on both sides", candidates);
+    await intents.insert(pair("hbi_c04q_first", "mkt_c04q_no"));
+    await rec("c04q.b a live PAIR anchor removes only its own round", candidates);
+    await intents.cancelPending("hbi_c04q_first", "CASE");
+    await rec("c04q.c a normally cancelled PAIR makes its round plannable again", candidates);
+    await intents.insert(pair("hbi_c04q_admin", "mkt_c04q_no"));
+    await intents.cancelPending("hbi_c04q_admin", "CANCELLED_BY_ADMIN");
+    await rec("c04q.d an admin-cancelled PAIR keeps its round excluded", candidates);
+    await assetStore.upsert({ ...asset, enabled: false });
+    await rec("c04q.e a disabled asset removes every PAIR candidate", candidates);
+    await assetStore.upsert(asset);
+    await chainStore.patch(chain.id, { state: "STOPPED" });
+    await rec("c04q.f a stopped chain removes every PAIR candidate", candidates);
+
+    for (const id of ["usr_c04q_first", "usr_c04q_second", "usr_c04q_player", "usr_c04q_own"]) await mkUser(id);
+    const usageMarket = "mkt_c04q_usage";
+    await marketStore.set(market(usageMarket));
+    const usage = async (): Promise<string> => {
+      const u = await dal.houseSeamStore.marketUsage({ houseBotId: "hb_c04q_own", marketId: usageMarket });
+      return `${Number(u.otherBotOpen)}:${u.otherBotYesOpen}:${u.otherBotNoOpen}:${u.otherBotCount}:${u.otherBotId}:${u.otherBotUserId}:${u.otherBotOpenStakeTzs}:${u.playerOpen}:${u.ownBotOpen}:${u.houseOpenStakeTzs}`;
+    };
+    const addPosition = (id: string, userId: string, side: "YES" | "NO", stake: number, houseBotId: string | null, status = "OPEN") =>
+      positionStore.set({ ...position(id, now, stake, status, houseBotId), userId, marketId: usageMarket, side });
+    await rec("c04q.g empty market usage has no marked side", usage);
+    await addPosition("pos_c04q_yes", "usr_c04q_first", "YES", 1_000, "hb_c04q_first");
+    await rec("c04q.h a marked YES stake identifies the other holder and YES side", usage);
+    await addPosition("pos_c04q_no", "usr_c04q_first", "NO", 2_000, "hb_c04q_first");
+    await rec("c04q.i a second NO stake by that bot marks both sides but one holder", usage);
+    await addPosition("pos_c04q_second", "usr_c04q_second", "NO", 4_000, "hb_c04q_second");
+    await rec("c04q.j a different bot on NO removes the single-holder identity", usage);
+    await addPosition("pos_c04q_player", "usr_c04q_player", "NO", 500, null);
+    await addPosition("pos_c04q_own", "usr_c04q_own", "YES", 600, "hb_c04q_own");
+    await addPosition("pos_c04q_closed", "usr_c04q_second", "NO", 9_000, "hb_c04q_second", "LOSS");
+    await rec("c04q.k player and own stakes are distinct; closed stakes do not count", usage);
   });
 
   // ── c05 · a press id is used once, ever ──────────────────────────────────────────────────
@@ -691,6 +893,9 @@ async function runCases(): Promise<void> {
     await rec("c10.g a zero stake", () => st(fill("hbi_c10g", "mkt_c10g", { stakeTzs: 0 })));
     await rec("c10.h a PLACED row without its position", () => st(fill("hbi_c10h", "mkt_c10h", { status: "PLACED" })));
     await rec("c10.i a fractional stake is refused before the database could round it", () => st(fill("hbi_c10i", "mkt_c10i", { stakeTzs: 1.5 })));
+    await rec("c10.j a PAIR whose anchor is not pair:<its market>", () => st(pair("hbi_c10j", "mkt_c10j", { anchorKey: "mkt_c10j" })));
+    await rec("c10.k a PAIR on a poll", () => st(pair("hbi_c10k", "mkt_c10k", { productLine: "MARKET" })));
+    await rec("c10.l a kind outside the list", () => st(intent({ id: "hbi_c10l", kind: "PAIRS", anchorKey: "pair:mkt_c10l", marketId: "mkt_c10l", productLine: "UPDOWN" })));
 
     await mkUser("usr_c10");
     await designate("hb_c10", "usr_c10", "Case ten");
@@ -772,6 +977,7 @@ async function runCases(): Promise<void> {
     await rec("c12.e a message naming two house indexes names nothing", async () =>
       dal.uniqueViolation(planted(`${dup("hbi_counter_anchor_uq")} ${dup("hbi_manual_anchor_uq")}`)));
     await rec("c12.f a name inside a longer identifier is not that name", async () => dal.uniqueViolation(planted(dup("hbt_active_market_uq_old"))));
+    await rec("c12.i a raw-SQL PAIR violation names the pair index", async () => dal.uniqueViolation(planted(dup("hbi_pair_anchor_uq"))));
     await rec("c12.g a CHECK violation names its constraint", async () =>
       dal.checkViolation(planted('new row for relation "HouseBot" violates check constraint "HouseBot_label_check"', "23514")));
     await rec("c12.h a unique violation is not a CHECK", async () => dal.checkViolation(planted(dup("hbt_active_market_uq"))));

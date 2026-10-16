@@ -1675,10 +1675,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       // ── H3 · house bots: product and round lock, blackout, other bot, the mode condition (N1 §3) ──
       // SEAM:H3
       let housePool: LockedPool | null = null;
+      let houseTwoSidedDesk = false;
       if (ctx.kind === "house") {
         const h3 = await houseH3({ tx: lockTx, ctx, intent: houseIntent!, fresh, side: opts.side, stake: opts.stake });
         if (h3.refusal) return h3.refusal;
         housePool = h3.pool;
+        houseTwoSidedDesk = h3.twoSidedDesk;
       }
       const writeMoney = async (counterparties: Counterparty[] | null) => {
         await withMoneyTx(async (tx) => {
@@ -1687,7 +1689,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
           // intent was cancelled or placed elsewhere → abort before any money moves.
           // SEAM:markPlaced
           if (ctx.kind === "house") {
-            const placed = await houseBotIntentStore.markPlaced(ctx.intentId, positionId, tx, counterparties ? { counterparties } : undefined);
+            const placed = await houseBotIntentStore.markPlaced(ctx.intentId, positionId, tx, {
+              ...(counterparties ? { counterparties } : {}),
+              ...(houseTwoSidedDesk ? { twoSidedDesk: true } : {}),
+            });
             if (!placed) throw new BetAbort("HOUSE_SUPERSEDED");
           }
           if (realPart > 0) {
@@ -1808,7 +1813,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       // SEAM:H4
       if (ctx.kind === "house") {
         const refused = await withLock(HOUSE_CONTROL_LOCK, async (controlTx): Promise<HouseRefusal | null> => {
-          const h4 = await houseH4({ tx: controlTx, ctx, intent: houseIntent!, side: opts.side, stake: opts.stake, pool: housePool });
+          const h4 = await houseH4({ tx: controlTx, ctx, intent: houseIntent!, side: opts.side, stake: opts.stake,
+            pool: housePool, twoSidedDesk: houseTwoSidedDesk });
           if (h4.refusal) return h4.refusal;
           await writeMoney(h4.counterparties);
           return null;

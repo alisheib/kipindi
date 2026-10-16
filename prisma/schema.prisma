@@ -2031,6 +2031,10 @@ model HouseBotControl {
   gCapStaffChosenDailyTzs          BigInt?
   gTargetsMaxActive                Int?
   gStaffChosenMaxCounterpartyShare Int?
+  /// N5 (Ali, 2026-10-14): the daily budget for second desk legs — paired rounds and opposite-side COUNTER answers,
+  /// counting placed second-leg bets and their TZS stake in an EAT day. NULL = never; N6 checks both inside H4's locks.
+  gCapPairRoundsPerDay             Int?
+  gCapPairDailyTzs                 BigInt?
   createdAt                        DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt                        DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
 }
@@ -2114,7 +2118,7 @@ model HouseBotEvent {
 
 /// The durable decision, written BEFORE the bet; idempotencyKey = 'hb:' || id (PLAN §2, I4).
 /// Kept 7 years (04 A20). marketId, triggerPositionId, targetId: soft references (04 A16).
-/// SQL-only unique (N1 §2): "hbi_counter_anchor_uq", "hbi_fill_opener_anchor_uq",
+/// SQL-only unique (N1 §2; N5): "hbi_counter_anchor_uq", "hbi_fill_opener_anchor_uq", "hbi_pair_anchor_uq",
 ///   "hbi_manual_anchor_uq", "hbi_manual_live_market_uq".
 /// SQL-only partial: "HouseBotIntent_finishedAt_unalerted_idx" (04 A8), "hbi_target_status_idx" (N2 §2),
 ///   "hbi_staff_bot_finished_idx", "hbi_staff_finished_idx" (N1 §2).
@@ -2122,9 +2126,9 @@ model HouseBotIntent {
   id                String    @id
   houseBotId        String
   botUserId         String
-  /// COUNTER · FILL · OPENER · MANUAL
+  /// COUNTER · FILL · OPENER · MANUAL · PAIR (N5; written from N6)
   kind              String
-  /// COUNTER → trigger position id · FILL/OPENER → marketId · MANUAL → 'manual:<requestedById>:<submitId>'
+  /// COUNTER → trigger position id · FILL/OPENER → marketId · MANUAL → 'manual:<requestedById>:<submitId>' · PAIR → 'pair:<marketId>'
   anchorKey         String
   marketId          String
   /// MARKET · UPDOWN (raw column value)

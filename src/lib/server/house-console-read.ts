@@ -65,6 +65,7 @@ import { switchOnHouseBots } from "./house-bot/switch-on";
 import { explainBotIdle } from "./house-bot/planner";
 import { switchOffHouseBots } from "./house-bot/kill-switch";
 import { houseEngineAlerts } from "./house-bot/emitters";
+import { escalateDeskAmlFlags } from "./house-bot/aml-escalation";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotEventStore, houseBotStore, houseBookStore, houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, targetStore as houseBotTargetStore, HouseSchemaNotReady, foldedCodePointOrder, type EventListOrder, type IntentFeedCount, type IntentFeedOrder, type IntentProductLine, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotEvent, type StoredHouseBotIntent, type StoredHouseBotRuntime, type StoredHouseBotTarget, type TargetListOrder } from "./house-bot-dal";
 import { houseDayBook, houseDayBooks, houseOpenExposure, type HouseDayBook } from "./house-bot/book";
@@ -157,6 +158,17 @@ export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUse
   if (rows == null || (await houseConsoleAudience(viewerUserId, route))) return rows;
   if (Array.isArray(rows)) return [] as unknown as T;
   return { ...rows, entries: [], ...("total" in rows ? { total: 0 } : {}), ...("truncated" in rows ? { truncated: false } : {}) } as T;
+}
+
+/** The AML queue's owner-review badges and once-only alerts are house data. The page enters through this
+ * named door with its signed-in viewer and exact route; no designation lookup or alert runs before the verdict. */
+export async function houseAmlReviewForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  flags: readonly { userId: string; txnId: string; type: "STAKE_SPIKE" | "VELOCITY" }[],
+): Promise<ReadonlySet<string> | null> {
+  if (route !== "/admin/aml" || !(await houseConsoleAudience(viewerUserId, route))) return null;
+  return escalateDeskAmlFlags(flags);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -362,9 +374,9 @@ export type ConsoleRosterView = ConsoleDeskShell & {
    */
   rows: ConsoleRosterRow[] | null;
   /**
-   * ⭐ STEP 9 · THE ROSTER PAGES AND SORTS. It is bounded by the configured maximum (1–20), so at twenty to a page the
-   * pager draws nothing today — and it is paged anyway, so no desk table can ever grow past a page if that ceiling
-   * moves. ⛔ `rosterTotal` is the WHOLE roster's length, never the page's (344); `null` with `rows`.
+   * ⭐ STEP 9 · THE ROSTER PAGES AND SORTS. The configured maximum was 1–20, so at twenty to a page the pager drew
+   * nothing; it was paged anyway so no desk table could outgrow a page when that ceiling moved — and N5 moved it to
+   * 1–100, so past twenty accounts it draws. ⛔ `rosterTotal` is the WHOLE roster's length, never the page's (344); `null` with `rows`.
    */
   rosterTotal: number | null;
   /** The page SERVED — a page past the end is the last page. */
@@ -751,6 +763,7 @@ const CONSOLE_DUTY_PHRASE: Readonly<Record<string, string>> = {
   lossStops: "checking the day's losses against the limits",
   walletMissing: "checking each holder's wallet is still there",
   fillOpener: "planning the next stakes",
+  pair: "planning pair rounds",
   oversight: "the minute-by-minute oversight pass",
   hourly: "the hourly summaries",
 };
@@ -1312,6 +1325,8 @@ export async function houseRosterForConsole(
 
 /** Twenty to a page — the admin table size, written here for the reason `CONSOLE_TARGETS_PER_PAGE` states. */
 const CONSOLE_ROSTER_PER_PAGE = 20;
+/** N5 · the Results tab's By account, twenty to a page, for the roster's reason. */
+const CONSOLE_RESULTS_ACCOUNTS_PER_PAGE = 20;
 
 /**
  * One roster row's sort key — the figure its cell PAINTS, or `null` where the cell paints none. ⛔ Read from the same
@@ -1428,6 +1443,8 @@ const CONSOLE_LIMIT_KEY: Readonly<Record<LimitField, string>> = {
   gCapStaffChosenDailyTzs: "targeted-daily-tzs",
   gTargetsMaxActive: "max-active-targets",
   gStaffChosenMaxCounterpartyShare: "one-player-share",
+  gCapPairRoundsPerDay: "pair-rounds-per-day",
+  gCapPairDailyTzs: "pair-tzs-per-day",
 };
 
 /** Key → column, built from the one table above so the two can never disagree. ⛔ An unknown key is REFUSED. */
@@ -1462,6 +1479,8 @@ const CONSOLE_LIMIT_HINT: Readonly<Record<string, string>> = {
   gTargetsMaxActive: "Across every account. The master switch does not need this limit.",
   gStaffChosenMaxCounterpartyShare: "A manual stake is refused when one player already holds more than this share of the players' locked money it would add to. The master switch does not need this limit.",
   bellAlertsPerHour: "How many bet rows each admin can be sent in an hour, on top of summaries and the pause, money and switch alerts.",
+  gCapPairRoundsPerDay: "Every account together, this EAT day. Counts empty-round pairs and second-account answers to player stakes on the opposite side. Empty = no two-sided desk play.",
+  gCapPairDailyTzs: "Every account together, this EAT day. Counts second-account stakes in TZS for empty-round pairs and answers to player stakes on the opposite side. Empty = no two-sided desk play.",
 };
 
 /**
@@ -1521,6 +1540,7 @@ export function unsetCaptionFor(field: string, on: boolean): string {
     return on ? REQUIRED_UNSET_ON : REQUIRED_UNSET_OFF;
   }
   if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";
+  if (field === "gCapPairRoundsPerDay" || field === "gCapPairDailyTzs") return "Not set — no second desk account can take the other side.";
   return "Not set — this account cannot place a bet.";
 }
 
@@ -2064,6 +2084,7 @@ const CONSOLE_FLAG_HELP: Readonly<Record<keyof typeof CONSOLE_FLAG_KEY, string>>
   pollsOpener: "When a poll has no bets at all, this account may place the first one so players have something to answer. Only polls created after the desk is switched on and after this account is started.",
   enterNow: "Permit an officer to place one bet from this account by hand. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
   targeting: "Permit an officer to point this account at a chosen poll. No screen on this build can do that yet, so Start refuses an account whose only entry is this.",
+  otherSide: "Let this account take the unheld side opposite a player's stake when another desk account holds the player's side. Both desk Pairing limits must allow it. An empty Up & Down pair also needs this on.",
 };
 
 /**
@@ -2108,7 +2129,7 @@ const CONSOLE_LIST_FIELDS: readonly ConsoleListField[] = ["chains", "categories"
 /** The form's four switch sections, in the order the form draws them. ⛔ Neutral words; "Modes" is `FIELD_META`'s.
  *  ⚠️ IT SITS HERE, ABOVE THE NUMERIC TABLES, because two of them read it at module load — and a `const` read
  *  before its declaration is a temporal-dead-zone throw on IMPORT, which takes every route in the section. */
-const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand" } as const;
+const CONSOLE_FLAG_SECTION = { products: "Products", updown: "Up & Down entry", polls: "Polls entry", byHand: "By hand", pairing: "Pairing" } as const;
 
 /**
  * ⛔ THE 33 LEAVES THAT HAD NO CONTROL ON ANY SCREEN, AND WHAT THAT MEANT — measured on 2026-09-22, register A1.
@@ -2173,6 +2194,8 @@ const CONSOLE_RULE_KEY: Readonly<Record<string, string>> = {
   "enterNow.thinStakeTzs": "enter-now-thin-stake",
   "enterNow.openerStakeTzs": "enter-now-first-stake",
   "display.countsAs": "counts-as",
+  "share.matchPct": "pair-round-share",
+  "share.matchPerDay": "pair-rounds-account-per-day",
 };
 
 /** The one choice on the form that is not a number: how a counter-stake's amount is worked out. */
@@ -2240,6 +2263,8 @@ export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
   /* Owner ruling 2026-10-11 ("a desk account may count as more than one predictor"). Display only: no money moves. */
   "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change.",
+  "share.matchPct": "A second account may take the other side of an Up & Down round with no player stakes, at this share of the first account's total open stake on one side. Zero turns this off.",
+  "share.matchPerDay": "The most pair rounds this account may place in one EAT day. Zero turns pairing off for this account even when the desk budget is set.",
 };
 
 /**
@@ -2382,6 +2407,7 @@ const CONSOLE_FLAG_KEY = {
   pollsOpener: "polls-opener",
   enterNow: "enter-now",
   targeting: "targeted-stakes",
+  otherSide: "answer-other-side",
 } as const;
 
 const FLAG_KEYS: readonly string[] = Object.values(CONSOLE_FLAG_KEY);
@@ -2406,6 +2432,7 @@ const CONSOLE_RULES_FIELD_KEY: Readonly<Record<string, string>> = {
   ...Object.fromEntries(SCOPE_PRODUCTS.flatMap((p) => ENTRY_MODES.map((m) => [`modes.${p}.${m}`, modeFlagKey(p, m)]))),
   "enterNow.enabled": CONSOLE_FLAG_KEY.enterNow,
   "targeting.enabled": CONSOLE_FLAG_KEY.targeting,
+  "share.otherSide": CONSOLE_FLAG_KEY.otherSide,
   /* ⭐ AND SINCE 2026-09-23 EVERY NUMERIC LEAF, THE AMOUNT CHOICE AND THE SCHEDULE — because they all have a
      control now. This map's own docblock says an id outside it "still has no box and is said in `error` alone,
      honestly"; before the editor that was 33 of the 45 leaves, so a refusal on a delay or a window arrived as a
@@ -2754,6 +2781,7 @@ export async function houseRulesSaveForConsole(
       },
       enterNow: input.flags[CONSOLE_FLAG_KEY.enterNow],
       targeting: input.flags[CONSOLE_FLAG_KEY.targeting],
+      otherSide: input.flags[CONSOLE_FLAG_KEY.otherSide],
     },
   });
   if (saved.ok) {
@@ -3716,6 +3744,7 @@ const CONSOLE_INTENT_KIND_WORD = {
   FILL: "Filling",
   OPENER: "Opening",
   MANUAL: "Manual",
+  PAIR: "Pairing",
 } as const satisfies Record<IntentKind, string>;
 
 /** One intent status, its word and its chip. ⛔ TOTAL, and the chip comes from the ONE tone table (ruling 311). */
@@ -3844,6 +3873,10 @@ const CONSOLE_SKIP_SENTENCE = {
   CAP_GLOBAL_EXPOSURE: "The desk's open exposure limit was reached",
   CAP_GLOBAL_BETS_PER_MINUTE: "The desk's bets-per-minute limit applied",
   CAP_GLOBAL_BETS_PER_DAY: "The desk's daily bet limit was reached",
+  CAP_PAIR_ROUNDS_PER_DAY: "The desk's two-sided bet limit for today was reached or left empty",
+  CAP_PAIR_DAILY_TZS: "The desk's two-sided stake TZS limit for today was reached or left empty",
+  CAP_PAIR_ACCOUNT_PER_DAY: "This account's pair-round limit for today was reached",
+  SAME_HOLDER: "Both sides would belong to the same holder",
   CAP_COUNTERPARTY_COUNT: "That player had been met as often as allowed today",
   CAP_COUNTERPARTY_TZS: "The TZS set against that player today reached its limit",
   CAP_GLOBAL_STAFF_CHOSEN_PER_DAY: "The desk had used today's manual stakes",
@@ -4075,6 +4108,8 @@ export type ConsoleQuery = {
   daydir?: string | string[];
   acctsort?: string | string[];
   acctdir?: string | string[];
+  /** ⭐ N5 · the Results tab's By account page — the roster may pass twenty, and no desk table grows past a page. */
+  apage?: string | string[];
   /**
    * ⭐ THE ONE ACT A LINK MAY OPEN (register A5, 2026-09-23). `consoleReverifyHref` has answered a stale
    * consent with `?reverify=1` since it was written and nothing read it, so the way out landed on the
@@ -4293,6 +4328,8 @@ type ConsoleParsed = {
   refusals: string[];
   /** ⭐ STEP 9 · the roster's own page (1 when absent), and every table's validated sort this page carries. */
   rpage: number;
+  /** ⭐ N5 · the Results tab's By account page (1 when absent). */
+  apage: number;
   sorts: Readonly<Partial<Record<ConsoleSortTable, ConsoleSortParsed>>>;
 };
 
@@ -4438,6 +4475,7 @@ function parseConsoleQuery(
      direction with no column to apply it to (a table in its own order has none to reverse); each falls back to the
      table's own order and never rides into a link. A repeated word is a refusal, as everywhere on this rail. */
   const rosterPage = pageOf(q.rpage, "page");
+  const resultsAccountsPage = pageOf(q.apage, "page");
   const words = q as Readonly<Record<string, string | string[] | undefined>>;
   const sorts: Partial<Record<ConsoleSortTable, ConsoleSortParsed>> = {};
   for (const table of sortTables) {
@@ -4457,6 +4495,7 @@ function parseConsoleQuery(
 
   return {
     rpage: rosterPage.n,
+    apage: resultsAccountsPage.n,
     sorts,
     tab: tabOf(q.tab),
     tpage: targets.n,
@@ -4567,6 +4606,8 @@ function consoleFeedLink(base: string, params: Record<string, string | undefined
  * is the dead control 432(a) refuses. The landing rail's own axes are that page's, when it is built.
  */
 export const CONSOLE_FEED_AXES = {
+  /* N6 writes PAIR intents. The rail reads the same closed kind list as the feed, so its Pairing chip
+     remains available whenever a pair row can appear. */
   kind: { label: "Type", all: "Any type", members: INTENT_KINDS as readonly string[], word: CONSOLE_INTENT_KIND_WORD as Readonly<Record<string, string>> },
   product: { label: "Product", all: "Any product", members: INTENT_PRODUCT_LINES as readonly string[], word: CONSOLE_PRODUCT_WORD as Readonly<Record<string, string>> },
   outcome: {
@@ -5196,6 +5237,7 @@ function capRows(bot: StoredHouseBot, rules: HouseBotRulesV1, ctx: Pick<ParseCon
     { section: "Scope", name: FIELD_META["scope.categories"].label, value: listWords(rules.scope.categories.map(categoryWord)), unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Targeted stakes", value: rules.targeting.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     { section: "Scope", name: "Enter now", value: rules.enterNow.enabled ? "On" : "Off", unset: false, caption: null, face: "word" as const },
+    { section: CONSOLE_FLAG_SECTION.pairing, name: "Answer on the other side", value: rules.share.otherSide ? "On" : "Off", unset: false, caption: null, face: "word" as const },
     /**
      * ⭐ THE SIX ENTRY MODES, EVERY NUMBER AND THE SCHEDULE — THE RECORD SAYS WHAT THE ACCOUNT WAS SET TO DO
      * (2026-09-23 · register A1 item 6).
@@ -5890,8 +5932,9 @@ export async function houseDetailForConsole(
    * millisecond are counted with it and the rank can only be too LARGE, never too small — which pushes the computed
    * page LATER, never earlier. The rows are already in hand, so the correction costs no read of its own: if the
    * anchor is not among them, the page is stepped back ONCE, before the single re-read below. That is exact for any
-   * tie block smaller than a page, which is every physically possible one — the per-minute cap is at most twenty
-   * stakes across the whole desk, so twenty stakes by ONE account inside one millisecond cannot happen. */
+   * tie block smaller than a page, which is every physically possible one: twenty stakes by ONE account inside one
+   * millisecond cannot happen — each takes that account's wallet lock in turn, and one bet is some thirty database
+   * round trips. (⚠️ N5: this used to rest on the desk-wide per-minute cap being at most twenty; it is 1–120 now.) */
   const feedTotal = wantFeed && feedCountR.status === "fulfilled" ? feedCountR.value : null;
   let feedPageRows = wantFeed && feedR.status === "fulfilled" ? feedR.value : null;
   let feedShown = consoleLastPage(feedTotal, wantFeedPage, CONSOLE_FEED_PER_PAGE);
@@ -6199,6 +6242,7 @@ export async function houseDetailForConsole(
       { key: CONSOLE_FLAG_KEY.pollsOpener, section: CONSOLE_FLAG_SECTION.polls, label: ENTRY_MODE_WORDS.opener, on: formSeed.rules.modes.polls.opener, help: CONSOLE_FLAG_HELP.pollsOpener },
       { key: CONSOLE_FLAG_KEY.enterNow, section: CONSOLE_FLAG_SECTION.byHand, label: "Enter now", on: formSeed.rules.enterNow.enabled, help: CONSOLE_FLAG_HELP.enterNow },
       { key: CONSOLE_FLAG_KEY.targeting, section: CONSOLE_FLAG_SECTION.byHand, label: "Targeted stakes", on: formSeed.rules.targeting.enabled, help: CONSOLE_FLAG_HELP.targeting },
+      { key: CONSOLE_FLAG_KEY.otherSide, section: CONSOLE_FLAG_SECTION.pairing, label: "Answer on the other side", on: formSeed.rules.share.otherSide, help: CONSOLE_FLAG_HELP.otherSide },
     ],
     /**
      * ⭐ EVERY NUMERIC LEAF, IN `FIELD_ORDER`, GROUPED BY ITS OWN SECTION (2026-09-23 · register A1).
@@ -7006,8 +7050,14 @@ export type ConsoleResultsAccountRow = {
 export type ConsoleResultsView = ConsoleDeskShell & {
   /** Exactly seven rows, newest first: today, then the six EAT days before it. */
   resultDays: ConsoleResultsDayRow[];
-  /** `null` when the roster read failed — nobody can tell which line is whose (355). */
+  /** ONE PAGE of the accounts (N5), in the order the address asks; `null` when the roster read failed — nobody can tell
+   *  which line is whose (355). */
   resultAccounts: ConsoleResultsAccountRow[] | null;
+  /** ⭐ N5 · every account's line counted (the removed accounts' line included), the page served and its size — the
+   *  roster may pass twenty, so By account pages as every other desk table does. `null` with the rows. */
+  resultAccountsTotal: number | null;
+  resultAccountsPage: number;
+  resultAccountsPerPage: number;
   resultsNote: string;
   /** ⭐ STEP 9 · By day's four sortable headers and the one in force — the day, newest first, on a bare address. */
   daySort: ConsoleSortView<SortKeysOf<"resultDays">>;
@@ -7212,10 +7262,21 @@ export async function houseResultsForConsole(
         : resultValue(key === "today" ? tallyFor(facts[i].set, days[0].books) : sumTallies(days.map((d) => tallyFor(facts[i].set, d.books))))),
       acctSort.dir, (i, j) => i - j);
   }
+  /* ⭐ N5 · THE ORDER, THEN THE PAGE — the roster's own rule (twenty to a page, a page past the end served as the last,
+     the total the whole list and never the page). The roster may pass twenty now, and "every desk table sorts, and none
+     can grow past a page" (Ali, step 9) holds here too; it stays ONE view on ONE tab, which is all D20b's amendment
+     permits — a pager pages the view, it exports and reports nothing. */
+  const accountsTotal = sortedAccounts === null ? null : sortedAccounts.length;
+  const accountsPage = consoleLastPage(accountsTotal, q.apage, CONSOLE_RESULTS_ACCOUNTS_PER_PAGE);
+  const accountsPageRows = sortedAccounts === null ? null
+    : sortedAccounts.slice((accountsPage - 1) * CONSOLE_RESULTS_ACCOUNTS_PER_PAGE, accountsPage * CONSOLE_RESULTS_ACCOUNTS_PER_PAGE);
   return {
     ...view,
     resultDays: sortedDays,
-    resultAccounts: sortedAccounts,
+    resultAccounts: accountsPageRows,
+    resultAccountsTotal: accountsTotal,
+    resultAccountsPage: accountsPage,
+    resultAccountsPerPage: CONSOLE_RESULTS_ACCOUNTS_PER_PAGE,
     resultsNote: CONSOLE_RESULTS_NOTE,
     daySort: consoleSortView(daySort),
     acctSort: consoleSortView(acctSort),
@@ -8347,17 +8408,17 @@ const WHY_IDLE_COPY = {
   /* ⛔ NEUTRAL, AND THE LEXICON MEASURED IT (453). This sentence named the three entry modes, and one of
         them IS the mechanism's name — the console may not print it. It names the two switches instead, which
         is also the shorter sentence, and the Rules tab carries each mode's own neutral words. */
-  allModesOff: "This account's rules leave it nothing to stake on: either no product is switched on, or no entry mode is. Its Rules tab is where both are set.",
+  allModesOff: "This account's opening and filling rules leave it nothing in this sample: either no product is switched on, or no entry mode is. Pairing is outside this check. Its Rules tab is where the controls are set.",
   /* ⭐ THE CORRECTLY CONFIGURED ACCOUNT THIS PANEL WOULD OTHERWISE SLANDER. An account whose only entry mode
      is the one a player's own stake triggers offers the planner nothing to walk, which is not a fault and
      must not be reported as one. */
-  reactsOnly: "This account only stakes when a player does — it waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Nothing is wrong, and there is nothing here to count.",
-  nothingOpen: "No market was open in the window this account looks at. Between rounds that is normal and nothing is wrong.",
-  working: "This account would stake right now, so it is working. The desk places at most one stake per market each pass, which is why bets appear a few seconds apart.",
+  reactsOnly: "This account waits for a player's stake on a market its rules cover, rather than opening or filling one itself. Pairing is outside this check and may still be available.",
+  nothingOpen: "No market was open in the opening and filling window this account looks at. Between rounds that is normal. Pairing is outside this check.",
+  working: "This account would place an opening or filling stake right now. The desk plans these stakes each pass; pairing is outside this check.",
   /* ⭐ N3 · THE ANSWER THIS PANEL COULD NOT GIVE. It walked the account alone, so an account that never reached the
      front of the queue was told it "would stake right now" while it placed nothing for fifteen days. */
-  waitingTurn: "This account could stake right now, but another account is more likely to be drawn first on each of these markets. Accounts are drawn at random, the one that has waited longest most likely, so it gets its share of the next markets — nothing needs changing.",
-  refused: "None of the markets looked at could be staked right now. The reasons are below, commonest first.",
+  waitingTurn: "This account could open or fill now, but another account is more likely to be drawn first on these markets. Accounts are drawn at random, weighted by waiting time; nothing needs changing. Pairing is outside this check.",
+  refused: "None of the opening or filling markets looked at could be staked right now. The reasons are below, commonest first. Pairing is outside this check.",
   /* ⛔ THE ANSWER THAT USED TO BE SILENCE. An account whose saved rules will not parse is stopped by the engine —
      and this panel returned nothing at all — the officer clicked and the page did not change. */
   rulesUnreadable: "This account's saved rules cannot be read, so nothing is staked from it. Its Rules tab draws the form again, seeded from the closest readable values — open it, check every figure, and save.",
@@ -8386,7 +8447,7 @@ function scannedSentence(seen: { considered: number; wouldStake: number; rankedB
   const behind = seen.rankedBehind > 0
     ? ` On ${formatNumber(seen.rankedBehind)} more it could stake, but another account is more likely to be drawn first.`
     : "";
-  return `${head}, and ${stakeable}.${behind} That is a sample of what is open now, never the whole book.`;
+  return `${head}, and ${stakeable}.${behind} This samples opening and filling now; pairing is outside this check.`;
 }
 
 export async function houseWhyIdleForConsole(

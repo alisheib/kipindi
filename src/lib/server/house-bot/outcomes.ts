@@ -233,7 +233,7 @@ export function handoffStatus<S extends "SKIPPED" | "EXPIRED" | "FAILED" | "CANC
   status: S,
   code: EngineCode,
 ): S | "CANCELLED" {
-  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)
+  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER" || intent.kind === "PAIR") && intent.targetId == null && isHandoffCode(code)
     ? "CANCELLED"
     : status;
 }
@@ -410,7 +410,8 @@ export async function applyOutcome(input: { intent: StoredHouseBotIntent; me: st
     }
     case "conflict": {
       const conflict = !answer.ok ? (answer.detail as { conflict?: unknown } | undefined)?.conflict : undefined;
-      return terminal(intent, me, "SKIPPED", conflict === "OPPOSITE_SIDE" ? "CAP_OPPOSITE_SIDE" : "MARKET_HELD");
+      return terminal(intent, me, "SKIPPED", conflict === "OPPOSITE_SIDE" ? "CAP_OPPOSITE_SIDE"
+        : conflict === "SAME_HOLDER" ? "SAME_HOLDER" : "MARKET_HELD");
     }
     case "cap": {
       const detail = !answer.ok ? (answer.detail as { cap?: unknown; until?: unknown } | undefined) : undefined;

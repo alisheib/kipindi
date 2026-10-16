@@ -40,6 +40,7 @@ import {
 import { houseDayBook, houseOpenExposure } from "./book";
 import { lockedForHouse, lockedPoolInputs } from "./pools";
 import { infoBlackout } from "./blackout";
+import { sameHouseHolder } from "./same-holder";
 import type { StoredMarket, StoredPosition } from "../market-service";
 
 export type HouseBetContext = { kind: "house"; botId: string; intentId: string };
@@ -61,13 +62,27 @@ function capReached(cap: CapCode, detail: FailureDetail = {}): HouseRefusal {
 function conflict(code: ConflictCode): HouseRefusal {
   return { ok: false, error: `House market conflict: ${code}.`, code: "INVALID", reason: "house_market_conflict", detail: { conflict: code } };
 }
-function conditionGone(condition: "OPENER" | "THIN" | "COUNTER" | "FILL"): HouseRefusal {
+function conditionGone(condition: "OPENER" | "THIN" | "COUNTER" | "FILL" | "PAIR"): HouseRefusal {
   return { ok: false, error: `House condition gone: ${condition}.`, code: "INVALID", reason: "house_condition_gone", detail: { condition } };
 }
 const KEY_MISMATCH: HouseRefusal = { ok: false, error: "House key mismatch.", code: "INVALID", reason: "house_key_mismatch" };
 
 /** A cap that is NULL, or that this stake would pass. */
 const over = (limit: number | null, value: number): boolean => limit == null || value > limit;
+
+/** Narrow, fail-closed in-lock re-read of the three sharing leaves after fire parsed the whole document. */
+function currentShare(raw: unknown): { otherSide: boolean; matchPct: number; matchPerDay: number } {
+  if (!raw || typeof raw !== "object" || !("share" in raw)) return { otherSide: false, matchPct: 0, matchPerDay: 0 };
+  const share = raw.share;
+  if (!share || typeof share !== "object") return { otherSide: false, matchPct: 0, matchPerDay: 0 };
+  const s = share as Record<string, unknown>;
+  return {
+    otherSide: s.otherSide === true,
+    matchPct: Number.isInteger(s.matchPct) && Number(s.matchPct) >= 0 && Number(s.matchPct) <= 100 ? Number(s.matchPct) : 0,
+    matchPerDay: Number.isInteger(s.matchPerDay) && Number(s.matchPerDay) >= 0 && Number(s.matchPerDay) <= 28_800
+      ? Number(s.matchPerDay) : 0,
+  };
+}
 
 /* ═══ H0 ══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -221,7 +236,7 @@ export async function houseH2(input: {
 
 /* ═══ H3 ══════════════════════════════════════════════════════════════════════════════════════ */
 
-export type H3Result = { refusal: HouseRefusal } | { refusal: null; pool: LockedPool | null };
+export type H3Result = { refusal: HouseRefusal } | { refusal: null; pool: LockedPool | null; twoSidedDesk: boolean };
 
 /**
  * H3 — inside `market:<id>`, after the bet path's closed re-check. `fresh` is the market as re-read in this
@@ -258,9 +273,19 @@ export async function houseH3(input: {
     return refuse({ ok: false, error: "Market is in an information blackout.", code: "INVALID", reason: "house_info_blackout" });
   }
 
-  // Step 2 · one bot per market (I3), and every bot together under the global per-market cap.
+  // Step 2 · at most one desk account per side (I3), and every account together under the global cap.
   const market = await houseSeamStore.marketUsage({ houseBotId: ctx.botId, marketId: fresh.id }, tx);
-  if (market.otherBotOpen) return refuse(conflict("OTHER_BOT"));
+  if (intent.kind === "PAIR" && market.playerOpen) return refuse(conditionGone("PAIR"));
+  const sharingKind = intent.kind === "PAIR" || (intent.kind === "COUNTER" && intent.targetId == null);
+  const bot = sharingKind ? await houseBotStore.get(ctx.botId, tx) : null;
+  const share = currentShare(bot?.rules);
+  const sideTakenByOther = side === "YES" ? market.otherBotYesOpen : market.otherBotNoOpen;
+  const mayShare = intent.kind === "PAIR"
+    ? share.otherSide && share.matchPct > 0
+    : intent.kind === "COUNTER" && intent.targetId == null && share.otherSide;
+  if (market.otherBotOpen && (!mayShare || sideTakenByOther || market.otherBotCount !== 1)) return refuse(conflict("OTHER_BOT"));
+  if (intent.kind !== "PAIR" && market.otherBotOpen && mayShare
+    && (market.otherBotUserId == null || (await sameHouseHolder(intent.botUserId, market.otherBotUserId, tx)))) return refuse(conflict("SAME_HOLDER"));
   const control = await houseBotControlStore.get(tx);
   if (over(control.gCapPerMarketTzs, market.houseOpenStakeTzs + stake)) return refuse(capReached("GLOBAL_PER_MARKET"));
 
@@ -300,11 +325,24 @@ export async function houseH3(input: {
       const top = pool![opposite(side)].accounts[0];
       if (top != null && top.lockedTzs * 100 > share * lockedOpp) return concentration();
     }
+  } else if (intent.kind === "PAIR") {
+    if (raw !== "UPDOWN" || market.playerOpen || market.ownBotOpen || market.otherBotCount !== 1
+      || market.otherBotUserId == null || !mayShare || sideTakenByOther
+      || !(side === "YES" ? market.otherBotNoOpen : market.otherBotYesOpen)
+      || rawPool(side) !== 0 || rawPool(opposite(side)) !== market.otherBotOpenStakeTzs
+      || stake > market.otherBotOpenStakeTzs
+      || stake > Math.floor(market.otherBotOpenStakeTzs * share.matchPct / 100)) return refuse(conditionGone("PAIR"));
+    // A lost opposite leg or new player money is a lost PAIR condition first; then check
+    // the holder identity on this same transaction before any money can move.
+    if (await sameHouseHolder(intent.botUserId, market.otherBotUserId, tx)) return refuse(conflict("SAME_HOLDER"));
   } else {
     const never: never = intent.kind;
     throw new Error(`house seam: unhandled intent kind ${String(never)}`);
   }
-  return { refusal: null, pool };
+  // This fact is decided while the market lock holds. A COUNTER only joins the
+  // two-sided budget when it actually becomes the second desk leg.
+  return { refusal: null, pool, twoSidedDesk: intent.kind === "PAIR"
+    || (intent.kind === "COUNTER" && mayShare && market.otherBotOpen) };
 }
 
 /* ═══ H4 ══════════════════════════════════════════════════════════════════════════════════════ */
@@ -324,6 +362,8 @@ export async function houseH4(input: {
   side: Side;
   stake: number;
   pool: LockedPool | null;
+  /** H3's in-lock finding, kept through H4 and the atomic PLACED marker. */
+  twoSidedDesk: boolean;
 }): Promise<H4Result> {
   const { tx, intent, side, stake } = input;
   const refuse = (refusal: HouseRefusal): H4Result => ({ refusal });
@@ -365,6 +405,22 @@ export async function houseH4(input: {
     const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: day }, tx);
     if (control.gCapStaffChosenPerDay == null || staff.count >= control.gCapStaffChosenPerDay) return refuse(capReached("GLOBAL_STAFF_CHOSEN_PER_DAY"));
     if (over(control.gCapStaffChosenDailyTzs, staff.stakeTzs + stake)) return refuse(capReached("GLOBAL_STAFF_CHOSEN_DAILY_STAKE"));
+  }
+
+  if (input.twoSidedDesk || intent.kind === "PAIR") {
+    // `house:control` is held to commit, so these PLACED counts and markPlaced cannot race another second desk leg.
+    if (control.gCapPairRoundsPerDay == null) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));
+    if (control.gCapPairDailyTzs == null) return refuse(capReached("PAIR_DAILY_TZS"));
+    const twoSided = await houseBotIntentStore.twoSidedPlacedToday({ dayKey: day }, tx);
+    if (twoSided.count >= control.gCapPairRoundsPerDay) return refuse(capReached("PAIR_ROUNDS_PER_DAY"));
+    if (over(control.gCapPairDailyTzs, twoSided.stakeTzs + stake)) return refuse(capReached("PAIR_DAILY_TZS"));
+    if (intent.kind === "PAIR") {
+      const bot = await houseBotStore.get(input.ctx.botId, tx);
+      const share = currentShare(bot?.rules);
+      if (!share.otherSide || share.matchPct <= 0 || share.matchPerDay <= 0) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
+      const botPairs = await houseBotIntentStore.pairPlacedToday({ houseBotId: input.ctx.botId, dayKey: day }, tx);
+      if (botPairs.count >= share.matchPerDay) return refuse(capReached("PAIR_ACCOUNT_PER_DAY"));
+    }
   }
 
   // N1 §3 (MON-03) · `staleAt` on the DATABASE clock, immediately before `markPlaced`. Only a CLAIMED row

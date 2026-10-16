@@ -82,7 +82,7 @@ const floorTo = (n: number, step: number): number => (step > 0 ? Math.floor(Math
 function coversAtFire(rules: HouseBotRulesV1, view: PublicMarketView, intent: StoredHouseBotIntent): boolean {
   if (intent.kind === "MANUAL") return rules.enterNow.enabled && rulesCover(rules, view, null);
   if (intent.targetId != null) return rules.targeting.enabled && rulesCover(rules, view, null);
-  return rulesCover(rules, view, intent.kind === "COUNTER" ? "counter" : intent.kind === "FILL" ? "fill" : "opener");
+  return rulesCover(rules, view, intent.kind === "COUNTER" ? "counter" : intent.kind === "FILL" ? "fill" : intent.kind === "PAIR" ? "pair" : "opener");
 }
 
 export async function fireClaimedIntent(intent: StoredHouseBotIntent, deps: FireDeps): Promise<FireResult> {
@@ -219,7 +219,16 @@ async function fire(row: StoredHouseBotIntent, deps: FireDeps): Promise<FireResu
     } else {
       const bounds = await stakeBoundsForMarket({ id: view.id, productLine: product });
       let cut = Number.POSITIVE_INFINITY;
-      if (intent.kind !== "OPENER") {
+      if (intent.kind === "PAIR") {
+        const market = await houseSeamStore.marketUsage({ houseBotId: intent.houseBotId, marketId: intent.marketId });
+        const sideTaken = intent.side === "YES" ? market.otherBotYesOpen : market.otherBotNoOpen;
+        const otherSideTaken = intent.side === "YES" ? market.otherBotNoOpen : market.otherBotYesOpen;
+        const ownPool = intent.side === "YES" ? view.yesPool : view.noPool;
+        if (market.playerOpen || market.ownBotOpen || market.otherBotCount !== 1 || sideTaken || !otherSideTaken
+          || ownPool !== 0 || !rules.share.otherSide || rules.share.matchPct <= 0) return finish(intent, deps, "SKIPPED", "CONDITION_GONE");
+        cut = Math.min(market.otherBotOpenStakeTzs, Math.floor(market.otherBotOpenStakeTzs * rules.share.matchPct / 100));
+        if (cut <= 0) return finish(intent, deps, "SKIPPED", "CONDITION_GONE");
+      } else if (intent.kind !== "OPENER") {
         const pools = await lockedForHouse(intent.marketId, lockedPoolInputsOfView(view));
         const opp = opposite(intent.side);
         const against = intent.kind === "COUNTER" && intent.targetId == null ? pools[opp].lockedA15 : pools[opp].locked;

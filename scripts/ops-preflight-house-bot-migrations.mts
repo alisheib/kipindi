@@ -26,7 +26,7 @@
  * lists `/api/health` and the engine's own gate read, so this script cannot pass a database those two
  * would reject. `scripts/house-bot-migrations.test.mts` already keeps a second copy of the eight names;
  * a third here would be the one that drifts.
- * The two migration FOLDERS and the FIVE index names are read off the disk. The markers migration is
+ * The three migration FOLDERS (N5 added the third, `…_house_bot_pairs_roster`; section 4b checks its objects once it is applied) and the FIVE marker index names are read off the disk. The markers migration is
  * found by the only property that defines it — it is the house migration that adds all seven marker
  * columns — so no timestamped folder name is typed either.
  *
@@ -117,11 +117,15 @@ const sqlOf = (dir: string): string => {
 const addsEveryMarker = (sql: string): boolean =>
   HOUSE_SCHEMA_COLUMNS.every(([, col]) => new RegExp(`ADD COLUMN IF NOT EXISTS\\s+"${col}"`).test(sql));
 const markersDir = houseDirs.find((d) => addsEveryMarker(sqlOf(d))) ?? null;
-const tablesDir = houseDirs.find((d) => d !== markersDir) ?? null;
+/* ⭐ N5 · THREE FOLDERS, EACH FOUND BY WHAT IT IS — the tables and the third by name (`…_house_bot_tables`,
+   `…_house_bot_pairs_roster`), the markers by the columns it adds. "The folder that is not the markers" stopped naming
+   one folder the day a third existed. */
+const tablesDir = houseDirs.find((d) => /_house_bot_tables$/.test(d)) ?? null;
+const pairsDir = houseDirs.find((d) => /_house_bot_pairs_roster$/.test(d)) ?? null;
 
 say(`0 · migration files … ${houseDirs.length ? houseDirs.join(", ") : "NONE FOUND"}`);
-if (houseDirs.length !== 2) {
-  problems.push(`expected exactly 2 house migration folders under prisma/migrations, found ${houseDirs.length} — this preflight was written for two and must be re-read before it is trusted`);
+if (houseDirs.length !== 3 || !tablesDir || !pairsDir) {
+  problems.push(`expected exactly 3 house migration folders under prisma/migrations (tables, markers, pairs_roster), found ${houseDirs.length}: ${houseDirs.join(", ") || "none"} — this preflight was written for three and must be re-read before it is trusted`);
 }
 if (!markersDir) {
   problems.push(`no house migration adds all ${HOUSE_SCHEMA_COLUMNS.length} marker columns — the markers migration could not be identified, so its index list could not be read`);
@@ -215,24 +219,62 @@ if (indexNames.length) {
   }
 }
 
+// ── 4b · N5 · the third house migration's objects, once it is recorded as applied ─────────────────────────────
+// Before R2 it is pending, and that is the expected state (section 5 says so). Once `_prisma_migrations` records it
+// FINISHED, every object it makes must be there and whole — a recorded migration with a missing object is a hand edit
+// or a half-restored database, and a NO-GO by name. Read-only, like everything here.
+if (pairsDir) {
+  const hasHistory = (await c.query(`SELECT to_regclass('"_prisma_migrations"')::text AS r`)).rows[0]?.r;
+  const done = hasHistory
+    ? (await c.query(`SELECT 1 FROM "_prisma_migrations" WHERE migration_name = $1 AND finished_at IS NOT NULL AND rolled_back_at IS NULL`, [pairsDir])).rowCount
+    : 0;
+  say(`\n4b · N5 · ${pairsDir} …${done ? " recorded as applied — its objects:" : " not yet applied (R2 applies it; nothing to check yet)"}`);
+  if (done) {
+    const o = (await c.query(`SELECT
+      (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'HouseBotControl' AND column_name IN ('gCapPairRoundsPerDay','gCapPairDailyTzs')) AS "cols",
+      (SELECT i.indisvalid FROM pg_index i JOIN pg_class x ON x.oid = i.indexrelid WHERE x.relname = 'hbi_pair_anchor_uq') AS "pairIdx",
+      (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotIntent_kind_check') AS "kinds",
+      (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotControl_maxDesignatedBots_check') AS "roster",
+      (SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'HouseBotControl_gMaxBetsPerMinute_check') AS "perMinute",
+      (SELECT count(*)::int FROM pg_constraint WHERE conname IN ('HouseBotIntent_pair_anchor_check','HouseBotIntent_pair_updown_check','HouseBotControl_gCapPairRoundsPerDay_check','HouseBotControl_gCapPairDailyTzs_check')) AS "newChecks"`)).rows[0];
+    say(`    budget columns ${o.cols}/2 · hbi_pair_anchor_uq ${o.pairIdx === true ? "valid" : o.pairIdx === false ? "INVALID" : "absent"} · new CHECKs ${o.newChecks}/4`);
+    say(`    kinds ${o.kinds ?? "—"} · roster ${o.roster ?? "—"} · per minute ${o.perMinute ?? "—"}`);
+    if (o.cols !== 2) problems.push(`${pairsDir} is recorded as applied but HouseBotControl has ${o.cols} of its 2 budget columns`);
+    if (o.pairIdx !== true) problems.push(`${pairsDir} is recorded as applied but "hbi_pair_anchor_uq" is ${o.pairIdx === false ? "INVALID" : "absent"}`);
+    if (o.newChecks !== 4) problems.push(`${pairsDir} is recorded as applied but ${o.newChecks} of its 4 new CHECKs exist`);
+    if (!/'PAIR'/.test(String(o.kinds))) problems.push(`${pairsDir} is recorded as applied but HouseBotIntent_kind_check has no PAIR: ${o.kinds}`);
+    if (!/100/.test(String(o.roster))) problems.push(`${pairsDir} is recorded as applied but the roster CHECK is not 1–100: ${o.roster}`);
+    if (!/120/.test(String(o.perMinute))) problems.push(`${pairsDir} is recorded as applied but the per-minute CHECK is not 1–120: ${o.perMinute}`);
+  }
+}
+
 // ── 5 · the migration history ──────────────────────────────────────────────────────────────────
 const histReg = await c.query(`SELECT to_regclass('"_prisma_migrations"')::text AS r`);
 if (!histReg.rows[0]?.r) {
   say(`\n5 · migration history … NONE — this database has never been migrated`);
   problems.push("there is no _prisma_migrations table: this database has never been migrated at all");
 } else {
-  const unclean = await c.query(`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NULL OR rolled_back_at IS NOT NULL`);
-  say(`\n5 · unfinished / rolled-back migrations … ${unclean.rowCount}`);
+  // Prisma keeps a resolved, rolled-back attempt in history and inserts a NEW row on retry.
+  // Only a row that is neither finished nor rolled back blocks migrate deploy (P3009).
+  const unclean = await c.query(`SELECT migration_name FROM "_prisma_migrations" WHERE finished_at IS NULL AND rolled_back_at IS NULL`);
+  say(`\n5 · unresolved unfinished migrations … ${unclean.rowCount}`);
   for (const r of unclean.rows) problems.push(`blocked by an unclean migration: ${r.migration_name} — migrate deploy stops at the FIRST one, so this would present as the house migration breaking the boot`);
 
   for (const dir of houseDirs) {
-    const rec = await c.query(`SELECT migration_name, finished_at, rolled_back_at FROM "_prisma_migrations" WHERE migration_name = $1`, [dir]);
-    if (!rec.rowCount) {
-      say(`    ${dir} … not yet applied (this deploy will apply it)`);
+    const rec = await c.query(`SELECT
+      count(*) FILTER (WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL)::int AS applied,
+      count(*) FILTER (WHERE finished_at IS NULL AND rolled_back_at IS NULL)::int AS unfinished,
+      count(*) FILTER (WHERE rolled_back_at IS NOT NULL)::int AS rolled_back
+      FROM "_prisma_migrations" WHERE migration_name = $1`, [dir]);
+    const r = rec.rows[0];
+    if (r.applied) {
+      say(`    ${dir} … recorded as applied${r.rolled_back ? ` after ${r.rolled_back} rolled-back attempt(s)` : ""}`);
+    } else if (r.unfinished) {
+      say(`    ${dir} … unfinished — deploy is blocked until resolved`);
+    } else if (r.rolled_back) {
+      say(`    ${dir} … prior attempt rolled back — deploy may retry it`);
     } else {
-      const r = rec.rows[0];
-      say(`    ${dir} … recorded, finished=${r.finished_at ?? "NO"} rolled_back=${r.rolled_back_at ?? "no"}`);
-      if (r.rolled_back_at) problems.push(`${dir} is recorded as ROLLED BACK — deploy will retry it against objects that may already exist`);
+      say(`    ${dir} … not yet applied (this deploy will apply it)`);
     }
   }
 }
