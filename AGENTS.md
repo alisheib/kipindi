@@ -48,7 +48,7 @@ status line, a count or a date that will go stale.
 | Data model, stores, locks | [`docs/DATA-LAYER.md`](docs/DATA-LAYER.md) · [`prisma/schema.prisma`](prisma/schema.prisma) |
 | Owner rulings and compliance positions | [`docs/COMPLIANCE-DECISIONS.md`](docs/COMPLIANCE-DECISIONS.md) · identity: [`docs/IDENTITY-POLICY.md`](docs/IDENTITY-POLICY.md) |
 | Payments (Selcom) | [`docs/SELCOM-API-DIGEST.md`](docs/SELCOM-API-DIGEST.md) · [`docs/SELCOM-PAYOUT-RAILS.md`](docs/SELCOM-PAYOUT-RAILS.md) |
-| SMS · email | [`docs/BLACKBALL-SMS.md`](docs/BLACKBALL-SMS.md) · [`src/lib/server/comms-registry.ts`](src/lib/server/comms-registry.ts) |
+| SMS · email | [`docs/BLACKBALL-SMS.md`](docs/BLACKBALL-SMS.md) · [`docs/EMAIL.md`](docs/EMAIL.md) (templates: [`src/lib/server/comms-registry.ts`](src/lib/server/comms-registry.ts)) |
 | Production, Railway, environment variables | [`RAILWAY.md`](RAILWAY.md) · [`docs/RAILWAY-LIVE.md`](docs/RAILWAY-LIVE.md) |
 | Backups and restores | [`docs/BACKUP-RUNBOOK.md`](docs/BACKUP-RUNBOOK.md) |
 | What an agent may be granted, and how | [`docs/AGENT-ACCESS.md`](docs/AGENT-ACCESS.md) |
