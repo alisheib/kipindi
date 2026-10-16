@@ -209,6 +209,83 @@ When writing the Prisma implementation, handle these conversions:
 | `Boolean` | `boolean` | pass as-is | pass as-is |
 | `Enum` | string literal | cast `as MyType` | cast |
 
+## Locks and transactions
+
+`withLock(key, fn)` (`src/lib/server/locks.ts`) is how the platform serialises a balance read-modify-write and every
+other race it cares about — `wallet:<userId>`, `market:<id>`, `register:<phone>`, `login:<userId>` and the rest.
+
+| | With a database (`DATABASE_URL` set — `hasDatabase()`) | Without one |
+|---|---|---|
+| Mechanism | `pg_advisory_xact_lock(bigint)` — the SINGLE-argument form, run with `$executeRaw` (it returns `void`, which `$queryRaw` cannot read) as the first statement of a `prisma.$transaction`, so it is held until that transaction ends and is safe across containers | an in-memory Promise-chain mutex — one process only |
+| Key | `hashKey64(key)`: the first 8 bytes of SHA-256 over the WHOLE key string, so the namespace (`wallet:`, `market:`) is inside the hash, not a second argument | the key string |
+| Bounds | the transaction's `timeout: 30000` (30 s) and `maxWait: 10000` (10 s, the wait for a pool connection) | none |
+| Re-entry | the same key nested inside itself is free; a nested DIFFERENT key takes its lock on the outer transaction and holds it until that ends | the same, on purpose (dev/prod parity) |
+
+- **Lock order is wallet before market, never the reverse** — which is what makes a longer-held nested lock safe. A
+  house bet adds `house:control` innermost (`FLOWS.md` §9).
+- `fn` receives the lock's transaction (`tx`; null on the memory store), and `currentLockTx()` returns it anywhere below.
+- `afterCommit(tx, fn)` runs `fn` once the outermost lock has COMMITTED (and drops it on a rollback). A fire-and-forget
+  hook started inside a lock goes through `runOutsideLock`, or it inherits the lock context and joins a transaction that
+  may already have committed.
+
+### One connection per bet
+
+A bet used to pin THREE pooled connections — the wallet lock's transaction, the nested market lock's, then the money
+transaction — so concurrency topped out at a third of the pool and the surplus met a raw Prisma `P2024`. Now the lock's
+transaction rides an `AsyncLocalStorage`: a nested `withLock` takes its advisory lock on that same transaction, and
+`withMoneyTx` (`src/lib/server/ledger.ts`) joins it instead of opening its own. A bet holds ONE connection and one
+`BEGIN`/`COMMIT`.
+
+`withAdmission` (`src/lib/server/admission.ts`) sits in front of `buyPosition` (and of the house engine's
+`placeHouseBet`, which is shed rather than queued behind players). Up to `maxInFlight` bets run at once; beyond that
+they queue FIFO, a bounded queue refuses at once when it is already hopeless, and a wait budget caps how long a queued
+bet holds on. Saturation answers a retryable `BUSY` — "your stake hasn't moved" — never a raw database error, so load
+becomes latency, not failures. The defaults and clamps are `clampLimits()`; `maxInFlight` is always below the pool (at
+most the pool minus 2, the pool being `connectionLimit()` / `PRISMA_CONNECTION_LIMIT`), so non-bet traffic always keeps
+connections. A nested call passes straight through (it never waits for a slot its own caller holds); the gate is
+in-process and never waits on Redis. Live counters: Admin → System (`admissionSnapshot()`). Proof:
+`npm run test:bet-admission`, `npm run test:admission-module-copies`.
+
+### ⛔ Two rules the shared transaction imposes — read before touching a money path
+
+1. **An abort must ESCAPE `withLock`.** A throw rolls the transaction back only when it leaves the outermost lock.
+   Caught inside, the enclosing transaction COMMITS the partial writes the abort meant to discard — a real debit with no
+   position. `buyPosition`'s `BetAbort` is caught outside the lock for exactly this reason.
+2. **Every WRITE inside a lock takes the caller's transaction** — the callback's `tx`, or `currentLockTx()`. The DAL
+   resolves its client as `tx ?? pc()` and never reads the lock context by itself, so a write issued without it
+   autocommits on another pooled connection, outside the lock's atomicity; and when it touches a row the lock's
+   transaction has already written, it blocks on that uncommitted row until the 30 s timeout (`P2028`) —
+   `recordWageringCore` once did exactly this. Reads may stay un-threaded: under MVCC a read never blocks on an
+   uncommitted writer. Guard: `npm run test:lock-tx-threading` (structural); the behavioural proof is
+   `npm run e2e:money` on a real Postgres.
+
+⚠️ `hashKey64` lives alone in `src/lib/server/lock-key.ts` (re-exported by `locks.ts`). `audit.ts` needs only the hash
+and is reachable from the CLIENT module graph; importing it from `locks.ts` dragged `node:async_hooks` into a browser
+chunk and broke the build. Keep any server-only runtime out of `lock-key.ts`.
+
+## Money-path mechanics
+
+- **Rates stick to the market.** Every market freezes its rates at creation (`PredictionMarket.feeSnapshot`).
+  Settlement, cash-out and every preview read them through `ratesFor(market)` (`market-service.ts`) — ⛔ never
+  `getEffectiveConfig()`, which reads LIVE config and is for stamping a NEW market and for the admin UI. A snapshot is
+  never rewritten, backfilled or migrated. The rates themselves are `docs/RULES.md`'s; the arithmetic is
+  `src/lib/payout.ts`.
+- **A price-history write never rejects.** `recordSnapshot` (`market-history.ts`, table `MarketSnapshot`) is called
+  fire-and-forget from the bet and settlement paths, and an unhandled rejection kills the container mid-bet — so every
+  history WRITE swallows and logs its own error (reads may throw; their callers guard). A market with no bets has an
+  empty chart: ⛔ never a fallback that invents points (`npm run test:history`).
+- **A board batches its charts.** `/`, `/markets` and `/results` call `getCardCharts(ids)` — one query for the whole
+  board. ⛔ Never map `getCardChart` across a list.
+- **A deposit that lands during a break is held, not credited.** `settleDepositConfirmed` books it to
+  `HOUSE:RG_SUSPENSE` (status `AML_REVIEW`, audit `deposit.rg_refund_due`) until an officer returns it. ⛔ Never credit
+  `PLAYER:<id>` for it: `PLAYER` is trial-balanced against the wallet, so crediting money that was never added to the
+  wallet is permanent false drift.
+- **The deposit credit path is exactly-once.** Every door — the provider callback, the card return page, the fast lane
+  and the stale sweep — settles through `settlePaymentWebhook` (`wallet-service.ts`), which moves only a PROCESSING
+  row, under its wallet lock, and checks the amount against the one initiated. It was audited and found sound (a double
+  credit is impossible). ⛔ Do not change it without a new proof: `npm run test:payments`, `npm run e2e:money`. When
+  each door asks: `docs/SELCOM-API-DIGEST.md` §8.
+
 ## Key Files
 
 | File | Purpose |
@@ -217,6 +294,9 @@ When writing the Prisma implementation, handle these conversions:
 | `src/lib/server/prisma-dal.ts` | Prisma implementation of `db.*` interface |
 | `src/lib/server/prisma.ts` | PrismaClient singleton |
 | `src/lib/server/market-dal.ts` | Market + Position DAL |
+| `src/lib/server/locks.ts` · `lock-key.ts` | `withLock`, the ambient lock transaction, `afterCommit` · the pure key hash |
+| `src/lib/server/ledger.ts` | `withMoneyTx` and the double-entry ledger |
+| `src/lib/server/admission.ts` | The bet admission queue |
 | `prisma/schema.prisma` | Database schema |
 | `scripts/migrate-snapshot-to-tables.ts` | One-time migration script (already run) |
 

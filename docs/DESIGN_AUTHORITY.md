@@ -175,6 +175,11 @@ The brand hue is **royal indigo, OKLCH hue 268** — matching `design-master-bri
 port of the delivered logo `mark-a.svg` and are allowed to diverge from theme tokens —
 brand identity ≠ theme tokens.
 
+⚠️ **A `teal-*` name means royal indigo, not teal.** `--teal-50` … `--teal-950` in `globals.css`, and the Tailwind
+`teal-*` utilities bridged from them, are DEPRECATED backward-compatible aliases: each is literally `var(--royal-N)`,
+hue 268. The real teal-family ramp is `--aqua-*` (hue 195, §B4). ⛔ Never use a `teal-*` name in new code — it reads as
+one colour and paints another.
+
 ### B1a — ⭐ THE MARK ITSELF, and the two things people get wrong about it
 
 Recorded 2026-08-06 because an outside design pass reconstructed the mark from prose as
@@ -1540,6 +1545,31 @@ them, never dip under.
    Guarded by `npm run test:enter-where-pressed`; proved red by `npm run red:enter-where-pressed`; the real keys are
    `npm run qa:enter-where-pressed` (local).
 
+   ⭐ **Widened 2026-10-07 (S6 A8i-2), because a rule run inside each dialog left the page outside them unguarded** — a
+   held Enter on Up & Down's UP placed a bet on every auto-repeat, and focus handed back behind the win seal let a
+   second Enter sell the ticket under it. Two mechanisms now hold it, everywhere:
+   - **ONE key guard for the whole page** (`src/components/ui/key-guard.tsx`, installed by AppShell and by every
+     `Modal`): a window listener in the CAPTURE phase, so it decides before any element or React handler, and a key it
+     swallows is both prevented and stopped. It swallows a held key's repeat that would press something, ANYWHERE; every
+     Enter or Space behind the top dialog; and a fresh press inside the ARMING BEAT — `ARMING_MS` (400 ms; held above
+     the win seal's queue gap and at most 600 ms by `test:enter-where-pressed` 5.7) after a dialog takes focus or hands
+     it back. A Space presses only where it went down, and a key that is composing text (an input method's Enter or
+     Space) is never touched. Any other press is untouched: with no dialog open, a tap of Enter on UP is a bet, every
+     time.
+   - **ONE dialog stack** (`src/lib/modal-stack.ts`): every `Modal` stands on it, ordered by zIndex, then by open order.
+     Only the TOP dialog takes focus and answers Escape and Tab. A closing dialog hands focus back through `leaveLayer`
+     — never behind the dialog now on top — and an uncovered money dialog takes focus on its WAY OUT (`safeFocus`:
+     Cancel, "Hifadhi nafasi"), never on its money button.
+   - ⛔ A new key listener on the window, the document or the page gets a NAME the census can read, and every key event
+     named in `src/` must belong to a listener the census reads. `test:enter-where-pressed` builds the guard and
+     `leaveLayer` from their text and runs them; `qa:enter-where-pressed` takes `ENGINE=webkit|firefox` for the other
+     engines.
+9. **No text field under 16px on a narrow screen.** iOS Safari zooms the whole page when a field set smaller takes
+   focus, and every dialog then opens "zoomed in" until the player pinches out. One rule in `globals.css` (its "iOS
+   Safari auto-zoom prevention" block) sets every text `input`, `textarea` and `select` to 16px on narrow screens —
+   radios, checkboxes and hidden inputs aside, and the kit's `xl` field keeping its larger figure. It is `!important`
+   on purpose; ⛔ do not fight it at a call site.
+
 ---
 
 ## C — What the interface may say: honesty and tone
@@ -1972,6 +2002,27 @@ so the two can never drift. The freshness cap is `MAX_LIVE_AGE_MS` in
 `src/lib/outcome-announcement.ts`, beside the rule that consumes it. Dwells stay in
 `feedback-timing.ts`.
 
+### F10 — An action answers at once, and its success speaks after its data
+
+Three kit mechanics carry this; each component file is authoritative (§0b), and these are the rules they keep.
+
+- **A tap that navigates answers before the server does.** `NavProgress` (`src/components/ui/nav-progress.tsx`, mounted
+  by AppShell) draws a thin brand-to-aqua bar across the top of the viewport, above everything and catching no pointer,
+  from the click of an internal link that really navigates — ⛔ never a modifier or middle click, a new tab, a download
+  or a link to the URL already open — and from the `50pick:navigating` window event, which a programmatic
+  `router.push` must dispatch first to get the bar. It completes when the path or query changes, gives itself up if no
+  navigation lands, and stands still under reduced motion. ⛔ It is not gold: it measures a page load, never money
+  (§M3).
+- **A success toast speaks after the data it describes is on screen.** `useDeferredToast(pending)`
+  (`src/components/ui/toast.tsx`) queues `deferToast(…)` inside a transition and fires it on the falling edge of
+  `pending` — the frame the refreshed data is visible — and flushes the queue when the control unmounts first, so a
+  success that removes its own control still speaks. A failure uses `toast()` and speaks at once.
+- **A form in flight says so, and cannot be sent twice.** A form that commits through its own button submits through
+  the kit `SubmitButton` (`src/components/ui/submit-button.tsx`): a spinner and a pending label while the action runs
+  (`useFormStatus`, or the caller's `pending` for a form submitted through `onSubmit`), disabled meanwhile. It has no
+  gold tone (§M3a). A form whose commit is a confirm is the confirm's: `ConfirmDialog` with `submitsForm`, and nothing
+  else in that form may submit.
+
 ---
 
 ## E — Elevation and motion mechanics
@@ -2041,6 +2092,15 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
 2. ⛔ **Never introduce a native `<select>`, `<input type=checkbox>` or `datetime-local`**, an
    ad-hoc portal, or a hard-coded token literal where a kit primitive exists.
    `npm run test:ui-consistency` fails the build.
+   The kit's replacements: **`Select`** (`src/components/ui/select.tsx` — an APG select-only combobox, keyboard-driven,
+   its list portaled, a hidden input carrying the value with its form) and **`DateSelect`**
+   (`src/components/ui/date-select.tsx` — DD / MM / YYYY segments plus a calendar; the keystroke rules are pure in
+   `date-mask.ts`, guarded by `npm run test:date`). No native `<select>` and no `<input type="date">` is left in `src/`;
+   a native `datetime-local` survives on admin forms only. A surface that takes over the screen — the kit `Modal`, the
+   filter sheet, the notifications panel, `DateSelect`'s calendar — locks the page under it with `useModalLock(open)`
+   (`src/lib/use-modal-lock.ts`): scroll locked on both `<html>` and `<body>`, horizontal scroll reset to 0 and the
+   viewport's `maximum-scale` pinned to 1 while it is open, so an Android pinch-zoom or a page wider than the screen
+   cannot push the dialog off it.
 3. ⛔ **Never import an icon library into a player surface.** Glyphs come from
    `src/components/ui/glyphs.tsx`.
 4. ⛔ **Never read a `globals.css` out of a design export** — those are dated snapshots and
@@ -2673,6 +2733,17 @@ buttons follow D1 and the header-pill precedent, not D5.
 
 The bet commit "Weka dau · TZS {x}" keeps gold (bet and sell keep gold). The deck's gold "Nimeelewa, anza" and gold
 active tab are not adopted: they use `btn-primary` and `--pill-active` (owner ruling R5: 50pick's look, unchanged).
+
+Two more surfaces where gold is decided, both by the same test:
+- **The result after an act** — `OperationResultModal`'s `stripTone` (its auto-close strip, and on success its primary
+  button and crest; `src/components/markets/operation-result-modal.tsx`). A placed bet passes its SIDE, `yes` or `no`:
+  the side-coloured button and the commit crest. Every other result takes the default `brand` — a sale's result too
+  (`SellResultModal`), because it returns a stake and earns nothing, as do deposits, withdrawals and every console
+  act. `gold` is kept for money earned, and no caller passes it today.
+- **The board's HOT flag is rose, never gold** — the kit `Chip variant="hot"` (`src/components/ui/chip.tsx`; the
+  `.chip-hot-rose` class it was ported from is deleted). "Hot" is a crowd signal, not money earned, so the gilt chips
+  (`gold`, `objection`) are not available to it. ⚠️ `hot` shares the `no` chip's ROSE object (§B2a); splitting that
+  pair was offered and not taken (the note in `chip.tsx`).
 
 
 ### M4 — Money is mono, and it never reflows
