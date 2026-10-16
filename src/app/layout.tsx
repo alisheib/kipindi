@@ -132,6 +132,7 @@ export const viewport: Viewport = {
 
 import { cookies } from "next/headers";
 import { journeyShellShown } from "@/lib/server/journey-preview";
+import { chatOwnerTag } from "@/lib/server/session";
 import { NOT_FOUND_WATCH_SCRIPT } from "@/lib/not-found-watch";
 import { CARD_SPACING_COOKIE, cardSpacingFromCookie } from "@/lib/card-spacing";
 
@@ -148,6 +149,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // stylesheet knows the journey shell is drawn (`journeyShellShown` says why it is no longer `:root:has()`). A classic
   // request gets no attribute, so its served bytes are what they were.
   const [chatbotEnabled, journeyShell] = await Promise.all([isChatbotEnabled().catch(() => true), journeyShellShown()]);
+  // Whose help-chat history this tab may show (2026-10-16): a keyed digest of the signed cookie, no database read.
+  const chatOwner = await chatOwnerTag().catch(() => "guest");
   // ⛔ `translate="no"` + the `notranslate` class are the ATTRIBUTE half of the
   // `google: "notranslate"` meta in `metadata` above; browsers honour the two in different
   // places, so both are set. See that comment for WHY this product blocks machine translation
@@ -198,7 +201,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 component importing `SUPPORT_EMAIL()` reads the module DEFAULT for ever and
                 an officer's saved address never reaches it. Same trap `agentDoorVisible`
                 already documents in `app-shell.tsx`. */}
-            <LazyOverlays chatbotEnabled={chatbotEnabled} supportEmail={SUPPORT_EMAIL()} />
+            {/* `chatOwner`: whose help-chat history this tab may show (`chatOwnerTag`, 2026-10-16) — a sign-out changes it. */}
+            <LazyOverlays chatbotEnabled={chatbotEnabled} supportEmail={SUPPORT_EMAIL()} chatOwner={chatOwner} />
           </Suspense>
         </ThemeProvider>
       </body>

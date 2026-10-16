@@ -322,3 +322,7 @@ Two things this procedure did not anticipate, for the next stop of this service:
 - **Windows PowerShell 5.1.** `@(… | ConvertFrom-Json)` wraps the CLI's JSON array in a one-element array there (PowerShell
   7 enumerates it), so step 2's script as written miscounts deployments. The gates were run from Node, which parses the
   same JSON the same way on every shell.
+
+The private rehearsal project (`50pick-s9-cutover-rehearsal`, `f494e809-5d2c-41ab-b560-7c8b92b1e2c2`) was deleted on
+2026-10-16 with Ali's approval once the cutover was read back; Railway reports it deleted. A future rehearsal starts from a
+new project.

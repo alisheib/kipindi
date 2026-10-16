@@ -30,6 +30,7 @@ import { useT } from "@/lib/i18n";
 import { isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useNotFoundShown } from "@/lib/not-found-mark";
+import { CHAT_STORAGE_KEY, historyFor, historyRecord } from "@/lib/chat/history";
 
 // `s` = the marketing opt-out page (D6) — no chat bubble on the way out; `test:marketing-optout` pins it.
 const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
@@ -40,11 +41,9 @@ const MOBILE_BREAKPOINT = 1024;
 
 /** Conversation history lives in sessionStorage so closing + reopening
  *  the bubble within one browser session preserves what the player
- *  already saw. Cleared on tab close — the design's open question
- *  said "fresh after logout"; per-session is the safer default since
- *  we don't have a server-side history store yet. Cap at 40 messages
+ *  already saw. Cleared on tab close, and kept only for the session that
+ *  wrote it (`@/lib/chat/history`, 2026-10-16). Cap at 40 messages
  *  to keep storage small. */
-const CHAT_STORAGE_KEY = "50pick-chat-history";
 const CHAT_HISTORY_LIMIT = 40;
 
 /** Clear chat history — called on logout/session-revoke so the next
@@ -54,40 +53,38 @@ export function clearChatHistory(): void {
   try { window.sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch {}
 }
 
-function loadHistory(): Message[] {
+/** ⭐ The history saved for this owner, or none (`historyFor`); someone else's is removed, not merely hidden. */
+function loadHistory(owner: string): Message[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.sessionStorage.getItem(CHAT_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Message[];
-    if (!Array.isArray(parsed)) return [];
-    // Cheap structural validation — if the shape drifted across a
-    // deploy, drop the cache rather than render broken markup.
-    return parsed.filter(
-      (m) =>
-        m && typeof m === "object" &&
-        "id" in m && "role" in m &&
-        (m.role === "user" || m.role === "ai"),
-    );
+    const mine = historyFor(raw, owner);
+    if (raw && mine.length === 0) window.sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    return mine;
   } catch {
     return [];
   }
 }
-function saveHistory(messages: Message[]): void {
+function saveHistory(owner: string, messages: Message[]): void {
   if (typeof window === "undefined") return;
   try {
-    const trimmed = messages.slice(-CHAT_HISTORY_LIMIT);
-    window.sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(trimmed));
+    window.sessionStorage.setItem(CHAT_STORAGE_KEY, historyRecord(owner, messages, CHAT_HISTORY_LIMIT));
   } catch {
     /* private browsing or quota — fail silent, panel still works */
   }
 }
 
-export function ChatRoot({ supportEmail }: { supportEmail: string }) {
+export function ChatRoot({ supportEmail, chatOwner }: { supportEmail: string; chatOwner: string }) {
   const pathname = usePathname();
   const { t, locale } = useT();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  // The conversation and the owner it belongs to travel together, so a message is only ever saved under the session
+  // that wrote it — even in the render where the owner changes (a sign-in or sign-out without a full page load).
+  const [chat, setChat] = useState<{ owner: string; messages: Message[] }>({ owner: chatOwner, messages: [] });
+  const messages = chat.messages;
+  const setMessages = useCallback((next: Message[] | ((prev: Message[]) => Message[])) => {
+    setChat((c) => ({ owner: c.owner, messages: typeof next === "function" ? next(c.messages) : next }));
+  }, []);
   const [pending, setPending] = useState(false);
   // null until the viewport is measured on the client (2026-09-13): the server cannot know the
   // width, and rendering the desktop offset first put the bubble ON the bottom rail at phone and
@@ -99,27 +96,24 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   // ⭐ R4-J (2026-10-09) · a not-found page is no journey page, whatever its path (`lib/not-found-mark.ts`).
   const notFoundShown = useNotFoundShown();
 
-  // Hydrate from sessionStorage on mount so a returning player sees
-  // their prior turn. Server-render starts empty — that's correct,
-  // there's no SSR for chat history.
+  // Hydrate from sessionStorage on mount — and again whenever the owner changes — so a returning player sees their own
+  // prior turn and nobody sees anyone else's. Server-render starts empty — that's correct, there's no SSR for chat history.
   useEffect(() => {
-    const cached = loadHistory();
-    if (cached.length > 0) {
-      setMessages(cached);
-      // Pick up the language of the last user message so the UI
-      // renders in the right locale on re-open.
-      const lastUser = [...cached].reverse().find((m) => m.role === "user");
-      if (lastUser && (lastUser.lang === "en" || lastUser.lang === "sw")) {
-        setLang(lastUser.lang);
-      }
+    const cached = loadHistory(chatOwner);
+    setChat({ owner: chatOwner, messages: cached });
+    // Pick up the language of the last user message so the UI
+    // renders in the right locale on re-open.
+    const lastUser = [...cached].reverse().find((m) => m.role === "user");
+    if (lastUser && (lastUser.lang === "en" || lastUser.lang === "sw")) {
+      setLang(lastUser.lang);
     }
-  }, []);
+  }, [chatOwner]);
 
-  // Persist on every change. Cheap — sessionStorage write is sync but
+  // Persist on every change, under the owner the messages belong to. Cheap — sessionStorage write is sync but
   // small (we cap at 40 messages).
   useEffect(() => {
-    saveHistory(messages);
-  }, [messages]);
+    saveHistory(chat.owner, chat.messages);
+  }, [chat]);
 
   // Mobile detection — recomputed on resize. Initialised on mount
   // (server-render falls back to desktop, which is fine since the

@@ -8,7 +8,7 @@
  */
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { signSession, verifySession, randomId } from "./crypto";
+import { signSession, verifySession, randomId, pepperedLetters } from "./crypto";
 import { audit } from "./audit";
 import { readActiveSession, setActiveSessionId, clearActiveSession } from "./session-registry";
 
@@ -299,6 +299,19 @@ export async function requireSession(): Promise<SessionData> {
   const s = await getSession();
   if (!s) throw new SessionRequiredError();
   return s;
+}
+
+/**
+ * ⭐ THE HELP CHAT'S OWNER (2026-10-16). The chat keeps its history in the tab's sessionStorage and dropped it only on an
+ * /auth, /admin or /s page — but a plain sign-out lands on `/`, so the history outlived the session and the next person
+ * on that tab could read the last one's conversation. The root layout hands the chat this tag, and the chat keeps only
+ * history saved under the same tag (`ChatRoot.tsx`, `test:chat-owner`). Keyed and one-way (`pepperedLetters`), read from
+ * the signed cookie alone — no registry read — and "guest" when there is no valid cookie.
+ */
+export async function chatOwnerTag(): Promise<string> {
+  const jar = await cookies();
+  const session = verifySession<SessionData>(jar.get(COOKIE_NAME)?.value);
+  return session?.sessionId ? pepperedLetters("chat-owner", session.sessionId, 16) : "guest";
 }
 
 export class SessionRequiredError extends Error {

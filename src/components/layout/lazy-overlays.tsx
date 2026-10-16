@@ -40,10 +40,13 @@ const FirstVisitPrimer = dynamic(() => import("@/components/onboarding/first-vis
 export function LazyOverlays({
   chatbotEnabled = true,
   supportEmail,
+  chatOwner,
 }: {
   chatbotEnabled?: boolean;
   /** Server-read in the root layout — see the note at the call site (E-226). */
   supportEmail: string;
+  /** Whose help-chat history this tab may show — `chatOwnerTag()`, server-read in the root layout. */
+  chatOwner: string;
 }) {
   // Register service worker once on mount (non-blocking)
   useEffect(() => {
@@ -56,7 +59,7 @@ export function LazyOverlays({
     <>
       {/* Chatbot on/off comes from the AI toolkit (server-read in the root layout).
           When disabled the widget is not mounted at all — no bubble, no JS, no calls. */}
-      {chatbotEnabled && <ChatRoot supportEmail={supportEmail} />}
+      {chatbotEnabled && <ChatRoot supportEmail={supportEmail} chatOwner={chatOwner} />}
       <FirstVisitPrimer />
     </>
   );

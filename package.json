@@ -516,6 +516,7 @@
     "test:design-frozen": "tsx scripts/design-frozen.test.mts",
     "test:design-one-door": "tsx scripts/design-one-door.test.mts",
     "test:agent-rules": "tsx scripts/agent-rules.test.mts",
+    "test:chat-owner": "tsx scripts/chat-owner.test.mts",
     "test:icon-sizes": "tsx scripts/icon-size-ratchet.test.mts",
     "red:icon-sizes": "tsx scripts/icon-size-ratchet.test.mts --prove-red",
     "red:icon-sizes-slack": "tsx scripts/icon-size-ratchet.test.mts --prove-red-slack",
