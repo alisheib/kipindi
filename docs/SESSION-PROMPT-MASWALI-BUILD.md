@@ -1,5 +1,10 @@
 # SESSION PROMPT — build MASWALI MILLIONEA
 
+> ⚪ **RECORD — SUPERSEDED 2026-10-16.** This was the August build door. It was written for the AUGUST 2026 proposal (TZS 2,000 entry, three
+> prize tiers, a 20M guarantee). On 2026-10-16 the management-reviewed proposal replaced it and Ali voided every August
+> ruling. The live programme is [`MASWALI-PLAN.md`](MASWALI-PLAN.md) — say "proceed with Maswali plan". How to work
+> is [`AGENTS.md`](../AGENTS.md). Read this file for engineering practice only; never for a rule, a figure or a route.
+
 **Programme key: `MASWALI-BUILD`** — quote it in every commit and handoff so any session, on any
 machine, knows which programme it is inside. Owner: Ali.
 

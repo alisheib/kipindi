@@ -31,7 +31,8 @@ status line, a count or a date that will go stale.
    `hostname && pwd && git rev-parse --show-toplevel && git branch --show-current && git status --short`
 2. `git fetch`, then read **THE BOARD** at the top of [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md). Each ▶ row is a live
    programme; its document's **§0 RESUME AT** says what to do next (for the Vodacom journey:
-   [`docs/VODACOM-PLAN.md`](docs/VODACOM-PLAN.md)). A document that is not on the board is a record of finished work.
+   [`docs/VODACOM-PLAN.md`](docs/VODACOM-PLAN.md); for Maswali Millionea — "proceed with Maswali plan" —
+   [`docs/MASWALI-PLAN.md`](docs/MASWALI-PLAN.md)). A document that is not on the board is a record of finished work.
    Do not start a new programme — ask Ali.
 3. A machine that has never run 50pick: [`docs/SETUP.md`](docs/SETUP.md). Every document, with a status:
    [`docs/README.md`](docs/README.md). After a pull that changed dependencies or the schema: `npm ci` and

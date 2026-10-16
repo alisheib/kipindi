@@ -1,0 +1,1007 @@
+MASWALI-DESIGN-R2 · Maswali Millionea · design round 2 · a commission for Claude Design
+PACKAGE STAMP: cut from 50pick commit {FULL_SHA} on {YYYY-MM-DD} (repeated in STAMP.txt). Every
+attachment is a copy of that commit. Repeat this stamp in your README.
+
+HOW TO READ THIS PROMPT
+ · "R1" always means design round 1 (August 2026). The reserve questions are A1–A5.
+ · SM1–SM9 are the signature moments (section 7). N1–N4 are the new motions (section 8).
+ · "§" plus a letter and number (§M3, §F9, §C8 …) is a section of the attached DESIGN_AUTHORITY.md.
+ · Words in CAPITALS are hard limits.
+ · "OPEN" means the owner has not ruled. Draw the named provisional version, label it "provisional"
+   on the canvas, and list it in OPEN-QUESTIONS.md.
+
+PRECEDENCE
+ · A GAME RULE: this prompt wins over every attachment, over R1, and over any other version of these
+   rules you may have seen.
+ · A TOKEN, VALUE OR DESIGN LAW: the attached live files win over this prompt. Laws are in
+   DESIGN_AUTHORITY.md. Values are in globals-extract.css, motion.css, state-tokens.css and
+   tailwind.config.ts.
+   The one bounded exception is the short list of PROPOSALS that section 1 allows (N1–N4, three
+   glyph changes, the listed props). Make them and flag them. They become law only on the owner's yes.
+ · If this prompt names a token, class or component that the attachments do not define, the prompt
+   is wrong. Use the nearest existing one and say so in DECISIONS.md.
+
+═══════════════════════════════════════════════════════════════════
+0 · WHAT YOU ARE MAKING
+═══════════════════════════════════════════════════════════════════
+50pick is a Tanzania-licensed, real-money, pari-mutuel prediction platform. Players pick YES or NO on
+questions about real events, and the winners share the pool less a commission.
+ · It is trilingual: Swahili (the primary market, and the language you design in), English and Chinese.
+ · It has one dark royal theme.
+ · It already runs two products: Yes/No markets and "Juu/Chini" (Up & Down) rounds.
+
+MASWALI MILLIONEA is the third product, a weekly jackpot.
+ · A player buys a TZS 1,000 ticket and answers 15 Yes/No questions: 10 main and 5 reserve.
+ · Every ticket that gets all 10 graded questions right shares the week's jackpot equally.
+ · If nobody wins, the money rolls into next week.
+
+You design the WHOLE player experience under one fixed concept, "Daftari na Muhuri" (section 5). You
+also prototype its signature moments in working HTML/CSS. This is the last design round before the
+build, so complete states matter more than polish. We want it to be the most distinctive jackpot
+experience any platform has — distinctive through the craft of this system, never through decoration.
+NOT in scope: the officer console (built later from the admin kit); marketing or acquisition art; any logo.
+
+You have done this before:
+ · Your Identity Sprint drew the line-icon family in glyphs.tsx (attached). This round extends that family.
+ · In August 2026 you delivered MASWALI-DESIGN-R1 for an earlier version of this product (attached in
+   05-r1/). Its GAME RULES ARE DEAD (section 13).
+ · R1's craft largely survives: the slip as a document, the sticky progress rail, one lit control per
+   row, the mono pool figure, the 560 receipt and the finality line.
+ · EDIT those canvases where they survive; do not redraw from zero. R1's canvases link
+   sources/tokens-locked.css, which is NOT attached because it is stale. Re-point every canvas you edit
+   to the attached live token files (section 11), and re-check every var() in it.
+
+Your files are filed raw into a PUBLIC repository. Use the sample data only: no real player names,
+phone numbers or identities.
+
+═══════════════════════════════════════════════════════════════════
+1 · THE SINGLE MOST IMPORTANT INSTRUCTION
+═══════════════════════════════════════════════════════════════════
+The design system is COMPLETE and FROZEN. COMPOSE it; do not extend it.
+ · Every colour, radius, shadow, border, space, size, duration and easing names an EXISTING token, as
+   var(--name), or an existing Tailwind step.
+ · Do not invent a value or convert a colour space.
+ · Outside the attached token copies, never write: a raw ms value or a cubic-bezier(); a hex, rgb(),
+   hsl() or oklch() literal; a named colour.
+ · A new state is a PROP ON AN EXISTING COMPONENT, never a near-duplicate component.
+ · The product gets no stylesheet of its own. Never add a new font, colour family or theme; a sub-brand;
+   an icon library, mascot or illustration; Lottie, video, canvas or WebGL; sound, or a new haptic pattern.
+
+Only these new things are allowed. Each one is flagged in DECISIONS.md for the owner's yes or no:
+ (1) AT MOST FOUR new signature motions, N1 to N4, inside ONE marked block of ONE delivery file,
+     motion/maswali-motion.css (section 8). On approval the block is pasted into the platform's motion.css.
+ (2) Glyphs: one new glyph, sealNil; the product glyph "millionea" (R1's three-pearl coronet,
+     re-checked); the unused voidX renamed to sealX, with its geometry UNCHANGED.
+ (3) At most one new prop on each reused component, from the list in section 9.
+
+DEFINITION OF DONE
+ · Zero new colour, size, space, radius, shadow, duration or curve values. The only numbers allowed in
+   the N-block are the multiplier −1 and the press stops 1.02 and 0.98, which the platform's own
+   seal-place keyframe already uses.
+ · Every new keyframe sits inside the N-block. Every new state is a prop.
+ · A search for anything you added finds exactly ONE definition site.
+NEVER deliver a parallel token file, a parallel component set or a "Millionea theme".
+
+═══════════════════════════════════════════════════════════════════
+2 · THE GAME: the owner's rulings of 2026-10-16, exact
+═══════════════════════════════════════════════════════════════════
+These replace R1's rules, and the management proposal wherever they differ. Draw them exactly.
+
+ 1. PRICE. A ticket costs TZS 1,000 and is paid from the MAIN balance only ("salio kuu"). Bonus money
+    is refused with a message that names the reason.
+ 2. QUESTIONS. Each week publishes 15 Yes/No questions: 10 MAIN, numbered 1–10; 5 RESERVE, shown as
+    A1–A5. (The owner's rulings call the reserves R1–R5; on screen they are "A" for Akiba — a draft
+    label, flag it in DECISIONS.md.) The player answers ALL 15 before paying.
+ 3. VOID. A question is void when it cannot be resolved: a match abandoned or postponed past its
+    deadline, no clear outcome, or no reading from its source.
+    - ONE officer records each result and each void. An AI may prepare evidence and a suggestion; it
+      never seals a result.
+ 4. RESERVES. A reserve counts ONLY when a main question voids.
+    - The voided mains are filled by the first unused NON-VOID reserves, in the order A1 → A5.
+    - A voided reserve is skipped.
+    - The lowest-numbered voided main takes the first such reserve, and so on (owner's ruling). The
+      pairing never changes who wins — the graded set is the same either way — it fixes what is drawn.
+ 5. WEEK VOID. If the voided mains outnumber the non-void reserves, the WHOLE WEEK voids and every
+    ticket is refunded in full; the money carried in from earlier weeks carries forward again in full.
+    - The moment that becomes certain, sales stop (if still open) and the week band reads
+      "Wiki inabatilishwa" with the refund time. Refunds are paid when the 24-hour check window on the
+      voids that caused it closes (an upheld objection can still reinstate a question until then). Then
+      the band reads "Wiki imebatilishwa".
+ 6. WIN. A ticket wins when all 10 graded positions match. A graded position is a main, or the reserve
+    carried into a voided main's place. 9 of 10 wins nothing, except in the SUNSET week (rule 15).
+    There are no tiers.
+ 7. JACKPOT. Jackpot = the larger of TZS 1,000,000 (the guaranteed floor) and the pool (the rollover
+    carried in plus this week's ticket sales). The floor counts BEFORE the fee.
+ 8. FEE AND SHARE, in a week with at least one winning ticket:
+    - 13% of the jackpot is the platform fee. The TRA 10% and GBT 5% levies are booked from that fee
+      when it is taken. A player never pays them.
+    - The other 87% is shared EQUALLY PER WINNING TICKET (two winning tickets get two shares), each
+      share floored to the whole shilling.
+    - If the pool is below the floor, the house tops up the gap — only in a winning week, never
+      carried over.
+    - A rounding remainder from the equal split is never paid from house money: in a week above the
+      floor it stays in the jackpot for next week; in a floor week the top-up is reduced by it.
+    Example: 1,050,000 − 136,500 fee = 913,500 to winners ÷ 3 tickets = 304,500 each.
+    Floor week: 1,000,000 − 130,000 fee = 870,000 to winners.
+ 9. NO WINNER. No fee is taken. 100% of the pool rolls into next week, with no cap, until someone wins.
+    The floor and any top-up never roll.
+10. CAP. At most 10 tickets per player per week, printed on the slip. A ticket cancelled in its free
+    window does not count toward the 10.
+11. FREE CANCEL. A ticket can be cancelled for a full refund within 5 minutes of purchase, but only if
+    sales still had at least 5 more minutes to run when it was bought (the platform's existing rule,
+    measured to the sales close).
+12. WEEK SCHEDULE.
+    - Sales open Monday and close Friday 18:00 EAT. Events run Friday evening to Sunday.
+    - After the last result is final, a 24-hour check window runs (it never closes before 12:00 EAT)
+      while players may dispute a result; a different officer rules on disputes. Payout follows,
+      normally Monday or Tuesday.
+    - An officer may move the close; the new time replaces the old one everywhere, and one neutral
+      notice says so. The system REFUSES any question whose event starts before the sales close.
+    - The next week opens on its own schedule. Its jackpot includes last week's rollover once last week
+      settles. Until then the new week's figure is a true LOWER BOUND, labelled "angalau" (at least).
+13. INSIDERS. Staff (any admin role) and house or desk accounts cannot buy; they get a clear refusal.
+    House bots never touch Millionea.
+14. CATEGORIES. Use ONLY the platform's closed category list and its existing labels: Michezo (sports) ·
+    Uchumi (macro: stocks and FX) · Hali ya hewa (weather) · Kripto (crypto) · Utamaduni (culture:
+    entertainment) · Teknolojia (tech) · Nyingine (other). There is NO politics category, ever.
+15. SUNSET. If the product is ever stopped for good, the final week is announced at least one full week
+    before its sales open, runs normally, and the unwon pool goes to that final week's highest-scoring
+    tickets, shared equally.
+    - In that final week ONLY, a score decides who is paid, so its settlement states the winning score.
+      Nowhere else does a score appear.
+    - The 13% fee applies to the sunset payout. There is no floor top-up unless a ticket got 10/10.
+16. REGISTER. The pool is held in its own house ledger account as money owed to players. A public
+    register shows every question, result, void, substitution and ledger line, with the attesting
+    officer's ROLE (two roles if the platform's optional two-officer flag is on).
+
+NAME AND PLACEMENT
+ · Route /millionea · label "Millionea" · page title "Maswali Millionea" · code modules maswali-*.
+ · There is NO new tab. The sponsor journey's four tabs stay identical: Maswali | Juu/Chini |
+   Tiketi zangu | Akaunti.
+ · A Millionea card goes on the Maswali home tab. Where it sits in the home column is yours to propose;
+   the panel recommends directly after the head (the How-to card plus the headline, one row from 1024
+   up) and before the topic chips, at every width. Say in DECISIONS.md that it deviates from the sponsor
+   deck's home template.
+ · Tiketi zangu's switch becomes "Maswali | Juu/Chini | Millionea". Its Millionea kind lists tickets at
+   /millionea/tickets.
+ · Propose which journey tab is lit on each /millionea page (recommended: Tiketi zangu on
+   /millionea/tickets and on a ticket; Maswali on every other page).
+ · The product may launch BEFORE the sponsor journey becomes the default, so every page must work inside
+   BOTH shells (section 4j). The classic-shell entry point is ruled (section 6, H-classic).
+
+HEADLINE RULE. Wherever the jackpot figure appears, the rule sits beside it:
+  SW (draft) "Jackpot TZS {amount} · inagawanywa sawa kwa kila tiketi ya 10/10 · ada 13% wakati wa malipo"
+  EN         "Jackpot TZS {amount} · shared by every 10/10 ticket · 13% fee at payout"
+ · The win result shows the pool, the fee and the amount paid.
+ · The jackpot is UNEARNED money: mono, neutral ink, never gold.
+ · A HELD TICKET NEVER SHOWS A FIGURE IT MIGHT WIN. No jackpot figure on the slip, the confirm sheet, the
+   purchase result, a ticket, or a ticket-list row. Where the rule helps there, print it without the figure.
+
+═══════════════════════════════════════════════════════════════════
+3 · WHAT YOU MUST NOT INVENT, and the ONLY data you may draw
+═══════════════════════════════════════════════════════════════════
+MUST NOT INVENT
+ · Any money figure, count, date, time, serial or hash that is not in SAMPLE DATA below.
+ · Any rate except: ticket TZS 1,000 · floor TZS 1,000,000 · fee 13% of the jackpot at payout · TRA 10%
+   and GBT 5% of the fee (shown on the public register only) · cap 10 · free cancel 5 minutes · check
+   window 24 hours.
+ · Any legal or regulatory claim: no licence wording or number; no "approved by" or "licensed for this
+   product"; no tax statement beyond the levy line; no withdrawal or AML review promise; no helpline
+   number; no age claim beyond the existing 18+ mark. If a screen needs one, draw a labelled slot
+   "[legal line — pending]" and list it in OPEN-QUESTIONS.md.
+ · Odds, probabilities, "chance of winning", expected value, or any "you will win TZS X".
+ · A score on any surface outside the sunset week.
+ · A sponsor placement, a "presented by" line, or the sponsor's colours.
+ · A rule. If a state cannot be decided from section 2, ask in OPEN-QUESTIONS.md. Never guess on the canvas.
+ · Single-letter pick abbreviations. "N" means YES in Swahili (Ndio) and NO in English. Always write the
+   full word: NDIO / HAPANA, YES / NO, 是 / 否.
+
+SAMPLE DATA. Name each frame's timeline in FRAME-INDEX.md. Everything here is fake.
+
+Week "Wiki 42"
+ · Sales: Mon 19 Oct 2026 → Fri 23 Oct 18:00 EAT. First event: Fri 23 Oct 19:30.
+ · Results final Mon 26 Oct 10:41; check window to Tue 27 Oct 12:00; payout Tue 27 Oct.
+ · The question-set hash was published at sales open: 7f3a9c…e21, shown short as "7f3a…".
+
+Ledger history (consistent): Wiki 39 won, so 0 carried · Wiki 40 no 10/10, carried TZS 176,000, ada 0 ·
+Wiki 41 no 10/10, carried TZS 389,000 (176,000 + 213,000 sales), ada 0.
+
+Open week snapshot (draft line words):
+ · Imeletwa mbele (Wiki 41) TZS 389,000
+ · Mauzo wiki hii TZS 212,000 (tiketi 212)
+ · Jumla ya bwawa TZS 601,000
+ · Dhamana ya chini TZS 1,000,000
+ · Jackpot TZS 1,000,000, with the rule
+ · Ada —
+ · Above-floor variant: sales TZS 661,000; bwawa and jackpot TZS 1,050,000; the floor line goes muted
+   but stays visible.
+ · "Previous week unsettled" variant: rollover "—", and the figure reads "angalau TZS 1,000,000".
+
+Player: main balance (salio kuu) TZS 44,196 · bonus refusal only: main TZS 400, bonus TZS 5,000 · holds
+2 tickets; this purchase is ticket 3 of 10 · bought Wed 21 Oct 14:02, so free cancel runs until 14:07 ·
+serial MLN-W42-004417.
+
+Picks on MLN-W42-004417: mains 1 NDIO · 2 HAPANA · 3 NDIO · 4 NDIO · 5 HAPANA · 6 NDIO · 7 HAPANA ·
+8 NDIO · 9 NDIO · 10 HAPANA · reserves A1 NDIO · A2 HAPANA · A3 NDIO · A4 HAPANA · A5 NDIO.
+
+TIMELINE A (no winner: the LOSS and LIVE frames)
+ · Main 4 is void (match postponed), recorded Sat 24 Oct 11:02, before its 19:00 kick-off.
+ · Main outcomes: 1 NDIO · 2 HAPANA · 3 HAPANA · 4 BATILI → A1 NDIO · 5 HAPANA · 6 NDIO · 7 NDIO ·
+   8 NDIO · 9 HAPANA · 10 HAPANA. Reserve outcomes: A1 NDIO (Sun 17:54) · A2 HAPANA · A3 HAPANA ·
+   A4 NDIO · A5 NDIO. A2–A5 are not used.
+ · The substitution is logged when the last result is final: Mon 26 Oct 10:41.
+ · 212 tickets; no 10/10; TZS 601,000 carried to Wiki 43; ada 0.
+THE LIVE FRAME: Sun 25 Oct 12:00, "Matokeo 5 kati ya 15 yametolewa · tukio linalofuata Jumapili 16:00".
+ · Results out by then: main 4 BATILI (Sat 11:02) · main 1 NDIO (Sat 17:52) · A4 NDIO (Sat 23:51) ·
+   main 8 NDIO (Sun 09:10) · A3 HAPANA (Sun 09:10).
+ · "Akiba halali zilizobaki: 4 kati ya 5" — reserves not void minus mains voided so far. The week voids
+   when it would go below zero.
+
+TIMELINE B (the WIN frames)
+ · The same void and carry; every graded position matches the picks.
+ · 661 tickets; jackpot TZS 1,050,000; fee TZS 136,500 (register only: TRA 13,650 · GBT 6,825); to
+   winners TZS 913,500; 3 winning tickets, so TZS 304,500 each.
+ · Two-ticket variant: the player holds 2 of the 3, so × 2 = TZS 609,000.
+
+TIMELINE C (floor win)
+ · 212 tickets; pool TZS 601,000; jackpot TZS 1,000,000; fee TZS 130,000 (register only: TRA 13,000 ·
+   GBT 6,500); TZS 870,000 for winners.
+ · 7 winning tickets: TZS 124,285 each, TZS 869,995 paid. The TZS 5 remainder is never paid from house
+   money, so the house top-up is TZS 398,995 (= 130,000 + 869,995 − 601,000). The register prints the
+   remainder line.
+ · Net-negative variant: 200 winning tickets, so TZS 4,350 each. This player spent TZS 10,000 on 10
+   tickets and holds 1 winner. It is still a win (the seal fires); the ledger prints the player's net
+   for the week as −TZS 5,650 (U+2212).
+
+TIMELINE D (week void)
+ · Void mains: 2 (no reading from source) · 4 (match postponed) · 7 (match abandoned).
+ · Void reserves: A2 (no reading) · A3 (reading not published) · A5 (no reading).
+ · Only A1 and A4 stand, so 3 voided mains outnumber 2 reserves and the week voids.
+ · Every ticket is refunded TZS 1,000. The carried-in TZS 389,000 carries forward again in full.
+
+TIMELINE E (sunset week)
+ · Wiki 42 was announced on Mon 12 Oct as the final week, and has Timeline A's outcomes.
+ · No 10/10. The highest score is 9 kati ya 10, held by 2 tickets.
+ · Pool TZS 601,000 − fee 13% TZS 78,130 (register only: TRA 7,813 · GBT 3,907) = TZS 522,870 ÷ 2 =
+   TZS 261,435 each. No floor top-up (no 10/10).
+
+QUESTIONS (sample; draft Swahili for SIZING, native review comes later). Every Swahili question opens
+with "Je, ". These are DATA, not dictionary strings. Format: number · category · question (SW / EN) ·
+event start (EAT).
+ 1  · Michezo · Je, Simba SC itashinda mechi yake ya Ligi Kuu Jumamosi? / Will Simba SC win its Premier
+      League match on Saturday? · Sat 16:00
+ 2  · Kripto · Je, bei ya Bitcoin itakuwa juu ya $120,000 Jumapili saa 23:59? / Will Bitcoin be above
+      $120,000 on Sunday at 23:59? · Sun 23:59
+ 3  · Hali ya hewa · Je, mvua ya angalau mm 1 itanyesha Dar es Salaam Jumapili (kipimo cha TMA)? / Will at
+      least 1 mm of rain fall in Dar es Salaam on Sunday (TMA reading)? · Sun 00:00
+ 4  · Michezo · Je, Young Africans watafunga magoli 2 au zaidi katika mechi yao ya Jumamosi? / Will Young
+      Africans score 2 or more goals in their Saturday match? · Sat 19:00
+ 5  · Uchumi · Je, faharasa ya DSE (DSEI) itafungua Jumatatu juu kuliko ilivyofunga Ijumaa? / Will the DSE
+      All Share Index open Monday above Friday's close? · Mon 10:00
+ 6  · Utamaduni · Je, wimbo namba 1 kwenye chati ya Boomplay Tanzania Jumapili utakuwa wa msanii wa
+      Tanzania? / Will Sunday's No. 1 on the Boomplay Tanzania chart be by a Tanzanian artist? · Sun 20:00
+ 7  · Michezo · Je, mechi ya Arsenal na Chelsea ya Jumapili itaisha kwa sare? / Will Sunday's Arsenal v
+      Chelsea match end in a draw? · Sun 18:30
+ 8  · Hali ya hewa · Je, joto la juu Arusha Jumamosi litazidi nyuzi 25°C (TMA)? / Will Arusha's high on
+      Saturday exceed 25°C (TMA)? · Sat 00:00
+ 9  · Kripto · Je, bei ya Ethereum Jumapili saa 23:59 itakuwa juu kuliko Ijumaa saa 19:30? / Will Ethereum
+      be higher on Sunday 23:59 than on Friday 19:30? · Fri 19:30 (the first event)
+ 10 · Michezo (the LONG row: proves there is no clamp) · Je, Taifa Stars watapata ushindi au sare katika
+      mechi yao ya kirafiki ya kimataifa itakayochezwa Jumapili jioni kwenye Uwanja wa Benjamin Mkapa? /
+      Will Taifa Stars win or draw their international friendly on Sunday evening at Benjamin Mkapa
+      Stadium? · Sun 19:00
+ A1 · Michezo · Je, Azam FC itashinda mechi yake ya Jumapili? / Will Azam FC win on Sunday? · Sun 16:00
+ A2 · Kripto · Je, bei ya Bitcoin Jumapili saa 23:59 itakuwa juu kuliko Ijumaa saa 19:30? / Will Bitcoin be
+      higher on Sunday 23:59 than on Friday 19:30? · Fri 19:30
+ A3 · Hali ya hewa · Je, mvua ya angalau mm 1 itanyesha Mwanza Jumamosi (TMA)? / Will at least 1 mm of rain
+      fall in Mwanza on Saturday (TMA)? · Sat 00:00
+ A4 · Michezo · Je, mechi ya Real Madrid ya Jumamosi itakuwa na magoli 3 au zaidi? / Will Real Madrid's
+      Saturday match have 3 or more goals? · Sat 22:00
+ A5 · Uchumi · Je, kiwango cha dola kwa shilingi cha BoT Jumatatu kitakuwa juu kuliko cha Ijumaa? / Will
+      the BoT dollar rate on Monday be higher than Friday's? · Mon 10:00
+
+═══════════════════════════════════════════════════════════════════
+4 · THE SYSTEM YOU ARE COMPOSING (enough to act on without the repo)
+═══════════════════════════════════════════════════════════════════
+Use names only. Confirm every name in the attached files before you use it.
+
+4a · COLOUR BY ROLE
+ · Theme: royal indigo, hue 268. One dark theme. Never a light variant, not even "for print".
+ · Surfaces and materials: classes .mat-flat · .mat-raised · .mat-float · .mat-modal · .mat-toast ·
+   .mat-inset; tokens --bg · --surface · --panel · --bg-overlay · --wash-inset. A surface picks ONE
+   material (rung). It never composes a shadow. There is one lamp.
+ · Ink: --text · --text-secondary · --text-muted · --text-faint (only where the rendered composite reaches
+   4.5:1 for text or 3:1 for non-text).
+ · Lines: --border · --border-strong · --border-control (the colour of unselected controls).
+ · Brand: --brand-300 (links: never aqua, never gold) · --royal-400 · --royal-500.
+ · App state: --success-fg / -bg / -border (hue 166) — SUCCESS IS NOT YES: a tick is never --yes-*.
+   Warnings use --warning-* (amber), never gold or claret. Info uses --info-*.
+ · Betting ink: --yes-* (emerald, hue 152) and --no-* (rose, hue 22), ONLY on a lit pick control on the
+   slip; at most ONE lit control per row; unselected controls stay neutral. Picks on a ticket, the
+   confirm sheet and a receipt are NEUTRAL WORDS.
+ · Claret marks editorial weight or an irreversible operator ceremony only — never on a player's money
+   surface, never beside rose. Aqua is non-semantic and covers ≤ 8%.
+ · GOLD IS STRUCK, AND STRUCK MEANS EARNED. The gilt family (--gilt, --gilt-metal, --gilt-ink, .gilt-metal,
+   .gilt-ink, --gold-*, .btn-gold) is allowed ONLY on:
+   (i)   the ARMED final commit on the confirm sheet, "Kata tiketi · TZS 1,000" (a committed stake keeps
+         gold, §M3a). The slip's "Endelea" and the hub's door are brand primary, never gilt;
+   (ii)  the existing win seal;
+   (iii) "Kwa tiketi yako" and "Jumla yako" on the win ledger;
+   (iv)  the won amount on a ticket-list row and on the ticket's settled-won state;
+   (v)   the platform's existing deposit doors EXACTLY as shipped (the header deposit pill, the classic
+         centre coin, the low-balance "Weka pesa TZS {x}" entry). Copy them from 06-frames; never extend.
+   Nothing else may wear gold — not the jackpot, floor, pool, rollover, stub, Unbroken Line, a status
+   chip, a glyph, a border or a heading. NEVER use --g-jackpot, --glow-jackpot, --bet-jackpot,
+   .value-flash or count-up-flash (gold ink and bloom by another name). No bloom. No rays. A gilt control
+   keeps a real focus outline.
+
+4b · TYPE
+ · Three faces: Sora (display), Inter (body), JetBrains Mono (numbers). No other font, no CJK webfont
+   (Chinese renders through system fallback, which you do not control).
+ · The CLOSED scale only, as Tailwind steps: micro 10 · caption 11 · label 12 · body-sm 13 · body 14 ·
+   body-lg 16 · title-sm 18 · title-md 22 · title-lg 28 · display-3 36 · display-2 48 · display-1 64.
+ · The page title is title-lg (28px); R1 used 24px, which is wrong.
+ · Every SENTENCE is body-sm (13px) or larger, including verbless ones like the finality line (§T4).
+   Below 12.5px there are only LABELS, using the .eyebrow recipe (uppercase, tracked, mono).
+ · Every numeral that is DATA is mono and tabular, including numbers inside sentences.
+ · Money: "TZS 1,234", mono, tabular, NEVER letter-spaced; negatives use U+2212; every money box sized for
+   "TZS 1,000,000+" so it never reflows; the .amount pattern.
+
+4c · SPACE AND SHAPE
+ · Space comes from --sp-* applied as gap (--sp-2 is LIVE; R1 said otherwise, wrongly).
+ · Radius by family: --r-lg cards and sheets · --r-md rows · --r-pill chips · --r-xs small stamps.
+ · Bottom-docked surfaces (the sticky slip rail) cast UPWARD with --shadow-overlay-up.
+ · Taps ≥ 44px; money controls are never the exception. The platform's one focus recipe.
+
+4d · PAGE WIDTH TIERS: console 1600 · board 1280 · reading 1080 · form 640 · RECEIPT 560 · auth 1152.
+ Each page states its tier once and its loading skeleton the same. Hub, how-to, slip and register use
+ READING. The ticket, the win ledger and the loss receipt use RECEIPT (560) at every width. The Millionea
+ ticket list uses the tier Tiketi zangu already uses.
+
+4e · BREAKPOINTS: draw at 360, 768 and 1280. 1024 is the dominant switch; 1024–1279 is the DEGRADED band
+ (note anything that breaks there in OPEN-QUESTIONS.md); 1920 has zero branches; below 768 text inputs
+ are forced to 16px; zero horizontal overflow at 360 in every language with every overlay open.
+
+4f · BRAND SYMBOLS: the only raw material for a signature
+ · THE MARK: a circle split YES-emerald left and NO-rose right, with a gilt NEEDLE on the seam. Its axis
+   is −14° (motion token --m-tilt, no consumer yet). skewX() and a transform-list keyframe cannot read
+   --m-tilt in every engine we support (§B1a) — see N2. NEVER alter, re-tint, ring or put numerals on
+   the mark. NEVER borrow its identity motion (mark-flip, .mark-pending, needle-sweep); --m-pivot is
+   reserved for the needle and dials.
+ · THE STRUCK SEAL (win only): milled gilt rim, guilloché enamel face, the mark in single-ink relief. The
+   ONE celebration on the platform. You do not redesign it; nothing is added to its face (SM5).
+ · THE STATUS-RING GLYPHS (ring r 8.6 on a 24 grid): sealCheck (ring + tick); voidX (ring + cross; no
+   consumer; becomes sealX); clockPending (dashed ring + hands; no consumer). The ticket and receipt
+   glyphs also exist.
+ · DORMANT LAWFUL MOTION (registered, no consumer — adopting it costs nothing new): .m-axis-reveal (a
+   clip-path reveal on the −14° tilt) · .m-seal · .m-draw (a line draw-on) · .m-tick (an opacity dip that
+   never translates and never counts).
+ · NO SUB-BRAND. Millionea is a product NAME in the existing type scale plus one product glyph: no logo,
+   lockup, hue, glow or motion vocabulary of its own; nothing beside the 50pick mark in the header.
+
+4g · MOTION (values live in motion.css; you name them)
+ · Curves: --m-settle (arrivals; the signature) · --m-glide (neutral travel) · --m-leave (exits) ·
+   --m-breathe (symmetric returns) · --m-pivot (NEEDLE AND DIALS ONLY; never yours).
+ · Durations — distance sets the rung, money moves it ONE rung up: --t-flick (state only) · --t-quick
+   (<40px) · --t-base (40–200px) · --t-move (>200px) · --t-stage (a new surface owns the screen) ·
+   --t-max (settlement and celebration ONLY). An off-ladder timing takes the nearest rung DOWN.
+ · Staggers use --m-stagger: four items at most; later items land with the fourth. --m-press is the only
+   tap-press scale.
+ · TRAP: the --dur-* and --ease-* names are deprecated aliases (--dur-flick is 140ms, NOT --t-flick).
+   Never use them.
+ · Existing classes to compose: .m-in-lift / .m-out · .m-dialog-in / .m-sheet-in + .m-scrim ·
+   .m-float-in / -out · .g-settle · .g-swap-in / .g-swap-out · .seal-commit · .seal-arrive / .seal-cascade
+   / .seal-sheen · .m-axis-reveal · .m-seal · .m-draw · .m-tick · .closing-pill (the one lawful countdown).
+ · LAWS:
+   - Animate only opacity, transform, the individual translate and scale properties, clip-path and
+     stroke-dashoffset. NEVER a layout property. No filter or blur in a new motion.
+   - Glyphs move only through the .g-* classes — never bespoke keyframes, never on hover. A wrapper that
+     carries a glyph may move; the glyph's own SVG may not.
+   - THREE gates: (1) @media (prefers-reduced-motion) and (2) html.kp-reduce-motion (set together with
+     data-motion="minimal") are CLAMPS — every duration and delay is zeroed, so an animation lands on its
+     LAST frame: every N must END ON THE LAYOUT and nothing may be invisible at its last frame; also write
+     each N's own calm branch for both clamps (§M6). (3) [data-motion="reduced"] is a THROTTLE for
+     low-end Android (≤4 cores or ≤4GB): durations stay full and loops are off. THIS IS THE TARGET DEVICE,
+     so EVERY SIGNATURE MUST BE ONE-SHOT. Do NOT add an N to the reduced list.
+   - ZERO new infinite animations. NO count-up of any number, ever. No confetti, flashing, streak flames,
+     rays or perpetual spin. A win breathes or fades, then RESTS.
+
+4h · HOUSE VOICE. Heraldic and calm: a seal being pressed, not a jackpot ringing.
+ · The slip is a DOCUMENT, not a form. Losses get the RECEIPT; wins get the SEAL.
+ · A loss is bookkeeping: no "so close", no score, no line naming the misses, no emphasised row, no
+   re-entry inducement, no buy control on a receipt; a settled screen closes with the finality line
+   (existing SW: "Kila takwimu hapa ni ya mwisho — hakuna kinachodaiwa zaidi."); a void or refund is
+   NEUTRAL, never an error treatment.
+ · An unknown value is an em-dash plus a labelled state ("Inafunguliwa Jumatatu"), never a zero or a
+   skeleton number.
+ · Never write "Win TZS X". Describe the pool in the third person, with the rule attached.
+ · Every refusal states the REASON and the NEXT STEP at matching severity (fixable = amber warning,
+   never a red error). No emoji, anywhere, in any language. Colour is never the only signal: each mark
+   pairs with a word or a glyph, and each socket has an accessible name (its word).
+
+4i · LANGUAGE. Design in SWAHILI first, then prove in English and Chinese (budget in
+LANGUAGE-AND-CONTENT.md):
+ · Short labels (≤24 chars EN): median 1.167× · p90 1.741× · p95 2.000×. Button-sized (≤14 chars EN):
+   p95 2.250×. Prose (≥60 chars EN): median 1.009× — prose needs NO extra room.
+ · THE BUDGET: FIT labels at 1.75× and PROVE them at 2.25×.
+ · Chinese is 62% shorter in characters but at p90 as wide as English: NEVER shrink a container for it.
+ · Never clip money or a timestamp; labels may wrap or ellipsise; a truncated value stays reachable.
+ · Use the dictionary's words (search 04-language/i18n-dict.ts; do not read it whole): tiketi (never
+   "tikiti") · bwawa (never "pool") · NDIO / HAPANA · Batili · Tiketi zangu · Juu/Chini · Weka pesa ·
+   Endelea · Ghairi · ada (fee) · salio kuu (main balance) · "Kughairi bila malipo" (free cancel) · the
+   category labels in section 2.
+ · "halisi" means NET in the dictionary (the seal's net line uses it). NEVER use it for "real"; hence
+   "salio kuu" and "Jumla ya bwawa".
+ · "akiba" already means savings and backup codes. Use it for reserves only where the context is
+   unmistakable, and say so in DECISIONS.md.
+ · Your strings are DRAFTS. Final strings belong to the dictionary.
+
+4j · CHROME: BOTH SHELLS
+ · JOURNEY shell (the sponsor's, in staff preview): a header with the balance pill and a "+ Weka pesa"
+   door; FOUR equal bottom tabs below 1024 (Maswali | Juu/Chini | Tiketi zangu | Akaunti; no centre coin,
+   no "More"); from 1024 up the header carries the destinations; home column order: How-to card, then
+   the headline (one row from 1024 up), the topic chips, the question cards; the home re-renders every
+   30 seconds with no animation; a guest's Tiketi zangu opens the guest sheet.
+ · CLASSIC shell: a bottom rail of five equal tracks (Markets · Up & Down · the centre deposit coin ·
+   Live · More); a desktop top bar already over-subscribed (no room for a new inline link); a floating
+   "Needle" fidget (hides only on /wallet); a chat bubble.
+ · Propose, for every /millionea page, whether the Needle, the chat bubble and the channels panel stand
+   down (recommended: stand down for a journey viewer; hide the Needle on the slip and the confirm in the
+   classic shell). Draw what you propose.
+ · NEVER put a countdown in the chrome. No fifth tab. No sponsor placement. The 18+ badge is neutral ink.
+
+4k · FEEDBACK
+ · A money act answers with the OperationResultModal (primary) plus a secondary toast; the success toast
+   speaks only after its data is on screen. A refusal is the "factual" toast, or an inline notice, with
+   no haptic.
+ · Haptics on physical events only: confirm on a ticket purchase and on the player's own cancel; success
+   on the seal; NOTHING on a close, result, void, carry, rollover or week void, or on a render or poll.
+ · PRESENCE ROUTING (§F9): a weekly settlement is almost always seen by a RETURNING player. It joins the
+   ONE existing AwaySummaryBar summary (never a second bar). The seal opens only on the player's tap, or
+   LIVE (settled during the current attentive window and at most 5 minutes old). A figure appears only
+   when every held ticket shares one outcome (won: what was paid; refunded: what came back; lost: what was
+   staked); a mixed set states counts only. A poll never fires a ceremony. A win and a loss share one dwell.
+ · During a cooling-off or self-exclusion break (§C8) nothing a break pauses is offered: the home card and
+   the classic entry are not drawn; a direct visit to /millionea shows the existing BetBreakNotice where
+   the buy block stood; the player's own tickets stay visible.
+
+═══════════════════════════════════════════════════════════════════
+5 · THE CONCEPT: "DAFTARI NA MUHURI" (THE REGISTER AND THE SEAL)
+═══════════════════════════════════════════════════════════════════
+In one line: every ticket is an entry in the week's public register. Every result is stamped onto it
+along the mark's own −14° axis. Every shilling is a line in a ledger. Only ten matching marks in an
+unbroken line open the Seal.
+
+"Daftari" means both the school exercise book a teacher marks with ticks and crosses, and the official
+register. The product should feel as familiar as the first and as official as the second. The metaphor
+is ART DIRECTION ONLY; player copy uses plain dictionary words (tiketi, bwawa, akiba, batili, "Daftari
+la Wiki").
+
+FIVE OBJECTS, all built from existing parts:
+ 1. THE TICKET: a document with a stub. Fifteen numbered clauses — mains 1–10 on the flat rung, then
+    reserves A1–A5 on .mat-inset below a ruled divider whose heading states the reserve rule. Under a
+    perforated rule sits the stub: serial · week · TZS 1,000 · purchase time · the question-set hash,
+    short and labelled. The perforation is the ticket glyph's own notch line, drawn at document scale.
+ 2. THE SEAL LINE: the instrument. Ten sockets in a row, with five smaller annex sockets beneath. Every
+    socket is a member of the r 8.6 status-ring family. Sizes: 24 on the ticket, 18 in lists, 14 in rows.
+ 3. THE LEDGER: the money. The jackpot is never a hero number: one line in a short public ledger, mono,
+    neutral ink, with the headline rule beside it.
+ 4. THE WEEK STRIP: three static phases in plain words, nothing ticking: "Mauzo · Jumatatu – Ijumaa
+    18:00 EAT" · "Matukio · Ijumaa jioni – Jumapili" · "Matokeo na malipo · Jumatatu/Jumanne".
+ 5. THE SEAL: the existing Struck Seal, unchanged except that its amount does not count. Reached only
+    through an unbroken line of ten matches, and only on the player's tap or LIVE.
+
+SOCKET GRAMMAR: four shapes in one ring, each with a word wherever there is room:
+ · Awaiting the event:  clockPending · --text-muted · "Inasubiri" / "Awaiting".
+ · Pick matched:        sealCheck · --success-fg (never --yes-*) · "Imelingana" / "Matched".
+ · Did not match:       sealX (voidX geometry, renamed) · --text-muted (never rose) · "Haikulingana" / "No match".
+ · Not counted:         sealNil (NEW): a ring with a level bar, the accountant's nil · --text-muted ·
+                        "Batili" / "Haikutumika". Covers a voided main, a voided reserve and an unused
+                        reserve. Must not read as a no-entry sign or a minus at 14px; prove it.
+ · Reserve standing by: clockPending at annex size · "Akiba".
+NEVER let a cross mean "void". In Tanzanian school marking a cross means WRONG, so a void drawn with a
+cross reads as a loss and breaks the reserve rule in the player's head.
+
+HOW THE RULES ARE TAUGHT, without a paragraph
+ · 15 picks up front: the ticket has fifteen clauses; the sticky rail reads "Kuu 7/10 · Akiba 2/5";
+   the slip's Endelea arms only at 15/15.
+ · Reserves count only for a voided main, in order: annex sockets stay "Akiba" whatever their own event
+   does; a reserve becomes a mark only after it CARRIES into the vacated main socket, and the annex then
+   reads "→4"; a voided reserve shows sealNil "Batili" and is visibly passed over.
+ · Week void: a live line reads "Akiba halali zilizobaki: 4 kati ya 5". When the count would go below
+   zero the week band reads "Wiki inabatilishwa" (refund time shown), then "Wiki imebatilishwa", and
+   every stub rejoins.
+ · Floor and rollover: the ledger shows "Jumla ya bwawa" and "Dhamana ya chini"; the Jackpot line repeats
+   the larger; when the pool passes the floor, the floor line goes muted but stays visible.
+ · Fee at payout only: the fee is in the headline rule everywhere; the ledger's fee line reads "—" until a
+   payout; rollover rows print "ada 0".
+ · Equal share per ticket: "÷ tiketi 3 zilizoshinda", then "× 2" when the player holds two.
+ · Close before the first event: slip and hub print "Mauzo yanafungwa: Ijumaa 18:00" over "Tukio la
+   kwanza: Ijumaa 19:30".
+
+═══════════════════════════════════════════════════════════════════
+6 · THE SCREENS (SW is the drawn locale; widths 360 / 768 / 1280)
+═══════════════════════════════════════════════════════════════════
+Naming: <set>-<surface>-<state>-<bp>-<locale>.png, e.g. S-slip-partial-360-sw.png. Sets are H · U · S ·
+T · W · P · X. Every frame is drawn in the JOURNEY shell unless it says "classic".
+
+H · ENTRY POINTS
+ H-home-card: on the Maswali home tab, placed where you propose (section 2).
+  · The whole card is one link to /millionea. NO countdown and no live updates; it changes only with the
+    home's 30-second re-render, without animation.
+  · It mirrors the How-to card's anatomy. At 360 a row of three: a 48px IconPlate with no colour props,
+    carrying the millionea glyph (never gilt; if the owner rejects the glyph, the existing ticket glyph);
+    text "Millionea · Wiki 42", then the headline rule with its figure (wraps freely, never clipped), then
+    the meta line "Mauzo yanafungwa Ijumaa 18:00 · Tiketi zako 2/10"; a chevron.
+  · At 768 the figure and its rule move together into a right-aligned block. At 1280 the card spans the
+    board column in one row, below the head row.
+  · States: presale ("Jackpot —" + "Inafunguliwa Jumatatu") · open · open-cap-full (10/10) ·
+    closed-results ("Matokeo 5 kati ya 15 yametolewa") · settled-won ("Wiki 42: tiketi 3 zilishinda") ·
+    settled-rollover ("hakuna 10/10 · TZS 601,000 imeletwa mbele") · final-week ("Wiki ya mwisho ya
+    Millionea") · paused · guest (no "Tiketi zako").
+  · Break: the card is NOT drawn. Draw a note frame saying so.
+ H-classic-*: the classic-shell entry point is RULED by the owner. Draw exactly these:
+   (a) the same card at the head of the classic /markets board, above the filters, at every width;
+   (b) "Millionea" as the first row of the "More" menu, for signed-in players and guests, and as a row in
+       the top bar's overflow menu at ≥1024 (no inline link);
+   (c) one notice row on classic /positions, "Tiketi za Millionea wiki hii: 2 →", only when tickets are held;
+   (d) NO bottom-rail slot.
+ H-tickets-switch: Tiketi zangu's segmented switch "Maswali | Juu/Chini | Millionea" — the tightest label
+  set in the product. Prove it at 360 at 2.25× (a stretch frame).
+
+U · HUB /millionea (reading tier)
+ · 360, top to bottom: (1) the title "Maswali Millionea"; (2) the week strip, vertical (current phase in
+   --text, the others muted); (3) the pool block: the figure with its rule, then the ledger lines in
+   section 3's order; (4) the buy block: a BRAND primary door "Jaza tiketi · TZS 1,000" (NOT gilt; it
+   opens the slip), the .closing-pill countdown (scoped to this block only), "Tiketi zako wiki hii: 2 kati
+   ya 10", one row per held ticket with an 18px Seal Line and NO figure; (5) "Maswali ya wiki": the 15
+   public questions as compact rows (number · category · prose · event time · outcome stamp once
+   attested), with NO player picks; (6) last week as one closed ledger row; (7) links to "Jinsi ya
+   kucheza" and "Daftari la wiki".
+ · 768: the strip runs horizontal; the ledger becomes a two-column table with the buy block beside it.
+ · 1280: two columns — left (~640) the strip, the questions and last week; right (~400, sticky) the pool,
+   the buy block and my tickets.
+ · The figure only re-renders. It never counts and never wears value-flash; at most .m-tick.
+ · States: presale · open-floor · open-above-floor · open-prev-unsettled ("angalau") · open-cap-full ·
+   close-moved (one neutral NoticeBar) · closed (the door becomes "Fuatilia matokeo" + "Akiba halali
+   zilizobaki") · check-window ("Muda wa ukaguzi hadi Jumanne 12:00") · settled-won · settled-rollover ·
+   week-voiding · week-voided · final-week · paused · stopped-sunset · guest (buying asks for sign-in) ·
+   break (BetBreakNotice in the buy block; held tickets stay).
+ · Also U-hub-classic-open-floor-360.
+ U-how /millionea/how (reading):
+  · Four sentences: answer fifteen; reserves count only for a voided main, in order; 10/10 shares equally
+    per ticket, with 13% at payout; if nobody wins, the pool carries forward.
+  · A static Seal Line example "4 → A1". A "Tazama mfano" button, tapped by the player, plays N1 ONCE —
+    the only demo; it never auto-plays.
+  · The worked ledgers, labelled "Mfano": 1,050,000 − 136,500 = 913,500 ÷ 3 = 304,500; and
+    1,000,000 − 130,000 = 870,000.
+  · The week timeline and the category list. The rules list: cap 10 · main balance only · free cancel
+    within 5 minutes if the close is far enough away · every event starts after the close · a 24-hour
+    check window before payout · staff and house cannot buy · the sunset rule · a link to the register.
+  · States: static · example-ended.
+
+S · PURCHASE
+ S-slip /millionea/slip (reading). It shows NO jackpot figure.
+  · Header "Jaza tiketi · Wiki 42", with the two times stacked beneath.
+  · Rules strip (three lines): the reserve rule · "Kikomo: tiketi 10 kwa wiki · hii ni ya 3" ·
+    "Salio kuu pekee".
+  · Ten main rows: a mono number, the category label, the full prose (NEVER clamped); a muted meta line
+    (source · event time); NDIO / HAPANA controls at 44px; YES/NO ink on the lit control only.
+  · The divider "Akiba · A1–A5 — zinahesabiwa tu swali kuu likibatilishwa, kwa mpangilio".
+  · Five annex rows on .mat-inset, with muted A-numbers; tap size and contrast stay full.
+  · The STICKY bottom rail sits above the journey tabs and casts upward: SteppedProgress with the new
+    groups=[10,5] prop ("Kuu 7/10 · Akiba 2/5", static segments, no sweep, no glow); the .closing-pill
+    (here and nowhere in the chrome); Endelea — under 15/15 NEUTRAL "Jibu maswali 15", still tappable, a
+    tap gives an inline refusal naming the unanswered numbers with jump links (R1 decisions 5–6); at
+    15/15 BRAND primary "Endelea · TZS 1,000". Never gilt.
+  · 768: one column; each row's controls move right of its prose. 1280: two columns — questions left; a
+    sticky panel right replaces the rail (grouped progress, a compact two-column list of picks so far
+    "4 · NDIO" in full words, the price, the cap and Endelea).
+  · States: empty · partial · refusal-incomplete · ready · closed (after SM2).
+  · Plus S-slip-fold-360x720-sw (the viewport on load) and S-slip-classic-partial-360 (the rail docked
+    above the CLASSIC five-slot rail, with the Needle, the chat bubble and the install invitation as you
+    propose them).
+ S-confirm: the platform's modal (.m-sheet-in + .m-scrim on a phone; a dialog on wide screens). NO
+  jackpot figure and NO quote-hold countdown (the price is fixed).
+  · The 15 picks as a two-column compact list in neutral words, the annex grouped and labelled.
+  · "TZS 1,000 · kutoka salio kuu (TZS 44,196)" · "Tiketi 3 kati ya 10 wiki hii" · "Kughairi bila malipo
+    hadi 14:07" (ABSENT when no window applies) · the rule line without the figure · the armed gilt
+    commit "Kata tiketi · TZS 1,000", which shows the kit Spinner while in flight.
+  · States: with-cancel · no-cancel-window · in-flight · low-balance (the existing "Weka pesa TZS {x}"
+    entry replaces the commit; bonus is not counted).
+ S-result: OperationResultModal, variant success, stripTone "brand", plus the NEW `stamp` prop (the crest
+  takes .seal-commit). Eyebrow "Tiketi imekatwa"; title "MLN-W42-004417"; details "Wiki 42 · TZS 1,000
+  (salio kuu) · Ghairi bila malipo hadi 14:07"; primary "Tazama tiketi". NO "buy another" button and NO
+  figure. Draw at 360 / 768 / 1280. Plus S-result-refused: sales closed while paying (warning tone, the
+  sales-closed copy).
+
+T · THE TICKET (receipt tier, 560, at every width)
+ T-ticket /millionea/tickets/[serial], top to bottom: (1) the status word, serial and week; (2) the Seal
+ Line (mains 24, annex 18); (3) the fifteen clauses — the pick in neutral words, then after attestation
+ the outcome stamp and the socket; a voided main is struck and labelled "Batili → A1"; (4) the perforated
+ rule and the stub; (5) while the window is open, "Kughairi bila malipo" with a scoped countdown that
+ disappears when the window ends (it opens the platform's existing ConfirmDialog); (6) after the close,
+ the stub's lock line "Imefungwa Ijumaa 18:00 EAT".
+  · States: open-cancellable · cancel-confirm · open-locked · live-partial (the live frame: main 4 reads
+    "Batili · akiba itachukua nafasi yake" and "Akiba halali zilizobaki: 4 kati ya 5"; A3 and A4 stay
+    "Akiba"; NO carry yet and NO running score) · live-cannot-win (owner's ruling; exactly this wording:
+    "Kwa matokeo yaliyotolewa hadi sasa, tiketi hii haiwezi kushinda wiki hii") · settled-won-preseal ·
+    settled-won-rested (the won amount in .gilt-ink) · settled-lost · refunded-week-void · cancelled.
+ T-list /millionea/tickets: the Millionea kind of Tiketi zangu. Rows grouped by week, current week first.
+  Each row: serial · a 14px Seal Line · the status word · the amount ONLY when the ticket won (.gilt-ink).
+  Row text matches the ticket byte for byte. States: current-week · mixed-weeks · empty · guest.
+
+W · WEEK SETTLEMENT
+ W-away-line (360): Millionea inside the ONE AwaySummaryBar summary, following §F9.4. Variants: won
+  ("Millionea Wiki 42: tiketi yako imeshinda · Fungua") · mixed (1 won, 2 lost: counts only, no figure) ·
+  lost · refunded (week void) · joined with a Yes/No result in the same summary. Calm and past tense.
+ W-seal: the EXISTING Struck Seal, the amount landing FINAL (no counting), nothing added to its face. One
+  seal per player-week: several winning tickets sum to one figure. States: one-ticket · two-tickets. Draw
+  at 360 / 768 / 1280.
+ W-win-ledger (receipt): Jackpot TZS 1,050,000 (neutral) · Ada 13% −TZS 136,500 · Kwa washindi TZS
+  913,500 · ÷ tiketi 3 · Kwa tiketi yako TZS 304,500 (GILT) · × 2, then Jumla yako TZS 609,000 (GILT) ·
+  one "[legal line — pending]" slot for withdrawal wording.
+  · States: single · two-tickets · floor-week-topup ("Nyongeza ya dhamana TZS 398,995", printed and never
+    rolled; remainder line) · net-negative (the player's week net in U+2212) · sunset (Timeline E:
+    "Alama ya juu wiki hii: 9 kati ya 10 · tiketi 2", fee applied, no top-up).
+ W-loss (receipt): the headline "Haikushinda"; the ten graded positions (pick · outcome stamp · socket:
+  tick in success ink, cross muted; carried reserves inline "4 → A1"); NO score and no line naming the
+  misses; ONE week line WITHOUT any figure ("Wiki 42: hakuna tiketi ya 10/10" or "Wiki 42: tiketi 3
+  zilishinda") — the carried figure belongs on the public register only (owner's ruling); the finality
+  line and the closing double rule; no buy control.
+ W-rollover-notice (360): a hub NoticeBar, once per player-week, past tense, no call to action: "Wiki 41:
+  hakuna tiketi ya 10/10. TZS 389,000 imeletwa mbele kwenye Wiki 42." States: start · rested.
+ W-week-void (360): returning player — a neutral band, "Wiki imebatilishwa: maswali makuu 3 batili, akiba
+  halali 2 tu. Kila tiketi imerejeshwa TZS 1,000."; live player — a neutral OperationResultModal; plus the
+  "Wiki inabatilishwa" (pending refund) band. Never claret, red or an error crest.
+ W-cancel-modal: "Tiketi imeghairiwa · TZS 1,000 imerudi kwenye salio kuu".
+
+P · THE PUBLIC REGISTER "Daftari la Wiki": /millionea/register and /millionea/register/[week] (reading)
+ · Unauthenticated, rendered on the server, works without JavaScript.
+ · Header: the week, the question-set hash and its publish time.
+ · The 15 questions as a table: category · source · event start · the attesting officer's ROLE (never a
+   name) · attested time · outcome · void reason.
+ · The substitution rule, the map, and a timestamped log ("Swali 4 batili · 2026-10-24 11:02" and
+   "Swali 4 → A1 · 2026-10-26 10:41"). The check window's opening and closing times.
+ · The full ledger: rollover in · tickets × 1,000 · pool · floor · jackpot (with its rule) · winning
+   tickets · fee, with "TRA 10% · GBT 5% ya ada" beneath it · house top-up (paid, never carried) · paid ·
+   per-ticket share · the rounding remainder line and what was carried out.
+ · The strata history: "Wiki 40 · TZS 176,000 imeletwa mbele · ada 0".
+ · A link to the audit chain. No personal data.
+ · States: index · week-open (hash, no results) · week-live (the live frame) · week-check-window ·
+   week-settled-won · week-settled-rollover · week-voided · week-sunset.
+
+X · REFUSALS AND NOTICES (360 SW; EN and ZH for the two longest)
+ · cap: "Umefikia tiketi 10 za wiki hii. Wiki 43 inafunguliwa Jumatatu."
+ · sales-closed: "Mauzo yalifungwa Ijumaa 18:00, kabla ya tukio la kwanza. Fuatilia matokeo hapa."
+ · insider (info tone): "Akaunti za watumishi na za nyumba haziruhusiwi kununua tiketi za Millionea."
+ · bonus: "Millionea inalipwa kwa salio kuu tu; bonasi haitumiki hapa. Salio kuu: TZS 400." Next step:
+   Weka pesa.
+ · low-balance: the existing deposit entry · guest: the existing sign-in door · close-moved: a neutral
+   NoticeBar with the new time · paused: a NoticeBar, "Millionea imesimamishwa kwa muda. Tiketi
+   zilizonunuliwa ziko salama." (no slip door) · stopped: the sunset line · break: no door anywhere (draw
+   a note frame).
+
+═══════════════════════════════════════════════════════════════════
+7 · THE SIGNATURE MOMENTS (SM1–SM9)
+═══════════════════════════════════════════════════════════════════
+GOVERNANCE (applies to every moment)
+ · Each fact performs ONCE, for its owner, then RESTS: it plays the first time THIS player views it after
+   it happened, then renders as its end frame. A poll never fires a ceremony. A data change while the
+   player is viewing may fire SM3 and nothing more.
+ · A BACKLOG RESTS: if more than 4 facts are unseen, none animate, and the reckoning moment (SM5 or SM6)
+   carries the beat.
+ · Every moment is one-shot, so it plays on the throttle tier at full duration.
+ · Budget: ≤12 composited layers at once; will-change only for the run, cleared on animationend; one
+   layout measurement before a run, none during; ≥50fps at 360 on a 4-core, 4GB phone.
+
+SM1 · THE PURCHASE "Kukata Tiketi" (existing parts, then N3)
+ · The player taps the armed gilt "Kata tiketi · TZS 1,000"; the Spinner shows. On success: the sheet
+   closes; the result modal arrives with .m-dialog-in + .m-scrim and its crest takes .seal-commit through
+   `stamp`; the confirm haptic fires, then the toast.
+ · On the ticket's FIRST view: t0 the perforation row reveals with .m-axis-reveal (--t-stage), a blade
+   crossing on the mark's tilt; t0 + --t-base the stub takes N3 (.maswali-cut) and settles --sp-2 away with
+   one hair of overshoot; it ends at about 520ms.
+ · Reduced motion: a static crest, then the ticket at rest, separated. Never implies a prize: the stub is
+   ink; the strip is brand.
+SM2 · SALES CLOSE (existing motion only; LIVE on the slip or hub)
+ · The band "Mauzo yamefungwa · Ijumaa 18:00" reveals with .m-axis-reveal; Endelea leaves with .m-out;
+   the hub door swaps to "Fuatilia matokeo" with .g-swap-in; the held stub gains its lock line with
+   .m-seal. No haptic: the lock is the platform's act.
+SM3 · A RESULT IS ATTESTED "Kugonga Muhuri" (N2)
+ · The stamp is a mono block "MATOKEO · NDIO" (or HAPANA or BATILI) in --text ink, a 1px --border-strong
+   outline, --r-xs corners, no fill. It travels --sp-2 DOWN THE NEEDLE'S OWN LINE (−14°) with a small press,
+   then rests. The socket swaps by GlyphSwap.
+ · A BATILI result also draws the row's 1px strike with .m-draw in --border-strong (prose stays ≥4.5:1),
+   and the socket swaps to sealNil.
+ · IDENTICAL for every outcome, and for matched and unmatched rows. At most 4 stamps, staggered on
+   --m-stagger. No haptic. The stamp states the world; the socket states the match — never a verdict on
+   the player.
+SM4 · THE SUBSTITUTION "Kubeba" (N1 + existing parts)
+ · Plays only when all 15 results are final, so there is never an "un-carry". The voided main already
+   shows its SM3 strike and sealNil.
+ · t0: the annex token (its socket wrapper plus the mono "A1") CARRIES from the annex position at 0.75
+   scale to the main socket at full scale. On animationend the token's socket swaps to sealCheck or
+   sealX, and the annex shows "→4".
+ · Several carries stagger, four items at most. A voided reserve stays sealNil "Batili" and is visibly
+   passed over. Unused reserves close as sealNil "Haikutumika".
+ · Timing and copy are the SAME whether the reserve matched or not. Caption: "Swali 4 limebatilishwa;
+   akiba A1 imechukua nafasi yake".
+SM5 · THE WIN: the Unbroken Line, then the existing Seal
+ · Opens only on the player's tap, or LIVE (section 4k).
+ · One SVG hairline (not a glyph) draws through the centres of the ten sealCheck sockets with .m-draw
+   (--t-max), in --success-fg, NOT gold. Drawn only when the line is unbroken, so a loss never shows a
+   partial line.
+ · At t0 + --t-stage the EXISTING seal fires unchanged, except that its amount LANDS FINAL (roll: false):
+   no counting, the gilt strike colour only. Nothing is added to the seal's face; the coronet never goes
+   inside it. Then the win ledger cascades with .seal-cascade, and everything rests.
+ · Do NOT redesign the seal. In the prototype it may be a labelled static stand-in at its end frame, or a
+   faithful rebuild from the attached .seal-* classes and keyframes.
+SM6 · THE LOSS: the closing rule (existing)
+ · Two hairlines draw under the last ledger line with .m-draw (--t-max), then stillness. Same timing for
+   every outcome, inside the same dwell. No haptic. No mark or needle on the receipt.
+SM7 · ROLLOVER (N1 reused + .m-tick)
+ · On the first hub view after a week with no winner, the carried figure carries into the new week's
+   "Imeletwa mbele" line (a mono text cell whose value never changes in flight); then the Jackpot line
+   takes .m-tick only if the larger-of-two value changed. The buy door does not move or change emphasis.
+   About 560ms. Never implies that the top-up rolled, or "bigger next week, buy now".
+SM8 · REFUND OR CANCEL (N3 reversed + existing parts)
+ · The stub rejoins with .maswali-cut-undo (the perforation stays as the record); "IMEREJESHWA · TZS
+   1,000" reveals with .m-axis-reveal; on a week void each voided main already shows its SM3 strike (no
+   carries); SM6's closing rule ends it. The confirm haptic fires only for the player's own cancel.
+SM9 · THE EXAMPLE: N1 once, on How to Play, only when tapped. It keeps no "seen" state.
+
+═══════════════════════════════════════════════════════════════════
+8 · THE NEW MOTIONS, N1–N4: each goes to the owner for yes or no
+═══════════════════════════════════════════════════════════════════
+The panel drafted three. PROTOTYPE them exactly, measure them, and refine within the laws; record every
+change in MOTION.md with its reason. They live ONLY in motion/maswali-motion.css inside the marked block,
+use no new token, curve or duration, and no --m-pivot. The "from" frames read runtime data bindings or
+existing tokens.
+
+  /* N-BLOCK BEGIN */
+  /* N1 Kubeba / The Carry. Moves the socket's WRAPPER, never the glyph's own SVG. */
+  @keyframes maswali-carry { from { translate: var(--carry-dx) var(--carry-dy); scale: var(--carry-s, 1); }
+                             to   { translate: 0 0; scale: 1; } }
+  .maswali-carry { animation: maswali-carry var(--t-move) var(--m-settle) both;
+                   animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+
+  /* N2 Kugonga Muhuri / The Attestation Press. Travels down the needle's line (--m-tilt, its first
+     consumer). Press stops are the platform's own seal-place stops. */
+  @keyframes maswali-attest {
+    0%   { opacity: 0; translate: calc(var(--sp-2) * sin(var(--m-tilt))) calc(-1 * var(--sp-2) * cos(var(--m-tilt))); scale: 1.02; }
+    60%  { opacity: 1; translate: 0 0; scale: 0.98; }
+    100% { opacity: 1; translate: 0 0; scale: 1; } }
+  .maswali-attest { animation: maswali-attest var(--t-base) var(--m-settle) both;
+                    animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+
+  /* N3 Kukata Tiketi / The Cut. The end frame IS the layout; --cut-from sets the direction. */
+  @keyframes maswali-cut { from { translate: 0 var(--cut-from); } to { translate: 0 0; } }
+  .maswali-cut      { --cut-from: calc(-1 * var(--sp-2)); animation: maswali-cut var(--t-base) var(--m-settle) both; }
+  .maswali-cut-undo { --cut-from: var(--sp-2);            animation: maswali-cut var(--t-base) var(--m-glide)  both; }
+
+  /* The two clamp branches (§M6). NOT in the [data-motion="reduced"] list: they must play on the
+     target device. */
+  @media (prefers-reduced-motion: reduce) {
+    .maswali-carry, .maswali-attest, .maswali-cut, .maswali-cut-undo { animation: none; } }
+  html.kp-reduce-motion :is(.maswali-carry, .maswali-attest, .maswali-cut, .maswali-cut-undo) { animation: none; }
+  /* N-BLOCK END */
+
+The rungs: N2 travels 8px (--t-quick), but an attested result decides money, so one rung up to --t-base.
+N3 likewise (8px, a purchase) → --t-base. N1: measure the carry at 360 and 1280 for both uses (SM4, SM7);
+its rung is the distance rung plus one. Change a rung only with the measurement written beside it.
+
+N4 — THE ONE OPEN SLOT FOR YOUR BOLDEST IDEA. The owner wants this product to have a signature no other
+platform has. If your prototypes show a moment that existing motion plus N1–N3 cannot carry — something
+that makes this unmistakably 50pick's — propose it as N4, built only from the mark's geometry, the
+seal, the register and the ring family. It must not be: a "gather" that ends with any of the player's own
+cells invisible; a needle alignment or any use of --m-pivot; a count, a loop, or gold on unearned money;
+anything that makes a loss feel close. Otherwise write "N4: unspent" in MOTION.md.
+
+Each N gets a section in MOTION.md: name (SW · EN) and purpose (the rule it teaches); trigger; keyframes
+verbatim; duration and curve tokens with the MEASURED travel at 360 and 1280 and the rung that distance
+implies; stagger; the properties it animates (only those allowed in 4g) and its layer count; will-change
+policy; its reduced-motion end frame (both clamp branches set animation: none and the layout's end frame
+shows); throttle-tier behaviour (plays at full duration); haptic (none); ONE law line for the rulebook of
+the form "In Millionea only, …"; what it must never imply; its fallback if the owner says no (N1 →
+GlyphSwap in place + the printed "4 → A1"; N2 → the stamp appears with .g-settle; N3 → .m-seal on the
+stub); its older-engine fallback (§B1a: some engines cannot read --m-tilt inside skewX() or a
+transform-list keyframe; N2 uses the individual translate property with sin()/cos() — prove it in Chrome,
+Safari, Firefox and an Android WebView; where it fails, the translate resolves to none and the stamp only
+scales and fades; show that).
+Also in MOTION.md: list every runtime custom property (--carry-dx, --carry-dy, --carry-s, --i,
+--cut-from) between the lines "<!-- RUNTIME:BEGIN -->" and "<!-- RUNTIME:END -->".
+
+═══════════════════════════════════════════════════════════════════
+9 · COMPONENTS (for the handover; do not design new ones)
+═══════════════════════════════════════════════════════════════════
+REUSED, each with at most ONE new prop: SteppedProgress — `groups` (static segments: no .prog-sweep, no
+glow) · OperationResultModal — `stamp` · the WinCelebration payload — `roll: false` · TicketSwitch — a
+third kind, "millionea", linking to /millionea/tickets.
+REUSED UNCHANGED: AwaySummaryBar · NoticeBar · GlyphSwap · IconPlate · PageContainer · PageHeader · Tabs ·
+ConfirmDialog · BetBreakNotice · the factual toast · Spinner · .closing-pill · the modal sheet · .mat-inset
+· .gilt-metal · .gilt-ink · .amount · the /fairness page pattern · the HowToCard anatomy.
+NEW maswali-* modules: maswali-pool-figure (an UNEARNED surface: zero gold) · maswali-win-ledger (the
+earned lines only) · maswali-seal-line (sizes 24/18/14; the FLIP measurement for N1) · maswali-slip ·
+maswali-ticket · maswali-week-strip · maswali-home-card · maswali-outcome-stamp · maswali-unbroken-line ·
+the register pages · lib maswali-substitution (a pure function) and maswali-void-reason (the words).
+NEW STATUS WORDS, one tone each — Ticket: INASUBIRI neutral · IMESHINDA (a success word, gold only on the
+amount; the owner rules this one) · HAIKUSHINDA neutral · IMEREJESHWA neutral · IMEGHAIRIWA neutral.
+Week: WAZI brand · IMEFUNGWA / UKAGUZI / MATOKEO YANATOLEWA / IMEKAMILIKA / IMEBATILISHWA neutral, never gilt.
+
+═══════════════════════════════════════════════════════════════════
+10 · DELIVERABLES
+═══════════════════════════════════════════════════════════════════
+D1 · FRAMES. Every screen × state × width in section 6 is reachable in your canvases (a state switch or a
+ URL parameter) AND exported as a PNG; state the export scale (1× or 2×) in FRAME-INDEX.md. FRAME-INDEX.md
+ lists EVERY cell: id · timeline · PNG file · canvas + state · status ("done" only when the PNG exists;
+ otherwise "canvas-only" or "missing"). If you cannot finish, deliver in this order and list every cell
+ not done — never a silent gap: first every 360 SW frame; second 768 and 1280 for H, U, S and T; third
+ everything else.
+D2 · EN AND ZH PROOFS at 360 (each <id>-360-en.png and <id>-360-zh.png): H-home-card-open ·
+ H-tickets-switch · U-hub-open-floor · S-slip-partial · S-slip-ready · S-confirm-with-cancel ·
+ T-ticket-live-partial · W-win-ledger-two-tickets · W-loss-with-week-line · P-register-week-settled-won ·
+ X-refusal-bonus · X-refusal-cap.
+D3 · STRETCH PROOFS at 2.25×, at 360 SW (each label replaced by a string 2.25× its English length, or the
+ real Swahili if longer): the Tiketi zangu switch · the slip rail ("Kuu 7/10 · Akiba 2/5" + Endelea) · the
+ hub door · the home card meta line · the confirm sheet's buttons. Each shows zero overflow and zero
+ clipped money or time.
+D4 · STORYBOARDS, one PNG strip per moment SM1–SM9 at 360 SW: t0, the frames at the named token offsets,
+ the end frame; the reduced-motion end frame; a note on throttle-tier behaviour.
+D5 · MOTION PROTOTYPES: working HTML/CSS that opens offline in Chrome, Safari and Firefox. motion/index.html
+ links SM1.html … SM9.html; each has a "Replay" button, a "Reduced motion" toggle (adds
+ html.kp-reduce-motion and data-motion="minimal"), a "Low-end tier" toggle (sets data-motion="reduced" on
+ <html>), and a SW / EN / ZH switch. Styles ONLY from motion/tokens/ (the attached files, UNMODIFIED) and
+ motion/maswali-motion.css (the N-block only). JavaScript may ONLY add or remove classes, set the runtime
+ custom properties from one measurement before a run, force a restart with one layout read, and listen
+ for animationend. NEVER requestAnimationFrame, setInterval or the Web Animations API; no setTimeout that
+ carries a timing (use animation-delay with tokens); no library.
+D6 · GLYPHS (glyphs/): sealNil.svg (NEW) · sealX.svg (voidX's geometry, circle and path data
+ byte-identical to glyphs.tsx) · millionea.svg (R1's coronet, re-checked against the existing crown glyph
+ and the stroke-weight props now in glyphs.tsx). Each SVG: 24×24 viewBox · stroke-width 1.9 · round caps
+ and joins · fill="none" · stroke="currentColor" · no colour, glow or motion of its own. Plus
+ socket-sheet-14-18-24.png (all five socket states at 14, 18 and 24px in muted and success ink, plus a
+ GREYSCALE row proving they are distinguishable without colour) and seal-line-14-18-24.png.
+D7 · DOCUMENTS
+ · README.md: the date and the package stamp; a summary of the frame index; the self-check (section 12);
+   the line "Where a figure here disagrees with the live repo, the live repo wins." NEVER write, in any
+   .md, a sentence claiming your files are where to start, the entry point, the only authority, or
+   something to be read before anything else; never title a file "… — the rulebook"; never propose where
+   or how we file your delivery (our gate reads those as a competing rulebook).
+ · DECISIONS.md: every decision and why, each with a stable ID; a section "FOR THE OWNER'S YES OR NO"
+   listing N1–N4 (each its own item), the millionea glyph, the IMESHINDA tone, the home-card position and
+   the A1–A5 "Akiba" label.
+ · OPEN-QUESTIONS.md: everything you could not decide, every OPEN item you drew, the 1024–1279 notes, the
+   legal slots.
+ · TOKENS-USED.md: every var(--name) you used, grouped by surface, between "<!-- USED:BEGIN -->" and
+   "<!-- USED:END -->"; anything you deliberately avoided goes in prose OUTSIDE those markers.
+ · MOTION.md: section 8.
+ · i18n-draft.json: {"_note": "…", "en": {…}, "sw": {…}, "zh": {…}} with identical nested key sets under
+   "millionea"; every number, rate, date, time, serial and count a {placeholder}, written
+   "TZS\u00a0{amount}"; no sample question text (questions are data); no legal claim; draft notification
+   lines (purchase, cancel, result won / lost / rollover, week void, refund) under "millionea.notify";
+   "_note" says sw and zh need native review.
+ · HANDOVER-CLAUDE-CODE.md: work packages WP1… in build order, each naming its build session (S1
+   law/config/schema · S2 engine · S3 money path · S4 admin console · S5 player surfaces · S6
+   register/notifications/reports/copy · S7 adversarial · S8 live drive), the frames it implements, the
+   components and props, and its measurable acceptance; a SPEC-VALUES section (every dimension as a token
+   or a Tailwind step; anything else flagged); "Decisions for the owner (do not decide in code)"; "Done means".
+
+═══════════════════════════════════════════════════════════════════
+11 · RETURN EXACTLY THIS FOLDER, zipped as MASWALI-DESIGN-R2-{YYYY-MM-DD}.zip
+═══════════════════════════════════════════════════════════════════
+MASWALI-DESIGN-R2/
+  README.md · FRAME-INDEX.md · DECISIONS.md · OPEN-QUESTIONS.md · TOKENS-USED.md · MOTION.md ·
+  HANDOVER-CLAUDE-CODE.md · i18n-draft.json
+  artboards/     <set>-<surface>-<state>-<bp>-<locale>.png
+  storyboards/   SM1-purchase.png … SM9-example.png
+  motion/        index.html · SM1.html … SM9.html · maswali-motion.css (the N-block only)
+                 tokens/  (the attached globals-extract.css, motion.css and state-tokens.css: UNMODIFIED)
+  glyphs/        sealNil.svg · sealX.svg · millionea.svg · socket-sheet-14-18-24.png · seal-line-14-18-24.png
+  sources/       EVERY canvas (*.dc.html) · support.js · canvas.json (if one exists) · assets/
+ · Every canvas links ../motion/tokens/*.css and its assets by relative path; none links
+   tokens-locked.css; only Google Fonts may load from the network.
+ · EXPORT EVERY SOURCE. A canvas that exists only as a claude.ai link WILL BE LOST — it happened to a
+   102-board canvas on 2026-10-03. The zip must open offline with nothing missing.
+ · Include NO copy of DESIGN_AUTHORITY.md, NO other copy of the token files, and NO other top-level file.
+
+═══════════════════════════════════════════════════════════════════
+12 · README SELF-CHECK (numbers, not adjectives)
+═══════════════════════════════════════════════════════════════════
+Report each item as a number or a list:
+ 1. Colour literals (hex / rgb / hsl / oklch / named) outside motion/tokens, support.js and assets/: count (0).
+ 2. Raw ms or s values and cubic-bezier() outside motion/tokens: count (0).
+ 3. "infinite" outside motion/tokens: count (0). "--m-pivot" outside motion/tokens: count (0).
+ 4. @keyframes outside motion/tokens: count; each in the N-block; count = number of Ns proposed (≤4).
+ 5. JavaScript timing calls (requestAnimationFrame, setInterval, .animate(, setTimeout with a delay): count (0).
+ 6. Gold: every file and frame where a gilt or gold token or class appears; each in 4a's allowed list.
+ 7. A jackpot figure on the slip, confirm, purchase result, ticket or ticket-list frames: count (0).
+ 8. FRAME-INDEX: cells listed, done (PNG), canvas-only, missing.
+ 9. 360 overflow: the widest frame's scroll width at 360 in each locale (must be 360).
+10. Taps: the smallest interactive target in px, with its frame (≥44).
+11. Contrast: every text and non-text pair used, its rendered ratio and frame, plus each list's minimum
+    (≥4.5 text; ≥3 non-text).
+12. Swahili: for each stretch-frame label, EN length, SW length, ratio, result at 2.25×.
+13. Glyphs: viewBox, stroke-width, linecap, linejoin, fill and stroke for every SVG.
+14. Emoji in i18n-draft.json and in the drawn text of every canvas (0). Politics words in any string (0).
+    Category labels outside the closed list (0).
+15. i18n-draft: key counts for en / sw / zh (equal); strings carrying a raw number (0).
+16. Loss and live frames: any score, miss count, seal class or gilt token (0).
+17. Every unchecked item, named, with the reason.
+
+═══════════════════════════════════════════════════════════════════
+13 · WHAT R1 GOT THAT IS NOW DEAD, AND WHAT SURVIVES
+═══════════════════════════════════════════════════════════════════
+DEAD: the TZS 2,000 entry · the tiers 10/9/8, the Supa and Mini glyphs, the tier legend · reserves held in
+the background, unanswered · "a void counts as correct" · 13% of losing stakes · progressive-only (no
+floor) · the score line "Alama 6 kati ya 10" and the tier-floor line · R1's hand-drawn chrome (the classic
+header, the five-slot rail with Maswali in the middle, the red 18+ crest) — copy live chrome from
+06-frames · the words "pool" and "tikiti" · the 24px title and "--sp-* is dead" · the value-flash for the
+pool (it is gold) · every owner ruling dated 2026-08-29.
+SURVIVES: the document slip · never clamping prose on the slip · the sticky rail · one lit control per row,
+unselected neutral · gilt only on the final commit (now on the confirm sheet) · the neutral refusal with
+jump links · ticks in success ink, crosses in neutral ink · the serial minted at payment · the 560 receipt
+· the finality line plus the attestation hash · the summary row and receipt agreeing byte for byte · the
+1024–1279 guidance.
+
+═══════════════════════════════════════════════════════════════════
+14 · ACCEPTANCE: checked in this order
+═══════════════════════════════════════════════════════════════════
+ 1. The export is complete (section 11) and opens offline; every canvas re-pointed to motion/tokens/; no
+    rulebook copy, no extra token copy, no extra top-level file.
+ 2. Every var(--name) resolves to a token in the attached files, or to a runtime binding listed in
+    MOTION.md; zero colour, ms or curve literals outside motion/tokens.
+ 3. Gold only on 4a's allowed list; no jackpot figure on a held-ticket surface.
+ 4. The game rules exactly as section 2: all 15 answered; substitution in order with voided reserves
+    skipped; the week-void threshold and its pending/paid states; the floor before the fee and the fee
+    only at payout; an equal share per ticket and the remainder rule; the top-up never rolled; the cap;
+    the cancel runway; the 24-hour check window; closed categories, no politics; a score only in the
+    sunset week.
+ 5. Motion: ≤4 new keyframes, all in the N-block; zero infinite, zero --m-pivot, zero count-up; only the
+    allowed properties; every N ends on its layout; both clamp branches written and no N in the reduced
+    list; throttle behaviour stated for every moment; prototypes run offline.
+ 6. Loss and live frames carry no score, no miss count, no emphasised row, no celebration vocabulary and
+    no buy control; the finality line is present; a win and a loss share one dwell.
+ 7. At 360: zero horizontal overflow in every locale with every overlay open; every tap ≥44px.
+ 8. Swahili proven at 2.25× on the stretch frames; prose never clamped; money and time never clipped;
+    Chinese never shrinks a container.
+ 9. Contrast ≥4.5:1 text and ≥3:1 non-text, measured on the rendered composite and listed.
+10. Chrome: the four journey tabs unchanged; no countdown in the chrome or on the home card; no sub-brand,
+    sponsor, emoji or light variant; the deposit doors as shipped; the overlays, tab-lit and home-card
+    position proposed; the classic entry drawn as ruled.
+11. Words: dictionary words (tiketi, bwawa, salio kuu, Kughairi bila malipo, the category labels);
+    "halisi" never used for "real"; no single-letter picks; "akiba" flagged.
+12. Glyphs built to D6 and proven at 14/18/24; sealNil distinguishable from sealX, sealCheck and
+    clockPending at 14px in greyscale, and not read as a no-entry sign.
+13. FRAME-INDEX complete (PNG = done); EN and ZH proofs exist for the 12 named frames.
+14. Documents complete: DECISIONS (owner items flagged), OPEN-QUESTIONS, MOTION.md, the TOKENS-USED
+    markers, i18n parity, the handover mapped to S1–S8, a numeric README self-check.
+
+═══════════════════════════════════════════════════════════════════
+15 · WHAT IS ATTACHED (every file is a copy of commit {FULL_SHA}; see STAMP.txt)
+═══════════════════════════════════════════════════════════════════
+ 01-law/      DESIGN_AUTHORITY.md: the ONLY design rulebook. Read §0, §B1–B7, B9–B11, §T, §S, §A, §C (C8
+              breaks), §L, §H, §F (F9 presence, F10 feedback timing), §E, §K8, §M1–M8.
+ 02-values/   globals-extract.css (every :root block with its @media wrapper, every @keyframes, and the
+              .amount, .gilt-*, .seal-*, .btn*, .eyebrow and .mat-* rules; the full file is too large) ·
+              motion.css (in full) · state-tokens.css · tailwind.config.ts (the type-scale bridge).
+ 03-symbols/  glyphs.tsx (the line family and the G wrapper) · brand-mark.ts and mark-*.svg (the mark's
+              geometry and its −14° axis) · win-celebration.tsx (the seal's choreography; do not redesign).
+ 04-language/ LANGUAGE-AND-CONTENT.md (the measured budget) · i18n-dict.ts (the dictionary; search it, do
+              not read it whole).
+ 05-r1/       R1's DECISIONS.md and OPEN-QUESTIONS.md; sources/*.dc.html, support.js and
+              assets/mark-color.svg; glyphs/millionea.svg; four artboards (A-slip-partial, A-slip-ready,
+              B-receipt, C-figure-mono). EDIT these, re-pointed to the live tokens.
+ 06-frames/   Live reference captures — QA personas only; copy their CHROME, never their data. At
+              360/768/1280: journey — the home, Tiketi zangu, the bet sheet, the desktop header, the
+              AwaySummaryBar and a NoticeBar; classic — the /markets board, the More menu, the top bar at
+              1100 and 1280, /positions, the Needle fidget and the chat bubble; the Struck Seal end frame
+              and a bet-result modal.
+ NOT ATTACHED, on purpose: the management proposal, the old evaluation, R1's tokens-LOCKED.css (stale)
+ and the old law lists. If you have seen any of them, this prompt wins.
+
+═══════════════════════════════════════════════════════════════════
+16 · IF A CONSTRAINT MAKES A SCREEN IMPOSSIBLE
+═══════════════════════════════════════════════════════════════════
+Say so in OPEN-QUESTIONS.md and draw the closest lawful version. A rule broken in silence costs more than
+a screen we have to rethink.

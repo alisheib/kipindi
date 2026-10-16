@@ -657,6 +657,8 @@
     "red:landing-ten-plan": "tsx scripts/landing-ten-plan.test.mts --prove-red",
     "test:vodacom-plan": "tsx scripts/vodacom-plan.test.mts",
     "red:vodacom-plan": "tsx scripts/vodacom-plan.test.mts --prove-red",
+    "test:maswali-plan": "tsx scripts/maswali-plan.test.mts",
+    "red:maswali-plan": "tsx scripts/maswali-plan.test.mts --prove-red",
     "test:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts",
     "red:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts --prove-red",
     "qa:journey-preview": "node scripts/qa-journey-preview.mjs",

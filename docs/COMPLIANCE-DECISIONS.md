@@ -8,6 +8,70 @@
 
 ---
 
+## 2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void (owner)
+
+**Authority.** Ali, in session on 2026-10-16, handing over the Product Owner's proposal *"Maswali Millionea — Weekly
+Prediction Jackpot Product — Technical & Business Proposal"* (dated 16 October 2026): *"disregard any august rulgint he
+enw paln is final ruling"* and *"th enew pd is rveewd by management and update dlatly so any old ruels repalc ehtem if
+lost y those fomr the new pdf"* — the new PDF is final; where it speaks it replaces every earlier ruling. He then
+answered, in five rounds the same day, every question the PDF leaves open. The programme's tracker is
+[`MASWALI-PLAN.md`](MASWALI-PLAN.md) (programme key `MASWALI-BUILD`).
+
+**What it rules.**
+
+| Key | Ruling |
+|---|---|
+| R-RESERVES | The player answers all 15 questions at purchase (10 main, 5 reserve). A reserve counts only when a main question voids: voided mains are replaced, in question order, by the first unused non-void reserves, and a voided reserve is skipped. If voided mains outnumber non-void reserves, the whole week voids and every ticket is refunded in full. A ticket wins when all 10 graded questions are correct. (The PDF's "reserves are not answered by the player" cannot be graded; Ali chose that players answer all 15.) |
+| R-GUARANTEE | As the PDF: a guaranteed floor of TZS 1,000,000 per week, counted before the fee. Jackpot = the larger of the floor and (rollover carried in + this week's ticket sales). The house tops up the gap only in a week with a winning ticket; the top-up is never carried over |
+| R-FEE | As the PDF: 13% of the jackpot, taken only when a jackpot is paid (1,050,000 → fee 136,500 → 913,500 paid). Nothing is taken in a week with no winner, so all ticket money rolls. The TRA and GBT levies are booked on that fee when it is taken. A third, product-specific fee model; RULES.md gains it through its §5 ceremony with the code (session S1) |
+| R-SHARE | Shared equally per winning ticket (two winning tickets, two shares) |
+| R-HEADLINE | Wherever the jackpot figure appears, the rule sits beside it ("shared by every 10/10 ticket · 13% fee at payout"), and the win result shows pool, fee and amount paid |
+| R-ROLLOVER | Rolls until won, with no cap. If the product is ever stopped, the unwon pool goes to that final week's highest-scoring tickets, shared equally. The pool is held in its own house ledger account as money owed to players |
+| R-CAP | 10 tickets per player per week (a config value), enforced where the ticket is bought, printed on the slip |
+| R-BONUS | Real (main) balance only; bonus money is refused with a message that names the reason |
+| R-CATEGORIES | No politics — the licence term in `categories.ts` stands; the PDF's "Politics" is struck |
+| R-CANCEL | The platform's free-cancellation rule (RULES §2.6) applies unchanged, its runway measured to the sales close |
+| R-WEEK | Template: sales open Monday and close Friday 18:00 EAT; events Friday evening to Sunday; results and payout Monday or Tuesday. An officer may move the close, and the system refuses any question whose event starts before it |
+| R-NAME | Label "Millionea", page title "Maswali Millionea", route `/millionea`; code modules keep `maswali-*` |
+| R-PLACEMENT | No new tab in the sponsor journey: a Millionea card on the Maswali home, and Tiketi zangu's switch becomes Maswali \| Juu/Chini \| Millionea. The classic shell gets an entry point (a card at the head of the Markets board and the first row of More; no rail slot) |
+| R-RESOLUTION | One officer sets each result and each void (the platform default). No AI auto-seal: the AI may prepare evidence and a suggestion only |
+| R-INSIDERS | Accounts holding an admin role, and house or desk accounts, are barred from buying tickets; house bots never touch Millionea |
+| R-LAUNCH | Public as soon as it is built and its live drive passes — not waiting for the Vodacom S16 check |
+| R-MOTION | Claude Design may propose at most four new signature motions for Millionea; each returns to Ali for yes or no, and each yes becomes a dated Millionea exception in DESIGN_AUTHORITY §M8 and a value in `motion.css` |
+
+**Answered later the same day.**
+- *"Accept all recommendations"* — every owner decision OD-01…OD-30 in `MASWALI-PLAN.md` §9 is ruled as recommended
+  there (among them: a disqualified or reversed-deposit share returns to the jackpot, never the house; no agent
+  commission and no invite first-bet credit in v1; no quick-pick in v1; a closed list of void grounds; settlement
+  released by one accounting officer; winners never named without written consent).
+- **The guarantee is pre-funded** with TZS 2,000,000 by an audited owner ceremony before week 1; a week does not open
+  unless the fund covers every unsettled week, and settlement aborts rather than pay less.
+- **The licence basis is Ali's own dated ruling** — he chose it over a written Gaming Board note for a fixed-price
+  weekly jackpot with a house-backed floor and rollover, and **accepts that risk**. This entry is that ruling.
+- **Disputes:** one 24-hour window per week, opening when the graded set is final and never closing before 12:00 EAT,
+  ruled by an officer other than the one who sealed the result.
+
+**What does NOT change.** RULES §2.2 (levies only on our commission, never on a player), §2.6 (free cancellation),
+§2.9 (every refusal states reason and next step); the platform's single-officer default; the Yes/No and Up & Down fee
+law; the withdrawal ladder (typed identity and a confirmed email; no AML hold).
+
+**Accepted consequences.** The house pays the fee's TRA and GBT levies on money it topped up itself. Weekly gross
+gaming revenue swings, because a no-winner week collects and a winning week pays out several weeks' money. The tax
+report's filing line (13% of payout) differs from the booked fee (13% of the jackpot) by 13% of the fee, and its Report
+1 check needs reconciling lines for rollover and top-up — **Finance confirms these, and that no withholding applies to
+winnings, before Millionea goes ACTIVE.** A group of accounts covering every answer combination is a fairness risk, not
+a solvency one: a fully covered week never needs a top-up.
+
+**Supersedes.** § "2026-08-29 · MASWALI MILLIONEA — the four remaining calls, and D-1's real status" and § "2026-08-29 ·
+MASWALI MILLIONEA — six of the seven §0 decisions, and the one that still blocks" — both marked in place below, not
+otherwise edited.
+
+**⛔ Do not restore** for Millionea: prize tiers (9/10, 8/10); the 20,000,000 guarantee; "13% of losing stakes"; "a void
+counts correct" and the 3-void refund; a fifth classic-rail slot; the August AML-review wording on the win notice; a
+mandatory two-officer ceremony; reserves left unanswered.
+
+---
+
 ## 2026-10-15 · Privacy v2026-10-15.2 — Up & Down round selection in necessary tab storage (Vodacom S12)
 
 **Authority.** Ali accepted the S12 plan's recommended answers on 2026-10-14 and instructed the team to complete the
@@ -5088,6 +5152,9 @@ window) are recorded when that change ships.
 
 ## 2026-08-29 · MASWALI MILLIONEA — the four remaining calls, and D-1's real status
 
+> ⛔ **SUPERSEDED 2026-10-16** by § "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is
+> final; every 2026-08-29 Maswali ruling is void (owner)". Kept as the record of what was ruled for the August proposal.
+
 Follows the §0 entry below. These are the items the build door listed as owner-owned once §0's
 seven were settled. All four were put to Ali with the measured position and a recommendation; he
 took three and **overruled one, deliberately** — recorded here so a later session does not "fix"
@@ -5184,6 +5251,9 @@ Board in writing before session 1"*.
 ---
 
 ## 2026-08-29 · MASWALI MILLIONEA — six of the seven §0 decisions, and the one that still blocks
+
+> ⛔ **SUPERSEDED 2026-10-16** by § "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is
+> final; every 2026-08-29 Maswali ruling is void (owner)". Kept as the record of what was ruled for the August proposal.
 
 **Programme key `MASWALI-BUILD`.** The build plan and tracker are
 [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md); the evaluation these

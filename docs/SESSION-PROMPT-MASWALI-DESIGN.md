@@ -1,5 +1,10 @@
 # `MASWALI-DESIGN-R1` — the design handover, and what to do with it
 
+> ⚪ **RECORD — SUPERSEDED 2026-10-16.** This was the design round R1's receiving brief. It was written for the AUGUST 2026 proposal (TZS 2,000 entry, three
+> prize tiers, a 20M guarantee). On 2026-10-16 the management-reviewed proposal replaced it and Ali voided every August
+> ruling. The live programme is [`MASWALI-PLAN.md`](MASWALI-PLAN.md) — say "proceed with Maswali plan". How to work
+> is [`AGENTS.md`](../AGENTS.md). Read this file for engineering practice only; never for a rule, a figure or a route.
+
 > **STATUS: ⚪ RECORD — THE DELIVERY ARRIVED AND IS FILED (2026-08-28).** It is at
 > [`design-brief/maswali-2026-08/handover/`](design-brief/maswali-2026-08/handover/), in the shape
 > §1 specifies, plus a `sources/` folder of living `.dc.html` artboards the expected shape did not
