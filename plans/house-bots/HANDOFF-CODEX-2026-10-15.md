@@ -1,4 +1,18 @@
-# House bots — handoff to the Codex session (2026-10-15)
+# House bots — handoff to the Codex session, 2026-10-15 (RECORD)
+
+> **RECORD, NOT RULE — retired 2026-10-16.** This was the brief that handed the house-bots programme to a Codex session
+> on 2026-10-15 (Prisma, release and validation instructions). Its status table went stale the same day, and its
+> working instructions are superseded: the working rules for every agent are [`AGENTS.md`](../../AGENTS.md), and the
+> programme's one stable address — where it stands and what comes next — is [`RESUME-HERE.md`](RESUME-HERE.md).
+>
+> The original text follows, unchanged, as the record of what that session was told. **Do not act on it:** its worktrees,
+> branches and status are gone or out of date.
+
+---
+
+*The original text, unchanged:*
+
+## House bots — handoff to the Codex session (2026-10-15)
 
 > **Owner instruction (Ali, 2026-10-15):** *"I'll run on Codex — give it all the right Prisma etc. instructions so it
 > can push live and validate, and let the Codex session be the cutting-edge session that finalises the development."*

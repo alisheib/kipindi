@@ -121,7 +121,7 @@ if (existsSync(em)) {
 //
 // The rule: wherever a file calls something "the rulebook", DESIGN_AUTHORITY must be the
 // thing it is pointing at. Proximity, not phrasing — so a reworded mislabel still trips it.
-const INDEXES = ["docs/README.md", "CLAUDE.md", "README.md"];
+const INDEXES = ["docs/README.md", "AGENTS.md", "CLAUDE.md", "README.md"];
 const RULEBOOK_MENTION = /rule ?book/gi;
 const NEAR = 220;
 

@@ -1,5 +1,8 @@
 # CLAUDE CODE — implementation brief: The Needle
 
+> **RECORD, NOT RULE.** A brief written for one Claude Code session that wired the Needle (2026-07-27), kept as the record of that commission. How to work on this repository is
+> [`AGENTS.md`](../../../../AGENTS.md); the design rules are [`docs/DESIGN_AUTHORITY.md`](../../../../docs/DESIGN_AUTHORITY.md).
+
 Copy this whole file to Claude Code. It is the complete instruction set for wiring the
 Needle into the 50pick production app. It assumes the three source files ship alongside
 it.

@@ -1,5 +1,9 @@
 # 50pick — Parallel-Session Coordination Contract
 
+> **RECORD, NOT RULE (marked 2026-10-16).** This contract governed two sessions (M and E) in July 2026 and no longer
+> applies. How sessions share the repository today — one release owner pushes `main`, everyone else works on a branch
+> — is in [`AGENTS.md`](../AGENTS.md) §4.
+
 > Two sessions run in parallel to finish the enhancement plan before payment.
 > **Session M (money-ops)** and **Session E (everything-else)**. This contract is
 > LAW for both. The whole point: they can never corrupt each other's work,

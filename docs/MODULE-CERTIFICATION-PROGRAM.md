@@ -41,7 +41,7 @@ a future session can re-run in one command.**
 | | Gate | Passes when |
 |---|---|---|
 | **G1** | **FUNCTIONAL** | Every path a real user can take is driven end-to-end against a running app — not unit-mocked. **Including every failure path.** |
-| **G2** | **VISUAL** | Every surface captured at all breakpoints × 3 locales (en/sw/zh) × dark and light. Zero horizontal overflow, zero clipped text, zero off-screen controls. **Inspected, not merely captured.** |
+| **G2** | **VISUAL** | Every surface captured at all breakpoints × 3 locales (en/sw/zh), on the one dark-royal theme. Zero horizontal overflow, zero clipped text, zero off-screen controls. **Inspected, not merely captured.** |
 | **G3** | **ADVERSARIAL** | The module has been actively attacked: tampered payloads, replayed requests, forged identity, out-of-order state, concurrent races, hostile input. It refused all of it. |
 | **G4** | **MONEY-SAFETY** | *(💰 modules.)* `test:money-invariants` `test:trial-balance` `test:concurrency` green, plus a module-specific invariant. No path can mint, lose or double-spend. |
 | **G5** | **I18N** | en/sw/zh complete. No hardcoded user-facing string. `test:i18n` green. |
@@ -1286,7 +1286,7 @@ and a payout probe declaring a live vendor account dead. **A green gate is evide
    browser, `cert:<id>` as the aggregator. Then **break each negative assertion on purpose and watch
    it go red**, and say in the commit that you did.
 5. Drive the real app (`/run`) for G1 and G2. Screenshot every surface at every breakpoint × 3
-   locales × dark and light — and **look at them**.
+   locales (one theme) — and **look at them**.
 6. **Adopt or delete** every orphan named in your dossier (§6), and remove it from
    `scripts/orphan-allowlist.json` in the same commit.
 7. Update the §9 status board and any doc that owns the subject, in the same commit.

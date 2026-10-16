@@ -43,9 +43,10 @@ fix release, A21 re-measure at that release tip, classic parity v4, the closing 
 verification), S10–S13 and visual follow-ups. These checkpoints are on GitHub. The 2026-10-15 visual audit (58 findings,
 each with its owner) is
 [`qa/visual-audit-20261015.md`](qa/visual-audit-20261015.md).
-The portable continuation and access guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
-**⭐ From 2026-10-15 a Codex session is the integrator and release owner (Ali's choice):** its takeover prompt is that
-guide's top block; the Claude session stops pushing `main`, and its helpers finish their lanes on their own branches.
+The portable continuation and access guide was [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md) — a record since 2026-10-16, when [`AGENTS.md`](../AGENTS.md) became every agent's one set of working rules.
+~~**⭐ From 2026-10-15 a Codex session is the integrator and release owner (Ali's choice):** its takeover prompt is that
+guide's top block; the Claude session stops pushing `main`, and its helpers finish their lanes on their own branches.~~
+*(Superseded 2026-10-16: Ali chose Claude as the release owner again — the 2026-10-16 state above.)*
 
 **✅ ALI ANSWERED THE OPEN POINTS (2026-10-14)** — the record is COMPLIANCE-DECISIONS § "2026-10-14 · The owner's answers
 to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in bounds", S10–S13 accepted". In short: the

@@ -41,8 +41,15 @@ for (const f of ["src/lib/server/payments.ts", "src/lib/server/wallet-service.ts
   }
 }
 
+// ── SURFACE · the current-truth surfaces exist (2026-10-16) ───────────────────
+// `read()` answers "" for a missing file, so a moved or deleted surface made every check below pass while checking
+// nothing. AGENTS.md is the working rules; CLAUDE.md imports it; README.md is the public front page.
+for (const p of ["README.md", "AGENTS.md", "CLAUDE.md"]) {
+  if (!existsSync(join(ROOT, p))) fail("SURFACE", `${p} is missing — every check that reads it would pass on nothing`);
+}
+
 // ── C9 · no doc mandates the superseded teal kit ────────────────────────────
-for (const f of ["README.md", "CLAUDE.md"]) {
+for (const f of ["README.md", "AGENTS.md", "CLAUDE.md"]) {
   for (const line of read(f).split("\n")) {
     if (/(read|build|trust)[^.\n]{0,50}(design_handoff_prediction_market_kit|\bthe (teal )?kit\b)/i.test(line) &&
         !/superseded|do not|don.t|historical|not the name|removed|no longer/i.test(line)) {
@@ -70,7 +77,7 @@ if (/\[data-theme=["']light["']\]|prefers-color-scheme:\s*light|next-themes/.tes
   fail("B3", "globals.css has a light-theme selector / next-themes (single dark-royal theme by invariant)");
 
 // ── Language truth · no French UI locale (never existed); platform is trilingual
-const LANG_FILES = ["README.md", "CLAUDE.md", "src/app/layout.tsx"];
+const LANG_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "src/app/layout.tsx"];
 for (const f of LANG_FILES) {
   const t = read(f);
   if (/EN\s*\/\s*SW\s*\/\s*FR|EN \+ SW \+ FR|français|French (dictionary|locale|translation|language)/i.test(t))
@@ -80,7 +87,7 @@ for (const f of LANG_FILES) {
 }
 
 // ── Money truth · README/CLAUDE must not state the flat-9% model as current ──
-for (const f of ["README.md", "CLAUDE.md"]) {
+for (const f of ["README.md", "AGENTS.md", "CLAUDE.md"]) {
   for (const line of read(f).split("\n")) {
     if (/\b9%\b[^.\n]{0,30}(combined|margin|rake|commission|operator|pool)/i.test(line) &&
         !/was |old |former|no longer|replaced|not |bug|history|historical/i.test(line)) {
@@ -140,7 +147,7 @@ for (const f of srcFiles) {
     }
   }
   // And no current-truth doc may tell an operator to flip a control that no longer exists.
-  for (const f of ["README.md", "CLAUDE.md", "docs/GO-LIVE-RUNBOOK.md", "docs/LAUNCH-GO-NO-GO.md", "docs/PAYMENT-INTEGRATION-CHECKLIST.md"]) {
+  for (const f of ["README.md", "AGENTS.md", "CLAUDE.md", "docs/GO-LIVE-RUNBOOK.md", "docs/LAUNCH-GO-NO-GO.md", "docs/PAYMENT-INTEGRATION-CHECKLIST.md"]) {
     for (const line of read(f).split("\n")) {
       if (/AUTO_SETTLE\s*=\s*true/.test(line) && !/removed|no longer|superseded|does not exist|deleted|gone/i.test(line)) {
         fail("SCHED", `${f}: "${line.trim().slice(0, 90)}" — instructs flipping AUTO_SETTLE, which no longer exists`);

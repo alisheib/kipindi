@@ -1,172 +1,76 @@
 # 50pick
 
-**The wisdom of YES & NO.** Tanzania-licensed pari-mutuel prediction-markets platform.
+**The wisdom of YES & NO.** A Tanzania-licensed, pari-mutuel prediction market — live at https://www.50pick.tz.
 
-Players pick **YES** or **NO** on a proposition (sports, weather, macro, crypto, culture, tech). Stakes from every player on the same market join one pool. Our commission is **`min(10% of the pool, ⅓ of the smaller side)`** — so a winning bet is never paid below its stake — and the net pool is paid out only to the correct side, pro-rata to each correct stake's share of the winning pool. **Players are never taxed on their own money;** taxes apply only to 50pick's commission. The implied probability on the conviction dial is live and updates with every new bet.
+Players pick **YES** or **NO** on a question (sports, weather, the economy, crypto, culture, tech). Every stake on a
+question joins one pool; when the question settles, the pool less our commission is shared by the players who were
+right, in proportion to their stakes. A winning bet is never paid below its stake, and players are never taxed — taxes
+are levied only on 50pick's commission. The commission and every other money rule are stated once, in
+[`docs/RULES.md`](docs/RULES.md).
 
-Trilingual **EN + SW + ZH**. Mobile-first. Calm, premium, regulator-ready.
+Mobile-first, in English, Swahili and Chinese, on one dark-royal theme.
 
 ---
 
-> 🧭 **Engineers/agents:** start with the **`50pick-audit`** skill (`.claude/skills/50pick-audit/SKILL.md`) — the platform operational playbook. Active launch work: [`docs/perfection-plan.md`](docs/perfection-plan.md) · next session: [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md).
+## Working on this repository
 
----
+**Read [`AGENTS.md`](AGENTS.md) first** — the working rules for every engineer and every coding agent (Claude Code
+reads it through [`CLAUDE.md`](CLAUDE.md); Codex reads it directly). It says how to start a session, where each kind of
+truth lives, and how a change reaches production. ⚠️ Every push to `main` deploys the live, real-money platform.
+
+- A machine that has never run 50pick: [`docs/SETUP.md`](docs/SETUP.md).
+- Every document, with its status: [`docs/README.md`](docs/README.md).
+- What is live and what is next: the board at the top of [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md).
 
 ## Quick start
 
 ```bash
-# Node 20+ required
-npm install
+# Node 24
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+With no `DATABASE_URL` the app runs on an in-memory store; `docs/SETUP.md` covers secrets, the database and the
+symptoms that cost an afternoon. The test and drive commands are the `test:*`, `qa:*`, `e2e:*` and `red:*` scripts in
+[`package.json`](package.json).
 
-For documentation written for the next engineer onboarding the codebase, read [`CLAUDE.md`](CLAUDE.md) first — it captures what's true about the codebase right now, where to look, and the conventions to follow.
+## Stack
 
----
-
-## What's built
-
-All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
-
-| Area | Status | Tests |
-|---|---|---|
-| Public pages | ✅ | `/`, `/markets`, `/markets/[id]`, `/live`, `/leaderboard`, `/help`, `/legal/*` |
-| Auth flow | ✅ | `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/otp`, `/auth/admin`, `/auth/logout` |
-| KYC flow | ✅ | `/profile/kyc` — since 2026-10-10 a player types one document's details (NIDA, passport, driving licence or voter's card) and is approved at once when the automatic checks pass, an officer checking afterwards; agent applicants add the document's photos and a selfie for an officer (`docs/IDENTITY-POLICY.md`) |
-| Wallet | ✅ | `/wallet`, `/wallet/deposit`, `/wallet/withdraw` — SOF threshold, AML hold, withholding tax, six mobile-money providers (mock dispatcher) |
-| Bet placement + resolution | ✅ 26 | Conviction dial → place → settle → wallet credit/debit (multi-player-resolution-e2e) |
-| Notifications inbox | ✅ 13 | Bell dropdown, EN+SW per row, deep-link redirects, mark read / dismiss / mark all |
-| AI candidate pipeline | ✅ 22 | `/admin/candidates` — L1 extract → L2 filter → L3 cross-verify → L4 score → human approval → publish (Claude API integration pending) |
-| Reports | ✅ 11 | 5 regulator-grade reports × PDF + XLSX (GBT monthly, TRA tax, FIU SAR, SX register, ISO 27001 audit) with attestation block |
-| Admin dashboard | ✅ 44 | Overview, live ops, finance, reports, players, markets, candidates, audit, AML, compliance, self-exclusions, privacy, retention, approvals |
-| Visibility states | ✅ 44 | Every page's top-bar / nav / CTAs are correct for public / player / admin actors |
-| Responsive | ✅ 70 | 393w / 768w / 1024w / 1280w / 1440w across every public + auth route |
-| Auto-resolve | ✅ 31 | Demo markets settle on their own; payout math + notification + audit verified |
-| i18n EN/SW/ZH | ✅ 13 | Cookie + localStorage + `<html lang>` round trip survives reload + navigation |
-| Flow architecture | ✅ 16 | Auth gates, KYC gates, RG gates, admin role gates, SOF threshold, /not-found, /error |
-
-**Mocked / stubbed for dev** (interface stable, swap is one line per service):
-
-- DB persistence — PostgreSQL via Prisma ORM (all entities in dedicated tables)
-- SMS dispatch — **live** on the Blackball Gateway (`console` provider in dev)
-- NIDA verify — deterministic mock (production swaps to real mTLS endpoint)
-- Identity photos (agent applicants only since 2026-10-10; players' from before that date) — inline in dev, Cloudflare R2 `50pick-kyc` when `KYC_STORAGE=r2` and the R2 bucket are set (live in production)
-- Payment dispatch — instant approve (production swaps to Selcom or Azampay aggregator)
-- AI market generation — pipeline + state machine ready; Claude API call site is stubbed (catalogue + fixtures wired)
-- Sportradar match-integrity — stub adapter labeled in `/admin` + `/admin/compliance`
-
----
-
-## Documentation
-
-| File | Purpose |
-|---|---|
-| [`CLAUDE.md`](CLAUDE.md) | Onboarding doc — what's true about the codebase, where to look, conventions |
-| [`docs/FLOWS.md`](docs/FLOWS.md) | Single source of truth for every redirect / gate / recovery path, with file:line anchors |
-| [`prisma/schema.prisma`](prisma/schema.prisma) | Full Prisma data model |
-| [`RAILWAY.md`](RAILWAY.md) | Railway deployment + persistent-volume notes |
-| [`RAILWAY_DB_README.md`](RAILWAY_DB_README.md) | Step-by-step Postgres provisioning on Railway |
-| [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) | **Design authority** — palette, tokens, invariants (B1–B4). Read before any color, gradient, or composition change. Implementation: `src/app/globals.css`. ⚠️ The old `50PICK/design_handoff_prediction_market_kit/` is a superseded teal snapshot — do not build from it. |
-| Operator/player manuals | **Generated** (not committed) — regenerate the PDF + HTML via `scripts/generate-pdfs.mjs`. |
-
----
+Next.js 16.4 (App Router, Turbopack) · React 19 · TypeScript · Tailwind CSS 3 · Prisma 6 on PostgreSQL · Playwright.
+Hosted on Railway; payments through Selcom; SMS through Blackball; email through Postmark.
 
 ## Project layout
 
 ```
 src/
-  app/                  Next.js App Router pages + route handlers
-    auth/               login · register · otp · admin · forgot-password · logout
-    wallet/             wallet · deposit · withdraw
-    profile/            profile · kyc · responsible-gambling · source-of-funds · sessions · account
-    markets/            markets index · markets/[id] · server actions
-    positions/          player open + settled positions
-    admin/              16 admin pages (see Documentation)
-    api/                webhooks · dev-test endpoints · admin report streams
-    error.tsx           Global error boundary (branded, no PII echo)
-    not-found.tsx       Branded 404 with recovery links
-  components/
-    ui/                 Atoms — Button · Card · Chip · Avatar · LanguageToggle · etc.
-    layout/             Shell — TopAppBar · BottomNav · NotificationsPanel
-    admin/              AdminShell · AdminPageHead · AdminCard · AdminKpi
-    brand/              FiftyMark · FiftyLockup · ConfidenceDial · ProbabilityBar · TippingBar
-    markets/            ConvictionDial · MarketStats · ProbabilityBar · NotifyPoller · WinCelebration
-    landing/            HeroConstellation · DriftParticles · RollingNumber
-    rg/                 RealityCheckHost (session reality-check timer)
-  lib/
-    server/             SERVER-ONLY services (audit, auth, crypto, KYC, RG, wallet, market, etc.)
-    i18n.tsx            EN + SW + ZH dictionary + provider
-    utils.ts            cn() · formatTzs() · etc.
-  proxy.ts              Edge middleware — security headers + auth gate for /wallet, /positions, /profile, /admin
-prisma/schema.prisma    Postgres schema
-scripts/                Playwright E2E suites + screenshot capture + report renderers smoke + audit + i18n
-public/brand/           Logo PNGs (color + white)
+  app/            routes, pages, server actions and route handlers (player, admin, api, auth)
+  components/     the UI kit (ui/, admin/), the shell (layout/), and feature components
+  lib/            shared logic; lib/server/ is server-only (money, auth, KYC, audit, payments, SMS, email)
+  proxy.ts        edge proxy: security headers and auth gates
+prisma/           schema and migrations
+scripts/          test suites, browser drives and operations scripts
+docs/             the owning documents (index: docs/README.md)
 ```
 
----
+## Where the rules are
 
-## Useful commands
-
-```bash
-# Dev server
-npm run dev
-
-# Type-check
-npx tsc --noEmit
-
-# Run any E2E suite (server must be running on :3000)
-node scripts/multi-player-resolution-e2e.mjs
-node scripts/candidate-pipeline-e2e.mjs
-node scripts/flow-architecture-e2e.mjs
-node scripts/notifications-redirect-test.mjs
-node scripts/visibility-states-test.mjs
-node scripts/responsive-overflow-test.mjs
-node scripts/demo-auto-resolve-test.mjs
-node scripts/i18n-toggle-e2e.mjs
-# every catalogue report × PDF/XLSX through the real route — needs `DISABLE_ADMIN_TOTP=true npx next dev` with NO DATABASE_URL
-BASE=http://localhost:3000 npm run qa:report-renderers
-
-# Capture operator manual screenshots + regenerate PDFs
-node scripts/capture-manual-screenshots.mjs
-node scripts/generate-pdfs.mjs
-```
-
----
-
-## Pre-launch integration blockers
-
-These are contract-pending — the platform code is ready to receive each adapter via the existing service interface.
-
-1. **Selcom / Azampay** payment aggregator agreement → wires `src/lib/server/payments.ts`
-2. ~~**SMS contract**~~ — **done 2026-09-16**: Blackball Gateway, wired in
-   `src/lib/server/sms-blackball.ts`. See `docs/BLACKBALL-SMS.md`.
-3. **Claude API** for AI market generation → wires the L1–L4 pipeline + cost tracking
-4. **NIDA** mTLS endpoint → wires `src/lib/server/nida.ts`
-5. ~~**S3-compatible object storage** for KYC documents~~ — **done**: Cloudflare R2 (`50pick-kyc`) behind the storage
-   seam in `src/lib/server/storage.ts`. Since 2026-10-10 players upload no identity document; agent applicants do.
-6. **Sportradar Integrity Services** match-integrity feed → replaces the stub adapter
-7. **GBT pre-application meeting** — pool model classification in writing
-8. **ISO 27001 Stage 1 audit** booking
-
----
+| Subject | Document |
+|---|---|
+| Money: commission, taxes, stakes, limits | [`docs/RULES.md`](docs/RULES.md) |
+| Design: palette, type, components, accessibility | [`docs/DESIGN_AUTHORITY.md`](docs/DESIGN_AUTHORITY.md) |
+| Every redirect and gate | [`docs/FLOWS.md`](docs/FLOWS.md) |
+| Data model and persistence | [`docs/DATA-LAYER.md`](docs/DATA-LAYER.md) · [`prisma/schema.prisma`](prisma/schema.prisma) |
+| Owner rulings and compliance positions | [`docs/COMPLIANCE-DECISIONS.md`](docs/COMPLIANCE-DECISIONS.md) |
+| Identity checks | [`docs/IDENTITY-POLICY.md`](docs/IDENTITY-POLICY.md) |
+| Production and deployment | [`RAILWAY.md`](RAILWAY.md) · [`docs/RAILWAY-LIVE.md`](docs/RAILWAY-LIVE.md) |
+| Backups | [`docs/BACKUP-RUNBOOK.md`](docs/BACKUP-RUNBOOK.md) |
 
 ## Compliance posture
 
-- HMAC-chained append-only audit log (`src/lib/server/audit.ts`) — every state change is verified at chain-walk time
-- Two-officer rule on market settlement (stage-1 + stage-2 by distinct admins)
-- Two-officer rule on AML approvals ≥ TZS 5M
-- Self-exclusion + cooling-off + deposit-limit gates wired into every code path that bets / deposits / withdraws
-- Source-of-Funds threshold gate on deposits ≥ TZS 1M (single) or ≥ TZS 5M (rolling 30d)
-- Identity verified before the first withdrawal only (owner ruling 2026-09-13 — deposits and bets need none): players by typed details, approved at once when the automatic checks pass and checked by an officer afterwards; agent applicants by document photos and a selfie reviewed by an officer (2026-10-10)
-- Withholding-tax computation at withdrawal time
-- Trilingual EN+SW+ZH player-facing copy across every flow
+- An HMAC-chained, append-only audit log; every money and compliance event is written to it.
+- Responsible-gambling controls — self-exclusion, cooling-off, deposit, loss and session limits — on every path that
+  deposits, bets or withdraws.
+- Identity is verified before a player's first withdrawal ([`docs/IDENTITY-POLICY.md`](docs/IDENTITY-POLICY.md)).
+- Regulator reports (Gaming Board, TRA and others) as PDF and spreadsheet from the admin console.
 
----
-
-## Contact
-
-Operator · Ali — Dar es Salaam
-Regulator · Gaming Board of Tanzania (license number to be printed in every page footer on go-live)
-Helpline · 0800 11 0011 (placeholder until the live number is confirmed)
+Operator: Ali, Dar es Salaam · Regulator: the Gaming Board of Tanzania.

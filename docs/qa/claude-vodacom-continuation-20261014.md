@@ -1,4 +1,19 @@
-# 50pick Vodacom continuation — Claude Code handoff
+# 50pick Vodacom continuation — handoff (RECORD)
+
+> **RECORD, NOT RULE — retired 2026-10-16.** This file was the portable continuation guide of 2026-10-14 and, from
+> 2026-10-15, the Codex takeover prompt that made Codex the release owner. Both are superseded: the working rules for
+> every agent are [`AGENTS.md`](../../AGENTS.md), and where the Vodacom plan stands and what comes next is
+> [`docs/VODACOM-PLAN.md`](../VODACOM-PLAN.md) §0 (RESUME AT). On 2026-10-16 Ali chose Claude as the release owner again
+> (VODACOM-PLAN §0, "State (2026-10-16)").
+>
+> The original text follows, unchanged, as the record of what that session was told. **Do not act on it:** it names a
+> release owner, branches and steps that no longer hold.
+
+---
+
+*The original text, unchanged:*
+
+## 50pick Vodacom continuation — Claude Code handoff
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 

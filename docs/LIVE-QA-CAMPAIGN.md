@@ -140,7 +140,8 @@ cd F:\kipindi-liveqa
 git branch --show-current            # MUST print qa/live-experience before you commit
 npx tsc --noEmit && npm run build    # the build IS the deploy gate
 npm run test:<the guard you just wrote>
-git add -A && git commit -F <msg>
+git add <the files you changed>     # by name, never -A — AGENTS.md §4
+git commit -F <msg>
 git push origin qa/live-experience              # 1. the branch, so nothing is ever lost
 git push origin qa/live-experience:main         # 2. main — THIS DEPLOYS LIVE
 ```

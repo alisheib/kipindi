@@ -1,5 +1,8 @@
 # Handover: 50pick landing page to 10/10 (mobile first)
 
+> **RECORD, NOT RULE.** A handover pasted into one Claude Code session for the landing rebuild (2026-09-26), kept as the record of that commission. How to work on this repository is
+> [`AGENTS.md`](../../../AGENTS.md); the design rules are [`docs/DESIGN_AUTHORITY.md`](../../../docs/DESIGN_AUTHORITY.md).
+
 Paste everything below the line into a Claude Code session opened on `alisheib/kipindi` (main). Attach `50pick Home Concept v4.dc.html` and `50pick Review Board.dc.html` as the visual reference.
 
 ---

@@ -2,33 +2,22 @@
 
 ---
 
-## ▶ HOW TO USE THIS FILE IN A NEW SESSION
+## ▶ HOW TO USE THIS FILE
 
-Paste the prompt below into a fresh Claude Code session, with this file present at
-`F:\kipindi-main\docs\RAILWAY-LIVE.md`.
+How to work on production — releases and their read-back, schema changes, reading production data, the account
+checks — is [`AGENTS.md`](../AGENTS.md) §4, §5 and §9; it replaced the paste-in session prompt this section used to
+carry (2026-10-16). This file is the **measured** Railway side: re-derive a figure with the command printed beside it
+before you quote it (§11 lists the ones that already went stale), and never trust a comment or a document about
+infrastructure state — measure it live.
 
-```text
-You are working on 50pick — a LIVE, licensed, real-money betting platform in Tanzania,
-hosted on Railway at https://50pick.tz. Repo: F:\kipindi-main. Pushing to `main` DEPLOYS
-TO PRODUCTION.
-
-Read docs/RAILWAY-LIVE.md first. It is a MEASURED snapshot of the live Railway setup
-(2026-09-03, re-derived and corrected 2026-09-04) — services, IDs, deploy config,
-database settings, costs, and the traps. Then read docs/LIVE-QA-CAMPAIGN.md §6b topmost
-RESUME AT for where the work stands.
-
-Rules for this platform:
-1. RE-DERIVE BEFORE YOU QUOTE. Every number here has the command that produced it.
-   Numbers rot; §11 lists the stale ones that have already caused wrong conclusions.
-2. NEVER trust a code comment or doc about infrastructure state. Measure it live.
-3. EVERY NEW GATE NEEDS A CONTROL THAT MUST GO RED. A check that cannot fail is not a
-   check — §11 trap 13 is a fresh, expensive example.
-4. Real money. Do not change anything on the bet, wallet, settlement or payment path
-   without reading the invariants first.
-5. Ask before anything that causes downtime. There is ONE environment — production.
-
-Tell me what you find before you change anything.
-```
+**The deploy model in one paragraph.** Railway builds every push to `main` and starts it with the `start` script in
+`package.json` (`prisma migrate deploy && next start`); the new deployment takes traffic only once `/api/health`
+passes, and the old one drains after the configured overlap — read those values from the selected deployment's
+manifest (`railway deployment list --json`), not from here. **One container runs.** Every deploy wipes in-memory
+state, so a `globalThis` store that matters needs a PostgreSQL-backed hydration; and some safeguards count only their
+own process — the bet admission queue (`src/lib/server/admission.ts`), and the rate limits whenever Redis is absent
+(`src/lib/server/rate-limit.ts`). A second instance means revisiting each of them first. When old and new code cannot
+share a schema, the release is the zero-overlap cutover ([`qa/s9-zero-overlap-release-20261015.md`](qa/s9-zero-overlap-release-20261015.md)).
 
 ---
 

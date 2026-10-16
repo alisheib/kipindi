@@ -3,6 +3,10 @@
 > **Read this first, then pick one.** Everything else in `docs/` is a RECORD of finished work.
 > If a document is not listed below, it is not a live task, whatever its own header says.
 > ⛔ Do not start something that is not on this board. Ask Ali which item to proceed with.
+>
+> **How to work on any row is [`AGENTS.md`](../AGENTS.md)** — since 2026-10-16 the one set of working rules for every agent
+> and engineer (Ali: *one final rule*). **Release owner — the one session that pushes `main`:** the Claude session on
+> OMEGA-COMPILE01 (Ali, 2026-10-16). Every other session works on its own branch.
 
 > ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**
 >

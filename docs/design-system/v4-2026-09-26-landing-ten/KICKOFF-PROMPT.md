@@ -1,3 +1,6 @@
+> **RECORD, NOT RULE.** A kickoff prompt for the landing rebuild; the `docs/design-brief/landing-10/` folder it names was never committed — the commission's files are in this folder (2026-09-26), kept as the record of that commission. How to work on this repository is
+> [`AGENTS.md`](../../../AGENTS.md); the design rules are [`docs/DESIGN_AUTHORITY.md`](../../../docs/DESIGN_AUTHORITY.md).
+
 Paste everything below the line into Claude Code, opened on `alisheib/kipindi` (branch `main`).
 
 ---

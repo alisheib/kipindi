@@ -18,7 +18,9 @@ export const meta = {
 
 const SHOTS = args && args.shots
 if (!SHOTS) throw new Error('pass args.shots: the absolute directory scripts/live/mobile-visual-capture.mjs wrote')
-const REPO = (args && args.repo) || 'F:/kipindi-main'
+// The repository root is a fact about the machine (AGENTS.md §10), so it is passed, never defaulted to one PC's path.
+const REPO = args && args.repo
+if (!REPO) throw new Error('pass args.repo: the repository root (git rev-parse --show-toplevel)')
 const PLAN = `${REPO}/docs/MOBILE-VISUAL-PLAN.md`
 
 const SURFACES = `The frames are in ${SHOTS}, named <surface>__s<NN>.png where NN is the scroll position (s00 = top

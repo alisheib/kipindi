@@ -25,6 +25,11 @@ const config: NextConfig = {
   // src/lib/security-headers.ts) — this removes one header without touching those.
   poweredByHeader: false,
   typedRoutes: true,
+  // ONE AUTHOR FOR AGENTS.md (2026-10-16). Next 16.4's `next dev` writes, and re-adds when removed, its own
+  // "nextjs-agent-rules" block in AGENTS.md whenever it detects a coding agent; AGENTS.md is this repository's one set of
+  // working rules, so the framework does not write into it. Its one instruction — read node_modules/next/dist/docs before
+  // relying on a remembered Next API — is in AGENTS.md §10. Dev-only: no effect on the build or production.
+  agentRules: false,
   /**
    * 🔴 VERSION SKEW — THE BUILD'S OWN IDENTITY. Added 2026-09-12 after a LIVE defect.
    *
