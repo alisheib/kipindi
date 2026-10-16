@@ -31,17 +31,18 @@
 R-rulings, the accepted decision batch OD-01…OD-30, the guarantee pre-funded with TZS 2,000,000, the licence basis =
 his dated ruling, one 24-hour dispute window per week). S0 is ✅ at `de8a00619`, merged to `main` and pushed live on
 2026-10-16 on Ali's word ("merge maswali-plan into main now and push it live") — documentation only; no code, schema or
-player surface changed. **D1 is 🔨: the R2 design package is cut and checked, its live captures are still being taken,
-and nothing has been sent.** Stamp: `origin/main` at `72ca5cff99638eb8bc26d2d85c3007cb49b3727c`, cut on 2026-10-16. The
-package folder `MASWALI-DESIGN-R2-package-72ca5cff9` exists only on OMEGA-COMPILE01, in `F:\50pick-design-archive`. Its
-`06-frames` folder is empty until the capture runs (it waits for the shared heavy-job lock). There is no zip yet.
+player surface changed. **D1 is 🔨: the R2 design package is cut, checked and zipped, and waits for Ali to send it.**
+Stamp: `origin/main` at `72ca5cff99638eb8bc26d2d85c3007cb49b3727c`, cut on 2026-10-16. The zip is
+`MASWALI-DESIGN-R2-package-72ca5cff9.zip` (6,699,073 bytes, SHA-256
+`196c4de46688202367dcb700e3492b546d34414b879178e01b280ef62a16cb41`). One copy is in Ali's Downloads folder, the other
+beside its folder in `F:\50pick-design-archive`, both on OMEGA-COMPILE01. A second zip in Ali's Downloads,
+`TEST-ONLY-not-for-Claude-Design-MASWALI-DESIGN-R2-72ca5cff9.zip` (1.1 MB), is a test build of the zip step: never send
+it.
 
 **Next:** D1, then D2 when the reply comes, otherwise S0.5 — in this order:
-1. **Finish D1 (OMEGA-COMPILE01 only, because the package folder lives there).** Capture `06-frames` from a local
-   server at the stamp, read every frame, zip the folder with forward-slash entry names (see the Last handoff), and
-   copy the zip to Ali's Downloads folder. On any other machine, cut a fresh package from `origin/main` by
-   [`ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md) instead. If `origin/main` changes a packaged file
-   before Ali sends, re-cut first — never send a stale stamp.
+1. **Ali sends the zip** (Blocked on Ali, below). If `origin/main` changes a packaged file before he sends, re-cut first
+   by [`ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md) A2–A6 — never send a stale stamp. The zip
+   exists only on OMEGA-COMPILE01; on any other machine, cut a fresh package.
 2. **When Ali says he sent it:** set D1 ✅ citing the commit that records the send, write the send date here, and change
    `BRIEF.md`'s status line to SENT (ATTACHMENTS A7).
 3. **When Ali comes back with Claude Design's reply, on any machine — that is D2.** The reply is a zip (the prompt
@@ -51,33 +52,38 @@ package folder `MASWALI-DESIGN-R2-package-72ca5cff9` exists only on OMEGA-COMPIL
    package's `STAMP.txt`). Receiving does not wait for S0.5–S3; Ali's N1–N4 rulings (D3) block S5.
 4. Otherwise: S0.5, the fence.
 
-**Blocked on Ali:** sending the package once a session hands him the zip. The steps: open Claude Design, start a new
-project, upload the zip, paste all of the `PROMPT.txt` that is **inside the zip** as the first message (its stamp is
-filled in; the tracked `PROMPT.txt` keeps its placeholders), and send. Then tell any session "I sent it". When the reply
-comes, hand its zip to any session and say "MASWALI-DESIGN-R2".
+**Blocked on Ali:** sending the package. The steps: open Claude Design and start a new project. Upload
+`MASWALI-DESIGN-R2-package-72ca5cff9.zip` from Downloads (6.7 MB, not the TEST-ONLY one). Paste all of the `PROMPT.txt`
+that is **inside the zip** as the first message (its stamp is filled in; the tracked `PROMPT.txt` keeps its
+placeholders), and send. Then tell any session "I sent it". When the reply comes, hand its zip to any session and say
+"MASWALI-DESIGN-R2".
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
-**Last handoff (2026-10-16, OMEGA-COMPILE01, D1, in progress):** the package is being cut in the SSD worktree
-`C:\50pick-ssd\kipindi-d1` (branch `maswali-d1`) as ATTACHMENTS A2–A6 say, with two exceptions recorded below. A first
-cut at `e78c3aef6` was finished and checked, then deleted unsent: S8 round V2 reached `main` and changed
-`globals.css`, `i18n-dict.ts` and the bet sheet. Everything is being cut again at the stamp.
+**Last handoff (2026-10-16, OMEGA-COMPILE01, D1):** the package was cut in the SSD worktree `C:\50pick-ssd\kipindi-d1`
+(branch `maswali-d1`) as ATTACHMENTS A2–A6 say, with the exceptions recorded below. A first cut at `e78c3aef6` was
+finished and checked, then deleted unsent: S8 round V2 reached `main` and changed `globals.css`, `i18n-dict.ts` and
+the bet sheet. Everything was cut again at the stamp.
 - **A3 at the stamp:** 49 `@keyframes` in `globals.css` and 49 in the extract; the `--rh-close` line sits under
   `@media (min-width: 768px)`; one stale `tokens-locked` link in each of the four R1 canvases.
 - **Further checks:** 26 of 26 copied files are byte-identical to the commit. The extract keeps all 4 `:root` blocks
   (360 declarations), all 48 named-class rules and all 49 keyframes.
-- **`06-frames` (not yet taken at the stamp):** the first cut's run produced 48 Swahili captures at 360/768/1280 (and
-  1100 for the classic top bar). They used QA personas only, came from a local in-memory server, and every one was
-  read by eye. The same set is being taken again at the stamp. Two non-player elements are hidden in them, and
-  `STAMP.txt` says so: the dev-server badge and the staff preview marker.
-- **Exception 1 — the zip format:** A6's `Compress-Archive` (Windows PowerShell 5.1) writes every entry with
-  backslashes, which non-Windows unzippers flatten into single file names. The first cut's zip was rebuilt with the
-  same .NET library (`System.IO.Compression.ZipArchive`, each entry named with `/`) and verified byte-identical, entry
-  by entry. The final zip is built the same way. A6 needs that fix before the next cut.
-- **Exception 2 — `qa:seal`:** part A passed 94 of 94 checks. Part B (the real settled outcome) is stale: it waits for
-  a "Day" field that the sign-up form no longer has. The seal frame was taken with part A's method instead, and the
-  bet-result modal from one real local bet.
+- **`06-frames`:** 48 Swahili captures at 360/768/1280 (and 1100 for the classic top bar). They came from a local
+  in-memory server with the worktree checked out at the stamp, and show QA personas only (the demo player and seeded
+  test officers). Every frame was read by eye. Two non-player elements are hidden in them, and `STAMP.txt` says so:
+  the dev-server badge and the staff preview marker.
+- **Exception 1 — outside the lock, on Ali's word:** the capture ran from 15:00 to 15:10 UTC while s9fix's test
+  battery held the shared heavy-job lock. Ali's words: "Yes - run the 20-minute screenshot job now alongside s9fix's
+  tests, this once, then put the real zip in my Downloads folder." A failure in that battery during that window may
+  come from the extra load: re-run it before believing it.
+- **Exception 2 — the zip format:** A6's `Compress-Archive` (Windows PowerShell 5.1) writes every entry with
+  backslashes, which non-Windows unzippers flatten into single file names. The zip was made instead with A6 as fixed
+  on branch `maswali-a6-zip` (`c4697dfde`, not yet merged). Its checks: 77 files and 77 entries, 0 backslashes, 0
+  entries unequal to their file, the same names; `tar.exe` also lists 77 and the same names.
+- **Exception 3 — `qa:seal`:** part A passed 94 of 94 checks on the first cut's server. Part B (the real settled
+  outcome) is stale: it waits for a "Day" field that the sign-up form no longer has, and its repair runs in its own
+  session. The seal frame was taken with part A's method instead, and the bet-result modal from one real local bet.
 
 The working tree `F:\kipindi-main` is shared by several sessions on a spinning disk — never build there. The repository
 is public: describe anti-abuse controls by what they enforce, never by their signals.
@@ -87,7 +93,7 @@ is public: describe anti-abuse controls by what they enforce, never by their sig
 | Session | Title | Status | Note |
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
-| D1 | Design R2: the commission cut live and sent | 🔨 | package cut 2026-10-16 at 72ca5cff9; captures and zip pending, then Ali uploads and pastes |
+| D1 | Design R2: the commission cut live and sent | 🔨 | zip ready 2026-10-16 at 72ca5cff9, in Ali's Downloads; waits for Ali to upload and paste |
 | S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
