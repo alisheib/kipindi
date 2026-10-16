@@ -30,13 +30,14 @@
 **State (2026-10-16):** The plan is written and nothing is built. Ali's rulings of 2026-10-16 are recorded (seventeen
 R-rulings, the accepted decision batch OD-01…OD-30, the guarantee pre-funded with TZS 2,000,000, the licence basis =
 his dated ruling, one 24-hour dispute window per week). The Claude Design commission for round R2 is filed and not yet
-sent. S0 is ✅ at `de8a00619` on branch `maswali-plan`; it reaches `main` when the release owner merges it.
+sent. S0 is ✅ at `de8a00619`, merged to `main` and pushed live on 2026-10-16 on Ali's word ("merge maswali-plan into
+main now and push it live") — documentation only; no code, schema or player surface changed.
 
 **Next:** D1 — cut the design package live from `origin/main` and hand it to Ali to send
 ([`design-brief/maswali-2026-10/ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md)); then S0.5, the fence.
 
-**Blocked on Ali:** merging this documentation branch (the release owner pushes `main`) · uploading the design package
-to Claude Design and pasting `PROMPT.txt`.
+**Blocked on Ali:** uploading the design package to Claude Design and pasting `PROMPT.txt` (after a session cuts the
+package, D1).
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
@@ -49,7 +50,7 @@ build there. The repository is public: describe anti-abuse controls by what they
 
 | Session | Title | Status | Note |
 |---|---|---|---|
-| S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 on branch `maswali-plan` (2026-10-16); reaches `main` through the release owner |
+| S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ⬜ | after S0; Ali uploads and pastes |
 | S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
