@@ -1286,6 +1286,36 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
     889/889), `-money`, `-caps`, `-comms`, `-console`, `-designation`, `-info-edge`, `-ops`, `-reports`,
     `test:cashout-price-guard`, `test:message-titles`, `test:stake-minimum-db`, `test:bonus-one-side` and
     `test:house-bot-seam`.
+- **2026-10-16 Claude — round V2: the close's 20 tile-read items, fixed on branch `claude/s8-v2` (not pushed).**
+  Commits `696a4a43d` (the session limit a block; one rule for every inline refusal's commit), `95a00a9f5` (the
+  sheet's frames), `efbc4a829` (D19a's pin), `eb54b8c89` (the drive), `8a8d86bdd` (the low block's top chosen against
+  its foot, which this round's own drive found) and this record. S8-PLAN A25 states each item's cause and fix and what
+  it overrides (matrix row 9; the Retry column of every inline row).
+  - *What a flagged player sees now:* the 15-minute session limit swaps the form for its block (its minutes, "Weka
+    mipaka", "Sawa"), Juu/Chini's arm too; a refusal that cannot succeed until something changes never leaves the
+    commit tappable (maintenance until a fresh read lifts it, a missing wallet, "not taking bets", a spent skew reload
+    drawn as the recovery hold; the rate limit until its named wait has passed), while BUSY and a key conflict stay
+    enabled; with the keyboard up the held commit's reason stands right above it; the low block — callout and every
+    option — stands in view at 320×640; a hidden balance hides the shortfall, the deposit amount and the remainder too,
+    and withholds "bet instead"; every inline refusal wears the kit's notice box; the commit's "·" travels with its
+    amount; zh keeps 投注 and 下注 whole, hangs an opening 「 and sets off 「是」; the deposit amounts are the deposit
+    page's pills; the grab keeps its 4px; the break title's 12px hole is closed; the sign-in toast hangs under the staff
+    preview bar. Nothing outside the flag changes; the toast moves only on a page that wears that bar.
+  - *Explained:* the zh question in English was the demo seed (no zh title; the board's English fallback is right), so
+    the drive seeds the real fixtures and asserts Chinese; tile 058 was its entrance fade caught mid-way; 057's "2
+    Issues" were Next's dev debug channel, fed by the drive's own replays carrying the page's request ids (stripped: 0
+    such rows, 186 when copied back); 044's TZS 99,500 was an earlier cell's landed 500, and its retry places exactly
+    one bet with the doubt's own key, driven.
+  - *Proof, local in-memory server:* typecheck 0; `test:bet-sheet` 78/78 (15 checks for A25), `red:bet-sheet` 164/164;
+    `test:bet-sheet-host` 51/0 (red 87); `test:journey-updown` 54/0; `test:visual-pass-r4h` 83/0; every suite whose
+    script reads a changed file, 297/297. The pre-change sources fail the new guards (step 1: four `test:bet-sheet`
+    checks and `host.facts-yield`; step 2: thirteen). `qa:bet-sheet` at `8a8d86bdd`: 515 passed, 0 failed, 19
+    outstanding — the baseline's documented set (the receipt tiles lost to the reload, 11 of 12 this run; the
+    admission storm; the two A21 dev tap readings; the five NOT DRIVEN rows) — 80 tiles. Every assertion of the
+    423-pass baseline holds but the two whose premise this round reverses (session limit, hidden balance), each
+    replaced by its reversal. Tiles read in sw, en and zh: the keyboard and edit tiles at 320–1280, the low cells at
+    320 and 360, a receipt, maintenance, the rate limit, pending, the doubt (044's), the hidden balance, the skew and
+    legacy holds, the session block, sign-in and the toast under the bar; none shows a listed defect.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their

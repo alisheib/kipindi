@@ -2296,6 +2296,99 @@ text (S7-PLAN A24's method). The changes that alter what a package does:
 
 *From:* S8 WP0 steps 1 and 3; Ali's answers of 2026-10-12; S7's close record.
 
+### A25 · Round V2: what the close's tile read found on the flagged sheet (2026-10-16)
+
+*Overrides:* matrix row 9 and the branch table's `blocked session_limit` row (item 1); the matrix's Retry column read for
+the CTA of every inline row — rows 1, 3 (a spent reload), 5, 6, 16, 18 and A8's "not taking" line (item 2); A9 item 4's
+"`{short}` and the deposit amount stay visible" (item 5); A14 item 1's keyboard frame (item 3); A22 item 1's compact row,
+taking its "or nothing" (item 9). The drive gains the cells and captures named below; every assertion it had stands, but
+for the two whose premise this round reverses: `doors-session15-real-gate` (item 1: the block, not the inline line) and
+`doors-personal-cash-hidden` (item 5).
+
+The bet-sheet drive at stage 2's tip wrote 69 tiles; read one by one they showed 20 items (VODACOM-PLAN §0k, "2026-10-16
+Claude — stage 1 LIVE"). Each is fixed at its cause:
+
+1. **The session limit is a block** (tile 065). A player stopped by the 15-minute limit they set was shown its sentence
+   over an enabled gold "Place bet", where the loss limit swaps the form for its panel (048). Row 9 and the plan's
+   `session_limit` now draw the break's block (s4-4-block-cooling's shape): `market.udErrSuspendedTitle`, the
+   `journey.sheetSessionLimit` sentence with its minutes as the alert, "Weka mipaka" and "Sawa" — the doors the limits
+   page offers. Retry "none". Up & Down's journey arm draws the same frame, so it shows the block too. A4's open-read
+   record is unchanged (`rg.session_limit.enforced`).
+2. **One state, one rendering: an inline line rules its commit** (045, 064 against 040, 063). The rule: a retry that
+   cannot succeed until something changes never looks tappable; a "try again" that can succeed may stay enabled. Every
+   inline row carries its ruling (`InlineHold`, sheet-state.ts; `INLINE_HOLDS`, sheet-refusal.ts): **none** — row 1's
+   BUSY (the same key) and row 16's key conflict (a new key); **until** — row 5's rate limit, until its `retryAfterSec`
+   has passed on the phone's clock (one second when unnamed); **change** — row 6's maintenance, row 18's missing wallet,
+   A8's "not taking bets" (rows 12 and 15, or a failed re-read) and row 3's skew once its one reload is spent. Maintenance
+   is carried by the facts, so its line yields to the next fresh read, which the refusal asks for at once: the plan then
+   shows it, or lifts it. A spent reload is drawn exactly as the recovery hold (040, 063): the stake locked, the commit
+   bare and disabled, "Temporarily unavailable". The canvas already drew it so (s4-4-inline-refusals: the rate limit and
+   maintenance disabled, BUSY enabled).
+3. **The keyboard's frame keeps what typing needs** (001–022). With the keyboard up a 640px phone leaves about 160px for
+   the middle: the question was cut mid-glyph under the header, a 10px sliver of the next box stood over the commit, and
+   at TZS 1,000,000 the dead commit's reason (the low callout) sat under the keyboard. While the stake is typed into, the
+   middle holds the stake and, in the edit frame, a priced estimate's figure line (its note dropped); the reason a held
+   commit gives stands directly above it — the bounds line itself, or the frame's own title as the callout's id, so the
+   stake and the commit keep the description they name. The question stays the dialog's name, visually hidden, and
+   returns with the keyboard's going. Driven at 320, 360 and 390 in sw, en and zh.
+4. **The low block stands in view** (034, 035, 041, 062). When a low, loss-room or pending frame arrives, or the keyboard
+   goes while one stands, the middle stands so the frame's own block — its callout and every option — is in view
+   (`sheet-scroll.ts`, pure), after the dialog's own re-arm. Not by scroll padding: the footer is not over the middle, the
+   options were simply below the fold at rest. The block stands from its callout less the column's gap — unless that
+   hides its foot (the round's own drive, sw 320×640: a priced "bet instead" made the block 404px in a 414px middle, its
+   last option 1.6px under the footer): then at the middle's end when it fits without the whole gap, from its very top
+   when only the padding is left out, never past the callout (`lowBlockWant`).
+5. **A hidden balance stays hidden, and so does every figure derived from it** (062). "You need TZS 3,800 more" at a stake
+   of 5,000, the deposit of 3,800 and "Bet TZS 1,200 instead" each gave "TZS •••••" away. While the mask is on, the
+   shortfall, the deposit amount, a refused deposit's amount and the remainder are masked as the balance is (`Cash`'s
+   optional `hidden`, inert when unset); the deposit amounts' row is withheld (its first amount is the shortfall); and
+   "bet instead" is withheld, here and in the late pending band — its stake IS the balance, and a commit never names a
+   masked amount. The deposit door still opens the deposit page, which shows the amount there. The late band does not
+   speak it either. Up & Down's arm shares the block and passes the same mask.
+6. **Tile 058 is the capture, not the page**: the sign-in page's entrance fade caught mid-way. The drive now settles every
+   finite animation on the page before a capture (capped at 1.5 s), not only the dialog's.
+7. **The grab holds its 4px pill**: it shrank with the capped column (2.4px at rest, 1px under the keyboard); `flex: none`.
+8. **No line is cut at the middle's top** when the sheet moves it: a line of text or a control straddling the top edge
+   pushes the edge to its foot; where that runs past the middle's range the middle gives up exactly that much at its foot
+   (the sheet that much shorter), never an empty band inside it.
+9. **Compact prints a figure or nothing** — A22 item 1's "or nothing", taken: an unpriced estimate was drawn as the whole
+   box in the low and keyboard frames (the sliver, and the height that pushed the second option under the footer).
+10. **The commit's "·" travels with its amount**: "Weka dau" / "· TZS 1,000,000" at 320, held by an element (`SheetSentence`).
+11. **Chinese breaks between words**: `keep-all` in the sheet's zh text (投注 and 下注 split, 019 and 023), a notice's
+    body through `noticeBody` (its last two ideographs and stop held), and a paragraph's opening 「 hung by half an em
+    (`hangCjkOpening`, cjk-marks.tsx) — `text-spacing-trim` was measured to move nothing with this face (「 inks 9–16px of
+    its 16px advance with and without it).
+12. **The zh question in English was the seed**: the demo catalogue carries no zh title, and the board's fallback to
+    English is right for such a market. The drive seeds the six real fixtures (`seed-real-markets`, which carry all
+    three) and opens a zh-titled question in its zh cells, asserting the question reads in Chinese. No product change.
+13. **是 is set off as 「是」** in `journey.sheetHolds` and `journey.sheetFirstOnSide` (DESIGN_AUTHORITY L4; "您已在此投注是"
+    read as the copula). The chip `sheetChosen` is the rule's own exception. The S8 zh word hash is re-measured (en and sw
+    unchanged) and D19a's dictionary pin moves to `95a00a9f5`, whose diff from the last pin is exactly these two lines.
+14. **An inline refusal wears the notice box** every other refusal wears: the kit `Callout` (info), as s4-4-inline-refusals draws it.
+15. **"Track the payment ›" stands on the body's text edge**: its tap padding is pulled back past it (`.kp-bsheet__link--lead`).
+16. **The break title's date follows "until" at a word space** (059): its kept runs were each a flex item and took the
+    row's 8px gap; the sentence is one item now.
+17. **The sign-in toast hangs under the staff preview bar** (059): while a page wears that bar the journey's toaster
+    learns where it ends (`--toast-clear`, written on the stack's own box) and hangs below the lower of the header and
+    the bar. Players never wear the bar, so their pages are as before.
+18. **The deposit amounts read as amounts to pay in**: the deposit page's own pills (`amountPillClass`, AmountField's one
+    definition), not stake chips. No new colour.
+19. **The drive's captures**: Next's dev indicators hidden for the capture only; the pointer leaves the page before each
+    tile, except on a receipt, whose dwell the drive holds with it on purpose. The A24 lock cell's replay answer is read
+    where it is fetched (`route.fetch`): CDP can lose an action body before it reads it, and one run stopped so.
+20. **Tiles 057 and 044, explained.** The drive's console rows now name the tile they precede (`nextTile`). 057's "2
+    Issues" are Next's dev client, not the sheet: the rate cell replays the captured action with the page's own
+    `x-nextjs-request-id` and `x-nextjs-html-request-id`, and the dev server sends each request's React debug chunks over
+    the page's HMR socket under those ids — into the first action's stream, closed when its answer ended ("Cannot write
+    to a CLOSED writable stream" ×160, "Cannot close…" ×35). Dev only: production has no such channel. The replays carry
+    no page ids now (asserted: no such row; copying the ids back gives 186), and the cell spends a token refilled while
+    the fresh question opens (10 a minute), so the tap meets the spent bucket. 044's TZS 99,500 beside "Try again" is the
+    held-60-second cell's one landed 500 on the same demo session (its `/auth/demo` set 100,000); 044's own request was
+    aborted before it left the browser. Its retry sends the doubt's own key and places exactly one bet — driven.
+
+*From:* the close's tile read (VODACOM-PLAN §0k), round V2's brief (2026-10-16). Proof: VODACOM-PLAN §0k, "2026-10-16
+Claude — round V2".
+
 ### Open points, added and changed (→ §0h)
 
 WP0 files these with the rest, numbered after the last §0h point at S8's base (77 on origin/main `e5b5c9da`). Each is a
