@@ -314,7 +314,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
       <HashFocus />
       {/* Positions is a primary destination (bottom-nav + top-nav tab), not a
           leaf — no Back-to-markets link (IA review R3). */}
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex flex-col items-start gap-3 xs:flex-row xs:justify-between">
         {/* §L1 — ONE NAME FOR ONE DESTINATION. The eyebrow is the same word the top nav, the
             bottom-nav overflow and the avatar menu use (`common.positions`); it used to be
             `positions.title` ("History"), a third name for a page whose primary content is LIVE,
@@ -322,7 +322,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             §L4 — and the headline used to read "Polls you've played". "Poll" is the poll product's
             own word, so it cannot serve as the name of a portfolio page.
             Round 10 (R10-A6): the View performance button's chart stands on the button's start padding (`edge` — a centred
-            control frames its ink); its ghost (positions-ghost.tsx) draws the same glyph, unpainted. */}
+            control frames its ink); its ghost (positions-ghost.tsx) draws the same glyph, unpainted.
+            Below `xs` (360) the button goes under the head (2026-10-16): beside it the title cannot narrow past its
+            longest word, so at 320 "View performance" ran 37px off the screen (en; responsive /positions@xs). */}
         <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
         {positions.length > 0 && (
           <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1">

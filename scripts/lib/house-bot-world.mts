@@ -24,6 +24,19 @@ export const HOLDER_HASH = "hash_holder_v1";
  */
 let seq = 0;
 
+/**
+ * ⛔ A PHONE THAT CANNOT REPEAT WITHIN A RUN (2026-10-16). It was `+2557` and eight random digits, and `phoneE164` is
+ * unique: a run that creates thousands of users drew one number twice — CI run 38802084254 failed the engine suite's §19
+ * on Postgres with "Unique constraint failed on the fields: (`phoneE164`)", on a tree that passed everywhere else. Now a
+ * random base per process plus a counter, so no two users of one process share a number (100,000 per process).
+ */
+const PHONE_BASE = Math.floor(Math.random() * 1_000) * 100_000;
+let phoneSeq = 0;
+export const nextTestPhone = () => {
+  if (++phoneSeq >= 100_000) throw new Error("house-bot-world: more than 99,999 test phones in one process");
+  return `+2557${String(PHONE_BASE + phoneSeq).padStart(8, "0")}`;
+};
+
 export async function loadWorld() {
   process.env.MARKET_SCHEDULER = "false";
   const svc: Any = await import("../../src/lib/server/market-service.ts");
@@ -50,7 +63,7 @@ export async function loadWorld() {
     const id = o.id ?? uid("usr_hb");
     const now = iso();
     await db.user.create({
-      id, phoneE164: `+2557${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`, email: null,
+      id, phoneE164: nextTestPhone(), email: null,
       passwordHash: o.passwordHash ?? null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
       role: o.role ?? "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
       acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false,

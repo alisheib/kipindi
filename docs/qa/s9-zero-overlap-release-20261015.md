@@ -1,4 +1,4 @@
-# S9 core production cutover — prepared, not executed
+# S9 core production cutover — executed 2026-10-16
 
 This procedure is for the final, fully validated S8 + S9 + payout-fail-close tip. Card
 lost-redirect recovery is held until the real Selcom Card checkout host is verified.
@@ -304,3 +304,21 @@ as an open maintenance window until the actual new SHA and money readback pass;
 there is no guaranteed short duration. A no-downtime cutover needs a separately
 released, database-backed funding pause honored by *all* running writers, with
 in-flight requests drained before this migration. That gate does not exist today.
+
+## Outcome (2026-10-16, Claude)
+
+Executed on stage 2's release commit `b4f1f3643`; the full record, times and read-back are in VODACOM-PLAN §0k
+"2026-10-16 Claude — stage 2 LIVE". In short: the app was stopped from 09:05:42 to 09:15:49 UTC; the duplicate scan read
+0 with the app stopped; the stopped-writer backup (`backup-nightly` run 38878428903) verified 106/106 and its artifact is
+the restore point; the deploy (`f2c61445`) applied the three migrations at boot and became the sole running deployment;
+the schema, hosts, health, chunks, `qa:live` and the changed classic pages read back green, with no 5xx.
+
+Two things this procedure did not anticipate, for the next stop of this service:
+- **The stopped gate's "no selected deployment".** Production keeps FAILED deployments that never became active; once
+  every successful one is REMOVED, `railway service status` and `service list` report the newest FAILED one as the
+  service's deployment, `stopped: true`. The gate's intent holds without that clause: no active deployment, 0 running
+  and 0 total replicas, every deployment REMOVED or FAILED, and a selected deployment only when FAILED or CRASHED and
+  stopped.
+- **Windows PowerShell 5.1.** `@(… | ConvertFrom-Json)` wraps the CLI's JSON array in a one-element array there (PowerShell
+  7 enumerates it), so step 2's script as written miscounts deployments. The gates were run from Node, which parses the
+  same JSON the same way on every shell.

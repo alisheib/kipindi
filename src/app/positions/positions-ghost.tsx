@@ -76,8 +76,9 @@ export function PositionsGhost() {
           ⚠️ The `<header>` wrapper takes the real page's own class — and since R5-K what the page puts beside the head:
           the "View performance" button's box (`btn btn-ghost btn-sm`, 4px down; its 13px words set and not shown).
           Round 10 (R10-A6): its glyph is the page's chart, unpainted and pulled onto the padding as the page's is (a bare
-          13px box would put the words 1.6px right of the page's). */}
-      <header className="flex items-start justify-between gap-3">
+          13px box would put the words 1.6px right of the page's). Below `xs` the box goes under the head, as the page's
+          button does (2026-10-16). */}
+      <header className="flex flex-col items-start gap-3 xs:flex-row xs:justify-between">
         <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
         <div className="mt-1 inline-flex h-[var(--h-control-sm)] shrink-0 items-center gap-1.5 rounded-control border border-transparent bg-bg-overlay px-2 kp-shimmer-track" aria-hidden>
           <I.chart s={13} edge="start" className="shrink-0 text-transparent" />

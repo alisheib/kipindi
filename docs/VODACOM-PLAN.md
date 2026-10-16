@@ -21,11 +21,11 @@
 from 08:12 UTC and read back; §0k "2026-10-16 Claude — stage 1 LIVE"). S8 stays 🔨: the close's tile read (the bet
 sheet's 69 tiles, read one by one) found 20 items on the flagged sheet — the worst a session-limit refusal shown above an
 enabled "Place bet" — and S8 round V2 fixes them before S8 turns ✅. **Stage 2** — S9 core + S10–S13 + Codex's visual
-round, one integrated candidate (`codex/release-s9-s13-1016b`: `4114d06cc` and this record) — is validated (§0k
-"2026-10-16 Claude — stage 2") and goes live through S9's zero-overlap cutover, which Ali approved "as soon as
-validated": the app stopped, a stopped-writer backup, the three migrations applied by the deploy's own start command
-with no old writer running, the new code alone (`qa/s9-zero-overlap-release-20261015.md`). Nothing in it shows a
-player the journey: `STAFF_PREVIEW` stays until S15. S9's Card checkout recovery stays held until Selcom confirms the
+round, one integrated candidate — **is LIVE** at `b4f1f3643` (09:15:49 UTC) through S9's zero-overlap cutover, which
+Ali approved "as soon as validated": the app stopped from 09:05:42 to 09:15:49 UTC (about ten minutes), a verified
+stopped-writer backup, the three migrations applied by the deploy's own start command with no old writer running, the
+new code alone, and every read-back green (§0k "2026-10-16 Claude — stage 2" and "— stage 2 LIVE";
+`qa/s9-zero-overlap-release-20261015.md`). Nothing in it shows a player the journey: `STAFF_PREVIEW` stays until S15. S9's Card checkout recovery stays held until Selcom confirms the
 checkout host. S14–S16 wait on Ali.
 
 **State (2026-10-15):** At 12:40 UTC, S8 (the bet sheet and low balance, flagged) is in progress (§0k). LIVE release
@@ -409,11 +409,10 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S9's cutover of stage 2 and its read-back (schema, boot, hosts, health, chunks, `qa:live`, the classic
-money screens); then S9's remaining WP8 items — its tiles in three engines and the independent funding-bridge review
+**Next:** (1) The classic money screens signed in, which this session cannot reach without a sign-in (Ali: a deposit,
+its receipt, the payout review); then S9's remaining WP8 items — its tiles in three engines and the independent funding-bridge review
 (S9-PLAN WP8) — before S9 turns ✅. Card checkout recovery waits for Selcom's host. (2) S8 round V2: the close's 20
-tile-read items (§0k), then S8 ✅. (3) The classic `/positions` head at 320 (a player holding positions: "View
-performance" runs 37px past the viewport — live main has it too) in its own small release. (4) S10–S13 finish what each
+tile-read items (§0k), then S8 ✅. (3) ~~The classic `/positions` head at 320~~ — fixed in the release after the cutover (§0k). (4) S10–S13 finish what each
 plan still owes, each with its own proof: S10 WP8b and its drive's cells, S11 WP10's cells and tiles, S12's parity v5
 and release P, S13 WP4, its WP9 drive and its build record — and a fresh classic-parity baseline at stage 2's release
 (the visual round moved every shell cell). (5) S14's preview, identity checklist and real TZS 1,000 staff journey for
@@ -1234,6 +1233,58 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   - *Still owed, flagged and not for players:* the bet sheet's tile-read items (above); S9's tiles in three engines and
     its independent funding-bridge review (S9-PLAN WP8) before S9 turns ✅; S10 WP8b, S11 WP10's cells and tiles, S12's
     parity v5 and release P, S13 WP4 and its WP9 drive — each recorded on its own plan.
+- **2026-10-16 Claude — stage 2 LIVE: S9's zero-overlap cutover, executed.** Times UTC.
+  - *09:05:36 preflight:* one SUCCESS app deployment (`d798a850`, stage 1), its manifest `/api/health` · 300 · overlap
+    60 · drain 30, selected, one RUNNING instance, nothing pending; health 200 on all three hosts; `b4f1f3643` a
+    fast-forward of main.
+  - *09:05:42 stop:* `railway down --yes` removed `d798a850`. The doc's stopped gate asks for "no selected
+    deployment"; production keeps two FAILED deployments that never became active (`33346254`, a failed build of
+    `b0fed14e2` on 10-15, and the 10-11 font-fetch build), and once every successful one is REMOVED Railway reports the
+    newest FAILED one as the service's deployment, `stopped: true` — the rehearsal project had none, so it reported null.
+    The gate was read as its intent: no active deployment, 0 running and 0 total replicas, every deployment REMOVED or
+    FAILED, and a selected deployment allowed only when FAILED or CRASHED and stopped. It held at 09:07:36 and again at
+    09:08:18; every host answered 404.
+  - *09:08:33 the duplicate scan, app stopped:* 0 groups, 0 excess rows, 0 cross- or same-provider groups.
+  - *09:08:39–09:11:10 the stopped-writer backup:* `backup-nightly` run 38878428903 on demand — dump, off-box to R2
+    (`2026-10-16/50pick-full-2026-10-16T09-10-07-937Z.sql.gz.enc`, the restore point), restored into a throwaway
+    PostgreSQL, **VERIFIED — 106 checks passed** (the live drill of 10-15 had failed one: audit entries arrived during
+    its dump; with no writer, none did), trial balance and audit chain matching the source.
+  - *09:11:42 push:* `b4f1f3643` to main. Deployment `f2c61445` BUILDING 09:12:01, DEPLOYING 09:15:30, SUCCESS and
+    selected 09:15:49 — its one instance RUNNING, the manifest unchanged, no other deployment active at any poll.
+  - *Boot:* 106 migrations found; `20261013160000_deposit_return_intent`, `20261015111500_provider_ref_global_unique` and
+    `20261015133000_deposit_funding_claim` applied, "All migrations have been successfully applied"; Next ready; the
+    schedulers, lifecycle ticker, 15 s payment lane and house-bot engine started; the Up & Down healer settled the
+    rounds the outage spanned (5 scanned: 4 resolved, 1 waiting, 0 failed); audit reconcile clean (526 positions).
+    The two boot warnings are the standing ones (admin TOTP off by choice, the AzamPay/Mixx webhook secrets deferred).
+  - *Read back (09:16–09:30):* `Position.origin` text, `Transaction.pendingBet` jsonb, `DepositFundingClaim` with its
+    key, state check and not-null constraints (0 rows), `Transaction_providerRef_key` UNIQUE, 0 duplicates; the three
+    migrations finished, 106 in all, none unfinished; no DEPOSIT or WITHDRAWAL pending, processing or in AML review.
+    `?dpl=b4f1f3643…` on www, apex and the Railway host, health ok with the database reachable and migrated and the
+    journey at `STAFF_PREVIEW` (state and ceiling). `qa:chunks-prod` 6/6 routes on both public origins (150 GETs
+    each); production `qa:live` 350/0 (signed out; [E3] not measured, by rule); the first 1,000 requests served 926 ×
+    200, 12 × 304, 49 × 307, 1 × 404, 12 × 499 and **no 5xx**. The classic pages the visual round changed — `/`,
+    `/markets`, `/live`, `/results`, a question page and `/auth/login` — at 360 and 1280 in en and sw: 24 of 24 HTTP
+    200 in the right language, no horizontal overflow, no page error, every tile on `b4f1f3643`; the header, footer
+    (the licence line in the brand column), the question page in Swahili (MUBASHARA) and `/live` read by eye.
+  - *Not read back here:* the signed-in money screens (a deposit and its waiting page, a receipt, the classic wallet,
+    the payout review in /admin) — this session holds no sign-in it may use; they are Ali's to look at.
+  - *Card checkout recovery* stays held. Its code is not lost: `codex/s9-card-held`'s tip `f5da8c87f` is the parent
+    of `d49f2e9c3`, which removed the recovery from the release, so bringing it back is reverting `d49f2e9c3` once
+    Selcom confirms the checkout host — merging that branch would change nothing.
+- **2026-10-16 Claude — the release after the cutover (classic `/positions` at 320, a CI flake, this record).**
+  - *`/positions` at 320:* the head stacks below `xs` (360) — the title, then "View performance" under it — and is
+    the row it was from 360 up. Page and loading ghost alike; `test:visual-pass-r5k` 6.1″ holds it (its plant: the
+    row-only head is reported; reverting the page fails 6.1″), `test:journey-tickets` re-pinned. Measured with a seeded
+    portfolio: the button inside the screen at 320/360/390 × en/sw/zh (at 320 it is 16–177px; at 360 and 390 the boxes
+    are exactly the old ones); `test:responsive` on `/positions` and `/positions/performance`, player, en/sw/zh, every
+    width: 540 passed, 0 failed, 0 warnings; the 40 suites that read either file green; local `qa:live` 393/0.
+  - *The house-bot fixture's phone:* `+2557` and eight random digits collided once in a run that creates thousands of
+    users (main's CI run 38802084254 failed `test:house-bot-engine` §19 on Postgres: "Unique constraint failed on the
+    fields: (`phoneE164`)"); `scripts/lib/house-bot-world.mts` now draws a per-process base plus a counter. Every
+    suite that loads the fixture, on both stores: 14 of 14 green — `test:house-bot-engine` (memory 908/908, Postgres
+    889/889), `-money`, `-caps`, `-comms`, `-console`, `-designation`, `-info-edge`, `-ops`, `-reports`,
+    `test:cashout-price-guard`, `test:message-titles`, `test:stake-minimum-db`, `test:bonus-one-side` and
+    `test:house-bot-seam`.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
@@ -4173,7 +4224,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); [E3] measured 385/0 on 2026-10-15 under Ali's one-attempt authorization. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0–WP11 live behind the flag; its close release (V1, A21, parity v4, the battery) LIVE `5dee680d0` 2026-10-16 and read back (§0k); round V2 — the close's 20 tile-read items — remains. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
-| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | 🔨 | Built ([`S9-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S9-PLAN.md)); S9 core goes live with stage 2 through the zero-overlap cutover (§0k); WP8's tiles in three engines and the independent funding-bridge review remain; Card checkout recovery is held until Selcom confirms its host. `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
+| S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | 🔨 | Built ([`S9-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S9-PLAN.md)); S9 core LIVE `b4f1f3643` 2026-10-16 through the zero-overlap cutover, read back (§0k); WP8's tiles in three engines and the independent funding-bridge review remain; Card checkout recovery is held until Selcom confirms its host. `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | 🔨 | WP1–WP8a built ([`S10-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S10-PLAN.md); its Open point 2 amends this row), in stage 2 behind the flag; WP8b (needs S9 on main) and the drive's remaining cells remain. guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states; `qa:visitor-path` drives the local browser path. |
 | S11 | How to Play complete + copy ready for the flip | 🔨 | WP0–WP9 built ([`S11-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S11-PLAN.md); its amended done-when governs), in stage 2 behind the flag; WP10's browser cells and tiles remain; the S15 copy waits on `codex/vodacom-s15-copy`. Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
 | S12 | Consistency sweep | 🔨 | Built ([`S12-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S12-PLAN.md); its Open point 2 replaces this row's last clause): NDIO, admin ink, Juu/Chini and the outside-site work in stage 2, the classic words Ali accepted live with it; parity v5 and release P remain. Juu/Chini uses the journey language, admin ink is fixed, short titles are used outside the site, NDIO is swept. |

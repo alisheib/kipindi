@@ -483,11 +483,21 @@ const { parsePortfolioParams } = req("../src/lib/positions/portfolio.ts") as { p
   // Round 10 (R10-A6): the button's chart stands on its padding (`edge`) and the ghost draws the same glyph, unpainted.
   const page = squash(code(FILES.positionsPage)), ghost = squash(code(FILES.positions));
   const pageBtn = page.includes('<Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1"> <I.chart s={13} edge="start" /> {t.performance.viewPerformance} </Link>');
-  const ghostBtn = ghost.includes('<header className="flex items-start justify-between gap-3"> <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} /> <div className="mt-1 inline-flex h-[var(--h-control-sm)] shrink-0 items-center gap-1.5 rounded-control border border-transparent bg-bg-overlay px-2 kp-shimmer-track" aria-hidden> <I.chart s={13} edge="start" className="shrink-0 text-transparent" /> <span className="text-body-sm tracking-normal font-semibold text-transparent">{t.performance.viewPerformance}</span> </div> </header>');
+  const ghostBtn = ghost.includes('<header className="flex flex-col items-start gap-3 xs:flex-row xs:justify-between"> <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} /> <div className="mt-1 inline-flex h-[var(--h-control-sm)] shrink-0 items-center gap-1.5 rounded-control border border-transparent bg-bg-overlay px-2 kp-shimmer-track" aria-hidden> <I.chart s={13} edge="start" className="shrink-0 text-transparent" /> <span className="text-body-sm tracking-normal font-semibold text-transparent">{t.performance.viewPerformance}</span> </div> </header>');
   const btnCss = /\.btn-sm \{ height: var\(--h-control-sm\); padding: 0 12px; font-size: 13px; \}/.test(raw("src/app/globals.css"));
   ok("6.1 · the head holds the page's \"View performance\" button beside it — `btn-sm`'s box (40px, 12px in from a 1px edge, the 13px glyph, 8px, the 13px semibold words untracked), 4px down — so the title and line wrap in what it leaves (at 360 the page's head is 54px taller than the full-width head the ghost drew)",
     pageBtn && ghostBtn && btnCss, j({ pageBtn, ghostBtn, btnCss }));
   ok("6.1′ PLANT · the head without its button (the old ghost) is reported", !squash(code(FILES.positions).replace(/<div className="mt-1 inline-flex[\s\S]*?<\/div>\n/, "")).includes("{t.performance.viewPerformance}"));
+  // 2026-10-16 · responsive /positions@xs: beside the head, the button cannot fit at 320 — the title narrows only to its
+  // longest word ("predictions"), so "View performance" ran from 195 to 357px on a 320px screen (live main measured the
+  // same box). Below `xs` (360) the head stacks; from `xs` up it is the row it always was. Page and ghost both.
+  const STACK = '<header className="flex flex-col items-start gap-3 xs:flex-row xs:justify-between">';
+  const headOf = (src: string) => (src.match(/<header className="[^"]*">/) ?? [""])[0];
+  ok("6.1″ · below 360 the head stacks (the button under it), from `xs` up it is a row — the page and its ghost alike",
+    headOf(page) === STACK && headOf(ghost) === STACK, j({ page: headOf(page), ghost: headOf(ghost) }));
+  const OLD = '<header className="flex items-start justify-between gap-3">';
+  ok("6.1‴ PLANT · the row-only head (the 320 overflow) is reported, on the page and on the ghost",
+    headOf(squash(code(FILES.positionsPage)).replace(STACK, OLD)) !== STACK && headOf(squash(code(FILES.positions)).replace(STACK, OLD)) !== STACK);
 }
 {
   // The strip: rendered, the page's own component and the ghost wear the same classes and inline styles.

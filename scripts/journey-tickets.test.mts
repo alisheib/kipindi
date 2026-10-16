@@ -595,7 +595,7 @@ const CLASSIC_PICK = "return <PositionsGhost />;";
 const HISTORY_CLASSIC_PICK = "return <UpDownHistoryGhost />;";
 /** Today's ghost, block by block: the header and its words, the standing strip, the exposure bar, the search box, the bar's second row, the cards. */
 const CLASSIC_GHOST = [
-  `<header className="flex items-start justify-between gap-3">`,
+  `<header className="flex flex-col items-start gap-3 xs:flex-row xs:justify-between">`,
   `<PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />`,
   `<div className="glass-panel px-5 pt-4 pb-[18px] kp-shimmer-track" aria-hidden>`,
   `<div className="rounded-lg border border-border bg-bg-elevated/60 p-3 kp-shimmer-track" aria-hidden>`,
