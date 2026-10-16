@@ -29,29 +29,65 @@
 
 **State (2026-10-16):** The plan is written and nothing is built. Ali's rulings of 2026-10-16 are recorded (seventeen
 R-rulings, the accepted decision batch OD-01…OD-30, the guarantee pre-funded with TZS 2,000,000, the licence basis =
-his dated ruling, one 24-hour dispute window per week). The Claude Design commission for round R2 is filed and not yet
-sent. S0 is ✅ at `de8a00619`, merged to `main` and pushed live on 2026-10-16 on Ali's word ("merge maswali-plan into
-main now and push it live") — documentation only; no code, schema or player surface changed.
+his dated ruling, one 24-hour dispute window per week). S0 is ✅ at `de8a00619`, merged to `main` and pushed live on
+2026-10-16 on Ali's word ("merge maswali-plan into main now and push it live") — documentation only; no code, schema or
+player surface changed. **D1 is 🔨: the R2 design package is cut and checked, its live captures are still being taken,
+and nothing has been sent.** Stamp: `origin/main` at `72ca5cff99638eb8bc26d2d85c3007cb49b3727c`, cut on 2026-10-16. The
+package folder `MASWALI-DESIGN-R2-package-72ca5cff9` exists only on OMEGA-COMPILE01, in `F:\50pick-design-archive`. Its
+`06-frames` folder is empty until the capture runs (it waits for the shared heavy-job lock). There is no zip yet.
 
-**Next:** D1 — cut the design package live from `origin/main` and hand it to Ali to send
-([`design-brief/maswali-2026-10/ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md)); then S0.5, the fence.
+**Next:** D1, then D2 when the reply comes, otherwise S0.5 — in this order:
+1. **Finish D1 (OMEGA-COMPILE01 only, because the package folder lives there).** Capture `06-frames` from a local
+   server at the stamp, read every frame, zip the folder with forward-slash entry names (see the Last handoff), and
+   copy the zip to Ali's Downloads folder. On any other machine, cut a fresh package from `origin/main` by
+   [`ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md) instead. If `origin/main` changes a packaged file
+   before Ali sends, re-cut first — never send a stale stamp.
+2. **When Ali says he sent it:** set D1 ✅ citing the commit that records the send, write the send date here, and change
+   `BRIEF.md`'s status line to SENT (ATTACHMENTS A7).
+3. **When Ali comes back with Claude Design's reply, on any machine — that is D2.** The reply is a zip (the prompt
+   asks for `MASWALI-DESIGN-R2-2026-10-16.zip`) or a claude.ai link. Follow
+   [`RECEIVING.md`](design-brief/maswali-2026-10/RECEIVING.md) from Step 0: land it outside the repository, check it
+   mechanically, score it, and put the yes-or-no items to Ali. Step 3's `SHA` is the stamp above (it is also in the
+   package's `STAMP.txt`). Receiving does not wait for S0.5–S3; Ali's N1–N4 rulings (D3) block S5.
+4. Otherwise: S0.5, the fence.
 
-**Blocked on Ali:** uploading the design package to Claude Design and pasting `PROMPT.txt` (after a session cuts the
-package, D1).
+**Blocked on Ali:** sending the package once a session hands him the zip. The steps: open Claude Design, start a new
+project, upload the zip, paste all of the `PROMPT.txt` that is **inside the zip** as the first message (its stamp is
+filled in; the tracked `PROMPT.txt` keeps its placeholders), and send. Then tell any session "I sent it". When the reply
+comes, hand its zip to any session and say "MASWALI-DESIGN-R2".
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
-**Last handoff (2026-10-16, OMEGA-COMPILE01):** S0 written from a 17-agent read-only analysis plus five rounds of Ali's
-rulings in one session. The working tree `F:\kipindi-main` is shared by several sessions on a spinning disk — never
-build there. The repository is public: describe anti-abuse controls by what they enforce, never by their signals.
+**Last handoff (2026-10-16, OMEGA-COMPILE01, D1, in progress):** the package is being cut in the SSD worktree
+`C:\50pick-ssd\kipindi-d1` (branch `maswali-d1`) as ATTACHMENTS A2–A6 say, with two exceptions recorded below. A first
+cut at `e78c3aef6` was finished and checked, then deleted unsent: S8 round V2 reached `main` and changed
+`globals.css`, `i18n-dict.ts` and the bet sheet. Everything is being cut again at the stamp.
+- **A3 at the stamp:** 49 `@keyframes` in `globals.css` and 49 in the extract; the `--rh-close` line sits under
+  `@media (min-width: 768px)`; one stale `tokens-locked` link in each of the four R1 canvases.
+- **Further checks:** 26 of 26 copied files are byte-identical to the commit. The extract keeps all 4 `:root` blocks
+  (360 declarations), all 48 named-class rules and all 49 keyframes.
+- **`06-frames` (not yet taken at the stamp):** the first cut's run produced 48 Swahili captures at 360/768/1280 (and
+  1100 for the classic top bar). They used QA personas only, came from a local in-memory server, and every one was
+  read by eye. The same set is being taken again at the stamp. Two non-player elements are hidden in them, and
+  `STAMP.txt` says so: the dev-server badge and the staff preview marker.
+- **Exception 1 — the zip format:** A6's `Compress-Archive` (Windows PowerShell 5.1) writes every entry with
+  backslashes, which non-Windows unzippers flatten into single file names. The first cut's zip was rebuilt with the
+  same .NET library (`System.IO.Compression.ZipArchive`, each entry named with `/`) and verified byte-identical, entry
+  by entry. The final zip is built the same way. A6 needs that fix before the next cut.
+- **Exception 2 — `qa:seal`:** part A passed 94 of 94 checks. Part B (the real settled outcome) is stale: it waits for
+  a "Day" field that the sign-up form no longer has. The seal frame was taken with part A's method instead, and the
+  bet-result modal from one real local bet.
+
+The working tree `F:\kipindi-main` is shared by several sessions on a spinning disk — never build there. The repository
+is public: describe anti-abuse controls by what they enforce, never by their signals.
 
 ## §1 · Board
 
 | Session | Title | Status | Note |
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
-| D1 | Design R2: the commission cut live and sent | ⬜ | after S0; Ali uploads and pastes |
+| D1 | Design R2: the commission cut live and sent | 🔨 | package cut 2026-10-16 at 72ca5cff9; captures and zip pending, then Ali uploads and pastes |
 | S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
