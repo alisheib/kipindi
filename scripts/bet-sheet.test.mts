@@ -177,7 +177,7 @@ const SOURCES: Sources = {
 type Impl = {
   focus: typeof nextSheetFocus;
   SS: typeof SS;
-  SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[] };
+  SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[]; INLINE_HOLDS: typeof SR.INLINE_HOLDS };
   plan: typeof SF.shortfallPlan;
   src: Sources;
   draw?: (html: string) => string;
@@ -187,7 +187,7 @@ type Impl = {
 const REAL: Impl = {
   focus: nextSheetFocus,
   SS,
-  SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES },
+  SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES, INLINE_HOLDS: SR.INLINE_HOLDS ?? {} },
   plan: SF.shortfallPlan,
   src: SOURCES,
 };
@@ -442,7 +442,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     { name: "6 maintenance", a: R(fail({ code: "SUSPENDED", reason: "maintenance" })), want: { row: 6, view: "inline", line: "error.failMaintenance", retry: "new" } },
     { name: "7 cooling", a: R(fail({ code: "SUSPENDED", reason: "cooling_off", detail: { until: "8 Oct 2026, 14:30", untilAt: "2026-10-08T11:30:00.000Z" } })), want: { row: 7, view: "block", block: "cooling_off", body: "error.failCoolingOff", actions: ["setLimits", "gotIt"], untilAt: "2026-10-08T11:30:00.000Z", retry: "none" } },
     { name: "8 self-ex", a: R(fail({ code: "SUSPENDED", reason: "self_excluded", detail: { until: "1 Apr 2027", untilAt: "2027-04-01T00:00:00.000Z" } })), want: { row: 8, view: "block", block: "self_excluded", body: "error.failSelfExcluded", actions: ["gotIt"] } },
-    { name: "9 session", a: R(fail({ code: "SUSPENDED", reason: "session_limit_reached", detail: { limitMin: 30, playedMin: 31 } })), want: { row: 9, view: "inline", line: "journey.sheetSessionLimit", vars: { limitMin: 30 }, retry: "new" } },
+    // A25 item 1 (round V2): the session limit is a block — its sentence with the minutes, "Weka mipaka" and "Sawa".
+    { name: "9 session", a: R(fail({ code: "SUSPENDED", reason: "session_limit_reached", detail: { limitMin: 30, playedMin: 31 } })), want: { row: 9, view: "block", block: "session_limit", body: "journey.sheetSessionLimit", limitMin: 30, actions: ["setLimits", "gotIt"], retry: "none" } },
     { name: "10 account not found (the market bets)", a: R(fail({ code: "NOT_FOUND" })), rr: okRead(true), want: { row: 10, view: "block", block: "not_found", body: "journey.sheetBlocked", actions: ["contactSupport", "gotIt"] } },
     { name: "10/12 NOT_FOUND, the market gone", a: R(fail({ code: "NOT_FOUND" })), rr: gone, want: { row: 10, view: "closed", body: "journey.sheetNotTaking" } },
     { name: "11 account blocked", a: R(fail({ code: "SUSPENDED", reason: "account_blocked" })), want: { row: 11, view: "block", block: "account_blocked", body: "journey.sheetBlocked", actions: ["contactSupport", "gotIt"] } },
@@ -476,7 +477,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     const v = s.view as Record<string, unknown> & SS.SettledView;
     const o: Record<string, unknown> = { row: s.row, view: v.kind, retry: s.retry, doubt: s.doubt, marker: s.marker };
     if (v.kind === "inline") { o.line = v.line.key; o.vars = v.line.vars; }
-    if (v.kind === "block") { o.block = v.block.reason; o.body = v.block.body.key; o.actions = v.block.actions; o.untilAt = v.block.body.vars?.untilAt; }
+    if (v.kind === "block") { o.block = v.block.reason; o.body = v.block.body.key; o.actions = v.block.actions; o.untilAt = v.block.body.vars?.untilAt; o.limitMin = v.block.body.vars?.limitMin; }
     if (v.kind === "closed") o.body = v.body;
     if (v.kind === "bounds") o.bounds = v.bounds;
     if (v.kind === "lossRoom") o.headroom = v.headroom;
@@ -506,6 +507,43 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("2.busy-cta · after BUSY the CTA is \"Jaribu tena · {amount}\" with the same key, enabled; the busy line shows",
     busyKey.frame === "edit" && j(busyKey.cta?.label) === j({ key: "journey.retryCta", vars: { amount: 5_000 } }) && busyKey.cta?.enabled === true
       && busyKey.lines.some((l) => l.key === "journey.sheetBusy"), j({ cta: busyKey.cta, lines: busyKey.lines }));
+  // A25 item 2 (round V2): one state, one rendering — a retry that cannot succeed until something changes never looks
+  // tappable; a "try again" that can succeed stays enabled. Every inline row is ruled (the census), and each ruling holds.
+  const RULED: Record<string, "none" | "wait" | "change"> = {
+    system_busy: "none", BUSY: "none", rate_limited: "wait", RATE_LIMITED: "wait", maintenance: "change",
+    idempotency_key_conflict: "none", wallet_missing: "change",
+  };
+  const holds = impl.SR.INLINE_HOLDS;
+  const ruledOk = Object.entries(holds).every(([k, h]) => h !== null && RULED[k] === h) && Object.keys(RULED).every((k) => k in holds);
+  const placingIntent: SS.SheetIntent = { quote: q(5_000), key: K1, phase: "placing", sentAt: NOW, settledAt: null };
+  const ctaAfter = (a: SR.ActionAnswer, at = NOW, rr: SR.Reread = { state: "none" }, c: Partial<SR.SettleContext> = {}) => {
+    const s = settle(a, rr, c);
+    const f = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts()), nowMs: at, intent: S.afterSettle(placingIntent, s, NOW), settled: s });
+    return { s, f, on: f.cta?.enabled === true };
+  };
+  const rate = R(fail({ code: "RATE_LIMITED", reason: "rate_limited", retryAfterSec: 7 })), rateBare = R(fail({ code: "RATE_LIMITED", reason: "rate_limited" }));
+  const maint = ctaAfter(R(fail({ code: "SUSPENDED", reason: "maintenance" })));
+  const skewSpent = ctaAfter(T(Object.assign(new Error("x"), { name: "UnrecognizedActionError" })), NOW, { state: "none" }, { reloadSpent: true }).f;
+  const recovery = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts()), nowMs: NOW, intent: null, settled: null, recoveryBlocked: true });
+  const look = (f: SS.SheetFrame) => j([f.stakeLocked, f.chips, f.estimate, f.showEstimate, f.balance, f.lines, f.cta, f.quote]);
+  const inlineCta = {
+    busy: ctaAfter(R(fail({ code: "BUSY", retryAfterSec: 1 }))).on,
+    rateAt0: ctaAfter(rate).on, rateAt6999: ctaAfter(rate, NOW + 6_999).on, rateAt7000: ctaAfter(rate, NOW + 7_000).on,
+    bareAt999: ctaAfter(rateBare, NOW + 999).on, bareAt1000: ctaAfter(rateBare, NOW + 1_000).on,
+    maintenance: maint.on, maintenanceByFacts: maint.s.view.kind === "inline" && maint.s.view.byFacts === true,
+    keyConflict: ctaAfter(R(fail({ code: "INVALID", reason: "idempotency_key_conflict" }))).on,
+    walletMissing: ctaAfter(R(fail({ code: "NOT_FOUND", reason: "wallet_missing" }))).on,
+    notTaking12: ctaAfter(R(fail({ code: "INVALID" })), NOW, okRead(true)).on,
+    notTaking15: ctaAfter(R(fail({ code: "INVALID", reason: "market_not_live" })), NOW, okRead(true)).on,
+    notTakingFailedRead: ctaAfter(R(fail({ code: "INVALID" })), NOW, { state: "failed" }).on,
+    skewSpent: skewSpent.cta?.enabled === true, skewLooksLikeRecovery: skewSpent.frame === "edit" && look(skewSpent) === look(recovery),
+  };
+  ok("2.inline-cta · A25 item 2: every inline row is ruled; BUSY and a key conflict stay enabled; the rate limit holds until its retryAfterSec (1 s when unnamed) has passed; maintenance (yielding to the facts), a missing wallet, a question not taking bets and a spent skew reload never look tappable — the spent skew drawn exactly as the recovery hold",
+    ruledOk && j(inlineCta) === j({
+      busy: true, rateAt0: false, rateAt6999: false, rateAt7000: true, bareAt999: false, bareAt1000: true,
+      maintenance: false, maintenanceByFacts: true, keyConflict: true, walletMissing: false,
+      notTaking12: false, notTaking15: false, notTakingFailedRead: false, skewSpent: false, skewLooksLikeRecovery: true,
+    }), j({ ruledOk, holds, inlineCta }));
   const cen = census(impl.src);
   const classifiedR = new Set(impl.SR.CLASSIFIED_REASONS), classifiedC = new Set(impl.SR.CLASSIFIED_CODES), house = new Set<string>(NON_PLAYER_REASONS);
   const unclassified = cen.sites.filter((s) => s.reasons.length === 0 ? s.code !== null && !classifiedC.has(s.code) : s.reasons.some((r) => !classifiedR.has(r) && !house.has(r)));
@@ -677,10 +715,12 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   };
   const tagOf = (f: SS.SheetFrame) => `${f.frame}${f.block ? `:${f.block.reason}` : ""}${f.cta ? (f.cta.enabled ? "+" : "-") : ""}`;
   const tags = Object.fromEntries(Object.entries(branch).map(([k, f]) => [k, tagOf(f)]));
-  ok("4.blocks · maintenance and the session limit: the edit frame, CTA disabled, their line; a break, the account and a held wallet: their block; a closed market: closed; the loss room above the minimum, its block below; unknown, loading and a failed read: the CTA enabled",
-    j(tags) === j({ maintenance: "edit-", selfex: "blocked:self_excluded", cooling: "blocked:cooling_off", session: "edit-", blocked: "blocked:account_blocked", closed: "closed", held: "blocked:wallet_held",
+  ok("4.blocks · maintenance: the edit frame, CTA disabled, its line; a break, the session limit (A25 item 1: its minutes, \"Weka mipaka\" and \"Sawa\", no commit), the account and a held wallet: their block; a closed market: closed; the loss room above the minimum, its block below; unknown, loading and a failed read: the CTA enabled",
+    j(tags) === j({ maintenance: "edit-", selfex: "blocked:self_excluded", cooling: "blocked:cooling_off", session: "blocked:session_limit", blocked: "blocked:account_blocked", closed: "closed", held: "blocked:wallet_held",
       lossRoom: "lossRoom-", lossBlock: "blocked:loss_limit", unknown: "edit+", loading: "edit+", failed: "edit+", enough: "edit+" })
-      && branch.maintenance.lines[0]?.key === "error.failMaintenance" && branch.session.lines[0]?.key === "journey.sheetSessionLimit" && branch.session.lines[0]?.vars?.limitMin === 30
+      && branch.maintenance.lines[0]?.key === "error.failMaintenance" && branch.session.block?.body.key === "journey.sheetSessionLimit"
+      && branch.session.block?.body.vars?.limitMin === 30 && j(branch.session.block?.actions) === j(["setLimits", "gotIt"])
+      && branch.session.cta === null && branch.session.lines.length === 0
       && branch.cooling.block?.body.vars?.until === "8 Oct 2026, 14:30" && j(branch.cooling.block?.actions) === j(["setLimits", "gotIt"])
       && j(branch.lossRoom.chips) === j([500, 1_000]) && branch.lossRoom.lossRoom?.headroom === 2_000 && j(branch.lossRoom.cta?.label) === j({ key: "journey.placeCtaBare" }) && branch.lossRoom.attention,
     j(tags));
@@ -851,6 +891,22 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("7.cta-line · the commit's words, separator and money form one inline sentence inside the button, so a long Swahili figure wraps coherently",
     commitRows.length > 0 && commitRows.every(x => /data-testid="journey-sheet-place"[^>]*><span>/.test(x.html))
       && /data-testid="journey-sheet-place"[^]*?<span><SheetSentence[^]*?line=\{footerLine\} \/><\/span><\/Button>/.test(sheetSrc));
+  // A25 item 1 (round V2, tile 065): the session limit swaps the form for its block, in all three languages.
+  const sessionFrame = frameAt({ viewer: viewer(facts({ session: { exceeded: true, limitMin: 15, playedMin: 16 } })) });
+  const sessionBad = (["sw", "en", "zh"] as const).flatMap((locale) => {
+    const html = drawFrame(sessionFrame, locale), t = dict[locale] as unknown as Dict;
+    const sentence = sheetLineText(t, locale, { key: "journey.sheetSessionLimit", vars: { limitMin: 15 } }, NOW);
+    const problems = [
+      html.includes('data-testid="journey-sheet-place"') && "a commit", html.includes('data-testid="journey-sheet-stake"') && "a stake field",
+      !text(html).includes(t.market.udErrSuspendedTitle) && "no title", !text(html).includes(sentence) && "no sentence with its minutes",
+      !/<div id="sheet-proof-callout" role="alert"/.test(html) && "no alert",
+      !(html.includes('href="/profile/responsible-gambling"') && text(html).includes(t.rg.setLimits)) && "no Weka mipaka",
+      !html.includes(`>${t.common.gotIt}</button>`) && "no Sawa",
+    ].filter(Boolean);
+    return problems.length ? [`${locale}: ${problems.join(", ")}`] : [];
+  });
+  ok("7.session-block · A25 item 1 in sw, en and zh: the session limit swaps the form for its title, its sentence with the minutes as an alert, \"Weka mipaka\" and \"Sawa\" — no stake field and no commit",
+    sessionFrame.frame === "blocked" && sessionBad.length === 0, j(sessionBad));
   const titleStyle = impl.src.css.match(/\.kp-bsheet__title \{([^}]+)\}/)?.[1] ?? "";
   ok("7.title-wrap · the actual question and receipt heading uses the kit's balanced title wrap, without a clamp that hides its words",
     rendered.every(x => /<h2[^>]*class="kp-bsheet__title"/.test(x.html)) && /text-wrap:\s*balance\s*;/.test(titleStyle)
@@ -1116,6 +1172,24 @@ if (!PROVE_RED) {
         const skew = (a.error as { name?: string })?.name === "UnrecognizedActionError";
         return SR.refusalOutcome({ kind: "rejected", error: skew ? Object.assign(new Error("x"), { name: "UnrecognizedActionError" }) : new Error("x") });
       } }) },
+    { name: "the session-limit refusal back as the old inline line (row 9, tile 065)", expect: /^2\.matrix /,
+      impl: withSR({ refusalOutcome: (a) => { const o = SR.refusalOutcome(a); return o.row === 9 ? { ...o, frame: "inline", line: { key: "journey.sheetSessionLimit", vars: { limitMin: 30 } }, block: undefined, retry: "new", hold: "change" } : o; } }) },
+    // A25 item 2 · one state, one rendering
+    { name: "an inline refusal that cannot succeed drawn over an enabled commit (tiles 045, 064)", expect: /^2\.inline-cta /,
+      impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return i.settled?.view.kind === "inline" && f.cta ? { ...f, cta: { ...f.cta, enabled: true } } : f; } }) },
+    { name: "the spent skew reload over an editable stake and an enabled gold commit (tile 064)", expect: /^2\.inline-cta /,
+      impl: withSS({ sheetFrame: (i) => SS.sheetFrame(i.settled?.view.kind === "skew" && !i.settled.view.reload ? { ...i, settled: { ...i.settled, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" }, hold: { kind: "none" } } } } : i) }) },
+    { name: "the rate limit's commit enabled before its wait has passed", expect: /^2\.inline-cta /,
+      impl: settleWith((s) => (s.view.kind === "inline" && s.view.hold.kind === "until" ? { ...s, view: { ...s.view, hold: { kind: "none" } } } : s)) },
+    { name: "maintenance's line no longer yields to the facts (a stale \"paused\" after it lifts)", expect: /^2\.inline-cta /,
+      impl: settleWith((s) => (s.view.kind === "inline" && s.view.byFacts ? { ...s, view: { kind: "inline", line: s.view.line, hold: s.view.hold } } : s)) },
+    { name: "an inline row nobody ruled (maintenance's hold dropped)", expect: /^2\.inline-cta /,
+      impl: withSR({ INLINE_HOLDS: { ...SR.INLINE_HOLDS, maintenance: null } }) },
+    { name: "a new inline row the census never ruled", expect: /^2\.inline-cta /,
+      impl: withSR({ INLINE_HOLDS: { ...SR.INLINE_HOLDS, a_new_inline_reason: "none" } }) },
+    // A25 item 1 · rendered
+    { name: "a commit drawn in the session limit's block", expect: /^7\.session-block /,
+      impl: { ...REAL, draw: (html) => html.includes("journey.sheetSessionLimit") || /kp-bsheet__terminal/.test(html) ? html.replace('<div class="kp-bsheet__footer">', '<div class="kp-bsheet__footer"><button data-testid="journey-sheet-place"></button>') : html } },
     { name: "BUSY's retry with no amount in the CTA", expect: /^2\.busy-cta /,
       impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.cta?.label.key === "journey.retryCta" ? { ...f, cta: { ...f.cta, label: { key: "journey.placeCtaBare" } } } : f; } }) },
     { name: "a row removed from the matrix (wallet_missing unclassified)", expect: /^2\.census /,
@@ -1182,8 +1256,8 @@ if (!PROVE_RED) {
     { name: "SUSPENDED classified by its code again", expect: /^2\.busy-once /,
       impl: withSR({ CLASSIFIED_CODES: [...SR.CLASSIFIED_CODES, "SUSPENDED"] }) },
     // §4
-    { name: "the session limit shown as a block instead of the inline line", expect: /^4\.blocks /,
-      impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.lines[0]?.key === "journey.sheetSessionLimit" ? { ...f, frame: "blocked", block: SS.blockFor("account_blocked") } : f; } }) },
+    { name: "the plan's session limit drawn as the old inline line over an enabled gold commit (tile 065)", expect: /^4\.blocks /,
+      impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.block?.reason === "session_limit" ? { ...f, frame: "edit", block: null, lines: [f.block.body], cta: { label: { key: "journey.placeCta", vars: { amount: 5_000 } }, enabled: true, describedBy: "line" } } : f; } }) },
     { name: "the loss room drawn below the minimum", expect: /^4\.blocks /,
       impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.block?.reason === "loss_limit" ? { ...f, frame: "lossRoom", block: null, lossRoom: { headroom: 200 } } : f; } }) },
     { name: "the open's read writing nothing for a session past its limit (A4)", expect: /^4\.open-read /,

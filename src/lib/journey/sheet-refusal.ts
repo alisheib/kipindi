@@ -75,6 +75,12 @@ export type RefusalOutcome = {
   final?: boolean;
   /** The row's own sentence makes a money claim ("nothing has been charged"): never shown while in doubt. */
   moneyClaim: boolean;
+  /**
+   * An inline row's commit while its line stands (A25 item 2, `InlineHold`): `none` the next tap can succeed, `wait` not
+   * before the server's `retryAfterSec`, `change` not until something changes. `test:bet-sheet` 2.inline-cta holds every
+   * inline row to its ruling, and its census fails an inline row with none.
+   */
+  hold?: "none" | "wait" | "change";
 };
 
 type Row = Omit<RefusalOutcome, "reason" | "bounds" | "receipt" | "block"> & { blockOf?: Parameters<typeof blockFor>[0] };
@@ -84,23 +90,27 @@ const L = (key: string): SheetLine => ({ key });
 /**
  * ⭐ THE ROWS BY REASON — every reason the player bet path emits. `test:bet-sheet` §2 reads the source's `reason:`
  * literals on that path and fails on one with no row here.
+ * ⭐ ROUND V2 (S8-PLAN A25, 2026-10-16): row 9, the session limit, is a block — the player stopped by a limit they set
+ * sees the limit and its doors, never a commit; and every inline row carries its `hold`.
  */
 const BY_REASON: Readonly<Record<string, Row>> = {
-  system_busy:              { row: 1, frame: "inline", line: L("journey.sheetBusy"), retry: "same", reread: null, inLock: false, moneyClaim: true },
-  rate_limited:             { row: 5, frame: "inline", line: L("journey.sheetRateLimited"), retry: "new", reread: null, inLock: false, moneyClaim: false },
-  maintenance:              { row: 6, frame: "inline", line: L("error.failMaintenance"), retry: "new", reread: null, inLock: false, moneyClaim: true },
+  system_busy:              { row: 1, frame: "inline", line: L("journey.sheetBusy"), retry: "same", reread: null, inLock: false, moneyClaim: true, hold: "none" },
+  rate_limited:             { row: 5, frame: "inline", line: L("journey.sheetRateLimited"), retry: "new", reread: null, inLock: false, moneyClaim: false, hold: "wait" },
+  // A fresh read of the viewer's facts carries maintenance, so it decides the line from then on (`byFacts`).
+  maintenance:              { row: 6, frame: "inline", line: L("error.failMaintenance"), retry: "new", reread: null, inLock: false, moneyClaim: true, hold: "change" },
   cooling_off:              { row: 7, frame: "block", blockOf: "cooling_off", retry: "none", reread: null, inLock: false, moneyClaim: false },
   self_excluded:            { row: 8, frame: "block", blockOf: "self_excluded", retry: "none", reread: null, inLock: false, moneyClaim: false },
-  session_limit_reached:    { row: 9, frame: "inline", line: L("journey.sheetSessionLimit"), retry: "new", reread: null, inLock: false, moneyClaim: false },
+  session_limit_reached:    { row: 9, frame: "block", blockOf: "session_limit", retry: "none", reread: null, inLock: false, moneyClaim: false },
   account_blocked:          { row: 11, frame: "block", blockOf: "account_blocked", retry: "none", reread: null, inLock: false, moneyClaim: false },
   stake_not_whole:          { row: 14, frame: "bounds", retry: "new", reread: null, inLock: false, moneyClaim: false },
   stake_below_min:          { row: 14, frame: "bounds", retry: "new", reread: null, inLock: false, moneyClaim: false },
   stake_above_max:          { row: 14, frame: "bounds", retry: "new", reread: null, inLock: false, moneyClaim: false },
   market_not_live:          { row: 15, frame: "decide", retry: "new", reread: "public", inLock: false, moneyClaim: false },
-  // Row 16's words say nothing was placed: a money claim (review note d).
-  idempotency_key_conflict: { row: 16, frame: "inline", line: L("error.failIdempotencyKeyConflict"), retry: "new", reread: null, inLock: true, final: true, moneyClaim: true },
+  // Row 16's words say nothing was placed: a money claim (review note d). The next tap mints a new key: it can succeed.
+  idempotency_key_conflict: { row: 16, frame: "inline", line: L("error.failIdempotencyKeyConflict"), retry: "new", reread: null, inLock: true, final: true, moneyClaim: true, hold: "none" },
   wallet_frozen:            { row: 17, frame: "block", blockOf: "wallet_held", retry: "none", reread: null, inLock: true, moneyClaim: false },
-  wallet_missing:           { row: 18, frame: "inline", line: L("error.failWalletMissing"), retry: "new", reread: null, inLock: true, moneyClaim: true },
+  // No wallet row: a tap cannot succeed until one exists (its words ask for a refresh).
+  wallet_missing:           { row: 18, frame: "inline", line: L("error.failWalletMissing"), retry: "new", reread: null, inLock: true, moneyClaim: true, hold: "change" },
   loss_limit_daily:         { row: 19, frame: "decide", retry: "none", reread: "viewer", inLock: true, moneyClaim: false },
   balance_insufficient:     { row: 20, frame: "decide", retry: "new", reread: "viewer", inLock: true, moneyClaim: false },
   selection_closed:         { row: 22, frame: "closed", retry: "none", reread: null, inLock: true, moneyClaim: false },
@@ -129,6 +139,9 @@ const BY_CODE: Readonly<Record<string, Row>> = {
 /** For the census: the reasons and codes the matrix classifies. */
 export const CLASSIFIED_REASONS: readonly string[] = Object.keys(BY_REASON);
 export const CLASSIFIED_CODES: readonly string[] = Object.keys(BY_CODE);
+/** For the census (A25 item 2): every inline row's ruling, by its reason or code — null for a row nobody ruled. */
+export const INLINE_HOLDS: Readonly<Record<string, "none" | "wait" | "change" | null>> = Object.fromEntries(
+  [...Object.entries(BY_REASON), ...Object.entries(BY_CODE)].filter(([, r]) => r.frame === "inline").map(([k, r]) => [k, r.hold ?? null]));
 
 const UNKNOWN: Row = { row: 2, frame: "unknown", line: L("error.failSystemError"), retry: "same", reread: null, inLock: false, moneyClaim: false };
 const PARAMS: Row = { ...UNKNOWN, row: 23 };
@@ -183,10 +196,7 @@ export function refusalOutcome(answer: ActionAnswer): RefusalOutcome {
       const sec = num(v.retryAfterSec) ?? num(detail.retryAfterSec);
       return fromRow(r, reason, { line: { key: "journey.sheetRateLimited", vars: sec !== undefined ? { sec } : {} } });
     }
-    if (reason === "session_limit_reached") {
-      const limitMin = num(detail.limitMin);
-      return fromRow(r, reason, { line: { key: "journey.sheetSessionLimit", vars: limitMin !== undefined ? { limitMin } : {} } });
-    }
+    if (reason === "session_limit_reached") return fromRow(r, reason, { block: blockFor("session_limit", { limitMin: num(detail.limitMin) }) });
     if (reason === "cooling_off" || reason === "self_excluded") {
       const until = typeof detail.until === "string" ? detail.until : undefined;
       const untilAt = typeof detail.untilAt === "string" ? detail.untilAt : undefined;
@@ -271,7 +281,7 @@ export function settleRefusal(o: RefusalOutcome, reread: Reread, ctx: SettleCont
 
   switch (o.frame) {
     case "inline":
-      return ended({ kind: "inline", line: o.line as SheetLine });
+      return ended(inlineView(o, ctx));
     case "block":
       return ended({ kind: "block", block: o.block ?? blockFor("account_blocked") });
     case "closed":
@@ -284,10 +294,28 @@ export function settleRefusal(o: RefusalOutcome, reread: Reread, ctx: SettleCont
   return make({ kind: "inDoubt", extra: null }, "same", ctx.inDoubt ? "hold" : "enter", "keepKey");
 }
 
+/**
+ * ⭐ AN INLINE ROW'S VIEW, WITH ITS HOLD (A25 item 2). `wait` holds the commit until the server's `retryAfterSec` has passed
+ * on the phone's clock (a missing figure waits one second, the rate limit's own); `change` until something changes;
+ * maintenance yields to the next fresh read of the facts, which carry it (`byFacts`). A row with no ruling holds — the
+ * safe reading — and `test:bet-sheet`'s census fails it.
+ */
+const SECOND_MS = 1_000;
+function inlineView(o: RefusalOutcome, ctx: SettleContext): SettledView {
+  const line = o.line as SheetLine;
+  if (o.hold === "none") return { kind: "inline", line, hold: { kind: "none" } };
+  if (o.hold === "wait") {
+    const sec = typeof line.vars?.sec === "number" && Number.isFinite(line.vars.sec) && line.vars.sec > 0 ? line.vars.sec : 1;
+    return { kind: "inline", line, hold: { kind: "until", atMs: ctx.nowMs + sec * SECOND_MS } };
+  }
+  return { kind: "inline", line, hold: { kind: "change" }, ...(o.reason === "maintenance" ? { byFacts: true as const } : {}) };
+}
+
 /** Rows 10, 12, 15, 19, 20 and 21 — decided by the fresh re-read, never by a cached one (A8 item 2). */
 function decide(o: RefusalOutcome, reread: Reread, ctx: SettleContext): SettledView {
   const offset = ctx.offsetMs ?? 0;
-  const notTaking: SettledView = { kind: "inline", line: L("journey.sheetNotTaking") };
+  // "Not taking bets now": a tap cannot succeed until the question changes (A25 item 2).
+  const notTaking: SettledView = { kind: "inline", line: L("journey.sheetNotTaking"), hold: { kind: "change" } };
   if (o.reread === "public") {
     if (reread.state !== "read") return notTaking;
     if (!reread.market.found || !reread.market.bettable) return { kind: "closed", body: closedBody(ctx.seed, ctx.nowMs, offset) };

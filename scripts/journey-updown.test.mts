@@ -149,7 +149,8 @@ console.log("\n§2 · the frame is the sheet's, on a seed with no rates");
     ["maintenance", facts({ maintenance: true }), "edit/line"],
     ["self-exclusion", facts({ lockout: { kind: "self_exclusion", until: new Date(NOW + 86_400_000).toISOString() } }), "blocked"],
     ["cooling-off", facts({ lockout: { kind: "cooling_off", until: new Date(NOW + 86_400_000).toISOString() } }), "blocked"],
-    ["session limit", facts({ session: { exceeded: true, limitMin: 30, playedMin: 31 } }), "edit/line"],
+    // S8-PLAN A25 item 1 (round V2): the session limit is the sheet's block, here as on the sheet.
+    ["session limit", facts({ session: { exceeded: true, limitMin: 30, playedMin: 31 } }), "blocked"],
     ["account blocked", facts({ account: { status: "SUSPENDED", coolingOffUntil: null } }), "blocked"],
     ["wallet held", facts({ wallet: { status: "FROZEN", balance: 50_000, bonusBalance: 0 } }), "blocked"],
     ["loss room", facts({ loss: { dailyLossLimit: 3_000, lossToday: 0 } }), "lossRoom"],
@@ -164,7 +165,7 @@ console.log("\n§2 · the frame is the sheet's, on a seed with no rates");
     const kind = fr2.frame === "edit" && fr2.lines.length > 0 ? "edit/line" : fr2.frame;
     return { name, want, kind, enabled: fr2.cta?.enabled === true };
   });
-  ok("2.7 every branch the sheet draws applies, in its order — maintenance and the session limit as a line, a break, the account and a held wallet blocked, the loss room, a pending deposit, and the three deposit refusals — and none enables the commit",
+  ok("2.7 every branch the sheet draws applies, in its order — maintenance as a line, a break, the session limit (A25), the account and a held wallet blocked, the loss room, a pending deposit, and the three deposit refusals — and none enables the commit",
     got.every((g) => g.kind === g.want && !g.enabled), j(got.filter((g) => g.kind !== g.want || g.enabled)));
   const refusals = ["rails paused", "deposit limit", "source of funds"].map((n) => frame("5000", branches.find((b) => b[0] === n)![1]).low?.depositRefusal);
   ok("2.8 …the deposit refusals are named: rails_paused, deposit_limit, sof_required", j(refusals) === j(["rails_paused", "deposit_limit", "sof_required"]), j(refusals));

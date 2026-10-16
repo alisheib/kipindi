@@ -141,7 +141,7 @@ function StakeRows({ id, t, locale, nowMs, frame, text, setText, size, disabled 
   </>;
 }
 
-/** A frame that refuses the bet outright (a break, the account, a held wallet, the loss limit spent): its own callout. */
+/** A frame that refuses the bet outright (a break, the session limit, the account, a held wallet, the loss limit spent): its own callout. */
 function BlockedNote({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof useT>["t"]; locale: ReturnType<typeof useT>["locale"]; nowMs: number; frame: ReturnType<typeof judFrame>; id: string }) {
   if (frame.frame !== "blocked" || !frame.block) return null;
   return <div id={`${id}-callout`}><Callout tone="info" glyph="info" title={sheetTemplate(t, frame.block.title)}>
@@ -149,7 +149,7 @@ function BlockedNote({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof use
   </Callout></div>;
 }
 
-/** The inline lines the sheet stands above its CTA (maintenance, the session limit), and the empty-side sentence. */
+/** The inline lines the sheet stands above its CTA (maintenance; the session limit is a block since S8-PLAN A25), and the empty-side sentence. */
 function Lines({ t, locale, nowMs, frame, id }: { t: ReturnType<typeof useT>["t"]; locale: ReturnType<typeof useT>["locale"]; nowMs: number; frame: ReturnType<typeof judFrame>; id: string }) {
   if (frame.lines.length === 0) return null;
   return <div id={`${id}-line`} role="status" className="kp-bsheet__lines">{frame.lines.map((line, index) => <p key={`${line.key}-${index}`}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={line} /></p>)}</div>;

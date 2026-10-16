@@ -471,14 +471,20 @@ export function reopenInDoubt(quote: Quote, key: string, pageLoadedAtMs: number)
 /** A dictionary key and its values; the component formats every figure (`formatTzs`, `formatBreakEnd`, `<Cash>`). */
 export type SheetLine = { key: string; vars?: Record<string, number | string> };
 
-export type SheetBlockReason = "cooling_off" | "self_excluded" | "account_blocked" | "not_found" | "wallet_held" | "loss_limit";
+export type SheetBlockReason = "cooling_off" | "self_excluded" | "session_limit" | "account_blocked" | "not_found" | "wallet_held" | "loss_limit";
 export type SheetBlockAction = "setLimits" | "contactSupport" | "gotIt";
 
 /** A blocking frame: its title, its sentence (`role="alert"`, the dialog's `describedBy`), and its buttons. */
 export type SheetBlock = { reason: SheetBlockReason; title: string; body: SheetLine; actions: SheetBlockAction[] };
 
-/** The block for a reason, as the boards draw it (s4-4-block-*) — no helpline (S8-PLAN Correction 15). */
-export function blockFor(reason: SheetBlockReason, detail: { until?: string; untilAt?: string } = {}): SheetBlock {
+/**
+ * The block for a reason, as the boards draw it (s4-4-block-*) — no helpline (S8-PLAN Correction 15).
+ * ⭐ THE SESSION LIMIT IS A BLOCK (S8-PLAN A25 item 1, round V2, 2026-10-16). It was an inline line over a commit that
+ * stayed gold and enabled (tile 065): a player on the break they set for themselves was shown "Place bet". Like a break
+ * (s4-4-block-cooling) it swaps the form for its title, its sentence — with the minutes they chose — and "Weka mipaka" /
+ * "Sawa", the doors the limits page itself offers.
+ */
+export function blockFor(reason: SheetBlockReason, detail: { until?: string; untilAt?: string; limitMin?: number } = {}): SheetBlock {
   const until: Record<string, string> = {};
   if (typeof detail.until === "string") until.until = detail.until;
   if (typeof detail.untilAt === "string") until.untilAt = detail.untilAt;
@@ -487,6 +493,10 @@ export function blockFor(reason: SheetBlockReason, detail: { until?: string; unt
       return { reason, title: "market.udErrSuspendedTitle", body: { key: "error.failCoolingOff", vars: until }, actions: ["setLimits", "gotIt"] };
     case "self_excluded":
       return { reason, title: "market.udErrSuspendedTitle", body: { key: "error.failSelfExcluded", vars: until }, actions: ["gotIt"] };
+    case "session_limit":
+      return { reason, title: "market.udErrSuspendedTitle",
+        body: { key: "journey.sheetSessionLimit", vars: typeof detail.limitMin === "number" && Number.isFinite(detail.limitMin) ? { limitMin: detail.limitMin } : {} },
+        actions: ["setLimits", "gotIt"] };
     case "account_blocked":
     case "not_found":
       return { reason, title: "market.udErrSuspendedTitle", body: { key: "journey.sheetBlocked" }, actions: ["contactSupport", "gotIt"] };
@@ -504,13 +514,27 @@ export function closedBody(seed: SheetSeed, nowMs: number, offsetMs = 0): "journ
 }
 
 /**
+ * ⭐ WHAT AN INLINE REFUSAL DOES TO THE COMMIT WHILE ITS LINE STANDS (S8-PLAN A25 item 2, round V2, 2026-10-16). One state
+ * had two renderings: "Temporarily unavailable" over a disabled commit (tiles 040, 063) and over an enabled gold one
+ * (064), and maintenance's "Nothing has been charged" over an enabled one (045). The rule: a retry that cannot succeed
+ * until something changes never looks tappable; a "try again" that can succeed may stay enabled.
+ *   none    the next tap can succeed as it is — admission's BUSY (the same key) and a key conflict (a new key);
+ *   until   not before the wait the server named has passed — the rate limit's `retryAfterSec`, on the phone's clock;
+ *   change  not until something changes — maintenance (a fresh read of the facts replaces the line, `byFacts`), a missing
+ *           wallet, a question not taking bets, a deploy whose one reload is spent; the player's own edit or a close
+ *           ends the line, as it ends every settled line.
+ */
+export type InlineHold = { kind: "none" } | { kind: "until"; atMs: number } | { kind: "change" };
+
+/**
  * THE SETTLED ANSWER — what `settleRefusal` (sheet-refusal.ts) made of the server's answer and its re-read. Defined here
  * because the frame reads it; built there.
  */
 export type SettledView =
   | { kind: "receipt"; positionId: string; replayed: boolean; quote: Quote }
   | { kind: "inDoubt"; extra: SheetLine | null }
-  | { kind: "inline"; line: SheetLine }
+  /** `byFacts`: the viewer's facts carry this refusal (maintenance), so the next fresh read decides it instead (A25 item 2). */
+  | { kind: "inline"; line: SheetLine; hold: InlineHold; byFacts?: true }
   | { kind: "block"; block: SheetBlock }
   | { kind: "closed"; body: "journey.sheetClosedBody" | "journey.sheetNotTaking" }
   | { kind: "bounds"; bounds: SheetBounds }
@@ -622,17 +646,33 @@ const ctaPlace = (stake: number): SheetLine => ({ key: "journey.placeCta", vars:
 const CTA_BARE: SheetLine = { key: "journey.placeCtaBare" };
 const lineOf = (key: string, vars?: Record<string, number | string>): SheetLine => (vars ? { key, vars } : { key });
 
-/** The plan's line for the stake-free inline blocks (s4-4-inline-refusals). */
+/** The plan's line for the one stake-free inline block left, maintenance (s4-4-inline-refusals; the session limit is a
+ *  block since A25 item 1). */
 function planLine(plan: SheetPlan): SheetLine | null {
   if (plan.kind !== "blocked") return null;
   if (plan.reason === "maintenance") return lineOf("error.failMaintenance");
-  if (plan.reason === "session_limit") return lineOf("journey.sheetSessionLimit", { limitMin: plan.limitMin ?? 0 });
   return null;
 }
 
 const BLOCK_OF: Partial<Record<ShortfallBlock, SheetBlockReason>> = {
-  self_excluded: "self_excluded", cooling_off: "cooling_off", account_blocked: "account_blocked", wallet_held: "wallet_held",
+  self_excluded: "self_excluded", cooling_off: "cooling_off", session_limit: "session_limit", account_blocked: "account_blocked", wallet_held: "wallet_held",
 };
+
+/**
+ * ⭐ "TEMPORARILY UNAVAILABLE" HAS ONE RENDERING (A25 item 2): the line, the stake locked, the commit bare and disabled,
+ * no chips, no estimate, no balance. The host's recovery hold (an unreadable or foreign stored key, tiles 040 and 063) and
+ * a deploy skew whose one reload is spent (064: the stale action can never run from this page) both draw it; only the
+ * frame's kind differs — the hold is a doubt that a key may still settle, the skew an edit frame the page's reload ends.
+ */
+function unavailableFrame(base: SheetFrame, frame: "inDoubt" | "edit"): SheetFrame {
+  return { ...base, frame, stakeLocked: true, chips: null, estimate: null, showEstimate: false, balance: { kind: "unknown" },
+    lines: [lineOf("common.temporarilyUnavailable")], cta: { label: CTA_BARE, enabled: false, describedBy: "line" }, quote: null };
+}
+
+/** Whether a settled inline line holds the commit at `nowMs` (A25 item 2's rule, `InlineHold`). */
+export function inlineHolds(hold: InlineHold, nowMs: number): boolean {
+  return hold.kind === "change" || (hold.kind === "until" && nowMs < hold.atMs);
+}
 
 /**
  * ⭐ WHICH FRAME DRAWS, AND THE CTA. In order:
@@ -640,8 +680,9 @@ const BLOCK_OF: Partial<Record<ShortfallBlock, SheetBlockReason>> = {
  *   the settled answer's block, closed frame, loss room, or low frame → the plan at the typed stake.
  * The CTA reads "Weka dau · {amount}" and is enabled only in the edit frame at a stake inside the bounds (or an unread
  * balance, which the server decides); it is bare and disabled with no stake or out of bounds, and disabled in the low,
- * loss-room and pending frames and while placing. In doubt it is "Jaribu tena · {amount}", enabled once the request
- * that was out has settled (Next would only queue a second one behind it, A7 item 2).
+ * loss-room and pending frames, while placing, and while an inline line holds it (`InlineHold`, A25 item 2). In doubt it
+ * is "Jaribu tena · {amount}", enabled once the request that was out has settled (Next would only queue a second one
+ * behind it, A7 item 2).
  */
 export function sheetFrame(input: SheetFrameInput): SheetFrame {
   const { seed, side, viewer, intent, settled } = input;
@@ -670,9 +711,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
     quote: null, betInsteadQuote: null,
   };
 
-  if (input.recoveryBlocked) return {...base, frame: "inDoubt", stakeLocked: true, estimate: null, showEstimate: false,
-    balance: {kind: "unknown"}, lines: [lineOf("common.temporarilyUnavailable")],
-    cta: {label: CTA_BARE, enabled: false, describedBy: "line"}, quote: null};
+  if (input.recoveryBlocked) return unavailableFrame(base, "inDoubt");
 
   if (settled?.view.kind === "receipt") {
     return { ...base, frame: "receipt", estimate: null, showEstimate: false, receipt: { positionId: settled.view.positionId, replayed: settled.view.replayed, quote: settled.view.quote } };
@@ -704,8 +743,10 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
       cta: { label: stake !== null ? ctaPlace(stake) : CTA_BARE, enabled: false, describedBy: "callout" },
     };
   }
-  const settledLine: SheetLine | null = view?.kind === "inline" ? view.line
-    : view?.kind === "skew" && !view.reload ? lineOf("common.temporarilyUnavailable") : null;
+  // A deploy skew whose one reload is spent: the stale action can never run from this page (A25 item 2).
+  if (view?.kind === "skew" && !view.reload) return unavailableFrame(base, "edit");
+  const settledLine: SheetLine | null = view?.kind === "inline" ? view.line : null;
+  const lineHolds = view?.kind === "inline" && inlineHolds(view.hold, input.nowMs);
 
   const plan = view?.kind === "plan" ? view.plan : sheetPlan(viewer, seed, typed.stake, serverNow, bounds);
   if (plan.kind === "blocked" && plan.reason === "market_closed") {
@@ -718,7 +759,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   }
   if (plan.kind === "blocked" && BLOCK_OF[plan.reason]) {
     const r = BLOCK_OF[plan.reason] as SheetBlockReason;
-    return { ...base, frame: "blocked", estimate: null, showEstimate: false, block: blockFor(r, { until: plan.until }) };
+    return { ...base, frame: "blocked", estimate: null, showEstimate: false, block: blockFor(r, { until: plan.until, limitMin: plan.limitMin }) };
   }
 
   const chips = sheetChips(bounds, plan);
@@ -749,11 +790,11 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
     };
   }
 
-  // The edit frame: enough, unknown, loading, empty, a stake out of bounds, or an inline block (maintenance, session).
+  // The edit frame: enough, unknown, loading, empty, a stake out of bounds, or an inline block (maintenance) or line.
   const blockedLine = planLine(plan);
-  const lines = [...(blockedLine ? [blockedLine] : []), ...(settledLine ? [settledLine] : [])];
+  const lines = [...(blockedLine ? [blockedLine] : []), ...(settledLine && !(blockedLine && settledLine.key === blockedLine.key) ? [settledLine] : [])];
   const outOfBounds = plan.kind === "blocked" || plan.kind === "empty" || !inBounds;
-  const enabled = !blockedLine && !outOfBounds && (plan.kind === "enough" || plan.kind === "unknown" || plan.kind === "loading");
+  const enabled = !blockedLine && !lineHolds && !outOfBounds && (plan.kind === "enough" || plan.kind === "unknown" || plan.kind === "loading");
   const retry = intent?.phase === "retry" && stake !== null && intent.quote.stake === stake && enabled;
   const label = retry ? lineOf("journey.retryCta", { amount: stake as number }) : inBounds ? ctaPlace(stake as number) : CTA_BARE;
   const boundsInvalid = breaks !== null && breaks !== "empty";
