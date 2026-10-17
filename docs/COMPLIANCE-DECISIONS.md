@@ -8,6 +8,30 @@
 
 ---
 
+## 2026-10-17 · Maswali Millionea's doors on the journey home and in Tiketi zangu deviate from the sponsor deck (owner ruling, O-7)
+
+**Authority.** Ali, on 2026-10-17, handing Claude Design's owner-ruling form to a session: *"claude design is done as
+well and asked me some questions that needs you … you answer"*. The answers stand as his rulings
+([`MASWALI-PLAN.md`](MASWALI-PLAN.md) §0; the v6 manifest's §2), and O-7 placed Millionea's card on the journey home.
+
+**What deviates, and from what.** The simplified journey follows the sponsor's deck (owner ruling R1; the Vodacom plan's
+SJ-22). Millionea adds two things the deck does not draw:
+1. **One Millionea card on the journey home**, after the head (the How-to card and the headline) and before the topic
+   chips, at every width (DESIGN_AUTHORITY §M8a item 11).
+2. **A third switch in Tiketi zangu** ("Millionea" beside the poll and Up & Down tickets), so a player finds their week's
+   tickets where they find every other ticket.
+
+**What does not change.** The rail keeps its four slots (Millionea takes none, §K8b). Nothing about the poll or Up & Down
+surfaces moves. The card and the switch render only for a viewer the Millionea rollout admits: nobody while it is
+WITHDRAWN, staff (and preview-pass holders) at STAFF_PREVIEW, everyone only at ACTIVE.
+
+**The control.** Vodacom sees both in the staff preview before the journey's S15 flip; that flip already waits for
+their approval, so the deviation reaches no sponsor-facing surface they have not seen. Should they refuse it, the card
+moves (one component) and the switch stays. The draft note for Ali to send them is the v6 delivery's
+[`AGENCY-REPLY.md`](design-system/v6-2026-10-17-millionea/AGENCY-REPLY.md).
+
+---
+
 ## 2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void (owner)
 
 **Authority.** Ali, in session on 2026-10-16, handing over the Product Owner's proposal *"Maswali Millionea — Weekly

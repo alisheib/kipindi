@@ -508,7 +508,7 @@ of the two lie about what it is for. `/proposals` keeps royal: a listed proposal
 lifecycle step reached, not a market broadcasting that it is taking money.
 
 **The other recorded divergences** — decisions, not drift, each with its reason in
-`STATUS_TONE_EXCEPTIONS`:
+`STATUS_TONE_EXCEPTIONS` (Maswali Millionea's won word, green with gold only on the amount: §M8a item 8):
 
 - **REJECTED** is rose in KYC/DSAR (a person was refused), claret on `/proposals` (an
   editorial decline, §B4) and deliberately **slate on the objection queue** — a rejected
@@ -1597,7 +1597,8 @@ The platform's hardest-won rules. Most were bought with an incident.
    - **The bet sheet:** "Ukishinda, unapata takriban TZS {x}" + "≈{mult}× dau lako" at the entered stake, always with
      the line "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa."
 
-   Every such figure comes from the settlement function (`payoutFor`), never from a constant. The rest of this rule
+   Every such figure comes from the settlement function (`payoutFor`), never from a constant. (Maswali Millionea's
+   jackpot headline is labelled by §M8a item 9.) The rest of this rule
    stands unchanged: open positions say "if settled now", and ⛔ the per-position potential payout stays hidden
    pre-resolution, on the post-bet receipt and in Tiketi zangu alike.
 
@@ -1942,6 +1943,7 @@ come from the same function the money path uses.
 ### F9 — The ceremony belongs to the moment, not to the backlog
 
 *(Ali, 2026-09-04. Guarded by `npm run test:presence-class`, controlled by `npm run red:presence-class`.)*
+*Maswali Millionea announces a week's wins once, as one seal per player per week: §M8a item 10.*
 
 🔴 **THE DEFECT.** A player opened 50pick after a night away. Several rounds had settled while
 they slept, so the poller found them in one tick and announced them in one tick: a queue of gold
@@ -2568,6 +2570,8 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
 
    ### 8b — The four-slot journey rail (SJ-16)
 
+   *Maswali Millionea takes no slot on this rail; its doors are placed by §M8a item 11.*
+
    `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; its one table is `JOURNEY_TABS` in
    `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge`.
    - **Four equal tracks** — Maswali, Juu/Chini, Tiketi zangu, Akaunti — on the classic rail's own surface, slot, pip
@@ -2708,6 +2712,7 @@ The usage law has teeth: **struck gold appears only where money was earned** (pa
 celebration, resolved seal). A decorative element wearing `--gilt-metal` is a violation, not
 a style choice. And `.gilt-metal:focus-visible` **keeps a real `outline`** (E-129): a
 box-shadow ring is invisible in forced-colors, and this class lands on the Deposit button.
+Maswali Millionea's jackpot, floor, rollover and stub are unearned and never gold: §M8a item 7.
 
 ### M3a — Which money commits wear gold, and which do not (D1, D5)
 
@@ -2870,7 +2875,7 @@ Every `.mat-*`/`.g-*`/`.seal-*`/`.crest-*` state has written branches for the tw
 end frames render, nothing invisible, the bloom rests at 0.35. A new animation lands with
 its branches in the same change or it does not land. The delivery named only the first two
 gates; this product has three (E-125) — our target device is exactly the one the third
-covers. Guard: `npm run test:reduce-motion`.
+covers. Guard: `npm run test:reduce-motion`. Maswali Millionea's three motions (N1–N3) obey all three gates: §M8a.
 
 ### M7 — Wins get the seal; losses get the receipt
 
@@ -2879,7 +2884,7 @@ EXCLUSIVE to a win. A loss renders as bookkeeping: the factual toast (plain rung
 color, no tick), the settled card leading with the outcome, the needle settling crisply
 against the position. No red ceremony, no drained counters, no altered mark — a dramatized
 loss is punitive, dilutes the win, and is a compliance liability. The asymmetry is the
-design (designer R2 Q5, confirmed).
+design (designer R2 Q5, confirmed). A Maswali Millionea win lands its amount final, with no count-up: §M8a item 6.
 
 ### M8 — The mark performs; nothing else borrows its stage
 
@@ -2890,6 +2895,51 @@ it renders single-ink relief. Clear space 0.25 × diameter is law even inside ou
 76px on a 114px face is the ceiling, not a style choice. Surface gold is the trademark
 re-derivation (M3); the two never drift because they share one source. `--m-pivot` is
 reserved for the needle and dials — `.g-ring` takes `--m-glide` (a bell is neither).
+
+### M8a — Millionea exceptions (Ali, 2026-10-17)
+
+*Ali, 2026-10-17, handing Claude Design's owner-ruling form to a session: "claude design is done as well and asked me
+some questions that needs you … you answer". The answers stand as his rulings (`docs/MASWALI-PLAN.md` §0, and the v6
+manifest's §2: `docs/design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md`). Each item below holds on Maswali
+Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
+
+1. **N1 Kubeba — the carry (O-1: yes, if it measures).** A reserve's socket moves once, from the annex into the vacated
+   main socket, on `--t-move` / `--m-settle`, staggered `min(i, 3) × --m-stagger`, and nothing else ever travels between
+   sockets. It plays only when all fifteen results are final, never as an un-carry. ⚠️ It stands only if it holds 50fps
+   at 360 on a phone with 4 cores or fewer and 4GB or less (measured at S5's acceptance and on a real phone at S8);
+   otherwise its fallback ships: `GlyphSwap` in place and the printed "4 → A1".
+2. **N2 Kugonga Muhuri — the attestation press (O-2: yes).** A result stamp arrives down the needle's line (`--m-tilt`) by
+   `--sp-2` with the seal-place press stops (1.02 / 0.98), on `--t-base` / `--m-settle`; the socket beside it swaps by
+   `GlyphSwap`. The same press for every outcome, matched or not — never a verdict on the player. Where an engine cannot
+   resolve its `sin()` / `cos()`, the translate resolves to none and the stamp only scales and fades: a lawful end frame.
+3. **N3 Kukata Tiketi — the cut (O-3: yes).** The stub settles by `--sp-2` on `--t-base` — down on the cut
+   (`--m-settle`), back on a refund or the player's own cancel (`--m-glide`) — and the perforation never moves.
+4. **N4 is unspent (O-4).** Its only candidate, the needle aligning the ten sockets, would run on `--m-pivot`, which
+   stays reserved for the needle and dials (§M8 above), and would make a loss feel close.
+5. **How the three play (§M6 holds in full).** Each plays once and never loops; none fires a haptic; under both clamps
+   (`prefers-reduced-motion` and `html.kp-reduce-motion`) each is `animation: none` and its end frame IS the layout; the
+   throttle tier plays each once at full duration. The keyframes and classes land in `motion.css` with their first
+   consumer (S5), so `test:dead-css` never meets an unused one.
+6. **A Millionea win does not count up (§M7).** The seal is the platform's own, but the amount lands final: the
+   `WinCelebration` payload carries `roll: false` (through `RollingAmount`'s existing snap path). No `.value-flash`, no
+   `--g-jackpot`, no tick on the share.
+7. **Unearned money wears no gold (§M3).** The jackpot headline, the floor, the rollover and the stub are not earned
+   money: never gilt, never struck. Gold appears only on the amount a won ticket was paid.
+8. **The won word is green (O-6, §B11).** On a won ticket the word reads in success green and gold sits only on the
+   amount — a Millionea-only row in `STATUS_TONE_EXCEPTIONS`; the Yes/No and Up & Down won chips stay gilt.
+9. **The headline is labelled (§C3).** The jackpot headline is the larger of the funded floor and the carry plus sales,
+   and while an earlier week is unsettled it says so ("plus week N's carry-over once final"). ⛔ A held ticket never
+   shows a potential payout, and pick aggregates or an "alive" count never show before settlement.
+10. **One seal per player per week (§F9).** A week's wins are announced once, as one seal for the week, through the
+    presence classes; a RETURNING player gets the calm bar and the seal on their own tap.
+11. **Placement (O-7, §K8b).** Millionea takes no rail slot. Its doors: one card on the journey home after the head (the
+    How-to card and the headline) and before the topic chips; on classic, one card at the head of `/markets` and the first
+    row of More; and a third switch in Tiketi zangu. Placing the card there deviates from the sponsor deck's home
+    (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
+12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
+    and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
+    delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
+    / `markPending`.
 
 ---
 

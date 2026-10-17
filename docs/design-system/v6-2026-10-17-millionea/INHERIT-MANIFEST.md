@@ -56,7 +56,7 @@ another session's commit. This folder holds those files byte-identical, with **o
 
 The form came back on 2026-10-17. Ali handed it to a session: *"claude design is done as well and asked me some
 questions that needs you … you answer"*. The answers are the tracker's §0 table, and they reached the delivery as its
-round 6. They stand as Ali's rulings, and D3 files them in `DESIGN_AUTHORITY.md` §M8 with this quote.
+round 6. They stand as Ali's rulings, and D3 files them in `DESIGN_AUTHORITY.md` §M8 with this quote — filed 2026-10-17 as §M8a "Millionea exceptions".
 
 | # | Question | Ruling |
 |---|---|---|
@@ -66,7 +66,7 @@ round 6. They stand as Ali's rulings, and D3 files them in `DESIGN_AUTHORITY.md`
 | O-4 | A fourth motion | **Unspent.** Its only candidate, the needle aligning the sockets, is barred by the commission's §8 and by §M8 |
 | O-5 | The `millionea` glyph | ~~**The three-pearl coronet.**~~ **Superseded 2026-10-17 (Ali): Phosphor `diamond`** (MASWALI-PLAN §10c). The reason stands: the family `crown` already means the Leaderboard and the "Matokeo mashuhuri" flag |
 | O-6 | The IMESHINDA tone | **The word in success green, gold only on the amount** (how it is built: L4) |
-| O-7 | The home-card position | **After the head (the How-to card and the headline), before the topic chips**, at every width. It deviates from the sponsor deck's home; D3 records that deviation in COMPLIANCE-DECISIONS |
+| O-7 | The home-card position | **After the head (the How-to card and the headline), before the topic chips**, at every width. It deviates from the sponsor deck's home; recorded (D3, 2026-10-17) in COMPLIANCE-DECISIONS § "2026-10-17 · Maswali Millionea's doors on the journey home and in Tiketi zangu deviate from the sponsor deck", in the v5 manifest as SJ-22a, and as law in DESIGN_AUTHORITY §M8a |
 | O-8 | The reserve label | **A1–A5 "Akiba"** on screen. R1–R5 stays the name in code and in the rules (R-RESERVES) |
 | Q1 | Attestation times missing from the sample | main 2 Mon 00:12 · main 3 Mon 09:10 · main 5 Mon 10:41 (the last result) · main 6 Sun 20:36 · main 7 Sun 20:41 · main 9 Mon 00:14 · main 10 Sun 21:06 · A2 Mon 00:16 · A5 Mon 10:24. In Timeline D the week void is certain at Mon 10:24 and refunds are Tue 27 Oct 12:00 |
 | Q2 | A second sample serial | MLN-W42-003310 (and MLN-W42-002083 for a first ticket) |
