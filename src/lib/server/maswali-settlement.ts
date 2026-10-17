@@ -80,7 +80,13 @@ async function holdFor(userId: string): Promise<HoldReason | null> {
   const user = await db.user.findById(userId);
   if (!user) return "account closed";
   if (isStaffRole(user.role)) return "staff account";
-  if (await houseBotStore.findLiveByUserId(userId).catch(() => null)) return "house desk account";
+  // R10b · fail CLOSED: a desk check that cannot be read holds the share as a desk account's (Compliance releases it),
+  // never pays it free because the lookup failed.
+  const desk = await houseBotStore.findLiveByUserId(userId).catch((err: unknown) => {
+    console.error("[maswali-settlement] a winner's desk check could not be read, so the share is held:", (err as Error)?.message ?? err);
+    return "unreadable" as const;
+  });
+  if (desk) return "house desk account";
   if (user.status === "SUSPENDED") return "account suspended";
   if (user.status === "CLOSED") return "account closed";
   return null;

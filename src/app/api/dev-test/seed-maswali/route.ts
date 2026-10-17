@@ -6,6 +6,8 @@
  *
  * ⛔ ON A FRESH STORE ONLY (a fresh in-memory `next dev`): one public week may sell at a time (MR-3), so a second call
  *    answers 409 rather than build on whatever the first left.
+ * ⛔ ON A SERVER WHOSE ROLLOUT SELLS (R10a): the ticket arm reads the real rollout itself, so start `next dev` with
+ *    `FEATURE_MILLIONEA=ACTIVE` (a fresh store's switch is unset, so the ceiling decides); otherwise this answers 409.
  *
  * The weeks sit two to seven weeks ahead, in calendar order as in chain order (`seq`), and run on injected week clocks,
  * exactly as the S3 suites run them; money moves through `purchaseMaswaliTickets` and `settleMaswaliWeek`.
@@ -22,7 +24,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet } from "@/lib/server/store";
 import { randomId } from "@/lib/server/crypto";
-import { attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, sealQuestion, type DraftQuestionInput } from "@/lib/server/maswali-service";
+import { attestParity, closeWeek, createWeek, openWeek, purchaseMaswaliTickets, rolloutSells, sealQuestion, type DraftQuestionInput } from "@/lib/server/maswali-service";
+import { millioneaStateNow } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { fundMaswaliGuarantee, guaranteeReader, GUARANTEE_FUND_WORD, maswaliAccountBalance } from "@/lib/server/maswali-money-service";
 import { previewMaswaliSettlement, settleMaswaliWeek } from "@/lib/server/maswali-settlement";
@@ -81,7 +84,7 @@ const LOSE = Array.from({ length: 15 }, (_, i) => (i === 0 ? "NO" as const : "YE
 async function sell(weekId: string, players: string[], winners: number) {
   for (let i = 0; i < players.length; i++) {
     const slips = i < winners ? [WIN] : Array.from({ length: 5 }, () => LOSE);
-    const r = await purchaseMaswaliTickets({ userId: players[i], weekId, slips, stateNow: async () => "ACTIVE" });
+    const r = await purchaseMaswaliTickets({ userId: players[i], weekId, slips });
     if (!r.ok) throw new Error(`buy: ${r.error}`);
   }
 }
@@ -102,6 +105,9 @@ async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, 
 export async function POST() {
   if (process.env.NODE_ENV === "production") return NextResponse.json({ ok: false, error: "Not available" }, { status: 404 });
   try {
+    if (!rolloutSells(await millioneaStateNow(0), "PUBLIC")) {
+      return NextResponse.json({ ok: false, error: "Start next dev with FEATURE_MILLIONEA=ACTIVE to seed Millionea weeks: the ticket arm reads the real rollout." }, { status: 409 });
+    }
     if (getLicenceBasis().kind === "NONE") await recordLicenceBasis({ kind: "OWNER_RULING", ref: "Dev seed — the Owner's ruling of 2026-10-16" }, OWNER);
     if (((await maswaliAccountBalance(acct.maswaliGuarantee)) ?? 0) < 6_000_000) {
       await fundMaswaliGuarantee({ amount: 8_000_000, reference: "DEV-SEED-0001", typed: GUARANTEE_FUND_WORD, ownerId: OWNER });

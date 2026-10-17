@@ -11,19 +11,20 @@
  *    (Ali's ruling, 2026-09-09 · PLAYER QUERY §12 ②).
  *  - The betting result keeps its own name, `gamblingNet` = payouts + cash-outs +
  *    refunds − staked, and it is that value — not `net` — which equals
- *    `db.txn.sumGamblingNetSince(userId, since)`, the exact number the daily
- *    loss-limit gate enforces. The stress test locks this.
+ *    `db.txn.sumGamblingNetSince(userId, since)`, the platform's gambling net. The stress
+ *    test locks this. ⚠️ The daily loss-limit gate reads that net LESS Millionea's
+ *    exclusions (OD-17, `lossLimitNetSince`), so "limits used" below reads the gate's.
  *  - ⛔ A REFUND IS NOT A WIN. `BET_REFUND` used to be summed into `won`, so a
  *    voided market that handed a stake straight back read as winnings and
  *    flattered the net. It has its own number now, as it does on `/wallet`.
  *  - "Time played" is NOT surfaced: no server-side session-duration history
  *    exists, so showing a period play-time would be fabrication (omitted).
  *  - Limits-used is computed from the SAME sums the enforcement uses
- *    (`sumDepositsSince` / `sumGamblingNetSince`), so the dashboard cannot drift
- *    from the gate that actually blocks a deposit/bet.
+ *    (`sumDepositsSince`, and the loss limit's own net `lossLimitNetSince`), so the
+ *    dashboard cannot drift from the gate that actually blocks a deposit/bet.
  */
 import { db } from "./store";
-import { getRgSettings } from "./responsible-gambling";
+import { getRgSettings, lossLimitNetSince } from "./responsible-gambling";
 // ⛔ ONE HOME FOR THE MONEY PARTITION. `/wallet` already partitions all twelve stored txn types
 // into eight lenses; this page reads those same lenses so the two surfaces cannot disagree about
 // what "won", "refunds" or "everything" means. ⚠️ `src/lib/wallet/ledger.ts` is the PLAYER wallet
@@ -83,7 +84,8 @@ export type ActivitySummary = {
    * The BETTING result alone = payouts + cash-outs + refunds − staked, signed.
    * ⚠️ Kept because it is a different and still-useful question from `net`, and because it is the
    * one number that reconciles exactly against `db.txn.sumGamblingNetSince` over the same window —
-   * the value the daily loss-limit gate enforces.
+   * the platform's gambling net, from which the loss-limit gate subtracts Millionea's exclusions
+   * (OD-17, `lossLimitNetSince`).
    * ⛔ It is NOT rendered as a tile: Won, Refunds and Staked sit beside each other on screen, so
    * the betting story is already legible without a sixth aggregate competing with `net`.
    */
@@ -149,6 +151,9 @@ export type RgUsage = {
  * Current-period RG limit usage vs cap — assembled from the exact same windowed
  * sums the deposit/loss gates use, so "used X of Y" can never disagree with the
  * gate that blocks the next deposit/bet. A null limit = no cap set by the player.
+ * ⛔ The loss is `lossLimitNetSince`, the net `checkLossLimit` reads (OD-17, R5), never the raw
+ * `sumGamblingNetSince`: a Millionea win, or a refund today of a ticket bought before the window,
+ * would otherwise show headroom the gate then refuses.
  */
 export async function getRgUsage(userId: string, now = Date.now()): Promise<RgUsage> {
   const r = await getRgSettings(userId);
@@ -156,7 +161,7 @@ export async function getRgUsage(userId: string, now = Date.now()): Promise<RgUs
     db.txn.sumDepositsSince(userId, now - DAY_MS),
     db.txn.sumDepositsSince(userId, now - 7 * DAY_MS),
     db.txn.sumDepositsSince(userId, now - 30 * DAY_MS),
-    db.txn.sumGamblingNetSince(userId, now - DAY_MS),
+    lossLimitNetSince(userId, now - DAY_MS),
   ]);
   return {
     dailyDeposit: { used: depDay, limit: r.dailyDepositLimit ?? null },

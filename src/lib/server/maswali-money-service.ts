@@ -16,9 +16,10 @@
  * can answer "what does the guarantee hold" and "what is in this week's pool", and the suites run the same money
  * questions on both.
  */
+import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
-import { withLock } from "./locks";
+import { afterCommit, withLock } from "./locks";
 import { prisma, hasDatabase } from "./prisma";
 import {
   acct, maswaliGuaranteeFundEntries, maswaliGuaranteeReturnEntries, maswaliJackpotOf, postLedgerEntries, withMoneyTx, type LedgerLine,
@@ -38,6 +39,8 @@ import { canonicalPicks, SLOT_COUNT, type MaswaliPick } from "@/lib/maswali-scor
 import { leafHash, newSalt, picksKey } from "@/lib/maswali-commitment";
 import { exitWindowFacts } from "@/lib/exit-window";
 import { readSalesPauseFresh } from "./maswali-pause";
+import { millioneaStateNow } from "./millionea-switch";
+import { formatDateTime } from "@/lib/utils";
 import type { StoredMarket, StoredPosition } from "./market-service";
 import type { ServiceResult } from "./auth-service";
 
@@ -53,8 +56,12 @@ export const MASWALI_MONEY_LOCK = "maswali:chain";
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_MLN_LEDGER_MIRROR: Map<string, number> | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_MLN_LEDGER_GROUPS: Map<string, string> | undefined;
 }
 const mirror = (globalThis.__50PICK_MLN_LEDGER_MIRROR ??= new Map<string, number>());
+/** The memory twin of `LedgerEntry.groupId` (R7): every Millionea group posted, with the instant it was first posted. */
+const mirrorGroups = (globalThis.__50PICK_MLN_LEDGER_GROUPS ??= new Map<string, string>());
 const MIRRORED = new Set<string>([acct.maswaliJackpot, acct.maswaliDriveJackpot, acct.maswaliGuarantee]);
 const dbPresent = () => hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 /** ⚠️ A week's POOL is mirrored only through Millionea's own groups (buy, cancel, settle): a memory-store week VOIDED by
@@ -72,6 +79,25 @@ export async function postMaswaliLines(groupId: string, lines: LedgerLine[], tx:
   await postLedgerEntries(groupId, lines, tx ?? undefined);
   if (!dbPresent()) {
     for (const l of lines) if (mirrored(l.account)) mirror.set(l.account, (mirror.get(l.account) ?? 0) + l.amount);
+    if (!mirrorGroups.has(groupId)) mirrorGroups.set(groupId, new Date().toISOString());
+  }
+}
+
+/**
+ * R7 · when a Millionea group was first posted: `{ at: null }` when it never was, and null (never "absent") when the
+ * store could not be asked. Read inside the caller's transaction, so a check under a lock sees what a posting under the
+ * same lock wrote; the memory store answers from its mirror's register of groups.
+ */
+async function maswaliGroupRecordedAt(groupId: string, tx?: Prisma.TransactionClient | null): Promise<{ at: string | null } | null> {
+  if (!dbPresent()) return { at: mirrorGroups.get(groupId) ?? null };
+  try {
+    const c = tx ?? prisma();
+    if (!c) return null;
+    const first = await c.ledgerEntry.findFirst({ where: { groupId }, orderBy: { createdAt: "asc" }, select: { createdAt: true } });
+    return { at: first ? first.createdAt.toISOString() : null };
+  } catch (err) {
+    console.error(`[maswali-money] ledger group ${groupId} could not be read:`, (err as Error)?.message ?? err);
+    return null;
   }
 }
 
@@ -99,8 +125,8 @@ export const guaranteeReader = { balance: () => maswaliAccountBalance(acct.maswa
 /** The jackpot of a line of weeks as the carry claim reads it (`claimCarry`'s `readJackpot`): the drive's is its own (OD-21). */
 export const readJackpotOf = (visibility: "PUBLIC" | "DRIVE") => () => maswaliAccountBalance(maswaliJackpotOf(visibility));
 
-/** ⚠️ TEST SEAM ONLY: empty the memory mirror. */
-export function __resetMaswaliLedgerMirror(): void { mirror.clear(); }
+/** ⚠️ TEST SEAM ONLY: empty the memory mirror (the balances and the register of groups). */
+export function __resetMaswaliLedgerMirror(): void { mirror.clear(); mirrorGroups.clear(); }
 
 // ── THE OWNER'S GUARANTEE CEREMONIES (MB-03, OD-02) ──────────────────────────────────────────────────
 
@@ -108,35 +134,66 @@ export const GUARANTEE_FUND_WORD = "FUND GUARANTEE";
 export const GUARANTEE_RETURN_WORD = "RETURN GUARANTEE";
 
 /**
+ * R7 · ONE REFERENCE BOOKS ONCE PER DIRECTION (a double submit, a retry). A movement's group id is derived from its
+ * reference — trimmed, as the ceremony reads it — so the check asks for the very group the posting writes, on both
+ * stores. Neither store refuses a repeated group id by itself (`LedgerEntry.groupId` is an index, not a key, and the
+ * memory store keeps no ledger), so the check is explicit, under the chain lock and before the write: a second submit
+ * of one reference waits for the first to commit, then reads its lines.
+ */
+const guaranteeGroupId = (direction: "fund" | "return", reference: string): string =>
+  `maswali_guarantee_${direction}_${createHash("sha256").update(reference).digest("hex").slice(0, 32)}`;
+
+/** The refusal for a reference this direction has already booked, naming when; null when it is new. Unreadable refuses. */
+async function bookedReferenceRefusal(groupId: string, reference: string, what: "funding" | "return", tx: Prisma.TransactionClient | null): Promise<Refused | null> {
+  const seen = await maswaliGroupRecordedAt(groupId, tx);
+  if (seen === null) return refuse("The guarantee's records could not be read, so nothing was booked.");
+  if (seen.at === null) return null;
+  return refuse(`Reference ${reference} was already recorded for a guarantee ${what} on ${formatDateTime(seen.at)}; nothing was booked twice. A new ${what} needs its own reference.`);
+}
+
+/**
  * The Owner pays capital in to back the floor. ⛔ The caller is the Owner's ceremony (S4, `requireOwner`); this checks
- * the typed words, the amount and the rail reference, and books owner capital → guarantee in one balanced group.
+ * the typed words, the amount and the rail reference — booked once (R7) — and books owner capital → guarantee in one
+ * balanced group. The answer and the COMPLIANCE row carry the guarantee AFTER the funding (R4b), recorded once it commits.
  */
 export async function fundMaswaliGuarantee(input: { amount: number; reference: string; typed: string; ownerId: string }): Promise<{ ok: true; balance: number } | Refused> {
   if (input.typed.trim() !== GUARANTEE_FUND_WORD) return refuse(`Type ${GUARANTEE_FUND_WORD} to fund the guarantee.`);
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) return refuse("The amount is a whole number of shillings above 0.");
   const reference = input.reference.trim();
   if (reference.length < 5 || reference.length > 120) return refuse("Give the bank or rail reference the money came in under (5–120 characters).");
-  return withLock(MASWALI_MONEY_LOCK, async () => {
-    const groupId = `maswali_guarantee_fund_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return withLock(MASWALI_MONEY_LOCK, async (lockTx) => {
+    const groupId = guaranteeGroupId("fund", reference);
+    const booked = await bookedReferenceRefusal(groupId, reference, "funding", lockTx);
+    if (booked) return booked;
+    // R4b · read in the lock's transaction, before the write: a read after the movement but outside its transaction sees
+    // the guarantee as it was BEFORE this funding on Postgres (the memory store has no transaction to hide it).
+    const held = await maswaliAccountBalance(acct.maswaliGuarantee, lockTx);
+    if (held === null) return refuse("The guarantee balance could not be read, so nothing was funded.");
     await withMoneyTx(async (tx) => postMaswaliLines(groupId, maswaliGuaranteeFundEntries({ amount: input.amount, reference, actorId: input.ownerId }), tx));
-    const balance = await maswaliAccountBalance(acct.maswaliGuarantee);
-    audit({ category: "COMPLIANCE", action: "maswali.guarantee.funded", actorId: input.ownerId, targetType: "MaswaliGuarantee", targetId: "guarantee",
-      payload: { amount: input.amount, reference, groupId, balanceAfter: balance } });
-    return { ok: true as const, balance: balance ?? 0 };
+    const balance = held + input.amount;
+    afterCommit(lockTx, () => {
+      audit({ category: "COMPLIANCE", action: "maswali.guarantee.funded", actorId: input.ownerId, targetType: "MaswaliGuarantee", targetId: "guarantee",
+        payload: { amount: input.amount, reference, groupId, balanceAfter: balance } });
+    });
+    return { ok: true as const, balance };
   });
 }
 
 /**
  * The Owner takes back guarantee no unsettled week could still need: never below OD-02's requirement over every
- * unsettled week. Read inside the chain lock, so no week can open or settle between the check and the movement.
+ * unsettled week. Read inside the chain lock and its transaction, so no week can open or settle between the check and
+ * the movement, and the answer is the guarantee after it (R4b). One reference books once (R7).
  */
 export async function returnMaswaliGuarantee(input: { amount: number; reference: string; typed: string; ownerId: string }): Promise<{ ok: true; balance: number } | Refused> {
   if (input.typed.trim() !== GUARANTEE_RETURN_WORD) return refuse(`Type ${GUARANTEE_RETURN_WORD} to return guarantee money.`);
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) return refuse("The amount is a whole number of shillings above 0.");
   const reference = input.reference.trim();
   if (reference.length < 5 || reference.length > 120) return refuse("Give the reference the money goes out under (5–120 characters).");
-  return withLock(MASWALI_MONEY_LOCK, async () => {
-    const held = await maswaliAccountBalance(acct.maswaliGuarantee);
+  return withLock(MASWALI_MONEY_LOCK, async (lockTx) => {
+    const groupId = guaranteeGroupId("return", reference);
+    const booked = await bookedReferenceRefusal(groupId, reference, "return", lockTx);
+    if (booked) return booked;
+    const held = await maswaliAccountBalance(acct.maswaliGuarantee, lockTx);
     if (held === null) return refuse("The guarantee balance could not be read, so nothing was returned.");
     const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
     const need = guaranteeRequirement(unsettled.map((w) => {
@@ -146,11 +203,13 @@ export async function returnMaswaliGuarantee(input: { amount: number; reference:
     if (held - input.amount < need) {
       return refuse(`The guarantee holds TZS ${held.toLocaleString("en")} and the open weeks need TZS ${need.toLocaleString("en")}; at most TZS ${Math.max(0, held - need).toLocaleString("en")} can be returned.`);
     }
-    const groupId = `maswali_guarantee_return_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     await withMoneyTx(async (tx) => postMaswaliLines(groupId, maswaliGuaranteeReturnEntries({ amount: input.amount, reference, actorId: input.ownerId }), tx));
-    audit({ category: "COMPLIANCE", action: "maswali.guarantee.returned", actorId: input.ownerId, targetType: "MaswaliGuarantee", targetId: "guarantee",
-      payload: { amount: input.amount, reference, groupId, balanceAfter: held - input.amount, requirement: need } });
-    return { ok: true as const, balance: held - input.amount };
+    const balance = held - input.amount;
+    afterCommit(lockTx, () => {
+      audit({ category: "COMPLIANCE", action: "maswali.guarantee.returned", actorId: input.ownerId, targetType: "MaswaliGuarantee", targetId: "guarantee",
+        payload: { amount: input.amount, reference, groupId, balanceAfter: balance, requirement: need } });
+    });
+    return { ok: true as const, balance };
   });
 }
 
@@ -239,7 +298,8 @@ class MaswaliAbort extends Error { constructor(readonly why: "NO_FUNDS" | "NOT_C
  * self-exclusion and cooling-off, the session limit, the account's status), so a Millionea purchase meets the platform's
  * responsible-gambling gates through the one bet path, never a copy of them.
  *
- * Then, here: the insider refusals; the week OPEN and this market its own; the slips; then inside `wallet:` — the replay,
+ * Then, here: the insider refusals; the rollout again (R10a); the week OPEN and this market its own; the slips; the desk
+ * check, failing closed (R10b); then inside `wallet:` — the replay,
  * the wallet, the CAP (counted in the lock, MR-11), the loss limit for the whole purchase, real balance only (bonus is
  * refused before any split, MR-10) — and inside `market:` the close on the DATABASE clock, and ONE money transaction for
  * all N tickets: one debit, N positions and transactions, N ticket rows with their salted leaves, one ledger group.
@@ -262,6 +322,14 @@ export async function buyMaswaliTickets(input: {
 
   const week = await weekStore.getByMarketId(market.id);
   if (!week || week.id !== buy.weekId) return refuse("This Millionea week is not open for tickets.", { code: "INVALID", reason: "millionea_week_not_open" });
+  // ── The rollout, asked HERE too (R10a, defence in depth): `purchaseMaswaliTickets` asks first, and a caller that reaches
+  //    the ticket arm any other way meets the same rule, read fresh, failing closed, with the same answer. `rolloutSells`
+  //    is imported when asked: `maswali-service` reaches this file through `market-service`, so a static import is a cycle.
+  const rollout = await millioneaStateNow().catch(() => "WITHDRAWN" as const);
+  const { rolloutSells } = await import("./maswali-service");
+  if (!rolloutSells(rollout, week.visibility)) {
+    return refuse("Millionea is not available yet.", { code: "INVALID", reason: "millionea_not_available" });
+  }
   if (week.state !== "OPEN") {
     return week.state === "CLOSED" || week.state === "RESOLVING" || week.state === "SETTLED"
       ? refuse("Sales for this Millionea week have closed.", { code: "SELECTION_CLOSED", reason: "millionea_sales_closed" })
@@ -287,8 +355,17 @@ export async function buyMaswaliTickets(input: {
   if ((await readSalesPauseFresh()).paused) {
     return refuse("Millionea is paused for now.", { code: "INVALID", reason: "millionea_paused" });
   }
-  // ⛔ A live desk designation, read before the wallet lock: a desk account never reaches the money.
-  if (await houseBotStore.findLiveByUserId(userId).catch(() => null)) {
+  // ⛔ A live desk designation, read before the wallet lock: a desk account never reaches the money. ⛔ A lookup that
+  //    fails REFUSES (R10b, fail closed, as the house gate H1 does): nothing has moved, so the player is told exactly that
+  //    and may retry the same key.
+  let desk: Awaited<ReturnType<typeof houseBotStore.findLiveByUserId>>;
+  try {
+    desk = await houseBotStore.findLiveByUserId(userId);
+  } catch (err) {
+    console.error("[maswali-money] the desk check could not be read, so the purchase is refused:", (err as Error)?.message ?? err);
+    return refuse("We're busy right now — your stake hasn't moved. Try again in a moment.", { code: "BUSY", reason: "system_busy", retryAfterSec: 1 });
+  }
+  if (desk) {
     return refuse("This account cannot buy Millionea tickets.", { code: "INVALID", reason: "millionea_account_ineligible" });
   }
 
@@ -343,7 +420,9 @@ export async function buyMaswaliTickets(input: {
         }
         const placedAt = new Date(nowMs).toISOString();
         const receipts: MaswaliTicketReceipt[] = [];
-        await withMoneyTx(async (tx) => {
+        // R4a · the receipt's balance is the debit's own answer, read in this purchase's transaction: a read after it but
+        // outside it sees the wallet BEFORE this purchase on Postgres (the memory store has no transaction to hide it).
+        const balance = await withMoneyTx(async (tx) => {
           const debited = await db.wallet.adjust(wallet.id, { balance: -total }, { requireBalanceGte: total }, tx);
           if (!debited) throw new MaswaliAbort("NO_FUNDS");
           const firstForThisPlayer = (await positionStore.listForUserAndMarket(userId, market.id, tx)).length === 0 ? 1 : 0;
@@ -384,9 +463,9 @@ export async function buyMaswaliTickets(input: {
           await weekStore.bumpTicketCount(week.id, n, tx ?? undefined);
           // ONE group for the whole purchase (MB-31), in the transaction: a ledger failure rolls the purchase back.
           await postMaswaliLines(`maswali_buy_${receipts[0].positionId}`, lines, tx);
+          return debited.balance;
         });
-        const w = await db.wallet.findByUserId(userId);
-        return { tickets: receipts, balance: w?.balance ?? wallet.balance - total, placedAt, replayed: false };
+        return { tickets: receipts, balance, placedAt, replayed: false };
       });
     });
   } catch (err) {
