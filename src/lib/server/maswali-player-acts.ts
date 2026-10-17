@@ -188,7 +188,8 @@ export async function markMillioneaTicketSeenFor(
   if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
   const at = instantOf(through);
   if (!Number.isFinite(at)) return false;
-  const t = await millioneaTicketFacts(userId, serial);
+  // A mark is never load-bearing: a read that fails records nothing, and the facts perform again next time.
+  const t = await millioneaTicketFacts(userId, serial).catch(() => null);
   if (!t || !t.facts.some((f) => Date.parse(f.at) === at)) return false;
   if (t.lastViewedAt && Date.parse(t.lastViewedAt) >= at) return false;
   await ticketStore.patch(t.ticketId, { lastViewedAt: new Date(at).toISOString() });
@@ -218,7 +219,9 @@ export async function markMillioneaNoticeSeenFor(
   if (!Number.isFinite(at) || at > (opts.now ?? new Date()).getTime()) return false;
   const week = await weekStore.get(weekId);
   if (!week) return false;
-  const due = await millioneaNotices(userId, await millioneaLineFor(access.state));
+  // A mark is never load-bearing: a read that fails records nothing, and the notice performs again next time.
+  let due: Awaited<ReturnType<typeof millioneaNotices>> = [];
+  try { due = await millioneaNotices(userId, await millioneaLineFor(access.state)); } catch { due = []; }
   if (!due.some((n) => n.weekId === week.id && n.notice === notice)) return false;
   return noticeStore.markSeen(userId, week.id, notice, new Date(at).toISOString());
 }
