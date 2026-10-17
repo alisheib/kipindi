@@ -16,7 +16,7 @@
  */
 import type {
   MaswaliPoolFigure, MillioneaHubWeek, MillioneaQuestion, MillioneaSlot, MillioneaText, MillioneaTicketRow,
-  MillioneaTicketView, MillioneaWeekSummary,
+  MillioneaTicketView,
 } from "@/lib/server/maswali-player";
 import { sealLineOf, type SealLine } from "@/components/maswali/maswali-seal-line";
 import type { SlipQuestion } from "@/components/maswali/maswali-slip";
@@ -143,34 +143,6 @@ export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: strin
     floor: fig.floor,
     jackpot: fig.jackpot,
   };
-}
-
-/**
- * A week that has ended, as its closed ledger (D-19: a settled hub shows the week itself and points to the next): the
- * settlement's own columns. ⛔ The summary carries no floor, so the closed block prints none.
- */
-export function closedPoolViewOf(w: MillioneaWeekSummary, opensAtOfWeek: string | null): PoolView | null {
-  const sales = w.sales ?? 0;
-  const carryIn = w.carryIn ?? 0;
-  const from = opensAtOfWeek ? previousWeekNumber(opensAtOfWeek) : 0;
-  const next = opensAtOfWeek ? nextWeekNumber(opensAtOfWeek) : 0;
-  const carriedIn = carryIn > 0 ? { week: from, amount: carryIn } : null;
-  const ticketSales = { tickets: w.tickets, amount: sales };
-  const pool = carryIn + sales;
-  if (w.state === "VOIDED") {
-    const price = w.tickets > 0 ? Math.round(sales / w.tickets) : 0;
-    return { kind: "voided", carriedIn, sales: ticketSales, pool, floor: null, price, refunded: sales, carriedForward: { week: next, amount: carryIn } };
-  }
-  if ((w.winners ?? 0) > 0 && w.jackpot !== null && w.fee !== null && w.share !== null) {
-    return {
-      kind: "won", carriedIn, sales: ticketSales, pool, floor: null, jackpot: w.jackpot, fee: w.fee, toWinners: w.jackpot - w.fee,
-      winningTickets: w.winners ?? 0, perTicket: w.share,
-    };
-  }
-  if (w.winners === 0) {
-    return { kind: "rollover", carriedIn, sales: ticketSales, pool, floor: null, jackpot: pool, carriedOut: { week: next, amount: w.carriedForward ?? pool } };
-  }
-  return null;
 }
 
 /** The three phases of a week, from its own instants: sales from the open to the close; events from the first to the

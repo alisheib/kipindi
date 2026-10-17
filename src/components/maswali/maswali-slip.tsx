@@ -214,7 +214,7 @@ export function MaswaliSlip({
           <span>{fillNodes(t.millionea.salesClosedAt, { when: strong(eatWeekdayClock(t, closesAt)) })}</span>
         </p>
       )}
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[640px_400px]">
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]">
         <div className="flex min-w-0 flex-col gap-4">
           <header className="flex flex-col gap-1.5">
             <h1 className="font-display text-title-lg font-bold text-text">{fill(t.millionea.slipTitle, { week })}</h1>
