@@ -16,11 +16,13 @@
  *   §7 CONTROL: a week that grades is never voided, refunded or alerted, and still settles — and while it waits for its
  *      release, its closed window never shortens the timer's next wake below the normal cadence (a past instant is no
  *      wake time)
+ *   §7b the bulk credit (`db.wallet.creditMany`) is all or nothing, and the refund takes no `wallet:` lock
  *   §8 the invariants hold over all of it
  * Each case asserts what the old code got wrong (no REFUNDED ticket, the memory POOL left at the sales, no balance push,
  * no resume, no alert) beside what both must keep (the refunds to the shilling, R untouched).
  */
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -376,7 +378,7 @@ if (W.onPostgres) {
   const sold = await Promise.all(users.map(bal));
   const px = W.prisma()!;
   // ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE, DECLARED: the tickets' CHECK narrowed back to before REFUNDED existed (NOT VALID,
-  //    so the tickets already refunded above stand), so the refund's ticket statement — after the positions, the wallets,
+  //    so the tickets already refunded above stand), so the refund's ticket statement — after the wallets, the positions,
   //    the refund rows and the ledger lines — fails inside the one transaction.
   await px.$executeRawUnsafe(`ALTER TABLE "MaswaliTicket" DROP CONSTRAINT "MaswaliTicket_status_check"`);
   await px.$executeRawUnsafe(`ALTER TABLE "MaswaliTicket" ADD CONSTRAINT "MaswaliTicket_status_check" CHECK ("status" IN ('LIVE', 'CANCELLED', 'SETTLED')) NOT VALID`);
@@ -417,6 +419,28 @@ console.log(`${LF}§7 · CONTROL · a week that grades is never voided, refunded
     (await scheduler.nextMaswaliDueMs(windowEnd - 2 * 3_600_000)) === windowEnd);
   const rel = await W.release(ctlWeek.id, ctlAt);
   ok("7.5 · it still settles the normal way: released, SETTLED, its pool at 0", rel.ok && rel.week.state === "SETTLED" && (await pool(ctlWeek.marketId)) === 0, errOf(rel));
+}
+
+// ── §7b · the bulk credit is all or nothing ─────────────────────────────────
+console.log(`${LF}§7b · the bulk credit (db.wallet.creditMany) is all or nothing, and the refund takes no wallet lock`);
+{
+  const [u1, u2] = small.slice(0, 2);
+  const before = await Promise.all([u1, u2].map(bal));
+  // The holder with a wallet comes first, on another amount: on Postgres its credit is written, then rolled back.
+  const missing = await W.db.wallet.creditMany([{ userId: u1, amount: 1_000 }, { userId: "usr_mln_void_no_wallet", amount: 2_000 }]);
+  const afterMissing = await Promise.all([u1, u2].map(bal));
+  const twice = await W.db.wallet.creditMany([{ userId: u1, amount: 1_000 }, { userId: u2, amount: 1_000 }, { userId: u1, amount: 3_000 }]);
+  const unpaid = await W.db.wallet.creditMany([{ userId: u1, amount: 1_000 }, { userId: u2, amount: 0 }]);
+  const after = await Promise.all([u1, u2].map(bal));
+  ok("7b.1 · ⛔ a holder with no wallet refuses the whole credit, and the wallet it reached first keeps its balance (rolled back on Postgres, never written in memory)",
+    missing === null && J(afterMissing) === J(before), J({ missing, before, afterMissing }));
+  ok("7b.2 · ⛔ a user named twice refuses the whole credit: credited neither once nor twice", twice === null && J(after) === J(before), J({ twice, before, after }));
+  ok("7b.3 · ⛔ an amount that is not positive refuses the whole credit", unpaid === null && J(after) === J(before), J({ unpaid, before, after }));
+  // Lock order: wallet → market across the platform, so a refund holding `market:` must never take a wallet's lock.
+  const src = readFileSync(join(ROOT, "src/lib/server/maswali-void.ts"), "utf8");
+  const walletLock = ["withLock(`wallet:", 'withLock("wallet:', "withAdvisoryLock(`wallet:", 'withAdvisoryLock("wallet:'].filter((s) => src.includes(s));
+  ok("7b.4 · the refund takes no wallet: lock — it credits by row updates inside its one transaction",
+    walletLock.length === 0 && src.includes("db.wallet.creditMany(") && !src.includes("db.wallet.adjust("), J(walletLock));
 }
 
 // ── §8 · the invariants ─────────────────────────────────────────────────────

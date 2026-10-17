@@ -600,15 +600,19 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
       "deposit_limit", "sof_required", "withdraw_below_min",
       "self_excluded", "cooling_off",
     ] },
-    // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit` has exactly ONE caller
-    // — `buyPosition` — and it is the sole route by which an RG daily-loss refusal can reach a
-    // player on either product. If this token goes, both surfaces fall to their generic line
+    // ⭐ THE ONE THAT CLOSED `docs/RULES.md` §2.9's ⏳. `checkLossLimit`'s player-refusing caller
+    // for the poll and Up & Down is `buyPosition` (Millionea's purchase, below, is the only other)
+    // — the route by which an RG daily-loss refusal reaches a player on either product. If this token goes, both surfaces fall to their generic line
     // and the LCCP acknowledge-modal silently becomes a toast.
     { file: "src/lib/server/market-service.ts", reasons: [
       "loss_limit_daily",
       // E-232 · the lockout gate and the account-status divergence branch beneath it.
       "self_excluded", "cooling_off", "account_blocked",
     ] },
+    // MASWALI-BUILD S3 (2026-10-17) · the SECOND player-refusing caller of `checkLossLimit`: a Millionea ticket purchase is
+    // checked for its whole amount inside the wallet lock (`buyMaswaliTickets`, audit C4), and it says why with the same
+    // token. §8c.loss-limit below names exactly these two callers, each pinned here.
+    { file: "src/lib/server/maswali-money-service.ts", reasons: ["loss_limit_daily"] },
   ];
   for (const e of EMITTERS) {
     const src = readFileSync(e.file, "utf8");
@@ -720,8 +724,13 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
     };
     const all = walkServer("src/lib/server").filter((f) => !f.endsWith("responsible-gambling.ts")).filter(callsIt);
     const callers = all.filter((f) => !Object.keys(READ_ONLY_CALLERS).some((x) => f.endsWith(x)));
-    ok("8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE player-refusing caller, and it is the one that says why",
-       callers.length === 1 && callers[0].endsWith("market-service.ts"),
+    // ⭐ Two since MASWALI-BUILD S3 (2026-10-17): `buyPosition`, and Millionea's ticket purchase. Each is NAMED, and each
+    // must be pinned in EMITTERS above with `loss_limit_daily`, so a third caller — or a named one that stops saying
+    // why — still goes red here.
+    const PLAYER_CALLERS = ["src/lib/server/market-service.ts", "src/lib/server/maswali-money-service.ts"];
+    const saysWhy = (f: string) => EMITTERS.some((e) => e.file === f && e.reasons.includes("loss_limit_daily"));
+    ok("8c.loss-limit · ⛔ `checkLossLimit`'s player-refusing callers are exactly the two named, and each says why",
+       callers.length === PLAYER_CALLERS.length && PLAYER_CALLERS.every((f) => callers.some((c) => c.endsWith(f)) && saysWhy(f)),
        callers.length ? callers.join(", ") : "NO caller — the daily-loss cap is not enforced at all");
     const stale = Object.keys(READ_ONLY_CALLERS).filter((x) => !all.some((f) => f.endsWith(x)));
     ok("8c.loss-limit.exempt · every named read-only caller still calls it (no stale exemption)", stale.length === 0, stale.join(", "));

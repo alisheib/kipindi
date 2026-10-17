@@ -8,16 +8,20 @@
  *    the tick and the heal retry it until they land (`maswali-scheduler.ts`), and the console raises it as critical
  *    (`maswali-console.ts`). The positions' VOID and the tickets' REFUNDED are written beside that stamp and agree with
  *    it; nothing decides on them.
- * ⭐ ONE TRANSACTION AT ANY SIZE, under `maswali:chain` → `market:<id>`: the positions VOID in one statement, one wallet
- *    credit per player for the sum of their stakes, one BET_REFUND row per ticket in bulk, one ledger group POOL → each
- *    player, the tickets REFUNDED in bulk, the market stamped settled. `settleMarket`'s VOID arm, which this replaces for a
- *    week, made about six round trips per ticket inside the lock's 30 s, so a week of a few thousand tickets timed out on
- *    every attempt and could never refund (R1). ⚠️ The credits stay one `adjust` per player: no bulk write may reach
- *    `Wallet` around the DAL (`test:wallet-status-writers`), so a week costs about three statements per player, and a
- *    handful for everything else.
+ * ⭐ ONE TRANSACTION AT ANY SIZE, under `maswali:chain` → `market:<id>`: one credit per player for the sum of their
+ *    stakes, in bulk (`db.wallet.creditMany`: one statement per distinct amount and per 5,000 players), the positions VOID
+ *    in one statement, one BET_REFUND row per ticket in bulk, one ledger group POOL → each player, the tickets REFUNDED in
+ *    bulk, the market stamped settled. `settleMarket`'s VOID arm, which this replaces for a week, made about six round
+ *    trips per ticket inside the lock's 30 s, so a week of a few thousand tickets timed out on every attempt and could
+ *    never refund (R1); here the statements grow with the chunks, not with the tickets or the players.
+ * ⛔ NO `wallet:<id>` LOCK: a credit needs no guard, and a concurrent debit's own conditional update waits on the row.
+ *    Taking one while holding `market:` would invert the platform's order (wallet → market). The push after the commit
+ *    runs outside every lock.
  * ⭐ EVERY REFUSAL BEFORE THE FIRST WRITE (the memory store has no transaction): the market, each ticket's own position,
- *    each player's wallet, and the stakes agreed three ways — the market's pool, `POOL:<id>` and the live tickets — so the
- *    pool ends at EXACTLY 0 (MR-26). A disagreement refunds nothing and stays owed, in the alert, for a person to read.
+ *    and the stakes agreed three ways — the market's pool, `POOL:<id>` and the live tickets — so the pool ends at EXACTLY 0
+ *    (MR-26). Each player's wallet is the first write's own check: `creditMany` refuses a missing one whole, before it
+ *    writes on the memory store and by a rollback on Postgres. A disagreement refunds nothing and stays owed, in the
+ *    alert, for a person to read.
  * ⛔ R IS UNTOUCHED (MR-18): no jackpot, no guarantee, no fee, no levy. ⛔ No poll notice (muted on every Millionea path;
  *    S6 writes Millionea's own, MB-68) and no wagering reversal (a ticket accrued none, OD-27). After the commit, each
  *    refunded player's new balance is pushed to their open page (R10d), as `settleMarket` pushes a voided poll's.
@@ -56,8 +60,8 @@ export async function unrefundedVoids(): Promise<StoredWeek[]> {
   return owed;
 }
 
-/** Thrown inside the money transaction so it rolls back; mapped to a refusal outside the locks. */
-class VoidAbort extends Error { constructor(readonly why: string) { super(why); } }
+/** Thrown inside the money transaction so it rolls back; mapped to a refusal outside the locks (`said`, when it has one). */
+class VoidAbort extends Error { constructor(readonly why: string, readonly said?: string) { super(why); } }
 
 export type VoidRefund =
   | { ok: true; already: boolean; tickets: number; players: number; refunded: number }
@@ -109,34 +113,29 @@ export async function refundVoidedWeek(weekId: string): Promise<VoidRefund> {
         return refuse(`Week ${week.code}'s stakes do not agree: market pool ${market.yesPool} (other side ${market.noPool}), ledger ${byLedger}, `
           + `live tickets ${live.length} staking ${total}, week count ${week.ticketCount}. Nothing was refunded.`);
       }
-      // One credit per player, for the sum of their stakes; ⛔ a missing wallet refuses the week, never skips a ticket.
+      // One credit per player, for the sum of their stakes.
       const owed = new Map<string, number>();
       for (const { p } of plan) owed.set(p.userId, (owed.get(p.userId) ?? 0) + p.stake);
-      const walletOf = new Map<string, string>();
-      for (const userId of owed.keys()) {
-        const w = await db.wallet.findByUserId(userId, lockTx);
-        if (!w) return refuse(`A ticket holder's wallet is missing in week ${week.code}, so nothing was refunded.`);
-        walletOf.set(userId, w.id);
-      }
 
       // ⚠️ The money's stamps read the platform clock, never a week's injected one (the old VOID arm's rule).
       const at = new Date().toISOString();
       const groupId = `maswali_void_${week.id}`;
       await withMoneyTx(async (mtx) => {
+        // ⭐ THE FIRST WRITE, AND EACH WALLET'S CHECK: ⛔ a missing wallet refuses the week whole, never skips a ticket.
+        const wallets = await db.wallet.creditMany([...owed].map(([userId, amount]) => ({ userId, amount })), mtx);
+        const walletOf = new Map((wallets ?? []).map((w) => [w.userId, w]));
+        if (!wallets || [...owed.keys()].some((userId) => !walletOf.has(userId))) {
+          throw new VoidAbort("WALLET", `A ticket holder's wallet is missing in week ${week.code}, so nothing was refunded.`);
+        }
         const voided = await positionStore.voidMaswaliPositions(marketId, plan.map((x) => x.p.id), at, mtx);
         if (voided !== plan.length) throw new VoidAbort(`POSITIONS:${voided}:${plan.length}`);
-        const balanceOf = new Map<string, number>();
-        for (const [userId, amount] of owed) {
-          const updated = await db.wallet.adjust(walletOf.get(userId)!, { balance: amount }, undefined, mtx);
-          if (!updated) throw new VoidAbort(`WALLET:${userId}`);
-          balanceOf.set(userId, updated.balance);
-        }
         // Each row's balance runs up, ticket by ticket, to the player's credited balance (the purchase writes it down so).
         const still = new Map(owed);
         const refunds = plan.map(({ p }) => {
+          const w = walletOf.get(p.userId)!;
           const after = still.get(p.userId)! - p.stake;
           still.set(p.userId, after);
-          return { p, walletId: walletOf.get(p.userId)!, txnId: `txn_${randomId(12)}`, balanceAfter: balanceOf.get(p.userId)! - after };
+          return { p, walletId: w.id, txnId: `txn_${randomId(12)}`, balanceAfter: w.balance - after };
         });
         const written = await db.txn.createMany(refunds.map(({ p, walletId, txnId, balanceAfter }): StoredTxn => ({
           id: txnId,
@@ -166,7 +165,7 @@ export async function refundVoidedWeek(weekId: string): Promise<VoidRefund> {
           resolutionEvidence: market.resolutionEvidence ?? `Maswali Millionea week ${week.code} voided whole (MR-18): voided main questions outnumbered the usable reserves. Every ticket is refunded in full.`,
           objectionsClosedAt: market.objectionsClosedAt ?? at, resolutionNotifiedAt: market.resolutionNotifiedAt ?? at,
           settledAt: at, updatedAt: at,
-        }, mtx);
+        }, lockTx);
         afterCommit(mtx, () => {
           audit({ category: "WALLET", action: "maswali.week.refunded", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
             payload: { code: week.code, marketId, groupId, tickets: plan.length, players: owed.size, refunded: total } });
@@ -178,7 +177,7 @@ export async function refundVoidedWeek(weekId: string): Promise<VoidRefund> {
   } catch (err) {
     if (err instanceof VoidAbort) {
       console.error(`[maswali-void] week ${first.code} rolled back: ${err.why}`);
-      return refuse(`The refunds rolled back (${err.why}); nothing was refunded.`);
+      return refuse(err.said ?? `The refunds rolled back (${err.why}); nothing was refunded.`);
     }
     throw err;
   }

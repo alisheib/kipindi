@@ -13,6 +13,7 @@ import { Input, Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import {
   fundMaswaliGuaranteeAction, releaseMaswaliSettlementAction, returnMaswaliGuaranteeAction, setMaswaliLicenceBasisAction,
@@ -86,12 +87,13 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
         {canReturn && <Button size="sm" variant="ghost" disabled={pending || !amount} onClick={() => setMode("return")}>Take back</Button>}
       </div>
       <Feedback error={error} note={note} />
+      <UnsavedChangesGuard dirty={amount !== "" || reference.trim() !== ""} body="A guarantee movement has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={mode !== null} onClose={() => setMode(null)} loading={pending} tone={mode === "return" ? "warning" : "brand"} tier="hard" typedWord={word}
         title={mode === "return" ? "Take guarantee money back?" : "Pay into the guarantee?"} confirmLabel={mode === "return" ? "Take it back" : "Pay it in"}
         body={mode === "return"
           ? "Never below what the unsettled weeks need (OD-02); the service refuses a return that would leave the floor unbacked."
           : "Owner capital paid in to back the floor. It is the owner's money, committed: it never counts as retained earnings."}
-        onConfirm={() => run(() => (mode === "return" ? returnMaswaliGuaranteeAction : fundMaswaliGuaranteeAction)(fd({ amount, reference, typed: word })), () => { setMode(null); setAmount(""); })} />
+        onConfirm={() => run(() => (mode === "return" ? returnMaswaliGuaranteeAction : fundMaswaliGuaranteeAction)(fd({ amount, reference, typed: word })), () => { setMode(null); setAmount(""); setReference(""); })} />
     </div>
   );
 }
@@ -110,10 +112,11 @@ export function LicenceCeremony() {
       {kind !== "NONE" && <Field label="Where it is kept"><Textarea rows={2} value={ref} onChange={(e) => setRef(e.target.value)} /></Field>}
       <Button size="sm" disabled={pending || (kind !== "NONE" && ref.trim().length < 5)} onClick={() => setOpen(true)}>Record</Button>
       <Feedback error={error} note={note} />
+      <UnsavedChangesGuard dirty={ref.trim() !== ""} body="A licence basis has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
         title="Record the licence basis?" confirmLabel="Record it"
         body={kind === "NONE" ? "No week can open while no basis is recorded." : "Weeks can open once this is recorded and the guarantee covers them."}
-        onConfirm={() => run(() => setMaswaliLicenceBasisAction(fd({ kind, ref })), () => setOpen(false))} />
+        onConfirm={() => run(() => setMaswaliLicenceBasisAction(fd({ kind, ref })), () => { setOpen(false); setRef(""); })} />
     </div>
   );
 }
@@ -132,10 +135,11 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
       <Field label="Why"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <Button size="sm" disabled={pending || cap === current || reason.trim().length < 5} onClick={() => setOpen(true)}>Move the switch</Button>
       <Feedback error={error} note={note} />
+      <UnsavedChangesGuard dirty={cap !== current || reason.trim() !== ""} body="A rollout change has been chosen but not made. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="warning" tier="hard" typedWord={cap}
         title={`Set Millionea to ${cap}?`} confirmLabel="Move it"
         body="The environment's ceiling still applies: the effective state is the lower of the two."
-        onConfirm={() => run(() => setMillioneaRolloutAction(fd({ cap, reason, expectSeq: String(expectSeq) })), () => setOpen(false))} />
+        onConfirm={() => run(() => setMillioneaRolloutAction(fd({ cap, reason, expectSeq: String(expectSeq) })), () => { setOpen(false); setReason(""); })} />
     </div>
   );
 }
@@ -154,10 +158,11 @@ export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: st
       <Field label="Why Millionea is stopping"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <Button size="sm" variant="claret" disabled={pending || reason.trim().length < 5} onClick={() => setOpen(true)}>Make it the final week</Button>
       <Feedback error={error} note={note} />
+      <UnsavedChangesGuard dirty={reason.trim() !== ""} body="A reason for the final week has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
         title="Stop Millionea after this week?" confirmLabel="Make it final"
         body="A drafted week becomes final only a full week before it opens (OD-03); the current week becomes final at once. After a final week that ran, no week opens again."
-        onConfirm={() => run(() => sunsetMaswaliAction(fd({ weekId, reason, typed: SUNSET_WORD })), () => setOpen(false))} />
+        onConfirm={() => run(() => sunsetMaswaliAction(fd({ weekId, reason, typed: SUNSET_WORD })), () => { setOpen(false); setReason(""); })} />
     </div>
   );
 }

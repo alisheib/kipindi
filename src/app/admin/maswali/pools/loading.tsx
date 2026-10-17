@@ -9,7 +9,7 @@ export default function Loading() {
         <SkKpiRow count={4} />
         <SkTableCard cols={7} rows={3} minWidth={1000} headW="w-[112px]" />
         <SkTableCard cols={10} rows={4} minWidth={980} headW="w-[112px]" />
-        <SkCard lines={6} titleW="w-24" />
+        <SkCard lines={6} titleW="w-[96px]" />
       </SkBody>
     </>
   );

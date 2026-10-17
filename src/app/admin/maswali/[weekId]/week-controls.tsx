@@ -20,6 +20,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
@@ -75,7 +76,7 @@ export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentE
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   return (
-    <div className="space-y-3 max-w-[640px]">
+    <div className="space-y-3 max-w-form">
       <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="sm" /></Field>
@@ -114,7 +115,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
   return (
     <div>
       <ScrollX label="Millionea results to seal">
-        <table className="table min-w-[1040px]">
+        <table className="admin-tbl min-w-[1040px]">
           <thead>
             <tr><th className="text-left">Slot</th><th className="text-left">Question and how it resolves</th><th className="text-left">Event (EAT)</th><th className="text-left">Result</th><th className="text-left">Evidence</th><th className="text-left">Act</th></tr>
           </thead>
@@ -123,17 +124,17 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
               const p = picks[r.slot] ?? { outcome: "", evidence: "" };
               return (
                 <tr key={r.slot}>
-                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-micro text-warning">void proposed</span>}</td>
+                  <td className="text-left tabular align-top">{r.label}{r.proposedVoid && <span className="block text-body-sm text-warning">void proposed</span>}</td>
                   <td className="text-left align-top max-w-[360px]">
                     <span className="block">{r.textEn}</span>
-                    <span className="block text-caption text-text-tertiary">{r.criterionEn}</span>
-                    <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="link text-caption">Source</a>
-                    {r.aiSuggestion && <span className="block text-caption text-text-tertiary">AI suggests (never seals): {r.aiSuggestion}</span>}
+                    <span className="block text-body-sm text-text-tertiary">{r.criterionEn}</span>
+                    <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="link text-body-sm">Source</a>
+                    {r.aiSuggestion && <span className="block text-body-sm text-text-tertiary">AI suggests (never seals): {r.aiSuggestion}</span>}
                   </td>
-                  <td className="text-left tabular align-top">{r.eventEat}<span className="block text-micro text-text-tertiary">void deadline {r.voidDeadlineEat}</span></td>
+                  <td className="text-left tabular align-top">{r.eventEat}<span className="block text-body-sm text-text-tertiary">void deadline {r.voidDeadlineEat}</span></td>
                   <td className="text-left align-top">
                     {r.outcome
-                      ? <span>{r.outcome}{r.voidReason ? ` · ${r.voidReason}` : ""}<span className="block text-micro text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
+                      ? <span>{r.outcome}{r.voidReason ? ` · ${isMaswaliVoidReason(r.voidReason) ? MASWALI_VOID_REASON_LABEL[r.voidReason] : r.voidReason}` : ""}<span className="block text-body-sm text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
                       : can.seal && mayAct
                         ? <Select size="xs" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
                             options={[{ value: "", label: "Not yet" }, { value: "YES", label: "YES" }, { value: "NO", label: "NO" }]} />
@@ -161,7 +162,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
         {can.seal ? (mayAct
           ? <Button size="sm" disabled={pending || chosen.length === 0 || evidenceMissing} onClick={() => { setError(null); setSealOpen(true); }}>Seal {chosen.length || ""} result{chosen.length === 1 ? "" : "s"}</Button>
           : <ActReadOnly />) : <ControlLocked what="Seal results" need={need.seal} />}
-        {evidenceMissing && <span className="text-caption text-warning">Each seal records its evidence (at least 10 characters).</span>}
+        {evidenceMissing && <span className="text-body-sm text-warning">Each seal records its evidence (at least 10 characters).</span>}
         {error && <p role="alert" className="text-body-sm text-danger-fg w-full">{error}</p>}
       </div>
 
@@ -175,7 +176,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
         body={
           <div className="space-y-3 text-left">
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
-            <Field label="Ground"><Select size="sm" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: v.replace(/_/g, " ") }))]} /></Field>
+            <Field label="Ground"><Select size="sm" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence"><Input size="sm" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
           </div>
         }
@@ -187,7 +188,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
           <div className="space-y-3 text-left">
             <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
             <Field label="Correct result"><Select size="sm" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
-            {correction.outcome === "VOID" && <Field label="Ground"><Select size="sm" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: v.replace(/_/g, " ") }))]} /></Field>}
+            {correction.outcome === "VOID" && <Field label="Ground"><Select size="sm" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
             <Field label="Evidence"><Input size="sm" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
           </div>
         }

@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import type { DraftSuggestion } from "@/lib/server/maswali-console";
 import { createMaswaliWeekAction, editMaswaliQuestionAction } from "../actions";
@@ -82,6 +83,9 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
   const [rows, setRows] = useState<Row[]>(() => edit ? edit.rows.map((r) => ({ ...r })) : Array.from({ length: 15 }, (_, i) => emptyRow(i)));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // The draft as it was first drawn: any change since is work the officer would lose by leaving (test:unsaved-changes).
+  const [baseline] = useState(() => JSON.stringify([weekStart, visibility, rows]));
+  const dirty = JSON.stringify([weekStart, visibility, rows]) !== baseline;
   const set = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
   /** Fill a slot from a suggestion: its words, its source and its time in EAT. The officer edits from there. */
   const fillFrom = (slotIndex: number, sg: DraftSuggestion) => {
@@ -126,7 +130,8 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
   };
 
   return (
-    <div className="space-y-4 max-w-[960px]">
+    <div className="space-y-4 max-w-form">
+      <UnsavedChangesGuard dirty={dirty} body="This week's draft has changes that have not been saved. Leaving now discards them." />
       {!edit && (
         <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">
           <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
@@ -142,12 +147,12 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
       {suggestions.length > 0 && (
         <details className="glass-panel p-4">
           <summary className="cursor-pointer font-semibold text-body">Start from the calendar · {suggestions.length}</summary>
-          <p className="text-caption text-text-tertiary mt-1">Fixtures from the event calendar and AI-drafted polls in this week's window. Choosing one fills a slot; nothing is published, and every row still passes the open's checks.</p>
+          <p className="text-body-sm text-text-tertiary mt-1">Fixtures from the event calendar and AI-drafted polls in this week's window. Choosing one fills a slot; nothing is published, and every row still passes the open's checks.</p>
           <ul className="mt-3 space-y-2">
             {suggestions.map((sg) => (
               <li key={`${sg.kind}-${sg.id}`} className="flex items-center gap-3 flex-wrap text-body-sm">
-                <span className="text-caption text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
-                <span className="text-caption uppercase tracking-[0.08em] text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
+                <span className="text-body-sm text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
+                <span className="text-body-sm text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
                 <span className="min-w-0 flex-1">{sg.textEn}</span>
                 <Select size="xs" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
                   options={[{ value: "", label: "Fill slot…" }, ...rows.map((r, j) => ({ value: String(j), label: label(r) }))]} />
@@ -160,7 +165,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
       {rows.map((r, i) => (
         <section key={i} className="glass-panel p-4 space-y-3" aria-label={`Question ${label(r)}`}>
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-display font-semibold text-title-sm">{label(r)} <span className="text-text-tertiary text-caption">{r.role === "MAIN" ? "main" : "reserve · Akiba"}</span></h2>
+            <h2 className="font-display font-semibold text-title-sm">{label(r)} <span className="text-text-tertiary text-body-sm">{r.role === "MAIN" ? "main" : "reserve · Akiba"}</span></h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Category"><Select size="sm" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
@@ -173,7 +178,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
           ))}
           <div className="flex items-center gap-2 flex-wrap">
             <Button size="xs" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
-            {/[{}]/.test(r.criterionEn) && <span className="text-caption text-warning">Fill every {"{…}"} before saving.</span>}
+            {/[{}]/.test(r.criterionEn) && <span className="text-body-sm text-warning">Fill every {"{…}"} before saving.</span>}
           </div>
           {([["criterionEn", "How it resolves · English"], ["criterionSw", "How it resolves · Kiswahili"], ["criterionZh", "How it resolves · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${CRITERION_GUIDE}`}>

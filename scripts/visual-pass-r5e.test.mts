@@ -700,6 +700,7 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
     // generated space), so they left this list for 6.5′'s, where a typed space coming back fails.
     "src/components/updown/use-quick-bet.ts": "a live region's re-announce nonce (U+200B), not layout",
     "src/lib/markets/short-title.ts": "strips invisible characters from titles; the admin's form hint", "src/lib/server/ai-poll-generation.ts": "strips them from AI titles",
+    "src/lib/server/millionea-ceremony.ts": "strips invisible characters from the Owner's typed reason (MASWALI-BUILD S4); inserts none",
     "src/lib/server/ai-provider.ts": "a fixture that feeds the stripper", "src/lib/contacts/import-parse.ts": "reads them in imported numbers",
     "src/lib/contacts/import-read.ts": "reads them in imported numbers", "src/lib/house-bot/rules.ts": "reads them out of figures", "src/lib/sms-compose.ts": "folds them out of SMS text",
     "src/lib/server/tax-report-doc.ts": "a PDF (no CSS to keep a run whole)", "src/lib/server/house-console-read.ts": "the operator console (admin)",

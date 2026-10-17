@@ -30,6 +30,10 @@ export const SEAM_SITES = [
    * the replay's own rule (sanctioned change (b)) — so its `houseBotId != null` is a house branch, under its marker. It
    * moves no money and runs only after a refusal of a player's request; `placeHouseBet` answers its key at H0. */
   "landedKey",
+  /* ⭐ `maswaliHouse` ADDED 2026-10-17 WITH ITS SITE (MASWALI-BUILD S3; `test:house-bot-seam` 4.1 found it unanchored):
+   * `buyPositionInner`'s Millionea ticket arm hands `isHouse: houseIntent !== null` to Millionea's own door, which refuses
+   * every desk account before its first write (MR-10). It moves no money for a house context and reads nothing back. */
+  "maswaliHouse",
   "H0", "H1", "session", "replay", "H2", "shownCount", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",

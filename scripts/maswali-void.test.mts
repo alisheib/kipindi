@@ -17,7 +17,7 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-void",
   casesFile: "scripts/lib/maswali-void-child.mts",
-  minPass: { memory: 48, postgres: 53 },
+  minPass: { memory: 52, postgres: 57 },
   dbPrefix: "mlw_void",
   timeoutMs: 30 * 60_000,
 });

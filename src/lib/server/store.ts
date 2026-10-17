@@ -2879,6 +2879,26 @@ const memoryDb = {
       store.wallets.set(id, next);
       return next;
     },
+    /**
+     * The memory half of `prisma-dal.ts`'s `creditMany` (MASWALI-BUILD R1). ALL OR NOTHING with no transaction to lean
+     * on: every user's wallet is found and every amount read before the first credit, so a refusal (null) writes nothing.
+     * Each credit is an `adjust`, the one balance mutation this twin has.
+     */
+    creditMany: (credits: ReadonlyArray<{ userId: string; amount: number }>, _tx?: unknown): StoredWallet[] | null => {
+      const ids: string[] = [];
+      for (const c of credits) {
+        const id = store.walletsByUser.get(c.userId);
+        if (!id || !store.wallets.has(id) || !Number.isFinite(c.amount) || c.amount <= 0) return null;
+        ids.push(id);
+      }
+      if (new Set(ids).size !== ids.length) return null;
+      const out: StoredWallet[] = [];
+      credits.forEach((c, k) => {
+        const w: StoredWallet | null = memoryDb.wallet.adjust(ids[k], { balance: c.amount });
+        if (w) out.push(w);
+      });
+      return out;
+    },
   },
   depositFundingClaim: {
     findByKey: (key: string, _tx?: unknown): StoredDepositFundingClaim | null =>

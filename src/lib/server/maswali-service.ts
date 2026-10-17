@@ -279,11 +279,20 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
     if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
+    // ⛔ R3 · THE CHAIN IS THE CALENDAR (MR-3; `seq` only numbers the drafts): a week whose calendar week comes BEFORE one of
+    //    its line that has already opened never opens — it would settle after it, claiming a carry the later week may
+    //    already have drawn. In the template this never bites (one week of a line sells at a time, above, and no week
+    //    opens after its own close, `openProblems`); it holds when a later week was opened early and closed early.
+    const later = (await weekStore.list({ visibility: week.visibility })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
+    if (later) return refuse(`Week ${later.code} comes after week ${week.code} and has already opened; weeks open, claim and settle strictly in calendar order (MR-3), so this week can no longer open.`);
     // MR-30 · the sunset: nothing opens after a final week that ran, and a final week that voided or sold nothing hands
-    // the role to the next PUBLIC week to open (OD-03).
+    // the role to the next PUBLIC week to open (OD-03). While a final week is ENDING, only a week whose calendar comes
+    // AFTER it is refused: an earlier week drafted beside it still runs.
     const life = week.visibility === "PUBLIC" ? await sunsetState() : { kind: "LIVE" as const };
     if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week.`);
-    if (life.kind === "ENDING" && life.week.id !== week.id) return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
+    if (life.kind === "ENDING" && life.week.id !== week.id && calendarStartMs(week) > calendarStartMs(life.week)) {
+      return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
+    }
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
     await seedDefaultSources();
@@ -435,14 +444,23 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse("The close has not arrived.");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
-    const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
-    const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
-    const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
-    if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
-    if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
-    audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside
+    // `market:<id>` (taken after `wallet:`); the close takes that lock too, inside the chain lock — the settlement's own
+    // order — so it lists the live tickets only once an in-flight purchase or cancel has committed, and a purchase or
+    // cancel that waited behind it re-reads the week inside that lock and finds it closed. Without it, a purchase passing
+    // its clock check an instant before the close committed after the list: a LIVE ticket outside the root, and counts
+    // the settlement refuses for good.
+    const seal = async (): Promise<Result<{ week: StoredWeek; already?: boolean }>> => {
+      const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
+      const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
+      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
+      if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
+      if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
+      audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
+      return { ok: true, week: (await weekStore.get(week.id))! };
+    };
+    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();
   });
 }
 
@@ -634,16 +652,38 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
 // ── THE CARRY ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
+ * ⭐ R3 · A WEEK'S PLACE IN THE CHAIN IS ITS CALENDAR WEEK (MR-3), never the order it was drafted in (`seq`): the Monday
+ * 00:00 EAT its ISO week starts. Read from `finalDeadlineAt`, which the draft stamps inside the following week and nothing
+ * ever moves — `opensAt` becomes the real open instant at the open, and the close may move. One line never holds two
+ * weeks of one ISO week (the code is unique), so this orders a line strictly.
+ */
+export function calendarStartMs(week: Pick<StoredWeek, "finalDeadlineAt">): number {
+  return eatWeekStartMs(Date.parse(week.finalDeadlineAt)) - 7 * DAY_MS;
+}
+
+/**
+ * MR-3 · the week of this line that comes before `week` in the chain — an earlier calendar week that has opened — and is
+ * not terminal yet; or null when `week` may claim its carry and settle. A DRAFT is never in the chain: it has sold
+ * nothing, and once a later week of its line has opened it can never open (`openWeek`, R3).
+ */
+export async function carryBlocker(week: StoredWeek): Promise<StoredWeek | null> {
+  const at = calendarStartMs(week);
+  const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.id !== week.id && w.state !== "DRAFT" && calendarStartMs(w) < at);
+  return earlier.find((w) => w.state !== "SETTLED" && w.state !== "VOIDED") ?? null;
+}
+
+/**
  * MR-21 · CLAIM THE CARRY, ONCE, IN CHAIN ORDER. A week claims R only after every earlier week of its visibility is
  * terminal (MR-3), and the claim is a conditional write (`rolloverIn` IS NULL). `readJackpot` is S3's ledger read.
+ * ⚠️ Standalone, the claim commits at once. The release (`settleMaswaliWeek`) never calls this: it claims inside its own
+ * money transaction (R3), so a claim there persists only with its payout.
  */
 export async function claimCarry(input: { weekId: string; readJackpot: () => Promise<number | null> }): Promise<Result<{ rolloverIn: number; already?: boolean }>> {
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.rolloverIn != null) return { ok: true, rolloverIn: week.rolloverIn, already: true };
-    const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.seq < week.seq && w.state !== "DRAFT");
-    const blocking = earlier.find((w) => w.state !== "SETTLED" && w.state !== "VOIDED");
+    const blocking = await carryBlocker(week);
     if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
     const r = await input.readJackpot().catch(() => null);
     if (r === null || !Number.isSafeInteger(r) || r < 0) return refuse("The jackpot balance could not be read, so no carry was claimed.");
@@ -668,7 +708,8 @@ const SUNSET_NOTICE_MS = 7 * DAY_MS;
  *   · PASSES_ON — the final week voided or sold nothing (OD-03): the next week to open becomes final.
  */
 export async function sunsetState(): Promise<{ kind: "LIVE" } | { kind: "ENDING" | "RETIRED" | "PASSES_ON"; week: StoredWeek }> {
-  const finals = (await weekStore.list({ visibility: "PUBLIC" })).filter((w) => w.isFinal).sort((a, b) => b.seq - a.seq);
+  // The latest final week in the CALENDAR (R3): a week the role passed on to may have been drafted before the one it replaced.
+  const finals = (await weekStore.list({ visibility: "PUBLIC" })).filter((w) => w.isFinal).sort((a, b) => calendarStartMs(b) - calendarStartMs(a));
   const last = finals[0];
   if (!last) return { kind: "LIVE" };
   if (last.state === "VOIDED" || (last.state === "SETTLED" && (last.salesAtClose ?? 0) === 0)) return { kind: "PASSES_ON", week: last };
@@ -702,7 +743,7 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     }
     const life = await sunsetState();
     if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
-    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.seq > week.seq && w.state !== "DRAFT");
+    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
     if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
     await weekStore.patch(week.id, { isFinal: true });
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,

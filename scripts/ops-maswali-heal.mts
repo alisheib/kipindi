@@ -10,6 +10,7 @@
  * inside it is a conditional write under the chain lock, so a heal that races the live scheduler does each thing once. A
  * VOIDED week's refunds are one transaction that answers "already" once its market is settled (`maswali-void.ts`).
  */
+import { auditFlush } from "../src/lib/server/audit.ts";
 import { listConsoleWeeks, consoleAlerts } from "../src/lib/server/maswali-console.ts";
 import { reconcileMaswaliWeeks } from "../src/lib/server/maswali-scheduler.ts";
 import { unrefundedVoids } from "../src/lib/server/maswali-void.ts";
@@ -32,4 +33,6 @@ console.log(alerts.length ? `\n${alerts.map((a) => `${a.level === "critical" ? "
 if (!APPLY) process.exit(0);
 const r = await reconcileMaswaliWeeks();
 console.log(`\n✓ reconcile: closed ${r.closed} · voided ${r.voided} · void proposals ${r.proposals} · failures ${r.failures}`);
+// E-66 · the reconcile audits fire-and-forget (a close, a void, a week's refunds): drain the queue before the exit.
+await auditFlush();
 process.exit(r.failures > 0 ? 1 : 0);

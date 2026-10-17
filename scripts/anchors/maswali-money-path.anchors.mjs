@@ -3,6 +3,7 @@
  * the real source, and names the assertion that must turn red, and in which memory child:
  *   · purchase — `test:maswali-purchase` (`scripts/lib/maswali-purchase-child.mts`)
  *   · settle   — `test:maswali-settle`   (`scripts/lib/maswali-settle-child.mts`)
+ *   · closerace — `test:maswali-close-race` (`scripts/lib/maswali-close-race-child.mts`; R2 of the review, 2026-10-17)
  *   · void     — `test:maswali-void`     (`scripts/lib/maswali-void-child.mts`, MASWALI-BUILD R1)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
@@ -124,6 +125,49 @@ export const MUTATIONS = [
     expect: "9.2 · ⭐ its 10,000 went to the DRIVE jackpot",
     suite: "settle",
   },
+  /* ── The adversarial review's findings of 2026-10-17 (the R-plants, as R2's). R4a and R4b are Postgres-only (a read
+     outside the joined transaction), so no memory child can show them red; their cases run in the Postgres half of
+     `test:maswali-purchase` (§8). ── */
+  {
+    name: "(R10a) the ticket arm does not ask the rollout itself: a caller past purchaseMaswaliTickets sells at WITHDRAWN",
+    file: MONEY,
+    from: `  if (!rolloutSells(rollout, week.visibility)) {`,
+    to: `  if (false) {`,
+    expect: "R10a.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R10b-buy) the desk check fails open at the purchase again: an unreadable lookup buys the ticket",
+    file: MONEY,
+    from: `    return refuse("We're busy right now — your stake hasn't moved. Try again in a moment.", { code: "BUSY", reason: "system_busy", retryAfterSec: 1 });`,
+    to: `    desk = null;`,
+    expect: "R10b.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R10b-hold) the desk check fails open at the settlement again: an unreadable lookup pays the share free",
+    file: SETTLE,
+    from: `    return "unreadable" as const;`,
+    to: `    return null;`,
+    expect: "R10b.5 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R7) a guarantee reference books twice (the booked-reference check answers new for every reference)",
+    file: MONEY,
+    from: `  if (seen.at === null) return null;`,
+    to: `  return null;`,
+    expect: "R7.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R5) the activity page's loss panel sums the raw gambling net again (a win and an old ticket's refund add headroom)",
+    file: "src/lib/server/activity-summary.ts",
+    from: `    lossLimitNetSince(userId, now - DAY_MS),`,
+    to: `    db.txn.sumGamblingNetSince(userId, now - DAY_MS),`,
+    expect: "R5.2 · ⭐",
+    suite: "purchase",
+  },
   {
     name: "(13) a Millionea win offsets the 24-hour loss limit (OD-17)",
     file: "src/lib/server/responsible-gambling.ts",
@@ -164,5 +208,65 @@ export const MUTATIONS = [
     to: "        const refunded = plan.length;",
     expect: "1.5 · ⭐ every ticket REFUNDED",
     suite: "void",
+  },
+  {
+    name: "(R2) the close does not wait for a purchase in flight (no market lock inside the chain lock)",
+    file: SVC,
+    from: "    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();",
+    to: "    return seal();",
+    expect: "1.2 · ⭐ the close WAITED",
+    suite: "closerace",
+  },
+  /* ── Review lane B, round 2 (2026-10-17): R3, R6, R9. R8 (a forfeit's or a hold's mark inside its transaction) is a
+     ROLLBACK, which only Postgres makes: a plant dropping the `tx` changes nothing a memory child can see, so its red twin
+     is the Postgres half of test:maswali-settle (R8.1, R8.2: the commit fails at its last statement and neither half
+     lands), as R4a/R4b's is test:maswali-purchase's. ── */
+  {
+    name: "(R3-claim) the carry is claimed before the guarantee's refusal: a refused release leaves its claim standing",
+    file: SETTLE,
+    from: "          if (a.kind === \"PAYOUT\" && a.U > 0) {\n            const held = await maswaliAccountBalance(acct.maswaliGuarantee, mtx);\n            if (held === null || held < a.U) throw new SettleAbort(`GUARANTEE:${held ?? \"unreadable\"}:${a.U}`);\n          }\n          if (!f.carryClaimed && !(await weekStore.claimCarry(week.id, f.rolloverIn, mtx ?? undefined))) throw new SettleAbort(\"CARRY\");",
+    to: "          if (!f.carryClaimed && !(await weekStore.claimCarry(week.id, f.rolloverIn, mtx ?? undefined))) throw new SettleAbort(\"CARRY\");\n          if (a.kind === \"PAYOUT\" && a.U > 0) {\n            const held = await maswaliAccountBalance(acct.maswaliGuarantee, mtx);\n            if (held === null || held < a.U) throw new SettleAbort(`GUARANTEE:${held ?? \"unreadable\"}:${a.U}`);\n          }",
+    expect: "6.2b · R3 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R3-jackpot) the jackpot is not read before the carry is drawn: a claim above what it holds is paid",
+    file: SETTLE,
+    from: "            if (inJackpot === null || inJackpot < f.rolloverIn) throw new SettleAbort(`JACKPOT:${inJackpot ?? \"unreadable\"}:${f.rolloverIn}`);",
+    to: "            void inJackpot;",
+    expect: "R3.4 · ⭐ (iii)",
+    suite: "settle",
+  },
+  {
+    name: "(R6-lift) the lift takes no chain lock: a forfeit's lift reads \"nothing held\" while a held share is landing",
+    file: SETTLE,
+    from: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return withLock(MASWALI_CHAIN_LOCK, async () => {",
+    to: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return (async (fn: () => Promise<boolean>) => fn())(async () => {",
+    expect: "R6.2b · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R9) the winners are paid one by one: a WIN statement per winner instead of one per batch",
+    file: SETTLE,
+    from: "            const won = await positionStore.settleMaswaliWinners(marketId, winners.map((w) => w.ticket.positionId), a.share, settledAt, mtx);",
+    to: "            let won = 0; for (const w of winners) won += await positionStore.settleMaswaliWinners(marketId, [w.ticket.positionId], a.share, settledAt, mtx);",
+    expect: "R9.6 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R6-already) a release that waited behind another places its holds before re-reading the week",
+    file: SETTLE,
+    from: "      if (current?.state === \"SETTLED\") return { ok: true, week: current, already: true };",
+    to: "      void current;",
+    expect: "R6.7 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R6-already-lift) an `already` answer lifts none of its winners' holds: a hold with no held share stands",
+    file: SETTLE,
+    from: "      await liftHoldsIfClear(heldAccounts, `Millionea ${first.code} · already settled`);",
+    to: "",
+    expect: "R6.8 · ⭐",
+    suite: "settle",
   },
 ];

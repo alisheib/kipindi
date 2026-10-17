@@ -7,8 +7,8 @@ export default function Loading() {
       <AdminPageHead title="Edit a draft" sw="Hariri rasimu" />
       <SkBody>
         <SkCard lines={2} titleW="w-0" />
-        <SkCard lines={8} titleW="w-16" />
-        <SkCard lines={8} titleW="w-16" />
+        <SkCard lines={8} titleW="w-[64px]" />
+        <SkCard lines={8} titleW="w-[64px]" />
       </SkBody>
     </>
   );

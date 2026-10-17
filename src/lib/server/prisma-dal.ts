@@ -2413,6 +2413,54 @@ export const prismaDb = {
       if (tx) return run(); // let a guard failure / db error propagate to roll back the tx
       try { return await run(); } catch { return null; }
     },
+    /**
+     * ⭐ CREDIT MANY WALLETS AT ONCE, BY USER (MASWALI-BUILD R1): the week void refunds every ticket holder inside one
+     * transaction, and a credit at a time cost two round trips a player inside the lock's 30 s. A credit needs no guard,
+     * and a concurrent debit's own conditional update waits on the row, so this is one `updateMany` per distinct amount
+     * and per 5,000 users, then one read back per 5,000. Balance only: no hold, no pending, no status, no reasons
+     * (`test:wallet-status-writers` 2.10). ⛔ ALL OR NOTHING: a user named twice or an amount that is not positive returns
+     * null before any write; a missing wallet returns null after the writes, and inside a transaction the caller must
+     * then THROW so they roll back (the week void does). Without a transaction it opens its own. Returns every credited
+     * wallet as it now stands, in no particular order.
+     */
+    creditMany: async (
+      credits: ReadonlyArray<{ userId: string; amount: number }>,
+      tx?: Prisma.TransactionClient | null,
+    ): Promise<StoredWallet[] | null> => {
+      const users = credits.map((c) => c.userId);
+      if (new Set(users).size !== users.length || credits.some((c) => !Number.isFinite(c.amount) || c.amount <= 0)) return null;
+      const byAmount = new Map<number, string[]>();
+      for (const c of credits) {
+        const same = byAmount.get(c.amount);
+        if (same) same.push(c.userId);
+        else byAmount.set(c.amount, [c.userId]);
+      }
+      const CHUNK = 5_000;
+      const run = async (db: Db): Promise<StoredWallet[] | null> => {
+        for (const [amount, ids] of byAmount) {
+          for (let i = 0; i < ids.length; i += CHUNK) {
+            const chunk = ids.slice(i, i + CHUNK);
+            const res = await db.wallet.updateMany({ where: { userId: { in: chunk } }, data: { balance: { increment: amount } } });
+            if (res.count !== chunk.length) return null;
+          }
+        }
+        const out: StoredWallet[] = [];
+        for (let i = 0; i < users.length; i += CHUNK) {
+          for (const row of await db.wallet.findMany({ where: { userId: { in: users.slice(i, i + CHUNK) } } })) out.push(toStoredWallet(row));
+        }
+        return out.length === users.length ? out : null;
+      };
+      if (tx) return run(tx); // a short count or a db error is the caller's to roll back
+      try {
+        return await pc().$transaction(async (t) => {
+          const out = await run(t);
+          if (!out) throw new Error("creditMany: a wallet is missing, so nothing was credited");
+          return out;
+        });
+      } catch {
+        return null;
+      }
+    },
   },
 
   // ── DURABLE DEPOSIT ACTION CLAIM ─────────────────────────────────────────
@@ -2461,7 +2509,7 @@ export const prismaDb = {
           createdAt: new Date(t.createdAt),
           completedAt: t.completedAt ? new Date(t.completedAt) : null,
           idempotencyKey: t.idempotencyKey ?? null,
-          // The house marker, written here and nowhere else (`update` skips it).
+          // The house marker, written here and by `createMany` only (`update` skips it).
           houseBotId: t.houseBotId ?? null,
           // The journey funnel's deposit origin (S3b) — create-only too.
           origin: t.origin ?? null,
@@ -2508,7 +2556,8 @@ export const prismaDb = {
             idempotencyKey: t.idempotencyKey ?? null,
             houseBotId: t.houseBotId ?? null,
             origin: t.origin ?? null,
-            pendingBet: t.pendingBet == null ? PrismaRuntime.DbNull : t.pendingBet as Prisma.InputJsonValue,
+            // Spelled apart from `create`'s line, which `red:deposit-persistence` quotes and needs to find exactly once.
+            pendingBet: t.pendingBet == null ? PrismaRuntime.DbNull : (t.pendingBet as Prisma.InputJsonValue),
           })),
         });
         n += r.count;

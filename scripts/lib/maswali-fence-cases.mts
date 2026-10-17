@@ -81,8 +81,10 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   const ticketId = `pos_fence_${process.pid}`;
   if (pollPos) await w.mdal.positionStore.set({ ...pollPos, id: ticketId, marketId: wk.id, idempotencyKey: null });
   const sell: Any = await svc.cashOutPosition(player, ticketId);
-  ok("2.2 · cashOutPosition: a Millionea ticket has no paid exit (refused as a market not live)",
-    !sell.ok && sell.reason === "market_not_live", show(sell));
+  // Since S3 a Millionea position's only exit is the free cancel (`cancelMaswaliTicket`, RULES §2.6), reached before the
+  // poll path's lock; a position with no live ticket behind it is refused there. The poll's paid exit is never reached.
+  ok("2.2 · cashOutPosition: a Millionea ticket has no paid exit (it goes to the free cancel, which refuses a position with no live ticket)",
+    !sell.ok && sell.reason === "position_not_open", show(sell));
 
   const res: Any = await svc.resolveMarket({ marketId: wk.id, outcome: "YES", officerId: official });
   ok("2.3 · resolveMarket refuses to seal a week as one question", !res.ok && res.error === FENCE, show(res));
