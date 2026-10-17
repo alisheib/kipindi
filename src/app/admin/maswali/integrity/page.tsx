@@ -126,7 +126,7 @@ async function Content() {
 
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
           {v.held.length === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." /> : (
-            <ScrollX>
+            <ScrollX label="Millionea held shares">
               <table className="table min-w-[900px]">
                 <thead><tr><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-right">Share</th><th className="text-left">Why</th><th className="text-left">Decision</th></tr></thead>
                 <tbody>
@@ -147,7 +147,7 @@ async function Content() {
 
         <AdminCard title="Winners" sw="Washindi" padding="p-0">
           {v.winners.length === 0 ? <EmptyState title="No winner yet" body="Every paid ticket appears here with its account, to screen." /> : (
-            <ScrollX>
+            <ScrollX label="Millionea winners">
               <table className="table min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-left">Role · status</th><th className="text-right">Account age</th><th className="text-right">Share</th><th className="text-left">Screening</th></tr></thead>
                 <tbody>
@@ -169,7 +169,7 @@ async function Content() {
 
         <AdminCard title="Seal log" sw="Kumbukumbu ya muhuri" padding="p-0">
           {v.sealLog.length === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." /> : (
-            <ScrollX>
+            <ScrollX label="Millionea seal log">
               <table className="table min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Slot</th><th className="text-left">Result</th><th className="text-left">Sealed by</th><th className="text-left">At (EAT)</th><th className="text-left">Second officer</th><th className="text-left">Evidence</th></tr></thead>
                 <tbody>

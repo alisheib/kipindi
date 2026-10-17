@@ -113,7 +113,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
 
   return (
     <div>
-      <ScrollX>
+      <ScrollX label="Millionea results to seal">
         <table className="table min-w-[1040px]">
           <thead>
             <tr><th className="text-left">Slot</th><th className="text-left">Question and how it resolves</th><th className="text-left">Event (EAT)</th><th className="text-left">Result</th><th className="text-left">Evidence</th><th className="text-left">Act</th></tr>
