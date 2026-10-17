@@ -126,6 +126,26 @@ export type FailureReason =
    *  carrying a reserved prefix. ⛔ The house seam's own refusals are NOT player reasons and never live in
    *  this client-bundled file (C4 ruling 148, D19): they are `HouseSeamReason` in `house-bot/bet-path.ts`. */
   | "idempotency_key_conflict"
+  // ── Maswali Millionea (MASWALI-BUILD S1; MASWALI-PLAN §7b S1 item 7) ──────
+  // Emitted by the Millionea buy path (S3). Each names the cause and the next step, in three languages.
+  /** MR-11: this account already holds the week's cap. `detail.ticketCap` is the WEEK'S frozen cap. */
+  | "millionea_cap_reached"
+  /** MR-10: a ticket is real money only; a purchase that would draw bonus is refused. `detail.balance` = main balance. */
+  | "millionea_bonus_refused"
+  /** MR-13: the week's close has passed (on the database clock, inside the lock). */
+  | "millionea_sales_closed"
+  /** MR-10: an account holding a staff role. */
+  | "millionea_staff_barred"
+  /** MR-10 / D19: an account the product refuses for any other reason. ⛔ Neutral on purpose: it never says why. */
+  | "millionea_account_ineligible"
+  /** MR-9: fewer than all fifteen answered. */
+  | "millionea_picks_incomplete"
+  /** The week is a draft, or past its sales. */
+  | "millionea_week_not_open"
+  /** The sales pause (S4), a separate act from the rollout switch. */
+  | "millionea_paused"
+  /** The licence gate, or the rollout below what this viewer may see. */
+  | "millionea_not_available"
   // ── B2 · a WARNING shown before confirming, not a refusal ─────────────────
   | "bonus_wagering_one_side"
   // ── C2 SECOND TRANCHE · wallet, KYC, auth, proposals, objections ──────────
@@ -270,7 +290,7 @@ export interface ReasonSpec {
   /** The dictionary key under `t.fail`. */
   key: string;
   /** Figures this reason's copy interpolates. Declared so the guard can check them. */
-  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4" | "limitMin" | "playedMin" | "value")[];
+  needs?: readonly ("min" | "max" | "balance" | "needed" | "retryAfterSec" | "until" | "remaining" | "net" | "last4" | "limitMin" | "playedMin" | "value" | "ticketCap")[];
 }
 
 /**
@@ -325,6 +345,17 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
 
   // A request id that belongs to another bet: nothing moved, the player can retry → warning.
   idempotency_key_conflict:         { severity: "warning", channel: "toast", key: "failIdempotencyKeyConflict" },
+  // Maswali Millionea (S1). ⛔ None is a modal: no Millionea refusal seizes the screen; the slip shows them inline or as
+  // a sticky toast. `warning` = the player can fix it (answer the rest, deposit); `error` = a hard block they cannot lift.
+  millionea_cap_reached:        { severity: "warning", channel: "inline", key: "failMillioneaCapReached", needs: ["ticketCap"] },
+  millionea_bonus_refused:      { severity: "warning", channel: "inline", key: "failMillioneaBonusRefused", needs: ["balance"] },
+  millionea_sales_closed:       { severity: "info",    channel: "toast",  key: "failMillioneaSalesClosed" },
+  millionea_staff_barred:       { severity: "error",   channel: "toast",  key: "failMillioneaStaffBarred" },
+  millionea_account_ineligible: { severity: "error",   channel: "toast",  key: "failMillioneaAccountIneligible" },
+  millionea_picks_incomplete:   { severity: "warning", channel: "inline", key: "failMillioneaPicksIncomplete" },
+  millionea_week_not_open:      { severity: "info",    channel: "toast",  key: "failMillioneaWeekNotOpen" },
+  millionea_paused:             { severity: "info",    channel: "toast",  key: "failMillioneaPaused" },
+  millionea_not_available:      { severity: "info",    channel: "toast",  key: "failMillioneaNotAvailable" },
 
   bonus_wagering_one_side: { severity: "warning", channel: "inline", key: "failBonusWageringOneSide", needs: ["remaining"] },
 
@@ -600,6 +631,8 @@ export interface FailureDetail {
   fee?: number;
   /** Server-only (house seam): WHICH cap a refusal hit (a `CapCode` in `house-bot/constants.ts`). */
   cap?: string;
+  /** Maswali Millionea (S1): the week's frozen ticket cap a `millionea_cap_reached` names. A COUNT, not money. */
+  ticketCap?: number;
   /** Server-only (house seam): WHICH conflict a refusal names (a `ConflictCode`). */
   conflict?: string;
   /** Server-only (house seam): the condition a refusal lost: OPENER, THIN, COUNTER or FILL. */
@@ -730,6 +763,8 @@ export function renderFailure(
     playedMin: d.playedMin != null ? String(d.playedMin) : "—",
     // S6 A8c · money again: the new price of a sale whose price moved (`price_changed`).
     value: d.value != null ? money(d.value) : "—",
+    // Maswali Millionea (S1) · a COUNT of tickets, so never `money()` — the `limitMin` lesson above.
+    ticketCap: d.ticketCap != null ? String(d.ticketCap) : "—",
   };
   // 🔴 A GLOBAL SUBSTITUTION, AND IT HAS TO BE. This was a chain of `String.replace(str, …)`
   // calls, and `replace` with a STRING pattern substitutes only the FIRST occurrence — so
