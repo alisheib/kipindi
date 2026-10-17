@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.9c289c52.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.db9d4f0b.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -24,6 +24,7 @@ export const GLYPH_REGISTRY = {
   "arrowRight": { s: "p-arrow-right", g: "app", i: { bold: [28, 228.03] }, m: { d: "M40 128H216M144 56L216 128L144 200", x: [40, 216] } },
   "arrowUp": { s: "p-arrow-up", g: "app", i: { bold: [43.97, 212.02] }, m: { d: "M128 216V40M56 112L128 40L200 112", x: [56, 200] } },
   "arrowUpFromLine": { s: "p-arrow-line-up", g: "app", i: { bold: [28, 228] }, m: { d: "M128 224V72M56 144L128 72L200 144M40 40H216", x: [40, 216] } },
+  "assorted": { s: "p-shapes", g: "app", i: { regular: [16, 232], bold: [11.98, 236] } },
   "attestation": { s: "p-stamp", g: "app", i: { bold: [28, 228] } },
   "bank": { s: "p-bank", g: "app", i: { bold: [4, 252] } },
   "bell": { s: "p-bell", g: "shell", i: { bold: [28.01, 227.99] } },
@@ -49,7 +50,7 @@ export const GLYPH_REGISTRY = {
   "circleStop": { s: "p-stop-circle", g: "app", i: { bold: [20, 236] } },
   "clock": { s: "p-clock", g: "app", i: { regular: [24, 232], bold: [20, 236] } },
   "clockPending": { s: "p-clock-countdown", g: "app", i: { bold: [20.14, 236.04] } },
-  "coins": { s: "p-coins", g: "app", i: { bold: [4, 252] } },
+  "coins": { s: "p-coins", g: "app", i: { regular: [8, 248], bold: [4, 252] } },
   "comment": { s: "p-chat-text", g: "app", i: { bold: [20, 236] } },
   "copy": { s: "p-copy", g: "app", i: { bold: [28, 228] } },
   "crown": { s: "p-crown", g: "app", i: { bold: [3.98, 252] } },
@@ -97,7 +98,7 @@ export const GLYPH_REGISTRY = {
   "lock": { s: "p-lock", g: "shell", i: { bold: [28, 228] } },
   "logOut": { s: "p-sign-out", g: "app", i: { bold: [36, 236.01] } },
   "mail": { s: "p-envelope-simple", g: "app", i: { bold: [20, 236] } },
-  "markets": { s: "p-squares-four", g: "shell", i: { regular: [40, 216], bold: [36, 220] } },
+  "markets": { s: "p-squares-four", g: "shell", i: { bold: [36, 220] } },
   "megaphone": { s: "p-megaphone", g: "app", i: { bold: [28, 252] } },
   "menu": { s: "p-list", g: "shell", i: { bold: [28, 228] } },
   "mobileMoney": { s: "x-mobileMoney", g: "app", i: { bold: [52, 204] } },
@@ -114,7 +115,7 @@ export const GLYPH_REGISTRY = {
   "qr": { s: "p-qr-code", g: "app", i: { bold: [36, 220] } },
   "receipt": { s: "p-receipt", g: "app", i: { bold: [20, 236] } },
   "reconcile": { s: "p-equals", g: "admin", i: { bold: [28, 228] } },
-  "resolved": { s: "p-seal-check", g: "app", i: { bold: [12, 244] } },
+  "resolved": { s: "p-seal-check", g: "app", i: { regular: [16, 240], bold: [12, 244] } },
   "rotateCcw": { s: "p-arrow-counter-clockwise", g: "app", i: { bold: [12, 228] } },
   "scrollText": { s: "p-scroll", g: "app", i: { bold: [4, 236] } },
   "sealCheck": { s: "p-seal-check", g: "app", i: { bold: [12, 244] } },
@@ -126,7 +127,7 @@ export const GLYPH_REGISTRY = {
   "shieldAlert": { s: "p-shield-warning", g: "admin", i: { bold: [28, 228] } },
   "shieldOff": { s: "p-shield-slash", g: "admin", i: { bold: [28, 228] } },
   "shieldQuestion": { s: "p-seal-question", g: "app", i: { bold: [12, 244] } },
-  "shieldcheck": { s: "p-shield-check", g: "app", i: { bold: [28, 228] } },
+  "shieldcheck": { s: "p-shield-check", g: "app", i: { regular: [32, 224], bold: [28, 228] } },
   "shuffle": { s: "p-shuffle", g: "app", i: { regular: [24, 240.01], bold: [20, 244.02] } },
   "sliders": { s: "p-sliders-horizontal", g: "app", i: { bold: [28, 228] } },
   "smartphone": { s: "p-device-mobile", g: "app", i: { bold: [52, 204] } },
@@ -136,7 +137,7 @@ export const GLYPH_REGISTRY = {
   "sofSalary": { s: "p-briefcase", g: "app", i: { bold: [20, 236] } },
   "sofSavings": { s: "p-piggy-bank", g: "app", i: { bold: [0, 256] } },
   "sparkle": { s: "p-sparkle", g: "app", i: { bold: [11.97, 252] } },
-  "star": { s: "p-star", g: "app", i: { bold: [11.99, 244.03] } },
+  "star": { s: "p-star", g: "app", i: { regular: [16.01, 239.99], bold: [11.99, 244.03], fill: [16.06, 239.93] } },
   "target": { s: "p-target", g: "app", i: { bold: [19.87, 236.05] } },
   "tech": { s: "p-cpu", g: "app", i: { regular: [16, 240], bold: [12, 244] } },
   "ticket": { s: "p-ticket", g: "shell", i: { bold: [12, 244] } },
@@ -145,7 +146,7 @@ export const GLYPH_REGISTRY = {
   "trash": { s: "p-trash", g: "app", i: { bold: [28, 228] } },
   "trendingDown": { s: "p-trend-down", g: "app", i: { bold: [11.97, 244] } },
   "trendingUp": { s: "p-trend-up", g: "app", i: { bold: [11.97, 244] } },
-  "trophy": { s: "p-trophy", g: "app", i: { bold: [4, 252] } },
+  "trophy": { s: "p-trophy", g: "app", i: { regular: [8, 248], bold: [4, 252] } },
   "unlock": { s: "p-lock-open", g: "app", i: { bold: [28, 228] } },
   "upload": { s: "p-upload-simple", g: "admin", i: { bold: [28, 228] } },
   "user": { s: "p-user", g: "shell", i: { bold: [19.81, 235.8] } },

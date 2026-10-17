@@ -48,7 +48,7 @@ const CHROME: Record<string, { tap?: Record<string, string> }> = {
   "src/components/layout/avatar-menu.tsx": { tap: {
     shieldcheck: "a menu row", arrowRight: "a menu row's door", logOut: "the menu's sign-out row",
     portfolio: "a menu row", profile: "a menu row", resolved: "a menu row", wallet: "a menu row", crown: "a menu row",
-    sparkle: "a menu row (Propose & earn)", gift: "a menu row (Invite & Earn)",
+    idea: "a menu row (Propose & earn)", gift: "a menu row (Invite & Earn)",
   } },
   "src/components/journey/journey-top-bar.tsx": {},
   "src/components/journey/journey-tabs.tsx": {},

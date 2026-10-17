@@ -70,7 +70,7 @@ import { CloseX, exitBeatMs } from "@/components/ui/modal";
 
 /** The same list `Modal` traps against — kept identical so the two cannot drift apart. */
 const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function FilterSheet({
   label,

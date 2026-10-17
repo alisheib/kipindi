@@ -24,7 +24,7 @@ export default function Loading() {
       lead={
         <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="flex flex-col items-start gap-2">
-            <PageHeader icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+            <PageHeader icon={<I.idea s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
             <StatusFlag label={t.proposals.comingSoonTag} glyph="clock" size="sm" className="cs-badge" style={{ color: "transparent" }} />
           </div>
         </PageHero>

@@ -113,7 +113,9 @@ export function WatchStar({
         className,
       )}
     >
-      <I.star s={size} className={on ? "fill-current" : undefined} />
+      {/* Followed = solid: the star's Fill (PHOSPHOR-MIGRATION W2). A class cannot fill a Phosphor drawing — its paths
+          carry their own fill — so the state picks the drawing. */}
+      <I.star s={size} tier={on ? "fill" : undefined} />
     </button>
   );
 }

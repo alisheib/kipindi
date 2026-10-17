@@ -310,11 +310,37 @@ that read the house drawings. W2's list below carries them.
   opened menu or panel is named with where, and every shell key is drawn by the chrome (six new plants, 25/25 caught).
   The skew case is Next's: a tab opened before the deploy loads a whole new page on its next navigation (the router
   compares the build id), so it never draws a shell glyph without the inline symbols beside it.
+- **W2's adversarial review** (2026-10-17: an independent read of the whole diff, set to refute it) found six defects,
+  all fixed here:
+  1. The three focus traps (`Modal`, the notifications panel, the filter sheet) counted a bare `[href]`, so every glyph's
+     `<use href>` was "focusable". In ConfirmModal (the deposit and withdraw confirms, sign-out, 63 admin confirms) Tab
+     died on Cancel, and Shift+Tab left the dialog. They now read `a[href], area[href]`.
+     `test:visual-pass-r6b` 1.2 had caught it. It reads the same selector, with a new control showing the in-flight
+     panels draw 3 and 2 glyphs it no longer counts.
+  2. A followed market's star lost its fill: a class cannot fill a Phosphor drawing. WatchStar now draws the star's
+     Fill when on (`star` in `FILL_KEYS`).
+  3. R-WEIGHT at 27px and up: RewardBurst's 36px glyphs (trophy, shieldcheck, resolved, star) and the cashback coins
+     now ship Regular, where they fell back to Bold.
+  4. The category Other, and any category the map does not know, drew the board's key. It read as "All" beside it and
+     as the board tab. It has its own key, `assorted` (Phosphor `shapes`).
+  5. Proposals: W2 had moved only the hub row to the lexicon's lightbulb, leaving three marks. Now `idea` is on every
+     player-facing proposals mark: the page header and its loading states, the promo card, the avatar menu.
+  6. `.g-ring` swings from Phosphor's bell crown (7.8125%, not the hand-drawn 15%). `test:glyph-motion` §5 reads the
+     pivot from the drawing.
+- **Seen and left, with reasons:**
+  - The market card's 140px category watermark draws Bold: it is drawn at `s=24` and scaled by CSS, and W5 retires it.
+  - The inline shell symbols also travel in the page's RSC payload, as every server-rendered element does; brotli
+    compresses the twin.
+  - The rail coin's drawn "+" sits beside the header's ↓ deposit; W5 brings the one deposit glyph.
+  - A missing sprite cannot be pinned at the edge: production answers a 404 under `/icons/` with `private, no-cache,
+    no-store` (Cloudflare `BYPASS`), and only a real file gets the year-long `immutable`.
+  - The plan's 2G film strip asked whether the chrome would be blank on a slow first visit. The inline shell (§9)
+    answers it by design; content glyphs come in one immutable file, 17 KB brotli.
 - **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
   (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
   measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
   Phosphor's numbers are pinned from the drawings; the hand-drawn controls and plants are kept verbatim. r9a §1.3 names
-  the 18 drawings Phosphor centres by eye, the Fill play among them (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
+  the 19 drawings Phosphor centres by eye, the Fill play among them (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
   on `main` (a plant's needle predated the classic row's c3e28b47 spelling), and `test:journey-home` counted a glyph's
   `<use href>` as a link.
 - **R-ONE-SOURCE** (Ali, during W2 — §2): AGENTS.md §7, DESIGN_AUTHORITY §K3, the decisions log and the design master
@@ -324,9 +350,9 @@ that read the house drawings. W2's list below carries them.
 - **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
   after `#` still compared; its proof is P.1b.
 - **Still owed for W2:** the derived battery; the parity baseline at `main` and the compare, with the generated glyph
-  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency` and `test:measure` are red on
-  `main` from the Maswali console's tables and page widths, both fixed on `maswali-s4` — W2 takes them on its rebase);
-  the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency`, `test:measure` and
+  `test:type-scale` are red on `main` from the Maswali console's tables, page widths and copy, all fixed on
+  `maswali-s4` — W2 takes them on its rebase); the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
 
 ### W3 — Selected states

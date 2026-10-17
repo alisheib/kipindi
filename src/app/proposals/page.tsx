@@ -220,7 +220,7 @@ export default async function ProposalsPage({
           is. The gold left here is money: a proposer's granted bonus on its row. */}
       <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-col items-start gap-2">
-          <PageHeader icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+          <PageHeader icon={<I.idea s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
           {/* A quiet neutral "coming soon" here, amber "maintenance" here, nothing when active. */}
           <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
         </div>

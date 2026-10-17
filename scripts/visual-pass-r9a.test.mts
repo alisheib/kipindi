@@ -227,7 +227,7 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     "gauge.bold": [0, -12, PHOSPHOR_PLACED], "gift.regular": [0, -12.01, PHOSPHOR_PLACED], "gift.bold": [0, -12.01, PHOSPHOR_PLACED],
     "lock.bold": [0, -12, PHOSPHOR_PLACED], "megaphone.bold": [12, -3.99, PHOSPHOR_PLACED],
     "politics.regular": [7.99, 12.09, PHOSPHOR_PLACED], "politics.bold": [8, 12.13, PHOSPHOR_PLACED],
-    "shield.bold": [0, 12, PHOSPHOR_PLACED], "shieldAlert.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.bold": [0, 12, PHOSPHOR_PLACED],
+    "shield.bold": [0, 12, PHOSPHOR_PLACED], "shieldAlert.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.regular": [0, 12, PHOSPHOR_PLACED],
     "sofGift.bold": [0, -12.01, PHOSPHOR_PLACED], "sofSalary.bold": [0, -14, PHOSPHOR_PLACED], "unlock.bold": [0, -12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };

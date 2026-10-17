@@ -41,7 +41,7 @@ export async function ProposePromo({ href }: { href: string }) {
         size={42}
         className="bg-brand-500/10 text-brand-300 transition-colors group-hover:bg-brand-500/15"
       >
-        <I.trophy s={22} />
+        <I.idea s={22} />
       </IconPlate>
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-2 font-display text-[14.5px] font-bold text-text">

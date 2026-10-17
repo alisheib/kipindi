@@ -56,7 +56,7 @@ export default async function NewProposalPage() {
       {/* The hero and its eyebrow take the page defaults, not gold (R5-C's gold audit, Q5): proposing a market is not money. */}
       <PageHero>
         <div className="flex flex-col items-start gap-2">
-          <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.trophy s={18} />} />
+          <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.idea s={18} />} />
           <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
         </div>
       </PageHero>

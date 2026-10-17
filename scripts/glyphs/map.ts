@@ -261,17 +261,21 @@ export const ADMIN_KEYS: readonly string[] = ["upload", "fileSpreadsheet", "brai
 /**
  * Keys drawn at 27 px or more somewhere (R-WEIGHT: the Line tier is Bold up to 26 px and Regular from 27): only these ship
  * a Regular drawing. The census of 2026-10-17 — bellRing 30, clock 28, idCard 28, gift 150; the result dialog's status
- * glyphs at 36; the category glyph behind a question's title at 96. Any other key drawn that large falls back to Bold, so
- * a glyph is never blank, only heavier.
+ * glyphs at 36; the category glyph behind a question's title at 96; RewardBurst's medallion glyph at 36 (`RewardGlyph`:
+ * trophy, shieldcheck, resolved, star — W2's review); the cashback promo's coins at 110/140. Any other key drawn that large
+ * falls back to Bold, so a glyph is never blank, only heavier. (The market card's category watermark is drawn at its
+ * default 24 and scaled to 140 by CSS, so it draws Bold: W5 retires that watermark.)
  */
 export const REGULAR_KEYS: readonly string[] = [
   "bellRing", "clock", "idCard", "gift", "check", "x", "warning", "info",
-  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech", "shuffle", "landmark", "markets",
+  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech", "shuffle", "landmark", "assorted",
+  "trophy", "shieldcheck", "resolved", "star", "coins",
 ];
 
 /** Keys that ship a Fill or a Duo drawing — added by the waves that use them (W3 selected states, W4 seals, W5 plates). */
 export const FILL_KEYS: readonly string[] = [
   "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
+  "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
 ];
 export const DUO_KEYS: readonly string[] = [];
 
@@ -287,4 +291,7 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   // W2 (lead engineer, 2026-10-17): the hub's Uthibitisho wa utatuzi row — the resolution's attestation, an official
   // stamp — so it never wears the seal of its neighbour Matokeo (results = seal-check, 5.5A): R5-A parted those two rows.
   attestation: { ph: "stamp" },
+  // W2 (W2's review): the category "Other" — and any category the map does not know — took the board's key, which the
+  // lexicon redrew as squares-four, so it read as "All" (grid-four) and as the board tab. Assorted topics: shapes.
+  assorted: { ph: "shapes" },
 };
