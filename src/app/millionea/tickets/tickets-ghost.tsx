@@ -14,13 +14,13 @@ const LENS_WIDTHS = ["w-[64px]", "w-[56px]", "w-[112px]", "w-[104px]"];
  * classes, and the ticket cards in the list's grid (one column, two from 768). ONE DRAWING, TWO READERS: this route's
  * `loading.tsx` draws it for a classic reader with the page's own head, and the journey's root loading state draws it with
  * Tiketi zangu's head (`journeyHead`, handed in, so this module loads nothing of the journey's — `history-ghost.tsx`'s
- * pattern). Its words are set and not shown (`maswali-ghost.tsx`).
+ * pattern). Wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why).
  */
 export function MillioneaTicketsGhost({ journeyHead }: { journeyHead?: ReactNode }) {
   const { t } = useT();
   return (
     <PageContainer tier="reading" className="space-y-6">
-      {journeyHead ?? <MaswaliGhostHead eyebrow={t.millionea.productTitle} title={t.millionea.myTicketsTitle} />}
+      {journeyHead ?? <MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[224px]" />}
       <div className={QUERY_BAR_CLASS} aria-hidden>
         <div className={QUERY_BAR_ROW1_ALONE_CLASS}>
           <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">

@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 
 /**
  * /millionea/register/[week] loading skeleton — the week page's own bands (`page.tsx`): the back link's box, the head, the
- * commitments block and the first question rows. Its words are set and not shown (`maswali-ghost.tsx`).
+ * commitments block and the first question rows. Wordless but for the screen reader's "loading" (`maswali-ghost.tsx`).
  */
 export function MillioneaRegisterWeekGhost() {
   const { t } = useT();
@@ -15,7 +15,7 @@ export function MillioneaRegisterWeekGhost() {
     <PageContainer tier="reading">
       <div className="flex flex-col gap-6" aria-busy="true">
         <BackLinkGhost />
-        <MaswaliGhostHead eyebrow={t.millionea.registerTitle} title={`${t.millionea.registerTitle} · ${t.millionea.weekStatusSettled}`} />
+        <MaswaliGhostHead eyebrowWidth="w-[120px]" titleWidth="w-[264px]" />
         <div className="mat-flat flex flex-col gap-2 rounded-card p-3" aria-hidden>
           <GhostBar className="h-3 w-[200px]" />
           <GhostBar className="h-4 w-full" />

@@ -4,7 +4,8 @@
  *
  *   npx tsx scripts/maswali-ui.test.mts     (npm run test:maswali-ui)
  *
- *   §1 the seven routes: each a page, a loading file and a client error boundary with its way back
+ *   §1 the seven routes: each a page, a loading file and a client error boundary with its way back; every loading
+ *      drawing WORDLESS (the S5 review of 24ec0d33, HIGH 2: it streams before any gate, so it may name nothing)
  *   §2 the gates: every page asks its gate before anything else; every title asks the door and never throws
  *   §3 L5: the tickets' gate admits the product's viewers and, while it is hidden, a HOLDER alone
  *   §4 the edge: a dark address answers the router's own 404 while the ceiling hides it — qa:live's routes included
@@ -17,7 +18,7 @@
  *
  * Pure: it reads source files and runs the pure decision helpers. No server, no database, no network, no file written.
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MILLIONEA_DARK_PATH, isMillioneaPath, isMillioneaTicketsPath, millioneaDarkAtEdge, millioneaEdgeAsks } from "../src/lib/millionea-edge.ts";
@@ -89,6 +90,47 @@ const routeDefects = (readAt: (rel: string) => string) => ROUTES.flatMap(({ rout
   ok("1.2 · the routes are the seven the plan names (MASWALI-PLAN §0), and the qa:live dark list names the five a visitor can type",
     ROUTES.length === 7 && ["/millionea", "/millionea/how", "/millionea/slip", "/millionea/tickets", "/millionea/register"].every((r) => (MILLIONEA_ROUTES as readonly string[]).includes(r)),
     j(MILLIONEA_ROUTES));
+}
+/** Every Millionea loading drawing: each route's loading file and ghost, derived from the folder, and the parts they are
+ *  made of. */
+const GHOST_FILES: string[] = (() => {
+  const out: string[] = [];
+  const walkDir = (rel: string) => {
+    for (const n of readdirSync(join(ROOT, rel))) {
+      const p = `${rel}/${n}`;
+      if (statSync(join(ROOT, p)).isDirectory()) walkDir(p);
+      else if (n === "loading.tsx" || n.endsWith("-ghost.tsx")) out.push(p);
+    }
+  };
+  walkDir(APP);
+  return [...out.sort(), "src/components/maswali/maswali-ghost.tsx"];
+})();
+/** ⛔ A loading drawing streams before any gate answers (the edge passes a signed-in reader to the tickets' gate even while
+ *  Millionea is dark, L5), so it names nothing: no Millionea word read, no string or text that says the name, and no
+ *  words "set and not shown" — transparent letters are still words in the document. */
+const ghostWordDefects = (readAt: (rel: string) => string) => GHOST_FILES.flatMap((f) => {
+  const c = code(readAt(f));
+  const d: string[] = [];
+  if (/\bt\.millionea\b/.test(c)) d.push(`${f}: reads a Millionea word (t.millionea)`);
+  const strings = (c.replace(/\bfrom\s+"[^"]*"/g, "").match(/"[^"\n]*"|'[^'\n]*'|`[^`]*`/g) ?? []).filter((s) => /millionea/i.test(s));
+  if (strings.length > 0) d.push(`${f}: a string names Millionea (${strings.slice(0, 2).join(", ")})`);
+  if (/>[^<>{}]*millionea[^<>{}]*</i.test(c)) d.push(`${f}: its text names Millionea`);
+  if (/<GhostText\b|\b(?:weekWord|millioneaWord|productWeek|counted|fill)\(/.test(c)) d.push(`${f}: words set and not shown are still words`);
+  return d;
+});
+{
+  const d = ghostWordDefects(read);
+  ok(`1.3 · every Millionea loading drawing is WORDLESS — bars and shapes, the screen reader's "loading" alone: no t.millionea key, no string or text naming Millionea, no words set and not shown (${GHOST_FILES.length} files)`,
+    GHOST_FILES.length >= 15 && d.length === 0, d.join(" | "));
+  const tl = code(read(`${APP}/tickets/loading.tsx`));
+  ok("1.4 · Tiketi zangu's Millionea loading file is synchronous: it asks the server nothing before the tickets' gate answers",
+    !/\basync\b|\bawait\b/.test(tl) && tl.includes("export default function MillioneaTicketsLoading() {") && tl.includes("return <MillioneaTicketsGhost />;"));
+  const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
+  const named = ghostWordDefects(plant(`${APP}/hub-ghost.tsx`, '<MaswaliGhostHead eyebrowWidth="w-[128px]" titleWidth="w-[248px]" />', '<MaswaliGhostHead titleWidth="w-[248px]" />{t.millionea.productTitle}'));
+  ok("1.3′ CONTROL · the product's name read back into the hub's ghost is reported", named.some((x) => x.includes("hub-ghost.tsx") && x.includes("t.millionea")));
+  const veiled = ghostWordDefects(plant(`${APP}/slip/slip-ghost.tsx`, '<GhostLine className="w-[264px]" />', "<GhostText>{\"Maswali Millionea\"}</GhostText>"));
+  ok("1.3″ CONTROL · words set and not shown, or a string naming the product, in the slip's ghost are reported",
+    veiled.some((x) => x.includes("set and not shown")) && veiled.some((x) => x.includes("a string names Millionea")));
 }
 
 // ── §2 · the gates ─────────────────────────────────────────────────────────────────────────────────────────────────

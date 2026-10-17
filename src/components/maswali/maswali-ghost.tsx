@@ -2,23 +2,31 @@
  * THE PARTS EVERY MILLIONEA LOADING DRAWING IS MADE OF (MASWALI-BUILD S5 composition; `components/ui/page-loader.tsx`'s
  * rule: a ghost opens on the bands its page opens on, with the page's own parts, in the page's own rhythm).
  *
- * ⭐ ITS WORDS ARE SET AND NOT SHOWN (`GhostText`) — a deliberate departure from the loader rule that prints a page's name
- *    while it waits. The journey's root loading state picks its picture by the ADDRESS before any gate has answered
- *    (`route-ghost.tsx`), so a picture that printed "Maswali Millionea" would name a product the rollout hides from that
- *    reader for the moment before the not-found page lands (MR-2: a hidden product is a missing page, never "coming soon").
- *    The geometry is the page's; the words wait for the gate.
- * ⛔ No directive and no read: client drawings load it, each handing in its words.
+ * ⛔ NO WORDS AT ALL — BARS AND SHAPES ONLY (the S5 review of 24ec0d33, HIGH 2). A loading drawing streams before any gate
+ *    has answered: the journey's root loading state picks its picture by the ADDRESS (`route-ghost.tsx`), and a route's own
+ *    loading file renders before its page's `notFound()`. So a signed-in reader the edge passes to the tickets' gate (L5)
+ *    while Millionea is dark got HTTP 200 with the ghost in the document — and words "set and not shown" (`GhostText`'s
+ *    transparent letters) are still words in it. A hidden product is a missing page (MR-2: never "coming soon"), so every
+ *    Millionea drawing is wordless: a line of words is a bar inside that line's own element (`GhostLine`), so the geometry
+ *    stays the page's, and the one word left is the platform's own "Loading" for a screen reader, which names nothing.
+ *    `test:maswali-ui` 1.3 holds every Millionea loading and ghost file to it.
+ * ⛔ No directive and no read: client drawings load it.
  */
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/ui/page-header";
-import { GhostText } from "@/components/ui/ghost-text";
 import { cn } from "@/lib/utils";
 
-/** A page's head, as `PageHeader` draws it, its words set and not shown. */
-export function MaswaliGhostHead({ eyebrow, title }: { eyebrow?: string; title: string }) {
+/** A line of words the drawing may not state, as a bar inside the line's own element: the line box is that element's own
+ *  (its face, size and line height), so the band under it lands where the page's will. `className` is its width. */
+export function GhostLine({ className }: { className: string }) {
+  return <span aria-hidden className={cn("inline-block h-[0.85em] max-w-full rounded-sm bg-bg-overlay align-middle", className)} />;
+}
+
+/** A page's head, as `PageHeader` draws it — its eyebrow and its title as bars of the given widths, never their words. */
+export function MaswaliGhostHead({ eyebrowWidth, titleWidth }: { eyebrowWidth?: string; titleWidth: string }) {
   return (
     <div aria-hidden>
-      <PageHeader eyebrow={eyebrow ? <GhostText>{eyebrow}</GhostText> : undefined} title={<GhostText>{title}</GhostText>} />
+      <PageHeader eyebrow={eyebrowWidth ? <GhostLine className={eyebrowWidth} /> : undefined} title={<GhostLine className={titleWidth} />} />
     </div>
   );
 }

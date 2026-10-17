@@ -97,7 +97,7 @@ import { stemOf } from "@/lib/display-stem";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
-export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]" | "/millionea/tickets";
+export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]";
 
 /**
  * ⚠️ `rails` — the rails that pay out, read on the server — is drawn by no page's ghost since WP7: only the shelved landing
@@ -116,7 +116,8 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
     "/wallet/deposit/return": <DepositReturnLoading />,
     "/markets/[id]": <QuestionGhost />,
     // MASWALI-BUILD S5 · the Millionea pages the journey's tabs reach (`surfaces.ts` JOURNEY_ROUTE), each its own loading
-    // file's drawing; Tiketi zangu's Millionea kind with Tiketi zangu's head, as its loading file hands a journey reader.
+    // file's drawing, wordless (`maswali-ghost.tsx`); Tiketi zangu's Millionea kind with Tiketi zangu's head, by the address
+    // alone — its own loading file is synchronous and pins nothing (the S5 review of 24ec0d33, HIGH 2).
     "/millionea": <MillioneaHubGhost />,
     "/millionea/slip": <MillioneaSlipGhost />,
     "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />,

@@ -6,14 +6,14 @@ import { useT } from "@/lib/i18n";
 
 /**
  * /millionea/how loading skeleton — the page's own bands (`page.tsx`): its head, the four numbered sentences, the example
- * card and the first worked ledger. Its words are set and not shown (`maswali-ghost.tsx`).
+ * card and the first worked ledger. Wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why).
  */
 export function MillioneaHowGhost() {
   const { t } = useT();
   return (
     <PageContainer tier="reading">
       <div className="flex flex-col gap-6" aria-busy="true">
-        <MaswaliGhostHead eyebrow={t.millionea.productTitle} title={t.millionea.howToPlay} />
+        <MaswaliGhostHead eyebrowWidth="w-[144px]" titleWidth="w-[176px]" />
         <div className="flex flex-col gap-3" aria-hidden>
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="grid grid-cols-[24px_1fr] gap-2">

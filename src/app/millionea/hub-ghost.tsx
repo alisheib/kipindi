@@ -2,7 +2,6 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { GhostBar, GhostCard, MaswaliGhostHead } from "@/components/maswali/maswali-ghost";
-import { weekWord } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
 
 /** The fifteen questions' rows, as many as a phone's first screens hold. */
@@ -12,14 +11,14 @@ const ROWS = [0, 1, 2, 3, 4, 5];
  * /millionea loading skeleton — the hub's own bands in its own order (`page.tsx`): the head, the week strip, the pool
  * block and the buy block (on the right and sticky from 1280), then the questions. ONE DRAWING, TWO READERS: this route's
  * `loading.tsx` renders it, and the journey's root loading state draws it on a move to /millionea (`route-ghost.tsx`).
- * Client code that reads its own words (R5-H · G-2), set and not shown (`maswali-ghost.tsx` says why).
+ * Client code, wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why).
  */
 export function MillioneaHubGhost() {
   const { t } = useT();
   return (
     <PageContainer tier="reading">
       <div className="flex flex-col gap-6" aria-busy="true">
-        <MaswaliGhostHead eyebrow={`${weekWord(t, 42)} · ${t.millionea.weekStatusOpen}`} title={t.millionea.productTitle} />
+        <MaswaliGhostHead eyebrowWidth="w-[128px]" titleWidth="w-[248px]" />
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,640px)_400px] xl:gap-8" aria-hidden>
           <div className="flex flex-col gap-2 xl:col-start-1">
             <GhostBar className="h-4 w-[240px] max-w-full" />
