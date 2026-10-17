@@ -4,7 +4,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, eatWeekdayClock, productWeek } from "@/components/maswali/maswali-format";
-import { fillNodes } from "@/lib/fill-nodes";
+import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
@@ -73,7 +73,7 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       meta = counted(state.winners, t.millionea.settledWonOne, t.millionea.settledWon, { week });
       break;
     case "settledRollover":
-      meta = fill(t.millionea.settledRollover, { amount: formatTzs(state.carried) });
+      meta = moneyRuns(fill(t.millionea.settledRollover, { amount: formatTzs(state.carried) }));
       break;
     case "paused":
       meta = t.millionea.pausedShort;

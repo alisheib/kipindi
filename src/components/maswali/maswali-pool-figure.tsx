@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
 import { counted } from "@/components/maswali/maswali-format";
+import { moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
@@ -136,7 +137,8 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
       <dl className="flex flex-col border-t border-border">
         {rows.map((r) => (
           <div key={r.key} className={cn("flex items-baseline justify-between gap-2 border-b border-border py-1.5", INK[r.ink ?? "text"])}>
-            <dt className="min-w-0 flex-1 text-body-sm">{r.label}</dt>
+            {/* A figure inside a label ("Kila tiketi imerejeshwa TZS 1,000") is set whole in the money face (§M4). */}
+            <dt className="min-w-0 flex-1 text-body-sm">{typeof r.label === "string" ? moneyRuns(r.label) : r.label}</dt>
             <dd className={cn("amount text-right text-body-sm", WEIGHT[r.weight ?? "medium"], r.key === "jackpot" && tick && "m-tick")}>{r.value}</dd>
           </div>
         ))}
