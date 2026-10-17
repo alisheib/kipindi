@@ -22,13 +22,18 @@ import type { Dict } from "@/lib/i18n-dict";
 export type PoolCarriedIn = { week: number; /** null while that week has not settled: the figure is then "at least" */ amount: number | null };
 type Sales = { tickets: number; amount: number };
 
+/**
+ * The views. ⛔ `floor` is null whenever the floor may not be printed — while the guarantee does not cover every unsettled
+ * week at its own frozen floor (MB-56, OD-02: never show the floor unless it is funded), or for a closed week whose
+ * read model carries none — and then the ledger has no floor line at all, never a zero.
+ */
 export type PoolView =
-  | { kind: "presale"; carriedIn: PoolCarriedIn | null; floor: number; opensOn: string }
-  | { kind: "selling"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number }
-  | { kind: "won"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number; fee: number; toWinners: number; winningTickets: number; perTicket: number }
-  | { kind: "rollover"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number; carriedOut: { week: number; amount: number } }
-  | { kind: "voiding"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; price: number }
-  | { kind: "voided"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; price: number; refunded: number; carriedForward: { week: number; amount: number } }
+  | { kind: "presale"; carriedIn: PoolCarriedIn | null; floor: number | null; opensOn: string }
+  | { kind: "selling"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number }
+  | { kind: "won"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number; fee: number; toWinners: number; winningTickets: number; perTicket: number }
+  | { kind: "rollover"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number; carriedOut: { week: number; amount: number } }
+  | { kind: "voiding"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; price: number }
+  | { kind: "voided"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; price: number; refunded: number; carriedForward: { week: number; amount: number } }
   | { kind: "sunset"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; fee: number; toWinners: number; winningTickets: number; perTicket: number; top: { score: number; tickets: number } };
 
 type Row = { key: string; label: ReactNode; value: ReactNode; ink?: "text" | "muted" | "subtle"; weight?: "medium" | "semibold" | "bold" };
@@ -71,15 +76,16 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
   if (v.kind === "presale") {
     rows.push({ key: "sales", label: `${t.millionea.salesThisWeek} · ${fill(t.millionea.opensOn, { day: v.opensOn })}`, value: DASH, ink: "muted" });
     rows.push({ key: "pool", label: t.millionea.poolTotal, value: DASH, ink: "muted" });
-    rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor) });
+    if (v.floor !== null) rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor) });
     rows.push({ key: "jackpot", label: t.millionea.jackpot, value: DASH, ink: "muted" });
     rows.push({ key: "fee", label: t.millionea.fee, value: DASH, ink: "muted" });
   } else {
     rows.push({ key: "sales", label: ticketsLabel(v.sales), value: money(v.sales.amount) });
     rows.push({ key: "pool", label: t.millionea.poolTotal, value: money(v.pool), weight: "semibold" });
-    if (v.kind !== "sunset") {
+    const floor = v.kind === "sunset" ? null : v.floor;
+    if (floor !== null) {
       // Above the floor, the floor line drops to the quiet ink and stays visible (§10 §1: "the jackpot line repeats the larger").
-      rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor), ink: v.pool > v.floor ? "subtle" : "text" });
+      rows.push({ key: "floor", label: t.millionea.floor, value: money(floor), ink: v.pool > floor ? "subtle" : "text" });
     }
     switch (v.kind) {
       case "selling":
