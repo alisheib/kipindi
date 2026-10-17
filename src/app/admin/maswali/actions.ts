@@ -28,6 +28,8 @@ type ActionResult = { ok: true; weekId?: string } | { ok: false; error: string }
 const refresh = (weekId?: string) => {
   revalidatePath("/admin/maswali");
   if (weekId) revalidatePath(`/admin/maswali/${weekId}`);
+  // MASWALI-BUILD S5 · an open, a moved close or a seal changes what the hub, a ticket and the register state (MB-97).
+  revalidatePath("/millionea", "layout");
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 /** MB-94 · where a seal came from, noted after it landed (never blocking it). */

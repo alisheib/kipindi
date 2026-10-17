@@ -159,3 +159,18 @@ export function hasActiveLeaderFilters(state: LeaderState): boolean {
 export function leaderDir(state: LeaderState): SortDir {
   return state.dir ?? LEADER_NATURAL_DIR[state.sort];
 }
+
+/**
+ * MASWALI-BUILD S5 · THE POSITIONS A ROW'S STREAK AND SPARKLINE WALK: the row's own, less its Millionea tickets
+ * (MASWALI-PLAN S5 item 9 — ROI tiers, performance and streaks exclude them; a weekly jackpot ticket wins about 1 time in
+ * 1,024 by design, so one ticket would end any streak and pad any sparkline). The ranking already skips tickets
+ * (`positionStore.leaderboard`); the page's per-row read spans every line on the "all" lens, so the row's tickets are
+ * read beside it and removed here. `tickets` is that read — `[]` on a single-product lens, whose read excludes them
+ * already — and null when it failed: the row is then left undecorated (no streak, a zero sparkline) rather than
+ * decorated with tickets. Pure, so the suites drive it with both stores' own reads (`test:maswali-player` §11).
+ */
+export function boardScoredPositions<P extends { id: string }>(positions: readonly P[], tickets: readonly { id: string }[] | null): P[] {
+  if (tickets === null) return [];
+  const out = new Set(tickets.map((t) => t.id));
+  return positions.filter((p) => !out.has(p.id));
+}

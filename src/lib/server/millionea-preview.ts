@@ -21,6 +21,7 @@ import { isStaffRole } from "./roles";
 import { getSession } from "./session";
 import { db } from "./store";
 import { millioneaStateNow } from "./millionea-switch";
+import { subscribe } from "./event-bus";
 import { millioneaVisibleFor, type RolloutState } from "@/lib/millionea-rollout";
 
 /** Account statuses whose holder no longer counts as staff for the preview. PENDING_KYC is not one: staff need no KYC. */
@@ -77,6 +78,65 @@ export async function resolveMillioneaFor(
   } catch {
     return HIDDEN(state);
   }
+}
+
+/** How long one SSE stream trusts the staff standing it read (S5 review L8). A platform cadence, not a rule anyone reads. */
+const STREAM_STANDING_MS = 30_000;
+
+/** What a stream's audience needs beyond the viewer's lookups: a clock for the standing's age (suites inject one). */
+export type MillioneaStreamDeps = MillioneaViewerDeps & { nowMs?: () => number };
+
+/**
+ * ⭐ ONE SSE STREAM'S AUDIENCE FOR A MILLIONEA POOL FRAME (`maswali:pool`; MASWALI-BUILD S5, review M1 and L8). A frame
+ * names its week's line, and it reaches the stream only when:
+ *   · PUBLIC — the rollout admits the viewer: everyone at ACTIVE, staff at STAFF_PREVIEW (no stream reads a preview pass
+ *     yet), nobody while WITHDRAWN;
+ *   · DRIVE — the viewer may see the drive week: STORED staff on an open account, at STAFF_PREVIEW, the one state a drive
+ *     leads a hub (`maswali-player.ts → millioneaLineFor`). ⛔ Never the public, never at ACTIVE, and — until Ali rules who
+ *     may buy a drive ticket — never a pass holder;
+ *   · anything else (no line, an unknown one: a publisher of another shape, a rolling deploy's older container) — nobody.
+ * The rollout is asked per frame through its own snapshot, so a kill silences the stream within seconds. ⭐ L8 · the
+ * staff standing is read ONCE per stream and again only once it is STREAM_STANDING_MS old: a burst of frames costs no user
+ * read per frame, and a demotion stops the stream's drive frames within that window. Never throws: a failure admits nobody.
+ */
+export function millioneaPoolAudience(userId: string | null | undefined, deps: MillioneaStreamDeps = {}): (line: unknown) => Promise<boolean> {
+  const clock = deps.nowMs ?? Date.now;
+  let standing: { staff: Promise<boolean>; at: number } | null = null;
+  const staffNow = (): Promise<boolean> => {
+    const at = clock();
+    if (!standing || at - standing.at >= STREAM_STANDING_MS) standing = { staff: storedStaff(userId, deps), at };
+    return standing.staff;
+  };
+  return async (line) => {
+    try {
+      if (line !== "PUBLIC" && line !== "DRIVE") return false;
+      const state = await (deps.stateNow ?? millioneaStateNow)();
+      if (state === "ACTIVE") return line === "PUBLIC";
+      if (state !== "STAFF_PREVIEW") return false;
+      return await staffNow();
+    } catch {
+      return false;
+    }
+  };
+}
+
+/**
+ * ⭐ ONE STREAM'S `maswali:pool` FORWARDING, as `/api/events` wires it: every frame on the bus, filtered through this
+ * stream's audience (`millioneaPoolAudience`), then sent. The route calls this and nothing else for Millionea, so the
+ * suites drive the very filter a stream applies (`test:maswali-player` §7). Returns the disposer. Never throws.
+ */
+export function forwardMillioneaPool(
+  userId: string | null | undefined,
+  send: (payload: string) => void,
+  deps: MillioneaStreamDeps = {},
+): () => void {
+  const admits = millioneaPoolAudience(userId, deps);
+  return subscribe("maswali:pool", (data) => {
+    const line = data && typeof data === "object" ? (data as { visibility?: unknown }).visibility : undefined;
+    void admits(line)
+      .then((ok) => { if (ok) send(JSON.stringify({ type: "maswali:pool", data })); })
+      .catch(() => { /* a frame is never load-bearing */ });
+  });
 }
 
 /**

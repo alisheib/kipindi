@@ -20,6 +20,7 @@
  */
 import { getSession } from "@/lib/server/session";
 import { subscribe, type SseEventType } from "@/lib/server/event-bus";
+import { forwardMillioneaPool } from "@/lib/server/millionea-preview";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -101,6 +102,12 @@ export async function GET() {
           send(JSON.stringify({ type: event, data }));
         }));
       }
+
+      // MASWALI-BUILD S5 · a Millionea week's pool figure (`maswali-pool-feed.ts`, coalesced per week) reaches this stream
+      // only through its audience (`forwardMillioneaPool`): a PUBLIC week's to a viewer the rollout admits, a DRIVE week's
+      // to stored staff at STAFF_PREVIEW only — never the public (review M1) — with the staff standing read once per
+      // stream, not per frame (L8). Kept out of ALL_EVENTS on purpose: that list is broadcast to every signed-in stream.
+      unsubscribes.push(forwardMillioneaPool(userId, send));
 
       // ── Cleanup on disconnect ──────────────────────────────────────
       cleanup = () => {

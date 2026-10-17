@@ -272,6 +272,12 @@ export type FailureReason =
   | "account_suspended"
   | "not_found"
   | "signin_required"
+  /**
+   * MASWALI-BUILD S5 (review L6) · the page was drawn for another account than the one signed in now — a sign-out and a
+   * sign-in in another tab — so nothing was charged. Not `signin_required`: the player IS signed in, and the instruction
+   * is to reload, not to sign in. Emitted by the Millionea buy (`maswali-player-acts.ts`).
+   */
+  | "session_changed"
   // ── C2 THIRD TRANCHE · the BANNER channel (docs/FAILURE-INVENTORY.md §1.5's note) ────────
   // A form-action page cannot hand a toast an object — it redirects, and a redirect carries a
   // string. These are the reasons those five surfaces send as a KEY instead of as prose.
@@ -489,6 +495,7 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // severity, because they cannot lift it, but never phrased or coloured as a malfunction.
   account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },
   signin_required:      { severity: "warning", channel: "toast",  key: "errSignIn" },
+  session_changed:      { severity: "warning", channel: "toast",  key: "errSessionChanged" },
 
   // ── C2 THIRD TRANCHE · the banner channel ─────────────────────────────────
   // ⛔ ALL `inline`, AND THAT IS THE POINT OF THE CHANNEL. These render beside the form the

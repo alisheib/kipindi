@@ -16,6 +16,7 @@ import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { voidWeek } from "@/lib/server/maswali-service";
 import { pauseMaswaliSales, resumeMaswaliSales } from "@/lib/server/maswali-pause";
 import { forfeitMaswaliShare, holdMaswaliShare, releaseMaswaliShare } from "@/lib/server/maswali-settlement";
+import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 
 type ActionResult = { ok: true; note?: string } | { ok: false; error: string };
 
@@ -23,6 +24,8 @@ const refresh = () => {
   revalidatePath("/admin/maswali");
   revalidatePath("/admin/maswali/pools");
   revalidatePath("/admin/maswali/integrity");
+  // MASWALI-BUILD S5 · a week void reaches the register and the hub; a pause reaches the hub (MB-97).
+  revalidatePath("/millionea", "layout");
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 
@@ -94,6 +97,8 @@ export async function forfeitMaswaliShareAction(formData: FormData): Promise<Act
   try {
     const r = await forfeitMaswaliShare({ ticketId: str(formData, "ticketId"), officerId: session.userId, typed: str(formData, "typed"), reason: str(formData, "reason") });
     if (!r.ok) return { ok: false, error: r.error };
+    // The share went back to the jackpot, so a week still waiting to claim its carry counts more (OD-07).
+    noteMaswaliPoolChanged();
     refresh();
     return { ok: true, note: "The share went back to the jackpot." };
   } catch (err) {

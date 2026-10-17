@@ -176,10 +176,12 @@ export function positionOutcomeWord(t: Dict, status: PositionStatusValue, produc
   const line = storedProductLine(productLine);
   switch (line) {
     case "UPDOWN": return positionStatusWord(t, status, line);
-    // A Millionea ticket reads in the poll's short words until S5 adds its one word of its own (the free-window
-    // cancel, v6 manifest L11).
     case "MARKET":
+      break;
+    // MASWALI-BUILD S5 · a Millionea ticket reads in the poll's short words, except its one word of its own: the
+    // free-window cancel (v6 manifest L11) — a ticket is cancelled, never "cashed out".
     case "MASWALI":
+      if (status === "CASHED_OUT") return t.millionea.ticketCancelled;
       break;
     default: return assertNeverLine(line, "positionOutcomeWord");
   }
@@ -195,7 +197,9 @@ export function positionOutcomeWord(t: Dict, status: PositionStatusValue, produc
 export function positionStatusWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
   const line = storedProductLine(productLine);
   if (line !== "UPDOWN" && line !== "MARKET" && line !== "MASWALI") return assertNeverLine(line, "positionStatusWord");
-  // MASWALI shares the poll's chip words (v6 manifest L11: one word per state across the products); S5 adds its cancel word.
+  // MASWALI shares the poll's chip words (v6 manifest L11: one word per state across the products), with its one word of
+  // its own: the free-window cancel (MASWALI-BUILD S5; the delivery's handover WP6 maps it to the neutral chip).
+  if (line === "MASWALI" && status === "CASHED_OUT") return t.millionea.ticketCancelled;
   if (line === "UPDOWN") {
     switch (status) {
       case "OPEN": return t.market.udPosOpen;

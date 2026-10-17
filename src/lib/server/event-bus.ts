@@ -11,6 +11,9 @@
  *   wallet:balance    — balance change after deposit/withdrawal/bet/payout
  *   notification:new  — new in-app notification for a user
  *   market:resolve    — market resolved to an outcome
+ *   maswali:pool      — a Millionea week's pool figure, derived when it moves and coalesced per week
+ *                       (`maswali-pool-feed.ts`); public figures only, forwarded per its line's audience
+ *                       (`millionea-preview.ts → forwardMillioneaPool`: a drive week's never to the public)
  *
  * CROSS-CONTAINER FAN-OUT (optional, fail-open)
  * An EventEmitter reaches one process. With more than one Railway container a
@@ -29,6 +32,7 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
 import { getRedis, getRedisSubscriber, setRedisSubscribed, withRedis } from "./redis";
+import type { MaswaliPoolFigure } from "./maswali-player";
 
 // ── Typed event payloads ─────────────────────────────────────────────
 export type SseEventMap = {
@@ -51,6 +55,9 @@ export type SseEventMap = {
     };
   };
   "market:resolve":    { marketId: string; outcome: "YES" | "NO" | "VOID" };
+  // MASWALI-BUILD S5 · the figure a week's hub prints, derived on the server when it moves (MR-28) — never stored, and
+  // coalesced per week so the Friday rush is a frame every few seconds, not one per sale (MB-31).
+  "maswali:pool":      MaswaliPoolFigure;
 };
 
 export type SseEventType = keyof SseEventMap;
@@ -62,6 +69,7 @@ const KNOWN_EVENTS: ReadonlySet<string> = new Set<SseEventType>([
   "wallet:balance",
   "notification:new",
   "market:resolve",
+  "maswali:pool",
 ]);
 
 // ── Singleton emitter (globalThis-backed, HMR-safe) ──────────────────

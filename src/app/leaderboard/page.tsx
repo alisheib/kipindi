@@ -36,6 +36,7 @@ import {
   LEADER_NATURAL_DIR,
   LEADER_PRODUCTS,
   LEADER_SORTS,
+  boardScoredPositions,
   buildLeaderHref,
   leaderDir,
   leaderProduct,
@@ -183,6 +184,14 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
       // ⛔ A row whose rank says "Up & Down" and whose streak counts poll wins is the same lie
       // as a count that is not cross-filtered (§K 6c rule 4), just spread across two columns.
       positions: await Promise.resolve(listPositionsForUser(r.userId, 200, leaderProduct(state))).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
+      // MASWALI-BUILD S5 · a Millionea ticket is not a prediction this board scores (MASWALI-PLAN S5 item 9: ROI tiers,
+      // performance and streaks exclude it — a weekly jackpot ticket wins about 1 time in 1,024 by design). The ranking
+      // already skips tickets (`positionStore.leaderboard`); on the "all" lens this per-row read spans every line, so the
+      // row's tickets are named here and removed before the streak and the sparkline walk it, as /positions/performance
+      // does. A failed read leaves the row undecorated rather than decorated with tickets.
+      tickets: leaderProduct(state) === "ALL"
+        ? await Promise.resolve(listPositionsForUser(r.userId, 200, "MASWALI")).catch(() => null)
+        : [],
     })),
   );
 
@@ -192,10 +201,11 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
     const u = detail[i].user;
     if (!u) continue; // a deleted user cannot be ranked
     const roi = roiOf(r);
+    const positions = boardScoredPositions(detail[i].positions, detail[i].tickets);
     // Streak = consecutive wins from the most recent settled position. Unchanged
     // semantics; it just reads a bounded slice instead of every position ever placed.
     let streak = 0;
-    for (const p of detail[i].positions.filter((p) => p.status !== "OPEN")) {
+    for (const p of positions.filter((p) => p.status !== "OPEN")) {
       if (p.status === "WIN") streak++;
       else break;
     }
@@ -217,7 +227,7 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
       // recent positions as the streak, so a hyper-active player's oldest days can
       // undercount — the identical honest bound the streak already accepts. A
       // quiet fortnight renders the sparkline's clean zero baseline, not a blank.
-      spark: dailyStakes(detail[i].positions, 14),
+      spark: dailyStakes(positions, 14),
     });
   }
   return { rows: out, capped };
