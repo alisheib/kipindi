@@ -105,3 +105,48 @@ export function formatEatDateTime(atMs: number, nowMs: number, monthsShort: read
   const day = formatEatDate(atMs, nowMs, monthsShort, locale);
   return locale === "zh" ? `${day} ${clock}` : `${day}, ${clock}`;
 }
+
+// ── EAST AFRICA WEEKS (MASWALI-BUILD S2) ─────────────────────────────────────────────────────────────
+//
+// A Millionea week is an ISO 8601 week in East Africa Time: Monday 00:00 EAT to the next Monday 00:00 EAT. The same
+// fixed offset as the days above, so a week boundary is exact — Tanzania has no daylight saving. ⛔ An EVENT's own zone
+// (a match in London, a price in New York) is NOT this module's business: those clocks change, and the question's
+// `eventZone` converts them (`maswali-time.ts`). Everything here is compared in UTC milliseconds.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The ISO 8601 week-numbering year and week (1…53) an instant falls in, in East Africa Time. */
+export function eatIsoWeek(atMs: number): { year: number; week: number } {
+  const eat = new Date(atMs + EAT_OFFSET_MS);
+  const day = eat.getUTCDay() || 7; // 1 = Monday … 7 = Sunday
+  // The Thursday of this week decides the ISO year (ISO 8601 §2.2.10).
+  const thursday = Date.UTC(eat.getUTCFullYear(), eat.getUTCMonth(), eat.getUTCDate()) + (4 - day) * DAY_MS;
+  const year = new Date(thursday).getUTCFullYear();
+  const week = 1 + Math.floor((thursday - Date.UTC(year, 0, 1)) / (7 * DAY_MS));
+  return { year, week };
+}
+
+/** The UTC instant of Monday 00:00 EAT starting the week an instant falls in. */
+export function eatWeekStartMs(atMs: number): number {
+  const eat = new Date(atMs + EAT_OFFSET_MS);
+  const day = eat.getUTCDay() || 7;
+  return Date.UTC(eat.getUTCFullYear(), eat.getUTCMonth(), eat.getUTCDate()) - (day - 1) * DAY_MS - EAT_OFFSET_MS;
+}
+
+/**
+ * The UTC instant of a weekday and an EAT clock time inside the week starting at `weekStartMs` (from `eatWeekStartMs`).
+ * `weekday` is ISO (1 = Monday … 7 = Sunday); `clock` is "HH:MM", 24-hour. Throws on a malformed weekday or clock.
+ */
+export function eatWeekAt(weekStartMs: number, weekday: number, clock: string): number {
+  if (!Number.isInteger(weekday) || weekday < 1 || weekday > 7) throw new Error(`[eat-day] weekday ${weekday} is not 1…7`);
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(clock);
+  if (!m) throw new Error(`[eat-day] ${JSON.stringify(clock)} is not an HH:MM clock`);
+  return weekStartMs + (weekday - 1) * DAY_MS + (Number(m[1]) * 60 + Number(m[2])) * 60_000;
+}
+
+/** A week's code: `MLN-2026-W44` (the prefix is the product's), from its ISO week in EAT. Immutable once stamped. */
+export function eatWeekCode(prefix: string, atMs: number): string {
+  if (!/^[A-Z]{2,5}$/.test(prefix)) throw new Error(`[eat-day] a week code prefix is 2–5 capital letters, got ${JSON.stringify(prefix)}`);
+  const { year, week } = eatIsoWeek(atMs);
+  return `${prefix}-${year}-W${String(week).padStart(2, "0")}`;
+}

@@ -66,6 +66,14 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to hydrate Up & Down scheduler:", err);
     }
+    // Maswali Millionea's week timer (MASWALI-BUILD S2) — a third, independent block, so neither of the other
+    // schedulers can stop it and it can stop neither. A close missed while DOWN fires after a short grace.
+    try {
+      const { hydrateMaswaliOnBoot } = await import("./lib/server/maswali-scheduler");
+      await hydrateMaswaliOnBoot();
+    } catch (err) {
+      console.error("[instrumentation] Failed to hydrate the Millionea scheduler:", err);
+    }
     // Lifecycle ticker — the periodic backstop: it reconciles the scheduler (re-arms
     // any market that lost its timer), expires bonus grants, reconciles stuck
     // payments, and runs the nightly trial balance. It does NOT drive market

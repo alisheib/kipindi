@@ -300,6 +300,16 @@ async function maybeReconcileSchedules(): Promise<void> {
   } catch (e) {
     console.error("[lifecycle] Up & Down reconcile:", e);
   }
+  // Maswali Millionea's weeks (MASWALI-BUILD S2): the tick and a re-arm, in its own try — independent of both above.
+  try {
+    const { reconcileMaswaliWeeks } = await import("./maswali-scheduler");
+    const m = await reconcileMaswaliWeeks();
+    if (m.closed + m.voided + m.proposals + m.failures > 0) {
+      console.log(`[lifecycle] Millionea reconcile — closed ${m.closed}, voided ${m.voided}, ${m.proposals} void proposal(s), ${m.failures} failure(s)`);
+    }
+  } catch (e) {
+    console.error("[lifecycle] Millionea reconcile:", e);
+  }
 
   // ℹ️ MERGE NOTE (2026-08-01). A SECOND Up & Down heal sweep (`resolveOverdueRounds`) was
   // called from here by `feat/updown-source-pinning-and-proposals`, which had independently
