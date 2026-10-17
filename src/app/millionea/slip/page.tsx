@@ -14,6 +14,7 @@
  * ⭐ The Needle and the chat bubble stand down here for every reader (D-25, `surfaces.ts → isSlipSurface`).
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
@@ -23,7 +24,7 @@ import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { weekNumberOf } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaSlip } from "@/lib/server/maswali-player";
-import { millioneaBreakOf } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaDoor } from "@/lib/server/millionea-doors";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
 import { renderFailure } from "@/lib/failure-reasons";
@@ -36,7 +37,9 @@ import { SlipClient } from "./slip-client";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaGate();
+  // The title obeys the same answer as the body (the account hub's precedent): a hidden product's page is titled as the
+  // identical 404 is, and asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
   return { title: `${t.millionea.titleSlip} · ${t.millionea.productLabel}` };
 }

@@ -83,6 +83,17 @@ export const millioneaBreakOf = cache(async (userId: string | null): Promise<Bre
 });
 
 /**
+ * Will the Millionea card be offered to this request: the product visible to it and the reader not on a break. The journey
+ * home's ghost reserves the card's slot on this answer (`app/page.tsx`), so the page lands where its ghost stood; the card
+ * itself still draws nothing when its week's figure cannot be read. Never throws.
+ */
+export const millioneaCardShown = cache(async (): Promise<boolean> => {
+  const door = await millioneaDoor();
+  if (!door.visible) return false;
+  return (await millioneaBreakOf(door.userId)) === null;
+});
+
+/**
  * Each week's frozen ticket price (MR-11: the week's own `rulesSnapshot`), by week id — what every ticket of that week
  * cost, as Tiketi zangu's cards print it. A week whose rules cannot be read is left out (its cards are not drawn rather
  * than priced by a guess).
@@ -112,5 +123,24 @@ export const millioneaTicketsDoor = cache(async (): Promise<boolean> => {
     return userId ? (await ticketStore.listForUser(userId, { limit: 1 })).length > 0 : false;
   } catch {
     return false;
+  }
+});
+
+/**
+ * Classic /positions' row (MASWALI-PLAN §10 §3.2 (e); the v6 delivery's D-13 (c), frame H14): how many live tickets the
+ * reader holds in the hub's week — "Tiketi za Millionea wiki hii: 2" — and 0 draws no row. A door to the reader's OWN
+ * tickets, so it follows `millioneaTicketsDoor`'s rule (L5) and not the offers' break rule: a holder reaches them at a
+ * kill, and on a break, as every statement on this platform stays open during one. While the rollout hides the product
+ * the week asked is the public line's (a non-staff holder's), never a preview's. One indexed read for a reader who holds
+ * no Millionea ticket (the common case); the hub's week only for a holder. Never throws: a failure draws no row.
+ */
+export const millioneaHeldThisWeek = cache(async (userId: string): Promise<number> => {
+  try {
+    if ((await ticketStore.listForUser(userId, { limit: 1 })).length === 0) return 0;
+    const door = await millioneaDoor();
+    const hub = await millioneaHubNow(userId, door.visible ? door.state : "WITHDRAWN");
+    return hub?.week?.mine?.held ?? 0;
+  } catch {
+    return 0;
   }
 });

@@ -362,8 +362,10 @@ const INVITE = "src/app/profile/invite/page.tsx", NAME_HOME = "src/lib/journey/i
     classicFooter === word("sw", "profile.inviteFriends")
       && menuRows({ journey: false, invitePaid: true, inviteAgent: true }).find((r) => r.href === "/profile/invite")?.words === "Alika na upate zawadi"
       && menuRows({ journey: false, invitePaid: false }).find((r) => r.href === "/profile/invite")?.words === word("sw", "profile.inviteFriends"));
+  // ⚠️ RE-PINNED, MASWALI-BUILD S5 (2026-10-17): the classic bar's props gain `millionea` (Millionea's More row, MASWALI-PLAN
+  // §10 §3.2) — not a journey door answer; the two this check is about still reach the journey arms alone.
   ok("5.7 · the shell hands the journey's two door answers to the journey arms alone",
-    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />")
+    has(SHELL, "inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} millionea={millioneaRow} />")
       && has(SHELL, "invitePaid={invitePaid} inviteAgent={inviteViewer.agentInGoodStanding} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />"));
   // Plants: the hub back to "never a paid word"; the menu back to the classic literal for a paid reader.
   const hubOld = (v: ReturnType<typeof member>) => (v.agentInStanding ? "agent.dashTitle" : "profile.inviteFriends");

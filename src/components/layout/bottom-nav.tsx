@@ -1,11 +1,12 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
+import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -58,7 +59,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -132,8 +133,15 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      only way to /wallet, so it stays. */
   const walletRow: { href: string; label: string }[] =
     walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
+  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13;
+     DESIGN_AUTHORITY §M8a item 11): never a slot of this rail — five equal tracks with the centre coin. Drawn only on the
+     shell's own answer (the rollout admits the request, the reader is not on a break), as `inviteVisible` is. */
+  const millioneaRow: { href: string; label: string; glyph: ReactNode }[] = millionea
+    ? [{ href: "/millionea", label: t.millionea.productLabel, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 text-text-muted" /> }]
+    : [];
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode }[] = isAuthed
     ? [
+        ...millioneaRow,
         { href: "/results",        label: t.common.results },
         { href: "/positions",      label: t.common.positions },
         ...walletRow,
@@ -142,6 +150,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
         ...proposalsRow,
       ]
     : [
+        ...millioneaRow,
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
         { href: "/fairness",    label: t.footer.resolutionAttestation },

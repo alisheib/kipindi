@@ -39,6 +39,9 @@ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsView } from "@/components/journey/tickets/tickets-view";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
+import { fillNodes } from "@/lib/fill-nodes";
+import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
+import { millioneaHeldThisWeek } from "@/lib/server/millionea-doors";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -308,6 +311,12 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     );
   }
 
+  /* MASWALI-BUILD S5 · MILLIONEA'S ROW (MASWALI-PLAN §10 §3.2 (e); the v6 delivery's D-13 (c), frame H14): one row under
+     the head, only while the reader holds live tickets in Millionea's week — a door to their own tickets, so it follows
+     the tickets' rule (L5), never the offers' break rule. Read for this arm alone: the journey's Tiketi zangu carries
+     Millionea as its third kind instead. */
+  const millioneaHeld = await millioneaHeldThisWeek(session.userId);
+
   return (
     <PageContainer tier="reading" className="space-y-6">
       <RefreshPoller intervalMs={20_000} />
@@ -333,6 +342,20 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           </Link>
         )}
       </header>
+
+      {millioneaHeld > 0 && (
+        <Link
+          href={"/millionea/tickets" as never}
+          data-testid="positions-millionea-row"
+          className="mat-flat flex min-h-[44px] items-center gap-3 rounded-control px-4 py-3 text-body-sm text-text transition-colors hover:bg-bg-overlay"
+        >
+          <MillioneaGlyph name="millionea" s={16} className="shrink-0 text-text-muted" />
+          <span className="min-w-0 flex-1">
+            {fillNodes(t.millionea.positionsRow, { n: <span className="font-mono tabular-nums">{formatNumber(millioneaHeld)}</span> })}
+          </span>
+          <I.arrowRight s={14} edge="end" className="shrink-0 text-text-muted" />
+        </Link>
+      )}
 
       {/* "Your standing" — a STATE, so it sits above the rail and never moves when a filter is
           pressed. See the note on its inputs above. */}

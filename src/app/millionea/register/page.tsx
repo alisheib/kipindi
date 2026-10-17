@@ -10,6 +10,8 @@
  * ⛔ Never a drive week, never a week whose results can still change (`millioneaRegister`). An unearned surface: no gold.
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+import { millioneaDoor } from "@/lib/server/millionea-doors";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,7 +29,9 @@ import { MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref } from ".
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaGate();
+  // The title obeys the same answer as the body (the account hub's precedent): a hidden product's page is titled as the
+  // identical 404 is, and asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
   return { title: `${t.millionea.registerTitle} · ${t.millionea.productLabel}` };
 }

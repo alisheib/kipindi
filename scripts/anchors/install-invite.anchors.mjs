@@ -176,10 +176,11 @@ export const MUTATIONS = [
     why: "⛔ THE DRIFT 5.2 EXISTS FOR, FROM THE NEEDLE'S SIDE. The Needle stops taking `isMoneySurface` from its one "
        + "home and declares its own, keeping only the journey's import beside it. Since 2026-10-02 (the Vodacom plan "
        + "S6 WP7, S6-PLAN A4) the import is a list, so 5.2 reads any list — and this is the defect that list must not "
-       + "hide: two definitions of a money surface, free to disagree about where a fidget may appear.",
+       + "hide: two definitions of a money surface, free to disagree about where a fidget may appear. (Re-anchored "
+       + "2026-10-17, MASWALI-BUILD S5: the list also names the Millionea slip's predicate, isSlipSurface.)",
     file: NEEDLE,
-    from: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";`,
-    to: `import { isJourneySurface } from "@/lib/surfaces";
+    from: `import { isMoneySurface, isJourneySurface, isSlipSurface } from "@/lib/surfaces";`,
+    to: `import { isJourneySurface, isSlipSurface } from "@/lib/surfaces";
 function isMoneySurface(path: string | null): boolean { return !!path && path.startsWith("/wallet"); }`,
     check: "5.2 ⭐ ONE definition of a money surface",
   },
@@ -189,8 +190,8 @@ function isMoneySurface(path: string | null): boolean { return !!path && path.st
        + "still passes, and a money route of the Needle's own appears beside it. Only the clause that forbids a local "
        + "MONEY_ROUTE or isMoneySurface can see this one, so this mutation is what shows that clause bites.",
     file: NEEDLE,
-    from: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";`,
-    to: `import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+    from: `import { isMoneySurface, isJourneySurface, isSlipSurface } from "@/lib/surfaces";`,
+    to: `import { isMoneySurface, isJourneySurface, isSlipSurface } from "@/lib/surfaces";
 const MONEY_ROUTE = "/wallet";`,
     check: "5.2 ⭐ ONE definition of a money surface",
   },

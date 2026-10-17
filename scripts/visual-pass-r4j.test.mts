@@ -353,14 +353,16 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // putting it back at "/" is one line.
   const PAGE_FILE = read("src/app/page.tsx");
   const HOME_GHOST_IMPORT = 'import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";';
+  // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the page's fallback holds the Millionea card's slot on the doors' one
+  // answer (`millionea={millionea}`); the root's picture of "/" cannot ask, and stays the plain ghost.
   const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} />,') && g.includes(HOME_GHOST_IMPORT)
-    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} />}>") && p.includes(HOME_GHOST_IMPORT);
+    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>") && p.includes(HOME_GHOST_IMPORT);
   ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
     homeEntry(ghost, PAGE_FILE));
   ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
     !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
   ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
-    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<Suspense fallback={null}>")));
+    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<Suspense fallback={null}>")));
 }
 {
   // /account: the page's own column, h1, identity card, prompt and column cut.

@@ -15,6 +15,7 @@
  * ⛔ No `.catch` on the read: a failed read is the error page, never "no tickets yet" drawn over a player's money (B-1).
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
@@ -26,7 +27,7 @@ import { eatWeekdayClock, weekNumberOf } from "@/components/maswali/maswali-form
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaMyTickets, type MillioneaTicketRow } from "@/lib/server/maswali-player";
-import { millioneaWeekPrices } from "@/lib/server/millionea-doors";
+import { millioneaTicketsDoor, millioneaWeekPrices } from "@/lib/server/millionea-doors";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { fill } from "@/lib/utils";
@@ -37,7 +38,9 @@ import { inLens, MillioneaTicketsBar, parseMillioneaLens } from "./tickets-bar";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaTicketGate();
+  // The title obeys the same answer as the body (L5: shown, or a holder at a kill; the account hub's precedent), and
+  // asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaTicketsDoor())) return notFoundMetadata();
   const { t } = await getServerT();
   const { journey } = await resolveSimpleJourney();
   return { title: journey ? `${t.journey.tabTickets} · ${t.millionea.productLabel}` : t.millionea.myTicketsTitle };

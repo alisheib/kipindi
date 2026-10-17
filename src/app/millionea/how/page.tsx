@@ -13,6 +13,8 @@
  * ⛔ THE GATE FIRST (MR-2). An unearned surface: no gold (the examples' figures are illustrations, neutral ink).
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+import { millioneaDoor } from "@/lib/server/millionea-doors";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { Chip } from "@/components/ui/chip";
@@ -40,7 +42,9 @@ const DAY_MS = 86_400_000;
 const EXAMPLE_VOIDED_MAIN = 4;
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaGate();
+  // The title obeys the same answer as the body (the account hub's precedent): a hidden product's page is titled as the
+  // identical 404 is, and asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
   return { title: `${t.millionea.howToPlay} · ${t.millionea.productLabel}` };
 }

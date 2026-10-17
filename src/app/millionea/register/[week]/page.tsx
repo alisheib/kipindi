@@ -14,6 +14,8 @@
  * ⛔ An unearned surface: no gold (§M8a item 7) — the register states money; it awards none.
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+import { millioneaDoor } from "@/lib/server/millionea-doors";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
@@ -40,7 +42,9 @@ import { bySlot, msOf, nextWeekNumber, ordinalOf, previousWeekNumber, textIn } f
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaGate();
+  // The title obeys the same answer as the body (the account hub's precedent): a hidden product's page is titled as the
+  // identical 404 is, and asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaDoor()).visible) return notFoundMetadata();
   const { t } = await getServerT();
   return { title: `${t.millionea.registerTitle} · ${t.millionea.productLabel}` };
 }

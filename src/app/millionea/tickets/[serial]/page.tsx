@@ -23,6 +23,8 @@
  *    seen THROUGH the newest fact it rendered (`seen.through`, L7), so a fact that lands after the render still performs.
  */
 import type { Metadata } from "next";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import { notFound, redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { BackLink } from "@/components/ui/back-link";
@@ -46,7 +48,9 @@ import { SealDoor, TicketCancel, TicketSeen } from "./ticket-acts";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  await millioneaTicketGate();
+  // The title obeys the same answer as the body (L5: shown, or a holder at a kill; the account hub's precedent), and
+  // asking never rejects (visual-pass-r5d 1.4″).
+  if (!(await millioneaTicketsDoor())) return notFoundMetadata();
   const { t } = await getServerT();
   // ⛔ No serial in the title: the metadata does not read the ticket, and a title must not confirm that one exists.
   return { title: `${t.millionea.stubSerial} · ${t.millionea.productLabel}` };

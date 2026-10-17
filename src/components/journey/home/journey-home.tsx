@@ -7,8 +7,11 @@
  *
  * ⭐ THE ORDER IS THE DECK'S, AT EVERY WIDTH (§3.2's order; A16 item 1): the How-to card, the headline, the topic chips,
  * the search line when a search is set, the questions, "Onyesha zaidi" — or, where there are no questions, one of three
- * empty states. Below 1024 the head is a column; from 1024 CSS draws the headline left of the How-to card on one row
- * (`order: -1`, the desktop board's flex values), the markup unchanged, so the tab order is too.
+ * empty states. ⚠️ ONE DEVIATION, RULED (O-7, 2026-10-17; COMPLIANCE-DECISIONS § "Maswali Millionea's doors on the
+ * journey home and in Tiketi zangu deviate from the sponsor deck"): Maswali Millionea's card stands after the head and
+ * before the chips, for a reader the rollout admits — `test:journey-home` 7.order holds both orders. Below 1024 the head
+ * is a column; from 1024 CSS draws the headline left of the How-to card on one row (`order: -1`, the desktop board's flex
+ * values), the markup unchanged, so the tab order is too.
  * ⭐ IT DECIDES NOTHING ITSELF — WP3's pure rules do (`home-list.ts`): the address's category, search and page
  * (`parseHomeParams`, against the platform's closed category list), the questions that take a bet now in the home's
  * order (`homeBook`, handed the bet path's own test, `bettableAt`), the chips (`homeChips`), what one page of
@@ -30,6 +33,7 @@
  * in a line of its own with its way out (or, when it matched nothing, by the empty state that names it).
  * `test:journey-home` §6 (the route file) and §7 (this view) hold it.
  */
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
@@ -49,6 +53,7 @@ import { fieldNames, matchesQuery, MARKET_SEARCH, parseQuery } from "@/lib/searc
 import { marketCategoryLabel } from "@/lib/localized";
 import { fill } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+import { millioneaHomeCard } from "@/components/maswali/maswali-home-card-door";
 import { LazyEmptyState, LazyHowToCard, LazyRefreshPoller, LazyStripAutoScroll } from "./home-lazy";
 import { HomeChips } from "./home-chips";
 import { HomeHeadline } from "./home-headline";
@@ -72,6 +77,9 @@ export async function JourneyHome({ searchParams }: { searchParams: Promise<Home
   const view = homeView(book, params, PLAYER_PER_PAGE, (m) =>
     matchesQuery(search, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
   const { onBreak, seeds } = await journeyCardState(view.shown, nowMs, session?.userId);
+  // MASWALI-BUILD S5 · the Millionea card (§M8a item 11, O-7): for a reader the rollout admits and who is not on a break,
+  // its figure this render's; null — nothing drawn — otherwise (`maswali-home-card-door.tsx`).
+  const millionea = await millioneaHomeCard(t, nowMs, { onBreak: onBreak !== null });
   return (
     <JourneyHomeView
       t={t}
@@ -83,12 +91,13 @@ export async function JourneyHome({ searchParams }: { searchParams: Promise<Home
       signedIn={session !== null}
       onBreak={onBreak}
       seeds={seeds}
+      millionea={millionea}
     />
   );
 }
 
 /** The home as the reads leave it: the server markup, its lazy parts placed where the deck puts them. */
-export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedIn, onBreak = null, seeds }: {
+export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedIn, onBreak = null, seeds, millionea = null }: {
   t: Dict;
   locale: Locale;
   /** The render's clock: every card reads it (WP5). */
@@ -99,6 +108,9 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
   signedIn: boolean;
   onBreak?: BreakState | null;
   seeds?: ReadonlyMap<string, SheetSeed>;
+  /** MASWALI-BUILD S5 · the Millionea card, drawn by the home's reads (`JourneyHome`), or nothing: after the head (the
+   *  How-to card and the headline), before the topic chips, at every width (O-7; DESIGN_AUTHORITY §M8a item 11). */
+  millionea?: ReactNode;
 }) {
   const { cat, q } = params;
   /* The way out of a search, wherever it is said: the same address with the search gone, the category kept. */
@@ -125,6 +137,7 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
           <LazyHowToCard signedIn={signedIn} />
           <HomeHeadline t={t} />
         </div>
+        {millionea}
         <HomeChips chips={chips} selected={cat} q={q} t={t} />
         {q !== "" && view.empty !== "q" && (
           <div className="kp-jhome__query">

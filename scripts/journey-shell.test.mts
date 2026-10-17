@@ -1964,6 +1964,10 @@ const INVITE_DOOR: Gate = (_k, d) => d.inviteVisible;
 const PROPOSALS_DOOR: Gate = (_k, d) => d.proposalsVisible;
 const MEMBER_PROPOSALS: Gate = (k, d) => k.signedIn && d.proposalsVisible;
 const AGENT_DOOR: Gate = (_k, d) => d.agentDoorVisible;
+/** MASWALI-BUILD S5 (2026-10-17) · Maswali Millionea's More row (MASWALI-PLAN §10 §3.2 (b)–(c)), for a player and a guest
+ *  alike: drawn on the rollout's answer and not during a break, neither of which a census kind varies — every kind it walks
+ *  is shown an ACTIVE product and is on no break. A hidden product draws no row, and its pages answer the identical 404. */
+const MILLIONEA_SHOWN: Gate = () => true;
 type ChromeDoor = { href: string; file: string; gate: Gate };
 
 /** The classic chrome's own doors, each gated as its file gates it: the bar (with More), the rail (coin and More), the avatar menu, the bell. */
@@ -1981,6 +1985,7 @@ const CLASSIC_DOORS: readonly ChromeDoor[] = [
   { href: "/wallet/deposit", file: TOP_BAR_FILE, gate: MONEY_IN },
   { href: "/auth/login", file: TOP_BAR_FILE, gate: GUEST_ONLY },
   { href: "/auth/register", file: TOP_BAR_FILE, gate: GUEST_ONLY },
+  { href: "/millionea", file: TOP_BAR_FILE, gate: MILLIONEA_SHOWN },
   { href: "/markets", file: BOTTOM_NAV, gate: ANYONE },
   { href: "/updown", file: BOTTOM_NAV, gate: ANYONE },
   { href: "/live", file: BOTTOM_NAV, gate: ANYONE },
@@ -1992,6 +1997,7 @@ const CLASSIC_DOORS: readonly ChromeDoor[] = [
   { href: "/fairness", file: BOTTOM_NAV, gate: GUEST_ONLY },
   { href: "/profile/invite", file: BOTTOM_NAV, gate: MEMBER_INVITE },
   { href: "/proposals", file: BOTTOM_NAV, gate: PROPOSALS_DOOR },
+  { href: "/millionea", file: BOTTOM_NAV, gate: MILLIONEA_SHOWN },
   { href: "/profile", file: AVATAR_FILE, gate: MEMBER },
   { href: "/wallet", file: AVATAR_FILE, gate: MEMBER },
   { href: "/profile/invite", file: AVATAR_FILE, gate: MEMBER_INVITE },
