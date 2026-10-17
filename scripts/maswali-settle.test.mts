@@ -9,14 +9,15 @@
  * ledger inside one transaction per week, settles 1,500 tickets in bulk, and reads HOUSE:COMMISSION for the house result.
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
  *
- * The floor is per store (10.4 reads the commission account on Postgres only). It only ever rises.
+ * The floor is per store (10.4 reads the commission account on Postgres only, and R3.6, R8.1 and R8.2 a rollback only
+ * Postgres can make). It only ever rises: 62/63 → 84/88 with the review's R3, R4c, R6, R8 and R9 cases (2026-10-17).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-settle",
   casesFile: "scripts/lib/maswali-settle-child.mts",
-  minPass: { memory: 62, postgres: 63 },
+  minPass: { memory: 84, postgres: 88 },
   dbPrefix: "mlw_settle",
   timeoutMs: 30 * 60_000,
 });
