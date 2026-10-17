@@ -32,7 +32,7 @@ export type TicketDestination = {
   /** Where to send the player. Always carries the fragment so the row can be scrolled to. */
   href: string;
   /** Which surface actually carries the details. `*-list` means we could not do better. */
-  surface: "market" | "updown-round" | "updown-list" | "market-list" | "millionea-list";
+  surface: "market" | "updown-round" | "updown-list" | "market-list" | "millionea-ticket" | "millionea-list";
   /**
    * True when we landed on a LIST rather than on the position itself. Callers may want to
    * say so; nothing may treat it as success. It exists so "we degraded" is a value that can
@@ -70,14 +70,21 @@ export function positionListHref(productLine: PositionProductLine, positionId: s
   }
 }
 
+/** A Millionea ticket's own page (MASWALI-BUILD S5): keyed by the serial printed on it, owner-only (MB-95). */
+export function millioneaTicketHref(serial: string): string {
+  return `/millionea/tickets/${encodeURIComponent(serial)}`;
+}
+
 export function positionPermalink(input: {
   positionId: string;
   productLine: PositionProductLine;
   marketId: string | null;
   /** The Up & Down round this position's market belongs to, when it has one. */
   roundId?: string | null;
+  /** The Millionea ticket on this position, when the resolver found it (its own page is keyed by serial). */
+  ticketSerial?: string | null;
 }): TicketDestination {
-  const { positionId, productLine, marketId, roundId } = input;
+  const { positionId, productLine, marketId, roundId, ticketSerial } = input;
   const frag = `#${positionAnchorId(positionId)}`;
 
   if (productLine === "UPDOWN") {
@@ -90,9 +97,11 @@ export function positionPermalink(input: {
     return { href: positionListHref("UPDOWN", positionId), surface: "updown-list", isFallback: true };
   }
 
-  // ⛔ A Millionea ticket never goes to `/markets/<id>` — a week has no poll page (S0.5). Its own ticket page is keyed by
-  // serial (`/millionea/tickets/[serial]`, S5), which this pure function does not hold, so it lands on the list.
+  // ⛔ A Millionea ticket never goes to `/markets/<id>` — a week has no poll page (S0.5). Its own page is keyed by its
+  // serial (`/millionea/tickets/[serial]`, S5): with the serial the resolver found, it lands there; without one it lands on
+  // the Millionea list, and says so.
   if (productLine === "MASWALI") {
+    if (ticketSerial) return { href: `${millioneaTicketHref(ticketSerial)}${frag}`, surface: "millionea-ticket", isFallback: false };
     return { href: positionListHref("MASWALI", positionId), surface: "millionea-list", isFallback: true };
   }
 

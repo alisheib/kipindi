@@ -15,6 +15,8 @@
  *   50pick:sse:wallet-balance   — wallet balance change
  *   50pick:sse:notification     — new notification
  *   50pick:sse:market-resolve   — market resolved
+ *   50pick:sse:maswali-pool     — a Millionea week's pool figure moved (the server derived it; forwarded only to a
+ *                                 viewer the rollout admits)
  */
 import { useState, useEffect, useRef, useCallback } from "react";
 
@@ -24,6 +26,7 @@ const EVENT_MAP: Record<string, string> = {
   "wallet:balance":   "50pick:sse:wallet-balance",
   "notification:new": "50pick:sse:notification",
   "market:resolve":   "50pick:sse:market-resolve",
+  "maswali:pool":     "50pick:sse:maswali-pool",
 };
 
 const MAX_BACKOFF_MS = 30_000;

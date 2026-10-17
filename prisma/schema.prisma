@@ -2630,6 +2630,7 @@ model MaswaliCycle {
   updatedAt         DateTime @updatedAt
   questions         MaswaliQuestion[]
   tickets           MaswaliTicket[]
+  noticesSeen       MaswaliNoticeSeen[]
 
   @@index([state, closesAt])
 }
@@ -2729,6 +2730,20 @@ model MaswaliTicket {
   @@index([cycleId, userId, status])
   @@index([cycleId, score])
   @@index([userId, createdAt])
+}
+
+/// "Each fact performs once, for its owner, then rests" (MASWALI-PLAN §10 2.1, §7b S5 item 7): the hub notices a player
+/// has seen — one row per player, week and notice, and the first stamp stays. A ticket's own facts rest on
+/// `MaswaliTicket.lastViewedAt`. No money and no picks. Migration `20261017140000_maswali_notice_seen`.
+model MaswaliNoticeSeen {
+  userId  String
+  cycleId String
+  cycle   MaswaliCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  /// ROLLOVER | WEEK_VOID | RESULT
+  notice  String
+  seenAt  DateTime     @default(now())
+
+  @@id([userId, cycleId, notice])
 }
 
 // ============================================================================

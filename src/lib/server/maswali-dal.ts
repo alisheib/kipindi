@@ -279,6 +279,24 @@ export interface TicketStore {
   settleWeekTickets(cycleId: string, rows: ReadonlyArray<SettledTicketRow>, tx?: Prisma.TransactionClient): Promise<number>;
 }
 
+/**
+ * ⭐ S5 · "EACH FACT PERFORMS ONCE, FOR ITS OWNER, THEN RESTS" (MASWALI-PLAN §10 2.1, §7b S5 item 7) — the hub notices a
+ * player has seen, one row per player, week and notice. A ticket's own facts rest on `MaswaliTicket.lastViewedAt`; these
+ * are the facts that belong to a player-WEEK (the rollover line, the week void, the week's result). ⛔ First seen wins: a
+ * later view never moves the stamp. No money and no picks.
+ */
+export type MaswaliNotice = "ROLLOVER" | "WEEK_VOID" | "RESULT";
+export const MASWALI_NOTICES: readonly MaswaliNotice[] = ["ROLLOVER", "WEEK_VOID", "RESULT"];
+export const isMaswaliNotice = (v: unknown): v is MaswaliNotice => typeof v === "string" && (MASWALI_NOTICES as readonly string[]).includes(v);
+export type SeenNotice = { cycleId: string; notice: MaswaliNotice; seenAt: string };
+
+export interface NoticeStore {
+  /** The notices this player has seen, among these weeks. */
+  seenFor(userId: string, cycleIds: readonly string[]): Promise<SeenNotice[]>;
+  /** Record one seen. True when THIS call recorded it; false when it was already seen (the first stamp stays). */
+  markSeen(userId: string, cycleId: string, notice: MaswaliNotice, seenAt: string): Promise<boolean>;
+}
+
 // ── IN MEMORY ───────────────────────────────────────────────────────────────────────────────────────
 
 declare global {
@@ -286,11 +304,13 @@ declare global {
   var __50PICK_MLN_WEEKS: Map<string, StoredWeek> | undefined;
   var __50PICK_MLN_QUESTIONS: Map<string, StoredQuestion> | undefined;
   var __50PICK_MLN_TICKETS: Map<string, StoredTicket> | undefined;
+  var __50PICK_MLN_NOTICES: Map<string, SeenNotice & { userId: string }> | undefined;
   /* eslint-enable no-var */
 }
 const memWeeks = globalThis.__50PICK_MLN_WEEKS ?? (globalThis.__50PICK_MLN_WEEKS = new Map());
 const memQuestions = globalThis.__50PICK_MLN_QUESTIONS ?? (globalThis.__50PICK_MLN_QUESTIONS = new Map());
 const memTickets = globalThis.__50PICK_MLN_TICKETS ?? (globalThis.__50PICK_MLN_TICKETS = new Map());
+const memNotices = globalThis.__50PICK_MLN_NOTICES ?? (globalThis.__50PICK_MLN_NOTICES = new Map());
 const copyWeek = (w: StoredWeek): StoredWeek => ({ ...w });
 const copyQuestion = (q: StoredQuestion): StoredQuestion => ({ ...q });
 const copyTicket = (t: StoredTicket): StoredTicket => ({ ...t, selections: [...t.selections] });
@@ -474,6 +494,25 @@ const memoryTickets: TicketStore = {
       n++;
     }
     return n;
+  },
+};
+
+const noticeKey = (userId: string, cycleId: string, notice: string) => `${userId}|${cycleId}|${notice}`;
+
+const memoryNotices: NoticeStore = {
+  async seenFor(userId, cycleIds) {
+    const want = new Set(cycleIds);
+    return [...memNotices.values()].filter((n) => n.userId === userId && want.has(n.cycleId))
+      .map((n) => ({ cycleId: n.cycleId, notice: n.notice, seenAt: n.seenAt }));
+  },
+  async markSeen(userId, cycleId, notice, seenAt) {
+    // The database's CHECK and foreign key, twinned (the header's lesson: a fake more permissive than the real thing).
+    if (!isMaswaliNotice(notice)) throw new Error(`MaswaliNoticeSeen_notice_check: ${notice}`);
+    if (!memWeeks.has(cycleId)) throw new Error(`MaswaliNoticeSeen_cycleId_fkey: ${cycleId}`);
+    const k = noticeKey(userId, cycleId, notice);
+    if (memNotices.has(k)) return false;
+    memNotices.set(k, { userId, cycleId, notice, seenAt });
+    return true;
   },
 };
 
@@ -725,15 +764,31 @@ const prismaTickets: TicketStore = {
   },
 };
 
+const prismaNotices: NoticeStore = {
+  async seenFor(userId, cycleIds) {
+    if (cycleIds.length === 0) return [];
+    const rows = await pc().maswaliNoticeSeen.findMany({ where: { userId, cycleId: { in: [...cycleIds] } } });
+    return rows.map((r) => ({ cycleId: r.cycleId, notice: r.notice as MaswaliNotice, seenAt: iso(r.seenAt)! }));
+  },
+  async markSeen(userId, cycleId, notice, seenAt) {
+    // ON CONFLICT DO NOTHING on the (player, week, notice) key: the first stamp stays, and a second view writes nothing.
+    const r = await pc().maswaliNoticeSeen.createMany({ data: [{ userId, cycleId, notice, seenAt: new Date(seenAt) }], skipDuplicates: true });
+    return r.count === 1;
+  },
+};
+
 const usePrisma = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 
 export const weekStore: WeekStore = usePrisma ? prismaWeeks : memoryWeeks;
 export const questionStore: QuestionStore = usePrisma ? prismaQuestions : memoryQuestions;
 export const ticketStore: TicketStore = usePrisma ? prismaTickets : memoryTickets;
+export const noticeStore: NoticeStore = usePrisma ? prismaNotices : memoryNotices;
 
 /** The two halves, by name, for the two-store suites (`runTwoStores`). */
-export const __maswaliStores = { memory: { weekStore: memoryWeeks, questionStore: memoryQuestions, ticketStore: memoryTickets },
-  prisma: { weekStore: prismaWeeks, questionStore: prismaQuestions, ticketStore: prismaTickets } };
+export const __maswaliStores = {
+  memory: { weekStore: memoryWeeks, questionStore: memoryQuestions, ticketStore: memoryTickets, noticeStore: memoryNotices },
+  prisma: { weekStore: prismaWeeks, questionStore: prismaQuestions, ticketStore: prismaTickets, noticeStore: prismaNotices },
+};
 
 /** ⚠️ TEST SEAM ONLY: empty the memory stores. A no-op on Postgres. */
 export function __resetMaswaliMemoryStores(): void {
@@ -741,4 +796,5 @@ export function __resetMaswaliMemoryStores(): void {
   memWeeks.clear();
   memQuestions.clear();
   memTickets.clear();
+  memNotices.clear();
 }

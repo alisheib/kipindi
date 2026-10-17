@@ -585,6 +585,9 @@ export async function cancelMaswaliTicket(input: { userId: string; positionId: s
         });
         audit({ category: "BET", action: "maswali.ticket.cancelled", actorId: userId, targetType: "MaswaliTicket", targetId: ticket.id,
           payload: { week: week.code, serial: ticket.serial, positionId: p.id, refunded: value } });
+        // S5 · the pool figure moved down a ticket: the live hub hears it once the money commits (`maswali-pool-feed.ts`,
+        // loaded here on use, so this money module gains no import).
+        afterCommit(mTx, () => { void import("./maswali-pool-feed").then((m) => m.noteMaswaliPoolChanged(week.id)).catch(() => {}); });
         return { value, balance };
       });
     });

@@ -37,6 +37,7 @@ import { guaranteeRequirement } from "@/lib/maswali-money";
 import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
 import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
+import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
 
 type Ok<T> = { ok: true } & T;
 type Refused = { ok: false; error: string };
@@ -336,6 +337,8 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     const opened = (await weekStore.get(week.id))!;
     audit({ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } });
+    // S5 · a week on sale has a pool figure now (the frame is derived after the open commits).
+    noteMaswaliPoolChanged(week.id);
     return { ok: true, week: opened };
   });
 }
@@ -380,7 +383,7 @@ export async function purchaseMaswaliTickets(input: {
   }
   const rules = frozenRules(week);
   if (!rules) return notOpen;
-  return buyPosition(input.userId, {
+  const r = await buyPosition(input.userId, {
     marketId: week.marketId,
     side: "YES",
     stake: rules.ticketPriceTzs * input.slips.length,
@@ -388,6 +391,10 @@ export async function purchaseMaswaliTickets(input: {
     playStartedAt: input.playStartedAt,
     maswali: { weekId: week.id, slips: input.slips },
   });
+  // S5 · a sale moved the week's pool: the live hub hears it, coalesced, after the purchase committed (MB-31). A replay
+  // moved nothing.
+  if (r.ok && !r.data?.replayed) noteMaswaliPoolChanged(week.id);
+  return r;
 }
 
 // ── THE CLOSE ───────────────────────────────────────────────────────────────────────────────────────
@@ -457,6 +464,8 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
       if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
       audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
         payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
+      // S5 · the sales are final: the hub's figure stops moving with sales from here (the frame is derived after commit).
+      noteMaswaliPoolChanged(week.id);
       return { ok: true, week: (await weekStore.get(week.id))! };
     };
     return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();
@@ -645,6 +654,8 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
     if (!settled.ok) return refuse(`The week is VOIDED but its refunds did not run: ${settled.error}. The heal retries.`);
     audit({ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: stamped.week.id,
       payload: { code: stamped.week.code, marketId: stamped.marketId } });
+    // S5 · a voided week is final, so the next week of its line can count its carry (MR-3): every open figure moves.
+    noteMaswaliPoolChanged();
   }
   return { ok: true, week: (await weekStore.get(input.weekId))! };
 }

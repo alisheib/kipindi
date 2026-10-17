@@ -37,6 +37,10 @@ const COMMIT_ROUTE = [
   /^\/markets\/[^/]+/,        // a poll's bet card
   /^\/updown\/[^/]+/,         // an Up & Down round card (NOT /updown itself)
   /^\/proposals\/new(\/|$)/,  // a paid submission
+  // MASWALI-BUILD S5 · ⛔ the slip stays OUT of MONEY_ROUTE (a recorded decision: that line is pinned verbatim and hides
+  // the Needle platform-wide); it joins HERE, the wider list, with the one other Millionea page that moves money.
+  /^\/millionea\/slip(\/|$)/,       // a Millionea slip's pay control and its confirm sheet
+  /^\/millionea\/tickets\/[^/]+/,   // a Millionea ticket's free cancel (NOT the list)
 ];
 
 export function isCommitSurface(path: string | null): boolean {
@@ -62,6 +66,12 @@ const JOURNEY_ROUTE = [
   /^\/updown\/history$/,       // Tiketi zangu, Up & Down
   /^\/markets\/[^/]+$/,        // a question (NOT the board)
   /^\/wallet\/deposit(\/|$)/,  // the deposit screen and the provider's return
+  // MASWALI-BUILD S5 · the Millionea pages the journey's tabs reach (MR-2): the Maswali tab's card opens the hub and its
+  // slip; Tiketi zangu's third kind is the list and a ticket. ⛔ Not How or the register: reading pages keep every overlay.
+  /^\/millionea$/,             // the Millionea hub
+  /^\/millionea\/slip$/,       // the Millionea slip
+  /^\/millionea\/tickets$/,    // Tiketi zangu, Millionea
+  /^\/millionea\/tickets\/[^/]+$/, // a Millionea ticket
 ];
 
 export function isJourneySurface(path: string | null): boolean {
