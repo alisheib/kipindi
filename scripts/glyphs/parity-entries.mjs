@@ -2,7 +2,7 @@
  * PHOSPHOR-MIGRATION W2 · the classic-shell parity entries for the glyph swap, GENERATED from a measured compare
  * (docs/PHOSPHOR-MIGRATION.md §5 W2; the harness: scripts/qa-classic-shell-parity.mjs, `GLYPH_SWAP`).
  *
- *   node scripts/glyphs/parity-entries.mjs <baseline.json> <compare.current.json>   writes scripts/qa-parity-glyph-swap.generated.mjs
+ *   npm run glyphs:parity-entries -- <baseline.json> <compare.current.json>   writes scripts/qa-parity-glyph-swap.generated.mjs
  *
  * For every cell the two captures share (the matrix, the Sell cells and their first paints, the book, the question page)
  * and every region field that differs, it asks whether the difference is WHOLLY the family's glyphs:

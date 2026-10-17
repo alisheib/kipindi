@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.db9d4f0b.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.0d3c6857.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -103,7 +103,7 @@ export const GLYPH_REGISTRY = {
   "menu": { s: "p-list", g: "shell", i: { bold: [28, 228] } },
   "mobileMoney": { s: "x-mobileMoney", g: "app", i: { bold: [52, 204] } },
   "needle": { s: "x-needle", g: "app", i: { bold: [20, 236] } },
-  "pause": { s: "p-pause", g: "app", i: { bold: [36, 220] } },
+  "pause": { s: "p-pause", g: "app", i: { bold: [36, 220], fill: [40, 216] } },
   "percent": { s: "p-percent", g: "app", i: { bold: [36.02, 220] } },
   "phone": { s: "p-phone", g: "app", i: { bold: [28, 236] } },
   "playBare": { s: "p-play", g: "app", i: { bold: [60, 244], fill: [64, 240] } },
@@ -155,7 +155,7 @@ export const GLYPH_REGISTRY = {
   "void": { s: "p-prohibit", g: "app", i: { bold: [20, 236] } },
   "wallet": { s: "p-wallet", g: "app", i: { bold: [27.99, 236] }, m: { d: "M192 40H56a16 16 0 0 0-16 16V184a16 16 0 0 0 16 16H216a8 8 0 0 0 8-8V80a8 8 0 0 0-8-8H56a16 16 0 0 1-16-16", x: [40, 224], f: "M168 132a12 12 0 1 0 24 0a12 12 0 1 0 -24 0Z", fx: [168, 192] } },
   "warning": { s: "p-warning", g: "app", i: { regular: [15.99, 240], bold: [11.99, 244] } },
-  "weather": { s: "p-cloud-rain", g: "app", i: { regular: [24, 232], bold: [20, 236] } },
+  "weather": { s: "p-cloud-sun", g: "app", i: { regular: [17.09, 240], bold: [13.07, 244] } },
   "wifiOff": { s: "p-wifi-slash", g: "app", i: { bold: [11.99, 244] } },
   "x": { s: "p-x", g: "app", i: { regular: [48, 208], bold: [43.97, 212.03] } },
   "xCircle": { s: "p-x-circle", g: "app", i: { bold: [20, 236] } },

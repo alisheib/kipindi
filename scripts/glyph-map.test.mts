@@ -22,9 +22,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALIASES, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, SHELL_KEYS, type MapEntry } from "./glyphs/map";
-import { EXTRAS, type Variant } from "./glyphs/extras";
-import { TEXT_MARKS, type Mark } from "./glyphs/marks";
+import { ALIASES, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, SHELL_KEYS, type MapEntry } from "./glyphs/map.ts";
+import { EXTRAS, type Variant } from "./glyphs/extras.ts";
+import { TEXT_MARKS, type Mark } from "./glyphs/marks.ts";
 import { pathBounds, type Box } from "./glyphs/reach.mts";
 import { phosphorFile, REGISTRY_PATH, VARIANTS } from "./glyphs/codegen.mts";
 import { decomment } from "./lib/decomment.mts";

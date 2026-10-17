@@ -27,7 +27,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
-import { PHOSPHOR_PACKAGE } from "./glyphs/map";
+import { PHOSPHOR_PACKAGE } from "./glyphs/map.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CODE = /\.(tsx?|mts|mjs|cjs|jsx?)$/;

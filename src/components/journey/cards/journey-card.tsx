@@ -187,7 +187,7 @@ function metaWords(meta: CardMeta, close: CardCloseLabel | null, t: Dict): strin
 function metaGlyph(meta: CardMeta): ReactNode {
   if (meta.kind === "today") return <I.clock s={14} />;
   if (meta.kind === "waiting") return <I.hourglassOff s={14} />;
-  if (meta.kind === "settled") return <I.checkCircle s={14} />;
+  if (meta.kind === "settled") return <I.resolved s={14} />;
   return null;
 }
 

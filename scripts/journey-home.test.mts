@@ -829,11 +829,11 @@ function journeyCardChecks(w: World, ok: Ok) {
     pricedEn: en.journey.cardDaysLeft.replace("{n}", "11"),
     pricedZh: zh.journey.cardDaysLeft.replace("{n}", "11"),
     closed: glyph(I.hourglassOff, 14) + sw.market.waitingForResults,
-    settledYes: glyph(I.checkCircle, 14) + sw.market.resolvedOutcome,
+    settledYes: glyph(I.resolved, 14) + sw.market.resolvedOutcome, // PHOSPHOR-MIGRATION W2: the lexicon's resolved, the seal
     void: sw.common.voided,
   };
   const badLabel = (Object.keys(LABEL) as CardName[]).filter((n) => labelOf(n)?.inner !== LABEL[n]).map((n) => [n, labelOf(n)?.inner ?? null]);
-  ok("4.meta.label · the label is in the served markup, computed on the server: closes today with its clock, Siku N, waiting with the closed hourglass, settled with its check, void alone — in the reader's words",
+  ok("4.meta.label · the label is in the served markup, computed on the server: closes today with its clock, Siku N, waiting with the closed hourglass, settled with its seal, void alone — in the reader's words",
     badLabel.length === 0, j(badLabel));
   const whereOf = (n: CardName) => elementsOf(R[n], "kp-jcard__where")[0] ?? null;
   const comp = whereOf("competition"), plainWhere = whereOf("priced"), odd = whereOf("oddCompetition");

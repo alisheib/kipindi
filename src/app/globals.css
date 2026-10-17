@@ -7476,9 +7476,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    y13–26 over a bell whose ink is x1165–1178, y21–36, and only the rim and clapper showed. In the journey the pip hangs
    by its LEFT edge, 1px past the glyph's centre line (21px into the 40px button), and its top on the 44px controls'
    top line (−2px, half of 44 − 40), so it grows right, into the slot's 4px and the 12px gap, and never back over the
-   dome. Computed from the bell's path (`glyphs.tsx`, a 5-unit dome at s=20) and the pip's box (18px, 2px ring): at
-   rest the ring clears the dome's stroke by 1px; at the `notif-badge-pulse` peak (1.25×, about its centre) the fill
-   still clears it, "99+" included, and only the background-coloured ring cuts the dome's shoulder — its job.
+   dome. Computed from the bell's drawing — since PHOSPHOR-MIGRATION W2 Phosphor's Bold bell, whose dome is an arc of
+   radius 84 of 256 (6.56px at s=20, centred 18.1px down the button), where the hand-drawn dome was 4.96px — and the
+   pip's box (18px, 2px ring): at rest the ring clears the dome by 0.94px; at the `notif-badge-pulse` peak (1.25×, about
+   its centre) the fill still clears it, "99+" included (0.33px), and only the background-coloured ring cuts the dome's
+   shoulder — its job. W2 raised the pip 1px (−4) for the bigger dome; `test:journey-shell` 7.bell′ reads both numbers
+   from the drawing.
    "99+" (30px) ends 5px short of the avatar's ring at rest and 1px short at the pulse's peak.
    ⛔ `!important`, AND IT IS EARNED (the E-101c rule above `.ticket-target`): the classic position is an INLINE style,
    which beats every selector without it, and that file is the classic bell every live player has, which S6 does not
@@ -7495,7 +7498,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    against its mirror (1168,23) at 475 — and shaded the bar under the pip (68–75 against the bar's 86). The pip needs no
    shadow to stand off this bar: its own 2px ring of the bar's ground (`ring="var(--bg-base)"`) already separates it, and
    the bar is opaque. So the journey's pip casts nothing; the classic pip keeps its glow and its drop (frozen chrome). */
-.kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: none; }
+.kp-jhdr__bell .count-badge { top: -4px !important; right: auto !important; left: 21px !important; box-shadow: none; }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 /* ⭐ Round 10 (R10-A6: a centred control frames its ink). A5's fit rule gave the pill 12/10px from 360 — 22px of padding,
    the glyph's side 2px short so the header fits every case — and the glyph's box drew its ink inside that 10px. The glyph

@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import {
   build, drift, realDisk, NOTICES_PATH, REGISTRY_PATH, SHELL_PATH, SPRITE_DIR, VARIANTS, type Disk,
 } from "./glyphs/codegen.mts";
-import { PHOSPHOR_PACKAGE, PHOSPHOR_VERSION } from "./glyphs/map";
+import { PHOSPHOR_PACKAGE, PHOSPHOR_VERSION } from "./glyphs/map.ts";
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 const LICENCE = readFileSync(new URL(`../node_modules/${PHOSPHOR_PACKAGE}/LICENSE`, import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();

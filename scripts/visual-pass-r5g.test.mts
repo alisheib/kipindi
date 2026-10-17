@@ -549,7 +549,8 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
       && has("src/lib/nav/active-tab.ts", '{ key: "tickets", href: "/positions", glyph: "ticket", label: "journey.tabTickets" }'));
   const prof = code("src/app/profile/page.tsx");
   ok(`3.3 · /profile's help row names the help page as the page does — "${word("en", "common.help")}" / "${word("zh", "common.help")}" (its tab), where it said "${word("en", "profile.helpSupport")}" / "${word("zh", "profile.helpSupport")}"`,
-    /<SettingRow icon=\{I\.heartPulse\}\s+title=\{t\.common\.help\}\s+subtitle=\{t\.profile\.helpSupportSub\}\s+href="\/help" \/>/.test(prof) && !/title=\{t\.profile\.helpSupport\}/.test(prof)
+    // PHOSPHOR-MIGRATION W2: its glyph is the hub's Msaada row's, the headset — one door to /help, one glyph.
+    /<SettingRow icon=\{I\.headset\}\s+title=\{t\.common\.help\}\s+subtitle=\{t\.profile\.helpSupportSub\}\s+href="\/help" \/>/.test(prof) && !/title=\{t\.profile\.helpSupport\}/.test(prof)
       && has("src/app/help/page.tsx", "return { title: t.common.help };"));
   ok("3.3′ CONTROL · the words differed in English and Chinese only (\"Msaada\" in both Swahili keys) — why R5-A's Swahili read missed it",
     word("en", "profile.helpSupport") !== word("en", "common.help") && word("zh", "profile.helpSupport") !== word("zh", "common.help") && word("sw", "profile.helpSupport") === word("sw", "common.help"));

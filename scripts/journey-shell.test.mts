@@ -123,6 +123,7 @@ import { IS_POPUP, reviewGaps, reviewedIn } from "./lib/popup-review.mts";
 import { NO_VIEWER, type InviteViewer } from "../src/lib/feature-state.ts";
 import { hasRole, ADMIN_CONSOLE_ROLES } from "../src/lib/server/roles.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { drawingOf, lineVariant } from "./lib/glyph-drawings.mts";
 
 process.exitCode = 1; // failure is the default
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -1642,7 +1643,7 @@ function g7Header(W: World, ok: Ok) {
   const bellFacts = {
     slot: bellSlot.includes("margin-left: var(--sp-1)") && tokenValue(css, "sp-1") === "4px",
     avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
-    pip: pip.includes("top: -3px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
+    pip: pip.includes("top: -4px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
       // round 4: no rose glow in the journey's slot (the lift's glow dyed the dome) — the dark drop only.
       // ⭐ round 5 (R5-B, 2026-10-09, F8, tile 225): no drop either — it darkened the dome's right shoulder by up to ~16 a
       // channel ((1175,23) 426 against its mirror's 475) and shaded the opaque bar under the pip (68–75 against 86). The
@@ -1657,6 +1658,21 @@ function g7Header(W: World, ok: Ok) {
   ok("7.bell · the bell stands centred between the language box and the avatar (the slot's 4px answers the avatar's sm:ml-1), and its count badge hangs by its left edge 1px past the glyph's centre line, its top on the 44px controls' line, over the classic bell's inline 40px / 20px / 18px geometry it was measured against",
     Object.values(bellFacts).every(Boolean),
     show({ bellFacts, bellSlot, pip }));
+  // PHOSPHOR-MIGRATION W2 · the pip's clearance, read from the bell AS DRAWN: Phosphor's Bold bell at 20px (the slot's
+  // glyph), its dome the path's arc. At rest the pip's ring clears the dome by about a pixel; at the notif-badge-pulse
+  // peak (1.25× about the pip's centre) its fill still clears it, "99+" (30px, the widest) included. A redrawn bell whose
+  // dome is no longer that arc is reported, not passed: the guard must be able to read what it measures.
+  {
+    const arc = (drawingOf("bell", lineVariant(20)) ?? "").match(/([0-9.]+),([0-9.]+)a([0-9.]+),([0-9.]+),0,0,0-([0-9.]+),0/);
+    const k = 20 / 256, top = Number(pip.match(/top: (-?[0-9.]+)px !important/)?.[1] ?? NaN);
+    const R = arc ? Number(arc[3]) * k : NaN;
+    const cx = arc ? 10 + (Number(arc[1]) - Number(arc[3])) * k : NaN, cy = arc ? 10 + Number(arc[2]) * k : NaN;
+    const gap = (x: number, y: number, r: number) => Math.hypot(x - cx, y - cy) - r - R;
+    const rest = gap(21 + 9, top + 9, 9); // the pip's left cap at rest, its 2px ring included
+    const peak = gap(21 + 15 - 6 * 1.25, top + 9, 7 * 1.25); // "99+": centre 15px in, its cap 6px left of it, the fill (r 7) at 1.25×
+    ok(`7.bell′ · the count badge clears the bell AS DRAWN (Phosphor's Bold bell at 20px, its dome r${R.toFixed(2)}px): the ring by ${rest.toFixed(2)}px at rest, the fill by ${peak.toFixed(2)}px at the pulse's peak with "99+"`,
+      !!arc && arc[3] === arc[4] && Number(arc[5]) === 2 * Number(arc[3]) && rest >= 0.5 && peak >= 0, show({ top, R, cx, cy, rest, peak }));
+  }
   const blocks = mediaBlocks(css);
   const phoneOnly = blocks.filter((b) => CAPS_WIDTH.test(b.cond) && SHELL_CLASS.test(b.body)).map((b) => `@media ${b.cond}`);
   ok("7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)",
@@ -3092,7 +3108,9 @@ ${s}`);
     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
     const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
-    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -3px !important;", "top: -3px;"));
+    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -4px !important;", "top: -4px;"));
+    // PHOSPHOR-MIGRATION W2: the pip back at −3, where the hand-drawn bell's smaller dome let it sit.
+    const pipOnDome = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -4px !important;", "top: -3px !important;"));
     const pipGlowBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
     // R5-B (round 5, F8): the dark drop alone comes back — round 4's state, which shaded the dome's shoulder.
     const pipDropBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
@@ -3543,6 +3561,8 @@ ${s}`);
         world: pipOverDome, landed: cssChanged(pipOverDome), landedAs: "\"25\" filled over the bell's dome, only the rim and clapper showing" },
       { name: "the badge override loses its !important", expect: at("7.bell ·"),
         world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
+      { name: "the count badge back at −3 over Phosphor's bigger dome", expect: at("7.bell′ ·"),
+        world: pipOnDome, landed: cssChanged(pipOnDome), landedAs: "the pip's ring on the dome's shoulder at rest (0.16px), its fill on the outline at the pulse's peak" },
       { name: "the rose glow comes back to the journey bell's pip", expect: at("7.bell ·"),
         world: pipGlowBack, landed: cssChanged(pipGlowBack), landedAs: "the 8px rose halo dyes the dome's shoulder again (round 4, tiles 268–278)" },
       { name: "the dark drop comes back to the journey bell's pip", expect: at("7.bell ·"),

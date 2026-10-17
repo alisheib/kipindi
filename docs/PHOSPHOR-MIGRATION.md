@@ -27,15 +27,20 @@ Maswali lane fixed it (`43523844`), and W1 was rebased onto that, proven at its 
 0, local `qa:live` 376/376) and pushed: **`9b604d8e`, live on www, apex and the Railway host 160 s later; `/api/health`
 reachable and migrated; `qa:chunks-prod` 6/6 routes on both origins; production `qa:live` 361/361.**
 
-**Next:** W2, the swap (branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`, rebased onto `main` `862aa757`; §5 W2
-"As built so far" and its list still owed): a classic-parity baseline at W2's own base (the one at `c218979d` predates
-the Maswali merges, which the harness refuses as a base) with its "before" tiles; the W2 compare against it with its
-"after" tiles, both sets from the same seeded run; the generated glyph-swap entries (`scripts/glyphs/parity-entries.mjs`)
-and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`; the push and the production read-back.
+**Next:** W2, the swap. It lives on branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`, on `main` `862aa757`.
+1. The release proof at the commit that ships: a v4 `run` job; the dev server capped at a 3 GB heap; `mem-wait 3.5`
+   before each step.
+2. A parity compare at that commit against the baseline `parity-v4-862aa757.json`.
+3. `npm run glyphs:parity-entries` on its capture.
+4. The clean compare with `--prove-red`.
+5. The push and the production read-back (§5 W2's owed list).
 
-**W2 so far** (branch `phosphor-w2`; §5 W2 "As built so far" has the detail): the engine draws Phosphor; the lexicon
-landed; every guard that read the hand-drawn family is re-pointed and green; the parity harness matches a glyph swap
-element by element from generated maps.
+**W2 so far** (§5 W2 "As built so far" has the detail):
+- The engine draws Phosphor; the lexicon is applied wherever a meaning is drawn.
+- Every guard that read the hand-drawn family is re-pointed and green.
+- The parity baseline is taken (52/52), and the entries are generated from the first compare.
+- An independent code review and a four-reader screenshot review are read, and their findings fixed.
+- `test:all` on the old proof commit: every red is `main`'s or the machine's, and the 2 that were W2's are fixed.
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
@@ -327,7 +332,33 @@ that read the house drawings. W2's list below carries them.
      player-facing proposals mark: the page header and its loading states, the promo card, the avatar menu.
   6. `.g-ring` swings from Phosphor's bell crown (7.8125%, not the hand-drawn 15%). `test:glyph-motion` §5 reads the
      pivot from the drawing.
+- **W2's screenshot review** (2026-10-17). Four readers went through every before/after tile, 204 pairs from the parity
+  runs, each tile's changed regions zoomed 3× by `w2tiles/tilediff.mjs`. They found no blank, clipped or off-centre
+  glyph. Fixed here:
+  1. The LIVE strip's pause read as "00": two hollow bars at 14px beside the run's mono text. Its pause and play are now
+     solid (`tier="fill"`, `pause` in `FILL_KEYS`).
+  2. The journey bell's count badge touched Phosphor's bigger dome: 0.16px at rest, and the fill on the outline at the
+     pulse's peak. It rose 1px (`top: -4px`), giving 0.94px at rest and 0.33px for "99+" at the peak.
+     `test:journey-shell` 7.bell′ reads both from the drawing, with a plant at −3.
+  3. The lexicon, completed where W2 had moved only the hub row:
+     - limits and breaks draw `limits` on the help card, the profile row and the responsible-gambling page's header (a
+       shield and a gear before);
+     - the profile's Msaada row draws the hub's `headset` (a heartbeat before);
+     - /fairness wears its hub row's `attestation` (a shield-check before);
+     - the 404 page's Masoko card draws the board's `markets` (a bar chart before);
+     - a resolved journey card's tag is `resolved`, the seal (a check-circle before).
+  4. Weather is `cloud-sun`: `cloud-rain` at 11–13px read as a speech balloon.
+  5. Two guards W2 had turned red, fixed:
+     - `test:chart-one-home` names `glyphs.tsx`: its marks among words draw a static centreline in a `d={}`;
+     - `test:orphans` now reaches `scripts/glyphs/`, through imports with their extensions and
+       `npm run glyphs:parity-entries`.
 - **Seen and left, with reasons:**
+  - The journey's Akaunti tab person is 17px wide beside the other tabs' 14px: Phosphor's `user` fills 216/256 of its
+    box, the others 184. R-RAIL (4B) redraws the tab bars at 24px in W3, which balances the four there.
+  - The receipt at 14–16px reads close to a message box. `file-text` is the documents' glyph, and the other receipt
+    drawings read worse. Its words name it everywhere it is drawn; W5's money doors give it a plate.
+  - Glyph boxes 1–2px wider move their neighbours by as much: buttons, chips, a search field's placeholder. Nothing
+    wraps; the parity entries name every move in the classic shell.
   - The market card's 140px category watermark draws Bold: it is drawn at `s=24` and scaled by CSS, and W5 retires it.
   - The inline shell symbols also travel in the page's RSC payload, as every server-rendered element does; brotli
     compresses the twin.
@@ -365,12 +396,20 @@ that read the house drawings. W2's list below carries them.
     already masked by `eat-dates` (the 090bbf76 pair proved it differs between servers), but its width still varies
     with the digits. This is a harness gap, not W2. The question page's canonical time before geometry would close it,
     and it is filed for the harness's owner.
+- **What `test:all` says about `main`** (`b090e420`'s run: 557/610 green; each failure read, and the non-database
+  ones re-run on `main` `862aa757` itself):
+  - 27 need a scratch Postgres or a server this machine's battery does not start: `db-scratch` suites, and three
+    live drives on :3009.
+  - 16 fail on `main` the same way:
+    - from the Maswali console: `ui-consistency`, `type-scale`, `measure`, `labels`, `integrity`, `grid-paging`,
+      `layout-staleness`, `unsaved-changes`, `failure-reasons`, `predictor-shown`, `house-bot-seam`, `bet-sheet`,
+      `spacing-scale`, `eyebrow-roles`, `visual-pass-r5e`; all fixed on `maswali-s4`, and W2 takes them on its rebase;
+    - `house-bot-disclosure` 5.1 compares a Windows checkout's CRLF bytes, which are identical to the blob once the CRs
+      are dropped.
+  - 2 were W2's, `chart-one-home` and `orphans`, fixed in the screenshot review's commit.
 - **Still owed for W2:**
-  - the release proof, running at `b090e420` under lock v3. `test:ui-consistency`, `test:measure` and `test:type-scale`
-    are red on `main` from the Maswali console's tables, page widths and copy, all fixed on `maswali-s4`; W2 takes
-    them on its rebase.
-  - the compare with the entries, and its `--prove-red`;
-  - the tiles read (the checkbox tick among them);
+  - the release proof again, at the commit that ships: a fresh v4 `run`, the dev server capped at a 3 GB heap;
+  - a compare at that commit, then its entries regenerated and the clean compare with `--prove-red`;
   - the push.
 
   **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous

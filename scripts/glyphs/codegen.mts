@@ -23,9 +23,9 @@ import { pathToFileURL } from "node:url";
 import {
   ADMIN_KEYS, ALIASES, DUO_KEYS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, REGULAR_KEYS, SHELL_KEYS,
   type MapEntry,
-} from "./map";
-import { EXTRAS, type Drawing, type Variant } from "./extras";
-import { TEXT_MARKS } from "./marks";
+} from "./map.ts";
+import { EXTRAS, type Drawing, type Variant } from "./extras.ts";
+import { TEXT_MARKS } from "./marks.ts";
 import { pathBounds, round2, type Box } from "./reach.mts";
 
 export const ROOT = new URL("../../", import.meta.url);

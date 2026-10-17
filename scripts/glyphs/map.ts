@@ -26,14 +26,14 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   football: { ph: "soccer-ball" },
   politics: { ph: "flag-banner" },
   forex: { ph: "currency-circle-dollar" },
-  weather: { ph: "cloud-rain" },
+  weather: { ph: "cloud-sun" }, // W2 review: cloud-rain at 11–13px read as a speech balloon (its rain stroke joins the cloud)
   economy: { ph: "chart-line-up" },
   crypto: { ph: "currency-btc" },
   entertainment: { ph: "film-slate" },
   tech: { ph: "cpu" },
   shuffle: { ph: "shuffle" },
   landmark: { ph: "bank" },
-  markets: { ph: "squares-four" }, // R-LEXICON 5.1A: the board, both shells; also the "other" category
+  markets: { ph: "squares-four" }, // R-LEXICON 5.1A: the board, both shells (the "other" category draws `assorted`)
 
   // ── actions ──
   trade: { ph: "arrows-down-up" }, // R-LEXICON 5.4A: Up & Down
@@ -276,6 +276,7 @@ export const REGULAR_KEYS: readonly string[] = [
 export const FILL_KEYS: readonly string[] = [
   "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
+  "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
 ];
 export const DUO_KEYS: readonly string[] = [];
 
