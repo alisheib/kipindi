@@ -18,6 +18,7 @@ import { fundMaswaliGuarantee, returnMaswaliGuarantee } from "@/lib/server/maswa
 import { sunsetMaswali } from "@/lib/server/maswali-service";
 import { recordLicenceBasis, type LicenceBasisKind } from "@/lib/server/maswali-licence";
 import { runMillioneaRolloutCeremony } from "@/lib/server/millionea-ceremony";
+import { noteMaswaliPoolChanged } from "@/lib/server/maswali-pool-feed";
 
 type ActionResult = { ok: true; note?: string } | { ok: false; error: string; field?: string };
 
@@ -25,6 +26,9 @@ const refresh = () => {
   revalidatePath("/admin/maswali");
   revalidatePath("/admin/maswali/pools");
   revalidatePath("/admin/maswali/integrity");
+  // MASWALI-BUILD S5 · these acts change public facts: a settled week reaches the register, a carry or a floor reaches
+  // the hub's figure (MB-97: the player pages may be cached).
+  revalidatePath("/millionea", "layout");
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const whole = (fd: FormData, k: string): number | null => {
@@ -39,6 +43,8 @@ export async function releaseMaswaliSettlementAction(formData: FormData): Promis
   try {
     const r = await settleMaswaliWeek({ weekId: str(formData, "weekId"), releasedBy: session.userId, digest: str(formData, "digest") });
     if (!r.ok) return { ok: false, error: r.error };
+    // A settled week is final: the next week of its line now counts its carry, so every open figure moves (MR-3).
+    if (!r.already) noteMaswaliPoolChanged();
     refresh();
     return { ok: true, note: r.already ? "That week was already settled; nothing was paid twice." : undefined };
   } catch (err) {
@@ -53,6 +59,8 @@ export async function fundMaswaliGuaranteeAction(formData: FormData): Promise<Ac
     if (amount === null) return { ok: false, error: "The amount is a whole number of shillings.", field: "amount" };
     const r = await fundMaswaliGuarantee({ amount, reference: str(formData, "reference"), typed: str(formData, "typed"), ownerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
+    // The floor is printed only while the guarantee covers every unsettled week (MB-56).
+    noteMaswaliPoolChanged();
     refresh();
     return { ok: true, note: `The guarantee now holds TZS ${r.balance.toLocaleString("en")}.` };
   } catch (err) {
@@ -67,6 +75,7 @@ export async function returnMaswaliGuaranteeAction(formData: FormData): Promise<
     if (amount === null) return { ok: false, error: "The amount is a whole number of shillings.", field: "amount" };
     const r = await returnMaswaliGuarantee({ amount, reference: str(formData, "reference"), typed: str(formData, "typed"), ownerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
+    noteMaswaliPoolChanged();
     refresh();
     return { ok: true, note: `The guarantee now holds TZS ${r.balance.toLocaleString("en")}.` };
   } catch (err) {

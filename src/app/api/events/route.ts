@@ -20,6 +20,7 @@
  */
 import { getSession } from "@/lib/server/session";
 import { subscribe, type SseEventType } from "@/lib/server/event-bus";
+import { resolveMillioneaFor } from "@/lib/server/millionea-preview";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -101,6 +102,15 @@ export async function GET() {
           send(JSON.stringify({ type: event, data }));
         }));
       }
+
+      // MASWALI-BUILD S5 · a Millionea week's pool figure (`maswali-pool-feed.ts`, coalesced per week) goes only to a
+      // viewer the rollout admits — WITHDRAWN: nobody — asked per frame through the rollout's 10 s snapshot, so a kill
+      // silences it within seconds. Kept out of ALL_EVENTS on purpose: that list is broadcast to every signed-in stream.
+      unsubscribes.push(subscribe("maswali:pool", (data) => {
+        void resolveMillioneaFor({ sessionUserId: userId })
+          .then((m) => { if (m.visible) send(JSON.stringify({ type: "maswali:pool", data })); })
+          .catch(() => { /* resolveMillioneaFor never rejects; a frame is never load-bearing */ });
+      }));
 
       // ── Cleanup on disconnect ──────────────────────────────────────
       cleanup = () => {

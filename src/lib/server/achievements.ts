@@ -18,7 +18,11 @@ export type ShelfItem = {
 };
 
 export async function computeAchievementShelf(userId: string) {
-  const positions = await listPositionsForUser(userId, 500);
+  // MASWALI-BUILD S5 · a Millionea ticket is not a prediction the shelf scores (MASWALI-PLAN S5 item 9, MB-90): a ticket
+  // that wins about 1 time in 1,024 by design would sink "Sharp"'s accuracy, and a jackpot share is not a "First Win" of
+  // a prediction. Named and removed before any badge counts, as /positions/performance does.
+  const tickets = new Set((await listPositionsForUser(userId, 500, "MASWALI")).map((p) => p.id));
+  const positions = (await listPositionsForUser(userId, 500)).filter((p) => !tickets.has(p.id));
   const settled = positions.filter((p) => p.status === "WIN" || p.status === "LOSS");
   const wins = positions.filter((p) => p.status === "WIN").length;
   const hasBet = positions.length > 0;
