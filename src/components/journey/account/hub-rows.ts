@@ -98,8 +98,8 @@ export type HubWord = (typeof HUB_WORDS)[number];
 
 /** A glyph of `I` (`components/ui/glyphs.tsx`). The row renderer indexes `I` with it, so a wrong name fails the build. */
 export type HubGlyph =
-  | "wallet" | "arrowUpFromLine" | "resolved" | "radio" | "podium" | "shield" | "pause" | "circleStop"
-  | "users" | "sparkle" | "user" | "idCard" | "sealCheck" | "headset" | "search" | "shieldcheck"
+  | "wallet" | "arrowUpFromLine" | "resolved" | "live" | "podium" | "limits" | "pause" | "circleStop"
+  | "users" | "idea" | "user" | "idCard" | "attestation" | "headset" | "search" | "shieldcheck"
   | "fileText" | "tippingScales" | "info";
 
 export type HubLinkId =
@@ -151,11 +151,13 @@ export type HubGroup = { key: HubGroupKey; label: HubWord; rows: HubRow[] };
 
 /** ⭐ Matokeo wears the results page's own glyph (round 5, the check on tile 197): `checkCircle` drew the same circled check
  *  as Uthibitisho wa utatuzi's `sealCheck` one card below, two doors under one sign. `resolved` — the check in its rays — is
- *  the one /results' header, the classic menu's Results row and the trust band already draw. */
+ *  the one /results' header, the classic menu's Results row and the trust band already draw.
+ *  ⭐ PHOSPHOR-MIGRATION W2: `resolved` is Phosphor's seal-check (Ali's R-LEXICON 5.5A), the very seal `sealCheck` draws, so
+ *  Uthibitisho wa utatuzi wears `attestation` — the resolution's stamp — and the two doors keep two signs. */
 const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "resolved" };
-const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "radio" };
+const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "live" };
 const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "leaderboard.title", glyph: "podium" };
-const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "sealCheck" };
+const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "attestation" };
 /** ⛔ Msaada's second line names no phone number (§0h point 10). */
 const HELP: HubRow = { id: "help", kind: "link", href: "/help", label: "common.help", sub: "journey.hubHelpSub", glyph: "headset" };
 const NOTIFICATIONS: HubRow = { id: "notifications", kind: "unread", href: "/notifications", label: "common.notifications" };
@@ -179,13 +181,13 @@ const SEARCH: HubRow = { id: "search", kind: "search", action: "/", label: "comm
 function safetyRows(signedIn: boolean): HubRow[] {
   if (!signedIn) {
     return [
-      { id: "limits", kind: "link", href: "/legal/responsible-gambling", label: "footer.setLimits", glyph: "shield" },
+      { id: "limits", kind: "link", href: "/legal/responsible-gambling", label: "footer.setLimits", glyph: "limits" },
       { id: "break", kind: "link", href: "/legal/responsible-gambling", label: "footer.takeABreak", glyph: "pause" },
       { id: "exclude", kind: "link", href: "/legal/responsible-gambling", label: "footer.selfExclude", glyph: "circleStop" },
     ];
   }
   return [
-    { id: "limits", kind: "link", href: "/profile/responsible-gambling", label: "footer.setLimits", sub: "journey.hubLimitsSub", glyph: "shield" },
+    { id: "limits", kind: "link", href: "/profile/responsible-gambling", label: "footer.setLimits", sub: "journey.hubLimitsSub", glyph: "limits" },
     { id: "break", kind: "link", href: "/profile/responsible-gambling#break", label: "footer.takeABreak", glyph: "pause" },
     { id: "exclude", kind: "link", href: "/profile/responsible-gambling#exclude", label: "footer.selfExclude", glyph: "circleStop" },
   ];
@@ -228,7 +230,7 @@ function memberGroups(v: HubMember): HubGroup[] {
     });
   }
   if (v.doors.proposalsVisible) {
-    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" });
+    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "idea", extra: "proposals" });
   }
 
   const profile: HubRow[] = [{ id: "profile", kind: "link", href: "/profile", label: "common.profile", glyph: "user" }];

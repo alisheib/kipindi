@@ -22,10 +22,14 @@
  * INK"): a family glyph in `leading` is pulled onto the button's start padding, one in `trailing` onto its end padding, and
  * the spinner that takes the leading slot is pulled by its own ink gap. A slot glyph with no words beside it (an icon-only
  * button) is alone, and keeps its box. Anything that is not a family glyph is drawn as given.
+ * ⭐ AND THE SPINNER TAKES THE GLYPH'S ROOM (PHOSPHOR-MIGRATION W2): when it replaces a family glyph beside words, it ends
+ * where that glyph's pulled box ended (its size less its ink gap), so the words never move — the search box's rule
+ * (`slotPull`). Phosphor's drawings fill more of their box than the hand-drawn family did: without it the lg spinner's
+ * swap moved /agent's label 1.64px (it was 0.16).
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { edgeGlyph, hasWords } from "@/components/ui/glyphs";
+import { edgeGlyph, glyphInkGaps, hasWords } from "@/components/ui/glyphs";
 import { SPINNER_INK_GAP } from "@/components/ui/spinner";
 
 type Variant =
@@ -90,17 +94,31 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       )}
       {...rest}
     >
-      {loading ? <Spinner size={size} edge={worded} /> : worded ? edgeGlyph(leading, "start") : leading}
+      {loading ? <Spinner size={size} edge={worded} room={worded ? glyphRoom(leading) : null} /> : worded ? edgeGlyph(leading, "start") : leading}
       {children}
       {!loading && (worded ? edgeGlyph(trailing, "end") : trailing)}
     </button>
   );
 });
 
-function Spinner({ size, edge }: { size: Size; edge: boolean }) {
+/** The room a family glyph takes in a worded slot once pulled — its size less its start ink gap — or null for anything
+ *  else (a mark stroked at its words' stem pulls in em, so it gives no px room either). */
+function glyphRoom(node: React.ReactNode): number | null {
+  const gaps = glyphInkGaps(node);
+  if (!gaps || !React.isValidElement(node)) return null;
+  return ((node.props as { s?: number }).s ?? 24) - gaps.start;
+}
+
+const px3 = (v: number) => Math.round(v * 1000) / 1000;
+
+function Spinner({ size, edge, room }: { size: Size; edge: boolean; room: number | null }) {
   const dim = size === "xl" ? 16 : size === "lg" ? 14 : size === "md" ? 13 : 12;
-  // In the leading slot beside words it is pulled by its ink gap, as the glyph it replaces is (ui/spinner.tsx).
-  const pull = edge ? { marginInlineStart: `${Math.round(-SPINNER_INK_GAP * dim / 24 * 1000) / 1000}px` } : null;
+  // In the leading slot beside words it is pulled by its ink gap, as the glyph it replaces is (ui/spinner.tsx), and it
+  // ends where that glyph's pulled box ended, so the words never move.
+  const own = SPINNER_INK_GAP * dim / 24;
+  const pull = edge
+    ? { marginInlineStart: `${px3(-own)}px`, ...(room != null ? { marginInlineEnd: `${px3(room - (dim - own))}px` } : {}) }
+    : null;
   return (
     <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" style={{ animationDuration: "0.7s", ...pull }} aria-hidden>
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />

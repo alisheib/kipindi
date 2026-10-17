@@ -368,7 +368,9 @@ export function LiveTicker({ events, journey = false }: { events: TickerEvent[];
              `display`, so the strip's layout does not shift when it arrives. */
           style={{ pointerEvents: "auto", visibility: ready ? undefined : "hidden" }}
         >
-          {stopped ? <I.playBare s={14} /> : <I.pause s={14} />}
+          {/* Solid, as a player's pause and play are (PHOSPHOR-MIGRATION W2): at 14px beside the run's mono text the
+              outlined pair read as "00". */}
+          {stopped ? <I.playBare s={14} tier="fill" /> : <I.pause s={14} tier="fill" />}
         </button>
       </div>
     </div>

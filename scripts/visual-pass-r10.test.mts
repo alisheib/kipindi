@@ -8,8 +8,9 @@
  *
  *   §1 A1 · the filter field's sliders and caret on its edges (tile 163), both shapes, the compact bar's lone glyph, ghosts
  *   §2 A2 · /help's FAQ caret on the row's edge, turning about its own box (tile 192)
- *   §3 A3 · the census R9-A's regex never ran: every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft, the
- *          hand-drawn field carets, the dynamic arrows, and every arrow character typed on a player surface — classified
+ *   §3 A3 · the census R9-A's regex never ran: every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft (and since
+ *          W2 the two money arrows, arrowDownToLine / arrowUpFromLine), the hand-drawn field carets, the dynamic arrows,
+ *          and every arrow character typed on a player surface — classified
  *   §4 A4 · Stat's icon slot pulls its glyph onto the column's edge (tiles 162 187 188) — every call site and its ghosts
  *   §5 A5 · a heading or a title that leads with a glyph puts its ink on its column's edge (tile 162) — the census
  *   §6 A6 · one weight for every arrow among words (tiles 174 198); a centred control frames its ink (tiles 132–137): the
@@ -25,12 +26,27 @@
  * session scratchpad).
  * ⚠️ This file holds no backslash: every pattern that needs a space, a newline or a special character is built from
  * character codes and bracket classes (the editing tools turn some escapes into control characters).
+ *
+ * ⭐ RE-POINTED IN THE OPEN 2026-10-17 — PHOSPHOR-MIGRATION W2 (Ali: "Switch to Phosphor"; docs/PHOSPHOR-MIGRATION.md).
+ * The drawings this file read from glyphs.tsx's hand-drawn entries are Phosphor's now, shipped as symbols. Every rule
+ * stays and reads the drawing that ships (`scripts/lib/glyph-drawings.mts`) with this file's own reader, on the 256 grid
+ * and in the weight the size draws (R-WEIGHT: Bold to 26px, Regular from 27px); filled outlines carry no stroke to widen
+ * by, and a mark among words is read from its centreline (the registry's `m`), never from a stored reach. The tiles show
+ * the hand-drawn family: each re-read keeps its tile's numbers as history and pins what Phosphor's drawing gives, and the
+ * engine is held to this file's reading wherever it pulls. The hand-drawn controls (the field caret on its 12 grid, the
+ * spinner's ring on its 24) are unchanged. What moved: §3's census reads the two money arrows (R-LEXICON 5.4A moved
+ * /wallet's doors onto them; `w5` names the doors W5 sets); §6.1, §6.6″ and §6.9 re-pin the doors and the journey pill
+ * (the deposit arrow where the plus stood); §6.2 holds the verdict's stylesheet pull to Phosphor's centreline (x56 of 256,
+ * where the hand-drawn arrow's was x6 of 24); §6.3′ measures the rendered Button, whose spinner now takes the replaced
+ * glyph's room (Phosphor's fuller user moved the label 1.64px without it); §7 reads the ⓘ's size from its source (14px
+ * since W2, its box on a whole pixel: the insets 14.00 and 14.09); §6.10 reads the chip's arrow as it draws.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { decomment, decommentCss } from "./lib/decomment.mts";
+import { GLYPH_ENTRIES, drawingOf, lineVariant } from "./lib/glyph-drawings.mts";
 
 const req = createRequire(import.meta.url);
 const CR = String.fromCharCode(13), NL = String.fromCharCode(10), TAB = String.fromCharCode(9);
@@ -153,6 +169,10 @@ function parsePath(d: string): Sub[] {
 type Part = { x0: number; x1: number; w: number; own: boolean };
 const attrs = (s: string) => Object.fromEntries([...s.matchAll(new RegExp('([A-Za-z][A-Za-z0-9-]*)="([^"]*)"', "g"))].map((m) => [m[1], m[2]]));
 const ELEM = new RegExp("<(path|circle|rect|line|ellipse)([^>]*?)/?>", "g");
+/** A drawing's parts, from its markup: each part's x-reach and its stroke — its own (`stroke-width`, or JSX's
+ *  `strokeWidth`), the wrapper's (`base`: the hand-drawn family's G stroked every part at 1.9 on its 24 grid; the
+ *  spinner's ring and the field caret carry their own), or none (a fill). A shipped Phosphor symbol is filled outlines,
+ *  read with base 0; the house extras stroke their own parts. */
 function partsOfMarkup(body: string, base = 1.9): Part[] {
   return [...body.matchAll(ELEM)].map((m) => {
     const a = attrs(m[2]);
@@ -163,24 +183,36 @@ function partsOfMarkup(body: string, base = 1.9): Part[] {
     else if (m[1] === "ellipse") xs = [n("cx") - n("rx"), n("cx") + n("rx")];
     else if (m[1] === "rect") xs = [n("x"), n("x") + n("width")];
     else xs = [n("x1"), n("x2")];
-    const stroked = a.stroke !== "none";
-    return { x0: Math.min(...xs), x1: Math.max(...xs), w: stroked ? Number(a.strokeWidth ?? base) : 0, own: a.strokeWidth != null || !stroked };
+    const width = a.strokeWidth ?? a["stroke-width"];
+    const stroked = a.stroke ? a.stroke !== "none" : base > 0;
+    return { x0: Math.min(...xs), x1: Math.max(...xs), w: stroked ? Number(width ?? base) : 0, own: width != null || !stroked };
   });
 }
-const GLYPH_SRC = raw("src/components/ui/glyphs.tsx");
-const ENTRY = new RegExp("^[ ]*([A-Za-z0-9_]+): [(]p: GlyphProps[)] => <(G|GL) [{][.][.][.]p[}]>(.*)</(?:G|GL)>,[ ]*$", "gm");
-const FAMILY = new Map([...GLYPH_SRC.matchAll(ENTRY)].map((m) => [m[1], { grid: m[2] === "G" ? 24 : 64, body: m[3] }]));
-const partsOf = (name: string) => partsOfMarkup(FAMILY.get(name)?.body ?? "");
-/** This file's own reading: the gap between a glyph's box and its ink, each side, in px at size `s` (the family's stroke). */
-const gapOf = (name: string, s: number) => {
-  const ps = partsOf(name);
-  const x0 = Math.min(...ps.map((q) => q.x0 - q.w / 2)), x1 = Math.max(...ps.map((q) => q.x1 + q.w / 2));
-  return { start: (x0 * s) / 24, end: ((24 - x1) * s) / 24 };
+/** A glyph's parts as the family ships it (scripts/lib/glyph-drawings.mts): the drawing its size draws — Bold to 26px,
+ *  Regular from 27px — on the 256 grid, filled (no stroke to widen by), or the house extra's own strokes. */
+const GRID = 256;
+const partsOf = (name: string, s: number) => partsOfMarkup(drawingOf(name, lineVariant(s)) ?? "", 0);
+/** A path's x-reach, by this file's reader. */
+const geometry = (d: string) => { const xs = parsePath(d).flatMap((q) => q.samples.map((p) => p[0])); return { x0: Math.min(...xs), x1: Math.max(...xs) }; };
+/** A mark that stands among words, as it draws there: its centreline, stroked at the words' stem (not its own part), and
+ *  any solid part (its own) — from the registry's `m`, read by this file's reader, never by its stored reach. */
+const markParts = (name: string): Part[] => {
+  const m = GLYPH_ENTRIES.get(name)?.mark;
+  if (!m) return [];
+  return [{ ...geometry(m.d), w: 0, own: false }, ...(m.f ? [{ ...geometry(m.f), w: 0, own: true }] : [])];
 };
-/** A text mark's reach (its geometry, the words' stroke beyond it in em): the px part of its pull. */
+/** This file's own reading: the gap between a glyph's box and its ink, each side, in px at size `s` (the drawing that size
+ *  draws, its outline's own reach). */
+const gapOf = (name: string, s: number) => {
+  const ps = partsOf(name, s);
+  const x0 = Math.min(...ps.map((q) => q.x0 - q.w / 2)), x1 = Math.max(...ps.map((q) => q.x1 + q.w / 2));
+  return { start: (x0 * s) / GRID, end: ((GRID - x1) * s) / GRID };
+};
+/** A text mark's reach (its centreline's geometry and any solid part; the words' stroke beyond it is in em): the px part of
+ *  its pull, in units of its 256 grid. */
 const runReach = (name: string, side: "start" | "end") => {
-  const ps = partsOf(name).filter((q) => !q.own);
-  return side === "start" ? Math.min(...ps.map((q) => q.x0)) : 24 - Math.max(...ps.map((q) => q.x1));
+  const ps = markParts(name);
+  return side === "start" ? Math.min(...ps.map((q) => q.x0)) : GRID - Math.max(...ps.map((q) => q.x1));
 };
 type Margin = { side: "start" | "end"; px: number; em: number } | null;
 const marginOf = (markup: string, side?: "start" | "end"): Margin => {
@@ -197,29 +229,32 @@ section("1 · A1 the filter field's sliders and caret stand on its edges (tile 1
   const FS = "src/components/markets/filter-sheet.tsx";
   const sliders = gapOf("sliders", 15), caret = gapOf("chevronDown", 14);
   // Tile 163 (sw 390): the field's content column x33..357 (16 gutter + 1 border + 16 padding); measured sliders ink x34.74,
-  // caret ink end x353.99 — the drawings' own gaps plus 0.15 / 0.06 of anti-aliasing.
-  ok(`1.1 · tile 163 re-read: the sliders' ink stood ${sliders.start.toFixed(3)}px in by its drawing (measured 1.74: x34.74 on x33), the caret's ${caret.end.toFixed(3)}px short (measured 3.01: x353.99 on 357)`,
-    near(sliders.start, 1.594, 1e-3) && near(caret.end, 2.946, 1e-3) && Math.abs(33 + sliders.start - 34.74) < 0.2 && Math.abs(357 - caret.end - 353.99) < 0.1);
+  // caret ink end x353.99 — the hand-drawn drawings' own gaps (1.594, 2.946) plus 0.15 / 0.06 of anti-aliasing. The tiles
+  // show the hand-drawn family; Phosphor's drawings stand in by their own gaps, which the trigger pulls (1.3).
+  ok(`1.1 · tile 163 re-read: the hand-drawn sliders' ink stood 1.594px in by its drawing (measured 1.74: x34.74 on x33), the caret's 2.946px short (measured 3.01: x353.99 on 357); Phosphor's sliders stand ${sliders.start.toFixed(3)}px in, its caret ${caret.end.toFixed(3)}px short`,
+    near(sliders.start, 1.641, 1e-3) && near(caret.end, 1.967, 1e-3), j({ sliders, caret }));
   ok('1.2 · the trigger pulls both by their own gaps, in both shapes: <I.sliders s={15} edge="start" …kp-fsheet-glyph…> and <I.chevronDown s={14} edge="end" …kp-fsheet-caret…>',
     has(FS, '<I.sliders s={15} edge="start" aria-hidden className="kp-fsheet-glyph shrink-0 opacity-80" />') && has(FS, '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />'));
   const sm = render(h(I.sliders, { s: 15, edge: "start" })), cm = render(h(I.chevronDown, { s: 14, edge: "end" }));
   ok(`1.3 · the engine's pulls are this file's reading of the drawings: sliders ${marginOf(sm)?.px}px, caret ${marginOf(cm)?.px}px — after, ink at x33.00 and x357.00 at sw 390`,
     near(marginOf(sm)?.px ?? 0, wantPull("sliders", 15, "start"), 0.0015) && near(marginOf(cm)?.px ?? 0, wantPull("chevronDown", 14, "end"), 0.0015) && marginOf(sm)?.side === "start" && marginOf(cm)?.side === "end");
-  ok("1.3′ PLANT · the trigger as round 9 drew it (no edge) carries no pull, and the field reads 1.59 / 2.95px in again",
+  ok(`1.3′ PLANT · the trigger as round 9 drew it (no edge) carries no pull, and the field reads ${sliders.start.toFixed(2)} / ${caret.end.toFixed(2)}px in again (the hand-drawn pair's 1.59 / 2.95)`,
     marginOf(render(h(I.sliders, { s: 15 }))) === null && !has(FS, '<I.sliders s={15} aria-hidden className="shrink-0 opacity-80" />'));
   // The caret turns 180° about its own box when open; its drawing is symmetric about the box's centre, so turned it still
   // ends on the edge. The rotation rule is on the caret itself (`.kp-fsheet-caret`), never a wrapper.
-  const cb = partsOf("chevronDown");
-  ok("1.4 · the caret turns about its own box and its drawing is symmetric about it (x6–18 of 24), so open it ends on the same edge",
-    near(Math.min(...cb.map((q) => q.x0)) + Math.max(...cb.map((q) => q.x1)), 24, 1e-9) && CSS.includes(".kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }"));
+  const cb = partsOf("chevronDown", 14);
+  const cbX0 = Math.min(...cb.map((q) => q.x0 - q.w / 2)), cbX1 = Math.max(...cb.map((q) => q.x1 + q.w / 2));
+  ok(`1.4 · the caret turns about its own box and its drawing is symmetric about it — Phosphor's caret-down (Bold at 14px) inks x${cbX0.toFixed(2)}–${cbX1.toFixed(2)} of 256, centred on x${((cbX0 + cbX1) / 2).toFixed(3)} (the hand-drawn one x6–18 of 24) — so open it ends on the same edge`,
+    cb.length > 0 && Math.abs((cbX0 + cbX1) / 2 - GRID / 2) <= 0.1 && CSS.includes(".kp-fsheet[open] > summary .kp-fsheet-caret { transform: rotate(180deg); }"), j({ cbX0, cbX1 }));
   // /markets' compact phone bar folds the label and the caret away: with no count the sliders stands ALONE in the pill.
   const cancel = 'html:not([data-density="comfortable"]) .kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-trigger:not([data-on]) > .kp-fsheet-glyph { margin-inline-start: 0 !important; }';
   ok("1.5 · alone in /markets' compact pill (label and caret folded, no count) the sliders keeps its box — its pull undone by the compact rule; with a count it leads [sliders][count] and keeps it",
     CSS.includes(cancel) && CSS.includes(".kp-discovery-bar:has(> [data-bar-row]) .kp-fsheet-caret { display: none; }") && code(FS).includes("data-on={count > 0 || undefined}")
       && code(FS).includes("{count > 0 && ("));
-  const sliderInk = { l: 2.55, r: 24 - 21.45 };
-  ok(`1.5′ CONTROL · the sliders' drawing is centred in its box (ink x2.55–21.45), so alone and unpulled it centres in the pill — pulled, it would stand ${(sliders.start / 2).toFixed(2)}px left`,
-    near(sliderInk.l, sliderInk.r, 1e-9) && near(gapOf("sliders", 15).start, gapOf("sliders", 15).end, 1e-9));
+  const sl = partsOf("sliders", 15);
+  const sliderInk = { l: Math.min(...sl.map((q) => q.x0 - q.w / 2)), r: GRID - Math.max(...sl.map((q) => q.x1 + q.w / 2)) };
+  ok(`1.5′ CONTROL · the sliders' drawing is centred in its box (Phosphor's sliders-horizontal inks x${sliderInk.l.toFixed(2)}–${(GRID - sliderInk.r).toFixed(2)} of 256; the hand-drawn one x2.55–21.45 of 24), so alone and unpulled it centres in the pill — pulled, it would stand ${(sliders.start / 2).toFixed(2)}px left`,
+    sl.length > 0 && near(sliderInk.l, sliderInk.r, 1e-3) && near(sliders.start, sliders.end, 1e-3), j(sliderInk));
   const QBG = "src/components/ui/query-bar-ghost.tsx";
   ok("1.6 · the ghosts draw the page's own glyphs unpainted and pulled as the page's are: FiltersGhost's sliders and caret, SortGhost's and MenuGhost's carets — no bare box stands in for a pulled glyph",
     has(QBG, '<I.sliders s={15} edge="start" aria-hidden className="kp-fsheet-glyph shrink-0" />') && has(QBG, '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0" />')
@@ -232,26 +267,33 @@ section("2 · A2 /help's FAQ caret stands on the row's edge and turns about its 
 {
   const HELP = "src/app/help/page.tsx";
   const g = gapOf("chevronDown", 13);
-  ok(`2.1 · tile 192 re-read: every "⌄" ended at x1112.10 against the row's edge 1115.0 — its drawing's ${g.end.toFixed(3)}px gap (2.90 measured) — and ends ON the edge now`,
-    near(g.end, 2.735, 1e-3) && Math.abs(1115 - g.end - 1112.1) < 0.2 && has(HELP, '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />'));
+  ok(`2.1 · tile 192 re-read: every hand-drawn "⌄" ended at x1112.10 against the row's edge 1115.0 — its drawing's 2.735px gap (2.90 measured); Phosphor's caret-down ends ${g.end.toFixed(3)}px short of its 13px box, pulled by exactly that, so it ends ON the edge`,
+    near(g.end, 1.827, 1e-3) && near(marginOf(render(h(I.chevronDown, { s: 13, edge: "end" })), "end")?.px ?? 0, -g.end, 0.0015)
+      && has(HELP, '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />'), j(g));
   ok("2.2 · the turn moved onto the glyph: its span no longer rotates (pulled, the svg overhangs the span, whose centre is then not the drawing's)",
     has(HELP, '<span className="mt-1 shrink-0 text-text-subtle">') && !has(HELP, 'transition-transform group-open:rotate-180">'));
-  // The plant: the turn on the span, the glyph pulled. The span is s − gap wide and turns about ITS centre.
-  const w = 13 - g.end, inkL = 13 * 6 / 24 - (13 * 1.9 / 24) / 2, inkR = w;
+  // The plant: the turn on the span, the glyph pulled. The span is s − gap wide and turns about ITS centre; the caret's ink
+  // starts at its drawing's start gap.
+  const w = 13 - g.end, inkL = g.start, inkR = w;
   const turnedL = w - inkR, turnedR = w - inkL;
   ok(`2.2′ PLANT · turned on a span ${w.toFixed(3)}px wide, the open caret's ink would stand ${(inkR - turnedR).toFixed(3)}px left of the edge — the reason the turn is the glyph's`,
-    near(inkR - turnedR, g.end, 1e-9) && turnedL >= -1e-9);
+    inkR - turnedR > 1 && near(inkR - turnedR, g.end, 1e-3) && turnedL >= -1e-9);
   ok("2.3 · the FAQ's leading glyphs stay a centred icon column (a column of row glyphs keeps its box — R9-A)", has(HELP, '<span className="mt-0.5 shrink-0 text-brand-300"><Glyph s={15} /></span>'));
 }
 
 /* ══ §3 · A3 · THE CENSUS R9-A NEVER RAN ═════════════════════════════════════════════════════════════════════════════════ */
-section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft, the hand-drawn carets and every typed arrow, classified");
+section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft and money arrow, the hand-drawn carets and every typed arrow, classified");
 {
   /** Kinds: `edge` a run's or a control's end in the family's stroke · `text` an edge and its words' stroke · `slot` the
    *  slot pulls it at render (its source plain) · `tag-text` a tag's arrow among words: its words' stroke, the tag keeps its
    *  box · `ghost` unpainted, pulled as its page's · `alone` alone in a control or a plate · `frozen` classic chrome ·
-   *  `journey` pulled in the journey only (shared with frozen classic chrome). */
-  type Kind = "edge" | "text" | "slot" | "tag-text" | "ghost" | "alone" | "frozen" | "journey";
+   *  `journey` pulled in the journey only (shared with frozen classic chrome) · `w5` a money door's glyph that W5 sets with
+   *  the others (PHOSPHOR-MIGRATION W5: one deposit glyph and one withdraw glyph, on one plate) — unedited in W2, which only
+   *  swapped its drawing. */
+  type Kind = "edge" | "text" | "slot" | "tag-text" | "ghost" | "alone" | "frozen" | "journey" | "w5";
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A: one deposit glyph, one withdraw
+  // glyph): the census reads the two money arrows too — arrowDownToLine and arrowUpFromLine — and /wallet's doors moved onto
+  // them, so their old arrowDown / arrowUp entries went. Every player site of the two is classified below.
   const SITES: Array<[string, string, number, Kind, string]> = [
     ["src/app/auth/2fa/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the back link's start — it typed ← (the mono face's arrow, a weight under its words); on its first line (3.6)"],
     ["src/app/auth/otp/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the change-number link's start — it typed ←; on its first line where its words wrap (3.6)"],
@@ -259,8 +301,19 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/profile/activity/page.tsx", "<I.arrowDown s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4); a deposit pictogram keeps the family's stroke"],
     ["src/app/profile/activity/page.tsx", "<I.arrowUp s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4)"],
     ["src/app/profile/kyc/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" />', 1, "text", "the footer's back link's start — it typed ←"],
-    ["src/app/wallet/wallet-client.tsx", '<I.arrowDown s={14} edge="start" text="body-600" />', 1, "text", "“↓ Weka pesa”: an arrow among words leading a centred control (§6)"],
-    ["src/app/wallet/wallet-client.tsx", '<I.arrowUp s={14} edge="start" text="body-600" />', 1, "text", "“↑ Toa pesa”"],
+    ["src/app/wallet/wallet-client.tsx", '<I.arrowDownToLine s={14} edge="start" text="body-600" />', 1, "text", "“↓ Weka pesa”: an arrow among words leading a centred control (§6) — now the one deposit arrow (R-LEXICON 5.4A)"],
+    ["src/app/wallet/wallet-client.tsx", '<I.arrowUpFromLine s={14} edge="start" text="body-600" />', 1, "text", "“↑ Toa pesa” — now the one withdraw arrow (R-LEXICON 5.4A)"],
+    ["src/app/wallet/wallet-client.tsx", "<I.arrowDownToLine s={12} />", 1, "w5", "the balance card's Add funds link (it drew the plus until W2): a money door W5 sets"],
+    ["src/app/wallet/deposit/page.tsx", "<I.arrowUpFromLine s={14} />", 1, "w5", "the paused deposit's Withdraw link (a Callout's action): a money door W5 sets"],
+    ["src/app/wallet/deposit/page.tsx", '<I.arrowDownToLine s={14} className="text-text-subtle" />', 1, "slot", "/wallet/deposit's PageHeader eyebrow: the slot pulls it (edgeGlyph — r9a §4.5)"],
+    ["src/app/wallet/deposit/deposit-ghost.tsx", '<I.arrowDownToLine s={14} className="text-text-subtle" />', 3, "slot", "the deposit ghosts' PageHeader eyebrows, as their page's"],
+    ["src/app/wallet/withdraw/page.tsx", '<I.arrowUpFromLine s={14} className="text-text-subtle" />', 1, "slot", "/wallet/withdraw's PageHeader eyebrow: the slot pulls it"],
+    ["src/app/wallet/withdraw/withdraw-ghost.tsx", '<I.arrowUpFromLine s={14} className="text-text-subtle" />', 1, "slot", "the withdraw ghost's PageHeader eyebrow, as its page's"],
+    ["src/app/wallet/deposit/return/page.tsx", '<I.arrowDownToLine s={14} edge="start" />', 1, "edge", "the failed deposit's Try again button's start"],
+    ["src/components/journey/journey-top-bar.tsx", '<I.arrowDownToLine s={14} edge="start" />', 1, "edge", "the journey header's deposit pill's start (it drew the plus until W2 — §6.9)"],
+    ["src/components/layout/top-app-bar.tsx", "<I.arrowDownToLine s={14} />", 1, "frozen", "the classic header's deposit pill (classic chrome, frozen until the flip; it drew the plus until W2 — a named parity change)"],
+    ["src/components/layout/wallet-sheet.tsx", '<I.arrowDownToLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Deposit door (it drew the plus until W2 — §6.6″): pulled in the journey, the classic capsule's sheet keeps its box"],
+    ["src/components/layout/wallet-sheet.tsx", '<I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Withdraw door (§6.8)"],
     ["src/app/wallet/wallet-client.tsx", "<I.arrowDown s={16} />", 1, "alone", "a history row's credit arrow, alone in its 34px plate"],
     ["src/app/wallet/wallet-client.tsx", "<I.arrowUp s={16} />", 1, "alone", "a history row's debit arrow, alone in its 34px plate"],
     ["src/components/charts/chart-toggle.tsx", '<I.chevronDown s={14} edge="end" className={[ "text-text-muted shrink-0 transition-transform duration-200", open ? "rotate-180" : "", ].join(" ")} />', 1, "edge", "the chart toggle's row end; it turns about its own box"],
@@ -281,22 +334,38 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/updown/round-stake-panel.tsx", '<I.arrowDown s={12} text="body-700" />', 2, "tag-text", "the stake panel chip's side arrow, among its Inter 700 word: the words' stroke (it was a typed 2.5); a chip is a tag and keeps its box"],
     ["src/components/updown/round-stake-panel.tsx", '<I.arrowUp s={12} text="body-700" />', 2, "tag-text", "the stake panel chip's side arrow"],
   ];
-  const MARK = new RegExp("<I[.](?:chevronDown|chevronUp|arrowUp|arrowDown|arrowLeft|chevronsUp|chevronsDown)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
+  const MARK = new RegExp("<I[.](?:chevronDown|chevronUp|arrowUp|arrowDown|arrowLeft|chevronsUp|chevronsDown|arrowDownToLine|arrowUpFromLine)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const seen = new Map<string, number>();
   for (const f of PLAYER_TSX) for (const m of code(f).matchAll(MARK)) { const k = `${f} ${squash(m[0])}`; seen.set(k, (seen.get(k) ?? 0) + 1); }
   const listed = new Map(SITES.map(([f, el, n]) => [`${f} ${el}`, n]));
   const unlisted = [...seen].filter(([k]) => !listed.has(k)), missing = [...listed].filter(([k, n]) => seen.get(k) !== n);
-  ok(`3.1 · every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft on a player surface is classified — ${[...seen.values()].reduce((a, b) => a + b, 0)} marks at ${seen.size} spellings`,
-    unlisted.length === 0 && missing.length === 0, j({ unlisted, missing }));
-  const WANT: Record<Kind, [boolean, boolean]> = { edge: [true, false], text: [true, true], slot: [false, false], "tag-text": [false, true], ghost: [true, false], alone: [false, false], frozen: [false, false], journey: [true, false] };
+  const doorMarks = [...seen].filter(([k]) => new RegExp("<I[.]arrow(?:DownToLine|UpFromLine) ").test(k)).reduce((a, [, n]) => a + n, 0);
+  ok(`3.1 · every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft / arrowDownToLine / arrowUpFromLine on a player surface is classified — ${[...seen.values()].reduce((a, b) => a + b, 0)} marks at ${seen.size} spellings (${doorMarks} of them the two money arrows)`,
+    unlisted.length === 0 && missing.length === 0 && doorMarks > 0, j({ unlisted, missing, doorMarks }));
+  const WANT: Record<Kind, [boolean, boolean]> = { edge: [true, false], text: [true, true], slot: [false, false], "tag-text": [false, true], ghost: [true, false], alone: [false, false], frozen: [false, false], journey: [true, false], w5: [false, false] };
   const wrong = SITES.filter(([, el, , kind]) => el.includes(" edge=") !== WANT[kind][0] || el.includes(" text=") !== WANT[kind][1]);
-  ok("3.2 · each carries what its kind says — an end mark its edge, an arrow among words its words' stroke, a tag's arrow the stroke alone, an alone or frozen mark neither", wrong.length === 0, j(wrong));
+  ok("3.2 · each carries what its kind says — an end mark its edge, an arrow among words its words' stroke, a tag's arrow the stroke alone, an alone, frozen or W5 mark neither", wrong.length === 0, j(wrong));
   const planted = new Map(seen); planted.set('src/app/help/page.tsx <I.chevronDown s={13} />', 1);
   ok("3.1′ PLANT · the FAQ caret as round 9 drew it is an unclassified site", [...planted].some(([k]) => !listed.has(k)));
-  // The marks named by a variable: the Up & Down verdict's arrow (CSS-pulled in em, §6.4) and the notifications' plates.
-  ok("3.3 · the arrows named through a variable are classified too: the Up & Down verdict's (`Arrow`, words' stroke, its pull in em — §6) and the notification plates' (`notification-appearance.ts`, alone in their plates)",
+  // Round 10's own regex stopped at arrowDown's lookahead, so it never saw the two money arrows; the census reads them now.
+  const R10_MARK = new RegExp("<I[.](?:chevronDown|chevronUp|arrowUp|arrowDown|arrowLeft|chevronsUp|chevronsDown)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
+  const pill = "<I.arrowDownToLine s={14} />", pillKey = `src/components/layout/top-app-bar.tsx ${pill}`;
+  const withoutPill = new Map([...listed].filter(([k]) => k !== pillKey));
+  ok("3.1″ CONTROL · round 10's regex was blind to the money arrows (arrowDown's lookahead stops at arrowDownToLine): the classic header's pill is invisible to it, seen by the census, and unclassified without its entry",
+    [...pill.matchAll(R10_MARK)].length === 0 && [...pill.matchAll(MARK)].length === 1 && seen.get(pillKey) === 1 && [...seen].some(([k]) => k === pillKey && !withoutPill.has(k)));
+  // The marks named by a variable: the Up & Down verdict's arrow (CSS-pulled in em, §6.2), the notifications' plates, and
+  // the two money arrows' — the receipts' plates and /help's FAQ column.
+  ok("3.3 · the arrows named through a variable are classified too: the Up & Down verdict's (`Arrow`, words' stroke, its pull in em — §6) and the notification plates' (`notification-appearance.ts`, alone in their plates); the receipts' `Dir` (arrowDownToLine / arrowUpFromLine, alone in its 40px plate) and /help's withdraw FAQ (faq3's arrowUpFromLine, the FAQ's centred icon column — 2.3)",
     has("src/components/home/updown-match-words.tsx", '<Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />')
-      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDown;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUp;'));
+      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDown;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUp;')
+      && has("src/components/wallet/receipt-list-row.tsx", 'const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;')
+      && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} className="bg-brand-500/10 text-brand-300"> <Dir s={20} /> </IconPlate>')
+      && has("src/app/help/page.tsx", '{ key: "faq3", glyph: "arrowUpFromLine" },'));
+  // …and no other player file names the two money arrows but those the census and 3.3 read.
+  const NAMES_DOOR = new RegExp('(?:I[.]|glyph: ")arrow(?:DownToLine|UpFromLine)(?![A-Za-z])', "g");
+  const doorFiles = PLAYER_TSX.filter((f) => [...code(f).matchAll(NAMES_DOOR)].length > [...code(f).matchAll(MARK)].filter((m) => new RegExp("^<I[.]arrow(?:DownToLine|UpFromLine)").test(m[0])).length);
+  ok(`3.3′ · every other naming of the two money arrows on a player surface is one of 3.3's — ${doorFiles.join(", ")}`,
+    j([...doorFiles].sort()) === j(["src/app/help/page.tsx", "src/components/wallet/receipt-list-row.tsx"]), j(doorFiles));
   // The two hand-drawn carets (not the family's): the Select's field caret and DateSelect's month title. One pull, derived.
   const CARET = '<path d="M3 4.5l3 3 3-3"', CARET_SVG = '<svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"';
   const caretFiles = PLAYER_TSX.filter((f) => code(f).includes(CARET));
@@ -351,14 +420,17 @@ section("4 · A4 Stat's icon slot pulls its glyph onto the column's edge (tiles 
   ok("4.1′ CONTROL · a slot handed something that is not a glyph draws it as given", !box.includes("margin-inline") && box.includes('<span class="block h-[14px] w-[14px]"></span>'));
   ok("4.1″ · …and the slot does it in its source (edgeGlyph on both arms)",
     has("src/components/ui/stat.tsx", '<span className="shrink-0">{edgeGlyph(icon, "end")}</span></> : <>{edgeGlyph(icon, "start")}{labelRow}</>'));
-  // The tiles: each glyph's ink stood inside its column by exactly its drawing's gap (plus anti-aliasing).
-  const TILES: Array<[string, string, number, number]> = [
-    ["162 KIASI (chart)", "chart", 14, 1.76], ["162 WATABIRI (users)", "users", 14, 1.84], ["162 INATATULIWA (calendarClock)", "calendarClock", 14, 1.07],
-    ["187/188 SALIO (wallet)", "wallet", 14, 1.08], ["187/188 HAI (sparkle)", "sparkle", 14, 2.18], ["187/188 IMEKAMILIKA (check)", "check", 14, 2.48],
+  // The tiles: each hand-drawn glyph's ink stood inside its column by exactly its drawing's gap (plus anti-aliasing) —
+  // measured on the tiles (the 4th number). The tiles show the hand-drawn family; Phosphor's drawings stand in by their own
+  // gaps (the 5th, this file's reading), and the slot pulls each by exactly that.
+  const TILES: Array<[string, string, number, number, number]> = [
+    ["162 KIASI (chart)", "chart", 14, 1.76, 1.094], ["162 WATABIRI (users)", "users", 14, 1.84, 0.055], ["162 INATATULIWA (calendarClock)", "calendarClock", 14, 1.07, 1.531],
+    ["187/188 SALIO (wallet)", "wallet", 14, 1.08, 1.531], ["187/188 HAI (sparkle)", "sparkle", 14, 2.18, 0.655], ["187/188 IMEKAMILIKA (check)", "check", 14, 2.48, 1.53],
   ];
-  const off = TILES.filter(([, n, s, m]) => Math.abs(gapOf(n, s).start - m) > 0.2);
-  ok(`4.2 · re-read on the tiles, each glyph stood in by its own drawing's gap: ${TILES.map(([w, n, s, m]) => `${w} ${gapOf(n, s).start.toFixed(2)} (measured ${m})`).join(", ")} — after, every one on its column's edge`,
-    off.length === 0, j(off));
+  const slotPull = (n: string, s: number) => marginOf(render(h(Stat as never, { label: "X", value: "1", icon: h(I[n], { s }) })), "start")?.px ?? 0;
+  const off = TILES.filter(([, n, s, , p]) => !near(gapOf(n, s).start, p, 1e-3) || !near(slotPull(n, s), -gapOf(n, s).start, 0.0015));
+  ok(`4.2 · re-read on the tiles, each hand-drawn glyph stood in by its own drawing's gap (measured ${TILES.map(([w, , , m]) => `${w} ${m}`).join(", ")}); Phosphor's stand in by ${TILES.map(([, n, s]) => gapOf(n, s).start.toFixed(3)).join(" · ")}px, and the slot pulls each by exactly that — every one on its column's edge`,
+    off.length === 0, j(off.map(([w, n, s]) => [w, gapOf(n, s).start, slotPull(n, s)])));
   // Every call site hands the slot a family glyph (so the slot pulls it) — the 11 call sites the read named and /profile/activity's six.
   const STAT = new RegExp(`<Stat${WS}(?:[^<>{}]|[{](?:[^{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*[}])*?icon=[{](<(?:[^<>{}]|[{][^{}]*[}])*?/>)[}]`, "g");
   const calls: Array<[string, string]> = [];
@@ -378,8 +450,9 @@ section("4 · A4 Stat's icon slot pulls its glyph onto the column's edge (tiles 
 section("5 · A5 a heading or a title that leads with a glyph stands it on its column's edge (tile 162) — the census");
 {
   const g = gapOf("portfolio", 15);
-  ok(`5.1 · tile 162 re-read: "Nafasi zako"'s portfolio glyph stood at x158.12 on the 157.0 edge — its drawing's ${g.start.toFixed(3)}px — and stands on it now`,
-    Math.abs(157 + g.start - 158.12) < 0.2 && has("src/app/markets/[id]/page.tsx", '<I.portfolio s={15} edge="start" />'));
+  ok(`5.1 · tile 162 re-read: "Nafasi zako"'s hand-drawn portfolio glyph stood at x158.12 on the 157.0 edge — its drawing's 1.281px; Phosphor's ticket stands ${g.start.toFixed(3)}px in, pulled by exactly that, so it stands on the edge`,
+    near(g.start, 0.703, 1e-3) && near(marginOf(render(h(I.portfolio, { s: 15, edge: "start" })))?.px ?? 0, -g.start, 0.0015)
+      && has("src/app/markets/[id]/page.tsx", '<I.portfolio s={15} edge="start" />'), j(g));
   // Every h1–h6, summary or display-weight title on a player surface whose first content is a glyph (directly or in one span).
   const HEAD = new RegExp(`<(h[1-6])${WS}((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)>${WS}*(?:[{][}]${WS}*)*(?:<span[^>]*>${WS}*)?(<(?:I[.][A-Za-z]+|Glyph|Cat|Icon)(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>)`, "g");
   const TITLE = new RegExp(`<(p|div|span|summary)${WS}((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?className=(?:"[^"]*"|[{][^}]*[}])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)>${WS}*(?:[{][}]${WS}*)*(<I[.][A-Za-z]+(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>)`, "g");
@@ -412,20 +485,33 @@ section("5 · A5 a heading or a title that leads with a glyph stands it on its c
 /* ══ §6 · A6 · ONE WEIGHT FOR EVERY ARROW AMONG WORDS · A CENTRED CONTROL FRAMES ITS INK ═══════════════════════════════ */
 section("6 · A6 one weight for every arrow among words; a centred control frames its ink — the rule, the slots, every control, the tags");
 {
-  // 6.1 · the weights, on the tiles' instruments and from the drawings. The family's 1.9 at 14px against Inter 600's stem.
-  const family14 = (1.9 * 14) / 24, text14 = GLYPH_STEM["body-600"] * 14;
-  ok(`6.1 · the wallet's ↓/↑ stroke at their words' Inter 600 stem: ${text14.toFixed(3)}px where they drew the family's ${family14.toFixed(3)} (tile 174 read 1.11–1.17; "→ Omba sasa" on 198 read 2.05–2.09)`,
-    has("src/app/wallet/wallet-client.tsx", '<I.arrowDown s={14} edge="start" text="body-600" />') && has("src/app/wallet/wallet-client.tsx", '<I.arrowUp s={14} edge="start" text="body-600" />')
-      && text14 > 1.6 * family14 && near(family14, 1.108, 1e-3));
+  // 6.1 · the weights, on the tiles' instruments and from the drawings. The family's Bold at 14px against Inter 600's stem:
+  // Phosphor's Bold strokes 24 units of its 256 grid (R-WEIGHT: 20px paints 1.88px) — the hand-drawn family's 1.9 of 24
+  // painted 1.108 there, which the tiles read.
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A): the doors draw the one deposit arrow and
+  // the one withdraw arrow (arrowDownToLine / arrowUpFromLine, they drew arrowDown / arrowUp), at their words' stem as before.
+  // The family's Bold is heavier than the hand-drawn 1.9, so the words' stem is a third heavier than it, where it was 1.6×.
+  const family14 = (24 * 14) / GRID, text14 = GLYPH_STEM["body-600"] * 14;
+  ok(`6.1 · the wallet's ↓/↑ stroke at their words' Inter 600 stem: ${text14.toFixed(3)}px, ${(text14 / family14).toFixed(2)}× the family's Bold at 14px (${family14.toFixed(4)}) — the hand-drawn arrows drew the family's 1.108 (tile 174 read 1.11–1.17; "→ Omba sasa" on 198 read 2.05–2.09)`,
+    has("src/app/wallet/wallet-client.tsx", '<I.arrowDownToLine s={14} edge="start" text="body-600" />') && has("src/app/wallet/wallet-client.tsx", '<I.arrowUpFromLine s={14} edge="start" text="body-600" />')
+      && !has("src/app/wallet/wallet-client.tsx", '<I.arrowDown s={14} edge="start" text="body-600" />') && !has("src/app/wallet/wallet-client.tsx", '<I.arrowUp s={14} edge="start" text="body-600" />')
+      && text14 > 1.35 * family14 && near(family14, 1.3125, 1e-9) && near((1.9 * 14) / 24, 1.108, 1e-3));
   ok("6.1′ · …the home band's Up/Down picks the same, and the stake panel's chip arrows stroke at the chip's Inter 700 (the typed 2.5 is gone)",
     has("src/components/home/updown-band.tsx", '<I.arrowUp s={16} edge="start" text="body-600" />') && has("src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-600" />')
       && !code("src/components/updown/round-stake-panel.tsx").includes("strokeWidth={2.5}") && has("src/components/updown/round-stake-panel.tsx", '<I.arrowUp s={12} text="body-700" />'));
   // 6.2 · the verdict's arrow: its box is 0.8em of the verdict, so its pull is written in em in the stylesheet, from the drawing.
-  const vr = rule(".kp-udbug__arrow").split(";").map((d) => d.trim());
+  // Since W2 the drawing is Phosphor's centreline (the registry's `m`, read here by this file's reader): the stylesheet's
+  // number is the reach on its 256 grid, as it was the hand-drawn x6 on its 24.
+  const pulls = [...CSS.matchAll(new RegExp("[.]kp-udbug__arrow [{] (margin-inline-start: [^;]*); [}]", "g"))].map((m) => m[1]);
   const reach = runReach("arrowUp", "start"), reachD = runReach("arrowDown", "start");
-  const want = `margin-inline-start: calc(${GLYPH_STEM["display-700"] / 2}em - ${reach} / 24 * 0.8em)`;
-  ok(`6.2 · the Up & Down verdict's arrow strokes at Sora 700's stem (0.164em, it drew a typed 2.5 — 0.083em) and stands on its centred line's start: ${want}`,
-    reach === 6 && reachD === 6 && CSS.includes(`.kp-udbug__arrow { ${want}; }`) && !code("src/components/home/updown-match-words.tsx").includes("strokeWidth={2.5}"), j({ reach, vr }));
+  const want = `margin-inline-start: calc(${GLYPH_STEM["display-700"] / 2}em - ${r3(reach)} / ${GRID} * 0.8em)`;
+  ok(`6.2 · the Up & Down verdict's arrow strokes at Sora 700's stem (0.164em, it drew a typed 2.5 — 0.083em) and stands on its centred line's start: ${want} (the stylesheet has ${j(pulls)})`,
+    reach > 0 && near(reach, reachD, 1e-9) && near(reach, 56, 1e-3) && j(pulls) === j([want]) && CSS.includes(`.kp-udbug__arrow { ${want}; }`)
+      && !code("src/components/home/updown-match-words.tsx").includes("strokeWidth={2.5}"), j({ reach, reachD, pulls }));
+  const stale = `margin-inline-start: calc(${GLYPH_STEM["display-700"] / 2}em - 6 / 24 * 0.8em)`;
+  const stalePulls = [...`.kp-udbug__arrow { ${stale}; }`.matchAll(new RegExp("[.]kp-udbug__arrow [{] (margin-inline-start: [^;]*); [}]", "g"))].map((m) => m[1]);
+  ok(`6.2′ PLANT · the rule as the hand-drawn arrow had it (x6 of 24) pulls ${((6 / 24 - reach / GRID) * 0.8).toFixed(3)}em past Phosphor's ink — a stylesheet written so is reported`,
+    stalePulls.length === 1 && j(stalePulls) !== j([want]) && (6 / 24 - reach / GRID) * 0.8 > 0.02);
   // 6.3 · the slots: Button pulls a worded slot's glyph, never an icon-only one, and its spinner by its own gap.
   const { Button } = req("../src/components/ui/button.tsx") as { Button: unknown };
   const worded = render(h(Button as never, { leading: h(I.user, { s: 16 }), trailing: h(I.arrowRight, { s: 16, text: "body-600" }) }, "Ingia"));
@@ -438,10 +524,34 @@ section("6 · A6 one weight for every arrow among words; a centred control frame
     near(marginOf(worded, "start")?.px ?? 0, wantPull("user", 16, "start"), 0.0015) && marginOf(worded, "end")?.side === "end" && !alone.includes("margin-inline")
       && loading.includes(`margin-inline-start:${r3(-sp.SPINNER_INK_GAP * 14 / 24)}px`) && !loadingAlone.includes("margin-inline")
       && near(Math.min(...ringInk.map((q) => q.x0 - q.w / 2)), sp.SPINNER_INK_GAP, 1e-9));
-  // R9-A's reason for boxing a button's glyph: the spinner's swap would move the label. Measured on the boxes: it already did.
-  const userOuter = 16 - gapOf("user", 16).start, spinOuter = 14 - (sp.SPINNER_INK_GAP * 14) / 24;
-  ok(`6.3′ · the spinner swap moves /agent's lg label by ${Math.abs(userOuter - spinOuter).toFixed(2)}px now (glyph ${userOuter.toFixed(2)} wide, spinner ${spinOuter.toFixed(3)}); boxed, it moved it 2px (16 against 14) — R9-A's reason did not hold`,
-    Math.abs(userOuter - spinOuter) < 0.25 && 16 - 14 === 2);
+  // R9-A's reason for boxing a button's glyph: the spinner's swap would move the label. Measured on the boxes: it already did
+  // (2px, 16 against 14). The hand-drawn user's body arc started at x5.5 of 24, less half its 1.9 stroke: pulled, it stood
+  // 12.97px wide, within 0.16 of the lg spinner. Phosphor's user is drawn nearly to its box (its ink from x19.81 of 256), so
+  // pulled it is 14.76 wide and the swap moved the label 1.64px — until W2 gave the spinner the replaced glyph's room
+  // (button.tsx, `glyphRoom`: the glyph's size less its ink gap; the search box's rule, §7.3). Measured here on the rendered
+  // Button, idle and busy: each slot's advance is its svg's width and its two inline margins, and the label follows it.
+  /** The leading slot's advance in a rendered button: its first svg's width and inline margins, read from the markup. */
+  const leadOf = (markup: string) => {
+    const svg = new RegExp("<svg[^>]*>").exec(markup)?.[0] ?? "";
+    const width = Number(new RegExp(' width="([0-9.]+)"').exec(svg)?.[1] ?? NaN);
+    const start = marginOf(svg, "start")?.px ?? 0, end = marginOf(svg, "end")?.px ?? 0;
+    return { width, start, end, adv: width + start + end };
+  };
+  const idleBtn = render(h(Button as never, { size: "lg", leading: h(I.user, { s: 16 }) }, "words"));
+  const busyBtn = render(h(Button as never, { size: "lg", loading: true, leading: h(I.user, { s: 16 }) }, "words"));
+  const glyphLead = leadOf(idleBtn), spinLead = leadOf(busyBtn);
+  const own = (sp.SPINNER_INK_GAP * 14) / 24, room = 16 - gapOf("user", 16).start;
+  const handUserOuter = 16 - ((5.5 - 1.9 / 2) * 16) / 24;
+  const labelFollows = [idleBtn, busyBtn].every((b) => b.includes("</svg>words</button>"));
+  ok(`6.3′ · the spinner swap never moves /agent's lg label: rendered, the user glyph's slot advances ${glyphLead.adv.toFixed(3)}px (${glyphLead.width} − ${-glyphLead.start}) and the spinner's ${spinLead.adv.toFixed(3)}px (${spinLead.width} − ${-spinLead.start} + ${spinLead.end}: it takes the glyph's room) — the label starts ${Math.abs(glyphLead.adv - spinLead.adv).toFixed(4)}px apart. It moved 0.16px with the hand-drawn user (${handUserOuter.toFixed(2)} wide against the spinner's ${(14 - own).toFixed(3)}), 1.64px with Phosphor's before W2 gave the spinner the room; boxed, 2px (16 against 14) — R9-A's reason did not hold`,
+    labelFollows && near(glyphLead.adv, spinLead.adv, 0.0015) && glyphLead.width === 16 && spinLead.width === 14 && glyphLead.end === 0
+      && near(glyphLead.start, -gapOf("user", 16).start, 0.0015) && near(spinLead.start, -own, 0.0015) && near(spinLead.end, room - (14 - own), 0.0015)
+      && Math.abs(handUserOuter - (14 - own)) < 0.25 && 16 - 14 === 2, j({ glyphLead, spinLead, labelFollows }));
+  // The plant: the busy button as it rendered before W2 gave the spinner the room — its margin-inline-end taken out.
+  const oldBusy = busyBtn.replace(new RegExp(";margin-inline-end:[-0-9.]+px"), "");
+  const oldLead = leadOf(oldBusy);
+  ok(`6.3″ PLANT · the spinner without the glyph's room (no margin-inline-end, as before W2) starts the label ${(glyphLead.adv - oldLead.adv).toFixed(3)}px early — reported by 6.3′'s rule`,
+    oldBusy !== busyBtn && !near(glyphLead.adv, oldLead.adv, 0.0015) && near(glyphLead.adv - oldLead.adv, 1.637, 1e-3), j(oldLead));
   ok("6.4 · SubmitButton, RgConfirmSubmit, FilterPill and Tabs pull their slot's glyph the same way (a glyph with no words beside it keeps its box), and SubmitButton's spinner takes its pull",
     has("src/components/ui/submit-button.tsx", '{pending ? <Spinner size={14} edge="start" /> : edgeGlyph(icon, "start")}')
       && has("src/components/rg/rg-confirm-submit.tsx", 'const mark = edgeGlyph(icon, "start");') && !squash(code("src/components/rg/rg-confirm-submit.tsx")).includes("{icon}")
@@ -493,46 +603,65 @@ section("6 · A6 one weight for every arrow among words; a centred control frame
   }
   const FROZEN_BTN = ["src/components/layout/top-app-bar.tsx"];
   const unpulled = btnEnds.filter((x) => !x.edge && !FROZEN_BTN.includes(x.f));
-  ok(`6.6 · every hand-built control's end glyph stands on its padding — ${btnEnds.length} glyph ends in .btn controls (doors, pills, the journey header's ⊕, the wallet sheet's doors in the journey); the classic header's ⊕ is frozen chrome, named`,
-    btnEnds.length >= 35 && unpulled.length === 0 && btnEnds.some((x) => x.f === "src/components/layout/top-app-bar.tsx" && !x.edge), j(unpulled));
+  ok(`6.6 · every hand-built control's end glyph stands on its padding — ${btnEnds.length} glyph ends in .btn controls (doors, pills, the journey header's deposit arrow, the wallet sheet's doors in the journey); the classic header's deposit arrow is frozen chrome, named (both drew the ⊕ until W2)`,
+    btnEnds.length >= 35 && unpulled.length === 0 && btnEnds.some((x) => x.f === "src/components/layout/top-app-bar.tsx" && !x.edge && x.el === "<I.arrowDownToLine s={14} />"), j(unpulled));
   ok("6.6′ PLANT · the wallet's Withdraw link as round 9 drew it is reported", (() => {
     const body = "<I.arrowUp s={14} /> {t.common.withdraw}";
     const a = FIRST.exec(body); return !!a && !a[1].includes(" edge=");
   })());
-  ok("6.6″ · the wallet sheet's doors are pulled in the journey only (the classic capsule opens the same sheet — frozen chrome keeps its boxes)",
-    has("src/components/layout/wallet-sheet.tsx", '<I.plus s={16} edge={journey ? "start" : undefined} />') && has("src/components/layout/wallet-sheet.tsx", '<I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />'));
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A): the Deposit door draws the one deposit
+  // arrow (it drew the plus); the Withdraw door already drew the withdraw arrow.
+  ok("6.6″ · the wallet sheet's doors are pulled in the journey only (the classic capsule opens the same sheet — frozen chrome keeps its boxes): the deposit arrow and the withdraw arrow",
+    has("src/components/layout/wallet-sheet.tsx", '<I.arrowDownToLine s={16} edge={journey ? "start" : undefined} />') && has("src/components/layout/wallet-sheet.tsx", '<I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />')
+      && !code("src/components/layout/wallet-sheet.tsx").includes("<I.plus"));
   // Hand-built text-buttons that are not `.btn`: the notifications' undo, the objection button, the query bar's clear pill.
   ok("6.7 · the hand-built text-buttons beside them too: /notifications' undo, the market page's objection button, the query bar's clear pill",
     has("src/app/notifications/row-actions.tsx", '<I.rotateCcw s={12} edge="start" />') && has("src/components/markets/objection-dialog.tsx", '<I.alertCircle s={13} edge="start" className="shrink-0" />')
       && has("src/components/ui/query-bar.tsx", '<I.x s={14} edge="start" aria-hidden />'));
-  // 6.8 · the Withdraw door (tiles 132 134 136): its content sat right of centre by the arrow's box gap less the label's
-  // own side bearing; pulled by the gap (2.7px), the group moves left by half of it.
-  const door = gapOf("arrowUpFromLine", 16).start;
+  // 6.8 · the Withdraw door (tiles 132 134 136): its content sat right of centre by half the arrow's box gap less the label's
+  // own side bearing; pulled by the gap, the group moves left by half of it — and what is left is the label's bearing alone,
+  // whatever the drawing. The tiles show the hand-drawn ↑ (2.7px of gap: x4.05 of 24); Phosphor's arrow-line-up has its own.
+  const door = gapOf("arrowUpFromLine", 16).start, HAND_DOOR = ((5 - 1.9 / 2) * 16) / 24;
   const before = { sw: 0.86, en: 1.47, zh: 1.36 };
-  const after = Object.fromEntries(Object.entries(before).map(([l, v]) => [l, r3(v - door / 2)]));
-  ok(`6.8 · the Withdraw door: its ↑ drew ${door.toFixed(2)}px of empty box on its start, and its content sat ${j(before)} px right of centre (tiles 132 134 136); pulled, it centres to ${j(after)} — inside the label's own side bearing`,
-    near(door, 2.7, 1e-6) && Object.values(after).every((v) => Math.abs(v) < 0.5));
-  // 6.9 · the journey header's deposit pill: A5's fit rule took 2px of the plus's side (12/10); the plus pulled frees its gap,
-  // which is shared evenly, so the pill keeps the width the fit rule measured.
-  const plusGap = gapOf("plus", 14).start;
-  const pad = 11 + (2.55 * 14) / 48;
-  ok(`6.9 · the journey's "+ Weka pesa": the plus stands on the padding and the padding is A5's 22px plus the freed ${plusGap.toFixed(4)}px shared evenly — ${pad}px a side, the pill's width unchanged`,
-    near(plusGap, (2.55 * 14) / 24, 1e-9) && near(2 * pad, 22 + plusGap, 1e-9) && CSS.includes("@media (min-width: 360px) { .kp-jhdr__pill { padding: 0 calc(11px + 2.55 * 14px / 48); } }")
-      && has("src/components/journey/journey-top-bar.tsx", '<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>'));
-  ok("6.9′ CONTROL · kept at 12/10 with the plus pulled, its ink would stand 10px from the start and 12 from the end — 1px off centre", Math.abs(10 - 12) / 2 === 1);
+  const doorUnpulled = Object.fromEntries(Object.entries(before).map(([l, v]) => [l, r3(v - (HAND_DOOR - door) / 2)]));
+  const after = Object.fromEntries(Object.entries(before).map(([l, v]) => [l, r3(v - HAND_DOOR / 2)]));
+  ok(`6.8 · the Withdraw door: the hand-drawn ↑ drew ${HAND_DOOR.toFixed(2)}px of empty box on its start, and its content sat ${j(before)} px right of centre (tiles 132 134 136); Phosphor's draws ${door.toFixed(3)}px (unpulled, ${j(doorUnpulled)}); pulled, either centres to ${j(after)} — inside the label's own side bearing`,
+    near(HAND_DOOR, 2.7, 1e-9) && near(door, 1.75, 1e-3) && near(marginOf(render(h(I.arrowUpFromLine, { s: 16, edge: "start" })))?.px ?? 0, -door, 0.0015)
+      && Object.values(after).every((v) => Math.abs(v) < 0.5), j({ door, doorUnpulled, after }));
+  // 6.9 · the journey header's deposit pill: A5's fit rule took 2px of the glyph's side (12/10); the glyph pulled frees its
+  // gap, which is shared evenly, so the pill keeps the width the fit rule measured.
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A): the pill draws the one deposit arrow
+  // (Phosphor's arrow-line-down, Bold at 14px), it drew the plus (x2.55 of 24: 1.49px). The stylesheet's number is the
+  // arrow's own ink start on its 256 grid — 28, read back here from the drawing — and the half share is written /512.
+  const pillX0 = Math.min(...partsOf("arrowDownToLine", 14).map((q) => q.x0 - q.w / 2));
+  const pillGap = gapOf("arrowDownToLine", 14).start;
+  const pad = 11 + (28 * 14) / GRID / 2;
+  const PILL_CALC = "calc(11px + 28 * 14px / 512)";
+  const pillRule = (css: string) => css.includes(`@media (min-width: 360px) { .kp-jhdr__pill { padding: 0 ${PILL_CALC}; } }`);
+  ok(`6.9 · the journey's deposit pill ("Weka pesa"): its arrow stands on the padding and the padding is A5's 22px plus the freed ${pillGap.toFixed(4)}px shared evenly — ${pad}px a side, ${PILL_CALC}, the pill's width unchanged`,
+    near(pillX0, 28, 1e-3) && near(pillGap, (28 * 14) / GRID, 1e-3) && near(2 * pad, 22 + pillGap, 1e-3) && near(pad, 11.765625, 1e-9) && pillRule(CSS)
+      && near(marginOf(render(h(I.arrowDownToLine, { s: 14, edge: "start" })))?.px ?? 0, -pillGap, 0.0015)
+      && has("src/components/journey/journey-top-bar.tsx", '<span aria-hidden className="kp-jhdr__plus"><I.arrowDownToLine s={14} edge="start" /></span>'), j({ pillX0, pillGap }));
+  ok("6.9′ CONTROL · kept at 12/10 with the arrow pulled, its ink would stand 10px from the start and 12 from the end — 1px off centre", Math.abs(10 - 12) / 2 === 1);
+  const plusPill = CSS.split(PILL_CALC).join("calc(11px + 2.55 * 14px / 48)");
+  ok("6.9″ PLANT · the stylesheet with the plus's padding left in (calc(11px + 2.55 * 14px / 48)) is reported by 6.9's rule", plusPill !== CSS && !pillRule(plusPill));
   // 6.10 · the tags keep their box: their caps are tracked, and the tracking after the last letter stands opposite the glyph's
-  // gap. Computed for each tag on a player surface (Inter Bold advances for the chips; the glyph's gap from its drawing).
+  // gap. Computed for each tag on a player surface (Inter Bold advances for the chips; the glyph's gap from its drawing — for
+  // the chip's arrow, which strokes at its words' stem (`text`), its centreline's reach less half that stem at the chip's
+  // size, as it draws there).
   const interBold = FONT("Inter-Bold");
   const rsb = (ch: string, size: number) => { const g = interBold.glyphForCodePoint(ch.codePointAt(0)!); return ((g.advanceWidth - g.bbox.maxX) / interBold.unitsPerEm) * size; };
-  const TAGS: Array<[string, string, number, string, number, number]> = [
-    ["the stake panel's ↑ JUU chip (md, 10.5px, 0.06em)", "arrowUp", 12, "U", 10.5, 0.06],
-    ["the Up & Down card's lock chip (md, 10.5px, 0.06em)", "lock", 11, "A", 10.5, 0.06],
-    ["/profile's role chip (lg, 12px, 0.06em)", "shieldcheck", 11, "N", 12, 0.06],
-    ["/profile's email pill (md, 10.5px, 0.06em)", "check", 10, "A", 10.5, 0.06],
+  const TAGS: Array<[string, string, number, string, number, number, keyof typeof GLYPH_STEM | null]> = [
+    ["the stake panel's ↑ JUU chip (md, 10.5px, 0.06em)", "arrowUp", 12, "U", 10.5, 0.06, "body-700"],
+    ["the Up & Down card's lock chip (md, 10.5px, 0.06em)", "lock", 11, "A", 10.5, 0.06, null],
+    ["/profile's role chip (lg, 12px, 0.06em)", "shieldcheck", 11, "N", 12, 0.06, null],
+    ["/profile's email pill (md, 10.5px, 0.06em)", "check", 10, "A", 10.5, 0.06, null],
   ];
-  const tagRows = TAGS.map(([what, g, s, last, size, trk]) => {
-    const gap = gapOf(g, s).start, right = trk * size + rsb(last, size);
-    return { what, boxed: r3((gap - right) / 2), pulledOnly: r3((0 - right) / 2) };
+  const tagGap = (g: string, s: number, size: number, text: keyof typeof GLYPH_STEM | null) =>
+    text ? (runReach(g, "start") * s) / GRID - (GLYPH_STEM[text] * size) / 2 : gapOf(g, s).start;
+  const tagRows = TAGS.map(([what, g, s, last, size, trk, text]) => {
+    const gap = tagGap(g, s, size, text), right = trk * size + rsb(last, size);
+    return { what, gap: r3(gap), boxed: r3((gap - right) / 2), pulledOnly: r3((0 - right) / 2) };
   });
   const maxBoxed = Math.max(...tagRows.map((t) => Math.abs(t.boxed))), maxPulled = Math.max(...tagRows.map((t) => Math.abs(t.pulledOnly)));
   ok(`6.10 · a tag keeps its box (a label that states, not a control): its caps are tracked, and boxed each stands within ${maxBoxed.toFixed(2)}px of centre by its ink (${tagRows.map((t) => `${t.what} ${t.boxed}`).join("; ")}), where a glyph pull alone would leave it within ${maxPulled.toFixed(2)} the other way — exact centring also takes the trailing tracking back, which R7-C left on centred labels: owner question K42`,
@@ -543,13 +672,19 @@ section("6 · A6 one weight for every arrow among words; a centred control frame
 section("7 · A7 the search box's two insets are equal by ink (tiles 172 194)");
 {
   const SB = "src/components/ui/search-box.tsx";
-  const glass = gapOf("search", 16), info = gapOf("info", 15);
+  // The ⓘ's size is its source's: a plain glyph (no edge, no text — alone in its target, it keeps its box), read here.
+  const infoS = Number(new RegExp("<I[.]info s=[{]([0-9]+)[}] aria-hidden />").exec(code("src/components/ui/search-help.tsx"))?.[1] ?? NaN);
+  const glass = gapOf("search", 16), info = gapOf("info", infoS);
   const pre = Number(new RegExp("padding: 0 10px 0 ([0-9]+)px;").exec(rule(".input-group .prefix"))?.[1] ?? NaN);
-  const left0 = pre + glass.start, left1 = pre, right = (40 - 15) / 2 + info.end;
-  ok(`7.1 · tiles 172 / 194 re-read: the magnifier stood ${left0.toFixed(2)}px from the left border (measured 16.76) and the ⓘ ${right.toFixed(2)} from the right (13.34 drawn — its 15px box snapped from a half pixel)`,
-    Math.abs(left0 - 16.76) < 0.1 && pre === 14 && Math.abs(right - 13.78) < 0.01);
-  ok(`7.2 · the magnifier leads the field, so its ink stands on the prefix's ${pre}px padding (edge); the ⓘ is alone in its 40px target and keeps its box — the insets are ${left1.toFixed(2)} and ${right.toFixed(2)}`,
-    has(SB, '<I.search s={16} edge="start" />') && Math.abs(left1 - right) < 0.25 && has("src/components/ui/search-help.tsx", '<I.info s={15} aria-hidden />'));
+  const left0 = pre + glass.start, left1 = pre, right = (40 - infoS) / 2 + info.end;
+  // The tiles show the hand-drawn pair: the magnifier's ring stood 2.7px into its 16px box (x4.05 of 24), the ⓘ's 1.28px
+  // into its 15px one, whose box stood on a half pixel of its 40px target. Phosphor's stand in by their own gaps, read here,
+  // and W2 took the ⓘ to 14px: its box on a whole pixel (Phosphor's info at 15px would have stood 13.67 in, 0.33 apart).
+  ok(`7.1 · tiles 172 / 194 re-read: the hand-drawn magnifier stood 16.70px from the left border (measured 16.76) and the ⓘ 13.78 from the right (13.34 drawn — its 15px box snapped from a half pixel); unpulled, Phosphor's magnifier would stand ${left0.toFixed(3)}px in, and its ⓘ (${infoS}px since W2) stands ${right.toFixed(3)}`,
+    pre === 14 && infoS === 14 && near(glass.start, 1.237, 1e-3) && near(info.end, 1.094, 1e-3), j({ infoS, glass, info }));
+  ok(`7.2 · the magnifier leads the field, so its ink stands on the prefix's ${pre}px padding (edge); the ⓘ is alone in its 40px target and keeps its box, centred on a whole pixel (${(40 - infoS) / 2}px) — the insets are ${left1.toFixed(2)} and ${right.toFixed(3)}, ${Math.abs(left1 - right).toFixed(3)} apart (14.00 and 13.78 with the hand-drawn ⓘ)`,
+    has(SB, '<I.search s={16} edge="start" />') && Math.abs(left1 - right) < 0.25 && Number.isInteger((40 - infoS) / 2)
+      && has("src/components/ui/search-help.tsx", `<I.info s={${infoS}} aria-hidden />`), j({ infoS, left1, right }));
   const gaps = G.glyphInkGaps(h(I.search, { s: 16 }));
   const spin = (await import("../src/components/ui/spinner.tsx")) as { spinnerPull: (s: number, e?: "start" | "end", slot?: number) => Record<string, string> | undefined };
   const pull = spin.spinnerPull(16, "start", gaps?.start) ?? {};
@@ -557,7 +692,12 @@ section("7 · A7 the search box's two insets are equal by ink (tiles 172 194)");
   ok(`7.3 · the spinner that takes the magnifier's slot stands on the same edge by its own ink and takes the magnifier's exact width (${spinOuter.toFixed(3)}px, the magnifier ${(16 - (gaps?.start ?? 0)).toFixed(3)}), so the words never move`,
     has(SB, '<Spinner size={16} edge="start" slotPull={GLASS_GAPS?.start} />') && near(spinOuter, 16 - (gaps?.start ?? 0), 0.002) && near(gaps?.start ?? 0, glass.start, 0.0015)
       && pull.marginInlineStart === `${r3(-1.5 * 16 / 24)}px`);
-  ok("7.3′ PLANT · without the slot's width the swap would move the typed words by the two gaps' difference", Math.abs(glass.start - 1.5 * 16 / 24) > 1.5);
+  // The plant: the spinner without the slot's width — its own pull only — against 7.3's width rule. The two gaps' difference
+  // was 1.70px with the hand-drawn magnifier (2.70 against the ring's 1.00); Phosphor's ring of the glass stands nearer its box.
+  const bare = spin.spinnerPull(16, "start") ?? {};
+  const bareOuter = 16 + Number.parseFloat(bare.marginInlineStart ?? "0") + Number.parseFloat(bare.marginInlineEnd ?? "0");
+  ok(`7.3′ PLANT · without the slot's width the swap would move the typed words by the two gaps' difference — ${Math.abs(bareOuter - (16 - (gaps?.start ?? 0))).toFixed(3)}px with Phosphor's magnifier (1.70 with the hand-drawn one) — which 7.3's width rule reports`,
+    bare.marginInlineEnd === undefined && !near(bareOuter, 16 - (gaps?.start ?? 0), 0.002) && near(Math.abs(bareOuter - (16 - glass.start)), Math.abs(glass.start - (1.5 * 16) / 24), 1e-9));
 }
 
 /* ══ §8 · A8 · "Fungua soko →" ═══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -576,8 +716,10 @@ section("8 · A8 the dictionary's typed arrow was a third weight — S12 took it
     return (Math.max(...ys) - Math.min(...ys)) / f.unitsPerEm;
   };
   const medium = shaft("Inter-Medium"), bold = shaft("Inter-Bold"), at600 = (medium + bold) / 2;
-  ok(`8.1 · Inter draws its arrow ${at600.toFixed(4)}em at 600 (Medium ${medium.toFixed(4)}, Bold ${bold.toFixed(4)}) against its 600 stem ${GLYPH_STEM["body-600"]}em: at 14px ${(at600 * 14).toFixed(2)}px between the family's ${((1.9 * 14) / 24).toFixed(2)} and the words' ${(GLYPH_STEM["body-600"] * 14).toFixed(2)} — a third weight (tile 178 read 1.29–1.30 between 1.11 and 2.07)`,
-    at600 < GLYPH_STEM["body-600"] * 0.9 && at600 > (1.9 / 24) && near(medium, 0.0928, 1e-3) && near(bold, 0.1167, 1e-3));
+  // Since W2 the family is Phosphor's, whose Bold strokes 24 units of 256 (1.31px at 14px) where the hand-drawn 1.9 of 24
+  // painted 1.11 — the tile's: Inter's arrow stands between both and the words' stem.
+  ok(`8.1 · Inter draws its arrow ${at600.toFixed(4)}em at 600 (Medium ${medium.toFixed(4)}, Bold ${bold.toFixed(4)}) against its 600 stem ${GLYPH_STEM["body-600"]}em: at 14px ${(at600 * 14).toFixed(2)}px between the family's Bold ${((24 * 14) / GRID).toFixed(2)} (the hand-drawn family's ${((1.9 * 14) / 24).toFixed(2)}) and the words' ${(GLYPH_STEM["body-600"] * 14).toFixed(2)} — a third weight (tile 178 read 1.29–1.30 between 1.11 and 2.07)`,
+    at600 < GLYPH_STEM["body-600"] * 0.9 && at600 > 24 / GRID && at600 > (1.9 / 24) && near(medium, 0.0928, 1e-3) && near(bold, 0.1167, 1e-3));
   const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<string, { market: Record<string, string> }> };
   // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP5, word-ledger row 56). This check held the typed arrow IN the label, filed
   // for S12; S12 took it out — "the label without it, the glyph after it" — so it now holds the fix: no arrow character in

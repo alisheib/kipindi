@@ -1,5 +1,5 @@
 /**
- * DA-2 · M5 — A GLYPH MOVES FOR A REASON, AND ALL 178 MOVE THE SAME WAY.
+ * DA-2 · M5 — A GLYPH MOVES FOR A REASON, AND EVERY ONE MOVES THE SAME WAY.
  *
  *   npm run test:glyph-motion
  *
@@ -24,9 +24,13 @@
  *      throttle) does not apply to them.
  *   4. Adoption floor — each primitive family has at least one consumer in src/**.tsx.
  *      This may only GROW; a vocabulary with zero consumers is a suggestion (E-116).
+ *   5. The ring swings from the bell's crown: `.g-ring`'s transform-origin is the top of the bell drawing the ringing
+ *      trigger ships (PHOSPHOR-MIGRATION W2: read from the drawing, so a redrawn bell cannot leave the pivot behind).
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { drawingOf, lineVariant } from "./lib/glyph-drawings.mts";
+import { pathBounds } from "./glyphs/reach.mts";
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -124,6 +128,19 @@ const FAMILIES: Record<string, RegExp> = {
 };
 for (const [name, re] of Object.entries(FAMILIES)) {
   ok(`4.1 primitive family "${name}" has at least one consumer`, re.test(corpus));
+}
+
+// 5 · the ring's pivot is the crown of the bell the ringing trigger draws (notifications-panel.tsx: `<I.bell s={20} />`).
+{
+  const panel = readFileSync("src/components/layout/notifications-panel.tsx", "utf8");
+  const size = Number(panel.match(/<I[.]bell s=[{](\d+)[}]/)?.[1] ?? NaN);
+  const body = drawingOf("bell", lineVariant(size)) ?? "";
+  const tops = [...body.matchAll(/ d="([^"]+)"/g)].map((m) => pathBounds(m[1])[2]);
+  const crown = tops.length ? Math.min(...tops) : NaN;
+  const origin = Number(motionCss.match(/[.]g-ring\s*[{][^}]*transform-origin:\s*50%\s*([\d.]+)%/)?.[1] ?? NaN);
+  ok(`5.1 ⭐ .g-ring swings from the bell's crown: its origin ${origin}% of the box is y${(origin * 2.56).toFixed(2)} of 256, the ${lineVariant(size)} bell (drawn at ${size}px) tops out at y${crown}`,
+    Number.isFinite(origin) && Number.isFinite(crown) && Math.abs(origin * 2.56 - crown) <= 0.5, `origin ${origin} · crown ${crown}`);
+  ok("5.1′ CONTROL · the hand-drawn bell's 15% would be reported (38.4 of 256, far below the crown)", Number.isFinite(crown) && Math.abs(15 * 2.56 - crown) > 0.5);
 }
 
 console.log(`\n${pass} passed, ${fails.length} failed`);

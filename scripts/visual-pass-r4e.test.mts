@@ -24,6 +24,7 @@ import { createRequire } from "node:module";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decomment, decommentCss } from "./lib/decomment.mts";
+import { GLYPH_ENTRIES, drawingOf } from "./lib/glyph-drawings.mts";
 import { keepLastWords, keepSentences, keepYears } from "../src/components/ui/keep-words.tsx";
 import { DotSeq } from "../src/components/ui/dot-seq.tsx";
 import { cn } from "../src/lib/utils.ts";
@@ -168,18 +169,25 @@ section("2 · the hub's Needle row draws a glyph of the row family (tiles 122–
   const family = (s: string) => /<span className="kp-hub__glyph" aria-hidden><I\.needle s=\{20\} \/><\/span>/.test(branch(s)) && !/NeedleMark/.test(branch(s));
   ok("2.1 · the hub row's glyph slot holds `I.needle` at 20, not the two-tone NeedleMark", family(drawer), branch(drawer).slice(0, 200));
   ok("2.1′ PLANT · NeedleMark put back in the slot is reported", !family(drawer.replace("<I.needle s={20} />", "<NeedleMark size={20} />")));
-  const glyphs = read("src/components/ui/glyphs.tsx");
-  const needle = /needle: \(p: GlyphProps\) => <G \{\.\.\.p\}>([\s\S]*?)<\/G>,/.exec(glyphs)?.[1] ?? "";
-  const ring = (name: string) => /<circle cx="12" cy="12" r="([0-9.]+)" \/>/.exec(new RegExp(`${name}: \\(p: GlyphProps\\) => <G \\{\\.\\.\\.p\\}>([\\s\\S]*?)</G>,`).exec(glyphs)?.[1] ?? "")?.[1];
-  ok("2.2 · I.needle is drawn by G (the 24 grid, one 1.9 stroke, currentColor) with the ring of globe and checkCircle, no opacity",
-    needle !== "" && ring("needle") === "9" && ring("globe") === "9" && ring("checkCircle") === "9" && !/opacity/.test(needle), needle);
-  const seg = /d="M([0-9.]+) ([0-9.]+)l([0-9.]+) ([0-9.]+)"/.exec(needle);
-  const [x1, y1] = [Number(seg?.[1]), Number(seg?.[2])], [x2, y2] = [x1 + Number(seg?.[3]), y1 + Number(seg?.[4])];
-  const reach = [Math.hypot(x1 - 12, y1 - 12), Math.hypot(x2 - 12, y2 - 12)];
+  // ⚠️ RE-POINTED 2026-10-17 (PHOSPHOR-MIGRATION W2): the needle is a house extra drawn in Phosphor's grammar
+  // (scripts/glyphs/extras.ts) — the hand-drawn mark scaled from the 24 grid by 32/3, its ring r9 → r96, stroked at
+  // Phosphor Bold's 24 units, the weight the hub's 20px draws — and read here from the app sprite, as it ships.
+  const needle = drawingOf("needle", "bold") ?? "";
+  const paths = [...needle.matchAll(/<path d="([^"]+)"([^>]*)[/]>/g)].map((m) => ({ d: m[1], rest: m[2] }));
+  const ringD = paths[0]?.d ?? "", segD = paths[1]?.d ?? "";
+  const radius = Number(/^M([0-9.]+) 128a([0-9.]+) /.exec(ringD)?.[2]);
+  const reachOf = (k: string) => GLYPH_ENTRIES.get(k)?.ink.bold ?? [NaN, NaN];
+  const sameRing = ["needle", "globe", "checkCircle"].every((k) => reachOf(k)[0] === 20 && reachOf(k)[1] === 236);
+  ok("2.2 · I.needle is the house extra in Phosphor's grammar: a ring of r96 about the box's centre and the needle across it, both stroked in currentColor at Bold's 24 units — the ink reach of Phosphor's globe and check-circle (x20–236), no opacity",
+    paths.length === 2 && ringD === "M32 128a96 96 0 1 0 192 0a96 96 0 1 0 -192 0Z" && radius === 96
+      && paths.every((p) => p.rest.includes('stroke="currentColor"') && p.rest.includes('stroke-width="24"')) && sameRing && !/opacity/.test(needle), needle);
+  const seg = /^M([0-9.]+) ([0-9.]+)L([0-9.]+) ([0-9.]+)$/.exec(segD);
+  const [x1, y1, x2, y2] = [1, 2, 3, 4].map((i) => Number(seg?.[i]));
+  const reach = [Math.hypot(x1 - 128, y1 - 128), Math.hypot(x2 - 128, y2 - 128)];
   const tilt = Math.atan2(x2 - x1, y2 - y1), markTilt = Math.atan2(62 - 38, 92 - 8);
   ok("2.3 · the needle crosses the pivot at the mark's tilt and ends on the ring's stroke at both ends",
-    Math.abs(tilt - markTilt) < 0.005 && reach.every((r) => Math.abs(r - 9) <= 0.95) && Math.abs((x1 + x2) / 2 - 12) < 0.01 && Math.abs((y1 + y2) / 2 - 12) < 0.01,
-    `tilt ${tilt.toFixed(4)} vs ${markTilt.toFixed(4)} · reach ${reach.map((r) => r.toFixed(2)).join("/")}`);
+    Math.abs(tilt - markTilt) < 0.005 && reach.every((d) => Math.abs(d - radius) <= 12) && Math.abs((x1 + x2) / 2 - 128) < 0.01 && Math.abs((y1 + y2) / 2 - 128) < 0.01,
+    `tilt ${tilt.toFixed(4)} vs ${markTilt.toFixed(4)} · reach ${reach.map((d) => d.toFixed(2)).join("/")}`);
   ok("2.4 CONTROL · NeedleMark keeps its two tones where it is the mark (the account menu's row)",
     /<circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0\.5" \/>/.test(drawer) && /variant === "menu-row" \?[\s\S]{0,900}<NeedleMark \/>/.test(drawer));
 }

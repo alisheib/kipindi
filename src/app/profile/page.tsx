@@ -397,7 +397,7 @@ export default async function ProfilePage() {
           <SettingRow icon={I.receipt}         title={t.receipts.title}              subtitle={t.receipts.settingSub}             href="/wallet/receipts" />
           <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />
           <SettingRow icon={I.bellRing}        title={t.push.pageTitle}              subtitle={t.push.settingSub}                 href="/profile/notifications" />
-          <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
+          <SettingRow icon={I.limits}          title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
           <SettingRow icon={I.keyRound}        title={t.security.title}              subtitle={t.security.settingSub}             href="/profile/security" />
           {/* 2026-09-13 — an APPROVED identity is not offered "Verify ID" again: the row asked a verified
               player to do something already done. Same predicate as the pill above.
@@ -421,7 +421,7 @@ export default async function ProfilePage() {
           {/* R5-G (2026-10-09, G-1's sweep — R5-A's F17 rule, as the KYC row above): the help page's own name, its <title> and
               eyebrow ("Msaada / Help / 帮助", `common.help`), as the hub's row and the journey's footer say it — the row said
               "Help & support / 帮助与支持" in English and Chinese (Swahili's words coincide, "Msaada"). */}
-          <SettingRow icon={I.heartPulse}      title={t.common.help}                 subtitle={t.profile.helpSupportSub}               href="/help" />
+          <SettingRow icon={I.headset}         title={t.common.help}                 subtitle={t.profile.helpSupportSub}               href="/help" />
         </div>
       </section>
 

@@ -53,6 +53,7 @@ import { dict, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n-dict";
 import { markInnerSvg } from "@/lib/brand-mark";
 import { regulatorSplit } from "@/lib/regulator-name";
 import { connectiveRanges, splitLeadConnective } from "@/lib/connectives";
+import { OFFLINE_GLYPHS } from "@/lib/offline-glyphs.generated";
 
 /** The path the document is served at — the service worker's `OFFLINE_URL` names the same. */
 export const OFFLINE_PATH = "/offline";
@@ -116,11 +117,9 @@ export const OFFLINE_TOPO = {
   ],
 } as const;
 
-/** The two line glyphs the page drew (`I.wifiOff`, `I.rotateCcw` in `src/components/ui/glyphs.tsx`), as their inner SVG. */
-export const OFFLINE_GLYPHS = {
-  wifiOff: '<path d="M8.5 13.2a6.3 6.3 0 0 1 7 0"/><path d="M5 10a10.6 10.6 0 0 1 4.2-2.3M14.8 7.7A10.6 10.6 0 0 1 19 10"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/><path d="M4 4l16 16"/>',
-  rotateCcw: '<path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3.5V8h4.5"/>',
-} as const;
+/** The page's two glyphs (`I.wifiOff`, `I.rotateCcw`), inline: generated from the family's own Phosphor drawings
+ *  (`npm run glyphs:gen`, PHOSPHOR-MIGRATION W2), because this page cannot load the app or a sprite. */
+export { OFFLINE_GLYPHS };
 
 /**
  * ⭐ THE REGULATOR'S NAME IS ONE NAME HERE TOO (R5-G, 2026-10-09, G-5 — R5-A's F18 rule, as the journey's footer and the
@@ -165,9 +164,9 @@ const sayLicence = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => {
   const [before, lead] = splitLeadConnective(cut[0]);
   return `<span class="l" lang="${l}">${esc(before)}<span class="kp-gbt-name">${heldConnectives(lead + cut[1])}</span>${esc(cut[2])}</span>`;
 }).join("");
-/** A 24-grid line glyph, drawn as `glyphs.tsx`'s `G` draws it. */
+/** A family glyph on Phosphor's 256 grid, its parts already painted (`fill="currentColor"`), as the sprite draws it. */
 const glyph = (inner: string, s: number) =>
-  `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  `<svg viewBox="0 0 256 256" width="${s}" height="${s}" aria-hidden="true">${inner}</svg>`;
 /** The tab title in each language: the app's title template, `%s · 50pick`. */
 const titleOf = (l: Locale) => `${tFor(l).common.offline} · 50pick`;
 

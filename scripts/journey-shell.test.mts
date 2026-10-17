@@ -123,6 +123,7 @@ import { IS_POPUP, reviewGaps, reviewedIn } from "./lib/popup-review.mts";
 import { NO_VIEWER, type InviteViewer } from "../src/lib/feature-state.ts";
 import { hasRole, ADMIN_CONSOLE_ROLES } from "../src/lib/server/roles.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { drawingOf, lineVariant } from "./lib/glyph-drawings.mts";
 
 process.exitCode = 1; // failure is the default
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -175,6 +176,8 @@ type World = {
   routes: readonly string[];
   /** `surfaces.ts` as written — the install-invite anchor is checked verbatim, comments and all. */
   surfacesRaw: string;
+  /** The glyph set: the generated registry the family `I` is built from (PHOSPHOR-MIGRATION W2 — Phosphor's drawings; a
+   *  key is defined when it has an entry `"key": { s: "…" }`). */
   glyphs: string;
   /** `globals.css`, comments blanked: §7 and §8 read the shell's rules as written. */
   css: string;
@@ -204,7 +207,7 @@ const WORLD: World = {
     .filter((f) => !f.includes("/app/admin/") && !f.includes("/app/api/"))
     .map(routeOf))].sort(),
   surfacesRaw: read("src/lib/surfaces.ts"),
-  glyphs: read("src/components/ui/glyphs.tsx"),
+  glyphs: read("src/components/ui/glyph-registry.generated.ts"),
   css: decommentCss(read("src/app/globals.css")),
   tailwind: read("tailwind.config.ts"),
   popupFit: decomment(read("scripts/popup-fit.test.mts")),
@@ -532,8 +535,11 @@ const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/auth/login", "account", undefined],
   ["/s/x1", "questions", undefined],
 ];
+// ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.1A, one meaning one glyph): Maswali is the
+// board, so it draws the board's glyph `markets` (Phosphor's squares-four) — the classic rail's Masoko draws the same. Its
+// `questionCircle` was a Help "?" in a circle.
 const DECK = [
-  "questions / questionCircle journey.tabQuestions",
+  "questions / markets journey.tabQuestions",
   "updown /updown trade nav.updown",
   "tickets /positions ticket journey.tabTickets",
   "account /account user journey.tabAccount",
@@ -581,7 +587,7 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
   const shape = I.tabs.map((d) => `${d.key} ${d.href} ${d.glyph} ${d.label}`);
   ok("1.tabs · four tabs in the deck's order — Maswali /, Juu/Chini /updown, Tiketi zangu /positions, Akaunti /account",
     show(shape) === show(DECK), show(shape));
-  const noGlyph = I.tabs.filter((d) => !W.glyphs.includes(`\n  ${d.glyph}: (p: GlyphProps)`)).map((d) => d.glyph);
+  const noGlyph = I.tabs.filter((d) => !W.glyphs.includes(`\n  "${d.glyph}": { s: "`)).map((d) => d.glyph);
   ok("1.glyphs · every tab's glyph is one the glyph set defines", I.tabs.length > 0 && noGlyph.length === 0, noGlyph.join(", "));
   const problems = TAB.tabTableProblems(I.routes, I.tabs, dict);
   ok("1.table · the table is sound — every row's tab is a tab, every tab is reached, no row is shadowed, each href lights its own tab, every label exists in en/sw/zh",
@@ -1566,17 +1572,21 @@ function g7Header(W: World, ok: Ok) {
   ok("7.eighteen · the 18+ roundel is the kit's, with its text as its name (no aria-label on a plain span)",
     bar.includes(`<span className="kp-rg__18">{t.footer.eighteenPlus}</span>`));
   const plus = baseRule(css, ".kp-jhdr__plus");
-  // Round 10 (R10-A6, a centred control frames its ink) moved this pin: the plus stands on the pill's padding (`edge`).
-  ok(`7.plus · the "+" is hidden below 360 and shown from 360 (A5), in a span of its own — never a width utility on the kit button`,
+  // Round 10 (R10-A6, a centred control frames its ink) moved this pin: the glyph stands on the pill's padding (`edge`).
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A, one deposit glyph): the glyph is the
+  // deposit arrow (Phosphor's arrow-line-down) where it was a "+"; its span keeps the name `kp-jhdr__plus`.
+  ok(`7.plus · the deposit arrow (the "+" until W2) is hidden below 360 and shown from 360 (A5), in a span of its own — never a width utility on the kit button`,
     plus.includes("display: none") && minWidthRule(css, 360, ".kp-jhdr__plus").includes("display: inline-flex")
-      && bar.includes(`<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>`),
+      && bar.includes(`<span aria-hidden className="kp-jhdr__plus"><I.arrowDownToLine s={14} edge="start" /></span>`),
     show({ plus, from360: minWidthRule(css, 360, ".kp-jhdr__plus") }));
   const pillRule = baseRule(css, ".kp-jhdr__pill");
-  // Round 10 (R10-A6) moved this pin: from 360 the plus stands on its padding, which frees its 2.55-unit box gap (1.49px at
-  // 14px); A5's 22px of padding plus that gap is shared evenly, so the pill keeps the width the fit rule measured
-  // (test:visual-pass-r10 derives it) and its ink is centred.
-  ok("7.pill · + Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the plus's freed 1.49px shared evenly, named by its words",
-    pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 2.55 * 14px / 48)")
+  // Round 10 (R10-A6) moved this pin: from 360 the glyph stands on its padding, which frees its box gap; A5's 22px of
+  // padding plus that gap is shared evenly, so the pill keeps its ink centred (test:visual-pass-r10 derives it).
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2): the gap is the deposit arrow's — Phosphor's arrow-line-down
+  // Bold starts its ink at x28 of 256, 1.53px at 14px (the hand-drawn "+" freed 2.55 of 24, 1.49px) — so the padding is
+  // calc(11px + 28 * 14px / 512), half the gap a side.
+  ok("7.pill · ↓ Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
+    pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 28 * 14px / 512)")
       && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
       && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
     show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));
@@ -1633,7 +1643,7 @@ function g7Header(W: World, ok: Ok) {
   const bellFacts = {
     slot: bellSlot.includes("margin-left: var(--sp-1)") && tokenValue(css, "sp-1") === "4px",
     avatarApart: text(W, AVATAR).includes(`<div ref={ref} className="relative sm:ml-1">`) && W.tailwind.includes(`"1": "4px"`),
-    pip: pip.includes("top: -3px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
+    pip: pip.includes("top: -4px !important") && pip.includes("right: auto !important") && pip.includes("left: 21px !important")
       // round 4: no rose glow in the journey's slot (the lift's glow dyed the dome) — the dark drop only.
       // ⭐ round 5 (R5-B, 2026-10-09, F8, tile 225): no drop either — it darkened the dome's right shoulder by up to ~16 a
       // channel ((1175,23) 426 against its mirror's 475) and shaded the opaque bar under the pip (68–75 against 86). The
@@ -1648,6 +1658,21 @@ function g7Header(W: World, ok: Ok) {
   ok("7.bell · the bell stands centred between the language box and the avatar (the slot's 4px answers the avatar's sm:ml-1), and its count badge hangs by its left edge 1px past the glyph's centre line, its top on the 44px controls' line, over the classic bell's inline 40px / 20px / 18px geometry it was measured against",
     Object.values(bellFacts).every(Boolean),
     show({ bellFacts, bellSlot, pip }));
+  // PHOSPHOR-MIGRATION W2 · the pip's clearance, read from the bell AS DRAWN: Phosphor's Bold bell at 20px (the slot's
+  // glyph), its dome the path's arc. At rest the pip's ring clears the dome by about a pixel; at the notif-badge-pulse
+  // peak (1.25× about the pip's centre) its fill still clears it, "99+" (30px, the widest) included. A redrawn bell whose
+  // dome is no longer that arc is reported, not passed: the guard must be able to read what it measures.
+  {
+    const arc = (drawingOf("bell", lineVariant(20)) ?? "").match(/([0-9.]+),([0-9.]+)a([0-9.]+),([0-9.]+),0,0,0-([0-9.]+),0/);
+    const k = 20 / 256, top = Number(pip.match(/top: (-?[0-9.]+)px !important/)?.[1] ?? NaN);
+    const R = arc ? Number(arc[3]) * k : NaN;
+    const cx = arc ? 10 + (Number(arc[1]) - Number(arc[3])) * k : NaN, cy = arc ? 10 + Number(arc[2]) * k : NaN;
+    const gap = (x: number, y: number, r: number) => Math.hypot(x - cx, y - cy) - r - R;
+    const rest = gap(21 + 9, top + 9, 9); // the pip's left cap at rest, its 2px ring included
+    const peak = gap(21 + 15 - 6 * 1.25, top + 9, 7 * 1.25); // "99+": centre 15px in, its cap 6px left of it, the fill (r 7) at 1.25×
+    ok(`7.bell′ · the count badge clears the bell AS DRAWN (Phosphor's Bold bell at 20px, its dome r${R.toFixed(2)}px): the ring by ${rest.toFixed(2)}px at rest, the fill by ${peak.toFixed(2)}px at the pulse's peak with "99+"`,
+      !!arc && arc[3] === arc[4] && Number(arc[5]) === 2 * Number(arc[3]) && rest >= 0.5 && peak >= 0, show({ top, R, cx, cy, rest, peak }));
+  }
   const blocks = mediaBlocks(css);
   const phoneOnly = blocks.filter((b) => CAPS_WIDTH.test(b.cond) && SHELL_CLASS.test(b.body)).map((b) => `@media ${b.cond}`);
   ok("7.first · every rule of the journey shell is mobile-first: no width-capping query holds one, however its block is written (nothing for the density contract to fence)",
@@ -3054,7 +3079,9 @@ ${s}`);
     const clusterGap4 = withCss(inRule(".kp-jhdr__cluster", "gap: 6px;", "gap: 4px;"));
     const flatFrom640 = withCss(inMedia(640, ".kp-jhdr__row", "gap: var(--sp-5); ", ""));
     const CLASSIC_BAR = "src/components/layout/top-app-bar.tsx";
-    const classicGapMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-5 lg:gap-2", "sm:gap-5 sm:px-5 lg:gap-2"));
+    // The classic row's spelling since c3e28b47 (its padding moved to px-2 / sm:px-3 / lg:px-6): the needle follows it, or
+    // the plant never lands and the red twin goes red on a gate that still works.
+    const classicGapMoves = withFile(WORLD, CLASSIC_BAR, (s) => s.replace("sm:gap-4 sm:px-3 lg:gap-2", "sm:gap-5 sm:px-3 lg:gap-2"));
     const pillForAnyPlayer = withFile(WORLD, JHDR, (s) => s.replace("{state.pill && (", "{user.isAuthed && ("));
     const pipsLifted = withCss(inRule(".kp-rail--journey .kp-rail__item", "justify-content: flex-start", "justify-content: center"));
     const dotAlways = withFile(WORLD, JTABS, (s) => s.replace(
@@ -3081,7 +3108,9 @@ ${s}`);
     // the `!important` an inline style needs, and the two premises move under it — the avatar's gap and the classic pip.
     const bellOffCentre = withCss(inRule(".kp-jhdr__bell", " margin-left: var(--sp-1);", ""));
     const pipOverDome = withCss(inRule(".kp-jhdr__bell .count-badge", "right: auto !important; left: 21px !important;", "right: 1px !important;"));
-    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -3px !important;", "top: -3px;"));
+    const pipInlineWins = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -4px !important;", "top: -4px;"));
+    // PHOSPHOR-MIGRATION W2: the pip back at −3, where the hand-drawn bell's smaller dome let it sit.
+    const pipOnDome = withCss(inRule(".kp-jhdr__bell .count-badge", "top: -4px !important;", "top: -3px !important;"));
     const pipGlowBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 0 8px var(--no-500), 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
     // R5-B (round 5, F8): the dark drop alone comes back — round 4's state, which shaded the dome's shoulder.
     const pipDropBack = withCss(inRule(".kp-jhdr__bell .count-badge", "box-shadow: none;", "box-shadow: 0 2px 4px color-mix(in oklab, var(--royal-950) 40%, transparent);"));
@@ -3289,7 +3318,7 @@ ${s}`);
       { name: "the tabs leave the deck's order", expect: at("1.tabs ·"),
         impl: { tabs: outOfOrder }, landed: outOfOrder[1].key === "tickets", landedAs: "Tiketi zangu sits second on the rail" },
       { name: "a tab names a glyph the set does not define", expect: at("1.glyphs ·"),
-        impl: { tabs: ghostGlyph }, landed: !WORLD.glyphs.includes("\n  tickets: (p: GlyphProps)"), landedAs: "the rail draws an empty icon" },
+        impl: { tabs: ghostGlyph }, landed: !WORLD.glyphs.includes('\n  "tickets": { s: "'), landedAs: "the rail draws an empty icon" },
       { name: "the exported guard ignores the dictionaries", expect: at("1.guard.c ·"),
         impl: { tabKeys: guardIgnoresDicts }, landed: guardIgnoresDicts({ xx: {} }).length === 0,
         landedAs: "a label missing in a language passes the guard" },
@@ -3450,7 +3479,7 @@ ${s}`);
       { name: "the bell renames its arrival broadcast and the counter keeps the old name", expect: at("6.events ·"),
         world: bellRenamed, landed: changed(bellRenamed, BELL), landedAs: "the dot listens for a broadcast the bell no longer hears" },
       // §7 — the header (WP6a): one plant per S4 rule, then the bar's markup
-      { name: "the + shows below 360", expect: at("7.plus ·"),
+      { name: "the deposit arrow shows below 360", expect: at("7.plus ·"),
         world: plusAt320, landed: cssChanged(plusAt320), landedAs: "the 320 row carries the glyph S4 measured it could not afford" },
       // 2026-10-08, the owner's rule: the header's edge is the page's edge at every width. This was "a 16px gutter
       // below 360", which planted today's value; the old 12px is the defect now.
@@ -3507,7 +3536,7 @@ ${s}`);
       { name: "the journey header drops the page's referral and invite", expect: at("7.auth.carry ·"),
         world: headerForgetsCodes, landed: changed(headerForgetsCodes, JHDR), landedAs: "a journey guest's codes are absent from both auth doors" },
       { name: "the pill keeps the kit button's 16px padding below 360", expect: at("7.pill ·"),
-        world: pillPad16, landed: cssChanged(pillPad16), landedAs: "+ Weka pesa 8px wider on the narrowest phone" },
+        world: pillPad16, landed: cssChanged(pillPad16), landedAs: "↓ Weka pesa 8px wider on the narrowest phone" },
       { name: "the lockup returns at 1024", expect: at("7.brand ·"),
         world: lockupAtLg, landed: changed(lockupAtLg, JHDR), landedAs: "136px of wordmark in the band where the classic bar lost its account menu (E-190)" },
       { name: "the journey header is not sticky (A13)", expect: at("7.stack ·"),
@@ -3532,6 +3561,8 @@ ${s}`);
         world: pipOverDome, landed: cssChanged(pipOverDome), landedAs: "\"25\" filled over the bell's dome, only the rim and clapper showing" },
       { name: "the badge override loses its !important", expect: at("7.bell ·"),
         world: pipInlineWins, landed: cssChanged(pipInlineWins), landedAs: "the classic inline position wins and the override paints nothing" },
+      { name: "the count badge back at −3 over Phosphor's bigger dome", expect: at("7.bell′ ·"),
+        world: pipOnDome, landed: cssChanged(pipOnDome), landedAs: "the pip's ring on the dome's shoulder at rest (0.16px), its fill on the outline at the pulse's peak" },
       { name: "the rose glow comes back to the journey bell's pip", expect: at("7.bell ·"),
         world: pipGlowBack, landed: cssChanged(pipGlowBack), landedAs: "the 8px rose halo dyes the dome's shoulder again (round 4, tiles 268–278)" },
       { name: "the dark drop comes back to the journey bell's pip", expect: at("7.bell ·"),

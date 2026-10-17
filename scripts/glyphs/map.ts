@@ -26,14 +26,14 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   football: { ph: "soccer-ball" },
   politics: { ph: "flag-banner" },
   forex: { ph: "currency-circle-dollar" },
-  weather: { ph: "cloud-rain" },
+  weather: { ph: "cloud-sun" }, // W2 review: cloud-rain at 11–13px read as a speech balloon (its rain stroke joins the cloud)
   economy: { ph: "chart-line-up" },
   crypto: { ph: "currency-btc" },
   entertainment: { ph: "film-slate" },
   tech: { ph: "cpu" },
   shuffle: { ph: "shuffle" },
   landmark: { ph: "bank" },
-  markets: { ph: "squares-four" }, // R-LEXICON 5.1A: the board, both shells; also the "other" category
+  markets: { ph: "squares-four" }, // R-LEXICON 5.1A: the board, both shells (the "other" category draws `assorted`)
 
   // ── actions ──
   trade: { ph: "arrows-down-up" }, // R-LEXICON 5.4A: Up & Down
@@ -120,7 +120,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   listChecks: { ph: "list-checks" },
   layoutGrid: { ph: "grid-four" }, // "all categories" — kept apart from the board's squares-four
   needle: { extra: "the brand's own mark (a disc and the needle across it); Phosphor has nothing like it" },
-  radio: { ph: "radio-button" },
+  radio: { retire: "its one use, the hub's Live row, draws `live` (R-LEXICON 5.2A); nothing else draws it" },
   pause: { ph: "pause" },
   playBare: { ph: "play" },
 
@@ -202,11 +202,13 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   compass: { retire: UNUSED },
   idCard: { ph: "identification-card" },
   headset: { ph: "headset" },
-  questionCircle: { ph: "question" }, // Help; the journey's board tab moves to `markets` (R-LEXICON 5.1A)
+  questionCircle: { retire: "its one use, the journey's board tab, draws `markets` (R-LEXICON 5.1A); Help draws `headset`" },
 
   // ── status & tags ──
-  sealCheck: { ph: "seal-check" },
-  voidX: { ph: "prohibit" }, // reserved: Maswali R2 renames it sealX; void is prohibit (one meaning, one glyph)
+  sealCheck: { ph: "seal-check" }, // the certified seal — results' (resolved, R-LEXICON 5.5A) and Maswali R2's seal family
+  // Nothing ever drew it. Reserved for Maswali R2's sealX until Ali ruled (2026-10-17, MASWALI-PLAN §10c) that Millionea
+  // draws only Phosphor, through `I` — so its keys are new map entries, not house drawings, and the reservation ended.
+  voidX: { retire: "unused: Maswali's sealX became Phosphor keys (Ali, 2026-10-17); void is prohibit" },
   clockPending: { ph: "clock-countdown" }, // pending (W4)
   lockSide: { retire: UNUSED },
   sparkleNew: { retire: UNUSED },
@@ -242,10 +244,46 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
 };
 
 /** New keys the lexicon adds at the swap (W2), so each meaning has its own key (docs/PHOSPHOR-MIGRATION.md §3). */
+/**
+ * Where each live key's symbols are served from (W2). "shell" keys are the always-visible chrome — the two tab bars and
+ * the two headers, as they stand after the lexicon (§3), the balance pill's eye and lock among them — and their Bold
+ * drawings are inlined in the root layout, so the chrome never waits for a file on a slow first visit. "admin" keys are
+ * drawn only by the console and sit in a sprite a player never downloads. Every other key is "app": one cached file. A
+ * key drawn outside its group still works (it is fetched from its own group's sprite); the groups only decide what a page
+ * has to download. `test:glyph-map` §9 holds the chrome to it: every key a chrome file draws before a tap is a shell key.
+ */
+export const SHELL_KEYS: readonly string[] = [
+  "markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
+  "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
+];
+export const ADMIN_KEYS: readonly string[] = ["upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile"];
+
+/**
+ * Keys drawn at 27 px or more somewhere (R-WEIGHT: the Line tier is Bold up to 26 px and Regular from 27): only these ship
+ * a Regular drawing. The census of 2026-10-17 — bellRing 30, clock 28, idCard 28, gift 150; the result dialog's status
+ * glyphs at 36; the category glyph behind a question's title at 96; RewardBurst's medallion glyph at 36 (`RewardGlyph`:
+ * trophy, shieldcheck, resolved, star — W2's review); the cashback promo's coins at 110/140. Any other key drawn that large
+ * falls back to Bold, so a glyph is never blank, only heavier. (The market card's category watermark is drawn at its
+ * default 24 and scaled to 140 by CSS, so it draws Bold: W5 retires that watermark.)
+ */
+export const REGULAR_KEYS: readonly string[] = [
+  "bellRing", "clock", "idCard", "gift", "check", "x", "warning", "info",
+  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech", "shuffle", "landmark", "assorted",
+  "trophy", "shieldcheck", "resolved", "star", "coins",
+];
+
+/** Keys that ship a Fill or a Duo drawing — added by the waves that use them (W3 selected states, W4 seals, W5 plates). */
+export const FILL_KEYS: readonly string[] = [
+  "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
+  "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
+  "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
+];
+export const DUO_KEYS: readonly string[] = [];
+
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
   ["profile", "user"], ["hot", "flame2"], ["landmark", "bank"], ["ext", "externalLink"], ["resolved", "sealCheck"],
-  ["gift", "sofGift"], ["portfolio", "ticket"], ["smartphone", "devicePhone"], ["void", "voidX"],
+  ["gift", "sofGift"], ["portfolio", "ticket"], ["smartphone", "devicePhone"],
 ];
 
 export const NEW_KEYS: Record<string, MapEntry> = {
@@ -266,4 +304,10 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   howTo: { ph: "book-open-text" }, // how it works (question stays Help)
   cap: { ph: "stack" }, // the weekly ticket cap
   finalWeek: { ph: "flag-checkered" }, // the final week of a sunset
+  // W2 (lead engineer, 2026-10-17): the hub's Uthibitisho wa utatuzi row — the resolution's attestation, an official
+  // stamp — so it never wears the seal of its neighbour Matokeo (results = seal-check, 5.5A): R5-A parted those two rows.
+  attestation: { ph: "stamp" },
+  // W2 (W2's review): the category "Other" — and any category the map does not know — took the board's key, which the
+  // lexicon redrew as squares-four, so it read as "All" (grid-four) and as the board tab. Assorted topics: shapes.
+  assorted: { ph: "shapes" },
 };

@@ -522,6 +522,7 @@
     "red:icon-sizes": "tsx scripts/icon-size-ratchet.test.mts --prove-red",
     "red:icon-sizes-slack": "tsx scripts/icon-size-ratchet.test.mts --prove-red-slack",
     "glyphs:gen": "tsx scripts/glyphs/codegen.mts",
+    "glyphs:parity-entries": "node scripts/glyphs/parity-entries.mjs",
     "test:glyph-map": "tsx scripts/glyph-map.test.mts",
     "red:glyph-map": "tsx scripts/glyph-map.test.mts --prove-red",
     "test:glyph-sync": "tsx scripts/glyph-sync.test.mts",

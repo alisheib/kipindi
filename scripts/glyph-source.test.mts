@@ -10,7 +10,8 @@
  *   §2 no icon package in dependencies or devDependencies, apart from the pinned codegen source as a devDependency
  *   §3 inline <svg> in src/ is a ratchet: each listed file draws exactly its listed count, and no other file draws one.
  *      A listed count that falls must be lowered here in the same commit, so the progress stays won.
- *   §4 a 256-grid viewBox appears in src/ only in a generated file
+ *   §4 a 256-grid viewBox appears in src/ only in a generated file or in one of the two places that frame the generated
+ *      drawings (the family's engine, and the offline page that cannot load it) — so no page hand-draws a Phosphor glyph
  *   §5 no SVG is drawn as a data URI in src/ (a stylesheet's `url("data:image/svg+xml…")`, or the same in code) but the
  *      ones named in DATA_SVG with their reason — an icon by another door
  *   §6 every image file under public/ is named in PUBLIC_IMAGES with what it is (the brand, the app's icons, vendors'
@@ -26,7 +27,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
-import { PHOSPHOR_PACKAGE } from "./glyphs/map";
+import { PHOSPHOR_PACKAGE } from "./glyphs/map.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CODE = /\.(tsx?|mts|mjs|cjs|jsx?)$/;
@@ -73,6 +74,7 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/ui/date-select.tsx": [1, "W7: a hand-drawn chevron"],
   "src/components/ui/duration-input.tsx": [1, "W7: a hand-drawn chevron"],
   "src/components/ui/empty-state.tsx": [13, "W6: the private empty-state drawings, retired for Duotone glyphs on plates"],
+  "src/components/ui/glyph-shell-sprite.tsx": [1, "the glyph family's inline chrome symbols"],
   "src/components/ui/glyphs.tsx": [2, "the glyph family itself"],
   "src/components/ui/identity-avatar.tsx": [4, "the player's heraldic crest (a second system, DESIGN_AUTHORITY B1a)"],
   "src/components/ui/select.tsx": [2, "W7: hand-drawn chevron and check icons"],
@@ -83,6 +85,9 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/lib/brand-mark.ts": [3, "the brand mark's source drawings"],
   "src/lib/offline-document.ts": [3, "the offline page, which cannot load the app's components"],
 };
+
+/** The two places that frame the generated drawings on Phosphor's 256 grid; neither draws one by hand. */
+const FRAMES_256 = new Set(["src/components/ui/glyphs.tsx", "src/lib/offline-document.ts"]);
 
 /** SVG drawn as a data URI in src/ — the 2026-10-17 census, each file and how many, each with its reason. */
 const DATA_SVG: Record<string, [count: number, why: string]> = {
@@ -145,7 +150,9 @@ function check(w: World): string[] {
     const n = (code.match(/<svg[\s>]/g) ?? []).length;
     if (n) counts.set(rel, n);
     // §4
-    if (/viewBox="0 0 256 256"/.test(code) && !/\.generated\./.test(rel)) f.push(`§4 ${rel} draws on the 256 grid by hand — Phosphor drawings come only from the codegen`);
+    if (/viewBox="0 0 256 256"/.test(code) && !/\.generated\./.test(rel) && !FRAMES_256.has(rel)) {
+      f.push(`§4 ${rel} draws on the 256 grid by hand — Phosphor drawings come only from the codegen`);
+    }
   }
   // §2
   for (const [section, deps] of [["dependencies", w.pkg.dependencies], ["devDependencies", w.pkg.devDependencies]] as const) {

@@ -27,11 +27,20 @@ Maswali lane fixed it (`43523844`), and W1 was rebased onto that, proven at its 
 0, local `qa:live` 376/376) and pushed: **`9b604d8e`, live on www, apex and the Railway host 160 s later; `/api/health`
 reachable and migrated; `qa:chunks-prod` 6/6 routes on both origins; production `qa:live` 361/361.**
 
-**Next:** W2, the swap (branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`; §5 W2 "As built so far" and its list
-still owed): rebase onto `main`; a classic-parity baseline at `main` (the one at `c218979d` predates the Maswali merges,
-which the harness refuses as a base); the W2 compare and its "after" tiles; the generated glyph-swap entries
-(`scripts/glyphs/parity-entries.mjs`) and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`;
-the push and the production read-back.
+**Next:** W2, the swap. It lives on branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`, on `main` `862aa757`.
+1. The release proof at the commit that ships: a v4 `run` job; the dev server capped at a 3 GB heap; `mem-wait 3.5`
+   before each step.
+2. A parity compare at that commit against the baseline `parity-v4-862aa757.json`.
+3. `npm run glyphs:parity-entries` on its capture.
+4. The clean compare with `--prove-red`.
+5. The push and the production read-back (§5 W2's owed list).
+
+**W2 so far** (§5 W2 "As built so far" has the detail):
+- The engine draws Phosphor; the lexicon is applied wherever a meaning is drawn.
+- Every guard that read the hand-drawn family is re-pointed and green.
+- The parity baseline is taken (52/52), and the entries are generated from the first compare.
+- An independent code review and a four-reader screenshot review are read, and their findings fixed.
+- `test:all` on the old proof commit: every red is `main`'s or the machine's, and the 2 that were W2's are fixed.
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
@@ -127,7 +136,10 @@ positions are `ticket`; a result recorded is `seal-check`; `shield-check` means 
 meaning Help) to the board's key; the classic rail's Live from `bolt` to `live`; the classic rail's Up & Down from
 `trendingUp` (which keeps meaning a rising trend) to `trade`; the hub's proposals row from `sparkle` to a new key `idea`;
 the hub's limits row from the shield to a new key `limits`; every deposit / withdraw door to `arrowDownToLine` /
-`arrowUpFromLine`.
+`arrowUpFromLine`. **And one W2 found (the lead engineer's call, 2026-10-17):** with results on `seal-check`, the hub's
+Uthibitisho wa utatuzi row (`sealCheck`) drew the same seal as its neighbour Matokeo — the pair R5-A had parted — so it
+wears a new key `attestation` (`stamp`, the resolution's official attestation); `sealCheck` stays `seal-check`, aliased
+with `resolved`, for the resolution panel's attestation lines and Maswali's marks.
 
 The conflicts the inspection found (Appendix A), and the candidates Ali chose from:
 
@@ -153,54 +165,15 @@ Recognition check: answered by Ali's review of the specimen (2026-10-17). A labe
 
 ---
 
-## §4 · Mapping — house key → Phosphor (draft for the core keys)
+## §4 · Mapping — house key → Phosphor
 
-From W1 the source of truth is `scripts/glyphs/map.ts`, and every name below is checked against the pinned package
-(`test:glyph-map`). Until then this table is the plan. Keys are the house names call sites already use; they do not change.
-
-| House key | Phosphor | House key | Phosphor |
-|---|---|---|---|
-| shieldcheck | shield-check | chevronRight / Left / Up / Down | caret-right / left / up / down |
-| check · checkCircle | check · check-circle | x · xCircle | x · x-circle |
-| alertCircle · warning · alertOctagon | warning-circle · warning · warning-octagon | info | info |
-| lock · unlock | lock · lock-open | clock | clock |
-| mail | envelope-simple | arrowRight / Left / Up / Down | arrow-right / left / up / down |
-| pause · play | pause · play | users · user | users · user |
-| sparkle | sparkle | search | magnifying-glass |
-| plus | plus-circle | coins | coins |
-| trophy · crown · star | trophy · crown · star | ticket | ticket |
-| wallet | wallet | keyRound | key |
-| idCard | identification-card | fileText | file-text |
-| trendingUp · trendingDown | trend-up · trend-down | rotateCcw | arrow-counter-clockwise |
-| layoutGrid | squares-four | ext · externalLink | arrow-square-out |
-| download · upload | download-simple · upload-simple | chart | chart-bar |
-| shieldAlert · shieldOff | shield-warning · shield-slash | percent | percent |
-| gift · receipt | gift · receipt | edit · trash · copy | pencil-simple · trash · copy |
-| activity | pulse | bell · bellRing · bellOff | bell · bell-ringing · bell-slash |
-| eye · eyeOff | eye · eye-slash | settings | gear-six |
-| logOut · logIn | sign-out · sign-in | link · share | link · share-network |
-| home | house | menu | list |
-| bolt | lightning | globe | globe |
-| phone · smartphone | phone · device-mobile | calendar | calendar-blank |
-| football | soccer-ball | politics · landmark · bank | bank |
-| economy | chart-line-up | forex | currency-circle-dollar |
-| weather | cloud-rain | crypto | currency-btc |
-| entertainment | film-slate | tech | cpu |
-| shuffle (mixed) | shuffle | markets (the board; the "other" category) | squares-four |
-| sealCheck · resolved | seal-check | void | prohibit |
-| cardPay | credit-card | cashOut | hand-coins |
-| headset · compass | headset · compass | qr · simCard | qr-code · sim-card |
-| megaphone · database · server | megaphone · database · hard-drives | brain · bot | brain · robot |
-| heartPulse · archive · scrollText | heartbeat · archive · scroll | target · gauge | target · gauge |
-| watch | bookmark-simple | flame · flame2 · hot | fire |
-| live | broadcast | trade | arrows-down-up |
-| arrowDownToLine · arrowUpFromLine | arrow-line-down · arrow-line-up | questionCircle (Help) | question |
-| idea (new key, proposals) | lightbulb | limits (new key, limits and breaks) | hand-palm |
-
-House extras (no Phosphor match; drawn in Phosphor's grammar — 256 grid, every shipped weight — with a reason in
-`map.ts`): at least `needle` (the brand's own geometry) and Maswali's `millionea` coronet; likely `mobileMoney`, `ussd`,
-and possibly `sealNil` / `sealX` (§6). The codegen fails on any unmapped key, so the list is complete by construction.
-Every name in this table and in §3 was checked against `@phosphor-icons/core` 2.1.1 on 2026-10-17: all 149 exist.
+**The one source is [`scripts/glyphs/map.ts`](../scripts/glyphs/map.ts)** (R-ONE-SOURCE): every key with its Phosphor name,
+or its retirement and the reason; the aliases (two names, one meaning); the keys new in this migration; the house extras
+where Phosphor has nothing ([`extras.ts`](../scripts/glyphs/extras.ts): `needle`, `mobileMoney`, `ussd`, each with its
+reason); and the marks that stand among words ([`marks.ts`](../scripts/glyphs/marks.ts)). `test:glyph-map` checks every
+name against the pinned `@phosphor-icons/core`; the contact sheet (`npx tsx scripts/glyphs/codegen.mts --sheet <file.html>`)
+shows every live key in all its weights. This section held W0's draft of the mapping; it is not copied here, so it cannot
+drift from the file (the draft already had: `politics` draws `flag-banner`, `logIn` is retired).
 
 ---
 
@@ -298,7 +271,7 @@ that read the house drawings. W2's list below carries them.
    `GLYPH_SET`/`KEY_OF` rebuilt. Call sites unchanged.
 3. The offline page uses the server renderer; the generated CSS variables take Phosphor's values; `sw.js` prunes
    superseded sprites, keeping the previous hash one release (deploy skew).
-4. Dead keys go, except the reserved (`voidX` → `sealX` and the other Maswali R2 glyphs). The §3 picks land.
+4. Dead keys go — `voidX` too: Ali's 2026-10-17 Millionea ruling (§6) ended its reservation. The §3 picks land.
 5. Parity: `scripts/glyphs/parity-entries.mts` generates exact old → new pairs; layout entries come from the first
    compare's `.current.json` (measured, never predicted); every entry seen in all its cells or none; listed where the
    parity register is kept.
@@ -309,6 +282,138 @@ that read the house drawings. W2's list below carries them.
   sprite kept one release) · service-worker growth (prune rule) · parity blind inside `<use>` (the digest field) ·
   Phosphor's larger live area (Ali rules from the contact sheet; `plateGlyph` numbers do not move in the swap) · a missing
   variant at a dynamic size (an availability mask + a `RESERVED` list).
+
+**As built so far (branch `phosphor-w2`, 2026-10-17):**
+- **The engine is Phosphor's.** `glyphs.tsx` builds `I` from the generated registry: `<svg><use>` into the content-hashed
+  app / admin sprites, the chrome's Bold and Fill as symbols the root layout inlines (`GlyphShellSprite`), the ten marks
+  among words as strokes on Phosphor's centrelines; tiers line / fill / duo with the Bold-to-26px rule; the offline page
+  from `offline-glyphs.generated.ts`. The CSS that carried house geometry is re-derived from Phosphor's ink:
+  `.kp-jbal__lock` `calc(-28 * 16px / 256)`, `.kp-jhdr__pill` `calc(11px + 28 * 14px / 512)`, `.kp-udbug__arrow`
+  `calc(0.082em - 56 / 256 * 0.8em)`; the hub chevron's `translateX(-2.25px)` is still exact.
+- **The lexicon landed** (§3): the board `markets` on both tabs, Up & Down `trade`, Live `live`, the deposit / withdraw
+  arrows on every money door, proposals `idea`, limits `limits`. Decided in W2 (the lead engineer — Ali may overrule
+  in one line): `resolved` and `sealCheck` share Phosphor's seal-check (5.5A; the seal Maswali's marks build on), so the
+  hub's Uthibitisho wa utatuzi row wears a new key, `attestation` (Phosphor `stamp`) — R5-A had parted that row from
+  Matokeo once already. `voidX` retired.
+- **Two costs of Phosphor's fuller drawings, fixed at the source:** Button's spinner takes the glyph's room
+  (`glyphRoom`, as the search box's `slotPull`), so an lg button's label no longer jumps 1.64px when it starts loading;
+  the search box's ⓘ is 14px (on a whole pixel), so the field's two insets are 14.00 and 14.09.
+- **The first Fill on a page** (decided in W2, the lead engineer — Ali may overrule in one line): the How-to card's play
+  on its royal plate is drawn solid, `<I.playBare s={plateGlyph(48)} tier="fill" />` (`playBare` in `FILL_KEYS`), as the
+  hand-drawn triangle was — a play button on a plate reads solid, and Phosphor's Bold play is an outline.
+  `test:journey-home` 5.plate pins it in source and as drawn (`p-play-fill`, with two new plants); r9a §1.3′ proves the
+  Fill triangle, like the Bold one, is centred on its centroid.
+- **The checkbox tick keeps Phosphor's Bold check at 13px** (decided in W2, the lead engineer): 1.22px arms over a 10.6px
+  tick, where the hand-drawn one painted 1.63px over 9.2px — about the same ink, longer and finer. Its `strokeWidth: 3`
+  went: a filled Phosphor outline has no stroke to thicken. Rejected: check-fat (3.1px arms at that size, heavy in a 19px
+  box) and the check's Fill (a tick knocked out of a square). To be read at the tiles.
+- **The chrome never waits for a file** (found in W2's own review): the balance pill's eye (`CashEye`) and its lock are
+  header chrome, yet they were served from the app sprite, so a slow first visit would have shown the header's eye blank
+  until that file arrived. `eye`, `eyeOff` and `lock` joined `SHELL_KEYS`: twelve inline symbols, 1.5 KB brotli on
+  every page; the app sprite is 138 symbols, 16.9 KB brotli, one immutable file. `test:glyph-map` §9 now holds the
+  chrome to it: every key the two tab bars and the two headers draw before a tap is a shell key, a key drawn only in an
+  opened menu or panel is named with where, and every shell key is drawn by the chrome (six new plants, 25/25 caught).
+  The skew case is Next's: a tab opened before the deploy loads a whole new page on its next navigation (the router
+  compares the build id), so it never draws a shell glyph without the inline symbols beside it.
+- **W2's adversarial review** (2026-10-17: an independent read of the whole diff, set to refute it) found six defects,
+  all fixed here:
+  1. The three focus traps (`Modal`, the notifications panel, the filter sheet) counted a bare `[href]`, so every glyph's
+     `<use href>` was "focusable". In ConfirmModal (the deposit and withdraw confirms, sign-out, 63 admin confirms) Tab
+     died on Cancel, and Shift+Tab left the dialog. They now read `a[href], area[href]`.
+     `test:visual-pass-r6b` 1.2 had caught it. It reads the same selector, with a new control showing the in-flight
+     panels draw 3 and 2 glyphs it no longer counts.
+  2. A followed market's star lost its fill: a class cannot fill a Phosphor drawing. WatchStar now draws the star's
+     Fill when on (`star` in `FILL_KEYS`).
+  3. R-WEIGHT at 27px and up: RewardBurst's 36px glyphs (trophy, shieldcheck, resolved, star) and the cashback coins
+     now ship Regular, where they fell back to Bold.
+  4. The category Other, and any category the map does not know, drew the board's key. It read as "All" beside it and
+     as the board tab. It has its own key, `assorted` (Phosphor `shapes`).
+  5. Proposals: W2 had moved only the hub row to the lexicon's lightbulb, leaving three marks. Now `idea` is on every
+     player-facing proposals mark: the page header and its loading states, the promo card, the avatar menu.
+  6. `.g-ring` swings from Phosphor's bell crown (7.8125%, not the hand-drawn 15%). `test:glyph-motion` §5 reads the
+     pivot from the drawing.
+- **W2's screenshot review** (2026-10-17). Four readers went through every before/after tile, 204 pairs from the parity
+  runs, each tile's changed regions zoomed 3× by `w2tiles/tilediff.mjs`. They found no blank, clipped or off-centre
+  glyph. Fixed here:
+  1. The LIVE strip's pause read as "00": two hollow bars at 14px beside the run's mono text. Its pause and play are now
+     solid (`tier="fill"`, `pause` in `FILL_KEYS`).
+  2. The journey bell's count badge touched Phosphor's bigger dome: 0.16px at rest, and the fill on the outline at the
+     pulse's peak. It rose 1px (`top: -4px`), giving 0.94px at rest and 0.33px for "99+" at the peak.
+     `test:journey-shell` 7.bell′ reads both from the drawing, with a plant at −3.
+  3. The lexicon, completed where W2 had moved only the hub row:
+     - limits and breaks draw `limits` on the help card, the profile row and the responsible-gambling page's header (a
+       shield and a gear before);
+     - the profile's Msaada row draws the hub's `headset` (a heartbeat before);
+     - /fairness wears its hub row's `attestation` (a shield-check before);
+     - the 404 page's Masoko card draws the board's `markets` (a bar chart before);
+     - a resolved journey card's tag is `resolved`, the seal (a check-circle before).
+  4. Weather is `cloud-sun`: `cloud-rain` at 11–13px read as a speech balloon.
+  5. Two guards W2 had turned red, fixed:
+     - `test:chart-one-home` names `glyphs.tsx`: its marks among words draw a static centreline in a `d={}`;
+     - `test:orphans` now reaches `scripts/glyphs/`, through imports with their extensions and
+       `npm run glyphs:parity-entries`.
+- **Seen and left, with reasons:**
+  - The journey's Akaunti tab person is 17px wide beside the other tabs' 14px: Phosphor's `user` fills 216/256 of its
+    box, the others 184. R-RAIL (4B) redraws the tab bars at 24px in W3, which balances the four there.
+  - The receipt at 14–16px reads close to a message box. `file-text` is the documents' glyph, and the other receipt
+    drawings read worse. Its words name it everywhere it is drawn; W5's money doors give it a plate.
+  - Glyph boxes 1–2px wider move their neighbours by as much: buttons, chips, a search field's placeholder. Nothing
+    wraps; the parity entries name every move in the classic shell.
+  - The market card's 140px category watermark draws Bold: it is drawn at `s=24` and scaled by CSS, and W5 retires it.
+  - The inline shell symbols also travel in the page's RSC payload, as every server-rendered element does; brotli
+    compresses the twin.
+  - The rail coin's drawn "+" sits beside the header's ↓ deposit; W5 brings the one deposit glyph.
+  - A missing sprite cannot be pinned at the edge: production answers a 404 under `/icons/` with `private, no-cache,
+    no-store` (Cloudflare `BYPASS`), and only a real file gets the year-long `immutable`.
+  - The plan's 2G film strip asked whether the chrome would be blank on a slow first visit. The inline shell (§9)
+    answers it by design; content glyphs come in one immutable file, 17 KB brotli.
+- **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
+  (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
+  measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
+  Phosphor's numbers are pinned from the drawings; the hand-drawn controls and plants are kept verbatim. r9a §1.3 names
+  the 19 drawings Phosphor centres by eye, the Fill play among them (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
+  on `main` (a plant's needle predated the classic row's c3e28b47 spelling), and `test:journey-home` counted a glyph's
+  `<use href>` as a link.
+- **R-ONE-SOURCE** (Ali, during W2 — §2): AGENTS.md §7, DESIGN_AUTHORITY §K3, the decisions log and the design master
+  brief state it; `test:glyph-source` gained §5 (SVG data URIs, a census of one: the Needle's drag cursor) and §6 (every
+  image under `public/` named for what it is — 33, none an interface icon but the three PWA shortcuts W7 redraws).
+- **DESIGN_AUTHORITY rewritten:** §K3, §S3 rule 3 (the weight law), §C6, §C7, the §M5 heading, the §0d row.
+- **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
+  after `#` still compared; its proof is P.1b.
+  - The baseline was taken at W2's base, `862aa757`: 52/52, 224 cells.
+  - The first compare ran at `4fffe9b1`: 64/68, its four failures the glyph differences.
+  - `scripts/glyphs/parity-entries.mjs` generated 21 entries from them into `qa-parity-glyph-swap.generated.mjs`:
+    - the header, footer and rail of all 224 matrix cells;
+    - the Sell confirm;
+    - the book's main, similar rail and LIVE strip;
+    - the question page's main, panel and holder.
+  - The generator learned two rules on the way:
+    - An `auto` margin that absorbs the new width of a glyph the element holds is layout, not style: the question
+      header's `ml-auto` row around its Source ↗ mark, 56 cells.
+    - When one glyph box rounds to another half pixel in some cells, those cells get a further entry, tried after the
+      first: the Swahili language menu's ✓ at 1024px, 4 cells.
+  - Left unexplained, correctly: the `/watchlist` card's date line in 4 cells. Its text is the row's seeding moment,
+    already masked by `eat-dates` (the 090bbf76 pair proved it differs between servers), but its width still varies
+    with the digits. This is a harness gap, not W2. The question page's canonical time before geometry would close it,
+    and it is filed for the harness's owner.
+- **What `test:all` says about `main`** (`b090e420`'s run: 557/610 green; each failure read, and the non-database
+  ones re-run on `main` `862aa757` itself):
+  - 27 need a scratch Postgres or a server this machine's battery does not start: `db-scratch` suites, and three
+    live drives on :3009.
+  - 16 fail on `main` the same way:
+    - from the Maswali console: `ui-consistency`, `type-scale`, `measure`, `labels`, `integrity`, `grid-paging`,
+      `layout-staleness`, `unsaved-changes`, `failure-reasons`, `predictor-shown`, `house-bot-seam`, `bet-sheet`,
+      `spacing-scale`, `eyebrow-roles`, `visual-pass-r5e`; all fixed on `maswali-s4`, and W2 takes them on its rebase;
+    - `house-bot-disclosure` 5.1 compares a Windows checkout's CRLF bytes, which are identical to the blob once the CRs
+      are dropped.
+  - 2 were W2's, `chart-one-home` and `orphans`, fixed in the screenshot review's commit.
+- **Still owed for W2:**
+  - the release proof again, at the commit that ships: a fresh v4 `run`, the dev server capped at a 3 GB heap;
+  - a compare at that commit, then its entries regenerated and the clean compare with `--prove-red`;
+  - the push.
+
+  **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  sprite is kept one release (deploy skew).
 
 ### W3 — Selected states
 Classic rail, journey tabs, the classic and journey desktop bars, the admin sidebar (icons ADDED): inactive Line in
@@ -365,11 +470,24 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 
 ## §6 · Coordination
 - **Maswali D2 ✅ (2026-10-17, main `380edd31`):** the R2 delivery is filed at
-  `design-system/v6-2026-10-17-millionea/`, and its INHERIT-MANIFEST adopts three glyphs — `sealNil`, `sealX` (the
-  rename of `voidX`) and `millionea` (the three-pearl coronet; the family `crown` already means the Leaderboard) — drawn
-  in the house idiom (24 grid, 1.9 stroke). The Maswali lane adds them to the family on its own schedule. For this
-  migration they are **reserved keys**: never deleted; in W1's `map.ts`, `sealX` and `sealNil` map to Phosphor's
-  nearest equivalents or become house extras, and `millionea` is a house extra drawn in Phosphor's grammar (W7).
+  `design-system/v6-2026-10-17-millionea/`, and its INHERIT-MANIFEST adopted three hand-drawn glyphs — `sealNil`,
+  `sealX` (the rename of `voidX`) and `millionea` (a coronet). **Then Ali ruled (2026-10-17, MASWALI-PLAN §10c, main
+  `c218979d`) that Millionea uses NO hand-drawn glyph: every Millionea icon is Phosphor, through `I`** — R-ONE-SOURCE
+  for the third product. The Maswali lane will add its keys through `map.ts` and `glyphs:gen` when its S5 starts (its
+  list, sent to this session the same day: millionea → diamond, markPending → circle-dashed, reserve → lifebuoy, standIn →
+  arrow-bend-down-right, floor → vault, register → notebook, fairness → fingerprint, refund → arrow-u-down-left, howTo →
+  book-open-text, cap → stack, finalWeek → flag-checkered, and more). Answered the same day: `pause` is an existing key,
+  `lock` draws `lock` (not lock-simple), and seven proposed drawings already belong to a key (`checkCircle`, `xCircle`,
+  `coins`, `rotateCcw`, `eye`, `hourglassHalf`, `sofSavings`) — reuse the key or pick another drawing (glyph-map §4).
+  Nothing is reserved for Maswali any more; `voidX` is retired in W2. **The Maswali lane adopted the review (MASWALI-PLAN
+  §10c, main `d12ab9d7`):** it reuses `checkCircle`, `xCircle`, `coins`, `hourglassHalf`, `rotateCcw`, `eye`, `lock` and
+  `sealCheck`, and adds 13 keys through `map.ts` and `glyphs:gen` at its S5 — `millionea` diamond, `markPending`
+  circle-dashed, `reserve` lifebuoy, `standIn` arrow-bend-down-right, `carry` arrow-bend-double-up-right, `floor` vault,
+  `register` notebook, `commitment` fingerprint, `refund` arrow-u-down-left, `salesPaused` pause-circle, `howTo`
+  book-open-text, `cap` stack, `finalWeek` flag-checkered — each re-checked free in 2.1.1's four weights. Its draft key
+  `fairness` was renamed `commitment` (main `ce752dc4`): it marks Millionea's own ticket proof (each ticket fixed at the
+  week's close as a salted commitment and a Merkle root, MR-13), not the platform's resolution proof — /fairness keeps
+  `attestation` (its hub row) and `shieldcheck` (its page head).
 - **Vodacom** (S14–S16 open): classic-shell changes reach `main` as named parity entries, so its branches inherit them on
   rebase. A wave touching home or cards checks `git log` and the worktrees first and goes after that lane's merge.
 - **Parallel sessions:** own worktree; heavy Node only through the machine's lock; stage by name; never `git add -A`.
@@ -378,6 +496,14 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 - The chat button covers content on many phone tiles (the hub's "Kiswahili ›", a toggle, a card's time-left).
 - The Needle disc sits half off-screen over content on most phone tiles.
 - At 320 px the header drops the ⊕ on "Weka pesa" and "Tiketi zangu" wraps to two lines.
+- **For the owner of `qa-classic-shell-parity` (found 2026-10-17 in W2's compare):** a book cell's server-rendered EAT
+  moment is masked as text (`eat-dates`), but its geometry is not. The `/watchlist` card's date line (`.mcardp-timeleft`,
+  `data-market-part="time"`) is the row's seeding moment, and Inter's digits are not tabular, so its width, and the
+  `ml-auto` row around it, differ between any two fresh servers whose moments differ in digits. W2's compare saw 78px
+  against 82px, in the 4 player `/watchlist` cells.
+  The question page already solves this: `break-end-clock` writes one canonical same-format time before geometry,
+  calibrated from the ff8c pair. The same treatment for book cells would close it; the 090bbf76 pair already proves the
+  moments differ.
 
 ---
 

@@ -27,7 +27,7 @@
 export type JourneyTab = "questions" | "updown" | "tickets" | "account";
 
 /** A glyph key of `I` (`components/ui/glyphs.tsx`) — `test:journey-shell` §1 holds each one to a real glyph. */
-export type TabGlyph = "questionCircle" | "trade" | "ticket" | "user";
+export type TabGlyph = "markets" | "trade" | "ticket" | "user";
 
 /** The dictionary path of a tab's label (`t.journey.tabQuestions` …); `tabLabel` reads it. */
 export type TabLabelKey = "journey.tabQuestions" | "nav.updown" | "journey.tabTickets" | "journey.tabAccount";
@@ -39,7 +39,8 @@ export type JourneyTabDef = { key: JourneyTab; href: string; glyph: TabGlyph; la
  * cannot hold the product title); the three new words are `journey.*` keys until the S15 flip.
  */
 export const JOURNEY_TABS: readonly JourneyTabDef[] = [
-  { key: "questions", href: "/",          glyph: "questionCircle", label: "journey.tabQuestions" },
+  // The board: the classic rail's "Masoko" and this "Maswali" are one meaning, so one glyph (PHOSPHOR-MIGRATION R-LEXICON 5.1A).
+  { key: "questions", href: "/",          glyph: "markets",        label: "journey.tabQuestions" },
   { key: "updown",    href: "/updown",    glyph: "trade",          label: "nav.updown" },
   { key: "tickets",   href: "/positions", glyph: "ticket",         label: "journey.tabTickets" },
   { key: "account",   href: "/account",   glyph: "user",           label: "journey.tabAccount" },

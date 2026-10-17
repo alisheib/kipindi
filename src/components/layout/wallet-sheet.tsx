@@ -145,7 +145,7 @@ export function WalletSheet({
                     content centres by what the eye sees — the Withdraw door's ↑ drew 10.6px of ink in its 16px box and its
                     content sat 0.86 (sw), 1.47 (en), 1.36 (zh) px right of centre. ⚠️ Journey-only: the classic capsule opens
                     this same sheet, and classic chrome is frozen until the flip (its doors keep their boxes). */}
-                <I.plus s={16} edge={journey ? "start" : undefined} />
+                <I.arrowDownToLine s={16} edge={journey ? "start" : undefined} />
                 {journey ? t.journey.depositAction : t.common.deposit}
               </Link>
               {/* ⭐ The journey's captions keep their last two words together (round 4 of the visual pass, 2026-10-09,

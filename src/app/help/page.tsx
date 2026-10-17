@@ -185,7 +185,7 @@ export default async function HelpPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard
-          icon={<I.shieldcheck s={15} />}
+          icon={<I.limits s={15} />}
           tone="success"
           title={t.help.responsibleGambling}
           sub={t.help.limitsBreakExclude}

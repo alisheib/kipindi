@@ -95,7 +95,8 @@ const MODAL = "src/components/ui/modal.tsx";
 const modal = code(MODAL);
 {
   // The trap's list, as modal.tsx defines it — and the markup scanner below models exactly that selector.
-  const SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  // A link, never a glyph: since PHOSPHOR-MIGRATION W2 every glyph draws `<svg><use href>`, which takes no focus.
+  const SELECTOR = 'button:not([disabled]), a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
   ok("1.1 · the trap's FOCUSABLE list is the selector this suite reads markup by (so what it counts is what the trap finds)",
     modal.includes(`const FOCUSABLE =\n  '${SELECTOR}';`));
   const TAG = /<([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=>/]+(?:="[^"]*")?)*)\s*\/?>/g;
@@ -105,7 +106,7 @@ const modal = code(MODAL);
     const attrs = new Map<string, string>();
     for (const a of (m[2] ?? "").matchAll(ATTR)) attrs.set(a[1].toLowerCase(), a[2] ?? "");
     const disabled = attrs.has("disabled");
-    return (tag === "button" && !disabled) || attrs.has("href") || (["input", "select", "textarea"].includes(tag) && !disabled)
+    return (tag === "button" && !disabled) || ((tag === "a" || tag === "area") && attrs.has("href")) || (["input", "select", "textarea"].includes(tag) && !disabled)
       || (attrs.has("tabindex") && attrs.get("tabindex") !== "-1");
   }).length;
   /** The REAL dialog's panel content: the component's Modal element, drawn as Modal's panel draws it (its corner ✕ when
@@ -125,6 +126,11 @@ const modal = code(MODAL);
     confirmIdle: focusables(confirm(false)), confirmBusy: focusables(confirm(true)) };
   ok(`1.2 · the condition, on the REAL panels: in flight, the Sell confirm, the bet confirm and ConfirmModal's medium tier each hold ${counts.sellBusy}/${counts.betBusy}/${counts.confirmBusy} controls the trap can focus (every one disabled, the ✕ withheld) — idle, ${counts.sellIdle}/${counts.betIdle}/${counts.confirmIdle}`,
     counts.sellBusy === 0 && counts.betBusy === 0 && counts.confirmBusy === 0 && counts.sellIdle >= 2 && counts.betIdle >= 2 && counts.confirmIdle >= 2, show(counts));
+  // The panels the count reads DO draw glyphs, each a `<use href>`: a count of 0 in flight is the selector's reading (a
+  // link, never a glyph), not panels that happen to hold none (PHOSPHOR-MIGRATION W2 — a bare [href] counted them).
+  const uses = { sellBusy: (sell(true).match(/<use href=/g) ?? []).length, confirmBusy: (confirm(true).match(/<use href=/g) ?? []).length };
+  ok(`1.2′ CONTROL · in flight the Sell confirm and ConfirmModal draw ${uses.sellBusy}/${uses.confirmBusy} glyphs, each a <use href>, and the trap counts none of them`,
+    uses.sellBusy >= 1 && uses.confirmBusy >= 1, show(uses));
 
   // The trap itself: modal.tsx's onKey, built from its text and run on stand-ins.
   const ONKEY_NAMES = ["isTopLayer", "layer", "openList", "panelRef", "OPEN_LIST", "whereIs", "openLayers", "isNowhere", "closeOnEscRef", "onCloseRef", "focusables", "document"];

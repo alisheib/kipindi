@@ -27,7 +27,7 @@ export default function Loading() {
           <BackLinkGhost />
           <PageHero>
             <div className="flex flex-col items-start gap-2">
-              <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.trophy s={18} />} />
+              <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.idea s={18} />} />
               <StatusFlag label={t.proposals.comingSoonTag} glyph="clock" size="sm" className="cs-badge" style={{ color: "transparent" }} />
             </div>
           </PageHero>

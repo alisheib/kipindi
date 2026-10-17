@@ -569,7 +569,7 @@ html.kp-reduce-motion .toast-countdown,
 .seal-cascade > .g-settle { animation-delay: calc(var(--t-stage) + min(var(--i, 0), 4) * var(--m-stagger)); }
 .seal-mark-flip { animation: mark-flip var(--t-move) var(--m-settle) calc(var(--t-max) + var(--t-stage)) 1 both; }
 
-/* ── M5 · GLYPH MOTION — four primitives, and all 178 glyphs move the same way ──
+/* ── M5 · GLYPH MOTION — four primitives, and every glyph of the family moves the same way ──
    Triggers are mount, data change, or state change. ⛔ NEVER hover: icons respond,
    they do not perform. A glyph with bespoke keyframes is a violation.
    ⚠️ `.g-ring` takes `--m-glide`, NOT `--m-pivot`, and the delivery had it the
@@ -580,7 +580,9 @@ html.kp-reduce-motion .toast-countdown,
 .g-settle     { animation: glyph-settle var(--t-base) var(--m-settle) both; }
 .g-nudge-up   { animation: glyph-nudge-up var(--t-move) var(--m-settle); }
 .g-nudge-down { animation: glyph-nudge-down var(--t-move) var(--m-settle); }
-.g-ring       { animation: glyph-ring var(--t-max) var(--m-glide); transform-origin: 50% 15%; }
+/* The ring swings from the bell's crown: Phosphor's Bold bell (the panel's trigger draws it at 20px, so Bold) tops out at
+   y20 of 256 — 7.8125% (the hand-drawn bell's was 15%). `test:glyph-motion` §5 reads it from the drawing. */
+.g-ring       { animation: glyph-ring var(--t-max) var(--m-glide); transform-origin: 50% 7.8125%; }
 .g-swap       { position: relative; display: inline-grid; }
 .g-swap > *   { grid-area: 1 / 1; }
 .g-swap-out   { animation: glyph-swap-out var(--t-quick) var(--m-leave) both; }

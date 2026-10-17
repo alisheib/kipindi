@@ -9,6 +9,7 @@ import { publicFactAttrs } from "@/lib/support-config";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { GoogleTag } from "@/components/analytics/google-tag";
 import { DomTranslationGuard } from "@/components/layout/dom-translation-guard";
+import { GlyphShellSprite } from "@/components/ui/glyph-shell-sprite";
 import { SiteVisitBeacon } from "@/components/analytics/site-visit-beacon";
 import { appUrl } from "@/lib/app-url";
 import { dict, localeOrDefault } from "@/lib/i18n-dict";
@@ -176,6 +177,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             board off a player's phone on 2026-09-18 and read as "only one handset" for two
             sessions. It renders nothing; the position is about load order, not layout. */}
         <DomTranslationGuard />
+        {/* The chrome's glyph symbols (PHOSPHOR-MIGRATION W2): the tab bars and headers paint before any sprite file. */}
+        <GlyphShellSprite />
         {/* GA4 — live hosts only, never on /admin or a tokened page, addresses scrubbed. Read the
             component's header before touching it; Privacy §4/§7 describe exactly this. */}
         <GoogleTag />

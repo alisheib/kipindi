@@ -104,7 +104,7 @@ export function NotFoundView({
           </Link>
           <Link href="/markets" className={CARD}>
             <span className={PLATE}>
-              <I.chart s={13} />
+              <I.markets s={13} />
             </span>
             <p className={LABEL}>{words.markets}</p>
           </Link>

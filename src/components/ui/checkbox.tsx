@@ -233,7 +233,10 @@ export function Checkbox({
         }}
       >
         {on
-          ? <I.check s={13} style={{ color: "var(--pearl-50)", strokeWidth: 3 }} />
+          /* The tick: Phosphor's check in the Line tier's Bold — 1.22px arms over a 10.6px tick at 13px. The hand-drawn
+             tick took strokeWidth 3 to read on the filled box (1.63px over 9.2px); Phosphor draws a filled outline, so
+             there is no stroke to thicken, and its longer tick carries about the same ink (PHOSPHOR-MIGRATION W2). */
+          ? <I.check s={13} style={{ color: "var(--pearl-50)" }} />
           /* The "some, not all" bar. A plain rectangle rather than a glyph: the kit has no
              minus glyph, and adding one to spend a design-frozen budget on a 9×2 dash would
              be the wrong trade. Both dimensions are numbers and the colour is a token, so

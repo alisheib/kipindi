@@ -438,7 +438,7 @@ const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile",        icon: I.profile,     en: "Profile",        sw: "Wasifu",                    zh: "个人资料" },
   { href: "/wallet",         icon: I.wallet,      en: "Wallet",         sw: "Pochi",                     zh: "钱包" },
   { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true, invite: true },
-  { href: "/proposals",      icon: I.sparkle,     en: "Propose & earn", sw: "Pendekeza na upate zawadi", zh: "提议赚钱", accent: true, proposals: true },
+  { href: "/proposals",      icon: I.idea,        en: "Propose & earn", sw: "Pendekeza na upate zawadi", zh: "提议赚钱", accent: true, proposals: true },
   { href: "/positions",      icon: I.portfolio,   en: "Positions",      sw: "Nafasi",                    zh: "持仓" },
   { href: "/results",        icon: I.resolved,    en: "Results",        sw: "Matokeo",                   zh: "结果" },
   { href: "/leaderboard",    icon: I.crown,       en: "Leaderboard",    sw: "Jedwali la Washindi",       zh: "排行榜" },

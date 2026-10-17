@@ -28,6 +28,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, dirname, basename } from "node:path";
 import { decomment } from "./lib/decomment.mts";
+import { GLYPH_ENTRIES } from "./lib/glyph-drawings.mts";
 
 /**
  * `MEASURE_ROOT` lets `scripts/measure-red.mjs` aim this gate at a COPY of the
@@ -371,19 +372,20 @@ check("…and the admin shell carries its own skip-to-content link",
   const sections = (agent.match(/<section className="rounded-xl glass-panel p-4/g) ?? []).length;
   check("8. /agent: the three fact tiles pad as the sections under them do (p-4 over the glass box's 14px)",
     tiles === 3 && sections >= 3, `${tiles} tiles · ${sections} sections`);
-  // The chevron's side bearing, DERIVED from its path rather than remembered: its point sits at the path's least x,
-  // the 1.9 stroke reaches half its width past it, and the glyph is drawn at 11px of a 24-unit box.
-  const glyphs = readFileSync(join(SRC, "components", "ui", "glyphs.tsx"), "utf8");
-  const chevron = /chevronLeft: \(p: GlyphProps\) => <G \{\.\.\.p\}><path d="M(\d+) (\d+)l(-?\d+) (-?\d+) (-?\d+) (-?\d+)" \/><\/G>/.exec(glyphs);
-  const tipX = chevron ? Number(chevron[1]) + Number(chevron[3]) : NaN;
-  const bearing = Math.floor(((tipX - 1.9 / 2) / 24) * 11);
+  // The chevron's side bearing, DERIVED from its drawing rather than remembered. ⚠️ RE-POINTED 2026-10-17
+  // (PHOSPHOR-MIGRATION W2): as a mark among words it is Phosphor's caret-left centreline (the registry's `m`), its point at
+  // the path's least x, stroked at its words' stem — half of mono 400's 0.09em of the 12px label reaches past it — and
+  // drawn at 11px of a 256-unit box. (The hand-drawn one: its point at x9 of 24, a 3px bearing.)
+  const mark = GLYPH_ENTRIES.get("chevronLeft")?.mark?.d ?? "";
+  const tipX = Math.min(...[...mark.matchAll(/([0-9.]+) ([0-9.]+)/g)].map((m) => Number(m[1])));
+  const bearing = (tipX / 256) * 11 - (0.09 * 12) / 2;
   const back = src("components/ui/back-link.tsx");
   // Re-pinned (round 9, R9-A4, 2026-10-11): the bearing is no longer typed — the glyph's own `edge` hands it back, measured
-  // from its drawing and its text stroke (3.59px at 11px under a 12px mono label, so the tip's ink stands ON the edge, not
-  // 0.6px inside it); `test:visual-pass-r9a` §4.1 holds the number against this file's derivation.
+  // from its drawing and its text stroke (2.90px at 11px under a 12px mono label, so the tip's ink stands ON the edge);
+  // `test:visual-pass-r9a` §4.1 holds the number against this file's derivation.
   check("8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads",
-    back.includes(`<I.chevronLeft s={11} edge="start" text="mono-400" />`) && !back.includes("-ml-["), `bearing ${bearing}px (tip x${tipX} of 24 at 11px), handed back by the glyph's own edge`);
-  check("8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)", bearing === 3 && tipX === 9,
+    back.includes(`<I.chevronLeft s={11} edge="start" text="mono-400" />`) && !back.includes("-ml-["), `bearing ${bearing.toFixed(2)}px (tip x${tipX} of 256 at 11px), handed back by the glyph's own edge`);
+  check("8. ⭐ CONTROL — the bearing derivation reads the glyph (a 2.90px bearing for Phosphor's point at x80 of 256)", tipX === 80 && Math.abs(bearing - 2.8975) < 1e-3,
     `tip x${tipX}, bearing ${bearing}`);
 }
 

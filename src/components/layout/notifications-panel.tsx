@@ -24,7 +24,7 @@ import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
 /** The SAME list `<Modal>` (ui/modal.tsx) and `<FilterSheet>` (markets/filter-sheet.tsx)
  *  trap against — copied verbatim so the product's three focus traps cannot drift apart. */
 const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Poll cadence. 5s is what a player WATCHING the open list needs; 30s is all a closed
  *  bell needs, because `50pick:sse:notification` — not this poll — is what makes an

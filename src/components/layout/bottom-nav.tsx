@@ -71,8 +71,9 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
     /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
        cannot fit a fifth of a 360 phone and read "Juu na Ch…" on every Swahili page. The accessible
        name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
-    { href: "/updown",  glyph: "trendingUp" as const, label: t.nav.updown, accent: true },
-    { href: "/live",    glyph: "bolt" as const,       label: t.nav.live },
+    // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
+    { href: "/updown",  glyph: "trade" as const,      label: t.nav.updown, accent: true },
+    { href: "/live",    glyph: "live" as const,       label: t.nav.live },
   ];
 
   /** THE CENTRE SLOT. `/wallet/deposit` for everyone; a guest meets the auth gate on arrival.

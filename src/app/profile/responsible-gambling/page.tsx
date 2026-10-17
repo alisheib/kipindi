@@ -151,7 +151,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           glyph and every RG notice below are unchanged. */}
       <PageHero glow="info">
         <PageHeader
-          icon={<I.shieldcheck s={14} />}
+          icon={<I.limits s={14} />}
           eyebrow={t.rg.playerProtection}
           title={t.profile.responsibleGambling}
         />

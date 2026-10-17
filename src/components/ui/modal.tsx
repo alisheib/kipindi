@@ -42,8 +42,10 @@ import { installKeyGuard } from "./key-guard";
 import { useT } from "@/lib/i18n";
 import { parseTypedCount } from "@/lib/marketing/campaign-confirm";
 
+/** What the trap can focus. A link is `a[href]` / `area[href]`, never a bare `[href]`: every glyph draws `<svg><use href>`
+ *  (PHOSPHOR-MIGRATION W2), and a `<use>` takes no focus — counted, it made the trap's first or last control a glyph. */
 const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ⭐ S6 A8i-2 · THE DIALOG STACK, AS MODAL STANDS ON IT. The rules live in

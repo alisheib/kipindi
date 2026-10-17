@@ -41,6 +41,8 @@ import { decomment, decommentCss } from "./lib/decomment.mts";
 import { dict, DEFAULT_LOCALE, type Dict } from "../src/lib/i18n-dict.ts";
 import { MARK } from "../src/lib/brand-mark.ts";
 import * as OD from "../src/lib/offline-document.ts";
+import { GLYPH_SPRITES } from "../src/components/ui/glyph-registry.generated.ts";
+import { GLYPH_ENTRIES, symbolsOf } from "./lib/glyph-drawings.mts";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -56,7 +58,8 @@ const F = {
   shell: "src/components/layout/app-shell.tsx",
   globals: "src/app/globals.css",
   topo: "src/components/brand-topo.tsx",
-  glyphs: "src/components/ui/glyphs.tsx",
+  /** The app sprite: where the family ships the two drawings the document copies (PHOSPHOR-MIGRATION W2). */
+  glyphs: `public${GLYPH_SPRITES.app}`,
   layout: "src/app/layout.tsx",
   i18n: "src/lib/i18n.tsx",
 } as const;
@@ -260,8 +263,10 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     // whoever asks; the route is unchanged.
     // ⚠️ MOVED IN ROUND 7 (R7-A, 2026-10-10, the owner's item 37): the licence line never ends on a connective, so the
     // document reads the connective rule's one pure home (`connectives.ts` — words, nothing about whoever asks) too.
-    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary, the mark, the regulator's name pattern and the connectives",
-      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/connectives", "@/lib/i18n-dict", "@/lib/regulator-name"]),
+    // ⚠️ MOVED IN PHOSPHOR-MIGRATION W2 (2026-10-17): the document's two glyphs are the generated offline module's
+    // (`offline-glyphs.generated.ts` — Phosphor's drawings as data, nothing about whoever asks), no longer hand copies.
+    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary, the mark, the regulator's name pattern, the connectives and its two generated glyphs",
+      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/connectives", "@/lib/i18n-dict", "@/lib/offline-glyphs.generated", "@/lib/regulator-name"]),
       j({ route: importsOf(route), doc: importsOf(mod) }));
     ok("3.reads · neither file reads a cookie, a header or a session", !READS.test(route) && !READS.test(mod),
       (route.match(READS) ?? mod.match(READS) ?? [""])[0]);
@@ -365,10 +370,14 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
       && topo.includes(`stroke="${W.topoData.stroke}"`) && topo.includes(`strokeWidth="${W.topoData.strokeWidth}"`)
       && new RegExp(`opacity\\s*=\\s*${String(W.topoData.opacity).replace(".", "\\.")}\\b`).test(topo);
     ok("5.topo · the backdrop is BrandTopo's tile, ink, contours and default opacity", topoOk, j({ topoPaths }));
-    const glyphs = decomment(W.glyphs);
-    const inner = (name: string) => (glyphs.match(new RegExp(`\\b${name}: \\(p: GlyphProps\\) => <G \\{\\.\\.\\.p\\}>([\\s\\S]*?)</G>,`))?.[1] ?? "<absent>").replace(/\s*\/>/g, "/>").trim();
-    const gDrift = Object.entries(W.glyphData).filter(([k, v]) => inner(k) !== v).map(([k]) => `${k}: glyphs.tsx ${inner(k)}`);
-    ok("5.glyphs · the wifi-off disc and the retry's arrow are glyphs.tsx's own drawings", gDrift.length === 0, gDrift.join(" | "));
+    // ⚠️ RE-POINTED 2026-10-17 (PHOSPHOR-MIGRATION W2): the family's drawings are Phosphor's, shipped as symbols, so the two
+    // are the app sprite's own — wifi-slash and arrow-counter-clockwise, in the Bold both draw at (18px and 14px) — byte for
+    // byte. The document cannot load the sprite offline, so it carries its own copy (`offline-glyphs.generated.ts`).
+    const shipped = symbolsOf(W.glyphs);
+    const inner = (name: string) => shipped.get(`${GLYPH_ENTRIES.get(name)?.stem ?? "?"}-bold`) ?? "<absent>";
+    const gDrift = Object.entries(W.glyphData).filter(([k, v]) => inner(k) !== v).map(([k]) => `${k}: the app sprite's ${inner(k).slice(0, 60)}`);
+    ok("5.glyphs · the wifi-off disc and the retry's arrow are the family's own drawings — the app sprite's symbols, byte for byte",
+      gDrift.length === 0 && j(Object.keys(W.glyphData).sort()) === j(["rotateCcw", "wifiOff"]), gDrift.join(" | "));
     ok("5.mark · the mark is brand-mark.ts's one geometry", W.doc.includes(`<path d="${MARK.greenPath}" fill="${MARK.green}"/>`) && W.doc.includes(`<path d="${MARK.redPath}" fill="${MARK.red}"/>`));
   }
 

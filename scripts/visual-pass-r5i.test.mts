@@ -331,8 +331,9 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
   const RGP = read("src/app/profile/responsible-gambling/page.tsx");
   // Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): the hero keeps the account pages' `info` glow; its eyebrow
   // takes the page heads' one ink (PageHeader's `info` tone is gone), as every account page's now does.
-  ok("2.7 · the RG page's hero is the account pages' `info` glow and the page heads' one eyebrow ink, its glyph and words unchanged",
-    /<PageHero glow="info">\s*<PageHeader\s*icon=\{<I\.shieldcheck s=\{14\} \/>\}\s*eyebrow=\{t\.rg\.playerProtection\}\s*title=\{t\.profile\.responsibleGambling\}/.test(RGP) && !/"yes"/.test(RGP));
+  // PHOSPHOR-MIGRATION W2: its glyph is the lexicon's limits (R-LEXICON 5.7A, the open hand), as every door to this page.
+  ok("2.7 · the RG page's hero is the account pages' `info` glow and the page heads' one eyebrow ink, its glyph (the lexicon's limits) and words unchanged",
+    /<PageHero glow="info">\s*<PageHeader\s*icon=\{<I\.limits s=\{14\} \/>\}\s*eyebrow=\{t\.rg\.playerProtection\}\s*title=\{t\.profile\.responsibleGambling\}/.test(RGP) && !/"yes"/.test(RGP));
   ok("2.7′ · PageHeader and PageHero offer no betting tone to ask for (`yes`, `rose` out of their maps)",
     !/"yes"|yes-300|"rose"|\b152\b|\b22 \//.test(read("src/components/ui/page-header.tsx") + read("src/components/ui/page-hero.tsx")));
   ok("2.7″ EXECUTED · the hero's info glow is hue 240 and the eyebrow `text-text-subtle` (R7-B: the page heads' one ink)",
