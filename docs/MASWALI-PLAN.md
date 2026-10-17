@@ -1447,7 +1447,7 @@ model MaswaliCycle {                       // "week"; product tables never hold 
   id String @id @default(cuid())
   marketId String @unique                  // the PredictionMarket (productLine "MASWALI") whose POOL holds S
   code String @unique                      // "MLN-2026-W44" from eat-day.ts, immutable
-  seq Int @unique                          // chain order; settlement strictly by seq
+  seq Int @unique                          // the drafting counter; the chain is the calendar (2026-10-17)
   visibility String @default("PUBLIC")     // PUBLIC | DRIVE (OD-21)
   state String                             // DRAFT|OPEN|CLOSED|RESOLVING|SETTLED|VOIDED
   opensAt DateTime; closesAt DateTime      // closesAt mirrors market.selectionClosedAt
@@ -1613,7 +1613,7 @@ read this repository, so `PROMPT.txt` states the rules and the figures it may dr
    - `proposeVoidAtDeadline`: the system proposes, an officer seals.
    - `recomputeGate`: re-run on every seal, void or objection.
    - `voidWeek`: stamp the market VOIDED with outcome VOID and `objectionsClosedAt = now`, then `settleMarket(id, {actorId: "system_maswali"})`, which is the existing VOID arm. It runs only after the objection windows of the triggering voids have closed. A pre-close void that dooms the week stops sales immediately.
-   - `claimCarry(weekId)`: under a `maswali:chain` lock. Stamps `rolloverIn` once (`WHERE rolloverIn IS NULL`). Settlement is strictly by `seq`.
+   - `claimCarry(weekId)`: under a `maswali:chain` lock. Stamps `rolloverIn` once (`WHERE rolloverIn IS NULL`). Settlement is in CALENDAR order (`calendarStartMs`, read from the week's fixed `finalDeadlineAt`); `seq` is only the drafting counter. Ordering by drafting stranded an out-of-order draft (the re-review, 2026-10-17).
 8. **`src/lib/server/maswali-scheduler.ts`:**
    - One timer per non-terminal week (open, close, void-deadline proposals, objection close).
    - `reconcileMaswaliWeeks`, every 5 minutes from `lifecycle.ts` in its own try/catch.

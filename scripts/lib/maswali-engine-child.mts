@@ -94,7 +94,7 @@ const week = created.ok ? created.week : (null as never);
   ok("1.8 · DRAFT, no market, no frozen rules", week.state === "DRAFT" && week.marketId === null && week.rulesSnapshot === null && week.questionSetHash === null);
   ok("1.9 · its code is its ISO week, MLN-…", /^MLN-\d{4}-W\d{2}$/.test(week.code), week.code);
   ok("1.10 · the template close is Friday 18:00 EAT", Date.parse(week.closesAt) === eatWeekAt(W2, 5, "18:00"));
-  ok("1.11 · seq 1 — the first in the chain", week.seq === 1);
+  ok("1.11 · seq 1 — the first drafted (seq counts drafts; the chain is the calendar)", week.seq === 1);
   ok("1.12 · fifteen questions on slots 1…15", (await questionStore.listForWeek(week.id)).map((q) => q.slot).join(",") === "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15");
   const q1 = (await questionStore.listForWeek(week.id))[0];
   ok("1.13 · each void deadline is the start + 48 h, capped at the final deadline", Date.parse(q1.voidDeadlineAt) === Math.min(Date.parse(q1.eventStartsAt) + 48 * 3_600_000, Date.parse(week.finalDeadlineAt)));

@@ -134,6 +134,11 @@ async function maybeCheckMaswaliInvariants(): Promise<void> {
   if (now - tickerStartedAt < RECONCILE_BOOT_GRACE_MS) return;
   if (now - lastMaswaliInvariantsAt < RECONCILE_EVERY_MS) return;
   lastMaswaliInvariantsAt = now;
+  // The stray-hold heal first (the review's R6 residual): a MILLIONEA_SHARE freeze with no held share behind it — left by
+  // a crash between a hold's own commit and its release — is lifted and audited; a held share is never touched.
+  const { healStrayMillioneaHolds } = await import("./maswali-settlement");
+  const healed = await healStrayMillioneaHolds().catch((e) => { console.error("[lifecycle] Millionea stray holds:", e); return null; });
+  if (healed && healed.lifted.length > 0) console.warn(`[lifecycle] Millionea: ${healed.lifted.length} stray hold(s) lifted`);
   const { checkMaswaliInvariants } = await import("./maswali-invariants");
   const r = await checkMaswaliInvariants();
   if (r.ok) {

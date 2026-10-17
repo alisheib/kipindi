@@ -2572,7 +2572,7 @@ model MaswaliCycle {
   market     PredictionMarket? @relation(fields: [marketId], references: [id], onDelete: Restrict)
   /// "MLN-2026-W44" — the product sequence label (weeks are numbered from launch, dates beside them). Immutable.
   code       String           @unique
-  /// The chain order. Settlement is strictly by `seq` (MR-3), so a carry is claimed exactly once.
+  /// The drafting counter (unique). The chain is the CALENDAR, not this (`calendarStartMs`, maswali-service.ts, 2026-10-17).
   seq        Int              @unique
   /// PUBLIC | DRIVE — a DRIVE week is the private, unlinked S8 live drive (OD-21), kept out of every measure.
   visibility String           @default("PUBLIC")
