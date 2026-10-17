@@ -11,36 +11,32 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0 and W1 are LIVE (16:10 UTC). W0: Ali ruled the specimen
-(https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW; every answer in §2, the lexicon in §3, the specimen stored at
-[`design-brief/phosphor-2026-10/`](design-brief/phosphor-2026-10/README.md)). W1 (§5 W1 "As built"): the pinned package,
-the codegen, the generated registry / sprite / notices, and the guards — `test:glyph-source` in `predeploy` holds
-Ali's **R-ONE-SOURCE** (one source of glyphs and icons; a design is built from the family's keys) on every page. Nothing
-visual has changed yet: every icon is still the house family in `src/components/ui/glyphs.tsx` until W2.
+**State (2026-10-17):** W0, W1 and W2 are LIVE. W2, the swap, went live at **`732efbc5`**, pushed at 23:10 UTC on Ali's
+*"push lov enayhtng please"*:
+- **What it does.** Every icon on the platform is drawn by Phosphor. The chrome's twelve glyphs are inlined in every
+  page; the rest come from one immutable sprite file. Every route's first load is 6.4–6.5 KB lighter, gzipped.
+- **The proof before the push:**
+  - typecheck 0 and `next build` 0;
+  - local `qa:live`: 377 passed. Its last section, [M], was cut off when the machine guard stopped the dev server at
+    26 MB free, and production reads it again;
+  - a 103-suite battery green, except `main`'s known reds;
+  - an independent code review and a four-reader screenshot review, read and fixed.
+- **Ali's review page:** https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, with seven calls he may overrule.
+- **Production, read back:** all three hosts served `732efbc5` 220 s after the push, health is reachable and migrated,
+  the sprite is served 200 and immutable, `qa:chunks-prod` passes on both origins, and production `qa:live` passed
+  363/363 (23:30 UTC).
 
-**How W1 went live.** Proven first at `c67e8e53`; its push was refused by Claude Code's auto-mode check, and Ali then
-asked this session to push every finished wave live, approving each push (*"plesa you push live anything you finsh put
-live evyrhtign s needed with th erigh tcolaboration with any sesison"*). `main` moved under it three times (the Maswali
-lane's S0.5, its icon rulings, its S1–S4); at S4 the push checklist caught `main` itself failing typecheck (`ScrollX`
-without its `label` in the new Millionea console — Railway's build refused it, production stayed on `ce752dc4`), the
-Maswali lane fixed it (`43523844`), and W1 was rebased onto that, proven at its exact commit (typecheck 0, `next build`
-0, local `qa:live` 376/376) and pushed: **`9b604d8e`, live on www, apex and the Railway host 160 s later; `/api/health`
-reachable and migrated; `qa:chunks-prod` 6/6 routes on both origins; production `qa:live` 361/361.**
-
-**Next:** W2, the swap. It lives on branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`, on `main` `862aa757`.
-1. The release proof at the commit that ships: a v4 `run` job; the dev server capped at a 3 GB heap; `mem-wait 3.5`
-   before each step.
-2. A parity compare at that commit against the baseline `parity-v4-862aa757.json`.
-3. `npm run glyphs:parity-entries` on its capture.
-4. The clean compare with `--prove-red`.
-5. The push and the production read-back (§5 W2's owed list).
-
-**W2 so far** (§5 W2 "As built so far" has the detail):
-- The engine draws Phosphor; the lexicon is applied wherever a meaning is drawn.
-- Every guard that read the hand-drawn family is re-pointed and green.
-- The parity baseline is taken (52/52), and the entries are generated from the first compare.
-- An independent code review and a four-reader screenshot review are read, and their findings fixed.
-- `test:all` on the old proof commit: every red is `main`'s or the machine's, and the 2 that were W2's are fixed.
+**Next:**
+1. The swap's follow-ups:
+   - release part two: section [M] alone, the review's fixes and the checkbox drive in a real browser;
+   - a parity compare at `732efbc5`, then `npm run glyphs:parity-entries` on its capture, then the clean compare with
+     `--prove-red`;
+   - Ali's answers to the review page's calls.
+2. W3, selected states (R-INDICATOR 3B, R-RAIL 4B):
+   - the classic rail, the journey tabs, the desktop bars and the admin sidebar;
+   - Line when inactive, Fill on one opaque royal pill when selected, tab glyphs at 24px (which also balances the
+     journey's Akaunti person);
+   - the codegen keeps the previous sprite for one release (deploy skew).
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
@@ -68,7 +64,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 |---|---|---|---|
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
-| W2 | The swap: the whole platform on Phosphor in one commit | 🔨 | built on branch `phosphor-w2` (§5 W2 "As built so far"); parity, tiles and the release proof next |
+| W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
@@ -283,7 +279,7 @@ that read the house drawings. W2's list below carries them.
   Phosphor's larger live area (Ali rules from the contact sheet; `plateGlyph` numbers do not move in the swap) · a missing
   variant at a dynamic size (an availability mask + a `RESERVED` list).
 
-**As built so far (branch `phosphor-w2`, 2026-10-17):**
+**As built (live at `732efbc5`, 2026-10-17 23:10 UTC):**
 - **The engine is Phosphor's.** `glyphs.tsx` builds `I` from the generated registry: `<svg><use>` into the content-hashed
   app / admin sprites, the chrome's Bold and Fill as symbols the root layout inlines (`GlyphShellSprite`), the ten marks
   among words as strokes on Phosphor's centrelines; tiers line / fill / duo with the Bold-to-26px rule; the offline page
@@ -407,10 +403,16 @@ that read the house drawings. W2's list below carries them.
     - `house-bot-disclosure` 5.1 compares a Windows checkout's CRLF bytes, which are identical to the blob once the CRs
       are dropped.
   - 2 were W2's, `chart-one-home` and `orphans`, fixed in the screenshot review's commit.
-- **Still owed for W2:**
-  - the release proof again, at the commit that ships: a fresh v4 `run`, the dev server capped at a 3 GB heap;
-  - a compare at that commit, then its entries regenerated and the clean compare with `--prove-red`;
-  - the push.
+- **The release** (`732efbc5`, its proof as a v4 `run` job):
+  - typecheck 0 and `next build` 0; every route's first load read, and 6.4–6.5 KB lighter gzipped than W1's.
+  - Local `qa:live`: 377 passed, then the machine guard stopped the dev server at 26 MB free during its last section,
+    [M]. That section is Millionea's darkness, which W2 does not touch; production `qa:live` reads it again.
+  - **Lesson:** Turbopack compiles the whole crawl in native memory that no V8 heap cap bounds. Warm routes one by
+    one; a browser step waits for 3.0 GB with the server up; the machine guard is the backstop.
+  - Pushed as a fast-forward of `main` at 23:10 UTC on Ali's *"push lov enayhtng please"*.
+- **Owed after the push:**
+  - release part two: [M] alone, the review's fixes and the checkbox drive, in a real browser;
+  - the parity compare at `732efbc5`, its entries regenerated, and the clean compare with `--prove-red`.
 
   **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
