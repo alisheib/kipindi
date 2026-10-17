@@ -27,44 +27,64 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-16):** The plan is written and nothing is built. Ali's rulings of 2026-10-16 are recorded (seventeen
+**State (2026-10-17):** The plan is written and nothing is built. Ali's rulings of 2026-10-16 are recorded (seventeen
 R-rulings, the accepted decision batch OD-01…OD-30, the guarantee pre-funded with TZS 2,000,000, the licence basis =
-his dated ruling, one 24-hour dispute window per week). S0 is ✅ at `de8a00619`, merged to `main` and pushed live on
-2026-10-16 on Ali's word ("merge maswali-plan into main now and push it live") — documentation only; no code, schema or
-player surface changed. **D1 is 🔨: the R2 design package is cut, checked and zipped, and waits for Ali to send it.**
-Stamp: `origin/main` at `72ca5cff99638eb8bc26d2d85c3007cb49b3727c`, cut on 2026-10-16. The zip is
-`MASWALI-DESIGN-R2-package-72ca5cff9.zip` (6,699,073 bytes, SHA-256
-`196c4de46688202367dcb700e3492b546d34414b879178e01b280ef62a16cb41`). One copy is in Ali's Downloads folder, the other
-beside its folder in `F:\50pick-design-archive`, both on OMEGA-COMPILE01. A second zip in Ali's Downloads,
-`TEST-ONLY-not-for-Claude-Design-MASWALI-DESIGN-R2-72ca5cff9.zip` (1.1 MB), is a test build of the zip step: never send
-it.
+his dated ruling, one 24-hour dispute window per week). S0 is ✅ at `de8a00619` (merged to `main` on 2026-10-16 on
+Ali's word; documentation only). **D1 is ✅: Ali sent the R2 package** cut at `origin/main`
+`72ca5cff99638eb8bc26d2d85c3007cb49b3727c`. He sent it after 2026-10-16 21:49 EAT, when he unpacked it on Ali-Blade15
+(`~/Downloads/MASWALI/`), and before Claude Design answered on 2026-10-17. **Claude Design has drawn the delivery.** On
+2026-10-17 it came back with an owner-ruling form: "the design is complete either way — these pick between finished
+variants". Ali handed the form to a session: *"claude design is done as well and asked me some questions that needs
+you … you answer"*. The answers that session gave him to send are in the table below. **D2 waits for the delivery.**
 
-**Next:** D1, then D2 when the reply comes, otherwise S0.5 — in this order:
-1. **Ali sends the zip** (Blocked on Ali, below). If `origin/main` changes a packaged file before he sends, re-cut first
-   by [`ATTACHMENTS.md`](design-brief/maswali-2026-10/ATTACHMENTS.md) A2–A6 — never send a stale stamp. The zip
-   exists only on OMEGA-COMPILE01; on any other machine, cut a fresh package.
-2. **When Ali says he sent it:** set D1 ✅ citing the commit that records the send, write the send date here, and change
-   `BRIEF.md`'s status line to SENT (ATTACHMENTS A7).
-3. **When Ali comes back with Claude Design's reply, on any machine — that is D2.** The reply is a zip (the prompt
-   asks for `MASWALI-DESIGN-R2-2026-10-16.zip`) or a claude.ai link. Follow
-   [`RECEIVING.md`](design-brief/maswali-2026-10/RECEIVING.md) from Step 0: land it outside the repository, check it
-   mechanically, score it, and put the yes-or-no items to Ali. Step 3's `SHA` is the stamp above (it is also in the
-   package's `STAMP.txt`). Receiving does not wait for S0.5–S3; Ali's N1–N4 rulings (D3) block S5.
-4. Otherwise: S0.5, the fence.
+**Next:** D2 when the delivery comes, otherwise S0.5 — in this order:
+1. **When Ali hands over Claude Design's delivery, on any machine — that is D2.** The prompt asks for
+   `MASWALI-DESIGN-R2-2026-10-16.zip`; if only a claude.ai link comes, export every file and record the URL. Follow
+   [`RECEIVING.md`](design-brief/maswali-2026-10/RECEIVING.md) from Step 0. Step 3's `SHA` is the stamp above (it is
+   also in the package's `STAMP.txt`). Check the delivery's `DECISIONS.md` against the answers table below: where they
+   differ, Ali changed an answer when he sent it, and what he sent wins. Correct the table in D2's commit.
+2. **D3 files the answers.** They already answer RECEIVING Step 5's yes/no card, so D3 is the filing: the dated
+   "Millionea exceptions" paragraph in DA §M8 with Ali's quote, and N1's measurement. N1 must hold at least 50fps at
+   360 on a phone with 4 cores or fewer and 4GB or less; otherwise N1's drawn fallback ships. The keyframes land in
+   `motion.css` in S5, with their first consumer (`test:dead-css`). D3 still blocks S5.
+3. Otherwise: S0.5, the fence. Receiving does not wait for S0.5–S3.
 
-**Blocked on Ali:** sending the package. The steps: open Claude Design and start a new project. Upload
-`MASWALI-DESIGN-R2-package-72ca5cff9.zip` from Downloads (6.7 MB, not the TEST-ONLY one). Paste all of the `PROMPT.txt`
-that is **inside the zip** as the first message (its stamp is filled in; the tracked `PROMPT.txt` keeps its
-placeholders), and send. Then tell any session "I sent it". When the reply comes, hand its zip to any session and say
+**The answers to Claude Design's owner-ruling form (2026-10-17).** Each was checked against this plan and the live code
+before it went to Ali.
+
+| Item | Answer | Source |
+|---|---|---|
+| O-1…O-3 · N1 Kubeba, N2 Kugonga Muhuri, N3 Kukata Tiketi | Approve all three | RECEIVING Step 5's recommendation; each is built from existing parts. N1 stands only if it holds 50fps on the target phone (D3) |
+| O-4 · a fourth motion | Keep unspent | Its only candidate, the needle aligning the ten sockets, is barred by the prompt (§8) and by DA §M8 |
+| O-5 · the `millionea` glyph | Approve the three-pearl coronet | The family `crown` already carries two meanings: the Leaderboard icon (`avatar-menu.tsx`) and the "Matokeo mashuhuri" flag on `/results`. R1's coronet reads as its own shape at 14px |
+| O-6 · the IMESHINDA tone | Approve: the word in success green, gold only on the amount | Missing from the form as Ali pasted it, so it was answered in the form's free-text box |
+| O-7 · the home-card position | After the head (the How-to card and the headline), before the topic chips | The prompt's and RECEIVING's recommendation. It deviates from the sponsor deck's home, so Vodacom will see it in the preview before the flip (S15 waits for their approval) |
+| O-8 · the reserve label | A1–A5 "Akiba" | It is R-RESERVES: "R1–R5, shown as A1–A5". R1–R5 stays the name in code and in the rules |
+| Q5 · the closing pill | Both: the close time is always printed; the `.closing-pill` appears only in the last hour, counting minutes, as on Yes/No markets | The platform's C1a rule: `closingSoon` at one hour or less in `src/app/markets/[id]/page.tsx`, worded "Inafunga karibuni · {n} Dak" |
+| Q7 · the door on a won ticket before the seal | "Ona matokeo", and the away line's "Fungua" becomes the same | It is the platform's existing door to the seal: `t.notif.awayView` opens it in `away-summary-bar.tsx`. "Muhuri" is art direction, not a dictionary word |
+| Q11 · the sunset week's score line | Keep "Alama ya juu wiki hii: 9 kati ya 10 · tiketi 2" | The prompt's own wording for its rule 15 |
+| Q2 · the second sample serial | MLN-W42-003310 (the player's 2nd ticket, bought Tue 20 Oct 09:41); MLN-W42-002083 (the 1st, Mon 19 Oct 20:15) if a frame needs it | Both are lower than 004417 because both were bought before it |
+| Q3 · the moved close | Ijumaa 23 Okt 16:00 EAT, moved earlier from 18:00, announced Alhamisi 22 Okt 10:15 | A later move could reach only Ijumaa 19:00: the first event is at 19:30 and the buffer is 30 minutes (OD-15, MB-28) |
+| Q1 · the attestation times missing from the sample | main 2 Mon 00:12 · main 3 Mon 09:10 · main 5 Mon 10:41 (the last, so results final) · main 6 Sun 20:36 · main 7 Sun 20:41 · main 9 Mon 00:14 · main 10 Sun 21:06 · A2 Mon 00:16 · A5 Mon 10:24. Timelines B and E reuse them. In D the week void becomes certain at Mon 10:24 (A5), so refunds are Tue 27 Oct 12:00 | Each time falls after its event. None falls before Sun 12:00, so the live frame's "5 kati ya 15" still holds. The windows follow MR-16 |
+
+**Blocked on Ali:** sending those answers in Claude Design, then handing its delivery to any session with the words
 "MASWALI-DESIGN-R2".
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
-**Last handoff (2026-10-16, OMEGA-COMPILE01, D1):** the package was cut in the SSD worktree `C:\50pick-ssd\kipindi-d1`
-(branch `maswali-d1`) as ATTACHMENTS A2–A6 say, with the exceptions recorded below. A first cut at `e78c3aef6` was
-finished and checked, then deleted unsent: S8 round V2 reached `main` and changed `globals.css`, `i18n-dict.ts` and
-the bet sheet. Everything was cut again at the stamp.
+**Last handoff (2026-10-17, Ali-Blade15, D1 closed):** this session answered Claude Design's form and recorded the
+send. The package's `PROMPT.txt` in `~/Downloads/MASWALI/` differs from the tracked one only in its three filled
+placeholders (the stamp, the date and the zip name), so the answers rest on exactly what Claude Design read. The four
+free-text answers fit the form's 400-character limit.
+
+**The package, as D1 cut it (2026-10-16, OMEGA-COMPILE01):** in the SSD worktree `C:\50pick-ssd\kipindi-d1` (branch
+`maswali-d1`), as ATTACHMENTS A2–A6 say, with the exceptions recorded below. A first cut at `e78c3aef6` was finished
+and checked, then deleted unsent: S8 round V2 reached `main` and changed `globals.css`, `i18n-dict.ts` and the bet
+sheet. Everything was cut again at the stamp. The zip is `MASWALI-DESIGN-R2-package-72ca5cff9.zip` (6,699,073 bytes,
+SHA-256 `196c4de46688202367dcb700e3492b546d34414b879178e01b280ef62a16cb41`), kept in Ali's Downloads and in
+`F:\50pick-design-archive` on OMEGA-COMPILE01. Beside it, `TEST-ONLY-not-for-Claude-Design-MASWALI-DESIGN-R2-72ca5cff9.zip`
+(1.1 MB) is a test build of the zip step.
 - **A3 at the stamp:** 49 `@keyframes` in `globals.css` and 49 in the extract; the `--rh-close` line sits under
   `@media (min-width: 768px)`; one stale `tokens-locked` link in each of the four R1 canvases.
 - **Further checks:** 26 of 26 copied files are byte-identical to the commit. The extract keeps all 4 `:root` blocks
@@ -93,7 +113,7 @@ is public: describe anti-abuse controls by what they enforce, never by their sig
 | Session | Title | Status | Note |
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
-| D1 | Design R2: the commission cut live and sent | 🔨 | zip ready 2026-10-16 at 72ca5cff9, in Ali's Downloads; waits for Ali to upload and paste |
+| D1 | Design R2: the commission cut live and sent | 🔨 | sent at stamp 72ca5cff9; Claude Design's owner-ruling form answered 2026-10-17 (§0) |
 | S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
