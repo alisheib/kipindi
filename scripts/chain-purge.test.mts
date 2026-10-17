@@ -675,8 +675,9 @@ console.log("Chain purge\n");
   ok("12: ⭐ …and every table the guard protects is named in the docblock",
      enforced.every((m) => documented.includes(m)),
      `guarded but undocumented: ${enforced.filter((m) => !documented.includes(m)).join(", ")}`);
-  ok("12: ⭐ CONTROL — and there are really 14 of them, so neither side is empty",
-     documented.length === 14 && enforced.length === 14, `${documented.length} documented / ${enforced.length} enforced`);
+  // 14 → 15 (MASWALI-BUILD S1): MaswaliTicket hangs off Position (rule ③), so a chain purge may never delete a ticket.
+  ok("12: ⭐ CONTROL — and there are really 15 of them, so neither side is empty",
+     documented.length === 15 && enforced.length === 15, `${documented.length} documented / ${enforced.length} enforced`);
   ok("12: the docblock states WHAT ENFORCES the list, not only what it is",
      /guardProtectedModels/.test(src) && /purge-protected\.ts/.test(src));
   ok("12: …and states that retention still deletes HouseBotAlertOnce, so the two facts do not read as a bug",

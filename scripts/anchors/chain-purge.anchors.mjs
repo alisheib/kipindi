@@ -258,8 +258,8 @@ export const MUTATIONS = [
     why: "🔴 THE ORIGINAL DEFECT IN MINIATURE, and the reason the NEVER line is parsed rather than read. One name leaves the comment — a tidy-up, a merge, a reflow — and the file's most-read sentence quietly stops describing what the code holds. That is precisely how fourteen tables came to be documented and six enforced, for as long as the file existed",
     file: SERVICE,
     suite: "chain-purge",
-    from: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation`,
-    to: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation`,
+    from: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation`,
+    to: ` * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation`,
     expect: "12: ⭐ …and every table the guard protects is named in the docblock",
   },
 ];

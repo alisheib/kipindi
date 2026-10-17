@@ -23,7 +23,7 @@ import { buyPosition, createMarket, settleMarket } from "./market-service";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
-import { isSourceTrusted } from "./source-registry";
+import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
@@ -284,6 +284,8 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week.`);
     if (life.kind === "ENDING" && life.week.id !== week.id) return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
+    // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
+    await seedDefaultSources();
     const questions = await questionStore.listForWeek(week.id);
     const problems = await openProblems(week, questions, rules, nowMs);
     // OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen
