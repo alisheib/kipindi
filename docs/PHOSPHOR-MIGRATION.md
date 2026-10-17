@@ -144,8 +144,9 @@ From W1 the source of truth is `scripts/glyphs/map.ts`, and every name below is 
 | watch | bookmark-simple | flame · flame2 · hot | fire |
 
 House extras (no Phosphor match; drawn in Phosphor's grammar — 256 grid, every shipped weight — with a reason in
-`map.ts`): at least `needle` (the brand's own geometry); likely `mobileMoney`, `ussd`. The codegen fails on any
-unmapped key, so the list is complete by construction.
+`map.ts`): at least `needle` (the brand's own geometry) and Maswali's `millionea` coronet; likely `mobileMoney`, `ussd`,
+and possibly `sealNil` / `sealX` (§6). The codegen fails on any unmapped key, so the list is complete by construction.
+Every name in this table and in §3 was checked against `@phosphor-icons/core` 2.1.1 on 2026-10-17: all 149 exist.
 
 ---
 
@@ -286,8 +287,12 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 ---
 
 ## §6 · Coordination
-- **Maswali R2 is with Claude Design** (it adds `sealNil` and `millionea` and renames `voidX` → `sealX`). Don't disturb
-  it: on its D2 receipt its glyphs are metaphor references, drawn in Phosphor's grammar in W7. `voidX` is reserved.
+- **Maswali D2 ✅ (2026-10-17, main `380edd31`):** the R2 delivery is filed at
+  `design-system/v6-2026-10-17-millionea/`, and its INHERIT-MANIFEST adopts three glyphs — `sealNil`, `sealX` (the
+  rename of `voidX`) and `millionea` (the three-pearl coronet; the family `crown` already means the Leaderboard) — drawn
+  in the house idiom (24 grid, 1.9 stroke). The Maswali lane adds them to the family on its own schedule. For this
+  migration they are **reserved keys**: never deleted; in W1's `map.ts`, `sealX` and `sealNil` map to Phosphor's
+  nearest equivalents or become house extras, and `millionea` is a house extra drawn in Phosphor's grammar (W7).
 - **Vodacom** (S14–S16 open): classic-shell changes reach `main` as named parity entries, so its branches inherit them on
   rebase. A wave touching home or cards checks `git log` and the worktrees first and goes after that lane's merge.
 - **Parallel sessions:** own worktree; heavy Node only through the machine's lock; stage by name; never `git add -A`.
