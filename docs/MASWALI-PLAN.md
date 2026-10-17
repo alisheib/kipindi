@@ -227,7 +227,16 @@ before it went to Ali.
 | Q3 · the moved close | Ijumaa 23 Okt 16:00 EAT, moved earlier from 18:00, announced Alhamisi 22 Okt 10:15 | A later move could reach only Ijumaa 19:00: the first event is at 19:30 and the buffer is 30 minutes (OD-15, MB-28) |
 | Q1 · the attestation times missing from the sample | main 2 Mon 00:12 · main 3 Mon 09:10 · main 5 Mon 10:41 (the last, so results final) · main 6 Sun 20:36 · main 7 Sun 20:41 · main 9 Mon 00:14 · main 10 Sun 21:06 · A2 Mon 00:16 · A5 Mon 10:24. Timelines B and E reuse them. In D the week void becomes certain at Mon 10:24 (A5), so refunds are Tue 27 Oct 12:00 | Each time falls after its event. None falls before Sun 12:00, so the live frame's "5 kati ya 15" still holds. The windows follow MR-16 |
 
-**Blocked on Ali:** nothing until S5's staff preview (to look at it) and S8's Gate A (§6).
+**Blocked on Ali:** nothing until S5's staff preview (to look at it) and S8's Gate A (§6). R10c (who may buy a DRIVE-week
+ticket) is his to rule before S8.
+
+**Before the staff preview (2026-10-18):**
+- **The icons.** The phosphor lane's W2 swap must be on `main`, so Millionea's 13 icon keys render through `I`. Until
+  then they draw as empty boxes, and `I.void` still reads as a miss.
+- **The S5 UI review's findings, fixed in the composition lane:**
+  - HIGH: the voiding view says "refunded" before any refund exists;
+  - HIGH: the seal line draws the win line before the objection window closes;
+  - five MEDIUM and six LOW.
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
