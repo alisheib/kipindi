@@ -298,6 +298,10 @@ that read the house drawings. W2's list below carries them.
   hand-drawn triangle was — a play button on a plate reads solid, and Phosphor's Bold play is an outline.
   `test:journey-home` 5.plate pins it in source and as drawn (`p-play-fill`, with two new plants); r9a §1.3′ proves the
   Fill triangle, like the Bold one, is centred on its centroid.
+- **The checkbox tick keeps Phosphor's Bold check at 13px** (decided in W2, the lead engineer): 1.22px arms over a 10.6px
+  tick, where the hand-drawn one painted 1.63px over 9.2px — about the same ink, longer and finer. Its `strokeWidth: 3`
+  went: a filled Phosphor outline has no stroke to thicken. Rejected: check-fat (3.1px arms at that size, heavy in a 19px
+  box) and the check's Fill (a tick knocked out of a square). To be read at the tiles.
 - **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
   (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
   measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
@@ -312,9 +316,8 @@ that read the house drawings. W2's list below carries them.
 - **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
   after `#` still compared; its proof is P.1b.
 - **Still owed for W2:** the derived battery; the parity baseline at `main` and the compare, with the generated glyph
-  entries; the full tiles (and, at them, the checkbox tick: `strokeWidth: 3` no longer thickens a filled Phosphor check —
-  Bold at 13px paints 1.22px where the old tick painted 1.63; check-fat is the heavier choice); the release proof; the
-  push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency` is red on `main` from
+  the Maswali console's tables, fixed on `maswali-s4` — W2 takes it on its rebase); the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
 
 ### W3 — Selected states
