@@ -688,6 +688,7 @@
     "test:maswali-shared-paths": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-shared-paths.test.mts",
     "test:maswali-integrity": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-integrity.test.mts",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
+    "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "red:maswali-rbac": "node scripts/red-maswali-rbac.mjs",
     "test:phosphor-plan": "tsx scripts/phosphor-plan.test.mts",
     "red:phosphor-plan": "tsx scripts/phosphor-plan.test.mts --prove-red",
