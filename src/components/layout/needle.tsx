@@ -1055,8 +1055,9 @@ export function Needle() {
   useEffect(() => {
     const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
     // MASWALI-BUILD S5 (the v6 delivery's D-25): and on the Millionea slip for every reader — its pay control and confirm
-    // sheet are on screen. Joined here, beside the pinned line above, which stays today's word for word.
-    const standDown = suppressed || isSlipSurface(pathname);
+    // sheet are on screen. Joined here, beside the pinned line above, which stays today's word for word. ⛔ Not on its
+    // not-found page (the S5 review of 24ec0d33, LOW 11): a dark slip is a missing page, with nothing to pay on it.
+    const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);
     wantSuppressed.current = standDown;
     apiRef.current?.setSuppressed(standDown);
     // A new page is new content under the rail (E-400 ①).

@@ -41,7 +41,7 @@ import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { fillNodes } from "@/lib/fill-nodes";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
-import { millioneaHeldThisWeek } from "@/lib/server/millionea-doors";
+import { millioneaHeldThisWeek, millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -60,6 +60,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   // asked too, so the page and its chrome cannot disagree. Everything below is read and priced for both views; only the
   // render branches, just above the classic JSX.
   const { journey } = await resolveSimpleJourney();
+  // MASWALI-BUILD S5 · Millionea's door, started BESIDE this page's own reads (the S5 review of 24ec0d33, LOW 10): the
+  // classic arm's row count, or the journey switch's third kind — each one cached read, awaited where it is drawn.
+  const millioneaHeldNow = journey ? null : millioneaHeldThisWeek(session.userId);
+  if (journey) void millioneaTicketsDoor();
   const sp = await searchParams;
 
   /**
@@ -315,7 +319,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
      the head, only while the reader holds live tickets in Millionea's week — a door to their own tickets, so it follows
      the tickets' rule (L5), never the offers' break rule. Read for this arm alone: the journey's Tiketi zangu carries
      Millionea as its third kind instead. */
-  const millioneaHeld = await millioneaHeldThisWeek(session.userId);
+  const millioneaHeld = (await millioneaHeldNow) ?? 0;
 
   return (
     <PageContainer tier="reading" className="space-y-6">

@@ -256,8 +256,9 @@ export function ChatRoot({ supportEmail, chatOwner }: { supportEmail: string; ch
      the player left it on the next page that shows the bubble. */
   if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
   /* MASWALI-BUILD S5 (the v6 delivery's D-25): not on the Millionea slip, for any reader — its pay control and confirm
-     sheet are on screen. Like the journey's term above it closes nothing and clears nothing. */
-  if (isSlipSurface(pathname)) return null;
+     sheet are on screen. Like the journey's term above it closes nothing and clears nothing — and, like it, stands down
+     only while the page is there: on the slip's not-found page the bubble is back (the S5 review of 24ec0d33, LOW 11). */
+  if (isSlipSurface(pathname) && !notFoundShown) return null;
   // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
   if (isMobile === null) return null;
 

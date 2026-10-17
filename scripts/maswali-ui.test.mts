@@ -317,8 +317,11 @@ const doorDefects = (src: (rel: string) => string) => {
   const boardCard = board.indexOf("{millionea}"), search = board.indexOf("<SearchBox");
   if (!(boardCard > 0 && search > boardCard) || count(board, "{millionea}") !== 1) d.push("the board's card is not once, above the search");
   const positions = squash(code(src("src/app/positions/page.tsx")));
-  const journeyAt = positions.indexOf("if (journey) {"), heldAt = positions.indexOf("await millioneaHeldThisWeek(session.userId)");
+  const journeyAt = positions.indexOf("if (journey) {"), heldAt = positions.indexOf("const millioneaHeld = (await millioneaHeldNow) ?? 0;");
+  const startAt = positions.indexOf("const millioneaHeldNow = journey ? null : millioneaHeldThisWeek(session.userId);");
+  const firstRead = positions.indexOf('await listPositionsForUser(session.userId, 5_000, "MARKET")');
   if (!(journeyAt > 0 && heldAt > journeyAt)) d.push("the /positions row is read outside the classic arm (the journey has its third kind)");
+  if (!(startAt > 0 && firstRead > startAt)) d.push("the /positions row's read is not started beside the page's own reads (LOW 10)");
   if (!/\{millioneaHeld > 0 && \( <Link href=\{"\/millionea\/tickets" as never\} data-testid="positions-millionea-row"/.test(positions)) d.push("the /positions row is not drawn only for a holder, to Tiketi zangu's Millionea list");
   return d;
 };
@@ -330,9 +333,34 @@ const doorDefects = (src: (rel: string) => string) => {
   ok("5.3 · /positions' row: read only in the classic arm, drawn only while the reader holds this week's tickets, linking Tiketi zangu's Millionea list",
     d.filter((x) => /positions/.test(x)).length === 0, d.join(" | "));
   const doors = squash(code(read("src/lib/server/millionea-doors.ts")));
-  const fn = doors.slice(doors.indexOf("export const millioneaHeldThisWeek"));
-  ok("5.4 · the /positions count asks one indexed read of a reader who holds no ticket, and the hub's week only for a holder",
-    fn.indexOf("listForUser(userId, { limit: 1 })") > 0 && fn.indexOf("listForUser(userId, { limit: 1 })") < fn.indexOf("millioneaHubNow("));
+  const heldDefects = (doorsSrc: string) => {
+    const fn = doorsSrc.slice(doorsSrc.indexOf("export const millioneaHeldThisWeek"));
+    const door = doorsSrc.slice(doorsSrc.indexOf("export const millioneaTicketsDoor"), doorsSrc.indexOf("export const millioneaHeldThisWeek"));
+    const d: string[] = [];
+    const read1 = fn.indexOf("listForUser(userId, { limit: 1 })");
+    if (!(read1 > 0 && read1 < fn.indexOf("millioneaHubNow("))) d.push("the count does not ask one indexed read before the hub's week");
+    const skip = 'if (millioneaCeiling().ceiling === "WITHDRAWN") return 0;';
+    if (!(fn.indexOf(skip) > 0 && fn.indexOf(skip) < read1)) d.push("the count reads at a WITHDRAWN ceiling");
+    const skipDoor = 'if (millioneaCeiling().ceiling === "WITHDRAWN") return false;';
+    if (!(door.indexOf(skipDoor) > 0 && door.indexOf(skipDoor) < door.indexOf("listForUser(id, { limit: 1 })"))) d.push("the switch's door reads at a WITHDRAWN ceiling");
+    return d;
+  };
+  const h = heldDefects(doors);
+  ok("5.4 · the /positions count asks one indexed read of a reader who holds no ticket, and the hub's week only for a holder — and neither it nor the switch's door reads anything at a WITHDRAWN ceiling (LOW 10)",
+    h.length === 0, h.join(" | "));
+  const plantedRead = heldDefects(doors.replace('if (millioneaCeiling().ceiling === "WITHDRAWN") return 0;', ""));
+  ok("5.4′ CONTROL · a count that reads at a WITHDRAWN ceiling is reported", plantedRead.some((x) => x.includes("count reads")));
+  const history = squash(code(read("src/app/updown/history/page.tsx")));
+  const asked = history.indexOf("const { journey } = await resolveSimpleJourney();"), warm = history.indexOf("if (journey) void millioneaTicketsDoor();");
+  ok("5.5 · the journey's two Tiketi zangu pages start the switch's door beside their own reads (one cached read, awaited where it draws)",
+    warm > asked && asked > 0 && warm < history.indexOf("await getMyUpDownHistory(")
+      && squash(code(read("src/app/positions/page.tsx"))).includes("if (journey) void millioneaTicketsDoor();"));
+  const switchSrc = squash(code(read("src/components/journey/tickets/ticket-switch.tsx")));
+  const thirdGated = (s: string) => s.includes('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),')
+    && s.includes("const millionea = await millioneaTicketsDoor();") && count(s, 'value: "millionea"') === 1;
+  ok("5.6 · Tiketi zangu's third kind sits inside its `millionea ? [...] : []` gate, on the door's one answer", thirdGated(switchSrc));
+  ok("5.6′ CONTROL · the third kind drawn outside its gate is reported",
+    !thirdGated(switchSrc.replace('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),', '{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" },')));
 }
 
 // ── §6 · the slip ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -357,12 +385,30 @@ const slipDefects = (src: string) => {
   ok("6.2 · the slip is a stand-down surface for every reader; nothing else is", isSlipSurface(SLIP) && !["/millionea", "/millionea/slipx", "/millionea/slip/x", "/millionea/tickets", null].some((p) => isSlipSurface(p)));
   ok("6.3 · ⛔ and it is NOT a money surface (MONEY_ROUTE stays the wallet's): the install invitation and the consent prompt stand down there through the commit list",
     !isMoneySurface(SLIP) && isCommitSurface(SLIP) && isJourneySurface(SLIP));
-  const needle = squash(code(read("src/components/layout/needle.tsx")));
-  const chat = squash(code(read("src/components/chat/ChatRoot.tsx")));
-  ok("6.4 · the Needle stands down on the slip — joined beside its pinned line, which stays today's",
-    needle.includes("const standDown = suppressed || isSlipSurface(pathname); wantSuppressed.current = standDown; apiRef.current?.setSuppressed(standDown);"));
-  ok("6.5 · the chat bubble stands down on the slip, straight after the journey's guard, closing and clearing nothing",
-    chat.includes("if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null; if (isSlipSurface(pathname)) return null;"));
+  // The three overlays a slip stands down — and, on its not-found page (a dark slip is a missing page, the S5 review of
+  // 24ec0d33, LOW 11), lets back: the Needle, the chat bubble, and the consent card's commit-surface rule.
+  const overlayDefects = (needleSrc: string, chatSrc: string, consentSrc: string) => {
+    const needle = squash(code(needleSrc)), chat = squash(code(chatSrc)), consent = squash(code(consentSrc));
+    const d: string[] = [];
+    if (!needle.includes("const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown); wantSuppressed.current = standDown; apiRef.current?.setSuppressed(standDown);")) d.push("needle: the slip's stand-down is not beside its pinned line, lifted on the not-found page");
+    if (!chat.includes("if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null; if (isSlipSurface(pathname) && !notFoundShown) return null;")) d.push("chat: the slip's stand-down is not straight after the journey's guard, lifted on the not-found page");
+    if (!consent.includes("const overMoney = isCommitSurface(pathname) && !notFoundShown;") || !consent.includes("!gaExcluded(pathname) && !overMoney;")) d.push("consent: the commit-surface rule holds on a not-found page");
+    return d;
+  };
+  const NEEDLE = "src/components/layout/needle.tsx", CHAT = "src/components/chat/ChatRoot.tsx", CONSENT = "src/components/analytics/consent-prompt.tsx";
+  const ov = overlayDefects(read(NEEDLE), read(CHAT), read(CONSENT));
+  ok("6.4 · the Needle stands down on the slip — joined beside its pinned line, which stays today's — and comes back on its not-found page",
+    !ov.some((x) => x.startsWith("needle")), ov.join(" | "));
+  ok("6.5 · the chat bubble stands down on the slip, straight after the journey's guard, closing and clearing nothing — and comes back on its not-found page",
+    !ov.some((x) => x.startsWith("chat")), ov.join(" | "));
+  ok("6.6 · the consent card keeps off a money control, and a not-found page at a commit address carries none: it may ask there",
+    !ov.some((x) => x.startsWith("consent")), ov.join(" | "));
+  const stuckNeedle = overlayDefects(read(NEEDLE).replace("(isSlipSurface(pathname) && !notFoundShown)", "isSlipSurface(pathname)"), read(CHAT), read(CONSENT));
+  const stuckChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", "if (isSlipSurface(pathname)) return null;"), read(CONSENT));
+  const goneChat = overlayDefects(read(NEEDLE), read(CHAT).replace("if (isSlipSurface(pathname) && !notFoundShown) return null;", ""), read(CONSENT));
+  ok("6.4′ CONTROL · a Needle that stays down on the slip's not-found page is reported", stuckNeedle.some((x) => x.startsWith("needle")));
+  ok("6.5′ CONTROL · a bubble that stays down on the slip's not-found page, or does not stand down on the slip at all, is reported",
+    stuckChat.some((x) => x.startsWith("chat")) && goneChat.some((x) => x.startsWith("chat")));
 }
 
 // ── §7 · a ticket's address ────────────────────────────────────────────────────────────────────────────────────────

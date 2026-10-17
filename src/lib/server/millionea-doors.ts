@@ -24,7 +24,7 @@ import { ticketStore, weekStore } from "./maswali-dal";
 import { isLockedOut } from "./responsible-gambling";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
 import { millioneaTicketAdmission } from "./millionea-gate";
-import type { RolloutState } from "@/lib/millionea-rollout";
+import { millioneaCeiling, type RolloutState } from "@/lib/millionea-rollout";
 import type { OpenTemplate } from "@/components/maswali/maswali-card-model";
 
 /** Who is asking, as the doors need it. */
@@ -131,6 +131,11 @@ export async function millioneaWeekPrices(weekIds: readonly string[]): Promise<M
 export const millioneaTicketsDoor = cache(async (): Promise<boolean> => {
   const door = await millioneaDoor();
   if (door.visible) return true;
+  // ⛔ NOTHING IS READ AT A WITHDRAWN CEILING (the S5 review of 24ec0d33, LOW 10): it is the product not launched — on
+  //    production today no account holds a ticket — so no door is offered, and the journey's /positions and
+  //    /updown/history (every render, and every 20-second refresh) pay no read for it. Were the ceiling ever lowered back
+  //    after a run, a holder still reaches their tickets by address: the tickets' own gate asks (L5).
+  if (millioneaCeiling().ceiling === "WITHDRAWN") return false;
   try {
     const userId = (await getSession())?.userId ?? null;
     return (await millioneaTicketAdmission(false, userId, async (id) => (await ticketStore.listForUser(id, { limit: 1 })).length > 0)) === "HOLDER";
@@ -148,6 +153,8 @@ export const millioneaTicketsDoor = cache(async (): Promise<boolean> => {
  * no Millionea ticket (the common case); the hub's week only for a holder. Never throws: a failure draws no row.
  */
 export const millioneaHeldThisWeek = cache(async (userId: string): Promise<number> => {
+  // ⛔ Nothing is read at a WITHDRAWN ceiling (LOW 10, as `millioneaTicketsDoor` above): no row is drawn.
+  if (millioneaCeiling().ceiling === "WITHDRAWN") return 0;
   try {
     if ((await ticketStore.listForUser(userId, { limit: 1 })).length === 0) return 0;
     const door = await millioneaDoor();
