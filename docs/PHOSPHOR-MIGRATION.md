@@ -45,7 +45,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | 🔨 | Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
+| W0 | Tracking + specimen + recognition check | ✅ | b95d0c25 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ⬜ | |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
