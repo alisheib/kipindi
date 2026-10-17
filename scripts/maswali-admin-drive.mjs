@@ -1,0 +1,697 @@
+/**
+ * qa:maswali-admin-drive — the Millionea console's S4 acceptance drive (MASWALI-BUILD S4; MASWALI-PLAN §7b S4
+ * "Acceptance"): every act through the console's own controls, in a real browser, and every outcome read off the page.
+ *
+ *   BASE=http://localhost:3410 node scripts/maswali-admin-drive.mjs     (a FRESH in-memory `next dev`, 2FA off)
+ *
+ * ONCE PER SERVER: right after `qa:maswali-admin-shots` (whose seed call built the weeks), or on its own (step 6 seeds).
+ *   1 · the Owner signs in (`/api/dev-test/seed-admin`, as the shots do) and reads the product's standing;
+ *   3 · checks the trusted sources the draft cites, then drafts a DRIVE week in the builder — fifteen cards, each
+ *       criterion from its kind's template with every {…} filled, a calendar suggestion in M1 when the store has one.
+ *       A drive week, because the seeded public week is selling and one public week sells at a time (MR-3);
+ *   4 · the drafter's own attestation is refused (MB-79); a second reader — a MODERATOR, in a browser context of their
+ *       own (a second context for the SAME account would sign the first out) — attests; the Owner opens the week;
+ *   2 · (inside 4) when the open refuses for want of a licence basis or of guarantee, the Owner records the basis
+ *       (typed RECORD) or pays in exactly what the refusal says is short (typed FUND GUARANTEE), then opens again;
+ *   5 · a close after the first event is refused in the service's words; an earlier close is accepted (MB-28);
+ *   6 · on the seeded weeks (`/api/dev-test/seed-maswali`; a 409 means the shots already seeded this store): seals the
+ *       closed week's fifteen results (typed SEAL); reads the ready week's prepared settlement, then releases it (typed
+ *       RELEASE); pauses and resumes sales (PAUSE / RESUME); voids the week that voids whole (VOID); holds, releases,
+ *       holds again and forfeits a winning share (HOLD, RELEASE, FORFEIT SHARE).
+ * After each act: what the page SAYS (the outcome sentence and the state chip), no console error since the act before,
+ * and a viewport tile (never full-page) in `.50pick-shots/maswali/drive/`.
+ * ⛔ The only routes it calls itself are those two dev-only ones; everything else is a click, a key or a typed word.
+ * ⚠️ THE WEEK VOID NEEDS THE TICK OFF (`MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false` on the dev server): the Millionea
+ *    tick voids a certain week as soon as its window has closed (`maswali-scheduler.ts`), so with it on, the seeded
+ *    week is voided by the system first and 6.4 SKIPs, saying so.
+ * ⛔ Localhost and the in-memory store only (`next dev` on 127.0.0.1 never hydrates on this machine).
+ * ⚠️ No backslash escape for a slash, a word boundary or a control character anywhere in this file: the edit tools
+ *    decode them (`test:source-bytes`). A slash in a pattern is written `[/]`.
+ */
+import { chromium } from "playwright";
+import { mkdirSync } from "node:fs";
+
+const BASE = process.env.BASE || "http://localhost:3410";
+if (!/^http:[/][/]localhost(:\d+)?$/.test(BASE)) { console.error("refusing: BASE must be a localhost dev server"); process.exit(2); }
+{
+  // It moves (dev) money and stamps weeks: never against a server that reports a database.
+  const health = await fetch(`${BASE}/api/health`).then((r) => r.json()).catch(() => null);
+  if (!health || health.database?.configured !== false) {
+    console.error(`refusing: ${BASE} does not report the in-memory store (database.configured=${JSON.stringify(health?.database?.configured)})`);
+    process.exit(2);
+  }
+}
+const OUT = ".50pick-shots/maswali/drive";
+mkdirSync(OUT, { recursive: true });
+
+let pass = 0, fail = 0, skip = 0;
+const ok = (n, c, e = "") => { if (c) pass++; else fail++; console.log(`${c ? "PASS" : "FAIL"} ${n}${e ? ` — ${e}` : ""}`); return !!c; };
+const skipped = (n, why) => { skip++; console.log(`SKIP ${n} — ${why}`); };
+const clip = (s, n = 4000) => String(s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const num = (s) => Number(String(s).replace(/,/g, ""));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Ask until it answers (truthy) or the time is up. Never throws: a read between two renders just asks again. */
+async function until(fn, ms = 60_000, every = 250) {
+  const end = Date.now() + ms;
+  for (;;) {
+    try { const v = await fn(); if (v) return v; } catch { /* the page is between renders */ }
+    if (Date.now() > end) return null;
+    await sleep(every);
+  }
+}
+
+// ── The week's calendar, in EAT, exactly as the console prints it (`fmtEat`, maswali-admin-format.ts) ─────────────
+const DAY = 86_400_000;
+const EAT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Africa/Dar_es_Salaam", weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+const fmtEat = (ms) => EAT.format(new Date(ms));
+const eatMs = (iso, hhmm) => Date.parse(`${iso}T${hhmm}:00+03:00`);
+const plusDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
+const words = (iso) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+
+/**
+ * The fifteen cards. Every source is a trusted default for its category (`seedDefaultSources`), the reserves come from
+ * five distinct sources (OD-14 asks three), every chance sits inside the 30–70% band, no two cards share an event, and
+ * every start falls after the Friday close and its buffer — Saturday for the mains, Sunday for the reserves, all in EAT
+ * (no clock change to step on). `fills` names the facts each kind's template asks for; `{date}` is added from the day.
+ */
+const ROWS = [
+  { label: "M1", category: "sports", kind: "sport", day: "sat", time: "10:00", pct: "50", url: "https://www.nbc.co.tz/results",
+    en: "Will Simba SC beat Azam FC on Saturday?", sw: "Je, Simba SC watawafunga Azam FC Jumamosi?", zh: "辛巴队周六会击败阿扎姆队吗？",
+    fills: { home: "Simba SC", away: "Azam FC" },
+    critSw: "NDIO ikiwa Simba SC watawafunga Azam FC ndani ya dakika 90 na nyongeza, kama matokeo rasmi ya chanzo yanavyoonyesha; HAPANA kwa sare au ushindi wa Azam FC.",
+    critZh: "如果来源公布的最终比分显示辛巴队在常规时间（90分钟加补时）击败阿扎姆队，则为是；平局或阿扎姆队获胜则为否。",
+    psrc: "Bookmaker consensus, Friday prices" },
+  { label: "M2", category: "sports", kind: "sport", day: "sat", time: "11:00", pct: "45", url: "https://www.tff.or.tz/fixtures",
+    en: "Will Taifa Stars beat Harambee Stars on Saturday?", sw: "Je, Taifa Stars watawafunga Harambee Stars Jumamosi?", zh: "坦桑尼亚国家队周六会击败肯尼亚国家队吗？",
+    fills: { home: "Taifa Stars", away: "Harambee Stars" },
+    critSw: "NDIO ikiwa Taifa Stars watawafunga Harambee Stars ndani ya dakika 90 na nyongeza, kama matokeo rasmi ya chanzo yanavyoonyesha; HAPANA kwa sare au ushindi wa Harambee Stars.",
+    critZh: "如果来源公布的最终比分显示坦桑尼亚国家队在常规时间击败肯尼亚国家队，则为是；平局或肯尼亚国家队获胜则为否。",
+    psrc: "Bookmaker consensus, Friday prices" },
+  { label: "M3", category: "macro", kind: "price", day: "sat", time: "12:00", pct: "55", url: "https://www.bot.go.tz/rates", tolerance: "Two decimals, as published",
+    en: "Will the US dollar close above TZS 2,700 at the Bank of Tanzania on Saturday?", sw: "Je, dola ya Marekani itafunga juu ya TZS 2,700 Benki Kuu ya Tanzania Jumamosi?", zh: "周六坦桑尼亚央行公布的美元汇率会收于2,700先令以上吗？",
+    fills: { asset: "the US dollar mid rate", level: "TZS 2,700", tolerance: "to two decimals, as published" },
+    critSw: "NDIO ikiwa kiwango cha kati cha dola ya Marekani kitafunga juu ya TZS 2,700 siku hiyo, kama chanzo kinavyochapisha; HAPANA vinginevyo.",
+    critZh: "如果来源公布的当日美元中间价收于2,700先令以上，则为是；否则为否。",
+    psrc: "The rate's last twenty closes" },
+  { label: "M4", category: "weather", kind: "weather", day: "sat", time: "13:00", pct: "40", url: "https://www.meteo.go.tz/bulletin",
+    en: "Will Dar es Salaam record at least 5 mm of rain on Saturday?", sw: "Je, Dar es Salaam itapata angalau mm 5 za mvua Jumamosi?", zh: "达累斯萨拉姆周六的降雨量会达到至少5毫米吗？",
+    fills: { amount: "5", station: "Julius Nyerere International Airport" },
+    critSw: "NDIO ikiwa chanzo kitaripoti angalau mm 5 za mvua katika Uwanja wa Ndege wa Kimataifa wa Julius Nyerere siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果来源报告当日朱利叶斯尼雷尔国际机场的降雨量至少为5毫米，则为是；否则为否。",
+    psrc: "TMA's seasonal outlook" },
+  { label: "M5", category: "crypto", kind: "price", day: "sat", time: "14:00", pct: "60", url: "https://www.coingecko.com/en/coins/bitcoin", tolerance: "The daily close, in whole dollars",
+    en: "Will Bitcoin close above USD 60,000 on Saturday?", sw: "Je, Bitcoin itafunga juu ya dola 60,000 Jumamosi?", zh: "比特币周六的收盘价会高于60,000美元吗？",
+    fills: { asset: "Bitcoin in US dollars", level: "USD 60,000", tolerance: "the daily close, in whole dollars" },
+    critSw: "NDIO ikiwa bei ya kufunga ya Bitcoin siku hiyo itakuwa juu ya dola 60,000, kama chanzo kinavyochapisha; HAPANA vinginevyo.",
+    critZh: "如果来源公布的比特币当日收盘价高于60,000美元，则为是；否则为否。",
+    psrc: "The price's last thirty closes" },
+  { label: "M6", category: "culture", kind: "announcement", day: "sat", time: "15:00", pct: "35", url: "https://www.itv.co.tz/bss",
+    en: "Will ITV announce the Bongo Star Search finalists on Saturday?", sw: "Je, ITV itatangaza washiriki wa fainali wa Bongo Star Search Jumamosi?", zh: "ITV周六会公布《邦戈之星》的决赛选手吗？",
+    fills: { body: "ITV Tanzania", what: "the Bongo Star Search finalists", time: "20:00" },
+    critSw: "NDIO ikiwa ITV Tanzania itatangaza washiriki wa fainali wa Bongo Star Search kwenye chaneli yake rasmi kufikia saa 20:00 EAT siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果ITV坦桑尼亚在当日东非时间20:00前通过官方渠道公布《邦戈之星》决赛选手，则为是；否则为否。",
+    psrc: "The show's past seasons" },
+  { label: "M7", category: "tech", kind: "announcement", day: "sat", time: "16:00", pct: "65", url: "https://www.tcra.go.tz/statistics",
+    en: "Will TCRA publish its quarterly telecom statistics on Saturday?", sw: "Je, TCRA itachapisha takwimu zake za mawasiliano za robo mwaka Jumamosi?", zh: "坦桑尼亚通信管理局周六会发布季度电信统计吗？",
+    fills: { body: "TCRA", what: "its quarterly telecom statistics", time: "21:00" },
+    critSw: "NDIO ikiwa TCRA itachapisha takwimu zake za mawasiliano za robo mwaka kwenye chaneli yake rasmi kufikia saa 21:00 EAT siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果坦桑尼亚通信管理局在当日东非时间21:00前通过官方渠道发布季度电信统计，则为是；否则为否。",
+    psrc: "TCRA's publication calendar" },
+  { label: "M8", category: "sports", kind: "sport", day: "sat", time: "17:00", pct: "50", url: "https://www.nbc.co.tz/results",
+    en: "Will Young Africans beat Coastal Union on Saturday?", sw: "Je, Young Africans watawafunga Coastal Union Jumamosi?", zh: "青年非洲队周六会击败海岸联队吗？",
+    fills: { home: "Young Africans", away: "Coastal Union" },
+    critSw: "NDIO ikiwa Young Africans watawafunga Coastal Union ndani ya dakika 90 na nyongeza, kama matokeo rasmi ya chanzo yanavyoonyesha; HAPANA kwa sare au ushindi wa Coastal Union.",
+    critZh: "如果来源公布的最终比分显示青年非洲队在常规时间击败海岸联队，则为是；平局或海岸联队获胜则为否。",
+    psrc: "Bookmaker consensus, Friday prices" },
+  { label: "M9", category: "macro", kind: "announcement", day: "sat", time: "18:00", pct: "45", url: "https://www.tra.go.tz/notices",
+    en: "Will the TRA announce new fuel levy rates on Saturday?", sw: "Je, TRA itatangaza viwango vipya vya tozo ya mafuta Jumamosi?", zh: "坦桑尼亚税务局周六会公布新的燃油税率吗？",
+    fills: { body: "the TRA", what: "new fuel levy rates", time: "22:00" },
+    critSw: "NDIO ikiwa TRA itatangaza viwango vipya vya tozo ya mafuta kwenye chaneli yake rasmi kufikia saa 22:00 EAT siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果坦桑尼亚税务局在当日东非时间22:00前通过官方渠道公布新的燃油税率，则为是；否则为否。",
+    psrc: "The TRA's notice history" },
+  { label: "M10", category: "weather", kind: "weather", day: "sat", time: "19:00", pct: "55", url: "https://www.meteo.go.tz/bulletin",
+    en: "Will Arusha record at least 2 mm of rain on Saturday?", sw: "Je, Arusha itapata angalau mm 2 za mvua Jumamosi?", zh: "阿鲁沙周六的降雨量会达到至少2毫米吗？",
+    fills: { amount: "2", station: "Arusha Airport" },
+    critSw: "NDIO ikiwa chanzo kitaripoti angalau mm 2 za mvua katika Uwanja wa Ndege wa Arusha siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果来源报告当日阿鲁沙机场的降雨量至少为2毫米，则为是；否则为否。",
+    psrc: "TMA's seasonal outlook" },
+  { label: "A1", category: "sports", kind: "sport", day: "sun", time: "10:00", pct: "50", url: "https://www.nbc.co.tz/results",
+    en: "Will Singida Black Stars beat KMC FC on Sunday?", sw: "Je, Singida Black Stars watawafunga KMC FC Jumapili?", zh: "辛吉达黑星队周日会击败KMC队吗？",
+    fills: { home: "Singida Black Stars", away: "KMC FC" },
+    critSw: "NDIO ikiwa Singida Black Stars watawafunga KMC FC ndani ya dakika 90 na nyongeza, kama matokeo rasmi ya chanzo yanavyoonyesha; HAPANA kwa sare au ushindi wa KMC FC.",
+    critZh: "如果来源公布的最终比分显示辛吉达黑星队在常规时间击败KMC队，则为是；平局或KMC队获胜则为否。",
+    psrc: "Bookmaker consensus, Friday prices" },
+  { label: "A2", category: "macro", kind: "price", day: "sun", time: "11:00", pct: "40", url: "https://www.bot.go.tz/rates", tolerance: "Two decimals, as published",
+    en: "Will the euro close above TZS 3,000 at the Bank of Tanzania on Sunday?", sw: "Je, yuro itafunga juu ya TZS 3,000 Benki Kuu ya Tanzania Jumapili?", zh: "周日坦桑尼亚央行公布的欧元汇率会收于3,000先令以上吗？",
+    fills: { asset: "the euro mid rate", level: "TZS 3,000", tolerance: "to two decimals, as published" },
+    critSw: "NDIO ikiwa kiwango cha kati cha yuro kitafunga juu ya TZS 3,000 siku hiyo, kama chanzo kinavyochapisha; HAPANA vinginevyo.",
+    critZh: "如果来源公布的当日欧元中间价收于3,000先令以上，则为是；否则为否。",
+    psrc: "The rate's last twenty closes" },
+  { label: "A3", category: "weather", kind: "weather", day: "sun", time: "12:00", pct: "60", url: "https://www.meteo.go.tz/bulletin",
+    en: "Will Mwanza record at least 3 mm of rain on Sunday?", sw: "Je, Mwanza itapata angalau mm 3 za mvua Jumapili?", zh: "姆万扎周日的降雨量会达到至少3毫米吗？",
+    fills: { amount: "3", station: "Mwanza Airport" },
+    critSw: "NDIO ikiwa chanzo kitaripoti angalau mm 3 za mvua katika Uwanja wa Ndege wa Mwanza siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果来源报告当日姆万扎机场的降雨量至少为3毫米，则为是；否则为否。",
+    psrc: "TMA's seasonal outlook" },
+  { label: "A4", category: "crypto", kind: "price", day: "sun", time: "13:00", pct: "45", url: "https://www.coingecko.com/en/coins/ethereum", tolerance: "The daily close, in whole dollars",
+    en: "Will Ethereum close above USD 2,500 on Sunday?", sw: "Je, Ethereum itafunga juu ya dola 2,500 Jumapili?", zh: "以太坊周日的收盘价会高于2,500美元吗？",
+    fills: { asset: "Ethereum in US dollars", level: "USD 2,500", tolerance: "the daily close, in whole dollars" },
+    critSw: "NDIO ikiwa bei ya kufunga ya Ethereum siku hiyo itakuwa juu ya dola 2,500, kama chanzo kinavyochapisha; HAPANA vinginevyo.",
+    critZh: "如果来源公布的以太坊当日收盘价高于2,500美元，则为是；否则为否。",
+    psrc: "The price's last thirty closes" },
+  { label: "A5", category: "tech", kind: "announcement", day: "sun", time: "14:00", pct: "55", url: "https://www.tcra.go.tz/statistics",
+    en: "Will TCRA announce a new spectrum auction on Sunday?", sw: "Je, TCRA itatangaza mnada mpya wa masafa Jumapili?", zh: "坦桑尼亚通信管理局周日会宣布新的频谱拍卖吗？",
+    fills: { body: "TCRA", what: "a new spectrum auction", time: "20:00" },
+    critSw: "NDIO ikiwa TCRA itatangaza mnada mpya wa masafa kwenye chaneli yake rasmi kufikia saa 20:00 EAT siku hiyo; HAPANA vinginevyo.",
+    critZh: "如果坦桑尼亚通信管理局在当日东非时间20:00前通过官方渠道宣布新的频谱拍卖，则为是；否则为否。",
+    psrc: "TCRA's publication calendar" },
+];
+
+const LICENCE_REF = "The Owner's dated ruling, kept in the compliance binder (drive)";
+const PAUSE_WHY = "Drive: a fixture moved; sales stop while it is checked.";
+const RESUME_WHY = "Drive: the fixture is confirmed; sales start again.";
+const HOLD_WHY = "Drive: the deposit that funded this ticket is under review.";
+const RELEASE_WHY = "Drive: the review cleared the deposit; the player keeps the share.";
+const FORFEIT_WHY = "Drive: the deposit was reversed; the share goes back to the jackpot.";
+
+// ── The browser: one context per account ───────────────────────────────────────────────────────────────────────────
+const browser = await chromium.launch();
+const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const page = await ctx.newPage();
+const errs = [];
+function watch(p, who) {
+  p.setDefaultNavigationTimeout(180_000);
+  p.setDefaultTimeout(30_000);
+  p.on("console", (m) => { if (m.type() === "error") errs.push(`${who}: ${m.text().slice(0, 300)}`); });
+  p.on("pageerror", (e) => errs.push(`${who}: ${String(e).slice(0, 300)}`));
+}
+watch(page, "owner");
+
+/** Drawn AND hydrated — a fiber on <main> — before the first click (qa:journey-preview's `settle`). */
+async function settle(p) {
+  await p.waitForLoadState("domcontentloaded");
+  await p.locator("main").first().waitFor({ timeout: 120_000 });
+  await p.waitForFunction(() => {
+    const m = document.querySelector("main");
+    return !!m && Object.keys(m).some((k) => k.startsWith("__reactFiber$"));
+  }, null, { timeout: 120_000 });
+  // The dev server's own badge sits over the page's corner: out of the tiles and out of the way of a click.
+  await p.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});
+  await p.waitForTimeout(900);
+}
+async function go(p, path) { await p.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" }); await settle(p); }
+// ⛔ caret "initial": Playwright's caret hiding writes an inline style onto every input, which React then reports as a
+// hydration mismatch that is the harness's, never the app's (qa:tax-report's note).
+const shot = (p, name) => p.screenshot({ path: `${OUT}/${name}.png`, fullPage: false, caret: "initial" });
+/** The end of one act: its tile, and no console error since the act before. */
+async function checkpoint(p, label, name) {
+  await p.waitForTimeout(400); // a console error raised by the act's last render lands first
+  await shot(p, name);
+  ok(`${label} · no console error`, errs.length === 0, errs.slice(0, 3).join(" | "));
+  errs.length = 0;
+}
+
+// ── Locators: roles, labels and words; the cards by their own title hook, never by a class ──────────────────────────
+/** An AdminCard by its title (`data-section-heading`). The titles used here carry no pattern characters. */
+const card = (p, title) => p.locator("[data-card-pad]").filter({ has: p.locator("[data-section-heading]").filter({ hasText: new RegExp(`^${title}$`) }) });
+/** A ScrollX table region by its label. */
+const region = (p, name) => p.getByRole("region", { name, exact: true });
+/** The week page's state chip: the last block of its head (`AdminPageHead` actions). */
+const chipOf = async (p) => clip(await p.locator("main header").filter({ has: p.locator("h1") }).first().locator(":scope > div").last().textContent().catch(() => ""));
+/** A week's state chip in the weeks list on /admin/maswali. */
+async function listChip(p, code) {
+  const row = region(p, "Millionea weeks").getByRole("row").filter({ has: p.getByRole("link", { name: code, exact: true }) });
+  return clip(await row.getByRole("cell").nth(2).textContent().catch(() => ""));
+}
+const alertText = async (loc) => clip((await loc.allTextContents()).join(" "));
+
+/** Pick an option of the kit Select (an APG combobox whose listbox is portalled to <body>), then read the choice back. */
+async function choose(p, combo, label) {
+  if (clip(await combo.textContent()) === label) return;
+  await combo.click();
+  await p.getByRole("option", { name: label, exact: true }).click();
+  await until(async () => clip(await combo.textContent()) === label, 10_000);
+}
+/**
+ * Type into a kit DateSelect / TimeSelect segment as a person does. ⛔ Never `fill`: the segment moves its caret to the
+ * end on focus and holds two digits, so a filled value is refused without a word (the tax drive's `typeSeg`).
+ */
+async function typeSeg(seg, value) { await seg.click(); await seg.press("Control+a"); await seg.pressSequentially(value); }
+async function typeDate(scope, iso) {
+  const [y, m, d] = iso.split("-");
+  await typeSeg(scope.getByRole("textbox", { name: "Day", exact: true }), d);
+  await typeSeg(scope.getByRole("textbox", { name: "Month", exact: true }), m);
+  await typeSeg(scope.getByRole("textbox", { name: "Year", exact: true }), y);
+}
+async function typeTime(group, hhmm) {
+  const [h, m] = hhmm.split(":");
+  await typeSeg(group.getByRole("textbox").nth(0), h);
+  await typeSeg(group.getByRole("textbox").nth(1), m);
+}
+
+/**
+ * Drive one kit ConfirmModal to its end. `fields` fills the dialog's own body; a hard tier then types its word — its
+ * confirm must be dead until then (`gated`) — and the confirm is pressed. The controls close their dialog only when the
+ * act went through (`closed`); a refusal leaves it open and prints the service's sentence behind it, read from `alert`.
+ */
+async function confirmDialog(p, title, { word, confirm, alert, fields }) {
+  const dlg = p.getByRole("alertdialog", { name: title, exact: true });
+  await dlg.waitFor({ timeout: 30_000 });
+  if (fields) await fields(dlg);
+  const press = dlg.getByRole("button", { name: confirm, exact: true });
+  let gated = true;
+  if (word) {
+    gated = await press.isDisabled();
+    await dlg.getByPlaceholder(word, { exact: true }).fill(word);
+  }
+  await press.click();
+  const end = await until(async () => {
+    if ((await dlg.count()) === 0) return { closed: true };
+    const busy = (await dlg.getAttribute("aria-busy", { timeout: 1_000 }).catch(() => null)) === "true";
+    const said = alert ? await alertText(alert) : "";
+    return said && !busy ? { closed: false, refusal: said } : null;
+  }, 120_000);
+  const cancel = async () => {
+    // The scrim is a "Cancel" button too; the dialog's own Cancel comes last.
+    if ((await dlg.count()) > 0) await dlg.getByRole("button", { name: "Cancel", exact: true }).last().click();
+    await dlg.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+  };
+  return { gated, closed: !!end?.closed, refusal: end?.refusal ?? (end ? "" : "the dialog neither closed nor said why"), cancel };
+}
+
+/** Run one part; a throw is that part's failure, and the drive goes on to the next part. */
+async function part(name, fn) {
+  try { await fn(); } catch (e) { ok(`${name} · ran to its end`, false, clip(e?.message ?? e, 300)); errs.length = 0; }
+}
+
+// ── State the parts hand on ──────────────────────────────────────────────────────────────────────────────────────────
+let standing = { licence: "?", guarantee: "?" };
+let weekPath = null, driveCode = null, opened = false;
+let SAT = null, SUN = null, THU = null;
+
+// ── 1 · the Owner ────────────────────────────────────────────────────────────────────────────────────────────────────
+await part("1 · sign in", async () => {
+  const admin = await ctx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { phone: "+255700000000" } });
+  ok("1.1 signed in as the Owner", admin.ok(), String(admin.status()));
+  await go(page, "/admin/maswali");
+  ok("1.2 the Owner reaches the Millionea console", (await page.getByRole("heading", { level: 1, name: "Millionea", exact: true }).count()) > 0);
+  const head = clip(await page.locator("main").textContent());
+  standing = {
+    licence: /Licence basis[\s\S]{0,80}?(None|Board letter|Owner ruling|Unreadable)/.exec(head)?.[1] ?? "?",
+    guarantee: /Guarantee[\s\S]{0,40}?(TZS [\d,]+|Unreadable)/.exec(head)?.[1] ?? "?",
+  };
+  ok(`1.3 the standing reads: licence basis ${standing.licence}, guarantee ${standing.guarantee}`, standing.licence !== "?" && standing.guarantee !== "?");
+  await checkpoint(page, "1", "01-weeks");
+});
+
+// ── 3 · the draft ────────────────────────────────────────────────────────────────────────────────────────────────────
+await part("3 · draft", async () => {
+  // The registry the open's checklist asks (`isSourceTrusted`); its page seeds the defaults on first use.
+  await go(page, "/admin/sources");
+  const listed = await page.locator("main").textContent();
+  const domains = [...new Set(ROWS.map((r) => new URL(r.url).hostname.replace(/^www[.]/, "")))];
+  const missing = domains.filter((d) => !listed.includes(d));
+  ok(`3.0 every source the draft cites is on the trusted list (${domains.length} domains)`, missing.length === 0, missing.join(", "));
+  await checkpoint(page, "3.0", "02-sources");
+
+  await go(page, "/admin/maswali/new");
+  ok("3.1 the builder opens", (await page.getByRole("heading", { level: 1, name: "Draft a week", exact: true }).count()) > 0);
+  const startField = page.locator("label").filter({ hasText: "The Monday the week starts" });
+  const seg = (name) => startField.getByRole("textbox", { name, exact: true }).inputValue();
+  const monday = `${await seg("Year")}-${await seg("Month")}-${await seg("Day")}`;
+  ok(`3.1b it offers the next Monday (${monday})`, /^\d{4}-\d{2}-\d{2}$/.test(monday) && new Date(`${monday}T00:00:00Z`).getUTCDay() === 1, monday);
+  SAT = plusDays(monday, 5); SUN = plusDays(monday, 6); THU = plusDays(monday, 3);
+  for (const r of ROWS) {
+    r.date = r.day === "sat" ? SAT : SUN;
+    r.fills.date = words(r.date);
+    r.expectEat = fmtEat(eatMs(r.date, r.time));
+  }
+
+  const line = page.getByRole("combobox", { name: "Line", exact: true });
+  await choose(page, line, "Drive (private)");
+  ok("3.2 the line is the private drive (a public week is selling, and one sells at a time, MR-3)", clip(await line.textContent()) === "Drive (private)", clip(await line.textContent()));
+
+  // §7b S4 item 7 · a suggestion fills a card; the officer edits from there (only the English words are kept here).
+  const calendar = page.locator("details").filter({ hasText: "Start from the calendar" });
+  if ((await calendar.count()) === 0) {
+    skipped("3.3 a calendar suggestion fills a card", "this store has no fixture or AI-drafted poll in the week's window — the in-memory store seeds neither (draftSuggestions, maswali-console.ts:172; the list renders only when it has one, week-builder.tsx:142)");
+  } else {
+    await calendar.locator("summary").click();
+    const fillSel = calendar.getByRole("combobox").first();
+    const named = await fillSel.evaluate((el) => document.getElementById(el.getAttribute("aria-labelledby") ?? "")?.textContent ?? "");
+    const sgText = clip(named.replace(/^Fill a slot with /, ""));
+    await fillSel.click();
+    await page.getByRole("option", { name: "M1", exact: true }).click();
+    const m1 = page.locator('section[aria-label="Question M1"]').getByRole("textbox", { name: "Question · English", exact: true });
+    const took = await until(async () => clip(await m1.inputValue()) === sgText, 10_000);
+    ok(`3.3 a calendar suggestion fills M1 with its words ("${clip(sgText, 60)}")`, !!took && sgText.length > 0, clip(await m1.inputValue(), 120));
+    if (took) { ROWS[0].keepEnglish = true; ROWS[0].en = sgText; }
+  }
+
+  const cards = [];
+  for (const r of ROWS) {
+    const sec = page.locator(`section[aria-label="Question ${r.label}"]`);
+    const field = (name) => sec.getByRole("textbox", { name, exact: true });
+    await sec.scrollIntoViewIfNeeded();
+    await choose(page, sec.getByRole("combobox", { name: `${r.label} category`, exact: true }), r.category);
+    await choose(page, sec.getByRole("combobox", { name: `${r.label} kind`, exact: true }), r.kind);
+    if (!r.keepEnglish) await field("Question · English").fill(r.en);
+    await field("Question · Kiswahili").fill(r.sw);
+    await field("Question · 中文").fill(r.zh);
+    // MB-21 · the kind's own template, read back from the box, then every {…} filled from the card's facts.
+    await sec.getByRole("button", { name: `Use the ${r.kind} template`, exact: true }).click();
+    const crit = field("How it resolves · English");
+    const warn = sec.getByText(/^Fill every .+ before saving[.]$/);
+    const template = (await until(async () => { const v = await crit.inputValue(); return /[{}]/.test(v) ? v : null; }, 10_000)) ?? "";
+    const flagged = (await warn.count()) > 0;
+    const filled = template.replace(/[{](\w+)[}]/g, (m, k) => r.fills[k] ?? m);
+    await crit.fill(filled);
+    const cleared = !!(await until(async () => (await warn.count()) === 0, 10_000));
+    await field("How it resolves · Kiswahili").fill(r.critSw);
+    await field("How it resolves · 中文").fill(r.critZh);
+    await typeDate(sec, r.date);
+    await typeTime(sec.getByRole("group", { name: `${r.label} start time`, exact: true }), r.time);
+    await field("Source (the official result)").fill(r.url);
+    await field("Estimated chance of YES (%)").fill(r.pct);
+    await field("Where the estimate comes from").fill(r.psrc);
+    if (r.tolerance) await sec.getByRole("textbox", { name: /^Reading tolerance/ }).fill(r.tolerance);
+    cards.push({ label: r.label, template: template.length > 0, flagged, cleared, braceFree: !/[{}]/.test(filled) });
+  }
+  const off = cards.filter((c) => !(c.template && c.flagged && c.cleared && c.braceFree));
+  ok(`3.4 every card took its kind's template, the builder flagged its {…}, and every one was filled (${cards.length - off.length} of 15)`, cards.length === 15 && off.length === 0, JSON.stringify(off).slice(0, 300));
+
+  const save = page.getByRole("button", { name: "Save the draft", exact: true });
+  await save.scrollIntoViewIfNeeded();
+  await shot(page, "03-builder-filled");
+  const saveBar = page.locator("div").filter({ has: save }).last();
+  await save.click();
+  const landed = await until(async () => {
+    if (/^[/]admin[/]maswali[/]mlw_[^/]+$/.test(new URL(page.url()).pathname)) return "week";
+    const said = await alertText(saveBar.getByRole("alert"));
+    return said ? `refused: ${said}` : null;
+  }, 120_000);
+  if (!ok("3.5 the draft saves and the builder hands over to the week's own page", landed === "week", landed ?? "nothing happened")) return;
+  weekPath = new URL(page.url()).pathname;
+  const h1 = page.getByRole("heading", { level: 1 }).first();
+  await until(async () => /^MLD-\d{4}-W\d{2}$/.test(clip(await h1.textContent())), 120_000);
+  driveCode = clip(await h1.textContent());
+  ok(`3.6 the week is ${driveCode}, on the drive line, its chip Draft`, /^MLD-\d{4}-W\d{2}$/.test(driveCode) && (await chipOf(page)) === "Draft", `${driveCode} · ${await chipOf(page)}`);
+  const problems = (await card(page, "Before it can open").getByRole("listitem").allTextContents()).map((t) => clip(t).replace(/^•\s*/, ""));
+  ok("3.7 the open's checklist names one thing left, in words: the second reader's attestation (MB-79)",
+    problems.length === 1 && /A second reader has not attested/.test(problems[0]), problems.join(" | ").slice(0, 400));
+  const qs = region(page, "Millionea week questions");
+  const off2 = [];
+  for (const r of ROWS) {
+    const cells = qs.getByRole("row").filter({ has: page.getByRole("cell", { name: r.label, exact: true }) }).getByRole("cell");
+    const got = { en: clip(await cells.nth(1).textContent()), eat: clip(await cells.nth(3).textContent()), chance: clip(await cells.nth(5).textContent()) };
+    if (got.en !== r.en || got.eat !== r.expectEat || got.chance !== `${r.pct}%`) off2.push({ slot: r.label, ...got, want: r.expectEat });
+  }
+  ok("3.8 the week page holds the fifteen as typed: the English words, each start in EAT, each chance (15 of 15)", off2.length === 0, JSON.stringify(off2).slice(0, 300));
+  await checkpoint(page, "3", "04-draft");
+});
+
+// ── 4 · attest, then open (with 2 · the Owner's ceremonies when the open asks for them) ─────────────────────────────
+async function recordLicence() {
+  await go(page, "/admin/maswali/pools");
+  const sec = page.locator("section").filter({ has: page.getByRole("heading", { name: "Licence basis", exact: true }) });
+  // The basis stays the Owner's dated ruling, the ceremony's own default.
+  await sec.getByRole("textbox", { name: "Where it is kept", exact: true }).fill(LICENCE_REF);
+  await sec.getByRole("button", { name: "Record", exact: true }).click();
+  const r = await confirmDialog(page, "Record the licence basis?", { word: "RECORD", confirm: "Record it", alert: sec.getByRole("alert") });
+  const now = r.closed && await until(async () => clip(await sec.textContent()).includes(`Now: the Owner's ruling · ${LICENCE_REF}`), 60_000);
+  ok("2a · the open needed a licence basis: the Owner records the dated ruling (the confirm armed only on RECORD)", r.gated && !!now, r.refusal || clip(await sec.textContent(), 200));
+  await checkpoint(page, "2a", "02a-licence-recorded");
+}
+async function fundGuarantee(amount) {
+  await go(page, "/admin/maswali/pools");
+  const sec = page.locator("section").filter({ has: page.getByRole("heading", { name: "Guarantee", exact: true }) });
+  await sec.getByRole("textbox", { name: "Amount (TZS)", exact: true }).fill(String(amount));
+  await sec.getByRole("textbox", { name: "Bank or rail reference", exact: true }).fill(`DRIVE-FUND-${Date.now()}`);
+  await sec.getByRole("button", { name: "Pay in", exact: true }).click();
+  const r = await confirmDialog(page, "Pay into the guarantee?", { word: "FUND GUARANTEE", confirm: "Pay it in", alert: sec.getByRole("alert") });
+  const note = r.closed ? await until(async () => (await alertText(sec.getByRole("status"))).match(/The guarantee now holds TZS [\d,]+[.]/)?.[0] ?? null, 60_000) : null;
+  ok(`2b · the open needed TZS ${amount.toLocaleString("en")} more guarantee: the Owner pays it in (the confirm armed only on FUND GUARANTEE) — "${note ?? ""}"`, r.gated && !!note, r.refusal);
+  await checkpoint(page, "2b", "02b-guarantee-funded");
+}
+
+await part("4 · attest and open", async () => {
+  if (!weekPath) { ok("4 · a drafted week to attest and open", false, "step 3 left no week"); return; }
+  const own = card(page, "Before it can open");
+  await own.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
+  const refused = await until(() => alertText(own.getByRole("alert")), 30_000);
+  ok("4.1 the drafter's own attestation is refused: a second reader must attest (MB-79)", /cannot attest its translations/.test(refused ?? ""), refused ?? "no answer on the page");
+  ok("4.1b …and the week stays an unattested draft", (await chipOf(page)) === "Draft" && (await own.getByText("The three languages are attested.", { exact: true }).count()) === 0);
+  await checkpoint(page, "4.1", "05-attest-refused");
+
+  const readerCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const reader = await readerCtx.newPage();
+    watch(reader, "reader");
+    const seeded = await readerCtx.request.post(`${BASE}/api/dev-test/seed-admin`, { data: { role: "MODERATOR", phone: "+255700000072", name: "Mo Second Reader" } });
+    ok("4.2 a second reader signs in: a MODERATOR (trading attests), in a context of their own", seeded.ok(), String(seeded.status()));
+    await go(reader, weekPath);
+    const theirs = card(reader, "Before it can open");
+    await theirs.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
+    const attested = await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
+    ok("4.2b the second reader attests: the page says the three languages are attested", !!attested, await alertText(theirs.getByRole("alert")));
+    await checkpoint(reader, "4.2", "06-attested-by-second-reader");
+  } finally {
+    await readerCtx.close();
+  }
+
+  await go(page, weekPath);
+  const ready = card(page, "Before it can open");
+  ok("4.3 back on the Owner's page: every check passes and the attestation stands",
+    (await ready.getByText("Every check passes: the week can open.", { exact: true }).count()) > 0
+      && (await ready.getByText("The three languages are attested.", { exact: true }).count()) > 0, clip(await ready.textContent(), 300));
+  await checkpoint(page, "4.3", "07-open-ready");
+
+  const needed = [];
+  for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+    const c = card(page, "Before it can open");
+    await c.getByRole("button", { name: "Open the week", exact: true }).click();
+    const r = await confirmDialog(page, "Open the week for sale?", { confirm: "Open the week", alert: c.getByRole("alert") });
+    if (r.closed) { opened = true; break; }
+    await r.cancel();
+    if (/No licence basis is recorded/.test(r.refusal)) { needed.push("licence"); await recordLicence(); await go(page, weekPath); continue; }
+    const short = /The guarantee holds TZS ([\d,]+); TZS ([\d,]+) is needed to open/.exec(r.refusal);
+    if (short) { needed.push("guarantee"); await fundGuarantee(Math.max(1, num(short[2]) - num(short[1]))); await go(page, weekPath); continue; }
+    ok("4.4 the week opens", false, r.refusal);
+    return;
+  }
+  if (!ok("4.4 the week opens", opened, `still refused after ${needed.join(", ")}`)) return;
+  if (needed.length === 0) ok(`2 · the open needed no ceremony: the licence basis (${standing.licence}) and the guarantee (${standing.guarantee}) were in place`, true);
+  const selling = await until(async () => (await chipOf(page)) === "Selling", 60_000);
+  ok("4.5 the open shows: the chip reads Selling and the close can be moved", !!selling && (await card(page, "Move the sales close").count()) > 0, await chipOf(page));
+  await checkpoint(page, "4.4", "08-opened");
+});
+
+// ── 5 · move the close ───────────────────────────────────────────────────────────────────────────────────────────────
+await part("5 · move the close", async () => {
+  if (!opened) { ok("5 · an open week whose close can move", false, "step 4 opened no week"); return; }
+  const mv = card(page, "Move the sales close");
+  const nowCloses = async () => /Now closes (.+?) [(]EAT[)][.]/.exec(clip(await mv.textContent()))?.[1] ?? null;
+  const time = mv.getByRole("group", { name: "New close time", exact: true });
+  const was = await nowCloses();
+  // Two hours after the first event (Saturday 10:00 EAT): past "the first event less its buffer" (MB-28).
+  await typeDate(mv, SAT);
+  await typeTime(time, "12:00");
+  await mv.getByRole("button", { name: "Move the close", exact: true }).click();
+  const refused = await until(() => alertText(mv.getByRole("alert")), 30_000);
+  ok("5.1 a close after the first event is refused, in the service's words", /The close must stay at least \d+ minutes before the first event[.]/.test(refused ?? ""), refused ?? "no answer on the page");
+  ok("5.1b …and the close did not move", (await nowCloses()) === was && was !== null && (await chipOf(page)) === "Selling", `${await nowCloses()} (was ${was})`);
+  await checkpoint(page, "5.1", "09-close-refused");
+
+  const want = fmtEat(eatMs(THU, "17:00"));
+  await typeDate(mv, THU);
+  await typeTime(time, "17:00");
+  await mv.getByRole("button", { name: "Move the close", exact: true }).click();
+  const moved = await until(async () => (await nowCloses()) === want, 30_000);
+  ok(`5.2 an earlier close is accepted: the page now says it closes ${want} (EAT)`, !!moved && (await mv.getByRole("alert").count()) === 0, `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
+  ok("5.2b …and the week still sells", (await chipOf(page)) === "Selling", await chipOf(page));
+  await checkpoint(page, "5.2", "10-close-moved");
+});
+
+// ── 6 · the seeded weeks ─────────────────────────────────────────────────────────────────────────────────────────────
+await part("6.0 · seed", async () => {
+  const seed = await ctx.request.post(`${BASE}/api/dev-test/seed-maswali`, { data: {}, timeout: 300_000 });
+  const body = await seed.json().catch(() => ({}));
+  if (seed.status() === 409) ok("6.0 the seeded weeks are already on this store (409: qa:maswali-admin-shots seeded them)", true);
+  else ok("6.0 seeded a week in every state", seed.ok() && body.ok === true, clip(JSON.stringify(body), 300));
+});
+
+await part("6.1 · seal", async () => {
+  await go(page, "/admin/maswali");
+  const closedRow = region(page, "Millionea weeks").getByRole("row").filter({ has: page.getByRole("cell", { name: "Closed", exact: true }) }).first();
+  if ((await closedRow.count()) === 0) { ok("6.1 a seeded week waits with its sales closed and its fifteen results unsealed", false, "no week reads Closed on /admin/maswali (the seed's weeks.closed)"); return; }
+  const link = closedRow.getByRole("link").first();
+  const code = clip(await link.textContent());
+  await link.click(); // the list's own link: a client navigation
+  await until(async () => clip(await page.getByRole("heading", { level: 1 }).first().textContent()) === code, 120_000);
+  ok(`6.1 the list's link opens ${code}: its chip Closed, the seal console ready`, (await chipOf(page)) === "Closed" && (await card(page, "Seal the results").count()) > 0, await chipOf(page));
+  const sc = card(page, "Seal the results");
+  const plan = ROWS.map((r, i) => ({ label: r.label, outcome: i < 10 && i % 2 === 1 ? "NO" : "YES" }));
+  for (const s of plan) {
+    const combo = sc.getByRole("combobox", { name: `${s.label} result`, exact: true });
+    // ⚠️ A `has` locator is re-run inside each candidate row, so it is rooted at the page, never at the card.
+    const row = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
+    await row.getByPlaceholder("What the source says", { exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
+    await choose(page, combo, s.outcome);
+  }
+  await shot(page, "11-seal-console-filled");
+  await sc.getByRole("button", { name: "Seal 15 results", exact: true }).click();
+  const r = await confirmDialog(page, "Seal 15 results?", { word: "SEAL", confirm: "Seal", alert: sc.getByRole("alert") });
+  const results = region(page, "Millionea results to seal");
+  const sealedAll = r.closed && await until(async () => {
+    for (const s of plan) {
+      const cells = results.getByRole("row").filter({ has: page.getByRole("cell", { name: s.label, exact: true }) }).getByRole("cell");
+      if (!clip(await cells.nth(3).textContent()).startsWith(s.outcome)) return false;
+    }
+    return true;
+  }, 60_000);
+  ok("6.1b fifteen results sealed in one act (the confirm armed only on SEAL): each row shows the result it was given", r.gated && !!sealedAll, r.refusal);
+  const chip = await until(async () => ((await chipOf(page)) === "Sealing" ? "Sealing" : null), 30_000);
+  ok("6.1c the week is being sealed: its chip reads Sealing and its objection window is open", chip === "Sealing" && (await page.getByText(/^Objection window to /).count()) > 0, await chipOf(page));
+  await checkpoint(page, "6.1", "12-sealed");
+});
+
+await part("6.2 · preview and release", async () => {
+  await go(page, "/admin/maswali/pools");
+  const open = region(page, "Millionea open weeks");
+  const rel = open.getByRole("button", { name: /^Release MLN-/ }).first();
+  if ((await rel.count()) === 0) { ok("6.2 a prepared settlement waits on the pools page", false, clip(await open.textContent().catch(() => "no open weeks"), 300)); return; }
+  const code = clip(await rel.textContent()).replace(/^Release /, "");
+  const row = open.getByRole("row").filter({ has: page.getByRole("button", { name: `Release ${code}`, exact: true }) });
+  const prepared = clip(await row.textContent(), 400);
+  ok(`6.2 accounting reads ${code}'s prepared settlement first`,
+    /\d+ winners? · TZS [\d,]+ each · fee TZS [\d,]+ · top-up TZS [\d,]+/.test(prepared) || /No 10 of 10: TZS [\d,]+ rolls to the jackpot[.]/.test(prepared), prepared);
+  await shot(page, "13-pools-prepared");
+  await rel.click();
+  const r = await confirmDialog(page, `Release ${code}?`, { word: "RELEASE", confirm: "Release the settlement", alert: row.getByRole("alert") });
+  const left = r.closed && await until(async () => (await open.getByRole("row").filter({ hasText: code }).count()) === 0, 60_000);
+  const trail = region(page, "Millionea rollover trail").getByRole("row").filter({ has: page.getByRole("cell", { name: code, exact: true }) });
+  ok(`6.2b released (the confirm armed only on RELEASE): ${code} leaves the open weeks and enters the rollover trail`, r.gated && !!left && (await trail.count()) > 0,
+    r.refusal || clip(await trail.textContent().catch(() => ""), 200));
+  await checkpoint(page, "6.2", "14-released");
+  await go(page, "/admin/maswali");
+  const chip = await listChip(page, code);
+  ok(`6.2c the weeks list says ${code} is Settled`, chip === "Settled", chip);
+});
+
+await part("6.3 · pause and resume", async () => {
+  await go(page, "/admin/maswali/integrity");
+  const sales = card(page, "Sales");
+  ok("6.3 the integrity page says sales run", /Selling normally[.]/.test(clip(await sales.textContent())), clip(await sales.textContent(), 200));
+  await sales.getByRole("textbox", { name: "Why sales pause", exact: true }).fill(PAUSE_WHY);
+  await sales.getByRole("button", { name: "Pause sales", exact: true }).click();
+  const p1 = await confirmDialog(page, "Pause Millionea sales?", { word: "PAUSE", confirm: "Pause", alert: sales.getByRole("alert") });
+  const paused = p1.closed && await until(async () => { const t = clip(await sales.textContent()); return /Paused since .+: /.test(t) && t.includes(PAUSE_WHY); }, 60_000);
+  ok("6.3b compliance pauses sales (the confirm armed only on PAUSE): the page says since when and why", p1.gated && !!paused, p1.refusal || clip(await sales.textContent(), 200));
+  ok("6.3c …and the control turns to Resume", (await sales.getByRole("button", { name: "Resume sales", exact: true }).count()) > 0);
+  await checkpoint(page, "6.3", "15-paused");
+
+  await go(page, "/admin/maswali");
+  const raised = card(page, "Needs attention").getByRole("listitem").filter({ hasText: `Sales are paused: ${PAUSE_WHY}` });
+  const kpi = /Sales[\s\S]{0,40}?(Paused|Running)/.exec(clip(await page.locator("main").textContent()))?.[1] ?? "?";
+  ok("6.3d the weeks page raises it under Soon, and its Sales tile reads Paused",
+    (await raised.count()) > 0 && clip(await raised.first().textContent()).startsWith("Soon") && kpi === "Paused", `tile ${kpi}`);
+  await checkpoint(page, "6.3d", "16-paused-overview");
+
+  await go(page, "/admin/maswali/integrity");
+  const again = card(page, "Sales");
+  await again.getByRole("textbox", { name: "Why sales resume", exact: true }).fill(RESUME_WHY);
+  await again.getByRole("button", { name: "Resume sales", exact: true }).click();
+  const p2 = await confirmDialog(page, "Resume Millionea sales?", { word: "RESUME", confirm: "Resume", alert: again.getByRole("alert") });
+  const running = p2.closed && await until(async () => /Selling normally[.]/.test(clip(await again.textContent())), 60_000);
+  ok("6.3e compliance resumes sales (the confirm armed only on RESUME): the page says sales run again",
+    p2.gated && !!running && (await again.getByRole("button", { name: "Pause sales", exact: true }).count()) > 0, p2.refusal || clip(await again.textContent(), 200));
+  await checkpoint(page, "6.3e", "17-resumed");
+});
+
+await part("6.4 · void a week", async () => {
+  await go(page, "/admin/maswali/integrity");
+  const vw = card(page, "Weeks that void whole");
+  const btn = vw.getByRole("button", { name: /^Void MLN-/ }).first();
+  if ((await btn.count()) === 0) {
+    await go(page, "/admin/maswali");
+    const voids = region(page, "Millionea weeks").getByRole("row").filter({ has: page.getByRole("cell", { name: "Voids whole", exact: true }) });
+    const already = [];
+    for (let i = 0; i < (await voids.count()); i++) {
+      const cells = voids.nth(i).getByRole("cell");
+      if (clip(await cells.nth(2).textContent()) === "Voided") already.push(clip(await cells.nth(0).textContent()));
+    }
+    skipped("6.4 void a week", already.length > 0
+      ? `no week waits to be voided: ${already.join(", ")} already reads Voided — the Millionea tick voided it on its own once its window had closed (maswali-scheduler.ts:81-84). Start next dev with MASWALI_SCHEDULER=false LIFECYCLE_TICKER=false to drive the console's own void.`
+      : "no seeded week's void is certain on this store (the seed's weeks.voidable)");
+    return;
+  }
+  const code = clip(await btn.textContent()).replace(/^Void /, "");
+  await btn.click();
+  const r = await confirmDialog(page, `Void ${code} whole?`, { word: "VOID", confirm: "Void and refund", alert: vw.getByRole("alert") });
+  const gone = r.closed && await until(async () => (await vw.getByRole("button", { name: `Void ${code}`, exact: true }).count()) === 0, 60_000);
+  ok(`6.4 compliance voids ${code} whole (the confirm armed only on VOID): it leaves the weeks to void`, r.gated && !!gone, r.refusal || clip(await vw.textContent(), 200));
+  await checkpoint(page, "6.4", "18-voided");
+  await go(page, "/admin/maswali");
+  const chip = await listChip(page, code);
+  ok(`6.4b the weeks list says ${code} is Voided`, chip === "Voided", chip);
+});
+
+await part("6.5 · hold, release and forfeit a share", async () => {
+  await go(page, "/admin/maswali/integrity");
+  const winners = region(page, "Millionea winners");
+  const winnerRow = (serial) => winners.getByRole("row").filter({ has: page.getByRole("cell", { name: serial, exact: true }) });
+  const heldRow = (serial) => region(page, "Millionea held shares").getByRole("row").filter({ has: page.getByRole("cell", { name: serial, exact: true }) });
+  const screening = async (serial) => clip(await winnerRow(serial).getByRole("cell").nth(6).textContent().catch(() => ""));
+  const holdable = winners.getByRole("row").filter({ has: page.getByRole("button", { name: /^Hold/ }) });
+  const n = await holdable.count();
+  if (n === 0) { ok("6.5 a paid winner waits to be screened", false, "no winner with a Hold control on /admin/maswali/integrity"); return; }
+  const info = async (i) => { const cells = holdable.nth(i).getByRole("cell"); return { serial: clip(await cells.nth(1).textContent()), holder: clip(await cells.nth(2).textContent()) }; };
+  const A = await info(0);
+  let B = null;
+  for (let i = 1; i < n; i++) { const x = await info(i); if (!B || (B.holder === A.holder && x.holder !== A.holder)) B = x; }
+  B ??= A; // a single winner is held twice: released the first time, forfeited the second
+
+  async function hold(s, tag, tile) {
+    await winnerRow(s.serial).getByRole("button", { name: /^Hold/ }).click();
+    const r = await confirmDialog(page, `Hold the share on ${s.serial}?`, {
+      word: "HOLD", confirm: "Hold it", alert: winnerRow(s.serial).getByRole("alert"),
+      fields: (d) => d.getByRole("textbox", { name: /^Why [(]a reversed deposit/ }).fill(HOLD_WHY),
+    });
+    const held = r.closed && await until(async () => (await heldRow(s.serial).count()) > 0, 60_000);
+    const said = await screening(s.serial);
+    ok(`${tag} compliance holds the share on ${s.serial} (the confirm armed only on HOLD): it is listed under Held shares and the winner reads "compliance · …"`,
+      r.gated && !!held && said === `compliance · ${HOLD_WHY}`, r.refusal || said);
+    await checkpoint(page, tag, tile);
+  }
+  await hold(A, "6.5", "19-held");
+
+  await heldRow(A.serial).getByRole("button", { name: /^Release/ }).click();
+  const r1 = await confirmDialog(page, `Release the share on ${A.serial}?`, {
+    word: "RELEASE", confirm: "Release it", alert: heldRow(A.serial).getByRole("alert"),
+    fields: (d) => d.getByRole("textbox", { name: "The decision", exact: true }).fill(RELEASE_WHY),
+  });
+  const off = r1.closed && await until(async () => (await heldRow(A.serial).count()) === 0, 60_000);
+  ok(`6.5b compliance releases it (the confirm armed only on RELEASE): ${A.serial} leaves Held shares and can be held again`,
+    r1.gated && !!off && (await winnerRow(A.serial).getByRole("button", { name: /^Hold/ }).count()) > 0, r1.refusal);
+  await checkpoint(page, "6.5b", "20-share-released");
+
+  await hold(B, "6.5c", "21-held-again");
+  await heldRow(B.serial).getByRole("button", { name: /^Forfeit/ }).click();
+  const r2 = await confirmDialog(page, `Forfeit the share on ${B.serial}?`, {
+    word: "FORFEIT SHARE", confirm: "Forfeit to the jackpot", alert: heldRow(B.serial).getByRole("alert"),
+    fields: (d) => d.getByRole("textbox", { name: "The decision", exact: true }).fill(FORFEIT_WHY),
+  });
+  const forfeited = r2.closed && await until(async () => (await heldRow(B.serial).getByText("Forfeited", { exact: true }).count()) > 0, 60_000);
+  const said = await screening(B.serial);
+  ok(`6.5d compliance forfeits ${B.serial} to the jackpot (the confirm armed only on FORFEIT SHARE): its row reads Forfeited and the winner "forfeited · …"`,
+    r2.gated && !!forfeited && said === `forfeited · ${FORFEIT_WHY}`, r2.refusal || said);
+  await checkpoint(page, "6.5d", "22-forfeited");
+});
+
+await browser.close();
+if (skip > 0) console.log(`(${skip} skipped, each with its reason above)`);
+console.log(`tiles in ${OUT}/`);
+console.log(`maswali-admin-drive: ${pass} passed, ${fail} failed`);
+process.exit(fail === 0 ? 0 : 1);

@@ -1,16 +1,22 @@
 /**
  * DEV ONLY — seed Maswali Millionea weeks in every state, through the product's own services (MASWALI-BUILD S4), for the
- * console's acceptance drive and its screenshots (`qa:maswali-admin-shots`). 404 in production.
+ * console's acceptance drive (`qa:maswali-admin-drive`) and its screenshots (`qa:maswali-admin-shots`). 404 in production.
  *
- *   POST {}  →  { ok, weeks: { settled, ready, selling, draft }, players }
+ *   POST {}  →  { ok, weeks: { settled, ready, closed, voidable, selling, draft }, players }
  *
  * ⛔ ON A FRESH STORE ONLY (a fresh in-memory `next dev`): one public week may sell at a time (MR-3), so a second call
  *    answers 409 rather than build on whatever the first left.
  *
- * The weeks sit two to five weeks ahead and run on injected week clocks, exactly as the S3 suites run them; money moves
- * through `purchaseMaswaliTickets` and `settleMaswaliWeek`. ⚠️ ONE FIXTURE OF TIME, declared: the release-ready week's
- * objection window is moved into the past (`objectionsCloseAt`, a patchable column), because a future week's window can
- * only close in the future and the pools page reads the real clock.
+ * The weeks sit two to seven weeks ahead, in calendar order as in chain order (`seq`), and run on injected week clocks,
+ * exactly as the S3 suites run them; money moves through `purchaseMaswaliTickets` and `settleMaswaliWeek`.
+ *   · `closed` — its sales closed, all fifteen results still to seal: the seal console's own state, which no real clock
+ *     reaches inside a drive (a week closes on its Friday).
+ *   · `voidable` — six mains voided against five usable reserves (MR-18), its graded set final.
+ * ⚠️ TWO FIXTURES OF TIME, declared: the release-ready and the voidable weeks' objection windows are moved into the past
+ * (`objectionsCloseAt`, a patchable column), because a future week's window can only close in the future and the pools
+ * and integrity pages read the real clock. ⚠️ The Millionea tick voids a certain week once its window has closed
+ * (`maswali-scheduler.ts`), so the voidable week waits for the console's own void only while no tick runs
+ * (`MASWALI_SCHEDULER=false` and `LIFECYCLE_TICKER=false` on the dev server); otherwise the system voids it first.
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
@@ -79,10 +85,16 @@ async function sell(weekId: string, players: string[], winners: number) {
     if (!r.ok) throw new Error(`buy: ${r.error}`);
   }
 }
-async function closeAndSeal(week: { id: string; closesAt: string }, ms: number) {
+/** Close the week, then seal all fifteen YES — or M1…M`voidedMains` VOID on the `abandoned` ground, a fact (MR-15). */
+async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, voidedMains = 0) {
   await closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) });
   for (let slot = 1; slot <= 15; slot++) {
-    const r = await sealQuestion({ weekId: week.id, slot, outcome: "YES", evidence: `Official result for event ${slot} (dev seed)`, officerId: "usr_dev_sealer", now: new Date(ms + 9 * DAY) });
+    const voided = slot <= voidedMains;
+    const r = await sealQuestion({
+      weekId: week.id, slot, outcome: voided ? "VOID" : "YES", voidReason: voided ? "abandoned" : null,
+      evidence: voided ? `Event ${slot} was abandoned with no official result (dev seed)` : `Official result for event ${slot} (dev seed)`,
+      officerId: "usr_dev_sealer", now: new Date(ms + 9 * DAY),
+    });
     if (!r.ok) throw new Error(`seal ${slot}: ${r.error}`);
   }
 }
@@ -98,7 +110,8 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "Millionea weeks already exist on this store; restart the dev server to seed again." }, { status: 409 });
     }
     const players = await Promise.all(Array.from({ length: 12 }, () => player(200_000)));
-    // A settled week (with one winner), then a week ready to release, then a selling week, then a draft.
+    // A settled week (with one winner), a week ready to release, a closed week to seal, a week that voids whole, a selling
+    // week, then a draft — each opened only once the one before it stopped selling (MR-3).
     const m1 = eatWeekStartMs(Date.now()) + 2 * 7 * DAY;
     const w1 = await opened(m1);
     await sell(w1.id, players, 1);
@@ -113,14 +126,30 @@ export async function POST() {
     const w2 = await opened(m2);
     await sell(w2.id, players, 2);
     await closeAndSeal(w2, m2);
-    await weekStore.patch(w2.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() }); // the declared fixture of time
+    await weekStore.patch(w2.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() }); // the first declared fixture of time
 
-    const m3 = m2 + 7 * DAY;
+    // Closed with every result still to seal. Its void deadlines lie weeks ahead, so the tick proposes nothing on it.
+    const mc = m2 + 7 * DAY;
+    const wc = await opened(mc);
+    await sell(wc.id, players.slice(0, 6), 0);
+    const closed = await closeWeek({ weekId: wc.id, now: new Date(Date.parse(wc.closesAt) + 60_000) });
+    if (!closed.ok) throw new Error(`close: ${closed.error}`);
+
+    // Voids whole: six voided mains outnumber the five usable reserves (MR-18), and its window has closed.
+    const mv = mc + 7 * DAY;
+    const wv = await opened(mv);
+    await sell(wv.id, players.slice(0, 6), 0);
+    await closeAndSeal(wv, mv, 6);
+    await weekStore.patch(wv.id, { objectionsCloseAt: new Date(Date.now() - 60_000).toISOString() }); // the second declared fixture of time
+
+    const m3 = mv + 7 * DAY;
     const w3 = await opened(m3);
     await sell(w3.id, players.slice(0, 8), 0);
 
     const w4 = await draft(m3 + 7 * DAY);
-    return NextResponse.json({ ok: true, weeks: { settled: w1.id, ready: w2.id, selling: w3.id, draft: w4.id }, players: players.length });
+    return NextResponse.json({
+      ok: true, weeks: { settled: w1.id, ready: w2.id, closed: wc.id, voidable: wv.id, selling: w3.id, draft: w4.id }, players: players.length,
+    });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String((err as Error).message ?? err) }, { status: 500 });
   }
