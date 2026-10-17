@@ -30,8 +30,8 @@
 ## §0 · RESUME AT
 
 **State (2026-10-17):** The build has started; no product code is written yet.
-- **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); **D2 ✅** in this commit
-  series.
+- **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); **D2 ✅ at
+  `2b335451f`**.
 - **The delivery.** Claude Design's delivery is its round 6, with Ali's form answers applied. It is filed raw at
   [`design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md); its
   `INHERIT-MANIFEST.md` holds the verdicts, Ali's rulings, the L-rows L1–L13 and the intake checks. No gate failed,
@@ -143,7 +143,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
 | S3 | Money path (local and throwaway PostgreSQL) | ⬜ | |
-| D2 | Design R2: received and inherited | 🔨 | filed 2026-10-17 at `design-system/v6-2026-10-17-millionea/`; ticked in the next commit |
+| D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | ⬜ | |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ⬜ | blocks S5 |
 | S5 | Player surfaces | ⬜ | never before D3 ✅ |
