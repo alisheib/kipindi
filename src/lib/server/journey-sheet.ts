@@ -30,6 +30,7 @@
 import { getMarket, isSelectionClosed, ratesFor, stakeBoundsForMarket, type StoredMarket } from "./market-service";
 import { positionStore } from "./market-dal";
 import { db } from "./store";
+import { storedProductLine } from "@/lib/product-line";
 import { audit } from "./audit";
 import { isMaintenanceMode } from "./platform-config";
 import { checkLossLimit, checkSessionTimeLimit, getLimitUsage, getRgSettings, isLockedOut, readSessionStanding } from "./responsible-gambling";
@@ -139,7 +140,7 @@ export function cardFigures(
 
 /** A sheet's market: a poll (never an Up & Down round or a Millionea week, S0.5), and LIVE. Anything else answers null (the route's 404). */
 function isSheetMarket(m: Pick<StoredMarket, "productLine" | "status">): boolean {
-  return m.productLine === "MARKET" && m.status === "LIVE";
+  return storedProductLine(m.productLine) === "MARKET" && m.status === "LIVE";
 }
 
 /**

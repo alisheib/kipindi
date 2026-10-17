@@ -53,9 +53,14 @@ export function assertNeverLine(line: never, where: string): never {
 /**
  * An exhaustive branch on a line, as an expression. The arms object must name every line, so adding a line is a
  * compile error at every call site rather than a silent fall-through to "poll".
+ *
+ * ⚠️ The value is read through `storedProductLine` first, like every other branch on a line: a market built before
+ * the column (a memory fixture, a legacy row) carries no line and IS a poll. The first test:all of S0.5 caught a
+ * strict read throwing on exactly that, in settle's notification check.
  */
-export function switchLine<T>(line: ProductLine, arms: { readonly [L in ProductLine]: () => T }): T {
-  const arm = arms[line];
-  if (!arm) return assertNeverLine(line as never, "switchLine");
+export function switchLine<T>(line: ProductLine | null | undefined, arms: { readonly [L in ProductLine]: () => T }): T {
+  const read = storedProductLine(line);
+  const arm = arms[read];
+  if (!arm) return assertNeverLine(read as never, "switchLine");
   return arm();
 }

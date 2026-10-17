@@ -38,6 +38,7 @@ import {
   type ShortTitleIssue,
 } from "@/lib/markets/short-title";
 import { isCompetition } from "@/lib/markets/competitions";
+import { storedProductLine } from "@/lib/product-line";
 
 export type ShortTitleField = "shortTitleEn" | "shortTitleSw" | "shortTitleZh" | "competition";
 type TitleField = Exclude<ShortTitleField, "competition">;
@@ -202,7 +203,7 @@ export async function recordShortTitleAgreement(opts: {
   try {
     const m = await marketStore.get(opts.marketId);
     // Short titles exist only on a poll's card: never on an Up & Down round or a Millionea week (S0.5).
-    if (!m || m.productLine !== "MARKET") return null;
+    if (!m || storedProductLine(m.productLine) !== "MARKET") return null;
     const shorts: Partial<Record<Locale, string>> = {};
     for (const loc of wanted) {
       const v = shortTitleFor(loc, m);

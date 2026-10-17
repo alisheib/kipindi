@@ -66,8 +66,8 @@ export const MUTATIONS = [
   {
     name: "(7) the poll scheduler arms deadlines for a week again (only rounds are skipped)",
     file: "src/lib/server/market-scheduler.ts",
-    from: "  if (m.productLine !== \"MARKET\") return null;",
-    to: "  if (m.productLine === \"UPDOWN\") return null;",
+    from: "  if (storedProductLine(m.productLine) !== \"MARKET\") return null;",
+    to: "  if (storedProductLine(m.productLine) === \"UPDOWN\") return null;",
     expect: "2.8 · nextDeadlineFor arms nothing",
     suite: "memory",
   },

@@ -581,10 +581,10 @@ log("\n── 15 · a reader reports the fee settlement took (C1; driven through
   check("15.1-control the helper settlement does NOT use on that branch DOES price the phantom (13% of the funded side)",
     Math.round(poolFee(35_000, 0, LS, "NO").fee) === 4_550);
   const readers: Array<[string, RegExp]> = [
-    ["src/lib/server/analytics.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome \}, rates\)/],
-    ["src/lib/server/platform-stats.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome \}, ratesFor\(m\)\)/],
-    ["src/app/admin/house/[marketId]/page.tsx", /chargedFee\(\{ yesPool: meta\.yesPool, noPool: meta\.noPool, resolvedOutcome: winner \}, rates\)/],
-    ["src/app/admin/markets/[id]/page.tsx", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: outcome \}, marketRates\)/],
+    ["src/lib/server/analytics.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome, productLine: m\.productLine \}, rates\)/],
+    ["src/lib/server/platform-stats.ts", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: m\.resolvedOutcome, productLine: m\.productLine \}, ratesFor\(m\)\)/],
+    ["src/app/admin/house/[marketId]/page.tsx", /chargedFee\(\{ yesPool: meta\.yesPool, noPool: meta\.noPool, resolvedOutcome: winner, productLine: meta\.productLine \}, rates\)/],
+    ["src/app/admin/markets/[id]/page.tsx", /chargedFee\(\{ yesPool: m\.yesPool, noPool: m\.noPool, resolvedOutcome: outcome, productLine: m\.productLine \}, marketRates\)/],
   ];
   const wrong = readers.filter(([f, re]) => {
     const s = decomment(read(f));

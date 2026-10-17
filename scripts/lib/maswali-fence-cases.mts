@@ -244,5 +244,5 @@ function runCensus(ok: Ok): void {
     /isFencedMaswali\(await getMarket\(marketId\)\)[\s\S]*sentinelCheckOne/.test(lit("src/app/admin/resolver-queue/resolution-mode-action.ts")));
   ok("5.6 · the tax report refuses a period that holds a week (fail-closed until S6)",
     /b\.productLine === "MASWALI"\)\)\s*\{\s*return \{ ok: false/.test(lit("src/lib/server/tax-report-data.ts")));
-  ok("5.7 · nextDeadlineFor arms a poll only", /if \(m\.productLine !== "MARKET"\) return null;/.test(lit("src/lib/server/market-scheduler.ts")));
+  ok("5.7 · nextDeadlineFor arms a poll only", /if \(storedProductLine\(m\.productLine\) !== "MARKET"\) return null;/.test(lit("src/lib/server/market-scheduler.ts")));
 }

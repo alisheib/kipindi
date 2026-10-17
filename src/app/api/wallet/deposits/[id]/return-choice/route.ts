@@ -8,6 +8,7 @@ import { trustedDepositBet } from "@/lib/journey/deposit-state";
 import { parseBetParam } from "@/lib/journey/pending-bet";
 import type { ReturnChoice } from "@/lib/journey/return-choice";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
+import { storedProductLine } from "@/lib/product-line";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,7 +37,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       ? wallet.balance : null;
     // Only a poll is a saved deposit bet (S0.5): a round never was, and a Millionea ticket is never placed from a saved
     // bet — it needs fifteen picks the player makes on its own slip (MASWALI-PLAN S3 item 1).
-    if (!market || market.productLine !== "MARKET") {
+    if (!market || storedProductLine(market.productLine) !== "MARKET") {
       const answer: ReturnChoice = { state: "missing", seed: null, title: "", walletBalance, similar: [] };
       return NextResponse.json(answer, { headers: PRIVATE });
     }

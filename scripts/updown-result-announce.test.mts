@@ -166,7 +166,9 @@ ok("4.control · the stripped source is still real code (else §4's absences pro
 // feature's whole premise changed and a human must re-read the decision.
 const svc = read("src/lib/server/market-service.ts");
 const pred = sliceBraces(svc, 'export function perEventNotificationsSuppressed(m: Pick<StoredMarket, "productLine">): boolean {');
-ok("4.1 `perEventNotificationsSuppressed` still suppresses UPDOWN", pred != null && /productLine\s*===\s*"UPDOWN"/.test(pred),
+// S0.5 (MASWALI-BUILD): the predicate is an exhaustive switch on the line; UPDOWN must still map to true (suppressed),
+// and a poll (MARKET) still to false, so the poll's notices are untouched.
+ok("4.1 `perEventNotificationsSuppressed` still suppresses UPDOWN", pred != null && /switchLine\(\s*m\.productLine\b[^;]*\bMARKET:\s*\(\)\s*=>\s*false\b[^;]*\bUPDOWN:\s*\(\)\s*=>\s*true\b/.test(pred),
    pred == null ? "predicate not found — read docs/COMPLIANCE-DECISIONS.md before changing anything" : pred.replace(/\s+/g, " "));
 
 // ── §5. MOUNTED ON BOTH SURFACES, FROM ONE COMPONENT ──────────────────────────────────────

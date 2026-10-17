@@ -108,7 +108,7 @@ const ECHO  = { status: "OPEN", side: "NO"  as const, stake: 2_000, potentialPay
   // one-sided pool takes the zero fee), handed the outcome itself; `poolFee` is only the
   // outcome-neutral projection before one, and is handed no side at all.
   ok("§4 after a verdict the fee is chargedFee's, handed the outcome itself (VOID included)",
-     /chargedFee\(\{[^}]*resolvedOutcome: outcome\s*\}/.test(PAGE));
+     /chargedFee\(\{[^}]*resolvedOutcome: outcome, productLine: m\.productLine\s*\}/.test(PAGE));
   ok("§4 …and poolFee is never handed a side derived from the outcome",
      !/poolFee\([^)]*\b(?:outcome|resolvedSide)\b/.test(PAGE));
 

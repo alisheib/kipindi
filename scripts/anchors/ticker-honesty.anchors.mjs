@@ -95,8 +95,9 @@ export const MUTATIONS = [
     file: STATS,
     // ⚠️ RE-PINNED 2026-09-27 (landing v3 C1): the fee call is `chargedFee` now.
     // ⚠️ RE-ANCHORED 2026-10-04: the fee call is held twice too; the line after it is `settledAmount`'s alone.
-    from: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
-    to: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, {});`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
+    // ⚠️ RE-ANCHORED 2026-10-17 (MASWALI-BUILD S0.5): the call carries the market's productLine (chargedFee's fence).
+    from: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, ratesFor(m));`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
+    to: [`  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, {});`, "  return c.refunded ? null : c.netPool;"].join(String.fromCharCode(10)),
     expect: "9.9",
   },
   {

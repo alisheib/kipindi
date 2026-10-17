@@ -38,6 +38,7 @@
  */
 
 import { marketStore } from "./market-dal";
+import { storedProductLine } from "@/lib/product-line";
 import { getGlobalConfig } from "./market-config";
 import {
   isDemoMarket,
@@ -150,7 +151,9 @@ export function nextDeadlineFor(m: StoredMarket, offsetMs = 0, now = Date.now())
   // ⛔ ONLY A POLL GETS A DEADLINE HERE (S0.5). A Millionea week has its own scheduler (`maswali-scheduler.ts`, S2) and
   // is never auto-resolved or auto-settled (MR-14): returning null for every line but MARKET keeps a third product out
   // of this engine by construction, not by remembering to name it.
-  if (m.productLine !== "MARKET") return null;
+  // ⚠️ Read through `storedProductLine`: a market built before the column carries none and IS a poll (the first
+  // test:all of S0.5 caught a strict `!== "MARKET"` turning every such poll's deadline off).
+  if (storedProductLine(m.productLine) !== "MARKET") return null;
   const candidates: Deadline[] = [];
   const demo = isDemoMarket(m);
   if (m.status === "LIVE") {

@@ -45,7 +45,7 @@
  * already `.toUpperCase()` at the call site.
  */
 import { dict, type Locale, type Dict } from "@/lib/i18n-dict";
-import { assertNeverLine, type ProductLine } from "@/lib/product-line";
+import { assertNeverLine, storedProductLine, type ProductLine } from "@/lib/product-line";
 
 /**
  * The product lines, as `PredictionMarket.productLine` stores them. MASWALI (Maswali Millionea) joined at S0.5: its
@@ -85,12 +85,13 @@ export function toStoredSide(side: StoredSide | Direction): StoredSide {
  */
 export function sideWord(t: Dict, side: StoredSide | Direction, productLine: LabelProductLine): string {
   const stored = toStoredSide(side);
-  switch (productLine) {
+  const line = storedProductLine(productLine);
+  switch (line) {
     case "UPDOWN": return stored === "YES" ? t.market.udUp : t.market.udDown;
     case "MARKET":
     case "MASWALI": // a Millionea pick is NDIO or HAPANA, in the poll's words
       return stored === "YES" ? t.common.yes : t.common.no;
-    default: return assertNeverLine(productLine, "sideWord");
+    default: return assertNeverLine(line, "sideWord");
   }
 }
 
@@ -121,14 +122,15 @@ export function outcomeWord(t: Dict, outcome: StoredOutcome | Direction, product
  * down, never "yes" — the /live carousel read "inaelekea ndiyo" over a round whose sides are Juu and Chini.
  */
 export function leanWords(t: Dict, productLine: LabelProductLine): { leansYes: string; leansNo: string } {
-  switch (productLine) {
+  const line = storedProductLine(productLine);
+  switch (line) {
     case "UPDOWN": return { leansYes: t.market.udLeansUp, leansNo: t.market.udLeansDown };
     case "MARKET":
     // No Millionea surface ever shows a crowd lean (OD-24: no pick aggregates before settlement); the arm exists so
     // the switch stays exhaustive.
     case "MASWALI":
       return { leansYes: t.market.leansYes, leansNo: t.market.leansNo };
-    default: return assertNeverLine(productLine, "leanWords");
+    default: return assertNeverLine(line, "leanWords");
   }
 }
 
@@ -171,14 +173,15 @@ export type PositionStatusValue = "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT
  * shared, and are the same words the card uses.
  */
 export function positionOutcomeWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
-  switch (productLine) {
-    case "UPDOWN": return positionStatusWord(t, status, productLine);
+  const line = storedProductLine(productLine);
+  switch (line) {
+    case "UPDOWN": return positionStatusWord(t, status, line);
     // A Millionea ticket reads in the poll's short words until S5 adds its one word of its own (the free-window
     // cancel, v6 manifest L11).
     case "MARKET":
     case "MASWALI":
       break;
-    default: return assertNeverLine(productLine, "positionOutcomeWord");
+    default: return assertNeverLine(line, "positionOutcomeWord");
   }
   switch (status) {
     case "OPEN": return t.common.open;
@@ -190,9 +193,10 @@ export function positionOutcomeWord(t: Dict, status: PositionStatusValue, produc
 }
 
 export function positionStatusWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
-  if (productLine !== "UPDOWN" && productLine !== "MARKET" && productLine !== "MASWALI") return assertNeverLine(productLine, "positionStatusWord");
+  const line = storedProductLine(productLine);
+  if (line !== "UPDOWN" && line !== "MARKET" && line !== "MASWALI") return assertNeverLine(line, "positionStatusWord");
   // MASWALI shares the poll's chip words (v6 manifest L11: one word per state across the products); S5 adds its cancel word.
-  if (productLine === "UPDOWN") {
+  if (line === "UPDOWN") {
     switch (status) {
       case "OPEN": return t.market.udPosOpen;
       case "WIN": return t.market.udPosWon;

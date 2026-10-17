@@ -565,10 +565,12 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       fromSet && !RAW.test(body), `set variable ${setVar ?? "(none)"}`);
     ok("e.competition · the competition is stored through normaliseCompetition(input.competition)",
       /^\s*competition\s*:[^\n]*\bnormaliseCompetition\(\s*input\.competition\s*\)/m.test(body));
-    const guard = /const\s+(\w+)\s*=\s*[^;\n]*\bproductLine\b[^;\n]*===\s*"UPDOWN"/.exec(body)?.[1] ?? null;
+    // S0.5 (MASWALI-BUILD): the guard is an EXHAUSTIVE switch on the line, and both a round and a Millionea week map to
+    // "no short title" — a two-way `=== "UPDOWN"` would read a Millionea week as a poll card.
+    const guard = /const\s+(\w+)\s*=\s*switchLine\(\s*input\.productLine\b[^;\n]*\bMARKET:\s*\(\)\s*=>\s*false\b[^;\n]*\bUPDOWN:\s*\(\)\s*=>\s*true\b[^;\n]*\bMASWALI:\s*\(\)\s*=>\s*true\b/.exec(body)?.[1] ?? null;
     const guardedSet = guard !== null && new RegExp(`const\\s+\\w+\\s*=\\s*${guard}\\s*\\?\\s*null\\s*:\\s*normaliseShortTitleSet\\(`).test(body);
     const guardedComp = guard !== null && new RegExp(`^\\s*competition\\s*:\\s*${guard}\\s*\\?\\s*null\\s*:\\s*normaliseCompetition\\(`, "m").test(body);
-    ok('e.updown · an Up & Down round stores NO short title and NO competition — both are guarded by the "UPDOWN" check',
+    ok('e.updown · an Up & Down round (and a Millionea week) stores NO short title and NO competition — both are guarded by the exhaustive line switch',
       guardedSet && guardedComp, `guard ${guard ?? "(none)"} · short titles guarded ${guardedSet} · competition guarded ${guardedComp}`);
     ok("e.audit · the market.created audit carries all four, so what the card says is on the record from the first moment",
       S2_COLUMNS.every((k) => new RegExp(`\\b${k}\\s*:\\s*m\\.${k}\\b`).test(body)));

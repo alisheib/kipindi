@@ -102,8 +102,9 @@ export async function generateMetadata(
   const { t, locale } = await getServerT();
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
   try { m = await getMarket(id); } catch { return { title: t.market.title }; }
+  if (!m) return notFoundMetadata();
   // A Millionea week has no page here (S0.5), so it gets the not-found metadata the page itself renders.
-  if (!m || m.productLine === "MASWALI") return notFoundMetadata();
+  if (m.productLine === "MASWALI") return notFoundMetadata();
   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".

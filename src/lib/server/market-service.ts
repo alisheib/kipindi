@@ -75,7 +75,7 @@ import { isTerminalStatus, marketChangeMark, marketsChangedSince } from "./marke
 import { roundStore } from "./updown-dal";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
-import { switchLine, assertNeverLine } from "@/lib/product-line";
+import { switchLine, assertNeverLine, storedProductLine } from "@/lib/product-line";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -1023,7 +1023,8 @@ export async function stakeBoundsForMarket(market: Pick<StoredMarket, "id" | "pr
   const stakeCfg = await getEffectiveConfig(market.id);
   let min = stakeCfg.minStake;
   let max = stakeCfg.maxStake;
-  switch (market.productLine) {
+  const line = storedProductLine(market.productLine);
+  switch (line) {
     case "UPDOWN": {
       const b = await stakeBoundsForUpDownMarket(market.id);
       if (b) { min = b.min; max = b.max; }
@@ -1036,7 +1037,7 @@ export async function stakeBoundsForMarket(market: Pick<StoredMarket, "id" | "pr
     case "MASWALI":
       break;
     default:
-      return assertNeverLine(market.productLine, "stakeBoundsForMarket");
+      return assertNeverLine(line, "stakeBoundsForMarket");
   }
   return { min, max };
 }

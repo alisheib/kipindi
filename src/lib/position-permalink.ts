@@ -24,7 +24,7 @@
  * not a safe default: a page that filters the other product line will render "no positions yet"
  * over a bet the player is holding, which is a money surface stating something false.
  */
-import { assertNeverLine, type ProductLine } from "@/lib/product-line";
+import { assertNeverLine, storedProductLine, type ProductLine } from "@/lib/product-line";
 
 export type PositionProductLine = ProductLine;
 
@@ -60,12 +60,13 @@ export function positionAnchorId(positionId: string): string {
  */
 export function positionListHref(productLine: PositionProductLine, positionId: string): string {
   const frag = `#${positionAnchorId(positionId)}`;
-  switch (productLine) {
+  const line = storedProductLine(productLine);
+  switch (line) {
     case "UPDOWN": return `/updown/history${frag}`;
     case "MARKET": return `/positions${frag}`;
     // A Millionea ticket's portfolio is its own Tiketi zangu segment (MR-2), never `/positions` (S0.5).
     case "MASWALI": return `/millionea/tickets${frag}`;
-    default: return assertNeverLine(productLine, "positionListHref");
+    default: return assertNeverLine(line, "positionListHref");
   }
 }
 

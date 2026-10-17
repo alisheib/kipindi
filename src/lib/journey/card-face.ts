@@ -34,6 +34,7 @@
  */
 import type { CardCloseLabel } from "@/lib/markets/card-close-label";
 import type { Estimate } from "@/lib/markets/estimate";
+import { storedProductLine } from "@/lib/product-line";
 
 /** One pick's second line. `mult` is the estimate's own text ("2.8"); the card adds "≈", "×" and the words. */
 export type PickFace =
@@ -123,7 +124,7 @@ export function cardFace(input: CardFaceInput): CardFace {
   }
   // Only a poll's card shows estimates and the one-sided note (S0.5): a round shows words, and a Millionea week is
   // never a question card at all — if one ever reached here it reads as words, never a figure it might win.
-  const wordsOnly = input.productLine !== "MARKET";
+  const wordsOnly = storedProductLine(input.productLine) !== "MARKET";
   const empty = input.estimates?.YES?.emptySide ?? input.estimates?.NO?.emptySide ?? null;
   const oneSidedNote = !wordsOnly && (empty === "YES" || empty === "NO") ? empty : null;
   if (!input.bettable) {

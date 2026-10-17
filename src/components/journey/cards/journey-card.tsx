@@ -70,6 +70,7 @@ import { cardTitle } from "@/lib/markets/short-title";
 import { normaliseCompetition } from "@/lib/markets/competitions";
 import { competitionLabel } from "@/lib/markets/competition-label";
 import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
+import { storedProductLine } from "@/lib/product-line";
 import { outcomeWord, sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { formatBreakEnd, type BreakState } from "@/lib/break-end";
@@ -210,7 +211,7 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   const { bettable, estimates } = cardFigures(m, nowMs);
   const close = cardCloseLabel(m, nowMs);
   const face = cardFace({ productLine: m.productLine, status: m.status, resolvedOutcome: m.resolvedOutcome, bettable, estimates, close, onBreak });
-  const openSheet = face.picks.kind === "open" && m.productLine === "MARKET" && sheet?.bettable && sheet.id === m.id ? sheet : null;
+  const openSheet = face.picks.kind === "open" && storedProductLine(m.productLine) === "MARKET" && sheet?.bettable && sheet.id === m.id ? sheet : null;
   const title = cardTitle(locale, m);
   const competition = normaliseCompetition(m.competition);
   const where = [marketCategoryLabel(t, m.category), competition ? competitionLabel(t, competition) : null]
