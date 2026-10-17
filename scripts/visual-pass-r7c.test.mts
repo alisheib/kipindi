@@ -666,7 +666,7 @@ section("5 · R7-3 / R8-5 the stacked flag: a whole-pixel box (17 vs 18 rows), a
   const { HubRowItem } = req("../src/components/journey/account/hub-row.tsx") as { HubRowItem: unknown };
   const viewer = { signedIn: true, userId: "u", name: "Jina", initials: "J", phone: "+255••••78", balance: 0, walletHeld: false, kycOffered: false,
     agentInStanding: false, proposalsState: "COMING_SOON", doors: {}, breakEnd: null };
-  const rowSw = renderToStaticMarkup(h(HubRowItem as never, { row: { id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" }, t: dict.sw, viewer, locale: "sw" } as never));
+  const rowSw = renderToStaticMarkup(h(HubRowItem as never, { row: { id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "idea", extra: "proposals" }, t: dict.sw, viewer, locale: "sw" } as never));
   ok("5.10 · RENDERED: the row's text holds the head alone, and the head holds the label and the 18px flag",
     // The label may hold R7-A's kept connective ("Mapendekezo <span class=…>ya </span>Masoko", lib/connectives.ts).
     /<span class="kp-hub__text"><span class="kp-hub__head"><span class="kp-hub__label">(?:[^<]|<span[^>]*>[^<]*<\/span>)*<\/span><span class="[^"]*cs-badge kp-flag-xs"/.test(rowSw), rowSw.slice(0, 400));

@@ -157,9 +157,10 @@ export function SearchBox({
       <div className="input-group search-box">
         {/* ⭐ Round 10 (R10-A7, tiles 172 194): the magnifier leads the field, so its ink stands on the prefix's 14px padding
             (`edge`), as a field's leading glyph does (the filter field's sliders) — it stood 16.76px in, the ⓘ at the far
-            end 13.34. The ⓘ is a glyph ALONE in its 40px tap target and keeps its box (glyphs.tsx): centred, its ink stands
-            12.5 + 1.28 = 13.78px from the border (13.34 drawn: its 15px box is snapped from a half pixel). So the two insets
-            are 14.0 and 13.78 by construction. The spinner that takes the magnifier's slot while a search runs stands on
+            end 13.34. The ⓘ is a glyph ALONE in its 40px tap target and keeps its box (glyphs.tsx): centred, its 14px box
+            stands on a whole pixel, 13px from the border, and its ink 13 + 1.09 = 14.09px (Phosphor's info starts its ink at
+            x20 of 256 — PHOSPHOR-MIGRATION W2 took it from 15px, whose box stood on a half pixel). So the two insets are 14.0
+            and 14.09 by construction. The spinner that takes the magnifier's slot while a search runs stands on
             the same edge by its own ink and takes the magnifier's exact width (`slotPull`), so the words never move. */}
         <span className="prefix" aria-hidden>
           {searching ? <Spinner size={16} edge="start" slotPull={GLASS_GAPS?.start} /> : <I.search s={16} edge="start" />}

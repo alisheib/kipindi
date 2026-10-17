@@ -127,7 +127,10 @@ positions are `ticket`; a result recorded is `seal-check`; `shield-check` means 
 meaning Help) to the board's key; the classic rail's Live from `bolt` to `live`; the classic rail's Up & Down from
 `trendingUp` (which keeps meaning a rising trend) to `trade`; the hub's proposals row from `sparkle` to a new key `idea`;
 the hub's limits row from the shield to a new key `limits`; every deposit / withdraw door to `arrowDownToLine` /
-`arrowUpFromLine`.
+`arrowUpFromLine`. **And one W2 found (the lead engineer's call, 2026-10-17):** with results on `seal-check`, the hub's
+Uthibitisho wa utatuzi row (`sealCheck`) drew the same seal as its neighbour Matokeo — the pair R5-A had parted — so it
+wears a new key `attestation` (`stamp`, the resolution's official attestation); `sealCheck` stays `seal-check`, aliased
+with `resolved`, for the resolution panel's attestation lines and Maswali's marks.
 
 The conflicts the inspection found (Appendix A), and the candidates Ali chose from:
 
@@ -153,54 +156,15 @@ Recognition check: answered by Ali's review of the specimen (2026-10-17). A labe
 
 ---
 
-## §4 · Mapping — house key → Phosphor (draft for the core keys)
+## §4 · Mapping — house key → Phosphor
 
-From W1 the source of truth is `scripts/glyphs/map.ts`, and every name below is checked against the pinned package
-(`test:glyph-map`). Until then this table is the plan. Keys are the house names call sites already use; they do not change.
-
-| House key | Phosphor | House key | Phosphor |
-|---|---|---|---|
-| shieldcheck | shield-check | chevronRight / Left / Up / Down | caret-right / left / up / down |
-| check · checkCircle | check · check-circle | x · xCircle | x · x-circle |
-| alertCircle · warning · alertOctagon | warning-circle · warning · warning-octagon | info | info |
-| lock · unlock | lock · lock-open | clock | clock |
-| mail | envelope-simple | arrowRight / Left / Up / Down | arrow-right / left / up / down |
-| pause · play | pause · play | users · user | users · user |
-| sparkle | sparkle | search | magnifying-glass |
-| plus | plus-circle | coins | coins |
-| trophy · crown · star | trophy · crown · star | ticket | ticket |
-| wallet | wallet | keyRound | key |
-| idCard | identification-card | fileText | file-text |
-| trendingUp · trendingDown | trend-up · trend-down | rotateCcw | arrow-counter-clockwise |
-| layoutGrid | squares-four | ext · externalLink | arrow-square-out |
-| download · upload | download-simple · upload-simple | chart | chart-bar |
-| shieldAlert · shieldOff | shield-warning · shield-slash | percent | percent |
-| gift · receipt | gift · receipt | edit · trash · copy | pencil-simple · trash · copy |
-| activity | pulse | bell · bellRing · bellOff | bell · bell-ringing · bell-slash |
-| eye · eyeOff | eye · eye-slash | settings | gear-six |
-| logOut · logIn | sign-out · sign-in | link · share | link · share-network |
-| home | house | menu | list |
-| bolt | lightning | globe | globe |
-| phone · smartphone | phone · device-mobile | calendar | calendar-blank |
-| football | soccer-ball | politics · landmark · bank | bank |
-| economy | chart-line-up | forex | currency-circle-dollar |
-| weather | cloud-rain | crypto | currency-btc |
-| entertainment | film-slate | tech | cpu |
-| shuffle (mixed) | shuffle | markets (the board; the "other" category) | squares-four |
-| sealCheck · resolved | seal-check | void | prohibit |
-| cardPay | credit-card | cashOut | hand-coins |
-| headset · compass | headset · compass | qr · simCard | qr-code · sim-card |
-| megaphone · database · server | megaphone · database · hard-drives | brain · bot | brain · robot |
-| heartPulse · archive · scrollText | heartbeat · archive · scroll | target · gauge | target · gauge |
-| watch | bookmark-simple | flame · flame2 · hot | fire |
-| live | broadcast | trade | arrows-down-up |
-| arrowDownToLine · arrowUpFromLine | arrow-line-down · arrow-line-up | questionCircle (Help) | question |
-| idea (new key, proposals) | lightbulb | limits (new key, limits and breaks) | hand-palm |
-
-House extras (no Phosphor match; drawn in Phosphor's grammar — 256 grid, every shipped weight — with a reason in
-`map.ts`): at least `needle` (the brand's own geometry) and Maswali's `millionea` coronet; likely `mobileMoney`, `ussd`,
-and possibly `sealNil` / `sealX` (§6). The codegen fails on any unmapped key, so the list is complete by construction.
-Every name in this table and in §3 was checked against `@phosphor-icons/core` 2.1.1 on 2026-10-17: all 149 exist.
+**The one source is [`scripts/glyphs/map.ts`](../scripts/glyphs/map.ts)** (R-ONE-SOURCE): every key with its Phosphor name,
+or its retirement and the reason; the aliases (two names, one meaning); the keys new in this migration; the house extras
+where Phosphor has nothing ([`extras.ts`](../scripts/glyphs/extras.ts): `needle`, `mobileMoney`, `ussd`, each with its
+reason); and the marks that stand among words ([`marks.ts`](../scripts/glyphs/marks.ts)). `test:glyph-map` checks every
+name against the pinned `@phosphor-icons/core`; the contact sheet (`npx tsx scripts/glyphs/codegen.mts --sheet <file.html>`)
+shows every live key in all its weights. This section held W0's draft of the mapping; it is not copied here, so it cannot
+drift from the file (the draft already had: `politics` draws `flag-banner`, `logIn` is retired).
 
 ---
 
@@ -298,7 +262,7 @@ that read the house drawings. W2's list below carries them.
    `GLYPH_SET`/`KEY_OF` rebuilt. Call sites unchanged.
 3. The offline page uses the server renderer; the generated CSS variables take Phosphor's values; `sw.js` prunes
    superseded sprites, keeping the previous hash one release (deploy skew).
-4. Dead keys go, except the reserved (`voidX` → `sealX` and the other Maswali R2 glyphs). The §3 picks land.
+4. Dead keys go — `voidX` too: Ali's 2026-10-17 Millionea ruling (§6) ended its reservation. The §3 picks land.
 5. Parity: `scripts/glyphs/parity-entries.mts` generates exact old → new pairs; layout entries come from the first
    compare's `.current.json` (measured, never predicted); every entry seen in all its cells or none; listed where the
    parity register is kept.
@@ -309,6 +273,40 @@ that read the house drawings. W2's list below carries them.
   sprite kept one release) · service-worker growth (prune rule) · parity blind inside `<use>` (the digest field) ·
   Phosphor's larger live area (Ali rules from the contact sheet; `plateGlyph` numbers do not move in the swap) · a missing
   variant at a dynamic size (an availability mask + a `RESERVED` list).
+
+**As built so far (branch `phosphor-w2`, 2026-10-17):**
+- **The engine is Phosphor's.** `glyphs.tsx` builds `I` from the generated registry: `<svg><use>` into the content-hashed
+  app / admin sprites, the chrome's Bold and Fill as symbols the root layout inlines (`GlyphShellSprite`), the ten marks
+  among words as strokes on Phosphor's centrelines; tiers line / fill / duo with the Bold-to-26px rule; the offline page
+  from `offline-glyphs.generated.ts`. The CSS that carried house geometry is re-derived from Phosphor's ink:
+  `.kp-jbal__lock` `calc(-28 * 16px / 256)`, `.kp-jhdr__pill` `calc(11px + 28 * 14px / 512)`, `.kp-udbug__arrow`
+  `calc(0.082em - 56 / 256 * 0.8em)`; the hub chevron's `translateX(-2.25px)` is still exact.
+- **The lexicon landed** (§3): the board `markets` on both tabs, Up & Down `trade`, Live `live`, the deposit / withdraw
+  arrows on every money door, proposals `idea`, limits `limits`. Decided in W2 (the lead engineer — Ali may overrule
+  in one line): `resolved` and `sealCheck` share Phosphor's seal-check (5.5A; the seal Maswali's marks build on), so the
+  hub's Uthibitisho wa utatuzi row wears a new key, `attestation` (Phosphor `stamp`) — R5-A had parted that row from
+  Matokeo once already. `voidX` retired.
+- **Two costs of Phosphor's fuller drawings, fixed at the source:** Button's spinner takes the glyph's room
+  (`glyphRoom`, as the search box's `slotPull`), so an lg button's label no longer jumps 1.64px when it starts loading;
+  the search box's ⓘ is 14px (on a whole pixel), so the field's two insets are 14.00 and 14.09.
+- **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
+  (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
+  measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
+  Phosphor's numbers are pinned from the drawings; the hand-drawn controls and plants are kept verbatim. r9a §1.3 names
+  the 17 drawings Phosphor centres by eye (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
+  on `main` (a plant's needle predated the classic row's c3e28b47 spelling), and `test:journey-home` counted a glyph's
+  `<use href>` as a link.
+- **R-ONE-SOURCE** (Ali, during W2 — §2): AGENTS.md §7, DESIGN_AUTHORITY §K3, the decisions log and the design master
+  brief state it; `test:glyph-source` gained §5 (SVG data URIs, a census of one: the Needle's drag cursor) and §6 (every
+  image under `public/` named for what it is — 33, none an interface icon but the three PWA shortcuts W7 redraws).
+- **DESIGN_AUTHORITY rewritten:** §K3, §S3 rule 3 (the weight law), §C6, §C7, the §M5 heading, the §0d row.
+- **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
+  after `#` still compared; its proof is P.1b.
+- **Still owed for W2:** the derived battery; the parity baseline at `main` and the compare, with the generated glyph
+  entries; the full tiles (and, at them, the checkbox tick: `strokeWidth: 3` no longer thickens a filled Phosphor check —
+  Bold at 13px paints 1.22px where the old tick painted 1.63; check-fat is the heavier choice); the release proof; the
+  push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  sprite is kept one release (deploy skew).
 
 ### W3 — Selected states
 Classic rail, journey tabs, the classic and journey desktop bars, the admin sidebar (icons ADDED): inactive Line in
@@ -365,11 +363,16 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 
 ## §6 · Coordination
 - **Maswali D2 ✅ (2026-10-17, main `380edd31`):** the R2 delivery is filed at
-  `design-system/v6-2026-10-17-millionea/`, and its INHERIT-MANIFEST adopts three glyphs — `sealNil`, `sealX` (the
-  rename of `voidX`) and `millionea` (the three-pearl coronet; the family `crown` already means the Leaderboard) — drawn
-  in the house idiom (24 grid, 1.9 stroke). The Maswali lane adds them to the family on its own schedule. For this
-  migration they are **reserved keys**: never deleted; in W1's `map.ts`, `sealX` and `sealNil` map to Phosphor's
-  nearest equivalents or become house extras, and `millionea` is a house extra drawn in Phosphor's grammar (W7).
+  `design-system/v6-2026-10-17-millionea/`, and its INHERIT-MANIFEST adopted three hand-drawn glyphs — `sealNil`,
+  `sealX` (the rename of `voidX`) and `millionea` (a coronet). **Then Ali ruled (2026-10-17, MASWALI-PLAN §10c, main
+  `c218979d`) that Millionea uses NO hand-drawn glyph: every Millionea icon is Phosphor, through `I`** — R-ONE-SOURCE
+  for the third product. The Maswali lane will add its keys through `map.ts` and `glyphs:gen` when its S5 starts (its
+  list, sent to this session the same day: millionea → diamond, markPending → circle-dashed, reserve → lifebuoy, standIn →
+  arrow-bend-down-right, floor → vault, register → notebook, fairness → fingerprint, refund → arrow-u-down-left, howTo →
+  book-open-text, cap → stack, finalWeek → flag-checkered, and more). Answered the same day: `pause` is an existing key,
+  `lock` draws `lock` (not lock-simple), and seven proposed drawings already belong to a key (`checkCircle`, `xCircle`,
+  `coins`, `rotateCcw`, `eye`, `hourglassHalf`, `sofSavings`) — reuse the key or pick another drawing (glyph-map §4).
+  Nothing is reserved for Maswali any more; `voidX` is retired in W2.
 - **Vodacom** (S14–S16 open): classic-shell changes reach `main` as named parity entries, so its branches inherit them on
   rebase. A wave touching home or cards checks `git log` and the worktrees first and goes after that lane's merge.
 - **Parallel sessions:** own worktree; heavy Node only through the machine's lock; stage by name; never `git add -A`.

@@ -1,5 +1,5 @@
 /**
- * DA-2 · M5 — A GLYPH MOVES FOR A REASON, AND ALL 178 MOVE THE SAME WAY.
+ * DA-2 · M5 — A GLYPH MOVES FOR A REASON, AND EVERY ONE MOVES THE SAME WAY.
  *
  *   npm run test:glyph-motion
  *

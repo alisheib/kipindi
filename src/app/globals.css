@@ -6581,10 +6581,11 @@ textarea::-webkit-resizer {
 .kp-udbug__arrow { display: inline-block; width: 0.8em; height: 0.8em; margin-inline-end: var(--sp-1); vertical-align: -0.05em; }
 /* ⭐ Round 10 (R10-A6): the verdict is a centred line and the arrow starts it, so its ink stands on the line's start (R9-A's
    not-found link: a centred run is centred by its ink). The arrow strokes at its words' stem (`text="display-700"`), so its
-   reach is its geometry's — x6 of 24 for arrowUp and arrowDown alike — less half its stroke: 6/24 of its 0.8em box, minus
+   reach is its geometry's — Phosphor's centreline, x56 of 256 for arrowUp and arrowDown alike (PHOSPHOR-MIGRATION W2; the
+   hand-drawn arrow's was x6 of 24) — less half its stroke: 56/256 of its 0.8em box, minus
    the half stem (Sora 700's 0.164em / 2). Written in em because the box is (0.8em of `--vd`, 16 to 19.2px), where `edge`
    computes in px from `s`. `test:visual-pass-r10` reads these numbers back from the drawing and GLYPH_STEM. */
-.kp-udbug__arrow { margin-inline-start: calc(0.082em - 6 / 24 * 0.8em); }
+.kp-udbug__arrow { margin-inline-start: calc(0.082em - 56 / 256 * 0.8em); }
 /* The verdict's words never split; the kick-off line may break only after its dot, keeping "pick a side" whole.
    (Scoped to the verdict: the kick-off DETAIL reuses the tense spans and must wrap at 360.) */
 .kp-udbug__verdict :is(.kp-udbug__now, .kp-udbug__was, .kp-udbug__kick), .kp-udbug__cta > span { white-space: nowrap; }
@@ -6834,9 +6835,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    1px right of centre (the readers measured ~2px between the rings), where every live capsule centres within 1px. The
    lock is pulled by exactly that gap, so its ink starts on the padding. The rule's own number, written as its derivation:
    the glyph prop (`edge="start"`, glyphs.tsx) cannot reach this lock, whose file holds the frozen classic capsule too
-   (`test:visual-pass-r7c` §6.2 keeps it byte for byte); `test:visual-pass-r9a` §4.7 recomputes 4.05 and 16 from the
-   lock's drawing and its call, so the number cannot go stale. Journey-only: only the captioned balance wears the class. */
-.kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); margin-inline-start: calc(-4.05 * 16px / 24); }
+   (`test:visual-pass-r7c` §6.2 keeps it byte for byte); `test:visual-pass-r9a` §4.7 recomputes 28 and 16 from the
+   lock's generated ink (Phosphor's Bold `lock` starts its ink 28 units into its 256 box) and its call, so the number cannot
+   go stale. Journey-only: only the captioned balance wears the class. */
+.kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); margin-inline-start: calc(-28 * 16px / 256); }
 /* ⭐ CAPTION AND FIGURE ARE CENTRED IN THE RESERVED BOX (round 4, 2026-10-09, tiles 072 074 076). Rule 8a / D31 decides
    the box — the wider of figure and mask, so masking moves nothing — and says nothing of where the words sit in it. The
    S4 frame drew them flush right in a capsule that hugged its figure, 10px each side; once the box was reserved, flush
@@ -7496,11 +7498,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jhdr__bell .count-badge { top: -3px !important; right: auto !important; left: 21px !important; box-shadow: none; }
 @media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }
 /* ⭐ Round 10 (R10-A6: a centred control frames its ink). A5's fit rule gave the pill 12/10px from 360 — 22px of padding,
-   the plus's side 2px short so the header fits every case — and the plus's box drew its ink 2.55 units (1.49px at 14px)
-   inside that 10px. The plus now stands on its padding (`edge`), so the pill is 1.49px narrower; the freed width is
-   shared evenly instead of spent, so the pill keeps exactly the width the fit rule measured (22px + 1.49 = 23.49 of
-   padding) and its ink is centred within the label's own side bearing. `test:visual-pass-r10` derives both numbers. */
-@media (min-width: 360px) { .kp-jhdr__pill { padding: 0 calc(11px + 2.55 * 14px / 48); } }
+   the glyph's side 2px short so the header fits every case — and the glyph's box drew its ink inside that 10px. The glyph
+   stands on its padding (`edge`), so the pill is narrower by that gap; the freed width is shared evenly instead of spent,
+   so the pill keeps the width the fit rule measured and its ink is centred within the label's own side bearing. Since
+   PHOSPHOR-MIGRATION W2 the glyph is the deposit arrow (`arrowDownToLine`, Phosphor's Bold `arrow-line-down`), whose ink
+   starts 28 units into its 256 box: 1.53px at 14px, so 22px + 1.53 of padding. `test:visual-pass-r10` derives both numbers. */
+@media (min-width: 360px) { .kp-jhdr__pill { padding: 0 calc(11px + 28 * 14px / 512); } }
 @media (min-width: 640px) { .kp-jhdr__row { gap: var(--sp-5); } }
 @media (min-width: 640px) { .kp-jhdr__cluster { gap: var(--sp-3); } }
 @media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }

@@ -324,9 +324,12 @@ section("7 · F11 the journey's money doors say the journey's words (tiles 171 1
   const wc = read("src/app/wallet/wallet-client.tsx");
   const doors = (s: string) => [
     // Round 10 (R10-A6): each door's arrow strokes at its words' Inter 600 stem and stands on the button's padding.
-    !/<I\.arrowDown s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(s) && "the header's Deposit",
-    !/<I\.arrowUp s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(s) && "the header's Withdraw",
-    !/<I\.plus s=\{12\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.addFunds\}/.test(s) && "the balance card's Add funds",
+    // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A, one deposit glyph and one withdraw
+    // glyph): the doors draw Phosphor's arrow-line-down / arrow-line-up (arrowDownToLine / arrowUpFromLine) where they drew
+    // a bare arrow, and the card's Add funds the same deposit arrow where it drew a +.
+    !/<I\.arrowDownToLine s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(s) && "the header's Deposit",
+    !/<I\.arrowUpFromLine s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(s) && "the header's Withdraw",
+    !/<I\.arrowDownToLine s=\{12\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.addFunds\}/.test(s) && "the balance card's Add funds",
     !/\{journey \? t\.journey\.depositAction : t\.common\.depositCta\}/.test(s) && "the empty account's Deposit",
     !/<BalanceCard [^>]*journey=\{journey\} \/>/.test(s) && "the card is not told",
     !/kycFirstDepositNotice = null,\s*journey = false,/.test(s) && "the page's default is not the classic words",

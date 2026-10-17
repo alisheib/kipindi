@@ -998,6 +998,20 @@ const BOOK_EXPECTED_DIFFS = [];
  * none — and listed in VODACOM-PLAN §0k. ⛔ Never a wildcard and never a re-baseline.
  */
 const QUESTION_EXPECTED_DIFFS = [];
+/**
+ * ⭐ PHOSPHOR-MIGRATION W2 · THE GLYPH SWAP, NAMED (Ali: "Switch to Phosphor", "Now, players see it" — every change named
+ * here, docs/PHOSPHOR-MIGRATION.md §5 W2). Every family glyph a classic viewer is served is drawn by Phosphor now, so
+ * every region that holds one changes on purpose: its glyphs' markup and the lines they draw. The entries are GENERATED
+ * from the first compare against the baseline the swap lands on — measured, never predicted — by
+ * scripts/glyphs/parity-entries.mjs, one per field of each list, each an exact element-by-element map (`glyphs`,
+ * applyGlyphSwap) with its `cells`; a layout entry is `alongside` its region's markup entry. A region whose difference is
+ * not wholly its glyphs' gets no entry, and stays a failure.
+ */
+import { GLYPH_SWAP } from "./qa-parity-glyph-swap.generated.mjs";
+EXPECTED_DIFFS.push(...GLYPH_SWAP.matrix);
+SELL_EXPECTED_DIFFS.push(...GLYPH_SWAP.sell);
+BOOK_EXPECTED_DIFFS.push(...GLYPH_SWAP.book);
+QUESTION_EXPECTED_DIFFS.push(...GLYPH_SWAP.question);
 
 /** The computed properties recorded per element. Geometry is recorded separately, relative to the region's root. */
 const PROPS = [
@@ -1348,6 +1362,10 @@ const norm = (s) => String(s)
   .replace(/https?:\/\/localhost(?::\d+)?/g, "http://localhost")
   .replace(/\/_next\/static\/[^"'\s)&]+/g, "/_next/static/~")
   .replace(/%2F_next%2Fstatic%2F[^"'\s)&]+/g, "%2F_next%2Fstatic%2F~")
+  // PHOSPHOR-MIGRATION W2 · a glyph's sprite is content-hashed — an asset hash, as a chunk's is — so its name reads
+  // /icons/g/<group>.~.svg; the symbol after # is the fact and stays compared (which drawing ships under that symbol is
+  // test:glyph-sync's, byte for byte against the pinned package). P.1b proves it.
+  .replace(/\/icons\/g\/(app|admin)\.[0-9a-f]{8}\.svg#/g, "/icons/g/$1.~.svg#")
   .replace(/([?&](?:amp;)?)dpl=[^"'&\s]*/g, "$1dpl=~")
   .replace(/\b(usr|wal|kyc|txn|pos)_[A-Za-z0-9_-]{6,}/g, "$1_~")
   .replace(/datetime="[^"]*"/g, 'datetime="~"')
@@ -1459,6 +1477,60 @@ function explain(field, was, now, baseStore, curStore) {
   }
   return `${JSON.stringify(was)} → ${JSON.stringify(now)}`;
 }
+/**
+ * ⭐ PHOSPHOR-MIGRATION W2 · A GLYPH SWAP, NAMED ELEMENT BY ELEMENT. An entry with `glyphs` names exact transitions, as
+ * `replace` does, but per element rather than per substring, so a few thousand of them stay linear: in a `.html` field
+ * every top-level <svg>…</svg> whose whole markup is a key of `glyphs.svg` becomes its value; in a `.layout` field every
+ * svg element's block of lines (its own line and its descendants') that is a key of `glyphs.block` becomes its value, and
+ * every other line that is a key of `glyphs.line` becomes its value. Anything not named stays as it was, so the
+ * baseline must then equal the capture exactly — a change the maps do not name is still caught (P.5y).
+ */
+/** Each top-level <svg>…</svg> of a markup, as [start, end] — a nested svg stays inside its parent's span. */
+function svgSpans(text) {
+  const spans = [];
+  let at = 0;
+  for (;;) {
+    const open = text.indexOf("<svg", at);
+    if (open < 0) break;
+    let depth = 1, i = open + 4;
+    while (depth > 0) {
+      const o = text.indexOf("<svg", i), c = text.indexOf("</svg>", i);
+      if (c < 0) break;
+      if (o >= 0 && o < c) { depth++; i = o + 4; } else { depth--; i = c + 6; }
+    }
+    if (depth !== 0) break;
+    spans.push([open, i]);
+    at = i;
+  }
+  return spans;
+}
+function applyGlyphSwap(field, text, glyphs) {
+  if (field.endsWith(".html")) {
+    let out = "", at = 0;
+    for (const [a, b] of svgSpans(text)) {
+      const svg = text.slice(a, b);
+      out += text.slice(at, a) + (Object.hasOwn(glyphs.svg ?? {}, svg) ? glyphs.svg[svg] : svg);
+      at = b;
+    }
+    return out + text.slice(at);
+  }
+  if (field.endsWith(".layout")) {
+    const lines = text.split(NL), out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const path = lines[i].slice(0, lines[i].indexOf(" "));
+      const last = path.slice(path.lastIndexOf(">") + 1);
+      if (/^svg[0-9]+$/.test(last)) {
+        let j = i + 1;
+        while (j < lines.length && lines[j].startsWith(`${path}>`)) j++;
+        const block = lines.slice(i, j).join(NL);
+        if (Object.hasOwn(glyphs.block ?? {}, block)) { out.push(glyphs.block[block]); i = j - 1; continue; }
+      }
+      out.push(Object.hasOwn(glyphs.line ?? {}, lines[i]) ? glyphs.line[lines[i]] : lines[i]);
+    }
+    return out.join(NL);
+  }
+  return text;
+}
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
@@ -1471,6 +1543,7 @@ function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS)
       if (e.field !== field || (e.routes && !e.routes.includes(route))) continue;
       if ("from" in e && was === String(e.from) && now === String(e.to)) { hit = e; break; }
       if (e.replace) { left = e.replace.reduce((s, [x, y]) => s.split(x).join(y), was); if (left === now) { hit = e; break; } }
+      if (e.glyphs) { left = applyGlyphSwap(field, was, e.glyphs); if (left === now) { hit = e; break; } }
     }
     if (hit) expected.push({ field, id: hit.id });
     else unexpected.push({ field, detail: explain(field, left, now, baseStore, curStore) });
@@ -2992,6 +3065,15 @@ async function proveRed() {
   const run = (route, a, c, list = EXPECTED_DIFFS) => diffCells(route, a, c, store, store, list);
   const same = run("/", cell(200, "f1"), cell(200, "f1"));
   ok("P.1 identical cells differ in nothing", same.unexpected.length === 0 && same.expected.length === 0);
+  // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
+  // group or another file still differs.
+  const glyphAt = (href) => norm(`<svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" data-g="clock.bold"><use href="${href}"></use></svg>`);
+  ok("P.1b a glyph's sprite hash is read as ~ (/icons/g/app.~.svg#…), and another symbol, group or file still differs",
+    glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") === glyphAt("/icons/g/app.0a1b2c3d.svg#p-clock-bold")
+      && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold").includes('href="/icons/g/app.~.svg#p-clock-bold"')
+      && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.304710bb.svg#p-clock-regular")
+      && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/admin.304710bb.svg#p-clock-bold")
+      && glyphAt("/icons/g/app.304710bb.svg#p-clock-bold") !== glyphAt("/icons/g/app.svg#p-clock-bold"));
   const named = run("/account", cell(404, "f1"), cell(200, "f1"));
   ok("P.2 /account 404 → 200 is the named expected difference, not a failure", named.unexpected.length === 0 && named.expected.map((e) => e.id).join() === "account-streams-200", JSON.stringify(named));
   const wrongTo = run("/account", cell(404, "f1"), cell(500, "f1"));
@@ -3014,6 +3096,28 @@ async function proveRed() {
   const subPlus = run("/", cell(200, "f1"), cell(200, "f3"), SUB);
   ok("P.5 a recorded substitution is expected, and a second change beside it is still caught",
     subOnly.unexpected.length === 0 && subOnly.expected.length === 1 && subPlus.unexpected.length === 1, JSON.stringify({ subOnly, subPlus }).slice(0, 300));
+  // PHOSPHOR-MIGRATION W2 · the glyph swap's element-by-element maps (applyGlyphSwap): a field whose every changed glyph
+  // and moved line they name is expected; one more change beside them — another svg, a word, a line they do not name —
+  // is still caught.
+  {
+    const OLD = '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M1 1"></path></svg>';
+    const NEW = '<svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" data-g="clock.bold"><use href="/icons/g/app.~.svg#p-clock-bold"></use></svg>';
+    const gs = { f: `<div>a${OLD}b</div>`, g: `<div>a${NEW}b</div>`, h: `<div>a${NEW}c</div>`, i: `<div>a${NEW}b${NEW}</div>`,
+      la: ["div 0,0,10x10 s1", "div>svg0 0,0,14x14 s2", "div>svg0>path0 1,1,2x2 s3", "div>span1 20,0,4x4 s4"].join(NL),
+      lb: ["div 0,0,10x10 s1", "div>svg0 0,0,14x14 s5", "div>svg0>use0 1,1,12x12 s3", "div>span1 21,0,4x4 s4"].join(NL),
+      lc: ["div 0,0,10x10 s1", "div>svg0 0,0,14x14 s5", "div>svg0>use0 1,1,12x12 s3", "div>span1 22,0,4x4 s4"].join(NL) };
+    const SWAP = [
+      { id: "control-glyph-html", field: "regions.footer.html", glyphs: { svg: { [OLD]: NEW }, block: {}, line: {} }, reason: "the control" },
+      { id: "control-glyph-layout", field: "regions.footer.layout", glyphs: { svg: {}, line: { "div>span1 20,0,4x4 s4": "div>span1 21,0,4x4 s4" },
+        block: { [["div>svg0 0,0,14x14 s2", "div>svg0>path0 1,1,2x2 s3"].join(NL)]: ["div>svg0 0,0,14x14 s5", "div>svg0>use0 1,1,12x12 s3"].join(NL) } }, reason: "the control" },
+    ];
+    const gcell = (html, layout) => ({ ...cell(200, html), regions: { footer: { count: 1, html, layout } } });
+    const grun = (a, c) => diffCells("/", a, c, gs, gs, SWAP);
+    const named = grun(gcell("f", "la"), gcell("g", "lb")), word = grun(gcell("f", "la"), gcell("h", "lb")), extra = grun(gcell("f", "la"), gcell("i", "lb")), moved = grun(gcell("f", "la"), gcell("g", "lc"));
+    ok("P.5y a glyph swap named element by element is expected — its markup and its lines; a word beside it, a second glyph and a line moved further are each still caught",
+      named.unexpected.length === 0 && named.expected.length === 2 && word.unexpected.length === 1 && extra.unexpected.length === 1 && moved.unexpected.length === 1,
+      JSON.stringify({ named, word, extra, moved }).slice(0, 300));
+  }
   const e0 = EXPECTED_DIFFS[0];
   const hits = (n) => new Map([[e0.id, n]]);
   ok(`P.6 a named difference seen in part of its population is reported (§4.2), and in all or none of it is not`,

@@ -21,12 +21,23 @@
  * the session scratchpad).
  * ⚠️ This file holds no backslash: every pattern that needs a space, a newline or a special character is built from
  * character codes and bracket classes (the editing tools turn some escapes into control characters).
+ *
+ * ⭐ RE-POINTED IN THE OPEN 2026-10-17 — PHOSPHOR-MIGRATION W2 (Ali: "Switch to Phosphor"; docs/PHOSPHOR-MIGRATION.md).
+ * The drawings this file read from glyphs.tsx's hand-drawn entries are Phosphor's now, shipped as symbols. Every rule
+ * stays and reads the drawing that ships (`scripts/lib/glyph-drawings.mts`) with this file's own reader, on the 256 grid
+ * and in the weight the size draws (R-WEIGHT: Bold to 26px, Regular from 27px); filled outlines carry no stroke to widen
+ * by. The controls and plants that hold the hand-drawn defects (the podium, the coins, the headset, the flame, the sign-
+ * out) keep those drawings verbatim on their 24 grid: they prove the reader still sees the defect. What moved: §1.3 names
+ * the drawings Phosphor centres by their mass, not their box (its own optical centring); §2 reads the sign-out's door and
+ * arrow from its outline, and logIn is retired; §4.2 holds the sprite markup; §4.6 names the one outcome glyph whose ink
+ * starts nearer its box; §6.6 has one dashed ring left, the dial's.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { decomment, decommentCss } from "./lib/decomment.mts";
+import { GLYPH_ENTRIES, drawingOf, lineVariant, shippedDrawings, shipsIn, type GlyphVariant } from "./lib/glyph-drawings.mts";
 
 const req = createRequire(import.meta.url);
 const CR = String.fromCharCode(13), NL = String.fromCharCode(10), TAB = String.fromCharCode(9);
@@ -146,7 +157,9 @@ function parsePath(d: string): Sub[] {
 type Part = { tag: string; box: { x0: number; y0: number; x1: number; y1: number }; w: number; own: boolean; d?: string };
 const attrs = (s: string) => Object.fromEntries([...s.matchAll(new RegExp('([A-Za-z][A-Za-z0-9-]*)="([^"]*)"', "g"))].map((m) => [m[1], m[2]]));
 const ELEM = new RegExp("<(path|circle|rect|line|ellipse|polyline)([^>]*?)/?>", "g");
-/** A drawing's parts, from its source markup: each part's geometry box and its stroke (own, the wrapper's, or none). */
+/** A drawing's parts, from its markup: each part's geometry box and its stroke — its own (`stroke-width`, or JSX's
+ *  `strokeWidth`), the wrapper's (`base`: the hand-drawn family's G stroked every part at 1.9 on its 24 grid), or none (a
+ *  fill). A shipped Phosphor symbol is filled outlines, read with base 0; the house extras stroke their own parts. */
 function partsOfMarkup(body: string, base = 1.9): Part[] {
   return [...body.matchAll(ELEM)].map((m) => {
     const a = attrs(m[2]);
@@ -159,63 +172,103 @@ function partsOfMarkup(body: string, base = 1.9): Part[] {
     else if (m[1] === "line") pts = [[n("x1"), n("y1")], [n("x2"), n("y2")]];
     else { const v = (a.points ?? "").split(new RegExp("[ ,]+")).filter(Boolean).map(Number); for (let k = 0; k < v.length; k += 2) pts.push([v[k], v[k + 1]]); }
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-    const stroked = a.stroke !== "none";
-    return { tag: m[1], box: { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, w: stroked ? Number(a.strokeWidth ?? base) : 0, own: a.strokeWidth != null || !stroked, d: a.d };
+    const width = a.strokeWidth ?? a["stroke-width"];
+    const stroked = a.stroke ? a.stroke !== "none" : base > 0;
+    return { tag: m[1], box: { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) }, w: stroked ? Number(width ?? base) : 0, own: width != null || !stroked, d: a.d };
   });
 }
 const inkBox = (parts: Part[]) => ({
   x0: Math.min(...parts.map((q) => q.box.x0 - q.w / 2)), y0: Math.min(...parts.map((q) => q.box.y0 - q.w / 2)),
   x1: Math.max(...parts.map((q) => q.box.x1 + q.w / 2)), y1: Math.max(...parts.map((q) => q.box.y1 + q.w / 2)),
 });
-/** Every glyph of the family as its source draws it: name → grid and body. */
-const GLYPH_SRC = raw("src/components/ui/glyphs.tsx");
-const ENTRY = new RegExp("^[ ]*([A-Za-z0-9_]+): [(]p: GlyphProps[)] => <(G|GL) [{][.][.][.]p[}]>(.*)</(?:G|GL)>,[ ]*$", "gm");
-const FAMILY = new Map([...GLYPH_SRC.matchAll(ENTRY)].map((m) => [m[1], { grid: m[2] === "G" ? 24 : 64, body: m[3] }]));
-const partsOf = (name: string) => partsOfMarkup(FAMILY.get(name)?.body ?? "");
+/** A glyph's parts as the family ships it (scripts/lib/glyph-drawings.mts): the drawing its size draws — Bold to 26px,
+ *  Regular from 27px — on the 256 grid, filled (no stroke to widen by), or the house extra's own strokes. */
+const GRID = 256;
+const partsOf = (name: string, s: number) => partsOfMarkup(drawingOf(name, lineVariant(s)) ?? "", 0);
+/** A box's geometry, by this file's reader. */
+const geometry = (d: string) => {
+  const pts = parsePath(d).flatMap((q) => q.samples);
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+};
+/** A mark that stands among words, as it draws there: its centreline, stroked at the words' stem (not its own part), and
+ *  any solid part (its own) — from the registry's `m`, read by this file's reader, never by its stored reach. */
+const markParts = (name: string): Part[] => {
+  const m = GLYPH_ENTRIES.get(name)?.mark;
+  if (!m) return [];
+  return [{ tag: "path", box: geometry(m.d), w: 0, own: false, d: m.d }, ...(m.f ? [{ tag: "path", box: geometry(m.f), w: 0, own: true, d: m.f }] : [])];
+};
 
 /* ══ §1 · A1 · A DRAWING IS CENTRED IN ITS BOX, AND INSIDE IT ══════════════════════════════════════════════════════════ */
 section("1 · A1 every glyph's drawing centred in its box (the podium, R7-F1) and inside it (the coins' back coin)");
-const centreOff = (body: string, grid: number) => { const b = inkBox(partsOfMarkup(body)); return { dx: (b.x0 + b.x1) / 2 - grid / 2, dy: (b.y0 + b.y1) / 2 - grid / 2, b }; };
+/** A drawing's ink centre against its box's centre, from its markup on its grid (`base`: the stroke of a part without its
+ *  own — the hand-drawn family's 1.9, or 0 for a shipped symbol, filled). */
+const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox(partsOfMarkup(body, base)); return { dx: (b.x0 + b.x1) / 2 - grid / 2, dy: (b.y0 + b.y1) / 2 - grid / 2, b }; };
 {
-  const pod = centreOff(FAMILY.get("podium")!.body, 24);
-  ok(`1.1 · the podium's drawing is centred in its viewBox — ink y${pod.b.y0.toFixed(2)}–${pod.b.y1.toFixed(2)}, centre (12, 12) (it was y8.05–21.45, 2.75 units low: 2.29px at the hub's 20px)`,
-    near(pod.dx, 0, 1e-6) && near(pod.dy, 0, 1e-6) && near(pod.b.y0, 5.3, 1e-6) && near(pod.b.y1, 18.7, 1e-6), j(pod));
+  const pod = centreOff(drawingOf("podium", lineVariant(20)) ?? "", GRID, 0);
+  ok(`1.1 · the podium's drawing (Phosphor's ranking, Bold at the hub's 20px) is centred in its viewBox — ink y${pod.b.y0.toFixed(2)}–${pod.b.y1.toFixed(2)} of 256, centre (128, 128) (the hand-drawn one stood y8.05–21.45 of 24, 2.75 units low: 2.29px at 20px)`,
+    near(pod.dx, 0, 1e-3) && near(pod.dy, 0, 1e-3) && near(pod.b.y0, 36, 1e-3) && near(pod.b.y1, 220, 1e-3), j(pod));
   const OLD_PODIUM = '<path d="M3.5 20.5h17"/><path d="M9 20.5V9h6v11.5"/><path d="M3.5 20.5v-6H9M20.5 20.5v-4.5H15"/>';
   ok("1.1′ CONTROL · the old drawing reads 2.75 units low by the same reader", near(centreOff(OLD_PODIUM, 24).dy, 2.75, 1e-6));
   // Its rows in the hub: a 56px rung centres a 20px glyph box, so a drawing centred in its box is centred on the row.
-  const k20 = 20 / 24;
-  ok(`1.2 · on the hub's Leaderboard row (56px rung, 20px glyph) the ink centre now falls on the row's centre — it fell ${(2.75 * k20).toFixed(2)}px below (tile 262: ink y624–635, centre 630.0 in the row y600–655, centre 628.0)`,
-    near(pod.dy * k20, 0, 1e-6) && near(2.75 * k20, 2.2917, 1e-3));
+  const k20 = 20 / GRID;
+  ok(`1.2 · on the hub's Leaderboard row (56px rung, 20px glyph) the ink centre falls on the row's centre — the hand-drawn one fell ${(2.75 * 20 / 24).toFixed(2)}px below (tile 262: ink y624–635, centre 630.0 in the row y600–655, centre 628.0)`,
+    near(pod.dy * k20, 0, 1e-3) && near(2.75 * 20 / 24, 2.2917, 1e-3));
 
-  // The census: every glyph of the family within ONE grid unit of its box's centre (0.83px at the hub's 20px — the hub's
-  // other glyphs as the readers measured them), at the 64-grid the same fraction of its box.
-  const names = [...FAMILY.keys()];
-  const OPTICAL = new Set(["playBare"]);
-  const off = names.filter((n) => {
-    if (OPTICAL.has(n)) return false;
-    const { grid, body } = FAMILY.get(n)!;
-    const c = centreOff(body, grid);
-    return Math.abs(c.dx) > grid / 24 + 1e-9 || Math.abs(c.dy) > grid / 24 + 1e-9;
-  });
-  ok(`1.3 · every one of the family's ${names.length} drawings is centred within one grid unit — no exception but playBare's optical centre`,
-    names.length >= 180 && off.length === 0, j(off.map((n) => [n, centreOff(FAMILY.get(n)!.body, FAMILY.get(n)!.grid)])));
-  // playBare is a filled triangle: its CENTROID is centred (the eye centres a triangle on its centroid), its box is not.
-  const tri = parsePath(attrs((FAMILY.get("playBare")!.body.match(new RegExp("<path([^>]*)/?>")) ?? ["", ""])[1]).d)[0].verts.slice(0, 3);
-  const cx = tri.reduce((s, p) => s + p[0], 0) / 3, cy = tri.reduce((s, p) => s + p[1], 0) / 3;
-  ok(`1.3′ · …and the one exception keeps its reason: playBare's triangle centroid stands at (${cx.toFixed(3)}, ${cy.toFixed(3)}) — the box's centre`, near(cx, 12, 1e-9) && near(cy, 12, 1e-9));
+  // The census: every drawing the family ships within ONE grid unit of its box's centre (a 24th of the box: 0.83px at the
+  // hub's 20px — the hub's other glyphs as the readers measured them) — but the drawings Phosphor sets by eye on its grid,
+  // each named with the offset Phosphor drew it at. The house's own drawings (the extras) are box-centred, no exception.
+  const U = GRID / 24;
+  const PHOSPHOR_PLACED = "Phosphor's own placement — its designers set it on the grid by its mass, not its box — kept as drawn";
+  const OPTICAL: Record<string, [dx: number, dy: number, why: string]> = {
+    "playBare.bold": [24, 0, "a triangle, centred on its centroid (1.3′)"],
+    "bot.bold": [0, -12, PHOSPHOR_PLACED], "comment.bold": [0, 16, PHOSPHOR_PLACED], "crown.bold": [-0.01, -12.02, PHOSPHOR_PLACED],
+    "gauge.bold": [0, -12, PHOSPHOR_PLACED], "gift.regular": [0, -12.01, PHOSPHOR_PLACED], "gift.bold": [0, -12.01, PHOSPHOR_PLACED],
+    "lock.bold": [0, -12, PHOSPHOR_PLACED], "megaphone.bold": [12, -3.99, PHOSPHOR_PLACED],
+    "politics.regular": [7.99, 12.09, PHOSPHOR_PLACED], "politics.bold": [8, 12.13, PHOSPHOR_PLACED],
+    "shield.bold": [0, 12, PHOSPHOR_PLACED], "shieldAlert.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.bold": [0, 12, PHOSPHOR_PLACED],
+    "sofGift.bold": [0, -12.01, PHOSPHOR_PLACED], "sofSalary.bold": [0, -14, PHOSPHOR_PLACED], "unlock.bold": [0, -12, PHOSPHOR_PLACED],
+  };
+  type Drawn = { key: string; variant: GlyphVariant; body: string | null };
+  const census = (list: Drawn[]) => {
+    const offs = list.map(({ key, variant, body }) => ({ id: `${key}.${variant}`, ...centreOff(body ?? "", GRID, 0) }));
+    return {
+      off: offs.filter((c) => !(c.id in OPTICAL) && (Math.abs(c.dx) > U + 1e-9 || Math.abs(c.dy) > U + 1e-9)).map((c) => [c.id, c.dx, c.dy]),
+      drift: Object.entries(OPTICAL).filter(([id, [dx, dy]]) => { const c = offs.find((o) => o.id === id); return !c || !near(c.dx, dx, 0.05) || !near(c.dy, dy, 0.05); }).map(([id]) => id),
+    };
+  };
+  const drawings = shippedDrawings();
+  const now = census(drawings);
+  const houseNamed = Object.keys(OPTICAL).filter((id) => !GLYPH_ENTRIES.get(id.split(".")[0])?.stem.startsWith("p-"));
+  ok(`1.3 · every one of the ${drawings.length} drawings the family ships is centred within one grid unit of its box — but the ${Object.keys(OPTICAL).length} Phosphor sets by eye, each at the offset named here; the house's own extras box-centred`,
+    drawings.length >= 150 && drawings.every((d) => d.body) && now.off.length === 0 && now.drift.length === 0 && houseNamed.length === 0, j({ ...now, houseNamed }));
+  // playBare is Phosphor's play: a triangle's outline and its hole; its CENTROID is centred (the eye centres a triangle on
+  // its centroid), its box is not.
+  const playSubs = parsePath(attrs((drawingOf("playBare", "bold")?.match(new RegExp("<path([^>]*)/?>")) ?? ["", ""])[1]).d ?? "");
+  const centroid = (p: Pt[]) => {
+    let A = 0, X = 0, Y = 0;
+    for (let k = 0; k < p.length; k++) { const [x0, y0] = p[k], [x1, y1] = p[(k + 1) % p.length]; const c = x0 * y1 - x1 * y0; A += c; X += (x0 + x1) * c; Y += (y0 + y1) * c; }
+    return { A: A / 2, x: X / (3 * A), y: Y / (3 * A) };
+  };
+  const outer = centroid(playSubs[0]?.samples ?? []), hole = centroid(playSubs[1]?.samples ?? []);
+  ok(`1.3′ · …and the triangle keeps its reason: the outline of Phosphor's play has its centroid at (${outer.x.toFixed(2)}, ${outer.y.toFixed(2)}) — on the box's centre — while its box stands 24 units right`,
+    playSubs.length === 2 && Math.sign(outer.A) !== Math.sign(hole.A) && Math.abs(outer.x - 128) <= 1 && Math.abs(outer.y - 128) <= 1e-3, j({ outer, hole }));
   const OLD_HEADSET = '<path d="M4.5 14v-2a7.5 7.5 0 0 1 15 0v2"/><rect x="3" y="13" width="3.8" height="6" rx="1.7"/><rect x="17.2" y="13" width="3.8" height="6" rx="1.7"/><path d="M19.1 19v.6a2.4 2.4 0 0 1-2.4 2.4h-3.2"/>';
   const OLD_FLAME2 = '<path d="M12 3c1 3 3 4.5 3 8a3 3 0 1 1-6 0c0-1 .3-1.8.8-2.4C9 11 10 12.5 11 12c-.5-2 .5-7 1-9z" />';
   ok("1.3″ PLANT · the old headset (1.25 low, the hub's Msaada row) and the old flame2 (3.5 high, the proposals HOT flag) are each reported by the census rule",
     Math.abs(centreOff(OLD_HEADSET, 24).dy) > 1 && Math.abs(centreOff(OLD_FLAME2, 24).dy) > 1);
+  const shifted = drawings.map((d) => (d.key === "checkCircle" ? { ...d, body: '<path d="M60 20H236V236H60Z" fill="currentColor"/>' } : d.key === "lock" ? { ...d, body: '<path d="M28 0H228V220H28Z" fill="currentColor"/>' } : d));
+  const planted = census(shifted);
+  ok("1.3‴ PLANT · a shipped drawing 20 units off its centre and not named, and a named one moved from its offset, are each reported",
+    planted.off.some(([id]) => id === "checkCircle.bold") && planted.drift.includes("lock.bold"), j(planted));
 
   // Inside the box: the svg clips at its box, so a drawing past it is cut.
-  const OVER: Record<string, string> = { resolved: "its eight rays' round caps reach 0.25 past the box (0.2px at 20px), drawn the same in the frozen classic menu — named, not changed this round" };
-  const outside = names.filter((n) => { const { grid, body } = FAMILY.get(n)!; const b = inkBox(partsOfMarkup(body)); return !(n in OVER) && (b.x0 < -1e-9 || b.y0 < -1e-9 || b.x1 > grid + 1e-9 || b.y1 > grid + 1e-9); });
-  ok("1.4 · every drawing stays inside its box (the coins' back coin reached x26.32 and lost 2.32 units to the clip) — the one named overreach is `resolved`'s ray caps, 0.25",
-    outside.length === 0 && (() => { const b = inkBox(partsOf("resolved")); return near(b.x1, 24.25, 1e-6) && near(b.x0, -0.25, 1e-6); })(), j(outside));
+  const outside = drawings.filter(({ body }) => { const b = inkBox(partsOfMarkup(body ?? "", 0)); return b.x0 < -1e-9 || b.y0 < -1e-9 || b.x1 > GRID + 1e-9 || b.y1 > GRID + 1e-9; }).map((d) => `${d.key}.${d.variant}`);
+  ok("1.4 · every drawing the family ships stays inside its box, no exception (the hand-drawn coins' back coin reached x26.32 of 24 and lost 2.32 units to the clip; the hand-drawn resolved's ray caps reached 0.25 past it — Phosphor's seal-check stays inside)",
+    outside.length === 0 && (() => { const b = inkBox(partsOf("resolved", 20)); return b.x0 >= 0 && b.x1 <= GRID; })(), j(outside));
   const OLD_COINS = '<circle cx="10" cy="10" r="6" /><path d="M14.5 13.5a6 6 0 1 0 0-7" /><path d="M10 8v4M8.5 10.5h3" />';
   const oc = inkBox(partsOfMarkup(OLD_COINS));
-  ok(`1.4′ CONTROL · the old coins reached x${oc.x1.toFixed(2)} — past the box — and the new one ends at x${inkBox(partsOf("coins")).x1.toFixed(2)}`, oc.x1 > 26.3 && inkBox(partsOf("coins")).x1 < 24);
+  ok(`1.4′ CONTROL · the old coins reached x${oc.x1.toFixed(2)} of 24 — past the box — and Phosphor's ends at x${inkBox(partsOf("coins", 16)).x1.toFixed(2)} of 256`, oc.x1 > 26.3 && inkBox(partsOf("coins", 16)).x1 < GRID);
   // Where the podium is drawn: the hub's Leaderboard row, and nowhere else.
   const podiumUses = PLAYER_TSX.concat(walk("src", new RegExp("[.]ts$")).filter((f) => !OUT.test(f))).filter((f) => f !== "src/components/ui/glyphs.tsx")
     .filter((f) => new RegExp('I[.]podium[^A-Za-z]|glyph: "podium"').test(code(f)));
@@ -224,33 +277,33 @@ const centreOff = (body: string, grid: number) => { const b = inkBox(partsOfMark
 }
 
 /* ══ §2 · A2 · logOut IS A LOG-OUT ══════════════════════════════════════════════════════════════════════════════════════ */
-section("2 · A2 logOut draws a log-out: the door's bracket on the left, the arrow leaving it — and never logIn's geometry");
-/** A door-and-arrow drawing read as one: its bracket (the part with arcs), its shaft (one straight level line), its head. */
-function doorArrow(d: string) {
-  const subs = parsePath(d);
-  const bracket = subs.find((s) => s.arc);
-  const shaft = subs.find((s) => !s.arc && s.verts.length === 2 && near(s.verts[0][1], s.verts[1][1]));
-  const head = subs.find((s) => !s.arc && s.verts.length === 3);
-  if (!bracket || !shaft || !head) return { ok: false, why: "not a door and an arrow" };
-  const bx1 = Math.max(...bracket.samples.map((p) => p[0])), bx0 = Math.min(...bracket.samples.map((p) => p[0]));
-  const sx0 = Math.min(shaft.verts[0][0], shaft.verts[1][0]), sx1 = Math.max(shaft.verts[0][0], shaft.verts[1][0]);
-  const tip = head.verts[1], wings = [head.verts[0], head.verts[2]];
-  const out = bx1 <= sx0 + 1e-9                          // the bracket stands left of the arrow's tail
-    && near(tip[0], sx1) && near(tip[1], shaft.verts[0][1]) // the head's point is the shaft's far end
-    && wings.every((w) => w[0] < tip[0])                // its wings trail back: it points right, away from the door
-    && near(wings[0][1] + wings[1][1], 2 * tip[1]);     // and symmetrically about the shaft
-  return { ok: out, why: j({ bracket: [bx0, bx1], shaft: [sx0, sx1], tip, wings }) };
+section("2 · A2 logOut draws a log-out: the door's frame on the left, the arrow leaving it — and never a sign-in's geometry");
+/** A drawing's outline points, sampled by this file's reader. */
+const outlinePoints = (markup: string): Pt[] => [...markup.matchAll(ELEM)].flatMap((m) => parsePath(attrs(m[2]).d ?? "").flatMap((s) => s.samples));
+/** A door-and-arrow drawing read from its outline: its LEFT edge is the door's frame (the outline stands upright there
+ *  for over half the drawing's height) and its RIGHT edge the arrowhead's point (the outline touches it over a short run
+ *  only, on the drawing's middle row) — so the arrow leaves the door. A sign-in reads the other way about: the arrow's
+ *  tail on the left, the frame on the right. */
+function doorArrow(pts: Pt[]) {
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), tall = y1 - y0, mid = (y0 + y1) / 2;
+  const at = (x: number) => pts.filter((p) => Math.abs(p[0] - x) <= 0.5).map((p) => p[1]);
+  const left = at(x0), right = at(x1);
+  const frame = Math.max(...left) - Math.min(...left), point = Math.max(...right) - Math.min(...right);
+  const out = frame > tall / 2 && point < tall / 8 && Math.abs((Math.max(...right) + Math.min(...right)) / 2 - mid) < tall / 16;
+  return { ok: out, why: j({ x: [x0, x1], frame, point, pointAt: [Math.min(...right), Math.max(...right)], mid }) };
 }
 {
-  const dOf = (name: string) => attrs((FAMILY.get(name)!.body.match(new RegExp("<path([^>]*)/?>")) ?? ["", ""])[1]).d ?? "";
-  const out = doorArrow(dOf("logOut"));
-  ok("2.1 · logOut's bracket stands on the LEFT (x3–9), its arrow starts at the bracket's open side and its head points right, away from it (x21)", out.ok, out.why);
-  ok("2.1′ CONTROL · logIn is not a log-out by the same reading (its bracket on the right, the arrow running into it)", !doorArrow(dOf("logIn")).ok);
-  ok("2.1″ PLANT · the old logOut — logIn's geometry, segment order aside — is reported", !doorArrow("M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3").ok);
-  const bo = inkBox(partsOf("logOut")), bi = inkBox(partsOf("logIn"));
-  ok(`2.2 · the same grid, stroke and reach as logIn — ink x${bo.x0.toFixed(2)}–${bo.x1.toFixed(2)}, y${bo.y0.toFixed(2)}–${bo.y1.toFixed(2)} — so it stands where it stood; and it is not logIn's path`,
-    near(bo.x0, bi.x0) && near(bo.x1, bi.x1) && near(bo.y0, bi.y0) && near(bo.y1, bi.y1) && dOf("logOut") !== dOf("logIn")
-      && render(h(I.logOut, { s: 20 })).includes('stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"'));
+  const signOut = drawingOf("logOut", lineVariant(20)) ?? "";
+  const out = doorArrow(outlinePoints(signOut));
+  ok("2.1 · logOut — Phosphor's sign-out — reads as a log-out from its outline: the door's frame upright on the LEFT (x36, y40–216), the arrowhead's point on the RIGHT at the middle row (x236, y128)", out.ok, out.why);
+  const signIn = readFileSync("node_modules/@phosphor-icons/core/assets/bold/sign-in-bold.svg", "utf8");
+  ok("2.1′ CONTROL · Phosphor's sign-in (the pinned package's own) is not a log-out by the same reading: its arrow's tail on the left, its frame on the right", !doorArrow(outlinePoints(signIn)).ok);
+  ok("2.1″ PLANT · R8-F1's defect — a sign-out drawn as the arrow running into the door (logOut's outline mirrored) — is reported",
+    !doorArrow(outlinePoints(signOut).map(([x, y]): Pt => [GRID - x, y])).ok);
+  const glyph = render(h(I.logOut, { s: 20 }));
+  ok("2.2 · the family has no sign-in to draw by mistake: logIn is retired (nothing drew it), and logOut draws the sprite's sign-out in Bold at 20px",
+    !GLYPH_ENTRIES.has("logIn") && GLYPH_ENTRIES.get("logOut")?.stem === "p-sign-out" && glyph.includes('data-g="logOut.bold"') && glyph.includes('#p-sign-out-bold"'), glyph);
   const SIGN_OUTS = ["src/components/journey/account/sign-out-row.tsx", "src/components/layout/avatar-menu.tsx", "src/app/profile/page.tsx", "src/app/profile/sessions/page.tsx"];
   ok("2.3 · every sign-out draws it — the hub's Toka, the account menu (classic and journey), /profile and /profile/sessions — and nothing draws logIn",
     SIGN_OUTS.every((f) => code(f).includes("<I.logOut")) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
@@ -283,13 +336,13 @@ const marginOf = (markup: string): Margin => {
 /** This file's own expectation: the gap between the glyph's box and its ink, from the drawing (and, for a text mark, the
  *  half stem in em beyond its geometry). */
 const expected = (name: string, s: number, side: "start" | "end", text?: string): Margin => {
-  const parts = partsOf(name);
+  const parts = text ? markParts(name) : partsOf(name, s);
   const run = text ? parts.filter((q) => !q.own) : [];
   const own = text ? parts.filter((q) => q.own) : parts;
-  const k = s / 24;
+  const k = s / GRID;
   if (side === "end") {
     const reach = Math.max(...own.map((q) => q.box.x1 + q.w / 2), ...run.map((q) => q.box.x1));
-    return { side, px: -(24 - reach) * k, em: text ? GLYPH_STEM[text] / 2 : 0 };
+    return { side, px: -(GRID - reach) * k, em: text ? GLYPH_STEM[text] / 2 : 0 };
   }
   const reach = Math.min(...own.map((q) => q.box.x0 - q.w / 2), ...run.map((q) => q.box.x0));
   return { side, px: -reach * k, em: text ? GLYPH_STEM[text] / 2 : 0 };
@@ -314,25 +367,32 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   });
   ok(`4.1 · the engine pulls each named glyph by exactly its ink's gap, as this file reads it from the drawing — ${rows.map((r) => `${r.what}: ${r.got ? `${r.got.px}px${r.got.em ? ` + ${r.got.em}em` : ""}` : "none"}`).join("; ")}`,
     rows.every((r) => r.same), j(rows.filter((r) => !r.same)));
-  // The afters, in pixels on the tiles' faces.
+  // The afters, in pixels on the tiles' faces. Phosphor's caret-right, as a mark among words, is its centreline x96–176.
   const mae = expected("chevronRight", 11, "end", "display-600")!;
   const maePx = -mae.px - mae.em * 11.5;
-  ok(`4.1′ · the card's chevron: its ink ended ${(9 / 24 * 11 - 0.95 * 11 / 24).toFixed(2)}px short of the card's content edge (the readers: 3–4px; x1228 against x1231); pulled ${maePx.toFixed(2)}px it ends ON it, its stroke ${(GLYPH_STEM["display-600"] * 11.5).toFixed(2)}px where the family's painted ${(1.9 * 11 / 24).toFixed(2)}px`,
-    near(maePx, 9 / 24 * 11 - GLYPH_STEM["display-600"] * 11.5 / 2, 1e-9) && GLYPH_STEM["display-600"] * 11.5 > 1.6);
+  const caretEnd = geometry(GLYPH_ENTRIES.get("chevronRight")?.mark?.d ?? "").x1;
+  ok(`4.1′ · the card's chevron: the hand-drawn one's ink ended ${(9 / 24 * 11 - 0.95 * 11 / 24).toFixed(2)}px short of the card's content edge (the readers: 3–4px; x1228 against x1231); Phosphor's caret ends ${GRID - caretEnd} units of 256 short of its box, so pulled ${maePx.toFixed(2)}px it ends ON it, its stroke ${(GLYPH_STEM["display-600"] * 11.5).toFixed(2)}px where the family's Bold paints ${(24 * 11 / GRID).toFixed(2)}px`,
+    near(caretEnd, 176, 1e-6) && near(maePx, (GRID - 176) / GRID * 11 - GLYPH_STEM["display-600"] * 11.5 / 2, 1e-9) && GLYPH_STEM["display-600"] * 11.5 > 1.6);
   const hub = -expected("chevronRight", 18, "end")!.px;
-  ok(`4.1″ · the hub's chevrons end on the card-size switch's edge: they stood ${hub.toFixed(3)}px inside it (tile 264: ink x345–350 against the switch's x356, its content edge x357)`, near(hub, 6.0375, 1e-9));
+  ok(`4.1″ · the hub's chevrons end on the card-size switch's edge: Phosphor's caret stands ${hub.toFixed(3)}px inside its 18px box, pulled by exactly that (the hand-drawn one stood 6.0375px in — tile 264: ink x345–350 against the switch's x356, its content edge x357)`, near(hub, 4.779, 1e-3));
 
-  // 4.2 · a glyph without `edge` or `text` is byte for byte what it was: the classic chrome's glyphs are parity-captured.
-  const OldG = ({ children, s, ...p }: Record<string, unknown>) =>
-    h("svg", { viewBox: "0 0 24 24", width: (s as number) ?? 24, height: (s as number) ?? 24, fill: "none", stroke: "currentColor", strokeWidth: "1.9", strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true, ...p }, children as never);
-  const kids = (n: string) => (I[n]({}) as unknown as { props: { children: unknown } }).props.children;
+  // 4.2 · a glyph without `edge` or `text` is exactly the plain sprite reference — the box, the variant its size draws and
+  // the symbol it points at, every passed attribute in its order — so nothing else rides on the classic chrome's glyphs,
+  // which the parity harness captures by their `data-g` and their href.
+  const { GLYPH_SPRITES } = req("../src/components/ui/glyph-registry.generated.ts") as { GLYPH_SPRITES: { app: string; admin: string } };
+  const Plain = ({ n, s, className, style, ...p }: Record<string, unknown>) => {
+    const e = GLYPH_ENTRIES.get(n as string)!, v = lineVariant(s as number), place = shipsIn(e, v), id = `${e.stem}-${v}`;
+    const href = place === "inline" ? `#${id}` : `${place === "admin" ? GLYPH_SPRITES.admin : GLYPH_SPRITES.app}#${id}`;
+    return h("svg", { viewBox: "0 0 256 256", width: s, height: s, "aria-hidden": true, "data-g": `${n as string}.${v}`, ...p, className, style }, h("use", { href }));
+  };
   const PROPS: Array<Record<string, unknown>> = [{ s: 20 }, { s: 16, className: "kp-x", "aria-hidden": true }, { s: 12, strokeWidth: 2.5 }, { s: 14, style: { opacity: 0.5 }, className: "a b" }];
   const diffs: string[] = [];
   for (const n of ["bell", "wallet", "chevronRight", "lock", "logOut", "receipt"]) for (const p of PROPS) {
-    const now = render(h(I[n], p)), was = render(h(OldG, p, kids(n) as never));
-    if (now !== was) diffs.push(`${n} ${j(p)}`);
+    const now = render(h(I[n], p)), want = render(h(Plain, { n, ...p }));
+    if (now !== want) diffs.push(`${n} ${j(p)}: ${now} ≠ ${want}`);
   }
-  ok("4.2 · CONTROL · without `edge` or `text` a glyph renders exactly the markup the old wrapper rendered — every attribute, in its order (6 glyphs × 4 prop sets)", diffs.length === 0, j(diffs));
+  ok("4.2 · CONTROL · without `edge` or `text` a glyph renders exactly the plain sprite reference — every attribute, in its order (6 glyphs × 4 prop sets; bell from the page's inline symbols, the rest from the app sprite)",
+    diffs.length === 0 && render(h(I.bell, { s: 20 })).includes('<use href="#p-bell-bold">') && render(h(I.wallet, { s: 20 })).includes(`<use href="${GLYPH_SPRITES.app}#`), j(diffs));
 
   // 4.3 · the text stroke.
   const tm = render(h(I.chevronRight, { s: 11, text: "display-600", className: "x" }));
@@ -371,12 +431,18 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     sameMargin(marginOf(ph), expected("arrowDownToLine", 14, "start")) && sameMargin(marginOf(ah), expected("shieldcheck", 13, "start")) && ph.includes('class="text-text-subtle"'));
   ok("4.5′ CONTROL · a slot handed something that is not a glyph draws it as given", !phSpan.includes("margin-inline") && phSpan.includes('<span class="inline-block h-[14px] w-[14px]"></span>'));
   ok('4.5″ · …and the slot does it in its source (edgeGlyph(icon, "start")): a slot without it is reported', code("src/components/ui/page-header.tsx").includes('edgeGlyph(icon, "start")') && code("src/components/auth/auth-panel.tsx").includes('edgeGlyph(icon, "start")'));
-  // The deposit return's ghost draws an unpainted clock where the page draws one of four outcome glyphs: all four share
-  // one ink start, so the ghost's eyebrow lands where the page's does.
-  const four = ["checkCircle", "alertCircle", "rotateCcw", "clock"].map((n) => inkBox(partsOf(n)).x0);
-  ok(`4.6 · the deposit return's four outcome glyphs share one ink start (x${four.map((v) => v.toFixed(2)).join(" · ")}), so its ghost's unpainted clock lands its eyebrow where the page does`,
-    four.every((v) => near(v, four[0], 1e-3)) && code("src/app/wallet/deposit/return/loading.tsx").includes('icon={<I.clock s={14} className="shrink-0 text-transparent" />}'),
-    j({ four, ghost: code("src/app/wallet/deposit/return/loading.tsx").includes('<I.clock s={14} className="shrink-0 text-transparent" />') }));
+  // The deposit return's ghost draws an unpainted clock where the page draws one of four outcome glyphs: they share one
+  // ink start, so the ghost's eyebrow lands where the page's does — but the REVERSED outcome's: Phosphor's arrow-counter-
+  // clockwise reaches its arrow's foot 8 units nearer its box (x12 against x20), so on a reversed deposit the eyebrow's
+  // word stands 8 × 14 / 256 = 0.44px right of the ghost's. Named, not redrawn: under half a pixel, on the rarest outcome.
+  const OUTCOMES = ["checkCircle", "alertCircle", "rotateCcw", "clock"];
+  const four = OUTCOMES.map((n) => inkBox(partsOf(n, 14)).x0);
+  const SHIFTED: Record<string, number> = { rotateCcw: 12 };
+  const off4 = OUTCOMES.filter((n, i) => !near(four[i], SHIFTED[n] ?? four[3], 1e-2));
+  ok(`4.6 · the deposit return's outcome glyphs share the ghost's ink start (x${four.map((v) => v.toFixed(2)).join(" · ")}), so its unpainted clock lands its eyebrow where the page does — the reversed one ${((four[3] - four[2]) * 14 / GRID).toFixed(2)}px off, named`,
+    off4.length === 0 && near(four[3], 20, 1e-2) && code("src/app/wallet/deposit/return/loading.tsx").includes('icon={<I.clock s={14} className="shrink-0 text-transparent" />}')
+      && code("src/app/wallet/deposit/return/page.tsx").includes('outcome.state === "REVERSED" ? <I.rotateCcw s={14} className="text-text-muted" /> :'),
+    j({ four, off4, ghost: code("src/app/wallet/deposit/return/loading.tsx").includes('<I.clock s={14} className="shrink-0 text-transparent" />') }));
 
   // 4.7 · the held capsule: lock pulled by its gap, so lock and caption centre between the rings.
   const lock = -expected("lock", 16, "start")!.px;
@@ -385,19 +451,19 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   const pad = Number(new RegExp(`padding: 0 ([0-9]+)px`).exec(rule(".kp-jbal"))?.[1] ?? NaN);
   const left = pad, rights = { sw: pad + rsb("a", 11), en: pad + rsb("n", 11) };
   // The capsule's file also holds the frozen classic capsule (r7c §6.2, byte for byte), so the pull is the journey-only
-  // class's, written as its derivation: x0 of the lock's ink × its size / 24 — read back here from the drawing and the call.
-  const lockX0 = inkBox(partsOf("lock")).x0;
-  const lockCss = new RegExp("margin-inline-start: calc[(]-([0-9.]+) [*] ([0-9]+)px / 24[)];").exec(rule(".kp-jbal__lock"));
+  // class's, written as its derivation: x0 of the lock's ink × its size / 256 — read back here from the drawing and the call.
+  const lockX0 = inkBox(partsOf("lock", 16)).x0;
+  const lockCss = new RegExp("margin-inline-start: calc[(]-([0-9.]+) [*] ([0-9]+)px / 256[)];").exec(rule(".kp-jbal__lock"));
   const lockCall = code("src/components/layout/wallet-balance-pill.tsx").includes('{held && <I.lock s={16} className="kp-jbal__lock" />}');
   const engineLock = marginOf(render(h(I.lock, { s: 16, edge: "start" })));
-  ok(`4.7 · the held capsule: the lock's ink starts on the ${pad}px padding — pulled by calc(-${lockCss?.[1]} × ${lockCss?.[2]}px / 24), the lock's own ink start (x${lockX0.toFixed(2)}) at its 16px, the engine's edge number (${engineLock?.px}px) — so its contents centre within ${Math.max(...Object.values(rights).map((r) => Math.abs(r - left) / 2)).toFixed(2)}px (sw "…limegandishwa", en "…frozen"); they sat ${(lock / 2).toFixed(2)}px right`,
-    near(lock, 2.7, 1e-9) && !!lockCss && near(Number(lockCss[1]), lockX0, 1e-9) && Number(lockCss[2]) === 16 && lockCall
-      && !!engineLock && near(-Number(lockCss[1]) * 16 / 24, engineLock.px, 0.0015) && Object.values(rights).every((r) => Math.abs(r - left) / 2 < 0.5), j({ rights, lockCss: lockCss?.slice(1), lockCall, engineLock }));
+  ok(`4.7 · the held capsule: the lock's ink starts on the ${pad}px padding — pulled by calc(-${lockCss?.[1]} × ${lockCss?.[2]}px / 256), the lock's own ink start (x${lockX0.toFixed(2)}) at its 16px, the engine's edge number (${engineLock?.px}px) — so its contents centre within ${Math.max(...Object.values(rights).map((r) => Math.abs(r - left) / 2)).toFixed(2)}px (sw "…limegandishwa", en "…frozen"); unpulled they would sit ${(lock / 2).toFixed(2)}px right (the hand-drawn lock's 1.35px)`,
+    near(lock, 1.75, 1e-9) && !!lockCss && near(Number(lockCss[1]), lockX0, 1e-9) && Number(lockCss[2]) === 16 && lockCall
+      && !!engineLock && near(-Number(lockCss[1]) * 16 / GRID, engineLock.px, 0.0015) && Object.values(rights).every((r) => Math.abs(r - left) / 2 < 0.5), j({ rights, lockCss: lockCss?.slice(1), lockCall, engineLock }));
   // 4.8 · the language row's chevron turns about its box: the turn steps back by the difference of the two reaches.
-  const down = inkBox(partsOf("chevronDown")), right = inkBox(partsOf("chevronRight"));
-  const step = ((down.x1 - down.x0) / 2 - (right.x1 - 12)) * 18 / 24;
-  ok(`4.8 · the hub's language row, open: its turned chevron reaches ${((down.x1 - down.x0) / 2).toFixed(2)} units from its centre against ${(right.x1 - 12).toFixed(2)} closed, so the turn steps back ${step}px and ends on the same edge`,
-    near(step, 2.25, 1e-9) && CSS.includes(".kp-hub__lang[open] > summary .kp-hub__chev { transform: translateX(-2.25px) rotate(90deg); }"));
+  const down = inkBox(partsOf("chevronDown", 18)), right = inkBox(partsOf("chevronRight", 18));
+  const step = ((down.x1 - down.x0) / 2 - (right.x1 - GRID / 2)) * 18 / GRID;
+  ok(`4.8 · the hub's language row, open: its turned chevron reaches ${((down.x1 - down.x0) / 2).toFixed(2)} units of 256 from its centre against ${(right.x1 - GRID / 2).toFixed(2)} closed, so the turn steps back ${step.toFixed(4)}px and ends on the same edge (Phosphor's caret turns the same 2.25px the hand-drawn one did)`,
+    near(step, 2.25, 1e-3) && CSS.includes(".kp-hub__lang[open] > summary .kp-hub__chev { transform: translateX(-2.25px) rotate(90deg); }"));
   ok("4.9 · the typed margins the rule replaces are gone: the back link's 3px and the source link's 2px",
     !code("src/components/ui/back-link.tsx").includes("-ml-[3px]") && !code("src/app/markets/[id]/page.tsx").includes("-mr-[2px]"));
 }
@@ -670,16 +736,19 @@ section("6 · A6 a dashed track starts and ends on a whole dash at every width �
   ok(`6.5 · the P&L chart's three dashed lines (${X1 - X0} units) and the price hero's three (${heroLines.map((m) => m[1]).join(", ")} units) each end on a whole dash`,
     pnlLines.length === 3 && pnlLines.every((m) => wholeEnd(X1 - X0, Number(m[1]), Number(m[2]))) && heroLines.length === 3 && heroLines.every((m) => wholeEnd(Number(m[1]), Number(m[2]), Number(m[3]))));
   const circlePeriods = (src: string) => [...src.matchAll(new RegExp('<circle[^>]*pathLength=[{"]?([0-9.]+)[}"]?[^>]*strokeDasharray="([0-9.]+) ([0-9.]+)"', "g"))].map((m) => Number(m[1]) / (Number(m[2]) + Number(m[3])));
-  const rings = [...circlePeriods(code("src/components/brand.tsx")), ...circlePeriods(raw("src/components/ui/glyphs.tsx"))];
-  ok(`6.6 · every dashed ring closes on whole dashes by pathLength — the dial's empty ring and clockPending: ${rings.map((p) => `${p} periods`).join(", ")}`,
-    rings.length === 2 && rings.every((p) => near(p, Math.round(p), 1e-9)));
-  ok("6.6′ PLANT · clockPending as it was — 3.4 + 3 on its 54.04-unit ring, no pathLength — is 8.44 periods", !near((2 * Math.PI * 8.6) / 6.4, Math.round((2 * Math.PI * 8.6) / 6.4), 1e-3));
+  const DASH_IN_GLYPHS = new RegExp("strokeDasharray|stroke-dasharray");
+  // PHOSPHOR-MIGRATION W2: the hand-drawn clockPending's dashed ring went with its family — Phosphor's clock-countdown is a
+  // filled outline, no dash — so the dial's empty ring is the one dashed ring left, and the glyph file holds none.
+  const rings = circlePeriods(code("src/components/brand.tsx"));
+  ok(`6.6 · every dashed ring closes on whole dashes by pathLength — the dial's empty ring: ${rings.map((p) => `${p} periods`).join(", ")}; the glyph family draws none`,
+    rings.length === 1 && rings.every((p) => near(p, Math.round(p), 1e-9)) && !DASH_IN_GLYPHS.test(raw("src/components/ui/glyphs.tsx")));
+  ok("6.6′ PLANT · the hand-drawn clockPending's ring as it was before R9-A6 — 3.4 + 3 on its 54.04-unit ring, no pathLength — is 8.44 periods", !near((2 * Math.PI * 8.6) / 6.4, Math.round((2 * Math.PI * 8.6) / 6.4), 1e-3));
   // The census: every dash pattern on a player surface is one of these, or not a pattern at all (a ring's progress arc, a
   // draw-on), or a texture.
   const DASHES = new RegExp("strokeDasharray|stroke-dasharray|repeating-linear-gradient|repeating-radial-gradient", "g");
   const KNOWN: Record<string, string> = {
     "src/components/charts/pnl-chart.tsx": "three fixed lines, 6.5", "src/components/updown/price-hero.tsx": "three fixed lines, 6.5",
-    "src/components/brand.tsx": "the dial's empty ring by pathLength, 6.6", "src/components/ui/glyphs.tsx": "clockPending by pathLength, 6.6",
+    "src/components/brand.tsx": "the dial's empty ring by pathLength, 6.6",
     "src/components/badges/Badge.tsx": "a progress arc (dasharray = its circumference), not a pattern", "src/components/charts/ring.tsx": "donut segments, not a pattern",
     "src/components/positions/countdown-ring.tsx": "a progress arc, not a pattern",
   };

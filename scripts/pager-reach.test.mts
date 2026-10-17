@@ -30,6 +30,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { decomment } from "./lib/decomment.mts";
+import { drawingOf } from "./lib/glyph-drawings.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
@@ -142,11 +143,13 @@ const { pageWindow, reachablePages, phoneWindow } = await import("../src/compone
   ok("2: the pager draws no SVG of its own", !/<svg/.test(pager));
   ok("2: the double chevrons come from the glyph kit", /I\.chevronsLeft/.test(pager) && /I\.chevronsRight/.test(pager));
 
-  const glyphs = decomment(readFileSync(join(ROOT, "src/components/ui/glyphs.tsx"), "utf8"));
-  ok("2: …and the kit actually defines them", /chevronsLeft:/.test(glyphs) && /chevronsRight:/.test(glyphs));
-  // Same wrapper as every other glyph ⇒ same 24 grid and same 1.9 stroke (DESIGN_AUTHORITY §S3).
-  ok("2: they use the kit's own 24-grid wrapper, not a bespoke svg",
-     /chevronsLeft:\s*\(p: GlyphProps\)\s*=>\s*<G\b/.test(glyphs) && /chevronsRight:\s*\(p: GlyphProps\)\s*=>\s*<G\b/.test(glyphs));
+  // ⚠️ RE-POINTED 2026-10-17 (PHOSPHOR-MIGRATION W2): the kit's drawings are Phosphor's, generated into the registry the
+  // family is built from and shipped in the app sprite with every other glyph — so the kit's own wrapper is the one
+  // `<svg><use>` every glyph renders, on the same 256 grid and in the same weight for its size (DESIGN_AUTHORITY §S3).
+  const registry = readFileSync(join(ROOT, "src/components/ui/glyph-registry.generated.ts"), "utf8");
+  ok("2: …and the kit actually defines them", /"chevronsLeft": [{] s: "p-caret-double-left"/.test(registry) && /"chevronsRight": [{] s: "p-caret-double-right"/.test(registry));
+  ok("2: they are the family's own drawings — Phosphor's caret-double-left and -right in the app sprite, Bold at the pager's 14px — not a bespoke svg",
+     !!drawingOf("chevronsLeft", "bold") && !!drawingOf("chevronsRight", "bold") && /<I[.]chevronsLeft s=[{]14[}]/.test(pager) && /<I[.]chevronsRight s=[{]14[}]/.test(pager));
 
   // ⚠️ 44px is written LITERALLY here on purpose — `h-10` is 80px under this project's
   // overridden spacing scale (finding G-2). The new controls must not have re-introduced it.

@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.304710bb.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.983c3a3b.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -24,6 +24,7 @@ export const GLYPH_REGISTRY = {
   "arrowRight": { s: "p-arrow-right", g: "app", i: { bold: [28, 228.03] }, m: { d: "M40 128H216M144 56L216 128L144 200", x: [40, 216] } },
   "arrowUp": { s: "p-arrow-up", g: "app", i: { bold: [43.97, 212.02] }, m: { d: "M128 216V40M56 112L128 40L200 112", x: [56, 200] } },
   "arrowUpFromLine": { s: "p-arrow-line-up", g: "app", i: { bold: [28, 228] }, m: { d: "M128 224V72M56 144L128 72L200 144M40 40H216", x: [40, 216] } },
+  "attestation": { s: "p-stamp", g: "app", i: { bold: [28, 228] } },
   "bank": { s: "p-bank", g: "app", i: { bold: [4, 252] } },
   "bell": { s: "p-bell", g: "shell", i: { bold: [28.01, 227.99] } },
   "bellOff": { s: "p-bell-slash", g: "app", i: { bold: [28.02, 219.9] } },
@@ -151,7 +152,6 @@ export const GLYPH_REGISTRY = {
   "users": { s: "p-users", g: "app", i: { bold: [1, 254.98] } },
   "ussd": { s: "x-ussd", g: "app", i: { bold: [52, 204] } },
   "void": { s: "p-prohibit", g: "app", i: { bold: [20, 236] } },
-  "voidX": { s: "p-prohibit", g: "app", i: { bold: [20, 236] } },
   "wallet": { s: "p-wallet", g: "app", i: { bold: [27.99, 236] }, m: { d: "M192 40H56a16 16 0 0 0-16 16V184a16 16 0 0 0 16 16H216a8 8 0 0 0 8-8V80a8 8 0 0 0-8-8H56a16 16 0 0 1-16-16", x: [40, 224], f: "M168 132a12 12 0 1 0 24 0a12 12 0 1 0 -24 0Z", fx: [168, 192] } },
   "warning": { s: "p-warning", g: "app", i: { regular: [15.99, 240], bold: [11.99, 244] } },
   "weather": { s: "p-cloud-rain", g: "app", i: { regular: [24, 232], bold: [20, 236] } },
@@ -161,4 +161,4 @@ export const GLYPH_REGISTRY = {
 } as const;
 export type GlyphKey = keyof typeof GLYPH_REGISTRY;
 /** Keys that share one drawing because they mean the same thing (scripts/glyphs/map.ts ALIASES). */
-export const GLYPH_ALIASES: ReadonlyArray<readonly [string, string]> = [["profile","user"],["hot","flame2"],["landmark","bank"],["ext","externalLink"],["resolved","sealCheck"],["gift","sofGift"],["portfolio","ticket"],["smartphone","devicePhone"],["void","voidX"]];
+export const GLYPH_ALIASES: ReadonlyArray<readonly [string, string]> = [["profile","user"],["hot","flame2"],["landmark","bank"],["ext","externalLink"],["resolved","sealCheck"],["gift","sofGift"],["portfolio","ticket"],["smartphone","devicePhone"]];

@@ -1294,7 +1294,8 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
     && cardFlat.includes("<I.playBare s={plateGlyph(48)} />");
   const plateCss = cv(PLATE, "background") === "var(--wash-primary)" && cv(PLATE, "box-shadow") === "var(--edge-primary), var(--shadow-primary)"
     && cv(PLATE, "color") === "var(--pearl-50)" && !plateDecls.some(([, v]) => /oklch[(]|#[0-9a-fA-F]{3}|rgba?[(]|hsla?[(]/.test(v));
-  const plateDrawn = HT_LOCALES.every((l) => (r.card[l] ?? "").includes(`class="grid shrink-0 place-items-center rounded-control kp-jhowto__plate" style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="24" height="24" `));
+  // PHOSPHOR-MIGRATION W2: the glyph is Phosphor's play on its 256 grid, at the same 24px.
+  const plateDrawn = HT_LOCALES.every((l) => (r.card[l] ?? "").includes(`class="grid shrink-0 place-items-center rounded-control kp-jhowto__plate" style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="24" height="24" `));
   ok("5.plate · the royal plate (choice 3A, A14): a 48px IconPlate with the play glyph I.playBare at the kit's size for that plate, plateGlyph(48) — drawn 24px (the kit over the canvas's 20, §0h point 7) — and NO bg, fg, border or style, so no inline colour (drawn: its style is its size alone); .kp-jhowto__plate paints it, as the cascade leaves it, from the primary material's tokens (--wash-primary; --edge-primary and --shadow-primary, never the glow) with the glyph in --pearl-50, no literal colour in any rule that names it",
     plateSrc && plateCss && plateDrawn, j({ plateSrc, plateCss, plateDrawn, plate: plateDecls }));
 
@@ -1566,7 +1567,7 @@ function howToDefects(): HtPlant[] {
     { name: "the play glyph typed at the board's 20px (the kit's plateGlyph(48) is 24; §0h point 7)", expect: /^5[.]plate /,
       plant: htCard("<I.playBare s={plateGlyph(48)} />", "<I.playBare s={20} />") },
     { name: "the play glyph drawn 20px on its 48px plate", expect: /^5[.]plate /,
-      plant: (w) => htDrawn(w, "card", "zh", (html) => htSwap(html, `style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="24" height="24" `, `style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="20" height="20" `)) },
+      plant: (w) => htDrawn(w, "card", "zh", (html) => htSwap(html, `style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="24" height="24" `, `style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="20" height="20" `)) },
     { name: "the card's minutes typed instead of read from the sheet", expect: /^5[.]card[.]words /,
       plant: htCard("minutes: HOW_TO_MINUTES", "minutes: 1") },
     // (Anchored on its line: the sheet's header quotes the Modal's props too.)
@@ -2102,7 +2103,8 @@ function homeChecks(w: World, ok: Ok) {
     const inp = IN[n], ql = queryLine(n);
     if (!inp) return true;
     if (inp.params.q === "" || inp.empty === "q") return ql !== null;
-    const d = dict[inp.locale], hrefs = [...(ql ?? "").matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+    // A link's href, never a glyph's: since PHOSPHOR-MIGRATION W2 a glyph is `<svg><use href="…sprite#symbol">`.
+    const d = dict[inp.locale], hrefs = [...(ql ?? "").matchAll(/<a [^>]*?href="([^"]*)"/g)].map((m) => m[1]);
     return ql === null || textOf(ql) !== `${d.journey.homeQueryLine.replace("{q}", inp.params.q)}${d.common.clearSearch}`
       || j(hrefs) !== j([jhAttr(jhHref({ cat: inp.params.cat }))]);
   }).map((n) => [n, textOf(queryLine(n) ?? "")]);

@@ -139,7 +139,7 @@ None of these is a rulebook. Each carries a header saying so.
 | Elevation rungs `--elev-*`, `--shadow-*`, `--wash-*`, `--edge-lit*` | `src/app/globals.css` — guarded family, a second definition site is a hard `test:tokens` failure |
 | Chat's own namespaced vocabulary (`--cm-*`) | `src/styles/chat/chat-tokens.css` + `src/styles/chat/chat-styles.css`, both `@import`ed by `globals.css`. ⚠️ **Added to this map 2026-08-21** — the chat layer is the one place §B5 rule 1 licenses a private scale, and a session reading only this table would not have known the vocabulary exists. It **namespaces**, never redeclares a global token |
 | Tailwind aliases | `tailwind.config.ts` — a bridge only; it never originates a value |
-| Glyph geometry | `src/components/ui/glyphs.tsx` |
+| Glyph geometry | the codegen's sources — `scripts/glyphs/map.ts` (what each key draws), `extras.ts` (the house extras), `marks.ts` (the marks among words) — generated into `src/components/ui/glyph-registry.generated.ts` and the sprites in `public/icons/g/` (`npm run glyphs:gen`; `test:glyph-sync`). The engine, `src/components/ui/glyphs.tsx`, holds no geometry |
 | Dial / needle / chart geometry | the component file (`brand.tsx`, `pnl-chart.tsx`, `updown-card.tsx`) |
 | Haptic patterns | `src/lib/haptics.ts` (product) and `src/lib/needle-haptics.js` (needle) — see §H |
 
@@ -1410,14 +1410,17 @@ Values: `--sp-*`, `--r-*` in `globals.css`. Laws:
    ⛔ **No one-off `rounded-[…]`.** An arbitrary radius is a second definition site.
 3. **Border weights are semantic, not decorative:** 1px is structure (`--border`,
    `--border-strong` for emphasis, dashed for empty states); **1.5–1.9px is instrument** —
-   dial rings at 1.5 (`brand.tsx`), and **the kit glyph family and the 64-grid empty-state
-   line-arts at 1.9** (`glyphs.tsx`'s `G` and `GL` wrappers, 178 icons); 2–2.4px is brand
-   (the mark's ring and divider, and the 56-grid badge medallions in
-   `src/components/badges/icons.tsx` at 2.2, a separate documented tier); the needle is
-   heaviest. A weight chosen for looks rather than for what the line *is* will contradict
-   the next one. ⚠️ **Corrected 2026-08-21** — this rule said kit icon strokes were 1.5px.
-   They are 1.9, and have been since the second 64-grid wrapper (at 2.2) was removed for
-   drawing neighbouring empty states 16% apart in weight.
+   dial rings at 1.5 (`brand.tsx`); 2–2.4px is brand (the mark's ring and divider, and the
+   56-grid badge medallions in `src/components/badges/icons.tsx` at 2.2, a separate
+   documented tier); the needle is heaviest. A weight chosen for looks rather than for what
+   the line *is* will contradict the next one. **The glyph family's line is its size's, not a
+   fixed stroke:** it draws Phosphor **Bold up to 26px and Regular from 27px** (Ali's R-WEIGHT,
+   2026-10-17, [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) §2) — their 24 and 16 units of
+   a 256 box paint 1.13px at 12px, 1.50 at 16, 1.88 at 20, 2.44 at 26 and 1.69 at 27 — and a
+   mark among words strokes at its words' own stem (`text`, R9-A4). ⚠️ **Corrected 2026-08-21**
+   — this rule said kit icon strokes were 1.5px; the hand-drawn family stroked 1.9 (`G` and the
+   64-grid `GL`, 178 icons). ⚠️ **Rewritten 2026-10-17 (PHOSPHOR-MIGRATION W2)** — that family,
+   its 1.9 and its wrappers went with the swap; 65% of its icons painted 1.1px or less.
 4. ⚠️ **The legacy numeric Tailwind radius scale is NOT the `--r-*` scale** (`rounded-md`
    is 8px, `--r-md` is 12px). Both are frozen; do not renumber (Ali deferred, 2026-07-29).
    Use the semantic keys.
@@ -1625,12 +1628,15 @@ The platform's hardest-won rules. Most were bought with an incident.
 5. **The countdown is the only manufactured urgency permitted.** ⛔ No confetti, no
    flashing, no streak flames, no combo meters, no celebratory burst beyond the calm gilt
    aura. Wins breathe or fade; ⛔ nothing spins forever. (§M3, §M7.)
-6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are stroke SVG from the kit, or typographic
-   marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
+6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are SVG from the kit (the family `I`, drawn by
+   Phosphor — §K3), or typographic marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
    and localisation, because an emoji is not translatable.
-7. **Illustration idiom: gilt line-art / etched SVG, 1.9 stroke, a single gold accent.**
-   (⚠️ said 1.5px until 2026-08-21; the shipped line-arts come from `glyphs.tsx`'s `GL`
-   64-grid wrapper, which strokes 1.9 — same weight as the icon family, by design.)
+7. **Illustration idiom: gilt line-art / etched SVG, a single gold accent.** ⚠️ **2026-10-17
+   (PHOSPHOR-MIGRATION W2):** this said "1.9 stroke, from `glyphs.tsx`'s `GL` 64-grid wrapper" —
+   but no page ever drew a `GL` line-art (the inspection found all 8 unused), and they went with
+   the hand-drawn family. The empty states draw `ui/empty-state.tsx`'s own set (a 56 grid at
+   1.5) until the migration's W6 makes an empty state one Duotone glyph on a plate, its single
+   accent `--metal-gold` (§Q5), never money gold.
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
@@ -2101,21 +2107,25 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    (`src/lib/use-modal-lock.ts`): scroll locked on both `<html>` and `<body>`, horizontal scroll reset to 0 and the
    viewport's `maximum-scale` pinned to 1 while it is open, so an Android pinch-zoom or a page wider than the screen
    cannot push the dialog off it.
-3. ⛔ **Never import an icon library into a player surface.** Glyphs come from
-   `src/components/ui/glyphs.tsx`.
-   ⚖️ **Ruled 2026-10-17 (Ali): the family moves to Phosphor**, vendored by codegen into this same home — the ruling is
-   [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-17 · Icons — every icon and glyph moves to Phosphor,
-   in waves, live as each is proven (owner)"; the work is [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md). This item is
-   rewritten when the swap lands (its W2); until then it holds exactly as written.
+3. ⛔ **Never import an icon library into a player surface — or anywhere in `src/`.** Every icon is the glyph family
+   `I` (`src/components/ui/glyphs.tsx`), and the family is drawn by **Phosphor Icons**
+   ([`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) — its rulings and its waves): MIT, the exact-pinned
+   devDependency `@phosphor-icons/core`, vendored by its codegen into generated files and content-hashed sprites
+   (`npm run glyphs:gen`; `test:glyph-sync` fails on any drift) — never `@phosphor-icons/react`, whose every component
+   carries all six weights. What a key draws is decided once, in `scripts/glyphs/map.ts`; `test:glyph-source`
+   (predeploy) fails an icon package, a Phosphor import outside the codegen, a new inline `<svg>` icon, an SVG drawn as a
+   data URI, or an image under `public/` that is not named for what it is.
    ⭐ **ONE SOURCE OF GLYPHS AND ICONS — and every design takes from it (Ali, 2026-10-17, R-ONE-SOURCE:** *"we need to
    have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce
    clenaly perfclet loically"***).** A design delivered for a page — by Claude Design or anyone, a canvas, a kit, a
    mock-up — is built from the family's keys: every icon it shows is named by its key, or proposed as a new key with its
    Phosphor name (house extras only where Phosphor has nothing, each with its reason), and the build adds the key to
-   `scripts/glyphs/map.ts` before any page draws it. ⛔ A design's own SVGs, sprites, icon fonts or icon images are never
-   imported, and a design is never asked to draw, redraw or "audit the strokes of" an icon: Phosphor draws them; a design
-   chooses. `test:glyph-source` (predeploy) holds the doors: an icon package, an inline `<svg>`, an SVG data URI, an
-   image under `public/` that is not named for what it is.
+   `map.ts` before any page draws it. ⛔ A design's own SVGs, sprites, icon fonts or icon images are never imported, and
+   a design is never asked to draw, redraw or "audit the strokes of" an icon: Phosphor draws them; a design chooses.
+   ⚖️ **Ruled 2026-10-17 (Ali): "Switch to Phosphor"** — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) §
+   "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)"; the work and
+   its rulings (weight, tone, the selected state, the lexicon) are [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md).
+   Rewritten when the swap landed (its W2): until then this item read "Glyphs come from `glyphs.tsx`" alone.
 4. ⛔ **Never read a `globals.css` out of a design export** — those are dated snapshots and
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
@@ -2857,13 +2867,13 @@ earlier responsive passes. Recovering those pixels means changing padding or gap
 every page shares, on a live money platform: **a design call, not a bug fix's**, and it needs
 Ali rather than a session.
 
-### M5 — A glyph moves for a reason, and all 178 move the same way
+### M5 — A glyph moves for a reason, and every one moves the same way
 
 Four primitives, applied as classes (`.g-settle`, `.g-nudge-up/-down`, `.g-ring`,
 `.g-swap*` — state morphs go through the kit `GlyphSwap`, `ui/glyph-swap.tsx`): arrival,
 directional emphasis, alert, state morph. Triggers are mount, data change, or state change —
 **never hover**; icons respond, they do not perform. The nudges fire on a data CHANGE only,
-never on mount. In-flight is the kit `Spinner`, not a spinning glyph. Glyph #179 inherits by
+never on mount. In-flight is the kit `Spinner`, not a spinning glyph. A new glyph inherits by
 taking a class; a glyph with bespoke keyframes is a violation. Static glyphs stay static —
 this law governs motion, it does not demand it. Guard: `npm run test:glyph-motion`.
 

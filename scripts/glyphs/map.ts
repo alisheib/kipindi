@@ -205,8 +205,10 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   questionCircle: { retire: "its one use, the journey's board tab, draws `markets` (R-LEXICON 5.1A); Help draws `headset`" },
 
   // ── status & tags ──
-  sealCheck: { ph: "seal-check" },
-  voidX: { ph: "prohibit" }, // reserved: Maswali R2 renames it sealX; void is prohibit (one meaning, one glyph)
+  sealCheck: { ph: "seal-check" }, // the certified seal — results' (resolved, R-LEXICON 5.5A) and Maswali R2's seal family
+  // Nothing ever drew it. Reserved for Maswali R2's sealX until Ali ruled (2026-10-17, MASWALI-PLAN §10c) that Millionea
+  // draws only Phosphor, through `I` — so its keys are new map entries, not house drawings, and the reservation ended.
+  voidX: { retire: "unused: Maswali's sealX became Phosphor keys (Ali, 2026-10-17); void is prohibit" },
   clockPending: { ph: "clock-countdown" }, // pending (W4)
   lockSide: { retire: UNUSED },
   sparkleNew: { retire: UNUSED },
@@ -270,10 +272,13 @@ export const DUO_KEYS: readonly string[] = [];
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
   ["profile", "user"], ["hot", "flame2"], ["landmark", "bank"], ["ext", "externalLink"], ["resolved", "sealCheck"],
-  ["gift", "sofGift"], ["portfolio", "ticket"], ["smartphone", "devicePhone"], ["void", "voidX"],
+  ["gift", "sofGift"], ["portfolio", "ticket"], ["smartphone", "devicePhone"],
 ];
 
 export const NEW_KEYS: Record<string, MapEntry> = {
   idea: { ph: "lightbulb" }, // R-LEXICON 5.6A: proposals
   limits: { ph: "hand-palm" }, // R-LEXICON 5.7A: limits and breaks
+  // W2 (lead engineer, 2026-10-17): the hub's Uthibitisho wa utatuzi row — the resolution's attestation, an official
+  // stamp — so it never wears the seal of its neighbour Matokeo (results = seal-check, 5.5A): R5-A parted those two rows.
+  attestation: { ph: "stamp" },
 };

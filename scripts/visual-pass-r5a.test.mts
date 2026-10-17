@@ -825,16 +825,21 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
     echo === 25 && row1 === 10 && compactTop === 6 && echo + row1 + wide === 34 && echo + compactTop + compact === 34
       && read("src/app/markets/page.tsx").includes('className="kp-markets-search"') && read("src/app/markets/markets-ghost.tsx").includes('className="search-box-wrap kp-markets-search"'));
   // The hub: Matokeo and Uthibitisho wa utatuzi drew one sign.
+  // ⚠️ RE-POINTED 2026-10-17 (PHOSPHOR-MIGRATION W2): a glyph is `<svg><use href="…#symbol">` now, so the sign a glyph
+  // draws is the symbol it points at — two keys on one symbol are one sign whatever their names, and the markup differs
+  // only by `data-g`. So the rows are held apart by their symbols: Matokeo's `resolved` is Phosphor's seal-check (Ali's
+  // R-LEXICON 5.5A) — the seal `sealCheck` draws too — so Uthibitisho wa utatuzi wears `attestation`, the resolution's
+  // stamp (W2, so the pair R5-A parted stays apart).
   const svg = (k: keyof typeof I) => html(h(I[k] as never, { s: 20 } as never));
-  const shape = (k: keyof typeof I) => (svg(k).match(/<(circle|path|line)\b/g) ?? []).map((tag) => tag.slice(1)).join(" ");
+  const sign = (k: keyof typeof I) => /<use href="[^"]*#([^"]+)"/.exec(svg(k))?.[1] ?? "";
   const member = { signedIn: true as const, userId: "u", name: "n", initials: "N", phone: "p", balance: 1, walletHeld: false, kycOffered: true, agentInStanding: false, proposalsState: "OPEN" as const,
     doors: { inviteVisible: true, proposalsVisible: true, agentDoorVisible: true, staffConsole: false } };
   const glyphOf = (id: string) => hubRowsFor(member as never).flatMap((g) => g.rows).find((r) => r.id === id) as { glyph?: string } | undefined;
-  ok(`11.2 · the hub: Matokeo wears the results page's own sign (\`resolved\`), no longer the circled check Uthibitisho wa utatuzi wears (\`sealCheck\`)`,
-    glyphOf("results")?.glyph === "resolved" && glyphOf("fairness")?.glyph === "sealCheck" && svg("resolved") !== svg("sealCheck")
+  ok(`11.2 · the hub: Matokeo wears the results page's own sign (resolved, ${sign("resolved")}), and Uthibitisho wa utatuzi its own (attestation, ${sign("attestation")}) — two symbols, not one`,
+    glyphOf("results")?.glyph === "resolved" && glyphOf("fairness")?.glyph === "attestation" && sign("resolved") === "p-seal-check-bold" && sign("attestation") === "p-stamp-bold"
       && read("src/app/results/page.tsx").includes("<I.resolved s={18} />"));
-  ok(`11.2′ CONTROL · the old pair was one sign: checkCircle and sealCheck are each a circle and a check (${shape("checkCircle")} | ${shape("sealCheck")})`,
-    shape("checkCircle") === "circle path" && shape("sealCheck") === "circle path");
+  ok(`11.2′ CONTROL · the reader sees one sign where two keys share a symbol: profile and user, an alias pair, draw one (${sign("profile")} | ${sign("user")}) — as the hand-drawn checkCircle and sealCheck were each a circle and a check`,
+    sign("profile") !== "" && sign("profile") === sign("user"));
   // The Up & Down chart: "loading" has a deadline, then the existing honest sentence.
   const tc = read("src/components/charts/terminal-chart.tsx");
   const deadline = Number(/export const HISTORY_DEADLINE_MS = ([0-9_]+);/.exec(tc)?.[1]?.replace(/_/g, ""));

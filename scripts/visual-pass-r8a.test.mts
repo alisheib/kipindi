@@ -710,7 +710,8 @@ section("6 · the sites ruling (2) moved, each pinned — the five aqua links an
     ["the bell panel's See all — BOTH bells (aqua → blue; classic chrome reached by the ruling)", "src/components/layout/notifications-panel.tsx", /className="inline-flex items-center gap-0\.5 min-h-\[44px\] px-2 rounded-md font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors whitespace-nowrap"\s*>\s*\{t\.notif\.seeAll\}/],
     ["/live's featured title hover (aqua → the link blue's step)", "src/app/live/featured-contest.tsx", /text-text text-balance group-hover:text-brand-200"/],
     ["/live's card title hover (aqua → the link blue's step)", "src/app/live/pulse-grid.tsx", /text-text text-balance group-hover:text-brand-200 \$\{/],
-    ["the wallet's zero-balance Add funds (gold → blue: a text link)", "src/app/wallet/wallet-client.tsx", /tracking-\[0\.14em\] text-brand-300 hover:text-brand-200 transition-colors"\s*>\s*<I\.plus s=\{12\} \/>/],
+    // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A): its glyph is the one deposit arrow, not a +.
+    ["the wallet's zero-balance Add funds (gold → blue: a text link)", "src/app/wallet/wallet-client.tsx", /tracking-\[0\.14em\] text-brand-300 hover:text-brand-200 transition-colors"\s*>\s*<I\.arrowDownToLine s=\{12\} \/>/],
     ["the RG page's begambleaware.org (the success ink → blue)", "src/app/profile/responsible-gambling/page.tsx", /className="text-brand-300 hover:text-brand-200 underline underline-offset-2">begambleaware\.org<\/a>/],
     ["the proposal's View source (royal-200 → blue)", "src/app/proposals/[id]/page.tsx", /className="truncate text-brand-300 hover:underline">\{t\.proposals\.viewSource\}/],
     ["a proposal row's View market cue (royal-200 → blue)", "src/app/proposals/page.tsx", /<span className="flex items-center gap-1 text-brand-300">\{t\.proposals\.viewMarket\}/],

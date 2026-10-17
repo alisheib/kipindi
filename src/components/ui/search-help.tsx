@@ -125,7 +125,7 @@ export function SearchHelp({
           setOpen((v) => !v);
         }}
       >
-        <I.info s={15} aria-hidden />
+        <I.info s={14} aria-hidden />
       </button>
       {open && (
         <div

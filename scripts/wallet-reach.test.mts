@@ -468,9 +468,11 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      pillBlock.length > 0 && !WIDTH_GATE.test(pillBlock) && pillBlock.includes('href="/wallet/deposit"')
      && pillBlock.includes('className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"'),
      pillBlock === "" ? "the pill's guard was not found as written" : pillBlock.slice(0, 160));
-  ok("8c.3 its + is the one part that yields, below 360 — a span the stylesheet hides, never the button; the words and the name stay",
-     // Round 10 (R10-A6): the + stands on the pill's padding (`edge`); the padding shares the freed gap (globals.css).
-     pillBlock.includes('<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>')
+  ok("8c.3 its glyph is the one part that yields, below 360 — a span the stylesheet hides, never the button; the words and the name stay",
+     // Round 10 (R10-A6): the glyph stands on the pill's padding (`edge`); the padding shares the freed gap (globals.css).
+     // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.4A): the glyph is the one deposit arrow,
+     // Phosphor's arrow-line-down, where it was a + (its span keeps the name `kp-jhdr__plus`).
+     pillBlock.includes('<span aria-hidden className="kp-jhdr__plus"><I.arrowDownToLine s={14} edge="start" /></span>')
      && pillBlock.includes("<span>{t.journey.depositAction}</span>") && pillBlock.includes("aria-label={t.journey.depositAction}")
      && css.includes(".kp-jhdr__plus { display: none; }")
      && css.includes("@media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }"));
