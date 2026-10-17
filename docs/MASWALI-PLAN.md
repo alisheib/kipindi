@@ -2791,7 +2791,7 @@ drawings is already claimed there.
 `reserve`, `standIn`, `carry`, `floor`, `register`, `fairness`, `refund`, `salesPaused`, `howTo`, `cap` and `finalWeek`.
 
 **How it lands.** Millionea's code calls only the `I` keys above. At S5 the new keys go into the Phosphor lane's
-`scripts/glyphs/map.ts` and `npm run glyphs:gen` draws them in every weight; nothing is added to `glyphs.tsx` by hand,
+`scripts/glyphs/map.ts` (on its branch until W2 lands) and its codegen draws them in every weight; nothing is added to `glyphs.tsx` by hand,
 and until W2's swap lands on `main` a key `I` does not yet hold waits for it rather than being drawn inline here.
 `test:glyph-source` (that lane's guard) holds the rule. **The specimen** — every pick above drawn from Phosphor's own files, the product-mark choice first:
 https://claude.ai/artifact/Xub9GztHh1c15CtRyrUwTh (private to Ali; published 2026-10-17). Until Ali picks the mark,
