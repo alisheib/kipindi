@@ -2766,7 +2766,7 @@ platform's lexicon already owns a meaning, Millionea uses that key and adds none
 | Time left to buy | the closing pill, the slip | `hourglassHalf` (lexicon) | `hourglass-medium` | A countdown, distinct from the clock that shows a time |
 | A time or date | the close time, an event start | `clock` (lexicon) | `clock` | |
 | The week's register (Daftari la Wiki) | `/millionea/register`, the hub's link | `register` (new) | `notebook` | The daftari itself |
-| Proof of fairness (the commitment) | `/fairness`, the register's root | `fairness` (new) | `fingerprint` | One unique print for the week's tickets; `shield-check` stays "verified" |
+| The week's ticket commitment (every ticket fixed at the close, MR-13) | Millionea's section of `/fairness`, the register's root | `commitment` (new) | `fingerprint` | One unique print for the week's tickets. Millionea's own proof, so its own key: the platform's resolution proof on `/fairness` keeps `attestation` (its hub row) and `shieldcheck` (its page head) |
 | Results recorded | the register, a settled week | `sealCheck` (lexicon; the same drawing as `resolved`) | `seal-check` | The platform's "a result is recorded" (R-LEXICON 5.5A) |
 | A win | the ticket, the receipt | `trophy` (lexicon) | `trophy` | The platform's win, with the existing seal moment only (§M7) |
 | Cancel a ticket (free window) | the ticket, the receipt | `rotateCcw` (lexicon) | `arrow-counter-clockwise` | "Take it back", and the money returns in full |
@@ -2788,7 +2788,9 @@ other meanings, so the sales pause and the carry have their own keys; and `voidX
 drawings is already claimed there.
 
 **The new keys Millionea adds** (13): `millionea` (the product mark; its drawing is Ali's pick), `markPending`,
-`reserve`, `standIn`, `carry`, `floor`, `register`, `fairness`, `refund`, `salesPaused`, `howTo`, `cap` and `finalWeek`.
+`reserve`, `standIn`, `carry`, `floor`, `register`, `commitment`, `refund`, `salesPaused`, `howTo`, `cap` and `finalWeek`.
+(`commitment` was first written `fairness`; the icon lane pointed out that `/fairness` already means the platform's
+resolution proof, so the key is named for what it shows.)
 
 **How it lands.** Millionea's code calls only the `I` keys above. At S5 the new keys go into the Phosphor lane's
 `scripts/glyphs/map.ts` (on its branch until W2 lands) and its codegen draws them in every weight; nothing is added to `glyphs.tsx` by hand,
