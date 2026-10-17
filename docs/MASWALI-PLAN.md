@@ -1195,8 +1195,9 @@ differ, these win.
   - *The Millionea slip travels as a `BuyOpts` field,* not as a third `BetContext.kind`. `ctx.kind` means who is
     betting, and the house-bots lane pins every comparison (`SEAM_SITES`). Millionea gets its own `MASWALI:` markers,
     its own guard, and a test that MARKET and UPDOWN output is unchanged.
-  - *Every Yes/No notice is muted on every Millionea path:* `settleMarket`'s VOID arm, which a week void uses, and
-    the cancel. Muting them is S3's job; S6 adds Millionea's own notices.
+  - *Every Yes/No notice is muted on every Millionea path:* `settleMarket`'s VOID arm, which a week void used until R1
+    (a week now refunds through `maswali-void.ts`, which sends none), and the cancel. Muting them is S3's job; S6 adds
+    Millionea's own notices.
   - *The cancel is a real one-transaction write that fails loudly.* Today `cashOutPosition` writes outside
     `withMoneyTx`, and its ledger write is fire-and-forget.
   - *OD-17's loss limit:* `sumGamblingNetSince` (`prisma-dal.ts:2727`, and its memory twin) drops `BET_PAYOUT`
@@ -1627,7 +1628,7 @@ read this repository, so `PROMPT.txt` states the rules and the figures it may dr
    - `correctSeal` (OD-09): allowed inside the window; restarts it.
    - `proposeVoidAtDeadline`: the system proposes, an officer seals.
    - `recomputeGate`: re-run on every seal, void or objection.
-   - `voidWeek`: stamp the market VOIDED with outcome VOID and `objectionsClosedAt = now`, then `settleMarket(id, {actorId: "system_maswali"})`, which is the existing VOID arm. It runs only after the objection windows of the triggering voids have closed. A pre-close void that dooms the week stops sales immediately.
+   - `voidWeek`: stamp the week VOIDED once, then `refundVoidedWeek` (`maswali-void.ts`) refunds every live ticket and stamps the market VOIDED and settled in one bulk transaction (R1; MR-18's implementation note). ⚠️ Superseded by R1: it first called `settleMarket(id, {actorId: "system_maswali"})`, the existing VOID arm, which timed a large week out. It runs only after the objection windows of the triggering voids have closed. A pre-close void that dooms the week stops sales immediately.
    - `claimCarry(weekId)`: under a `maswali:chain` lock. Stamps `rolloverIn` once (`WHERE rolloverIn IS NULL`). Settlement is in CALENDAR order (`calendarStartMs`, read from the week's fixed `finalDeadlineAt`); `seq` is only the drafting counter. Ordering by drafting stranded an out-of-order draft (the re-review, 2026-10-17).
 8. **`src/lib/server/maswali-scheduler.ts`:**
    - One timer per non-terminal week (open, close, void-deadline proposals, objection close).
