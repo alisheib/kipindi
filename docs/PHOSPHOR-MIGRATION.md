@@ -349,10 +349,31 @@ that read the house drawings. W2's list below carries them.
 - **DESIGN_AUTHORITY rewritten:** §K3, §S3 rule 3 (the weight law), §C6, §C7, the §M5 heading, the §0d row.
 - **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
   after `#` still compared; its proof is P.1b.
-- **Still owed for W2:** the derived battery; the parity baseline at `main` and the compare, with the generated glyph
-  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency`, `test:measure` and
-  `test:type-scale` are red on `main` from the Maswali console's tables, page widths and copy, all fixed on
-  `maswali-s4` — W2 takes them on its rebase); the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  - The baseline was taken at W2's base, `862aa757`: 52/52, 224 cells.
+  - The first compare ran at `4fffe9b1`: 64/68, its four failures the glyph differences.
+  - `scripts/glyphs/parity-entries.mjs` generated 21 entries from them into `qa-parity-glyph-swap.generated.mjs`:
+    - the header, footer and rail of all 224 matrix cells;
+    - the Sell confirm;
+    - the book's main, similar rail and LIVE strip;
+    - the question page's main, panel and holder.
+  - The generator learned two rules on the way:
+    - An `auto` margin that absorbs the new width of a glyph the element holds is layout, not style: the question
+      header's `ml-auto` row around its Source ↗ mark, 56 cells.
+    - When one glyph box rounds to another half pixel in some cells, those cells get a further entry, tried after the
+      first: the Swahili language menu's ✓ at 1024px, 4 cells.
+  - Left unexplained, correctly: the `/watchlist` card's date line in 4 cells. Its text is the row's seeding moment,
+    already masked by `eat-dates` (the 090bbf76 pair proved it differs between servers), but its width still varies
+    with the digits. This is a harness gap, not W2. The question page's canonical time before geometry would close it,
+    and it is filed for the harness's owner.
+- **Still owed for W2:**
+  - the release proof, running at `b090e420` under lock v3. `test:ui-consistency`, `test:measure` and `test:type-scale`
+    are red on `main` from the Maswali console's tables, page widths and copy, all fixed on `maswali-s4`; W2 takes
+    them on its rebase.
+  - the compare with the entries, and its `--prove-red`;
+  - the tiles read (the checkbox tick among them);
+  - the push.
+
+  **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
 
 ### W3 — Selected states
@@ -436,6 +457,14 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 - The chat button covers content on many phone tiles (the hub's "Kiswahili ›", a toggle, a card's time-left).
 - The Needle disc sits half off-screen over content on most phone tiles.
 - At 320 px the header drops the ⊕ on "Weka pesa" and "Tiketi zangu" wraps to two lines.
+- **For the owner of `qa-classic-shell-parity` (found 2026-10-17 in W2's compare):** a book cell's server-rendered EAT
+  moment is masked as text (`eat-dates`), but its geometry is not. The `/watchlist` card's date line (`.mcardp-timeleft`,
+  `data-market-part="time"`) is the row's seeding moment, and Inter's digits are not tabular, so its width, and the
+  `ml-auto` row around it, differ between any two fresh servers whose moments differ in digits. W2's compare saw 78px
+  against 82px, in the 4 player `/watchlist` cells.
+  The question page already solves this: `break-end-clock` writes one canonical same-format time before geometry,
+  calibrated from the ff8c pair. The same treatment for book cells would close it; the 090bbf76 pair already proves the
+  moments differ.
 
 ---
 

@@ -94,6 +94,13 @@ function layoutParts(text) {
   return { lines, blocks, byPath, inBlock };
 }
 const sigOf = (line) => line.slice(line.lastIndexOf(" ") + 1);
+/** Two computed styles (a baseline line's and a capture line's) that are the same but for their resolved margins. */
+const marginOnly = (ida, idb) => {
+  const sa = base.blobs[ida], sb = cur.blobs[idb];
+  if (typeof sa !== "string" || typeof sb !== "string") return false;
+  const rest = (s) => s.split(NL).filter((l) => !/^margin-(?:top|right|bottom|left):/.test(l)).join(NL);
+  return rest(sa) === rest(sb);
+};
 const geoOf = (line) => { const a = line.indexOf(" "), b = line.lastIndexOf(" "); return line.slice(a + 1, b); };
 
 /** One region field of one cell: the maps that explain its difference wholly, or the reason it is not the glyphs alone. */
@@ -128,7 +135,13 @@ function explainLayout(was, now, glyphIdx) {
     if (restA[i] === restB[i]) continue;
     const pa = restA[i].slice(0, restA[i].indexOf(" ")), pb = restB[i].slice(0, restB[i].indexOf(" "));
     if (pa !== pb) return { why: `line ${i}: ${pa} in the baseline, ${pb} in the capture` };
-    if (sigOf(restA[i]) !== sigOf(restB[i])) return { why: `${pa} changed its computed style` };
+    if (sigOf(restA[i]) !== sigOf(restB[i])) {
+      // An `auto` margin that absorbs the new width of a glyph the element HOLDS is layout, not style: its computed style
+      // is the baseline's but for its resolved margins (W2: the question header's ml-auto row around its Source ↗ mark).
+      // An element that holds no changed glyph keeps the rule — a margin that moved for any other reason is not explained.
+      const holdsGlyph = [...glyphPaths].some((g) => g.startsWith(`${pa}>`));
+      if (!(holdsGlyph && marginOnly(sigOf(restA[i]), sigOf(restB[i])))) return { why: `${pa} changed its computed style` };
+    }
     if (Object.hasOwn(line, restA[i]) && line[restA[i]] !== restB[i]) return { why: `${pa}: one line became two` };
     line[restA[i]] = restB[i];
   }
@@ -165,30 +178,36 @@ for (const [list, key] of SECTIONS) {
       for (const [field, kind, maps] of [[`regions.${name}.html`, "html", { svg: html.svg, block: {}, line: {} }], [`regions.${name}.layout`, "layout", { svg: {}, block: lay.block, line: lay.line }]]) {
         const changed = kind === "html" ? h0 !== h1 : l0 !== l1;
         if (!changed) continue;
-        const e = entries.get(field) ?? { kind, maps: { svg: {}, block: {}, line: {} }, cells: new Set(), cellKeys: [] };
-        for (const part of ["svg", "block", "line"]) Object.assign(e.maps[part], maps[part]);
-        e.cellKeys.push([k, kind === "html" ? [h0, h1] : [l0, l1]]);
+        const e = entries.get(field) ?? { kind, cellKeys: [] };
+        e.cellKeys.push([k, kind === "html" ? [h0, h1] : [l0, l1], maps]);
         entries.set(field, e);
       }
     }
   }
-  // Each entry's population, by the harness's own rule: its maps applied, the baseline must equal the capture.
+  // Each entry's population, by the harness's own rule: its maps applied, the baseline must equal the capture. Every cell's
+  // maps are pooled; a cell the pool cannot explain (one of its glyph boxes rounds to another half pixel than the same box
+  // elsewhere, so two cells map one baseline block two ways) goes to a further entry, pooled from such cells alone. The
+  // harness tries a field's entries in order, so each entry is the hit for exactly its own cells.
+  const merge = (all) => { const m = { svg: {}, block: {}, line: {} }; for (const x of all) for (const part of ["svg", "block", "line"]) Object.assign(m[part], x[part]); return m; };
   for (const [field, e] of [...entries].sort((p, q) => p[0].localeCompare(q[0]))) {
-    let cells = 0;
-    for (const [k, [w, n]] of e.cellKeys) {
-      if (apply(e.kind, w, e.maps) === n) cells++;
-      else unexplained.push(`${list} ${k} ${field} — the union of maps does not explain it (a map of another cell collides)`);
+    let pending = e.cellKeys, round = 0;
+    while (pending.length) {
+      round++;
+      const maps = merge(pending.map(([, , m]) => m));
+      const hit = pending.filter(([, [w, n]]) => apply(e.kind, w, maps) === n);
+      if (!hit.length) { for (const [k] of pending) unexplained.push(`${list} ${k} ${field} — no pool of maps explains it (maps of other cells collide)`); break; }
+      pending = pending.filter((c) => !hit.includes(c));
+      const id = `glyph-swap-${list}-${field.replace(/^regions[.]/, "").replace(/[.]/g, "-")}${round > 1 ? `-${round}` : ""}`;
+      const htmlId = `glyph-swap-${list}-${field.replace(/^regions[.]/, "").replace(/[.]layout$/, "-html").replace(/[.]/g, "-")}`;
+      const further = round > 1 ? ` — a further population: ${hit.length} cell(s) where a box of the same glyphs rounds to another half pixel than in the first (${hit.map(([k]) => k).join(" · ")})` : "";
+      out[list].push({
+        id, field, cells: hit.length, glyphs: maps,
+        ...(e.kind === "layout" && entries.has(field.replace(/[.]layout$/, ".html")) ? { alongside: htmlId } : {}),
+        reason: (e.kind === "html"
+          ? `PHOSPHOR-MIGRATION W2: every family glyph in ${field.replace(/^regions[.]|[.]html$/g, "")} is drawn by Phosphor — its <svg> becomes the sprite reference (data-g, <use href>), ${Object.keys(maps.svg).length} drawings named old → new, measured by the first compare`
+          : `PHOSPHOR-MIGRATION W2: the lines those glyphs draw in ${field.replace(/^regions[.]|[.]layout$/g, "")} — each glyph's block (its <use> where its shapes were) and ${Object.keys(maps.line).length} other line(s) whose box a glyph beside it moved (or whose auto margin absorbed a glyph it holds), each in its own computed style — measured by the first compare`) + further,
+      });
     }
-    if (cells === 0) continue;
-    const id = `glyph-swap-${list}-${field.replace(/^regions[.]/, "").replace(/[.]/g, "-")}`;
-    const htmlId = `glyph-swap-${list}-${field.replace(/^regions[.]/, "").replace(/[.]layout$/, "-html").replace(/[.]/g, "-")}`;
-    out[list].push({
-      id, field, cells, glyphs: e.maps,
-      ...(e.kind === "layout" && entries.has(field.replace(/[.]layout$/, ".html")) ? { alongside: htmlId } : {}),
-      reason: e.kind === "html"
-        ? `PHOSPHOR-MIGRATION W2: every family glyph in ${field.replace(/^regions[.]|[.]html$/g, "")} is drawn by Phosphor — its <svg> becomes the sprite reference (data-g, <use href>), ${Object.keys(e.maps.svg).length} drawings named old → new, measured by the first compare`
-        : `PHOSPHOR-MIGRATION W2: the lines those glyphs draw in ${field.replace(/^regions[.]|[.]layout$/g, "")} — each glyph's block (its <use> where its shapes were) and ${Object.keys(e.maps.line).length} other line(s) whose box a glyph beside it moved, each in its own computed style — measured by the first compare`,
-    });
   }
 }
 
