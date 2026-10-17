@@ -180,6 +180,11 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/win-celebration.tsx": [5, "the celebration (§M3)"],
   "src/components/positions/pnl-summary-strip.tsx": [4, "a positive settled net (money earned) · the NeedleDial — the brand needle (§B1a)"],
   "src/components/updown/round-stake-panel.tsx": [1, "the Up & Down bet commit (D1)"],
+  // MASWALI-BUILD S5 (DESIGN_AUTHORITY §M8a items 6–8): Millionea's gold is two files and no more. The pool figure, the home
+  // card, the seal line, the ticket and the week strip paint none (the jackpot, the floor, the rollover and the stub are
+  // unearned, §M8a item 7) — the ticket draws its won amount through the win ledger's component.
+  "src/components/maswali/maswali-win-ledger.tsx": [3, "earned money only (§M8a items 7–8): `.gilt-ink` on 'Kwa tiketi yako' / 'Jumla yako' and on a won ticket's paid amount; the ticket card's struck payout stat (the platform card's own)"],
+  "src/components/maswali/maswali-slip.tsx": [2, "the Millionea money commit (§M3a): the confirm sheet's armed 'Kata tiketi', the kit's gold Button in `.gilt-metal` — the slip's 'Endelea' is brand primary"],
   "src/lib/notification-appearance.ts": [3, "WIN — 'the only money outcome that is gold'"],
   // R8-A (2026-10-10): −1 — TONE_INK.amber (`text-warning-fg`) is amber, not gold (Ali's ruling (1)).
   "src/lib/status-tone.ts": [2, "the dictionary's struck gilt: RESOLVED, WIN (§B11)"],

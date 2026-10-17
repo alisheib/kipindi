@@ -61,6 +61,7 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/layout/needle-drawer.tsx": [5, "the Needle's mark and W7: hand-drawn chevron and check icons"],
   "src/components/layout/needle.tsx": [1, "the Needle (brand object)"],
   "src/components/layout/notifications-panel.tsx": [1, "W7: empty-state art outside the family"],
+  "src/components/maswali/maswali-unbroken-line.tsx": [1, "Millionea's hairline (MASWALI-BUILD S5): M5's Unbroken Line and M6's closing rule, drawn on by `.m-draw` — a rule, not an icon"],
   "src/components/markets/conviction-dial.tsx": [1, "the conviction dial (an instrument)"],
   "src/components/markets/share-button.tsx": [1, "W7: a hand-drawn link icon"],
   "src/components/onboarding/first-visit-primer.tsx": [1, "W7: primer art outside the family"],

@@ -219,6 +219,13 @@ export const STATUS_TONE = {
    * by paperwork.
    */
   CASHED_OUT: { player: "slate" },
+  /**
+   * ⭐ MASWALI MILLIONEA'S WON TICKET (MASWALI-BUILD S5; Ali's ruling O-6, 2026-10-17; DESIGN_AUTHORITY §M8a item 8; the
+   * v6 manifest's L4). The word reads in success green and the gold sits only on the amount the ticket was paid. A
+   * Millionea-only row — see `STATUS_TONE_EXCEPTIONS.MILLIONEA_WIN` — so `WIN` above stays the platform's for Yes/No and
+   * Up & Down. Tiketi zangu's switch shows one product at a time, so the two won chips never share a list.
+   */
+  MILLIONEA_WIN: { player: "green" },
   // ── A PLAYER'S PAYMENT — a deposit or a withdrawal (2026-10-07, the Receipts page) ─────────────
   /**
    * ⭐ THE SEVEN `TxnStatus` WORDS A PLAYER READS ON THEIR OWN MONEY, DECIDED ONCE. Until 2026-10-07 two surfaces
@@ -438,6 +445,13 @@ export const STATUS_TONE_EXCEPTIONS = {
    * note records why the card does not use it.
    */
   LOSS: "Betting rose (`no`) on a position card — the same red as the No side chip beside it — NOT the status `rose`/`danger`, which is the platform's failure colour. A bet that lost is the ordinary other half of a two-sided market, not a fault.",
+  /**
+   * ⭐ ADDED 2026-10-17 (MASWALI-BUILD S5) — ALI'S RULING O-6 on the Millionea delivery: *"the word in success green, the
+   * money only on the amount"*. A won Millionea ticket's chip is the app-state green, where every other product's won
+   * chip carries the money ink (`WIN` above, and Ali's own ruling there not to harmonise it). ⛔ The two rulings are
+   * about different products and both stand: do not move `WIN` to green, and do not move this row to `WIN`'s ink.
+   */
+  MILLIONEA_WIN: "Success green on a won Millionea ticket's word (Ali's O-6, §M8a item 8) — the paid amount carries the money ink, the word does not — while WIN keeps its own for Yes/No and Up & Down.",
   /*
    * ⛔ `CASHED_OUT` USED TO HAVE AN ENTRY HERE AND IT IS GONE ON PURPOSE — answered by Ali
    * 2026-09-09, and the note it replaced carried the instruction followed here verbatim: *"if the

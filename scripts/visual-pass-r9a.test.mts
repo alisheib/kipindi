@@ -488,6 +488,8 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/ui/route-error.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 1, "text", "the error view's way-back button's end: a centred control frames its ink (R10-A6)"],
     ['src/components/updown/updown-card.tsx', '<I.chevronRight s={10} text="mono-600" />', 1, "button", B],
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
+    ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle md:mt-0" />', 1, "row", "the Millionea card's end (MASWALI-BUILD S5): a door's end mark on its content edge, as the How-to card's"],
+    ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a held Millionea ticket's row end in the hub's buy block (MASWALI-BUILD S5)"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const marksSeen = (source: (f: string) => string = code) => {
@@ -682,6 +684,7 @@ section("6 Â· A6 a dashed track starts and ends on a whole dash at every width â
     "src/components/brand.tsx": "the dial's empty ring by pathLength, 6.6", "src/components/ui/glyphs.tsx": "clockPending by pathLength, 6.6",
     "src/components/badges/Badge.tsx": "a progress arc (dasharray = its circumference), not a pattern", "src/components/charts/ring.tsx": "donut segments, not a pattern",
     "src/components/positions/countdown-ring.tsx": "a progress arc, not a pattern",
+    "src/components/maswali/maswali-unbroken-line.tsx": "a draw-on (`.m-draw`: the dasharray is the path's own length, set only while it draws), not a pattern",
   };
   const found = PLAYER_TSX.filter((f) => DASHES.test(code(f)));
   DASHES.lastIndex = 0;

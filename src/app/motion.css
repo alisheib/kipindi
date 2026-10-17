@@ -159,6 +159,25 @@
 @keyframes m-axis-reveal  { from { clip-path: polygon(-30% 0, -6% 0, -30% 100%, -54% 100%); }
                             to   { clip-path: polygon(-30% 0, 160% 0, 136% 100%, -54% 100%); } }
 
+/* ── THE N-BLOCK — MASWALI MILLIONEA ONLY (DA §M8a items 1–5; Ali's yes to O-1, O-2, O-3, 2026-10-17) ──────────────
+   The three motions the v6 delivery adds, pasted as filed (`v6-2026-10-17-millionea/motion/maswali-motion.css`). No
+   new token, curve or duration: every value is a ladder token or a runtime binding; the only numbers are the −1 that
+   flips a direction and the press stops 1.02 / 0.98, which are `seal-place`'s own. Each plays once and never loops, so
+   the `reduced` throttle tier plays it at full duration (no §6 entry), and both clamps below set `animation: none`, so
+   the layout's own end frame shows. ⛔ `--m-pivot` stays the needle's (§M8): N2 travels on `--m-tilt` instead.
+   N1 Kubeba / the carry — moves the socket's WRAPPER, never the glyph's own drawing. `--carry-dx`, `--carry-dy` and
+   `--carry-s` are bound at run time from ONE measurement before the run (`maswali-carry.tsx`). */
+@keyframes maswali-carry  { from { translate: var(--carry-dx) var(--carry-dy); scale: var(--carry-s, 1); }
+                            to   { translate: 0 0; scale: 1; } }
+/* N2 Kugonga Muhuri / the attestation press — travels `--sp-2` down the mark's line. Where an engine cannot resolve
+   `sin()` / `cos()` the translate resolves to none and the stamp only scales and fades: a lawful end frame (L12). */
+@keyframes maswali-attest {
+  0%   { opacity: 0; translate: calc(var(--sp-2) * sin(var(--m-tilt))) calc(-1 * var(--sp-2) * cos(var(--m-tilt))); scale: 1.02; }
+  60%  { opacity: 1; translate: 0 0; scale: 0.98; }
+  100% { opacity: 1; translate: 0 0; scale: 1; } }
+/* N3 Kukata Tiketi / the cut — the end frame IS the layout; `--cut-from` gives the direction. */
+@keyframes maswali-cut    { from { translate: 0 var(--cut-from); } to { translate: 0 0; } }
+
 /* ===========================================================================
    Utilities
    =========================================================================== */
@@ -249,6 +268,14 @@
 
 /* Line-art / chart draw-on. Set stroke-dasharray to the path length inline. */
 .m-draw             { animation: m-draw var(--t-max) var(--m-glide) both; }
+
+/* The N-block's classes (keyframes and the law above, DA §M8a). Staggers cap at four steps (`min(i, 3)`). */
+.maswali-carry      { animation: maswali-carry var(--t-move) var(--m-settle) both;
+                      animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+.maswali-attest     { animation: maswali-attest var(--t-base) var(--m-settle) both;
+                      animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+.maswali-cut        { --cut-from: calc(-1 * var(--sp-2)); animation: maswali-cut var(--t-base) var(--m-settle) both; }
+.maswali-cut-undo   { --cut-from: var(--sp-2);            animation: maswali-cut var(--t-base) var(--m-glide)  both; }
 
 /* Ambient background. One per viewport, 64s, blurred — effectively free. */
 .m-ambient          { animation: m-spin 64s linear infinite; will-change: transform; pointer-events: none; }
@@ -595,7 +622,8 @@ html.kp-reduce-motion .toast-countdown,
 @media (prefers-reduced-motion: reduce) {
   .g-settle, .g-nudge-up, .g-nudge-down, .g-ring, .g-swap-in, .g-swap-out,
   .crest-arrive, .crest-ring-reveal, .seal-arrive, .seal-commit, .mark-flip,
-  .seal-mark-flip, .needle-sweep, .needle-settle-loss, .mark-pending
+  .seal-mark-flip, .needle-sweep, .needle-settle-loss, .mark-pending,
+  .maswali-carry, .maswali-attest, .maswali-cut, .maswali-cut-undo
                      { animation: none !important; opacity: 1; transform: none; filter: none; }
   .mark-flip-i:hover { animation: none !important; }
   .gilt-metal:hover  { animation: none !important; }
@@ -611,6 +639,8 @@ html.kp-reduce-motion .seal-arrive, html.kp-reduce-motion .seal-commit,
 html.kp-reduce-motion .mark-flip, html.kp-reduce-motion .mark-flip-i:hover,
 html.kp-reduce-motion .seal-mark-flip,
 html.kp-reduce-motion .needle-sweep, html.kp-reduce-motion .needle-settle-loss,
-html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover
+html.kp-reduce-motion .mark-pending, html.kp-reduce-motion .gilt-metal:hover,
+html.kp-reduce-motion .maswali-carry, html.kp-reduce-motion .maswali-attest,
+html.kp-reduce-motion .maswali-cut, html.kp-reduce-motion .maswali-cut-undo
                    { animation: none !important; opacity: 1; transform: none; filter: none; }
 html.kp-reduce-motion .seal-sheen { animation: none !important; opacity: 0; }

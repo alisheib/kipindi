@@ -161,7 +161,10 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/comments-thread.tsx": [2, "SIDE — a commenter's side chip"],
   "src/components/markets/conviction-dial.tsx": [16, "SIDE — the dial's two sides (track, gradients, labels, the side's Place button, the placed bet's strip)"],
   "src/components/markets/market-card.tsx": [2, "SIDE — the card's YES/NO buttons"],
-  "src/components/markets/operation-result-modal.tsx": [14, "SIDE — a placed bet's strip and primary button (`stripTone` yes/no); the crests are the app-state family"],
+  // 14 → 12 (MASWALI-BUILD S5): the crest's two copies of `stripTone === "yes" || stripTone === "no"` became one `sealed`
+  // line when Millionea's `stamp` joined them; the strip and the button are unchanged.
+  "src/components/markets/operation-result-modal.tsx": [12, "SIDE — a placed bet's strip and primary button (`stripTone` yes/no); the crests are the app-state family"],
+  "src/components/maswali/maswali-slip.tsx": [2, "SIDE — the slip's pick controls: the chosen side in its button's ink with the check, one lit control per row, the other a ghost (§B2)"],
   "src/components/markets/position-card.tsx": [2, "SIDE — a position's side chip"],
   "src/components/markets/side-picker.tsx": [4, "SIDE — the picked side's chip and the two side buttons"],
   "src/components/onboarding/first-visit-primer.tsx": [20, "SIDE — the primer's picture of the two sides, their bar and their pools"],
