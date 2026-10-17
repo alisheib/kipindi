@@ -26,7 +26,7 @@ export function eatParts(atMs: number): { weekday: number; clock: string; midnig
 
 /** "Ijumaa" — the weekday an instant falls on, in EAT. */
 export function eatWeekday(t: Dict, atMs: number): string {
-  return t.millionea.weekdays[eatParts(atMs).weekday];
+  return Number.isFinite(atMs) ? t.millionea.weekdays[eatParts(atMs).weekday] : "—";
 }
 
 /** "Ijumaa 18:00" — the weekday and the clock, in EAT. ⛔ "—" for an instant that is not one, never a thrown page. */
