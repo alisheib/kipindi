@@ -10,7 +10,7 @@ export default function Loading() {
         {/* The four standing tiles: rollout, licence, sales, guarantee. */}
         <SkKpiRow count={4} />
         {/* Alerts — a titled card; its rows are data, so three is an estimate. */}
-        <SkCard lines={3} titleW="w-24" />
+        <SkCard lines={3} titleW="w-[96px]" />
         {/* The weeks — a titled flush card, seven columns at min-w-[860px]. */}
         <SkTableCard cols={7} rows={6} minWidth={860} headW="w-[112px]" />
       </SkBody>

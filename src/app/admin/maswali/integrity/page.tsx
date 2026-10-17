@@ -104,7 +104,7 @@ async function Content() {
                       {c.groups.map((g, j) => (
                         <li key={j}>
                           <span className={g.basis === "records" ? "text-warning" : "text-text-secondary"}>{g.detail}</span>
-                          <span className="block text-caption text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
+                          <span className="block text-body-sm text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
                         </li>
                       ))}
                     </ul>
@@ -120,7 +120,7 @@ async function Content() {
             <ul className="space-y-2">
               {v.voidable.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 flex-wrap">
-                  <span className="tabular">{w.code}</span><span className="text-caption text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
+                  <span className="tabular">{w.code}</span><span className="text-body-sm text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
                   {canVoid ? <VoidWeekControl weekId={w.id} code={w.code} /> : <ControlLocked what="Void the week" need={CONTROL_DOMAIN.voidMaswaliWeek} />}
                 </li>
               ))}
@@ -131,7 +131,7 @@ async function Content() {
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
           {v.held.length === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." /> : (
             <ScrollX label="Millionea held shares">
-              <table className="table min-w-[900px]">
+              <table className="admin-tbl min-w-[900px]">
                 <thead><tr><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-right">Share</th><th className="text-left">Why</th><th className="text-left">Decision</th></tr></thead>
                 <tbody>
                   {v.held.map((h) => (
@@ -152,7 +152,7 @@ async function Content() {
         <AdminCard title="Winners" sw="Washindi" padding="p-0">
           {v.winners.length === 0 ? <EmptyState title="No winner yet" body="Every paid ticket appears here with its account, to screen." /> : (
             <ScrollX label="Millionea winners">
-              <table className="table min-w-[960px]">
+              <table className="admin-tbl min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-left">Role · status</th><th className="text-right">Account age</th><th className="text-right">Share</th><th className="text-left">Screening</th></tr></thead>
                 <tbody>
                   {v.winners.map((w) => (
@@ -160,7 +160,7 @@ async function Content() {
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
                       <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{formatTzs(w.payout)}</td>
-                      <td className="text-left">{w.frozenReason ? <span className="text-caption">{w.frozenReason}</span>
+                      <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{w.frozenReason}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
                         : <ControlLocked what="Hold the share" need={CONTROL_DOMAIN.holdMaswaliShare} />}</td>
                     </tr>
@@ -174,7 +174,7 @@ async function Content() {
         <AdminCard title="Seal log" sw="Kumbukumbu ya muhuri" padding="p-0">
           {v.sealLog.length === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." /> : (
             <ScrollX label="Millionea seal log">
-              <table className="table min-w-[960px]">
+              <table className="admin-tbl min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Slot</th><th className="text-left">Result</th><th className="text-left">Sealed by</th><th className="text-left">At (EAT)</th><th className="text-left">Second officer</th><th className="text-left">Evidence</th></tr></thead>
                 <tbody>
                   {v.sealLog.map((s, i) => (

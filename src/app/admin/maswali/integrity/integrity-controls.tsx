@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmModal } from "@/components/ui/modal";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import {
@@ -49,6 +50,7 @@ export function PauseControl({ paused }: { paused: boolean }) {
       <Field label={paused ? "Why sales resume" : "Why sales pause"}><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
       <Button size="sm" variant={paused ? "primary" : "claret"} disabled={pending || text.trim().length < 5} onClick={() => setOpen(true)}>{paused ? "Resume sales" : "Pause sales"}</Button>
       {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+      <UnsavedChangesGuard dirty={text.trim() !== ""} body={`A reason to ${paused ? "resume" : "pause"} sales has been typed but not recorded. Leaving now discards it.`} />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone={paused ? "brand" : "claret"} tier="hard" typedWord={paused ? "RESUME" : "PAUSE"}
         title={paused ? "Resume Millionea sales?" : "Pause Millionea sales?"} confirmLabel={paused ? "Resume" : "Pause"}
         body={paused ? "Players can buy again at once." : "No ticket can be bought until sales resume. Tickets already bought are safe; settlements, refunds and cancels go on."}
@@ -65,7 +67,7 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
   return (
     <span className="inline-flex flex-col gap-1">
       <Button size="xs" variant="claret" disabled={pending} onClick={() => setOpen(true)}>Void {code}</Button>
-      {error && <span role="alert" className="text-caption text-danger-fg">{error}</span>}
+      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
         title={`Void ${code} whole?`} confirmLabel="Void and refund"
         body="Voided mains outnumber the usable reserves on the sealed record (MR-18). Every live ticket is refunded in full; the jackpot carries on untouched."
@@ -83,7 +85,7 @@ export function HoldShareControl({ ticketId, serial }: { ticketId: string; seria
   return (
     <span className="inline-flex flex-col gap-1">
       <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Hold…</Button>
-      {error && <span role="alert" className="text-caption text-danger-fg">{error}</span>}
+      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="warning" tier="hard" typedWord="HOLD"
         title={`Hold the share on ${serial}?`} confirmLabel="Hold it"
         body={<Field label="Why (a reversed deposit funded it, a disqualification found later)"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>}
@@ -106,7 +108,7 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
         {canRelease ? <Button size="xs" variant="ghost" disabled={pending} onClick={() => setMode("release")}>Release…</Button> : <ControlLocked what="Release" need={releaseNeed} />}
         {canForfeit ? <Button size="xs" variant="claret" disabled={pending} onClick={() => setMode("forfeit")}>Forfeit…</Button> : <ControlLocked what="Forfeit" need={forfeitNeed} />}
       </span>
-      {error && <span role="alert" className="text-caption text-danger-fg">{error}</span>}
+      {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       <ConfirmModal open={mode !== null} onClose={() => setMode(null)} loading={pending} tone={mode === "forfeit" ? "claret" : "brand"} tier="hard"
         typedWord={mode === "forfeit" ? FORFEIT_WORD : "RELEASE"}
         title={mode === "forfeit" ? `Forfeit the share on ${serial}?` : `Release the share on ${serial}?`} confirmLabel={mode === "forfeit" ? "Forfeit to the jackpot" : "Release it"}

@@ -105,7 +105,7 @@ async function Content({ params }: Props) {
         ) : (
           <AdminCard title="Questions" sw="Maswali" padding="p-0">
             <ScrollX label="Millionea week questions">
-              <table className="table min-w-[900px]">
+              <table className="admin-tbl min-w-[900px]">
                 <thead>
                   <tr><th className="text-left">Slot</th><th className="text-left">Question (English)</th><th className="text-left">Starts (source)</th><th className="text-left">Starts (EAT)</th><th className="text-left">Source</th><th className="text-right">Chance</th><th className="text-left">Result</th></tr>
                 </thead>

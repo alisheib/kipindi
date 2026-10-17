@@ -65,7 +65,7 @@ async function Content() {
           {v.weeks.length === 0 ? <EmptyState title="No open week" body="A week appears here from its open until it settles." />
             : (
               <ScrollX label="Millionea open weeks">
-                <table className="table min-w-[1000px]">
+                <table className="admin-tbl min-w-[1000px]">
                   <thead><tr><th className="text-left">Week</th><th className="text-left">State</th><th className="text-right">Sales</th><th className="text-right">Carry claimed</th><th className="text-right">Coverage</th><th className="text-right">Worst top-up</th><th className="text-left">Settlement</th></tr></thead>
                   <tbody>
                     {v.weeks.map((w) => {
@@ -82,13 +82,13 @@ async function Content() {
                           <td className="text-left align-top min-w-[280px]">
                             {w.preview ? (
                               <div className="space-y-1">
-                                <p className="text-body-sm">{a?.kind === "ROLLOVER" ? `No 10 of 10: ${formatTzs(w.preview.sales)} rolls to the jackpot.`
-                                  : `${a?.k} winner${a?.k === 1 ? "" : "s"} · ${formatTzs(a && a.kind === "PAYOUT" ? a.share : 0)} each · fee ${formatTzs(a && a.kind === "PAYOUT" ? a.F : 0)} · top-up ${formatTzs(w.preview.guaranteeNeeded)}${w.preview.basis === "TOP_SCORE" ? ` · final week, top score ${w.preview.winningScore} of 10` : ""}`}</p>
-                                {w.preview.held > 0 && <p className="text-caption text-warning">{w.preview.held} winner(s) will be paid and held for Compliance (MB-43).</p>}
+                                <p className="text-body-sm">{a?.kind === "ROLLOVER" ? <>No 10 of 10: <span className="font-mono tabular-nums">{formatTzs(w.preview.sales)}</span> rolls to the jackpot.</>
+                                  : <>{a?.k} winner{a?.k === 1 ? "" : "s"} · <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.share : 0)}</span> each · fee <span className="font-mono tabular-nums">{formatTzs(a && a.kind === "PAYOUT" ? a.F : 0)}</span> · top-up <span className="font-mono tabular-nums">{formatTzs(w.preview.guaranteeNeeded)}</span>{w.preview.basis === "TOP_SCORE" ? ` · final week, top score ${w.preview.winningScore} of 10` : ""}</>}</p>
+                                {w.preview.held > 0 && <p className="text-body-sm text-warning">{w.preview.held} winner(s) will be paid and held for Compliance (MB-43).</p>}
                                 {canRelease ? <ReleaseControl weekId={w.row.id} code={w.row.code} digest={w.preview.digest} />
                                   : <ControlLocked what="Release" need={CONTROL_DOMAIN.releaseMaswaliSettlement} />}
                               </div>
-                            ) : <span className="text-caption text-text-tertiary">{w.previewRefusal ?? (w.row.state === "RESOLVING" ? "Waiting on the objection window." : "Not ready.")}</span>}
+                            ) : <span className="text-body-sm text-text-tertiary">{w.previewRefusal ?? (w.row.state === "RESOLVING" ? "Waiting on the objection window." : "Not ready.")}</span>}
                           </td>
                         </tr>
                       );
@@ -103,7 +103,7 @@ async function Content() {
           {v.trail.length === 0 ? <EmptyState title="No settled week yet" body="Each settled week appears here with what it claimed, paid and carried." />
             : (
               <ScrollX label="Millionea rollover trail">
-                <table className="table min-w-[980px]">
+                <table className="admin-tbl min-w-[980px]">
                   <thead><tr><th className="text-left">Week</th><th className="text-left">Settled</th><th className="text-right">Sales</th><th className="text-right">Carry in</th><th className="text-right">Winners</th><th className="text-right">Fee</th><th className="text-right">Top-up</th><th className="text-right">Paid</th><th className="text-right">Carried on</th><th className="text-right">Levy on own top-up</th></tr></thead>
                   <tbody>
                     {v.trail.map((t) => (
