@@ -69,10 +69,18 @@ until we decide what goes live."* He also answered three numbered choices the sa
 3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
    below.
 
-**Next:** S1, S2 and S3 are written and committed; their one money battery is running, and they merge into `main`
-dark together once it is green (§7b "S3 · as built", last item).
-- **Where.** Branch `maswali-s3` (worktree `C:\kipindi-maswali-s3`, Ali-Blade15) holds all three: S1 `7e505bf0`, S2
-  `6031d199`, their battery fixes `ec57887b` (from `maswali-s1`), S3 `367a9c1b` + `7727ece0`, and `main` merged in.
+**Next:** S1, S2, S3 and S4's first two parts are written and committed; they merge into `main` dark together once
+the release gate is green (Ali, 2026-10-17: *"push live now the progress u have"* and *"perfect work only accepted"* — so
+the progress ships the moment the gate passes, and not before).
+- **Where.** Branch `maswali-s4` (worktree `C:\kipindi-maswali-s4`) holds everything: S1 `7e505bf0`, S2 `6031d199`, their
+  battery fixes `ec57887b`, S3 `367a9c1b` + `7727ece0`, S4 `1cdd2dca` + `ac608162`, and `main` merged in. The release
+  line `maswali-build` (`C:\kipindi-maswali`) is fast-forwarded to it, and the gate runs there.
+- **The release gate** (`gate-s4.sh`, each step its own turn on the heavy-job lock): `prisma generate` + `tsc`; the
+  Postgres suites (`test:maswali-shared-paths`, `-purchase`, `-settle`, `-engine`, `-fence`, `test:house-bot-reports`, the
+  migration probe, `verify:backup-schema`); `test:all` in three chunks; `e2e:money`, `e2e:fault`, `e2e:card`; `next
+  build`, then a fresh in-memory `next dev` for `qa:live`, the five server suites and the Millionea console pages as a
+  signed-in Owner. After the push: the red twins (`red:maswali-money-path`, the four `red:house-bot-money` marker plants,
+  `red:maswali-engine`, `red:maswali-fence`), `e2e:maswali-fault`, and the production read-back.
 - **What has run.** S1/S2's first battery (`6031d199`) found four defects, each fixed in `ec57887b` and re-checked:
   the open never seeded the trusted sources (every open refused on both stores), and three guards quoted lines S1
   changed (`chain-purge`'s NEVER docblock, `red:fee-model-caption`, two house-book anchors). S3's two money suites are
@@ -212,7 +220,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S2 | Week engine (no money, no UI) | 🔨 | 6031d199 (2026-10-17); `test:maswali-engine` refused every open until ec57887b; merges with S3 |
 | S3 | Money path (local and throwaway PostgreSQL) | 🔨 | 367a9c1b + 7727ece0 on `maswali-s3` (2026-10-17); memory halves green, the money battery running |
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
-| S4 | Admin console and operations | ⬜ | |
+| S4 | Admin console and operations | 🔨 | parts 1–2 `1cdd2dca` + `ac608162` on `maswali-s4` (2026-10-17): routes, 21 controls, the three pages, `test:maswali-rbac` 278/278 + red 6/6; part 3 next (§7b "S4 · as built") |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ⬜ | blocks S5 |
 | S5 | Player surfaces | ⬜ | never before D3 ✅ |
 | S6 | Fairness, notices, reports, legal, data | ⬜ | |
@@ -1186,6 +1194,48 @@ differ, these win.
   - *S1, S2 and S3 release together* from `maswali-s3`, after one money battery on the combined tree: the heavy-job lock
     is shared with another lane, and three batteries would measure the same files three times (Ali's efficiency ruling,
     2026-10-10). The commits stay separate.
+- **S4 · as built (2026-10-17, parts 1–2), decided under Ali's delegation.** Where these differ from S4's work order,
+  these win.
+  - *Routes.* `/admin/maswali` (trading: the weeks, the alerts, "Draft a week"), `/admin/maswali/new` and
+    `/[weekId]/edit` (the builder), `/admin/maswali/[weekId]` (the timeline, the open's checklist in words, the second
+    reader's attestation, the open, the close move, the seal console), `/admin/maswali/pools` (accounting) and
+    `/admin/maswali/integrity` (compliance), the last two ABOVE the bare prefix in `ROUTE_DOMAINS`. One Millionea nav
+    group: Weeks, Pools, Integrity.
+  - *21 controls*, each in `CONTROL_DOMAIN` and enforced as `requireStaff(CONTROL_DOMAIN.<id>, "<id>")` in its route's
+    action file: trading — create, edit, attest, open, move the close, seal, void a question, confirm, correct;
+    accounting — release; compliance — void a week, pause, resume, hold, release and forfeit a share; ops (the Owner)
+    — fund and return the guarantee, the sunset, the licence basis, the rollout switch. Each sits on a page its acting
+    role can open.
+  - ⚠️ *The S4 finding (item 6): the platform has no separate re-authentication for an Owner ceremony.* Its Owner
+    controls (the journey switch, the desk) check the stored ADMIN role and the console's 2FA step-up, and Millionea's
+    do the same through `requireStaff` → `requireAdminTotp`. A password re-check exists only for account changes
+    (`reauth.ts`). Recorded, not invented: a new re-auth step would be a platform-wide change of its own.
+  - *Typed confirmations in the kit dialog* (`ConfirmModal` hard tier): `SEAL`, `VOID`, `CORRECT`, `RELEASE`, `PAUSE` /
+    `RESUME`, `HOLD`, `RECORD`, and the services' own words `FUND GUARANTEE`, `RETURN GUARANTEE`, `FORFEIT SHARE`,
+    `SUNSET MILLIONEA`; the rollout types the state it moves to.
+  - *The seal console shows no ticket data* (MR-14, MB-34): a bulk YES/NO by one officer with its evidence, a void on
+    its own with its ground, the correction inside the window, the second officer's confirmation, the AI's suggestion
+    beside a row (never a seal), and the gate checklist ("9 of 10 mains sealed · needs M7").
+  - *The builder:* fifteen cards, three languages each, the event start in the SOURCE's zone (shown again in EAT on the
+    week page); its counters (110 for a question, 240 for a criterion) are guidance for the player screens and never
+    block a save; the edit mode saves only the rows that changed.
+  - *Pools:* every balance null-aware; the requirement over both lines at each week's frozen floor; the payout float
+    against the prepared payouts; each open week's coverage (distinct answers to the ten mains ÷ 1,024 — a count, never
+    a holder) and its worst top-up; the prepared settlement with its release; the rollover trail with the levy on the
+    house's own top-up, `round((TRA + GBT) × U / J)` (MB-10).
+  - *Integrity:* the pause; the weeks that void whole; held shares; every winner with role, status and account age; the
+    seal log, only for weeks whose results can no longer change (MB-34).
+  - *The /admin overview* carries a full-width Millionea strip only when Millionea has an alert, and the product's
+    standing (licence, pause) speaks only once a week exists — so the overview is unchanged before the first draft.
+  - *Operations:* `ops:maswali-pause`, `ops:maswali-heal`, `ops:maswali-invariants`, dry run by default.
+  - *Suites:* `test:maswali-rbac` (7 roles and 2 non-staff × 21 controls × the four routes, each control's enforcement
+    site, the nav) and `red:maswali-rbac` (6 plants, all caught); `test:maswali-shared-paths` (the paths every product
+    shares, both stores); `test:admin-nav`, `test:control-gates`, `test:rbac` re-pinned and green. `test:maswali-seal` and
+    `test:maswali-admissibility` are held today by `test:maswali-engine` §1–§2 and §6–§7.
+  - *Part 3, next:* AI drafting through `EventCalendar` / `MarketCandidate` / `ai-poll-generation` (item 7); the
+    criterion template fields (MB-21); the watches the alerts do not cover yet — fixture drift, a linked Yes/No market
+    that disagrees with a seal, the holiday review, a seal from a new device (MB-94), the cluster report and pick-shift
+    alerts; `qa:maswali-admin-shots` at 360/768/1280/1920, read one by one; the acceptance drive on `next dev`.
 - **D3.** The rulings are all in hand, so D3 is the filing. N1 is filed as *"yes, if it measures"*. It is measured at
   S5's acceptance and on a real phone at S8, and if it fails its drawn fallback ships. The values (glyphs, status rows,
   the N-block) land in S5 with their first consumer, as `test:dead-css` requires.
