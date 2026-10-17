@@ -332,7 +332,7 @@ export async function settleMaswaliWeek(input: {
           // Every read the payout needs, before the first write: each winner's position, and each winning player's wallet
           // with the number of shares it takes (the memory store cannot undo a write an abort comes after).
           const shares = new Map<string, number>();
-          const wallets = new Map<string, { id: string; balance: number }>();
+          const payees = new Map<string, { id: string; balance: number }>();
           if (a.kind === "PAYOUT") {
             for (const w of winners) {
               if (!positions.has(w.ticket.positionId)) throw new SettleAbort(`MISSING:${w.ticket.serial}`);
@@ -341,7 +341,7 @@ export async function settleMaswaliWeek(input: {
             for (const userId of shares.keys()) {
               const wallet = await db.wallet.findByUserId(userId, mtx);
               if (!wallet) throw new SettleAbort(`MISSING:${userId}`);
-              wallets.set(userId, { id: wallet.id, balance: wallet.balance });
+              payees.set(userId, { id: wallet.id, balance: wallet.balance });
             }
           }
           // ⭐ R3 · MR-21's CLAIM JOINS THE MONEY: written right after the last refusal (the guarantee's, next) and inside this
@@ -365,7 +365,7 @@ export async function settleMaswaliWeek(input: {
             const won = await positionStore.settleMaswaliWinners(marketId, winners.map((w) => w.ticket.positionId), a.share, settledAt, mtx);
             if (won !== winners.length) throw new SettleAbort(`WINNERS:${won}:${winners.length}`);
             for (const [userId, n] of shares) {
-              const wallet = wallets.get(userId);
+              const wallet = payees.get(userId);
               const updated = wallet && a.share > 0 ? await db.wallet.adjust(wallet.id, { balance: n * a.share }, undefined, mtx) : null;
               if (!wallet || (a.share > 0 && !updated)) throw new SettleAbort(`WALLET:${userId}`);
               // The balance before this week's shares, read back from the credit itself (the row is locked by now).
@@ -374,7 +374,7 @@ export async function settleMaswaliWeek(input: {
             const paid: Array<{ userId: string; txnId: string; share: number }> = [];
             for (const w of winners) {
               const p = positions.get(w.ticket.positionId);
-              const wallet = wallets.get(w.ticket.userId);
+              const wallet = payees.get(w.ticket.userId);
               if (!p || !wallet) throw new SettleAbort(`MISSING:${w.ticket.serial}`);
               wallet.balance += a.share;
               const txnId = `txn_${randomId(12)}`;

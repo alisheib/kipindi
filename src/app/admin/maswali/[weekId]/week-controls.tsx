@@ -17,6 +17,7 @@ import { Select } from "@/components/ui/select";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { ConfirmModal } from "@/components/ui/modal";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
@@ -82,8 +83,9 @@ export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentE
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="sm" /></Field>
         <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="sm" aria-label="New close time" /></Field>
       </div>
-      {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}` })))}>Move the close</Button> : <ActReadOnly />}
+      {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => run(() => moveMaswaliCloseAction(fd({ weekId, closeAt: `${date}T${time}` })), () => { setDate(""); setTime(""); })}>Move the close</Button> : <ActReadOnly />}
       {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
+      <UnsavedChangesGuard dirty={date !== "" || time !== ""} body="A new sales close has been chosen but not moved. Leaving now discards it." />
     </div>
   );
 }
@@ -114,6 +116,8 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
 
   return (
     <div>
+      <UnsavedChangesGuard dirty={Object.values(picks).some((p) => p.outcome !== "" || p.evidence.trim() !== "")}
+        body="Results have been entered but not sealed. Leaving now discards them." />
       <ScrollX label="Millionea results to seal">
         <table className="admin-tbl min-w-[1040px]">
           <thead>
