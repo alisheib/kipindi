@@ -18,6 +18,8 @@ import {
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
+import { noteSealDevice } from "@/lib/server/maswali-integrity";
+import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
 
@@ -28,6 +30,11 @@ const refresh = (weekId?: string) => {
   if (weekId) revalidatePath(`/admin/maswali/${weekId}`);
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
+/** MB-94 · where a seal came from, noted after it landed (never blocking it). */
+const noteDevice = async (officerId: string, weekId: string, slots: number[]) => {
+  const meta = await clientMeta();
+  await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });
+};
 
 /** The builder posts its fifteen rows as one JSON field; anything that is not that shape is refused, never coerced. */
 function parseQuestions(raw: string): DraftQuestionInput[] | string {
@@ -143,6 +150,7 @@ export async function sealMaswaliQuestionsAction(formData: FormData): Promise<{ 
       if (!r.ok) { refresh(weekId); return { ok: false, error: `Slot ${row.slot}: ${r.error}`, sealed }; }
       sealed.push(Number(row.slot));
     }
+    await noteDevice(session.userId, weekId, sealed);
     refresh(weekId);
     return { ok: true, sealed };
   } catch (err) {
@@ -155,11 +163,13 @@ export async function voidMaswaliQuestionAction(formData: FormData): Promise<Act
   const session = await requireStaff(CONTROL_DOMAIN.voidMaswaliQuestion, "voidMaswaliQuestion");
   const weekId = str(formData, "weekId");
   try {
+    const slot = Number(str(formData, "slot"));
     const r = await sealQuestion({
-      weekId, slot: Number(str(formData, "slot")), outcome: "VOID", voidReason: str(formData, "voidReason"),
+      weekId, slot, outcome: "VOID", voidReason: str(formData, "voidReason"),
       evidence: str(formData, "evidence"), officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
+    await noteDevice(session.userId, weekId, [slot]);
     refresh(weekId);
     return { ok: true, weekId };
   } catch (err) {
@@ -185,11 +195,13 @@ export async function correctMaswaliSealAction(formData: FormData): Promise<Acti
   const weekId = str(formData, "weekId");
   try {
     const outcome = str(formData, "outcome") as MaswaliOutcome;
+    const slot = Number(str(formData, "slot"));
     const r = await correctSeal({
-      weekId, slot: Number(str(formData, "slot")), outcome, evidence: str(formData, "evidence"),
+      weekId, slot, outcome, evidence: str(formData, "evidence"),
       voidReason: outcome === "VOID" ? str(formData, "voidReason") : null, officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
+    await noteDevice(session.userId, weekId, [slot]);
     refresh(weekId);
     return { ok: true, weekId };
   } catch (err) {

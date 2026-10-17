@@ -102,6 +102,42 @@ export async function clusterReport(week: StoredWeek): Promise<ClusterReport> {
   return { weekId: week.id, code: week.code, holders: userIds.length, groups: groups.slice(0, 50), readable: connected !== null };
 }
 
+// ── MB-94 · A SEAL FROM A NEW DEVICE ─────────────────────────────────────────────────────────────────
+
+export const SEAL_DEVICE_ACTION = "maswali.seal.device";
+export const SEAL_NEW_DEVICE_ACTION = "maswali.seal.new_device";
+
+/**
+ * After a seal, a void or a correction: record where it came from, and raise a compliance record when the officer has
+ * never sealed from there before. ⛔ Never blocks the seal (it has already landed) and never throws: an unreadable history
+ * is recorded as such, not as "new".
+ */
+export async function noteSealDevice(input: { officerId: string; weekId: string; slots: number[]; ip: string | null; userAgent: string | null }): Promise<void> {
+  try {
+    const { getAuditForActorDurable, audit } = await import("./audit");
+    const past = await getAuditForActorDurable(input.officerId, { limit: 500 }).catch(() => null);
+    const seen = past === null ? null : past.entries.some((e) => e.action === SEAL_DEVICE_ACTION && e.ip === input.ip && e.userAgent === input.userAgent);
+    audit({ category: "ADMIN", action: SEAL_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+      payload: { slots: input.slots }, ip: input.ip, userAgent: input.userAgent });
+    if (seen === false) {
+      audit({ category: "COMPLIANCE", action: SEAL_NEW_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+        payload: { slots: input.slots, firstSeal: !past?.entries.some((e) => e.action === SEAL_DEVICE_ACTION) }, ip: input.ip, userAgent: input.userAgent });
+    }
+  } catch { /* a note about a seal that already landed never surfaces as the seal failing */ }
+}
+
+/** The recent new-device seal records, newest first, for the integrity page. */
+export async function recentNewDeviceSeals(limit = 20): Promise<Array<{ officerId: string | null; weekId: string | null; at: string; firstSeal: boolean }> | null> {
+  try {
+    const { getAuditByActionsDurable } = await import("./audit");
+    const r = await getAuditByActionsDurable([SEAL_NEW_DEVICE_ACTION], { limit });
+    return r.entries.map((e) => ({ officerId: e.actorId, weekId: e.targetId ?? null, at: e.createdAt,
+      firstSeal: !!(e.payload as { firstSeal?: boolean } | null)?.firstSeal }));
+  } catch {
+    return null;
+  }
+}
+
 /** A question whose answers swung among the latest tickets of a selling week. */
 export type PickShift = { weekId: string; code: string; slot: number; label: string; before: number; recent: number; recentTickets: number };
 

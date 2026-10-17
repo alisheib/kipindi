@@ -69,5 +69,23 @@ console.log("\n§2 · answers swinging while a week sells");
   ok("2.3 · below the minimum of recent tickets nothing is reported", !quiet.some((x) => x.weekId === week.id));
 }
 
+// ── §3 · a seal from a new device (MB-94) ───────────────────────────────────
+console.log("\n§3 · a seal from a new device");
+{
+  const { noteSealDevice, recentNewDeviceSeals } = await import("../../src/lib/server/maswali-integrity.ts");
+  const officer = `usr_mln_sealer_${process.pid}`;
+  const before = (await recentNewDeviceSeals(200))?.filter((d) => d.officerId === officer).length ?? -1;
+  await noteSealDevice({ officerId: officer, weekId: "mlw_dev", slots: [1], ip: "198.51.100.4", userAgent: "phone-A" });
+  await auditFlush();
+  await noteSealDevice({ officerId: officer, weekId: "mlw_dev", slots: [2], ip: "198.51.100.4", userAgent: "phone-A" });
+  await auditFlush();
+  const afterSame = (await recentNewDeviceSeals(200))?.filter((d) => d.officerId === officer) ?? [];
+  ok("3.1 · the officer's first sealing device is recorded once, as their first seal", before === 0 && afterSame.length === 1 && afterSame[0].firstSeal === true, JSON.stringify(afterSame));
+  await noteSealDevice({ officerId: officer, weekId: "mlw_dev", slots: [3], ip: "198.51.100.9", userAgent: "laptop-B" });
+  await auditFlush();
+  const afterNew = (await recentNewDeviceSeals(200))?.filter((d) => d.officerId === officer) ?? [];
+  ok("3.2 · ⭐ a seal from a device they never sealed from is recorded as new", afterNew.length === 2 && afterNew.some((d) => d.firstSeal === false), JSON.stringify(afterNew));
+}
+
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);

@@ -8,7 +8,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleStanding, integrityView } from "@/lib/server/maswali-console";
-import { clusterReport, pickShifts } from "@/lib/server/maswali-integrity";
+import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
 import { formatTzs } from "@/lib/utils";
@@ -48,6 +48,7 @@ async function Content() {
   const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
   const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
   const shifts = await pickShifts().catch(() => null);
+  const newDevices = await recentNewDeviceSeals().catch(() => null);
   if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
 
   return (
@@ -71,6 +72,18 @@ async function Content() {
                     <span className="tabular">{x.code} · {x.label}</span>: YES went from {Math.round(x.before * 100)}% to {Math.round(x.recent * 100)}% over the last {x.recentTickets} tickets.
                     <span className="text-text-tertiary"> Check the event before the close; pausing sales stops new tickets.</span>
                   </li>
+                ))}
+              </ul>
+            )}
+        </AdminCard>
+
+        <AdminCard title="Seals from a new device" sw="Muhuri kutoka kifaa kipya">
+          {newDevices === null ? <p className="text-body-sm text-danger-fg">The seal records could not be read.</p>
+            : newDevices.length === 0 ? <p className="text-body-sm text-text-secondary">Every recent seal came from a device its officer had sealed from before.</p>
+            : (
+              <ul className="space-y-1.5 text-body-sm">
+                {newDevices.map((d, i) => (
+                  <li key={i}><span className="tabular">{fmtEat(d.at)}</span> · officer {d.officerId ?? "?"} · week {d.weekId ?? "?"}{d.firstSeal ? <span className="text-text-tertiary"> · their first seal on the platform</span> : <span className="text-warning"> · not a device they sealed from before</span>}</li>
                 ))}
               </ul>
             )}
