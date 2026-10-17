@@ -8,9 +8,12 @@
  *
  * ⭐ THE PLATFORM'S FAILURE SHAPE, ALWAYS (`ServiceResult`): every refusal carries a registered `reason`
  *    (`failure-reasons.ts`), so a screen renders that reason's copy in the reader's language and never the English
- *    sentence beside it (FAILURE-INVENTORY §1.6). No reason is new: each is the money path's own, or a generic one.
- * ⛔ THE GATE FIRST: an act on a product the rollout hides from this viewer is refused before anything else is read
- *    (`millionea_not_available`) — the route 404s, and its action does not answer either (`millionea-gate.ts`).
+ *    sentence beside it (FAILURE-INVENTORY §1.6). Each is the money path's own or a generic one — and one is S5's own,
+ *    `session_changed`, for a page drawn for another account.
+ * ⛔ THE GATE FIRST, FOR THE BUY AND THE SEEN MARKS: an act on a product the rollout hides from this viewer is refused
+ *    before anything else is read (`millionea_not_available`) — the route 404s, and its action does not answer either
+ *    (`millionea-gate.ts`). ⭐ NOT THE FREE CANCEL (the lead's decision, S5 review L5): a kill hides the product, never a
+ *    player's free exit with their money.
  * ⛔ THE MONEY IS NOT HERE. A purchase is `purchaseMaswaliTickets` → the one bet path (every responsible-gambling gate,
  *    the cap in the wallet lock, the close on the database clock); a cancel is `cashOutPosition` → the free cancel
  *    (`cancelMaswaliTicket`). This file reads the form, refuses what is malformed, and maps the answer.
@@ -19,9 +22,9 @@ import { frozenRules, purchaseMaswaliTickets } from "./maswali-service";
 import { cashOutPosition } from "./market-service";
 import { isMaswaliNotice, noticeStore, ticketStore, weekStore } from "./maswali-dal";
 import { resolveMillioneaFor, type MillioneaViewerDeps } from "./millionea-preview";
-import { millioneaCancelUntil, normalizeMillioneaSerial } from "./maswali-player";
+import { millioneaCancelUntil, millioneaLineFor, millioneaNotices, millioneaTicketFacts, normalizeMillioneaSerial } from "./maswali-player";
 import { emit } from "./event-bus";
-import { db } from "./store";
+import { rateCheckAsync } from "./rate-limit";
 import type { ServiceResult } from "./auth-service";
 import { isHouseIntentKey } from "@/lib/house-bot/constants";
 import { SLOT_COUNT, type MaswaliPick } from "@/lib/maswali-score";
@@ -38,6 +41,11 @@ const PICKS_INCOMPLETE: Refusal = {
 };
 /** ⛔ One answer for "no such ticket" and "not yours" (MB-95): two answers would be an existence oracle. */
 const NO_SUCH_TICKET: Refusal = { ok: false, error: "We couldn't find that ticket.", code: "NOT_FOUND", reason: "not_found" };
+/** ⛔ The page was drawn for another account than the one signed in now (a sign-out and sign-in in another tab): nothing
+ *  is charged, and the player — who IS signed in — is told to reload, never to sign in (S5 review L6). */
+const SESSION_CHANGED: Refusal = {
+  ok: false, error: "This page was opened for a different account, so nothing was charged. Refresh the page and try again.", code: "CONFLICT", reason: "session_changed",
+};
 
 /** A request id as the confirm sheet mints it (one per confirmed slip, MB-51). ⛔ Never a `#`: the money path keys each
  *  ticket `<key>#i`, so a key carrying one could collide with another purchase's ticket. */
@@ -87,9 +95,7 @@ export async function buyMillioneaFromForm(
   form: MillioneaForm,
   opts: { playStartedAt?: number; deps?: MillioneaViewerDeps; now?: Date } = {},
 ): Promise<ServiceResult<MillioneaReceipt>> {
-  if (form.get("expectedOwnerId") !== userId) {
-    return { ok: false, error: "The account changed. Reload before continuing.", code: "CONFLICT", reason: "signin_required" };
-  }
+  if (form.get("expectedOwnerId") !== userId) return SESSION_CHANGED;
   const deps = opts.deps ?? {};
   const access = await resolveMillioneaFor({ sessionUserId: userId }, deps);
   if (!access.visible) return NOT_AVAILABLE;
@@ -124,15 +130,14 @@ export async function buyMillioneaFromForm(
   if (!r.ok) return r;
   const bought = r.data?.maswali;
   if (!r.data || !bought) return { ok: false, error: "We could not confirm this purchase. Open your tickets before trying again.", code: "INVALID", reason: "system_error" };
-  // R4 (a) · the money path's receipt balance is read beside its own transaction; this one is read after it committed.
-  let balance = r.data.balance;
-  try { balance = (await db.wallet.findByUserId(userId))?.balance ?? balance; } catch { /* the receipt's own figure stands */ }
+  // The balance is the debit's own, returned from inside the purchase's money transaction (R4a, maswali-s4): the receipt
+  // prints it as it is, with no second read.
   return {
     ok: true,
     data: {
       weekId: week.id, weekCode: week.code,
       tickets: bought.tickets.map((t) => ({ serial: t.serial, positionId: t.positionId })),
-      balance, placedAt: r.data.placedAt, replayed: r.data.replayed === true,
+      balance: r.data.balance, placedAt: r.data.placedAt, replayed: r.data.replayed === true,
       cancelUntil: await millioneaCancelUntil(week.id, r.data.placedAt, opts.now).catch(() => null),
     },
   };
@@ -141,14 +146,14 @@ export async function buyMillioneaFromForm(
 /**
  * ⭐ CANCEL ONE TICKET INSIDE ITS FREE WINDOW. The form carries `serial`. ⛔ A serial that is not the viewer's answers as
  * one that does not exist. The money is the platform's free cancel, behind the cash-out door's own rate limit.
+ * ⭐ AT EVERY ROLLOUT STATE (the lead's decision, S5 review L5): a kill (WITHDRAWN) hides the product, never a player's
+ *    free exit with their own money — as the platform's own position exit answers whatever is shown. What holds at every
+ *    state is the same: owner-only, the window rules (`cancelMaswaliTicket`), and the one identical refusal.
  */
 export async function cancelMillioneaFromForm(
   userId: string,
   form: MillioneaForm,
-  opts: { deps?: MillioneaViewerDeps } = {},
 ): Promise<ServiceResult<{ serial: string; refunded: number; balance: number }>> {
-  const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
-  if (!access.visible) return NOT_AVAILABLE;
   const serial = normalizeMillioneaSerial(form.get("serial"));
   const ticket = serial ? await ticketStore.getBySerial(serial) : null;
   if (!ticket || ticket.userId !== userId) return NO_SUCH_TICKET;
@@ -160,36 +165,60 @@ export async function cancelMillioneaFromForm(
   return { ok: true, data: { serial: ticket.serial, refunded: r.data.value, balance: r.data.balance } };
 }
 
+/** A rendered instant as the page passes it back (an ISO string), in milliseconds — or NaN for anything else. */
+const instantOf = (v: unknown): number => (typeof v === "string" && v.length <= 40 ? Date.parse(v) : Number.NaN);
+
 /**
- * §7b item 7 · the owner has SEEN their ticket: its facts so far rest from now on. Moves forward only — an older stamp
- * never replaces a newer one. False when nothing was recorded (hidden product, not theirs, already seen since).
+ * §7b item 7 · the owner has SEEN their ticket: its facts rest THROUGH THE INSTANT THE PAGE RENDERED — `through`, the
+ * view's `seen.through`, passed back by the page — never the server's clock at the mark, so a fact that lands after the
+ * render still performs next time (S5 review L7).
+ *   · ⛔ the instant must be one of the ticket's own facts: a made-up instant records nothing;
+ *   · the stamp moves forward only — an older one never replaces a newer one;
+ *   · rate-limited per account like the other player actions (`millionea.seen`).
+ * False when nothing was recorded (hidden product, throttled, not theirs, not one of its facts, already seen since).
  */
 export async function markMillioneaTicketSeenFor(
   userId: string,
   serial: unknown,
-  opts: { at?: Date; deps?: MillioneaViewerDeps } = {},
+  through: unknown,
+  opts: { deps?: MillioneaViewerDeps } = {},
 ): Promise<boolean> {
   const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
   if (!access.visible) return false;
-  const s = normalizeMillioneaSerial(serial);
-  const t = s ? await ticketStore.getBySerial(s) : null;
-  if (!t || t.userId !== userId) return false;
-  const at = opts.at ?? new Date();
-  if (t.lastViewedAt && Date.parse(t.lastViewedAt) >= at.getTime()) return false;
-  await ticketStore.patch(t.id, { lastViewedAt: at.toISOString() });
+  if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
+  const at = instantOf(through);
+  if (!Number.isFinite(at)) return false;
+  const t = await millioneaTicketFacts(userId, serial);
+  if (!t || !t.facts.some((f) => Date.parse(f.at) === at)) return false;
+  if (t.lastViewedAt && Date.parse(t.lastViewedAt) >= at) return false;
+  await ticketStore.patch(t.ticketId, { lastViewedAt: new Date(at).toISOString() });
   return true;
 }
 
-/** §7b item 7 · the player has SEEN a week's hub notice (ROLLOVER, WEEK_VOID, RESULT): it never performs again for them. */
+/**
+ * §7b item 7 · the player has SEEN a week's hub notice (ROLLOVER, WEEK_VOID, RESULT): it never performs again for them.
+ * `renderedAt` is the hub view's `asOf`, passed back by the page (L7), and is what the seen row records.
+ *   · ⛔ only a notice this viewer is DUE now — one the hub would render — is recorded (a WEEK_VOID waiting on a refund
+ *     is not due, so it cannot be put to rest before it is true, M3);
+ *   · ⛔ an instant that is not one, or one still ahead of the server's clock, records nothing;
+ *   · rate-limited per account like the other player actions (`millionea.seen`).
+ */
 export async function markMillioneaNoticeSeenFor(
   userId: string,
   weekId: unknown,
   notice: unknown,
-  opts: { at?: Date; deps?: MillioneaViewerDeps } = {},
+  renderedAt: unknown,
+  opts: { deps?: MillioneaViewerDeps; now?: Date } = {},
 ): Promise<boolean> {
   const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
-  if (!access.visible || !isMaswaliNotice(notice) || typeof weekId !== "string" || weekId.length === 0) return false;
+  if (!access.visible) return false;
+  if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
+  if (!isMaswaliNotice(notice) || typeof weekId !== "string" || weekId.length === 0) return false;
+  const at = instantOf(renderedAt);
+  if (!Number.isFinite(at) || at > (opts.now ?? new Date()).getTime()) return false;
   const week = await weekStore.get(weekId);
   if (!week) return false;
-  return noticeStore.markSeen(userId, week.id, notice, (opts.at ?? new Date()).toISOString());
+  const due = await millioneaNotices(userId, await millioneaLineFor(access.state));
+  if (!due.some((n) => n.weekId === week.id && n.notice === notice)) return false;
+  return noticeStore.markSeen(userId, week.id, notice, new Date(at).toISOString());
 }

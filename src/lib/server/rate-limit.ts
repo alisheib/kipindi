@@ -110,6 +110,10 @@ export const RATE_RULES: Record<string, RateRule> = {
 
   "bet.place":     { capacity: 30, refillPerMin: 10 },
   "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
+  // MASWALI-BUILD S5 · per ACCOUNT: a Millionea seen mark — a ticket's facts or a hub notice coming to rest
+  // (`maswali-player-acts.ts`). A page sends one for what it showed; this bounds the writes one account can cause. A
+  // refused mark records nothing, so the fact performs again next time — never a wrong page, never a lost fact.
+  "millionea.seen": { capacity: 30, refillPerMin: 10 },
   "ai.batch":      { capacity: 5,  refillPerMin: 0.25 }, // 5 batch-generations burst, ~4/hr — caps AI-spend abuse
   // The desk's account check (C7-SPEC ruling 387; replan ruling L52): an owner confirming an account
   // holder's own password before a desk act, keyed `<officer>:<holder>`. A refusal here never touches

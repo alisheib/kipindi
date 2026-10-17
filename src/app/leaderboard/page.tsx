@@ -36,6 +36,7 @@ import {
   LEADER_NATURAL_DIR,
   LEADER_PRODUCTS,
   LEADER_SORTS,
+  boardScoredPositions,
   buildLeaderHref,
   leaderDir,
   leaderProduct,
@@ -200,9 +201,7 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
     const u = detail[i].user;
     if (!u) continue; // a deleted user cannot be ranked
     const roi = roiOf(r);
-    const tickets = detail[i].tickets;
-    const ticketIds = new Set((tickets ?? []).map((p) => p.id));
-    const positions = tickets === null ? [] : detail[i].positions.filter((p) => !ticketIds.has(p.id));
+    const positions = boardScoredPositions(detail[i].positions, detail[i].tickets);
     // Streak = consecutive wins from the most recent settled position. Unchanged
     // semantics; it just reads a bounded slice instead of every position ever placed.
     let streak = 0;

@@ -9,8 +9,9 @@
  * ⭐ COALESCED PER WEEK (MB-31's Friday rush): the first change of a burst arms one timer for its week, every change inside
  *    the window rides it, and the frame is derived when the timer fires — so a thousand sales a minute are a frame every
  *    few seconds, and each frame reads the state committed by then (a note made inside a lock fires long after it commits).
- * ⛔ PUBLIC FIGURES ONLY: no ticket, pick, holder or count of who is still in (OD-24). `/api/events` forwards a frame only
- *    to a viewer the rollout admits.
+ * ⛔ PUBLIC FIGURES ONLY: no ticket, pick, holder or count of who is still in (OD-24). A frame names its week's line, and
+ *    `/api/events` forwards it only to its audience (`millionea-preview.ts → forwardMillioneaPool`): a PUBLIC week's to a
+ *    viewer the rollout admits, a DRIVE week's to stored staff at STAFF_PREVIEW — never the public (S5 review M1).
  * ⛔ NEVER LOAD-BEARING: a note is synchronous and total, and a frame that fails is a missed live update — the page still
  *    renders the truth. Nothing here takes a lock or writes anything.
  */
