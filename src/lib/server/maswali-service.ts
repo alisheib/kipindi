@@ -278,16 +278,20 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
     if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
-    // ⛔ R3 · THE CHAIN IS `seq` (MR-3; `createWeek` numbers drafts in the order they are drafted): a draft below a week of
-    //    its line that has already opened can never open. It would settle after that week and claim a carry the later
-    //    week may already have drawn — the same J twice. Refused here, before a single ticket is sold against it.
-    const later = (await weekStore.list({ visibility: week.visibility })).find((w) => w.seq > week.seq && w.state !== "DRAFT");
-    if (later) return refuse(`Week ${later.code} was drafted after week ${week.code} and has already opened; weeks open, claim and settle strictly in order (MR-3), so this draft can no longer open.`);
+    // ⛔ R3 · THE CHAIN IS THE CALENDAR (MR-3; `seq` only numbers the drafts): a week whose calendar week comes BEFORE one of
+    //    its line that has already opened never opens — it would settle after it, claiming a carry the later week may
+    //    already have drawn. In the template this never bites (one week of a line sells at a time, above, and no week
+    //    opens after its own close, `openProblems`); it holds when a later week was opened early and closed early.
+    const later = (await weekStore.list({ visibility: week.visibility })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
+    if (later) return refuse(`Week ${later.code} comes after week ${week.code} and has already opened; weeks open, claim and settle strictly in calendar order (MR-3), so this week can no longer open.`);
     // MR-30 · the sunset: nothing opens after a final week that ran, and a final week that voided or sold nothing hands
-    // the role to the next PUBLIC week to open (OD-03).
+    // the role to the next PUBLIC week to open (OD-03). While a final week is ENDING, only a week whose calendar comes
+    // AFTER it is refused: an earlier week drafted beside it still runs.
     const life = week.visibility === "PUBLIC" ? await sunsetState() : { kind: "LIVE" as const };
     if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week.`);
-    if (life.kind === "ENDING" && life.week.id !== week.id) return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
+    if (life.kind === "ENDING" && life.week.id !== week.id && calendarStartMs(week) > calendarStartMs(life.week)) {
+      return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
+    }
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
     await seedDefaultSources();
@@ -648,12 +652,23 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
 // ── THE CARRY ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * MR-3 · the week of this line that comes before `week` in the chain and is not terminal yet — or null when `week` may
- * claim its carry and settle. A DRAFT is never before a week that has opened: once a later week of its line has opened,
- * a draft can never open (`openWeek`, R3), so it never settles and never claims.
+ * ⭐ R3 · A WEEK'S PLACE IN THE CHAIN IS ITS CALENDAR WEEK (MR-3), never the order it was drafted in (`seq`): the Monday
+ * 00:00 EAT its ISO week starts. Read from `finalDeadlineAt`, which the draft stamps inside the following week and nothing
+ * ever moves — `opensAt` becomes the real open instant at the open, and the close may move. One line never holds two
+ * weeks of one ISO week (the code is unique), so this orders a line strictly.
+ */
+export function calendarStartMs(week: Pick<StoredWeek, "finalDeadlineAt">): number {
+  return eatWeekStartMs(Date.parse(week.finalDeadlineAt)) - 7 * DAY_MS;
+}
+
+/**
+ * MR-3 · the week of this line that comes before `week` in the chain — an earlier calendar week that has opened — and is
+ * not terminal yet; or null when `week` may claim its carry and settle. A DRAFT is never in the chain: it has sold
+ * nothing, and once a later week of its line has opened it can never open (`openWeek`, R3).
  */
 export async function carryBlocker(week: StoredWeek): Promise<StoredWeek | null> {
-  const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.seq < week.seq && w.state !== "DRAFT");
+  const at = calendarStartMs(week);
+  const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.id !== week.id && w.state !== "DRAFT" && calendarStartMs(w) < at);
   return earlier.find((w) => w.state !== "SETTLED" && w.state !== "VOIDED") ?? null;
 }
 
@@ -693,7 +708,8 @@ const SUNSET_NOTICE_MS = 7 * DAY_MS;
  *   · PASSES_ON — the final week voided or sold nothing (OD-03): the next week to open becomes final.
  */
 export async function sunsetState(): Promise<{ kind: "LIVE" } | { kind: "ENDING" | "RETIRED" | "PASSES_ON"; week: StoredWeek }> {
-  const finals = (await weekStore.list({ visibility: "PUBLIC" })).filter((w) => w.isFinal).sort((a, b) => b.seq - a.seq);
+  // The latest final week in the CALENDAR (R3): a week the role passed on to may have been drafted before the one it replaced.
+  const finals = (await weekStore.list({ visibility: "PUBLIC" })).filter((w) => w.isFinal).sort((a, b) => calendarStartMs(b) - calendarStartMs(a));
   const last = finals[0];
   if (!last) return { kind: "LIVE" };
   if (last.state === "VOIDED" || (last.state === "SETTLED" && (last.salesAtClose ?? 0) === 0)) return { kind: "PASSES_ON", week: last };
@@ -727,7 +743,7 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     }
     const life = await sunsetState();
     if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
-    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.seq > week.seq && w.state !== "DRAFT");
+    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
     if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
     await weekStore.patch(week.id, { isFinal: true });
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,

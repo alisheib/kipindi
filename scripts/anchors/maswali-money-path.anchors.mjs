@@ -177,4 +177,56 @@ export const MUTATIONS = [
     expect: "1.2 · ⭐ the close WAITED",
     suite: "closerace",
   },
+  /* ── Review lane B, round 2 (2026-10-17): R3, R6, R9. R8 (a forfeit's or a hold's mark inside its transaction) is a
+     ROLLBACK, which only Postgres makes: a plant dropping the `tx` changes nothing a memory child can see, so its red twin
+     is the Postgres half of test:maswali-settle (R8.1, R8.2: the commit fails at its last statement and neither half
+     lands), as R4a/R4b's is test:maswali-purchase's. ── */
+  {
+    name: "(R3-claim) the carry is claimed before the guarantee's refusal: a refused release leaves its claim standing",
+    file: SETTLE,
+    from: "          if (a.kind === \"PAYOUT\" && a.U > 0) {\n            const held = await maswaliAccountBalance(acct.maswaliGuarantee, mtx);\n            if (held === null || held < a.U) throw new SettleAbort(`GUARANTEE:${held ?? \"unreadable\"}:${a.U}`);\n          }\n          if (!f.carryClaimed && !(await weekStore.claimCarry(week.id, f.rolloverIn, mtx ?? undefined))) throw new SettleAbort(\"CARRY\");",
+    to: "          if (!f.carryClaimed && !(await weekStore.claimCarry(week.id, f.rolloverIn, mtx ?? undefined))) throw new SettleAbort(\"CARRY\");\n          if (a.kind === \"PAYOUT\" && a.U > 0) {\n            const held = await maswaliAccountBalance(acct.maswaliGuarantee, mtx);\n            if (held === null || held < a.U) throw new SettleAbort(`GUARANTEE:${held ?? \"unreadable\"}:${a.U}`);\n          }",
+    expect: "6.2b · R3 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R3-jackpot) the jackpot is not read before the carry is drawn: a claim above what it holds is paid",
+    file: SETTLE,
+    from: "            if (inJackpot === null || inJackpot < f.rolloverIn) throw new SettleAbort(`JACKPOT:${inJackpot ?? \"unreadable\"}:${f.rolloverIn}`);",
+    to: "            void inJackpot;",
+    expect: "R3.4 · ⭐ (iii)",
+    suite: "settle",
+  },
+  {
+    name: "(R6-lift) the lift takes no chain lock: a forfeit's lift reads \"nothing held\" while a held share is landing",
+    file: SETTLE,
+    from: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return withLock(MASWALI_CHAIN_LOCK, async () => {",
+    to: "async function liftHoldIfClear(userId: string, actorId: string | null, note: string): Promise<boolean> {\n  return (async (fn: () => Promise<boolean>) => fn())(async () => {",
+    expect: "R6.2b · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R9) the winners are paid one by one: a WIN statement per winner instead of one per batch",
+    file: SETTLE,
+    from: "            const won = await positionStore.settleMaswaliWinners(marketId, winners.map((w) => w.ticket.positionId), a.share, settledAt, mtx);",
+    to: "            let won = 0; for (const w of winners) won += await positionStore.settleMaswaliWinners(marketId, [w.ticket.positionId], a.share, settledAt, mtx);",
+    expect: "R9.6 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R6-already) a release that waited behind another places its holds before re-reading the week",
+    file: SETTLE,
+    from: "      if (current?.state === \"SETTLED\") return { ok: true, week: current, already: true };",
+    to: "      void current;",
+    expect: "R6.7 · ⭐",
+    suite: "settle",
+  },
+  {
+    name: "(R6-already-lift) an `already` answer lifts none of its winners' holds: a hold with no held share stands",
+    file: SETTLE,
+    from: "      await liftHoldsIfClear(heldAccounts, `Millionea ${first.code} · already settled`);",
+    to: "",
+    expect: "R6.8 · ⭐",
+    suite: "settle",
+  },
 ];

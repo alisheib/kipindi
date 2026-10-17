@@ -432,7 +432,7 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   const hw = await W.bal(uHold);
   ok("R10b.5 · ⛔ a winner whose desk check cannot be read is paid in full and HELD (fail closed), never paid free",
     rel?.ok === true && rel.preview.held === 1 && share > 0 && hw.balance - holdBefore === share
-      && dTickets.find((t) => t.userId === uHold && t.won)?.frozenReason === "house desk account"
+      && dTickets.find((t) => t.userId === uHold && t.won)?.frozenReason === "desk check unreadable"
       && hw.status === "FROZEN" && (hw.freezeReasons ?? []).includes("MILLIONEA_SHARE"),
     rel?.ok ? J({ held: rel.preview.held, share, got: hw.balance - holdBefore, status: hw.status, reasons: hw.freezeReasons }) : rel?.error);
   ok("R10b.6 · …and the winner whose check read cleanly is paid free", (await W.bal(u)).status === "ACTIVE"

@@ -10,14 +10,15 @@
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
  *
  * The floor is per store (10.4 reads the commission account on Postgres only, and R3.6, R8.1 and R8.2 a rollback only
- * Postgres can make). It only ever rises: 62/63 → 85/89 with the review's R3, R4c, R6, R8 and R9 cases (2026-10-17).
+ * Postgres can make). It only ever rises: 62/63 → 85/89 with the review's R3, R4c, R6, R8 and R9 cases, → 96/100 with
+ * its second round (the calendar chain, the late duplicate, the forfeit's lift, the heal, the counted bulk, B9) (2026-10-17).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-settle",
   casesFile: "scripts/lib/maswali-settle-child.mts",
-  minPass: { memory: 85, postgres: 89 },
+  minPass: { memory: 96, postgres: 100 },
   dbPrefix: "mlw_settle",
   timeoutMs: 30 * 60_000,
 });
