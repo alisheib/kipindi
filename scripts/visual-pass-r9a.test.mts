@@ -222,6 +222,7 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
   const PHOSPHOR_PLACED = "Phosphor's own placement — its designers set it on the grid by its mass, not its box — kept as drawn";
   const OPTICAL: Record<string, [dx: number, dy: number, why: string]> = {
     "playBare.bold": [24, 0, "a triangle, centred on its centroid (1.3′)"],
+    "playBare.fill": [24, 0, "the same triangle, solid (the How-to card's plate, W2): centred on its centroid (1.3′)"],
     "bot.bold": [0, -12, PHOSPHOR_PLACED], "comment.bold": [0, 16, PHOSPHOR_PLACED], "crown.bold": [-0.01, -12.02, PHOSPHOR_PLACED],
     "gauge.bold": [0, -12, PHOSPHOR_PLACED], "gift.regular": [0, -12.01, PHOSPHOR_PLACED], "gift.bold": [0, -12.01, PHOSPHOR_PLACED],
     "lock.bold": [0, -12, PHOSPHOR_PLACED], "megaphone.bold": [12, -3.99, PHOSPHOR_PLACED],
@@ -251,8 +252,12 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     return { A: A / 2, x: X / (3 * A), y: Y / (3 * A) };
   };
   const outer = centroid(playSubs[0]?.samples ?? []), hole = centroid(playSubs[1]?.samples ?? []);
-  ok(`1.3′ · …and the triangle keeps its reason: the outline of Phosphor's play has its centroid at (${outer.x.toFixed(2)}, ${outer.y.toFixed(2)}) — on the box's centre — while its box stands 24 units right`,
-    playSubs.length === 2 && Math.sign(outer.A) !== Math.sign(hole.A) && Math.abs(outer.x - 128) <= 1 && Math.abs(outer.y - 128) <= 1e-3, j({ outer, hole }));
+  // Its Fill (the How-to card's plate draws it solid) is one closed triangle, with the same reason.
+  const fillSubs = parsePath(attrs((drawingOf("playBare", "fill")?.match(new RegExp("<path([^>]*)/?>")) ?? ["", ""])[1]).d ?? "");
+  const solid = centroid(fillSubs[0]?.samples ?? []);
+  ok(`1.3′ · …and the triangle keeps its reason: the outline of Phosphor's play has its centroid at (${outer.x.toFixed(2)}, ${outer.y.toFixed(2)}) and its Fill, one solid triangle, at (${solid.x.toFixed(2)}, ${solid.y.toFixed(2)}) — each on the box's centre — while each box stands 24 units right`,
+    playSubs.length === 2 && Math.sign(outer.A) !== Math.sign(hole.A) && Math.abs(outer.x - 128) <= 1 && Math.abs(outer.y - 128) <= 1e-3
+      && fillSubs.length === 1 && Math.abs(solid.x - 128) <= 1 && Math.abs(solid.y - 128) <= 1e-3, j({ outer, hole, solid }));
   const OLD_HEADSET = '<path d="M4.5 14v-2a7.5 7.5 0 0 1 15 0v2"/><rect x="3" y="13" width="3.8" height="6" rx="1.7"/><rect x="17.2" y="13" width="3.8" height="6" rx="1.7"/><path d="M19.1 19v.6a2.4 2.4 0 0 1-2.4 2.4h-3.2"/>';
   const OLD_FLAME2 = '<path d="M12 3c1 3 3 4.5 3 8a3 3 0 1 1-6 0c0-1 .3-1.8.8-2.4C9 11 10 12.5 11 12c-.5-2 .5-7 1-9z" />';
   ok("1.3″ PLANT · the old headset (1.25 low, the hub's Msaada row) and the old flame2 (3.5 high, the proposals HOT flag) are each reported by the census rule",

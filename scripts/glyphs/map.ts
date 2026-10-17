@@ -266,7 +266,9 @@ export const REGULAR_KEYS: readonly string[] = [
 ];
 
 /** Keys that ship a Fill or a Duo drawing — added by the waves that use them (W3 selected states, W4 seals, W5 plates). */
-export const FILL_KEYS: readonly string[] = [];
+export const FILL_KEYS: readonly string[] = [
+  "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
+];
 export const DUO_KEYS: readonly string[] = [];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */

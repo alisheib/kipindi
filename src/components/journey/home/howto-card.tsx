@@ -16,7 +16,8 @@
  * lit edge and drop (`--wash-primary`, `--edge-primary`, `--shadow-primary`, never its glow), the glyph in `--pearl-50`.
  * Never gilt (§2 :2447): the plate is a door, not money. The glyph is `I.playBare` (Correction 22 names the glyph, not
  * its size) at `plateGlyph(48)`, 24px — the kit's glyph for a 48px plate, derived from the plate's edge: where the board
- * draws 20, the kit wins over the canvas (§0h point 7).
+ * draws 20, the kit wins over the canvas (§0h point 7). It is drawn solid (`tier="fill"`: Phosphor's play in its Fill
+ * weight, PHOSPHOR-MIGRATION W2), as the hand-drawn triangle was — a play button on a plate reads solid.
  * ⭐ THE NUMBERS ARE THE SHEET'S: `{steps}` is its own step count and `{minutes}` its named constant (the deck's "dakika 1"),
  * both exported beside the steps they describe, so the card cannot promise a sheet it does not open.
  * ⭐ `signedIn` IS READ ON THE SERVER (WP7's `JourneyHome` hands it down) and only decides where the sheet's Weka mipaka
@@ -47,7 +48,7 @@ export function HowToCard({ signedIn }: { signedIn: boolean }) {
         data-testid="journey-howto-card"
       >
         <IconPlate size={48} className="kp-jhowto__plate" aria-hidden>
-          <I.playBare s={plateGlyph(48)} />
+          <I.playBare s={plateGlyph(48)} tier="fill" />
         </IconPlate>
         <span className="kp-jhowto__text">
           <span className="font-display font-semibold text-body-lg">{t.journey.howToCardTitle}</span>

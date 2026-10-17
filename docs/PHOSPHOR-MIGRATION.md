@@ -27,11 +27,11 @@ Maswali lane fixed it (`43523844`), and W1 was rebased onto that, proven at its 
 0, local `qa:live` 376/376) and pushed: **`9b604d8e`, live on www, apex and the Railway host 160 s later; `/api/health`
 reachable and migrated; `qa:chunks-prod` 6/6 routes on both origins; production `qa:live` 361/361.**
 
-**Next:** W2, the swap (branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`; §5 W2 "As built so far" and its list
-still owed): rebase onto `main`; a classic-parity baseline at `main` (the one at `c218979d` predates the Maswali merges,
-which the harness refuses as a base); the W2 compare and its "after" tiles; the generated glyph-swap entries
-(`scripts/glyphs/parity-entries.mjs`) and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`;
-the push and the production read-back.
+**Next:** W2, the swap (branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`, rebased onto `main` `862aa757`; §5 W2
+"As built so far" and its list still owed): a classic-parity baseline at W2's own base (the one at `c218979d` predates
+the Maswali merges, which the harness refuses as a base) with its "before" tiles; the W2 compare against it with its
+"after" tiles, both sets from the same seeded run; the generated glyph-swap entries (`scripts/glyphs/parity-entries.mjs`)
+and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`; the push and the production read-back.
 
 **W2 so far** (branch `phosphor-w2`; §5 W2 "As built so far" has the detail): the engine draws Phosphor; the lexicon
 landed; every guard that read the hand-drawn family is re-pointed and green; the parity harness matches a glyph swap
@@ -293,11 +293,16 @@ that read the house drawings. W2's list below carries them.
 - **Two costs of Phosphor's fuller drawings, fixed at the source:** Button's spinner takes the glyph's room
   (`glyphRoom`, as the search box's `slotPull`), so an lg button's label no longer jumps 1.64px when it starts loading;
   the search box's ⓘ is 14px (on a whole pixel), so the field's two insets are 14.00 and 14.09.
+- **The first Fill on a page** (decided in W2, the lead engineer — Ali may overrule in one line): the How-to card's play
+  on its royal plate is drawn solid, `<I.playBare s={plateGlyph(48)} tier="fill" />` (`playBare` in `FILL_KEYS`), as the
+  hand-drawn triangle was — a play button on a plate reads solid, and Phosphor's Bold play is an outline.
+  `test:journey-home` 5.plate pins it in source and as drawn (`p-play-fill`, with two new plants); r9a §1.3′ proves the
+  Fill triangle, like the Bold one, is centred on its centroid.
 - **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
   (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
   measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
   Phosphor's numbers are pinned from the drawings; the hand-drawn controls and plants are kept verbatim. r9a §1.3 names
-  the 17 drawings Phosphor centres by eye (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
+  the 18 drawings Phosphor centres by eye, the Fill play among them (their offsets pinned). Seen on the way and fixed: `red:journey-shell` was red
   on `main` (a plant's needle predated the classic row's c3e28b47 spelling), and `test:journey-home` counted a glyph's
   `<use href>` as a link.
 - **R-ONE-SOURCE** (Ali, during W2 — §2): AGENTS.md §7, DESIGN_AUTHORITY §K3, the decisions log and the design master

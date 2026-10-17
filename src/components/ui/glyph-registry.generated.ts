@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.983c3a3b.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.af40a885.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -105,7 +105,7 @@ export const GLYPH_REGISTRY = {
   "pause": { s: "p-pause", g: "app", i: { bold: [36, 220] } },
   "percent": { s: "p-percent", g: "app", i: { bold: [36.02, 220] } },
   "phone": { s: "p-phone", g: "app", i: { bold: [28, 236] } },
-  "playBare": { s: "p-play", g: "app", i: { bold: [60, 244] } },
+  "playBare": { s: "p-play", g: "app", i: { bold: [60, 244], fill: [64, 240] } },
   "plus": { s: "p-plus-circle", g: "app", i: { bold: [20, 236] } },
   "podium": { s: "p-ranking", g: "app", i: { bold: [4, 252] } },
   "politics": { s: "p-flag-banner", g: "app", i: { regular: [31.99, 240], bold: [28, 244] } },

@@ -1291,12 +1291,17 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   const plateTag = cardFlat.match(/<IconPlate[^>]*>/)?.[0] ?? "";
   const PLATE = ".kp-jhowto__plate", plateDecls = htDecls(cascade, PLATE);
   const plateSrc = plateTag.includes("size={48}") && plateTag.includes(`className="kp-jhowto__plate"`) && !/[ ](?:bg|fg|border|style)=/.test(plateTag)
-    && cardFlat.includes("<I.playBare s={plateGlyph(48)} />");
+    && cardFlat.includes(`<I.playBare s={plateGlyph(48)} tier="fill" />`);
   const plateCss = cv(PLATE, "background") === "var(--wash-primary)" && cv(PLATE, "box-shadow") === "var(--edge-primary), var(--shadow-primary)"
     && cv(PLATE, "color") === "var(--pearl-50)" && !plateDecls.some(([, v]) => /oklch[(]|#[0-9a-fA-F]{3}|rgba?[(]|hsla?[(]/.test(v));
-  // PHOSPHOR-MIGRATION W2: the glyph is Phosphor's play on its 256 grid, at the same 24px.
-  const plateDrawn = HT_LOCALES.every((l) => (r.card[l] ?? "").includes(`class="grid shrink-0 place-items-center rounded-control kp-jhowto__plate" style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="24" height="24" `));
-  ok("5.plate · the royal plate (choice 3A, A14): a 48px IconPlate with the play glyph I.playBare at the kit's size for that plate, plateGlyph(48) — drawn 24px (the kit over the canvas's 20, §0h point 7) — and NO bg, fg, border or style, so no inline colour (drawn: its style is its size alone); .kp-jhowto__plate paints it, as the cascade leaves it, from the primary material's tokens (--wash-primary; --edge-primary and --shadow-primary, never the glow) with the glyph in --pearl-50, no literal colour in any rule that names it",
+  // PHOSPHOR-MIGRATION W2: the glyph is Phosphor's play on its 256 grid, at the same 24px, in its Fill weight — solid, as
+  // the hand-drawn triangle was (the symbol p-play-fill, never the Bold outline).
+  const plateSvg = (html: string) => html.split(`class="grid shrink-0 place-items-center rounded-control kp-jhowto__plate" style="width:48px;height:48px">`)[1]?.match(/^<svg[^>]*><use href="[^"]*"/)?.[0] ?? "";
+  const plateDrawn = HT_LOCALES.every((l) => {
+    const svg = plateSvg(r.card[l] ?? "");
+    return svg.startsWith(`<svg viewBox="0 0 256 256" width="24" height="24" `) && svg.includes(` data-g="playBare.fill"`) && svg.endsWith(`#p-play-fill"`);
+  });
+  ok("5.plate · the royal plate (choice 3A, A14): a 48px IconPlate with the play glyph I.playBare at the kit's size for that plate, plateGlyph(48) — drawn 24px (the kit over the canvas's 20, §0h point 7), solid (tier=\"fill\": Phosphor's play in its Fill weight, as the hand-drawn triangle was) — and NO bg, fg, border or style, so no inline colour (drawn: its style is its size alone); .kp-jhowto__plate paints it, as the cascade leaves it, from the primary material's tokens (--wash-primary; --edge-primary and --shadow-primary, never the glow) with the glyph in --pearl-50, no literal colour in any rule that names it",
     plateSrc && plateCss && plateDrawn, j({ plateSrc, plateCss, plateDrawn, plate: plateDecls }));
 
   // 5.card.words — WP6 step 3: steps is the sheet's step count, minutes its named constant.
@@ -1565,7 +1570,11 @@ function howToDefects(): HtPlant[] {
     { name: "a later rule repaints the plate in the gold ramp (its own rule left untouched)", expect: /^5[.]plate /,
       plant: (w) => htWith(w, { css: `${w.howto.css}${LF}.kp-jhowto__plate { background: var(--g-gold); }${LF}` }) },
     { name: "the play glyph typed at the board's 20px (the kit's plateGlyph(48) is 24; §0h point 7)", expect: /^5[.]plate /,
-      plant: htCard("<I.playBare s={plateGlyph(48)} />", "<I.playBare s={20} />") },
+      plant: htCard(`<I.playBare s={plateGlyph(48)} tier="fill" />`, `<I.playBare s={20} tier="fill" />`) },
+    { name: "the play glyph typed without its tier (the Bold outline where the hand-drawn triangle was solid)", expect: /^5[.]plate /,
+      plant: htCard(`<I.playBare s={plateGlyph(48)} tier="fill" />`, `<I.playBare s={plateGlyph(48)} />`) },
+    { name: "the play glyph drawn in its Bold outline on its plate", expect: /^5[.]plate /,
+      plant: (w) => htDrawn(w, "card", "sw", (html) => htSwap(htSwap(html, ` data-g="playBare.fill"`, ` data-g="playBare.bold"`), `#p-play-fill"`, `#p-play-bold"`)) },
     { name: "the play glyph drawn 20px on its 48px plate", expect: /^5[.]plate /,
       plant: (w) => htDrawn(w, "card", "zh", (html) => htSwap(html, `style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="24" height="24" `, `style="width:48px;height:48px"><svg viewBox="0 0 256 256" width="20" height="20" `)) },
     { name: "the card's minutes typed instead of read from the sheet", expect: /^5[.]card[.]words /,
