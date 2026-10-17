@@ -186,13 +186,15 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // for native review at Gate B), each emitted by a registered failure reason (`test:failure-reasons`) — pinned at
     // 367a9c1b7, whose blob is the dictionary as it stands. None of the versioned policy strings move.
     // MASWALI-BUILD S5 pages (2026-10-17) publishes Privacy v2026-10-17 (COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7's
-    // Millionea slip paragraph in three languages and the version, nothing else — pinned at ceb0bd273, whose blob is the page
-    // as it stands (test:privacy-notice §4p and the published-words helper hold the paragraphs themselves).
+    // Millionea slip paragraph in three languages — and, by the lead's decision of 2026-10-18, WITH THE CEILING: each paragraph
+    // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
+    // place only above the ceiling (`POLICY_PAGES.privacy`). Nothing else — pinned at 92768c34f, whose blob is the page as it
+    // stands (test:privacy-notice §1 and §4q, and the published-words helper, hold the paragraphs and the wrapper themselves).
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
       ["src/lib/i18n-dict.ts", "367a9c1b7"],
-      ["src/app/legal/privacy/page.tsx", "ceb0bd273"],
+      ["src/app/legal/privacy/page.tsx", "92768c34f"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
