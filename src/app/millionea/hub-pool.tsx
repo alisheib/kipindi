@@ -10,11 +10,13 @@ import { poolViewOf } from "./millionea-view";
 /** The window event `useEventStream` raises for a `maswali:pool` frame (`use-event-stream.ts`'s EVENT_MAP). */
 const POOL_EVENT = "50pick:sse:maswali-pool";
 
-/** A frame as the bus carries it: the derived figure, or anything else (never trusted until it is checked). */
-function isFrameFor(weekId: string, x: unknown): x is PoolFigure {
+/** A frame as the bus carries it: the derived figure, or anything else (never trusted until it is checked). ⛔ Only THIS
+ *  week's, of THIS week's line: `/api/events` forwards a frame only to its audience (a DRIVE week's never to the public,
+ *  `millionea-preview.ts → forwardMillioneaPool`), and the block holds itself to the same line besides. */
+function isFrameFor(weekId: string, visibility: PoolFigure["visibility"], x: unknown): x is PoolFigure {
   if (!x || typeof x !== "object") return false;
   const f = x as Partial<PoolFigure>;
-  return f.weekId === weekId && typeof f.jackpot === "number" && Number.isFinite(f.jackpot)
+  return f.weekId === weekId && f.visibility === visibility && typeof f.jackpot === "number" && Number.isFinite(f.jackpot)
     && typeof f.sales === "number" && Number.isFinite(f.sales) && typeof f.feeRate === "number";
 }
 
@@ -50,14 +52,14 @@ export function HubPool({ weekId, initial, price, opensAt, carryFrom, carryPlay 
   useEffect(() => {
     const onFrame = (e: Event) => {
       const frame = (e as CustomEvent).detail;
-      if (!isFrameFor(weekId, frame)) return;
+      if (!isFrameFor(weekId, initial.visibility, frame)) return;
       setFig(frame);
       if (frame.jackpot !== last.current) setTick((n) => n + 1);
       last.current = frame.jackpot;
     };
     window.addEventListener(POOL_EVENT, onFrame);
     return () => window.removeEventListener(POOL_EVENT, onFrame);
-  }, [weekId]);
+  }, [weekId, initial.visibility]);
   return (
     <div data-testid="millionea-hub-pool">
       {/* Re-keyed on each move, so `.m-tick` plays once per change and never on the first paint. */}

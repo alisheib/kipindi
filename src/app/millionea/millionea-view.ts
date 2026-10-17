@@ -10,9 +10,8 @@
  * ⛔ NO FIGURE IS MADE HERE. Every amount is the read model's (the ledger's, the settlement's mirrored columns); this file
  *    only places them. The two derived numbers it does print are labelled where they are made: a ticket count from sales
  *    at the week's one frozen price, and a levy's share of the fee from the fee and the levy the settlement booked.
- * ⭐ THE SERVER LANE'S SECOND ROUND LANDS HERE, AND ONLY HERE (the lead's note of 2026-10-17): a held or forfeited share
- *    (`earnedOf`), a refund decided per ticket with its pending state (`refundOf`), the pool frame's visibility (the live
- *    figure listens for its own week only, `poolViewOf`'s caller) — so each change is a line, not a page.
+ * ⭐ THE READ MODEL'S SHARE AND REFUND STATES ARE READ HERE, ONCE: a won share paid, held or forfeited (`earnedOf`), a
+ *    voided week's refund pending or landed per ticket (`refundOf`) — so a page never re-decides either.
  */
 import type {
   MaswaliPoolFigure, MillioneaHubWeek, MillioneaQuestion, MillioneaSlot, MillioneaText, MillioneaTicketRow,
@@ -167,16 +166,16 @@ export function phaseNow(week: Pick<MillioneaHubWeek, "state">, phases: WeekPhas
   return 2;
 }
 
-/** ⭐ ROUND 2's SEAM · what a ticket was paid, as gold may show it: a won ticket's share, and nothing else (§M8a item 7).
- *  When the read model learns held and forfeited shares, a forfeited share returns null here and shows no gold. */
-export function earnedOf(row: Pick<MillioneaTicketRow, "shown" | "paid">): number | null {
-  return row.shown === "won" ? row.paid : null;
+/** What a ticket was paid, as gold may show it: a won ticket whose share is the player's — PAID — and nothing else
+ *  (§M8a item 7, MB-43). A share held for review or forfeited is null here and shows no gold (its mark says which). */
+export function earnedOf(row: Pick<MillioneaTicketRow, "shown" | "share" | "paid">): number | null {
+  return row.shown === "won" && row.share === "paid" ? row.paid : null;
 }
 
-/** ⭐ ROUND 2's SEAM · a voided week's refund on THIS ticket: landed, or still running. Never claimed before it happened. */
-export function refundOf(view: Pick<MillioneaTicketView, "weekVoid">): "landed" | "pending" | null {
-  if (!view.weekVoid) return null;
-  return view.weekVoid.refundedAt ? "landed" : "pending";
+/** A voided week's refund on THIS ticket, as its own position says (MR-18, M3): landed, or still running — never a refund
+ *  claimed before it happened. Null for every ticket of a week that did not void (and for a cancelled one). */
+export function refundOf(row: Pick<MillioneaTicketRow, "refund">): "landed" | "pending" | null {
+  return row.refund ? row.refund.state : null;
 }
 
 /** The fee's share of the jackpot, and each levy's share of the fee, as numbers of percent from what the settlement

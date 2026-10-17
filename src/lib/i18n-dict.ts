@@ -3556,11 +3556,10 @@ export const dict = {
       logCarry: "Question {n}: reserve {r} took its place",
       logWeekVoid: "Week voided",
       auditChain: "Audit chain",
-      // The pages (S5 composition): the free-window cancel as a position's chip word (`positionStatusWord`, L11), the hub
-      // with no week on sale, the staff preview's mark, a refund still running, the free cancel refused in Millionea's own
-      // words (never the poll's "sell" sentences), the register with nothing final yet, a page title, the classic
-      // /positions door.
-      ticketStatusCancelled: "Cancelled",
+      // The pages (S5 composition): the hub with no week on sale, the staff preview's mark, a refund still running, the
+      // free cancel refused in Millionea's own words (never the poll's "sell" sentences), the register with nothing final
+      // yet, two page titles, the classic /positions door, and a won share held for review or forfeited (MB-43, OD-07:
+      // never gold, never in a total).
       hubNoWeek: "No Millionea week is on sale right now.",
       nextOpensAt: "The next week opens {when}.",
       previewMark: "Preview — Millionea is visible to staff only.",
@@ -3571,6 +3570,12 @@ export const dict = {
       titleSlip: "Fill a ticket",
       positionsRow: "Millionea tickets this week: {n}",
       myTicketsTitle: "Your Millionea tickets",
+      shareHeld: "Held for review",
+      shareForfeited: "Forfeited",
+      shareHeldNote: "{n} of your winning tickets are held for review, and are not in your total until they are released.",
+      shareHeldNoteOne: "1 of your winning tickets is held for review, and is not in your total until it is released.",
+      shareForfeitedNote: "{n} of your winning tickets were forfeited after review.",
+      shareForfeitedNoteOne: "1 of your winning tickets was forfeited after review.",
     },
   },
 
@@ -6338,7 +6343,6 @@ export const dict = {
       logCarry: "Swali {n}: akiba {r} imechukua nafasi yake",
       logWeekVoid: "Wiki imebatilishwa",
       auditChain: "Msururu wa ukaguzi",
-      ticketStatusCancelled: "Imeghairiwa",
       hubNoWeek: "Hakuna wiki ya Millionea inayouzwa sasa hivi.",
       nextOpensAt: "Wiki inayofuata inafunguliwa {when}.",
       previewMark: "Onyesho la awali — Millionea inaonekana kwa watumishi tu.",
@@ -6349,6 +6353,12 @@ export const dict = {
       titleSlip: "Jaza tiketi",
       positionsRow: "Tiketi za Millionea wiki hii: {n}",
       myTicketsTitle: "Tiketi zako za Millionea",
+      shareHeld: "Inakaguliwa",
+      shareForfeited: "Imenyang'anywa",
+      shareHeldNote: "Tiketi zako {n} zilizoshinda zinakaguliwa, na hazimo kwenye jumla yako hadi ziachiliwe.",
+      shareHeldNoteOne: "Tiketi yako 1 iliyoshinda inakaguliwa, na haimo kwenye jumla yako hadi iachiliwe.",
+      shareForfeitedNote: "Tiketi zako {n} zilizoshinda zimenyang'anywa baada ya ukaguzi.",
+      shareForfeitedNoteOne: "Tiketi yako 1 iliyoshinda imenyang'anywa baada ya ukaguzi.",
     },
   },
 
@@ -9093,7 +9103,6 @@ export const dict = {
       logCarry: "第 {n} 题：备选题 {r} 替补",
       logWeekVoid: "本周作废",
       auditChain: "审计链",
-      ticketStatusCancelled: "已取消",
       hubNoWeek: "目前没有开放销售的 Millionea 周。",
       nextOpensAt: "下一周于 {when} 开放。",
       previewMark: "预览 — Millionea 目前仅对员工可见。",
@@ -9104,6 +9113,12 @@ export const dict = {
       titleSlip: "填写彩票",
       positionsRow: "本周 Millionea 彩票：{n} 张",
       myTicketsTitle: "您的 Millionea 彩票",
+      shareHeld: "审核中",
+      shareForfeited: "已没收",
+      shareHeldNote: "您有 {n} 张中奖彩票正在审核中，放行前不计入您的总额。",
+      shareHeldNoteOne: "您有 1 张中奖彩票正在审核中，放行前不计入您的总额。",
+      shareForfeitedNote: "您有 {n} 张中奖彩票经审核后被没收。",
+      shareForfeitedNoteOne: "您有 1 张中奖彩票经审核后被没收。",
     },
   },
 } as const;

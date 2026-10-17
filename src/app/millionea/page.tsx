@@ -89,12 +89,15 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Pro
     }
     const mine = results.find((g) => g.week.id === n.weekId)?.tickets.filter((x) => x.shown === "won" || x.shown === "lost") ?? [];
     const lost = mine.filter((x) => x.shown === "lost").length;
-    const text = !n.won
-      ? counted(Math.max(lost, 1), t.millionea.awayLostOne, t.millionea.awayLost, { week })
+    // The tickets that won: a paid share and one held for review alike (it won; its money waits). A forfeited share is in
+    // neither line (MB-43, OD-07), so a week whose only win was forfeited says the week's word, not "your ticket won".
+    const winning = n.winningTickets + n.held;
+    const text = !n.won || winning === 0
+      ? (lost > 0 || !n.won ? counted(Math.max(lost, 1), t.millionea.awayLostOne, t.millionea.awayLost, { week }) : `${weekWord(t, week)} · ${t.millionea.weekStatusSettled}`)
       : lost > 0
-        ? fill(t.millionea.awayMixed, { week, w: n.winningTickets, l: lost })
-        : counted(n.winningTickets, t.millionea.awayWon, t.millionea.awayWonMany, { week });
-    const won = mine.find((x) => x.shown === "won");
+        ? fill(t.millionea.awayMixed, { week, w: winning, l: lost })
+        : counted(winning, t.millionea.awayWon, t.millionea.awayWonMany, { week });
+    const won = mine.find((x) => x.shown === "won" && x.share !== "forfeited");
     return {
       weekId: n.weekId, notice: n.notice, text,
       door: { href: won ? millioneaTicketHref(won.serial) : MILLIONEA_HREF.tickets, label: t.notif.awayView },
@@ -261,7 +264,7 @@ export default async function MillioneaHubPage() {
         <RefreshPoller intervalMs={60_000} />
         <PageHeader eyebrow={w ? weekEyebrow(t, w) : undefined} title={t.millionea.productTitle} />
         {gate.preview && <MillioneaPreviewMark t={t} />}
-        <HubNotices notices={notices} renderedAt={now.toISOString()} />
+        <HubNotices notices={notices} renderedAt={hub.asOf} />
         {hub.life === "RETIRED" && hub.lastWeek && (
           <Callout tone="neutral" role="status">{fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) })}</Callout>
         )}

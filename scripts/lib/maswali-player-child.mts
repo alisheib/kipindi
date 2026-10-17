@@ -103,9 +103,11 @@ section("§1 · the gate: who may see Millionea");
   ok("1.6 · the route gate asks the rollout's one answer and turns 'not visible' into the 404 a missing page gives",
     /const r = await resolveMillionea\(\);/.test(gate) && /if \(!r\.visible\) notFound\(\);/.test(gate));
   const route = readFileSync("src/app/positions/[positionId]/page.tsx", "utf8");
-  ok("1.7 · the position permalink asks the same gate before it names a ticket's page, and still 404s a stranger's position",
-    /if \(productLine === "MASWALI"\) \{\s*if \(!\(await resolveMillionea\(\)\)\.visible\) notFound\(\);/.test(route)
-      && /ticketStore\.getByPositionId\(position\.id\)/.test(route) && /position\.userId !== session\.userId\) notFound\(\);/.test(route));
+  // RE-PINNED (MASWALI-BUILD S5 pages, the lead's decision L5 of 2026-10-17): a kill hides the product, never a player's
+  // own tickets — the permalink names its OWN ticket's page at every rollout state, and still 404s a stranger's position.
+  ok("1.7 · the position permalink names the viewer's own ticket's page at every rollout state (L5: the MASWALI arm asks no rollout), and still 404s a stranger's position",
+    /if \(productLine === "MASWALI"\) \{\s*ticketSerial = \(await ticketStore\.getByPositionId\(position\.id\)/.test(route)
+      && !/resolveMillionea/.test(route) && /position\.userId !== session\.userId\) notFound\(\);/.test(route));
 }
 
 // ── §2 · how to play, before any week ─────────────────────────────────────────────────────────────────────────────

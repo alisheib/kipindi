@@ -15,13 +15,10 @@ export type HubNotice = {
   door: { href: string; label: string } | null;
 };
 
-/**
- * ⭐ ROUND 2's SEAM · the seen mark. The page hands the instant it rendered the notices (`renderedAt`); when the action
- * learns to take it (the server lane's second round), this one call passes it, and nothing else on the page changes.
- */
+/** The seen mark: through the instant the hub view was derived (`hub.asOf`, L7), never the server's clock at the mark. A
+ *  mark is never load-bearing: one that fails records nothing, and the notice is said again next time. */
 function markSeen(n: HubNotice, renderedAt: string): void {
-  void renderedAt;
-  void markMillioneaNoticeSeenAction(n.weekId, n.notice).catch(() => {});
+  void markMillioneaNoticeSeenAction(n.weekId, n.notice, renderedAt).catch(() => {});
 }
 
 /**
@@ -33,7 +30,11 @@ function markSeen(n: HubNotice, renderedAt: string): void {
  * ⛔ Neutral tone always: a void or a refund is never claret, red or an error (M8); a win's door opens the ticket, where
  * the seal plays on the reader's own tap (§F9: never from a poll).
  */
-export function HubNotices({ notices, renderedAt }: { notices: readonly HubNotice[]; renderedAt: string }) {
+export function HubNotices({ notices, renderedAt }: {
+  notices: readonly HubNotice[];
+  /** The hub view's `asOf`: the instant these notices were derived and rendered (L7). */
+  renderedAt: string;
+}) {
   const [shown] = useState(notices);
   const marked = useRef(new Set<string>());
   useEffect(() => {
