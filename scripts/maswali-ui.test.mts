@@ -255,6 +255,46 @@ const proxyDefects = (proxy: string) => {
   ok("4.8 · the proxy wires the belt after it sets the request headers and before it passes them on: a dark address is rewritten to the private segment under those same headers, so the 404 renders as an unknown address's does",
     d.length === 0, d.join(" | "));
 }
+{
+  // qa:live's dark section, driven against a served site of its own (a stubbed fetch): both ways a dark route answers.
+  const dark = (await import("./live/millionea-dark.mjs")) as unknown as {
+    NOT_FOUND_EN: string;
+    millioneaDarkSection: (o: { base: string; ok: (label: string, cond: boolean) => void; log?: (...a: unknown[]) => void }) => Promise<string | null>;
+  };
+  const { NOT_FOUND_WORDS } = await import("../src/components/ui/not-found-words.ts");
+  ok("4.9 · qa:live's dark section reads the platform's own not-found words (English, as it asks for them)", dark.NOT_FOUND_EN === NOT_FOUND_WORDS.en.notFound, j(dark.NOT_FOUND_EN));
+  const NOT_FOUND_PAGE = `<title>${NOT_FOUND_WORDS.en.notFound} · 404 · 50pick</title><h1>${NOT_FOUND_WORDS.en.notFound}</h1><a href="/markets">Markets</a>`;
+  const HUB_PAGE = '<h1>Maswali Millionea</h1><a data-testid="millionea-hub-fill" href="/millionea/slip">Fill a ticket</a>';
+  const routeChecks = async (health: { ceiling: string; state: string }, answer: (route: string) => { status: number; body: string }) => {
+    const real = globalThis.fetch;
+    const seen: Array<{ label: string; cond: boolean }> = [];
+    globalThis.fetch = (async (url: string | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === "/api/health") return new Response(JSON.stringify({ millionea: health }), { status: 200, headers: { "content-type": "application/json" } });
+      if ((MILLIONEA_ROUTES as readonly string[]).includes(path)) { const a = answer(path); return new Response(a.body, { status: a.status }); }
+      return new Response('<a href="/markets">Markets</a>', { status: 200 });
+    }) as typeof fetch;
+    try {
+      await dark.millioneaDarkSection({ base: "http://site.test", ok: (label, cond) => { seen.push({ label, cond }); }, log: () => {} });
+    } finally {
+      globalThis.fetch = real;
+    }
+    return seen.filter((x) => (MILLIONEA_ROUTES as readonly string[]).some((r) => x.label.startsWith(`${r} `)));
+  };
+  const allPass = (xs: Array<{ cond: boolean }>) => xs.length === MILLIONEA_ROUTES.length && xs.every((x) => x.cond);
+  const W = { ceiling: "WITHDRAWN", state: "WITHDRAWN" }, K = { ceiling: "ACTIVE", state: "WITHDRAWN" };
+  const wDark = await routeChecks(W, () => ({ status: 404, body: NOT_FOUND_PAGE }));
+  const wLeak = await routeChecks(W, (r) => (r === "/millionea" ? { status: 200, body: NOT_FOUND_PAGE } : { status: 404, body: NOT_FOUND_PAGE }));
+  ok("4.10 · at a WITHDRAWN ceiling every route must answer the 404 STATUS (the edge's rewrite) — and a 200 is red even with the not-found words",
+    allPass(wDark) && wLeak.filter((x) => !x.cond).length === 1, j({ dark: wDark.map((x) => x.cond), leak: wLeak.map((x) => x.cond) }));
+  const kDark = await routeChecks(K, () => ({ status: 200, body: NOT_FOUND_PAGE }));
+  const kLeak = await routeChecks(K, (r) => (r === "/millionea" ? { status: 200, body: HUB_PAGE } : { status: 200, body: NOT_FOUND_PAGE }));
+  ok("4.11 · the Owner's kill under an ACTIVE ceiling: every route must answer the not-found PAGE (its words, no trace) under the streamed 200 — and the product's own page is red",
+    allPass(kDark) && kLeak.filter((x) => !x.cond).length === 1 && kDark.every((x) => x.label.includes("not-found page")), j({ dark: kDark.map((x) => x.cond), leak: kLeak.map((x) => x.cond) }));
+  const live = await routeChecks({ ceiling: "ACTIVE", state: "ACTIVE" }, () => ({ status: 200, body: HUB_PAGE }));
+  ok("4.12 · CONTROL · at ACTIVE the dark checks do not run", live.length === 0, j(live));
+}
+
 
 // ── §5 · the doors on other pages ──────────────────────────────────────────────────────────────────────────────────
 console.log("\n§5 · the doors: the card, More's first row, the /positions row — and none but these");
