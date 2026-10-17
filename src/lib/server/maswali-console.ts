@@ -14,8 +14,8 @@
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
-import { frozenRules, gradable, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
-import { maswaliAccountBalance } from "./maswali-money-service";
+import { frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
@@ -28,6 +28,7 @@ import { marketStore } from "./market-dal";
 import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
+import { formatTzs } from "@/lib/utils";
 
 const HOUR = 3_600_000;
 
@@ -100,7 +101,15 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
   let problems: string[] | null = null;
   if (week.state === "DRAFT") {
     try { rules = snapshotMaswaliRules(getMaswaliConfig(), now); } catch { rules = null; }
-    problems = rules ? await openProblems(week, questions, rules, now.getTime()) : ["The Millionea rules do not validate; fix them on the rules page first."];
+    if (!rules) problems = ["The Millionea rules do not validate; fix them on the rules page first."];
+    else {
+      // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
+      // every check passes while the open refused for want of a licence basis or the guarantee.
+      problems = await openProblems(week, questions, rules, now.getTime());
+      if (!licenceBasisAllowsOpen(getLicenceBasis())) problems.unshift(NO_LICENCE_BASIS);
+      const short = await guaranteeProblem(week, rules, guaranteeReader);
+      if (short) problems.push(short);
+    }
   }
   return { week, row: await rowOf(week), questions, rules, problems, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
 }
@@ -154,7 +163,7 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   const need = requirementOf(weeks.filter(unsettled));
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
-  else if (held < need) out.push({ level: "critical", text: `The guarantee holds TZS ${held.toLocaleString("en")}; the unsettled weeks need TZS ${need.toLocaleString("en")} (OD-02).` });
+  else if (held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
   // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
   if ((await weekStore.maxSeq()) > 0) {

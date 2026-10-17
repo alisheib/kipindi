@@ -100,6 +100,12 @@ Until the whole gate is green, S1–S4 stay 🔨.
     share or old history would have vanished from the console. Fixed in `86eacd88`: everything is read and counted, the
     growing tables page (`AdminPagination`), and held shares are listed whole. The seal views showed a void's ground
     as its stored code; they read its label.
+  - ⭐ The S4 drive's finding: the builder's checklist left out the two conditions the open checks beside the week, the
+    licence basis (OD-01) and the guarantee (OD-02), so it could say "Every check passes" while the open refused.
+    Both now come from one place in `maswali-service.ts` (`NO_LICENCE_BASIS`, `guaranteeProblem`), which the open and
+    the checklist both read, in the open's own words. The drive runs the Owner's ceremonies when the checklist asks for
+    them, and then opens at the first press (`test:maswali-engine` 2.0 and 2.1b). The Millionea server sentences
+    format money with `formatTzs`, as the rest of the platform does.
   - Next: the verification batch over all of it (`tsc`, every fixed guard, both stores), then the render check
     (`next dev`: `qa:live`, the five server suites, `qa:maswali-admin-shots`, and `qa:maswali-admin-drive` — S4's
     acceptance drive, written in lane `mln-s4-drive`, merged in `d820222f`).

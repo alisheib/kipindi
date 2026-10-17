@@ -461,27 +461,30 @@ await part("4 · attest and open", async () => {
     await readerCtx.close();
   }
 
+  // The checklist names the open's two standing conditions in the open's own words — the licence basis (OD-01) and the
+  // guarantee (OD-02) — so the Owner's ceremonies run when the CHECKLIST asks for them, and the open then goes through at
+  // the first press. (It once said every check passes while the open refused for both.)
+  const needed = [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await go(page, weekPath);
+    const list = clip(await card(page, "Before it can open").textContent());
+    if (/No licence basis is recorded/.test(list)) { needed.push("licence"); await recordLicence(); continue; }
+    const short = /The guarantee holds TZS ([\d,]+); TZS ([\d,]+) is needed to open/.exec(list);
+    if (short) { needed.push("guarantee"); await fundGuarantee(Math.max(1, num(short[2]) - num(short[1]))); continue; }
+    break;
+  }
   await go(page, weekPath);
   const ready = card(page, "Before it can open");
-  ok("4.3 back on the Owner's page: every check passes and the attestation stands",
+  ok(`4.3 back on the Owner's page: every check passes and the attestation stands${needed.length ? ` (the checklist asked for: ${needed.join(", ")})` : ""}`,
     (await ready.getByText("Every check passes: the week can open.", { exact: true }).count()) > 0
       && (await ready.getByText("The three languages are attested.", { exact: true }).count()) > 0, clip(await ready.textContent(), 300));
   await checkpoint(page, "4.3", "07-open-ready");
 
-  const needed = [];
-  for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-    const c = card(page, "Before it can open");
-    await c.getByRole("button", { name: "Open the week", exact: true }).click();
-    const r = await confirmDialog(page, "Open the week for sale?", { confirm: "Open the week", alert: c.getByRole("alert") });
-    if (r.closed) { opened = true; break; }
-    await r.cancel();
-    if (/No licence basis is recorded/.test(r.refusal)) { needed.push("licence"); await recordLicence(); await go(page, weekPath); continue; }
-    const short = /The guarantee holds TZS ([\d,]+); TZS ([\d,]+) is needed to open/.exec(r.refusal);
-    if (short) { needed.push("guarantee"); await fundGuarantee(Math.max(1, num(short[2]) - num(short[1]))); await go(page, weekPath); continue; }
-    ok("4.4 the week opens", false, r.refusal);
-    return;
-  }
-  if (!ok("4.4 the week opens", opened, `still refused after ${needed.join(", ")}`)) return;
+  await ready.getByRole("button", { name: "Open the week", exact: true }).click();
+  const r = await confirmDialog(page, "Open the week for sale?", { confirm: "Open the week", alert: ready.getByRole("alert") });
+  opened = r.closed;
+  if (!opened) await r.cancel();
+  if (!ok("4.4 ⭐ the week opens at the first press: the checklist named everything the open needed", opened, r.refusal)) return;
   if (needed.length === 0) ok(`2 · the open needed no ceremony: the licence basis (${standing.licence}) and the guarantee (${standing.guarantee}) were in place`, true);
   const selling = await until(async () => (await chipOf(page)) === "Selling", 60_000);
   ok("4.5 the open shows: the chip reads Selling and the close can be moved", !!selling && (await card(page, "Move the sales close").count()) > 0, await chipOf(page));

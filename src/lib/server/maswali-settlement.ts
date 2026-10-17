@@ -49,6 +49,7 @@ import { MASWALI_CHAIN_LOCK, carryBlocker, frozenRules, gradable } from "./maswa
 import { maswaliAccountBalance, postMaswaliLines, readJackpotOf } from "./maswali-money-service";
 import { settleArithmetic, type WeekArithmetic } from "@/lib/maswali-money";
 import { canonicalPicks, grade, MAIN_COUNT, settlementGate, topScore } from "@/lib/maswali-score";
+import { formatTzs } from "@/lib/utils";
 
 type Refused = { ok: false; error: string };
 const refuse = (error: string): Refused => ({ ok: false, error });
@@ -668,7 +669,7 @@ export async function forfeitMaswaliShare(input: { ticketId: string; officerId: 
     const p = (await positionStore.getMany([w.ticket.positionId]))[0];
     const wallet = await db.wallet.findByUserId(userId);
     if (!p || !wallet) return refuse("The ticket's position or wallet is missing.");
-    if (wallet.balance < amount) return refuse(`The wallet holds TZS ${wallet.balance.toLocaleString("en")}, less than the share; nothing was forfeited.`);
+    if (wallet.balance < amount) return refuse(`The wallet holds ${formatTzs(wallet.balance)}, less than the share; nothing was forfeited.`);
     const txnId = `txn_${randomId(12)}`;
     const at = new Date().toISOString();
     try {
