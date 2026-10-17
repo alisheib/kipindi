@@ -677,6 +677,8 @@
     "test:maswali-settle": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-settle.test.mts",
     "red:maswali-money-path": "node scripts/red-maswali-money-path.mjs",
     "e2e:maswali-fault": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fault.test.mts",
+    "test:maswali-rbac": "tsx scripts/maswali-rbac.test.mts",
+    "red:maswali-rbac": "node scripts/red-maswali-rbac.mjs",
     "test:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts",
     "red:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts --prove-red",
     "qa:journey-preview": "node scripts/qa-journey-preview.mjs",

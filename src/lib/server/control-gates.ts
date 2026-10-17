@@ -210,6 +210,32 @@ export const CONTROL_DOMAIN = {
   /** `/admin/proposals` · approving grants the proposer's bonus, so it is `growth` on a
    *  `trading` page — and `growth` is disjoint from `trading` in `DEFAULT_GRANTS`. */
   approveProposal: "growth",
+  /* ── MASWALI MILLIONEA (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 item 3) ─────────────────────────────────────────────
+   * The week's own officer runs it (trading, on /admin/maswali); accounting releases the money (on /pools); compliance
+   * pauses, voids a week and decides held shares (on /integrity); the Owner alone funds and returns the guarantee, stops
+   * the product, records the licence basis and moves the rollout switch (ops, on /pools). Each control sits on a page of
+   * its own domain, so no role can work a control it cannot reach. */
+  createMaswaliWeek: "trading",
+  editMaswaliQuestion: "trading",
+  attestMaswaliParity: "trading",
+  openMaswaliWeek: "trading",
+  moveMaswaliClose: "trading",
+  sealMaswaliQuestion: "trading",
+  voidMaswaliQuestion: "trading",
+  confirmMaswaliSeal: "trading",
+  correctMaswaliSeal: "trading",
+  releaseMaswaliSettlement: "accounting",
+  voidMaswaliWeek: "compliance",
+  pauseMaswaliSales: "compliance",
+  resumeMaswaliSales: "compliance",
+  holdMaswaliShare: "compliance",
+  releaseMaswaliShare: "compliance",
+  forfeitMaswaliShare: "compliance",
+  fundMaswaliGuarantee: "ops",
+  returnMaswaliGuarantee: "ops",
+  sunsetMaswali: "ops",
+  setMaswaliLicenceBasis: "ops",
+  setMillioneaRollout: "ops",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

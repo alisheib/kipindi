@@ -18,6 +18,8 @@ import type { AdminDomain } from "@/lib/server/roles";
  *  everywhere it is written. Add a segment here rather than accepting a mangled crumb. */
 const CRUMB_LABELS: Record<string, string> = {
   updown: "Up & Down",
+  // The route says maswali; the product is Millionea everywhere it is written (MASWALI-BUILD S4).
+  maswali: "Millionea",
   aml: "AML",
   kyc: "KYC",
   "ai-polls": "AI polls",
@@ -221,6 +223,16 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     ],
   },
   {
+    // Maswali Millionea is a SEPARATE GAME too (MASWALI-BUILD S4): its weeks, its money and its integrity live here, each
+    // page in the domain that acts on it — trading runs the week, accounting releases, compliance pauses and decides.
+    group: { en: "Millionea", sw: "Millionea" },
+    items: [
+      { href: "/admin/maswali",           label: "Weeks",     key: "maswali", domain: "trading" },
+      { href: "/admin/maswali/pools",     label: "Pools",     key: "maswali-pools", domain: "accounting" },
+      { href: "/admin/maswali/integrity", label: "Integrity", key: "maswali-integrity", domain: "compliance" },
+    ],
+  },
+  {
     group: { en: "Growth", sw: "Ukuaji" },
     items: [
       { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", domain: "growth" },
@@ -340,6 +352,10 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/updown/proposals", "updown-proposals"],
   ["/admin/updown/rounds", "updown-rounds"],
   ["/admin/updown", "updown"],
+  // ⚠️ The same order law as Up & Down: the specific Millionea prefixes precede the bare one.
+  ["/admin/maswali/pools", "maswali-pools"],
+  ["/admin/maswali/integrity", "maswali-integrity"],
+  ["/admin/maswali", "maswali"],
   ["/admin/agents", "agents"],
   ["/admin/affiliate", "affiliate"],
   ["/admin/bonuses", "bonuses"],

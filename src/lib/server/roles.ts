@@ -286,6 +286,11 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/resolver", "trading"],
   ["/admin/sources", "trading"],
   ["/admin/updown", "trading"],
+  // MASWALI-BUILD S4 · the money page is accounting's and the integrity page compliance's — both ABOVE the bare prefix,
+  // because the matcher's first match wins.
+  ["/admin/maswali/pools", "accounting"],
+  ["/admin/maswali/integrity", "compliance"],
+  ["/admin/maswali", "trading"],
   ["/admin/moderation", "trading"],
   // compliance
   /* ⭐ THE AGENT PROGRAMME IS COMPLIANCE, NOT GROWTH. The officer who approves, prices,

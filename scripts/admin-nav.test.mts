@@ -141,6 +141,10 @@ const ok = (label: string, cond: boolean, extra = "") => {
   const REACHED_WITHOUT_NAV: Record<string, string> = {
     // Detail routes — opened by clicking a row in their parent list. A menu entry
     // pointing at "some player" is meaningless.
+    // MASWALI-BUILD S4 · the builder opens from the week list's "Draft a week"; a week opens from its row there, and from
+    // every alert that names it.
+    "/admin/maswali/new": "the builder — from the Draft a week action at the head of /admin/maswali",
+    "/admin/maswali/[weekId]": "one week — from its row in the weeks table on /admin/maswali, and from every alert that names it",
     "/admin/agents/[id]": "the agent workstation — from the queue, refunds, invitations and roster tables on /admin/agents",
     "/admin/ai-polls/[id]": "poll detail — from the /admin/ai-polls list",
     "/admin/invites/[id]": "invite detail — from the /admin/invites list",

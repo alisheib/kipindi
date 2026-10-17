@@ -1,0 +1,250 @@
+/**
+ * MASWALI MILLIONEA — WHAT THE ADMIN CONSOLE READS (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 items 1 and 5).
+ *
+ * Three pages, three domains, one read model:
+ *   · `/admin/maswali` and `/admin/maswali/[weekId]` (trading) — the weeks, the builder's checklist, the seal console;
+ *   · `/admin/maswali/pools` (accounting) — the jackpots, the guarantee and its requirement, the float, the exposure,
+ *     the prepared settlements, the rollover trail;
+ *   · `/admin/maswali/integrity` (compliance) — held shares, the sales pause, the seal log after the fact, the winners.
+ *
+ * ⛔ READS ONLY. Every act is a server action that calls the services (`maswali-service.ts`, `maswali-settlement.ts`,
+ *    `maswali-money-service.ts`, `maswali-pause.ts`).
+ * ⛔ THE TRADING READS CARRY NO TICKET DATA beyond counts (MR-14, MB-34): the officer who seals never sees picks, holders,
+ *    serials or the exposure — what a week would cost the house is accounting's, and who holds what is compliance's.
+ * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
+ */
+import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredWeek } from "./maswali-dal";
+import { frozenRules, gradable, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+import { maswaliAccountBalance } from "./maswali-money-service";
+import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
+import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
+import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
+import { getSalesPause, type SalesPause } from "./maswali-pause";
+import { millioneaStateNow } from "./millionea-switch";
+import { acct, maswaliJackpotOf } from "./ledger";
+import { db } from "./store";
+import { MAIN_COUNT, SLOT_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
+import { guaranteeRequirement } from "@/lib/maswali-money";
+import type { RolloutState } from "@/lib/millionea-rollout";
+
+const HOUR = 3_600_000;
+
+/** One week as the trading list shows it. */
+export type ConsoleWeekRow = {
+  id: string; code: string; visibility: StoredWeek["visibility"]; state: StoredWeek["state"]; isFinal: boolean;
+  opensAt: string; closesAt: string; finalDeadlineAt: string; ticketCount: number; settledAt: string | null;
+  /** How many of the fifteen carry a final result. */
+  sealed: number;
+  /** The slots the settlement gate still waits on (empty when ready). */
+  needs: number[];
+  voidCertain: boolean;
+  objectionsCloseAt: string | null;
+};
+
+const unsettled = (w: StoredWeek) => w.state === "OPEN" || w.state === "CLOSED" || w.state === "RESOLVING";
+
+async function rowOf(w: StoredWeek): Promise<ConsoleWeekRow> {
+  const qs = gradable(await questionStore.listForWeek(w.id));
+  const gate = settlementGate(qs);
+  return {
+    id: w.id, code: w.code, visibility: w.visibility, state: w.state, isFinal: w.isFinal,
+    opensAt: w.opensAt, closesAt: w.closesAt, finalDeadlineAt: w.finalDeadlineAt, ticketCount: w.ticketCount, settledAt: w.settledAt,
+    sealed: qs.filter((q) => q.outcome !== null).length, needs: gate.ready ? [] : gate.needs, voidCertain: weekVoidCertain(qs),
+    objectionsCloseAt: w.objectionsCloseAt,
+  };
+}
+
+/** The weeks, newest first. */
+export async function listConsoleWeeks(limit = 60): Promise<ConsoleWeekRow[]> {
+  const weeks = await weekStore.list({ limit });
+  return Promise.all(weeks.map(rowOf));
+}
+
+/** One week for the builder and the seal console. `problems` is the open's checklist, read as the open would read it. */
+export type ConsoleWeekDetail = {
+  week: StoredWeek;
+  row: ConsoleWeekRow;
+  questions: StoredQuestion[];
+  /** The rules the week froze, or — while DRAFT — the rules it would freeze if opened now. */
+  rules: MaswaliRulesSnapshot | null;
+  /** DRAFT only: every reason the open would refuse, in words; empty when it would open. */
+  problems: string[] | null;
+  /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
+  proposedVoids: number[];
+};
+
+export async function consoleWeekDetail(weekId: string, now: Date = new Date()): Promise<ConsoleWeekDetail | null> {
+  const week = await weekStore.get(weekId);
+  if (!week) return null;
+  const questions = await questionStore.listForWeek(week.id);
+  let rules = frozenRules(week);
+  let problems: string[] | null = null;
+  if (week.state === "DRAFT") {
+    try { rules = snapshotMaswaliRules(getMaswaliConfig(), now); } catch { rules = null; }
+    problems = rules ? await openProblems(week, questions, rules, now.getTime()) : ["The Millionea rules do not validate; fix them on the rules page first."];
+  }
+  return { week, row: await rowOf(week), questions, rules, problems, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
+}
+
+/** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
+export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
+
+export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAlert[]> {
+  const nowMs = now.getTime();
+  const out: ConsoleAlert[] = [];
+  const cfg = getMaswaliConfig();
+  const weeks = await weekStore.list({ limit: 60 });
+  for (const w of weeks) {
+    if (w.state === "OPEN" && Date.parse(w.closesAt) + 5 * 60_000 < nowMs) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: sales should have closed at ${w.closesAt}, and the close is not stamped.` });
+    }
+    if (w.state === "CLOSED" || w.state === "RESOLVING") {
+      const qs = await questionStore.listForWeek(w.id);
+      for (const q of qs) {
+        if (q.outcome !== null) continue;
+        const since = nowMs - Date.parse(q.eventStartsAt);
+        if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 12 hours after its event started.` });
+        else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 2 hours after its event started.` });
+      }
+      const proposed = await proposeVoidsAtDeadline(w.id, now);
+      if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; seal each as VOID (MR-15).` });
+      if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
+        out.push({ level: "critical", weekId: w.id, text: `${w.code}: its results are final and its window closed ${cfg.releaseAlertHours} h ago, and it is not settled. Accounting releases it.` });
+      }
+    }
+  }
+  const held = await maswaliAccountBalance(acct.maswaliGuarantee);
+  const need = requirementOf(weeks.filter(unsettled));
+  if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
+  else if (held < need) out.push({ level: "critical", text: `The guarantee holds TZS ${held.toLocaleString("en")}; the unsettled weeks need TZS ${need.toLocaleString("en")} (OD-02).` });
+  if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
+  const pause = getSalesPause();
+  if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  return out;
+}
+
+/** OD-02 over a set of unsettled weeks, each at its own frozen floor. */
+function requirementOf(weeks: StoredWeek[]): number {
+  return guaranteeRequirement(weeks.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? 0, confirmedCarryIn: w.rolloverIn })));
+}
+
+/** The product's switches at a glance — the head of every Millionea page. */
+export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>> };
+
+export async function consoleStanding(): Promise<ConsoleStanding> {
+  const rollout = await millioneaStateNow().catch(() => null);
+  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState() };
+}
+
+// ── ACCOUNTING (/admin/maswali/pools) ───────────────────────────────────────────────────────────────
+
+export type PoolsWeek = {
+  row: ConsoleWeekRow;
+  sales: number;
+  rolloverIn: number | null;
+  /** MB-36 · the share of the 1,024 ways to answer the ten mains that some live ticket holds, 0…1. */
+  coverage: number;
+  distinctCombos: number;
+  /** The most this week could still draw from the guarantee: a single winner at the floor. */
+  worstTopUp: number;
+  /** A settlement ready to release (results final, window closed): its prepared figures, or why not. */
+  preview: MaswaliSettlementPreview | null;
+  previewRefusal: string | null;
+};
+
+export type PoolsTrailRow = {
+  code: string; visibility: StoredWeek["visibility"]; settledAt: string; sales: number; rolloverIn: number; winners: number;
+  fee: number; topUp: number; paid: number; carryOut: number;
+  /** MB-10 · the TRA and GBT levies on the fee the house's own top-up generated, paid from house money. */
+  levyOnOwnTopUp: number;
+};
+
+export type PoolsView = {
+  jackpotPublic: number | null; jackpotDrive: number | null; guarantee: number | null; requirement: number;
+  float: number | null; pendingPayout: number;
+  weeks: PoolsWeek[];
+  trail: PoolsTrailRow[];
+};
+
+export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
+  const weeks = await weekStore.list({ limit: 80 });
+  const open = weeks.filter(unsettled);
+  const [jackpotPublic, jackpotDrive, guarantee] = await Promise.all([
+    maswaliAccountBalance(maswaliJackpotOf("PUBLIC")), maswaliAccountBalance(maswaliJackpotOf("DRIVE")), maswaliAccountBalance(acct.maswaliGuarantee),
+  ]);
+  const out: PoolsWeek[] = [];
+  let pendingPayout = 0;
+  for (const w of open) {
+    const rules = frozenRules(w);
+    const live = await ticketStore.listForWeek(w.id, { status: "LIVE" });
+    const combos = new Set(live.map((t) => t.selections.slice(0, MAIN_COUNT).join("")));
+    const sales = live.length * (rules?.ticketPriceTzs ?? 0);
+    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic) ?? 0;
+    const worstTopUp = Math.max(0, (rules?.floorTzs ?? 0) - jackpot - sales);
+    let preview: MaswaliSettlementPreview | null = null, previewRefusal: string | null = null;
+    if (w.state === "RESOLVING" && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
+      const p = await previewMaswaliSettlement(w.id, now);
+      if (p.ok) { preview = p.preview; if (p.preview.arithmetic.kind === "PAYOUT") pendingPayout += p.preview.arithmetic.paid; }
+      else previewRefusal = p.error;
+    }
+    out.push({ row: await rowOf(w), sales, rolloverIn: w.rolloverIn, coverage: combos.size / 2 ** MAIN_COUNT, distinctCombos: combos.size, worstTopUp, preview, previewRefusal });
+  }
+  const { getFloatBalance } = await import("./payments");
+  const float = await getFloatBalance().then((f) => f?.balance ?? null).catch(() => null);
+  const trail: PoolsTrailRow[] = weeks.filter((w) => w.state === "SETTLED").map((w) => {
+    const J = w.jackpot ?? 0, U = w.topUp ?? 0, levies = (w.traLevy ?? 0) + (w.gbtLevy ?? 0);
+    return {
+      code: w.code, visibility: w.visibility, settledAt: w.settledAt ?? "", sales: w.salesAtClose ?? 0, rolloverIn: w.rolloverIn ?? 0,
+      winners: w.winningTickets ?? 0, fee: w.fee ?? 0, topUp: U, paid: w.paidTotal ?? 0, carryOut: w.carryOut ?? 0,
+      levyOnOwnTopUp: J > 0 && U > 0 ? Math.round((levies * U) / J) : 0,
+    };
+  });
+  return { jackpotPublic, jackpotDrive, guarantee, requirement: requirementOf(open), float, pendingPayout, weeks: out, trail };
+}
+
+// ── COMPLIANCE (/admin/maswali/integrity) ───────────────────────────────────────────────────────────
+
+export type HeldShare = { ticketId: string; serial: string; weekCode: string; userId: string; holder: string; payout: number; reason: string; forfeited: boolean };
+export type SealLogRow = { weekCode: string; slot: number; outcome: string; voidReason: string | null; sealedBy: string | null; sealedAt: string | null; evidence: string | null; stage2By: string | null };
+export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number; frozenReason: string | null };
+
+export type IntegrityView = {
+  held: HeldShare[];
+  /** MB-34 · the seal log, shown only for weeks whose results can no longer change (settled or voided). */
+  sealLog: SealLogRow[];
+  winners: WinnerRow[];
+  /** Weeks a compliance officer may void whole (MR-18): the void is certain and the window has closed. */
+  voidable: ConsoleWeekRow[];
+};
+
+const holderOf = async (userId: string) => {
+  const u = await db.user.findById(userId).catch(() => null);
+  return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
+};
+
+export async function integrityView(now: Date = new Date()): Promise<IntegrityView> {
+  const weeks = await weekStore.list({ limit: 40 });
+  const held: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: ConsoleWeekRow[] = [];
+  for (const w of weeks) {
+    if (w.state === "SETTLED") {
+      for (const t of await ticketStore.listForWeek(w.id, { status: "SETTLED" })) {
+        if (!t.won) continue;
+        const h = await holderOf(t.userId);
+        const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
+        winners.push({ ticketId: t.id, weekCode: w.code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: Math.round(t.payout ?? 0), frozenReason: t.frozenReason });
+        if (t.frozenReason) held.push({ ticketId: t.id, serial: t.serial, weekCode: w.code, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
+      }
+    }
+    if (w.state === "SETTLED" || w.state === "VOIDED") {
+      for (const q of await questionStore.listForWeek(w.id)) {
+        sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
+      }
+    }
+    if ((w.state === "CLOSED" || w.state === "RESOLVING") && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
+      const row = await rowOf(w);
+      const gate = settlementGate(gradable(await questionStore.listForWeek(w.id)));
+      if (gate.ready && gate.weekVoid) voidable.push(row);
+    }
+  }
+  return { held, sealLog: sealLog.slice(0, SLOT_COUNT * 8), winners, voidable };
+}
