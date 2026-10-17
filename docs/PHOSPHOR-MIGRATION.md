@@ -33,6 +33,10 @@ which the harness refuses as a base); the W2 compare and its "after" tiles; the 
 (`scripts/glyphs/parity-entries.mjs`) and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`;
 the push and the production read-back.
 
+**W2 so far** (branch `phosphor-w2`; §5 W2 "As built so far" has the detail): the engine draws Phosphor; the lexicon
+landed; every guard that read the hand-drawn family is re-pointed and green; the parity harness matches a glyph swap
+element by element from generated maps.
+
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
   real `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
