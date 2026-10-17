@@ -376,7 +376,13 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
   book-open-text, cap → stack, finalWeek → flag-checkered, and more). Answered the same day: `pause` is an existing key,
   `lock` draws `lock` (not lock-simple), and seven proposed drawings already belong to a key (`checkCircle`, `xCircle`,
   `coins`, `rotateCcw`, `eye`, `hourglassHalf`, `sofSavings`) — reuse the key or pick another drawing (glyph-map §4).
-  Nothing is reserved for Maswali any more; `voidX` is retired in W2.
+  Nothing is reserved for Maswali any more; `voidX` is retired in W2. **The Maswali lane adopted the review (MASWALI-PLAN
+  §10c, main `d12ab9d7`):** it reuses `checkCircle`, `xCircle`, `coins`, `hourglassHalf`, `rotateCcw`, `eye`, `lock` and
+  `sealCheck`, and adds 13 keys through `map.ts` and `glyphs:gen` at its S5 — `millionea` diamond, `markPending`
+  circle-dashed, `reserve` lifebuoy, `standIn` arrow-bend-down-right, `carry` arrow-bend-double-up-right, `floor` vault,
+  `register` notebook, `fairness` fingerprint, `refund` arrow-u-down-left, `salesPaused` pause-circle, `howTo`
+  book-open-text, `cap` stack, `finalWeek` flag-checkered — each re-checked free in 2.1.1's four weights. One point sent
+  back: its `fairness` must not become a second sign for the platform's /fairness (the hub draws `attestation` there).
 - **Vodacom** (S14–S16 open): classic-shell changes reach `main` as named parity entries, so its branches inherit them on
   rebase. A wave touching home or cards checks `git log` and the worktrees first and goes after that lane's merge.
 - **Parallel sessions:** own worktree; heavy Node only through the machine's lock; stage by name; never `git add -A`.
