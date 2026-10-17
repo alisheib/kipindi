@@ -144,7 +144,7 @@ async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: t
   });
   let basis: MaswaliSettlementPreview["basis"] = "TEN_OF_TEN";
   let winningScore: number | null = graded.length > 0 ? MAIN_COUNT : null;
-  let isWin = (score: number) => score === MAIN_COUNT;
+  let isWin: (score: number) => boolean = (score) => score === MAIN_COUNT;
   if (week.isFinal && graded.length > 0 && !graded.some((g) => g.score === MAIN_COUNT)) {
     const top = topScore(graded.map((g) => g.score))!;
     basis = "TOP_SCORE";

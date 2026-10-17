@@ -39,8 +39,10 @@ import { leafHash, newSalt, picksKey } from "@/lib/maswali-commitment";
 import { exitWindowFacts } from "@/lib/exit-window";
 import { readSalesPauseFresh } from "./maswali-pause";
 import type { StoredMarket, StoredPosition } from "./market-service";
+import type { ServiceResult } from "./auth-service";
 
-type Refused = { ok: false; error: string; code?: string; reason?: string; detail?: Record<string, unknown> };
+// The platform's own refusal (ServiceResult's `ok: false` arm), so buyPosition and cashOutPosition hand it back unchanged.
+type Refused = Extract<ServiceResult, { ok: false }>;
 const refuse = (error: string, extra: Omit<Refused, "ok" | "error"> = {}): Refused => ({ ok: false, error, ...extra });
 
 /** The lock every guarantee movement and every settlement takes — the same line of weeks `maswali-service` orders. */

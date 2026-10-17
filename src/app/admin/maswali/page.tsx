@@ -77,7 +77,7 @@ async function AdminMaswaliContent() {
           {weeks === null ? <p className="p-4 text-body-sm text-danger-fg">The weeks could not be read.</p>
             : weeks.length === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
             : (
-              <ScrollX>
+              <ScrollX label="Millionea weeks">
                 <table className="table min-w-[860px]">
                   <thead>
                     <tr>

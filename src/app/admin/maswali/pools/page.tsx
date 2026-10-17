@@ -64,7 +64,7 @@ async function Content() {
         <AdminCard title="Open weeks" sw="Wiki zilizo wazi" padding="p-0">
           {v.weeks.length === 0 ? <EmptyState title="No open week" body="A week appears here from its open until it settles." />
             : (
-              <ScrollX>
+              <ScrollX label="Millionea open weeks">
                 <table className="table min-w-[1000px]">
                   <thead><tr><th className="text-left">Week</th><th className="text-left">State</th><th className="text-right">Sales</th><th className="text-right">Carry claimed</th><th className="text-right">Coverage</th><th className="text-right">Worst top-up</th><th className="text-left">Settlement</th></tr></thead>
                   <tbody>
@@ -102,7 +102,7 @@ async function Content() {
         <AdminCard title="Rollover trail" sw="Historia ya jackpot" padding="p-0">
           {v.trail.length === 0 ? <EmptyState title="No settled week yet" body="Each settled week appears here with what it claimed, paid and carried." />
             : (
-              <ScrollX>
+              <ScrollX label="Millionea rollover trail">
                 <table className="table min-w-[980px]">
                   <thead><tr><th className="text-left">Week</th><th className="text-left">Settled</th><th className="text-right">Sales</th><th className="text-right">Carry in</th><th className="text-right">Winners</th><th className="text-right">Fee</th><th className="text-right">Top-up</th><th className="text-right">Paid</th><th className="text-right">Carried on</th><th className="text-right">Levy on own top-up</th></tr></thead>
                   <tbody>
