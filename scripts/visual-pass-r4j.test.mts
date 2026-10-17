@@ -242,10 +242,12 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   const patterns = [...squash(ghost).matchAll(/\["(\^[^"]+\$)", </g)].map((m) => m[1]);
   const tabs = JOURNEY_TABS.map((d) => d.href);
   // The journey's own pages (surfaces.ts), as paths: each exact one, a question, and the deposit screen's return.
-  const SURFACES = ["/updown/history", "/wallet/deposit", "/wallet/deposit/return"];
+  // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): Maswali Millionea's journey pages — the hub, the slip, Tiketi zangu's
+  // Millionea kind — and a ticket, the second pattern.
+  const SURFACES = ["/updown/history", "/wallet/deposit", "/wallet/deposit/return", "/millionea", "/millionea/slip", "/millionea/tickets"];
   const want = [...tabs, ...SURFACES].sort();
   const covers = (k: string[], p: string[]) => JSON.stringify([...k].sort()) === JSON.stringify(want)
-    && JSON.stringify(p) === JSON.stringify(["^/markets/[^/]+$"])
+    && JSON.stringify(p) === JSON.stringify(["^/markets/[^/]+$", "^/millionea/tickets/[^/]+$"])
     && [...SURFACES, "/markets/mkt_x"].every((s) => isJourneySurface(s)) && SURFACES.every((s) => k.includes(s));
   ok(`3.3 · the ghost picks a page for each of the four tabs (${tabs.join(" ")}) and each of the journey's own pages (surfaces.ts: ${SURFACES.join(" ")} and a question), exactly, and draws a frameless spinner for every other page`,
     covers(keys, patterns) && squash(ghost).includes("other={<AnyPageGhost />}") && !/rounded-lg border/.test(ghost.slice(ghost.indexOf("function AnyPageGhost"))),
@@ -267,6 +269,11 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     ['"/wallet/deposit": <DepositGhost journey />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost journey={journey} />;"],
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
     ['["^/markets/[^/]+$", <QuestionGhost />]', 'import { QuestionGhost } from "@/components/journey/question/question-ghost";', "src/components/journey/question/question-ghost.tsx", "export function QuestionGhost() {"],
+    // RE-PINNED (MASWALI-BUILD S5 pages): Maswali Millionea's four, each its loading file's own drawing.
+    ['"/millionea": <MillioneaHubGhost />', 'import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";', "src/app/millionea/loading.tsx", "return <MillioneaHubGhost />;"],
+    ['"/millionea/slip": <MillioneaSlipGhost />', 'import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";', "src/app/millionea/slip/loading.tsx", "return <MillioneaSlipGhost />;"],
+    ['"/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";', "src/app/millionea/tickets/loading.tsx", "return <MillioneaTicketsGhost />;"],
+    ['["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]', 'import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";', "src/app/millionea/tickets/[serial]/loading.tsx", "return <MillioneaTicketGhost />;"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
   ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",

@@ -73,6 +73,13 @@ export function lineOf(questions: readonly MillioneaQuestion[], slots: readonly 
   return sealLineOf(gradableOf(questions), picksOf(slots), { weekVoid: weekState === "VOIDED" });
 }
 
+/** A ticket's Seal Line from its own fifteen slots — each carries its role, its place and the sealed outcome — where the
+ *  week's questions are not read (Tiketi zangu's list). The same grader, so the same answer as `lineOf`. */
+export function lineOfSlots(slots: readonly MillioneaSlot[], weekState: WeekState): SealLine {
+  const gq: GradableQuestion[] = slots.map((s) => ({ role: s.role, ordinal: ordinalOf(s), outcome: s.outcome }));
+  return sealLineOf(gq, picksOf(slots), { weekVoid: weekState === "VOIDED" });
+}
+
 /**
  * MB-15 (the lead's decision): a question sealed VOID before the close still takes a YES/NO pick, because a ticket is
  * fifteen canonical picks — so the slip fills it with this, hidden, and it never grades. A rule of the record's shape, not

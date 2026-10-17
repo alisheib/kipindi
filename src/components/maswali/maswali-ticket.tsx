@@ -340,7 +340,7 @@ export function MaswaliTicket({
  * ⛔ The payout is "when the result is in" until the week settles — never a projected figure (§C3, SJ-4); the amount a
  * won ticket was paid is the only gold, from the win ledger.
  */
-export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, placedAt, className }: {
+export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, share, placedAt, className }: {
   t: Dict;
   locale: Locale;
   serverNow: number;
@@ -351,8 +351,12 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
   shown: TicketShown;
   line: SealLine;
   price: number;
-  /** What the ticket was finally paid: the share when won, the price back when refunded or cancelled, 0 when lost. */
+  /** What the ticket was finally paid: the share when won AND paid, the price back when refunded or cancelled, 0 when
+   *  lost; null while its result is not in — and for a won share held for review or forfeited (`share`). */
   payout: number | null;
+  /** A won ticket's share as the settlement and Compliance left it (MB-43, OD-07): a held or a forfeited one shows its
+   *  word in the payout's place — never gold, never a figure. */
+  share?: "paid" | "held" | "forfeited" | null;
   /** When it was bought (ISO). */
   placedAt: string;
   className?: string;
@@ -371,6 +375,8 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         <Stat label={t.dialog.stakeLabel} value={formatTzs(price)} money />
         {shown === "won" && payout !== null ? (
           <MaswaliEarnedStat t={t} amount={payout} />
+        ) : shown === "won" && (share === "held" || share === "forfeited") ? (
+          <Stat label={t.journey.ticketFinalPayout} value={share === "held" ? t.millionea.shareHeld : t.millionea.shareForfeited} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : shown === "running" ? (
           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : (

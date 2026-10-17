@@ -33,7 +33,9 @@
  *               return — each the drawing its own loading file renders (the file itself, client code, where it needs no
  *               server answer: the question's and the return's; else the drawing beside it: the list's
  *               `history-ghost.tsx`, here with a journey reader's head, and the deposit's `deposit-ghost.tsx`), so the
- *               root's state and the page's are one drawing.
+ *               root's state and the page's are one drawing. Maswali Millionea's four (MASWALI-BUILD S5): the hub, the
+ *               slip, Tiketi zangu's Millionea kind (with Tiketi zangu's head) and a ticket (the second pattern) — each
+ *               drawing its words set and not shown, since this state picks by address before any gate has answered.
  *   any other   the brand's spinner in a block as tall as the classic box, and no frame: a framed box promises a
  *               column, and the pages behind this branch use several; each page's own loading file (if it has one)
  *               draws its column as soon as the page starts to arrive.
@@ -85,13 +87,17 @@ import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
 import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
 import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
 import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";
+import { MillioneaHubGhost } from "@/app/millionea/hub-ghost";
+import { MillioneaSlipGhost } from "@/app/millionea/slip/slip-ghost";
+import { MillioneaTicketsGhost } from "@/app/millionea/tickets/tickets-ghost";
+import { MillioneaTicketGhost } from "@/app/millionea/tickets/[serial]/ticket-ghost";
 import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
 import { useT } from "@/lib/i18n";
 import { stemOf } from "@/lib/display-stem";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
-export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]";
+export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]" | "/millionea/tickets";
 
 /**
  * ⚠️ `rails` — the rails that pay out, read on the server — is drawn by no page's ghost since WP7: only the shelved landing
@@ -109,12 +115,17 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
     "/wallet/deposit": <DepositGhost journey />,
     "/wallet/deposit/return": <DepositReturnLoading />,
     "/markets/[id]": <QuestionGhost />,
+    // MASWALI-BUILD S5 · the Millionea pages the journey's tabs reach (`surfaces.ts` JOURNEY_ROUTE), each its own loading
+    // file's drawing; Tiketi zangu's Millionea kind with Tiketi zangu's head, as its loading file hands a journey reader.
+    "/millionea": <MillioneaHubGhost />,
+    "/millionea/slip": <MillioneaSlipGhost />,
+    "/millionea/tickets": <MillioneaTicketsGhost journeyHead={<TicketsHeadGhost t={t} />} />,
   };
   if (at) return routes[at];
   return (
     <RoutePick
       routes={routes}
-      patterns={[["^/markets/[^/]+$", <QuestionGhost />]]}
+      patterns={[["^/markets/[^/]+$", <QuestionGhost />], ["^/millionea/tickets/[^/]+$", <MillioneaTicketGhost />]]}
       other={<AnyPageGhost />}
     />
   );

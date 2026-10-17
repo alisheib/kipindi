@@ -500,6 +500,9 @@ const EXPECTED: Record<string, Expect> = {
   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
   "/auth/register": AUTH, "/auth/reset-password": AUTH, "/auth/verify-email": AUTH,
   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
+  // MASWALI-BUILD S5 (decided with the pages, as 1.census asks): Millionea takes no tab (§M8a item 11, D-15) — its tickets
+  // light Tiketi zangu, every other Millionea page Maswali, the tab whose home carries its card.
+  "/millionea": Q, "/millionea/slip": Q, "/millionea/tickets": T, "/millionea/tickets/[serial]": T,
   // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
   // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
   // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.
@@ -513,7 +516,7 @@ const AHEAD_OF_DISK: ReadonlySet<string> = new Set<string>();
 /** A dynamic segment, filled the way a real URL fills it. */
 const probe = (route: string) => route.replace(/\[[^\]]+\]/g, "x1");
 /** Paths that share a row's letters but not its segment — each must be claimed by NO row (A18). */
-const LOOKALIKES = ["/settings", "/sx/abc", "/s-promo", "/wallets", "/marketsx", "/updownx", "/positionsx", "/accounts", "/helpdesk", "/profiles", "/authority", "/offline/x"];
+const LOOKALIKES = ["/settings", "/sx/abc", "/s-promo", "/wallets", "/marketsx", "/updownx", "/positionsx", "/accounts", "/helpdesk", "/profiles", "/authority", "/offline/x", "/millioneas"];
 /** A12: "page" only on the tab's own href, "true" for section membership, nothing for another tab's page. */
 const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/", "questions", "page"],
@@ -531,6 +534,9 @@ const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/results", "questions", undefined],
   ["/auth/login", "account", undefined],
   ["/s/x1", "questions", undefined],
+  // MASWALI-BUILD S5 · Tiketi zangu's third kind is in the tickets section, never the page of the tab's own href.
+  ["/millionea/tickets", "tickets", "true"],
+  ["/millionea", "questions", "true"],
 ];
 const DECK = [
   "questions / questionCircle journey.tabQuestions",

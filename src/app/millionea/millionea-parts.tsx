@@ -9,7 +9,12 @@ import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import type { Dict } from "@/lib/i18n-dict";
 
-/** Every Millionea address, spelled once (`position-permalink.ts` keeps the ticket's own, `millioneaTicketHref`). */
+/**
+ * Every Millionea address, spelled once. ⚠️ Written as path literals on purpose: `test:journey-shell` §9's door census
+ * reads the doors a page names from its own `.tsx` files, so a door spelled only inside a `lib` helper is invisible to it.
+ * The ticket's address is `position-permalink.ts`'s rule (`millioneaTicketHref`), and `test:maswali-ui` holds the two to
+ * the same answer.
+ */
 export const MILLIONEA_HREF = {
   hub: "/millionea",
   slip: "/millionea/slip",
@@ -20,7 +25,12 @@ export const MILLIONEA_HREF = {
 
 /** One week of the register, by its stamped code. */
 export function registerWeekHref(code: string): string {
-  return `${MILLIONEA_HREF.register}/${encodeURIComponent(code)}`;
+  return `/millionea/register/${encodeURIComponent(code)}`;
+}
+
+/** One ticket's own page, by its serial — `millioneaTicketHref`'s answer, as a door this file names. */
+export function ticketPageHref(serial: string): string {
+  return `/millionea/tickets/${encodeURIComponent(serial)}`;
 }
 
 /** The sign-in door that comes back to `next` once in (a deep link survives the detour, as `/positions/[id]` does). */

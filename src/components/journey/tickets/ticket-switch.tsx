@@ -1,6 +1,6 @@
 /**
- * MASWALI | JUU/CHINI — the two kinds of ticket, and the head of Tiketi zangu that carries the switch (the Vodacom plan
- * S6, SJ-16; S6-PLAN WP9 steps 3 and 6; the S4 frames s4-9-tiketi-*).
+ * MASWALI | JUU/CHINI | MILLIONEA — the kinds of ticket, and the head of Tiketi zangu that carries the switch (the Vodacom
+ * plan S6, SJ-16; S6-PLAN WP9 steps 3 and 6; the S4 frames s4-9-tiketi-*; MASWALI-BUILD S5 for the third kind).
  *
  * ⭐ THE KIT'S SECTION RAIL, NOT THE CANVAS'S CAPSULE (§0h point 7: where the canvas drifts from the kit, the kit wins).
  * `<Tabs variant="line">` in link mode: each kind is a link to the page that lists it, the rail is a `<nav>` named
@@ -10,18 +10,24 @@
  * ⛔ THE KIT'S CODE IS NOT IMPORTED HERE. `TicketSwitchRail`, in the file beside this one, loads `Tabs` only when it
  * is drawn, so the two routes this head serves carry nothing of it for a reader the journey is not shown to — a client
  * module a server file imports joins its route's first-load JS for every visitor (VODACOM-PLAN §0h point 20).
- * ⛔ EACH PAGE PASSES ITS OWN KIND: `/positions` is Maswali and `/updown/history` is Juu/Chini, so the link marked as
- * the current page is always the page being read (A12).
+ * ⛔ EACH PAGE PASSES ITS OWN KIND: `/positions` is Maswali, `/updown/history` is Juu/Chini and `/millionea/tickets` is
+ * Millionea, so the link marked as the current page is always the page being read (A12).
  * ⭐ This rail is a journey phone's door to `/updown/history` (A15): `test:journey-shell` §9 holds this file to it.
+ * ⭐ MILLIONEA IS THE THIRD KIND (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.9; DESIGN_AUTHORITY §M8a item 11, §K8b): drawn
+ * for a request the door admits — the product visible to it, or, while it is hidden, an account that holds a Millionea
+ * ticket (the lead's decision L5: a kill hides the product, never a player's own tickets). For everybody else the rail is
+ * the two kinds it always was, byte for byte. The answer is the doors' one per-request read (`millionea-doors.ts`).
  */
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketSwitchRail } from "@/components/journey/tickets/ticket-switch-rail";
+import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import type { Dict } from "@/lib/i18n-dict";
 
-/** The two kinds of ticket. */
-export type TicketKind = "questions" | "updown";
+/** The kinds of ticket. */
+export type TicketKind = "questions" | "updown" | "millionea";
 
-export function TicketSwitch({ current, t }: { current: TicketKind; t: Dict }) {
+export async function TicketSwitch({ current, t }: { current: TicketKind; t: Dict }) {
+  const millionea = await millioneaTicketsDoor();
   return (
     <TicketSwitchRail
       ariaLabel={t.journey.ticketsKindAria}
@@ -29,6 +35,7 @@ export function TicketSwitch({ current, t }: { current: TicketKind; t: Dict }) {
       tabs={[
         { value: "questions", labelEn: t.journey.tabQuestions, href: "/positions" },
         { value: "updown", labelEn: t.nav.updown, href: "/updown/history" },
+        ...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),
       ]}
     />
   );

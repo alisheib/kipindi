@@ -125,6 +125,10 @@ const SURFACES = [
      wallet's state and window axes. Declared in the same commit as the rail, as §0.4 requires. */
   "src/app/wallet/receipts/receipts-bar.tsx",   // /wallet/receipts — 3 lenses + state/window
   "src/components/updown/updown-board-tabs.tsx", // /updown — assets + durations
+  /* DECLARED 2026-10-17 (MASWALI-BUILD S5 pages). Maswali Millionea's Tiketi zangu kind: four lenses over the reader's own
+     tickets (all · open · settled · won, the v6 delivery's T-list frames). Declared in the same commit as the rail, as
+     §0.4 requires; `docs/PLAYER-QUERY-CAMPAIGN.md` §4 rules it (bucket B, one axis). */
+  "src/app/millionea/tickets/tickets-bar.tsx",   // /millionea/tickets — 4 lenses
   /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.1). The day rail folded into the shared
      WINDOW vocabulary and the hook moved with the controls into `history-bar.tsx`. `?day=`
      itself survives — the digest deep-links to an exact EAT day and those links are already

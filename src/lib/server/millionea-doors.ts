@@ -19,6 +19,8 @@ import { resolveMillionea } from "./millionea-preview";
 import { getSession } from "./session";
 import { millioneaHub, type MillioneaHub } from "./maswali-player";
 import { getMaswaliConfig } from "./maswali-config";
+import { frozenRules } from "./maswali-service";
+import { ticketStore, weekStore } from "./maswali-dal";
 import { isLockedOut } from "./responsible-gambling";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
 import type { RolloutState } from "@/lib/millionea-rollout";
@@ -77,5 +79,38 @@ export const millioneaBreakOf = cache(async (userId: string | null): Promise<Bre
     return breakStateOf(await isLockedOut(userId));
   } catch {
     return null;
+  }
+});
+
+/**
+ * Each week's frozen ticket price (MR-11: the week's own `rulesSnapshot`), by week id — what every ticket of that week
+ * cost, as Tiketi zangu's cards print it. A week whose rules cannot be read is left out (its cards are not drawn rather
+ * than priced by a guess).
+ */
+export async function millioneaWeekPrices(weekIds: readonly string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  for (const id of new Set(weekIds)) {
+    try {
+      const week = await weekStore.get(id);
+      const price = week ? frozenRules(week)?.ticketPriceTzs : undefined;
+      if (typeof price === "number" && Number.isSafeInteger(price) && price > 0) out.set(id, price);
+    } catch { /* unread: left out */ }
+  }
+  return out;
+}
+
+/**
+ * ⭐ MAY THIS REQUEST BE SHOWN THE DOOR TO ITS OWN MILLIONEA TICKETS? (the lead's decision L5: a kill hides the product,
+ * never a player's own tickets) — Tiketi zangu's third kind and the classic /positions row: the product visible to it,
+ * or, hidden, a signed-in account that HOLDS a ticket (`millioneaTicketGate`'s own rule). Never throws: a failure hides it.
+ */
+export const millioneaTicketsDoor = cache(async (): Promise<boolean> => {
+  const door = await millioneaDoor();
+  if (door.visible) return true;
+  try {
+    const userId = (await getSession())?.userId ?? null;
+    return userId ? (await ticketStore.listForUser(userId, { limit: 1 })).length > 0 : false;
+  } catch {
+    return false;
   }
 });

@@ -34,7 +34,6 @@ import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHub, millioneaMyTickets, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice } from "@/lib/server/maswali-player";
 import { millioneaBreakOf } from "@/lib/server/millionea-doors";
 import { getServerT } from "@/lib/i18n-server";
-import { millioneaTicketHref } from "@/lib/position-permalink";
 import { breakSentence } from "@/lib/break-end";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
@@ -44,7 +43,7 @@ import { RESERVE_COUNT } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
-import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref } from "./millionea-parts";
+import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
 import { bySlot, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +99,7 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Pro
     const won = mine.find((x) => x.shown === "won" && x.share !== "forfeited");
     return {
       weekId: n.weekId, notice: n.notice, text,
-      door: { href: won ? millioneaTicketHref(won.serial) : MILLIONEA_HREF.tickets, label: t.notif.awayView },
+      door: { href: won ? ticketPageHref(won.serial) : MILLIONEA_HREF.tickets, label: t.notif.awayView },
     };
   };
   return hub.notices.map(said).filter((x): x is HubNotice => x !== null);
@@ -176,7 +175,7 @@ function MineBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
     <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
       <p className="text-body-sm text-text-muted">{fill(t.millionea.yourTicketsThisWeek, { n: w.mine.held, cap: w.mine.cap })}</p>
       {held.map((row) => (
-        <MaswaliHeldTicketRow key={row.serial} href={millioneaTicketHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
+        <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
       ))}
     </div>
   );
