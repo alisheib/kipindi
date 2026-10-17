@@ -7,7 +7,8 @@
  * Puts back each defect declared in `scripts/anchors/maswali-money-path.anchors.mjs` into the real source — the cap not
  * counted in the lock, bonus money buying a ticket, a pool tolerance of one shilling, a guarantee not read before paying,
  * the loss limit offset by a win, a held winner paid free, a forfeit to the house, the drive's money in the public
- * jackpot — runs the memory child that mutation names (`test:maswali-purchase` or `test:maswali-settle`), and requires it
+ * jackpot, a close that does not wait for a purchase in flight — runs the memory child that mutation names
+ * (`test:maswali-purchase`, `test:maswali-settle` or `test:maswali-close-race`), and requires it
  * to go red ON THAT MUTATION'S OWN ASSERTION. Then it puts every file back byte for byte.
  *
  * Built on `red-maswali-engine.mjs`: a lock file against a concurrent run, a refusal to start when a target differs from
@@ -31,6 +32,7 @@ const DEFECTS = ONLY.length ? MUTATIONS.filter((d) => ONLY.some((o) => d.name.st
 const SUITES = {
   purchase: "npx tsx scripts/lib/maswali-purchase-child.mts",
   settle: "npx tsx scripts/lib/maswali-settle-child.mts",
+  closerace: "npx tsx scripts/lib/maswali-close-race-child.mts",
 };
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
 const lf = (s) => s.split(CR + LF).join(LF);

@@ -3,6 +3,7 @@
  * the real source, and names the assertion that must turn red, and in which memory child:
  *   · purchase — `test:maswali-purchase` (`scripts/lib/maswali-purchase-child.mts`)
  *   · settle   — `test:maswali-settle`   (`scripts/lib/maswali-settle-child.mts`)
+ *   · closerace — `test:maswali-close-race` (`scripts/lib/maswali-close-race-child.mts`; R2 of the review, 2026-10-17)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -124,5 +125,13 @@ export const MUTATIONS = [
     to: "  return net + excluded - excluded;",
     expect: "8.2 · ⭐ the loss today",
     suite: "settle",
+  },
+  {
+    name: "(R2) the close does not wait for a purchase in flight (no market lock inside the chain lock)",
+    file: SVC,
+    from: "    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();",
+    to: "    return seal();",
+    expect: "1.2 · ⭐ the close WAITED",
+    suite: "closerace",
   },
 ];
