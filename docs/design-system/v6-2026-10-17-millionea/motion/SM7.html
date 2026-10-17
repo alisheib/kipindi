@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SM7 · Imeletwa mbele · Maswali Millionea · motion</title>
+<link rel="stylesheet" href="tokens/globals-extract.css">
+<link rel="stylesheet" href="tokens/state-tokens.css">
+<link rel="stylesheet" href="tokens/motion.css">
+<link rel="stylesheet" href="maswali-motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);padding:var(--sp-8) var(--sp-6) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-8)">
+
+<div style="display:flex;flex-direction:column;gap:var(--sp-3);max-width:760px">
+  <a href="index.html" style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-link);text-decoration:none">‹ motion/index</a>
+  <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · SM7 · Imeletwa mbele</div>
+  <h1 style="margin:0;font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px;color:var(--text)">Rollover: the carried figure carries into the new week's line</h1>
+  <p style="margin:0;font-size:13px;line-height:18px;color:var(--text-muted)">N1 reused on a mono text cell whose value never changes in flight, then .m-tick on the Jackpot line ONLY if the larger-of-two changed. The buy door does not move or change emphasis. About 560 ms. Never implies "bigger next week, buy now".</p>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)">
+    <button type="button" class="btn btn-primary btn-sm" data-replay>Replay</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-reduce>Reduced motion</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-lowend>Low-end tier</button>
+    <span style="width:1px;background:var(--border)"></span>
+    <button type="button" class="btn btn-primary btn-sm" data-loc="sw">SW</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-loc="en">EN</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-loc="zh">ZH</button>
+  </div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+  <div id="stage" style="width:360px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-5) var(--sp-4);box-sizing:border-box">
+<div class="mat-inset" id="lastweek" style="border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);font-size:13px;line-height:18px;color:var(--text-muted);display:flex;justify-content:space-between;gap:var(--sp-3)"><span><span data-loc-text="sw">Wiki 41 · hakuna 10/10 · imeletwa mbele</span><span data-loc-text="en" hidden>Week 41 · no 10/10 · carried forward</span><span data-loc-text="zh" hidden>第41周 · 无 10/10 · 滚存</span></span><span id="src41" class="amount" style="color:var(--text)">TZS&nbsp;389,000</span></div>
+  <div class="mat-flat" style="border-radius:var(--r-lg);padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)"><span class="amount" style="font-size:22px;line-height:28px;font-weight:600">TZS&nbsp;1,000,000</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)"><span data-loc-text="sw">Inagawanywa sawa kwa kila tiketi ya 10/10 · ada 13% wakati wa malipo</span><span data-loc-text="en" hidden>Shared by every 10/10 ticket · 13% fee at payout</span><span data-loc-text="zh" hidden>由每张 10/10 彩票平分 · 支付时收取 13% 费用</span></span>
+   <div style="display:flex;flex-direction:column;border-top:1px solid var(--border);font-size:13px;line-height:18px">
+    <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)"><span><span data-loc-text="sw">Imeletwa mbele (Wiki 41)</span><span data-loc-text="en" hidden>Carried in (Week 41)</span><span data-loc-text="zh" hidden>滚存（第41周）</span></span><span id="dst42" class="amount maswali-carry" data-anim="maswali-carry" data-carry-from="#src41" style="display:inline-block">TZS&nbsp;389,000</span></div>
+    <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)"><span><span data-loc-text="sw">Mauzo wiki hii · tiketi 0</span><span data-loc-text="en" hidden>Sales this week · 0 tickets</span><span data-loc-text="zh" hidden>本周销售 · 0 张</span></span><span class="amount">TZS&nbsp;0</span></div>
+    <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)"><span><span data-loc-text="sw">Jumla ya bwawa</span><span data-loc-text="en" hidden>Total pool</span><span data-loc-text="zh" hidden>奖池总额</span></span><span class="amount" style="font-weight:600">TZS&nbsp;389,000</span></div>
+    <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)"><span><span data-loc-text="sw">Dhamana ya chini</span><span data-loc-text="en" hidden>Guaranteed floor</span><span data-loc-text="zh" hidden>保底金额</span></span><span class="amount">TZS&nbsp;1,000,000</span></div>
+    <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)"><span>Jackpot</span><span class="amount" style="font-weight:700">TZS&nbsp;1,000,000</span></div>
+   </div></div>
+  <span class="btn btn-primary btn-lg" style="width:100%"><span data-loc-text="sw">Jaza tiketi · TZS&nbsp;1,000</span><span data-loc-text="en" hidden>Fill a ticket · TZS&nbsp;1,000</span><span data-loc-text="zh" hidden>填写彩票 · TZS&nbsp;1,000</span></span>
+  </div>
+  <div style="width:300px;display:flex;flex-direction:column;gap:var(--sp-3);font-family:var(--font-mono);font-size:12px;line-height:16px;color:var(--text-subtle)">
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">On the first hub view after a week with no winner, the figure cell carries from last week's closed row into "Imeletwa mbele" (N1 on a text cell: the value never changes in flight). Measured at 360: ≈ 118 px up, ≈ 0 px across → rung --t-base, money → --t-move.</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Then the Jackpot line takes .m-tick (an opacity dip, never a count) ONLY if the larger-of-two changed. In the sample data the pool (389,000) stays under the floor, so the Jackpot line does NOT tick — shown here as it ships.</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">The buy door does not move or change emphasis. The floor top-up never rolls, and nothing says so louder than the ledger.</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Note: "Mauzo wiki hii TZS 0 · tiketi 0" is a TRUE zero at the moment the new week opens (law 4 permits a true zero).</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Reduced motion · the figure rests in its line. Low-end · one-shot at full duration.</div>
+  </div>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

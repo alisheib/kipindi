@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · glyphs</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">SET D — the status-ring family at 14 / 18 / 24</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">Five socket states on the r 8.6 ring (24 grid · 1.9 stroke · round caps and joins · fill none · currentColor). sealNil is new: the ring carrying the platform's own nil, the em-dash. sealX is voidX's geometry byte for byte, renamed. Inks: --text-muted for everything that is not a match; --success-fg (hue 166, never --yes-*) for a match.</div>
+  </div>
+
+  <!-- socket sheet -->
+  <div id="sheet" data-screen-label="socket-sheet-14-18-24" style="display:flex;flex-direction:column;gap:var(--sp-6);padding:var(--sp-6);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);width:720px">
+    <div style="display:grid;grid-template-columns:120px repeat(5,1fr);gap:var(--sp-3);align-items:center">
+      <div></div>
+      <sc-for list="{{kinds}}" as="k" hint-placeholder-count="5">
+        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{k.name}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)">{{k.word}}</span></div>
+      </sc-for>
+    </div>
+    <sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+      <div style="display:grid;grid-template-columns:120px repeat(5,1fr);gap:var(--sp-3);align-items:center;padding-top:var(--sp-3);border-top:1px solid var(--border)">
+        <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:13px;color:var(--text)">{{row.label}}</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-subtle)">{{row.sub}}</span></div>
+        <sc-for list="{{row.items}}" as="s" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;gap:var(--sp-2);filter:{{row.filter}}">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:{{s.box}};height:{{s.box}};color:{{s.ink}}"><svg viewBox="0 0 24 24" width="{{s.size}}" height="{{s.size}}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" pathLength="{{s.pl}}" stroke-dasharray="{{s.dash}}"></circle><path d="{{s.d}}"></path></svg></span>
+            <span style="font-size:{{s.wordPx}};line-height:1.2;color:{{s.ink}}">{{s.word}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:var(--sp-3);align-items:center;padding-top:var(--sp-3);border-top:1px solid var(--border)">
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:13px;color:var(--text)">Proof · 14px</span><span style="font-family:var(--font-mono);font-size:12px;color:var(--text-subtle)">not a minus, not a no-entry sign</span></div>
+      <div style="display:flex;align-items:center;gap:var(--sp-6);flex-wrap:wrap">
+        <sc-for list="{{proof}}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:var(--sp-2)">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;color:{{p.ink}};background:{{p.bg}};border-radius:50%"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" stroke="{{p.ringStroke}}"></circle><path d="{{p.d}}"></path></svg></span>
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">{{p.label}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- seal lines -->
+  <div id="lines" data-screen-label="seal-line-14-18-24" style="display:flex;flex-direction:column;gap:var(--sp-6);padding:var(--sp-6);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);width:720px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Seal Line · Timeline A · MLN-W42-004417 · 24 (ticket) · 18 (list) · 14 (row)</div>
+    <sc-for list="{{lines}}" as="L" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2);padding-top:var(--sp-4);border-top:1px solid var(--border)">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-subtle)">{{L.label}}</div>
+        <div style="display:flex;flex-direction:column;gap:{{L.rowGap}};width:{{L.width}}">
+          <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:{{L.gap}}">
+            <sc-for list="{{L.mains}}" as="s" hint-placeholder-count="10">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:{{s.box}};height:{{s.box}};color:{{s.ink}}"><svg viewBox="0 0 24 24" width="{{s.size}}" height="{{s.size}}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" pathLength="{{s.pl}}" stroke-dasharray="{{s.dash}}"></circle><path d="{{s.d}}"></path></svg></span>
+                <sc-if value="{{L.labels}}" hint-placeholder-val="{{true}}"><span style="font-family:var(--font-mono);font-size:10px;line-height:14px;letter-spacing:0.4px;color:var(--text-subtle);font-variant-numeric:tabular-nums">{{s.n}}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:{{L.gap}}">
+            <sc-for list="{{L.annex}}" as="s" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-height:{{s.box}}">
+                <sc-if value="{{s.ring}}" hint-placeholder-val="{{true}}"><span style="display:inline-flex;align-items:center;justify-content:center;width:{{s.box}};height:{{s.box}};color:{{s.ink}}"><svg viewBox="0 0 24 24" width="{{s.size}}" height="{{s.size}}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" pathLength="{{s.pl}}" stroke-dasharray="{{s.dash}}"></circle><path d="{{s.d}}"></path></svg></span></sc-if>
+                <sc-if value="{{s.carried}}" hint-placeholder-val="{{false}}"><span style="display:inline-flex;align-items:center;justify-content:center;height:{{s.box}};font-family:var(--font-mono);font-size:{{s.carryPx}};color:var(--text-muted);font-variant-numeric:tabular-nums">{{s.carry}}</span></sc-if>
+                <sc-if value="{{L.labels}}" hint-placeholder-val="{{true}}"><span style="font-family:var(--font-mono);font-size:10px;line-height:14px;letter-spacing:0.4px;color:var(--text-subtle)">{{s.k}}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- the three delivered SVGs -->
+  <div id="svgs" data-screen-label="glyphs-delivered" style="display:flex;gap:var(--sp-8);padding:var(--sp-6);background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);width:720px">
+    <sc-for list="{{delivered}}" as="g" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-3);flex:1">
+        <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{g.name}}</div>
+        <div style="display:flex;align-items:flex-end;gap:var(--sp-4);color:var(--text-muted)">
+          <sc-for list="{{g.sizes}}" as="z" hint-placeholder-count="3"><svg viewBox="0 0 24 24" width="{{z}}" height="{{z}}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.d1}}"></path><path d="{{g.d2}}"></path><path d="{{g.d3}}"></path><path d="{{g.d4}}"></path><circle cx="{{g.c1x}}" cy="{{g.c1y}}" r="{{g.cr}}"></circle><circle cx="{{g.c2x}}" cy="{{g.c2y}}" r="{{g.cr}}"></circle><circle cx="{{g.c3x}}" cy="{{g.c3y}}" r="{{g.cr}}"></circle></svg></sc-for>
+        </div>
+        <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{g.note}}</div>
+        <div style="font-family:var(--font-mono);font-size:12px;line-height:16px;color:var(--text-subtle)">viewBox 0 0 24 24 · stroke-width 1.9 · round/round · fill none · currentColor</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount(){ if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; if(!M) return { kinds:[], rows:[], proof:[], lines:[], delivered:[] };
+    const D = { pending:{d:'M12 7.5V12l3 2', dash:'3.4 3', pl:'51.2'}, check:{d:'M8 12.4l2.7 2.7 5.3-6'}, x:{d:'M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4'}, nil:{d:'M7.5 12h9'}, standby:{d:'M12 7.5V12l3 2', dash:'3.4 3', pl:'51.2'} };
+    const INK = { pending:'var(--text-muted)', check:'var(--success-fg)', x:'var(--text-muted)', nil:'var(--text-muted)', standby:'var(--text-muted)' };
+    const WORD = { pending:'Inasubiri', check:'Imelingana', x:'Haikulingana', nil:'Batili / Haikutumika', standby:'Akiba' };
+    const kinds = ['pending','check','x','nil','standby'].map(k=>({ name:{pending:'clockPending',check:'sealCheck',x:'sealX',nil:'sealNil (new)',standby:'clockPending · annex'}[k], word: WORD[k] }));
+    const sock = (k,size,inkOverride)=>({ size:size+'px', box:size+'px', ink: inkOverride||INK[k], d:D[k].d, dash:D[k].dash, pl:D[k].pl, word: WORD[k].split(' / ')[0], wordPx: (size>=24?13:size>=18?12:11)+'px' });
+    const rows = [];
+    [24,18,14].forEach(sz=>{ rows.push({ label: sz+'px', sub:'muted · success', items: kinds.map((_,i)=>sock(['pending','check','x','nil','standby'][i], sz)), filter:'none' }); });
+    rows.push({ label:'14px', sub:'greyscale proof', items: kinds.map((_,i)=>sock(['pending','check','x','nil','standby'][i], 14)), filter:'grayscale(1)' });
+    rows.push({ label:'24px', sub:'all muted (void frames)', items: kinds.map((_,i)=>sock(['pending','check','x','nil','standby'][i], 24, 'var(--text-muted)')), filter:'none' });
+    const proof = [
+      { label:'sealNil · ours', d:'M7.5 12h9', ink:'var(--text-muted)', bg:'transparent', ringStroke:'currentColor' },
+      { label:'minus-in-ring (short bar)', d:'M9.5 12h5', ink:'var(--text-muted)', bg:'transparent', ringStroke:'currentColor' },
+      { label:'no-entry sign (filled disc)', d:'M7.5 12h9', ink:'var(--pearl-50)', bg:'var(--danger-500)', ringStroke:'none' },
+      { label:'sealX · wrong', d:'M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4', ink:'var(--text-muted)', bg:'transparent', ringStroke:'currentColor' }
+    ];
+    const sub = M.substitution(M.outOnly(M.TL.A.mains), M.outOnly(M.TL.A.reserves)); sub.final = true;
+    const g = M.grade(M.PICKS, M.TL.A.mains, M.TL.A.reserves, sub);
+    const mk = (sz, asz, width, gap, rowGap, labels)=>({ label: sz+' · annex '+asz+(labels?' · with numbers':''), width, gap, rowGap, labels,
+      mains: g.mains.map(m=>Object.assign(sock(m.kind, sz), { n: m.n })),
+      annex: g.reserves.map(r=>{ const k = r.kind==='carried' ? 'carried' : (r.kind==='nil' ? 'nil' : (r.kind==='unused' ? 'nil' : 'standby'));
+        return { k: r.k, ring: k!=='carried', carried: k==='carried', carry: '→'+r.to, carryPx: (asz>=18?12:10)+'px', size: asz+'px', box: asz+'px', ink: INK[k==='carried'?'standby':k], d: (D[k]||D.standby).d, dash:(D[k]||D.standby).dash, pl:(D[k]||D.standby).pl }; }) });
+    const lines = [ mk(24,18,'328px','var(--sp-2)','var(--sp-2)',true), mk(18,14,'240px','var(--sp-1)','var(--sp-1)',true), mk(14,12,'180px','var(--sp-1)','2px',false) ];
+    const ring = { c1x:12, c1y:12, cr:8.6 };
+    const delivered = [
+      { name:'sealNil.svg · NEW', sizes:[24,18,14], d1:'M7.5 12h9', c1x:12, c1y:12, cr:8.6, note:'The ring with a level bar: the em-dash the platform already prints for an unknown value, carried into the status family. Covers a voided main, a voided reserve and an unused reserve, always with its word.' },
+      { name:'sealX.svg · voidX renamed', sizes:[24,18,14], d1:'M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4', c1x:12, c1y:12, cr:8.6, note:'Geometry unchanged, byte for byte. A cross means WRONG in Tanzanian school marking, so it marks a pick that did not match — never a void.' },
+      { name:'millionea.svg · product glyph', sizes:[24,18,14], d1:'M4.5 16.2Q12 18.8 19.5 16.2', d2:'M7 16.9V11.8', d3:'M12 17.5V9.2', d4:'M17 16.9V11.8', c1x:7, c1y:9.7, c2x:12, c2y:7.1, c3x:17, c3y:9.7, cr:1.55, note:'R1\'s three-pearl coronet, re-checked: same band path as the family\'s crown, pearls as stroked rings (no fills), 1.9 stroke. Never gilt, never animated.' }
+    ];
+    return { kinds, rows, proof, lines, delivered };
+  }
+}
+</script>
+</body>
+</html>

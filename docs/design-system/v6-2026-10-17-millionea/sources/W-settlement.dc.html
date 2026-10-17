@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · set W · locale {{loc}} · frames {{range}}</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">W — Week settlement: the away line, the Seal, the win ledger, the loss receipt, the notices</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">Wins get the existing Struck Seal, unchanged, the amount landing final. Losses get the receipt: bookkeeping, no score, the finality line and the closing double rule. A void or refund is neutral. Gold only on the earned lines: Kwa tiketi yako, Jumla yako, the seal.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)"><sc-for list="{{index}}" as="i" hint-placeholder-count="20"><a href="?from={{i.at}}&amp;limit=1" style="font-family:var(--font-mono);font-size:11px;text-decoration:none;border:1px solid var(--border);border-radius:var(--r-xs);padding:2px 6px;white-space:nowrap">{{i.id}}</a></sc-for></div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+    <sc-for list="{{frames}}" as="f" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}} · {{f.note}}</span></div>
+        <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:{{f.w}};height:{{f.h}};overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="JHeader" bp="{{f.bp}}" loc="{{loc}}" hint-size="100%,56px"></dc-import>
+
+          <!-- ═ AWAY LINE / NOTICE BAR ═ -->
+          <sc-if value="{{f.bar}}" hint-placeholder-val="{{false}}">
+            <div class="{{f.barClass}}" style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);background:var(--bg-overlay);border-bottom:1px solid var(--border)">
+              <div style="display:flex;gap:var(--sp-3);align-items:flex-start">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted);flex-shrink:0;margin-top:1px"><circle cx="{{f.barGlyph.cx}}" cy="{{f.barGlyph.cy}}" r="{{f.barGlyph.r}}"></circle><path d="{{f.barGlyph.d}}"></path></svg>
+                <div style="display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:18px;color:var(--text);flex:1"><sc-for list="{{f.bar}}" as="ln" hint-placeholder-count="2"><span style="text-wrap:pretty"><sc-for list="{{ln}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></sc-for></div>
+                <sc-if value="{{f.barClose}}" hint-placeholder-val="{{false}}"><span style="width:44px;height:44px;margin:-12px -14px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text-subtle)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></span></sc-if>
+              </div>
+              <sc-if value="{{f.barAction}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:var(--sp-3);align-items:center"><span class="btn btn-ghost btn-sm btn-pill" style="border-color:var(--border-control)">{{f.barAction}}</span></div></sc-if>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) 0;opacity:0.55"><div style="height:80px;border-radius:var(--r-lg);background:var(--bg-elevated)"></div><div style="height:34px;width:70%;border-radius:var(--r-xs);background:var(--bg-elevated)"></div><div style="height:96px;border-radius:var(--r-lg);background:var(--bg-elevated)"></div></div>
+          </sc-if>
+
+          <!-- ═ SEAL ═ -->
+          <sc-if value="{{f.seal}}" hint-placeholder-val="{{false}}">
+            <div style="flex:1;min-height:0;position:relative;overflow:hidden">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4);opacity:0.45"><div style="height:34px;width:60%;border-radius:var(--r-xs);background:var(--bg-elevated)"></div><div style="height:160px;border-radius:var(--r-lg);background:var(--bg-elevated)"></div><div style="height:120px;border-radius:var(--r-lg);background:var(--bg-elevated)"></div></div>
+              <div class="m-scrim" style="position:absolute;inset:0;background:var(--bg-overlay);opacity:0.78"></div>
+              <div class="mat-modal m-dialog-in" style="position:absolute;left:50%;top:50%;translate:-50% -50%;width:min(380px, calc(100% - 2 * var(--sp-4)));border-radius:var(--r-lg);padding:0;overflow:hidden;border:none;box-sizing:border-box">
+                <span style="position:absolute;top:var(--sp-2);right:var(--sp-2);width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--text-subtle)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></span>
+                <div class="seal-cascade" style="display:flex;flex-direction:column;align-items:center;padding:var(--sp-10) var(--sp-6) var(--sp-6);text-align:center">
+                  <div class="seal-arrive" style="position:relative;width:132px;height:132px;margin-bottom:22px"><div class="seal-rim"></div><div class="seal-spec"></div><div class="seal-enamel"><span class="seal-mark-flip" style="display:inline-block;line-height:0"><img src="assets/mark-white.svg" width="76" height="76" alt=""></span></div><div class="seal-band seal-sheen"></div></div>
+                  <p class="g-settle" style="--i:0;margin:0;font-family:var(--font-mono);font-size:10px;line-height:14px;letter-spacing:0.2em;text-transform:uppercase;font-weight:700;color:var(--gold-300)">{{f.sealEyebrow}}</p>
+                  <h2 class="g-settle" style="--i:1;margin:var(--sp-2) 0 0;font-family:var(--font-display);font-size:20px;line-height:1.2;font-weight:700;color:var(--text)">{{f.sealHeading}}</h2>
+                  <p class="g-settle gilt-ink" style="--i:2;margin:var(--sp-3) 0 0;font-size:38px;line-height:1.1;font-weight:700">{{f.sealAmount}}</p>
+                  <p class="g-settle" style="--i:3;margin:6px 0 0;font-family:var(--font-mono);font-size:13px;line-height:18px;color:var(--gold-300);font-variant-numeric:tabular-nums">{{f.sealSub}}</p>
+                  <p class="g-settle amount" style="--i:4;margin:var(--sp-2) 0 0;font-size:13px;line-height:18px;color:var(--text-subtle)">{{f.sealLabel}}</p>
+                  <div class="g-settle" style="--i:5;margin-top:var(--sp-5);width:100%"><span class="btn gilt-metal btn-md" style="width:100%">{{f.sealCta}}</span></div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ═ RECEIPT (win ledger / loss) ═ -->
+          <sc-if value="{{f.receipt}}" hint-placeholder-val="{{false}}">
+            <div style="width:100%;max-width:560px;margin:0 auto;box-sizing:border-box;display:flex;flex-direction:column;gap:var(--sp-5);padding:var(--sp-6) var(--sp-4) var(--sp-10)">
+              <a href="#" style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;color:var(--text-subtle);display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>{{s.ticketsTitle}}</a>
+              <div class="mat-raised" style="border-radius:var(--r-lg);display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-5) var(--sp-4)">
+                <div style="display:flex;flex-direction:column;gap:var(--sp-1)">
+                  <span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{f.eyebrow}}</span>
+                  <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:22px;line-height:28px;letter-spacing:-0.55px">{{f.heading}}</h1>
+                  <span class="amount" style="font-size:13px;line-height:18px;color:var(--text-muted)">{{f.serialLine}}</span>
+                </div>
+                <sc-if value="{{f.sunsetLine}}" hint-placeholder-val="{{false}}"><div class="mat-inset" style="border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);font-size:13px;line-height:18px;color:var(--text)"><sc-for list="{{f.sunsetLine}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></div></sc-if>
+                <!-- loss positions -->
+                <sc-if value="{{f.positions}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;flex-direction:column;border-top:1px solid var(--border)">
+                    <sc-for list="{{f.positions}}" as="q" hint-placeholder-count="10">
+                      <div style="display:grid;grid-template-columns:28px 1fr auto;gap:var(--sp-1) var(--sp-3);align-items:center;padding:var(--sp-3) 0;border-bottom:1px solid var(--border)">
+                        <span class="amount" style="font-size:13px;line-height:18px;font-weight:700;color:var(--text-muted)">{{q.n}}</span>
+                        <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:13px;line-height:18px;color:var(--text);text-wrap:pretty">{{q.text}}</span><span style="display:flex;gap:var(--sp-3);flex-wrap:wrap;font-size:13px;line-height:18px;color:var(--text-muted)"><span style="display:inline-flex;gap:6px">{{s.pick}}<span class="amount" style="font-weight:700;color:var(--text)">{{q.pick}}</span></span><span class="amount" style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border:1px solid var(--border-strong);border-radius:var(--r-xs);font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text)">{{q.stamp}}</span><sc-if value="{{q.carry}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text-muted)">{{q.carry}}</span></sc-if></span></div>
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;color:{{q.sock.ink}}"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6"></circle><path d="{{q.sock.d}}"></path></svg></span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <!-- ledger lines -->
+                <div style="display:flex;flex-direction:column;border-top:1px solid var(--border)">
+                  <sc-for list="{{f.lines}}" as="L" hint-placeholder-count="6">
+                    <div style="display:flex;justify-content:space-between;gap:var(--sp-3);align-items:baseline;padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
+                      <span style="font-family:var(--font-mono);font-size:11px;line-height:16px;letter-spacing:0.14em;text-transform:uppercase;color:{{L.ink}};flex:1;text-wrap:pretty"><sc-for list="{{L.label}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                      <sc-if value="{{L.gilt}}" hint-placeholder-val="{{false}}"><span class="gilt-ink" style="font-size:{{L.size}};line-height:1.3;font-weight:700;display:inline-block;text-align:right">{{L.value}}</span></sc-if>
+                      <sc-if value="{{L.plain}}" hint-placeholder-val="{{true}}"><span class="amount" style="font-size:13px;line-height:18px;font-weight:{{L.weight}};color:{{L.vInk}};text-align:right">{{L.value}}</span></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+                                <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                  <span style="font-size:13px;line-height:18px;color:var(--text-muted)">{{s.finality}}</span>
+                  <span style="font-size:12px;line-height:16px;color:var(--text-subtle);text-wrap:pretty"><sc-for list="{{attestedSegs}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                  <sc-if value="{{f.doubleRule}}" hint-placeholder-val="{{false}}"><div style="display:flex;flex-direction:column;gap:3px;padding-top:var(--sp-2)"><svg width="100%" height="1" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" style="display:block;color:var(--border-strong)"><path d="M0 .5H100" stroke="currentColor" stroke-width="1" pathLength="100" class="m-draw" style="stroke-dasharray:100;stroke-dashoffset:100"></path></svg><svg width="100%" height="1" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" style="display:block;color:var(--border-strong)"><path d="M0 .5H100" stroke="currentColor" stroke-width="1" pathLength="100" class="m-draw" style="stroke-dasharray:100;stroke-dashoffset:100;animation-delay:var(--t-quick)"></path></svg></div></sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ═ MODAL (week void · cancel) ═ -->
+          <sc-if value="{{f.modal}}" hint-placeholder-val="{{false}}">
+            <div style="flex:1;min-height:0;position:relative;overflow:hidden">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4);opacity:0.45"><div style="height:34px;width:60%;border-radius:var(--r-xs);background:var(--bg-elevated)"></div><div style="height:160px;border-radius:var(--r-lg);background:var(--bg-elevated)"></div></div>
+              <div class="m-scrim" style="position:absolute;inset:0;background:var(--bg-overlay);opacity:0.72"></div>
+              <div class="mat-modal m-dialog-in" style="position:absolute;left:50%;top:50%;translate:-50% -50%;width:min(380px, calc(100% - 2 * var(--sp-4)));border-radius:var(--r-lg);padding:0;overflow:hidden;border:none;display:flex;flex-direction:column;box-sizing:border-box">
+                <div style="height:3px;background:var(--border-strong)"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding:var(--sp-8) var(--sp-5) var(--sp-6);text-align:center">
+                  <span style="width:64px;height:64px;border-radius:50%;border:2px solid var(--text-muted);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.modal.d}}"></path></svg></span>
+                  <span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{f.modal.eyebrow}}</span>
+                  <span style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px;letter-spacing:-0.55px;text-wrap:balance"><sc-for list="{{f.modal.title}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                  <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.modal.body}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                  <span class="btn btn-primary btn-md" style="width:100%;margin-top:var(--sp-2)">{{f.modal.primary}}</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f.tabs}}" hint-placeholder-val="{{true}}"><dc-import name="JTabs" loc="{{loc}}" active="{{f.tab}}" hint-size="100%,68px"></dc-import></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Locale&quot;}}">
+class Component extends DCLogic {
+  state = { loc: (new URLSearchParams(location.search).get('locale')) || null, from: Number(new URLSearchParams(location.search).get('from')||0), limit: Number(new URLSearchParams(location.search).get('limit')||4) };
+  componentDidMount(){ window.maswaliSet = (p)=>this.setState(p); if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; const loc = this.state.loc || this.props.loc || 'sw';
+    if(!M) return { loc, frames:[], index:[], s:{}, range:'', attestedSegs:[] };
+    const t=(k,v)=>M.t(loc,k,v), seg=M.segs, W=M.WEEK, F=M.fmt, N=M.fmtN, FN=M.fmtNeg;
+    const s = { ticketsTitle:t('ticketsTitle'), pick:t('pick'), finality:t('finality'), attested:t('legalLine',{hash:W.hashShort}) };
+    const clock = { cx:12, cy:12, r:9, d:'M12 7v5l3 2' }; const info = { cx:12, cy:12, r:9, d:'M12 11v5M12 8h.01' };
+    const base = (id,badge,note,o)=>Object.assign({ id, badge, note, w:'360px', h:'auto', bp:360, tabs:true, tab:'maswali' }, o);
+    const away = (id,badge,note,lines,o)=>base(id,badge,note,Object.assign({ h:'420px', bar: lines, barGlyph: clock, barClose:true, barAction: t('awayOpen') }, o));
+    // ReceiptRow: label = the mono micro eyebrow in --text-subtle · figure mono 600 in --text · a fee row is coloured whole in --warning-fg
+    const line = (label, value, o)=>{ const fee = label===t('feeLine'); return Object.assign({ label: seg(label), value, ink: fee?'var(--warning-fg)':'var(--text-subtle)', vInk: fee?'var(--warning-fg)':'var(--text)', weight:600, plain:true, gilt:false, size:'16px' }, o||{}); };
+    const gilt = (label, value, big)=>line(label, value, { gilt:true, plain:false, weight:700, size: big?'18px':'16px' });
+    const frames = [
+      away('W-away-line-won-360-'+loc,'W1','§F9.4 · one summary · calm, past tense', [seg(t('awayPrefix')), seg(t('awayWon',{week:W.n}))]),
+      away('W-away-line-mixed-360-'+loc,'W2','1 won, 2 lost · counts only, no figure', [seg(t('awayPrefix')), seg(t('awayMixed',{week:W.n,w:1,l:2}))]),
+      away('W-away-line-lost-360-'+loc,'W3','', [seg(t('awayPrefix')), seg(t('awayLost',{week:W.n,n:2}))]),
+      away('W-away-line-refunded-360-'+loc,'W4','week void · a refund is neutral', [seg(t('awayPrefix')), seg(t('awayRefunded',{week:W.n,n:2}))]),
+      away('W-away-line-joined-360-'+loc,'W5','joined with a Yes/No result in the same summary — never a second bar', [seg(t('awayPrefix')+' · '+t('awayAlso',{n:3})), seg(t('awayWon',{week:W.n}))]),
+      base('W-seal-one-ticket-360-'+loc,'W6','the EXISTING Struck Seal · amount lands final (roll: false) · nothing added to its face', { h:'720px', seal:true, tabs:false, sealEyebrow: t('wonEyebrow',{week:W.n}), sealHeading: t('wonHeading'), sealAmount: F(304500), sealSub: t('wonTicketsOne'), sealLabel: W.serial, sealCta: loc==='sw'?'Endelea':loc==='zh'?'继续':'Continue' }),
+      base('W-seal-two-tickets-360-'+loc,'W7','one seal per player-week · two winning tickets sum to one figure', { h:'720px', seal:true, tabs:false, sealEyebrow: t('wonEyebrow',{week:W.n}), sealHeading: t('wonHeading'), sealAmount: F(609000), sealSub: t('wonTickets',{n:2})+' · '+t('timesN',{n:2}), sealLabel: W.serial+' · '+W.serial2, sealCta: loc==='sw'?'Endelea':loc==='zh'?'继续':'Continue' }),
+      base('W-seal-one-ticket-768-'+loc,'W8','', { w:'768px', bp:768, h:'720px', seal:true, tabs:false, sealEyebrow: t('wonEyebrow',{week:W.n}), sealHeading: t('wonHeading'), sealAmount: F(304500), sealSub: t('wonTicketsOne'), sealLabel: W.serial, sealCta: loc==='sw'?'Endelea':loc==='zh'?'继续':'Continue' }),
+      base('W-seal-one-ticket-1280-'+loc,'W9','', { w:'1280px', bp:1280, h:'720px', seal:true, tabs:false, sealEyebrow: t('wonEyebrow',{week:W.n}), sealHeading: t('wonHeading'), sealAmount: F(304500), sealSub: t('wonTicketsOne'), sealLabel: W.serial, sealCta: loc==='sw'?'Endelea':loc==='zh'?'继续':'Continue' })
+    ];
+    const ledgerB = (two)=>{ const L=[ line(t('jackpot'), F(1050000)), line(t('feeLine'), FN(136500)), line(t('toWinners'), F(913500)), line(t('perTicket',{n:3}), F(304500)), gilt(t('forYourTicket'), F(304500), !two) ]; if(two){ L.push(line(t('timesN',{n:2})+' · '+t('wonTickets',{n:2}), '')); L.push(gilt(t('yourTotal'), F(609000), true)); } return L; };
+    const rec = (id,badge,note,o)=>base(id,badge,note,Object.assign({ receipt:true, tab:'tickets', eyebrow: t('productTitle')+' · '+t('week',{week:W.n}), heading: t('wonHeading'), serialLine: W.serial, legal: null }, o));
+    frames.push(
+      rec('W-win-ledger-single-360-'+loc,'W10','gold only on Kwa tiketi yako',{ lines: ledgerB(false) }),
+      rec('W-win-ledger-two-tickets-360-'+loc,'W11','× 2, then Jumla yako',{ lines: ledgerB(true), serialLine: W.serial+' · '+W.serial2 }),
+      rec('W-win-ledger-floor-week-topup-360-'+loc,'W12','Timeline C · the top-up is printed and never rolled · the remainder line',{ lines: [ line(t('poolTotal'), F(601000)), line(t('floor'), F(1000000)), line(t('jackpot'), F(1000000)), line(t('feeLine'), FN(130000)), line(t('toWinners'), F(870000)), line(t('perTicket',{n:7}), F(124285)), gilt(t('forYourTicket'), F(124285), true), line(t('topUp')+' · '+(loc==='sw'?'inalipwa, hailetwi mbele':loc==='zh'?'已支付，不滚存':'paid, never carried'), F(398995), {ink:'var(--text-muted)', vInk:'var(--text-muted)'}), line(t('remainder')+' · '+t('remainderNote'), F(5), {ink:'var(--text-muted)', vInk:'var(--text-muted)'}) ] }),
+      rec('W-win-ledger-net-negative-360-'+loc,'W13','200 winning tickets · the player spent TZS 10,000 on 10 · still a win; the ledger prints the week\u2019s net in U+2212',{ lines: [ line(t('jackpot'), F(1000000)), line(t('feeLine'), FN(130000)), line(t('toWinners'), F(870000)), line(t('perTicket',{n:200}), F(4350)), gilt(t('forYourTicket'), F(4350), true), line((loc==='sw'?'Ulichotumia wiki hii · tiketi 10':loc==='zh'?'本周支出 · 10 张':'Spent this week · 10 tickets'), F(10000), {ink:'var(--text-muted)', vInk:'var(--text-muted)'}), line(t('yourNet'), FN(5650), {weight:700}) ] }),
+      rec('W-win-ledger-sunset-360-'+loc,'W14','Timeline E · the only surface where a score appears · fee applied · no top-up',{ sunsetLine: seg(t('sunsetScore')), lines: [ line(t('poolTotal'), F(601000)), line(t('feeLine'), FN(78130)), line(t('toWinners'), F(522870)), line(t('perTicket',{n:2}), F(261435)), gilt(t('forYourTicket'), F(261435), true), line((loc==='sw'?'Hakuna nyongeza ya dhamana · hakuna 10/10':loc==='zh'?'无保底补足 · 无 10/10':'No floor top-up · no 10/10'), '—', {ink:'var(--text-muted)', vInk:'var(--text-muted)'}) ] })
+    );
+    const sub = M.substitution(M.outOnly(M.TL.A.mains), M.outOnly(M.TL.A.reserves)); sub.final = true; const g = M.grade(M.PICKS, M.TL.A.mains, M.TL.A.reserves, sub);
+    const D = { check:{d:'M8 12.4l2.7 2.7 5.3-6', ink:'var(--success-fg)'}, x:{d:'M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4', ink:'var(--text-muted)'} };
+    const positions = g.mains.map(m=>{ const q = M.Q[m.n-1]; const srcQ = m.carriedFrom ? M.Q.find(x=>x.n===m.carriedFrom) : q; const o = m.carriedFrom ? M.TL.A.reserves[m.carriedFrom][0] : M.TL.A.mains[m.n][0];
+      return { n:m.n, text: loc==='sw'?srcQ.sw:srcQ.en, pick: m.pick==='Y'?t('yes'):t('no'), stamp: t('stampPrefix')+' · '+(o==='Y'?t('yes'):t('no')), carry: m.carriedFrom ? m.n+' → '+m.carriedFrom : null, sock: D[m.kind] }; });
+    frames.push(
+      rec('W-loss-with-week-line-360-'+loc,'W15','the receipt · ten graded positions · ONE week line without a figure · finality · the closing double rule (SM6)',{ heading: t('lossHeading'), positions, lines: [ line(t('weekLineNoWinner',{week:W.n}), '') ], legal:null, doubleRule:true })
+    );
+    const notice = (id,badge,note,lines,o)=>base(id,badge,note,Object.assign({ h:'320px', bar: lines, barGlyph: info, barClose:false }, o));
+    frames.push(
+      notice('W-rollover-notice-start-360-'+loc,'W16','once per player-week · past tense · no call to action · reveals on the axis', [seg(t('rolloverNotice',{prev:W.prev,amount:N(389000),week:W.n}))], { barClass:'m-axis-reveal' }),
+      notice('W-rollover-notice-rested-360-'+loc,'W17','rested', [seg(t('rolloverNotice',{prev:W.prev,amount:N(389000),week:W.n}))]),
+      notice('W-week-void-band-returning-360-'+loc,'W18','returning player · neutral band · never claret, red or an error crest', [seg(t('weekVoidedBody'))]),
+      notice('W-week-voiding-band-360-'+loc,'W19','pending refund · the refund time shown', [seg(t('weekVoiding')+' · '+t('weekVoidingBody',{when: loc==='sw'?W.refundSw:loc==='zh'?W.refundZh:W.checkUntilEn}))]),
+      base('W-week-void-modal-live-360-'+loc,'W20','live player · a neutral OperationResultModal', { h:'640px', tabs:false, modal:{ d:'M7.5 12h9', eyebrow: t('weekStatusVoid'), title: seg(t('weekVoidModalTitle',{week:W.n})), body: seg(t('weekVoidModalBody',{n:2,amount:N(2000)})), primary: t('viewTicket') } }),
+      base('W-cancel-modal-360-'+loc,'W21','the player\u2019s own cancel · confirm haptic · neutral', { h:'640px', tabs:false, modal:{ d:'M5 12.5l4.5 4.5L19 7', eyebrow: t('ticketStatusCancelled'), title: seg(t('cancelModalTitle')), body: seg(t('cancelModalBody')), primary: t('ticketsTitle') } })
+    );
+    const shown = frames.slice(this.state.from, this.state.from+this.state.limit);
+    return { loc, s, attestedSegs: seg(s.attested), frames: shown, index: frames.map((f,i)=>({ id:f.id.replace('-'+loc,''), at:i })), range: this.state.from+'–'+(Math.min(frames.length, this.state.from+this.state.limit)-1)+' / '+(frames.length-1) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+/* Maswali Millionea · design round 2 · the N-block.
+   The ONLY new keyframes in the delivery. Every value is a token from motion.css / globals.css;
+   the only numbers are the multiplier −1 and the press stops 1.02 / 0.98 (the platform's own seal-place stops).
+   On the owner's yes this block is pasted into the platform's motion.css. */
+
+/* N-BLOCK BEGIN */
+/* N1 Kubeba / The Carry. Moves the socket's WRAPPER, never the glyph's own SVG.
+   --carry-dx, --carry-dy, --carry-s are RUNTIME bindings set from one measurement before the run. */
+@keyframes maswali-carry { from { translate: var(--carry-dx) var(--carry-dy); scale: var(--carry-s, 1); }
+                           to   { translate: 0 0; scale: 1; } }
+.maswali-carry { animation: maswali-carry var(--t-move) var(--m-settle) both;
+                 animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+
+/* N2 Kugonga Muhuri / The Attestation Press. Travels --sp-2 down the needle's line (--m-tilt, its first
+   consumer) with the platform's own seal-place press stops. Individual translate + sin()/cos(): where an
+   engine cannot resolve the trig, translate resolves to none and the stamp only scales and fades. */
+@keyframes maswali-attest {
+  0%   { opacity: 0; translate: calc(var(--sp-2) * sin(var(--m-tilt))) calc(-1 * var(--sp-2) * cos(var(--m-tilt))); scale: 1.02; }
+  60%  { opacity: 1; translate: 0 0; scale: 0.98; }
+  100% { opacity: 1; translate: 0 0; scale: 1; } }
+.maswali-attest { animation: maswali-attest var(--t-base) var(--m-settle) both;
+                  animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
+
+/* N3 Kukata Tiketi / The Cut. The end frame IS the layout; --cut-from sets the direction. */
+@keyframes maswali-cut { from { translate: 0 var(--cut-from); } to { translate: 0 0; } }
+.maswali-cut      { --cut-from: calc(-1 * var(--sp-2)); animation: maswali-cut var(--t-base) var(--m-settle) both; }
+.maswali-cut-undo { --cut-from: var(--sp-2);            animation: maswali-cut var(--t-base) var(--m-glide)  both; }
+
+/* N4: unspent. */
+
+/* The two clamp branches (§M6). NOT in the [data-motion="reduced"] list: they must play on the target device. */
+@media (prefers-reduced-motion: reduce) {
+  .maswali-carry, .maswali-attest, .maswali-cut, .maswali-cut-undo { animation: none; } }
+html.kp-reduce-motion :is(.maswali-carry, .maswali-attest, .maswali-cut, .maswali-cut-undo) { animation: none; }
+/* N-BLOCK END */

@@ -32,6 +32,11 @@ rulings R1–R4 and every place our laws beat the delivery. The build is tracked
 Ali's rulings R1–R6: the deck is the template for WHAT happens, and 50pick's own system decides how it looks. It also
 records the build's decisions SJ-1 … SJ-24 and every place our laws beat the deck. The build is tracked in
 `docs/VODACOM-PLAN.md` §1. It supersedes v4 for the home page (v4 manifest R18).
+**`v6-2026-10-17-millionea/`** is Claude Design's delivery for Maswali Millionea, round 2 ("Daftari na Muhuri"):
+146 frames, the SM1–SM9 storyboards and prototypes, three glyphs, the canvas sources and the draft strings. It was
+filed raw on 2026-10-17, without its copies of our token files. Its `INHERIT-MANIFEST.md` records the verdicts, Ali's
+rulings of 2026-10-16/17 and the L-rows where our laws beat the delivery. The build is tracked in
+`docs/MASWALI-PLAN.md` §1.
 
 ---
 

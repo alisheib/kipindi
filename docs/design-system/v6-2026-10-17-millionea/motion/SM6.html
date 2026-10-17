@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SM6 · Risiti · Maswali Millionea · motion</title>
+<link rel="stylesheet" href="tokens/globals-extract.css">
+<link rel="stylesheet" href="tokens/state-tokens.css">
+<link rel="stylesheet" href="tokens/motion.css">
+<link rel="stylesheet" href="maswali-motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);padding:var(--sp-8) var(--sp-6) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-8)">
+
+<div style="display:flex;flex-direction:column;gap:var(--sp-3);max-width:760px">
+  <a href="index.html" style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-link);text-decoration:none">‹ motion/index</a>
+  <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · SM6 · Risiti</div>
+  <h1 style="margin:0;font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px;color:var(--text)">The loss: two hairlines draw under the last ledger line, then stillness</h1>
+  <p style="margin:0;font-size:13px;line-height:18px;color:var(--text-muted)">Existing .m-draw (--t-max) ×2, the second offset by --t-quick. Same timing for every outcome, inside the same dwell. No haptic. No mark or needle on the receipt.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)">
+    <button type="button" class="btn btn-primary btn-sm" data-replay>Replay</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-reduce>Reduced motion</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-lowend>Low-end tier</button>
+    <span style="width:1px;background:var(--border)"></span>
+    <button type="button" class="btn btn-primary btn-sm" data-loc="sw">SW</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-loc="en">EN</button>
+    <button type="button" class="btn btn-ghost btn-sm" data-loc="zh">ZH</button>
+  </div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+  <div id="stage" style="width:360px;background:var(--bg);border:1px solid var(--border);display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-5) var(--sp-4);box-sizing:border-box">
+<div class="mat-raised" style="border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:visible"><div style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-5) var(--sp-4)"><span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · Wiki 42</span><span style="font-family:var(--font-display);font-weight:700;font-size:22px;line-height:28px"><span data-loc-text="sw">Haikushinda</span><span data-loc-text="en" hidden>Did not win</span><span data-loc-text="zh" hidden>未中奖</span></span>
+  <div style="display:flex;justify-content:space-between;padding:var(--sp-2) 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);font-size:13px"><span><span data-loc-text="sw">Wiki 42: hakuna tiketi ya 10/10</span><span data-loc-text="en" hidden>Week 42: no 10/10 ticket</span><span data-loc-text="zh" hidden>第42周：无 10/10 彩票</span></span></div>
+  <span style="font-size:13px;line-height:18px;color:var(--text-muted)"><span data-loc-text="sw">Kila takwimu hapa ni ya mwisho — hakuna kinachodaiwa zaidi.</span><span data-loc-text="en" hidden>Every figure here is final — nothing more is owed.</span><span data-loc-text="zh" hidden>此处每个数字均为最终结果 — 不再有任何欠付。</span></span>
+  <span class="amount" style="font-size:12px;color:var(--text-subtle)">Usuluhishi umethibitishwa · 7f3a…</span>
+  <div style="display:flex;flex-direction:column;gap:3px;padding-top:var(--sp-2)"><svg width="100%" height="1" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" style="display:block;color:var(--border-strong)"><path d="M0 .5H100" stroke="currentColor" stroke-width="1" pathLength="100" data-anim="m-draw" class="m-draw" style="stroke-dasharray:100;stroke-dashoffset:100;"></path></svg><svg width="100%" height="1" viewBox="0 0 100 1" preserveAspectRatio="none" aria-hidden="true" style="display:block;color:var(--border-strong)"><path d="M0 .5H100" stroke="currentColor" stroke-width="1" pathLength="100" data-anim="m-draw" class="m-draw" style="stroke-dasharray:100;stroke-dashoffset:100;animation-delay:var(--t-quick)"></path></svg></div></div></div>
+  </div>
+  <div style="width:300px;display:flex;flex-direction:column;gap:var(--sp-3);font-family:var(--font-mono);font-size:12px;line-height:16px;color:var(--text-subtle)">
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Two hairlines (SVG paths in --border-strong) draw with .m-draw, --t-max, --m-glide; the second starts --t-quick later: the accountant's double rule that closes a ledger.</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Bookkeeping only: no score, no line naming the misses, no emphasised row, no re-entry inducement, no buy control.</div>
+    <div style="border-left:1px solid var(--border-strong);padding-left:var(--sp-3)">Reduced motion · both rules present. Low-end · one-shot at full duration.</div>
+  </div>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

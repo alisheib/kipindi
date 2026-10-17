@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<script src="maswali-data.js"></script>
+</helmet>
+<!-- journey-top-bar.tsx + globals.css .kp-jhdr family, .kp-jbal capsule, .kp-rg__18, .kp-jnav__link — as shipped. Phone: 6px gaps, --sp-3 gutter; from 640: --sp-5 gaps, --sp-6 gutter, cluster --sp-3. -->
+<div style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:{{rowGap}};padding:0 {{gutter}};background:var(--panel);border-bottom:1px solid var(--border)">
+  <span style="display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;min-height:var(--h-control-md);margin:0 -9px;padding:0 9px">
+    <img src="assets/mark-color.svg" width="{{markSize}}" height="{{markSize}}" alt="50pick" style="flex-shrink:0;display:block">
+    <sc-if value="{{lockup}}" hint-placeholder-val="{{false}}"><span style="font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-0.55px;color:var(--text);margin-left:var(--sp-2)">50pick<span style="font-family:var(--font-mono);font-weight:400;font-size:var(--type-label);color:var(--text-subtle)">.tz</span></span></sc-if>
+  </span>
+  <span style="flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid var(--text-subtle);border-radius:var(--r-pill);font-family:var(--font-display);font-weight:700;font-size:var(--type-micro);color:var(--text)">18+</span>
+  <sc-if value="{{wide}}" hint-placeholder-val="{{false}}">
+    <nav style="display:flex;align-items:center;gap:0">
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+        <span style="position:relative;display:inline-flex;align-items:center;min-height:var(--h-control-md);padding:0 var(--sp-3);border-radius:var(--r-sm);font-family:var(--font-body);font-size:var(--type-small);font-weight:600;white-space:nowrap;color:{{n.ink}}">{{n.label}}<span style="position:absolute;left:var(--sp-3);right:var(--sp-3);bottom:0;height:2px;border-radius:var(--r-pill);background:{{n.line}};box-shadow:{{n.glow}}"></span></span>
+      </sc-for>
+    </nav>
+  </sc-if>
+  <div style="flex:1"></div>
+  <div style="display:flex;flex-shrink:0;align-items:center;gap:{{clusterGap}}">
+    <sc-if value="{{guest}}" hint-placeholder-val="{{false}}">
+      <span class="btn btn-ghost btn-md btn-pill" style="flex-shrink:0;padding:0 14px;font-size:var(--type-small)">{{signInLabel}}</span>
+      <span class="btn btn-primary btn-md btn-pill" style="flex-shrink:0;padding:0 14px;font-size:var(--type-small)">{{signUpLabel}}</span>
+    </sc-if>
+    <sc-if value="{{signedIn}}" hint-placeholder-val="{{true}}">
+      <span style="display:inline-flex;flex-shrink:0;align-items:center;gap:var(--sp-2);height:var(--h-control-md);padding:0 10px;border-radius:var(--r-pill);background:var(--bg-inset);box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 35%, transparent);color:var(--text)">
+        <span style="display:inline-flex;flex-direction:column;align-items:flex-end;gap:3px">
+          <span style="font-size:var(--type-micro);line-height:1;white-space:nowrap;color:var(--text-subtle)">{{balanceLabel}}</span>
+          <span class="amount" style="font-weight:700;font-size:12px;line-height:1.1;color:var(--gold-300)">{{balance}}</span>
+        </span>
+      </span>
+      <span class="btn gilt-metal btn-md btn-pill" style="flex-shrink:0;padding:0 12px;gap:6px"><sc-if value="{{plus}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 8.5v7M8.5 12h7"></path></svg></sc-if><span>{{depositLabel}}</span></span>
+    </sc-if>
+    <sc-if value="{{wide}}" hint-placeholder-val="{{false}}">
+      <span style="height:var(--h-control-sm);display:inline-flex;align-items:center;gap:6px;padding:0 var(--sp-3);border:1px solid var(--border-strong);border-radius:var(--r-md);font-family:var(--font-mono);font-weight:700;font-size:var(--type-label);color:var(--text)">{{locUpper}}<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
+      <sc-if value="{{signedIn}}" hint-placeholder-val="{{true}}">
+        <span style="position:relative;min-width:var(--h-control-sm);height:var(--h-control-sm);display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10a5 5 0 0 1 10 0c0 4 1.5 5 2 6H5c.5-1 2-2 2-6z"></path><path d="M10.5 20a1.7 1.7 0 0 0 3 0"></path></svg><span style="position:absolute;top:2px;right:0;min-width:18px;height:18px;padding:0 4px;border-radius:var(--r-pill);background:var(--brand-500);color:var(--pearl-50);font-family:var(--font-mono);font-size:var(--type-micro);font-weight:700;display:inline-flex;align-items:center;justify-content:center">25</span></span>
+        <span style="width:var(--h-control-sm);height:var(--h-control-sm);border-radius:var(--r-pill);border:1px solid var(--border-royal);background:var(--bg-royal-soft);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:var(--type-label);font-weight:700;color:var(--text)">DP</span>
+      </sc-if>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:360,&quot;height&quot;:56},&quot;bp&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:360,&quot;options&quot;:[360,768,1280],&quot;tsType&quot;:&quot;number&quot;},&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;maswali&quot;,&quot;options&quot;:[&quot;maswali&quot;,&quot;updown&quot;,&quot;tickets&quot;,&quot;account&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;guest&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;balance&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;TZS 44,196&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals(){
+    const M = window.MASWALI; const loc = this.props.loc || 'sw'; const t = (k,v)=> M ? M.t(loc,k,v) : k;
+    const bp = Number(this.props.bp||360); const wide = bp >= 1024; const from640 = bp >= 640; const guest = !!this.props.guest; const active = this.props.active || 'maswali';
+    const keys = [['maswali','navMaswali'],['updown','navUpDown'],['tickets','navTickets'],['account','navAccount']];
+    const nav = keys.map(([id,k])=>({ label:t(k), ink: id===active?'var(--text)':'var(--text-muted)', line: id===active?'var(--brand-500)':'transparent', glow: id===active?'0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent)':'none' }));
+    const sign = { sw:['Ingia','Jisajili'], en:['Sign in','Sign up'], zh:['登录','注册'] }[loc] || ['Ingia','Jisajili'];
+    return { wide, guest, signedIn:!guest, nav, lockup: bp >= 1280, markSize: bp >= 1280 ? 22 : 26, plus: bp >= 360,
+      rowGap: from640 ? 'var(--sp-5)' : '6px', gutter: from640 ? 'var(--sp-6)' : 'var(--sp-3)', clusterGap: from640 ? 'var(--sp-3)' : '6px',
+      balance: this.props.balance || (M? M.fmt(44196):'TZS 44,196'), balanceLabel: t('balance'), depositLabel: t('deposit'), signInLabel: sign[0], signUpLabel: sign[1], locUpper: loc.toUpperCase() };
+  }
+}
+</script>
+</body>
+</html>

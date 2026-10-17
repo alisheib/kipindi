@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · set S · locale {{loc}} · frames {{range}}</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">S — Purchase: the slip, the confirm sheet, the result</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">The slip is a document, not a form: fifteen numbered clauses, prose never clamped, one lit control per row, a sticky rail that casts upward. No jackpot figure anywhere in this set. Gold appears once — on the armed commit of the confirm sheet. ?from=N&amp;limit=N selects frames; maswaliSet({loc:'en'}) switches locale.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)"><sc-for list="{{index}}" as="i" hint-placeholder-count="19"><a href="?from={{i.at}}&amp;limit=1" style="font-family:var(--font-mono);font-size:11px;text-decoration:none;border:1px solid var(--border);border-radius:var(--r-xs);padding:2px 6px;white-space:nowrap">{{i.id}}</a></sc-for></div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+    <sc-for list="{{frames}}" as="f" hint-placeholder-count="2">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}} · {{f.note}}</span></div>
+        <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:{{f.w}};height:{{f.h}};overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <sc-if value="{{f.journey}}" hint-placeholder-val="{{true}}"><dc-import name="JHeader" bp="{{f.bp}}" loc="{{loc}}" hint-size="100%,56px"></dc-import></sc-if>
+          <sc-if value="{{f.classic}}" hint-placeholder-val="{{false}}"><dc-import name="CHeader" bp="360" loc="{{loc}}" ticker="{{false}}" hint-size="100%,56px"></dc-import></sc-if>
+
+          <!-- ═ SLIP ═ -->
+          <sc-if value="{{f.slip}}" hint-placeholder-val="{{true}}">
+            <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+              <sc-if value="{{f.closedBand}}" hint-placeholder-val="{{false}}"><div class="m-axis-reveal" style="display:flex;gap:var(--sp-3);align-items:center;padding:var(--sp-3) var(--sp-4);background:var(--bg-overlay);border-bottom:1px solid var(--border);font-size:13px;line-height:18px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted)"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg><span><sc-for list="{{f.closedBand}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div></sc-if>
+              <div style="width:100%;max-width:{{f.maxW}};margin:0 auto;box-sizing:border-box;display:grid;grid-template-columns:{{f.cols}};gap:var(--sp-10);padding:var(--sp-6) var(--sp-4) var(--sp-8);align-items:start">
+                <div style="display:flex;flex-direction:column;gap:var(--sp-5);min-width:0">
+                  <a href="#" style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;color:var(--text-subtle);display:inline-flex;align-items:center;gap:6px;min-height:44px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>{{s.productTitle}}</a>
+                  <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                    <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px"><sc-for list="{{s.slipTitle}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></h1>
+                    <div style="display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:18px;color:var(--text-muted)"><span><sc-for list="{{s.close}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span><span><sc-for list="{{s.first}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div>
+                  </div>
+                  <div class="mat-inset" style="border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2)">
+                    <sc-for list="{{s.rules}}" as="r" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:8px 1fr;gap:var(--sp-2);font-size:13px;line-height:18px;color:var(--text-muted)"><span style="color:var(--text-subtle)">·</span><span style="display:block"><sc-for list="{{r}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div></sc-for>
+                  </div>
+                  <!-- rows -->
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{f.rows}}" as="q" hint-placeholder-count="15">
+                      <sc-if value="{{q.divider}}" hint-placeholder-val="{{false}}"><div style="margin-top:var(--sp-4);padding:var(--sp-3) var(--sp-4) 0;display:flex;flex-direction:column;gap:2px;background:var(--wash-inset);border:1px solid var(--border);border-bottom:none;border-radius:var(--r-lg) var(--r-lg) 0 0;box-shadow:var(--edge-shade)"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{q.dividerHead}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{q.dividerBody}}</span></div></sc-if>
+                      <div id="{{q.anchor}}" style="display:grid;grid-template-columns:{{f.rowCols}};gap:var(--sp-2) var(--sp-3);padding:var(--sp-4) {{q.padX}};border-top:1px solid var(--border);background:{{q.bg}};border-left:{{q.sideBorder}};border-right:{{q.sideBorder}};align-items:start">
+                        <span class="amount" style="font-size:13px;line-height:20px;font-weight:700;color:{{q.nInk}}">{{q.n}}</span>
+                        <div style="display:flex;flex-direction:column;gap:var(--sp-1);min-width:0">
+                          <span style="font-size:11px;line-height:15px;letter-spacing:0.2px;color:var(--text-subtle)">{{q.cat}}</span>
+                          <span style="font-size:14px;line-height:20px;color:{{q.ink}};text-wrap:pretty;text-decoration:{{q.deco}};text-decoration-color:var(--border-strong)"><sc-for list="{{q.parts}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                          <span style="font-size:13px;line-height:18px;color:var(--text-subtle)">{{q.meta}}</span>
+                          <sc-if value="{{q.flag}}" hint-placeholder-val="{{false}}"><span style="align-self:flex-start;display:inline-flex;align-items:center;height:24px;padding:0 var(--sp-2);border:1px dashed var(--border-strong);border-radius:var(--r-pill);font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{q.flag}}</span></sc-if>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);grid-column:{{f.ctrlCol}};min-width:0">
+                          <sc-if value="{{q.yesLit}}" hint-placeholder-val="{{false}}"><span class="btn btn-yes" style="height:var(--h-control-md);gap:6px;font-size:14px;padding:0 var(--sp-2);opacity:{{q.opacity}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{s.yes}}</span></sc-if>
+                          <sc-if value="{{q.yesOff}}" hint-placeholder-val="{{true}}"><span class="btn btn-ghost" style="height:var(--h-control-md);border-color:var(--border-control);font-size:14px;padding:0 var(--sp-2);opacity:{{q.opacity}}">{{s.yes}}</span></sc-if>
+                          <sc-if value="{{q.noLit}}" hint-placeholder-val="{{false}}"><span class="btn btn-no" style="height:var(--h-control-md);gap:6px;font-size:14px;padding:0 var(--sp-2);opacity:{{q.opacity}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg>{{s.no}}</span></sc-if>
+                          <sc-if value="{{q.noOff}}" hint-placeholder-val="{{true}}"><span class="btn btn-ghost" style="height:var(--h-control-md);border-color:var(--border-control);font-size:14px;padding:0 var(--sp-2);opacity:{{q.opacity}}">{{s.no}}</span></sc-if>
+                        </div>
+                      </div>
+                    </sc-for>
+                    <div style="height:var(--sp-4);background:var(--wash-inset);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r-lg) var(--r-lg);box-shadow:var(--edge-shade)"></div>
+                  </div>
+                  <!-- inline refusal -->
+                  <sc-if value="{{f.refusal}}" hint-placeholder-val="{{false}}">
+                    <div class="mat-flat" style="display:flex;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md)">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted);flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg>
+                      <div style="display:flex;flex-direction:column;gap:var(--sp-1)"><span style="font-family:var(--font-display);font-weight:600;font-size:14px;line-height:20px">{{f.refusal.title}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)"><sc-for list="{{f.refusal.body}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span><a href="#{{f.refusal.anchor}}" style="font-size:13px;line-height:18px;text-decoration:none;min-height:44px;display:inline-flex;align-items:center">{{f.refusal.jump}}</a></div>
+                    </div>
+                  </sc-if>
+                </div>
+                <!-- 1280 sticky panel -->
+                <sc-if value="{{f.panel}}" hint-placeholder-val="{{false}}">
+                  <div class="mat-raised" style="position:sticky;top:var(--sp-6);border-radius:var(--r-lg);padding:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-4)">
+                    <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                      <div style="display:flex;gap:var(--sp-3)"><span style="flex:10;display:flex;gap:3px"><sc-for list="{{f.segA}}" as="sg" hint-placeholder-count="10"><span style="flex:1;height:4px;border-radius:var(--r-pill);background:{{sg}}"></span></sc-for></span><span style="flex:5;display:flex;gap:3px"><sc-for list="{{f.segB}}" as="sg" hint-placeholder-count="5"><span style="flex:1;height:4px;border-radius:var(--r-pill);background:{{sg}}"></span></sc-for></span></div>
+                      <span class="amount" style="font-size:13px;line-height:18px;color:var(--text-muted)">{{f.progress}}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1) var(--sp-4)"><sc-for list="{{f.picks}}" as="pk" hint-placeholder-count="15"><sc-if value="{{pk.head}}" hint-placeholder-val="{{false}}"><span style="grid-column:1 / -1;padding-top:var(--sp-2);font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{pk.head}}</span></sc-if><sc-if value="{{pk.row}}" hint-placeholder-val="{{true}}"><span style="display:flex;gap:var(--sp-2);font-size:13px;line-height:20px;color:{{pk.ink}}"><span class="amount" style="min-width:24px;color:var(--text-subtle)">{{pk.n}}</span><span class="amount">{{pk.v}}</span></span></sc-if></sc-for></div>
+                    <div style="display:flex;flex-direction:column;gap:var(--sp-1);border-top:1px solid var(--border);padding-top:var(--sp-3);font-size:13px;line-height:18px;color:var(--text-muted)"><div style="display:flex;justify-content:space-between"><span>{{s.price}}</span><span class="amount" style="color:var(--text)">{{s.priceV}}</span></div><div style="display:flex;justify-content:space-between"><span><sc-for list="{{s.capShort}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div></div>
+                    <sc-if value="{{f.lastHour}}" hint-placeholder-val="{{false}}"><span class="closing-pill" style="align-self:flex-start;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:var(--h-control-sm);padding:0 var(--sp-3);border:1px solid var(--border-strong);border-radius:var(--r-pill);font-size:13px;white-space:nowrap"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10"></path><path d="M8 3c0 4 8 4.5 8 9s-8 5-8 9M16 3c0 4-8 4.5-8 9s8 5 8 9"></path></svg><span><sc-for list="{{f.lastHour}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></span></sc-if>
+                    <sc-if value="{{f.ready}}" hint-placeholder-val="{{false}}"><span class="btn btn-primary btn-lg" style="width:100%;height:var(--h-control-lg)"><sc-for list="{{s.continueSeg}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></sc-if>
+                    <sc-if value="{{f.notReady}}" hint-placeholder-val="{{true}}"><span class="btn btn-ghost btn-lg" style="width:100%;height:var(--h-control-lg);border-color:var(--border-control)">{{s.answer15}}</span></sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <!-- sticky rail (below 1024) -->
+            <sc-if value="{{f.rail}}" hint-placeholder-val="{{true}}">
+              <div style="flex-shrink:0;display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);background:var(--panel);border-top:1px solid var(--border-strong);box-shadow:var(--shadow-overlay-up);position:relative;z-index:2">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-2)">
+                  <div style="display:flex;gap:var(--sp-3)"><span style="flex:10;display:flex;gap:3px"><sc-for list="{{f.segA}}" as="sg" hint-placeholder-count="10"><span style="flex:1;height:4px;border-radius:var(--r-pill);background:{{sg}}"></span></sc-for></span><span style="flex:5;display:flex;gap:3px"><sc-for list="{{f.segB}}" as="sg" hint-placeholder-count="5"><span style="flex:1;height:4px;border-radius:var(--r-pill);background:{{sg}}"></span></sc-for></span></div>
+                  <div style="display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap"><span class="amount" style="font-size:13px;line-height:18px;color:var(--text-muted)">{{f.progress}}</span><sc-if value="{{f.railPill}}" hint-placeholder-val="{{true}}"><span class="closing-pill" style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 var(--sp-2);border:1px solid var(--border-strong);border-radius:var(--r-pill);font-size:13px;line-height:18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10"></path><path d="M8 3c0 4 8 4.5 8 9s-8 5-8 9M16 3c0 4-8 4.5-8 9s8 5 8 9"></path></svg><span class="amount">{{f.railPillText}}</span></span></sc-if></div>
+                </div>
+                <sc-if value="{{f.ready}}" hint-placeholder-val="{{false}}"><span class="btn btn-primary btn-md" style="flex-shrink:0"><sc-for list="{{s.continueSeg}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></sc-if>
+                <sc-if value="{{f.notReady}}" hint-placeholder-val="{{true}}"><span class="btn btn-ghost btn-md" style="flex-shrink:0;border-color:var(--border-control)">{{s.answer15}}</span></sc-if>
+              </div>
+            </sc-if>
+          </sc-if>
+
+          <!-- ═ CONFIRM (sheet / dialog) ═ -->
+          <sc-if value="{{f.confirm}}" hint-placeholder-val="{{false}}">
+            <div style="flex:1;min-height:0;position:relative;overflow:hidden">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4);opacity:0.5"><div style="height:34px;width:60%;border-radius:var(--r-xs);background:var(--bg-elevated)"></div><div style="height:72px;border-radius:var(--r-md);background:var(--bg-elevated)"></div><div style="height:120px;border-radius:var(--r-md);background:var(--bg-elevated)"></div><div style="height:120px;border-radius:var(--r-md);background:var(--bg-elevated)"></div></div>
+              <div class="m-scrim" style="position:absolute;inset:0;background:var(--bg-overlay);opacity:0.72"></div>
+              <div class="mat-modal {{f.sheetClass}}" style="position:absolute;{{f.sheetPos}};border-radius:{{f.sheetRadius}};padding:var(--sp-5) var(--sp-4) var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-4);border:none;box-sizing:border-box">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.productTitle}} · <span class="amount">{{s.weekLabel}}</span></span><span style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px;letter-spacing:-0.55px">{{s.confirmTitle}}</span></div><span style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);margin:-10px -10px 0 0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-1) var(--sp-4)"><sc-for list="{{f.picks}}" as="pk" hint-placeholder-count="15"><sc-if value="{{pk.head}}" hint-placeholder-val="{{false}}"><span style="grid-column:1 / -1;padding-top:var(--sp-2);font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{pk.head}}</span></sc-if><sc-if value="{{pk.row}}" hint-placeholder-val="{{true}}"><span style="display:flex;gap:var(--sp-2);font-size:13px;line-height:20px"><span class="amount" style="min-width:24px;color:var(--text-subtle)">{{pk.n}}</span><span class="amount" style="color:var(--text)">{{pk.v}}</span></span></sc-if></sc-for></div>
+                <div style="display:flex;flex-direction:column;gap:var(--sp-1);border-top:1px solid var(--border);padding-top:var(--sp-3);font-size:13px;line-height:18px;color:var(--text-muted)">
+                  <sc-for list="{{f.lines}}" as="ln" hint-placeholder-count="4"><span style="text-wrap:pretty"><sc-for list="{{ln}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></sc-for>
+                </div>
+                <sc-if value="{{f.lowBalance}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);background:var(--warning-bg);border:1px solid var(--warning-border)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--warning-fg);flex-shrink:0;margin-top:1px"><path d="M12 4.2 21 19.5H3z"></path><path d="M12 10v4.5M12 17.4h.01"></path></svg><span style="font-size:13px;line-height:18px;color:var(--text)"><sc-for list="{{f.lowBalance}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div>
+                  <span class="btn btn-gold btn-lg" style="width:100%;height:var(--h-control-lg)"><sc-for list="{{f.depositDoorSeg}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                </sc-if>
+                <sc-if value="{{f.commit}}" hint-placeholder-val="{{true}}">
+                  <span class="btn gilt-metal btn-lg" style="width:100%;height:var(--h-control-lg);gap:var(--sp-2)"><sc-if value="{{f.spinner}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.6" pathLength="100" stroke-dasharray="72 28"></circle></svg></sc-if><sc-for list="{{f.commitLabelSeg}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                </sc-if>
+                <span class="btn btn-ghost btn-md" style="width:100%">{{s.cancel}}</span>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ═ RESULT (OperationResultModal) ═ -->
+          <sc-if value="{{f.result}}" hint-placeholder-val="{{false}}">
+            <div style="flex:1;min-height:0;position:relative;overflow:hidden">
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4);opacity:0.5"><div style="height:34px;width:60%;border-radius:var(--r-xs);background:var(--bg-elevated)"></div><div style="height:72px;border-radius:var(--r-md);background:var(--bg-elevated)"></div><div style="height:120px;border-radius:var(--r-md);background:var(--bg-elevated)"></div></div>
+              <div class="m-scrim" style="position:absolute;inset:0;background:var(--bg-overlay);opacity:0.72"></div>
+              <div class="mat-modal m-dialog-in" style="position:absolute;left:50%;top:50%;translate:-50% -50%;width:min(380px, calc(100% - 2 * var(--sp-4)));border-radius:var(--r-lg);padding:0;overflow:hidden;border:none;display:flex;flex-direction:column;box-sizing:border-box">
+                <div style="height:3px;background:{{f.strip}}"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);padding:var(--sp-8) var(--sp-5) var(--sp-6);text-align:center">
+                  <span class="{{f.crestClass}}" style="width:64px;height:64px;border-radius:50%;border:2px solid {{f.crestInk}};display:flex;align-items:center;justify-content:center;color:{{f.crestInk}}"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{f.crestD}}"></path></svg></span>
+                  <span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:{{f.eyebrowInk}}">{{f.eyebrow}}</span>
+                  <span class="amount" style="font-size:22px;line-height:28px;font-weight:700;color:var(--text);overflow-wrap:anywhere;white-space:normal">{{f.title}}</span>
+                  <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.details}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                  <span class="btn btn-primary btn-md" style="width:100%;margin-top:var(--sp-2)">{{f.primary}}</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{f.journeyTabs}}" hint-placeholder-val="{{true}}"><dc-import name="JTabs" loc="{{loc}}" active="maswali" hint-size="100%,68px"></dc-import></sc-if>
+          <sc-if value="{{f.classic}}" hint-placeholder-val="{{false}}"><dc-import name="CRail" loc="{{loc}}" active="markets" chat="{{false}}" hint-size="100%,68px"></dc-import></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Locale&quot;}}">
+class Component extends DCLogic {
+  state = { loc: (new URLSearchParams(location.search).get('locale')) || null, from: Number(new URLSearchParams(location.search).get('from')||0), limit: Number(new URLSearchParams(location.search).get('limit')||3) };
+  componentDidMount(){ window.maswaliSet = (p)=>this.setState(p); if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; const loc = this.state.loc || this.props.loc || 'sw';
+    if(!M) return { loc, frames:[], index:[], s:{}, range:'' };
+    const t=(k,v)=>M.t(loc,k,v), seg=M.segs, W=M.WEEK, F=M.fmt, N=M.fmtN;
+    const when = { close: loc==='sw'?W.salesCloseSw:loc==='zh'?W.salesCloseZh:W.salesCloseEn, first: loc==='sw'?W.firstEventSw:loc==='zh'?W.firstEventZh:W.firstEventEn };
+    const s = { productTitle:t('productTitle'), slipTitle: seg(t('slipTitle',{week:W.n})), close: seg(t('salesClose',{when:when.close})), first: seg(t('firstEvent',{when:when.first})), rules: [seg(t('reserveRule')), seg(t('capRule',{n:3})), seg(t('mainOnly'))], yes:t('yes'), no:t('no'), price:t('price'), priceV:F(1000), capShort: seg(t('capRule',{n:3})), pill: seg(t('salesCloseShort',{when:when.close})), pillShort: when.close, continueBtn:t('continueBtn'), continueSeg: seg(t('continueBtn')), answer15:t('answer15'), weekLabel: t('week',{week:W.n}), confirmTitle:t('confirmTitle'), cancel:t('cancel') };
+    const answered = { partial: {1:1,2:1,3:1,4:1,5:1,6:1,8:1,A1:1,A2:1}, ready: 'all', empty: {} };
+    const rows = (which, bp, closed)=> M.Q.map((q)=>{ const a = which==='all' || which[q.n]; const pick = a ? M.PICKS[q.n] : null; const annex = q.isReserve;
+      return { n:q.n, anchor:'q-'+q.n, cat: M.STR[loc].cat[q.cat]||q.cat, parts: seg(loc==='sw'?q.sw:q.en), meta: t('source')+': '+q.src+' · '+t('eventAt',{when: loc==='sw'?q.start:q.startEn}), ink:'var(--text)', deco:'none', nInk: annex?'var(--text-subtle)':'var(--text-muted)',
+        yesLit: pick==='Y', yesOff: pick!=='Y', noLit: pick==='N', noOff: pick!=='N', opacity: closed ? 'var(--state-disabled-opacity)' : 1,
+        bg: annex ? 'var(--wash-inset)' : 'transparent', sideBorder: annex ? '1px solid var(--border)' : 'none', padX: annex ? 'var(--sp-4)' : '0',
+        divider: q.n==='A1', dividerHead: t('reserves')+' · A1–A5', dividerBody: t('reserveRule'), flag: (which!=='all' && which!=='refusal-flag' && !a && which.flagMissing) ? (loc==='sw'?'haijajibiwa':loc==='zh'?'未作答':'unanswered') : null }; });
+    const segs = (n, total, done)=> Array.from({length:total}).map((_,i)=> i<done ? 'var(--royal-400)' : 'var(--bg-inset)');
+    const picksList = (which)=>{ const out=[{head:t('mains')}]; M.Q.forEach(q=>{ if(q.n==='A1') out.push({head:t('reserves')}); const a = which==='all'||which[q.n]; out.push({ row:true, n:q.n, v: a ? (M.PICKS[q.n]==='Y'?t('yes'):t('no')) : '—', ink: a?'var(--text)':'var(--text-subtle)' }); }); return out; };
+    const prog = (a,b)=> t('mainsProgress',{a})+' · '+t('reservesProgress',{b});
+    const slipBase = (id, badge, note, o)=>Object.assign({ id, badge, note, w:'360px', h:'auto', bp:360, maxW:'1080px', cols:'1fr', rowCols:'28px 1fr', ctrlCol:'2', journey:true, journeyTabs:true, classic:false, slip:true, rail:true, railPill:false, railPillText:null, lastHour:null, panel:false, rows: rows(answered.partial,360), segA: segs(0,10,7), segB: segs(0,5,2), progress: prog(7,2), ready:false, notReady:true, picks: picksList(answered.partial) }, o);
+    const refusal = { title: t('refusalIncomplete'), body: seg(t('refusalIncompleteBody',{n:6, list:'7, 9, 10, A3, A4'+(loc==='sw'?' na ':loc==='zh'?'、':' and ')+'A5'})), jump: t('jumpTo',{n:7}), anchor:'q-7' };
+    const partialFlag = Object.assign({ flagMissing:true }, answered.partial);
+    const frames = [
+      slipBase('S-slip-empty-360-'+loc, 'S1', 'nothing answered · neutral controls · rail 0/10 · 0/5', { rows: rows(answered.empty,360), segA: segs(0,10,0), segB: segs(0,5,0), progress: prog(0,0), picks: picksList(answered.empty) }),
+      slipBase('S-slip-partial-360-'+loc, 'S2', 'Kuu 7/10 · Akiba 2/5 · one lit control per row', {}),
+      slipBase('S-slip-refusal-incomplete-360-'+loc, 'S3', 'tap on Jibu maswali 15 → inline refusal with jump links', { rows: rows(partialFlag,360), refusal }),
+      slipBase('S-slip-ready-360-'+loc, 'S4', '15/15 · Endelea arms brand primary, never gilt', { rows: rows('all',360), segA: segs(0,10,10), segB: segs(0,5,5), progress: prog(10,5), ready:true, notReady:false, picks: picksList('all') }),
+      slipBase('S-slip-closed-360-'+loc, 'S5', 'after SM2 · band reveals on the axis · Endelea leaves', { rows: rows(answered.partial,360,true), closedBand: seg(t('salesClosed',{when:when.close})), rail:false }),
+      slipBase('S-slip-fold-360x720-'+loc, 'S6', 'the viewport on load · rail + first control inside 720', { h:'720px' }),
+      slipBase('S-slip-classic-partial-360-'+loc, 'S7', 'classic shell · rail docked above the five tracks · Needle, chat bubble and install invitation stand down', { journey:false, journeyTabs:false, classic:true, h:'780px' }),
+      slipBase('S-slip-partial-768-'+loc, 'S8', 'one column · controls right of the prose', { w:'768px', bp:768, rowCols:'28px 1fr 248px', ctrlCol:'3' }),
+      slipBase('S-slip-ready-1280-'+loc, 'S9', 'two columns · sticky panel replaces the rail', { w:'1280px', bp:1280, cols:'640px 400px', rowCols:'28px 1fr 240px', ctrlCol:'3', rail:false, panel:true, journeyTabs:false, rows: rows('all',1280), segA: segs(0,10,10), segB: segs(0,5,5), progress: prog(10,5), ready:true, notReady:false, picks: picksList('all') })
+    ];
+    const lines = (o)=>{ const L=[seg(t('fromMain',{balance:N(o.balance||W.balance)})), seg(t('ticketNofCap',{n:3}))]; if(o.cancel!==false) L.push(seg(t('cancelFreeUntil',{time:W.cancelUntil}))); L.push(seg(t('ruleNoFigure'))); return L; };
+    const confirmBase = (id,badge,note,o)=>Object.assign({ id, badge, note, w:'360px', h:'780px', bp:360, journey:true, journeyTabs:false, classic:false, slip:false, confirm:true, sheetClass:'m-sheet-in', sheetPos:'left:0;right:0;bottom:0', sheetRadius:'var(--r-lg) var(--r-lg) 0 0', picks: picksList('all'), lines: lines({}), commit:true, commitLabel: t('cutTicket'), commitLabelSeg: seg(t('cutTicket')), spinner:false }, o);
+    frames.push(
+      confirmBase('S-confirm-with-cancel-360-'+loc,'S10','.m-sheet-in + .m-scrim · the one gilt control: the armed commit',{}),
+      confirmBase('S-confirm-no-cancel-window-360-'+loc,'S11','bought with under 5 minutes to the close · cancel line absent',{ lines: lines({cancel:false}) }),
+      confirmBase('S-confirm-in-flight-360-'+loc,'S12','kit Spinner inside the commit · nothing else changes',{ spinner:true, commitLabel: t('inFlight'), commitLabelSeg: seg(t('inFlight')) }),
+      confirmBase('S-confirm-low-balance-360-'+loc,'S13','main TZS 400 · bonus TZS 5,000 not counted · the existing deposit entry replaces the commit',{ lines: lines({balance:400}), commit:false, lowBalance: seg(t('refBonus',{balance:N(400)})), depositDoor: t('depositAmount',{amount:N(600)}), depositDoorSeg: seg(t('depositAmount',{amount:N(600)})) }),
+      confirmBase('S-confirm-with-cancel-768-'+loc,'S14','a dialog on wide screens',{ w:'768px', h:'720px', bp:768, sheetClass:'m-dialog-in', sheetPos:'left:50%;top:50%;translate:-50% -50%;width:480px', sheetRadius:'var(--r-lg)' }),
+      confirmBase('S-confirm-with-cancel-1280-'+loc,'S15','a dialog on wide screens',{ w:'1280px', h:'720px', bp:1280, journeyTabs:false, sheetClass:'m-dialog-in', sheetPos:'left:50%;top:50%;translate:-50% -50%;width:480px', sheetRadius:'var(--r-lg)' })
+    );
+    const resultBase = (id,badge,note,o)=>Object.assign({ id, badge, note, w:'360px', h:'720px', bp:360, journey:true, journeyTabs:false, classic:false, slip:false, result:true, strip:'var(--brand-400)', crestClass:'seal-commit', crestInk:'var(--success-fg)', crestD:'M5 12.5l4.5 4.5L19 7', eyebrow: t('ticketCut'), eyebrowInk:'var(--text-subtle)', title: W.serial, details: seg(t('resultDetails',{week:W.n,time:W.cancelUntil})), primary: t('viewTicket') }, o);
+    frames.push(
+      resultBase('S-result-success-360-'+loc,'S16','OperationResultModal · success · stripTone brand · stamp → crest takes .seal-commit',{}),
+      resultBase('S-result-refused-360-'+loc,'S17','sales closed while paying · warning tone · no error crest',{ strip:'var(--warning-500)', crestClass:'', crestInk:'var(--warning-fg)', crestD:'M12 8v5M12 16h.01', eyebrow: t('refusedTitle'), title: t('salesClosed',{when:when.close}), details: seg(t('refClosed')), primary: t('followResults') }),
+      resultBase('S-result-success-768-'+loc,'S18','',{ w:'768px', bp:768 }),
+      resultBase('S-result-success-1280-'+loc,'S19','',{ w:'1280px', bp:1280, journeyTabs:false })
+    );
+    frames.push(slipBase('S-slip-last-hour-360-'+loc, 'S20', 'the last hour before the close · the closing pill counts minutes, as on Yes/No markets · the printed close stays in the head', { railPill:true, railPillText: t('closingSoonShort',{n:W.lastHourMins}), lastHour: seg(t('closingSoonPill',{n:W.lastHourMins})) }));
+    const shown = frames.slice(this.state.from, this.state.from+this.state.limit);
+    return { loc, s, frames: shown, index: frames.map((f,i)=>({ id:f.id.replace('-'+loc,''), at:i })), range: this.state.from+'–'+(Math.min(frames.length, this.state.from+this.state.limit)-1)+' / '+(frames.length-1) };
+  }
+}
+</script>
+</body>
+</html>

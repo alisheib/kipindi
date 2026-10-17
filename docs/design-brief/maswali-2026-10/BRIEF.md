@@ -1,6 +1,9 @@
 # `MASWALI-DESIGN-R2` — the Claude Design commission for Maswali Millionea, round 2
 
-> **STATUS: 🟢 SENT at stamp `72ca5cff9` — Claude Design came back 2026-10-17 with an owner-ruling form, answered the same day (the tracker's §0); the delivery is awaited (D2).** Programme `MASWALI-BUILD`; the tracker is
+> **STATUS: ⚪ RECORD — RECEIVED 2026-10-17.** Sent at stamp `72ca5cff9`. The owner-ruling form was answered the
+> same day, and the delivery (round 6, the answers applied) is filed raw at
+> [`design-system/v6-2026-10-17-millionea/`](../../design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md) with its
+> acceptance record. This folder is now the record of what was sent. Programme `MASWALI-BUILD`; the tracker is
 > [`MASWALI-PLAN.md`](../../MASWALI-PLAN.md) (D1 sends this, D2 receives the delivery, D3 is Ali's yes or no on what it
 > proposes). The design law is [`DESIGN_AUTHORITY.md`](../../DESIGN_AUTHORITY.md); this folder links to it and carries no
 > copy of it, of the tokens, or of component source.

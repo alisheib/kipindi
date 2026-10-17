@@ -21,33 +21,78 @@
 > check can fail.
 >
 > **Where:** the documentation pass ran in the SSD worktree `C:\50pick-ssd\kipindi-maswali` (OMEGA-COMPILE01) on
-> branch `maswali-plan`. Build sessions work on branch `maswali-build` off `origin/main` in an SSD worktree (§7,
-> "Branch and worktree strategy"). Merge to `main` = a live deploy, made by the release owner named on the board.
-> Millionea is merged **dark**: its rollout stays `WITHDRAWN` in code until S8.
+> branch `maswali-plan`. Build sessions work on branch `maswali-build` off `origin/main` in their own worktree (§7,
+> "Branch and worktree strategy"); on Ali-Blade15 that is `C:\kipindi-maswali`. Merge to `main` = a live deploy.
+> **Who merges (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it
+> finished, until the final session, who finishes everything, puts it live."* Millionea is merged **dark**: its rollout
+> stays `WITHDRAWN` in code until Ali decides (STAFF_PREVIEW after S5, ACTIVE only at S8).
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** The plan is written and nothing is built. Ali's rulings of 2026-10-16 are recorded (seventeen
-R-rulings, the accepted decision batch OD-01…OD-30, the guarantee pre-funded with TZS 2,000,000, the licence basis =
-his dated ruling, one 24-hour dispute window per week). S0 is ✅ at `de8a00619` (merged to `main` on 2026-10-16 on
-Ali's word; documentation only). **D1 is ✅: Ali sent the R2 package** cut at `origin/main`
-`72ca5cff99638eb8bc26d2d85c3007cb49b3727c`. He sent it after 2026-10-16 21:49 EAT, when he unpacked it on Ali-Blade15
-(`~/Downloads/MASWALI/`), and before Claude Design answered on 2026-10-17. **Claude Design has drawn the delivery.** On
-2026-10-17 it came back with an owner-ruling form: "the design is complete either way — these pick between finished
-variants". Ali handed the form to a session: *"claude design is done as well and asked me some questions that needs
-you … you answer"*. The answers that session gave him to send are in the table below. **D2 waits for the delivery.**
+**State (2026-10-17):** The build has started; no product code is written yet.
+- **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); **D2 ✅** in this commit
+  series.
+- **The delivery.** Claude Design's delivery is its round 6, with Ali's form answers applied. It is filed raw at
+  [`design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md); its
+  `INHERIT-MANIFEST.md` holds the verdicts, Ali's rulings, the L-rows L1–L13 and the intake checks. No gate failed,
+  so there is no round 3.
+- **The raw inbox** is kept outside the repository, at `C:\50pick-design-archive\MASWALI-DESIGN-R2\inbox-2026-10-17\`
+  on Ali-Blade15 (202 files, hash-checked). The delivery's `DECISIONS.md` ("OWNER RULINGS RECEIVED") matches the
+  answers table below item for item.
 
-**Next:** D2 when the delivery comes, otherwise S0.5 — in this order:
-1. **When Ali hands over Claude Design's delivery, on any machine — that is D2.** The prompt asks for
-   `MASWALI-DESIGN-R2-2026-10-16.zip`; if only a claude.ai link comes, export every file and record the URL. Follow
-   [`RECEIVING.md`](design-brief/maswali-2026-10/RECEIVING.md) from Step 0. Step 3's `SHA` is the stamp above (it is
-   also in the package's `STAMP.txt`). Check the delivery's `DECISIONS.md` against the answers table below: where they
-   differ, Ali changed an answer when he sent it, and what he sent wins. Correct the table in D2's commit.
-2. **D3 files the answers.** They already answer RECEIVING Step 5's yes/no card, so D3 is the filing: the dated
-   "Millionea exceptions" paragraph in DA §M8 with Ali's quote, and N1's measurement. N1 must hold at least 50fps at
-   360 on a phone with 4 cores or fewer and 4GB or less; otherwise N1's drawn fallback ships. The keyframes land in
-   `motion.css` in S5, with their first consumer (`test:dead-css`). D3 still blocks S5.
-3. Otherwise: S0.5, the fence. Receiving does not wait for S0.5–S3.
+**Ali, 2026-10-17 — the build programme.** *"take your time and start implementing the whole maswali development …
+when you face a decision take the decision based on how 50pick operates, based on previous bypasses we made as
+management and the perfect final architecture … keep pushing so other machines always know where we reached …
+perfect, consistent, work only accepted and fully responsive … at the level of the Vodacom plan and normal 50pick
+until we decide what goes live."* He also answered three numbered choices the same day:
+1. **Each finished session merges into `main` dark** (rollout `WITHDRAWN`).
+2. **Production goes to STAFF_PREVIEW** once S5's screens are verified.
+3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
+   below.
+
+**Next:** S0.5, the fence, with the expanded scope in §7b ("S0.5 · corrections of 2026-10-17"). Then the route:
+
+| Order | Session | What ships | Ali |
+|---|---|---|---|
+| 1 | S0.5 | No door, screen or report can treat a Millionea week as a Yes/No poll, in either store. One integrator commit | — |
+| 2 | S1 | RULES §2.12 ceremony, `maswali.config`, ledger accounts, 3 additive migrations, rollout switch (WITHDRAWN) | — |
+| 3 | S2 | Grading with reserves, money arithmetic, salted commitment and Merkle root, week lifecycle, scheduler | — |
+| 4 | S3 | Buy, free cancel, settle, rollover, top-up, refunds, guarantee ceremonies, sunset — both stores | — |
+| 5 | S4 | `/admin/maswali`, `/pools`, `/integrity`; seal console, release, pause, Owner ceremonies | — |
+| 6 | D3 | DA §M8 "Millionea exceptions", glyphs, status rows (filed from the answers below) | already answered |
+| 7 | S5 | Every player screen in both shells, three languages, five widths; then STAFF_PREVIEW on production | **looks at it** |
+| 8 | S6 | `/fairness`, notices, tax report and statutory pack, data, support, final legal and PDFs | Finance OD-08 (Gate B) |
+| 9 | S7 | Adversarial: concurrency, clock changes, the Friday rush, covering clusters | — |
+| 10 | S8 | Drive scripts ready; then **stop** for Gate A (§6) | **Gate A** |
+
+**How every session ships.**
+- **Work and commits.** Work in the session's own worktree on `maswali-build`. Commits are staged by name, with the
+  tracker in the same commit.
+- **Checks during the work.**
+  - Each change carries its own guard and red twin.
+  - Each push runs the suites derived from the diff (grep `scripts/` for every changed path), then `tsc`,
+    `next build` and local `qa:live`.
+  - A money session also runs `test:all`, `e2e:money`, `e2e:fault` and `e2e:card` on a throwaway PostgreSQL.
+- **Merge and read-back.** Merge `origin/main` into `maswali-build`, push `main`, then read back production per AGENTS.md §4.
+  `?dpl=` must match on all three hosts, health must pass, `qa:chunks-prod` and production `qa:live` must pass, the changed pages are looked
+  at in a real browser, and every Millionea route must 404 while WITHDRAWN.
+- **Exception.** A docs-only push skips the build checks. Only the doc guards and the read-back run, under Ali's
+  efficiency ruling of 2026-10-10.
+
+**Decisions taken under Ali's delegation (2026-10-17).** They are recorded here and in the v6 manifest's L-rows.
+1. **The won chip.** O-6's success chip is a Millionea-only `STATUS_TONE_EXCEPTIONS` row. Yes/No and Up & Down won
+   chips stay gilt, which `visual-pass-r5c` and `r7b` pin.
+2. **The receipt's legal line.** It prints `resSingleOfficer` and switches to `resTwoOfficer` only when the platform's
+   two-officer flag was on at stage 1 (L3).
+3. **Rule figures.** Every rule figure in a string is a placeholder filled from `maswali.config` or the week's frozen
+   `rulesSnapshot` (L2: admins can change everything).
+4. **The home card.** It sits after the head and before the chips (O-7). `test:journey-home` 7.order is re-pinned on
+   purpose.
+5. **The slip and `MONEY_ROUTE`.** The slip does not join `MONEY_ROUTE`, because `surfaces.ts` is pinned VERBATIM. The Needle and the chat bubble
+   stand down through route rules of their own.
+6. **Files shared with Vodacom.** The unmerged Vodacom S15/S16 flip branches touch `feature-state.ts`, `i18n-dict.ts`
+   and `market-service.ts`. Millionea's edits there are additive and in separate regions: the `millionea` namespace is
+   appended at each locale block's end.
 
 **The answers to Claude Design's owner-ruling form (2026-10-17).** Each was checked against this plan and the live code
 before it went to Ali.
@@ -67,46 +112,26 @@ before it went to Ali.
 | Q3 · the moved close | Ijumaa 23 Okt 16:00 EAT, moved earlier from 18:00, announced Alhamisi 22 Okt 10:15 | A later move could reach only Ijumaa 19:00: the first event is at 19:30 and the buffer is 30 minutes (OD-15, MB-28) |
 | Q1 · the attestation times missing from the sample | main 2 Mon 00:12 · main 3 Mon 09:10 · main 5 Mon 10:41 (the last, so results final) · main 6 Sun 20:36 · main 7 Sun 20:41 · main 9 Mon 00:14 · main 10 Sun 21:06 · A2 Mon 00:16 · A5 Mon 10:24. Timelines B and E reuse them. In D the week void becomes certain at Mon 10:24 (A5), so refunds are Tue 27 Oct 12:00 | Each time falls after its event. None falls before Sun 12:00, so the live frame's "5 kati ya 15" still holds. The windows follow MR-16 |
 
-**Blocked on Ali:** sending those answers in Claude Design, then handing its delivery to any session with the words
-"MASWALI-DESIGN-R2".
+**Blocked on Ali:** nothing until S5's staff preview (to look at it) and S8's Gate A (§6).
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
-**Last handoff (2026-10-17, Ali-Blade15, D1 closed):** this session answered Claude Design's form and recorded the
-send. The package's `PROMPT.txt` in `~/Downloads/MASWALI/` differs from the tracked one only in its three filled
-placeholders (the stamp, the date and the zip name), so the answers rest on exactly what Claude Design read. The four
-free-text answers fit the form's 400-character limit.
+**Last handoff (2026-10-17, Ali-Blade15, D2 closed).**
+- **The delivery moved out.** Ali placed it inside the shared checkout, at `C:\kipindi-main\Maswali\Design Handover\`.
+  It was copied outside and hash-checked, 202 of 202, and then removed from the checkout. A delivery inside a
+  checkout turns `test:design-one-door` red and can ride along in another session's commit.
+- **The build worktree** is `C:\kipindi-maswali` on branch `maswali-build`, with `npm ci` and `prisma generate` done.
+  Heavy jobs go through `~/heavy-node-lock.sh`; another session shares the lock.
+- **Merged.** The D1 zip-format fix (`maswali-a6-zip`, `c4697dfde`) is merged.
+- **Guards that passed on the filed delivery:** `test:design-one-door` and `test:docs`.
+- **The D1 package record** (the cut, its checks and its three exceptions) is in `git show
+  ad62c8f7:docs/MASWALI-PLAN.md` §0.
+- **One debt carried to S5.** `qa:seal` part B is stale: it waits for a "Day" field the sign-up form no longer has.
+  S5's seal drive repairs it, unless another session already has.
 
-**The package, as D1 cut it (2026-10-16, OMEGA-COMPILE01):** in the SSD worktree `C:\50pick-ssd\kipindi-d1` (branch
-`maswali-d1`), as ATTACHMENTS A2–A6 say, with the exceptions recorded below. A first cut at `e78c3aef6` was finished
-and checked, then deleted unsent: S8 round V2 reached `main` and changed `globals.css`, `i18n-dict.ts` and the bet
-sheet. Everything was cut again at the stamp. The zip is `MASWALI-DESIGN-R2-package-72ca5cff9.zip` (6,699,073 bytes,
-SHA-256 `196c4de46688202367dcb700e3492b546d34414b879178e01b280ef62a16cb41`), kept in Ali's Downloads and in
-`F:\50pick-design-archive` on OMEGA-COMPILE01. Beside it, `TEST-ONLY-not-for-Claude-Design-MASWALI-DESIGN-R2-72ca5cff9.zip`
-(1.1 MB) is a test build of the zip step.
-- **A3 at the stamp:** 49 `@keyframes` in `globals.css` and 49 in the extract; the `--rh-close` line sits under
-  `@media (min-width: 768px)`; one stale `tokens-locked` link in each of the four R1 canvases.
-- **Further checks:** 26 of 26 copied files are byte-identical to the commit. The extract keeps all 4 `:root` blocks
-  (360 declarations), all 48 named-class rules and all 49 keyframes.
-- **`06-frames`:** 48 Swahili captures at 360/768/1280 (and 1100 for the classic top bar). They came from a local
-  in-memory server with the worktree checked out at the stamp, and show QA personas only (the demo player and seeded
-  test officers). Every frame was read by eye. Two non-player elements are hidden in them, and `STAMP.txt` says so:
-  the dev-server badge and the staff preview marker.
-- **Exception 1 — outside the lock, on Ali's word:** the capture ran from 15:00 to 15:10 UTC while s9fix's test
-  battery held the shared heavy-job lock. Ali's words: "Yes - run the 20-minute screenshot job now alongside s9fix's
-  tests, this once, then put the real zip in my Downloads folder." A failure in that battery during that window may
-  come from the extra load: re-run it before believing it.
-- **Exception 2 — the zip format:** A6's `Compress-Archive` (Windows PowerShell 5.1) writes every entry with
-  backslashes, which non-Windows unzippers flatten into single file names. The zip was made instead with A6 as fixed
-  on branch `maswali-a6-zip` (`c4697dfde`, not yet merged). Its checks: 77 files and 77 entries, 0 backslashes, 0
-  entries unequal to their file, the same names; `tar.exe` also lists 77 and the same names.
-- **Exception 3 — `qa:seal`:** part A passed 94 of 94 checks on the first cut's server. Part B (the real settled
-  outcome) is stale: it waits for a "Day" field that the sign-up form no longer has, and its repair runs in its own
-  session. The seal frame was taken with part A's method instead, and the bet-result modal from one real local bet.
-
-The working tree `F:\kipindi-main` is shared by several sessions on a spinning disk — never build there. The repository
-is public: describe anti-abuse controls by what they enforce, never by their signals.
+The working tree `F:\kipindi-main` (OMEGA-COMPILE01) and `C:\kipindi-main` (Ali-Blade15) are shared by several sessions:
+never build there. The repository is public: describe anti-abuse controls by what they enforce, never by their signals.
 
 ## §1 · Board
 
@@ -118,7 +143,7 @@ is public: describe anti-abuse controls by what they enforce, never by their sig
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
 | S3 | Money path (local and throwaway PostgreSQL) | ⬜ | |
-| D2 | Design R2: received and inherited | ⬜ | needs D1's delivery back |
+| D2 | Design R2: received and inherited | 🔨 | filed 2026-10-17 at `design-system/v6-2026-10-17-millionea/`; ticked in the next commit |
 | S4 | Admin console and operations | ⬜ | |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ⬜ | blocks S5 |
 | S5 | Player surfaces | ⬜ | never before D3 ✅ |
@@ -814,7 +839,7 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
 
 **Gate B, before rollout ACTIVE:**
 
-6. ☐ **The classic-shell entry point** (OD-23) and the journey entry (home card plus the third Tiketi switch) are live behind the same rollout. They were shot at 320/360 in sw.
+6. ☐ **The classic-shell entry point** (OD-23) and the journey entry (home card plus the third Tiketi switch) are live behind the same rollout. They were shot at 320/360/768/1280 in sw, en and zh, and read one by one.
 7. ☐ **Vodacom S16 baseline note:**
    - a dated COMPLIANCE-DECISIONS ruling amending S16 "in bounds" item 8 (OD-22): the five measures exclude MASWALI, and harm markers are reported for all players and for players without a ticket;
    - `journey-measures-dal.ts` filter live;
@@ -877,7 +902,12 @@ cd C:\50pick-ssd\kipindi-maswali ; npm ci ; npx prisma generate
 ```
 
 On another machine, create an equivalent SSD worktree off `origin/main` — a path is a fact about a machine (AGENTS.md
-§10), never copy one from here.
+§10), never copy one from here. **Ali-Blade15 (since 2026-10-17):**
+- **Worktree.** `git -C C:\kipindi-main worktree add -b maswali-build C:\kipindi-maswali origin/main`, then a real
+  `npm ci` and `prisma generate` under `~/heavy-node-lock.sh`.
+- **Never a `node_modules` junction.** Turbopack refuses one, and `npm ci` through one empties the other tree.
+- **The lock.** Heavy jobs take that laptop's lock (one at a time: its RAM fails under parallel load). The throwaway
+  PostgreSQL is `scripts/db-scratch.mts` (embedded, port 5433, override `KP_SCRATCH_PORT`).
 
 - `TEMP=C:\50pick-ssd\tmp`.
 - Copy the three MSVC DLLs into embedded-postgres `native/bin`.
@@ -899,7 +929,7 @@ On another machine, create an equivalent SSD worktree off `origin/main` — a pa
 
 **Pushes and merges:**
 - Non-release sessions push only `maswali-build`.
-- **The release owner** (the board names Claude on OMEGA-COMPILE01, since 2026-10-16) merges `maswali-build` into `main` after each green session. The release goes out per AGENTS.md §4: typecheck, `next build` at the exact commit, local `qa:live`, the deploy read-backs, and production `qa:live`.
+- **Who merges (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it finished, until the final session, who finishes everything, puts it live."* The session that finishes a green step merges `maswali-build` into `main` itself; the board records this beside its release-owner line. The release goes out per AGENTS.md §4: typecheck, `next build` at the exact commit, local `qa:live`, the deploy read-backs, and production `qa:live`. A docs-only push runs the doc guards and the read-back only (Ali's efficiency ruling, 2026-10-10).
 - A money session also runs `test:all`, `e2e:money`, `e2e:fault` and `e2e:card` on a throwaway PostgreSQL first.
 - Every push to `main` is a live deploy. Millionea is merged **dark**: the rollout ceiling is `WITHDRAWN` in code until S8.
 - Small, frequent merges keep the diff against the Vodacom lane small.
@@ -949,9 +979,89 @@ On another machine, create an equivalent SSD worktree off `origin/main` — a pa
 **Gates for every session (§4):**
 - `npx tsc --noEmit`;
 - the session's own `test:maswali-*` suites and their red twins;
-- `test:product-line`, `test:i18n`, `test:labels`, `test:docs`, `test:maswali-plan`, `test:all`;
+- `test:product-line`, `test:i18n`, `test:labels`, `test:docs`, `test:maswali-plan`;
+- the suites derived from the diff (grep `scripts/` for every changed path);
+- `test:all` at session close, and before the push for a money session (Ali's efficiency ruling, 2026-10-10);
 - for UI work, the design suites in S5;
 - for money work, AGENTS.md §4's money list.
+
+New suites join `test:all` on their own. `predeploy` is a hand-written list in `package.json`, so a new money suite must
+be added to it by hand.
+
+**Corrections of 2026-10-17** (the code map made before the build started). Where these and a session's text below
+differ, these win.
+
+- **S0.5 · the fence is wider than its list.**
+  - *The DAL first.* On PostgreSQL, `market-dal.ts` reads every non-UPDOWN value as MARKET:
+    - `storedLine` :126 and `toStoredMarket` :192;
+    - memory `bookByIds` :790; Postgres `attribution` :1260 and `bookByIds` :1338;
+    - the leaderboard buckets :901 and SQL :1523, which become `= 'MARKET'`.
+
+    No door check fires on PostgreSQL until the DAL passes MASWALI through. NULL keeps reading as MARKET, MASWALI reads
+    as MASWALI, and an unknown value raises an alarm without throwing at boot.
+  - *More sites to make exhaustive:*
+    - market-service :812, :874, :951, :1005, :1790, :2061, :4127 and :4309;
+    - `/live` (`page.tsx:169`, `pulse-grid.tsx:231`) and `/markets/[id]` :202;
+    - `journey-sheet.ts:142`, `journey-card.tsx`, `card-face.ts`, `estimate.ts`;
+    - the deposit `return-choice` route and `notification-service.ts:668`;
+    - `/admin/house` (both pages) and `/admin/markets/[id]`;
+    - `tax-report-data.ts:506`, `short-title-service.ts`, `position-permalink.ts`, `results/archive.ts`.
+  - *Hand-written two-value types widen on purpose:* `LabelProductLine` (with no default), `PositionProductLine`,
+    `GameLine`, `PRODUCT_IDS` and tax `ProductFilter`. Three stay without MASWALI: `IntentProductLine`,
+    `INTENT_PRODUCT_LINES` and `TARGET_PRODUCT_LINES`. The DB CHECKs and `test:house-bot-migrations` pin them.
+  - *More doors:*
+    - `settleMarketAction`, `holdSettlementAction` and `recheckMarketNowAction`;
+    - `setMarketShortTitlesAction`;
+    - the settlement queue reads `listSettlementQueue` and `getSettlementHealth`, through `pending("ALL")`.
+  - *Three smaller fixes:*
+    - `chargedFee` (`payout.ts:565`) has no product input, so the guard goes at its callers or through a new parameter.
+    - `scopeAlerts` lives in `house-bot/trigger.ts:406`. It must skip a line whose policy is `"denied"`, so there is no
+      daily false `PRODUCT_DENIED`.
+    - `test:product-line` B8 asserts the coercion. It is rewritten, and the suite gains a red twin.
+  - *A census guard* lists every productLine read and classifies it: a door that refuses, an ALL-read with its
+    MASWALI handling, a MARKET-default read, or a widened type. An unlisted site fails. The red twin runs on **both**
+    stores (`runTwoStores`, db-scratch).
+- **S1.**
+  - *The rollout lives in its own module,* `src/lib/millionea-rollout.ts`, which imports only `RolloutState` and
+    `lowerRollout`. It stays out of `feature-state.ts`, because the Vodacom S15 flip edits that file.
+  - *STAFF_PREVIEW gets its own audience.* It means staff sessions plus holders of a Millionea preview pass, built like
+    `journey-preview.ts` and working in **both** shells. The journey's `kp_preview` forces the journey shell, and
+    the S8 drive needs non-staff QA players.
+  - *`/api/health` gains a Millionea rollout field.* A `qa:live` "dark" section, in its own module with one call
+    line, proves on production that `/millionea*` 404s and that no card, More row or notice shows while below the
+    rollout. A local control shows them.
+  - *The `/legal/terms` sentence and the TERMS_VERSION move are deferred* to S8's launch commit (OD-18: existing
+    terms do not change). The binding text is `/legal/rules/millionea`, with its own version and hash.
+  - *Optional:* a `NOT VALID` → `VALIDATE` CHECK on `PredictionMarket.productLine`.
+- **S3.**
+  - *The Millionea slip travels as a `BuyOpts` field,* not as a third `BetContext.kind`. `ctx.kind` means who is
+    betting, and the house-bots lane pins every comparison (`SEAM_SITES`). Millionea gets its own `MASWALI:` markers,
+    its own guard, and a test that MARKET and UPDOWN output is unchanged.
+  - *Every Yes/No notice is muted on every Millionea path:* `settleMarket`'s VOID arm, which a week void uses, and
+    the cancel. Muting them is S3's job; S6 adds Millionea's own notices.
+  - *The cancel is a real one-transaction write that fails loudly.* Today `cashOutPosition` writes outside
+    `withMoneyTx`, and its ledger write is fire-and-forget.
+  - *OD-17's loss limit:* `sumGamblingNetSince` (`prisma-dal.ts:2727`, and its memory twin) drops `BET_PAYOUT`
+    rows on MASWALI positions.
+  - *S3 releases on its own,* with the full money battery.
+- **D3.** The rulings are all in hand, so D3 is the filing. N1 is filed as *"yes, if it measures"*. It is measured at
+  S5's acceptance and on a real phone at S8, and if it fails its drawn fallback ships. The values (glyphs, status rows,
+  the N-block) land in S5 with their first consumer, as `test:dead-css` requires.
+- **S5.**
+  - *The home card is a server component,* placed between the head and the chips (O-7). `home-lazy.tsx` and its
+    `HT_PARTS` pin are untouched; only `test:journey-home` 7.order is re-pinned.
+  - *The slip does not join `MONEY_ROUTE`.* `test:journey-shell` §2 pins that line VERBATIM, and changing it would hide
+    the Needle platform-wide. A narrow predicate covers the slip and the confirm sheet (D-25).
+  - *After each dark merge,* trial-merge the parked S15 candidate (`git merge-tree`) and tell the Vodacom lane about
+    any conflict.
+- **S6 before any production settlement.** `chargedFee` throws on MASWALI by design, so the tax report and the
+  statutory pack learn the product before the S8 drive week settles.
+- **Laptop capacity (Ali-Blade15).**
+  - `test:all` runs in chunks well under 3 hours each, with `--jobs` 2–3, because the lock's 3-hour takeover would
+    otherwise put two heavy jobs on failing RAM.
+  - The database suites run one at a time on this lane's own `KP_SCRATCH_PORT`.
+  - `embedded-postgres` is installed with `--no-save`, and `npm ci` removes it again.
+  - `.env.qa.local` is needed before any signed-in QA.
 
 #### S0 · Rulings recorded; plan, board, pointers, guard, R2 commission filed (documentation only)
 
@@ -1474,7 +1584,7 @@ ready.
    - §K8b (placement as ruled); §B11 rows in `status-tone.ts` with `STATUS_TONE_EXCEPTIONS`;
    - `glyphs.tsx`: `sealNil` and `millionea`; rename `voidX` → `sealX` (it has zero consumers);
    - `08-motion` docs and the provenance changelog;
-   - a COMPLIANCE-DECISIONS entry naming the home card and the third Tiketi switch as deviations from the sponsor deck (R1/SJ-22); an AGENCY-REPLY; a v5 INHERIT-MANIFEST row.
+   - a COMPLIANCE-DECISIONS entry naming the home card and the third Tiketi switch as deviations from the sponsor deck (R1/SJ-22); an AGENCY-REPLY; a v5 INHERIT-MANIFEST row naming the deviation, and a v6 manifest ruling row.
 
 **Suites:** `test:keyframes`, `test:reduce-motion`, `test:motion-ladder`, `test:dead-css`, `test:glyph-motion`, `test:design-frozen`, `test:gold-is-money` (new `UNEARNED_SURFACES` arm), `qa:calm`.
 
@@ -1633,7 +1743,7 @@ ready.
 
 | ID | Sev | Gap | Treatment (within the rulings) | Owner | Closes | Src |
 |---|---|---|---|---|---|---|
-| MB-01 | C | The generic market doors treat a MASWALI row as a poll. `storedLine` and the other coercions turn it into MARKET. `nextDeadlineFor` skips only UPDOWN. `settleMarket`'s one-sided branch (noPool = 0) refunds every ticket at zero fee. `resolveMarket`, `resolveDueMarket`/sentinel, `emergencyVoidMarket`, `adminReopenMarket`, the paid exit in `cashOutPosition`, `/admin/markets/[id]` and `/admin/resolver/[id]` all accept it. The live `resolutionMode` setting would let the AI seal it, which breaks R-RESOLUTION. | Widen `ProductLine`, with one `isKnownProductLine` and exhaustive switches that have an unreachable default. `nextDeadlineFor` returns null for anything other than MARKET. Every generic door refuses MASWALI unless the call comes from `maswali-service` under a SEAM marker. `settleMarket` is reached only through its VOID arm. The cycle market is pinned to `resolutionMode` human. `chargedFee` throws on MASWALI. Add `red:maswali-fence`: plant a MASWALI row, drive every door and every read, expect a refusal each time. | Eng | S1, first commit, before any MASWALI row is written | A1, B1, C20p |
+| MB-01 | C | The generic market doors treat a MASWALI row as a poll. `storedLine` and the other coercions turn it into MARKET. `nextDeadlineFor` skips only UPDOWN. `settleMarket`'s one-sided branch (noPool = 0) refunds every ticket at zero fee. `resolveMarket`, `resolveDueMarket`/sentinel, `emergencyVoidMarket`, `adminReopenMarket`, the paid exit in `cashOutPosition`, `/admin/markets/[id]` and `/admin/resolver/[id]` all accept it. The live `resolutionMode` setting would let the AI seal it, which breaks R-RESOLUTION. | Widen `ProductLine`, with one `isKnownProductLine` and exhaustive switches that have an unreachable default. `nextDeadlineFor` returns null for anything other than MARKET. Every generic door refuses MASWALI unless the call comes from `maswali-service` under a SEAM marker. `settleMarket` is reached only through its VOID arm. The cycle market is pinned to `resolutionMode` human. `chargedFee` throws on MASWALI. Add `red:maswali-fence`: plant a MASWALI row, drive every door and every read, expect a refusal each time. | Eng | S0.5 (the fence), before any MASWALI row is written | A1, B1, C20p |
 | MB-02 | C | Nothing states a formula that keeps house money out of the rollover. `settlementPayoutEntries` tolerates a POOL that ends a shilling or two off zero. | One pure, isomorphic module:<br>• **No winner:** carryOut = R + S, F = 0, U = 0.<br>• **k ≥ 1:** J = max(1M, R + S); F = round(0.13 J); `levySplit` called once; share = floor((J − F)/k); U = max(0, F + k·share − (R + S)); carryOut = R + S + U − F − k·share.<br>One group, `maswali_settle_{id}`. POOL must end at exactly 0 (no tolerance for this product), with conservation asserted per component. Table tests over R ∈ {0, 500k, 2M}, S ∈ {0, 300k, 1.2M}, k ∈ {0, 1, 7, 870, 1,000, 1,400}. | Eng | S2 (module), S3 (booking) | A2 |
 | MB-03 | C | The 1,000,000 floor has no funded account, no entry type, no funding timing and no rule for a shortfall. HOUSE:COMMISSION is too small to cover it. When weeks overlap, the house can owe about 2M at once. | Create `HOUSE:MASWALI_GUARANTEE` and a new `MASWALI_GUARANTEE_FUND` entry type (ALTER TYPE). Funding is an Owner-only ceremony from an `EXTERNAL:OWNER_CAPITAL` counterparty, with a rail reference and typed confirmation, and a mirror ceremony to return surplus. A week refuses to open below the level set in OD-02; the balance is read inside the transaction with a null-aware read. Settlement aborts with a CRITICAL alert rather than pay less. The floor figure is shown only while it is funded. | Ali (level), Eng, Finance | S1, S3, S4 | A3, C2 |
 | MB-04 | H | The house book misreads the product in four ways:<br>• The solvency line counts the jackpot balance, every unsettled POOL and the guarantee earmark as free house cash, overstating it by 1–2M.<br>• The waterfall books the 13% fee on the house's own top-up as revenue.<br>• `gameBook` raises a false "books do not close" alarm every week.<br>• `RateProvenance` knows only two fee models. | • Add the jackpot balance and Σ unsettled POOL balances to `owedToOthers`.<br>• Show the guarantee as its own earmarked line.<br>• Add a waterfall step "Jackpot guarantee paid".<br>• `gameBook` gains carryIn, topUp and carryOut; the identity becomes handle + carryIn + topUp − paid − fee − carryOut = 0.<br>• Widen `RateProvenance`.<br>• Add RED anchors in `test:house-book`. Apply the same changes to `/admin/finance` and `finance-window.ts`. | Eng | S3 (liabilities), S6 (waterfall) | A5, A6 |
@@ -1952,6 +2062,21 @@ These are only the items his rulings do not cover, ordered by how much they bloc
 
 ## §10 · Design round R2 — "Daftari na Muhuri · The Register and the Seal"
 
+> ⚠️ **SUPERSEDED BY THE DELIVERY (2026-10-17).** This section is the panel's concept as commissioned. The build follows
+> the filed delivery [`design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md)
+> and its manifest's L-rows. Where this section differs, the delivery and Ali's 2026-10-17 rulings win. These differences are known:
+> - **The slip.** The slip's Endelea is brand primary; gold sits only on the confirm sheet's armed commit.
+> - **Words.** The main balance is "salio kuu", never "salio halisi".
+> - **The closing pill** shows only in the last hour (Q5).
+> - **The seal door.** It reads "Ona matokeo", not "Fungua" (Q7).
+> - **N2's press stops** are 1.02 / 0.98, the `seal-place` stops in the adopted N-block.
+> - **The "cannot win" line** is ruled, in the owner's wording.
+> - **One grading module.** `maswali-score.ts` is the one implementation (L9).
+> - **The home card.** It sits after the head and is a server component outside `home-lazy.tsx` (O-7).
+> - **Routes.** The slip never joins `MONEY_ROUTE`.
+> - **The receipt's legal line** follows the real resolution mode (L3).
+> - **The filing** is `v6-2026-10-17-millionea/INHERIT-MANIFEST.md`.
+
 **What is commissioned.** The commission Claude Design receives (D1 sends it) is
 [`design-brief/maswali-2026-10/PROMPT.txt`](design-brief/maswali-2026-10/PROMPT.txt), with its brief, predicted output
 and receiving protocol beside it. Where the spec below and the prompt differ, the prompt wins: it carries the later
@@ -2046,7 +2171,7 @@ Every money figure is `.amount`: mono, tabular, never letter-spaced, sized for `
 ##### 3.1 Journey home card (the Maswali tab, `/`; ruled under R-PLACEMENT)
 
 **Placement and build.**
-- It sits second in the column: under `LazyHowToCard`, above `HomeHeadline`.
+- It sits after the head (`LazyHowToCard` and `HomeHeadline`) and before `HomeChips`, at every width (O-7, ruled 2026-10-17).
 - The whole card is one `<Link>` to `/millionea`.
 - It is a server component with no countdown and no poll. Its figure is fixed at render time.
 - It loads through `home-lazy.tsx` so a classic visitor's first-load JS stays unchanged (§0h point 20).
@@ -2306,7 +2431,7 @@ Each is a `factual` toast with no haptic, or an inline notice. Each gives a reas
 - **When:** a data change while viewing, or up to 4 attestations unseen on opening.
 - **Stamp:** a mono block, "MATOKEO · NDIO" or "MATOKEO · BATILI".
   - Neutral `--text` on `--border-strong`, `--r-xs`.
-  - It moves 8px *down the needle's own line* with `.maswali-attest` (`--t-base`, `--m-settle`), with a press of 1.04 → 0.985 → 1.
+  - It moves 8px *down the needle's own line* with `.maswali-attest` (`--t-base`, `--m-settle`), with a press of 1.02 → 0.98 → 1 (the `seal-place` stops).
 - **Socket:** swaps by `GlyphSwap` (`.g-swap-out` `--t-quick`, then `.g-swap-in` `--t-base`).
 - **Sameness:** identical for NDIO, HAPANA and BATILI, and for matched and unmatched rows.
 - **Stagger:** at most 4 × `--m-stagger`.
@@ -2397,8 +2522,8 @@ All three are one-shot and filed in `motion.css`. Each keyframe goes in its Keyf
 
 /* N2 Kugonga Muhuri / The Attestation Press — travels on --m-tilt (first consumer) */
 @keyframes maswali-attest {
-  0%   { opacity: 0; translate: calc(var(--sp-2) * sin(var(--m-tilt))) calc(-1 * var(--sp-2) * cos(var(--m-tilt))); scale: 1.04; }
-  70%  { opacity: 1; translate: 0 0; scale: 0.985; }
+  0%   { opacity: 0; translate: calc(var(--sp-2) * sin(var(--m-tilt))) calc(-1 * var(--sp-2) * cos(var(--m-tilt))); scale: 1.02; }
+  60%  { opacity: 1; translate: 0 0; scale: 0.98; }
   100% { opacity: 1; translate: 0 0; scale: 1; } }
 .maswali-attest { animation: maswali-attest var(--t-base) var(--m-settle) both; animation-delay: calc(min(var(--i, 0), 3) * var(--m-stagger)); }
 
@@ -2487,7 +2612,7 @@ All three are one-shot and filed in `motion.css`. Each keyframe goes in its Keyf
 | **Routes in `src/lib/surfaces.ts`** | `COMMIT_ROUTE` gains `/^\/millionea\/slip$/` and `/^\/millionea\/tickets\/[^/]+$/`. `JOURNEY_ROUTE` gains exact entries for `/millionea`, `/millionea/slip`, `/millionea/tickets` and `/millionea/tickets/[serial]`. If the fidget covers the sticky pay control at 360, the slip also joins `MONEY_ROUTE`. |
 | **Guard** | `test:gold-is-money` gains an `UNEARNED_SURFACES` arm listing the pool-figure, home-card, hub, register and ticket-list files. Gold is banned there outright. The win ledger stays a separate file so the arm can see the difference. |
 | **Component specs** | `02-components/<name>/spec.md`. |
-| **The Claude Design delivery** | Filed raw in `docs/design-system/v6-2026-10-XX-millionea/` with `ACCEPTANCE.md`. The outbound brief goes in `design-brief/maswali-r2/` only after the two existing `.gitignore` exceptions are resolved (§0b: never two tracked commissions at once). |
+| **The Claude Design delivery** | Filed raw on 2026-10-17 in [`docs/design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md) with its `INHERIT-MANIFEST.md` (D2). The outbound brief is [`design-brief/maswali-2026-10/`](design-brief/maswali-2026-10/BRIEF.md). |
 | **Strings** | `src/lib/i18n-dict.ts`, in EN, SW and ZH. |
 
 **Guards that must pass:**

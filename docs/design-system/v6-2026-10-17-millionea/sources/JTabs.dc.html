@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<script src="maswali-data.js"></script>
+</helmet>
+<!-- journey-tabs.tsx + globals.css .kp-rail / .kp-rail--journey / .kp-rail__item / __pip / __label / .kp-jtab__label, as shipped -->
+<div style="flex-shrink:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;background:var(--panel);border-top:1px solid var(--border);box-shadow:var(--shadow-overlay-up)">
+  <sc-for list="{{tabs}}" as="n" hint-placeholder-count="4">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:var(--sp-1);min-height:64px;min-width:0;padding:6px 0;color:{{n.ink}}">
+      <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px;border-radius:var(--r-pill);background:{{n.plate}};box-shadow:{{n.edge}}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="{{n.cx}}" cy="{{n.cy}}" r="{{n.r}}"></circle><path d="{{n.d}}"></path><path d="{{n.d2}}"></path><circle cx="{{n.dx}}" cy="{{n.dy}}" r="{{n.dr}}" fill="currentColor" stroke="none"></circle></svg>
+        <sc-if value="{{n.dot}}" hint-placeholder-val="{{false}}"><span style="position:absolute;top:-2px;right:6px;width:8px;height:8px;border-radius:var(--r-pill);background:var(--brand-500);box-shadow:0 0 0 2px var(--panel)"></span></sc-if>
+      </span>
+      <span style="font-family:var(--font-mono);font-size:var(--type-micro);line-height:1.15;font-weight:{{n.weight}};max-width:100%;padding:0 2px;text-align:center;white-space:normal">{{n.label}}</span>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:360,&quot;height&quot;:64},&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;active&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;maswali&quot;,&quot;options&quot;:[&quot;maswali&quot;,&quot;updown&quot;,&quot;tickets&quot;,&quot;account&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;unread&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals(){
+    const M = window.MASWALI; const loc = this.props.loc || 'sw'; const t = (k)=> M ? M.t(loc,k) : k; const active = this.props.active || 'maswali';
+    /* JOURNEY_TABS (lib/nav/active-tab.ts): questionCircle · trade · ticket · user — geometry from glyphs.tsx */
+    const defs = [
+      { id:'maswali', k:'navMaswali', cx:12, cy:12, r:8.6, d:'M9.5 9.3a2.6 2.6 0 0 1 5.1.6c0 1.7-2.6 2.1-2.6 3.6', dx:12, dy:16.8, dr:0.9 },
+      { id:'updown', k:'navUpDown', d:'M8 4v16M8 20l-3-3M8 20l3-3', d2:'M16 20V4M16 4l-3 3M16 4l3 3' },
+      { id:'tickets', k:'navTickets', d:'M2 9a3 3 0 0 1 0 6v4h20v-4a3 3 0 0 1 0-6V5H2z', d2:'M13 5v2M13 17v2M13 11v2' },
+      { id:'account', k:'navAccount', cx:12, cy:8.5, r:3.5, d:'M5.5 20a6.5 6.5 0 0 1 13 0z', dot: this.props.unread !== false }
+    ];
+    const tabs = defs.map(d=>Object.assign({}, d, { label:t(d.k), ink: d.id===active?'var(--text)':'var(--text-subtle)', plate: d.id===active?'var(--pill-active)':'transparent', edge: d.id===active?'var(--edge-lit)':'none', weight: d.id===active?700:600 }));
+    return { tabs };
+  }
+}
+</script>
+</body>
+</html>

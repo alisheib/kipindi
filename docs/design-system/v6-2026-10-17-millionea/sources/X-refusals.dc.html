@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · set X · locale {{loc}}</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">X — Refusals and notices</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">Every refusal states the reason and the next step at matching severity: a fixable refusal is the factual toast or an inline notice (never red); a money-fixable one is amber. No haptic. The two longest (bonus, cap) are proven in EN and ZH beside the Swahili.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+    <sc-for list="{{frames}}" as="f" hint-placeholder-count="12">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}} · {{f.note}}</span></div>
+        <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:360px;height:{{f.h}};overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="JHeader" bp="360" loc="{{f.loc}}" guest="{{f.guest}}" hint-size="100%,56px"></dc-import>
+          <sc-if value="{{f.notice}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3) var(--sp-4);background:{{f.noticeBg}};border-bottom:1px solid {{f.noticeBorder}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:{{f.noticeInk}};flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span style="font-size:13px;line-height:18px;color:var(--text);text-wrap:pretty"><sc-for list="{{f.notice}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div></sc-if>
+          <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) 0;position:relative">
+            <div style="display:flex;flex-direction:column;gap:var(--sp-1)"><span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{f.weekLabel}}</span><span style="font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px">{{f.title}}</span></div>
+            <sc-if value="{{f.noteFrame}}" hint-placeholder-val="{{false}}"><div style="border:1px dashed var(--border-strong);border-radius:var(--r-lg);padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2)"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{f.noteHead}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{f.noteFrame}}</span></div></sc-if>
+            <sc-if value="{{f.inline}}" hint-placeholder-val="{{false}}"><div style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);background:{{f.inlineBg}};border:1px solid {{f.inlineBorder}}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:{{f.inlineInk}};flex-shrink:0;margin-top:1px"><path d="{{f.inlineGlyph}}"></path><circle cx="{{f.inlineCx}}" cy="{{f.inlineCy}}" r="{{f.inlineR}}"></circle></svg><div style="display:flex;flex-direction:column;gap:var(--sp-2);flex:1"><span style="font-size:13px;line-height:18px;color:var(--text);text-wrap:pretty"><sc-for list="{{f.inline}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span><sc-if value="{{f.next}}" hint-placeholder-val="{{false}}"><a href="#" style="font-size:13px;line-height:18px;text-decoration:none;min-height:44px;display:inline-flex;align-items:center">{{f.next}} ›</a></sc-if></div></div></sc-if>
+            <sc-if value="{{f.door}}" hint-placeholder-val="{{false}}"><span class="btn {{f.doorClass}} btn-lg" style="width:100%;height:var(--h-control-lg)"><sc-for list="{{f.doorSeg}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></sc-if>
+            <sc-if value="{{f.noDoor}}" hint-placeholder-val="{{false}}"><div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.noDoor}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></div></sc-if>
+            <div class="mat-flat" style="height:140px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint)">{{f.ghost}}</div>
+            <!-- the factual toast · rung 4 · no tint -->
+            <sc-if value="{{f.toast}}" hint-placeholder-val="{{false}}"><div class="mat-toast m-in-lift" style="position:absolute;left:var(--sp-4);right:var(--sp-4);top:var(--sp-3);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4);display:flex;gap:var(--sp-3);align-items:flex-start;border:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted);flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5M12 8h.01"></path></svg><span style="font-size:13px;line-height:18px;color:var(--text);text-wrap:pretty;flex:1"><sc-for list="{{f.toast}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></div></sc-if>
+          </div>
+          <dc-import name="JTabs" loc="{{f.loc}}" active="maswali" hint-size="100%,68px"></dc-import>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Locale&quot;}}">
+class Component extends DCLogic {
+  state = { loc: (new URLSearchParams(location.search).get('locale')) || null };
+  componentDidMount(){ window.maswaliSet = (p)=>this.setState(p); if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; const loc0 = this.state.loc || this.props.loc || 'sw';
+    if(!M) return { loc: loc0, frames:[] };
+    const W=M.WEEK, N=M.fmtN, seg=M.segs;
+    const mk = (id, badge, note, loc, o)=>{ const t=(k,v)=>M.t(loc,k,v); return Object.assign({ id: id+'-360-'+loc, badge, note, loc, h:'560px', guest:false, weekLabel: t('week',{week:W.n})+' · '+t('weekStatusOpen'), title: t('productTitle'), ghost: loc==='sw'?'bwawa · maswali ya wiki':loc==='zh'?'奖池 · 本周题目':'pool · week questions', inlineBg:'transparent', inlineBorder:'var(--border)', inlineInk:'var(--text-muted)', inlineGlyph:'M12 11v5M12 8h.01', inlineCx:12, inlineCy:12, inlineR:9, noticeBg:'var(--bg-overlay)', noticeBorder:'var(--border)', noticeInk:'var(--text-muted)' }, o(t)); };
+    const frames = [];
+    ['sw','en','zh'].forEach((L,i)=>{ frames.push(mk('X-refusal-cap','X1'+(i?String.fromCharCode(96+i):''),'cap reached · factual toast + inline notice · next step: the next week', L, (t)=>({ toast: seg(t('refCap',{next:W.next})), inline: seg(t('refCap',{next:W.next})), noDoor: seg(t('yourTicketsThisWeek',{n:10,cap:10})) }))); });
+    ['sw','en','zh'].forEach((L,i)=>{ frames.push(mk('X-refusal-bonus','X2'+(i?String.fromCharCode(96+i):''),'bonus refused · amber (money-fixable) · next step: Weka pesa', L, (t)=>({ inline: seg(t('refBonus',{balance:N(400)})), inlineBg:'var(--warning-bg)', inlineBorder:'var(--warning-border)', inlineInk:'var(--warning-fg)', inlineGlyph:'M12 4.2 21 19.5H3zM12 10v4.5M12 17.4h.01', inlineCx:0, inlineCy:0, inlineR:0, door: t('depositAmount',{amount:N(600)}), doorClass:'btn-gold' }))); });
+    frames.push(
+      mk('X-refusal-sales-closed','X3','sales closed · the door is already Fuatilia matokeo', 'sw', (t)=>({ toast: seg(t('refClosed')), inline: seg(t('refClosed')), door: t('followResults'), doorClass:'btn-primary', weekLabel: t('week',{week:W.n})+' · '+t('weekStatusClosed') })),
+      mk('X-refusal-insider','X4','staff and house accounts · info tone', 'sw', (t)=>({ inline: seg(t('refInsider')), inlineBg:'var(--info-bg)', inlineBorder:'var(--info-border)', inlineInk:'var(--info-fg)' })),
+      mk('X-refusal-low-balance','X5','the existing deposit entry', 'sw', (t)=>({ inline: seg(t('lowBalanceBody',{balance:N(400)})), inlineBg:'var(--warning-bg)', inlineBorder:'var(--warning-border)', inlineInk:'var(--warning-fg)', inlineGlyph:'M12 4.2 21 19.5H3zM12 10v4.5M12 17.4h.01', inlineCx:0, inlineCy:0, inlineR:0, door: t('depositAmount',{amount:N(600)}), doorClass:'btn-gold' })),
+      mk('X-refusal-guest','X6','the existing sign-in door', 'sw', (t)=>({ guest:true, inline: seg(t('refGuest')), door: t('signIn'), doorClass:'btn-primary' })),
+      mk('X-notice-close-moved','X7','a neutral NoticeBar with the new time', 'sw', (t)=>({ notice: seg(t('closeMoved',{when: W.movedCloseSw, from: W.movedFrom})), door: t('fillTicket'), doorClass:'btn-primary' })),
+      mk('X-notice-paused','X8','no slip door', 'sw', (t)=>({ notice: seg(t('paused')), weekLabel: t('week',{week:W.n})+' · '+t('pausedShort').toUpperCase() })),
+      mk('X-notice-stopped','X9','the sunset line', 'sw', (t)=>({ notice: seg(t('stoppedSunset',{week:W.n})), weekLabel: t('week',{week:W.n})+' · '+t('finalWeek').toUpperCase(), noDoor: seg(t('rule7')) })),
+      mk('X-notice-break','X10','no door anywhere · a note frame', 'sw', (t)=>({ noteHead: 'break · not drawn', noteFrame: t('breakNote')+' (§C8 · BetBreakNotice '+(loc0==='sw'?'inachukua nafasi ya mlango':'replaces the door')+')' }))
+    );
+    frames.forEach(f=>{ f.doorSeg = f.door ? seg(f.door) : null; });
+    return { loc: loc0, frames };
+  }
+}
+</script>
+</body>
+</html>

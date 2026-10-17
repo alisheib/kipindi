@@ -178,7 +178,9 @@ const D = (fn: (d: string) => string): World => ({ ...world, doc: fn(world.doc) 
 
 const plants: [string, RegExp, World][] = [
   ["a row vanishes", /§1 row S4 is missing/, D((d) => d.split("\n").filter((l) => !l.startsWith("| S4 |")).join("\n"))],
-  ["a row is doubled", /§1 row S2 appears 2 times/, D((d) => d.replace(/(\| S2 \|[^\n]*\n)/, "$1$1"))],
+  // Anchored at the line start, like `swapRow`: §0's route table also carries an "| S2 |" cell (2026-10-17), and an
+  // unanchored plant doubled the tail of THAT line — the board was untouched and the plant reported BLIND.
+  ["a row is doubled", /§1 row S2 appears 2 times/, D((d) => d.replace(/^(\| S2 \|[^\n]*\n)/m, "$1$1"))],
   ["an unknown status", /§2 S3: status "done"/, D(mark("S3", "done", "x"))],
   ["✅ without a commit", /§2 S6: ✅ cites no commit/, D(mark("S6", "✅", "looked fine"))],
   ["✅ with an invented commit", /commit deadbeef1 does not exist/, D(mark("S6", "✅", "deadbeef1"))],

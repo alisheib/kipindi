@@ -6,7 +6,10 @@
 >
 > **How to work on any row is [`AGENTS.md`](../AGENTS.md)** — since 2026-10-16 the one set of working rules for every agent
 > and engineer (Ali: *one final rule*). **Release owner — the one session that pushes `main`:** the Claude session on
-> OMEGA-COMPILE01 (Ali, 2026-10-16). Every other session works on its own branch.
+> OMEGA-COMPILE01 (Ali, 2026-10-16). Every other session works on its own branch. **Exception for `MASWALI-BUILD`
+> (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it finished, until the
+> final session, who finishes everything, puts it live"*. A Maswali session merges its own finished, green step into
+> `main`, dark, per [`MASWALI-PLAN.md`](MASWALI-PLAN.md) §7a.
 
 > ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**
 >
@@ -155,7 +158,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16 for the management-reviewed proposal; every August ruling void; the plan and the rulings filed; the Claude Design R2 commission sent and its owner questions answered 2026-10-17, the delivery awaited; nothing built** · 2/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16 for the management-reviewed proposal; every August ruling void; the plan and the rulings filed; the Claude Design R2 delivery received and filed 2026-10-17; the build started (S0.5 next), merged dark; no product code yet** · 2/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we
@@ -168,7 +171,7 @@ create its design … animations that no platform has … signature for this pla
 | **Why** | A weekly fixed-price jackpot: a TZS 1,000 ticket, 15 Yes/No picks (10 main + 5 reserves that replace voided questions in order), all 10 graded right shares the jackpot equally, a funded floor of TZS 1,000,000, the fee taken only when a jackpot is paid, rollover until won. The rulings: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void (owner)" |
 | **Shape** | 13 sessions: S0 (the plan) · D1 send the design · S0.5 fence the third product line · S1 law, config, accounts, schema, rollout switch · S2 the week engine · S3 the money path · D2 receive the design · S4 the admin console · D3 Ali's motion rulings · S5 the player surfaces · S6 fairness, notices, reports, legal · S7 adversarial · S8 the live drive and launch. 32 rules, a 99-row blind-area register, 30 accepted owner decisions, a two-gate launch checklist. Dark behind its own rollout switch until S8 |
 | **Design** | Round R2, "Daftari na Muhuri · The Register and the Seal": [`design-brief/maswali-2026-10/BRIEF.md`](design-brief/maswali-2026-10/BRIEF.md) — the prompt, its predicted output and the receiving protocol |
-| **Where** | Documentation pass: branch `maswali-plan` (worktree `C:\50pick-ssd\kipindi-maswali`, OMEGA-COMPILE01). Build: branch `maswali-build` off `origin/main`; the release owner merges |
+| **Where** | Documentation pass: branch `maswali-plan` (worktree `C:\50pick-ssd\kipindi-maswali`, OMEGA-COMPILE01). Build: branch `maswali-build` off `origin/main` (Ali-Blade15: worktree `C:\kipindi-maswali`); each session merges its own finished step into `main`, dark (Ali, 2026-10-17) |
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:maswali-plan` asserts the two agree |
 

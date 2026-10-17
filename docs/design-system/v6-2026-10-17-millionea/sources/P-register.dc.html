@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · set P · locale {{loc}} · frames {{range}}</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">P — The public register "Daftari la Wiki" (reading tier, no JavaScript)</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">Unauthenticated and server-rendered: the week, the question-set hash, the 15 questions with the attesting officer's ROLE, the substitution map and log, the check window, the full ledger with the levy line, the strata history, and a link to the audit chain. No personal data. Every figure is from the sample data.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)"><sc-for list="{{index}}" as="i" hint-placeholder-count="10"><a href="?from={{i.at}}&amp;limit=1" style="font-family:var(--font-mono);font-size:11px;text-decoration:none;border:1px solid var(--border);border-radius:var(--r-xs);padding:2px 6px;white-space:nowrap">{{i.id}}</a></sc-for></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-8);align-items:flex-start">
+    <sc-for list="{{frames}}" as="f" hint-placeholder-count="2">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}} · {{f.note}}</span></div>
+        <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:{{f.w}};background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="JHeader" bp="{{f.bp}}" loc="{{loc}}" guest="{{true}}" hint-size="100%,56px"></dc-import>
+          <div style="width:100%;max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-6);padding:var(--sp-6) var(--sp-4) var(--sp-10)">
+            <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+              <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.productTitle}} · {{s.registerTitle}}</div>
+              <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px">{{f.title}}</h1>
+              <sc-if value="{{f.hashLine}}" hint-placeholder-val="{{true}}"><div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.hashLine}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></div></sc-if>
+              <sc-if value="{{f.status}}" hint-placeholder-val="{{true}}"><span style="align-self:flex-start;display:inline-flex;align-items:center;min-height:23px;padding:2px 9px;border-radius:var(--r-pill);border:1px solid var(--border);background:color-mix(in oklab, var(--brand-soft) 50%, transparent);font-family:var(--font-body);font-size:11px;font-weight:700;letter-spacing:0.06em;line-height:1.15;text-transform:uppercase;color:var(--text-muted);white-space:nowrap">{{f.status}}</span></sc-if>
+            </div>
+            <!-- index -->
+            <sc-if value="{{f.weeks}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex;flex-direction:column;gap:var(--sp-2)"><sc-for list="{{f.weeks}}" as="wk" hint-placeholder-count="4"><a href="#" class="mat-raised" style="display:flex;flex-direction:column;gap:var(--sp-1);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);text-decoration:none;color:var(--text)"><span style="display:flex;justify-content:space-between;gap:var(--sp-2)"><span class="amount" style="font-weight:700;font-size:14px">{{wk.week}}</span><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted)">{{wk.status}}</span></span><span style="font-size:13px;line-height:18px;color:var(--text-muted)"><sc-for list="{{wk.line}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span></a></sc-for></div>
+            </sc-if>
+            <!-- questions -->
+            <sc-if value="{{f.qs}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px">{{s.weekQuestions}}</div>
+                <sc-if value="{{f.noResults}}" hint-placeholder-val="{{false}}"><div style="font-size:13px;line-height:18px;color:var(--text-muted)">{{f.noResults}}</div></sc-if>
+                <sc-if value="{{f.wide}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:{{f.qCols}};gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) 0;border-bottom:1px solid var(--border-strong);font-family:var(--font-mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)"><sc-for list="{{s.regCols}}" as="c" hint-placeholder-count="9"><span>{{c}}</span></sc-for></div></sc-if>
+                <sc-for list="{{f.qs}}" as="q" hint-placeholder-count="15">
+                  <sc-if value="{{f.wide}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:{{f.qCols}};gap:var(--sp-2) var(--sp-3);padding:var(--sp-2) 0;border-bottom:1px solid var(--border);font-size:12px;line-height:16px;align-items:start"><span class="amount" style="font-weight:700;color:{{q.nInk}}">{{q.n}}</span><span style="color:var(--text-muted)">{{q.cat}}</span><span style="color:{{q.ink}};text-decoration:{{q.deco}};text-decoration-color:var(--border-strong)">{{q.text}}</span><span style="color:var(--text-muted)">{{q.src}}</span><span class="amount" style="color:var(--text-muted)">{{q.start}}</span><span style="color:var(--text-muted)">{{q.role}}</span><span class="amount" style="color:var(--text-muted)">{{q.at}}</span><span class="amount" style="font-weight:700;color:var(--text)">{{q.out}}</span><span style="color:var(--text-muted)">{{q.reason}}</span></div></sc-if>
+                  <sc-if value="{{f.narrow}}" hint-placeholder-val="{{true}}"><div style="display:grid;grid-template-columns:28px 1fr;gap:var(--sp-1) var(--sp-2);padding:var(--sp-3) 0;border-top:1px solid var(--border)"><span class="amount" style="font-size:13px;font-weight:700;color:{{q.nInk}}">{{q.n}}</span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:11px;line-height:15px;letter-spacing:0.2px;color:var(--text-subtle)">{{q.cat}} · {{q.src}} · <span class="amount">{{q.start}}</span></span><span style="font-size:13px;line-height:18px;color:{{q.ink}};text-decoration:{{q.deco}};text-decoration-color:var(--border-strong);text-wrap:pretty">{{q.text}}</span><span style="display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;font-size:12px;line-height:16px;color:var(--text-muted)"><sc-if value="{{q.outStamp}}" hint-placeholder-val="{{false}}"><span class="amount" style="display:inline-flex;align-items:center;height:20px;padding:0 6px;border:1px solid var(--border-strong);border-radius:var(--r-xs);font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--text)">{{q.out}}</span></sc-if><span>{{q.role}}</span><span class="amount">{{q.at}}</span><span>{{q.reason}}</span></span></div></div></sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+            <!-- substitution + log + check window -->
+            <sc-if value="{{f.sub}}" hint-placeholder-val="{{true}}">
+              <div class="mat-flat" style="border-radius:var(--r-lg);padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-3)">
+                <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{s.regSubRule}}</span>
+                <div style="display:flex;flex-direction:column;gap:var(--sp-1)"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.regMap}}</span><sc-for list="{{f.sub.map}}" as="m" hint-placeholder-count="2"><span class="amount" style="font-size:13px;line-height:18px;color:var(--text)">{{m}}</span></sc-for></div>
+                <div style="display:flex;flex-direction:column;gap:var(--sp-1)"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.regLog}}</span><sc-for list="{{f.sub.log}}" as="m" hint-placeholder-count="3"><span class="amount" style="font-size:13px;line-height:18px;color:var(--text-muted)">{{m}}</span></sc-for></div>
+                <div style="display:flex;flex-direction:column;gap:var(--sp-1)"><span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.regCheck}}</span><span class="amount" style="font-size:13px;line-height:18px;color:var(--text-muted)">{{f.sub.check}}</span></div>
+              </div>
+            </sc-if>
+            <!-- ledger -->
+            <sc-if value="{{f.ledger}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px">{{s.regLedger}}</div>
+                <div style="display:flex;flex-direction:column;border-top:1px solid var(--border)"><sc-for list="{{f.ledger}}" as="L" hint-placeholder-count="10"><div style="display:flex;justify-content:space-between;gap:var(--sp-3);align-items:baseline;padding:var(--sp-2) 0;border-bottom:1px solid var(--border);padding-left:{{L.indent}}"><span style="font-size:13px;line-height:18px;color:{{L.ink}};flex:1;text-wrap:pretty"><sc-for list="{{L.label}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span><span class="amount" style="font-size:13px;line-height:18px;font-weight:{{L.weight}};color:{{L.ink}};text-align:right">{{L.value}}</span></div></sc-for></div>
+              </div>
+            </sc-if>
+            <!-- strata -->
+            <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+              <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px">{{s.regStrata}}</div>
+              <sc-for list="{{strata}}" as="r" hint-placeholder-count="3"><div class="mat-inset" style="border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);font-size:13px;line-height:18px;color:var(--text-muted)"><sc-for list="{{r}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount" style="color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></div></sc-for>
+              <a href="#" style="font-size:13px;text-decoration:none;min-height:44px;display:inline-flex;align-items:center;gap:6px">{{s.auditChain}} <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M12 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-6"></path></svg></a>
+            </div>
+          </div>
+          <sc-if value="{{f.tabs}}" hint-placeholder-val="{{true}}"><dc-import name="JTabs" loc="{{loc}}" active="maswali" hint-size="100%,68px"></dc-import></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Locale&quot;}}">
+class Component extends DCLogic {
+  state = { loc: (new URLSearchParams(location.search).get('locale')) || null, from: Number(new URLSearchParams(location.search).get('from')||0), limit: Number(new URLSearchParams(location.search).get('limit')||3) };
+  componentDidMount(){ window.maswaliSet = (p)=>this.setState(p); if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; const loc = this.state.loc || this.props.loc || 'sw';
+    if(!M) return { loc, frames:[], index:[], s:{}, strata:[], range:'' };
+    const t=(k,v)=>M.t(loc,k,v), seg=M.segs, W=M.WEEK, F=M.fmt, N=M.fmtN, FN=M.fmtNeg;
+    const s = { productTitle:t('productTitle'), registerTitle:t('registerTitle'), weekQuestions: loc==='sw'?'Maswali 15':loc==='zh'?'15 道题目':'The 15 questions', regCols: M.STR[loc].regCols, regSubRule:t('regSubRule'), regMap:t('regMap'), regLog:t('regLog'), regCheck:t('regCheck'), regLedger:t('regLedger'), regStrata:t('regStrata'), auditChain:t('auditChain') };
+    const dateOf = (sw)=>{ const m = { 'Jumamosi':'2026-10-24', 'Jumapili':'2026-10-25', 'Jumatatu':'2026-10-26', 'Ijumaa':'2026-10-23' }; const parts = sw.split(' '); return (m[parts[0]]||'') + ' ' + parts[1]; };
+    const qs = (mainsOut, resOut)=> M.Q.map(q=>{ const o = q.isReserve ? (resOut||{})[q.n] : (mainsOut||{})[q.n]; const isV = o && o[0]==='V';
+      return { n:q.n, cat: M.STR[loc].cat[q.cat], text: loc==='sw'?q.sw:q.en, src:q.src, start: loc==='sw'?q.start:q.startEn, role: o ? t('officerRole') : '—', at: o && o[1] ? dateOf(o[1]) : '—', out: o ? (isV ? t('batili').toUpperCase() : (o[0]==='Y'?t('yes'):t('no'))) : '—', outStamp: !!o, reason: isV && o[2] ? t(o[2]) : '', ink: isV?'var(--text-muted)':'var(--text)', deco: isV?'line-through':'none', nInk: q.isReserve?'var(--text-subtle)':'var(--text-muted)' }; });
+    const row = (label, value, o)=>Object.assign({ label: seg(label), value, ink:'var(--text)', weight:500, indent:'0' }, o||{});
+    const muted = { ink:'var(--text-muted)' };
+    const ledgerCommon = (sales, tickets)=>[ row(t('carriedIn',{week:W.prev}), F(389000)), row(tickets+' '+t('ticketsTimes'), F(sales)), row(t('poolTotal'), F(389000+sales), {weight:600}), row(t('floor'), F(1000000)) ];
+    const base = (id,badge,note,o)=>Object.assign({ id, badge, note, w:'360px', bp:360, tabs:true, wide:false, narrow:true, qCols:'', title: t('week',{week:W.n}), hashLine: seg(t('regHash')+' '+W.hash+' · '+t('regPublished')+' 2026-10-19'), status: t('weekStatusOpen'), qs: qs(), sub:null, ledger:null }, o);
+    const subA = { map:['4 → A1', (loc==='sw'?'A2–A5 hazikutumika':loc==='zh'?'A2–A5 未使用':'A2–A5 not used')], log:[t('logVoid',{n:4})+' · 2026-10-24 11:02', t('logCarry',{n:4,r:'A1'})+' · 2026-10-26 10:41'], check: W.checkOpen+' → '+W.checkClose };
+    const ledgerA = ledgerCommon(212000,212).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1000000), {weight:700}), row(t('winningTickets'), '0'), row(t('fee'), t('feeZero'), muted), row(t('carriedOut',{week:W.next}), F(601000), {weight:700}) ]);
+    const ledgerB = ledgerCommon(661000,661).map((r,i)=> i===3 ? Object.assign(r, muted) : r).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1050000), {weight:700}), row(t('winningTickets'), '3'), row(t('feeLine'), FN(136500), muted), row(t('levies')+' · TRA '+F(13650)+' · GBT '+F(6825), '', Object.assign({indent:'var(--sp-4)'}, muted)), row(t('topUp'), '—', muted), row(t('paidOut'), F(913500)), row(t('perTicket',{n:3}), F(304500), {weight:700}), row(t('remainder'), F(0), muted), row(t('carriedOut',{week:W.next}), F(0), muted) ]);
+    const ledgerC = ledgerCommon(212000,212).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1000000), {weight:700}), row(t('winningTickets'), '7'), row(t('feeLine'), FN(130000), muted), row(t('levies')+' · TRA '+F(13000)+' · GBT '+F(6500), '', Object.assign({indent:'var(--sp-4)'}, muted)), row(t('topUp')+' · '+(loc==='sw'?'inalipwa, hailetwi mbele':loc==='zh'?'已支付，不滚存':'paid, never carried'), F(398995)), row(t('paidOut'), F(869995)), row(t('perTicket',{n:7}), F(124285), {weight:700}), row(t('remainder')+' · '+t('remainderNote'), F(5), muted), row(t('carriedOut',{week:W.next}), F(0), muted) ]);
+    const ledgerD = ledgerCommon(212000,212).concat([ row(t('jackpot'), '—', muted), row(t('refundEach'), F(212000)), row(t('carriedForwardAgain')+' · '+t('week',{week:W.next}), F(389000), {weight:700}) ]);
+    const ledgerE = [ row(t('carriedIn',{week:W.prev}), F(389000)), row('212 '+t('ticketsTimes'), F(212000)), row(t('poolTotal'), F(601000), {weight:600}), row(t('sunsetScore'), ''), row(t('feeLine'), FN(78130), muted), row(t('levies')+' · TRA '+F(7813)+' · GBT '+F(3907), '', Object.assign({indent:'var(--sp-4)'}, muted)), row(t('paidOut'), F(522870)), row(t('perTicket',{n:2}), F(261435), {weight:700}), row(t('topUp'), '—', muted) ];
+    // Timeline D (owner, 2026-10-17): every row keeps its attested time from the owner's list; the void rows carry their void reason; main 5 (Mon 10:41) is never attested because the week was certain-void at A5's Mon 10:24.
+    const Dm = {}; Object.keys(M.TL.A.mains).forEach(n=>{ if(String(n)==='5') return; Dm[n] = M.TL.D.voidMains[n] ? ['V', M.TL.A.mains[n][1], M.TL.D.voidMains[n]] : [M.TL.A.mains[n][0], M.TL.A.mains[n][1]]; });
+    const Dr = {}; Object.keys(M.TL.A.reserves).forEach(k=>{ Dr[k] = M.TL.D.voidReserves[k] ? ['V', M.TL.A.reserves[k][1], M.TL.D.voidReserves[k]] : [M.TL.A.reserves[k][0], M.TL.A.reserves[k][1]]; });
+    const frames = [
+      base('P-register-index-360-'+loc,'P1','/millionea/register',{ title: t('registerTitle'), hashLine:null, status:null, qs:null, weeks: [ { week:t('week',{week:42}), status:t('weekStatusOpen'), line: seg(t('salesClose',{when: loc==='sw'?W.salesCloseSw:loc==='zh'?W.salesCloseZh:W.salesCloseEn})) }, { week:t('week',{week:41}), status:t('weekStatusDone'), line: seg(t('lastWeekRow',{week:41,amount:N(389000)}).replace(t('week',{week:41})+' · ','')) }, { week:t('week',{week:40}), status:t('weekStatusDone'), line: seg(t('settledRollover',{amount:N(176000)})+' · '+t('feeZero')) }, { week:t('week',{week:39}), status:t('weekStatusDone'), line: seg((loc==='sw'?'tiketi zilishinda · imeletwa mbele TZS\u00a00':loc==='zh'?'有彩票中奖 · 滚存 TZS\u00a00':'tickets won · TZS\u00a00 carried')) } ] }),
+      base('P-register-week-open-360-'+loc,'P2','hash published, no results',{ noResults: t('regNoResults'), sub: { map:['—'], log:['—'], check:'—' }, ledger: ledgerCommon(212000,212).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1000000), {weight:700}), row(t('fee'), '—', muted) ]) }),
+      base('P-register-week-live-360-'+loc,'P3','the live frame · Sun 25 Oct 12:00',{ status: t('weekStatusResultsOut'), qs: qs(M.LIVE.out, {A3:M.LIVE.out.A3, A4:M.LIVE.out.A4}), sub: { map:['—'], log:[t('logVoid',{n:4})+' · 2026-10-24 11:02'], check:'—' }, ledger: ledgerCommon(212000,212).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1000000), {weight:700}), row(t('fee'), '—', muted) ]) }),
+      base('P-register-week-check-window-360-'+loc,'P4','',{ status: t('weekStatusCheck'), qs: qs(M.TL.A.mains, M.TL.A.reserves), sub: subA, ledger: ledgerCommon(212000,212).concat([ row(t('jackpot')+' · '+t('ruleNoFigure'), F(1000000), {weight:700}), row(t('winningTickets'), '0'), row(t('fee'), '—', muted) ]) }),
+      base('P-register-week-settled-won-360-'+loc,'P5','Timeline B · fee, levies, paid, per-ticket share',{ status: t('weekStatusDone'), qs: qs(M.TL.B.mains, M.TL.B.reserves), sub: subA, ledger: ledgerB }),
+      base('P-register-week-settled-rollover-360-'+loc,'P6','Timeline A · no fee · 100% carried',{ status: t('weekStatusDone'), qs: qs(M.TL.A.mains, M.TL.A.reserves), sub: subA, ledger: ledgerA }),
+      base('P-register-week-voided-360-'+loc,'P7','Timeline D · 3 voided mains outnumber 2 valid reserves',{ status: t('weekStatusVoid'), qs: qs(Dm, Dr), sub: { map:[loc==='sw'?'Hakuna · wiki imebatilishwa':loc==='zh'?'无 · 本周作废':'None · week voided'], log:[t('logVoid',{n:2}), t('logVoid',{n:4})+' · 2026-10-24 11:02', t('logVoid',{n:7}), t('logWeekVoid')], check: W.checkOpen+' → '+W.checkClose }, ledger: ledgerD }),
+      base('P-register-week-sunset-360-'+loc,'P8','Timeline E · the winning score stated — nowhere else',{ status: t('weekStatusDone'), qs: qs(M.TL.A.mains, M.TL.A.reserves), sub: subA, ledger: ledgerE }),
+      base('P-register-week-settled-won-768-'+loc,'P9','table form',{ w:'768px', bp:768, wide:true, narrow:false, qCols:'24px minmax(0,0.6fr) minmax(0,2.2fr) minmax(0,0.8fr) minmax(0,0.7fr) minmax(0,0.8fr) minmax(0,0.9fr) minmax(0,0.6fr) minmax(0,0.9fr)', status: t('weekStatusDone'), qs: qs(M.TL.B.mains, M.TL.B.reserves), sub: subA, ledger: ledgerB }),
+      base('P-register-week-settled-won-1280-'+loc,'P10','table form · reading tier 1080',{ w:'1280px', bp:1280, tabs:false, wide:true, narrow:false, qCols:'28px minmax(0,96px) minmax(0,1fr) minmax(0,120px) minmax(0,96px) minmax(0,120px) minmax(0,120px) minmax(0,80px) minmax(0,140px)', status: t('weekStatusDone'), qs: qs(M.TL.B.mains, M.TL.B.reserves), sub: subA, ledger: ledgerB })
+    ];
+    const strata = [ seg((loc==='sw'?'Wiki 41 · hakuna 10/10 · TZS\u00a0389,000 imeletwa mbele (176,000 + 213,000 mauzo) · ada 0':loc==='zh'?'第41周 · 无 10/10 · TZS\u00a0389,000 滚存（176,000 + 213,000 销售）· 费用 0':'Week 41 · no 10/10 · TZS\u00a0389,000 carried (176,000 + 213,000 sales) · fee 0')), seg(loc==='sw'?'Wiki 40 · hakuna 10/10 · TZS\u00a0176,000 imeletwa mbele · ada 0':loc==='zh'?'第40周 · 无 10/10 · TZS\u00a0176,000 滚存 · 费用 0':'Week 40 · no 10/10 · TZS\u00a0176,000 carried · fee 0'), seg(loc==='sw'?'Wiki 39 · tiketi zilishinda · imeletwa mbele TZS\u00a00':loc==='zh'?'第39周 · 有彩票中奖 · 滚存 TZS\u00a00':'Week 39 · tickets won · TZS\u00a00 carried') ];
+    const shown = frames.slice(this.state.from, this.state.from+this.state.limit);
+    return { loc, s, strata, frames: shown, index: frames.map((f,i)=>({ id:f.id.replace('-'+loc,''), at:i })), range: this.state.from+'–'+(Math.min(frames.length, this.state.from+this.state.limit)-1)+' / '+(frames.length-1) };
+  }
+}
+</script>
+</body>
+</html>

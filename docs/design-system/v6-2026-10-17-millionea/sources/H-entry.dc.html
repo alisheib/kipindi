@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="../motion/tokens/globals-extract.css">
+<link rel="stylesheet" href="../motion/tokens/state-tokens.css">
+<link rel="stylesheet" href="../motion/tokens/motion.css">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*,*::before,*::after{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)} a{color:var(--text-link)} a:hover{color:var(--text-link-hover)}</style>
+<script src="maswali-data.js"></script>
+</helmet>
+<section style="padding:var(--sp-10) var(--sp-12) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10);align-items:flex-start">
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2);max-width:760px">
+    <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">Maswali Millionea · R2 · set H · locale {{loc}}</div>
+    <div style="font-family:var(--font-display);font-weight:600;font-size:22px;line-height:28px">H — Entry points: the home card, the classic entry, the Tiketi zangu switch</div>
+    <div style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">The Millionea card mirrors the How-to card's anatomy and sits directly after the head (How-to + headline), before the topic chips, at every width — a deviation from the sponsor deck's home template, flagged in DECISIONS.md. No countdown, no live updates; the card changes only with the home's 30-second re-render. The jackpot figure is mono, neutral ink, with its rule beside it. Switch locale: maswaliSet({loc:'en'}).</div>
+  </div>
+
+  <!-- ══ Journey home · 360 · open (in context) ══ -->
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-10);align-items:flex-start">
+    <sc-for list="{{pages360}}" as="f" hint-placeholder-count="2">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}}</span></div>
+        <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:360px;height:780px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="JHeader" bp="360" loc="{{loc}}" guest="{{f.guest}}" hint-size="360px,56px"></dc-import>
+          <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) 0">
+            <div class="mat-raised" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+              <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--wash-primary);box-shadow:var(--edge-primary),var(--shadow-primary);display:flex;align-items:center;justify-content:center;color:var(--pearl-50)"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.5v13L19 12z"></path></svg></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px">{{s.howCard}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)">{{s.howCardSub}}</span></div>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+            </div>
+            <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px;text-wrap:balance"><span style="white-space:nowrap">{{s.headA}}</span> <span style="white-space:nowrap">{{s.headB}}</span></h1>
+            <!-- the Millionea card · 360 anatomy -->
+            <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-4);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+              <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-1)">
+                <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text)">{{f.card.title}}</span>
+                <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.card.rule}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.money}}" hint-placeholder-val="{{false}}"><span class="amount" style="font-weight:600;color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.monoOnly}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                <span style="font-size:13px;line-height:18px;color:var(--text-subtle);text-wrap:pretty"><sc-for list="{{f.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+              </div>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);margin-top:var(--sp-3)"><path d="M9 6l6 6-6 6"></path></svg>
+            </a>
+            <div style="display:flex;gap:var(--sp-2);overflow:hidden;align-items:center;mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent)">
+              <sc-for list="{{chips}}" as="c" hint-placeholder-count="5"><span style="flex-shrink:0;height:44px;display:flex;align-items:center;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}</span></sc-for>
+            </div>
+            <div class="mat-raised" style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+              <div style="display:flex;justify-content:space-between;font-size:13px;line-height:18px;color:var(--brand-300)"><span>{{q1.cat}}</span><span class="amount">{{q1.day}}</span></div>
+              <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px;letter-spacing:-0.36px">{{q1.text}}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)">
+                <span class="btn btn-yes" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.yes}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q1.sub}}</span></span>
+                <span class="btn btn-no" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.no}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q1.sub}}</span></span>
+              </div>
+            </div>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0"><dc-import name="JTabs" loc="{{loc}}" active="maswali" hint-size="360px,68px"></dc-import></div>
+        </div>
+      </div>
+    </sc-for>
+
+    <!-- ══ card-only states · 360 ══ -->
+    <div style="display:flex;flex-direction:column;gap:var(--sp-6);width:360px">
+      <sc-for list="{{cards360}}" as="f" hint-placeholder-count="8">
+        <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+          <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#{{f.id}}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none;white-space:nowrap">{{f.badge}}</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">{{f.id}}</span></div>
+          <div id="{{f.id}}" data-screen-label="{{f.id}}" style="width:360px;background:var(--bg);padding:var(--sp-4);border:1px solid var(--border)">
+            <sc-if value="{{f.note}}" hint-placeholder-val="{{false}}">
+              <div style="border:1px dashed var(--border-strong);border-radius:var(--r-lg);padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-2)">
+                <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{f.noteHead}}</span>
+                <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{f.noteBody}}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{f.card}}" hint-placeholder-val="{{true}}">
+              <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-4);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+                <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-1)">
+                  <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text)">{{f.card.title}}</span>
+                  <sc-if value="{{f.card.flag}}" hint-placeholder-val="{{false}}"><span style="font-size:13px;line-height:18px;color:var(--text)">{{f.card.flag}}</span></sc-if>
+                  <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{f.card.rule}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.money}}" hint-placeholder-val="{{false}}"><span class="amount" style="font-weight:600;color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.monoOnly}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                  <span style="font-size:13px;line-height:18px;color:var(--text-subtle);text-wrap:pretty"><sc-for list="{{f.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+                </div>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);margin-top:var(--sp-3)"><path d="M9 6l6 6-6 6"></path></svg>
+              </a>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- ══ 768 · open · page top ══ -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+    <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-home-card-open-768-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H10</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-home-card-open-768-{{loc}} · the figure and its rule move into a right-aligned block</span></div>
+    <div id="H-home-card-open-768-sw" data-screen-label="H-home-card-open-768" style="width:768px;height:560px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+      <dc-import name="JHeader" bp="768" loc="{{loc}}" hint-size="768px,56px"></dc-import>
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) 0">
+        <div class="mat-raised" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+          <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--wash-primary);box-shadow:var(--edge-primary),var(--shadow-primary);display:flex;align-items:center;justify-content:center;color:var(--pearl-50)"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.5v13L19 12z"></path></svg></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px">{{s.howCard}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)">{{s.howCardSub}}</span></div>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+        </div>
+        <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px"><span style="white-space:nowrap">{{s.headA}}</span> <span style="white-space:nowrap">{{s.headB}}</span></h1>
+        <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-4);align-items:center;padding:var(--sp-4);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+          <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text)">{{open.card.title}}</span>
+            <span style="font-size:13px;line-height:18px;color:var(--text-subtle)"><sc-for list="{{open.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right;max-width:300px">
+            <span class="amount" style="font-size:18px;line-height:24px;font-weight:600;color:var(--text)">{{open.card.fig}}</span>
+            <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty">{{open.card.ruleNoFig}}</span>
+          </div>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+        </a>
+        <div style="display:flex;gap:var(--sp-2);overflow:hidden;align-items:center;mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent)">
+          <sc-for list="{{chips}}" as="c" hint-placeholder-count="5"><span style="flex-shrink:0;height:44px;display:flex;align-items:center;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}</span></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
+          <sc-for list="{{twoQ}}" as="q" hint-placeholder-count="2">
+            <div class="mat-raised" style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+              <div style="display:flex;justify-content:space-between;font-size:13px;line-height:18px;color:var(--brand-300)"><span>{{q.cat}}</span><span class="amount">{{q.day}}</span></div>
+              <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px;letter-spacing:-0.36px">{{q.text}}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)"><span class="btn btn-yes" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.yes}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q.sub}}</span></span><span class="btn btn-no" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.no}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q.sub}}</span></span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:0"><dc-import name="JTabs" loc="{{loc}}" active="maswali" hint-size="768px,68px"></dc-import></div>
+    </div>
+  </div>
+
+  <!-- ══ 1280 · open · page top ══ -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+    <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-home-card-open-1280-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H11</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-home-card-open-1280-{{loc}} · one row across the board column, below the head row</span></div>
+    <div id="H-home-card-open-1280-sw" data-screen-label="H-home-card-open-1280" style="width:1280px;height:520px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+      <dc-import name="JHeader" bp="1280" loc="{{loc}}" hint-size="1280px,56px"></dc-import>
+      <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:var(--sp-5);padding:var(--sp-8) var(--sp-8) 0;max-width:1280px">
+        <div style="display:grid;grid-template-columns:1fr 440px;gap:var(--sp-8);align-items:center">
+          <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:48px;line-height:52px;letter-spacing:-1.7px"><span style="white-space:nowrap">{{s.headA}}</span> <span style="white-space:nowrap">{{s.headB}}</span></h1>
+          <div class="mat-raised" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+            <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--wash-primary);box-shadow:var(--edge-primary),var(--shadow-primary);display:flex;align-items:center;justify-content:center;color:var(--pearl-50)"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.5v13L19 12z"></path></svg></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px">{{s.howCard}}</span><span style="font-size:13px;line-height:18px;color:var(--text-muted)">{{s.howCardSub}}</span></div>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+          </div>
+        </div>
+        <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-5);align-items:center;padding:var(--sp-4) var(--sp-5);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+          <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+          <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text);flex-shrink:0">{{open.card.title}}</span>
+          <span style="font-size:13px;line-height:18px;color:var(--text-muted);flex:1"><sc-for list="{{open.card.rule}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.money}}" hint-placeholder-val="{{false}}"><span class="amount" style="font-weight:600;color:var(--text);font-size:16px">{{p.t}}</span></sc-if><sc-if value="{{p.monoOnly}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+          <span style="font-size:13px;line-height:18px;color:var(--text-subtle);flex-shrink:0;white-space:nowrap"><sc-for list="{{open.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+        </a>
+        <div style="display:flex;gap:var(--sp-2);align-items:center">
+          <sc-for list="{{chipsAll}}" as="c" hint-placeholder-count="7"><span style="flex-shrink:0;height:44px;display:flex;align-items:center;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}</span></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5)">
+          <sc-for list="{{threeQ}}" as="q" hint-placeholder-count="3">
+            <div class="mat-raised" style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+              <div style="display:flex;justify-content:space-between;font-size:13px;line-height:18px;color:var(--brand-300)"><span>{{q.cat}}</span><span class="amount">{{q.day}}</span></div>
+              <div style="font-family:var(--font-display);font-weight:600;font-size:18px;line-height:24px;letter-spacing:-0.36px">{{q.text}}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)"><span class="btn btn-yes" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.yes}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q.sub}}</span></span><span class="btn btn-no" style="height:68px;flex-direction:column;gap:2px;border-radius:var(--r-md);font-size:20px"><span>{{s.no}}</span><span style="font-size:12px;font-weight:500;letter-spacing:0;font-family:var(--font-body)">{{q.sub}}</span></span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Classic entry (ruled) ══ -->
+  <div style="display:flex;flex-wrap:wrap;gap:var(--sp-10);align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+      <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-classic-markets-card-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H12</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-classic-markets-card-360-{{loc}} · (a) the same card at the head of /markets, above the filters · (d) no rail slot</span></div>
+      <div id="H-classic-markets-card-360-sw" data-screen-label="H-classic-markets-card-360" style="width:360px;height:780px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+        <dc-import name="CHeader" bp="360" loc="{{loc}}" hint-size="360px,88px"></dc-import>
+        <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) 0">
+          <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.classicMarkets}}</div>
+          <div style="height:48px;display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-4);border:1px solid var(--border-control);border-radius:var(--r-md);background:var(--bg-inset);color:var(--text-subtle)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg><span style="font-family:var(--font-mono);font-size:14px">{{searchPh}}</span></div>
+          <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-4);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+            <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--sp-1)">
+              <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text)">{{open.card.title}}</span>
+              <span style="font-size:13px;line-height:18px;color:var(--text-muted);text-wrap:pretty"><sc-for list="{{open.card.rule}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.money}}" hint-placeholder-val="{{false}}"><span class="amount" style="font-weight:600;color:var(--text)">{{p.t}}</span></sc-if><sc-if value="{{p.monoOnly}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+              <span style="font-size:13px;line-height:18px;color:var(--text-subtle)"><sc-for list="{{open.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+            </div>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle);margin-top:var(--sp-3)"><path d="M9 6l6 6-6 6"></path></svg>
+          </a>
+          <div style="display:flex;gap:var(--sp-2);align-items:center;overflow:hidden;mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent)">
+            <sc-for list="{{filters}}" as="c" hint-placeholder-count="4"><span style="flex-shrink:0;height:44px;display:flex;align-items:center;gap:6px;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}<span class="amount" style="font-size:11px;color:var(--text-subtle)">{{c.n}}</span></span></sc-for>
+          </div>
+          <div class="mat-raised" style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-4);border-radius:var(--r-lg)">
+            <div style="display:flex;gap:var(--sp-2);align-items:center"><span style="height:22px;display:flex;align-items:center;gap:5px;padding:0 var(--sp-2);border-radius:var(--r-pill);background:var(--danger-bg);border:1px solid var(--danger-border);font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--danger-fg)"><span style="width:5px;height:5px;border-radius:50%;background:var(--live-400)"></span>{{s.classicLive}}</span><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{q1.cat}}</span></div>
+            <div style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:22px">{{q1.text}}</div>
+            <div style="height:8px;border-radius:var(--r-pill);background:var(--bar-empty-track);background-size:var(--bar-empty-pitch) 100%"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)"><span class="btn btn-yes btn-md">{{s.yes}}</span><span class="btn btn-no btn-md">{{s.no}}</span></div>
+          </div>
+        </div>
+        <span style="position:absolute;right:-32px;top:300px;width:64px;height:64px;border-radius:50%;box-shadow:var(--elev-float);background:var(--bg-royal-soft);display:flex;align-items:center;justify-content:center"><img src="assets/mark-color.svg" width="52" height="52" alt=""></span>
+        <div style="position:absolute;left:0;right:0;bottom:0"><dc-import name="CRail" loc="{{loc}}" active="markets" hint-size="360px,68px"></dc-import></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--sp-6);width:360px">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-classic-more-menu-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H13</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-classic-more-menu-360-{{loc}} · (b) first row of the More menu, signed-in and guest</span></div>
+        <div id="H-classic-more-menu-360-sw" data-screen-label="H-classic-more-menu-360" style="width:360px;height:420px;overflow:hidden;background:var(--bg);position:relative;border:1px solid var(--border)">
+          <div style="position:absolute;inset:0;background:var(--bg-overlay);opacity:0.6"></div>
+          <div class="mat-float" style="position:absolute;right:var(--sp-3);bottom:84px;width:212px;border-radius:var(--r-lg);padding:var(--sp-2) 0;display:flex;flex-direction:column;border:none">
+            <sc-for list="{{moreRows}}" as="r" hint-placeholder-count="7">
+              <div style="height:44px;display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-5);font-family:var(--font-body);font-weight:{{r.weight}};font-size:14px;color:var(--text);border-bottom:1px solid {{r.line}}">
+                <sc-if value="{{r.glyph}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted)"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></sc-if>
+                <span style="flex:1">{{r.label}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:absolute;left:0;right:0;bottom:0"><dc-import name="CRail" loc="{{loc}}" active="more" chat="{{false}}" hint-size="360px,68px"></dc-import></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-classic-positions-notice-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H14</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-classic-positions-notice-360-{{loc}} · (c) one notice row, only when tickets are held</span></div>
+        <div id="H-classic-positions-notice-360-sw" data-screen-label="H-classic-positions-notice-360" style="width:360px;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="CHeader" bp="360" loc="{{loc}}" ticker="{{false}}" hint-size="360px,56px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6) var(--sp-4) var(--sp-6)">
+            <div style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{posEyebrow}}</div>
+            <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px">{{posTitle}}</h1>
+            <a href="#" class="mat-flat" style="display:flex;align-items:center;gap:var(--sp-3);min-height:44px;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);text-decoration:none;color:var(--text);font-size:13px;line-height:18px">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted);flex-shrink:0"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg>
+              <span style="flex:1"><sc-for list="{{posNotice}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+            </a>
+            <div class="mat-raised" style="height:120px;border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint)">{{posPlaceholder}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:var(--sp-6);width:360px">
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-tickets-switch-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H15</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-tickets-switch-360-{{loc}} · Maswali | Juu/Chini | Millionea</span></div>
+        <div id="H-tickets-switch-360-sw" data-screen-label="H-tickets-switch-360" style="width:360px;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+          <dc-import name="JHeader" bp="360" loc="{{loc}}" hint-size="360px,56px"></dc-import>
+          <div style="display:flex;flex-direction:column;gap:var(--sp-5);padding:var(--sp-8) var(--sp-4) var(--sp-6)">
+            <h1 style="margin:0;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:34px;letter-spacing:-0.85px">{{s.ticketsTitle}}</h1>
+            <div style="display:flex;border-bottom:1px solid var(--border)">
+              <sc-for list="{{switchRows}}" as="w" hint-placeholder-count="3"><span style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;padding:0 var(--sp-2);text-align:center;font-family:var(--font-body);font-weight:600;font-size:14px;line-height:18px;color:{{w.ink}};border-bottom:2px solid {{w.line}};margin-bottom:-1px;overflow-wrap:anywhere">{{w.label}}</span></sc-for>
+            </div>
+            <div style="display:flex;gap:var(--sp-2);align-items:center;overflow:hidden;mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(to right,var(--text) calc(100% - 24px),transparent)"><sc-for list="{{ticketChips}}" as="c" hint-placeholder-count="4"><span style="flex-shrink:0;height:44px;display:flex;align-items:center;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}</span></sc-for></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-tickets-switch-stretch-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H16</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-tickets-switch-stretch-360 · every label at 2.25× its English length · zero overflow</span></div>
+        <div id="H-tickets-switch-stretch-360-sw" data-screen-label="H-tickets-switch-stretch-360" style="width:360px;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border);padding:var(--sp-6) var(--sp-4)">
+          <div style="display:flex;border-bottom:1px solid var(--border)">
+            <sc-for list="{{switchStretch}}" as="w" hint-placeholder-count="3"><span style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;padding:var(--sp-2);text-align:center;font-family:var(--font-body);font-weight:600;font-size:14px;line-height:18px;color:{{w.ink}};border-bottom:2px solid {{w.line}};margin-bottom:-1px;overflow-wrap:anywhere">{{w.label}}</span></sc-for>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+        <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-classic-rail-noslot-360-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H17</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-classic-rail-noslot-360 · (d) the five tracks unchanged — NO Millionea slot</span></div>
+        <div id="H-classic-rail-noslot-360-sw" data-screen-label="H-classic-rail-noslot-360" style="width:360px;background:var(--bg);position:relative;border:1px solid var(--border);padding-top:var(--sp-8)">
+          <dc-import name="CRail" loc="{{loc}}" active="markets" chat="{{false}}" hint-size="360px,68px"></dc-import>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 1280 classic: board head with the card + the top bar overflow menu ══ -->
+  <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+    <div style="display:flex;align-items:center;gap:var(--sp-2)"><a href="#H-classic-topbar-overflow-1280-sw" style="font-family:var(--font-mono);font-size:11px;font-weight:700;border:1px solid var(--border-strong);border-radius:var(--r-xs);padding:2px 8px;color:var(--text-muted);background:var(--bg-elevated);text-decoration:none">H18</a><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-subtle)">H-classic-topbar-overflow-1280-{{loc}} · (a) the card at the head of the board · (b) "Millionea" as a row of the Zaidi overflow — no inline link</span></div>
+    <div id="H-classic-topbar-overflow-1280-sw" data-screen-label="H-classic-topbar-overflow-1280" style="width:1280px;height:420px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;position:relative;border:1px solid var(--border)">
+      <dc-import name="CHeader" bp="1280" loc="{{loc}}" hint-size="1280px,88px"></dc-import>
+      <div style="flex:1;display:flex;flex-direction:column;gap:var(--sp-5);padding:var(--sp-8) var(--sp-8) 0">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-subtle)">{{s.classicMarkets}}</span></div>
+        <a href="#" class="mat-raised" style="display:flex;gap:var(--sp-5);align-items:center;padding:var(--sp-4) var(--sp-5);border-radius:var(--r-lg);text-decoration:none;color:inherit">
+          <span style="width:48px;height:48px;flex-shrink:0;border-radius:var(--r-md);background:var(--bg-overlay);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></span>
+          <span style="font-family:var(--font-display);font-weight:600;font-size:16px;line-height:24px;color:var(--text);flex-shrink:0">{{open.card.title}}</span>
+          <span style="font-size:13px;line-height:18px;color:var(--text-muted);flex:1"><sc-for list="{{open.card.rule}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.money}}" hint-placeholder-val="{{false}}"><span class="amount" style="font-weight:600;color:var(--text);font-size:16px">{{p.t}}</span></sc-if><sc-if value="{{p.monoOnly}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+          <span style="font-size:13px;line-height:18px;color:var(--text-subtle);flex-shrink:0;white-space:nowrap"><sc-for list="{{open.card.meta}}" as="p" hint-placeholder-count="1"><sc-if value="{{p.mono}}" hint-placeholder-val="{{false}}"><span class="amount">{{p.t}}</span></sc-if><sc-if value="{{p.plain}}" hint-placeholder-val="{{true}}"><span>{{p.t}}</span></sc-if></sc-for></span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-subtle)"><path d="M9 6l6 6-6 6"></path></svg>
+        </a>
+        <div style="height:48px;width:460px;display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-4);border:1px solid var(--border-control);border-radius:var(--r-md);background:var(--bg-inset);color:var(--text-subtle)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg><span style="font-family:var(--font-mono);font-size:14px">{{searchPh}}</span></div>
+        <div style="display:flex;gap:var(--sp-2);align-items:center"><sc-for list="{{filters}}" as="c" hint-placeholder-count="4"><span style="height:44px;display:flex;align-items:center;gap:6px;padding:0 var(--sp-4);border-radius:var(--r-pill);border:1px solid {{c.border}};background:{{c.bg}};box-shadow:{{c.glow}};font-family:var(--font-body);font-weight:600;font-size:13px;color:{{c.ink}};white-space:nowrap">{{c.label}}<span class="amount" style="font-size:11px;color:var(--text-subtle)">{{c.n}}</span></span></sc-for></div>
+      </div>
+      <div class="mat-float" style="position:absolute;left:600px;top:60px;width:232px;border-radius:var(--r-lg);padding:var(--sp-2) 0;display:flex;flex-direction:column;border:none">
+        <sc-for list="{{overflowRows}}" as="r" hint-placeholder-count="5">
+          <div style="height:44px;display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-5);font-family:var(--font-body);font-weight:{{r.weight}};font-size:14px;color:var(--text);border-bottom:1px solid {{r.line}}">
+            <sc-if value="{{r.glyph}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--text-muted)"><path d="M4.5 16.2Q12 18.8 19.5 16.2"></path><path d="M7 16.9V11.8"></path><path d="M12 17.5V9.2"></path><path d="M17 16.9V11.8"></path><circle cx="7" cy="9.7" r="1.55"></circle><circle cx="12" cy="7.1" r="1.55"></circle><circle cx="17" cy="9.7" r="1.55"></circle></svg></sc-if>
+            <span style="flex:1">{{r.label}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;loc&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sw&quot;,&quot;options&quot;:[&quot;sw&quot;,&quot;en&quot;,&quot;zh&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Locale&quot;}}">
+class Component extends DCLogic {
+  state = { loc: (new URLSearchParams(location.search).get('locale')) || null };
+  componentDidMount(){ window.maswaliSet = (p)=>this.setState(p); if(!window.MASWALI){ window.addEventListener('load',()=>this.forceUpdate()); const s=document.querySelector('script[src*="maswali-data"]'); if(s) s.addEventListener('load',()=>this.forceUpdate()); } }
+  renderVals(){
+    const M = window.MASWALI; const loc = this.state.loc || this.props.loc || 'sw';
+    if(!M) return { loc, pages360:[], cards360:[], chips:[], chipsAll:[], twoQ:[], threeQ:[], filters:[], moreRows:[], overflowRows:[], switchRows:[], switchStretch:[], ticketChips:[], posNotice:[], s:{}, open:{card:{}}, q1:{} };
+    const t = (k,v)=>M.t(loc,k,v); const W = M.WEEK; const seg = M.segs;
+    const s = { howCard:t('howCard'), howCardSub:t('howCardSub'), homeHeadline:t('homeHeadline'), headA: M.splitHead(t('homeHeadline'))[0], headB: M.splitHead(t('homeHeadline'))[1], yes:t('yes'), no:t('no'), classicMarkets:t('classicMarkets'), ticketsTitle:t('ticketsTitle') };
+    const title = (w)=> t('productLabel') + ' · ' + t('week',{week:w});
+    const ruleFig = (amt)=> seg(t('ruleWithFigure',{amount: M.fmtN(amt)}));
+    const ruleDash = seg(t('jackpotDash') + t('ruleWithFigure',{amount:''}).slice(t('ruleWithFigure',{amount:''}).indexOf(' ·')));
+    const card = (o)=>Object.assign({ title:title(W.n), rule: ruleFig(1000000), fig: M.fmt(1000000), ruleNoFig: t('ruleNoFigure'), meta: seg(t('cardMetaOpen',{n:2})) }, o);
+    const states = [
+      { id:'presale', badge:'H2', card: card({ rule: ruleDash, fig:'—', meta: seg(t('opensMonday')) }) },
+      { id:'open-cap-full', badge:'H3', card: card({ meta: seg(t('cardCapFull',{next:W.next})) }) },
+      { id:'closed-results', badge:'H4', card: card({ meta: seg(t('resultsOut',{n:5})) }) },
+      { id:'settled-won', badge:'H5', card: card({ rule: ruleFig(1050000), fig:M.fmt(1050000), meta: seg(t('settledWon',{week:W.n,n:3})) }) },
+      { id:'settled-rollover', badge:'H6', card: card({ meta: seg(t('settledRollover',{amount:M.fmtN(601000)})) }) },
+      { id:'final-week', badge:'H7', card: card({ flag: t('finalWeek') }) },
+      { id:'paused', badge:'H8', card: card({ rule: ruleDash, fig:'—', meta: seg(t('pausedShort')) }) },
+      { id:'guest', badge:'H9', card: card({ meta: seg(t('cardMetaGuest')) }) },
+      { id:'break', badge:'H9b', note:true, noteHead: 'H-home-card-break · not drawn', noteBody: loc==='sw' ? 'Wakati wa mapumziko (§C8) kadi ya Millionea HAICHORWI kwenye ukurasa wa nyumbani wala kwenye mlango wa classic. Tiketi za mchezaji zinabaki kwenye Tiketi zangu.' : 'During a cooling-off or self-exclusion break (§C8) the Millionea card is NOT drawn on the home tab or the classic board. The player\u2019s held tickets stay visible under Tiketi zangu.' }
+    ].map(x=>Object.assign(x, { id: 'H-home-card-'+x.id+'-360-'+loc }));
+    const open = { card: card({}) };
+    const pages360 = [ { id:'H-home-card-open-360-'+loc, badge:'H1', guest:false, card: open.card } ];
+    const cats = ['Michezo','Hali ya hewa','Uchumi','Kripto','Utamaduni','Teknolojia','Nyingine'];
+    const chip = (label, on)=>({ label, border: on?'var(--brand-400)':'transparent', bg: on?'var(--pill-active)':'transparent', ink: on?'var(--text)':'var(--text-muted)', glow: on?'var(--glow-selected)':'none' });
+    const chipsAll = [chip(t('chipAll'),true)].concat(cats.map(c=>chip(M.STR[loc].cat[c]||c,false)));
+    const qs = M.Q.slice(0,3).map((q,i)=>({ cat: M.STR[loc].cat[q.cat]||q.cat, day: (loc==='sw'?'Siku ':loc==='zh'?'第':'Day ')+(i+1)+(loc==='zh'?'天':''), text: loc==='sw'?q.sw:q.en, sub: loc==='sw'?'Kuwa wa kwanza':loc==='zh'?'成为第一个':'Be the first' }));
+    const filters = [ Object.assign(chip(loc==='sw'?'Wazi':loc==='zh'?'开放':'Open',true),{n:'34'}), Object.assign(chip(loc==='sw'?'Zinafunga leo':loc==='zh'?'今日截止':'Closing today',false),{n:'1'}), Object.assign(chip(loc==='sw'?'Mpya':loc==='zh'?'新':'New',false),{n:'28'}), Object.assign(chip(loc==='sw'?'Zote':loc==='zh'?'全部':'All',false),{n:'34'}) ];
+    const moreLabels = loc==='sw' ? ['Matokeo','Nafasi','Pochi','Jedwali la Washindi','Alika marafiki','Kupendekeza'] : loc==='zh' ? ['结果','持仓','钱包','排行榜','邀请朋友','推荐'] : ['Results','Positions','Wallet','Leaderboard','Invite friends','Proposals'];
+    const moreRows = [{ label:t('moreMenuRow'), glyph:true, weight:600, line:'var(--border)' }].concat(moreLabels.map((l,i)=>({ label:l, glyph:false, weight:500, line: i===moreLabels.length-1?'transparent':'var(--border)' })));
+    const overflowRows = [{ label:t('moreMenuRow'), glyph:true, weight:600, line:'var(--border)' }].concat((loc==='sw'?['Pochi','Jedwali la Washindi','Alika marafiki','Kupendekeza']:loc==='zh'?['钱包','排行榜','邀请朋友','推荐']:['Wallet','Leaderboard','Invite friends','Proposals']).map((l,i,a)=>({ label:l, glyph:false, weight:500, line: i===a.length-1?'transparent':'var(--border)' })));
+    const sw3 = [t('switchMaswali'), t('switchUpDown'), t('switchMillionea')]; const en3 = ['Maswali','Up & Down','Millionea'];
+    const switchRows = sw3.map((l,i)=>({ label:l, ink: i===2?'var(--text)':'var(--text-muted)', line: i===2?'var(--brand-400)':'transparent' }));
+    const switchStretch = sw3.map((l,i)=>({ label: M.stretch(loc, en3[i], l), ink: i===2?'var(--text)':'var(--text-muted)', line: i===2?'var(--brand-400)':'transparent' }));
+    const ticketChips = [chip(t('lensAll'),true), chip(t('lensOpen'),false), chip(t('lensSettled'),false), chip(t('lensWon'),false)];
+    return { loc, s, pages360, cards360: states, open, chips: chipsAll.slice(0,5), chipsAll, q1: qs[0], twoQ: qs.slice(0,2), threeQ: qs, filters, searchPh: loc==='sw'?'Tafuta soko':loc==='zh'?'搜索市场':'Search markets', moreRows, overflowRows, switchRows, switchStretch, ticketChips,
+      posEyebrow: loc==='sw'?'Nafasi':loc==='zh'?'持仓':'Positions', posTitle: loc==='sw'?'Utabiri wako':loc==='zh'?'你的预测':'Your predictions', posNotice: seg(t('positionsNotice',{n:2})), posPlaceholder: loc==='sw'?'kadi ya msimamo · kama ilivyo':'position card · as shipped' };
+  }
+}
+</script>
+</body>
+</html>
