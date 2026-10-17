@@ -4042,7 +4042,13 @@ export async function settleMarket(
   //    LOSING pool, so it DOES depend on the outcome — we pass the declared winner so
   //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
   const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;
-  const settleFee = poolFee(m.yesPool, m.noPool, settleCfg, winningSide);
+  // MASWALI-BUILD S3 · a Millionea week reaches here only on its VOID arm (refused above otherwise), and a void charges
+  // no fee: its pool is never priced as a poll's — `poolFee` refuses the jackpot model, loudly, and must stay that way.
+  const settleFee: ReturnType<typeof poolFee> = switchLine(m.productLine, {
+    MARKET: () => poolFee(m.yesPool, m.noPool, settleCfg, winningSide),
+    UPDOWN: () => poolFee(m.yesPool, m.noPool, settleCfg, winningSide),
+    MASWALI: () => ({ pool: grossPool, smaller: 0, larger: grossPool, commission: 0, ceiling: 0, fee: 0, netPool: grossPool, capped: false, shareOfLosers: 0 }),
+  });
   /**
    * 🔴 THE LEVIES, SPLIT ONCE — and it is the NET that referral commission is priced on.
    *

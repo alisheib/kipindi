@@ -92,7 +92,7 @@ type Computed = { preview: MaswaliSettlementPreview; week: StoredWeek; winners: 
  * Every figure of one week's settlement, read fresh — or the reason it cannot settle. Writes NOTHING. `R` is the claimed
  * carry when the week has one, else the jackpot as a claim would read it now (the preview's case).
  */
-async function computeSettlement(weekId: string): Promise<{ ok: true; c: Computed } | Refused> {
+async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: true; c: Computed } | Refused> {
   const week = await weekStore.get(weekId);
   if (!week) return refuse("No such week.");
   if (week.state !== "RESOLVING") return refuse(`Week ${week.code} is ${week.state}; only a week whose results are sealed (RESOLVING) settles.`);
@@ -113,7 +113,7 @@ async function computeSettlement(weekId: string): Promise<{ ok: true; c: Compute
   if (!gate.ready) return refuse(`Week ${week.code} still needs ${gate.needs.length} question(s) sealed before it can settle.`);
   if (gate.weekVoid) return refuse(`Week ${week.code} voids whole (MR-18): refund it with the week void, never a settlement.`);
   if (!week.gradedSetFinalAt || !week.objectionsCloseAt) return refuse(`Week ${week.code}'s graded set is not final yet.`);
-  if (Date.parse(week.objectionsCloseAt) > Date.now()) return refuse(`Week ${week.code}'s objection window is still open.`);
+  if (Date.parse(week.objectionsCloseAt) > nowMs) return refuse(`Week ${week.code}'s objection window is still open.`);
   const { countOpenObjections } = await import("./objections-service");
   if ((await countOpenObjections(week.marketId)) > 0) return refuse(`An objection is standing against week ${week.code}; it settles once every objection is decided.`);
 
@@ -194,9 +194,12 @@ async function computeSettlement(weekId: string): Promise<{ ok: true; c: Compute
   };
 }
 
-/** ⭐ OD-06 · THE SETTLEMENT, PREPARED: every figure the release would pay, and its digest. Writes nothing. */
-export async function previewMaswaliSettlement(weekId: string): Promise<{ ok: true; preview: MaswaliSettlementPreview } | Refused> {
-  const r = await computeSettlement(weekId);
+/**
+ * ⭐ OD-06 · THE SETTLEMENT, PREPARED: every figure the release would pay, and its digest. Writes nothing.
+ * `now` is the week's clock (the objection window), injectable like every week act; money is stamped on the real clock.
+ */
+export async function previewMaswaliSettlement(weekId: string, now?: Date): Promise<{ ok: true; preview: MaswaliSettlementPreview } | Refused> {
+  const r = await computeSettlement(weekId, (now ?? new Date()).getTime());
   return r.ok ? { ok: true, preview: r.c.preview } : r;
 }
 
@@ -208,9 +211,10 @@ class SettleAbort extends Error { constructor(readonly why: string) { super(why)
  * the preview the officer read: the release recomputes everything inside the locks and refuses unless it matches.
  * Idempotent: a SETTLED week answers `already`.
  */
-export async function settleMaswaliWeek(input: { weekId: string; releasedBy: string; digest: string }): Promise<
+export async function settleMaswaliWeek(input: { weekId: string; releasedBy: string; digest: string; now?: Date }): Promise<
   { ok: true; week: StoredWeek; already?: boolean } | Refused
 > {
+  const nowMs = (input.now ?? new Date()).getTime();
   const first = await weekStore.get(input.weekId);
   if (!first) return refuse("No such week.");
   if (first.state === "SETTLED") return { ok: true, week: first, already: true };
@@ -220,7 +224,7 @@ export async function settleMaswaliWeek(input: { weekId: string; releasedBy: str
   // ⛔ THE HOLDS COME FIRST (MB-43), outside every lock (a hold takes `wallet:`, which never nests inside `market:`), and
   //    before any credit: a held winner's money is never spendable for an instant. A hold the release then refuses
   //    to pay stays — conservative, audited, and lifted by Compliance.
-  const pre = await computeSettlement(input.weekId);
+  const pre = await computeSettlement(input.weekId, nowMs);
   if (!pre.ok) return pre;
   if (pre.c.preview.digest !== input.digest) return refuse("The settlement changed since it was prepared. Prepare it again and read the new figures.");
   for (const w of pre.c.winners) {
@@ -241,7 +245,7 @@ export async function settleMaswaliWeek(input: { weekId: string; releasedBy: str
       return withLock(`market:${marketId}`, async (tx): Promise<{ ok: true; week: StoredWeek; already?: boolean } | Refused> => {
         const again = await weekStore.get(input.weekId);
         if (again?.state === "SETTLED") return { ok: true, week: again, already: true };
-        const r = await computeSettlement(input.weekId);
+        const r = await computeSettlement(input.weekId, nowMs);
         if (!r.ok) return r;
         const { preview: f, week, winners, losers } = r.c;
         // The digest was taken with R as the claim WOULD read; now it is claimed, and must be that same R.

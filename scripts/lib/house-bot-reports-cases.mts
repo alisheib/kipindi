@@ -880,8 +880,12 @@ if (STORE === "memory") {
        positionId, an eighth POSITIONED site with no marker, and held this section red for every lane until the
        Vodacom session reported it; a fixture has no position to copy a marker from, so it now positions nothing.
        Positioned stays 7. */
+    /* ⭐ POSITIONED 7 → 11 (2026-10-17, MASWALI-BUILD S3): the four Millionea ticket writes — the purchase's BET_PLACED,
+       the free cancel's CASHOUT, the week's BET_PAYOUT and Compliance's forfeit (ADJUSTMENT_DEBIT). Each positions its row
+       on the ticket's own position and copies the marker from THAT object (0.232.1 holds them like the seven); a desk
+       account is refused before any of them, so the marker is always absent — kept so the rule has no exception. */
     ok("0.232.0 · the population is real: every .txn.create( in tracked src/ is read from the tree — wider than src/lib/server, so a route that writes a money row cannot escape by living somewhere else",
-      all.length >= 18 && files.length > 500 && positioned.length === 7 && exempt.length === 12,
+      all.length >= 18 && files.length > 500 && positioned.length === 11 && exempt.length === 12,
       `${all.length} txn.create sites in ${new Set(all.map((s) => s.file)).size} files, over ${files.length} src files · ${positioned.length} positioned · ${exempt.length} exempt (positionId: null)`);
 
     const offenders = positioned.map((s) => ({ at: `${s.file}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
@@ -963,8 +967,12 @@ if (STORE === "memory") {
     // 2026-10-17 · MASWALI-BUILD S0.5 (the fence) adds door checks and exhaustive product-line branches above the first
     // write: 1796→1832, 3081→3120, 3552→3593, 4027→4073, 4159→4208, 4300→4349, 4901→4959. Each nine-line write was
     // matched against origin/main 7bf0e6eb and SHA256-compared, CR stripped: all seven byte-identical, every marker kept.
+    // 2026-10-17 · MASWALI-BUILD S3 (the money path) adds the ticket arms above the first write and four Millionea writes of its own,
+    // in maswali-money-service.ts and maswali-settlement.ts. Re-derived from the tree, never added by hand: the seven
+    // market-service writes are each the same nine lines as main's (SHA-256, CR stripped), at their new lines; the four
+    // new sites follow them in file order. The label still says "seven": they are the platform's, the four are Millionea's.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1832", "market-service.ts:3120", "market-service.ts:3593", "market-service.ts:4073", "market-service.ts:4208", "market-service.ts:4349", "market-service.ts:4959"]), j(marked));
+      j(marked) === j(["market-service.ts:1862", "market-service.ts:3150", "market-service.ts:3627", "market-service.ts:4113", "market-service.ts:4248", "market-service.ts:4396", "market-service.ts:5006", "maswali-money-service.ts:365", "maswali-money-service.ts:490", "maswali-settlement.ts:282", "maswali-settlement.ts:461"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -976,18 +984,21 @@ if (STORE === "memory") {
      * anything. That is not fixed by a better sentence: it is MEASURED here and printed, so the number cannot
      * quietly shrink, and the uncovered sites are named in `plans/house-bots/DEFERRED-TESTS.md`.
      */
-    const anchorLines = new Set<number>();
-    const msRaw = read(MS_REL).replace(/\r\n/g, "\n");
+    // ⭐ READ PER FILE (2026-10-17, MASWALI-BUILD S3): the four Millionea writes live outside market-service.ts, and a
+    // marker site there is covered only by an anchor that quotes ITS file — never by a line number in another one.
+    const anchorLines = new Map<string, Set<number>>();
     for (const a of MONEY_ANCHORS as Array<{ file: string; from: string; to: string }>) {
-      if (a.file !== MS_REL) continue;
       if (!a.from.includes("houseBotId")) continue;
-      const at = msRaw.indexOf(a.from.replace(/\r\n/g, "\n"));
+      const raw = read(a.file).replace(/\r\n/g, "\n");
+      const at = raw.indexOf(a.from.replace(/\r\n/g, "\n"));
       if (at < 0) continue;
-      const startLine = msRaw.slice(0, at).split("\n").length;
+      const startLine = raw.slice(0, at).split("\n").length;
       const endLine = startLine + a.from.split("\n").length - 1;
-      for (let L = startLine; L <= endLine; L++) anchorLines.add(L);
+      const set = anchorLines.get(a.file) ?? new Set<number>();
+      for (let L = startLine; L <= endLine; L++) set.add(L);
+      anchorLines.set(a.file, set);
     }
-    const covered = positioned.filter((s) => s.marker !== null && [...anchorLines].some((L) => L >= s.line && L <= s.endLine));
+    const covered = positioned.filter((s) => s.marker !== null && [...(anchorLines.get(s.file) ?? [])].some((L) => L >= s.line && L <= s.endLine));
     const uncovered = positioned.filter((s) => s.marker !== null && !covered.includes(s)).map((s) => `${s.file.split("/").pop()}:${s.line}`);
     /* ⭐ RAISED 2 → 7 BY C5-8 (2026-09-20), §1j row 84, and this is the only direction this assertion may move.
        Until today the five sites this printed as "uncovered (deferred by name)" — the cash-out (`:3208`), the
@@ -1020,7 +1031,7 @@ if (STORE === "memory") {
 
     const dropped = scan(ms.replace(SPREAD_2833, ""));
     ok("0.232.c1 · CONTROL · a positioned write whose marker is DELETED is reported, and exactly one site goes red — the plant really changed the file",
-      dropped.length === 1 && dropped[0].at === `${MS}:3120` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
+      dropped.length === 1 && dropped[0].at === `${MS}:3150` && /NO marker/.test(dropped[0].why ?? ""), j(dropped));
     /* ⭐ THE ACCEPT SIDE, AND IT IS ABOUT A SITE THAT DOES NOT EXIST YET. Putting the deleted spread back would only
        rebuild `ms` and prove nothing, so the control appends a BRAND NEW positioned writer to the same real file: the
        pin must pass it because its marker is right, and refuse the identical writer with the marker removed. Without
@@ -1041,11 +1052,11 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));
     ok("0.232.c3 · CONTROL · a marker copied from the WRONG object — present, well-formed, reading another position in scope — is reported, which is the defect a presence-only scan passes",
-      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3120` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
+      wrongSource.length === 1 && wrongSource[0].at === `${MS}:3150` && /WRONG object/.test(wrongSource[0].why ?? ""), j(wrongSource));
     const wrongProp = scan(ms.replace(SPREAD_2833, `      houseBotId: position.houseBotId ?? null,`));
     const rightProp = scan(ms.replace(SPREAD_2833, `      houseBotId: p.houseBotId ?? null,`));
     ok("0.232.c3b · CONTROL · the same defect in the OTHER accepted spelling (houseBotId: <x>.houseBotId ?? null) is reported, and the RIGHT identifier in that spelling is accepted — both directions, so the pin is not just refusing the spelling",
-      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3120` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
+      wrongProp.length === 1 && wrongProp[0].at === `${MS}:3150` && /WRONG object/.test(wrongProp[0].why ?? "") && rightProp.length === 0, j({ wrongProp, rightProp }));
     const reformatted = scan(ms.replace(SPREAD_2833, `      ...(p.houseBotId\n        ? { houseBotId: p.houseBotId }\n        : {}),`));
     ok("0.232.c3c · CONTROL · the accept side of the shape: the SAME marker reformatted over three lines is still read — a pin that a line break blinds is one reformat away from passing an unmarked write",
       reformatted.length === 0, j(reformatted));
@@ -1053,7 +1064,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     /* ⛔ THE STAKE FORM, MOVED OFF ITS POSITION. */
     const movedStakeForm = scan(ms.replace(SPREAD_2833, `      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`));
     ok("0.232.c4 · CONTROL · the stake form used where no position with that positionId is marked from the same ctx is reported — the exemption is earned per site, never granted by file or by line number",
-      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3120` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
+      movedStakeForm.length === 1 && movedStakeForm[0].at === `${MS}:3150` && /stake form/.test(movedStakeForm[0].why ?? ""), j(movedStakeForm));
     /* ⚠️ THE PLANT CARRIES NO NEWLINE, and that is not a detail: tracked source is CRLF in this checkout, so a
        `\n` anchor matches nothing and the plant silently plants NOTHING — a control that then reports the file is
        clean, which is exactly the silent pass this checkpoint exists to refuse (it happened here, once, and this
@@ -1062,7 +1073,7 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
     const c4bPlant = ms.replace("id: positionId,", "id: positionIdOfAnotherBet,");
     const stakeUnmarked = scan(c4bPlant);
     ok("0.232.c4b · CONTROL · …and the REAL stake write goes red the moment the position it is paired with stops being the one it names — so 0.232.1's green on that site is a measurement of the pairing, not a permanent pass",
-      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1832` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
+      c4bPlant !== ms && stakeUnmarked.length === 1 && stakeUnmarked[0].at === `${MS}:1862` && /stake form/.test(stakeUnmarked[0].why ?? ""), j(stakeUnmarked));
 
     /* ⛔ THE BYPASS CONTROLS, AND THEY CALL `bypassIn` — THE CODE THAT SHIPS. The old 0.232.c5 re-implemented the
        walk inline, so the loop that actually produces `bypass` was UNPLANTED: one character (`rel === DAL` →

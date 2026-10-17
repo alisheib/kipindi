@@ -488,6 +488,40 @@ export const MUTATIONS = [
     expect: "0.232.1 ·",
     suite: "reports-mem",
   },
+  /* MASWALI-BUILD S3 (2026-10-17) · the four Millionea ticket writes, one marker-deletion each — 0.232.2b counts a
+   * marker site covered only when its own file's anchor quotes it. */
+  {
+    name: "232-marker-maswali-buy · a Millionea ticket's BET_PLACED transaction stops carrying the house marker",
+    file: "src/lib/server/maswali-money-service.ts",
+    from: `              // SEAM:markerMaswaliBuy — a desk account never reaches here (refused above), kept so Ruling 232 has no exception.\n              ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),\n`,
+    to: `              // SEAM:markerMaswaliBuy — a desk account never reaches here (refused above), kept so Ruling 232 has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-maswali-cancel · the free cancel's CASHOUT transaction stops carrying the house marker",
+    file: "src/lib/server/maswali-money-service.ts",
+    from: `            // SEAM:markerMaswaliCancel — a desk account never holds a ticket, kept so Ruling 232 has no exception.\n            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `            // SEAM:markerMaswaliCancel — a desk account never holds a ticket, kept so Ruling 232 has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-maswali-win · a Millionea winner's BET_PAYOUT transaction stops carrying the house marker",
+    file: "src/lib/server/maswali-settlement.ts",
+    from: `                // SEAM:markerMaswaliWin — a desk account's share is held above, never marked as the house's stake.\n                ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `                // SEAM:markerMaswaliWin — a desk account's share is held above, never marked as the house's stake.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
+  {
+    name: "232-marker-maswali-forfeit · a forfeited share's ADJUSTMENT_DEBIT stops carrying the house marker",
+    file: "src/lib/server/maswali-settlement.ts",
+    from: `          // SEAM:markerMaswaliForfeit — a ticket position is never a house stake, kept so Ruling 232 has no exception.\n          ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `          // SEAM:markerMaswaliForfeit — a ticket position is never a house stake, kept so Ruling 232 has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
   /* ── §12 · the two omission-only pins (2026-09-20) ───────────────────────────────────────────────────────────
    * Each of these puts back a state the platform could plausibly be in — the loss-limit gate stepping over a
    * house stake, the wallet gate letting a closed wallet pay, and a "safety" check added to settlement — and

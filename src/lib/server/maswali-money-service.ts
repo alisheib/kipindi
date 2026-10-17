@@ -37,6 +37,7 @@ import { snapshotOrLegacy } from "./market-config";
 import { canonicalPicks, SLOT_COUNT, type MaswaliPick } from "@/lib/maswali-score";
 import { leafHash, newSalt, picksKey } from "@/lib/maswali-commitment";
 import { exitWindowFacts } from "@/lib/exit-window";
+import { readSalesPauseFresh } from "./maswali-pause";
 import type { StoredMarket, StoredPosition } from "./market-service";
 
 type Refused = { ok: false; error: string; code?: string; reason?: string; detail?: Record<string, unknown> };
@@ -279,6 +280,10 @@ export async function buyMaswaliTickets(input: {
   if (input.stake !== total) return refuse("The ticket price changed; refresh and try again.", { code: "INVALID", reason: "market_not_live" });
   if (n > rules.ticketCapPerWeek) {
     return refuse(`You can hold at most ${rules.ticketCapPerWeek} tickets a week.`, { code: "INVALID", reason: "millionea_cap_reached", detail: { ticketCap: rules.ticketCapPerWeek } });
+  }
+  // MB-62 · the sales pause, read FRESH (fail closed). It stops sales only — never a cancel, a settlement or a refund.
+  if ((await readSalesPauseFresh()).paused) {
+    return refuse("Millionea is paused for now.", { code: "INVALID", reason: "millionea_paused" });
   }
   // ⛔ A live desk designation, read before the wallet lock: a desk account never reaches the money.
   if (await houseBotStore.findLiveByUserId(userId).catch(() => null)) {

@@ -365,7 +365,10 @@ export async function purchaseMaswaliTickets(input: {
   let state: RolloutState = "WITHDRAWN";
   try { state = await (input.stateNow ?? millioneaStateNow)(); } catch { state = "WITHDRAWN"; }
   const week = await weekStore.get(input.weekId);
-  if (!week || !week.marketId || !rolloutSells(state, week.visibility)) return notOpen;
+  if (!week || !week.marketId) return notOpen;
+  if (!rolloutSells(state, week.visibility)) {
+    return { ok: false, error: "Millionea is not available yet.", code: "INVALID", reason: "millionea_not_available" };
+  }
   const rules = frozenRules(week);
   if (!rules) return notOpen;
   return buyPosition(input.userId, {

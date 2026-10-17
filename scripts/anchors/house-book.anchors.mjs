@@ -139,8 +139,8 @@ export const MUTATIONS = [
     // matching nothing. The mutation is unchanged: leave RG suspense out, keep tax.
     // ⚠️ RE-ANCHORED (MASWALI-BUILD S1/S3): the line also subtracts the Millionea liabilities now; the mutation still
     // drops exactly the one term this anchor is about, and nothing else.
-    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee;`,
-    to: `  const owedToOthers = leviesPayable + aggregator + tax + maswaliJackpot + maswaliGuarantee;`,
+    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee + maswaliOpenPools;`,
+    to: `  const owedToOthers = leviesPayable + aggregator + tax + maswaliJackpot + maswaliGuarantee + maswaliOpenPools;`,
     expect: "3c.1",
   },
   {
@@ -150,8 +150,8 @@ export const MUTATIONS = [
     file: "src/lib/house-book.ts",
     // ⚠️ RE-ANCHORED (MASWALI-BUILD S1/S3): the line also subtracts the Millionea liabilities now; the mutation still
     // drops exactly the one term this anchor is about, and nothing else.
-    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee;`,
-    to: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + maswaliJackpot + maswaliGuarantee;`,
+    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee + maswaliOpenPools;`,
+    to: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + maswaliJackpot + maswaliGuarantee + maswaliOpenPools;`,
     expect: "3d.1",
   },
   {
