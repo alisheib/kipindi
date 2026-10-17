@@ -185,10 +185,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // MASWALI-BUILD S1/S3 (2026-10-17) adds only the nine Millionea refusal lines (`failMillionea*`, en/sw/zh, sw and zh
     // for native review at Gate B), each emitted by a registered failure reason (`test:failure-reasons`) — pinned at
     // 367a9c1b7, whose blob is the dictionary as it stands. None of the versioned policy strings move.
+    // MASWALI-BUILD S5 (2026-10-17) adds the `millionea` namespace (the UI lane, 216 keys a locale) and `errSessionChanged`
+    // (the server lane, review L6), each locale's sw and zh for native review at Gate B, pinned at 1c210f39e, the S5 server
+    // merge, whose blob is the dictionary as it stands. Every key is in a block of its own, and no versioned policy
+    // string moves.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "367a9c1b7"],
+      ["src/lib/i18n-dict.ts", "1c210f39e"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

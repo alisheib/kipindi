@@ -174,6 +174,7 @@ const headerCallOk = (file: string, el: string) => {
     "src/app/agent/apply/page.tsx": { none: "sr-only <h1>; the steps' line is subtle (apply-client)" },
     "src/app/auth/admin/page.tsx": { none: "STAFF sign-in, not a player page" },
     "src/components/home/hero-intro.tsx": { none: "the landing's question and its brand claim (`.kp-hero__claim-text`, a class of its own)" },
+    "src/components/maswali/maswali-slip.tsx": { none: "the slip's title is its head; the sales close and the first event stand under it (v6 S-slip: a back link above, no eyebrow)" },
   };
   const withH1 = PLAYER_TSX.filter((f) => /<h1\b/.test(code(f)));
   const unregistered = withH1.filter((f) => !(f in HEADS));
