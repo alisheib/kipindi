@@ -96,6 +96,7 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-RAIL | **4B** — tab-bar glyphs are **24 px** (Android and iPhone size), in a pill grown to fit (W3) |
 | R-LEXICON | **5.1A–5.7A** — the board `squares-four` (both the classic "Masoko" and the journey "Maswali" tab) · Live `broadcast` · deposit / withdraw `arrow-line-down` / `arrow-line-up` · Up & Down `arrows-down-up` · results `seal-check` · proposals `lightbulb` · limits and breaks `hand-palm`. §3 and §4 carry them |
 | R-BADGES | **6A** — the profile badge medallions keep their hand-drawn art: identity art like the brand mark, outside the Phosphor family |
+| R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (Ali, 2026-10-17, during W2) — ONE source: the family `I`. An icon it lacks becomes a key in `scripts/glyphs/map.ts` (or a house extra) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. AGENTS.md §7, DESIGN_AUTHORITY §K3 and the design master brief state it; `test:glyph-source` §3/§5/§6 hold its three doors (inline `<svg>`, SVG data URIs, images under `public/`) |
 
 **W0's answers** — Ali, 2026-10-17, after opening the specimen: *"good i saw them proceed oerfcetly syroe anuthgi enede
 int h erpeo and keep going"*, then *"until live"*. The specimen's pre-selected line `1B 2B 3B 4B 5.1A 5.2A 5.3A 5.4A 5.5A

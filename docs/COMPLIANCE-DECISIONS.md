@@ -30,6 +30,7 @@ them impelemtn on any new pages rth ephosphor plan and they knwow"*. The program
 | R-SPECIMEN | *"Yes, show me first"* — a side-by-side specimen before any code change; his numbered answers set the weights, the tone, the selected indicator, the rail size, the lexicon and the badges |
 | R-NEW-PAGES | Every icon on every page, new or old, comes from the glyph family `I`; [`AGENTS.md`](../AGENTS.md) §7 states it, and a `predeploy` guard holds it from the migration's W1 |
 | R-RESUME | "Continue phosphor migration" resumes from the tracker's §0 on any machine; progress is committed and pushed at every step |
+| R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (later the same day) — ONE source of glyphs and icons, the family `I`; an icon it lacks becomes a key (`scripts/glyphs/map.ts`) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. [`AGENTS.md`](../AGENTS.md) §7 and [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) §K3 state it; `test:glyph-source` (predeploy) holds every door: an icon package, an inline `<svg>`, an SVG data URI, an image under `public/` not named for what it is |
 
 **Why it is recorded here.** Three compliance-adjacent controls move with it, and none may be "restored" by a later
 session: (1) a third-party licence — Phosphor's MIT notice must travel with every served copy (a notices file and a

@@ -11,6 +11,16 @@
  *   §3 inline <svg> in src/ is a ratchet: each listed file draws exactly its listed count, and no other file draws one.
  *      A listed count that falls must be lowered here in the same commit, so the progress stays won.
  *   §4 a 256-grid viewBox appears in src/ only in a generated file
+ *   §5 no SVG is drawn as a data URI in src/ (a stylesheet's `url("data:image/svg+xml…")`, or the same in code) but the
+ *      ones named in DATA_SVG with their reason — an icon by another door
+ *   §6 every image file under public/ is named in PUBLIC_IMAGES with what it is (the brand, the app's icons, vendors'
+ *      marks, share images): an icon is a family key, never an image file — so no icon set arrives with a design
+ *
+ * ⭐ ONE SOURCE (Ali, 2026-10-17, R-ONE-SOURCE: "we need to have 1 source of glyphs and icons so mark tsi as rule and let
+ * na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"). An icon a page needs and the family
+ * lacks becomes a KEY — its Phosphor name in scripts/glyphs/map.ts (or a house extra in extras.ts, with its reason), then
+ * `npm run glyphs:gen` — and is drawn `<I.key>`. A design delivered for a page is built from the keys, never from its own
+ * SVG, image or icon font. §3, §5 and §6 are the three doors an icon could still walk in by; each is a census.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -73,14 +83,51 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/lib/offline-document.ts": [3, "the offline page, which cannot load the app's components"],
 };
 
-type World = { files: Map<string, string>; pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> } };
+/** SVG drawn as a data URI in src/ — the 2026-10-17 census, each file and how many, each with its reason. */
+const DATA_SVG: Record<string, [count: number, why: string]> = {
+  "src/components/layout/needle.css": [1, "the Needle's drag cursor: a CSS cursor takes an image, never an element (W7 draws it from the family's rotateCcw)"],
+};
+const DATA_SVG_RE = new RegExp("data:image[/]svg[+]xml", "g");
 
-function walk(dir: string, out: string[] = []): string[] {
+/** Every image file under public/ (the family's sprites, public/icons/g/, are test:glyph-sync's) — what each one is. */
+const BRAND = "the brand mark or lockup (DESIGN_AUTHORITY §B1a) — the brand, not an icon";
+const APP_ICON = "the app's own icon at a size a platform asks for (the brand mark, build:brand) — not an icon of the interface";
+const PUBLIC_IMAGES: Record<string, string> = {
+  "public/brand/email-signature.png": "the email signature's brand art",
+  "public/brand/lockup-horizontal.svg": BRAND, "public/brand/lockup-stacked.svg": BRAND, "public/brand/mark-color.svg": BRAND,
+  "public/brand/mark-dark.svg": BRAND, "public/brand/mark-simplified.svg": BRAND, "public/brand/mark-white.svg": BRAND,
+  "public/email-signatures/ali-blue.png": "a staff email signature", "public/email-signatures/ali-white.png": "a staff email signature",
+  "public/email-signatures/jay-blue.png": "a staff email signature", "public/email-signatures/jay-white.png": "a staff email signature",
+  "public/favicon.ico": APP_ICON, "public/favicon.svg": APP_ICON,
+  "public/icons/apple-touch-180.png": APP_ICON, "public/icons/favicon-16.png": APP_ICON, "public/icons/favicon-32.png": APP_ICON,
+  "public/icons/icon-192.png": APP_ICON, "public/icons/mark-color-512.png": APP_ICON, "public/icons/mark-dark-512.png": APP_ICON,
+  "public/icons/mark-white-512.png": APP_ICON, "public/icons/maskable-512.png": APP_ICON, "public/icons/tile-512.png": APP_ICON,
+  "public/icons/shortcut-deposit.png": "the installed app's Deposit shortcut (manifest.json) — W7 redraws it from the family's Fill glyph (build:brand)",
+  "public/icons/shortcut-markets.png": "the installed app's Markets shortcut (manifest.json) — W7 redraws it from the family's Fill glyph (build:brand)",
+  "public/icons/shortcut-wallet.png": "the installed app's Wallet shortcut (manifest.json) — W7 redraws it from the family's Fill glyph (build:brand)",
+  "public/og/og-1200x630.png": "the share image", "public/og/twitter-1200x600.png": "the share image",
+  "public/pay/airtel.png": "a payment vendor's mark, in its own colours", "public/pay/halopesa.png": "a payment vendor's mark, in its own colours",
+  "public/pay/mixx.png": "a payment vendor's mark, in its own colours", "public/pay/mpesa.svg": "a payment vendor's mark, in its own colours",
+  "public/pay/selcom-lipa-qr.d997c1d2.svg": "a payment vendor's mark, in its own colours",
+  "public/screenshots/markets-narrow.png": "the installed app's screenshot (manifest.json)",
+};
+const IMAGE = new RegExp("[.](svg|png|ico|webp|jpe?g|gif|avif|bmp)$", "i");
+
+type World = {
+  files: Map<string, string>;
+  /** src/'s stylesheets, by repo path. */
+  css: Map<string, string>;
+  /** Every image file under public/ but the family's sprites, by repo path. */
+  images: string[];
+  pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+};
+
+function walk(dir: string, out: string[] = [], keep: RegExp = CODE): string[] {
   for (const e of readdirSync(dir)) {
     if (e === "node_modules" || e === ".next") continue;
     const p = join(dir, e);
-    if (statSync(p).isDirectory()) walk(p, out);
-    else if (CODE.test(e)) out.push(p);
+    if (statSync(p).isDirectory()) walk(p, out, keep);
+    else if (keep.test(e)) out.push(p);
   }
   return out;
 }
@@ -115,6 +162,23 @@ function check(w: World): string[] {
     else if (n < listed[0]) f.push(`§3 ${rel} now draws ${n} inline <svg> — lower its count from ${listed[0]} in SVG_RATCHET so the progress stays won`);
   }
   for (const rel of Object.keys(SVG_RATCHET)) if (!counts.has(rel)) f.push(`§3 ${rel} no longer draws an inline <svg> — remove it from SVG_RATCHET`);
+  // §5 — the data URI door: in src/'s code and its stylesheets.
+  const uris = new Map<string, number>();
+  for (const [rel, text] of [...w.files].filter(([r]) => r.startsWith("src/")).concat([...w.css])) {
+    const n = (text.match(DATA_SVG_RE) ?? []).length;
+    if (n) uris.set(rel, n);
+  }
+  for (const [rel, n] of uris) {
+    const listed = DATA_SVG[rel];
+    if (!listed) f.push(`§5 ${rel} draws ${n} SVG as a data URI — an icon is a family glyph (AGENTS.md §7, R-ONE-SOURCE); anything else is named in DATA_SVG with its reason`);
+    else if (n !== listed[0]) f.push(`§5 ${rel} draws ${n} SVG as a data URI where DATA_SVG names ${listed[0]}`);
+  }
+  for (const rel of Object.keys(DATA_SVG)) if (!uris.has(rel)) f.push(`§5 ${rel} no longer draws an SVG data URI — remove it from DATA_SVG`);
+  // §6 — the image-file door: every image under public/ is named.
+  for (const rel of w.images) {
+    if (!(rel in PUBLIC_IMAGES)) f.push(`§6 ${rel} is an image under public/ that is not named — an icon is a family key (AGENTS.md §7, R-ONE-SOURCE); any other image is named in PUBLIC_IMAGES with what it is`);
+  }
+  for (const rel of Object.keys(PUBLIC_IMAGES)) if (!w.images.includes(rel)) f.push(`§6 ${rel} is gone — remove it from PUBLIC_IMAGES`);
   return f;
 }
 
@@ -122,13 +186,16 @@ const files = new Map<string, string>();
 for (const dir of ["src", "scripts"]) {
   for (const p of walk(join(ROOT, dir))) files.set(relative(ROOT, p).split(sep).join("/"), readFileSync(p, "utf8"));
 }
-const world: World = { files, pkg: JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) };
+const rel = (p: string) => relative(ROOT, p).split(sep).join("/");
+const css = new Map(walk(join(ROOT, "src"), [], new RegExp("[.]css$")).map((p): [string, string] => [rel(p), readFileSync(p, "utf8")]));
+const images = walk(join(ROOT, "public"), [], IMAGE).map(rel).filter((r) => !r.startsWith("public/icons/g/")).sort();
+const world: World = { files, css, images, pkg: JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) };
 
 if (!process.argv.includes("--prove-red")) {
   const fails = check(world);
   for (const x of fails) console.log(`FAIL ${x}`);
   const svg = Object.values(SVG_RATCHET).reduce((a, [n]) => a + n, 0);
-  console.log(`\n${files.size} files read · ${Object.keys(SVG_RATCHET).length} files may draw ${svg} inline <svg> · ${fails.length} failure(s)`);
+  console.log(`\n${files.size} files read · ${Object.keys(SVG_RATCHET).length} files may draw ${svg} inline <svg> · ${Object.keys(DATA_SVG).length} file a data-URI SVG · ${images.length} images under public/, each named · ${fails.length} failure(s)`);
   process.exit(fails.length ? 1 : 0);
 }
 
@@ -145,6 +212,16 @@ const plants: [string, RegExp, World][] = [
   ["a listed file draws one more", /§3 src\/components\/ui\/select\.tsx draws 3 inline <svg>, more than its 2/, edit("src/components/ui/select.tsx", (t) => t + "\nexport const Z = () => <svg><path d=\"M1 1\"/></svg>;\n")],
   ["a listed file draws fewer and the list is not lowered", /§3 src\/components\/ui\/spinner\.tsx no longer draws/, edit("src/components/ui/spinner.tsx", (t) => t.split("<svg").join("<span"))],
   ["a hand-drawn 256-grid glyph", /§4 src\/app\/zz-new\/icon\.tsx draws on the 256 grid by hand/, withFile("src/app/zz-new/icon.tsx", 'export const V = "x"; const a = <path />; const vb = <g viewBox="0 0 256 256" />;\n')],
+  ["a stylesheet draws an icon as a data URI", new RegExp("§5 src/app/zz-new/page[.]css draws 1 SVG as a data URI"),
+    { ...world, css: new Map([...world.css, ["src/app/zz-new/page.css", ".x { background: url(\"data:image/svg+xml;utf8,<svg/>\"); }"]]) }],
+  ["a page's code draws an icon as a data URI", new RegExp("§5 src/app/zz-new/page[.]tsx draws 1 SVG as a data URI"),
+    withFile("src/app/zz-new/page.tsx", 'export const ICON = "data:image/svg+xml;utf8,<svg/>";\n')],
+  ["the Needle's cursor gains a second data URI", new RegExp("§5 src/components/layout/needle[.]css draws 2 SVG"),
+    { ...world, css: new Map([...world.css].map(([r, t]): [string, string] => [r, r === "src/components/layout/needle.css" ? `${t}\n.y { cursor: url("data:image/svg+xml;utf8,<svg/>"); }` : t])) }],
+  ["a design drops an icon file into public/", new RegExp("§6 public/icons/zz-bell[.]svg is an image under public/ that is not named"),
+    { ...world, images: [...world.images, "public/icons/zz-bell.svg"] }],
+  ["a named image is removed and the census keeps it", new RegExp("§6 public/pay/mixx[.]png is gone"),
+    { ...world, images: world.images.filter((r) => r !== "public/pay/mixx.png") }],
 ];
 const clean = check(world);
 if (clean.length) {
