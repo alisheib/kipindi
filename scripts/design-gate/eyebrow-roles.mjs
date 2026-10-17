@@ -160,6 +160,9 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/markets/page.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.08em] text-text-tertiary\">Void · refunded</span> ↵ ) : m.status === \"RESOLVED\" ? (", "STATUS_CHIP"],
   ["app/admin/markets/page.tsx :: <span className={`inline-flex items-center gap-1.5 font-mono text-caption font-bold uppercase tracking-[0.08em] ${m.resolvedOutcome === \"YES\" ? \"text-yes-300\" : \"text-no-", "STATUS_CHIP"],
   ["app/admin/markets/page.tsx :: <td className=\"font-mono text-caption uppercase tracking-[0.14em] text-text-muted\">{m.category}</td> ↵ {/* B6: a settled market shows its VERDICT (read from resolvedOutco", "OTHER"],
+  // MASWALI-BUILD S4 (2026-10-17) · the week builder's suggestion row: "AI draft · <category>" or "Fixture · <category>",
+  // a metadata caption inside a list row (read like ai-polls' category caption above), not a label over a block.
+  ["app/admin/maswali/new/week-builder.tsx :: <span className=\"text-caption uppercase tracking-[0.08em] text-text-tertiary\">{sg.kind === \"ai\" ? \"AI draft\" : \"Fixture\"} · {sg.category}</span> ↵ <span className=\"min-w-", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-tertiary\" ↵ title=\"Upholding or rejecting an objection is a complia", "OTHER"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracking-[0.08", "CONTROL_LABEL"],
   ["app/admin/objections/objection-decision.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1 rounded-md border border-warning-border bg-warning-bg px-2.5 py-1.5 font-mono text-micro font-bold uppercase tracki", ["CONTROL_LABEL",2]],

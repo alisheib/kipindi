@@ -69,30 +69,56 @@ until we decide what goes live."* He also answered three numbered choices the sa
 3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
    below.
 
-**Next:** S1, S2, S3 and S4 parts 1–3a are ON `main` (`0d27a830`, 2026-10-17 15:41 UTC), dark: pushed BEFORE the
-release gate, on Ali's explicit call. Asked "when the gate passes (recommended)" or "now, unverified", he chose *"Now,
-unverified"* and *"do a live push test now"*. So the gate below runs AFTER the push, and anything it finds is fixed forward
-on `main` the same day. Until it is green, S1–S4 stay 🔨.
-- **Where.** Branch `maswali-s4` (worktree `C:\kipindi-maswali-s4`) holds everything: S1 `7e505bf0`, S2 `6031d199`, their
-  battery fixes `ec57887b`, S3 `367a9c1b` + `7727ece0`, S4 `1cdd2dca` + `ac608162`, and `main` merged in. The release
-  line `maswali-build` (`C:\kipindi-maswali`) is fast-forwarded to it, and the gate runs there.
-- **The release gate** (`gate-s4.sh`, each step its own turn on the heavy-job lock): `prisma generate` + `tsc`; the
-  Postgres suites (`test:maswali-shared-paths`, `-purchase`, `-settle`, `-engine`, `-fence`, `test:house-bot-reports`, the
-  migration probe, `verify:backup-schema`); `test:all` in three chunks; `e2e:money`, `e2e:fault`, `e2e:card`; `next
-  build`, then a fresh in-memory `next dev` for `qa:live`, the five server suites and the Millionea console pages as a
-  signed-in Owner. After the push: the red twins (`red:maswali-money-path`, the four `red:house-bot-money` marker plants,
-  `red:maswali-engine`, `red:maswali-fence`), `e2e:maswali-fault`, and the production read-back.
+**Next:** S1–S4 are ON `main`, dark. They were pushed before their gate on Ali's word (*"Now, unverified"*), and the
+gate's first step caught 12 type errors in S3/S4 code no `tsc` had read, so Railway's build refused `0d27a830` and
+production stayed on `ce752dc4`. The fix, `43523844` (eight console tables' `ScrollX` names, the refusal type, one type
+predicate), went live 2026-10-17 16:02 UTC and read back clean: `?dpl=` on all three hosts, health migrated,
+`qa:chunks-prod` 6/6 on both origins, production `qa:live` 361/0, every Millionea route 404, the console 307 signed out.
+Until the whole gate is green, S1–S4 stay 🔨.
+- **Where.** Branch `maswali-s4` (`C:\kipindi-maswali-s4`) holds everything: S1–S4 3a as on `main`, S4 3b `cefffc39`
+  and 3c `2e4994b0`, D3 `2b6bf5bf`, and `main` merged in (the phosphor lane's W1 included). The release gate runs on
+  `maswali-build` (`C:\kipindi-maswali`), fast-forwarded to it.
+- **The release gate, at `a5e0c447`** (`main` + 3b/3c + D3; each step its own turn on the heavy-job lock):
+  - `tsc` ✅;
+  - `e2e:money` 64/0, `e2e:fault` 34/0, `e2e:card` 100/0 ✅: the platform's money on Postgres, with Millionea's edits
+    to the bet path;
+  - `test:all` chunk 1, 185/189. Three red guards were debts S3/S4 owed, each fixed in the commit after the gate's tree
+    (`test:bet-sheet` 2.census: a placeholder refusal removed; `test:failure-reasons` 8c.loss-limit: Millionea's purchase
+    named as the second caller that says why; `test:eyebrow-roles`: the builder's caption read). The fourth,
+    `test:admin-section-gate`, drives a server and runs in the render check;
+  - still to run: `test:all` chunks 2–3, the Postgres suites, `next build`, then the render check (`next dev`:
+    `qa:live`, the five server suites, `qa:maswali-admin-shots` and the console drive), the red twins and
+    `e2e:maswali-fault`.
+- **The adversarial review of S3** (an independent reviewer, 2026-10-17, on code already on `main` and dark). Each
+  finding is confirmed or refuted against the code before its fix, and each fix carries a case that fails on the old code:
+
+  | # | Finding | Severity | Lane | State |
+  |---|---|---|---|---|
+  | R1 | A week void that fails after its stamp never refunds; at a few thousand tickets the generic VOID arm times out on every attempt | HIGH | `mln-void` | 🔨 |
+  | R2 | The close is not serialized with a purchase or cancel in flight: a LIVE ticket outside the root, a week that never settles | HIGH | this lane | fixed; `test:maswali-close-race` to run |
+  | R3 | The same carry can be claimed twice; nothing checks that the jackpot covers R | MEDIUM | `mln-fix-b` | 🔨 |
+  | R4 | Three reads after a joined money transaction see pre-commit data on Postgres: the receipt's balance, the guarantee's `balanceAfter`, the float alert | MEDIUM-LOW | `mln-fix-a` (a, b), `mln-fix-b` (c) | 🔨 |
+  | R5 | The "limits used" panel sums a different net from the loss-limit gate | MEDIUM-LOW | `mln-fix-a` | 🔨 |
+  | R6 | A held share's freeze can be lifted mid-settlement | LOW-MEDIUM | `mln-fix-b` | 🔨 |
+  | R7 | Funding the guarantee has no idempotency | LOW | `mln-fix-a` | 🔨 |
+  | R8 | Forfeit and hold write the ticket outside their transaction | LOW | `mln-fix-b` | 🔨 |
+  | R9 | A final week with a wide top-score tie may never settle: winners are paid one by one | LOW | `mln-fix-b` | 🔨 |
+  | R10 | Defence in depth: the buy re-checks the rollout; the desk lookup fails closed; DRIVE weeks at STAFF_PREVIEW; void refunds push balances | LOW | `mln-fix-a` (a–c), `mln-void` (d) | 🔨 |
+
+  Found correct by the same review: every Millionea ledger group sums to zero; the buy's refusals all precede its first
+  write; the replay; the cancel; the settlement's idempotency; the lock order; the SQL casts; OD-17's exclusion; and the
+  Yes/No and Up & Down paths, unchanged.
+- **Parallel lanes** (Ali, 2026-10-17: *"parallelize as much as the PC handles"*). The CPU is idle (16 threads); RAM is
+  the limit (16 GB, failing). So the helpers write code and tests in their own worktrees and run nothing, and every
+  heavy run goes through the one lock. Branches off `a2e8a7c8`: `mln-fix-a`, `mln-fix-b` and `mln-void` (the review),
+  `mln-s4-drive` (S4's acceptance drive), `mln-s5-ui` (S5's components, props, motion and strings) and `mln-s5-srv`
+  (S5's read models, actions, gate and exclusions). Each merges into `maswali-s4` only after its own suites, `tsc`, and
+  an adversarial read of its diff.
 - **What has run.** S1/S2's first battery (`6031d199`) found four defects, each fixed in `ec57887b` and re-checked:
   the open never seeded the trusted sources (every open refused on both stores), and three guards quoted lines S1
   changed (`chain-purge`'s NEVER docblock, `red:fee-model-caption`, two house-book anchors). S3's two money suites are
   green on the memory store (`test:maswali-purchase` 68/68, `test:maswali-settle` 62/62: acceptance (a)–(f), the
   six-week trajectory to +97,800, the sunset, held shares, OD-17, the invariants).
-- **Not yet run** (the battery, in order): `tsc`; the Postgres halves of both suites, `test:maswali-engine`,
-  `test:maswali-fence`, `test:house-bot-reports` (the Ruling 232 census), `e2e:maswali-fault`, the migration probe and
-  `verify:backup-schema`; `red:maswali-money-path` (14 plants), the four new `red:house-bot-money` marker plants,
-  `red:maswali-engine`, `red:maswali-fence`; `test:all` in three chunks; `e2e:money`, `e2e:fault`, `e2e:card`. Then
-  the merge into `maswali-build`, `next build`, the render check and the five server suites there (its `node_modules`
-  is real; the S3 worktree's is a junction, which Turbopack refuses).
 - **S1 written:** the three migrations (tables, ledger types alone, the tax-lock CHECK); `jackpot-payout` in `payout.ts`
   (an unknown fee model now refused, never coerced); the ledger accounts (`HOUSE:MASWALI_JACKPOT`,
   `HOUSE:MASWALI_GUARANTEE`, `EXTERNAL:OWNER_CAPITAL`) and the seven movement builders; the owner's book subtracting

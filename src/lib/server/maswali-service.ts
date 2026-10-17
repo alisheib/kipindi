@@ -434,14 +434,23 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse("The close has not arrived.");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
-    const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
-    const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
-    const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
-    if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
-    if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
-    audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside
+    // `market:<id>` (taken after `wallet:`); the close takes that lock too, inside the chain lock — the settlement's own
+    // order — so it lists the live tickets only once an in-flight purchase or cancel has committed, and a purchase or
+    // cancel that waited behind it re-reads the week inside that lock and finds it closed. Without it, a purchase passing
+    // its clock check an instant before the close committed after the list: a LIVE ticket outside the root, and counts
+    // the settlement refuses for good.
+    const seal = async (): Promise<Result<{ week: StoredWeek; already?: boolean }>> => {
+      const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
+      const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
+      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
+      if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
+      if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
+      audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
+      return { ok: true, week: (await weekStore.get(week.id))! };
+    };
+    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();
   });
 }
 
