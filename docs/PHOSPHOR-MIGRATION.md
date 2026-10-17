@@ -28,7 +28,7 @@ TypeScript step, a process crash on this laptop's known-faulty RAM, not a type e
 owner's go, but the harness needs his explicit permission: he either runs the one command himself, or adds a permission
 rule that lets this session push. Nothing reached production. **Then `main` moved** (three MASWALI-BUILD S0.5 commits, to
 `30582477`), so `c67e8e53` was no longer a fast-forward: the branch is **rebased onto `30582477`** (one conflict, two
-script pairs side by side in `package.json`, both kept) — W0's tick now cites `59678b53`, W1 is `b535dc7f` — and the release
+script pairs side by side in `package.json`, both kept) — W0's tick now cites `8fb41005`, W1 is `fa0c6159` (re-rebased onto the docs-only `c218979d`) — and the release
 proof re-runs on the rebased tree before any push.
 
 **Next:** the release proof on the rebased branch tip (the same derived suites, typecheck, `next build`, local `qa:live`,
@@ -61,7 +61,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | ✅ | 59678b53 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
+| W0 | Tracking + specimen + recognition check | ✅ | 8fb41005 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | 🔨 | built on the branch; the derived suites and the release proof are queued |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
