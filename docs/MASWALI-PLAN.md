@@ -2755,35 +2755,45 @@ platform's lexicon already owns a meaning, Millionea uses that key and adds none
 | **Millionea, the product** | home card, the More row, the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
 | A ticket | the ticket page, the switch's ticket counts | `ticket` (lexicon) | `ticket` | The platform's word for a held position |
 | A question not yet sealed | the ticket's 15 marks, the register | `markPending` (new) | `circle-dashed` | An open ring: "not known yet", never "wrong". Replaces `sealNil` |
-| Your answer matched the result | the ticket's marks | `markMatched` (new) | `check-circle` (Fill, success ink) | Unmistakable at 14 px; the word beside it carries the meaning (glyph + ink + word, Phosphor W4) |
-| Your answer missed | the ticket's marks | `markMissed` (new) | `x-circle` (muted danger ink) | The pair to `check-circle`; replaces `sealX` |
+| Your answer matched the result | the ticket's marks | `checkCircle` (lexicon) | `check-circle` (Fill, success ink) | The platform's own "done right"; the word beside it carries the meaning (glyph + ink + word, Phosphor W4) |
+| Your answer missed | the ticket's marks | `xCircle` (lexicon) | `x-circle` (muted danger ink) | The pair to `checkCircle`; replaces `sealX` |
 | A question voided | the ticket's marks, the register | `void` (lexicon) | `prohibit` | The platform's void, one meaning platform-wide |
 | The reserves (A1–A5, "Akiba") | the slip's reserve block, the register | `reserve` (new) | `lifebuoy` | A reserve is the backup that saves the ticket when a main question voids |
 | A reserve stood in ("M4 → A1") | the ticket and the register | `standIn` (new) | `arrow-bend-down-right` | The swap, pointing from the voided main to its reserve |
-| The jackpot this week (J) | the hub, the home card | `jackpot` (new) | `coins` | Money in the pot, without gold ink |
-| Carried to the next jackpot | the hub's carry line, the register | `carry` (new) | `piggy-bank` | Money saved for the next winner, the clearest picture of a rollover |
+| The jackpot this week (J) | the hub, the home card | `coins` (lexicon) | `coins` | Money in the pot, without gold ink |
+| Carried to the next jackpot | the hub's carry line, the register | `carry` (new) | `arrow-bend-double-up-right` | Carried forward to the next winning week. Not `piggy-bank` (the lexicon's savings, `sofSavings`) nor `hand-coins` (its cash-out) |
 | The house floor guarantee | the hub's floor line, `/fairness` | `floor` (new) | `vault` | Money held safe behind the promise; `shield-check` already means "verified" (lexicon) |
-| Time left to buy | the closing pill, the slip | `closing` (new) | `hourglass-medium` | A countdown, distinct from the clock that shows a time |
+| Time left to buy | the closing pill, the slip | `hourglassHalf` (lexicon) | `hourglass-medium` | A countdown, distinct from the clock that shows a time |
 | A time or date | the close time, an event start | `clock` (lexicon) | `clock` | |
 | The week's register (Daftari la Wiki) | `/millionea/register`, the hub's link | `register` (new) | `notebook` | The daftari itself |
 | Proof of fairness (the commitment) | `/fairness`, the register's root | `fairness` (new) | `fingerprint` | One unique print for the week's tickets; `shield-check` stays "verified" |
-| Results recorded | the register, a settled week | `sealCheck` (lexicon) | `seal-check` | The platform's "a result is recorded" |
+| Results recorded | the register, a settled week | `sealCheck` (lexicon; the same drawing as `resolved`) | `seal-check` | The platform's "a result is recorded" (R-LEXICON 5.5A) |
 | A win | the ticket, the receipt | `trophy` (lexicon) | `trophy` | The platform's win, with the existing seal moment only (§M7) |
-| Cancel a ticket (free window) | the ticket, the receipt | `undo` (new) | `arrow-counter-clockwise` | "Take it back", and the money returns in full |
+| Cancel a ticket (free window) | the ticket, the receipt | `rotateCcw` (lexicon) | `arrow-counter-clockwise` | "Take it back", and the money returns in full |
 | Refunded (the week voided) | the ticket, the register | `refund` (new) | `arrow-u-down-left` | Money coming back to you |
-| Sales closed | the hub, the slip | `lock` (lexicon) | `lock-simple` | |
-| Sales paused | the notice, the hub | `pause` (new) | `pause-circle` | |
+| Sales closed | the hub, the slip | `lock` (lexicon) | `lock` | The lexicon's drawing, not `lock-simple` |
+| Sales paused | the notice, the hub | `salesPaused` (new) | `pause-circle` | An operator's pause of sales. Not `pause`: the lexicon's `pause` is the player's own Take a break, a different meaning |
 | How it works | the How page, the hub's link | `howTo` (new) | `book-open-text` | `question` stays Help (lexicon) |
 | Object to a result | the ticket's question row | `flag` (lexicon) | `flag` | |
 | The source of a result | a question's evidence link | `externalLink` (lexicon) | `arrow-square-out` | |
 | The cap (10 a week) | the slip's ticket count | `cap` (new) | `stack` | A stack of tickets with a top |
 | The final week (sunset) | the hub, the home card | `finalWeek` (new) | `flag-checkered` | The finish line |
-| Staff preview | the preview mark | `preview` (new) | `eye` | |
+| Staff preview | the preview mark | `eye` (lexicon) | `eye` | |
 
-**How it lands.** Millionea's code calls only the `I` keys above. The Phosphor lane adds the new keys to its `map.ts`
-(they replace its reserved `sealNil` / `sealX` / `millionea` house extras, PHOSPHOR-MIGRATION §6), so its codegen
-draws them in every weight; until its W2 swap lands, a new key that `I` does not yet hold is added there first, never
-drawn inline here. `test:glyph-source` (that lane's guard) holds the rule. **The specimen** — every pick above drawn from Phosphor's own files, the product-mark choice first:
+**Checked against the Phosphor lane (2026-10-17).** Its owner (session ali-d1) reviewed this table against its map on
+`phosphor-w2` (`2b63893e`): where the lexicon already owns a meaning, Millionea now uses that key (`checkCircle`,
+`xCircle`, `coins`, `hourglassHalf`, `rotateCcw`, `eye`, `lock`, `sealCheck`); `pause` and `piggy-bank` belong to
+other meanings, so the sales pause and the carry have their own keys; and `voidX` is retired by W2 (a void is
+`prohibit`). Re-checked the same day: none of the new keys below collides with a key in that map, and none of their
+drawings is already claimed there.
+
+**The new keys Millionea adds** (13): `millionea` (the product mark; its drawing is Ali's pick), `markPending`,
+`reserve`, `standIn`, `carry`, `floor`, `register`, `fairness`, `refund`, `salesPaused`, `howTo`, `cap` and `finalWeek`.
+
+**How it lands.** Millionea's code calls only the `I` keys above. At S5 the new keys go into the Phosphor lane's
+`scripts/glyphs/map.ts` and `npm run glyphs:gen` draws them in every weight; nothing is added to `glyphs.tsx` by hand,
+and until W2's swap lands on `main` a key `I` does not yet hold waits for it rather than being drawn inline here.
+`test:glyph-source` (that lane's guard) holds the rule. **The specimen** — every pick above drawn from Phosphor's own files, the product-mark choice first:
 https://claude.ai/artifact/Xub9GztHh1c15CtRyrUwTh (private to Ali; published 2026-10-17). Until Ali picks the mark,
 S5 builds with `diamond`; his pick changes one line of the Phosphor lane's `map.ts`.
 
