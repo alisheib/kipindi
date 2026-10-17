@@ -256,7 +256,9 @@ export function MaswaliTicket({
               <Chip metrics="status" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
               <span className="font-mono text-label uppercase eyebrow text-text-subtle">{weekLine(t, week, weekState, checkWindow)}</span>
             </div>
-            <span className="font-mono text-title-md font-bold text-text break-all">{serial}</span>
+            {/* The page's one heading: the ticket is named by its serial (`test:visual-pass-r7b` 1.6 registers this head,
+                its eyebrow the week line above). */}
+            <h1 className="font-mono text-title-md font-bold text-text break-all">{serial}</h1>
             {wonAmount !== undefined && <MaswaliEarnedAmount t={t} amount={wonAmount} />}
             {notice && <p className="text-body-sm text-text text-pretty">{notice}</p>}
           </div>

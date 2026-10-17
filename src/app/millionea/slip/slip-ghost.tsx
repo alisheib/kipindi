@@ -3,6 +3,7 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { GhostBar } from "@/components/maswali/maswali-ghost";
 import { GhostText } from "@/components/ui/ghost-text";
+import { BackLinkGhost } from "@/components/ui/back-link";
 import { useT } from "@/lib/i18n";
 import { fill } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ export function MillioneaSlipGhost() {
   const { t } = useT();
   return (
     <PageContainer tier="reading">
+      <BackLinkGhost />
       <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]" aria-busy="true">
         <div className="flex min-w-0 flex-col gap-4" aria-hidden>
           <div className="flex flex-col gap-1.5">

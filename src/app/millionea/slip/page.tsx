@@ -19,6 +19,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { BackLink } from "@/components/ui/back-link";
 import { Callout } from "@/components/ui/callout";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { weekNumberOf } from "@/components/maswali/maswali-format";
@@ -97,6 +98,8 @@ export default async function MillioneaSlipPage() {
   const deposit = `/wallet/deposit?${new URLSearchParams({ amount: String(Math.max(0, slip.ticketPrice - (slip.balance ?? 0))) })}`;
   return (
     <PageContainer tier="reading">
+      {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
+      <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
       {gate.preview && <MillioneaPreviewMark t={t} />}
       <SlipClient
         userId={gate.userId}
