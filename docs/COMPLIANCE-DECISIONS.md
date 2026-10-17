@@ -32,6 +32,43 @@ moves (one component) and the switch stays. The draft note for Ali to send them 
 
 ---
 
+## 2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)
+
+**Authority.** Ali, in session on 2026-10-17: *"users liek 50pick but they say our icons dont give enough life. lets
+chekc what library we canu se to give more fille dglyphs or icons or not necesar filled but mor eprofrsinla"*. After an
+inspection of every icon and glyph on the platform (the census, the screenshots and the four expert lenses are in
+[`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) Appendix A), he chose among numbered options. The session had
+recommended keeping the house family and adding Duotone and Fill tiers; **Ali chose Phosphor.** He then added: *"make su
+reot dveleop a progres sof rhti splan so if it sone done here any the rmahcine when we sya continue phosphor migration
+they know … dnto tolose any progress . so impelemt now and oush rpogress evenlaetr if ay new pages are cretaed we tlel
+them impelemtn on any new pages rth ephosphor plan and they knwow"*. The programme's tracker is
+[`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) (programme key `PHOSPHOR-MIGRATION`, board row ▶ 0j).
+
+**What it rules.**
+
+| Key | Ruling |
+|---|---|
+| R-PHOSPHOR | *"Switch to Phosphor"* — the icon family moves to Phosphor Icons (MIT licence), vendored: an exact-pinned devDependency read only by a codegen script, the generated outputs committed, no runtime icon package. It reverses [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) §K3 ("Never import an icon library into a player surface") for Phosphor only, on the charts precedent (§B12.4: pinned, one home, guarded). The call-site API `I.key` stays; the drawings change underneath |
+| R-NOW | *"Now, players see it"* — each wave goes live as it is proven, the classic shell included, every change a named classic-parity entry |
+| R-ADMIN | *"Yes, sidebar + cards"* — the admin console gets icons: the sidebar, stat cards and status chips |
+| R-SPECIMEN | *"Yes, show me first"* — a side-by-side specimen before any code change; his numbered answers set the weights, the tone, the selected indicator, the rail size, the lexicon and the badges |
+| R-NEW-PAGES | Every icon on every page, new or old, comes from the glyph family `I`; [`AGENTS.md`](../AGENTS.md) §7 states it, and a `predeploy` guard holds it from the migration's W1 |
+| R-RESUME | "Continue phosphor migration" resumes from the tracker's §0 on any machine; progress is committed and pushed at every step |
+| R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (later the same day) — ONE source of glyphs and icons, the family `I`; an icon it lacks becomes a key (`scripts/glyphs/map.ts`) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. [`AGENTS.md`](../AGENTS.md) §7 and [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) §K3 state it; `test:glyph-source` (predeploy) holds every door: an icon package, an inline `<svg>`, an SVG data URI, an image under `public/` not named for what it is |
+
+**Why it is recorded here.** Three compliance-adjacent controls move with it, and none may be "restored" by a later
+session: (1) a third-party licence — Phosphor's MIT notice must travel with every served copy (a notices file and a
+header in every generated sprite, guarded in W1); (2) the responsible-gambling motion rules stay exactly as they are —
+icons respond to state, never celebrate a win in a loop, and the `success` haptic stays the only win buzz (DESIGN_AUTHORITY
+§M5, §M7, §C5, §H1); (3) accessibility — an outcome becomes glyph + ink + word, so shape alone tells won, lost, void and
+pending apart (§A4).
+
+**What it does not rule.** Which glyph stands for each meaning, the weights, the tone and the indicator — those are
+Ali's answers to the W0 specimen, recorded in the tracker's §2 and §3. The DESIGN_AUTHORITY sections the swap rewrites
+(§K3, §C6, §S3, §C7) hold as written until the wave that changes them lands.
+
+---
+
 ## 2026-10-16 · Maswali Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void (owner)
 
 **Authority.** Ali, in session on 2026-10-16, handing over the Product Owner's proposal *"Maswali Millionea — Weekly

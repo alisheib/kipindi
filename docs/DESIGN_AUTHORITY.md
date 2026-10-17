@@ -2105,6 +2105,19 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    cannot push the dialog off it.
 3. ⛔ **Never import an icon library into a player surface.** Glyphs come from
    `src/components/ui/glyphs.tsx`.
+   ⚖️ **Ruled 2026-10-17 (Ali): the family moves to Phosphor**, vendored by codegen into this same home — the ruling is
+   [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-17 · Icons — every icon and glyph moves to Phosphor,
+   in waves, live as each is proven (owner)"; the work is [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md). This item is
+   rewritten when the swap lands (its W2); until then it holds exactly as written.
+   ⭐ **ONE SOURCE OF GLYPHS AND ICONS — and every design takes from it (Ali, 2026-10-17, R-ONE-SOURCE:** *"we need to
+   have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce
+   clenaly perfclet loically"***).** A design delivered for a page — by Claude Design or anyone, a canvas, a kit, a
+   mock-up — is built from the family's keys: every icon it shows is named by its key, or proposed as a new key with its
+   Phosphor name (house extras only where Phosphor has nothing, each with its reason), and the build adds the key to
+   `scripts/glyphs/map.ts` before any page draws it. ⛔ A design's own SVGs, sprites, icon fonts or icon images are never
+   imported, and a design is never asked to draw, redraw or "audit the strokes of" an icon: Phosphor draws them; a design
+   chooses. `test:glyph-source` (predeploy) holds the doors: an icon package, an inline `<svg>`, an SVG data URI, an
+   image under `public/` that is not named for what it is.
 4. ⛔ **Never read a `globals.css` out of a design export** — those are dated snapshots and
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design

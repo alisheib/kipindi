@@ -106,7 +106,17 @@ text** (trilingual). All new scene art follows this.
 
 ## 4. ATOMIC LAYER — refine, fill gaps, complete every state
 
-### 4a. Glyphs (129 exist — `components/ui/glyphs.tsx` is the source)
+### 4a. Glyphs — ONE SOURCE: the family `I`, drawn by Phosphor
+> ⭐ **SUPERSEDED FOR ICONS, 2026-10-17 — Ali's rulings "Switch to Phosphor" and R-ONE-SOURCE** (*"we need to have 1 source
+> of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet
+> loically"*; `DESIGN_AUTHORITY.md` §K3, `PHOSPHOR-MIGRATION.md`). Every icon in a design for 50pick is a **key** of the
+> family `I` (the keys and their Phosphor drawings: `scripts/glyphs/map.ts`; the full contact sheet:
+> `npm run glyphs:gen -- --sheet <file.html>`). A design that needs an icon the family lacks **names it**: the meaning and the
+> Phosphor icon proposed for it (Phosphor's own six weights are the only drawings — Bold to 26px, Regular from 27px,
+> Fill for a selected or toggled state, Duotone on plates). ⛔ Never deliver hand-drawn icon SVGs, a second icon set, an
+> icon font or icon images, and never redraw or re-stroke a glyph. The paragraph below is the 2026-07 brief, kept for
+> its gap list (most of which shipped); its "keep line stroke … consistent with the existing 129" no longer applies.
+
 Strong custom set. **Gaps to fill:** real **MNO/payment logos** (M-Pesa, Airtel Money, HaloPesa,
 Mixx by Yas, Card, Bank) — biggest single iconography win, used on deposit/withdraw + wallet
 Methods; **per-source glyphs** (salary/business/savings/investment/gift) for source-of-funds;
@@ -165,7 +175,8 @@ either bless it or propose a concrete upgrade (with real data + hex, per §2):
   modal system's chrome, rise motion, and scrim.
 - **Admin KPI/tables/charts** (`admin-shell.tsx`, `admin-charts.tsx`) — consistent but static;
   challenge the KPI tile, table density, and chart legibility.
-- **The 129 glyphs** — audit for stroke/weight/optical consistency; call out any weak ones to redraw.
+- ~~**The 129 glyphs** — audit for stroke/weight/optical consistency; call out any weak ones to redraw.~~ ⛔ Withdrawn
+  2026-10-17: the glyphs are Phosphor's (§4a) — a design chooses keys and proposes Phosphor names; it never redraws one.
 - **The hero image, category watermark, BrandTopo, GiltCorner, PulseRing, SignalPip** — all
   fair game to elevate.
 Deliverable for this section: a short **"refine existing" list** — item → keep or upgrade → the

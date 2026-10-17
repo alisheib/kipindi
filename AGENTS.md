@@ -32,7 +32,9 @@ status line, a count or a date that will go stale.
 2. `git fetch`, then read **THE BOARD** at the top of [`docs/NEXT-PLAN.md`](docs/NEXT-PLAN.md). Each ▶ row is a live
    programme; its document's **§0 RESUME AT** says what to do next (for the Vodacom journey:
    [`docs/VODACOM-PLAN.md`](docs/VODACOM-PLAN.md); for Maswali Millionea — "proceed with Maswali plan" —
-   [`docs/MASWALI-PLAN.md`](docs/MASWALI-PLAN.md)). A document that is not on the board is a record of finished work.
+   [`docs/MASWALI-PLAN.md`](docs/MASWALI-PLAN.md); for the icon family — "continue phosphor migration" —
+   [`docs/PHOSPHOR-MIGRATION.md`](docs/PHOSPHOR-MIGRATION.md)). A document that is not on the board is a record of
+   finished work.
    Do not start a new programme — ask Ali.
 3. A machine that has never run 50pick: [`docs/SETUP.md`](docs/SETUP.md). Every document, with a status:
    [`docs/README.md`](docs/README.md). After a pull that changed dependencies or the schema: `npm ci` and
@@ -128,6 +130,14 @@ visibility). A change updates the document that owns its subject in the same com
   duplicate of one — extend the component instead. No emoji in UI copy unless asked. Money is always formatted
   (`formatTzs`). Read DESIGN_AUTHORITY §0 before creating any design document, and never build from the superseded teal
   kit under `50PICK/design_handoff_prediction_market_kit/` — trust the tokens in `globals.css`, not a token's name.
+- **Every icon on every page — new or old — comes from the glyph family `I` in `src/components/ui/glyphs`: ONE source
+  of glyphs and icons** (Ali, 2026-10-17, R-ONE-SOURCE). Never an inline `<svg>` icon, an icon library, an icon image or
+  SVG file, an SVG data URI, an icon font, or a text character used as an icon. The family is moving to Phosphor
+  ([`docs/PHOSPHOR-MIGRATION.md`](docs/PHOSPHOR-MIGRATION.md)); a page that uses `I` moves with it, unedited. **An icon
+  the family lacks becomes a key first** — its Phosphor name in `scripts/glyphs/map.ts` (or a house extra in
+  `scripts/glyphs/extras.ts`, with its reason) — and is drawn `<I.key>`. **A design delivered for a page** (Claude
+  Design, a canvas, a kit, a mock-up) **is built from the family's keys**: each icon it shows is matched to a key or
+  added as one, never shipped as the design's own drawing. `test:glyph-source` (predeploy) fails every other door.
 - **Responsiveness is a rule:** 320 · 360 · 768 · 1280 · 1920, in English, Swahili and Chinese — no horizontal
   overflow, nothing clipped, tap targets of at least 40px. Run `npm run test:responsive` against a running server and
   **read the screenshots**: a green suite is not a readable screen. Content cut off inside a container passes the
