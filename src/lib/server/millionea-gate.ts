@@ -57,10 +57,31 @@ export async function millioneaTicketGate(): Promise<MillioneaTicketAdmitted> {
   const r = await resolveMillionea();
   let userId: string | null = null;
   try { userId = (await getSession())?.userId ?? null; } catch { userId = null; }
-  if (r.visible) return { ...r, userId, holder: false };
-  if (!userId) notFound();
-  let holds = false;
-  try { holds = (await ticketStore.listForUser(userId, { limit: 1 })).length > 0; } catch { holds = false; }
-  if (!holds) notFound();
-  return { ...r, userId, holder: true };
+  const admitted = await millioneaTicketAdmission(r.visible, userId, holdsAMillioneaTicket);
+  if (admitted === "NOT_FOUND") notFound();
+  return { ...r, userId, holder: admitted === "HOLDER" };
+}
+
+/** Does this account hold a Millionea ticket — any week, any state? One indexed read. */
+async function holdsAMillioneaTicket(userId: string): Promise<boolean> {
+  return (await ticketStore.listForUser(userId, { limit: 1 })).length > 0;
+}
+
+/**
+ * The tickets' gate's decision from its three facts — the testable core of `millioneaTicketGate` (L5; `test:maswali-ui`
+ * §3): the product visible → VISIBLE; hidden → HOLDER for a signed-in account that holds a ticket; everyone else, and a
+ * holdings read that fails → NOT_FOUND. Never throws.
+ */
+export async function millioneaTicketAdmission(
+  visible: boolean,
+  userId: string | null,
+  holds: (userId: string) => Promise<boolean>,
+): Promise<"VISIBLE" | "HOLDER" | "NOT_FOUND"> {
+  if (visible) return "VISIBLE";
+  if (!userId) return "NOT_FOUND";
+  try {
+    return (await holds(userId)) ? "HOLDER" : "NOT_FOUND";
+  } catch {
+    return "NOT_FOUND";
+  }
 }

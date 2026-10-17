@@ -23,6 +23,7 @@ import { frozenRules } from "./maswali-service";
 import { ticketStore, weekStore } from "./maswali-dal";
 import { isLockedOut } from "./responsible-gambling";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
+import { millioneaTicketAdmission } from "./millionea-gate";
 import type { RolloutState } from "@/lib/millionea-rollout";
 
 /** Who is asking, as the doors need it. */
@@ -120,7 +121,7 @@ export const millioneaTicketsDoor = cache(async (): Promise<boolean> => {
   if (door.visible) return true;
   try {
     const userId = (await getSession())?.userId ?? null;
-    return userId ? (await ticketStore.listForUser(userId, { limit: 1 })).length > 0 : false;
+    return (await millioneaTicketAdmission(false, userId, async (id) => (await ticketStore.listForUser(id, { limit: 1 })).length > 0)) === "HOLDER";
   } catch {
     return false;
   }
