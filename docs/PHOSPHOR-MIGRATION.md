@@ -11,12 +11,14 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0 in progress. The plan is approved by Ali and filed. This tracker, its board row, its guard,
-the AGENTS.md door and the ruling are committed on branch `phosphor-migration`. Nothing visual has changed: every icon on
-the live site is still the house family in `src/components/ui/glyphs.tsx`.
+**State (2026-10-17):** W0 in progress. The plan is approved by Ali and filed; this tracker, its board row, its guard,
+the AGENTS.md door and the ruling are committed on branch `phosphor-migration`. **The specimen is published** to Ali as a
+private Artifact — https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW (W0 step 3; how it was built: §2 "The specimen").
+Nothing visual has changed on the live site: every icon is still the house family in `src/components/ui/glyphs.tsx`.
 
-**Next:** W0 — build the specimen (§5 W0 step 3) from the real house paths, the real tokens and the pinned Phosphor
-package, publish it to Ali as a private Artifact with its numbered choices, then record his answers in §2 and §3.
+**Next:** W0 — Ali sends back one line from the specimen (e.g. `1B 2B 3B 4B 5.1A … 6A`). Record each answer in §2 (and
+the lexicon picks in §3, the weight table in §5 W1), run the recognition check (§3) on the picked glyphs, then tick W0 ✅
+and begin W1.
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`; its
@@ -39,7 +41,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | 🔨 | tracking filed on `phosphor-migration`; the specimen and Ali's answers are next |
+| W0 | Tracking + specimen + recognition check | 🔨 | tracking filed on `phosphor-migration`; the specimen is published (§2); Ali's answers are next |
 | W1 | Codegen + engine + guards, zero visual change | ⬜ | |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
@@ -69,10 +71,22 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-NEW-PAGES | *"if ay new pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan and they knwow"* — every icon on every page, new or old, comes from `I`; AGENTS.md states it and a `predeploy` guard holds it from W1 |
 | R-RESUME | *"when we sya continue phosphor migration they know … dnto tolose any progress … oush rpogress"* — this file is the resume point on any machine; progress is committed and pushed at every step |
 
-**Awaiting Ali (W0's specimen asks them):** 1 the line weight (Regular / Bold / size-switched, the table in §5 W1) ·
-2 the Duotone tone strength · 3 the selected indicator (today's pill / an opaque pill) · 4 the rail glyph size (20 / 24) ·
-5 the lexicon picks for the ambiguous meanings (§3) · 6 the badge medallions (keep their art / redraw inside with
-Phosphor) · and the 18 → 19 px weight jump (Bold 1.69 px → Regular 1.19 px).
+**Awaiting Ali (W0's specimen asks them):** 1 the line weight · 2 the Duotone tone strength · 3 the selected indicator ·
+4 the rail glyph size · 5 the lexicon picks for the ambiguous meanings (§3, seven of them) · 6 the badge medallions.
+
+**The specimen** (https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW, published 2026-10-17). Every "today" drawing is
+read from `glyphs.tsx` at main `380edd31`; every Phosphor drawing from `@phosphor-icons/core` 2.1.1 (registry sha512
+`v4ARvrip4q…zM4eZilxQ==`, verified), only its path data, embedded as `<symbol>`s and drawn with `<use>` — the W1
+delivery in miniature. Rendered and read in Chromium at 390 and 1280 px before publishing: no horizontal overflow, all
+three faces loaded, no console error. Its recommended line, pre-selected: **`1B 2B 3B 4B 5.1A 5.2A 5.3A 5.4A 5.5A 5.6A
+5.7A 6A`**.
+- ⚠️ **The render changed one recommendation.** The plan's size → weight table (§5 W1: Bold ≤ 18 px, Regular 19–26 px)
+  paints tab-bar icons THINNER than today (20 px: 1.25 px against the house's 1.58 px), which works against "more
+  life". The specimen therefore recommends **1B — Bold up to 26 px** (20 px → 1.88 px, 24 px → 2.25 px), with Regular
+  only for large art (plates, empty states); 1C keeps the plan's even table. Ali's answer fixes the W1 table.
+- 5.1 merges two meanings found by the inspection into one: the classic "Masoko" tab and the journey "Maswali" tab are
+  the same board, so one glyph serves both.
+- 6A keeps the badge medallions as hand-drawn identity art (like the brand mark), outside the Phosphor family.
 
 ---
 
