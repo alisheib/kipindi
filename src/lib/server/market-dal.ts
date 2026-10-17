@@ -645,6 +645,14 @@ export interface PositionStore {
     toIso: string;
     productLine: "MARKET" | "UPDOWN";
   }): Promise<DailySettledTotals[]>;
+  /**
+   * MASWALI-BUILD R1 · a voided Millionea week refunds its tickets: each OPEN position named here, on this market, becomes
+   * VOID with `finalPayout` = its own stake. ⭐ ONE statement whatever the week's size (the ids travel as one array
+   * parameter, so no bind-parameter ceiling is near), in the refund's transaction; conditional on OPEN, so a re-run moves
+   * nothing. Returns how many moved — the caller requires it to equal the tickets it refunds, and a mismatch rolls the
+   * refund back. ⛔ The week void's refund (`maswali-void.ts`) is the only caller: a poll refunds position by position.
+   */
+  voidMaswaliPositions(marketId: string, positionIds: readonly string[], settledAt: string, tx?: Prisma.TransactionClient | null): Promise<number>;
 }
 
 /**
@@ -953,6 +961,16 @@ const memoryPositions: PositionStore = {
       acc.set(p.userId, e);
     }
     return Array.from(acc.values()).sort((a, b) => b.rounds - a.rounds);
+  },
+  async voidMaswaliPositions(marketId, positionIds, settledAt, _tx) {
+    let n = 0;
+    for (const id of new Set(positionIds)) {
+      const p = positions.get(id);
+      if (!p || p.marketId !== marketId || p.status !== "OPEN") continue;
+      p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
+      n++;
+    }
+    return n;
   },
 };
 
@@ -1631,6 +1649,18 @@ const prismaPositions: PositionStore = {
       staked: Number(r.staked), returned: Number(r.returned),
       wonPayout: Number(r.wonPayout), lostStake: Number(r.lostStake), refundedStake: Number(r.refundedStake),
     }));
+  },
+  async voidMaswaliPositions(marketId, positionIds, settledAt, tx) {
+    const ids = [...new Set(positionIds)];
+    if (ids.length === 0) return 0;
+    // Served by @@index([marketId, status]). Each position is paid back its OWN stake, read from its row (`finalPayout` =
+    // `stake`). ⚠️ `settledAt` is `timestamp WITHOUT time zone` holding UTC: bound as the ISO string cast `::timestamp`
+    // (Postgres drops the Z), never a JS Date the driver could serialise in the container's zone.
+    return (tx ?? pc()).$executeRawUnsafe(
+      `UPDATE "Position" SET "status" = 'VOID', "finalPayout" = "stake", "settledAt" = $3::timestamp
+        WHERE "marketId" = $1 AND "status" = 'OPEN' AND "id" = ANY($2::text[])`,
+      marketId, ids, settledAt,
+    );
   },
 };
 

@@ -105,7 +105,8 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   ok("2.10 · stakeBoundsForMarket answers a week without throwing (S3 sets min = max = the week's price)",
     Number.isFinite(bounds?.min) && Number.isFinite(bounds?.max), JSON.stringify(bounds));
 
-  // settleMarket: a graded week is refused; its VOID arm (the week-void control's path, MR-18) is not.
+  // settleMarket: a graded week is refused, and since R1 so is a voided one — a week's refund is its own bulk refund
+  // (`maswali-void.ts`), with the market's settled stamp in the same transaction: one exactly-once truth.
   await w.mdal.marketStore.stamp(wk.id, { status: "RESOLVED", resolvedOutcome: "YES", objectionsClosedAt: w.iso(-60_000) });
   const graded: Any = await svc.settleMarket(wk.id, { actorId: "system_maswali" });
   ok("2.11 · settleMarket refuses a graded week (its own settlement is S3's; this one would refund at zero fee)",
@@ -118,7 +119,8 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   const voidWk: Any = await week("Maswali Millionea · fence probe (void arm)");
   await w.mdal.marketStore.stamp(voidWk.id, { status: "VOIDED", resolvedOutcome: "VOID", objectionsClosedAt: w.iso(-60_000) });
   const voided: Any = await svc.settleMarket(voidWk.id, { actorId: "system_maswali" });
-  ok("2.14 · settleMarket's VOID arm stays open to a week (the whole-week refund, MR-18)", voided.ok === true, show(voided));
+  ok("2.14 · settleMarket refuses a VOIDED week too, and leaves it unsettled: its refund is the week void's own (R1, MR-18), never this VOID arm",
+    !voided.ok && voided.error === FENCE && !(await svc.getMarket(voidWk.id))?.settledAt, show(voided));
 
   // ── §3 · MONEY AND REPORT READS ──────────────────────────────────────────────────────────────────────────────────
   let threw = "";
@@ -200,7 +202,7 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/lib/server/house-bot/seam.ts": { n: 2, why: "the seam refuses a line not in HOUSE_PRODUCTS" },
   "src/lib/server/house-bot/trigger.ts": { n: 3, why: "after the HOUSE_PRODUCTS check; scopeAlerts skips a denied line" },
   "src/lib/server/market-dal.ts": { n: 1, why: "the leaderboard bucket, after tickets are skipped" },
-  "src/lib/server/market-service.ts": { n: 2, why: "the Up & Down house trigger and the round's void reason, each with MASWALI handled beside it" },
+  "src/lib/server/market-service.ts": { n: 2, why: "the Up & Down house trigger, with MASWALI handled beside it, and the round's void reason in settleMarket, which a week never reaches (its fence)" },
   "src/lib/server/short-title-service.ts": { n: 1, why: "the round's own refusal, with the week's refusal beside it" },
   "src/lib/side-label.ts": { n: 2, why: "the exhaustive guard and the round arm of positionStatusWord" },
   "src/lib/tax-report.ts": { n: 1, why: "parseProduct: MASWALI is not selectable until S6, by design" },

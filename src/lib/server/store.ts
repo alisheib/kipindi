@@ -2899,6 +2899,11 @@ const memoryDb = {
   },
   txn: {
     create: (t: StoredTxn) => { const row = { ...t, pendingBet: t.pendingBet ?? null }; store.txns.set(t.id, row); return row; },
+    /** The memory half of `prisma-dal.ts`'s `createMany` (MASWALI-BUILD R1): every row stored exactly as `create` stores it. */
+    createMany: (rows: readonly StoredTxn[], _tx?: unknown): number => {
+      for (const t of rows) store.txns.set(t.id, { ...t, pendingBet: t.pendingBet ?? null });
+      return rows.length;
+    },
     /**
      * ⭐ `excludeHouseBets` (C5-SPEC ruling 173): drop house-marked rows (`houseBotId != null`) INSIDE the filter, BEFORE
      * `.slice(-limit)` — or a holder's newest-N window stays flooded by house rows on this store only. Default off, so every

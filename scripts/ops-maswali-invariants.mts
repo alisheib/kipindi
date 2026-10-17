@@ -3,9 +3,10 @@
  *
  *   railway run npx tsx scripts/ops-maswali-invariants.mts
  *
- * The same five checks the lifecycle runs nightly (`maswali-invariants.ts`): every settled week's pool at 0, its columns
- * closing, the jackpots equal to their weeks and forfeits, at most one claimed carry outstanding, the guarantee covering
- * the unsettled weeks, every count equal to its tickets. Exit 1 when one is broken.
+ * The same five checks the lifecycle runs nightly (`maswali-invariants.ts`): every settled and voided week's pool at 0, its
+ * columns closing, the jackpots equal to their weeks and forfeits, at most one claimed carry outstanding, the guarantee
+ * covering the unsettled weeks, every count equal to its tickets and no voided week holding a live one. Exit 1 when one is
+ * broken.
  */
 import { checkMaswaliInvariants } from "../src/lib/server/maswali-invariants.ts";
 

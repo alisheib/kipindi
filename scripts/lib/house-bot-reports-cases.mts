@@ -795,6 +795,24 @@ if (STORE === "memory") {
       return false;
     };
 
+    /**
+     * ⭐ A BULK WRITE IS READ THROUGH ITS ROW (MASWALI-BUILD R1, 2026-10-17). `.txn.createMany(<rows>.map((x) => ({ … })), tx)`
+     * writes one row per element, and every row is that arrow's object literal — so the pin reads THAT literal and holds it
+     * to the same rule as a single create (`positionId: x.id` beside a marker read from the same `x`). Only `createMany`,
+     * and only an arrow whose body IS the literal: a prebuilt list, a variable or a block body stays unreadable and is
+     * reported, exactly as before — the pin never assumes what a list it cannot see holds.
+     */
+    const rowLiteralOf = (call: ts.CallExpression, arg: ts.Expression): ts.ObjectLiteralExpression | null => {
+      if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== "createMany") return null;
+      if (!ts.isCallExpression(arg) || !ts.isPropertyAccessExpression(arg.expression) || arg.expression.name.text !== "map") return null;
+      const fn = arg.arguments[0] ? unwrap(arg.arguments[0]) : undefined;
+      if (!fn || !ts.isArrowFunction(fn)) return null;
+      const body = fn.body;
+      if (ts.isBlock(body)) return null;
+      const row = unwrap(body);
+      return ts.isObjectLiteralExpression(row) ? row : null;
+    };
+
     /** Every `.txn.create(` site in one file, with what its literal carries, and the call node for the ctx check. */
     const txnSites = (file: string, code: string): Array<Site & { call: ts.CallExpression | null }> => {
       const sf = parse(file, code);
@@ -804,8 +822,9 @@ if (STORE === "memory") {
         const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
         const arg = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
         const endLine = sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1;
-        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
-        out.push({ file, line, endLine, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
+        const lit = !arg ? null : ts.isObjectLiteralExpression(arg) ? arg : rowLiteralOf(n, arg);
+        if (!lit) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
+        out.push({ file, line, endLine, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n });
       });
       return out;
     };
@@ -1048,6 +1067,23 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
       addedClean.length === all.filter((x) => x.file === MS).length + 1 && scan(ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),")).length === 0
       && addedDirty.length === 1 && /NO marker/.test(addedDirty[0].why ?? ""),
       j({ sitesAfterAppend: addedClean.length, dirty: addedDirty }));
+    /* ⭐ THE BULK WRITER, BOTH DIRECTIONS (MASWALI-BUILD R1). A `.txn.createMany(` whose rows one `.map` builds is read
+       through that arrow's literal: its marker read from the row's own position passes, the same writer without it is
+       reported, a marker read from ANOTHER position is reported, and a list the pin cannot see into stays unreadable. */
+    const BULK_WRITER = (marker: string) => `
+async function __c2bBulkWriter(rows: Array<{ q: { id: string; houseBotId: string | null }; other: { houseBotId: string | null } }>) {
+  await db.txn.createMany(rows.map(({ q, other }) => ({ id: "txn_c2b", walletId: "w", userId: "u", type: "BET_REFUND", status: "CONFIRMED", positionId: q.id,${marker} })), null);
+}
+`;
+    const bulkClean = scan(ms + BULK_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),"));
+    const bulkDirty = scan(ms + BULK_WRITER(""));
+    const bulkWrong = scan(ms + BULK_WRITER(" ...(other.houseBotId ? { houseBotId: other.houseBotId } : {}),"));
+    const bulkOpaque = scan(`${ms}\nasync function __c2bOpaque(rows: unknown[]) { await db.txn.createMany(rows as never, null); }\n`);
+    ok("0.232.c2b · CONTROL · a BULK writer (`.txn.createMany(rows.map((x) => ({ … })))`) is read through its row: clean with its own position's marker, reported with none or with another position's, and a list the pin cannot see into is reported as unreadable",
+      bulkClean.length === 0 && bulkDirty.length === 1 && /NO marker/.test(bulkDirty[0].why ?? "")
+        && bulkWrong.length === 1 && /WRONG object/.test(bulkWrong[0].why ?? "")
+        && bulkOpaque.length === 1 && /not an object literal/.test(bulkOpaque[0].why ?? ""),
+      j({ clean: bulkClean, dirty: bulkDirty, wrong: bulkWrong, opaque: bulkOpaque }));
 
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));

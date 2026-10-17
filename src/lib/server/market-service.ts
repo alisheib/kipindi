@@ -3092,7 +3092,7 @@ export async function resolveDueMarket(
  * documented as total. A missed live update costs a stale pill until the next navigation;
  * throwing here would cost a settled bet.
  */
-async function emitWalletBalances(userIds: Iterable<string>): Promise<void> {
+export async function emitWalletBalances(userIds: Iterable<string>): Promise<void> {
   const seen = new Set<string>();
   for (const userId of userIds) {
     if (!userId || seen.has(userId)) continue;
@@ -3950,10 +3950,10 @@ export async function settleMarket(
   }
   if (m.settledAt) return { ok: false, error: "Market is already settled.", code: "INVALID" };
   if (!m.resolvedOutcome) return { ok: false, error: "Market has no recorded outcome.", code: "INVALID" };
-  // S0.5 · the fence (MR-18): a Millionea week reaches this function only through its week-void control, and only on the
-  // VOID arm — a full refund of every ticket. A graded week is settled by its own function (S3), never here: this
-  // function's one-sided branch would refund every ticket at zero fee.
-  if (isFencedMaswali(m) && m.resolvedOutcome !== "VOID") return { ok: false, error: MASWALI_FENCE_ERROR, code: "INVALID" };
+  // S0.5 + R1 · the fence: a Millionea week never settles here. A graded week is settled by its own release (S3), and a
+  // week void refunds in bulk with the market's settled stamp in the same transaction (`maswali-void.ts`, MR-18) — the
+  // one exactly-once truth. This one-sided branch would refund every ticket at zero fee; this VOID arm timed a week out.
+  if (isFencedMaswali(m)) return { ok: false, code: "INVALID", error: MASWALI_FENCE_ERROR };
 
   // ── The deep link carried by every Up & Down result row (owner decision 2026-08-22).
   //
@@ -4213,10 +4213,10 @@ export async function settleMarket(
     const udReason = m.productLine === "UPDOWN"
       ? await roundStore.getByMarketId(m.id).then((r) => r?.voidReason ?? null).catch(() => null)
       : null;
-    // A Millionea week reaches this arm only as a whole-week void (MR-18): name it, never "voided" over a ticket.
-    const refundDescription = m.productLine === "MASWALI"
-      ? "Refund · Millionea week voided, ticket refunded in full"
-      : VOID_REFUND_DESCRIPTION[udReason ?? ""] ?? null;
+    // A Millionea week never reaches this arm (the fence above, R1): its whole-week void refunds in bulk, in its own
+    // words (`MASWALI_VOID_REFUND`, maswali-void.ts). A long-form poll has no per-round reason to name, so its wording
+    // stays the generic one.
+    const refundDescription = VOID_REFUND_DESCRIPTION[udReason ?? ""] ?? null;
 
     // Refund everyone
     for (const p of myPositions) {

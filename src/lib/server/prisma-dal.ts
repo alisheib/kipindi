@@ -2471,6 +2471,50 @@ export const prismaDb = {
       });
       return toStoredTxn(row);
     },
+    /**
+     * ⭐ MANY ROWS, ONE INSERT PER CHUNK (MASWALI-BUILD R1): the week void's refund writes one row per ticket, and a row at a
+     * time cost a round trip each inside a 30 s transaction. Every row is written exactly as `create` writes it, the house
+     * marker included (create-only). 500 rows bind ~12,000 values, far below Postgres's ceiling. Inside a money
+     * transaction an error propagates and rolls the whole movement back. Returns how many rows were written.
+     * ⛔ Ruling 232: the caller builds each row in a `.map` whose literal copies the marker from the position whose id is
+     * its `positionId` — `test:house-bot-reports` 0.232 reads that literal.
+     */
+    createMany: async (rows: readonly StoredTxn[], tx?: Prisma.TransactionClient | null): Promise<number> => {
+      const db: Db = tx ?? pc();
+      let n = 0;
+      for (let i = 0; i < rows.length; i += 500) {
+        const r = await db.transaction.createMany({
+          data: rows.slice(i, i + 500).map((t) => ({
+            id: t.id,
+            walletId: t.walletId,
+            userId: t.userId,
+            type: t.type,
+            status: t.status,
+            amount: t.amount,
+            fee: t.fee,
+            taxWithheld: t.taxWithheld,
+            balanceAfter: t.balanceAfter,
+            currency: t.currency,
+            provider: t.provider,
+            providerRef: t.providerRef,
+            providerStatus: t.providerStatus ?? null,
+            payoutRail: t.payoutRail ?? null,
+            msisdn: t.msisdn,
+            description: t.description,
+            positionId: t.positionId,
+            amlReason: t.amlReason,
+            createdAt: new Date(t.createdAt),
+            completedAt: t.completedAt ? new Date(t.completedAt) : null,
+            idempotencyKey: t.idempotencyKey ?? null,
+            houseBotId: t.houseBotId ?? null,
+            origin: t.origin ?? null,
+            pendingBet: t.pendingBet == null ? PrismaRuntime.DbNull : t.pendingBet as Prisma.InputJsonValue,
+          })),
+        });
+        n += r.count;
+      }
+      return n;
+    },
     /** `excludeHouseBets` (C5-SPEC ruling 173): `houseBotId IS NULL` in the WHERE, before `take`. See the memory twin. */
     findByUser: async (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany({

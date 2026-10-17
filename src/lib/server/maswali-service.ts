@@ -4,9 +4,9 @@
  *   DRAFT ──open──▶ OPEN ──close──▶ CLOSED ──first seal──▶ RESOLVING ──(S3) settle──▶ SETTLED
  *                     └──────────── a certain week void (MR-18) ─────────────────────▶ VOIDED
  *
- * ⛔ NO MONEY MOVES IN THIS FILE except the week void, and that through the platform's own path: the market is stamped
- *    VOID and `settleMarket`'s VOID arm refunds every live ticket, real and bonus parts (the Up & Down precedent). Buying,
- *    the free cancel and the winning settlement are S3's `maswali-money-service.ts`.
+ * ⛔ NO MONEY MOVES IN THIS FILE. The week void stamps the week VOIDED here and hands it to `maswali-void.ts`, whose one
+ *    bulk transaction refunds every live ticket (R1). Buying, the free cancel and the winning settlement are S3's
+ *    `maswali-money-service.ts` and `maswali-settlement.ts`.
  * ⛔ EVERY STATE CHANGE IS A CONDITIONAL WRITE UNDER THE CHAIN LOCK (`maswali:chain`), so two officers, the scheduler and
  *    a retry can never open, close or claim twice. The DAL's claims (`stampOpen`, `stampClose`, `moveClose`, `claimCarry`)
  *    answer whether they won the row; a lost claim is "someone else did it", never an error that leaves half a change.
@@ -19,7 +19,8 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { buyPosition, createMarket, settleMarket } from "./market-service";
+import { buyPosition, createMarket } from "./market-service";
+import { refundVoidedWeek } from "./maswali-void";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
@@ -592,43 +593,42 @@ export async function proposeVoidsAtDeadline(weekId: string, now?: Date): Promis
 // ── THE WEEK VOID ───────────────────────────────────────────────────────────────────────────────────
 
 /**
- * ⭐ MR-18 · VOID THE WHOLE WEEK — every live ticket refunded in full, no fee, no top-up, R untouched. Only once the
- * void is certain on the FINAL record and its objection window has closed (an upheld objection could reinstate a
- * question). The market is stamped VOID with `objectionsClosedAt = now`, then `settleMarket`'s VOID arm refunds.
+ * ⭐ MR-18 · VOID THE WHOLE WEEK — every live ticket refunded in full, no fee, no top-up, R untouched. Two steps, each
+ * exactly once, and retried until both have happened (R1):
+ *   1 · THE DECISION: only once the void is certain on the FINAL record, its objection window has closed and no objection
+ *       stands (an upheld one could reinstate a question), the week is stamped VOIDED in one claim (`stampVoid`), which
+ *       stops every other act on it. It is never undone.
+ *   2 · THE REFUNDS (`refundVoidedWeek`): one bulk transaction that refunds every live ticket and stamps the market settled
+ *       — the one truth that they landed. A refusal or a rollback leaves the week VOIDED and owed: calling this again on
+ *       a VOIDED week resumes them, the tick and the heal retry it, and the console raises it until it lands.
+ * On a week already refunded it changes nothing and answers `already`.
  */
-export async function voidWeek(input: { weekId: string; actorId?: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
+export async function voidWeek(input: { weekId: string; actorId?: string; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean; refunded?: number }>> {
   const nowMs = (input.now ?? new Date()).getTime();
-  const stamped = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ week: StoredWeek; marketId: string }>> => {
+  const stamped = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ week: StoredWeek }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
-    if (week.state === "VOIDED") return { ok: true, week, marketId: week.marketId ?? "" };
+    if (week.state === "VOIDED") return { ok: true, week };
     if (week.state !== "RESOLVING" && week.state !== "CLOSED") return refuse(`Week ${week.code} is ${week.state}.`);
     const gate = settlementGate(gradable(await questionStore.listForWeek(week.id)));
     if (!gate.ready || !gate.weekVoid) return refuse("The week void is not final: voided mains do not outnumber the usable reserves on the sealed record.");
     if (!week.objectionsCloseAt || Date.parse(week.objectionsCloseAt) > nowMs) return refuse("The objection window is still open; an upheld objection could reinstate a question.");
     if (!week.marketId) return refuse("The week has no market.");
-    await weekStore.patch(week.id, { state: "VOIDED" });
-    return { ok: true, week, marketId: week.marketId };
+    // The poll's settlement gate refused a standing objection after this stamp, and stranded the week (R1): it is asked
+    // HERE now, before the decision is made. Read fail-closed, as the settlement reads it.
+    const { countOpenObjections } = await import("./objections-service");
+    if ((await countOpenObjections(week.marketId)) > 0) return refuse(`An objection is standing against week ${week.code}; it voids once every objection is decided.`);
+    const won = await weekStore.stampVoid(week.id);
+    const after = (await weekStore.get(week.id))!;
+    if (!won) return after.state === "VOIDED" ? { ok: true, week: after } : refuse(`Week ${week.code} changed while it was being voided; refresh and try again.`);
+    audit({ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, marketId: week.marketId, ticketCount: week.ticketCount } });
+    return { ok: true, week: after };
   });
   if (!stamped.ok) return stamped;
-  if (stamped.week.state !== "VOIDED") {
-    // ⚠️ The MARKET's stamps read the platform clock, never an injected one: `settleMarket` compares its objection stamp
-    // with the real now, and the market's own window means nothing for a week (the week's window has already closed).
-    const marketNowIso = new Date().toISOString();
-    await withLock(`market:${stamped.marketId}`, async () => {
-      await marketStore.stamp(stamped.marketId, {
-        status: "VOIDED", resolvedOutcome: "VOID",
-        resolutionStage1By: SYSTEM, resolutionStage1At: marketNowIso, resolutionStage2By: SYSTEM, resolutionStage2At: marketNowIso,
-        resolutionEvidence: `Maswali Millionea week ${stamped.week.code} voided whole (MR-18): voided main questions outnumbered the usable reserves. Every ticket is refunded in full.`,
-        objectionsClosedAt: marketNowIso, resolutionNotifiedAt: marketNowIso, settledAt: null, updatedAt: marketNowIso,
-      } as never);
-    });
-    const settled = await settleMarket(stamped.marketId, { actorId: SYSTEM });
-    if (!settled.ok) return refuse(`The week is VOIDED but its refunds did not run: ${settled.error}. The heal retries.`);
-    audit({ category: "ADMIN", action: "maswali.week.voided", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: stamped.week.id,
-      payload: { code: stamped.week.code, marketId: stamped.marketId } });
-  }
-  return { ok: true, week: (await weekStore.get(input.weekId))! };
+  const r = await refundVoidedWeek(stamped.week.id);
+  if (!r.ok) return refuse(`Week ${stamped.week.code} is VOIDED, and its refunds have not landed: ${r.error} The tick retries them; the heal runs them now.`);
+  return { ok: true, week: (await weekStore.get(input.weekId))!, already: r.already, refunded: r.tickets };
 }
 
 // ── THE CARRY ───────────────────────────────────────────────────────────────────────────────────────
