@@ -29,6 +29,10 @@
  *        `KYC_DOCUMENT_HOLD_YEARS` sets, compared with new identity checks meanwhile, then erased but for a coded form of
  *        the number — in every language, with the retired "removed at once" gone (Part C, the owner's ruling).
  *        (§4i is the final-rule gate's own section; these two are named apart from it.)
+ *   §1 · ⭐ TWO RENDERINGS (MASWALI-BUILD S5; the lead's decision of 2026-10-18): §7's Maswali Millionea paragraph
+ *        publishes WITH THE CEILING, inside a `MillioneaWording` wrapper. Below the ceiling — production — the notice is
+ *        META's version over the English body as it stood; above it, the version `POLICY_PAGES.privacy` prints in META's
+ *        place over the body with the paragraph. Each is pinned with its own hash and entry; §4q holds the wrapper.
  *   §4n · v2026-10-15 · §7 names How to play's seen key (the Vodacom plan S11 WP4), with the guide's name and what the
  *        key is for, in every language; the guide's files write storage only through `markSeen(HOWTO_SEEN_KEY)`, and the
  *        helper writes exactly that key, "1". Controls: the key dropped from one language, renamed in code only, a direct
@@ -52,10 +56,12 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
+import { millioneaDarkSource, millioneaPublishedSource, millioneaWordingBlocks } from "./lib/millionea-wording-source.mts";
 import {
-  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, POLICY_LINE_DEFAULTS, SMS_GATEWAY_WORDS, comparePolicyVersions,
-  holdsRequiredWord, isPolicyVersion,
+  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, POLICY_LINE_DEFAULTS, POLICY_PAGES, SMS_GATEWAY_WORDS, comparePolicyVersions,
+  holdsRequiredWord, isPolicyVersion, metaAtCode,
 } from "../src/lib/legal/policy-lines.ts";
+import { millioneaWordingPublished } from "../src/lib/millionea-rollout.ts";
 // §4j reads the note under "Erase my data" from the dictionary; §4k reads whether every offer carries its stop link (an
 // offer as the one composer sends it), and the ONE constant §5 and §9 print as the referees' line.
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -93,13 +99,20 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-15.2 · Vodacom S12 WP10b: §7 names a ROUND in kp-pending-bet, its own paragraph after S8's (§4o).
 // The combined body includes S11's How-to note and S12's round paragraph.
 // 2026-10-17 · MASWALI-BUILD S5 (MASWALI-PLAN MB-57; COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7 names the Millionea
-// slip's tab key, kp-millionea-slip:, its own paragraph after S12's (§4p holds it to the code); PRIVACY_EN_SHA re-pinned from
-// the measured English block (bd8dc162cbac -> 8393748023c3).
-const PRIVACY_VERSION = "2026-10-17";
-/** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
- *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
- *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "8393748023c3";
+// slip's tab key, kp-millionea-slip:, its own paragraph after S12's (§4p holds it to the code), measured 8393748023c3.
+// 2026-10-18 · ⭐ PUBLISHED WITH THE CEILING (the lead's decision, under Ali's delegation): the paragraph sits inside a
+// `MillioneaWording` wrapper and prints, with its version, only while the server's ceiling admits Millionea. So the notice
+// has two renderings and each is pinned: production's (META's 2026-10-15.2 over main's English body, bd8dc162cbac) and the
+// one above the ceiling (2026-10-17, 8393748023c3) — both measured through `scripts/lib/millionea-wording-source.mts`.
+/** The version production prints — META's own, below the Millionea ceiling. */
+const PRIVACY_VERSION = "2026-10-15.2";
+/** sha256 (first 12 hex) of the ENGLISH content block as production prints it (every Millionea wrapper removed with its
+ *  children), whitespace-collapsed. The English text is the binding one. (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS
+ *  gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy v2026-10-09", item 5.) */
+const PRIVACY_EN_SHA = "bd8dc162cbac";
+/** The version printed above the ceiling (`POLICY_PAGES.privacy` in META's place), and its English block's hash. */
+const PRIVACY_VERSION_MILLIONEA = "2026-10-17";
+const PRIVACY_EN_SHA_MILLIONEA = "8393748023c3";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -145,7 +158,17 @@ ok("§0c the comment stripper keeps code after a glob in a line comment",
 /* ════════════════════════════════════════════════════════════════════════════
  * §1 · THE VERSION — one label, pinned with the English text, and recorded.
  * ══════════════════════════════════════════════════════════════════════════ */
-console.log("\n§1 · the version moves with the English text, and has a compliance entry");
+console.log("\n§1 · the version moves with the English text, and has a compliance entry — in each of the two renderings");
+/** The version the code prints at a ceiling (`POLICY_PAGES.privacy`), the environment restored after. */
+function codeVersionAt(ceiling: string): string {
+  const was = process.env.FEATURE_MILLIONEA;
+  try {
+    process.env.FEATURE_MILLIONEA = ceiling;
+    return POLICY_PAGES.privacy.codeVersion;
+  } finally {
+    if (was === undefined) delete process.env.FEATURE_MILLIONEA; else process.env.FEATURE_MILLIONEA = was;
+  }
+}
 function versionDefects(src: string, decisions: string): string[] {
   const d: string[] = [];
   const en = src.match(/en: "Version ([0-9]{4}-[0-9]{2}-[0-9]{2}(?:\.[0-9]+)?) · /)?.[1];
@@ -154,14 +177,30 @@ function versionDefects(src: string, decisions: string): string[] {
   if (!en || !sw || !zh) d.push(`a version line is missing (en=${en} sw=${sw} zh=${zh})`);
   else if (en !== sw || en !== zh) d.push(`the three version lines disagree (en=${en} sw=${sw} zh=${zh})`);
   if (en && en !== PRIVACY_VERSION) d.push(`the page prints ${en}, the pin is ${PRIVACY_VERSION}`);
-  const sha = enSha(src);
-  if (sha !== PRIVACY_EN_SHA) d.push(`the English text hashes to ${sha}, pinned ${PRIVACY_EN_SHA} — a changed English text needs a new version and a compliance entry`);
-  if (!new RegExp(`^## [0-9-]+.*Privacy v${PRIVACY_VERSION.replace(/\./g, "\\.")}`, "m").test(decisions)) d.push(`COMPLIANCE-DECISIONS.md has no entry heading naming Privacy v${PRIVACY_VERSION}`);
+  // Below the ceiling: META's version over the body with no Millionea wording — production's notice, byte for byte.
+  const sha = enSha(millioneaDarkSource(src));
+  if (sha !== PRIVACY_EN_SHA) d.push(`below the Millionea ceiling the English text hashes to ${sha}, pinned ${PRIVACY_EN_SHA} — a changed English text needs a new version and a compliance entry`);
+  // Above it: the version POLICY_PAGES.privacy prints in META's place, over the body with the wrapper's children.
+  const shaM = enSha(millioneaPublishedSource(src));
+  if (shaM !== PRIVACY_EN_SHA_MILLIONEA) d.push(`above the Millionea ceiling the English text hashes to ${shaM}, pinned ${PRIVACY_EN_SHA_MILLIONEA} — a changed English text needs a new version and a compliance entry`);
+  for (const v of [PRIVACY_VERSION, PRIVACY_VERSION_MILLIONEA]) {
+    if (!new RegExp(`^## [0-9-]+.*Privacy v${v.replace(/\./g, "\\.")}`, "m").test(decisions)) d.push(`COMPLIANCE-DECISIONS.md has no entry heading naming Privacy v${v}`);
+  }
   return d;
 }
 const decisionsSrc = read("docs/COMPLIANCE-DECISIONS.md");
-ok("§1a the version is one label in en/sw/zh, equal to the pin, over the pinned English text, with its entry",
-  versionDefects(pageSrc, decisionsSrc).length === 0, versionDefects(pageSrc, decisionsSrc).join("; "), `v${PRIVACY_VERSION} · en ${enSha(pageSrc)}`);
+ok("§1a the version is one label in en/sw/zh, equal to the pin, over the pinned English text, with its entry — production's rendering and the one published with the Millionea ceiling, each with its own",
+  versionDefects(pageSrc, decisionsSrc).length === 0, versionDefects(pageSrc, decisionsSrc).join("; "),
+  `v${PRIVACY_VERSION} · en ${enSha(millioneaDarkSource(pageSrc))} · with the ceiling v${PRIVACY_VERSION_MILLIONEA} · en ${enSha(millioneaPublishedSource(pageSrc))}`);
+{
+  const metaEn = pageSrc.match(/en: "(Version [^"]*)"/)?.[1] ?? "";
+  const dark = codeVersionAt("WITHDRAWN"), shown = codeVersionAt("STAFF_PREVIEW"), active = codeVersionAt("ACTIVE"), typo = codeVersionAt("active");
+  ok("§1b the code version follows the ceiling: production's below it (META's own), the Millionea version above it, and a typo is the shipped WITHDRAWN — and META prints that version in its place, byte for byte below the ceiling",
+    dark === PRIVACY_VERSION && shown === PRIVACY_VERSION_MILLIONEA && active === PRIVACY_VERSION_MILLIONEA && typo === PRIVACY_VERSION
+      && metaEn.startsWith(`Version ${PRIVACY_VERSION} · `) && metaAtCode(metaEn, dark) === metaEn
+      && metaAtCode(metaEn, shown) === metaEn.replace(PRIVACY_VERSION, PRIVACY_VERSION_MILLIONEA),
+    "", JSON.stringify({ dark, shown, active, typo, meta: metaAtCode(metaEn, shown) }));
+}
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §2 · PROCESSORS — every dependency that can carry personal data out is named in §4.
@@ -1495,6 +1534,52 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
   ok("§4p control · the slip keeping its picks in lasting storage, or under a key §7 does not name, is reported",
     plantLocal !== slipSrc && slipCodeDefects(plantLocal).some((x) => x.includes("localStorage"))
       && plantKey !== slipSrc && slipCodeDefects(plantKey).some((x) => x.includes("kp-millionea-slip:")));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4q · MILLIONEA'S WORDING PUBLISHES WITH THE CEILING (MASWALI-BUILD S5; the lead's decision of 2026-10-18).
+ * /legal/privacy is live while Millionea is dark: every paragraph that names the product sits inside the
+ * `MillioneaWording` wrapper, the wrapper prints its children only on the ceiling's answer, and production's rendering
+ * names Millionea nowhere, in any language.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4q · the Millionea wording publishes with the ceiling");
+{
+  const WRAPPER = "src/lib/server/legal/millionea-wording.tsx";
+  const wordingDefects = (src: string, wrapperSrc: string): string[] => {
+    const d: string[] = [];
+    const bl = blocks(src);
+    for (const l of LOCS) {
+      const wrapped = millioneaWordingBlocks(section(bl[l], "7"));
+      if (wrapped.length !== 1 || !wrapped[0].includes('<p data-policy-addition="millionea-slip">')) d.push(`${l}: §7's slip paragraph is not inside one MillioneaWording wrapper (${wrapped.length})`);
+      const darkText = millioneaDarkSource(bl[l]);
+      if (/millionea/i.test(darkText)) d.push(`${l}: below the ceiling the notice still names Millionea`);
+    }
+    if (!src.includes('import { MillioneaWording } from "@/lib/server/legal/millionea-wording";')) d.push("the page does not draw its wording through the wrapper");
+    const w = code(wrapperSrc).replace(/\s+/g, " ");
+    if (!w.includes("export function MillioneaWording({ children }: { children: ReactNode }) { return millioneaWordingPublished() ? <>{children}</> : null; }")) d.push("the wrapper prints its children otherwise than on the ceiling's answer alone");
+    return d;
+  };
+  const wrapperSrc = read(WRAPPER);
+  ok("§4q every §7 paragraph naming Millionea is inside the MillioneaWording wrapper, in en/sw/zh; below the ceiling the notice names Millionea nowhere; the wrapper prints its children on the ceiling's answer alone",
+    wordingDefects(pageSrc, wrapperSrc).length === 0, wordingDefects(pageSrc, wrapperSrc).join("; "));
+  const was = process.env.FEATURE_MILLIONEA;
+  const at = (v: string | undefined) => { if (v === undefined) delete process.env.FEATURE_MILLIONEA; else process.env.FEATURE_MILLIONEA = v; return millioneaWordingPublished(); };
+  const answers = { WITHDRAWN: at("WITHDRAWN"), STAFF_PREVIEW: at("STAFF_PREVIEW"), ACTIVE: at("ACTIVE"), typo: at("staff_preview"), unset: at(undefined) };
+  at(was);
+  ok("§4q′ the wording is published above WITHDRAWN only — the ceiling's answer, and a typo or an unset environment is the shipped WITHDRAWN",
+    JSON.stringify(answers) === JSON.stringify({ WITHDRAWN: false, STAFF_PREVIEW: true, ACTIVE: true, typo: false, unset: false }), "", JSON.stringify(answers));
+  // The Swahili paragraph's wrapper tags removed (its words kept): found by the reader's own markers, CRLF or LF alike.
+  const swAt = pageSrc.indexOf("\n  sw: (");
+  const openAt = pageSrc.indexOf("<MillioneaWording>", swAt), closeAt = pageSrc.indexOf("</MillioneaWording>", swAt);
+  const loose = swAt < 0 || openAt < 0 || closeAt < openAt ? pageSrc
+    : pageSrc.slice(0, openAt) + pageSrc.slice(openAt + "<MillioneaWording>".length, closeAt) + pageSrc.slice(closeAt + "</MillioneaWording>".length);
+  ok("§4q control · a Swahili slip paragraph outside its wrapper is reported, in Swahili",
+    loose !== pageSrc && wordingDefects(loose, wrapperSrc).some((x) => x.startsWith("sw:")));
+  const always = wrapperSrc.replace("return millioneaWordingPublished() ? <>{children}</> : null;", "return <>{children}</>;");
+  ok("§4q control · a wrapper that prints its children whatever the ceiling is reported", always !== wrapperSrc && wordingDefects(pageSrc, always).some((x) => x.includes("wrapper prints")));
+  const unwrapped = millioneaPublishedSource(pageSrc);
+  ok("§4q control · the paragraph published unconditionally moves production's rendering off its pin",
+    unwrapped !== pageSrc && versionDefects(unwrapped, decisionsSrc).some((x) => x.startsWith("below the Millionea ceiling")));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

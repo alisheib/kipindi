@@ -49,7 +49,7 @@ import { createElement, type ReactNode } from "react";
 import { defineConfig } from "../define-config";
 import {
   EMPTY_POLICY_LINES, POLICY_LINE_DEFAULTS, POLICY_LINE_KEYS, POLICY_LINE_RULES, POLICY_LINE_SPEC, POLICY_LOCALES, POLICY_PAGE_KEYS,
-  POLICY_PAGES, isPolicyLineKey, isPolicyLocale, mergePolicyLines, metaWithVersion, policyDefaultFingerprint,
+  POLICY_PAGES, isPolicyLineKey, isPolicyLocale, mergePolicyLines, metaAtCode, metaWithVersion, policyDefaultFingerprint,
   policyLineParts, policyLineState, policyLinesShapeProblem, policyVerdictBlocks, printedPolicyVersion,
   type PolicyLineHistory, type PolicyLineKey, type PolicyLineProblem, type PolicyLineRules, type PolicyLineVersion,
   type PolicyLinesRecord, type PolicyLinesUpdate, type PolicyLocale, type PolicyPage, type PolicySendWindow, type PolicyTexts,
@@ -190,9 +190,10 @@ function storeOver(
     return spec ? printedPolicyVersion(spec.codeVersion, cfg.get()[spec.versionKey]) : "";
   };
 
+  // META prints its page's code version NOW (privacy's follows the Millionea ceiling, `POLICY_PAGES`), then any stamp.
   const policyMeta = (meta: string, page: PolicyPage): string => {
     const spec = POLICY_PAGES[page];
-    return spec ? metaWithVersion(meta, cfg.get()[spec.versionKey]) : meta;
+    return spec ? metaWithVersion(metaAtCode(meta, spec.codeVersion), cfg.get()[spec.versionKey]) : meta;
   };
 
   const savedRecord = (): PolicyLinesRecord => mergePolicyLines(cfg.get(), {});

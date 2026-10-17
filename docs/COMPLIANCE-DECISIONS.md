@@ -20,11 +20,24 @@ native review at Gate B.
 **What §7 says in English, Swahili and Chinese.** While a player fills a Maswali Millionea ticket, the answers picked
 for that week sit in that tab's sessionStorage as `kp-millionea-slip:` followed by the week's identifier, so a reload or
 going to deposit keeps them. The entry holds no identifier of the player, is removed once the ticket is cut or when the
-tab closes, and never buys a ticket unless the player confirms it. Privacy's version is 2026-10-17, with the English
-body pinned at `8393748023c3` by `test:privacy-notice` §1a; §4p checks each language's new paragraph and holds the slip
-(`src/app/millionea/slip/slip-client.tsx`) to exactly that key, in the tab alone. The published-words pin
-(`scripts/lib/s8-published-words.mts`) accepts the three paragraphs at their measured hashes under this version and
-nothing else; `POLICY_PAGES.privacy.codeVersion` moved with the printed version (`test:policy-lines` L0).
+tab closes, and never buys a ticket unless the player confirms it. §4p checks each language's paragraph and holds the
+slip (`src/app/millionea/slip/slip-client.tsx`) to exactly that key, in the tab alone.
+
+**Published with the ceiling (the lead's decision of 2026-10-18, under Ali's delegation).** /legal/privacy is live while
+Millionea is dark, and a live notice must not name a product nobody can open. So the paragraph and this version print
+only while the server's ceiling admits Millionea — `millioneaCeiling()` above WITHDRAWN (`millioneaWordingPublished`,
+`src/lib/millionea-rollout.ts`). Each language's paragraph sits inside the `MillioneaWording` wrapper
+(`src/lib/server/legal/millionea-wording.tsx`, server-rendered: below the ceiling nothing of it reaches the page), and
+`POLICY_PAGES.privacy.codeVersion` — which `policyMeta` prints in META's place — is 2026-10-17 above the ceiling and
+production's 2026-10-15.2 below it. ⭐ Production keeps today's notice byte for byte: META's 2026-10-15.2 over the English
+body as it stood (`bd8dc162cbac`). `test:privacy-notice` §1 pins both renderings — `bd8dc162cbac` under 2026-10-15.2
+below the ceiling, `8393748023c3` under 2026-10-17 above it — and §4q holds every Millionea paragraph inside the wrapper,
+the wrapper to the ceiling's answer alone, and production's rendering free of the product's name in every language. The
+published-words pin (`scripts/lib/s8-published-words.mts`) accepts the three paragraphs at their measured hashes, each the
+whole of its wrapper, and nothing else; `test:policy-lines` L0 holds META to the code version at WITHDRAWN.
+⚠️ **The wording publishes with the ceiling; Ali and the native readers approve it at Gate B, before ACTIVE.** ⚠️ From a
+STAFF_PREVIEW ceiling on, the paragraph prints to every reader of /legal/privacy — the notice is public though the product
+is not — and the decision accepts that: from that ceiling on a staff member's tab can hold the key, so the notice says so.
 
 ---
 
