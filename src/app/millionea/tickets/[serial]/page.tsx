@@ -35,7 +35,7 @@ import { MaswaliTicket, type TicketMoments } from "@/components/maswali/maswali-
 import { MaswaliLossReceipt, MaswaliWinLedger } from "@/components/maswali/maswali-win-ledger";
 import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
-import { millioneaHowTo, millioneaMyTickets, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
+import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
 import { millioneaTicketHref } from "@/lib/position-permalink";
 import { RESERVE_COUNT } from "@/lib/maswali-score";
@@ -82,13 +82,15 @@ function momentsOf(view: MillioneaTicketView): { play: TicketMoments; closingRul
   };
 }
 
-/** This won ticket's own mark when its share is not the player's yet, or any more (MB-43, OD-07): a word, never gold.
- *  The week's counts of such shares are said under the ticket. */
+/** A winning ticket's own share mark when the share is not the player's yet — held for review — or any more: forfeited
+ *  after it (MB-43, OD-07; round 3: that ticket reads "forfeited", never "won"). A word, never gold; the week's counts of
+ *  such shares are said under the ticket. Every state named, so a new one is a compile error here, not a silent null. */
 function shareLine(t: Dict, view: MillioneaTicketView): string | null {
-  if (view.shown !== "won") return null;
-  if (view.share === "held") return t.millionea.shareHeld;
-  if (view.share === "forfeited") return t.millionea.shareForfeited;
-  return null;
+  switch (view.shown) {
+    case "won": return view.share === "held" ? t.millionea.shareHeld : null;
+    case "forfeited": return t.millionea.shareForfeited;
+    case "running": case "lost": case "refunded": case "cancelled": return null;
+  }
 }
 
 export default async function MillioneaTicketPage({ params }: { params: Promise<{ serial: string }> }) {
@@ -128,11 +130,13 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   const share = shareLine(t, view);
   const notice = voidLine ?? share ?? undefined;
 
-  // A won week where this player was paid on more than one ticket: the seal and the ledger name every paid serial (D-45).
-  const paidSerials = paid && view.win && view.win.yourWinningTickets > 1
-    ? ((await millioneaMyTickets(gate.userId)).find((g) => g.week.id === view.week.id)?.tickets ?? [])
+  // A won week where this player was paid on more than one ticket: the seal and the ledger name every paid serial (D-45),
+  // read by THIS ticket's week (`millioneaMyTicketsWeek`, round 3) — never looked for on a page of the list.
+  const weekPaid = paid && view.win && view.win.yourWinningTickets > 1
+    ? ((await millioneaMyTicketsWeek(gate.userId, view.week.id))?.tickets ?? [])
       .filter((x) => x.shown === "won" && x.share === "paid").map((x) => x.serial)
-    : [view.serial];
+    : [];
+  const paidSerials = weekPaid.length > 0 ? weekPaid : [view.serial];
   const held = view.win?.yourHeldTickets ?? 0;
   const forfeited = view.win?.yourForfeitedTickets ?? 0;
 
@@ -167,7 +171,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           cannotWin={running && view.cannotWinSoFar}
           seal={paid && view.win && view.win.yourTotal > 0 ? <SealDoor amount={view.win.yourTotal} label={paidSerials.join(" · ")} /> : undefined}
           cancel={cancellable && cancelUntil !== null
-            ? <TicketCancel serial={view.serial} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={cap} />
+            ? <TicketCancel serial={view.serial} ownerId={gate.userId} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={cap} />
             : undefined}
           play={play}
         />

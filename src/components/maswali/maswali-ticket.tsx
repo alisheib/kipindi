@@ -9,7 +9,7 @@ import { MaswaliEarnedAmount, MaswaliEarnedStat } from "@/components/maswali/mas
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { TICKET_SHOWN_KEY, WEEK_STATE_KEY, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
-import { playerStatusChip, positionStatusChip } from "@/lib/status-tone";
+import { playerStatusChip, positionStatusChip, type StatusChipVariant } from "@/lib/status-tone";
 import { sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -67,11 +67,15 @@ export type TicketMoments = {
 /**
  * The chip a ticket's state wears. The platform's position chips (`positionStatusChip`) — LOSS keeps the betting rose by
  * its own recorded ruling — and the one Millionea-only row: a won ticket's chip is the success green (O-6, manifest L4).
+ * A share forfeited after review (round 3) is terminal and inert: the neutral chip, slate's — the tone a cancelled ticket
+ * and a forfeited grant wear — never the win's green, and never the loss's rose (it won; the review took its share back).
+ * Every state named, with the return type stated, so a new one is a compile error here.
  */
-export function millioneaTicketChip(shown: TicketShown) {
+export function millioneaTicketChip(shown: TicketShown): StatusChipVariant | "no" {
   switch (shown) {
     case "running": return positionStatusChip("OPEN");
     case "won": return playerStatusChip("MILLIONEA_WIN") ?? "success";
+    case "forfeited": return "neutral";
     case "lost": return positionStatusChip("LOSS");
     case "refunded": return positionStatusChip("VOID");
     case "cancelled": return playerStatusChip("CANCELLED") ?? "neutral";
@@ -397,8 +401,10 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         <Stat label={t.dialog.stakeLabel} value={formatTzs(price)} money />
         {shown === "won" && payout !== null ? (
           <MaswaliEarnedStat t={t} amount={payout} />
-        ) : shown === "won" && (share === "held" || share === "forfeited") ? (
-          <Stat label={t.journey.ticketFinalPayout} value={share === "held" ? t.millionea.shareHeld : t.millionea.shareForfeited} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
+        ) : shown === "forfeited" || (shown === "won" && share === "held") ? (
+          // A share held for review, or one forfeited after it (round 3: that ticket reads "forfeited", never "won"): its
+          // word in the payout's place — never gold, never a figure (MB-43, OD-07).
+          <Stat label={t.journey.ticketFinalPayout} value={shown === "forfeited" ? t.millionea.shareForfeited : t.millionea.shareHeld} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : shown === "running" ? (
           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : (

@@ -12,6 +12,8 @@
  *   §6 the slip: kept in the tab by week, bought only from the confirm's own press; the Needle and the chat stand down
  *   §7 a ticket's address: the pages name it exactly as the permalink does
  *   §8 its own controls: each source check below is seen to fail on a planted copy
+ *   §9 round 3: Tiketi zangu and the register page on the platform's link pager; the hub and the ticket page read the
+ *      week they name; the free cancel says whose page it was; /positions/performance reads each scored line directly
  *
  * Pure: it reads source files and runs the pure decision helpers. No server, no database, no network, no file written.
  */
@@ -310,6 +312,120 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   ok("8.6 · a card drawn on a break is reported", cardOnBreak.some((x) => x.includes("card's door")));
   const autoBuy = slipDefects(read(`${APP}/slip/slip-client.tsx`).replace("  useEffect(() => {\n    const kept = readKept(weekId);", "  useEffect(() => {\n    commit();\n    const kept = readKept(weekId);"));
   ok("8.7 · a slip that buys from an effect is reported", autoBuy.some((x) => x.includes("effect")));
+}
+
+// ── §9 · round 3's reads ───────────────────────────────────────────────────────────────────────────────────────────
+console.log("\n§9 · round 3: the lists page by week, a page that names its week reads it, the cancel says whose page it was");
+const LIST = `${APP}/tickets/page.tsx`, TICKET_PAGE = `${APP}/tickets/[serial]/page.tsx`, ACTS = `${APP}/tickets/[serial]/ticket-acts.tsx`;
+const REGISTER = `${APP}/register/page.tsx`, HUB = `${APP}/page.tsx`, PERF = "src/app/positions/performance/page.tsx";
+const LABELS = "ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />";
+/** Tiketi zangu and the register: one page with its total, the platform's link pager, and the right empty words. */
+const pagedDefects = (readAt: (rel: string) => string) => {
+  const d: string[] = [];
+  const list = squash(code(readAt(LIST)));
+  if (!list.includes('const { rows: weeks, total, page } = await millioneaMyTickets(gate.userId, { page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE, });')) d.push("Tiketi zangu does not read one page of WEEKS with their total");
+  if (count(list, "millioneaMyTickets(") !== 1) d.push(`Tiketi zangu reads its list ${count(list, "millioneaMyTickets(")} times`);
+  if (!list.includes(`{total > PLAYER_PER_PAGE && ( <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={buildBaseHref(MILLIONEA_HREF.tickets, { lens: lens === "all" ? undefined : lens })} ${LABELS}`)) d.push("Tiketi zangu has no link pager keeping its lens");
+  if (!list.includes('{total === 0 ? ( <EmptyState kind="positions" title={t.millionea.emptyTickets}')) d.push("\"no ticket yet\" is not kept for a reader who holds none");
+  if (!list.includes(') : cards.length === 0 ? ( <EmptyState kind="positions" title={total > PLAYER_PER_PAGE ? t.millionea.lensNoneOnPage : t.millionea.lensNone} /> ) : (')) d.push("a lens that empties a page does not say so in its own words");
+  const register = squash(code(readAt(REGISTER)));
+  if (!register.includes('const { rows: weeks, total, page } = await millioneaRegister({ page: Number.parseInt(String(sp.page ?? "1"), 10) || 1, perPage: PLAYER_PER_PAGE, });')) d.push("the register does not read one page with its total");
+  if (!register.includes(`{total > PLAYER_PER_PAGE && ( <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden"> <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={MILLIONEA_HREF.register} ${LABELS}`)) d.push("the register has no link pager");
+  if (!register.includes("{total === 0 ? ( <EmptyState title={t.millionea.regEmpty} />")) d.push("the register's empty state does not ask the total");
+  if (list.includes("onNavigate")) d.push("Tiketi zangu's pager is driven by script (a link pager works without JavaScript)");
+  if (register.includes("onNavigate")) d.push("the register's pager is driven by script (a link pager works without JavaScript)");
+  return d;
+};
+/** A page that names its week — a result notice's, a ticket's own — reads that week, never a page of the list. */
+const weekReadDefects = (readAt: (rel: string) => string) => {
+  const d: string[] = [];
+  const hub = squash(code(readAt(HUB))), ticket = squash(code(readAt(TICKET_PAGE)));
+  if (!hub.includes("weeks.set(n.weekId, await millioneaMyTicketsWeek(userId, n.weekId));")) d.push("the hub's result line does not read its notice's week");
+  if (!ticket.includes("(await millioneaMyTicketsWeek(gate.userId, view.week.id))?.tickets ?? []")) d.push("the ticket page does not read its own week");
+  for (const [name, s] of [["the hub", hub], ["the ticket page", ticket]] as const) if (s.includes("millioneaMyTickets(")) d.push(`${name} still looks for its week on a page of the list`);
+  return d;
+};
+/** The cancel carries the account the page was drawn for, as the slip's buy does. */
+const cancelDefects = (readAt: (rel: string) => string) => {
+  const d: string[] = [];
+  const acts = squash(code(readAt(ACTS)));
+  const confirm = acts.slice(Math.max(0, acts.indexOf("const confirm = () => {")));
+  const owner = confirm.indexOf('fd.set("expectedOwnerId", ownerId);'), call = confirm.indexOf("cancelMillioneaTicketAction(fd)");
+  if (!(owner > 0 && call > owner)) d.push("the cancel does not send the page's account before it acts");
+  if (!acts.includes("export function TicketCancel({ serial, ownerId, until, serverNow, price, cap }: { serial: string; ownerId: string;")) d.push("TicketCancel takes no owner");
+  if (!squash(code(readAt(TICKET_PAGE))).includes("<TicketCancel serial={view.serial} ownerId={gate.userId}")) d.push("the page does not hand the cancel its session's account");
+  if (!squash(code(readAt(`${APP}/slip/slip-client.tsx`))).includes('fd.set("expectedOwnerId", userId);')) d.push("(the parity) the slip's buy no longer sends its account");
+  return d;
+};
+/** /positions/performance scores each scored line, read directly. */
+const perfDefects = (readAt: (rel: string) => string) => {
+  const s = squash(code(readAt(PERF)));
+  const d: string[] = [];
+  if (!s.includes("Promise.all(SCORED_LINES.map((line) => listPositionsForUser(session.userId, 5_000, line))),")) d.push("the scored lines are not each read directly");
+  if (!s.includes("const positions = perfPopulation({ all: positionsAll, lines: lineReads, tickets: millioneaPositions }, 5_000);")) d.push("the population is not the scored lines' own merge");
+  if (s.includes("positionsAll.filter((p) => !millioneaIds.has(p.id))")) d.push("the population is still every line less its tickets");
+  return d;
+};
+{
+  const p = pagedDefects(read);
+  ok("9.1 · Tiketi zangu reads ONE page of weeks (each whole) with the count of them all, and draws the platform's pager as links — keeping its lens — only when there is more than a page; \"no ticket yet\" only for a reader who holds none, and a lens that empties a page says so",
+    p.filter((x) => !x.startsWith("the register")).length === 0, p.join(" | "));
+  ok("9.2 · the register reads one page with its total and pages through the platform's pager, as links: it still works without JavaScript",
+    p.filter((x) => x.startsWith("the register")).length === 0, p.join(" | "));
+  const w = weekReadDefects(read);
+  ok("9.3 · the hub's result line and the ticket page read the week they name (`millioneaMyTicketsWeek`) — neither looks for it on a page of the list", w.length === 0, w.join(" | "));
+  const c = cancelDefects(read);
+  ok("9.4 · the free cancel sends `expectedOwnerId` — the account the page was drawn for — before it acts, as the slip's buy does, so a changed session is refused as `session_changed`", c.length === 0, c.join(" | "));
+  const f = perfDefects(read);
+  ok("9.5 · /positions/performance reads each scored line directly (`SCORED_LINES`) and scores their merge — never every line less its tickets (S5 re-review 8)", f.length === 0, f.join(" | "));
+}
+{
+  const { perfPopulation } = await import("../src/lib/positions/performance.ts");
+  const { SCORED_LINES } = await import("../src/lib/leaderboard/board.ts");
+  type Line = "MARKET" | "UPDOWN" | "MASWALI" | null;
+  type P = { id: string; placedAt: string; line: Line };
+  const at = (n: number) => new Date(Date.UTC(2026, 9, 1, 0, 0, n)).toISOString();
+  const pos = (id: string, n: number, line: Line): P => ({ id, placedAt: at(n), line });
+  // A store's read, as both stores answer it: newest first, `limit` of them; a line's read is the market join, so a
+  // position whose market row cannot be read (line null) is in the unfiltered read alone.
+  const readOf = (book: readonly P[], limit: number, line?: Exclude<Line, null>) =>
+    book.filter((x) => line === undefined || x.line === line).sort((a, b) => b.placedAt.localeCompare(a.placedAt)).slice(0, limit);
+  const population = (book: readonly P[], limit: number) => perfPopulation({
+    all: readOf(book, limit), lines: SCORED_LINES.map((l) => readOf(book, limit, l)), tickets: readOf(book, limit, "MASWALI"),
+  }, limit);
+  // The page as 24ec0d33 read it: the unfiltered page less its tickets.
+  const subtracted = (book: readonly P[], limit: number) => {
+    const out = new Set(readOf(book, limit, "MASWALI").map((x) => x.id));
+    return readOf(book, limit).filter((x) => !out.has(x.id));
+  };
+  // A book with no ticket: polls, rounds and one position whose market cannot be read, at distinct instants.
+  const plain = [pos("p1", 1, "MARKET"), pos("u1", 2, "UPDOWN"), pos("p2", 3, "MARKET"), pos("x1", 4, null), pos("u2", 5, "UPDOWN"), pos("p3", 6, "MARKET"), pos("u3", 7, "UPDOWN"), pos("p4", 8, "MARKET")];
+  const same = [3, 5, 8, 50].filter((limit) => j(population(plain, limit)) === j(readOf(plain, limit)) && j(subtracted(plain, limit)) === j(readOf(plain, limit)));
+  ok("9.6 · CONTROL · a book with no ticket scores exactly the unfiltered read — position for position and in its order, at every page size — as the old subtraction did: the output is byte-identical for such a player",
+    j(same) === j([3, 5, 8, 50]), j({ same, at5: population(plain, 5).map((x) => x.id) }));
+  // Tickets newer than every prediction: the unfiltered page of five is all tickets.
+  const crowded = [pos("p1", 1, "MARKET"), pos("p2", 2, "MARKET"), pos("u1", 3, "UPDOWN"), pos("p3", 4, "MARKET"),
+    ...[5, 6, 7, 8, 9, 10].map((n) => pos(`t${n}`, n, "MASWALI"))];
+  const kept = population(crowded, 5).map((x) => x.id);
+  ok("9.7 · the case the subtraction fails: when the newest positions are tickets, every line less its tickets keeps NONE of the predictions; the direct read keeps the account's newest ones",
+    subtracted(crowded, 5).length === 0 && j(kept) === j(["p3", "u1", "p2", "p1"]), j({ subtracted: subtracted(crowded, 5).map((x) => x.id), kept }));
+  const mixed = [pos("p1", 1, "MARKET"), pos("x1", 2, null), pos("t1", 3, "MASWALI"), pos("u1", 4, "UPDOWN")];
+  const ids = population(mixed, 10).map((x) => x.id);
+  ok("9.8 · the residual stays (a position whose market row cannot be read is scored, as `other`) and a ticket is never in it", j(ids) === j(["u1", "x1", "p1"]), j(ids));
+}
+{
+  const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
+  const unpaged = pagedDefects(plant(LIST, "perPage: PLAYER_PER_PAGE,\n  });", "perPage: 100_000,\n  });"));
+  ok("9.9 · CONTROL · a list read that is not the player's page size is reported", unpaged.some((x) => x.includes("one page of WEEKS")));
+  const scripted = pagedDefects(plant(REGISTER, "baseHref={MILLIONEA_HREF.register}", "onNavigate={() => {}}"));
+  ok("9.10 · CONTROL · a register pager driven by script is reported", scripted.some((x) => x.includes("script")) && scripted.some((x) => x.includes("no link pager")));
+  const listed = weekReadDefects(plant(TICKET_PAGE, "(await millioneaMyTicketsWeek(gate.userId, view.week.id))?.tickets ?? []", "(await millioneaMyTickets(gate.userId, { perPage: 12 })).rows.find((g) => g.week.id === view.week.id)?.tickets ?? []"));
+  ok("9.11 · CONTROL · a ticket page that looks for its week on a page of the list is reported", listed.some((x) => x.includes("ticket page")));
+  const anonymous = cancelDefects(plant(ACTS, '    fd.set("expectedOwnerId", ownerId);\n', ""));
+  ok("9.12 · CONTROL · a cancel that no longer says whose page it was is reported", anonymous.some((x) => x.includes("before it acts")));
+  const subtract = perfDefects(plant(PERF, "const positions = perfPopulation({ all: positionsAll, lines: lineReads, tickets: millioneaPositions }, 5_000);",
+    "const millioneaIds = new Set(millioneaPositions.map((p) => p.id));\n  const positions = positionsAll.filter((p) => !millioneaIds.has(p.id));"));
+  ok("9.13 · CONTROL · the old subtraction put back is reported", subtract.some((x) => x.includes("less its tickets")) && subtract.some((x) => x.includes("own merge")));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);

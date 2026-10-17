@@ -185,7 +185,7 @@ export const CENSUS: Readonly<Record<string, { n: number; why: string }>> = {
   "src/app/live/page.tsx": { n: 2, why: "round lookups and the two-valued card map, after the week filter at the read" },
   "src/app/live/pulse-grid.tsx": { n: 1, why: "fed only by /live's list, which removes every week" },
   "src/app/markets/[id]/page.tsx": { n: 1, why: "the round redirect; a week is notFound() on the line above" },
-  "src/app/positions/performance/page.tsx": { n: 1, why: "the round title lookup; tickets are removed from the population first" },
+  "src/app/positions/performance/page.tsx": { n: 1, why: "the round title lookup; the population is each scored line read directly, so no ticket is in it" },
   "src/app/positions/[positionId]/page.tsx": { n: 1, why: "the round lookup only; the line itself flows through positionPermalink, exhaustive" },
   "src/app/results/page.tsx": { n: 1, why: "the archive row map, after the week filter at the read" },
   "src/app/results/results-bar.tsx": { n: 2, why: "the view filter (all · MARKET · UPDOWN), never a row's line" },

@@ -37,9 +37,13 @@ export function TicketSeen({ serial, through }: { serial: string; through: strin
  * reads again, where the stub rejoins (N3 reversed). ⛔ Never claret, red or an error crest (M8).
  * A refusal is said in Millionea's own words where the platform's would speak of selling (`exit_window_closed`,
  * `position_not_open`), else in the registry's, as the factual or danger toast.
+ * ⭐ THE CANCEL SAYS WHOSE PAGE IT WAS (round 3): `expectedOwnerId`, as the slip sends it with the buy — an account that
+ *    changed since the render is refused with `session_changed` (reload), never "we couldn't find that ticket".
  */
-export function TicketCancel({ serial, until, serverNow, price, cap }: {
+export function TicketCancel({ serial, ownerId, until, serverNow, price, cap }: {
   serial: string;
+  /** The account this page was drawn for (the gate's session). */
+  ownerId: string;
   /** When the free cancel ends (ms, the server's instant). */
   until: number;
   serverNow: number;
@@ -54,6 +58,7 @@ export function TicketCancel({ serial, until, serverNow, price, cap }: {
   const [pending, start] = useTransition();
   const confirm = () => {
     const fd = new FormData();
+    fd.set("expectedOwnerId", ownerId);
     fd.set("serial", serial);
     start(async () => {
       const r = await cancelMillioneaTicketAction(fd);

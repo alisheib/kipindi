@@ -32,7 +32,7 @@ import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp"
 import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
 import { counted, eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
-import { millioneaHub, millioneaMyTickets, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice } from "@/lib/server/maswali-player";
+import { millioneaHub, millioneaMyTicketsWeek, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek } from "@/lib/server/maswali-player";
 import { millioneaBreakOf, millioneaDoor } from "@/lib/server/millionea-doors";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
@@ -45,7 +45,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, gradableOf, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, textIn } from "./millionea-view";
+import { bySlot, gradableOf, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -87,12 +87,17 @@ function voidingNow(w: MillioneaHubWeek): boolean {
 
 /**
  * The once-per-week notices, said in the reader's language (§10 §3.15–§3.16). A result line counts the reader's own
- * tickets of that week (read only when such a notice waits), and its door opens a winning ticket — the seal plays there,
- * on the reader's tap.
+ * tickets of THAT week — read by its week (`millioneaMyTicketsWeek`, round 3's RR4: never looked for on a page of the
+ * list), only when such a notice waits — and its door opens a winning ticket: the seal plays there, on the reader's tap.
  */
 async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Promise<HubNotice[]> {
   if (hub.notices.length === 0) return [];
-  const results = hub.notices.some((n) => n.notice === "RESULT") && userId ? await millioneaMyTickets(userId) : [];
+  const weeks = new Map<string, MillioneaTicketsWeek | null>();
+  if (userId) {
+    for (const n of hub.notices) {
+      if (n.notice === "RESULT" && !weeks.has(n.weekId)) weeks.set(n.weekId, await millioneaMyTicketsWeek(userId, n.weekId));
+    }
+  }
   const said = (n: MillioneaNotice): HubNotice | null => {
     const week = weekNumberOf(n.code);
     if (n.notice === "ROLLOVER") {
@@ -104,20 +109,16 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Pro
     if (n.notice === "WEEK_VOID") {
       return { weekId: n.weekId, notice: n.notice, text: counted(n.tickets, t.millionea.resultRefundedOne, t.millionea.resultRefunded, { week }), door: null };
     }
-    const mine = results.find((g) => g.week.id === n.weekId)?.tickets.filter((x) => x.shown === "won" || x.shown === "lost") ?? [];
+    // ⛔ A week whose every win is still HELD says nothing yet (round 3, RR3): its result waits on Compliance's decision,
+    //    and a once-only line shown now would spend the seal a release earns. The server does not send one; nor is one
+    //    written here, so the notice stays unseen until it is true.
+    if (n.winningTickets === 0 && n.held > 0) return null;
+    const mine = weeks.get(n.weekId)?.tickets ?? [];
     const lost = mine.filter((x) => x.shown === "lost").length;
-    // The tickets that won: a paid share and one held for review alike (it won; its money waits). A forfeited share is in
-    // neither line (MB-43, OD-07), so a week whose only win was forfeited says the week's word, not "your ticket won".
-    const winning = n.winningTickets + n.held;
-    const text = !n.won || winning === 0
-      ? (lost > 0 || !n.won ? counted(Math.max(lost, 1), t.millionea.resultLostOne, t.millionea.resultLost, { week }) : `${weekWord(t, week)} · ${t.millionea.weekStatusSettled}`)
-      : lost > 0
-        ? fill(t.millionea.resultMixed, { week, w: winning, l: lost })
-        : counted(winning, t.millionea.resultWon, t.millionea.resultWonMany, { week });
-    const won = mine.find((x) => x.shown === "won" && x.share !== "forfeited");
+    const serial = resultDoorSerial(mine);
     return {
-      weekId: n.weekId, notice: n.notice, text,
-      door: { href: won ? ticketPageHref(won.serial) : MILLIONEA_HREF.tickets, label: t.notif.awayView },
+      weekId: n.weekId, notice: n.notice, text: resultLine(t, n, week, lost),
+      door: { href: serial ? ticketPageHref(serial) : MILLIONEA_HREF.tickets, label: t.notif.awayView },
     };
   };
   return hub.notices.map(said).filter((x): x is HubNotice => x !== null);

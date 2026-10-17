@@ -21,7 +21,9 @@ export function parseMillioneaLens(raw: unknown): MillioneaLens {
   return MILLIONEA_LENSES.find((l) => l === raw) ?? "all";
 }
 
-/** Does a ticket belong in a lens: open is still running; settled has run its course (won, lost, refunded, cancelled). */
+/** Does a ticket belong in a lens: open is still running; settled has run its course (won, lost, forfeited, refunded,
+ *  cancelled); won is a WON ticket — its share paid or held for review — never one whose share was forfeited after review
+ *  (round 3: that ticket reads "forfeited"). */
 export function inLens(lens: MillioneaLens, shown: TicketShown): boolean {
   switch (lens) {
     case "all": return true;

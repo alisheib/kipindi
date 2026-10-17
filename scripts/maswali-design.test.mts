@@ -13,6 +13,8 @@
  *        M4 every Millionea key is a family key, `void` is Phosphor's `prohibit`; the ticket card's link has a visible name
  *        M5 each question's answers are one radio group; M6 polite regions mounted from the first render
  *        M7 the home card has a voiding and a voided state; L8 L10 L11 L12 L13
+ *      and round 3's shares (R3): a forfeited share is its own state on every surface that says a ticket's state, and a
+ *      result line says paid, held and forfeited shares as they are
  *   §3 its own controls: each source check is seen to fail on a planted copy
  *
  * ⏳ §2 M4's family check (every MILLIONEA_GLYPHS key drawn by `I`, and `I.void` no longer the legacy circled X) STAYS RED
@@ -30,6 +32,10 @@ import { sealLineOf } from "../src/components/maswali/maswali-seal-line.tsx";
 import { poolLedgerRows, poolRule, type PoolView } from "../src/components/maswali/maswali-pool-figure.tsx";
 import { homeCardOf } from "../src/components/maswali/maswali-card-model.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
+import { counted } from "../src/components/maswali/maswali-format.ts";
+import { resultDoorSerial, resultLine } from "../src/app/millionea/millionea-view.ts";
+import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
+import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
 import { MILLIONEA_GLYPHS } from "../src/components/maswali/maswali-glyph.tsx";
 import { I } from "../src/components/ui/glyphs.tsx";
 import { GLYPH_MAP } from "./glyphs/map.ts";
@@ -274,6 +280,95 @@ const liveDefects = (slipSrc: string, ticketSrc: string) => {
   ok("2.L13 · the stamp's VOID is the platform's own word (one definition site, §L2) in every language", stamp.length === 0 && outcomeStampText(zh, "VOID").endsWith("已作废"), j(stamp));
 }
 
+// R3 · round 3's shares: a forfeited share is its own state everywhere a ticket's state is said, and a result line
+// says paid, held and forfeited shares as they are
+const LIST_PAGE = "src/app/millionea/tickets/page.tsx";
+/** A function's text from its stated signature (ending in its body's brace) to that body's own closing brace. */
+const bodyAt = (src: string, sig: string): string => {
+  const at = src.indexOf(sig);
+  if (at < 0) return "";
+  let depth = 0;
+  for (let i = at + sig.length - 1; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}" && --depth === 0) return src.slice(at, i + 1);
+  }
+  return "";
+};
+const CHIP_SIG = 'export function millioneaTicketChip(shown: TicketShown): StatusChipVariant | "no" {';
+const SHARE_SIG = "function shareLine(t: Dict, view: MillioneaTicketView): string | null {";
+/** Every switch on a ticket's state, each with its return type stated (so tsc refuses a state left out). */
+const SWITCHES: ReadonlyArray<[string, string, string]> = [
+  ["Tiketi zangu's payout (payoutOf)", LIST_PAGE, "function payoutOf(row: MillioneaTicketRow, price: number): number | null {"],
+  ["the ticket's share mark (shareLine)", TICKET_PAGE, SHARE_SIG],
+  ["the ticket's chip (millioneaTicketChip)", TICKET, CHIP_SIG],
+];
+const STATES = Object.keys(TICKET_SHOWN_KEY);
+const unhandled = (readAt: (rel: string) => string) => SWITCHES.flatMap(([name, file, sig]) => {
+  const body = bodyAt(code(readAt(file)), sig);
+  if (!body) return [`${name}: not found with its stated return type`];
+  return STATES.filter((s) => !body.includes(`case "${s}":`)).map((s) => `${name}: no case "${s}"`);
+});
+const heldGuardDefects = (hubSrc: string) => {
+  const hub = squash(code(hubSrc));
+  const d: string[] = [];
+  const guard = hub.indexOf("if (n.winningTickets === 0 && n.held > 0) return null;"), line = hub.indexOf("text: resultLine(t, n, week, lost),");
+  if (!(guard > 0 && line > guard)) d.push("a week whose every win is still held can be written on the hub");
+  if (hub.includes("!n.won")) d.push("the hub still branches on `won` alone");
+  return d;
+};
+{
+  type Result = Extract<MillioneaNotice, { notice: "RESULT" }>;
+  const R = (o: Partial<Result>): Result => ({ notice: "RESULT", weekId: "w42", code: "2026-W42", won: false, winningTickets: 0, total: null, held: 0, forfeited: 0, ...o });
+  const W = 42;
+  const cases: ReadonlyArray<[string, Result, number, string]> = [
+    ["one paid share", R({ won: true, winningTickets: 1, total: 304_500 }), 0, fill(en.millionea.resultWon, { week: W })],
+    ["two paid shares", R({ won: true, winningTickets: 2, total: 609_000 }), 0, fill(en.millionea.resultWonMany, { week: W, n: 2 })],
+    ["a paid share beside two losses", R({ won: true, winningTickets: 1, total: 304_500 }), 2, fill(en.millionea.resultMixed, { week: W, w: 1, l: 2 })],
+    ["a paid share and one still held — both won", R({ won: true, winningTickets: 1, total: 304_500, held: 1 }), 0, fill(en.millionea.resultWonMany, { week: W, n: 2 })],
+    ["only a forfeited share", R({ forfeited: 1 }), 0, fill(en.millionea.resultForfeitedOne, { week: W })],
+    ["two forfeited shares beside a loss", R({ forfeited: 2 }), 1, fill(en.millionea.resultForfeited, { week: W, n: 2 })],
+    ["CONTROL · three losses", R({}), 3, fill(en.millionea.resultLost, { week: W, n: 3 })],
+    ["CONTROL · one loss", R({}), 1, fill(en.millionea.resultLostOne, { week: W })],
+  ];
+  const wrong = cases.filter(([, n, lost, want]) => resultLine(en, n, W, lost) !== want).map(([name, n, lost]) => `${name}: ${resultLine(en, n, W, lost)}`);
+  ok("2.R3a · a result line says what is true of each share (round 3, RR3): paid, and held beside a paid one, are \"won\"; a week whose only win was forfeited says FORFEITED; a loss is the calm loss line",
+    wrong.length === 0, wrong.join(" | "));
+  // The line as 24ec0d33 wrote it: on `!n.won` first — which, since round 3, a forfeited-only week also is.
+  const before = (n: Result, lost: number) => !n.won || n.winningTickets + n.held === 0
+    ? (lost > 0 || !n.won ? counted(Math.max(lost, 1), en.millionea.resultLostOne, en.millionea.resultLost, { week: W }) : "settled")
+    : "won";
+  const onlyForfeited = R({ forfeited: 1 });
+  ok("2.R3b · the case the old line fails: a forfeited-only week printed \"your ticket did not win\" over a ticket that won",
+    before(onlyForfeited, 0) === fill(en.millionea.resultLostOne, { week: W }) && resultLine(en, onlyForfeited, W, 0) !== before(onlyForfeited, 0));
+  const said = LOCALES.filter((l) => resultLine(dict[l], onlyForfeited, W, 0) !== fill(dict[l].millionea.resultForfeitedOne, { week: W })
+    || resultLine(dict[l], R({ forfeited: 3 }), W, 0) !== fill(dict[l].millionea.resultForfeited, { week: W, n: 3 }));
+  ok("2.R3c · the forfeited line in every language, one and many", said.length === 0, j(said));
+  const row = (serial: string, shown: string, share: string | null) => ({ serial, shown, share }) as never;
+  const door = (xs: never[]) => resultDoorSerial(xs);
+  const lost = row("A1", "lost", null), held = row("A2", "won", "held"), paid = row("A3", "won", "paid"), gone = row("A4", "forfeited", "forfeited");
+  ok("2.R3d · the result's door opens a PAID winning ticket first (its seal plays there), else one held, else one forfeited, else the list",
+    door([lost, held, gone, paid]) === "A3" && door([lost, gone, held]) === "A2" && door([lost, gone]) === "A4" && door([lost]) === null && door([]) === null);
+  const g = heldGuardDefects(read(HUB));
+  ok("2.R3e · a week whose every win is still HELD says nothing on the hub until Compliance decides — the line is never written for it, and `won` alone decides nothing", g.length === 0, g.join(" | "));
+  const u = unhandled(read);
+  ok(`2.R3f · every ticket state (${STATES.join(", ")}) is named in each switch on one — the payout, the share mark, the chip — each with its return type stated, so tsc refuses a state left out`,
+    u.length === 0 && STATES.includes("forfeited") && STATES.length === 6, u.join(" | "));
+  const chip = bodyAt(code(read(TICKET)), CHIP_SIG);
+  ok("2.R3g · a forfeited ticket's chip is the neutral slate — never the win's green, never the loss's rose", chip.includes('case "forfeited": return "neutral";'));
+  const share = squash(bodyAt(code(read(TICKET_PAGE)), SHARE_SIG));
+  ok("2.R3h · the ticket's share mark: \"held\" on a won share still held, the forfeited word on a forfeited ticket, nothing on a paid one",
+    share.includes('case "won": return view.share === "held" ? t.millionea.shareHeld : null;') && share.includes('case "forfeited": return t.millionea.shareForfeited;'));
+  const card = squash(code(read(TICKET)));
+  ok("2.R3i · Tiketi zangu's card: a forfeited share shows its word in the payout's place, a held one its own — never gold, never a figure; a paid share keeps the earned stat",
+    card.includes('{shown === "won" && payout !== null ? ( <MaswaliEarnedStat t={t} amount={payout} />')
+      && card.includes(') : shown === "forfeited" || (shown === "won" && share === "held") ? (')
+      && card.includes('value={shown === "forfeited" ? t.millionea.shareForfeited : t.millionea.shareHeld} tone="muted"'));
+  const bar = squash(code(read("src/app/millionea/tickets/tickets-bar.tsx")));
+  ok("2.R3j · the lenses: a forfeited ticket is settled, never won", bar.includes('case "settled": return shown !== "running";') && bar.includes('case "won": return shown === "won";'));
+  ok("2.R3k · a forfeited result is never said in the win's words, in any language",
+    LOCALES.every((l) => dict[l].millionea.resultForfeitedOne !== dict[l].millionea.resultWon && dict[l].millionea.resultForfeited !== dict[l].millionea.resultWonMany));
+}
+
 // ── §3 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§3 · controls — each source check fails on a planted copy");
 {
@@ -284,6 +379,10 @@ console.log("\n§3 · controls — each source check fails on a planted copy");
   ok("3.2 · toggle semantics put back on an answer are reported", toggles.some((x) => x.includes("aria-pressed")));
   const late = liveDefects(read(SLIP), read(TICKET).replace('<p aria-live="polite" aria-atomic="true" data-testid="millionea-ticket-live"', '{liveText && <p aria-live="polite" aria-atomic="true" data-testid="millionea-ticket-live"'));
   ok("3.3 · a ticket region mounted only with its words is reported", late.some((x) => x.includes("ticket's region")));
+  const noForfeit = unhandled(plant(LIST_PAGE, '    case "forfeited": return null;\n', ""));
+  ok("3.4 · a payout switch that forgets the forfeited state is reported", noForfeit.some((x) => x.includes("payoutOf") && x.includes('"forfeited"')));
+  const spent = heldGuardDefects(read(HUB).replace("if (n.winningTickets === 0 && n.held > 0) return null;", ""));
+  ok("3.5 · a hub that writes a line for a week still on hold is reported", spent.some((x) => x.includes("still held")));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);

@@ -14,7 +14,7 @@
  *    voided week's refund pending or landed per ticket (`refundOf`) — so a page never re-decides either.
  */
 import type {
-  MaswaliPoolFigure, MillioneaHubWeek, MillioneaQuestion, MillioneaSlot, MillioneaText, MillioneaTicketRow,
+  MaswaliPoolFigure, MillioneaHubWeek, MillioneaNotice, MillioneaQuestion, MillioneaSlot, MillioneaText, MillioneaTicketRow,
   MillioneaTicketView,
 } from "@/lib/server/maswali-player";
 import { sealLineOf, type SealLine } from "@/components/maswali/maswali-seal-line";
@@ -23,12 +23,12 @@ import type { TicketClause } from "@/components/maswali/maswali-ticket";
 import type { PoolView } from "@/components/maswali/maswali-pool-figure";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import type { LossPosition, WinLines } from "@/components/maswali/maswali-win-ledger";
-import { weekNumberOf } from "@/components/maswali/maswali-format";
+import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
 import { MAIN_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
 import type { WeekState } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { eatIsoWeek } from "@/lib/eat-day";
-import { pctNum } from "@/lib/utils";
+import { fill, pctNum } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 const DAY_MS = 86_400_000;
@@ -181,6 +181,36 @@ export function phaseNow(week: Pick<MillioneaHubWeek, "state">, phases: WeekPhas
  *  (§M8a item 7, MB-43). A share held for review or forfeited is null here and shows no gold (its mark says which). */
 export function earnedOf(row: Pick<MillioneaTicketRow, "shown" | "share" | "paid">): number | null {
   return row.shown === "won" && row.share === "paid" ? row.paid : null;
+}
+
+/**
+ * ⭐ A RESULT NOTICE, SAID AS IT IS (round 3, RR3): `won` is true only for a PAID share, so the line branches on the shares
+ * themselves, never on `won` alone —
+ *   · paid (and any still held beside it — they won; their money waits) → "your ticket won", or the mixed line beside
+ *     the losses;
+ *   · none won but a share was FORFEITED after review → that, in the week's name — never the loss line (the ticket won,
+ *     and the review took its share back, OD-07);
+ *   · nothing won → the calm loss line.
+ * A week whose every win is still HELD brings no RESULT at all until Compliance decides (the server's rule, RR3).
+ */
+export function resultLine(t: Dict, n: Extract<MillioneaNotice, { notice: "RESULT" }>, week: number, lost: number): string {
+  const winning = n.winningTickets + n.held;
+  if (winning > 0) {
+    return lost > 0
+      ? fill(t.millionea.resultMixed, { week, w: winning, l: lost })
+      : counted(winning, t.millionea.resultWon, t.millionea.resultWonMany, { week });
+  }
+  if (n.forfeited > 0) return counted(n.forfeited, t.millionea.resultForfeitedOne, t.millionea.resultForfeited, { week });
+  return counted(Math.max(lost, 1), t.millionea.resultLostOne, t.millionea.resultLost, { week });
+}
+
+/** The ticket a result's door opens: a PAID winning one (its seal plays on the reader's tap), else one still held, else a
+ *  forfeited one — or null, and the door is Tiketi zangu's list. */
+export function resultDoorSerial(mine: ReadonlyArray<Pick<MillioneaTicketRow, "serial" | "shown" | "share">>): string | null {
+  const ticket = mine.find((x) => x.shown === "won" && x.share === "paid")
+    ?? mine.find((x) => x.shown === "won")
+    ?? mine.find((x) => x.shown === "forfeited");
+  return ticket ? ticket.serial : null;
 }
 
 /** A voided week's refund on THIS ticket, as its own position says (MR-18, M3): landed, or still running — never a refund

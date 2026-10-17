@@ -6,6 +6,8 @@
  * nobody won says what it carried forward, at fee 0 ("Wiki 40 · TZS 412,000 imeletwa mbele · ada 0").
  * ⭐ PUBLIC, SERVER-RENDERED, WORKS WITHOUT JAVASCRIPT (the `/fairness` pattern): plain links, nothing to hydrate, no
  *    session needed — and no personal data anywhere: weeks, counts and money only.
+ * ⭐ ONE PAGE OF THE RECORD WITH ITS TOTAL (`millioneaRegister`, round 3; S5 re-review 4): the platform's pager, as links
+ *    (`?page`), so no week falls off the end unseen and the page still works without JavaScript.
  * ⛔ THE GATE FIRST (MR-2): public means every reader the rollout admits, not a hidden product's page.
  * ⛔ Never a drive week, never a week whose results can still change (`millioneaRegister`). An unearned surface: no gold.
  */
@@ -16,6 +18,7 @@ import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { I } from "@/components/ui/glyphs";
 import { counted, millioneaWord, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
@@ -24,7 +27,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { fill, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
-import { MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref } from "../millionea-parts";
+import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref } from "../millionea-parts";
 
 export const dynamic = "force-dynamic";
 
@@ -44,16 +47,20 @@ function weekLine(t: Dict, w: MillioneaWeekSummary): string {
   return fill(t.millionea.regStrataRow, { week, amount: formatTzs(w.carriedForward ?? 0) });
 }
 
-export default async function MillioneaRegisterPage() {
+export default async function MillioneaRegisterPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const gate = await millioneaGate();
-  const { t } = await getServerT();
-  const weeks = await millioneaRegister();
+  const [{ t }, sp] = await Promise.all([getServerT(), searchParams]);
+  // The read clamps the page asked into range and answers the page it drew, which the pager then marks.
+  const { rows: weeks, total, page } = await millioneaRegister({
+    page: Number.parseInt(String(sp.page ?? "1"), 10) || 1,
+    perPage: PLAYER_PER_PAGE,
+  });
   return (
     <PageContainer tier="reading">
       <div className="flex flex-col gap-6" data-testid="millionea-register">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.registerTitle} />
         {gate.preview && <MillioneaPreviewMark t={t} />}
-        {weeks.length === 0 ? (
+        {total === 0 ? (
           <EmptyState title={t.millionea.regEmpty} />
         ) : (
           <ul role="list" className="flex flex-col">
@@ -69,6 +76,21 @@ export default async function MillioneaRegisterPage() {
               </li>
             ))}
           </ul>
+        )}
+        {total > PLAYER_PER_PAGE && (
+          <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+            <Pagination
+              total={total}
+              page={page}
+              perPage={PLAYER_PER_PAGE}
+              baseHref={MILLIONEA_HREF.register}
+              ofLabel={t.common.of}
+              prevLabel={t.common.previousPage}
+              nextLabel={t.common.nextPage}
+              firstLabel={t.common.firstPage}
+              lastLabel={t.common.lastPage}
+            />
+          </div>
         )}
         <MillioneaReadingLinks t={t} hub register={false} />
       </div>
