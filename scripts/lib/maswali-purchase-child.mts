@@ -370,6 +370,8 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
     !twice.ok && twice.error.includes("R7-RAIL-0001") && twice.error.includes("already recorded") && (await g()) === g0 + 1_000, twice.ok ? "booked twice" : twice.error);
   const spaced = await fund(1_000, "  R7-RAIL-0001  ");
   ok("R7.2 · ⛔ …compared as the ceremony reads it (trimmed)", !spaced.ok && (await g()) === g0 + 1_000, spaced.ok ? "booked twice" : spaced.error);
+  const cased = await fund(1_000, "r7-rail-0001");
+  ok("R7.2b · ⛔ …and in any case: a bank's reference is the same reference written small", !cased.ok && (await g()) === g0 + 1_000, cased.ok ? "booked twice" : cased.error);
   const race = await Promise.all([fund(1_000, "R7-RAIL-0002"), fund(1_000, "R7-RAIL-0002")]);
   ok("R7.3 · ⭐ two submits of one reference at once: exactly one books (the check and the write share the chain lock)",
     race.filter((r: any) => r.ok).length === 1 && (await g()) === g0 + 2_000, J(race.map((r: any) => (r.ok ? "ok" : r.error))));

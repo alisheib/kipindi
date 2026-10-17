@@ -141,7 +141,9 @@ export const GUARANTEE_RETURN_WORD = "RETURN GUARANTEE";
  * of one reference waits for the first to commit, then reads its lines.
  */
 const guaranteeGroupId = (direction: "fund" | "return", reference: string): string =>
-  `maswali_guarantee_${direction}_${createHash("sha256").update(reference).digest("hex").slice(0, 32)}`;
+  `maswali_guarantee_${direction}_${createHash("sha256").update(referenceKey(reference)).digest("hex").slice(0, 32)}`;
+/** A rail reference as the bank means it: its case and inner spacing are not part of it ("trx-0001" is "TRX-0001"). */
+const referenceKey = (reference: string): string => reference.trim().split(/\s+/).join(" ").toUpperCase();
 
 /** The refusal for a reference this direction has already booked, naming when; null when it is new. Unreadable refuses. */
 async function bookedReferenceRefusal(groupId: string, reference: string, what: "funding" | "return", tx: Prisma.TransactionClient | null): Promise<Refused | null> {
@@ -325,7 +327,8 @@ export async function buyMaswaliTickets(input: {
   // ── The rollout, asked HERE too (R10a, defence in depth): `purchaseMaswaliTickets` asks first, and a caller that reaches
   //    the ticket arm any other way meets the same rule, read fresh, failing closed, with the same answer. `rolloutSells`
   //    is imported when asked: `maswali-service` reaches this file through `market-service`, so a static import is a cycle.
-  const rollout = await millioneaStateNow().catch(() => "WITHDRAWN" as const);
+  // Read FRESH (max age 0): the Owner's stored kill stops this arm on every container at once, never 10 s later.
+  const rollout = await millioneaStateNow(0).catch(() => "WITHDRAWN" as const);
   const { rolloutSells } = await import("./maswali-service");
   if (!rolloutSells(rollout, week.visibility)) {
     return refuse("Millionea is not available yet.", { code: "INVALID", reason: "millionea_not_available" });
