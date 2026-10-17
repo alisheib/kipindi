@@ -7,7 +7,8 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { consoleStanding, poolsView } from "@/lib/server/maswali-console";
+import { AdminPagination, parsePage } from "@/components/admin/admin-pagination";
+import { CONSOLE_PER_PAGE, consoleStanding, poolsView } from "@/lib/server/maswali-console";
 import { readMillioneaSwitchFresh } from "@/lib/server/millionea-switch";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { formatTzs } from "@/lib/utils";
@@ -26,11 +27,14 @@ const money = (v: number | null) => (v === null ? "Unreadable" : formatTzs(v));
  * ⛔ A BALANCE THAT COULD NOT BE READ SAYS SO; it is never shown as 0. The exposure is a share of the 1,024 ways to
  *    answer the ten mains that some live ticket holds — a count, never a list of who holds what.
  */
-export default async function AdminMaswaliPoolsPage() {
-  return <AdminPageGate title="Millionea · Pools"><Content /></AdminPageGate>;
+type PoolsPageProps = { searchParams: Promise<{ tpage?: string }> };
+
+export default async function AdminMaswaliPoolsPage(props: PoolsPageProps) {
+  return <AdminPageGate title="Millionea · Pools"><Content {...props} /></AdminPageGate>;
 }
 
-async function Content() {
+async function Content({ searchParams }: PoolsPageProps) {
+  const sp = await searchParams;
   const session = await currentSession();
   const role = session?.role;
   const [v, standing, sw, can] = await Promise.all([
@@ -43,11 +47,14 @@ async function Content() {
     ]),
   ]);
   const [canRelease, canFund, canReturn, canSunset, canLicence, canRollout] = can;
-  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC", limit: 12 }).catch(() => [])).filter((w) => !w.isFinal && w.state !== "SETTLED" && w.state !== "VOIDED");
+  // Every public week by its state, never the newest few: a drafted week far ahead can still be made the final one.
+  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => [])).filter((w) => !w.isFinal && w.state !== "SETTLED" && w.state !== "VOIDED");
 
   if (!v) {
     return (<><AdminPageHead title="Millionea · Pools" sw="Mifuko" /><AdminBody><p className="text-body-sm text-danger-fg">The pools could not be read.</p></AdminBody></>);
   }
+  const trailPage = parsePage(sp.tpage, v.trail.length, CONSOLE_PER_PAGE);
+  const trailRows = v.trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
   const short = v.guarantee !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
@@ -106,7 +113,7 @@ async function Content() {
                 <table className="admin-tbl min-w-[980px]">
                   <thead><tr><th className="text-left">Week</th><th className="text-left">Settled</th><th className="text-right">Sales</th><th className="text-right">Carry in</th><th className="text-right">Winners</th><th className="text-right">Fee</th><th className="text-right">Top-up</th><th className="text-right">Paid</th><th className="text-right">Carried on</th><th className="text-right">Levy on own top-up</th></tr></thead>
                   <tbody>
-                    {v.trail.map((t) => (
+                    {trailRows.map((t) => (
                       <tr key={t.code}>
                         <td className="text-left tabular">{t.code}</td><td className="text-left tabular">{fmtEat(t.settledAt)}</td>
                         <td className="text-right tabular">{formatTzs(t.sales)}</td><td className="text-right tabular">{formatTzs(t.rolloverIn)}</td>
@@ -119,6 +126,11 @@ async function Content() {
                 </table>
               </ScrollX>
             )}
+          {v.trail.length > CONSOLE_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={trailPage} total={v.trail.length} perPage={CONSOLE_PER_PAGE} baseHref="/admin/maswali/pools" param="tpage" />
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Owner" sw="Mmiliki">

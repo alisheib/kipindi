@@ -130,7 +130,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
   };
 
   return (
-    <div className="space-y-4 max-w-[960px]">
+    <div className="space-y-4 max-w-form">
       <UnsavedChangesGuard dirty={dirty} body="This week's draft has changes that have not been saved. Leaving now discards them." />
       {!edit && (
         <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">

@@ -250,7 +250,8 @@ export interface TicketStore {
   get(id: string): Promise<StoredTicket | null>;
   getBySerial(serial: string): Promise<StoredTicket | null>;
   getByPositionId(positionId: string): Promise<StoredTicket | null>;
-  listForWeek(cycleId: string, opts?: { status?: TicketState; tx?: Prisma.TransactionClient }): Promise<StoredTicket[]>;
+  /** `won` narrows to the winners at the query (the console's held shares and winners read every settled week). */
+  listForWeek(cycleId: string, opts?: { status?: TicketState; won?: boolean; tx?: Prisma.TransactionClient }): Promise<StoredTicket[]>;
   listForUser(userId: string, opts?: { cycleId?: string; limit?: number }): Promise<StoredTicket[]>;
   /** MR-11: this account's non-cancelled tickets in the week — read inside the wallet lock by the buy. */
   countLiveForUser(cycleId: string, userId: string, tx?: Prisma.TransactionClient): Promise<number>;
@@ -407,7 +408,8 @@ const memoryTickets: TicketStore = {
   async getBySerial(serial) { const t = [...memTickets.values()].find((x) => x.serial === serial); return t ? copyTicket(t) : null; },
   async getByPositionId(positionId) { const t = [...memTickets.values()].find((x) => x.positionId === positionId); return t ? copyTicket(t) : null; },
   async listForWeek(cycleId, opts) {
-    return [...memTickets.values()].filter((t) => t.cycleId === cycleId && (!opts?.status || t.status === opts.status))
+    return [...memTickets.values()].filter((t) => t.cycleId === cycleId && (!opts?.status || t.status === opts.status)
+      && (opts?.won === undefined || t.won === opts.won))
       .sort((a, b) => (a.id < b.id ? -1 : 1)).map(copyTicket);
   },
   async listForUser(userId, opts) {
@@ -638,7 +640,9 @@ const prismaTickets: TicketStore = {
   async getBySerial(serial) { const r = await pc().maswaliTicket.findUnique({ where: { serial } }); return r ? toTicket(r) : null; },
   async getByPositionId(positionId) { const r = await pc().maswaliTicket.findUnique({ where: { positionId } }); return r ? toTicket(r) : null; },
   async listForWeek(cycleId, opts) {
-    const rows = await db_(opts?.tx).maswaliTicket.findMany({ where: { cycleId, ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { id: "asc" } });
+    const rows = await db_(opts?.tx).maswaliTicket.findMany({
+      where: { cycleId, ...(opts?.status ? { status: opts.status } : {}), ...(opts?.won !== undefined ? { won: opts.won } : {}) }, orderBy: { id: "asc" },
+    });
     return rows.map(toTicket);
   },
   async listForUser(userId, opts) {

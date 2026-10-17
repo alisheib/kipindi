@@ -13,7 +13,7 @@
  *    serials or the exposure — what a week would cost the house is accounting's, and who holds what is compliance's.
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
-import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredWeek } from "./maswali-dal";
+import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
 import { frozenRules, gradable, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
@@ -24,7 +24,7 @@ import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
 import { db } from "./store";
 import { marketStore } from "./market-dal";
-import { MAIN_COUNT, SLOT_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
+import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 
@@ -56,9 +56,26 @@ async function rowOf(w: StoredWeek): Promise<ConsoleWeekRow> {
 }
 
 /** The weeks, newest first. */
-export async function listConsoleWeeks(limit = 60): Promise<ConsoleWeekRow[]> {
-  const weeks = await weekStore.list({ limit });
+/** Every week, newest first. ⛔ No silent cap: a reader that needs them all (the heal) gets them all; `limit` is a glance. */
+export async function listConsoleWeeks(limit?: number): Promise<ConsoleWeekRow[]> {
+  const weeks = await weekStore.list(limit === undefined ? {} : { limit });
   return Promise.all(weeks.map(rowOf));
+}
+
+/**
+ * One page of the week list (`test:grid-paging`: it grows a week at a time). Every week is COUNTED, so none falls off the
+ * console; rows are built only for the page asked, clamped into range.
+ */
+export async function pageConsoleWeeks(askedPage: number, perPage: number): Promise<{ rows: ConsoleWeekRow[]; total: number; page: number }> {
+  const weeks = await weekStore.list({});
+  const page = clampPage(askedPage, weeks.length, perPage);
+  return { rows: await Promise.all(weeks.slice((page - 1) * perPage, page * perPage).map(rowOf)), total: weeks.length, page };
+}
+
+/** A 1-based page inside [1, last], the pager's own rule. */
+function clampPage(asked: number, total: number, perPage: number): number {
+  const last = Math.max(1, Math.ceil(total / perPage));
+  return Math.min(Math.max(1, Number.isFinite(asked) ? Math.floor(asked) : 1), last);
 }
 
 /** One week for the builder and the seal console. `problems` is the open's checklist, read as the open would read it. */
@@ -219,7 +236,8 @@ export type PoolsView = {
 };
 
 export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
-  const weeks = await weekStore.list({ limit: 80 });
+  // Every week: the open ones by state, and the whole trail (the page pages it; week rows are cheap to read).
+  const weeks = await weekStore.list({});
   const open = weeks.filter(unsettled);
   const [jackpotPublic, jackpotDrive, guarantee] = await Promise.all([
     maswaliAccountBalance(maswaliJackpotOf("PUBLIC")), maswaliAccountBalance(maswaliJackpotOf("DRIVE")), maswaliAccountBalance(acct.maswaliGuarantee),
@@ -261,10 +279,15 @@ export type SealLogRow = { weekCode: string; slot: number; outcome: string; void
 export type WinnerRow = { ticketId: string; weekCode: string; serial: string; userId: string; holder: string; role: string; status: string; accountAgeDays: number; payout: number; frozenReason: string | null };
 
 export type IntegrityView = {
+  /** Every held share of every settled week: a decision waiting on an officer is never paged away. */
   held: HeldShare[];
-  /** MB-34 · the seal log, shown only for weeks whose results can no longer change (settled or voided). */
+  /** MB-34 · the seal log, shown only for weeks whose results can no longer change (settled or voided) — one page of weeks. */
   sealLog: SealLogRow[];
+  /** How many weeks the seal log spans, and the page of them shown. */
+  sealWeeks: { total: number; page: number };
+  /** One page of every paid ticket, newest week first, to screen. */
   winners: WinnerRow[];
+  winnersPage: { total: number; page: number };
   /** Weeks a compliance officer may void whole (MR-18): the void is certain and the window has closed. */
   voidable: ConsoleWeekRow[];
 };
@@ -276,29 +299,46 @@ const holderOf = async (userId: string) => {
   return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
 };
 
-export async function integrityView(now: Date = new Date()): Promise<IntegrityView> {
-  const weeks = await weekStore.list({ limit: 40 });
+/** The console's page size (the platform pager's own, `PER_PAGE`). */
+export const CONSOLE_PER_PAGE = 20;
+/** The seal log pages by WEEK, each week its fifteen seals. */
+export const SEAL_WEEKS_PER_PAGE = 4;
+
+/**
+ * ⛔ NO SILENT CAP (`test:grid-paging`; the console used to read the newest 40 weeks, so an older held share fell off the
+ * page an officer decides it on). Every week is read; the paid tickets are read at the query (`won`), never every ticket;
+ * every held share is listed whole; the winners and the seal log come a page at a time, counted in full.
+ */
+export async function integrityView(now: Date = new Date(), pages: { winners?: number; sealWeeks?: number } = {}): Promise<IntegrityView> {
+  const weeks = await weekStore.list({});
   const held: HeldShare[] = [], winners: WinnerRow[] = [], sealLog: SealLogRow[] = [], voidable: ConsoleWeekRow[] = [];
+  const won: Array<{ ticket: StoredTicket; code: string }> = [];
   for (const w of weeks) {
     if (w.state === "SETTLED") {
-      for (const t of await ticketStore.listForWeek(w.id, { status: "SETTLED" })) {
-        if (!t.won) continue;
-        const h = await holderOf(t.userId);
-        const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
-        winners.push({ ticketId: t.id, weekCode: w.code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: Math.round(t.payout ?? 0), frozenReason: t.frozenReason });
-        if (t.frozenReason) held.push({ ticketId: t.id, serial: t.serial, weekCode: w.code, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
-      }
-    }
-    if (w.state === "SETTLED" || w.state === "VOIDED") {
-      for (const q of await questionStore.listForWeek(w.id)) {
-        sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
-      }
+      for (const ticket of await ticketStore.listForWeek(w.id, { status: "SETTLED", won: true })) won.push({ ticket, code: w.code });
     }
     if ((w.state === "CLOSED" || w.state === "RESOLVING") && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
-      const row = await rowOf(w);
       const gate = settlementGate(gradable(await questionStore.listForWeek(w.id)));
-      if (gate.ready && gate.weekVoid) voidable.push(row);
+      if (gate.ready && gate.weekVoid) voidable.push(await rowOf(w));
     }
   }
-  return { held, sealLog: sealLog.slice(0, SLOT_COUNT * 8), winners, voidable };
+  for (const { ticket: t, code } of won) {
+    if (!t.frozenReason) continue;
+    const h = await holderOf(t.userId);
+    held.push({ ticketId: t.id, serial: t.serial, weekCode: code, userId: t.userId, holder: h.holder, payout: Math.round(t.payout ?? 0), reason: t.frozenReason, forfeited: t.frozenReason.startsWith("forfeited · ") });
+  }
+  const winnersAt = clampPage(pages.winners ?? 1, won.length, CONSOLE_PER_PAGE);
+  for (const { ticket: t, code } of won.slice((winnersAt - 1) * CONSOLE_PER_PAGE, winnersAt * CONSOLE_PER_PAGE)) {
+    const h = await holderOf(t.userId);
+    const ageDays = h.createdAt ? Math.floor((now.getTime() - Date.parse(h.createdAt)) / 86_400_000) : 0;
+    winners.push({ ticketId: t.id, weekCode: code, serial: t.serial, userId: t.userId, holder: h.holder, role: h.role, status: h.status, accountAgeDays: ageDays, payout: Math.round(t.payout ?? 0), frozenReason: t.frozenReason });
+  }
+  const sealed = weeks.filter((w) => w.state === "SETTLED" || w.state === "VOIDED");
+  const sealAt = clampPage(pages.sealWeeks ?? 1, sealed.length, SEAL_WEEKS_PER_PAGE);
+  for (const w of sealed.slice((sealAt - 1) * SEAL_WEEKS_PER_PAGE, sealAt * SEAL_WEEKS_PER_PAGE)) {
+    for (const q of await questionStore.listForWeek(w.id)) {
+      sealLog.push({ weekCode: w.code, slot: q.slot, outcome: q.outcome ?? "—", voidReason: q.voidReason, sealedBy: q.sealedBy, sealedAt: q.sealedAt, evidence: q.evidence, stage2By: q.stage2By });
+    }
+  }
+  return { held, sealLog, sealWeeks: { total: sealed.length, page: sealAt }, winners, winnersPage: { total: won.length, page: winnersAt }, voidable };
 }

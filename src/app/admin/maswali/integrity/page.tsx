@@ -8,7 +8,9 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
@@ -29,18 +31,21 @@ export const dynamic = "force-dynamic";
  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
  *     the fact, never while an officer could still be steered).
  */
-export default async function AdminMaswaliIntegrityPage() {
-  return <AdminPageGate title="Millionea · Integrity"><Content /></AdminPageGate>;
+type IntegrityPageProps = { searchParams: Promise<{ wpage?: string; spage?: string }> };
+
+export default async function AdminMaswaliIntegrityPage(props: IntegrityPageProps) {
+  return <AdminPageGate title="Millionea · Integrity"><Content {...props} /></AdminPageGate>;
 }
 
-async function Content() {
+async function Content({ searchParams }: IntegrityPageProps) {
+  const sp = await searchParams;
   const session = await currentSession();
   // ⛔ D19/259, guard 0.434: this page renders records read from the audit log (the new-device seals), so it decides its
   // audience on the STORED role before it reads anything; the section gate above decides what is painted, not what is sent.
   if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/maswali/integrity"))) return null;
   const role = session?.role;
   const [v, standing, can] = await Promise.all([
-    integrityView().catch(() => null),
+    integrityView(new Date(), { winners: Number(sp.wpage ?? "1"), sealWeeks: Number(sp.spage ?? "1") }).catch(() => null),
     consoleStanding().catch(() => null),
     Promise.all([
       canUseControl(role, "pauseMaswaliSales"), canUseControl(role, "resumeMaswaliSales"), canUseControl(role, "voidMaswaliWeek"),
@@ -169,6 +174,12 @@ async function Content() {
               </table>
             </ScrollX>
           )}
+          {v.winnersPage.total > CONSOLE_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={v.winnersPage.page} total={v.winnersPage.total} perPage={CONSOLE_PER_PAGE}
+                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "wpage")} param="wpage" />
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Seal log" sw="Kumbukumbu ya muhuri" padding="p-0">
@@ -180,7 +191,7 @@ async function Content() {
                   {v.sealLog.map((s, i) => (
                     <tr key={i}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{slotLabel(s.slot)}</td>
-                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
+                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
                       <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.stage2By ?? "—"}</td>
                       <td className="text-left max-w-[320px]">{s.evidence ?? "—"}</td>
                     </tr>
@@ -188,6 +199,12 @@ async function Content() {
                 </tbody>
               </table>
             </ScrollX>
+          )}
+          {v.sealWeeks.total > SEAL_WEEKS_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={v.sealWeeks.page} total={v.sealWeeks.total} perPage={SEAL_WEEKS_PER_PAGE}
+                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "spage")} param="spage" />
+            </div>
           )}
         </AdminCard>
       </AdminBody>

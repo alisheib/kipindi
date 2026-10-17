@@ -9,7 +9,8 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { consoleAlerts, consoleStanding, listConsoleWeeks, type ConsoleWeekRow } from "@/lib/server/maswali-console";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { CONSOLE_PER_PAGE, consoleAlerts, consoleStanding, pageConsoleWeeks, type ConsoleWeekRow } from "@/lib/server/maswali-console";
 import { maswaliAccountBalance } from "@/lib/server/maswali-money-service";
 import { acct } from "@/lib/server/ledger";
 import { formatTzs } from "@/lib/utils";
@@ -25,15 +26,18 @@ export const dynamic = "force-dynamic";
  * need), the alerts that ask someone to act, and every week with where its results stand. ⛔ No ticket data beyond the
  * count: picks, holders and the exposure are accounting's and compliance's pages.
  */
-export default async function AdminMaswaliPage() {
-  return <AdminPageGate title="Millionea"><AdminMaswaliContent /></AdminPageGate>;
+type MaswaliPageProps = { searchParams: Promise<{ page?: string }> };
+
+export default async function AdminMaswaliPage(props: MaswaliPageProps) {
+  return <AdminPageGate title="Millionea"><AdminMaswaliContent {...props} /></AdminPageGate>;
 }
 
-async function AdminMaswaliContent() {
+async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
+  const sp = await searchParams;
   const session = await currentSession();
   const canDraft = await canUseControl(session?.role, "createMaswaliWeek");
   const [weeks, alerts, standing, guarantee] = await Promise.all([
-    listConsoleWeeks().catch(() => null),
+    pageConsoleWeeks(Number(sp.page ?? "1"), CONSOLE_PER_PAGE).catch(() => null),
     consoleAlerts().catch(() => null),
     consoleStanding().catch(() => null),
     maswaliAccountBalance(acct.maswaliGuarantee).catch(() => null),
@@ -75,8 +79,8 @@ async function AdminMaswaliContent() {
 
         <AdminCard title="Weeks" sw="Wiki" padding="p-0">
           {weeks === null ? <p className="p-4 text-body-sm text-danger-fg">The weeks could not be read.</p>
-            : weeks.length === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
-            : (
+            : weeks.total === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
+            : (<>
               <ScrollX label="Millionea weeks">
                 <table className="admin-tbl min-w-[860px]">
                   <thead>
@@ -86,10 +90,15 @@ async function AdminMaswaliContent() {
                       <th className="text-left">Results</th><th className="text-left">Settled</th>
                     </tr>
                   </thead>
-                  <tbody>{weeks.map((w) => <WeekRow key={w.id} w={w} />)}</tbody>
+                  <tbody>{weeks.rows.map((w) => <WeekRow key={w.id} w={w} />)}</tbody>
                 </table>
               </ScrollX>
-            )}
+              {weeks.total > CONSOLE_PER_PAGE && (
+                <div className="border-t border-border-subtle px-4 py-2">
+                  <AdminPagination page={weeks.page} total={weeks.total} perPage={CONSOLE_PER_PAGE} baseHref="/admin/maswali" />
+                </div>
+              )}
+            </>)}
         </AdminCard>
       </AdminBody>
     </>

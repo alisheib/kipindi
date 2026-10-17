@@ -76,7 +76,7 @@ export function MoveCloseForm({ weekId, currentEat }: { weekId: string; currentE
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   return (
-    <div className="space-y-3 max-w-[640px]">
+    <div className="space-y-3 max-w-form">
       <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="sm" /></Field>
