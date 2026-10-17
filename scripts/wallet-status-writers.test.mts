@@ -14,9 +14,11 @@
  *   · `.wallet.update / create / upsert / updateMany / createMany (` on any client (`db`, `tx`, `pc()`, `prisma`);
  *   · the in-memory store's `wallets.set(`;
  *   · raw SQL that updates or inserts into "Wallet" (quoted, escaped inside a string, or schema-prefixed);
- *   · any OTHER `.wallet.<method>(` than the known reads, the patch writes and `adjust` — an unknown method is a writer;
+ *   · any OTHER `.wallet.<method>(` than the known reads, the patch writes and the deltas (`adjust`, `creditMany`) — an
+ *     unknown method is a writer;
  *   · a wallet delegate held under another name (`const w = db.wallet`, `const { wallet } = tx`, `db["wallet"]`).
- * And the DAL surface itself: `db.wallet`'s members in both stores are pinned (§2.9), and `adjust` may move amounts only.
+ * And the DAL surface itself: `db.wallet`'s members in both stores are pinned (§2.9), and `adjust` and `creditMany` may
+ * move amounts only (§2.10).
  * Each site's patch is READ: an object literal directly; an identifier through its object-literal declaration in the
  * same file (and any later `name.status = …` on it); the Prisma `{ where, data }` shape through `data`. A patch that
  * cannot be read — a parameter, a spread, a call — is OPAQUE and counts as a writer.
@@ -209,10 +211,11 @@ const RAW_SQL = new RegExp(String.raw`\b(?:UPDATE\s+${WALLET_TABLE}\s+SET|(?:INS
 const ANY_WALLET_CALL = /\.\s*wallet\s*\.\s*([A-Za-z_$][\w$]*)\s*\(/g;
 const WALLET_READS = new Set(["findByUserId", "listAll", "findUnique", "findFirst", "findMany", "count", "aggregate", "groupBy"]);
 const WALLET_PATCH_WRITES = new Set(["update", "create", "upsert", "updateMany", "createMany"]);
-/** `adjust` moves balance / hold / pending by deltas; §2.10 pins that neither store's `adjust` writes status or reasons. */
-const WALLET_DELTAS = new Set(["adjust"]);
+/** `adjust` moves balance / hold / pending by deltas, and `creditMany` (MASWALI-BUILD R1, 2026-10-17: the week void's bulk
+ *  refund) adds to many balances at once; §2.10 pins that neither store's delta members write status or reasons. */
+const WALLET_DELTAS = new Set(["adjust", "creditMany"]);
 /** The members of `db.wallet` in both stores, pinned by §2.9: a new member (`setStatus`) is a door around this census. */
-const DAL_MEMBERS = ["adjust", "create", "findByUserId", "listAll", "update"];
+const DAL_MEMBERS = ["adjust", "create", "creditMany", "findByUserId", "listAll", "update"];
 const ASSIGNS_STATE = /(?:^|[{,])\s*(?:status|freezeReasons)\s*[:,}]|\.\s*(?:status|freezeReasons)\s*=(?!=)/;
 /** A client's wallet delegate held under another name — `const w = db.wallet`, `const { wallet } = tx`, `db["wallet"]` —
  *  whose later `w.update(…)` no `.wallet.<m>(` pattern can see. None exists in src/ today (2026-09-14). */
@@ -391,7 +394,10 @@ const FILE_FLOOR = 800;
 // 37 since 2026-10-17: `dev-test/seed-maswali/route.ts` (POST) creates the Millionea console drive's players ACTIVE, as
 // every dev-test seeder does (404 in production before its first await) — judged `fixture`; §1's list is read in the
 // verification run of this commit before the pin is believed.
-const SITE_COUNT = 37;
+// 38 since 2026-10-17 (MASWALI-BUILD R1): `prisma-dal.ts` `wallet.creditMany` — the week void's bulk refund, one
+// `updateMany` of `balance: { increment }` per distinct amount — a balance-only write in the transport; its memory twin
+// credits through `adjust`, so it adds no site. Its callers are skipped as deltas, as `adjust`'s are.
+const SITE_COUNT = 38;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);
@@ -431,6 +437,9 @@ section("§2 · nothing outside the allow-list writes a wallet's status or reaso
     const adjust = m?.bodies.get("adjust") ?? "";
     ok(`2.10 ⛔ ${p} · wallet.adjust moves amounts only — it assigns no status and no freezeReasons`,
       adjust.length > 50 && !ASSIGNS_STATE.test(adjust), `${adjust.length} chars read`);
+    const creditMany = m?.bodies.get("creditMany") ?? "";
+    ok(`2.10b ⛔ ${p} · wallet.creditMany moves amounts only — it assigns no status and no freezeReasons`,
+      creditMany.length > 50 && !ASSIGNS_STATE.test(creditMany), `${creditMany.length} chars read`);
   }
 }
 

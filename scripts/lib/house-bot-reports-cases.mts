@@ -795,6 +795,24 @@ if (STORE === "memory") {
       return false;
     };
 
+    /**
+     * ⭐ A BULK WRITE IS READ THROUGH ITS ROW (MASWALI-BUILD R1, 2026-10-17). `.txn.createMany(<rows>.map((x) => ({ … })), tx)`
+     * writes one row per element, and every row is that arrow's object literal — so the pin reads THAT literal and holds it
+     * to the same rule as a single create (`positionId: x.id` beside a marker read from the same `x`). Only `createMany`,
+     * and only an arrow whose body IS the literal: a prebuilt list, a variable or a block body stays unreadable and is
+     * reported, exactly as before — the pin never assumes what a list it cannot see holds.
+     */
+    const rowLiteralOf = (call: ts.CallExpression, arg: ts.Expression): ts.ObjectLiteralExpression | null => {
+      if (!ts.isPropertyAccessExpression(call.expression) || call.expression.name.text !== "createMany") return null;
+      if (!ts.isCallExpression(arg) || !ts.isPropertyAccessExpression(arg.expression) || arg.expression.name.text !== "map") return null;
+      const fn = arg.arguments[0] ? unwrap(arg.arguments[0]) : undefined;
+      if (!fn || !ts.isArrowFunction(fn)) return null;
+      const body = fn.body;
+      if (ts.isBlock(body)) return null;
+      const row = unwrap(body);
+      return ts.isObjectLiteralExpression(row) ? row : null;
+    };
+
     /** Every `.txn.create(` site in one file, with what its literal carries, and the call node for the ctx check. */
     const txnSites = (file: string, code: string): Array<Site & { call: ts.CallExpression | null }> => {
       const sf = parse(file, code);
@@ -804,8 +822,9 @@ if (STORE === "memory") {
         const line = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
         const arg = n.arguments[0] ? unwrap(n.arguments[0]) : undefined;
         const endLine = sf.getLineAndCharacterOfPosition(n.getEnd()).line + 1;
-        if (!arg || !ts.isObjectLiteralExpression(arg)) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
-        out.push({ file, line, endLine, pid: pidOf(arg), marker: markerOf(arg), literal: true, call: n });
+        const lit = !arg ? null : ts.isObjectLiteralExpression(arg) ? arg : rowLiteralOf(n, arg);
+        if (!lit) { out.push({ file, line, endLine, pid: null, marker: null, literal: false, call: n }); return; }
+        out.push({ file, line, endLine, pid: pidOf(lit), marker: markerOf(lit), literal: true, call: n });
       });
       return out;
     };
@@ -884,8 +903,12 @@ if (STORE === "memory") {
        the free cancel's CASHOUT, the week's BET_PAYOUT and Compliance's forfeit (ADJUSTMENT_DEBIT). Each positions its row
        on the ticket's own position and copies the marker from THAT object (0.232.1 holds them like the seven); a desk
        account is refused before any of them, so the marker is always absent — kept so the rule has no exception. */
+    /* ⭐ POSITIONED 11 → 12 (2026-10-17, MASWALI-BUILD R1): the week void's refund, one BET_REFUND per ticket through ONE
+       `.txn.createMany(` in maswali-void.ts, whose rows one `.map` builds — read through that literal (`rowLiteralOf`, and
+       0.232.c2b proves the reader both ways). Each row is positioned on its own ticket's position and copies the marker from
+       THAT object; the old per-ticket BET_REFUND of settleMarket's VOID arm no longer runs for a week (its fence is total). */
     ok("0.232.0 · the population is real: every .txn.create( in tracked src/ is read from the tree — wider than src/lib/server, so a route that writes a money row cannot escape by living somewhere else",
-      all.length >= 18 && files.length > 500 && positioned.length === 11 && exempt.length === 12,
+      all.length >= 18 && files.length > 500 && positioned.length === 12 && exempt.length === 12,
       `${all.length} txn.create sites in ${new Set(all.map((s) => s.file)).size} files, over ${files.length} src files · ${positioned.length} positioned · ${exempt.length} exempt (positionId: null)`);
 
     const offenders = positioned.map((s) => ({ at: `${s.file}:${s.line}`, why: verdict(s) })).filter((o) => o.why !== null);
@@ -971,8 +994,11 @@ if (STORE === "memory") {
     // in maswali-money-service.ts and maswali-settlement.ts. Re-derived from the tree, never added by hand: the seven
     // market-service writes are each the same nine lines as main's (SHA-256, CR stripped), at their new lines; the four
     // new sites follow them in file order. The label still says "seven": they are the platform's, the four are Millionea's.
+    // 2026-10-17 · MASWALI-BUILD R1 appends the week void's bulk refund, `maswali-void.ts:140` (the `db.txn.createMany(` line),
+    // last in file order. Every other site keeps its line: R1's edits to market-service.ts and maswali-money-service.ts
+    // are line-for-line (9/9 and 2/2 against b3fe55dd), and it does not touch maswali-settlement.ts.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:449", "maswali-money-service.ts:574", "maswali-settlement.ts:381", "maswali-settlement.ts:678"]), j(marked));
+      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:449", "maswali-money-service.ts:574", "maswali-settlement.ts:381", "maswali-settlement.ts:678", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -1048,6 +1074,23 @@ async function __c2NewPositionedWriter(q: { id: string; houseBotId: string | nul
       addedClean.length === all.filter((x) => x.file === MS).length + 1 && scan(ms + NEW_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),")).length === 0
       && addedDirty.length === 1 && /NO marker/.test(addedDirty[0].why ?? ""),
       j({ sitesAfterAppend: addedClean.length, dirty: addedDirty }));
+    /* ⭐ THE BULK WRITER, BOTH DIRECTIONS (MASWALI-BUILD R1). A `.txn.createMany(` whose rows one `.map` builds is read
+       through that arrow's literal: its marker read from the row's own position passes, the same writer without it is
+       reported, a marker read from ANOTHER position is reported, and a list the pin cannot see into stays unreadable. */
+    const BULK_WRITER = (marker: string) => `
+async function __c2bBulkWriter(rows: Array<{ q: { id: string; houseBotId: string | null }; other: { houseBotId: string | null } }>) {
+  await db.txn.createMany(rows.map(({ q, other }) => ({ id: "txn_c2b", walletId: "w", userId: "u", type: "BET_REFUND", status: "CONFIRMED", positionId: q.id,${marker} })), null);
+}
+`;
+    const bulkClean = scan(ms + BULK_WRITER(" ...(q.houseBotId ? { houseBotId: q.houseBotId } : {}),"));
+    const bulkDirty = scan(ms + BULK_WRITER(""));
+    const bulkWrong = scan(ms + BULK_WRITER(" ...(other.houseBotId ? { houseBotId: other.houseBotId } : {}),"));
+    const bulkOpaque = scan(`${ms}\nasync function __c2bOpaque(rows: unknown[]) { await db.txn.createMany(rows as never, null); }\n`);
+    ok("0.232.c2b · CONTROL · a BULK writer (`.txn.createMany(rows.map((x) => ({ … })))`) is read through its row: clean with its own position's marker, reported with none or with another position's, and a list the pin cannot see into is reported as unreadable",
+      bulkClean.length === 0 && bulkDirty.length === 1 && /NO marker/.test(bulkDirty[0].why ?? "")
+        && bulkWrong.length === 1 && /WRONG object/.test(bulkWrong[0].why ?? "")
+        && bulkOpaque.length === 1 && /not an object literal/.test(bulkOpaque[0].why ?? ""),
+      j({ clean: bulkClean, dirty: bulkDirty, wrong: bulkWrong, opaque: bulkOpaque }));
 
     /* ⛔ THE ONE A PRESENCE CHECK CANNOT SEE: the marker is THERE, well-formed, and read from another position. */
     const wrongSource = scan(ms.replace(SPREAD_2833, `      ...(position.houseBotId ? { houseBotId: position.houseBotId } : {}),`));

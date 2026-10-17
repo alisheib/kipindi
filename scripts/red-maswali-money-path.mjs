@@ -7,9 +7,10 @@
  * Puts back each defect declared in `scripts/anchors/maswali-money-path.anchors.mjs` into the real source — the cap not
  * counted in the lock, bonus money buying a ticket, a pool tolerance of one shilling, a guarantee not read before paying,
  * the loss limit offset by a win, a held winner paid free, a forfeit to the house, the drive's money in the public
- * jackpot, a close that does not wait for a purchase in flight — runs the memory child that mutation names
- * (`test:maswali-purchase`, `test:maswali-settle` or `test:maswali-close-race`), and requires it
- * to go red ON THAT MUTATION'S OWN ASSERTION. Then it puts every file back byte for byte.
+ * jackpot, a close that does not wait for a purchase in flight, a week void that pushes no balance, refunds twice, books
+ * no ledger group or leaves its tickets LIVE — runs the memory child that mutation names (`test:maswali-purchase`,
+ * `test:maswali-settle`, `test:maswali-close-race` or `test:maswali-void`), and requires it to go red ON THAT
+ * MUTATION'S OWN ASSERTION. Then it puts every file back byte for byte.
  *
  * Built on `red-maswali-engine.mjs`: a lock file against a concurrent run, a refusal to start when a target differs from
  * git HEAD, temp-file + rename writes, the shared anchor resolver, a green baseline of every suite it uses before any
@@ -33,6 +34,7 @@ const SUITES = {
   purchase: "npx tsx scripts/lib/maswali-purchase-child.mts",
   settle: "npx tsx scripts/lib/maswali-settle-child.mts",
   closerace: "npx tsx scripts/lib/maswali-close-race-child.mts",
+  void: "npx tsx scripts/lib/maswali-void-child.mts",
 };
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
 const lf = (s) => s.split(CR + LF).join(LF);

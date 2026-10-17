@@ -85,10 +85,11 @@ export const MUTATIONS = [
     suite: "memory",
   },
   {
-    name: "(9) settleMarket's one-sided branch settles a graded week at zero fee",
+    name: "(9) settleMarket settles a week: a graded one at zero fee through its one-sided branch, a voided one ticket by ticket",
     file: SVC,
-    from: "  if (isFencedMaswali(m) && m.resolvedOutcome !== \"VOID\") return",
-    to: "  if (false && m.resolvedOutcome !== \"VOID\") return",
+    // ⚠️ RE-ANCHORED (MASWALI-BUILD R1): the fence is total now — a voided week refunds through `maswali-void.ts` alone.
+    from: "  if (isFencedMaswali(m)) return { ok: false, code: \"INVALID\", error: MASWALI_FENCE_ERROR };",
+    to: "  if (false) return { ok: false, code: \"INVALID\", error: MASWALI_FENCE_ERROR };",
     expect: "2.11 · settleMarket refuses a graded week",
     suite: "memory",
   },
@@ -151,8 +152,9 @@ export const MUTATIONS = [
   {
     name: "(17) the Settle action reaches settleMarket for a week",
     file: "src/app/admin/settlement/actions.ts",
-    from: "  // not even its VOID arm, which only its own week-void control may reach.\n  if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };",
-    to: "  // not even its VOID arm, which only its own week-void control may reach.",
+    // ⚠️ RE-ANCHORED (MASWALI-BUILD R1): the comment above the check now says a voided week refunds through its own path.
+    from: "  // not even a voided week, whose refund is the week void's own bulk refund (R1, maswali-void.ts).\n  if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };",
+    to: "  // not even a voided week, whose refund is the week void's own bulk refund (R1, maswali-void.ts).",
     expect: "5.4 · settleMarketAction and holdSettlementAction",
     suite: "memory",
   },

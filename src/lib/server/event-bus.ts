@@ -12,7 +12,8 @@
  *   notification:new  — new in-app notification for a user
  *   market:resolve    — market resolved to an outcome
  *   maswali:pool      — a Millionea week's pool figure, derived when it moves and coalesced per week
- *                       (`maswali-pool-feed.ts`); public figures only, forwarded to viewers the rollout admits
+ *                       (`maswali-pool-feed.ts`); public figures only, forwarded per its line's audience
+ *                       (`millionea-preview.ts → forwardMillioneaPool`: a drive week's never to the public)
  *
  * CROSS-CONTAINER FAN-OUT (optional, fail-open)
  * An EventEmitter reaches one process. With more than one Railway container a

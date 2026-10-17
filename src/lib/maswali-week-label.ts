@@ -12,10 +12,12 @@
 export const WEEK_STATES = ["DRAFT", "OPEN", "CLOSED", "RESOLVING", "SETTLED", "VOIDED"] as const;
 export type WeekState = (typeof WEEK_STATES)[number];
 
-export const TICKET_STATES = ["LIVE", "CANCELLED", "SETTLED"] as const;
+/** REFUNDED (R1): its week voided whole and the ticket's stake came back, written in the same transaction as the money. */
+export const TICKET_STATES = ["LIVE", "CANCELLED", "SETTLED", "REFUNDED"] as const;
 export type TicketState = (typeof TICKET_STATES)[number];
 
-/** What a ticket shows once its week is known: still running, won, did not win, refunded with the week, or cancelled. */
+/** What a ticket shows once its week is known: still running (its money still out), won, did not win, refunded with the
+ *  week, or cancelled. */
 export type TicketShown = "running" | "won" | "lost" | "refunded" | "cancelled";
 
 /** The key of each week state's word. A DRAFT is never shown to a player; its key exists for the console. */
@@ -38,13 +40,20 @@ export const TICKET_SHOWN_KEY: Record<TicketShown, string> = {
 };
 
 /**
- * ⭐ THE ONE DECISION: what a ticket shows, from its own state and its week's. A cancelled ticket is cancelled whatever
- * the week did; a ticket in a voided week was refunded; a settled ticket won or did not; anything else is still running.
+ * ⭐ THE ONE DECISION: what a ticket shows, from its own state, its week's, and — in a voided week — whether ITS OWN
+ * refund has landed. A cancelled ticket is cancelled whatever the week did. A ticket REFUNDED by its week's bulk refund
+ * (R1; the status is written in the money's own transaction), or in a voided week one whose refund has landed
+ * (`refundLanded`: its position VOID with a settlement stamp), shows refunded; one still LIVE in a voided week whose
+ * refund is owed is still running — its money is out, as the platform's open position reads ("Pending"), and the void
+ * lane retries the refund until it lands. A settled ticket won or did not; anything else is still running.
  * ⛔ Never "lost" before its week SETTLED — a ticket whose picks already miss is still running until the week is final.
+ * ⛔ Never "refunded" from the week's VOIDED stamp alone (S5 review M3): a caller that does not know the ticket's refund
+ *    passes nothing, and the ticket does not claim one.
  */
-export function ticketShown(ticket: { status: TicketState; won: boolean | null }, week: WeekState): TicketShown {
+export function ticketShown(ticket: { status: TicketState; won: boolean | null }, week: WeekState, refundLanded = false): TicketShown {
   if (ticket.status === "CANCELLED") return "cancelled";
-  if (week === "VOIDED") return "refunded";
+  if (ticket.status === "REFUNDED") return "refunded";
+  if (week === "VOIDED") return refundLanded ? "refunded" : "running";
   if (ticket.status === "SETTLED" && week === "SETTLED") return ticket.won === true ? "won" : "lost";
   return "running";
 }

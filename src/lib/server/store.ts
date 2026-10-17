@@ -2879,6 +2879,26 @@ const memoryDb = {
       store.wallets.set(id, next);
       return next;
     },
+    /**
+     * The memory half of `prisma-dal.ts`'s `creditMany` (MASWALI-BUILD R1). ALL OR NOTHING with no transaction to lean
+     * on: every user's wallet is found and every amount read before the first credit, so a refusal (null) writes nothing.
+     * Each credit is an `adjust`, the one balance mutation this twin has.
+     */
+    creditMany: (credits: ReadonlyArray<{ userId: string; amount: number }>, _tx?: unknown): StoredWallet[] | null => {
+      const ids: string[] = [];
+      for (const c of credits) {
+        const id = store.walletsByUser.get(c.userId);
+        if (!id || !store.wallets.has(id) || !Number.isFinite(c.amount) || c.amount <= 0) return null;
+        ids.push(id);
+      }
+      if (new Set(ids).size !== ids.length) return null;
+      const out: StoredWallet[] = [];
+      credits.forEach((c, k) => {
+        const w: StoredWallet | null = memoryDb.wallet.adjust(ids[k], { balance: c.amount });
+        if (w) out.push(w);
+      });
+      return out;
+    },
   },
   depositFundingClaim: {
     findByKey: (key: string, _tx?: unknown): StoredDepositFundingClaim | null =>
@@ -2899,6 +2919,11 @@ const memoryDb = {
   },
   txn: {
     create: (t: StoredTxn) => { const row = { ...t, pendingBet: t.pendingBet ?? null }; store.txns.set(t.id, row); return row; },
+    /** The memory half of `prisma-dal.ts`'s `createMany` (MASWALI-BUILD R1): every row stored exactly as `create` stores it. */
+    createMany: (rows: readonly StoredTxn[], _tx?: unknown): number => {
+      for (const t of rows) store.txns.set(t.id, { ...t, pendingBet: t.pendingBet ?? null });
+      return rows.length;
+    },
     /**
      * ⭐ `excludeHouseBets` (C5-SPEC ruling 173): drop house-marked rows (`houseBotId != null`) INSIDE the filter, BEFORE
      * `.slice(-limit)` — or a holder's newest-N window stays flooded by house rows on this store only. Default off, so every

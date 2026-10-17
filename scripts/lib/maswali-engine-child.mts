@@ -289,7 +289,7 @@ console.log("\n§8 · ⭐ the week void");
   const v = await svc.voidWeek({ weekId: drive.id, now: new Date(Date.parse(final.objectionsCloseAt!) + 1) });
   ok("8.8 · after the window: VOIDED", v.ok && v.week.state === "VOIDED", errOf(v));
   const m = await marketStore.get(final.marketId!);
-  ok("8.9 · the market is VOIDED with outcome VOID, settled through the VOID arm", m?.status === "VOIDED" && m.resolvedOutcome === "VOID" && !!m.settledAt, JSON.stringify({ s: m?.status, o: m?.resolvedOutcome, at: m?.settledAt }));
+  ok("8.9 · the market is VOIDED with outcome VOID, settled by the week's bulk refund (R1)", m?.status === "VOIDED" && m.resolvedOutcome === "VOID" && !!m.settledAt, JSON.stringify({ s: m?.status, o: m?.resolvedOutcome, at: m?.settledAt }));
 }
 
 // ── §9 · the carry ──────────────────────────────────────────────────────────

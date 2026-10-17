@@ -2711,7 +2711,7 @@ model MaswaliTicket {
   selectionsHash String
   /// SHA-256(canonical) — server-only, for the idempotent-replay compare.
   picksKey   String
-  /// LIVE | CANCELLED | SETTLED
+  /// LIVE | CANCELLED | SETTLED | REFUNDED (its week voided whole; R1, migration 20261017130000_maswali_ticket_refunded)
   status     String
   cancelledAt     DateTime?
   /// The close as it stood when the ticket was bought (a moved close never shortens its cancel window).

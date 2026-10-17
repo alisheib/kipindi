@@ -16,7 +16,8 @@
  *      · `rulesSnapshot` + `questionSetHash` + `marketId` are stamped once, by `stampOpen`, WHERE the week is DRAFT;
  *      · `closesAt` moves only through `moveClose` (MB-28), WHERE the week is OPEN;
  *      · the close's commitment is stamped once, by `stampClose`, WHERE the week is OPEN;
- *      · `rolloverIn` is claimed once, by `claimCarry`, WHERE it IS NULL.
+ *      · `rolloverIn` is claimed once, by `claimCarry`, WHERE it IS NULL;
+ *      · a week void is stamped once, by `stampVoid`, WHERE the week is CLOSED or RESOLVING (R1).
  *    Every one of those is a conditional write that answers whether it won the row, never a blind update.
  */
 import { Prisma } from "@prisma/client";
@@ -180,7 +181,8 @@ const DRAFT_EDITABLE = new Set<keyof DraftQuestionFields>([
 ]);
 
 /** Ticket columns a plain `patch` may write — settlement's stamps and the owner's view mark. ⛔ Never the picks, the
- *  salt, the hashes, the serial or the purchase facts; `status` moves only through `cancelTicket` / `settleTicket`. */
+ *  salt, the hashes, the serial or the purchase facts; `status` moves only through `cancelTicket` / `settleTicket` /
+ *  `settleWeekTickets` / `refundWeekTickets`. */
 const TICKET_PATCHABLE: Record<string, (v: unknown) => unknown> = {
   frozenReason: (v) => v,
   lastViewedAt: (v) => dt(v as string | null),
@@ -225,6 +227,11 @@ export interface WeekStore {
    * week is RESOLVING and has no settlement yet. False when another settlement already won the row.
    */
   stampSettlement(id: string, f: WeekSettlementStamp, tx?: Prisma.TransactionClient): Promise<boolean>;
+  /**
+   * ⭐ R1 · THE WEEK VOID'S DECISION, ONCE: CLOSED or RESOLVING → VOIDED. False when the week is neither any more (another
+   * void won the row). The refunds are a later, separate write (`maswali-void.ts`), retried until they land.
+   */
+  stampVoid(id: string, tx?: Prisma.TransactionClient): Promise<boolean>;
 }
 
 /** One ticket's grade as the settlement writes it; `frozenReason` is a winning share held for Compliance (MB-43). */
@@ -277,6 +284,12 @@ export interface TicketStore {
    * moved LIVE → SETTLED; the caller requires it to equal the rows it passed (a mismatch rolls the settlement back).
    */
   settleWeekTickets(cycleId: string, rows: ReadonlyArray<SettledTicketRow>, tx?: Prisma.TransactionClient): Promise<number>;
+  /**
+   * ⭐ R1 · the week void's refund marks these LIVE tickets REFUNDED in bulk, in the refund's transaction. Conditional on
+   * LIVE and on this week, so a re-run refunds nothing. Returns how many moved; the caller requires it to equal the
+   * tickets it refunded, and a mismatch rolls the refund back.
+   */
+  refundWeekTickets(cycleId: string, ids: readonly string[], tx?: Prisma.TransactionClient): Promise<number>;
 }
 
 /**
@@ -392,6 +405,12 @@ const memoryWeeks: WeekStore = {
     memWeeks.set(id, { ...cur, ...f, updatedAt: now() });
     return true;
   },
+  async stampVoid(id) {
+    const cur = memWeeks.get(id);
+    if (!cur || (cur.state !== "CLOSED" && cur.state !== "RESOLVING")) return false;
+    memWeeks.set(id, { ...cur, state: "VOIDED", updatedAt: now() });
+    return true;
+  },
 };
 
 const memoryQuestions: QuestionStore = {
@@ -491,6 +510,16 @@ const memoryTickets: TicketStore = {
       const cur = memTickets.get(r.id);
       if (!cur || cur.cycleId !== cycleId || cur.status !== "LIVE") continue;
       memTickets.set(r.id, { ...cur, status: "SETTLED", score: r.score, won: r.won, payout: r.payout, frozenReason: r.frozenReason ?? null });
+      n++;
+    }
+    return n;
+  },
+  async refundWeekTickets(cycleId, ids) {
+    let n = 0;
+    for (const id of new Set(ids)) {
+      const cur = memTickets.get(id);
+      if (!cur || cur.cycleId !== cycleId || cur.status !== "LIVE") continue;
+      memTickets.set(id, { ...cur, status: "REFUNDED" });
       n++;
     }
     return n;
@@ -635,6 +664,10 @@ const prismaWeeks: WeekStore = {
     });
     return r.count === 1;
   },
+  async stampVoid(id, tx) {
+    const r = await db_(tx).maswaliCycle.updateMany({ where: { id, state: { in: ["CLOSED", "RESOLVING"] } }, data: { state: "VOIDED" } });
+    return r.count === 1;
+  },
 };
 
 const prismaQuestions: QuestionStore = {
@@ -759,6 +792,20 @@ const prismaTickets: TicketStore = {
            SET "status" = 'SETTLED', "score" = v.score, "won" = v.won, "payout" = v.payout, "frozenReason" = v.frozen
           FROM (VALUES ${values}) AS v(id, score, won, payout, frozen)
          WHERE t."id" = v.id AND t."cycleId" = ${cycleId} AND t."status" = 'LIVE'`;
+    }
+    return n;
+  },
+  async refundWeekTickets(cycleId, ids, tx) {
+    // ⭐ BULK, NOT ROW BY ROW (R1): one UPDATE per 5,000 ids, far below Postgres's bind-parameter ceiling, whatever the
+    // week's size. Conditional on LIVE, so a re-run refunds nothing.
+    const unique = [...new Set(ids)];
+    let n = 0;
+    for (let i = 0; i < unique.length; i += 5_000) {
+      const r = await db_(tx).maswaliTicket.updateMany({
+        where: { cycleId, status: "LIVE", id: { in: unique.slice(i, i + 5_000) } },
+        data: { status: "REFUNDED" },
+      });
+      n += r.count;
     }
     return n;
   },

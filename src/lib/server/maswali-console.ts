@@ -17,6 +17,7 @@ import { questionStore, ticketStore, weekStore, type StoredQuestion, type Stored
 import { frozenRules, gradable, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
+import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
@@ -111,10 +112,19 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   const nowMs = now.getTime();
   const out: ConsoleAlert[] = [];
   const cfg = getMaswaliConfig();
-  const weeks = await weekStore.list({ limit: 60 });
+  // ⛔ EVERY WEEK AN ALERT CAN CONCERN, READ BY STATE — never the newest N, or the week stuck longest would be the one
+  // that falls off the page and goes quiet: each non-terminal week, and each VOIDED week whose refunds have not landed by
+  // R1's one truth (`maswali-void.ts`). Newest first, as before.
+  const weeks = [...await weekStore.list({ states: ["DRAFT", "OPEN", "CLOSED", "RESOLVING"] }), ...await unrefundedVoids()]
+    .sort((a, b) => b.seq - a.seq);
   for (const w of weeks) {
     if (w.state === "OPEN" && Date.parse(w.closesAt) + 5 * 60_000 < nowMs) {
       out.push({ level: "critical", weekId: w.id, text: `${w.code}: sales should have closed at ${w.closesAt}, and the close is not stamped.` });
+    }
+    // R1 · a VOIDED week is here only while it is owed: the void is decided, and the money is not back until its market
+    // carries the settled stamp, written with the refunds.
+    if (w.state === "VOIDED") {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: it voided whole, and its refunds have not landed. The tick retries them; the heal runs them now.` });
     }
     if (w.state === "CLOSED" || w.state === "RESOLVING") {
       const qs = await questionStore.listForWeek(w.id);
@@ -145,9 +155,9 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   const need = requirementOf(weeks.filter(unsettled));
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
   else if (held < need) out.push({ level: "critical", text: `The guarantee holds TZS ${held.toLocaleString("en")}; the unsettled weeks need TZS ${need.toLocaleString("en")} (OD-02).` });
-  // The product's own standing speaks only once Millionea has a week: before the first draft, a missing licence basis is
-  // the plan's Gate A, not an alert for every officer on the overview.
-  if (weeks.length > 0) {
+  // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
+  // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
+  if ((await weekStore.maxSeq()) > 0) {
     if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
