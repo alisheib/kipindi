@@ -229,6 +229,9 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     "politics.regular": [7.99, 12.09, PHOSPHOR_PLACED], "politics.bold": [8, 12.13, PHOSPHOR_PLACED],
     "shield.bold": [0, 12, PHOSPHOR_PLACED], "shieldAlert.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.bold": [0, 12, PHOSPHOR_PLACED], "shieldcheck.regular": [0, 12, PHOSPHOR_PLACED],
     "sofGift.bold": [0, -12.01, PHOSPHOR_PLACED], "sofSalary.bold": [0, -14, PHOSPHOR_PLACED], "unlock.bold": [0, -12, PHOSPHOR_PLACED],
+    // MASWALI-BUILD S5 (2026-10-17): Millionea's How to play, Phosphor's book-open-text, which Phosphor draws 16 units low in
+    // its Bold, as it draws comment.bold — measured at the merge of W2 (ca1febdc), kept as drawn.
+    "howTo.bold": [0, 16, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
