@@ -51,6 +51,12 @@ export type WinCelebrationPayload = {
   net?: number;
   /** Market title or short context line. */
   label?: string;
+  /**
+   * `false`: the amount lands FINAL — the counter's own snap path (the one motion-off takes), so the strike to gilt is a
+   * change of ink and nothing counts. MASWALI-BUILD S5, DESIGN_AUTHORITY §M8a item 6 (Ali, 2026-10-16: Millionea seals do
+   * not count). Omitted, the seal counts up as it always has; nothing else about the seal changes either way.
+   */
+  roll?: boolean;
   /** ⛔ SET BY `dispatchWinCelebration`, NEVER BY A CALLER — see the function below. */
   ack?: { accepted: boolean };
 };
@@ -99,11 +105,12 @@ function motionOff(): boolean {
 /** Rolling counter for the payout headline — waits for its own cascade row to
  *  land (base + 2 stagger steps), counts 0 → value over ~900ms on tabular
  *  figures (no reflow — M4), then reports done so the amount can STRIKE to
- *  gilt. Snaps instantly (already struck) when motion is off. */
-function RollingAmount({ value, onStruck }: { value: number; onStruck: (s: boolean) => void }) {
-  const [n, setN] = useState(0);
+ *  gilt. Snaps instantly (already struck) when motion is off — and when the payload says not to roll (`roll: false`,
+ *  §M8a item 6), which takes the same path and starts on the final figure, so no frame ever reads a smaller one. */
+function RollingAmount({ value, onStruck, roll = true }: { value: number; onStruck: (s: boolean) => void; roll?: boolean }) {
+  const [n, setN] = useState(() => (roll ? 0 : value));
   useEffect(() => {
-    if (motionOff()) { setN(value); onStruck(true); return; }
+    if (!roll || motionOff()) { setN(value); onStruck(true); return; }
     setN(0); onStruck(false);
     // The amount row arrives at --t-stage + 2·--m-stagger (motion.css cascade);
     // the count starts as it lands. 520 + 80 — the tokens' current values; a
@@ -122,7 +129,7 @@ function RollingAmount({ value, onStruck }: { value: number; onStruck: (s: boole
       raf = requestAnimationFrame(tick);
     }, 600);
     return () => { clearTimeout(t0); cancelAnimationFrame(raf); };
-  }, [value, onStruck]);
+  }, [value, onStruck, roll]);
   return <>{formatTzs(n)}</>;
 }
 
@@ -264,6 +271,8 @@ export function WinCelebrationHost() {
           // No market title — this seal stands for several, and naming one of them
           // would be a false statement about the figure above it.
           label: undefined,
+          // A summary that holds a seal which must not count does not count either (§M8a item 6).
+          ...(tail.some((p) => p.roll === false) ? { roll: false } : {}),
         });
       }
       if (!openRef.current) present();
@@ -322,7 +331,7 @@ export function WinCelebrationHost() {
           className={`g-settle mt-3 font-mono text-[38px] font-bold leading-[1.1] tabular-nums ${struck ? "gilt-ink" : "text-gold-300"}`}
           style={{ "--i": 2 } as CSSProperties}
         >
-          <RollingAmount value={payload.amount} onStruck={setStruck} />
+          <RollingAmount value={payload.amount} onStruck={setStruck} roll={payload.roll !== false} />
         </p>
 
         {typeof payload.net === "number" && (

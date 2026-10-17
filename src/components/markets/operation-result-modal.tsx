@@ -99,6 +99,10 @@ type Props = {
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
+  /** MASWALI-BUILD S5 (MASWALI-PLAN §10 §3.7, M1): a success that issued a document — a Millionea ticket cut — lands its
+   *  crest as the micro-seal (`.seal-commit`, `seal-place`), as a staked side's does, on the brand strip. Omitted, only a
+   *  yes/no strip takes the seal, exactly as before. Ignored for non-success variants. */
+  stamp?: boolean;
 };
 /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
    zero call sites ever passed them, and the win moment they anticipated is the
@@ -196,7 +200,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand",
+  autoCloseMs, stripTone = "brand", stamp,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -407,6 +411,8 @@ export function OperationResultModal({
   const effectiveBtn = variant === "success"
     ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
     : tone.primaryBtn;
+  // The crest that lands as the micro-seal: a staked side (`stripTone` yes/no) or an issued document (`stamp`).
+  const sealed = variant === "success" && (stamp === true || stripTone === "yes" || stripTone === "no");
 
   /* ⭐ THE ✕ OF A DIALOG THAT OPENS ON A CREST STAYS IN MODAL'S CORNER — the one ruled exception to F20 (round 6, 2026-10-09,
      review C9; `test:visual-pass-r6c` holds every player dialog's ✕ to its place). F20 puts a ✕ on its title's first-line
@@ -463,16 +469,17 @@ export function OperationResultModal({
             "micro-commit .seal-commit" — `seal-place`, the stamp landing) instead of
             the generic pop: `stripTone` yes/no is the modal's own definition of "a
             side was staked", so the commit moment is detected from the prop that
-            already means it, not a new one. Everything else keeps `orm-pop`. */}
+            already means it, not a new one. A Millionea ticket cut asks for it by
+            name (`stamp`, M1). Everything else keeps `orm-pop`. */}
         <div
           className={`mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full${
-            variant === "success" && (stripTone === "yes" || stripTone === "no") ? " seal-commit" : ""
+            sealed ? " seal-commit" : ""
           }`}
           style={{
             background: tone.bg,
             border: `2px solid ${tone.brd}`,
             boxShadow: tone.shadow,
-            ...(variant === "success" && (stripTone === "yes" || stripTone === "no")
+            ...(sealed
               ? {}
               /* ⭐ `--m-settle`, NOT `--m-pivot` (2026-09-03). §M8 reserves the pivot curve for
                  THE NEEDLE AND DIALS, and a result-modal crest is neither. `motion.css`'s own

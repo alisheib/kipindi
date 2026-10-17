@@ -339,6 +339,9 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/auth/forgot-password/page.tsx": [2, "the rate-limit box's frame and wash — a refusal the player clears by waiting, as sign-in's (its words the muted ink)"],
   "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending"],
   "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set — never gilt"],
+  // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
+  "src/components/maswali/maswali-slip.tsx": [3, "the confirm's short main balance — the player deposits before cutting a ticket (its box's frame and wash, its glyph)"],
+  "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
 };
 section("3 · the warning census — every warning paint in the player's code is a §B11 warning, ruled and registered");
 const wcensus = new Map<string, Hit[]>();

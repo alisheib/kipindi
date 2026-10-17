@@ -308,6 +308,7 @@ const REVIEWED: readonly string[] = [
   "src/components/markets/sell-result.tsx",   // reviewed 2026-10-04 (S6 A8h)
   "src/components/markets/share-button.tsx",
   "src/components/markets/win-celebration.tsx",
+  "src/components/maswali/maswali-slip.tsx",   // reviewed 2026-10-17 (MASWALI-BUILD S5) — the confirm sheet: no truncate, no clamp, no max-h; the picks wrap in two columns, the lines are `text-pretty`, and Modal scrolls
   "src/components/onboarding/first-visit-primer.tsx",
   "src/components/onboarding/how-to-play-sheet.tsx",   // reviewed 2026-10-12 (Vodacom S7 WP6) — a capped panel whose steps region is its scrolling partner
   "src/components/pwa/install-invite.tsx",

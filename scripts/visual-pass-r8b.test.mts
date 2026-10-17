@@ -219,6 +219,12 @@ const REGISTRY: Array<{ file: string; key: string; role: Role; inks: string[]; w
     why: "the result's outcome line (\"Bet placed\", a failure) — said in its crest's tone" },
   { file: "src/components/ui/unsaved-changes.tsx", key: "{savedNow?.text}", role: "STATUS", inks: ["text-success-fg"], why: "\"Saved\" — a success" },
   { file: "src/components/ui/unsaved-changes.tsx", key: "{shownLabel}", role: "STATUS", inks: ["text-warning-fg"], why: "\"Unsaved changes\" — somebody must act" },
+  // MASWALI-BUILD S5 — Millionea's two stamps state a fact of the world in the text's own ink on the strong border (the
+  // delivery's T and W frames; manifest L7), never the section ink: a result that was sealed, a ticket's money returned.
+  { file: "src/components/maswali/maswali-outcome-stamp.tsx", key: "{stampText}", role: "STATUS", inks: ["text-text"],
+    why: "the outcome stamp (\"MATOKEO · NDIO\") — a sealed result, the same for every outcome (§M8a item 2)" },
+  { file: "src/components/maswali/maswali-ticket.tsx", key: "{stampNodes}", role: "STATUS", inks: ["text-text"],
+    why: "the stub's stamp line (\"IMEREJESHWA · TZS 1,000\") — how a ticket ended without a result" },
   // Round 9 (R9-B): the KYC rail's step labels and the fairness chain's draw through the keep (`keepConnectives`), so
   // these two keys read the call; the site, the role and the inks are the same.
   { file: "src/app/profile/kyc/page.tsx", key: "{keepConnectives(node.label)}", role: "STEPPER", inks: ["text-brand-300", "text-text", ONE_INK],

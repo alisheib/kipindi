@@ -251,4 +251,19 @@ export const ALIASES: Array<[string, string]> = [
 export const NEW_KEYS: Record<string, MapEntry> = {
   idea: { ph: "lightbulb" }, // R-LEXICON 5.6A: proposals
   limits: { ph: "hand-palm" }, // R-LEXICON 5.7A: limits and breaks
+  // Maswali Millionea's own meanings (MASWALI-PLAN §10c, Ali 2026-10-17; MASWALI-BUILD S5). Where the lexicon already owns
+  // a meaning Millionea calls that key and adds none; these thirteen are the meanings it does not own.
+  millionea: { ph: "diamond" }, // the product mark: Ali's pick among diamond / star-four / crown-simple / medal, diamond until then
+  markPending: { ph: "circle-dashed" }, // a question not yet sealed: "not known yet", never "wrong" (replaces the delivery's sealNil)
+  reserve: { ph: "lifebuoy" }, // the reserves A1–A5: the backup that saves a ticket when a main question voids
+  standIn: { ph: "arrow-bend-down-right" }, // a reserve stood in for a voided main (its socket carries into the main's)
+  carry: { ph: "arrow-bend-double-up-right" }, // carried forward to the next jackpot (not the lexicon's savings or cash-out)
+  floor: { ph: "vault" }, // the house floor guarantee (shield-check already means "verified")
+  register: { ph: "notebook" }, // the week's register, Daftari la Wiki
+  commitment: { ph: "fingerprint" }, // the week's ticket commitment fixed at the close (MR-13); /fairness keeps attestation
+  refund: { ph: "arrow-u-down-left" }, // refunded with a voided week
+  salesPaused: { ph: "pause-circle" }, // an operator's pause of sales (the lexicon's pause is the player's own break)
+  howTo: { ph: "book-open-text" }, // how it works (question stays Help)
+  cap: { ph: "stack" }, // the weekly ticket cap
+  finalWeek: { ph: "flag-checkered" }, // the final week of a sunset
 };

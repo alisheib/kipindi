@@ -112,6 +112,32 @@ for (const f of IDENTITY_SURFACES) {
     hit('<i style={{ color: "var(--metal-gold)", background: "var(--gold-950)" }} />').length === 0);
 }
 
+/* ── 1d · MASWALI MILLIONEA'S UNEARNED MONEY (MASWALI-BUILD S5; MASWALI-PLAN §10 §7; DESIGN_AUTHORITY §M8a item 7) ──────
+   The jackpot, the floor, the rollover and the stub are money nobody has earned yet, so the files that draw them wear no
+   gold in ANY spelling: the ink tokens and classes above, the gold material (`gilt-ink`, `gilt-metal`, `btn-gold`), a tone
+   or variant asked for by name, or a struck figure. The one Millionea file that may is the win ledger, which keeps the
+   earned lines ("Kwa tiketi yako", "Jumla yako", a won ticket's paid amount) — a separate file so this arm can see the
+   difference, and its control below proves the arm reads gold where gold is. */
+const UNEARNED_SURFACES = [
+  "src/components/maswali/maswali-pool-figure.tsx",
+  "src/components/maswali/maswali-home-card.tsx",
+  "src/components/maswali/maswali-seal-line.tsx",
+  "src/components/maswali/maswali-ticket.tsx",
+  "src/components/maswali/maswali-week-strip.tsx",
+  "src/components/maswali/maswali-outcome-stamp.tsx",
+  "src/components/maswali/maswali-unbroken-line.tsx",
+];
+const GOLD_MATERIAL = /(?<![\w-])(?:gilt-ink|gilt-metal|btn-gold|mat-tint-gilt|chip-resolved)(?![\w-])|["'`]gold["'`]|\bstruck\b/g;
+console.log("\n── 1d · Millionea's unearned surfaces carry no gold ─────────────");
+for (const f of UNEARNED_SURFACES) {
+  const code = strip(read(f));
+  ok(`1d.control · ${f} is still real code after stripping`, code.length > 500 && /export/.test(code), `${code.length} chars`);
+  const hits = [...code.matchAll(MONEY_INK), ...code.matchAll(MONEY_CLASS), ...code.matchAll(GOLD_MATERIAL)].map((m) => m[0]);
+  ok(`1d · ${f} paints no gold (an unearned surface, §M8a item 7)`, hits.length === 0, hits.join(", "));
+}
+ok("1d.control · the win ledger, the one Millionea file that may, still strikes its earned lines (`gilt-ink`)",
+  [...strip(read("src/components/maswali/maswali-win-ledger.tsx")).matchAll(GOLD_MATERIAL)].length > 0);
+
 console.log("\n── 2 · the rank ladder is metallic, not monetary ────────────────");
 const css = read("src/app/globals.css");
 for (const sel of TIER_RULES) {

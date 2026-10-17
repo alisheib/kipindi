@@ -248,8 +248,13 @@ const BASELINE = new Set<string>([
      be spelling the rule out by hand. ⚠️ Its body was read before reviving, as §1.2 demands:
      `transition: transform var(--t-base) var(--m-glide); will-change: transform` is exactly
      what the call site had inline, so nothing superseded was resurrected. */
-  "m-axis-reveal", "m-behind", "m-focusable", "m-needle", "m-press",
-  "m-raise", "m-seal", "m-skeleton", "mat-flat", "mat-raised-i", "needle-settle-loss",
+  /* ⭐ `m-axis-reveal`, `m-seal` AND `mat-flat` CAME OFF THIS LIST 2026-10-17 (MASWALI-BUILD S5), the good direction: Millionea
+     adopts them as its delivery drew them — the stub's stamp line, the perforation and the slip's closed band reveal on the
+     axis (M1, M2, M8), the stub's lock line lands on `.m-seal` (M2: "a dormant class adopted"), and the pool block and the
+     inline refusal sit on the flat rung. ⚠️ Each body was read first: `m-axis-reveal` and `m-seal` run on `--t-stage` /
+     `--m-settle`, `mat-flat` is the M2 ladder's rung 0 with its `--mat-tint` slot — current recipes, nothing superseded. */
+  "m-behind", "m-focusable", "m-needle", "m-press",
+  "m-raise", "m-skeleton", "mat-raised-i", "needle-settle-loss",
   // ── One-off page furniture whose page was rebuilt around it.
   "market-search", "mcardp-q-sw", "tooltip-popover", "value-flash",
   /* ⭐ `value-delta` CAME OFF THIS LIST 2026-10-01 (S6 WP4), the good direction again, like `m-indicator` above:
@@ -276,7 +281,9 @@ const BASELINE = new Set<string>([
   //    consumer. Deleting one therefore breaks a GATE rather than a screen, which is a real
   //    reason to do it deliberately and a real reason not to call it alive.
   "cm-dot", "cm-handoff-meta", "countdown--critical", "countdown--urgent",
-  "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-draw", "m-live-pip", "m-urgent",
+  // `m-draw` and `mat-inset` LEFT 2026-10-17 (MASWALI-BUILD S5): Millionea's hairlines draw on (M5, M6, on `--t-max` /
+  // `--m-glide`) and its reserves, rules strip and quiet lines sit on the inset rung — both bodies read, both current.
+  "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-live-pip", "m-urgent",
     // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
   // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
   // ⭐ `mat-float` LEFT THIS LIST on 2026-09-12 and the list may only shrink. The channels panel
@@ -286,7 +293,7 @@ const BASELINE = new Set<string>([
   // var(--mat-tint, …), var(--elev-float)` — the current family recipe, not a superseded one,
   // and the sibling rungs it sits between are all live. ⚠️ It carries its OWN border, which is
   // why the panel adds no `border-*` class: two rings read as one muddy 2px edge (§M2).
-  "mark-breathe", "mark-flip", "mark-pending", "mat-inset",
+  "mark-breathe", "mark-flip", "mark-pending",
   "skeleton", "stagger-item",
 ]);
 

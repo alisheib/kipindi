@@ -103,6 +103,13 @@ const IDENTICAL_OK = new Set<string>([
   // translated in all three locales.
   "footer.instagram",             // Instagram — the company's own name
   "footer.tiktok",                // TikTok — the company's own name
+  // ⭐ MASWALI MILLIONEA'S NAME (MASWALI-BUILD S5; the v6 manifest's L10: "Millionea" stays in Latin script in every
+  // language). The product's title and its short label are a brand name, written the same in Swahili and in Chinese; and
+  // "Jackpot" is the word Tanzanian Swahili uses for it, as the delivery's Swahili draft writes it (Chinese has its own,
+  // 大奖). What proves the rest is translated is every other key in the namespace.
+  "millionea.productTitle",       // "Maswali Millionea" — the product's name
+  "millionea.productLabel",       // "Millionea" — the product's short name
+  "millionea.jackpot",            // "Jackpot" — the Swahili word is the same; zh has 大奖
 ]);
 
 const en = flatten(dict.en);
