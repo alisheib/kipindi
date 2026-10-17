@@ -14,13 +14,16 @@
  * jackpot (OD-21); a winner whose account changed is paid and held (MB-43), then released or forfeited to the jackpot
  * (OD-07); the sunset's top score (MR-30); Millionea winnings never lift the loss limit (OD-17); the nightly invariants.
  * The review's findings (2026-10-17), each with its control:
- *   R3  · a refused release claims no carry (1.3b, 6.2b, R6.4; on Postgres a late failure, R3.6); a draft below an opened
- *         week never opens (R3.1); a carry above the jackpot pays nothing (R3.4)
+ *   R3  · a refused release claims no carry (1.3b, 6.2b, R6.4; on Postgres a late failure, R3.6); the chain is the calendar,
+ *         whatever the drafting order (R3.1–R3.2b), and a week due before one already opened never opens (R3.1c); a carry
+ *         above the jackpot pays nothing (R3.4)
  *   R4c · the float alert and the returned week carry the committed figures (R4c.1–3)
- *   R6  · a lift waits for a release landing a held share (R6.2), a release holds only inside the chain lock (R6.5a), and a
- *         refused release lifts its holds (R6.4)
+ *   R6  · a lift waits for a release landing a held share — Compliance's (R6.2) and a forfeit's own (R6.2b); a release holds
+ *         only inside the chain lock (R6.5a); a refused release lifts its holds (R6.4); a late duplicate holds nothing and
+ *         lifts strays (R6.7, R6.8); the heal lifts a stray hold and nothing else (R6.9, R6.10)
  *   R8  · on Postgres, a forfeit or a hold whose commit fails leaves neither half (R8.1, R8.2)
- *   R9  · the final week's wide tie: 300 winners paid in bulk, timed (§11, R9.1–R9.5)
+ *   R9  · the final week's wide tie: 300 winners paid in bulk, the shape counted and the time printed (§11, R9.1–R9.6)
+ *   B9  · while a final week is ENDING, an earlier week still runs and a later one is refused (§11, B9.1, B9.2)
  */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-settle-session-secret-0123456789abcdef";
@@ -321,21 +324,48 @@ console.log("\n§10 · (e) the six-week trajectory of §5 worked example A");
 // ── R3 · the carry: in chain order, claimed with its payout, never above the jackpot ──────────────────────
 console.log("\n§R3 · the carry is claimed strictly in order, with its payout, and never above what the jackpot holds");
 {
-  // (ii) THE CHAIN ORDER AT THE OPEN: A is drafted first (the lower seq) and B after it; B opens, sells and closes. A can no
-  //      longer open — it would settle after B and claim a carry B may already have drawn (the double claim).
-  const startA = W.weekStartAhead(ahead++);
-  const draftA = await W.svc.createWeek({ weekStartMs: startA, questions: W.questions(startA), officerId: "usr_mln_drafter", now: new Date(startA - 3 * 86_400_000) });
-  if (!draftA.ok) throw new Error(`R3: the draft was refused: ${draftA.error}`);
-  await W.svc.attestParity({ weekId: draftA.week.id, officerId: "usr_mln_reader" });
-  const { week: b, start: sb } = await W.openWeek({ weeksAhead: ahead++ });
-  await sellWeek(b.id, 10, 0);
-  await W.svc.closeWeek({ weekId: b.id, now: new Date(Date.parse(b.closesAt) + 60_000) });
-  const late = await W.svc.openWeek({ weekId: draftA.week.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(startA + 60_000) });
-  ok("R3.1 · ⛔ a draft whose seq is below a week that has already opened never opens — it would claim a carry that week may already have drawn",
-    !late.ok && /strictly in order/.test(errOf(late)) && (await dal.weekStore.get(draftA.week.id)).state === "DRAFT", errOf(late));
-  const rb = await W.release(b.id, await W.closeAndSeal(b, sb));
-  ok("R3.2 · …and the week above it settles and claims in order: a draft that can never open is never in the chain",
-    rb.ok && rb.week.state === "SETTLED" && rb.week.rolloverIn != null, errOf(rb));
+  const DAY = 86_400_000;
+  const drafted = async (start: number) => {
+    const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: "usr_mln_drafter", now: new Date(start - 3 * DAY) });
+    if (!c.ok) throw new Error(`R3: the draft was refused: ${c.error}`);
+    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader" });
+    return c.week;
+  };
+  const opens = (week: any, now: number) => W.svc.openWeek({ weekId: week.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(now) });
+
+  // (ii) THE CHAIN IS THE CALENDAR: the LATER week is drafted first (the lower seq), the earlier one second. The earlier
+  //      opens first, as the calendar says; the later one opens once it has closed, settles only after it, and claims the
+  //      carry it rolled.
+  const start1 = W.weekStartAhead(ahead++), start2 = W.weekStartAhead(ahead++);
+  const due2 = await drafted(start2), due1 = await drafted(start1);
+  const o1 = await opens(due1, start1 + 60_000);
+  ok("R3.1 · ⭐ the week drafted second but due first opens first: the chain is the calendar, never the drafting order",
+    o1.ok && due2.seq < due1.seq, `${errOf(o1)} · seq ${due2.seq} < ${due1.seq}`);
+  await sellWeek(due1.id, 10, 0);
+  await W.svc.closeWeek({ weekId: due1.id, now: new Date(Date.parse(o1.ok ? o1.week.closesAt : due1.closesAt) + 60_000) });
+  const o2 = await opens(due2, start2 + 60_000);
+  await sellWeek(due2.id, 10, 1);
+  const at1 = await W.closeAndSeal(o1.ok ? o1.week : due1, start1), at2 = await W.closeAndSeal(o2.ok ? o2.week : due2, start2);
+  const early = await W.release(due2.id, at2);
+  ok("R3.2 · ⛔ …the later week opens once the earlier one closed, and cannot settle before it, whatever order they were drafted in",
+    o2.ok && !early.ok && /strictly in order/.test(errOf(early)) && (await dal.weekStore.get(due2.id)).rolloverIn === null, `${errOf(o2)} · ${errOf(early)}`);
+  const r1 = await W.release(due1.id, at1);
+  const carried = (await jackpot())!;
+  const r2 = await W.release(due2.id, at2);
+  ok("R3.2b · ⭐ …and once it has, the later week claims the carry the earlier one rolled: the carry flows in calendar order",
+    r1.ok && r2.ok && r2.week.state === "SETTLED" && r2.week.rolloverIn === carried && carried >= 10_000, `${errOf(r1)} · ${errOf(r2)} · carried ${carried}`);
+
+  // The guard behind it: a week whose calendar comes BEFORE one that has already opened never opens. It bites only when a
+  // later week was opened early and closed early — here, opened nine days ahead and closed at once with nothing sold.
+  const startE = W.weekStartAhead(ahead++), startL = W.weekStartAhead(ahead++);
+  const dueE = await drafted(startE), dueL = await drafted(startL);
+  const oL = await opens(dueL, startE - 2 * DAY);
+  const cL = await W.svc.closeWeek({ weekId: dueL.id, early: true, now: new Date(startE - 2 * DAY + 60_000) });
+  const oE = await opens(dueE, startE + 60_000);
+  ok("R3.1c · ⛔ a week whose calendar comes before one already opened never opens: it would settle after it and claim a carry it may have drawn",
+    oL.ok && cL.ok && !oE.ok && /strictly in calendar order/.test(errOf(oE)) && (await dal.weekStore.get(dueE.id)).state === "DRAFT", `${errOf(oL)} · ${errOf(oE)}`);
+  const rL = await W.release(dueL.id, await W.closeAndSeal(oL.ok ? oL.week : dueL, startL));
+  ok("R3.1d · …and the later week still runs its course: sold nothing, it settles as an empty rollover", rL.ok && rL.week.state === "SETTLED" && rL.week.salesAtClose === 0, errOf(rL));
 
   // (iii) THE JACKPOT COVERS R: a carry claimed on its own (the standalone `claimCarry`, kept for its other callers), then
   //       the drive jackpot drained one shilling below it. The release must pay nothing until the two agree again.
@@ -407,13 +437,25 @@ console.log("\n§R4c · the payout float alert is handed the paid total the sett
 console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a hold or a forfeit commits whole or not at all");
 {
   const { runOutsideLock, withLock } = await import("../../src/lib/server/locks.ts");
-  const P = players[157], Q = players[158];
+  const { addWalletFreeze } = await import("../../src/lib/server/wallet-freeze.ts");
+  const { getAuditForTargetDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
+  const P = players[157], Q = players[158], P2 = players[159];
   const filler = players.slice(140, 150);
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
   const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
   const buyOne = async (u: string, weekId: string) => {
     const b = await W.buy(u, weekId, [W.WIN]);
     if (!b.ok) throw new Error(`R6: a winner's purchase was refused: ${b.error}`);
   };
+  /** A week sold to `buyers` (one winning ticket each) and filled to ten tickets, then closed. */
+  const soldWeek = async (buyers: string[]) => {
+    const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
+    for (const u of buyers) await buyOne(u, week.id);
+    await W.sell(week.id, 10 - buyers.length, W.LOSE, filler);
+    await W.svc.closeWeek({ weekId: week.id, now: new Date(Date.parse(week.closesAt) + 60_000) });
+    return { week, start };
+  };
+  const wonBy = async (weekId: string, u: string) => (await dal.ticketStore.listForWeek(weekId)).find((t: any) => t.userId === u && t.won);
   const failAt = (act: string) => settle.__setMaswaliSettleSeamsForTests({
     beforeCommit: async (at: string) => { if (at === act) throw new Error(`TEST-FAULT · the ${act} commit fails`); },
   });
@@ -421,17 +463,13 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
     try { await fn(); return ""; } catch (e) { return String((e as Error)?.message ?? e); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
   };
 
-  // Two weeks with one winning ticket of P's each, both bought while P's account was still active.
-  const { week: x1, start: s1 } = await W.openWeek({ weeksAhead: ahead++ });
-  await buyOne(P, x1.id);
-  await W.sell(x1.id, 9, W.LOSE, filler);
-  await W.svc.closeWeek({ weekId: x1.id, now: new Date(Date.parse(x1.closesAt) + 60_000) });
-  const { week: x2, start: s2 } = await W.openWeek({ weeksAhead: ahead++ });
-  await buyOne(P, x2.id);
-  await W.sell(x2.id, 9, W.LOSE, filler);
+  // Three weeks with one winning ticket of P's each, all bought while P's account was still active.
+  const { week: x1, start: s1 } = await soldWeek([P]);
+  const { week: x2, start: s2 } = await soldWeek([P]);
+  const { week: x3, start: s3 } = await soldWeek([P]);
   await W.setUserFields(P, { status: "SUSPENDED" });
   const r1 = await W.release(x1.id, await W.closeAndSeal(x1, s1));
-  const t1 = (await dal.ticketStore.listForWeek(x1.id)).find((t: any) => t.userId === P && t.won);
+  const t1 = await wonBy(x1.id, P);
   ok("R6.1 · the first week pays P's share and holds it (MB-43)", r1.ok && r1.preview.held === 1 && t1?.frozenReason === "account suspended" && (await heldOf(P)), errOf(r1));
 
   // ⭐ THE INTERLEAVE: while the second release holds P's wallet and has not yet paid, Compliance releases the FIRST share.
@@ -440,74 +478,107 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
   settle.__setMaswaliSettleSeamsForTests({
     afterHolds: async () => {
       pending.lift = runOutsideLock(() => settle.releaseMaswaliShare({ ticketId: t1.id, officerId: OWNER, note: "the first review is closed" }));
-      await new Promise((res) => setTimeout(res, 200));
+      await sleep(200);
     },
   });
   let r2: any;
   try { r2 = await W.release(x2.id, at2); } finally { settle.__setMaswaliSettleSeamsForTests(null); }
   const lifted = pending.lift ? await pending.lift : null;
-  const t2 = (await dal.ticketStore.listForWeek(x2.id)).find((t: any) => t.userId === P && t.won);
+  const t2 = await wonBy(x2.id, P);
   ok("R6.2 · ⭐ the lift waited for the release: the first share released, the second landed held, and P's wallet STILL held (MB-43)",
     r2?.ok && lifted?.ok && (await dal.ticketStore.get(t1.id)).frozenReason === null && t2?.frozenReason === "account suspended" && (await heldOf(P))
       && (await W.bal(P)).status === "FROZEN", J({ r2: r2 ? errOf(r2) : "none", lifted, t2: t2?.frozenReason, wallet: await W.bal(P) }));
-  const rel2 = await settle.releaseMaswaliShare({ ticketId: t2.id, officerId: OWNER, note: "the second review is closed" });
-  ok("R6.3 · control: releasing the last held share lifts the hold", rel2.ok && !(await heldOf(P)) && (await W.bal(P)).status === "ACTIVE", errOf(rel2));
+
+  // ⭐ THE LIFT'S OWN LOCK: a forfeit of the second share has committed and is about to lift — its lift runs once every
+  //    other lock of the forfeit is gone — just as the third release lands another held share for P.
+  const at3 = await W.closeAndSeal(x3, s3);
+  let openLift!: () => void;
+  const liftGate = new Promise<void>((res) => { openLift = res; });
+  const paused: { forfeit?: boolean } = {};
+  settle.__setMaswaliSettleSeamsForTests({
+    beforeLift: async () => { paused.forfeit = true; await liftGate; },
+    afterHolds: async () => { openLift(); await sleep(200); },
+  });
+  let forfeiting: Promise<any> | undefined, r3: any;
+  try {
+    forfeiting = settle.forfeitMaswaliShare({ ticketId: t2.id, officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "duplicate identity proven" });
+    for (let i = 0; i < 100 && !paused.forfeit; i++) await sleep(20);
+    r3 = await W.release(x3.id, at3);
+  } finally {
+    openLift();
+    settle.__setMaswaliSettleSeamsForTests(null);
+  }
+  const forfeited = forfeiting ? await forfeiting : null;
+  const t3 = await wonBy(x3.id, P);
+  ok("R6.2b · ⭐ a forfeit's lift waited for the release landing a held share: the old share forfeited, the new one held, P's wallet STILL held",
+    paused.forfeit === true && forfeited?.ok && r3?.ok && String((await dal.ticketStore.get(t2.id)).frozenReason).startsWith("forfeited · ")
+      && t3?.frozenReason === "account suspended" && (await heldOf(P)) && (await W.bal(P)).status === "FROZEN",
+    J({ paused: paused.forfeit, forfeited, r3: r3 ? errOf(r3) : "none", t3: t3?.frozenReason, wallet: await W.bal(P) }));
+  const rel3 = await settle.releaseMaswaliShare({ ticketId: t3.id, officerId: OWNER, note: "the third review is closed" });
+  ok("R6.3 · control: releasing the last held share lifts the hold", rel3.ok && !(await heldOf(P)) && (await W.bal(P)).status === "ACTIVE", errOf(rel3));
 
   // A release refused AFTER its hold: the hold is lifted again (R6), and no carry is claimed (R3).
   await W.setUserFields(P, { status: "ACTIVE" });
-  const { week: x3, start: s3 } = await W.openWeek({ weeksAhead: ahead++ });
-  await buyOne(P, x3.id);
-  await buyOne(Q, x3.id);
-  await W.sell(x3.id, 8, W.LOSE, filler);
+  const { week: x4, start: s4 } = await soldWeek([P, Q]);
   await W.setUserFields(P, { status: "SUSPENDED" });
-  const at3 = await W.closeAndSeal(x3, s3);
-  const p3 = await settle.previewMaswaliSettlement(x3.id, at3);
+  const at4 = await W.closeAndSeal(x4, s4);
+  const p4 = await settle.previewMaswaliSettlement(x4.id, at4);
   // ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE, DECLARED (as §6): the guarantee drained below the top-up after the preview.
-  const g3 = (await guarantee())!;
-  await money.postMaswaliLines(`test_drain_r6_${x3.id}`, ledger.maswaliGuaranteeReturnEntries({ amount: g3 - 1, reference: "TEST-FAULT", actorId: OWNER }), null);
+  const g4 = (await guarantee())!;
+  await money.postMaswaliLines(`test_drain_r6_${x4.id}`, ledger.maswaliGuaranteeReturnEntries({ amount: g4 - 1, reference: "TEST-FAULT", actorId: OWNER }), null);
   const balP = await bal(P), balQ = await bal(Q);
-  const short = p3.ok ? await settle.settleMaswaliWeek({ weekId: x3.id, releasedBy: RELEASER, digest: p3.preview.digest, now: at3 }) : p3;
-  const w3 = await dal.weekStore.get(x3.id);
+  const short = p4.ok ? await settle.settleMaswaliWeek({ weekId: x4.id, releasedBy: RELEASER, digest: p4.preview.digest, now: at4 }) : p4;
+  const w4 = await dal.weekStore.get(x4.id);
   ok("R6.4 · ⭐ a release refused after its hold lifts that hold again — no hold stands with no held share — and claims no carry (R3)",
     !short.ok && /guarantee holds less/.test(errOf(short)) && !(await heldOf(P)) && (await W.bal(P)).status === "ACTIVE" && (await bal(P)) === balP
-      && w3.state === "RESOLVING" && w3.rolloverIn === null, J({ e: errOf(short), wallet: await W.bal(P), rolloverIn: w3.rolloverIn }));
+      && w4.state === "RESOLVING" && w4.rolloverIn === null, J({ e: errOf(short), wallet: await W.bal(P), rolloverIn: w4.rolloverIn }));
   const refill = await money.fundMaswaliGuarantee({ amount: FUND * 2, reference: "TEST-RAIL-0003", typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
   if (W.onPostgres) {
     // On the store that rolls back: the release fails at its last statement — after the claim, every credit and the stamp.
     failAt("release");
-    const thrown = await thrownBy(() => W.release(x3.id, at3));
-    const w3b = await dal.weekStore.get(x3.id);
+    const thrown = await thrownBy(() => W.release(x4.id, at4));
+    const w4b = await dal.weekStore.get(x4.id);
     ok("R3.6 · ⭐ (Postgres) a release that fails at its last statement leaves no carry claimed, nothing paid, and no hold standing (R6)",
-      /TEST-FAULT/.test(thrown) && w3b.state === "RESOLVING" && w3b.rolloverIn === null && (await bal(P)) === balP && (await bal(Q)) === balQ && !(await heldOf(P))
-        && (await dal.ticketStore.listForWeek(x3.id)).every((t: any) => t.status === "LIVE"), J({ thrown, rolloverIn: w3b.rolloverIn, wallet: await W.bal(P) }));
+      /TEST-FAULT/.test(thrown) && w4b.state === "RESOLVING" && w4b.rolloverIn === null && (await bal(P)) === balP && (await bal(Q)) === balQ && !(await heldOf(P))
+        && (await dal.ticketStore.listForWeek(x4.id)).every((t: any) => t.status === "LIVE"), J({ thrown, rolloverIn: w4b.rolloverIn, wallet: await W.bal(P) }));
   }
   // ⭐ …and the release places its hold only once IT holds the chain lock: while another act holds that lock, P's wallet
   //    is untouched — so no lift can run between a hold and the commit of its share (the other half of the interleave).
   const waiting: { release?: Promise<any> } = {};
   let untouched = false;
   await withLock(W.svc.MASWALI_CHAIN_LOCK, async () => {
-    waiting.release = runOutsideLock(() => W.release(x3.id, at3));
-    await new Promise((res) => setTimeout(res, 400));
+    waiting.release = runOutsideLock(() => W.release(x4.id, at4));
+    await sleep(400);
     untouched = !(await heldOf(P));
   });
-  const r3 = await waiting.release!;
+  const r4 = await waiting.release!;
   ok("R6.5a · ⭐ a release places its hold only inside the chain lock: while another act holds that lock, the winner's wallet is untouched",
-    untouched && r3?.ok && (await heldOf(P)), `untouched ${untouched} · ${r3 ? errOf(r3) : "no release"}`);
-  const tickets3 = await dal.ticketStore.listForWeek(x3.id);
-  const t3 = tickets3.find((t: any) => t.userId === P && t.won), tq = tickets3.find((t: any) => t.userId === Q && t.won);
+    untouched && r4?.ok && (await heldOf(P)), `untouched ${untouched} · ${r4 ? errOf(r4) : "no release"}`);
+  const t4 = await wonBy(x4.id, P), tq = await wonBy(x4.id, Q);
   ok("R6.5 · control: funded again, the week settles once — both paid, P's share held again, Q's free, the carry claimed",
-    refill.ok && r3.ok && r3.week.state === "SETTLED" && r3.week.rolloverIn != null && t3?.frozenReason === "account suspended" && tq?.frozenReason === null
-      && (await heldOf(P)) && !(await heldOf(Q)), errOf(r3));
+    refill.ok && r4?.ok && r4.week.state === "SETTLED" && r4.week.rolloverIn != null && t4?.frozenReason === "account suspended" && tq?.frozenReason === null
+      && (await heldOf(P)) && !(await heldOf(Q)), r4 ? errOf(r4) : "no release");
+
+  // ⭐ THE HEAL: a stray hold — Q's wallet held with no held share behind it — is lifted; P's, with its held share, stands.
+  // ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE WITHOUT A STOPPED PROCESS, DECLARED: the hold placed directly, with no share.
+  await addWalletFreeze(Q, "MILLIONEA_SHARE", { actorId: null, note: "TEST-FAULT · a stray hold, as a stopped process leaves" });
+  const strayBefore = await heldOf(Q);
+  const healed = await settle.healStrayMillioneaHolds();
+  ok("R6.9 · ⭐ the heal lifts a Millionea hold with no held share behind it, and leaves a held share's hold standing",
+    strayBefore && healed.lifted.includes(Q) && !healed.lifted.includes(P) && !(await heldOf(Q)) && (await W.bal(Q)).status === "ACTIVE" && (await heldOf(P)),
+    J({ healed, Q: await W.bal(Q) }));
+  const healedAgain = await settle.healStrayMillioneaHolds();
+  ok("R6.10 · …and a second heal finds nothing to lift: a held share's hold is never a stray", healedAgain.lifted.length === 0 && (await heldOf(P)), J(healedAgain));
 
   if (W.onPostgres) {
     // R8 · a forfeit whose commit fails: neither half lands.
     const j0 = await jackpot(), b0 = await bal(P);
     failAt("forfeit");
-    const thrown = await thrownBy(() => settle.forfeitMaswaliShare({ ticketId: t3.id, officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "duplicate identity proven" }));
-    const t3b = await dal.ticketStore.get(t3.id);
+    const thrown = await thrownBy(() => settle.forfeitMaswaliShare({ ticketId: t4.id, officerId: OWNER, typed: settle.FORFEIT_SHARE_WORD, reason: "duplicate identity proven" }));
+    const t4b = await dal.ticketStore.get(t4.id);
     ok("R8.1 · ⭐ (Postgres) a forfeit whose commit fails leaves the share held, the wallet whole and the jackpot unmoved — never 'forfeited' with nothing debited",
-      /TEST-FAULT/.test(thrown) && t3b.frozenReason === "account suspended" && (await bal(P)) === b0 && (await jackpot()) === j0 && (await heldOf(P)),
-      J({ thrown, reason: t3b.frozenReason }));
+      /TEST-FAULT/.test(thrown) && t4b.frozenReason === "account suspended" && (await bal(P)) === b0 && (await jackpot()) === j0 && (await heldOf(P)),
+      J({ thrown, reason: t4b.frozenReason }));
     // R8 · a hold whose commit fails: the ticket stays unheld, and the hold placed for it is lifted again.
     failAt("hold");
     const hThrown = await thrownBy(() => settle.holdMaswaliShare({ ticketId: tq.id, officerId: OWNER, reason: "a reversed deposit funded it" }));
@@ -519,24 +590,85 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
   ok("R8.3 · control: the same hold commits whole when nothing fails — the ticket held, and the wallet with it",
     hq.ok && (await dal.ticketStore.get(tq.id)).frozenReason === "compliance · a reversed deposit funded it" && (await heldOf(Q)), errOf(hq));
   const relQ = await settle.releaseMaswaliShare({ ticketId: tq.id, officerId: OWNER, note: "the reversal was re-paid" });
-  const relP = await settle.releaseMaswaliShare({ ticketId: t3.id, officerId: OWNER, note: "the account's review is closed" });
+  const relP = await settle.releaseMaswaliShare({ ticketId: t4.id, officerId: OWNER, note: "the account's review is closed" });
   ok("R6.6 · control: each release lifts its own player's hold", relQ.ok && relP.ok && !(await heldOf(Q)) && !(await heldOf(P)), `${errOf(relQ)} ${errOf(relP)}`);
-  await W.setUserFields(P, { status: "ACTIVE" }); // the account's own review ends
+
+  // ⭐ THE LATE DUPLICATE: a second release of one week read it RESOLVING before the first committed, and reaches the chain
+  //    lock only after the first settled it and Compliance released both held shares, while P2's wallet carries a stray
+  //    hold (declared below). The duplicate must answer `already`, place no hold of its own, and leave both wallets free.
+  await W.setUserFields(P, { status: "ACTIVE" });
+  const { week: x5, start: s5 } = await soldWeek([P, P2]);
+  await W.setUserFields(P, { status: "SUSPENDED" });
+  await W.setUserFields(P2, { status: "SUSPENDED" });
+  const at5 = await W.closeAndSeal(x5, s5);
+  let resume!: () => void;
+  const gate = new Promise<void>((res) => { resume = res; });
+  const waited: { duplicate?: boolean } = {};
+  settle.__setMaswaliSettleSeamsForTests({ beforeChain: async () => { if (!waited.duplicate) { waited.duplicate = true; await gate; } } });
+  let duplicate: Promise<any> | undefined, firstRelease: any;
+  try {
+    duplicate = W.release(x5.id, at5);
+    for (let i = 0; i < 100 && !waited.duplicate; i++) await sleep(20);
+    firstRelease = await W.release(x5.id, at5);
+  } finally {
+    settle.__setMaswaliSettleSeamsForTests(null);
+  }
+  const tp = await wonBy(x5.id, P), tp2 = await wonBy(x5.id, P2);
+  const relp = await settle.releaseMaswaliShare({ ticketId: tp.id, officerId: OWNER, note: "the review is closed" });
+  const relp2 = await settle.releaseMaswaliShare({ ticketId: tp2.id, officerId: OWNER, note: "the review is closed" });
+  // ⚠️ A FAULT THE PRODUCT CANNOT PRODUCE WITHOUT A STOPPED PROCESS, DECLARED: P2's wallet held again, with no share behind it.
+  await addWalletFreeze(P2, "MILLIONEA_SHARE", { actorId: null, note: "TEST-FAULT · a stray hold, as a stopped process leaves" });
+  resume();
+  const dup = duplicate ? await duplicate : null;
+  await auditFlush();
+  const holdsForP = (await getAuditForTargetDurable("User", P, { limit: 200 })).entries
+    .filter((e: any) => e.action === "wallet.freeze_added" && String(e.payload?.note ?? "").startsWith(`Millionea ${x5.code} ·`));
+  ok("R6.7 · ⭐ a duplicate release that waited behind the first answers `already` and places no hold of its own (the week re-read under the chain lock)",
+    waited.duplicate === true && firstRelease?.ok && !firstRelease.already && dup?.ok && dup.already === true && holdsForP.length === 1,
+    J({ first: firstRelease ? errOf(firstRelease) || "ok" : "none", dup: dup ? (dup.ok ? { already: dup.already } : dup.error) : "none", holdsForP: holdsForP.length }));
+  ok("R6.8 · ⭐ …and its `already` answer lifts every hold of its winners with no held share behind it: both wallets end unfrozen",
+    relp.ok && relp2.ok && !(await heldOf(P)) && !(await heldOf(P2)) && (await W.bal(P)).status === "ACTIVE" && (await W.bal(P2)).status === "ACTIVE",
+    J({ P: await W.bal(P), P2: await W.bal(P2) }));
+  await W.setUserFields(P, { status: "ACTIVE" }); // the accounts' own reviews end
+  await W.setUserFields(P2, { status: "ACTIVE" });
 }
 
 // ── §11 · the sunset: the final week's top score shares the whole jackpot ───
 console.log("\n§11 · the sunset (MR-30, OD-03)");
 {
+  const DAY = 86_400_000;
+  const drafted = async (start: number) => {
+    const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: "usr_mln_drafter", now: new Date(start - 3 * DAY) });
+    if (!c.ok) throw new Error(`§11: the draft was refused: ${c.error}`);
+    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader" });
+    return c.week;
+  };
+  const opens = (w: any, now: number) => W.svc.openWeek({ weekId: w.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(now) });
   // A jackpot to share: a no-winner week first.
   const { week: w1, start: s1 } = await W.openWeek({ weeksAhead: ahead++ });
   await sellWeek(w1.id, 50, 0);
   await W.release(w1.id, await W.closeAndSeal(w1, s1));
-  const R = (await jackpot())!;
-  const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
-  const wrong = await W.svc.sunsetMaswali({ weekId: week.id, ownerId: OWNER, typed: "stop", reason: "the product is retired" });
+  // ⭐ B9 · The final week is DRAFTED a full week ahead (OD-03's notice). A week whose calendar comes BEFORE it still runs;
+  //    only one after it is refused.
+  const startE = W.weekStartAhead(ahead++), startF = W.weekStartAhead(ahead++), startG = W.weekStartAhead(ahead++);
+  const finalDraft = await drafted(startF);
+  const wrong = await W.svc.sunsetMaswali({ weekId: finalDraft.id, ownerId: OWNER, typed: "stop", reason: "the product is retired" });
   ok("11.1 · ⛔ the sunset needs its typed words", !wrong.ok);
-  const s = await W.svc.sunsetMaswali({ weekId: week.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "the product is retired" });
-  ok("11.2 · the Owner makes the current week the final week", s.ok && s.week.isFinal === true, errOf(s));
+  const s = await W.svc.sunsetMaswali({ weekId: finalDraft.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "the product is retired" });
+  ok("11.2 · the Owner makes a drafted week the final week, a full week ahead (OD-03)", s.ok && s.week.isFinal === true, errOf(s));
+  const beforeFinal = await drafted(startE), afterFinal = await drafted(startG);
+  const refused = await opens(afterFinal, startG + 60_000);
+  ok("B9.2 · ⛔ while the final week is ENDING, a week whose calendar comes after it is refused",
+    !refused.ok && /final week; nothing opens after it/.test(errOf(refused)), errOf(refused));
+  const oE = await opens(beforeFinal, startE + 60_000);
+  if (oE.ok) await sellWeek(beforeFinal.id, 10, 0);
+  const rE = oE.ok ? await W.release(beforeFinal.id, await W.closeAndSeal(oE.week, startE)) : oE;
+  ok("B9.1 · ⭐ …and a week whose calendar comes BEFORE it, drafted beside it, still opens, sells and settles",
+    oE.ok && rE.ok && rE.week.state === "SETTLED", errOf(rE));
+  const R = (await jackpot())!;
+  const oF = await opens(finalDraft, startF + 60_000);
+  if (!oF.ok) throw new Error(`§11: the final week did not open: ${oF.error}`);
+  const week = oF.week, start = startF;
   // ⭐ R9 · A WIDE TIE: 300 tickets score 9 of 10 (they miss slot 1) — thirty players with ten each — and twenty miss two.
   //    No 10 of 10 anywhere, so the 300 share the whole jackpot, paid in bulk inside the one settlement transaction.
   const TOP = 300, EACH = 10, LOW = 20;
@@ -546,10 +678,25 @@ console.log("\n§11 · the sunset (MR-30, OD-03)");
   const before = await Promise.all(top.map(bal));
   const at = await W.closeAndSeal(week, start);
   const p = await settle.previewMaswaliSettlement(week.id, at);
+  // ⭐ R9 · THE BULK SHAPE, counted on the store's own calls: ONE settleMaswaliWinners call moves all 300 positions, no
+  //    position is written one by one, and the wallets are credited once per winning PLAYER (30), never once per ticket.
+  const ps = W.w.mdal.positionStore, wal = W.db.wallet;
+  const calls = { winners: 0, winnerIds: 0, sets: 0, adjusts: 0 };
+  const realWinners = ps.settleMaswaliWinners, realSet = ps.set, realAdjust = wal.adjust;
+  ps.settleMaswaliWinners = (...args: any[]) => { calls.winners++; calls.winnerIds += args[1].length; return realWinners.apply(ps, args); };
+  ps.set = (...args: any[]) => { calls.sets++; return realSet.apply(ps, args); };
+  wal.adjust = (...args: any[]) => { calls.adjusts++; return realAdjust.apply(wal, args); };
   const t0 = Date.now();
-  const r = p.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: p.preview.digest, now: at }) : p;
+  let r: any;
+  try {
+    r = p.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: p.preview.digest, now: at }) : p;
+  } finally {
+    ps.settleMaswaliWinners = realWinners; ps.set = realSet; wal.adjust = realAdjust;
+  }
   const ms = Date.now() - t0;
   console.log(`      R9 · the release of ${TOP} winners took ${ms} ms on ${STORE}`);
+  ok("R9.6 · ⭐ the bulk shape, counted: ONE settleMaswaliWinners call moves all 300 positions, none is written one by one, 30 credits pay 30 players",
+    r.ok && calls.winners === 1 && calls.winnerIds === TOP && calls.sets === 0 && calls.adjusts === TOP / EACH, J(calls));
   const a = p.ok ? p.preview.arithmetic : null;
   const J0 = R + (TOP + LOW) * 1_000;
   const F = Math.round(0.13 * J0);
@@ -578,13 +725,7 @@ console.log("\n§11 · the sunset (MR-30, OD-03)");
     r.ok && r.week.winningTickets === TOP && r.week.salesAtClose + r.week.rolloverIn + r.week.topUp === r.week.fee + r.week.paidTotal + r.week.carryOut, J(r.ok && r.week));
   const twice = await W.release(week.id, at);
   ok("R9.5 · exactly once: a second release pays nothing", twice.ok && twice.already === true && (await Promise.all(top.map(bal))).every((v, i) => v === after[i]));
-  const { week: next } = await (async () => {
-    const start2 = W.weekStartAhead(ahead++);
-    const c = await W.svc.createWeek({ weekStartMs: start2, questions: W.questions(start2), officerId: "usr_mln_drafter", now: new Date(start2 - 3 * 86_400_000) });
-    await W.svc.attestParity({ weekId: c.week.id, officerId: "usr_mln_reader" });
-    return { week: c.week, start: start2 };
-  })();
-  const o = await W.svc.openWeek({ weekId: next.id, officerId: "usr_mln_drafter", guarantee: money.guaranteeReader, now: new Date(Date.parse(next.opensAt) + 60_000) });
+  const o = await opens(afterFinal, startG + 60_000);
   ok("11.6 · ⛔ nothing opens after a final week that ran", !o.ok && /has ended/.test(errOf(o)), errOf(o));
 }
 
