@@ -44,6 +44,7 @@ file is worthless the moment it describes an intention as a fact.
 | **A config change records WHICH field moved** | ✅ **live in code 2026-09-09.** Every config audit wrote `changes: updates`, and an admin settings form posts the WHOLE config — so a save that moved one field recorded all of them as changed, and `/admin/config` → History renders that blob into one truncated cell. That is how `agent.config.feeVatRatePct` went **18 → 0** unseen inside the Lipa destination save (see the agent row above). `changes` is now a real diff, `{ field: { from, to } }`, across market config, the `defineConfig` factory, payments control and Up & Down. ⭐ `before`/`after` are untouched and still complete — nothing was ever lost, the row was unreadable. §2.10 · `npm run test:config-audit-diff` |
 | **A withdrawal's hold and its Transaction row commit together** | ✅ **live in code 2026-09-09.** `withdraw`'s Phase A ran `withLock(…, async () => {` — and the lock's transaction is **not ambient** (`prisma-dal` resolves `tx ?? pc()`), so both writes autocommitted outside it. A failure between them left the player's money in `Wallet.hold` with no txn row: invisible to the reconcile sweep, to `/admin/payments` and to the trial balance alike. §2.7 · `npm run test:lock-tx-threading`. ✅ **The behavioural proof now exists** — `npm run e2e:money` ran against a real Postgres for the first time on 2026-09-09 (session 3): **64 passed, 0 failed**, all 28 ledger groups balanced, money conservation exact to 0.00 across deposit → bet → cash-out → settle → withdraw. ⚠️ It drives `withdraw()` Phase A only; it does **not** reach the AML dispatch window or `creditInternal`, whose guards stay structural |
 | Money rail refused when nobody chose one | ✅ **live in code 2026-09-08** — on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR` with no officer row resolves to NO provider and every deposit/withdrawal is refused with `PROVIDER_DOWN`, instead of silently running the mock (which fabricates confirmations). A *chosen* mock still runs — that is Ali's 2026-07-24 decision and is unchanged. `npm run test:payment-control` · `npm run red:payment-control`. ✅ **READ OFF THE LIVE SERVICE 2026-09-09** (`railway variables -s 50pick`): `PAYMENT_AGGREGATOR=selcom`, `SELCOM_WEBHOOK_SECRET` set, and `SystemConfig["payments.control"]` carries an officer row `provider: "selcom"` — so both the env and the officer path resolve to the real rail, and neither is the mock. ⛔ **`TEST_FUNDING` is UNSET with `NODE_ENV=production`, so `isLiveMoneyMode()` is TRUE**: this deployment is in LIVE money mode |
+| **Maswali Millionea** (§2.12) — fixed ticket, weekly jackpot, fee at payout | ⏳ **DECIDED, NOT SELLING.** Ruled by Ali 2026-10-16 (`docs/COMPLIANCE-DECISIONS.md` § 2026-10-16); the law is recorded here since 2026-10-17 (MASWALI-BUILD S1). The product ships **WITHDRAWN** in code — no route, card or notice exists for any player — and no week can open until the Owner records the licence basis and funds the guarantee (Gate A, `docs/MASWALI-PLAN.md` §6). ⛔ Nothing in §2.12 is live behaviour until this row says so |
 | **House liquidity stakes** (§2.11) | ⏳ LIVE, NOT YET VERIFIED RULE BY RULE — decided 2026-09-13 (COMPLIANCE-DECISIONS, House bots entry); merged to `main`, first switched on by the owner 2026-09-21, staking on production since 2026-09-23. The §2.11 entry keeps its ⏳ until each rule in it is verified on production; the live state is `plans/house-bots/RESUME-HERE.md`, never quoted here |
 
 ---
@@ -64,6 +65,11 @@ file is worthless the moment it describes an intention as a fact.
 | Minimum withdrawal | The smallest amount whose net after the fee is still TZS 1,000 — **TZS 1,015 at 1.5%** (the fee rounds), derived, never typed (§2.7a) | Platform |
 | Failure messages | State the reason and the next step; severity must match — a fixable problem is a **warning**, not a red error | Whole player UI |
 | House liquidity stakes | Accounts 50pick operates may stake; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing | Both |
+| **Millionea ticket** | **TZS 1,000, fixed**; real balance only; 15 answers (10 main questions + 5 reserves) | Millionea (§2.12) |
+| **Millionea fee** | **13% of the jackpot, taken only in a week with at least one 10/10 ticket** — nothing in a no-winner week; TRA and GBT come out of it as above | Millionea (§2.12) |
+| **Millionea floor** | A winning week's jackpot is **at least TZS 1,000,000**, counted before the fee; the guarantee tops it up | Millionea (§2.12) |
+| **Millionea rollover** | A no-winner week's sales carry, in full, to the next winning week — real money only, no cap | Millionea (§2.12) |
+| **Millionea cap** | **10 tickets per account per week** (the exception to §2.4) | Millionea (§2.12) |
 
 ### Accepted consequences — recorded, and not to be re-opened
 
@@ -264,6 +270,11 @@ changes are inseparable.
 
 House liquidity stakes follow a separate rule: each desk account holds only one side of a market; a second desk account may hold the other side only in the bounded cases in §2.11 (⏳ live, not yet verified on production).
 
+⛔ **THE ONE EXCEPTION — MASWALI MILLIONEA (§2.12, ⏳ not selling).** A Millionea ticket is a position, and an account may
+hold at most **10 per week** (`maswali.config.ticketCapPerWeek`, frozen per week). The cap is counted inside the wallet lock,
+in the same transaction as the purchase, so concurrent buys can never exceed it. Every other product keeps this section's
+rule: no per-market cap.
+
 ### 2.5 · Bonus wagering — only one side counts
 
 > ✅ **LIVE, VERIFIED ON PRODUCTION 2026-08-14 — the grants now exist.** This rule had no live
@@ -431,6 +442,10 @@ configured in `market.config`, editable at `/admin/config`. Stated to players on
 
 **Nothing else.** No withholding tax. No cash-out fee (the paid-exit window is off). If you
 find yourself adding a deduction to a player's money, stop.
+
+**Maswali Millionea (§2.12, ⏳ not selling) is the same, in full:** the ticket price is the stake, the fee is taken from the
+jackpot at payout (never from a ticket or a player's balance), and the withdrawal fee is the one above. A cancelled ticket is
+refunded in full; a voided week refunds every live ticket in full. Nothing else.
 
 ### 2.9 · Failure messages
 
@@ -627,13 +642,57 @@ through `npm run red:all`, and CI's `test:red-anchors` checks only that their an
 - **Two-sided play, amended 2026-10-15 under Ali's 2026-10-14 rulings:** at most one desk account per side of a market, and one side per account. A second account may answer a player on an unheld opposite side only with its `otherSide` rule on, sized against that player's locked money alone. On an Up & Down round with no player money, a different holder's account may take the opposite side at its configured share, bounded by its own daily PAIR count. Polls are not paired. Both second-leg routes require the same two desk-wide EAT-day budgets: each placed PAIR or shared COUNTER consumes one bet and its stake. An empty budget stops new second desk legs, and clearing either budget stops queued second legs at the in-lock check; a bet already past that check may finish. A COUNTER against player money alone does not use the two-sided budget. Both budgets and all account leaves start off. Every limit is checked inside the bet's locks. A desk stake never triggers another desk answer, and openers, fills, Enter now and targets keep the whole-market hold. The owner decision and AML escalation procedure are in `docs/COMPLIANCE-DECISIONS.md` § “2026-10-15 · Two-sided desk play” and `docs/HOUSE-BOTS.md` § “Desk pairs and AML flags”.
 - **Stated:** ⛔ **nowhere, by owner ruling D19 (2026-09-16).** No rulebook, Terms, privacy, FAQ or chatbot text mentions house bots, and a holder sees nothing on their own account. Build commit 6 proves the absence instead (`test:house-bot-disclosure`). ⚠️ **Corrected 2026-09-20:** it does **not** "keep the Gaming Board draft private" — **there is no draft** (owner ruling D21), and what the suite now holds is the absence itself: §5.1 pins the two rulebooks, Terms, the privacy notice and the whole dictionary byte-identical to `origin/main`; §5.2 proves no player-rendered surface PRINTS a house word; §6 holds the chatbot; §8 holds the struck draft's absence and the dated strike note on every one of its citations. The struck plan was a §8 carve-out, a §3/§4 disclosure line, Terms §4 and privacy §3 — ⛔ and none of them may be revived to "solve" accepted risk 21: a carve-out a player can read discloses the feature, and D19 outranks.
 
+### 2.12 · Maswali Millionea — fixed ticket, weekly jackpot, fee at payout
+
+> ⏳ **DECIDED, NOT SELLING** (the roll-out row above). Every figure below is the ruled DEFAULT. Each one is an admin-editable
+> field of `maswali.config` (validated, audited, read back before "saved"), and every week freezes the whole set at its open
+> (`rulesSnapshot`, plus the fee in the week's `feeSnapshot`). A change applies from the NEXT week, never to a running one.
+
+**The week.** A week sells from its open (Monday 00:00 EAT by default) to its close (Friday 18:00 EAT by default), and the
+close is always at least **30 minutes** before the earliest of its fifteen events. A ticket is fifteen YES/NO answers: ten
+main questions and five reserves, in a fixed order. It scores the main questions it answered correctly; a main question
+that voids (on the closed list of grounds) is replaced by the first unused reserve, in order. A ticket **wins** only on
+**10 of 10**.
+
+**The money of a week** — S is the week's live sales, R the carried jackpot, k the number of winning tickets:
+
+- **J = max(floor, R + S)**, with the floor (**TZS 1,000,000**) counted **before** the fee.
+- **F = round(13% × J)**, taken **only when k ≥ 1**. A no-winner week takes **no fee**.
+- **The levies come out of F**, exactly as §2.2: TRA and GBT of our fee, never of a player's payout.
+- **Each winning ticket's share = ⌊(J − F) / k⌋**, equal for every winner. The rounding remainder (under k shillings) goes to
+  the jackpot, never to the house.
+- **The top-up U = max(0, F + k·share − (R + S))** comes from the guarantee, **only when k ≥ 1**, and is never rolled.
+- **No winner (k = 0): the whole of S rolls to the jackpot**, R stays carried, nothing is charged. The rollover is real money
+  only and has **no cap**.
+- The winner floor of Invariant 1 does **not** apply: a Millionea share is a share of a jackpot, not a return on a stake.
+
+**The sunset.** Retiring the product is announced at least one full week ahead; the final week runs normally and everything
+the jackpot holds goes into it. A regulator-ordered stop refunds the current week. The ceremony is the Owner's alone.
+
+**Who may buy.** Real balance only — a purchase that would draw bonus money is refused. Accounts holding a staff role and
+accounts 50pick operates are refused. Every responsible-gambling gate applies (§2.9's refusals), and a ticket bought before a
+self-exclusion still settles. **10 tickets per account per week** (§2.4's exception).
+
+**Cancelling.** §2.6's free cancellation applies unchanged: a ticket bought with the runway still ahead of it may be
+cancelled inside the window for a full refund, and leaves the count, the commitment and the grading. There is no paid exit.
+
+| | |
+|---|---|
+| **Decided** | Ali, 2026-10-16 — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-16 · Maswali Millionea"; the rule set and its corrections are `docs/MASWALI-PLAN.md` §2 (MR-1…MR-32) and §9 |
+| **Enforced** | ⏳ in code from S3 (MASWALI-BUILD): `maswali-money.ts` computes the week (S2); `ledger.ts → maswaliSettlementEntries` refuses any group whose pool does not end at exactly 0 or whose winners differ (S1); `payout.ts` refuses to price a `jackpot-payout` week as a pool fee (S1) |
+| **Configured** | `maswali.config` (`src/lib/server/maswali-config.ts`, S1) — price, floor, fee, cap, open, close, buffer, void deadline, objection window, question rules; the Owner-only `maswali.licenceBasis` (`maswali-licence.ts`) gates any week opening |
+| **Stated** | ⏳ `/legal/rules/millionea` (S5, binding, its own version), the slip and the week page — every figure read from the week's snapshot. `/legal/terms` gains its Millionea sentence at launch (S8; OD-18: existing terms do not change) |
+| **Guarded by** | `npm run test:maswali-law` (+ `red:maswali-law`) · `npm run test:maswali-config` · `npm run test:maswali-ledger` · `npm run test:maswali-fence` · `npm run test:house-solvency` §3b · `npm run test:fee-model` |
+
 ---
 
-## §3 · THE TWO FEE MODELS, AND WHY BOTH STILL EXIST
+## §3 · THE THREE FEE MODELS, AND WHY EACH EXISTS
 
-`loser-share` is **the** model. `capped-commission` — `fee = min(commissionRate × pool,
+`loser-share` is **the** model of the Yes/No polls and Up & Down. `capped-commission` — `fee = min(commissionRate × pool,
 feeCeilingRate × smaller side)` — is **legacy**: it is retained only because markets created
-before the cutover froze it and must settle by what they froze.
+before the cutover froze it and must settle by what they froze. `jackpot-payout` is **Maswali Millionea's** (§2.12, ⏳ not
+selling): the fee is a share of a week's JACKPOT, taken only when the week has a winner. It is not a pool fee — `poolFee`
+refuses it — and a poll can never freeze it (`market.config` accepts only the two pool models).
 
 Measured on production, 2026-08-14:
 
@@ -673,6 +732,7 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-10-16 | ⭐ **Maswali Millionea, a third product** — a fixed TZS 1,000 ticket of fifteen YES/NO answers, a weekly jackpot with a TZS 1,000,000 floor, 13% of the jackpot taken only when a week has a winner, the whole of a no-winner week rolled to the next, and 10 tickets per account per week. Recorded here 2026-10-17 (MASWALI-BUILD S1); ⏳ not selling | §2.12 · `docs/COMPLIANCE-DECISIONS.md` § "2026-10-16 · Maswali Millionea" · `docs/MASWALI-PLAN.md` |
 | 2026-10-12 | ⭐ **Minimum stake TZS 500** (was TZS 1,000), on both products — Ali: *"turn minimum stake instead of 1k to 500, everywhere in the platform where needed"*. The minimum deposit stays TZS 1,000 (§2.7a); the withdrawal minimum and the maximum stake do not change. Production's stored 1,000 is lowered by the market config v4 / Up & Down v5 reconcile. Supersedes the stake half of the 2026-10-07 row below and nothing else | §2.3 · `docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)" |
 | 2026-10-07 | ⭐ **Minimum deposit TZS 1,000** (was 500), the **stake floor applied on every read**, and the **withdrawal minimum stated truly** (TZS 1,015 at 1.5%) — management, relayed by Ali | `docs/COMPLIANCE-DECISIONS.md` § "2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal minimum is stated truly (management, relayed by the owner)" |
 | 2026-09-27 | ⭐ **Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling).** The state card's clearance line and the Make-payable dialog's warning are removed; the card states the enforced 50% commission cap instead. The Owner's switch stays the one control, and nothing else changes. Supersedes the clearance sentence of the 2026-09-26 row below. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-27 |

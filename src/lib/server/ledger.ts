@@ -220,6 +220,24 @@ export const acct = {
    * already entered as a DEPOSIT. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
    */
   agentFee: "HOUSE:AGENT_FEE" as const,
+  /**
+   * ⭐ MASWALI MILLIONEA — THE ROLLOVER (R). Every no-winner week's sales, carried for the players of the next winning
+   * week (MASWALI-PLAN §5b). ⛔ PLAYERS' MONEY: `house-book.ts` subtracts it from free cash as a liability, and it is
+   * never revenue, never in GGR's fee line and never in the levy base. Only `maswaliRolloverEntries`,
+   * `maswaliSettlementEntries`, `maswaliForfeitReturnEntries` and `maswaliSunsetEntries` touch it.
+   */
+  maswaliJackpot: "HOUSE:MASWALI_JACKPOT" as const,
+  /**
+   * ⭐ MASWALI MILLIONEA — THE GUARANTEE (MB-03). Owner capital paid in to back the floor, drawn only as a winning
+   * week's top-up (U). The owner's money, but committed: `house-book.ts` keeps it out of free cash and out of retained.
+   */
+  maswaliGuarantee: "HOUSE:MASWALI_GUARANTEE" as const,
+  /**
+   * The Owner's own capital, as the counterparty of a guarantee funding or return. It is `EXTERNAL:` ON PURPOSE: the
+   * funding ceremony records a rail reference, so the shillings really crossed the boundary into what we hold, and
+   * `house-ledger.ts → readCustodialCash` shows it as its own row (it is not `EXTERNAL:INTERNAL`, which no money crossed).
+   */
+  ownerCapital: "EXTERNAL:OWNER_CAPITAL" as const,
 };
 
 // ── Pre-built entry helpers for each money path ────────────────────────────
@@ -694,6 +712,159 @@ export function agentRegistrationFeeEntries(opts: {
     lines.push({ account: acct.tax, entryType: "AGENT_REGISTRATION_FEE", amount: opts.vatAmount, userId: opts.userId, memo: `${opts.description} · VAT` });
   }
   return lines;
+}
+
+// ── Maswali Millionea (MASWALI-PLAN §5b) ───────────────────────────────────
+//
+// A ticket's stake is `stakeEntries` and its free cancel or a week's void is `refundEntries`: a ticket IS a position.
+// The builders below are the movements no Yes/No poll has. Each is PURE and REFUSES bad arithmetic by throwing — a
+// Millionea week moves the jackpot, the guarantee and the fee in one group, and a group that "balances" while the
+// pool ends off zero is still wrong money (the lesson of `settlementPayoutEntries`' notes). Amounts are whole shillings.
+
+/** A whole, non-negative number of shillings, or a throw naming what was wrong. */
+function maswaliTzs(v: number, what: string): number {
+  if (!Number.isSafeInteger(v) || v < 0) throw new Error(`[ledger] Millionea ${what} must be a whole non-negative TZS amount, got ${v}`);
+  return v;
+}
+
+/**
+ * ⭐ A WINNING WEEK (k ≥ 1), as ONE group: the carry it claims, the top-up, the fee and its two levies, every winning
+ * ticket's share, and the rounding dust back to the jackpot. The caller computes the numbers (`maswali-money.ts`, S2);
+ * this checks every identity of MASWALI-PLAN §5b and refuses to book a group that breaks one:
+ *   · S + R + U = F + Σ shares + carryOut   (the pool ends at EXACTLY 0)
+ *   · F = TRA + GBT + net, net ≥ 0          (the levies come out of our fee, never out of a player)
+ *   · every winner is paid the SAME share   (MR-23: an equal split, the remainder rolls)
+ */
+export function maswaliSettlementEntries(opts: {
+  marketId: string;
+  /** S — the week's live stakes at close, already in `POOL:{marketId}`. Checked, not booked (the stakes booked it). */
+  sales: number;
+  /** R — the carry this week claims from the jackpot (MR-21: claimed once, by the first winning week). */
+  rolloverIn: number;
+  /** U — the guarantee's top-up to the floor (only a winning week; never rolled). */
+  topUp: number;
+  /** F — the fee at payout, `round(jackpotFeeRate × J)`. */
+  fee: number;
+  traLevy: number;
+  gbtLevy: number;
+  /** One row per winning ticket, every share equal. `txnId` is that ticket's payout Transaction. */
+  winners: ReadonlyArray<{ userId: string; txnId: string; share: number }>;
+  /** The rounding dust, `R + S + U − F − k·share`, back to the jackpot. */
+  carryOut: number;
+}): LedgerLine[] {
+  const m = opts.marketId;
+  const S = maswaliTzs(opts.sales, "sales"), R = maswaliTzs(opts.rolloverIn, "rollover in");
+  const U = maswaliTzs(opts.topUp, "top-up"), F = maswaliTzs(opts.fee, "fee");
+  const tra = maswaliTzs(opts.traLevy, "TRA levy"), gbt = maswaliTzs(opts.gbtLevy, "GBT levy");
+  const carry = maswaliTzs(opts.carryOut, "carry out");
+  if (opts.winners.length === 0) throw new Error("[ledger] a Millionea settlement with no winner is a rollover — use maswaliRolloverEntries");
+  const share = maswaliTzs(opts.winners[0].share, "share");
+  if (opts.winners.some((w) => w.share !== share)) throw new Error("[ledger] every Millionea winner is paid the same share (MR-23)");
+  if (tra + gbt > F) throw new Error(`[ledger] Millionea levies ${tra}+${gbt} exceed the fee ${F}`);
+  const paid = share * opts.winners.length;
+  if (S + R + U !== F + paid + carry) {
+    throw new Error(`[ledger] Millionea week ${m} does not close: S ${S} + R ${R} + U ${U} ≠ F ${F} + paid ${paid} + carry ${carry}`);
+  }
+
+  const pool = acct.pool(m);
+  const lines: LedgerLine[] = [];
+  if (R > 0) {
+    lines.push(
+      { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_IN", amount: -R, marketId: m, memo: "Millionea carry claimed" },
+      { account: pool, entryType: "MASWALI_ROLLOVER_IN", amount: R, marketId: m, memo: "Millionea carry received" },
+    );
+  }
+  if (U > 0) {
+    lines.push(
+      { account: acct.maswaliGuarantee, entryType: "MASWALI_TOPUP", amount: -U, marketId: m, memo: "Millionea floor top-up" },
+      { account: pool, entryType: "MASWALI_TOPUP", amount: U, marketId: m, memo: "Millionea floor top-up received" },
+    );
+  }
+  if (F > 0) {
+    lines.push(
+      { account: pool, entryType: "SETTLEMENT_COMMISSION", amount: -F, marketId: m, memo: "Millionea fee at payout" },
+      { account: acct.commission, entryType: "SETTLEMENT_COMMISSION", amount: F, marketId: m, memo: "Commission" },
+    );
+    if (tra > 0) {
+      lines.push(
+        { account: acct.commission, entryType: "SETTLEMENT_TRA_LEVY", amount: -tra, marketId: m, memo: "TRA levy on commission" },
+        { account: acct.traLevy, entryType: "SETTLEMENT_TRA_LEVY", amount: tra, marketId: m, memo: "TRA levy received" },
+      );
+    }
+    if (gbt > 0) {
+      lines.push(
+        { account: acct.commission, entryType: "SETTLEMENT_GBT_LEVY", amount: -gbt, marketId: m, memo: "GBT levy on commission" },
+        { account: acct.gbtLevy, entryType: "SETTLEMENT_GBT_LEVY", amount: gbt, marketId: m, memo: "GBT levy received" },
+      );
+    }
+  }
+  for (const w of opts.winners) {
+    if (share === 0) continue;
+    lines.push(
+      { account: pool, entryType: "PAYOUT_CREDIT", amount: -share, txnId: w.txnId, userId: w.userId, marketId: m, memo: "Settlement debit" },
+      { account: acct.player(w.userId), entryType: "PAYOUT_CREDIT", amount: share, txnId: w.txnId, userId: w.userId, marketId: m, memo: "Payout" },
+    );
+  }
+  if (carry > 0) {
+    lines.push(
+      { account: pool, entryType: "MASWALI_ROLLOVER_OUT", amount: -carry, marketId: m, memo: "Millionea rounding carried" },
+      { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: carry, marketId: m, memo: "Millionea rounding received" },
+    );
+  }
+  return lines;
+}
+
+/** ⭐ A NO-WINNER WEEK (k = 0): the whole of S to the jackpot. No fee, no top-up, and R stays where it is (MR-22). */
+export function maswaliRolloverEntries(opts: { marketId: string; sales: number }): LedgerLine[] {
+  const S = maswaliTzs(opts.sales, "sales");
+  if (S === 0) return [];
+  return [
+    { account: acct.pool(opts.marketId), entryType: "MASWALI_ROLLOVER_OUT", amount: -S, marketId: opts.marketId, memo: "Millionea week rolled over" },
+    { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: S, marketId: opts.marketId, memo: "Millionea rollover received" },
+  ];
+}
+
+/** The Owner pays capital in to back the floor (MB-03). `reference` is the rail reference the ceremony records. */
+export function maswaliGuaranteeFundEntries(opts: { amount: number; reference: string; actorId: string }): LedgerLine[] {
+  const a = maswaliTzs(opts.amount, "guarantee funding");
+  if (a === 0) throw new Error("[ledger] a Millionea guarantee funding of 0 is not a ceremony");
+  return [
+    { account: acct.ownerCapital, entryType: "MASWALI_GUARANTEE_FUND", amount: -a, userId: opts.actorId, memo: `Owner capital in · ${opts.reference}` },
+    { account: acct.maswaliGuarantee, entryType: "MASWALI_GUARANTEE_FUND", amount: a, userId: opts.actorId, memo: `Millionea guarantee funded · ${opts.reference}` },
+  ];
+}
+
+/** The Owner takes back guarantee no open week could still need (the caller checks the headroom inside its lock). */
+export function maswaliGuaranteeReturnEntries(opts: { amount: number; reference: string; actorId: string }): LedgerLine[] {
+  const a = maswaliTzs(opts.amount, "guarantee return");
+  if (a === 0) throw new Error("[ledger] a Millionea guarantee return of 0 is not a ceremony");
+  return [
+    { account: acct.maswaliGuarantee, entryType: "MASWALI_GUARANTEE_RETURN", amount: -a, userId: opts.actorId, memo: `Millionea guarantee returned · ${opts.reference}` },
+    { account: acct.ownerCapital, entryType: "MASWALI_GUARANTEE_RETURN", amount: a, userId: opts.actorId, memo: `Owner capital out · ${opts.reference}` },
+  ];
+}
+
+/**
+ * A frozen winning share the Owner forfeits goes back to the JACKPOT, for the players of the next winning week.
+ * ⛔ Never to the house (OD-07): a forfeit that landed in `HOUSE:COMMISSION` would be the operator keeping a prize.
+ */
+export function maswaliForfeitReturnEntries(opts: { marketId: string; userId: string; txnId: string; amount: number }): LedgerLine[] {
+  const a = maswaliTzs(opts.amount, "forfeit");
+  if (a === 0) throw new Error("[ledger] a Millionea forfeit of 0 is not a ceremony");
+  return [
+    { account: acct.player(opts.userId), entryType: "MASWALI_FORFEIT_RETURN", amount: -a, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: "Millionea share forfeited" },
+    { account: acct.maswaliJackpot, entryType: "MASWALI_FORFEIT_RETURN", amount: a, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: "Millionea forfeit received" },
+  ];
+}
+
+/** Retiring the product: whatever the jackpot holds goes into the FINAL week's pool, for its players (OD-03). */
+export function maswaliSunsetEntries(opts: { marketId: string; amount: number }): LedgerLine[] {
+  const a = maswaliTzs(opts.amount, "sunset");
+  if (a === 0) return [];
+  return [
+    { account: acct.maswaliJackpot, entryType: "MASWALI_SUNSET", amount: -a, marketId: opts.marketId, memo: "Millionea jackpot to the final week" },
+    { account: acct.pool(opts.marketId), entryType: "MASWALI_SUNSET", amount: a, marketId: opts.marketId, memo: "Millionea final week received" },
+  ];
 }
 
 /** Admin adjustment (credit or debit) */

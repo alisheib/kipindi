@@ -77,6 +77,8 @@ export async function readHouseAccounts(): Promise<HouseAccounts | null> {
     aggregator: at("HOUSE:AGGREGATOR"),
     rgSuspense: at("HOUSE:RG_SUSPENSE"),
     tax: at("HOUSE:TAX"),
+    maswaliJackpot: at("HOUSE:MASWALI_JACKPOT"),
+    maswaliGuarantee: at("HOUSE:MASWALI_GUARANTEE"),
     all,
   };
 }

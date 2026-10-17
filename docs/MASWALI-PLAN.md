@@ -74,8 +74,8 @@ run; their suites are next, then each lands in its own commit and merges dark.
 - **S1 written:** the three migrations (tables, ledger types alone, the tax-lock CHECK); `jackpot-payout` in `payout.ts`
   (an unknown fee model now refused, never coerced); the ledger accounts (`HOUSE:MASWALI_JACKPOT`,
   `HOUSE:MASWALI_GUARANTEE`, `EXTERNAL:OWNER_CAPITAL`) and the seven movement builders; the owner's book subtracting
-  the jackpot and the guarantee from free cash; `maswali.config` and the Owner-only `maswali.licenceBasis`; nine
-  refusal reasons in three languages; the rollout (`millionea-rollout.ts`, the Owner's sealed switch, the per-request
+  the jackpot and the guarantee from free cash; `maswali.config` and the Owner-only `maswali.licenceBasis`; the
+  rollout (`millionea-rollout.ts`, the Owner's sealed switch, the per-request
   resolver), `/api/health`'s `millionea` field and `qa:live`'s dark section; RULES §1, §2.4, §2.8, §2.12, §3 and §6.
   Suites: `test:maswali-config`, `-ledger`, `-rollout`, `-law` + `red:maswali-law`, `test:house-solvency` §3b.
 - **S2 written:** `maswali-score` (the one grader), `-money`, `-commitment` (salted leaves, an RFC 6962 Merkle root,
@@ -1095,6 +1095,9 @@ differ, these win.
     describe the engine as built (S2, S3), not as intended. The `/admin/config` caption lands with S4's console.
   - *The licence gate's suite* folds into `test:maswali-config` §5 (the gate) and S2's engine suite (the open refused
     without it); there is no separate `test:maswali-licence-gate`.
+  - *The nine refusal reasons move to S3, with the buy path that emits them.* `test:failure-reasons` 9d refuses a
+    reason nothing emits (E-232: copy in three languages no player can see). Their drafted copy (en/sw/zh, the
+    `ticketCap` figure) is kept on branch `maswali-s3-reasons` for S3 to land beside its emitter.
   - *Carried to S6:* the house book's per-game identity must count the rollover and top-up legs before a winning week
     settles on production, or it reports a variance on a correct week; and `purge-protected.ts` must classify the three
     Millionea tables.

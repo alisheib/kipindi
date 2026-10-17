@@ -21,6 +21,8 @@ import { inviteRewardsCeiling } from "@/lib/feature-state";
 import { invitePaysPlayersNow, playerInvitePayableNow } from "@/lib/server/invite-rewards-switch";
 import { simpleJourneyCeiling } from "@/lib/feature-state";
 import { simpleJourneyStateNow } from "@/lib/server/simple-journey-switch";
+import { millioneaCeiling } from "@/lib/millionea-rollout";
+import { millioneaStateNow } from "@/lib/server/millionea-switch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -99,6 +101,8 @@ export async function GET() {
     // The new journey's rollout (Vodacom plan S1): the same ≤ 10 s read every page makes. Never rejects, and a
     // failed read answers WITHDRAWN. ⛔ Not part of `ready`: a switch read must never fail a deploy's health gate.
     const journeyState = await simpleJourneyStateNow().catch(() => "WITHDRAWN" as const);
+    // Maswali Millionea's rollout (MASWALI-BUILD S1): the same ≤ 10 s switch read. Never rejects; not part of `ready`.
+    const millioneaState = await millioneaStateNow().catch(() => "WITHDRAWN" as const);
 
     return NextResponse.json(
       {
@@ -194,6 +198,13 @@ export async function GET() {
         simpleJourney: {
           ceiling: simpleJourneyCeiling().ceiling,
           state: journeyState,
+        },
+        // ⭐ MASWALI MILLIONEA'S ROLLOUT (MASWALI-BUILD S1), the same shape: `ceiling` is what the code and
+        // FEATURE_MILLIONEA allow, `state` what is in effect after the Owner's switch. `qa:live`'s dark section reads it to
+        // know that every /millionea route must 404 for a signed-out visitor (anything below ACTIVE). ⛔ The rollout only.
+        millionea: {
+          ceiling: millioneaCeiling().ceiling,
+          state: millioneaState,
         },
         // 🔴 Is transactional email actually being delivered? Every send on this
         // platform is fire-and-forget from a money or auth path, and the failure

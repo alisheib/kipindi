@@ -192,6 +192,12 @@ export type RateConfig = {
   platformFeeRate: number;
   /** loser-share: "Operator" fee slice, share of the LOSING pool (default 0.10). */
   operatorFeeRate: number;
+  /**
+   * jackpot-payout only (Maswali Millionea, S1): the share of a week's jackpot taken at payout. Never in the global
+   * config (`validateRateConfig` refuses the model for polls); a week passes it as a `rateOverrides` field from
+   * `maswali.config` when it opens, and it freezes into that week's snapshot.
+   */
+  jackpotFeeRate?: number;
   /** loser-share DISPLAY only: the fixed pre-bet "possible winnings" a player is
    *  shown = stake × (1 + this). default 0.5 → a 1.5× headline. NOT the pari-mutuel
    *  payout — the disclaimer beside it says so. */
@@ -295,6 +301,8 @@ export function snapshotFromConfig(cfg: RateConfig): FeeSnapshot {
     feeModel: cfg.feeModel,
     platformFeeRate: cfg.platformFeeRate,
     operatorFeeRate: cfg.operatorFeeRate,
+    // A Millionea week freezes its jackpot share beside the model (S1); a poll never carries the field.
+    ...(cfg.feeModel === "jackpot-payout" ? { jackpotFeeRate: cfg.jackpotFeeRate } : {}),
     estimatedWinningsRate: cfg.estimatedWinningsRate,
     showEstimatedWinnings: cfg.showEstimatedWinnings,
     v: 2,
@@ -363,6 +371,9 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
     // reads as the legacy `capped-commission` model, so its maths is byte-for-byte
     // what it always was, and the loser-share/display fields are inert on it.
     const isLoserShare = s.feeModel === "loser-share";
+    // A Millionea week froze `jackpot-payout` and its rate (S1). Passed through as frozen — never folded into the
+    // legacy model. A jackpot snapshot without a rate is left without one, and `payout.readRates` refuses it loudly.
+    const isJackpot = s.feeModel === "jackpot-payout";
     return {
       commissionRate: safeRate(s.commissionRate, DEFAULT_COMMISSION_RATE),
       feeCeilingRate: safeRate(s.feeCeilingRate, DEFAULT_FEE_CEILING_RATE, MAX_FEE_CEILING_RATE),
@@ -372,9 +383,10 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       traTaxOnCommissionRate: safeRate(s.traTaxOnCommissionRate, DEFAULT_TRA_TAX_ON_COMMISSION_RATE),
       gbtLevyOnCommissionRate: safeRate(s.gbtLevyOnCommissionRate, DEFAULT_GBT_LEVY_ON_COMMISSION_RATE),
       thinProfitRatio: Number.isFinite(s.thinProfitRatio) ? (s.thinProfitRatio as number) : THIN_PROFIT_RATIO,
-      feeModel: isLoserShare ? "loser-share" : "capped-commission",
+      feeModel: isLoserShare ? "loser-share" : isJackpot ? "jackpot-payout" : "capped-commission",
       platformFeeRate: safeRate(s.platformFeeRate, DEFAULT_PLATFORM_FEE_RATE),
       operatorFeeRate: safeRate(s.operatorFeeRate, DEFAULT_OPERATOR_FEE_RATE),
+      ...(isJackpot && typeof s.jackpotFeeRate === "number" ? { jackpotFeeRate: s.jackpotFeeRate } : {}),
       // DISPLAY-ONLY, and MODEL-INDEPENDENT.
       //
       // These two never touch the maths — they drive the pre-bet "possible winnings"
@@ -392,7 +404,7 @@ export function snapshotOrLegacy(raw: unknown): FeeSnapshot {
       showEstimatedWinnings: s.showEstimatedWinnings === true,
       // v2 = "carries the fee-model + display fields". A poll that froze either the
       // loser-share model or a display estimate is v2; a bare legacy snapshot is v1.
-      v: isLoserShare || s.showEstimatedWinnings === true ? 2 : 1,
+      v: isLoserShare || isJackpot || s.showEstimatedWinnings === true ? 2 : 1,
       stampedAt: s.stampedAt ?? "legacy",
     };
   }

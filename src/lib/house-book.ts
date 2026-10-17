@@ -92,6 +92,19 @@ export type HouseAccounts = {
    * collected from the one registered agent and owed to TRA.
    */
   tax: number;
+  /**
+   * ⭐ `HOUSE:MASWALI_JACKPOT` — the Millionea rollover (R): every no-winner week's sales, carried for the players of
+   * the next winning week. ⛔ PLAYERS' MONEY, NOT OURS: it left their wallets as stakes and will go back to them as a
+   * payout, so it is a LIABILITY like `rgSuspense`, and the solvency line would read every carried shilling as free
+   * cash without it (MASWALI-PLAN §5b; MASWALI-BUILD S1).
+   */
+  maswaliJackpot: number;
+  /**
+   * ⭐ `HOUSE:MASWALI_GUARANTEE` — Owner capital paid in to back the Millionea floor (MB-03), drawn only as a winning
+   * week's top-up (U). It is the owner's money but it is COMMITTED: it backs a promise printed on every week, so it
+   * comes out of free cash on its own labelled line and is never counted as retained earnings.
+   */
+  maswaliGuarantee: number;
   /** Every `HOUSE:%` account with a balance, keyed by the raw account string. */
   all: Readonly<Record<string, number>>;
 };
@@ -109,6 +122,10 @@ export type HousePosition = {
   rgSuspensePayable: number;
   /** 🔴 `HOUSE:TAX` — statutory tax held and owed to the state. A LIABILITY, not our money. */
   taxPayable: number;
+  /** ⭐ The Millionea rollover held for the next winning week. Players' money: a LIABILITY. */
+  maswaliJackpotPayable: number;
+  /** ⭐ Owner capital committed to the Millionea floor. Ours, but promised: out of free cash, never retained. */
+  maswaliGuaranteeCommitted: number;
   /** Owed to players — Σ ACTIVE wallet balance + hold. */
   playerLiability: number;
   /** ⚠️ The part of that credited by an ADMIN, with no deposit behind it. */
@@ -159,7 +176,7 @@ export function housePosition(input: {
    */
   adjustmentBackedLiability: number;
 }): HousePosition {
-  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission, tax } = input.accounts;
+  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission, tax, maswaliJackpot, maswaliGuarantee } = input.accounts;
   const leviesPayable = traLevy + gbtLevy;
   // ⛔ `rgSuspense` BELONGS HERE. It is a player's deposit we are holding to return; leaving it
   // out reports it as free cash, which is the one thing it certainly is not.
@@ -169,7 +186,10 @@ export function housePosition(input: {
   // Omitting it reported unremitted tax as the owner's own money, which is the precise failure
   // the header of this function warns about: "an owner shown 100M makes decisions that
   // insolvency is built from". Production held 18,000 of it on 2026-09-09.
-  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax;
+  //
+  // ⭐ AND SO DOES THE MILLIONEA JACKPOT (players' money carried to the next winning week), and the guarantee, which is
+  // the owner's but promised to the floor (MASWALI-BUILD S1). Both are 0 until the first week runs.
+  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee;
 
   // ⚠️ Clamped at zero: admin credits can exceed the wallet total (a credit later staked and
   // lost still happened), and a NEGATIVE funded liability is not a thing the owner can act on.
@@ -187,6 +207,8 @@ export function housePosition(input: {
     aggregatorPayable: aggregator,
     rgSuspensePayable: rgSuspense,
     taxPayable: tax,
+    maswaliJackpotPayable: maswaliJackpot,
+    maswaliGuaranteeCommitted: maswaliGuarantee,
     playerLiability: input.playerLiability,
     playerLiabilityAdjusted: adjusted,
     playerLiabilityFunded: input.playerLiability - adjusted,

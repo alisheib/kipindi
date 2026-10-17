@@ -135,6 +135,8 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
   const byModel: Record<FeeModel, { count: number; fee: number }> = {
     "loser-share": { count: 0, fee: 0 },
     "capped-commission": { count: 0, fee: 0 },
+    // Millionea weeks are skipped below until S6 teaches this view their fee; the key exists so the record is whole.
+    "jackpot-payout": { count: 0, fee: 0 },
   };
   for (const m of markets) {
     if (!m.settledAt) continue; // adjudicated but not yet settled → no fee booked

@@ -127,7 +127,10 @@ total of **20** step by step, against 19 rounded once (§3.3).
   whole book, the exceptions, the rates), and a recompute with any other fingerprint is refused (the books moved since
   the page loaded — refresh first). It stores the WHOLE report as a snapshot with its canonical sha256 (`TaxPeriodLock` table, migration
   `20261003180000_tax_period_lock`), and audits `tax_report.period.locked`. One live lock per period and product —
-  enforced by a partial unique index. A running period — or one that ended less than a minute ago — is read to a
+  enforced by a partial unique index. The product CHECK `TaxPeriodLock_product_check` is re-added wider by
+  `20261017120200_maswali_tax_product` (MASWALI-BUILD S1: ALL, MARKET, UPDOWN and now MASWALI, the report's product
+  filter since S0.5); until S6 builds the Millionea tax lines the report refuses any period holding a Millionea week,
+  so nothing can be locked under it. A running period — or one that ended less than a minute ago — is read to a
   minute before now (`RUNNING_MARGIN_MS`), so a bet still committing can never show as a false exception.
 - **A locked period shows its snapshot** — on screen and in every export — and names every line where the live books
   have moved since (the drift table), so a late correction is never silent.

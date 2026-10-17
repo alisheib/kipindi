@@ -1564,10 +1564,16 @@ model Objection {
   reviewedBy      String?
   reviewedAt      DateTime?
   reviewNote      String?          @db.Text
-  /// VOID | REVERSE — what the officer did about an upheld objection.
+  /// VOID | REVERSE — what the officer did about an upheld objection. A Millionea question adds REINSTATE (an upheld
+  /// objection can bring a voided question back, MR-16).
   remedy          String?
   /// The verdict being disputed, captured at filing so the trail survives a remedy.
   outcomeAtFiling String?
+  /// Maswali Millionea only: the question objected to, as its canonical slot 1..15 (M1..M10 = 1..10, R1..R5 = 11..15).
+  /// NULL on every other product. One objection per (market, question, player), open or decided — the rule the other
+  /// products keep per market (ALREADY_OBJECTED / ALREADY_DECIDED) — as a partial unique index in
+  /// `20261017120000_maswali_tables`.
+  questionOrdinal Int?
 
   @@index([status])
   @@index([marketId])
@@ -1850,6 +1856,9 @@ model PredictionMarket {
   /// Present only on `productLine: "UPDOWN"` rows — the price story behind this
   /// round (its bounding observations, open/close prices, outcome).
   upDownRound UpDownRound?
+  /// Present only on `productLine: "MASWALI"` rows — the Maswali Millionea week this
+  /// market IS (its questions, commitment and settlement mirror). MASWALI-BUILD S1.
+  maswaliCycle MaswaliCycle?
 
   @@index([status])
   @@index([resolutionAt])
@@ -1920,6 +1929,8 @@ model Position {
   /// S9's verified manual-return attribution ("deposit_return"). NULL on legacy/direct/house bets; no backfill.
   /// Create-only: cash-out, settle, void and keyed replay cannot rewrite where the original bet came from.
   origin          String?
+  /// Present only on a Maswali Millionea ticket: its fifteen picks, salt, commitment and serial (MASWALI-BUILD S1).
+  maswaliTicket   MaswaliTicket?
 
   @@index([userId, marketId])
   @@index([marketId, status])
@@ -2539,6 +2550,188 @@ model UpDownObservation {
 }
 
 // ============================================================================
+// MASWALI MILLIONEA — the third product, a weekly jackpot (MASWALI-BUILD S1)
+// ============================================================================
+//
+// ⛔ THESE TABLES NEVER HOLD MONEY (the Up & Down principle, MASWALI-PLAN §4). A week IS a `PredictionMarket` row
+// (`productLine "MASWALI"`); a ticket IS a `Position` (stake = the week's price, side YES). Every shilling moves through
+// Position / Transaction / LedgerEntry, and the jackpot and the guarantee are ledger accounts
+// (`HOUSE:MASWALI_JACKPOT`, `HOUSE:MASWALI_GUARANTEE`). The settlement columns below are a MIRROR of the ledger, written
+// in the same transaction and reconciled nightly. Write-once fields are enforced by the DAL's patch allowlists
+// (`CYCLE_PATCHABLE`, `QUESTION_PATCHABLE`): text, criteria, sources, event times and the frozen rules never change
+// after a week opens. SQL partial unique: ONE `state = 'OPEN'` week per visibility (migration
+// `20261017120000_maswali_tables`); deliberately no "one closed-unsettled" index (MB-16).
+
+/// A Millionea week. MR-3: DRAFT → OPEN → CLOSED → RESOLVING → SETTLED, or VOIDED.
+model MaswaliCycle {
+  id         String           @id @default(cuid())
+  /// The market whose POOL holds this week's sales. One week per market; a market can never outlive its week.
+  /// NULL while DRAFT: the open creates the market (a draft market row would sit in the poll moderation lists), and the
+  /// database requires it on every week past DRAFT (`MaswaliCycle_market_after_draft_check`).
+  marketId   String?          @unique
+  market     PredictionMarket? @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  /// "MLN-2026-W44" — the product sequence label (weeks are numbered from launch, dates beside them). Immutable.
+  code       String           @unique
+  /// The chain order. Settlement is strictly by `seq` (MR-3), so a carry is claimed exactly once.
+  seq        Int              @unique
+  /// PUBLIC | DRIVE — a DRIVE week is the private, unlinked S8 live drive (OD-21), kept out of every measure.
+  visibility String           @default("PUBLIC")
+  /// DRAFT | OPEN | CLOSED | RESOLVING | SETTLED | VOIDED
+  state      String
+  opensAt    DateTime
+  /// The sales close. Mirrors `market.selectionClosedAt`; moved only through `moveClose` (MB-28).
+  closesAt   DateTime
+  /// Monday 23:59 EAT of the results week: no question may be sealed later (MR-15).
+  finalDeadlineAt DateTime
+  /// Stamped once, at the close.
+  closedAt   DateTime?
+  /// ⛔ WRITE-ONCE AT OPEN (`maswali-config.ts → snapshotMaswaliRules`): price, floor, cap, buffer, windows — settlement
+  /// reads only this, and the fee from the market's `feeSnapshot`. NULL while DRAFT; the open stamps it WHERE it IS NULL.
+  rulesSnapshot Json?
+  /// SHA-256 over the frozen fifteen (role, ordinal, slot, texts, criteria, sources, times), published at open.
+  questionSetHash  String?
+  /// The commitment at close (MR-13): a Merkle root over every non-cancelled ticket's salted hash, sorted by id.
+  ticketMerkleRoot String?
+  ticketCount      Int      @default(0)
+  salesAtClose     Decimal? @db.Decimal(18, 2)
+  /// When the graded set became final, and when its single 24-hour check window closes (MR-16, OD-05).
+  gradedSetFinalAt   DateTime?
+  objectionsCloseAt  DateTime?
+  /// The window restarts at most once, after an upheld objection that changes the graded set.
+  objectionRestarted Boolean  @default(false)
+  // ── Settlement mirror (written with the ledger group, never alone) ──────────────────────────────────────────
+  /// The carry claimed from the jackpot account, stamped once (`WHERE "rolloverIn" IS NULL`).
+  rolloverIn       Decimal? @db.Decimal(18, 2)
+  jackpot          Decimal? @db.Decimal(18, 2)
+  fee              Decimal? @db.Decimal(18, 2)
+  traLevy          Decimal? @db.Decimal(18, 2)
+  gbtLevy          Decimal? @db.Decimal(18, 2)
+  /// The house floor top-up paid in a winning week (never rolled).
+  topUp            Decimal? @db.Decimal(18, 2)
+  winningTickets   Int?
+  sharePerTicket   Decimal? @db.Decimal(18, 2)
+  paidTotal        Decimal? @db.Decimal(18, 2)
+  /// What this week left in the jackpot account: the whole pool in a no-winner week, the rounding remainder otherwise.
+  carryOut         Decimal? @db.Decimal(18, 2)
+  dustCarried      Decimal? @db.Decimal(18, 2)
+  /// The settlement's ledger group (`maswali_settle_{weekId}`). Unique: one settlement per week, exactly once.
+  settlementGroupId String?  @unique
+  settledAt         DateTime?
+  /// The accounting officer who released the settlement after its preview (OD-06).
+  releasedBy        String?
+  /// The sunset week (OD-03): the unwon pool goes to its highest-scoring tickets.
+  isFinal           Boolean  @default(false)
+  /// MB-79 · a second reader (never the drafter) confirmed EN, SW and ZH say the same thing. The open refuses without it,
+  /// and any edit of a draft question clears it.
+  parityAttestedBy  String?
+  parityAttestedAt  DateTime?
+  createdBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  questions         MaswaliQuestion[]
+  tickets           MaswaliTicket[]
+
+  @@index([state, closesAt])
+}
+
+/// One of a week's fifteen questions: 10 MAIN (ordinal 1–10) and 5 RESERVE (ordinal 1–5, shown as A1–A5). No money.
+model MaswaliQuestion {
+  id        String       @id @default(cuid())
+  cycleId   String
+  cycle     MaswaliCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  /// MAIN | RESERVE
+  role      String
+  /// MAIN 1..10; RESERVE 1..5, in the frozen reserve order.
+  ordinal   Int
+  /// The canonical slot 1..15 (M1..M10 = 1..10, R1..R5 = 11..15) the picks are keyed by.
+  slot      Int
+  /// ∈ MARKET_CATEGORIES; never politics (R-CATEGORIES).
+  category  String
+  textEn    String
+  textSw    String
+  textZh    String
+  criterionEn String @db.Text
+  criterionSw String @db.Text
+  criterionZh String @db.Text
+  sourceUrl            String
+  sourceDomain         String
+  fallbackSourceUrl    String?
+  fallbackSourceDomain String?
+  readingTolerance     String?
+  /// SPORT | PRICE | WEATHER | ANNOUNCEMENT
+  eventKind     String
+  /// The start of the observation window named in the criterion; the close must sit before every one (MR-4).
+  eventStartsAt DateTime
+  /// The IANA zone the officer typed the start in (shown beside EAT).
+  eventZone     String
+  /// The fixture-drift watch's latest reading of the start (MR-5).
+  observedStartsAt DateTime?
+  /// Scheduled start + 48 h, capped at Monday 23:59 EAT of the results week (OD-09b), printed on the question.
+  voidDeadlineAt DateTime
+  probabilityEstimate Decimal? @db.Decimal(5, 4)
+  probabilitySource   String?
+  /// A linked Yes/No market on the same event, for the mismatch alert (S4).
+  linkedMarketId String?
+  /// YES | NO | VOID — sealed by ONE officer (MR-14); never by an AI.
+  outcome    String?
+  /// A code from `maswali-void-reason.ts` (OD-04's closed list).
+  voidReason String?
+  evidence   String? @db.Text
+  evidenceCaptureRef String?
+  sealedBy   String?
+  sealedAt   DateTime?
+  /// The platform two-officer flag's value when stage 1 began (MB-82); stage 2 only when it was on.
+  twoOfficerAtStage1 Boolean?
+  stage2By   String?
+  stage2At   DateTime?
+  /// Evidence and a suggested outcome an AI may attach. ⛔ Never applied: only an officer's act seals.
+  aiSuggestion Json?
+
+  @@unique([cycleId, slot])
+  @@unique([cycleId, role, ordinal])
+}
+
+/// A Millionea ticket: the fifteen picks behind one `Position`. No money (the Position and the ledger hold it).
+model MaswaliTicket {
+  id         String       @id @default(cuid())
+  positionId String       @unique
+  position   Position     @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  cycleId    String
+  cycle      MaswaliCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  /// Denormalised from the Position for the cap count inside the wallet lock (MR-11).
+  userId     String
+  /// "MLN-W42-004417" — minted at payment. Owner-only page; ids cannot be enumerated.
+  serial     String       @unique
+  /// The fifteen canonical slots → "YES" | "NO". Read only through `canonicalSelections()`.
+  selections Json
+  /// 128-bit, held server-side and shown only to the ticket's owner (MB-32): without it the hash is brute-forceable.
+  salt       String
+  /// SHA-256(cycleId|ticketId|salt|canonical) — a leaf of the close's Merkle tree.
+  selectionsHash String
+  /// SHA-256(canonical) — server-only, for the idempotent-replay compare.
+  picksKey   String
+  /// LIVE | CANCELLED | SETTLED
+  status     String
+  cancelledAt     DateTime?
+  /// The close as it stood when the ticket was bought (a moved close never shortens its cancel window).
+  closeAtPurchase DateTime
+  rulesVersion    String
+  /// Graded correct answers out of 10 — written once, at settlement (the sunset week's only use of a score).
+  score    Int?
+  won      Boolean?
+  payout   Decimal? @db.Decimal(18, 2)
+  /// A frozen share's reason (OD-07: disqualification, a reversed deposit) — compliance decides, never forfeited silently.
+  frozenReason String?
+  /// "Each fact performs once, for its owner" — the seen-state behind the one-shot motions (S5).
+  lastViewedAt DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([cycleId, userId, status])
+  @@index([cycleId, score])
+  @@index([userId, createdAt])
+}
+
+// ============================================================================
 // AI PIPELINE — candidates + polls
 // ============================================================================
 
@@ -3053,6 +3246,16 @@ enum LedgerEntryType {
   INTERNAL_CREDIT // Internal credit (affiliate reward, proposal prize)
   AGENT_COMMISSION // Operator revenue → agent account (contracted commission, and its reversal)
   AGENT_REGISTRATION_FEE // Applicant → operator (the TZS 100,000 fee, and its refund)
+
+  // ── Maswali Millionea (MASWALI-BUILD S1; MASWALI-PLAN §5b) — own migration: a new enum value cannot be used in the
+  //    transaction that adds it (`20261017120100_maswali_ledger_types`).
+  MASWALI_ROLLOVER_OUT // Week pool → HOUSE:MASWALI_JACKPOT (a no-winner week's sales, or a winning week's rounding)
+  MASWALI_ROLLOVER_IN // HOUSE:MASWALI_JACKPOT → week pool (the carry a winning week claims, once)
+  MASWALI_TOPUP // HOUSE:MASWALI_GUARANTEE → week pool (the floor top-up, winning weeks only, never rolled)
+  MASWALI_GUARANTEE_FUND // Owner capital → HOUSE:MASWALI_GUARANTEE (the Owner's audited funding ceremony)
+  MASWALI_GUARANTEE_RETURN // HOUSE:MASWALI_GUARANTEE → owner capital
+  MASWALI_FORFEIT_RETURN // A frozen, forfeited share → HOUSE:MASWALI_JACKPOT (OD-07: never to the house)
+  MASWALI_SUNSET // HOUSE:MASWALI_JACKPOT → the final week's pool (OD-03)
 
   // ── Retired 2026-07 with the tax/reserve/aggregator rates ────────────────
   // Never written again. Kept because historical LedgerEntry rows reference

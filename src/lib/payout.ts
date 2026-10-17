@@ -188,6 +188,11 @@ export const DEFAULT_PLATFORM_FEE_RATE = 0.03;
 export const DEFAULT_OPERATOR_FEE_RATE = 0.10;
 /** The two loser-share slices summed may never exceed the whole losing pool. */
 export const MAX_LOSER_SHARE_RATE = 1.0;
+/**
+ * jackpot-payout (Maswali Millionea): the highest fee share of a jackpot any configuration may freeze. A BOUND, not the
+ * rate — the rate is `maswali.config.jackpotFeeRate` (admin-editable, frozen per week, RULES §2.12).
+ */
+export const MAX_JACKPOT_FEE_RATE = 0.5;
 /** Display-only. The fixed "possible winnings" shown pre-bet = stake × (1 + rate).
  *  Default 0.5 → a 1.5× headline. It is a marketing estimate, NOT the pari-mutuel
  *  payout, which is why the disclaimer is mandatory. */
@@ -233,7 +238,15 @@ export type LeanLevel = "fair" | "thin";
  *    Outcome-DEPENDENT — the fee is a slice of whichever side LOSES, so `poolFee`
  *    must be told the winning side. Owner decision 2026-07-23; new default.
  */
-export type FeeModel = "capped-commission" | "loser-share";
+/**
+ *  - `jackpot-payout` (Maswali Millionea, MASWALI-BUILD S1; RULES §2.12): fee = `jackpotFeeRate` × the JACKPOT, taken
+ *    only in a week with at least one 10/10 ticket, nothing in a no-winner week. It is NOT a pari-mutuel pool fee —
+ *    `poolFee` refuses it, and the week's arithmetic is `maswali-money.ts`. The rate is frozen per week like every rate.
+ */
+export type FeeModel = "capped-commission" | "loser-share" | "jackpot-payout";
+
+/** Every fee model the code knows. `readRates` REFUSES any other value instead of coercing it (S1). */
+export const FEE_MODELS: readonly FeeModel[] = ["capped-commission", "loser-share", "jackpot-payout"];
 
 /**
  * The rates the fee is made of. Everything money-side takes exactly this.
@@ -250,6 +263,8 @@ export interface FeeRates {
   platformFeeRate?: number;
   /** loser-share only. */
   operatorFeeRate?: number;
+  /** jackpot-payout only: the share of the JACKPOT taken when a week pays (0.13 = 13%), frozen per week. */
+  jackpotFeeRate?: number;
 }
 
 /**
@@ -355,6 +370,8 @@ interface ResolvedRates {
   feeModel: FeeModel;
   platformFeeRate: number;
   operatorFeeRate: number;
+  /** jackpot-payout only; 0 under the two pool models. */
+  jackpotFeeRate: number;
 }
 
 /**
@@ -367,10 +384,32 @@ function readRates(rates: Partial<FeeRates> | undefined): ResolvedRates {
   return {
     commissionRate: clamp(rates?.commissionRate ?? DEFAULT_COMMISSION_RATE, 0, 1),
     feeCeilingRate: clamp(rates?.feeCeilingRate ?? DEFAULT_FEE_CEILING_RATE, 0, MAX_FEE_CEILING_RATE),
-    feeModel: rates?.feeModel === "loser-share" ? "loser-share" : "capped-commission",
+    feeModel: readFeeModel(rates?.feeModel),
     platformFeeRate: clamp(rates?.platformFeeRate ?? DEFAULT_PLATFORM_FEE_RATE, 0, 1),
     operatorFeeRate: clamp(rates?.operatorFeeRate ?? DEFAULT_OPERATOR_FEE_RATE, 0, 1),
+    jackpotFeeRate: readJackpotFeeRate(rates),
   };
+}
+
+/**
+ * ⛔ THE FEE MODEL IS READ, NEVER GUESSED (MASWALI-BUILD S1). An ABSENT model is `capped-commission` — the no-mix
+ * guarantee for every snapshot that predates the field. A KNOWN model is itself. Anything else is REFUSED: before S1 it
+ * was coerced to capped-commission, which would have priced a corrupt (or future) snapshot under a law it never froze.
+ */
+function readFeeModel(v: unknown): FeeModel {
+  if (v == null) return "capped-commission";
+  if ((FEE_MODELS as readonly unknown[]).includes(v)) return v as FeeModel;
+  throw new Error(`payout: unknown fee model ${JSON.stringify(v)} — refused, never coerced (RULES §3)`);
+}
+
+/** A jackpot-payout snapshot always freezes its rate; one that does not is refused rather than priced at a default. */
+function readJackpotFeeRate(rates: Partial<FeeRates> | undefined): number {
+  if (rates?.feeModel !== "jackpot-payout") return 0;
+  const r = rates.jackpotFeeRate;
+  if (typeof r !== "number" || !Number.isFinite(r) || r < 0 || r > MAX_JACKPOT_FEE_RATE) {
+    throw new Error(`payout: a jackpot-payout rate must be frozen in [0, ${MAX_JACKPOT_FEE_RATE}] (got ${JSON.stringify(r)})`);
+  }
+  return r;
 }
 
 /**
@@ -410,6 +449,9 @@ export function describeFeeModel(rates: Partial<FeeRates> | undefined): { model:
     const loserRate = clamp(r.platformFeeRate + r.operatorFeeRate, 0, MAX_LOSER_SHARE_RATE);
     return { model: r.feeModel, caption: `loser-share ${pct(loserRate)}` };
   }
+  // Maswali Millionea: the frozen jackpot share, taken at payout only ("13% at payout" — 13 characters, inside the
+  // measured caption width; `test:fee-model-caption`).
+  if (r.feeModel === "jackpot-payout") return { model: r.feeModel, caption: `${pct(r.jackpotFeeRate)} at payout` };
   return { model: r.feeModel, caption: `capped ${pct(r.commissionRate)}/${pct(r.feeCeilingRate)}` };
 }
 
@@ -491,6 +533,11 @@ export const FEE_CAPTION_MAX_CHARS = 17;
  */
 export function poolFee(yesPool: number, noPool: number, rates: Partial<FeeRates>, winningSide?: Side): FeeBreakdown {
   const r = readRates(rates);
+  // ⛔ A Millionea week is not a pari-mutuel pool: its fee is a share of the JACKPOT, at payout only, computed by
+  // `maswali-money.ts` from the week's frozen snapshot. Pricing it here would be a wrong figure, so it is refused.
+  if (r.feeModel === "jackpot-payout") {
+    throw new Error("poolFee: a jackpot-payout week is priced by maswali-money (RULES §2.12), never the pool fee");
+  }
   const yes = Math.max(0, yesPool);
   const no = Math.max(0, noPool);
   const pool = yes + no;

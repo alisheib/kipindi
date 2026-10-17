@@ -24,6 +24,7 @@
 import { chromium } from "playwright";
 import { JOURNEY_HOME_TESTIDS, journeyHomeIdsIn, journeyHomeIdsControl } from "./live/journey-home-ids.mjs";
 import { BET_SHEET_TESTIDS, betSheetTracesIn, betSheetTracesControl } from "./live/bet-sheet-cells.mjs";
+import { millioneaDarkSection } from "./live/millionea-dark.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3009";
 const LOCAL = /localhost|127\.0\.0\.1/.test(BASE);
@@ -1107,6 +1108,9 @@ if (LOCAL) {
 }
 
 await browser.close();
+
+// ── [M] Maswali Millionea stays dark below its rollout — its own module (MASWALI-BUILD S1) ──
+await millioneaDarkSection({ base: BASE, ok });
 
 // ── [F] The certificate behind the proxy — MOVED OUT 2026-08-27 (E-227) ──
 //

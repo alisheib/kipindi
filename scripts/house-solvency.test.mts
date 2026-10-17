@@ -34,7 +34,7 @@ const ok = (label: string, cond: boolean, detail = "") => {
 
 const accounts = (over: Partial<HouseAccounts> = {}): HouseAccounts => ({
   commission: 0, agentCommission: 0, traLevy: 0, gbtLevy: 0,
-  aggregator: 0, rgSuspense: 0, tax: 0, all: {}, ...over,
+  aggregator: 0, rgSuspense: 0, tax: 0, maswaliJackpot: 0, maswaliGuarantee: 0, all: {}, ...over,
 });
 
 const position = (a: Partial<HouseAccounts>, cash: number, liability = 0) =>
@@ -99,6 +99,22 @@ console.log("\n§3 · every other claim is still subtracted");
   for (const [k, v] of [["traLevy", 100], ["gbtLevy", 50], ["aggregator", 20], ["rgSuspense", 7], ["tax", 3]] as const) {
     const without = position({ traLevy: 100, gbtLevy: 50, aggregator: 20, rgSuspense: 7, tax: 3, [k]: 0 }, 1_000);
     ok(`   ⛔ dropping ${k} moves the line by ${v}`, without.freeHouseCash - p.freeHouseCash === v,
+      `moved ${without.freeHouseCash - p.freeHouseCash}`);
+  }
+}
+
+// ── §3b · the Millionea accounts (MASWALI-BUILD S1) ──────────────────────────
+console.log("\n§3b · ⭐ the Millionea jackpot and guarantee come out of free cash, and neither is retained");
+{
+  // MASWALI-PLAN §5b worked example A, after week 1: 300,000 carried for players; the Owner has paid in 2,000,000.
+  const p = position({ maswaliJackpot: 300_000, maswaliGuarantee: 2_000_000, commission: 50_000 }, 3_000_000);
+  ok("the jackpot is reported as payable", p.maswaliJackpotPayable === 300_000, `${p.maswaliJackpotPayable}`);
+  ok("the guarantee is reported as committed", p.maswaliGuaranteeCommitted === 2_000_000, `${p.maswaliGuaranteeCommitted}`);
+  ok("⭐ free cash is 3,000,000 − 300,000 − 2,000,000 = 700,000", p.freeHouseCash === 700_000, `${p.freeHouseCash}`);
+  ok("⛔ neither account is retained earnings", p.netRetained === 50_000, `netRetained=${p.netRetained}`);
+  for (const [k, v] of [["maswaliJackpot", 300_000], ["maswaliGuarantee", 2_000_000]] as const) {
+    const without = position({ maswaliJackpot: 300_000, maswaliGuarantee: 2_000_000, commission: 50_000, [k]: 0 }, 3_000_000);
+    ok(`   ⛔ dropping ${k} moves the line by ${v.toLocaleString()}`, without.freeHouseCash - p.freeHouseCash === v,
       `moved ${without.freeHouseCash - p.freeHouseCash}`);
   }
 }

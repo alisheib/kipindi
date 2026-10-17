@@ -84,6 +84,14 @@ if (process.env.HEALTH_CASE) {
       sjRed?.ceiling === "ACTIVE", `ceiling=${JSON.stringify(sjRed?.ceiling)}`);
     ok("RED: an unreadable switch composes to WITHDRAWN, even under an ACTIVE ceiling", sjRed?.state === "WITHDRAWN",
       `state=${JSON.stringify(sjRed?.state)}`);
+    // ⭐ MASWALI MILLIONEA'S ROLLOUT (S1), the same proof under its own ACTIVE ceiling (FEATURE_MILLIONEA).
+    const mlRed = body.millionea;
+    ok("RED: millionea is exactly { ceiling, state } in the three rollout words", journeyShapeOk(mlRed),
+      JSON.stringify(mlRed ?? null));
+    ok("RED: millionea ceiling is ACTIVE (FEATURE_MILLIONEA honoured, so the switch read was attempted)",
+      mlRed?.ceiling === "ACTIVE", `ceiling=${JSON.stringify(mlRed?.ceiling)}`);
+    ok("RED: an unreadable Millionea switch composes to WITHDRAWN, even under an ACTIVE ceiling", mlRed?.state === "WITHDRAWN",
+      `state=${JSON.stringify(mlRed?.state)}`);
   } else if (kase === "BYPASS") {
     ok("BYPASS: GET is 200 with no DATABASE_URL", res.status === 200, `status=${res.status}`);
     ok("BYPASS: ok is true", body.ok === true);
@@ -97,6 +105,10 @@ if (process.env.HEALTH_CASE) {
       JSON.stringify(sjBypass ?? null));
     ok("BYPASS: an empty (ABSENT) switch leaves the state at the ceiling",
       journeyShapeOk(sjBypass) && sjBypass.state === sjBypass.ceiling, JSON.stringify(sjBypass ?? null));
+    // ⭐ Millionea with no database and no FEATURE_MILLIONEA: the SHIPPED ceiling, which is WITHDRAWN (S1).
+    const mlBypass = body.millionea;
+    ok("BYPASS: millionea is exactly { ceiling, state }, and ships WITHDRAWN in code",
+      journeyShapeOk(mlBypass) && mlBypass.ceiling === "WITHDRAWN" && mlBypass.state === "WITHDRAWN", JSON.stringify(mlBypass ?? null));
   } else if (kase === "TRUE") {
     ok("TRUE: GET is 200 against a real migrated DB", res.status === 200, `status=${res.status}`);
     ok("TRUE: ok is true", body.ok === true, JSON.stringify(body.database));
@@ -109,6 +121,9 @@ if (process.env.HEALTH_CASE) {
     const sjTrue = body.simpleJourney;
     ok("TRUE: simpleJourney is exactly { ceiling, state }, state never above its ceiling",
       journeyShapeOk(sjTrue) && ROLLOUT.indexOf(sjTrue.state) <= ROLLOUT.indexOf(sjTrue.ceiling), JSON.stringify(sjTrue ?? null));
+    const mlTrue = body.millionea;
+    ok("TRUE: millionea is exactly { ceiling, state }, state never above its ceiling",
+      journeyShapeOk(mlTrue) && ROLLOUT.indexOf(mlTrue.state) <= ROLLOUT.indexOf(mlTrue.ceiling), JSON.stringify(mlTrue ?? null));
   }
 
   console.log(`case ${kase}: ${pass} ok, ${fail} fail`);
@@ -125,6 +140,7 @@ function runCase(kase: string, env: Record<string, string | undefined>): number 
   delete base.REDIS_ENABLED; delete base.REDIS_URL;
   // …and the new journey's ceiling: a FEATURE_SIMPLEJOURNEY left in the shell must not decide a case (RED sets its own).
   delete base.FEATURE_SIMPLEJOURNEY;
+  delete base.FEATURE_MILLIONEA;
   const r = spawnSync(process.execPath, [tsxCli, THIS], {
     env: { ...base, ...env, HEALTH_CASE: kase },
     encoding: "utf8", timeout: 120_000,
@@ -141,6 +157,7 @@ const red = runCase("RED", {
   USE_PRISMA_DAL: "true",
   // The highest ceiling, so the rollout's WITHDRAWN can only come from the unreadable switch (see the RED case).
   FEATURE_SIMPLEJOURNEY: "ACTIVE",
+  FEATURE_MILLIONEA: "ACTIVE",
 });
 ok("RED case failed the gate as required", red === 0);
 if (red !== 0) {

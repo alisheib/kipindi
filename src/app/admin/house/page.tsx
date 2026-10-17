@@ -506,6 +506,15 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                       <tr><td className="text-left">Owed to TRA and GBT</td><td className="tabular text-right"><Signed v={-position.leviesPayable} /></td></tr>
                       <tr><td className="text-left">Owed to the payment gateway</td><td className="tabular text-right"><Signed v={-position.aggregatorPayable} /></td></tr>
                       <tr><td className="text-left">Held for a self-excluded player</td><td className="tabular text-right"><Signed v={-position.rgSuspensePayable} /></td></tr>
+                      {/* `housePosition` has subtracted HOUSE:TAX since LEAD-F.1; the table now shows the line it subtracts. */}
+                      <tr><td className="text-left">Statutory tax held for TRA</td><td className="tabular text-right"><Signed v={-position.taxPayable} /></td></tr>
+                      {/* The Millionea accounts appear once a week has moved money (MASWALI-BUILD S1). */}
+                      {position.maswaliJackpotPayable !== 0 && (
+                        <tr><td className="text-left">Millionea jackpot carried for players</td><td className="tabular text-right"><Signed v={-position.maswaliJackpotPayable} /></td></tr>
+                      )}
+                      {position.maswaliGuaranteeCommitted !== 0 && (
+                        <tr><td className="text-left">Millionea guarantee (Owner capital, committed)</td><td className="tabular text-right"><Signed v={-position.maswaliGuaranteeCommitted} /></td></tr>
+                      )}
                       <tr>
                         <td className="text-left font-semibold">Free house cash — strict</td>
                         <td className={["tabular text-right font-semibold", position.freeHouseCash < 0 ? "text-danger" : ""].join(" ")}>
