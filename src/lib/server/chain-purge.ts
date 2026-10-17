@@ -11,7 +11,7 @@
  * REDACT   · PredictionMarket survives as a stamped tombstone — titles and resolution
  *            criterion blanked, short titles and competition nulled (S2), pools / feeSnapshot /
  *            resolvedOutcome / settledAt KEPT
- * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, Position, Transaction, UpDownObservation
+ * NEVER    · AuditLog, HouseBot, HouseBotAlertOnce, HouseBotControl, HouseBotEvent, HouseBotIntent, HouseBotPress, HouseBotRuntime, HouseBotTarget, HousePoolLedger, LedgerEntry, MaswaliTicket, Position, Transaction, UpDownObservation
  *
  * ═══ ⛔ AND THE NEVER LINE ABOVE IS ENFORCED, WHICH UNTIL 2026-09-20 IT WAS NOT ═══
  *

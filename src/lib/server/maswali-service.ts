@@ -21,7 +21,7 @@ import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { createMarket, settleMarket } from "./market-service";
 import { marketStore } from "./market-dal";
-import { isSourceTrusted } from "./source-registry";
+import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
@@ -277,6 +277,8 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
     if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
+    // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
+    await seedDefaultSources();
     const questions = await questionStore.listForWeek(week.id);
     const problems = await openProblems(week, questions, rules, nowMs);
     // OD-02: the guarantee must cover every unsettled week, this one included, before it opens.

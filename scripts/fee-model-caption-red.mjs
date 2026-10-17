@@ -92,8 +92,9 @@ const MUTATIONS = [
     name: "legacy-snapshot-captioned-as-loser-share",
     why: "the no-mix guarantee broken at the CAPTION layer — a pre-2026-07-23 snapshot with no `feeModel` gets labelled with the new law while settling by the old one",
     file: PAY,
-    from: '    feeModel: rates?.feeModel === "loser-share" ? "loser-share" : "capped-commission",',
-    to: '    feeModel: rates?.feeModel === "capped-commission" ? "capped-commission" : "loser-share",',
+    // ⚠️ RE-ANCHORED 2026-10-17 (MASWALI-BUILD S1): the model is read by readFeeModel; the NULL arm is the legacy line.
+    from: '  if (v == null) return "capped-commission";',
+    to: '  if (v == null) return "loser-share";',
   },
   {
     name: "caption-grows-back-past-the-tile",
