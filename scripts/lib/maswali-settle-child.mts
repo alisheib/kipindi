@@ -17,7 +17,8 @@
  *   R3  · a refused release claims no carry (1.3b, 6.2b, R6.4; on Postgres a late failure, R3.6); a draft below an opened
  *         week never opens (R3.1); a carry above the jackpot pays nothing (R3.4)
  *   R4c · the float alert and the returned week carry the committed figures (R4c.1–3)
- *   R6  · a lift waits for a release landing a held share (R6.2); a refused release lifts its holds (R6.4)
+ *   R6  · a lift waits for a release landing a held share (R6.2), a release holds only inside the chain lock (R6.5a), and a
+ *         refused release lifts its holds (R6.4)
  *   R8  · on Postgres, a forfeit or a hold whose commit fails leaves neither half (R8.1, R8.2)
  *   R9  · the final week's wide tie: 300 winners paid in bulk, timed (§11, R9.1–R9.5)
  */
@@ -405,7 +406,7 @@ console.log("\n§R4c · the payout float alert is handed the paid total the sett
 // ── R6 · a held share's hold and every lift take one lock; R8 · a share act commits whole or not at all ────
 console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a hold or a forfeit commits whole or not at all");
 {
-  const { runOutsideLock } = await import("../../src/lib/server/locks.ts");
+  const { runOutsideLock, withLock } = await import("../../src/lib/server/locks.ts");
   const P = players[157], Q = players[158];
   const filler = players.slice(140, 150);
   const heldOf = async (u: string) => (((await W.bal(u)).freezeReasons ?? []) as string[]).includes("MILLIONEA_SHARE");
@@ -480,7 +481,18 @@ console.log("\n§R6 · the hold and every lift share one lock (MB-43); R8 · a h
       /TEST-FAULT/.test(thrown) && w3b.state === "RESOLVING" && w3b.rolloverIn === null && (await bal(P)) === balP && (await bal(Q)) === balQ && !(await heldOf(P))
         && (await dal.ticketStore.listForWeek(x3.id)).every((t: any) => t.status === "LIVE"), J({ thrown, rolloverIn: w3b.rolloverIn, wallet: await W.bal(P) }));
   }
-  const r3 = await W.release(x3.id, at3);
+  // ⭐ …and the release places its hold only once IT holds the chain lock: while another act holds that lock, P's wallet
+  //    is untouched — so no lift can run between a hold and the commit of its share (the other half of the interleave).
+  const waiting: { release?: Promise<any> } = {};
+  let untouched = false;
+  await withLock(W.svc.MASWALI_CHAIN_LOCK, async () => {
+    waiting.release = runOutsideLock(() => W.release(x3.id, at3));
+    await new Promise((res) => setTimeout(res, 400));
+    untouched = !(await heldOf(P));
+  });
+  const r3 = await waiting.release!;
+  ok("R6.5a · ⭐ a release places its hold only inside the chain lock: while another act holds that lock, the winner's wallet is untouched",
+    untouched && r3?.ok && (await heldOf(P)), `untouched ${untouched} · ${r3 ? errOf(r3) : "no release"}`);
   const tickets3 = await dal.ticketStore.listForWeek(x3.id);
   const t3 = tickets3.find((t: any) => t.userId === P && t.won), tq = tickets3.find((t: any) => t.userId === Q && t.won);
   ok("R6.5 · control: funded again, the week settles once — both paid, P's share held again, Q's free, the carry claimed",
