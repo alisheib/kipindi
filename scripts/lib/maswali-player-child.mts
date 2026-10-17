@@ -559,5 +559,23 @@ console.log("\n§11 · the exclusions, the wiring, the floor");
     hold.ok && closure.length === 1 && closure[0].serial === p1Win1.serial && closure[0].heldForReview === true && closure[0].shown === "won", J(closure));
 }
 
+// ── side-label's MASWALI arm (needs the `millionea` dictionary namespace, mln-s5-ui) ──────────────────────────────
+{
+  const { positionStatusWord, positionOutcomeWord }: any = await import("../../src/lib/side-label.ts");
+  const { dict }: any = await import("../../src/lib/i18n-dict.ts");
+  let words: any[] = [];
+  try {
+    words = ["en", "sw", "zh"].map((l) => ({
+      want: dict[l].millionea?.ticketStatusCancelled, cashedOut: dict[l].common.cashedOut,
+      chip: positionStatusWord(dict[l], "CASHED_OUT", "MASWALI"), pill: positionOutcomeWord(dict[l], "CASHED_OUT", "MASWALI"),
+      poll: positionStatusWord(dict[l], "CASHED_OUT", "MARKET"),
+      open: positionStatusWord(dict[l], "OPEN", "MASWALI"), pollOpen: positionStatusWord(dict[l], "OPEN", "MARKET"),
+    }));
+  } catch (e) { words = [{ threw: String(e) }]; }
+  ok("11.14 · side-label's MASWALI arm: a cancelled ticket reads Millionea's own word in every language (v6 manifest L11) — chip and pill alike — while a poll keeps 'cashed out' and every other state stays the poll's",
+    words.length === 3 && words.every((w: any) => typeof w.want === "string" && w.want.length > 0 && w.chip === w.want && w.pill === w.want
+      && w.poll === w.cashedOut && w.open === w.pollOpen), J(words));
+}
+
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);
