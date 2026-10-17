@@ -128,6 +128,13 @@ The route:
 6. **Files shared with Vodacom.** The unmerged Vodacom S15/S16 flip branches touch `feature-state.ts`, `i18n-dict.ts`
    and `market-service.ts`. Millionea's edits there are additive and in separate regions: the `millionea` namespace is
    appended at each locale block's end.
+7. **⭐ Icons are Phosphor (Ali, 2026-10-17, while the build ran).** *"as u build the maswali another session
+   implemented new source for icons and glyphs phosphorus. please dont use the glyphs … use the more creative ones and
+   more reasonable and client like ones from the new kit, check what the phosphorus used and mark this in your plan
+   perfectly visually."* So Millionea draws **no hand-drawn glyph**: the delivery's `sealNil`, `sealX` and the
+   three-pearl coronet (O-5) are replaced, and every Millionea icon is a Phosphor icon reached through the family `I`
+   (`PHOSPHOR-MIGRATION.md` R-NEW-PAGES). The picks, by meaning, are in **§10c**, with the specimen Ali can open.
+   Motions are unchanged: N1–N3 as approved, on the platform's existing easing primitives (DA §M5).
 
 **The answers to Claude Design's owner-ruling form (2026-10-17).** Each was checked against this plan and the live code
 before it went to Ali.
@@ -1650,7 +1657,9 @@ ready.
    - §M7: "Millionea seals do not count" (`roll: false` on the `WinCelebration` payload);
    - §C3 (R-HEADLINE), §M3 (unearned), §F9 (weekly routing, one seal per player per week);
    - §K8b (placement as ruled); §B11 rows in `status-tone.ts` with `STATUS_TONE_EXCEPTIONS`;
-   - `glyphs.tsx`: `sealNil` and `millionea`; rename `voidX` → `sealX` (it has zero consumers);
+   - ~~`glyphs.tsx`: `sealNil` and `millionea`; rename `voidX` → `sealX`~~ — **superseded 2026-10-17 (Ali, §0 item 7):**
+     no hand-drawn glyph. Millionea's icons are the Phosphor keys of §10c, added to the Phosphor lane's `map.ts` and
+     drawn by its codegen; `voidX` is left to that lane;
    - `08-motion` docs and the provenance changelog;
    - a COMPLIANCE-DECISIONS entry naming the home card and the third Tiketi switch as deviations from the sponsor deck (R1/SJ-22); an AGENCY-REPLY; a v5 INHERIT-MANIFEST row naming the deviation, and a v6 manifest ruling row.
 
@@ -2144,6 +2153,9 @@ These are only the items his rulings do not cover, ordered by how much they bloc
 > - **Routes.** The slip never joins `MONEY_ROUTE`.
 > - **The receipt's legal line** follows the real resolution mode (L3).
 > - **The filing** is `v6-2026-10-17-millionea/INHERIT-MANIFEST.md`.
+> - **Icons (Ali, 2026-10-17):** every icon the delivery drew — its three adopted glyphs and the house-idiom icons inside
+>   its frames — is replaced by the Phosphor icons of §10c. Where a frame shows a hand-drawn mark, the built screen shows
+>   §10c's Phosphor icon for that meaning.
 
 **What is commissioned.** The commission Claude Design receives (D1 sends it) is
 [`design-brief/maswali-2026-10/PROMPT.txt`](design-brief/maswali-2026-10/PROMPT.txt), with its brief, predicted output
@@ -2721,6 +2733,74 @@ All three are one-shot and filed in `motion.css`. Each keyframe goes in its Keyf
 | **Seal count-up on market wins** | Platform-wide; out of scope here. |
 | **Withdrawal or AML review line** | Generate it from the live policy if a large share triggers a review. |
 | **Yes/no from Ali** | N1, N2 and N3; the `millionea` glyph; the IMESHINDA tone. |
+
+## §10c · Icons — Phosphor, one meaning, one icon (Ali, 2026-10-17)
+
+**The ruling** is §0 item 7: no hand-drawn glyph on any Millionea surface; every icon comes from the Phosphor kit the
+platform is moving to (`PHOSPHOR-MIGRATION.md`, branch `phosphor-migration`), reached only through the family `I` in
+`src/components/ui/glyphs` (R-NEW-PAGES: never an inline `<svg>`, never a library import, never a text character).
+
+**How they are drawn**, from the Phosphor lane's rulings, so Millionea looks like the rest of the platform:
+- **Weight:** Phosphor **Bold** up to 26 px, Regular from 27 px (R-WEIGHT 1B).
+- **Duo tier:** Phosphor Duotone with the tone layer at 20% (R-TONE 2B) — the hub's plate and the empty states.
+- **Selected:** the **Fill** icon on the opaque royal pill with its lit edge (R-INDICATOR 3B) — the Tiketi zangu
+  "Millionea" segment and the More row's active state.
+- **Tabs:** 24 px (R-RAIL 4B). Millionea has no tab of its own (R-PLACEMENT), so this applies only inside the switch.
+- **Ink:** an icon never carries gold; gold is earned money only (DA, `test:gold-is-money`). A win's gold stays on the
+  amount (O-6).
+
+**The picks.** Every name was checked against `@phosphor-icons/core` 2.1.1, the version the Phosphor lane pins
+(2026-10-17). The `I` key is the name Millionea's code calls; the Phosphor lane's `map.ts` maps it, and where the
+platform's lexicon already owns a meaning, Millionea uses that key and adds none.
+
+| Meaning | Where it shows | `I` key | Phosphor | Why this one |
+|---|---|---|---|---|
+| **Millionea, the product** | home card, the More row, the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
+| A ticket | the ticket page, the switch's ticket counts | `ticket` (lexicon) | `ticket` | The platform's word for a held position |
+| A question not yet sealed | the ticket's 15 marks, the register | `markPending` (new) | `circle-dashed` | An open ring: "not known yet", never "wrong". Replaces `sealNil` |
+| Your answer matched the result | the ticket's marks | `checkCircle` (lexicon) | `check-circle` (Fill, success ink) | The platform's own "done right"; the word beside it carries the meaning (glyph + ink + word, Phosphor W4) |
+| Your answer missed | the ticket's marks | `xCircle` (lexicon) | `x-circle` (muted danger ink) | The pair to `checkCircle`; replaces `sealX` |
+| A question voided | the ticket's marks, the register | `void` (lexicon) | `prohibit` | The platform's void, one meaning platform-wide |
+| The reserves (A1–A5, "Akiba") | the slip's reserve block, the register | `reserve` (new) | `lifebuoy` | A reserve is the backup that saves the ticket when a main question voids |
+| A reserve stood in ("M4 → A1") | the ticket and the register | `standIn` (new) | `arrow-bend-down-right` | The swap, pointing from the voided main to its reserve |
+| The jackpot this week (J) | the hub, the home card | `coins` (lexicon) | `coins` | Money in the pot, without gold ink |
+| Carried to the next jackpot | the hub's carry line, the register | `carry` (new) | `arrow-bend-double-up-right` | Carried forward to the next winning week. Not `piggy-bank` (the lexicon's savings, `sofSavings`) nor `hand-coins` (its cash-out) |
+| The house floor guarantee | the hub's floor line, `/fairness` | `floor` (new) | `vault` | Money held safe behind the promise; `shield-check` already means "verified" (lexicon) |
+| Time left to buy | the closing pill, the slip | `hourglassHalf` (lexicon) | `hourglass-medium` | A countdown, distinct from the clock that shows a time |
+| A time or date | the close time, an event start | `clock` (lexicon) | `clock` | |
+| The week's register (Daftari la Wiki) | `/millionea/register`, the hub's link | `register` (new) | `notebook` | The daftari itself |
+| The week's ticket commitment (every ticket fixed at the close, MR-13) | Millionea's section of `/fairness`, the register's root | `commitment` (new) | `fingerprint` | One unique print for the week's tickets. Millionea's own proof, so its own key: the platform's resolution proof on `/fairness` keeps `attestation` (its hub row) and `shieldcheck` (its page head) |
+| Results recorded | the register, a settled week | `sealCheck` (lexicon; the same drawing as `resolved`) | `seal-check` | The platform's "a result is recorded" (R-LEXICON 5.5A) |
+| A win | the ticket, the receipt | `trophy` (lexicon) | `trophy` | The platform's win, with the existing seal moment only (§M7) |
+| Cancel a ticket (free window) | the ticket, the receipt | `rotateCcw` (lexicon) | `arrow-counter-clockwise` | "Take it back", and the money returns in full |
+| Refunded (the week voided) | the ticket, the register | `refund` (new) | `arrow-u-down-left` | Money coming back to you |
+| Sales closed | the hub, the slip | `lock` (lexicon) | `lock` | The lexicon's drawing, not `lock-simple` |
+| Sales paused | the notice, the hub | `salesPaused` (new) | `pause-circle` | An operator's pause of sales. Not `pause`: the lexicon's `pause` is the player's own Take a break, a different meaning |
+| How it works | the How page, the hub's link | `howTo` (new) | `book-open-text` | `question` stays Help (lexicon) |
+| Object to a result | the ticket's question row | `flag` (lexicon) | `flag` | |
+| The source of a result | a question's evidence link | `externalLink` (lexicon) | `arrow-square-out` | |
+| The cap (10 a week) | the slip's ticket count | `cap` (new) | `stack` | A stack of tickets with a top |
+| The final week (sunset) | the hub, the home card | `finalWeek` (new) | `flag-checkered` | The finish line |
+| Staff preview | the preview mark | `eye` (lexicon) | `eye` | |
+
+**Checked against the Phosphor lane (2026-10-17).** Its owner (session ali-d1) reviewed this table against its map on
+`phosphor-w2` (`2b63893e`): where the lexicon already owns a meaning, Millionea now uses that key (`checkCircle`,
+`xCircle`, `coins`, `hourglassHalf`, `rotateCcw`, `eye`, `lock`, `sealCheck`); `pause` and `piggy-bank` belong to
+other meanings, so the sales pause and the carry have their own keys; and `voidX` is retired by W2 (a void is
+`prohibit`). Re-checked the same day: none of the new keys below collides with a key in that map, and none of their
+drawings is already claimed there.
+
+**The new keys Millionea adds** (13): `millionea` (the product mark; its drawing is Ali's pick), `markPending`,
+`reserve`, `standIn`, `carry`, `floor`, `register`, `commitment`, `refund`, `salesPaused`, `howTo`, `cap` and `finalWeek`.
+(`commitment` was first written `fairness`; the icon lane pointed out that `/fairness` already means the platform's
+resolution proof, so the key is named for what it shows.)
+
+**How it lands.** Millionea's code calls only the `I` keys above. At S5 the new keys go into the Phosphor lane's
+`scripts/glyphs/map.ts` (on its branch until W2 lands) and its codegen draws them in every weight; nothing is added to `glyphs.tsx` by hand,
+and until W2's swap lands on `main` a key `I` does not yet hold waits for it rather than being drawn inline here.
+`test:glyph-source` (that lane's guard) holds the rule. **The specimen** — every pick above drawn from Phosphor's own files, the product-mark choice first:
+https://claude.ai/artifact/Xub9GztHh1c15CtRyrUwTh (private to Ali; published 2026-10-17). Until Ali picks the mark,
+S5 builds with `diamond`; his pick changes one line of the Phosphor lane's `map.ts`.
 
 ## §11 · Traps already paid for — do not re-pay
 
