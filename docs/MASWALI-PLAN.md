@@ -69,9 +69,10 @@ until we decide what goes live."* He also answered three numbered choices the sa
 3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
    below.
 
-**Next:** S1, S2, S3 and S4's first two parts are written and committed; they merge into `main` dark together once
-the release gate is green (Ali, 2026-10-17: *"push live now the progress u have"* and *"perfect work only accepted"* — so
-the progress ships the moment the gate passes, and not before).
+**Next:** S1, S2, S3 and S4 parts 1–3a are ON `main` (`0d27a830`, 2026-10-17 15:41 UTC), dark: pushed BEFORE the
+release gate, on Ali's explicit call. Asked "when the gate passes (recommended)" or "now, unverified", he chose *"Now,
+unverified"* and *"do a live push test now"*. So the gate below runs AFTER the push, and anything it finds is fixed forward
+on `main` the same day. Until it is green, S1–S4 stay 🔨.
 - **Where.** Branch `maswali-s4` (worktree `C:\kipindi-maswali-s4`) holds everything: S1 `7e505bf0`, S2 `6031d199`, their
   battery fixes `ec57887b`, S3 `367a9c1b` + `7727ece0`, S4 `1cdd2dca` + `ac608162`, and `main` merged in. The release
   line `maswali-build` (`C:\kipindi-maswali`) is fast-forwarded to it, and the gate runs there.
