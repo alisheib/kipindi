@@ -34,10 +34,13 @@ export const MUTATIONS = [
     suite: "memory",
   },
   {
-    name: "(3) a ticket gets the poll's paid exit",
+    // Re-aimed 2026-10-17 (MASWALI-BUILD S3): the cash-out now routes a Millionea position to the free cancel BEFORE the
+    // poll path's lock, so the in-lock fence is an unreachable fallback and removing it moved nothing. Removing the route
+    // sends the ticket down the poll's exit path instead, where 2.2 reads the wrong door.
+    name: "(3) a ticket goes down the poll's exit path instead of the free cancel",
     file: SVC,
-    from: "    if (isFencedMaswali(m)) return { ok: false as const, error: \"Market is not accepting predictions.\", code: \"INVALID\" as const, reason: \"market_not_live\" as const };",
-    to: "    if (false) return { ok: false as const, error: \"Market is not accepting predictions.\", code: \"INVALID\" as const, reason: \"market_not_live\" as const };",
+    from: "  if (preMarket && isFencedMaswali(preMarket)) return cancelMaswaliTicket({ userId, positionId });",
+    to: "  if (false) return cancelMaswaliTicket({ userId, positionId });",
     expect: "2.2 · cashOutPosition",
     suite: "memory",
   },

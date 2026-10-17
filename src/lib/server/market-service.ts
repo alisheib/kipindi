@@ -1194,9 +1194,9 @@ async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult
   if (!key) return null;
   // MASWALI-BUILD S3 · a ticket purchase keys each ticket `<key>#i`: its own reader answers it, with the same rules.
   if (opts.maswali) {
-    const r = await landedMaswaliAnswer(userId, { marketId: opts.marketId, stake: opts.stake, idempotencyKey: key, buy: opts.maswali },
-      refused.ok ? { ok: false, error: "" } : refused, uncertain);
-    return r as BuyResult | null;
+    if (refused.ok) return null; // never taken: the one caller returns an ok result first — this only narrows the type
+    return (await landedMaswaliAnswer(userId, { marketId: opts.marketId, stake: opts.stake, idempotencyKey: key, buy: opts.maswali },
+      refused, uncertain)) as BuyResult | null;
   }
   let landed = false;
   try {
@@ -1472,6 +1472,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
   // ⚠️ House or player is read from the H0 intent, not by comparing the context (the house seam pins every comparison).
   if (isFencedMaswali(market)) {
     if (!opts.maswali) return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
+    // SEAM:maswaliHouse — Millionea's door learns house-or-player from the H0 intent and refuses every desk account.
     const r = await buyMaswaliTickets({
       userId, user: { role: u.role }, isHouse: houseIntent !== null, market, buy: opts.maswali, stake: opts.stake,
       idempotencyKey: opts.idempotencyKey, reach,

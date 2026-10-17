@@ -279,6 +279,11 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
     if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
+    // ⛔ R3 · THE CHAIN IS `seq` (MR-3; `createWeek` numbers drafts in the order they are drafted): a draft below a week of
+    //    its line that has already opened can never open. It would settle after that week and claim a carry the later
+    //    week may already have drawn — the same J twice. Refused here, before a single ticket is sold against it.
+    const later = (await weekStore.list({ visibility: week.visibility })).find((w) => w.seq > week.seq && w.state !== "DRAFT");
+    if (later) return refuse(`Week ${later.code} was drafted after week ${week.code} and has already opened; weeks open, claim and settle strictly in order (MR-3), so this draft can no longer open.`);
     // MR-30 · the sunset: nothing opens after a final week that ran, and a final week that voided or sold nothing hands
     // the role to the next PUBLIC week to open (OD-03).
     const life = week.visibility === "PUBLIC" ? await sunsetState() : { kind: "LIVE" as const };
@@ -441,16 +446,25 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse("The close has not arrived.");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
-    const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
-    const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
-    const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
-    if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
-    if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
-    audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
-    // S5 · the sales are final: the hub's figure stops moving with sales from here.
-    noteMaswaliPoolChanged(week.id);
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside
+    // `market:<id>` (taken after `wallet:`); the close takes that lock too, inside the chain lock — the settlement's own
+    // order — so it lists the live tickets only once an in-flight purchase or cancel has committed, and a purchase or
+    // cancel that waited behind it re-reads the week inside that lock and finds it closed. Without it, a purchase passing
+    // its clock check an instant before the close committed after the list: a LIVE ticket outside the root, and counts
+    // the settlement refuses for good.
+    const seal = async (): Promise<Result<{ week: StoredWeek; already?: boolean }>> => {
+      const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
+      const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
+      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
+      if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
+      if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
+      audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, ticketCount: live.length, ticketMerkleRoot: root, early: input.early === true } });
+      // S5 · the sales are final: the hub's figure stops moving with sales from here (the frame is derived after commit).
+      noteMaswaliPoolChanged(week.id);
+      return { ok: true, week: (await weekStore.get(week.id))! };
+    };
+    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();
   });
 }
 
@@ -645,16 +659,27 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
 // ── THE CARRY ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
+ * MR-3 · the week of this line that comes before `week` in the chain and is not terminal yet — or null when `week` may
+ * claim its carry and settle. A DRAFT is never before a week that has opened: once a later week of its line has opened,
+ * a draft can never open (`openWeek`, R3), so it never settles and never claims.
+ */
+export async function carryBlocker(week: StoredWeek): Promise<StoredWeek | null> {
+  const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.seq < week.seq && w.state !== "DRAFT");
+  return earlier.find((w) => w.state !== "SETTLED" && w.state !== "VOIDED") ?? null;
+}
+
+/**
  * MR-21 · CLAIM THE CARRY, ONCE, IN CHAIN ORDER. A week claims R only after every earlier week of its visibility is
  * terminal (MR-3), and the claim is a conditional write (`rolloverIn` IS NULL). `readJackpot` is S3's ledger read.
+ * ⚠️ Standalone, the claim commits at once. The release (`settleMaswaliWeek`) never calls this: it claims inside its own
+ * money transaction (R3), so a claim there persists only with its payout.
  */
 export async function claimCarry(input: { weekId: string; readJackpot: () => Promise<number | null> }): Promise<Result<{ rolloverIn: number; already?: boolean }>> {
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.rolloverIn != null) return { ok: true, rolloverIn: week.rolloverIn, already: true };
-    const earlier = (await weekStore.list({ visibility: week.visibility })).filter((w) => w.seq < week.seq && w.state !== "DRAFT");
-    const blocking = earlier.find((w) => w.state !== "SETTLED" && w.state !== "VOIDED");
+    const blocking = await carryBlocker(week);
     if (blocking) return refuse(`Week ${blocking.code} is not settled yet; the carry is claimed strictly in order (MR-3).`);
     const r = await input.readJackpot().catch(() => null);
     if (r === null || !Number.isSafeInteger(r) || r < 0) return refuse("The jackpot balance could not be read, so no carry was claimed.");

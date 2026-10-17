@@ -55,6 +55,9 @@ const HELPER = "src/lib/markets/predictors.ts";
 const TRUE_COUNT_HOMES = (f: string) => isAdmin(f) || f.startsWith("src/lib/server/reports/") || [
   HELPER, "src/lib/server/market-dal.ts", "src/lib/server/market-service.ts", "src/lib/server/insights.ts",
   "src/lib/server/updown-config.ts", "src/lib/server/updown-service.ts",
+  // MASWALI-BUILD S3 (2026-10-17): Millionea's purchase WRITES the week market's true count on a player's first ticket,
+  // as updown-service does for a round; it reads none, and the fence keeps that market off every player surface.
+  "src/lib/server/maswali-money-service.ts",
 ].includes(f);
 const PLAYER_FILES = SRC_FILES.filter((f) => !TRUE_COUNT_HOMES(f));
 /** The rows each player surface is built in — each must build its count through the helper. The landing's rows are built

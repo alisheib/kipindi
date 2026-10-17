@@ -215,7 +215,8 @@ export interface WeekStore {
   moveClose(id: string, fromCloseAt: string, toCloseAt: string, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** ⭐ The close's one write, exactly once: OPEN → CLOSED with the commitment. */
   stampClose(id: string, f: { closedAt: string; ticketCount: number; salesAtClose: number; ticketMerkleRoot: string }, tx?: Prisma.TransactionClient): Promise<boolean>;
-  /** MR-21: the carry is claimed once, WHERE `rolloverIn` IS NULL. */
+  /** MR-21: the carry is claimed once, WHERE `rolloverIn` IS NULL. R3 · the release passes its money transaction, so the
+   *  claim commits with the payout or not at all. */
   claimCarry(id: string, rolloverIn: number, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** S3 · the live ticket count: +n on a purchase, −1 on a free cancel, in the money transaction. Never below 0. */
   bumpTicketCount(id: string, delta: number, tx?: Prisma.TransactionClient): Promise<void>;
@@ -250,7 +251,8 @@ export interface TicketStore {
   get(id: string): Promise<StoredTicket | null>;
   getBySerial(serial: string): Promise<StoredTicket | null>;
   getByPositionId(positionId: string): Promise<StoredTicket | null>;
-  listForWeek(cycleId: string, opts?: { status?: TicketState; tx?: Prisma.TransactionClient }): Promise<StoredTicket[]>;
+  /** `won` narrows to the winners at the query (the console's held shares and winners read every settled week). */
+  listForWeek(cycleId: string, opts?: { status?: TicketState; won?: boolean; tx?: Prisma.TransactionClient }): Promise<StoredTicket[]>;
   listForUser(userId: string, opts?: { cycleId?: string; limit?: number }): Promise<StoredTicket[]>;
   /** MR-11: this account's non-cancelled tickets in the week — read inside the wallet lock by the buy. */
   countLiveForUser(cycleId: string, userId: string, tx?: Prisma.TransactionClient): Promise<number>;
@@ -266,7 +268,8 @@ export interface TicketStore {
   cancelTicket(id: string, cancelledAt: string, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** LIVE → SETTLED with its grade, once. */
   settleTicket(id: string, f: { score: number | null; won: boolean; payout: number }, tx?: Prisma.TransactionClient): Promise<boolean>;
-  patch(id: string, fields: Partial<StoredTicket>): Promise<void>;
+  /** R8 · `tx` puts the mark in the caller's transaction (a forfeit's debit, a hold's lock), so a failed commit leaves neither half. */
+  patch(id: string, fields: Partial<StoredTicket>, tx?: Prisma.TransactionClient): Promise<void>;
   /** S3 · every ticket a week has ever sold, cancelled ones included — the serial counter, read under the market lock. */
   countAllForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<number>;
   /**
@@ -427,7 +430,8 @@ const memoryTickets: TicketStore = {
   async getBySerial(serial) { const t = [...memTickets.values()].find((x) => x.serial === serial); return t ? copyTicket(t) : null; },
   async getByPositionId(positionId) { const t = [...memTickets.values()].find((x) => x.positionId === positionId); return t ? copyTicket(t) : null; },
   async listForWeek(cycleId, opts) {
-    return [...memTickets.values()].filter((t) => t.cycleId === cycleId && (!opts?.status || t.status === opts.status))
+    return [...memTickets.values()].filter((t) => t.cycleId === cycleId && (!opts?.status || t.status === opts.status)
+      && (opts?.won === undefined || t.won === opts.won))
       .sort((a, b) => (a.id < b.id ? -1 : 1)).map(copyTicket);
   },
   async listForUser(userId, opts) {
@@ -677,7 +681,9 @@ const prismaTickets: TicketStore = {
   async getBySerial(serial) { const r = await pc().maswaliTicket.findUnique({ where: { serial } }); return r ? toTicket(r) : null; },
   async getByPositionId(positionId) { const r = await pc().maswaliTicket.findUnique({ where: { positionId } }); return r ? toTicket(r) : null; },
   async listForWeek(cycleId, opts) {
-    const rows = await db_(opts?.tx).maswaliTicket.findMany({ where: { cycleId, ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { id: "asc" } });
+    const rows = await db_(opts?.tx).maswaliTicket.findMany({
+      where: { cycleId, ...(opts?.status ? { status: opts.status } : {}), ...(opts?.won !== undefined ? { won: opts.won } : {}) }, orderBy: { id: "asc" },
+    });
     return rows.map(toTicket);
   },
   async listForUser(userId, opts) {
@@ -728,7 +734,7 @@ const prismaTickets: TicketStore = {
     const r = await db_(tx).maswaliTicket.updateMany({ where: { id, status: "LIVE" }, data: { status: "SETTLED", score: f.score, won: f.won, payout: f.payout } });
     return r.count === 1;
   },
-  async patch(id, fields) {
+  async patch(id, fields, tx) {
     const data: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fields)) {
       const coerce = TICKET_PATCHABLE[k];
@@ -736,7 +742,7 @@ const prismaTickets: TicketStore = {
       data[k] = coerce(v);
     }
     if (Object.keys(data).length === 0) return;
-    await pc().maswaliTicket.update({ where: { id }, data });
+    await db_(tx).maswaliTicket.update({ where: { id }, data });
   },
   async countAllForWeek(cycleId, tx) {
     return db_(tx).maswaliTicket.count({ where: { cycleId } });

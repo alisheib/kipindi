@@ -164,6 +164,8 @@ const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/staff/[id]/page.tsx": "one staff member's recent actions, explicitly a recent-activity excerpt with the full history a click away in the audit log",
   "src/app/admin/system/page.tsx": "fixed service/health rows plus a bounded cache-bucket sample, both defined in code",
   "src/app/admin/updown/page.tsx": "one row per chain. Chains are created by an operator one at a time and every one must be visible to be controlled",
+  // MASWALI-BUILD S4 (2026-10-17): the week page's two tables (the questions, and the seal console over the same rows).
+  "src/app/admin/maswali/[weekId]/page.tsx": "one row per question of ONE week: exactly fifteen (ten mains, five reserves), fixed by the product's grading (MR-1), and the seal console must show all fifteen at once to be sealed",
   "src/app/admin/sources/page.tsx": "the trusted-source allowlist. It grows only when a compliance officer adds a domain, and the whole allowlist must be readable in one view to be auditable",
   "src/app/admin/live/page.tsx": "its table is live matches in progress — bounded by reality, not by a limit. Its two audit feeds are deliberately a newest-few glance, and each already links to /admin/audit?category=…, which IS fully paged and filterable. A second pager here would duplicate that surface on a page an operator refreshes constantly",
   // ⭐ N5 (2026-10-15) · THE DESK'S ENTRY IS GONE, AS ITS OWN LAST LINES SAID IT WOULD BE. Ali raised the roster

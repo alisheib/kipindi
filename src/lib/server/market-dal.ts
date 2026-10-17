@@ -610,13 +610,23 @@ export interface PositionStore {
   // transaction so it costs no extra pool connection.
   findByIdempotencyKey(key: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
   /**
-   * MASWALI-BUILD S3 · a Millionea week's settlement marks every OPEN ticket position on its market LOSS (finalPayout 0)
-   * except the winners, which it pays one by one. ⭐ ONE statement, not one per ticket (MB-31's 10,000-ticket budget),
-   * in the settlement's transaction; conditional on OPEN, so a re-run moves nothing. Returns how many moved — the
-   * caller requires it to equal the losing tickets it graded, and a mismatch rolls the settlement back.
+   * MASWALI-BUILD R9 · a Millionea week's settlement marks its WINNING ticket positions WIN with the share as their
+   * payout. ⭐ One statement per batch of ids, never one per ticket (MB-31's 10,000-ticket budget; a final week's wide tie),
+   * in the settlement's transaction; conditional on OPEN and on the week's market, so a re-run moves nothing. Returns how
+   * many moved — the caller requires every winner, and a mismatch rolls the settlement back. It runs BEFORE
+   * `settleMaswaliLosers`, in the same transaction.
    * ⛔ Millionea's settlement is the only caller: a poll settles its positions one by one, with their payouts.
    */
-  settleMaswaliLosers(marketId: string, winnerIds: readonly string[], settledAt: string, tx?: Prisma.TransactionClient | null): Promise<number>;
+  settleMaswaliWinners(marketId: string, ids: readonly string[], payout: number, settledAt: string, tx?: Prisma.TransactionClient | null): Promise<number>;
+  /**
+   * MASWALI-BUILD S3 · a Millionea week's settlement marks every ticket position still OPEN on its market LOSS
+   * (finalPayout 0). ⭐ ONE statement, not one per ticket (MB-31's 10,000-ticket budget), in the settlement's transaction;
+   * conditional on OPEN, so a re-run moves nothing. The winners are already WIN by then (`settleMaswaliWinners`, earlier
+   * in the same transaction), so OPEN is exactly the losers: no list of winners to exclude (R9). Returns how many moved —
+   * the caller requires it to equal the losing tickets it graded, and a mismatch rolls the settlement back.
+   * ⛔ Millionea's settlement is the only caller: a poll settles its positions one by one, with their payouts.
+   */
+  settleMaswaliLosers(marketId: string, settledAt: string, tx?: Prisma.TransactionClient | null): Promise<number>;
   /**
    * Per-player settled totals for ONE product line inside a half-open window
    * `[fromIso, toIso)`. The aggregation the Up & Down **daily digest** is built
@@ -921,11 +931,20 @@ const memoryPositions: PositionStore = {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
     return null;
   },
-  async settleMaswaliLosers(marketId, winnerIds, settledAt, _tx) {
-    const winners = new Set(winnerIds);
+  async settleMaswaliWinners(marketId, ids, payout, settledAt, _tx) {
+    let n = 0;
+    for (const id of new Set(ids)) {
+      const p = positions.get(id);
+      if (!p || p.marketId !== marketId || p.status !== "OPEN") continue;
+      p.status = "WIN"; p.finalPayout = payout; p.settledAt = settledAt;
+      n++;
+    }
+    return n;
+  },
+  async settleMaswaliLosers(marketId, settledAt, _tx) {
     let n = 0;
     for (const p of positions.values()) {
-      if (p.marketId !== marketId || p.status !== "OPEN" || winners.has(p.id)) continue;
+      if (p.marketId !== marketId || p.status !== "OPEN") continue;
       p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
       n++;
     }
@@ -1576,10 +1595,23 @@ const prismaPositions: PositionStore = {
     const r = await (tx ?? pc()).position.findUnique({ where: { idempotencyKey: key } });
     return r ? toStoredPosition(r) : null;
   },
-  async settleMaswaliLosers(marketId, winnerIds, settledAt, tx) {
-    // Served by @@index([marketId, status]). `notIn` over the winners, who are few (k is the 10-of-10 tickets).
+  async settleMaswaliWinners(marketId, ids, payout, settledAt, tx) {
+    // One UPDATE per batch (`idChunks` keeps each id list well under the bind-parameter limit); OPEN and the market are in
+    // the WHERE, so a stray id or a re-run moves nothing and the caller's count check sees it.
+    let n = 0;
+    for (const chunk of idChunks(ids)) {
+      const r = await (tx ?? pc()).position.updateMany({
+        where: { id: { in: chunk }, marketId, status: "OPEN" },
+        data: { status: "WIN", finalPayout: payout, settledAt: new Date(settledAt) },
+      });
+      n += r.count;
+    }
+    return n;
+  },
+  async settleMaswaliLosers(marketId, settledAt, tx) {
+    // Served by @@index([marketId, status]). No `notIn` (R9): the winners left OPEN earlier in this transaction.
     const r = await (tx ?? pc()).position.updateMany({
-      where: { marketId, status: "OPEN", ...(winnerIds.length > 0 ? { id: { notIn: [...winnerIds] } } : {}) },
+      where: { marketId, status: "OPEN" },
       data: { status: "LOSS", finalPayout: 0, settledAt: new Date(settledAt) },
     });
     return r.count;

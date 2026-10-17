@@ -7,8 +7,8 @@ export default function Loading() {
       <AdminPageHead title="Draft a week" sw="Andaa wiki" />
       <SkBody>
         <SkCard lines={2} titleW="w-0" />
-        <SkCard lines={8} titleW="w-16" />
-        <SkCard lines={8} titleW="w-16" />
+        <SkCard lines={8} titleW="w-[64px]" />
+        <SkCard lines={8} titleW="w-[64px]" />
       </SkBody>
     </>
   );

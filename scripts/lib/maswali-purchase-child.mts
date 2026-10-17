@@ -10,11 +10,14 @@
  *   §5 real balance only (MR-10) and the responsible-gambling gates, through the one bet path
  *   §6 ⭐ the free cancel (MR-12): in full, in one transaction, only inside its window, never twice; no paid exit
  *   §7 the void arm: a voided week refunds every ticket in full, and sends no Up & Down notice and reverses no wagering
+ *   §8 the adversarial review's findings (2026-10-17): the receipt's balance (R4a), the guarantee's answer and record
+ *      (R4b), the loss panel against the gate (R5), one reference booking once (R7), the ticket arm asking the rollout
+ *      itself (R10a), and the desk check failing closed at the purchase and at the settlement (R10b)
  */
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-purchase-session-secret-0123456789abcdef";
 
-const { loadMaswaliWorld, SEALER } = await import("./maswali-money-world.mts");
+const { loadMaswaliWorld, OWNER, SEALER } = await import("./maswali-money-world.mts");
 const W = await loadMaswaliWorld();
 const { svc: market } = W.w;
 const { dal, money, acct } = W;
@@ -260,6 +263,193 @@ console.log("\n§7 · a voided week refunds every ticket");
   ok("7.5 · ⛔ no Up & Down \"round voided\" notice for a ticket (S6 writes Millionea's own)", notesAfter === notesBefore, `${notesBefore} → ${notesAfter}`);
   if (W.onPostgres) ok("7.6 · the voided week's POOL is exactly 0 (Postgres books the refunds)", (await W.balanceOf(acct.pool(v.marketId))) === 0, `${await W.balanceOf(acct.pool(v.marketId))}`);
   ok("7.7 · the jackpot is untouched by a void (worked example D)", (await W.balanceOf(acct.maswaliJackpot)) === 0, `${await W.balanceOf(acct.maswaliJackpot)}`);
+}
+
+// ── §8 · the adversarial review's findings (2026-10-17) ─────────────────────
+console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt, the rollout, the desk check, the guarantee, the loss panel`);
+{
+  const act = await import("../../src/lib/server/activity-summary.ts");
+  const { auditFlush, getAuditForTarget } = await import("../../src/lib/server/audit.ts");
+  const desks = W.w.dal.houseBotStore;
+  const realLookup = desks.findLiveByUserId;
+  /** R10b's fault, declared: the desk lookup throws — for every account, or only for `only`. `realDesk` puts it back. */
+  const blindDesk = (only?: string) => {
+    desks.findLiveByUserId = async (id: string, tx?: unknown) => {
+      if (!only || id === only) throw new Error("injected: the desk lookup could not be read");
+      return realLookup.call(desks, id, tx);
+    };
+  };
+  const realDesk = () => { desks.findLiveByUserId = realLookup; };
+  const setRollout = (state: string) => { process.env.FEATURE_MILLIONEA = state; };
+  /**
+   * ⚠️ A FIXTURE OF TIME, declared (the world's `backdate`, widened): a ticket bought `byMs` ago — its ticket row, its
+   * position and its BET_PLACED row moved into the past together, as a purchase made then would have written them.
+   */
+  const backdateTicket = async (positionId: string, byMs: number) => {
+    if (W.onPostgres) {
+      const pc = W.prisma()!;
+      await pc.$executeRawUnsafe(`UPDATE "MaswaliTicket" SET "createdAt" = "createdAt" - ($1::int * interval '1 millisecond') WHERE "positionId" = $2`, byMs, positionId);
+      await pc.$executeRawUnsafe(`UPDATE "Transaction" SET "createdAt" = "createdAt" - ($1::int * interval '1 millisecond') WHERE "positionId" = $2 AND "type" = 'BET_PLACED'`, byMs, positionId);
+    } else {
+      // The memory twins keep their ticket rows on `globalThis` and hand back the live transaction rows.
+      const tickets = (globalThis as any).__50PICK_MLN_TICKETS as Map<string, any>;
+      for (const t of tickets.values()) if (t.positionId === positionId) t.createdAt = new Date(Date.parse(t.createdAt) - byMs).toISOString();
+      const p = await W.w.mdal.positionStore.get(positionId);
+      for (const t of await txnsOf(p.userId)) if (t.positionId === positionId && t.type === "BET_PLACED") t.createdAt = new Date(Date.parse(t.createdAt) - byMs).toISOString();
+    }
+    await W.backdate(positionId, byMs);
+  };
+  const buyDirect = (u: string, wk: any, slips: any[]) =>
+    market.buyPosition(u, { marketId: wk.marketId, side: "YES", stake: price * slips.length, maswali: { weekId: wk.id, slips } });
+
+  // A PUBLIC week after the first two, and a DRIVE week beside it (one open week per line).
+  const { week: P, start: startP } = await W.openWeek({ weeksAhead: 4 });
+  const { week: D, start: startD } = await W.openWeek({ weeksAhead: 5, visibility: "DRIVE" });
+
+  // R4a · the receipt's balance, read in the purchase's own transaction.
+  const a = await W.user({ balance: 50_000 });
+  const two = await W.buy(a, P.id, [W.LOSE, W.LOSE], { key: "r4a-two" });
+  const walletAfter = (await W.bal(a)).balance;
+  const placed = (await txnsOf(a)).filter((t: any) => t.type === "BET_PLACED");
+  ok("R4a.1 · ⭐ the receipt's balance is the wallet AFTER the purchase, on both stores (Postgres had read the wallet before it)",
+    two.ok && two.data.balance === 50_000 - 2 * price && two.data.balance === walletAfter, `${why(two)} · receipt ${two.data?.balance} · wallet ${walletAfter}`);
+  ok("R4a.2 · …and it is the purchase's own last balanceAfter", placed.length === 2 && Math.min(...placed.map((t: any) => t.balanceAfter)) === two.data?.balance,
+    J(placed.map((t: any) => t.balanceAfter)));
+  const more = await W.buy(a, P.id, [W.LOSE]);
+  const again = await W.buy(a, P.id, [W.LOSE, W.LOSE], { key: "r4a-two" });
+  ok("R4a.3 · the replay answers the wallet as it stands, read in the wallet lock, and charges nothing (control)",
+    more.ok && again.ok && again.data.replayed === true && again.data.balance === 50_000 - 3 * price && (await W.bal(a)).balance === 50_000 - 3 * price, why(again));
+
+  // R10a · the ticket arm asks the rollout itself.
+  const x = await W.user({ balance: 50_000 });
+  let told: any, direct: any, previewPublic: any, previewDrive: any;
+  try {
+    setRollout("WITHDRAWN");
+    told = await W.buy(x, P.id, [W.LOSE]); // purchaseMaswaliTickets itself is told ACTIVE
+    direct = await buyDirect(x, P, [W.LOSE]);
+    setRollout("STAFF_PREVIEW");
+    previewPublic = await buyDirect(x, P, [W.LOSE]);
+    previewDrive = await buyDirect(x, D, [W.LOSE]);
+  } finally { setRollout("ACTIVE"); }
+  ok("R10a.1 · ⛔ with the product WITHDRAWN the ticket arm itself refuses, though purchaseMaswaliTickets was told ACTIVE",
+    !told.ok && told.reason === "millionea_not_available", why(told));
+  ok("R10a.2 · ⛔ …and the bet door called directly, past purchaseMaswaliTickets, sells nothing either", !direct.ok && direct.reason === "millionea_not_available", why(direct));
+  ok("R10a.3 · ⛔ at STAFF_PREVIEW the arm refuses a PUBLIC week, by the one rule (rolloutSells)", !previewPublic.ok && previewPublic.reason === "millionea_not_available", why(previewPublic));
+  ok("R10a.4 · …and sells a DRIVE week there: the rule, not a blanket refusal (control)", previewDrive.ok, why(previewDrive));
+  ok("R10a.5 · the refusals moved nothing: one ticket bought, one price paid",
+    (await W.bal(x)).balance === 50_000 - price && (await dal.ticketStore.listForUser(x)).length === 1, J(await W.bal(x)));
+  const active = await buyDirect(x, P, [W.LOSE]);
+  ok("R10a.6 · back at ACTIVE the same direct purchase goes through (control)", active.ok, why(active));
+
+  // R10b · the desk check fails closed at the purchase.
+  const y = await W.user({ balance: 50_000 });
+  let blind: any;
+  try { blindDesk(); blind = await W.buy(y, P.id, [W.LOSE], { key: "r10b-blind" }); } finally { realDesk(); }
+  ok("R10b.1 · ⛔ a desk check that cannot be read refuses the purchase (fail closed): busy, the stake has not moved",
+    !blind.ok && blind.code === "BUSY" && blind.reason === "system_busy", why(blind));
+  ok("R10b.2 · …and nothing was charged or written", (await W.bal(y)).balance === 50_000 && (await dal.ticketStore.listForUser(y)).length === 0, J(await W.bal(y)));
+  const seen = await W.buy(y, P.id, [W.LOSE], { key: "r10b-blind" });
+  ok("R10b.3 · the same key, once the check reads, buys the ticket (control)", seen.ok && !seen.data.replayed && (await W.bal(y)).balance === 50_000 - price, why(seen));
+
+  // R4b + R7 · the guarantee's answer and its record, and one reference booking once per direction.
+  const g = () => W.balanceOf(acct.maswaliGuarantee);
+  const fund = (amount: number, reference: string) => money.fundMaswaliGuarantee({ amount, reference, typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
+  const giveBack = (amount: number, reference: string) => money.returnMaswaliGuarantee({ amount, reference, typed: money.GUARANTEE_RETURN_WORD, ownerId: OWNER });
+  const rowFor = async (action: string, reference: string) => {
+    await auditFlush();
+    return getAuditForTarget("MaswaliGuarantee", "guarantee").find((e: any) => e.action === action && e.payload?.reference === reference) as any;
+  };
+  const g0 = (await g())!;
+  const f1 = await fund(1_000, "R7-RAIL-0001");
+  ok("R4b.1 · ⭐ the funding answers the guarantee AFTER it (Postgres had answered the balance before)", f1.ok && f1.balance === g0 + 1_000 && (await g()) === g0 + 1_000,
+    `${f1.ok ? f1.balance : f1.error} · ledger ${await g()} · before ${g0}`);
+  const fundRow = await rowFor("maswali.guarantee.funded", "R7-RAIL-0001");
+  ok("R4b.2 · …and its COMPLIANCE row records that balance as balanceAfter", fundRow?.payload?.balanceAfter === g0 + 1_000, J(fundRow?.payload));
+  const twice = await fund(1_000, "R7-RAIL-0001");
+  ok("R7.1 · ⛔ the same reference funds once: the second submit is refused, naming the reference and when it was recorded",
+    !twice.ok && twice.error.includes("R7-RAIL-0001") && twice.error.includes("already recorded") && (await g()) === g0 + 1_000, twice.ok ? "booked twice" : twice.error);
+  const spaced = await fund(1_000, "  R7-RAIL-0001  ");
+  ok("R7.2 · ⛔ …compared as the ceremony reads it (trimmed)", !spaced.ok && (await g()) === g0 + 1_000, spaced.ok ? "booked twice" : spaced.error);
+  const cased = await fund(1_000, "r7-rail-0001");
+  ok("R7.2b · ⛔ …and in any case: a bank's reference is the same reference written small", !cased.ok && (await g()) === g0 + 1_000, cased.ok ? "booked twice" : cased.error);
+  const race = await Promise.all([fund(1_000, "R7-RAIL-0002"), fund(1_000, "R7-RAIL-0002")]);
+  ok("R7.3 · ⭐ two submits of one reference at once: exactly one books (the check and the write share the chain lock)",
+    race.filter((r: any) => r.ok).length === 1 && (await g()) === g0 + 2_000, J(race.map((r: any) => (r.ok ? "ok" : r.error))));
+  const fresh = await fund(1_000, "R7-RAIL-0003");
+  ok("R7.4 · a new reference funds as before (control)", fresh.ok && (await g()) === g0 + 3_000, fresh.ok ? "" : fresh.error);
+  const r1 = await giveBack(1_000, "R7-OUT-0001");
+  const returnRow = await rowFor("maswali.guarantee.returned", "R7-OUT-0001");
+  ok("R4b.3 · the return answers the guarantee after it, and its row records the same balanceAfter",
+    r1.ok && r1.balance === g0 + 2_000 && (await g()) === g0 + 2_000 && returnRow?.payload?.balanceAfter === g0 + 2_000, r1.ok ? J(returnRow?.payload) : r1.error);
+  const r2 = await giveBack(1_000, "R7-OUT-0001");
+  ok("R7.5 · ⛔ the same return reference books once", !r2.ok && r2.error.includes("already recorded") && (await g()) === g0 + 2_000, r2.ok ? "booked twice" : r2.error);
+  const r3 = await giveBack(1_000, "R7-RAIL-0001");
+  ok("R7.6 · a reference is checked per direction: a funding's reference may name a return (control)", r3.ok && (await g()) === g0 + 1_000, r3.ok ? "" : r3.error);
+  if (W.onPostgres) {
+    // R4b · the COMPLIANCE row is written once the movement COMMITS (afterCommit): a funding inside a transaction that then
+    // rolls back books nothing and records nothing, and its reference stays free (R7 reads only what committed). Postgres
+    // only: the memory store has no transaction to roll back.
+    const { withLock } = await import("../../src/lib/server/locks.ts");
+    const before = (await g())!;
+    let rolledBack = false;
+    try {
+      await withLock("r4b:outer", async () => {
+        const inner = await fund(1_000, "R4B-ROLLBACK-0001");
+        if (!inner.ok) throw new Error(`the inner funding was refused: ${inner.error}`);
+        throw new Error("injected: the outer transaction rolls back after the funding");
+      });
+    } catch (err) { rolledBack = String((err as Error)?.message ?? err).includes("injected"); }
+    const ghost = await rowFor("maswali.guarantee.funded", "R4B-ROLLBACK-0001");
+    ok("R4b.4 · ⭐ a funding whose transaction rolls back books nothing and leaves no COMPLIANCE row (it is written on commit)",
+      rolledBack && (await g()) === before && !ghost, J({ rolledBack, before, now: await g(), ghost: ghost?.payload ?? null }));
+    const later = await fund(1_000, "R4B-ROLLBACK-0001");
+    ok("R7.7 · …and its reference is still free: the check reads only what committed (control)", later.ok && (await g()) === before + 1_000, later.ok ? "" : later.error);
+  }
+
+  // R10b (the hold) + R5 · the DRIVE week pays two winners, one of them while its desk check cannot be read; the PUBLIC
+  // week voids a ticket bought yesterday. Then the free winner's loss panel against the gate.
+  const u = await W.user({ balance: 50_000 }); // R5: wins today, and is refunded today a ticket bought yesterday
+  const uHold = await W.user({ balance: 50_000 }); // R10b: the winner whose desk check cannot be read
+  await rg.setLimits(u, { dailyLossLimit: 3 * price });
+  const won = await W.buy(u, D.id, [W.WIN]);
+  const old = await W.buy(u, P.id, [W.LOSE]);
+  const holder = await W.buy(uHold, D.id, [W.WIN]);
+  if (old.ok) await backdateTicket(old.data.maswali.tickets[0].positionId, 25 * 3_600_000);
+  const panel0 = (await act.getRgUsage(u)).dailyLoss.used;
+  const gate0 = (await rg.getLimitUsage(u)).lossToday;
+  ok("R5.1 · on plain stakes the panel and the gate agree: one ticket today, the other moved to yesterday (control)",
+    won.ok && old.ok && holder.ok && panel0 === price && gate0 === price, `panel ${panel0} · gate ${gate0} · ${why(won)} · ${why(old)} · ${why(holder)}`);
+
+  const atD = await W.closeAndSeal(D, startD);
+  const clean = await W.settle.previewMaswaliSettlement(D.id, atD);
+  ok("R10b.4 · with every desk check readable, the preview holds no winner (control)", clean.ok && clean.preview.winners === 2 && clean.preview.held === 0,
+    clean.ok ? J({ winners: clean.preview.winners, held: clean.preview.held }) : clean.error);
+  const holdBefore = (await W.bal(uHold)).balance;
+  let rel: any;
+  try { blindDesk(uHold); rel = await W.release(D.id, atD); } finally { realDesk(); }
+  const share = rel?.ok ? rel.preview.arithmetic.share : 0;
+  const dTickets = (await dal.ticketStore.listForWeek(D.id)) as any[];
+  const hw = await W.bal(uHold);
+  ok("R10b.5 · ⛔ a winner whose desk check cannot be read is paid in full and HELD (fail closed), never paid free",
+    rel?.ok === true && rel.preview.held === 1 && share > 0 && hw.balance - holdBefore === share
+      && dTickets.find((t) => t.userId === uHold && t.won)?.frozenReason === "house desk account"
+      && hw.status === "FROZEN" && (hw.freezeReasons ?? []).includes("MILLIONEA_SHARE"),
+    rel?.ok ? J({ held: rel.preview.held, share, got: hw.balance - holdBefore, status: hw.status, reasons: hw.freezeReasons }) : rel?.error);
+  ok("R10b.6 · …and the winner whose check read cleanly is paid free", (await W.bal(u)).status === "ACTIVE"
+    && (dTickets.find((t) => t.userId === u && t.won)?.frozenReason ?? null) === null, J(await W.bal(u)));
+
+  const atP = await W.closeAndSeal(P, startP, Array.from({ length: 15 }, () => ({ void: "not_played" })));
+  const voided = await W.svc.voidWeek({ weekId: P.id, now: atP });
+  const panel = (await act.getRgUsage(u)).dailyLoss.used;
+  const gate = (await rg.getLimitUsage(u)).lossToday;
+  ok("R5.2 · ⭐ after a Millionea win and a refund today of a ticket bought yesterday, the panel's loss is the gate's: still the one ticket",
+    voided.ok && panel === gate && gate === price, `${voided.ok ? "voided" : voided.error} · panel ${panel} · gate ${gate}`);
+  const room = 3 * price - panel;
+  const inside = await rg.checkLossLimit(u, room);
+  const past = await rg.checkLossLimit(u, room + 1);
+  ok("R5.3 · ⭐ …so the panel's headroom is exactly what the gate admits: one shilling more is refused", inside.allowed && !past.allowed, J({ room, inside, past }));
+  const raw = await W.db.txn.sumGamblingNetSince(u, Date.now() - 86_400_000);
+  ok("R5.4 · …while the raw gambling net, which the panel read before, counts the win and the refund as money back", raw > 0, `${raw}`);
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

@@ -388,7 +388,10 @@ const FILE_FLOOR = 800;
 // dev-test seeder does — judged `fixture` (proven dev-only), read from §1's list before the pin moved.
 // 36 since 2026-10-06: the one-time-code sign-up was deleted, and with it `verifyOtpAndAuth`'s wallet create — the
 // second `registration` site; §1's list read before the pin moved (the password sign-up's create is the one left).
-const SITE_COUNT = 36;
+// 37 since 2026-10-17: `dev-test/seed-maswali/route.ts` (POST) creates the Millionea console drive's players ACTIVE, as
+// every dev-test seeder does (404 in production before its first await) — judged `fixture`; §1's list is read in the
+// verification run of this commit before the pin is believed.
+const SITE_COUNT = 37;
 ok(`1.1 the walk read every .ts/.tsx under src/`, files.length >= FILE_FLOOR, `${files.length} files (floor ${FILE_FLOOR})`);
 ok(`1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured`, all.length === SITE_COUNT,
   `${all.length} sites (pinned ${SITE_COUNT} — a changed count is a changed population: read §1's list, then move the pin)`);

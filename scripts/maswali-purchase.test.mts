@@ -9,13 +9,15 @@
  * imitate: the cap counted under a real advisory lock while 20 and 50 purchases race, the conditional ticket writes, and
  * the POOL ledger account. ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
  *
- * The floor is per store (7.6 reads the voided pool on Postgres only). It only ever rises.
+ * The floor is per store (7.6 reads the voided pool on Postgres only, and so do §8's R4b.4 and R7.7, which need a
+ * transaction to roll back). It only ever rises: +28 on both stores and +2 on Postgres with §8, the review's findings of
+ * 2026-10-17 (R4a, R4b, R5, R7, R10a, R10b).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-purchase",
   casesFile: "scripts/lib/maswali-purchase-child.mts",
-  minPass: { memory: 68, postgres: 69 },
+  minPass: { memory: 97, postgres: 100 },
   dbPrefix: "mlw_purchase",
 });

@@ -3,6 +3,7 @@
  * the real source, and names the assertion that must turn red, and in which memory child:
  *   · purchase — `test:maswali-purchase` (`scripts/lib/maswali-purchase-child.mts`)
  *   · settle   — `test:maswali-settle`   (`scripts/lib/maswali-settle-child.mts`)
+ *   · closerace — `test:maswali-close-race` (`scripts/lib/maswali-close-race-child.mts`; R2 of the review, 2026-10-17)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -117,6 +118,49 @@ export const MUTATIONS = [
     expect: "9.2 · ⭐ its 10,000 went to the DRIVE jackpot",
     suite: "settle",
   },
+  /* ── The adversarial review's findings of 2026-10-17 (the R-plants, as R2's). R4a and R4b are Postgres-only (a read
+     outside the joined transaction), so no memory child can show them red; their cases run in the Postgres half of
+     `test:maswali-purchase` (§8). ── */
+  {
+    name: "(R10a) the ticket arm does not ask the rollout itself: a caller past purchaseMaswaliTickets sells at WITHDRAWN",
+    file: MONEY,
+    from: `  if (!rolloutSells(rollout, week.visibility)) {`,
+    to: `  if (false) {`,
+    expect: "R10a.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R10b-buy) the desk check fails open at the purchase again: an unreadable lookup buys the ticket",
+    file: MONEY,
+    from: `    return refuse("We're busy right now — your stake hasn't moved. Try again in a moment.", { code: "BUSY", reason: "system_busy", retryAfterSec: 1 });`,
+    to: `    desk = null;`,
+    expect: "R10b.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R10b-hold) the desk check fails open at the settlement again: an unreadable lookup pays the share free",
+    file: SETTLE,
+    from: `    return "unreadable" as const;`,
+    to: `    return null;`,
+    expect: "R10b.5 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R7) a guarantee reference books twice (the booked-reference check answers new for every reference)",
+    file: MONEY,
+    from: `  if (seen.at === null) return null;`,
+    to: `  return null;`,
+    expect: "R7.1 · ⛔",
+    suite: "purchase",
+  },
+  {
+    name: "(R5) the activity page's loss panel sums the raw gambling net again (a win and an old ticket's refund add headroom)",
+    file: "src/lib/server/activity-summary.ts",
+    from: `    lossLimitNetSince(userId, now - DAY_MS),`,
+    to: `    db.txn.sumGamblingNetSince(userId, now - DAY_MS),`,
+    expect: "R5.2 · ⭐",
+    suite: "purchase",
+  },
   {
     name: "(13) a Millionea win offsets the 24-hour loss limit (OD-17)",
     file: "src/lib/server/responsible-gambling.ts",
@@ -124,5 +168,13 @@ export const MUTATIONS = [
     to: "  return net + excluded - excluded;",
     expect: "8.2 · ⭐ the loss today",
     suite: "settle",
+  },
+  {
+    name: "(R2) the close does not wait for a purchase in flight (no market lock inside the chain lock)",
+    file: SVC,
+    from: "    return week.marketId ? withLock(`market:${week.marketId}`, seal) : seal();",
+    to: "    return seal();",
+    expect: "1.2 · ⭐ the close WAITED",
+    suite: "closerace",
   },
 ];

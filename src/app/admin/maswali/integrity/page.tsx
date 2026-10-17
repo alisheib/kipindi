@@ -6,8 +6,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
+import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
@@ -28,15 +31,21 @@ export const dynamic = "force-dynamic";
  *   · the SEAL LOG, shown only for weeks whose results can no longer change (MB-34: the counterfactual is read after
  *     the fact, never while an officer could still be steered).
  */
-export default async function AdminMaswaliIntegrityPage() {
-  return <AdminPageGate title="Millionea · Integrity"><Content /></AdminPageGate>;
+type IntegrityPageProps = { searchParams: Promise<{ wpage?: string; spage?: string }> };
+
+export default async function AdminMaswaliIntegrityPage(props: IntegrityPageProps) {
+  return <AdminPageGate title="Millionea · Integrity"><Content {...props} /></AdminPageGate>;
 }
 
-async function Content() {
+async function Content({ searchParams }: IntegrityPageProps) {
+  const sp = await searchParams;
   const session = await currentSession();
+  // ⛔ D19/259, guard 0.434: this page renders records read from the audit log (the new-device seals), so it decides its
+  // audience on the STORED role before it reads anything; the section gate above decides what is painted, not what is sent.
+  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/maswali/integrity"))) return null;
   const role = session?.role;
   const [v, standing, can] = await Promise.all([
-    integrityView().catch(() => null),
+    integrityView(new Date(), { winners: Number(sp.wpage ?? "1"), sealWeeks: Number(sp.spage ?? "1") }).catch(() => null),
     consoleStanding().catch(() => null),
     Promise.all([
       canUseControl(role, "pauseMaswaliSales"), canUseControl(role, "resumeMaswaliSales"), canUseControl(role, "voidMaswaliWeek"),
@@ -100,7 +109,7 @@ async function Content() {
                       {c.groups.map((g, j) => (
                         <li key={j}>
                           <span className={g.basis === "records" ? "text-warning" : "text-text-secondary"}>{g.detail}</span>
-                          <span className="block text-caption text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
+                          <span className="block text-body-sm text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
                         </li>
                       ))}
                     </ul>
@@ -116,7 +125,7 @@ async function Content() {
             <ul className="space-y-2">
               {v.voidable.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 flex-wrap">
-                  <span className="tabular">{w.code}</span><span className="text-caption text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
+                  <span className="tabular">{w.code}</span><span className="text-body-sm text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
                   {canVoid ? <VoidWeekControl weekId={w.id} code={w.code} /> : <ControlLocked what="Void the week" need={CONTROL_DOMAIN.voidMaswaliWeek} />}
                 </li>
               ))}
@@ -127,7 +136,7 @@ async function Content() {
         <AdminCard title="Held shares" sw="Zawadi zilizozuiliwa" padding="p-0">
           {v.held.length === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." /> : (
             <ScrollX label="Millionea held shares">
-              <table className="table min-w-[900px]">
+              <table className="admin-tbl min-w-[900px]">
                 <thead><tr><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-right">Share</th><th className="text-left">Why</th><th className="text-left">Decision</th></tr></thead>
                 <tbody>
                   {v.held.map((h) => (
@@ -148,7 +157,7 @@ async function Content() {
         <AdminCard title="Winners" sw="Washindi" padding="p-0">
           {v.winners.length === 0 ? <EmptyState title="No winner yet" body="Every paid ticket appears here with its account, to screen." /> : (
             <ScrollX label="Millionea winners">
-              <table className="table min-w-[960px]">
+              <table className="admin-tbl min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Ticket</th><th className="text-left">Holder</th><th className="text-left">Role · status</th><th className="text-right">Account age</th><th className="text-right">Share</th><th className="text-left">Screening</th></tr></thead>
                 <tbody>
                   {v.winners.map((w) => (
@@ -156,7 +165,7 @@ async function Content() {
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
                       <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{formatTzs(w.payout)}</td>
-                      <td className="text-left">{w.frozenReason ? <span className="text-caption">{w.frozenReason}</span>
+                      <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{w.frozenReason}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
                         : <ControlLocked what="Hold the share" need={CONTROL_DOMAIN.holdMaswaliShare} />}</td>
                     </tr>
@@ -165,18 +174,24 @@ async function Content() {
               </table>
             </ScrollX>
           )}
+          {v.winnersPage.total > CONSOLE_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={v.winnersPage.page} total={v.winnersPage.total} perPage={CONSOLE_PER_PAGE}
+                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "wpage")} param="wpage" />
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Seal log" sw="Kumbukumbu ya muhuri" padding="p-0">
           {v.sealLog.length === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." /> : (
             <ScrollX label="Millionea seal log">
-              <table className="table min-w-[960px]">
+              <table className="admin-tbl min-w-[960px]">
                 <thead><tr><th className="text-left">Week</th><th className="text-left">Slot</th><th className="text-left">Result</th><th className="text-left">Sealed by</th><th className="text-left">At (EAT)</th><th className="text-left">Second officer</th><th className="text-left">Evidence</th></tr></thead>
                 <tbody>
                   {v.sealLog.map((s, i) => (
                     <tr key={i}>
                       <td className="text-left tabular">{s.weekCode}</td><td className="text-left tabular">{slotLabel(s.slot)}</td>
-                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
+                      <td className="text-left">{s.outcome}{s.voidReason ? ` · ${isMaswaliVoidReason(s.voidReason) ? MASWALI_VOID_REASON_LABEL[s.voidReason] : s.voidReason}` : ""}</td><td className="text-left">{s.sealedBy ?? "—"}</td>
                       <td className="text-left tabular">{fmtEat(s.sealedAt)}</td><td className="text-left">{s.stage2By ?? "—"}</td>
                       <td className="text-left max-w-[320px]">{s.evidence ?? "—"}</td>
                     </tr>
@@ -184,6 +199,12 @@ async function Content() {
                 </tbody>
               </table>
             </ScrollX>
+          )}
+          {v.sealWeeks.total > SEAL_WEEKS_PER_PAGE && (
+            <div className="border-t border-border-subtle px-4 py-2">
+              <AdminPagination page={v.sealWeeks.page} total={v.sealWeeks.total} perPage={SEAL_WEEKS_PER_PAGE}
+                baseHref={buildBaseHref("/admin/maswali/integrity", { wpage: sp.wpage, spage: sp.spage }, "spage")} param="spage" />
+            </div>
           )}
         </AdminCard>
       </AdminBody>
