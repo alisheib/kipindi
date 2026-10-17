@@ -129,7 +129,7 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
     <li
       id={`q-${labelOf(q)}`}
       className={cn(
-        "grid scroll-mt-24 grid-cols-[28px_1fr] items-start gap-x-2 gap-y-1.5 border-t border-border py-3 md:grid-cols-[28px_1fr_248px] xl:grid-cols-[28px_1fr_240px]",
+        "grid scroll-mt-[96px] grid-cols-[28px_1fr] items-start gap-x-2 gap-y-1.5 border-t border-border py-3 md:grid-cols-[28px_1fr_248px] xl:grid-cols-[28px_1fr_240px]",
         reserve && "border-x px-3",
       )}
       style={reserve ? { background: "var(--wash-inset)" } : undefined}
