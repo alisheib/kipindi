@@ -78,17 +78,31 @@ Until the whole gate is green, S1–S4 stay 🔨.
 - **Where.** Branch `maswali-s4` (`C:\kipindi-maswali-s4`) holds everything: S1–S4 3a as on `main`, S4 3b `cefffc39`
   and 3c `2e4994b0`, D3 `2b6bf5bf`, and `main` merged in (the phosphor lane's W1 included). The release gate runs on
   `maswali-build` (`C:\kipindi-maswali`), fast-forwarded to it.
-- **The release gate, at `a5e0c447`** (`main` + 3b/3c + D3; each step its own turn on the heavy-job lock):
-  - `tsc` ✅;
-  - `e2e:money` 64/0, `e2e:fault` 34/0, `e2e:card` 100/0 ✅: the platform's money on Postgres, with Millionea's edits
-    to the bet path;
-  - `test:all` chunk 1, 185/189. Three red guards were debts S3/S4 owed, each fixed in the commit after the gate's tree
-    (`test:bet-sheet` 2.census: a placeholder refusal removed; `test:failure-reasons` 8c.loss-limit: Millionea's purchase
-    named as the second caller that says why; `test:eyebrow-roles`: the builder's caption read). The fourth,
-    `test:admin-section-gate`, drives a server and runs in the render check;
-  - still to run: `test:all` chunks 2–3, the Postgres suites, `next build`, then the render check (`next dev`:
-    `qa:live`, the five server suites, `qa:maswali-admin-shots` and the console drive), the red twins and
-    `e2e:maswali-fault`.
+- **The release gate, at `a5e0c447`** (`main` + 3b/3c + D3; each step its own turn on the heavy-job lock), DONE
+  2026-10-17 16:40 UTC:
+  - `tsc` ✅; `next build` ✅; the migration probe 13/0 and `verify:backup-schema` ✅;
+  - `e2e:money` 64/0, `e2e:fault` 34/0, `e2e:card` 100/0 ✅ — the platform's money on Postgres, with Millionea's
+    edits to the bet path;
+  - the Postgres suites: `test:maswali-shared-paths`, `-integrity` and `-engine` ✅. `test:maswali-purchase` is
+    68/68 on memory and 68/69 on Postgres: the receipt's balance is the pre-purchase one, which is R4a below, now
+    measured. `test:maswali-settle` is 62/62 on memory and 56/63 on Postgres: the release returns the week as it was
+    BEFORE its own commit (R4c's class, wider than the review saw). The money itself is right on Postgres — the
+    jackpot, POOL, tickets, positions and guarantee all read correctly fresh;
+  - `test:all` 580/607 over three chunks; the 27 reds are three kinds:
+    - 20 guard debts S1–S4 owed, every one a static guard and none a defect a player or an officer could reach. 19
+      are fixed, each the way its guard asks: `cac6daa2` (3), `96e7ca85` (5), `ee248d6d` (7) and `86eacd88` (4). The
+      settlement lane takes the twentieth (`test:results-freshness` C.4: a market write handed a foreign transaction);
+    - 2 are R4a and R4c, measured on Postgres (above);
+    - 5 drive a server (`admin-section-gate`, `motion`, `needle-rest`, `responsive`, `revoked-deadend`) and run in the
+      render check.
+  - ⭐ What reading those guards found that no guard names: every console read model capped its weeks silently (the
+    list at 60, the pools at 80, the integrity page at 40, the sunset candidates at 12), so an old week, an old held
+    share or old history would have vanished from the console. Fixed in `86eacd88`: everything is read and counted, the
+    growing tables page (`AdminPagination`), and held shares are listed whole. The seal views showed a void's ground
+    as its stored code; they read its label.
+  - Next: the verification batch over all of it (`tsc`, every fixed guard, both stores), then the render check
+    (`next dev`: `qa:live`, the five server suites, `qa:maswali-admin-shots`, and `qa:maswali-admin-drive` — S4's
+    acceptance drive, written in lane `mln-s4-drive`, merged in `d820222f`).
 - **The adversarial review of S3** (an independent reviewer, 2026-10-17, on code already on `main` and dark). Each
   finding is confirmed or refuted against the code before its fix, and each fix carries a case that fails on the old code:
 
@@ -113,7 +127,8 @@ Until the whole gate is green, S1–S4 stay 🔨.
   heavy run goes through the one lock. Branches off `a2e8a7c8`: `mln-fix-a`, `mln-fix-b` and `mln-void` (the review),
   `mln-s4-drive` (S4's acceptance drive), `mln-s5-ui` (S5's components, props, motion and strings) and `mln-s5-srv`
   (S5's read models, actions, gate and exclusions). Each merges into `maswali-s4` only after its own suites, `tsc`, and
-  an adversarial read of its diff.
+  an adversarial read of its diff. `mln-s4-drive` is done (`c0f01650`, merged in `d820222f`): the drive, and two more
+  seeded weeks (one closed and unsealed, one that voids whole).
 - **What has run.** S1/S2's first battery (`6031d199`) found four defects, each fixed in `ec57887b` and re-checked:
   the open never seeded the trusted sources (every open refused on both stores), and three guards quoted lines S1
   changed (`chain-purge`'s NEVER docblock, `red:fee-model-caption`, two house-book anchors). S3's two money suites are
