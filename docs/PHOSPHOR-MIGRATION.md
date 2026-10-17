@@ -27,10 +27,12 @@ finished wave live itself, approving each push (2026-10-17: *"plesa you push liv
 needed with th erigh tcolaboration with any sesison"*). `main` kept moving under it — the Maswali lane's S0.5, its icon
 rulings (docs), then its S1–S4 — so the branch is rebased at each move (two `package.json` conflicts, the script pairs
 kept side by side) and the push checklist re-run on the exact commit: green at `681a6b81` (typecheck 0, `next build` 0,
-local `qa:live` 376/376), then rebased onto main `0d27a830` (S1–S4, served code): W0's tick cites `ddbac8e5`, W1 is
-`c7125947`; W1's guards are green on that tree (no Maswali file draws an inline icon).
+local `qa:live` 376/376), then rebased onto main `0d27a830` (S1–S4, served code), where the checklist failed on main's
+own code — `0d27a830` did not typecheck (`ScrollX` without its `label` in the new Millionea console; Railway's build
+refused it, so production stayed on `ce752dc4`). The Maswali lane fixed it (`43523844`); the branch is rebased onto that:
+W0's tick cites `d7a1b697`, W1 is `cf3202ab`; W1's guards are green on it (no Maswali file draws an inline icon).
 
-**Next:** the push checklist at this branch's tip on main `0d27a830` (typecheck, `next build`, local `qa:live`), the
+**Next:** the push checklist at this branch's tip on main `43523844` (typecheck, `next build`, local `qa:live`), the
 push (a fast-forward; Ali approves it), the production read-back (`?dpl=` on www, apex and the Railway host;
 `/api/health`; `qa:chunks-prod` on both origins; production `qa:live`), then tick W1 ✅. Meanwhile W2 is being built on
 branch `phosphor-w2` (worktree `C:\kipindi-phosphor-w2`).
@@ -59,7 +61,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | ✅ | ddbac8e5 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
+| W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | 🔨 | built on the branch; the derived suites and the release proof are queued |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
