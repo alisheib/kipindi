@@ -502,7 +502,8 @@ const EXPECTED: Record<string, Expect> = {
   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
   // MASWALI-BUILD S5 (decided with the pages, as 1.census asks): Millionea takes no tab (§M8a item 11, D-15) — its tickets
   // light Tiketi zangu, every other Millionea page Maswali, the tab whose home carries its card.
-  "/millionea": Q, "/millionea/slip": Q, "/millionea/tickets": T, "/millionea/tickets/[serial]": T,
+  "/millionea": Q, "/millionea/slip": Q, "/millionea/how": Q, "/millionea/register": Q, "/millionea/register/[week]": Q,
+  "/millionea/tickets": T, "/millionea/tickets/[serial]": T,
   // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
   // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
   // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.

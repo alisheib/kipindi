@@ -50,21 +50,25 @@ export function MillioneaPreviewMark({ t }: { t: Dict }) {
   );
 }
 
-/** The two doors a reading page ends on: How to play and the week's register (§10 §3.3 item 7). */
-export function MillioneaReadingLinks({ t, register = MILLIONEA_HREF.register, how = true }: { t: Dict; register?: string; how?: boolean }) {
+/**
+ * The doors a reading page ends on (§10 §3.3 item 7): How to play and the week's register by default, and the hub where a
+ * page is reached from it. Each page leaves out the door to itself.
+ */
+export function MillioneaReadingLinks({ t, how = true, register = true, hub = false }: { t: Dict; how?: boolean; register?: boolean; hub?: boolean }) {
   const link = "inline-flex items-center gap-1 text-body-sm text-text-link hover:text-text-linkHover";
+  const doors: Array<{ href: string; label: string }> = [
+    ...(hub ? [{ href: MILLIONEA_HREF.hub, label: t.millionea.productTitle }] : []),
+    ...(how ? [{ href: MILLIONEA_HREF.how, label: t.millionea.howToPlay }] : []),
+    ...(register ? [{ href: MILLIONEA_HREF.register, label: t.millionea.register }] : []),
+  ];
   return (
     <nav aria-label={t.millionea.productTitle} className="flex flex-wrap gap-x-5 gap-y-1">
-      {how && (
-        <Link href={MILLIONEA_HREF.how as never} className={link} style={{ minHeight: "var(--h-control-md)" }}>
-          {t.millionea.howToPlay}
+      {doors.map((d) => (
+        <Link key={d.href} href={d.href as never} className={link} style={{ minHeight: "var(--h-control-md)" }}>
+          {d.label}
           <I.chevronRight s={14} edge="end" />
         </Link>
-      )}
-      <Link href={register as never} className={link} style={{ minHeight: "var(--h-control-md)" }}>
-        {t.millionea.register}
-        <I.chevronRight s={14} edge="end" />
-      </Link>
+      ))}
     </nav>
   );
 }
