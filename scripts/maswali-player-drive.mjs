@@ -6,7 +6,7 @@
  *
  * ⚠️ PREMISE — a FRESH in-memory `next dev` (`rm -rf .next` first; no DATABASE_URL), started with
  *    FEATURE_MILLIONEA=ACTIVE (the seed sells, and the ticket arm reads the real rollout), DISABLE_ADMIN_TOTP=true (the
- *    Owner's switch and the staff preview pass), and the journey previewable (FEATURE_SIMPLE_JOURNEY=STAFF_PREVIEW or
+ *    Owner's switch and the staff preview pass), and the journey previewable (FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW or
  *    ACTIVE, for Tiketi zangu's third kind). It refuses, exit 2, when any of that is absent — never a half-run.
  *
  *   1 · the Owner seeds a week in every state (`/api/dev-test/seed-maswali`, the S4 seed);
