@@ -380,9 +380,11 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
   §10c, main `d12ab9d7`):** it reuses `checkCircle`, `xCircle`, `coins`, `hourglassHalf`, `rotateCcw`, `eye`, `lock` and
   `sealCheck`, and adds 13 keys through `map.ts` and `glyphs:gen` at its S5 — `millionea` diamond, `markPending`
   circle-dashed, `reserve` lifebuoy, `standIn` arrow-bend-down-right, `carry` arrow-bend-double-up-right, `floor` vault,
-  `register` notebook, `fairness` fingerprint, `refund` arrow-u-down-left, `salesPaused` pause-circle, `howTo`
-  book-open-text, `cap` stack, `finalWeek` flag-checkered — each re-checked free in 2.1.1's four weights. One point sent
-  back: its `fairness` must not become a second sign for the platform's /fairness (the hub draws `attestation` there).
+  `register` notebook, `commitment` fingerprint, `refund` arrow-u-down-left, `salesPaused` pause-circle, `howTo`
+  book-open-text, `cap` stack, `finalWeek` flag-checkered — each re-checked free in 2.1.1's four weights. Its draft key
+  `fairness` was renamed `commitment` (main `ce752dc4`): it marks Millionea's own ticket proof (each ticket fixed at the
+  week's close as a salted commitment and a Merkle root, MR-13), not the platform's resolution proof — /fairness keeps
+  `attestation` (its hub row) and `shieldcheck` (its page head).
 - **Vodacom** (S14–S16 open): classic-shell changes reach `main` as named parity entries, so its branches inherit them on
   rebase. A wave touching home or cards checks `git log` and the worktrees first and goes after that lane's merge.
 - **Parallel sessions:** own worktree; heavy Node only through the machine's lock; stage by name; never `git add -A`.
