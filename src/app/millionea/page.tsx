@@ -33,7 +33,9 @@ import { MaswaliClosingPill } from "@/components/maswali/maswali-slip";
 import { counted, eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHub, millioneaMyTicketsWeek, type MillioneaHub, type MillioneaHubWeek, type MillioneaNotice, type MillioneaTicketsWeek } from "@/lib/server/maswali-player";
-import { millioneaBreakOf, millioneaDoor } from "@/lib/server/millionea-doors";
+import { millioneaBreakOf, millioneaDoor, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
+import { nextWeekOpen } from "@/components/maswali/maswali-card-model";
+import { eatIsoWeek } from "@/lib/eat-day";
 import { getServerT } from "@/lib/i18n-server";
 import { breakSentence } from "@/lib/break-end";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
@@ -45,7 +47,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, gradableOf, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
+import { bySlot, gradableOf, lineOf, msOf, ordinalOf, phaseNow, phasesOf, resultDoorSerial, resultLine, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -200,16 +202,16 @@ function MineBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
   );
 }
 
-/** The buy block (§10 §3.3 item 4): the door, the printed close, the pill in the last hour, the reader's tickets. */
-function BuyBlock({ t, w, signedIn, nowMs, breakBody }: {
-  t: Dict; w: MillioneaHubWeek; signedIn: boolean; nowMs: number;
+/** The buy block (§10 §3.3 item 4): the door, the printed close, the pill in the last hour, the reader's tickets.
+ *  `nextOpen` is when the next week opens on the template (`nextWeekOpen`) — null in a final week or while Millionea ends,
+ *  and the cap line then promises no next week (the S5 review of 24ec0d33, MEDIUM 5). */
+function BuyBlock({ t, w, signedIn, nowMs, nextOpen, breakBody }: {
+  t: Dict; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
   breakBody: { text: string; keep: readonly string[] } | null;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
   const open = w.state === "OPEN" && closesMs > nowMs;
   const atCap = !!w.mine && w.mine.held >= w.mine.cap;
-  const next = nextWeekNumber(w.opensAt);
-  const nextOpen = msOf(w.opensAt);
   let door: React.ReactNode = null;
   if (breakBody) {
     // The live break notice stands where the buy block stood (the delivery's open question 12): no buying door on a break.
@@ -219,7 +221,9 @@ function BuyBlock({ t, w, signedIn, nowMs, breakBody }: {
   } else if (w.selling && atCap) {
     door = (
       <Callout tone="info" role="status">
-        {fill(t.millionea.capReachedNote, { cap: w.ticketCap, week: next, day: nextOpen === null ? "—" : eatWeekday(t, nextOpen + 7 * 86_400_000) })}
+        {nextOpen === null
+          ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })
+          : fill(t.millionea.capReachedNote, { cap: w.ticketCap, week: eatIsoWeek(nextOpen).week, day: eatWeekday(t, nextOpen) })}
       </Callout>
     );
   } else if (w.selling) {
@@ -308,7 +312,7 @@ export default async function MillioneaHubPage() {
                   carryPlay={rolloverUnseen}
                 />
               ) : null}
-              <BuyBlock t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} breakBody={breakBody} />
+              <BuyBlock t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)} breakBody={breakBody} />
               {hub.grading && <GradingBlock t={t} w={hub.grading} />}
             </aside>
             <div className="xl:col-start-1">

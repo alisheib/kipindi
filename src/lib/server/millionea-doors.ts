@@ -25,6 +25,7 @@ import { isLockedOut } from "./responsible-gambling";
 import { breakStateOf, type BreakState } from "@/lib/break-end";
 import { millioneaTicketAdmission } from "./millionea-gate";
 import type { RolloutState } from "@/lib/millionea-rollout";
+import type { OpenTemplate } from "@/components/maswali/maswali-card-model";
 
 /** Who is asking, as the doors need it. */
 export type MillioneaDoor = {
@@ -68,6 +69,17 @@ export function configuredFeeRate(): number | null {
   try {
     const rate = getMaswaliConfig().jackpotFeeRate;
     return Number.isFinite(rate) ? rate : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The published template's opening — its weekday and EAT time (`maswali-config.ts`), what `nextWeekOpen` steps from; null
+ *  if the config cannot be read (then no next week is promised). Never throws. */
+export function millioneaOpenTemplate(): OpenTemplate | null {
+  try {
+    const cfg = getMaswaliConfig();
+    return { weekday: cfg.openWeekday, clock: cfg.openAt };
   } catch {
     return null;
   }

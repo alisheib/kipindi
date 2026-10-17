@@ -13,8 +13,8 @@
  */
 import type { ReactElement } from "react";
 import { MaswaliHomeCard } from "@/components/maswali/maswali-home-card";
-import { homeCardOf } from "@/components/maswali/maswali-card-model";
-import { configuredFeeRate, millioneaBreakOf, millioneaDoor, millioneaHubNow } from "@/lib/server/millionea-doors";
+import { homeCardOf, nextWeekOpen } from "@/components/maswali/maswali-card-model";
+import { configuredFeeRate, millioneaBreakOf, millioneaDoor, millioneaHubNow, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
 import type { Dict } from "@/lib/i18n-dict";
 
 export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?: boolean; className?: string } = {}): Promise<ReactElement | null> {
@@ -24,11 +24,12 @@ export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?
   if (onBreak) return null;
   const hub = await millioneaHubNow(door.userId, door.state);
   if (!hub) return null;
-  const model = homeCardOf(t, hub, configuredFeeRate(), nowMs);
+  const model = homeCardOf(t, hub, configuredFeeRate(), nowMs, nextWeekOpen(hub, millioneaOpenTemplate(), nowMs));
   if (!model) return null;
   return (
     <div data-testid="millionea-home-card" className={opts.className}>
-      <MaswaliHomeCard t={t} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek} />
+      <MaswaliHomeCard t={t} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek}
+        atLeast={model.atLeast} pendingWeek={model.pendingWeek} />
     </div>
   );
 }

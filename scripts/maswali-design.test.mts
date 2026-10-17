@@ -13,13 +13,16 @@
  *        M4 every Millionea key is a family key, `void` is Phosphor's `prohibit`; the ticket card's link has a visible name
  *        M5 each question's answers are one radio group; M6 polite regions mounted from the first render
  *        M7 the home card has a voiding and a voided state; L8 L10 L11 L12 L13
+ *      and the review of 24ec0d33 (R4): no next week promised in a final week, its day the template's; a pending carry
+ *      "at least" on the card
  *      and round 3's shares (R3): a forfeited share is its own state on every surface that says a ticket's state, and a
  *      result line says paid, held and forfeited shares as they are
  *   §3 its own controls: each source check is seen to fail on a planted copy
  *
- * ⏳ §2 M4's family check (every MILLIONEA_GLYPHS key drawn by `I`, and `I.void` no longer the legacy circled X) STAYS RED
- *    until the Phosphor lane's W2 swap lands — by the lead's ruling this suite is NOT in predeploy, and the staff preview
- *    waits on W2.
+ * ⏳ §2 M4's family checks STAY RED until the Phosphor lane's W2 swap is merged in (W2 is on main at 732efbc5, and maswali-s4
+ *    carries it): every MILLIONEA_GLYPHS key on `I`, each drawn from MASWALI-PLAN §10c's Phosphor pick — the map names it
+ *    and the generated registry draws it — and `I.void` the registry's `prohibit`. They test the drawing itself, so a
+ *    legacy literal gone is not enough to pass them. By the lead's ruling this suite is NOT in predeploy.
  * Pure: it reads source files and runs the pure builders. No server, no database, no network, no file written.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -30,9 +33,10 @@ import { fill, formatTzs } from "../src/lib/utils.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
 import { sealLineOf } from "../src/components/maswali/maswali-seal-line.tsx";
 import { poolLedgerRows, poolRule, type PoolView } from "../src/components/maswali/maswali-pool-figure.tsx";
-import { homeCardOf } from "../src/components/maswali/maswali-card-model.ts";
+import { homeCardOf, nextWeekOpen } from "../src/components/maswali/maswali-card-model.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
-import { counted } from "../src/components/maswali/maswali-format.ts";
+import { counted, eatWeekday } from "../src/components/maswali/maswali-format.ts";
+import { eatIsoWeek } from "../src/lib/eat-day.ts";
 import { resultDoorSerial, resultLine } from "../src/app/millionea/millionea-view.ts";
 import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
 import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
@@ -193,13 +197,35 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
 // M4 · the family, and a link with a name
 {
   const family = I as unknown as Record<string, unknown>;
+  // MASWALI-PLAN §10c's picks: each key Millionea adds, and the platform's void, with the Phosphor drawing the plan names.
+  const PICKS: Record<string, string> = {
+    millionea: "diamond", markPending: "circle-dashed", reserve: "lifebuoy", standIn: "arrow-bend-down-right",
+    carry: "arrow-bend-double-up-right", floor: "vault", register: "notebook", commitment: "fingerprint",
+    refund: "arrow-u-down-left", salesPaused: "pause-circle", howTo: "book-open-text", cap: "stack", finalWeek: "flag-checkered",
+    void: "prohibit",
+  };
+  // The drawings the codegen made from the map (`npm run glyphs:gen`; test:glyph-sync holds the two equal) — absent before W1.
+  const REGISTRY_FILE = "src/components/ui/glyph-registry.generated.ts";
+  const registry: Record<string, { s?: string }> | null = existsSync(join(ROOT, REGISTRY_FILE))
+    ? ((await import(`../${REGISTRY_FILE}`)) as { GLYPH_REGISTRY: Record<string, { s?: string }> }).GLYPH_REGISTRY : null;
   const missing = MILLIONEA_GLYPHS.filter((k) => typeof family[k] !== "function");
-  ok(`2.M4a · ⏳ every Millionea key is drawn by the family I (red until the Phosphor W2 swap lands): missing ${missing.length} of ${MILLIONEA_GLYPHS.length}`,
-    missing.length === 0, missing.join(", "));
+  const unpicked = MILLIONEA_GLYPHS.filter((k) => !(k in PICKS));
+  const mapWrong = Object.entries(PICKS).filter(([k, ph]) => (GLYPH_MAP[k] as { ph?: string } | undefined)?.ph !== ph).map(([k]) => k);
+  const drawnWrong = registry === null ? ["(no generated registry)"]
+    : Object.entries(PICKS).filter(([k, ph]) => registry[k]?.s !== `p-${ph}`).map(([k]) => `${k}: ${registry[k]?.s ?? "absent"}`);
+  ok(`2.M4a · ⏳ every Millionea key is on the family I, drawn from §10c's Phosphor pick — the map names it and the generated registry draws it (red until W2 is merged in): ${missing.length} of ${MILLIONEA_GLYPHS.length} missing from I`,
+    missing.length === 0 && unpicked.length === 0 && mapWrong.length === 0 && drawnWrong.length === 0,
+    j({ missing, unpicked, mapWrong, drawnWrong }));
   const voidEntry = GLYPH_MAP.void as { ph?: string } | undefined;
   ok("2.M4b · `void` is Phosphor's `prohibit` in the map (§10c: one meaning, one glyph)", voidEntry?.ph === "prohibit", j(voidEntry));
+  const glyphs = code(read("src/components/ui/glyphs.tsx"));
   const legacyVoid = read("src/components/ui/glyphs.tsx").includes('void: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.5" /><path d="M9 9l6 6M15 9l-6 6" /></G>,');
-  ok("2.M4c · ⏳ `I.void` is no longer the legacy circled X that reads as xCircle — a miss (red until W2)", !legacyVoid);
+  // The family drawn from the registry: glyphs.tsx reads it, and every key it draws is on I.
+  const fromRegistry = /import \{[^}]*\bGLYPH_REGISTRY\b[^}]*\} from "\.\/glyph-registry\.generated"/.test(glyphs)
+    && registry !== null && Object.keys(registry).every((k) => typeof family[k] === "function");
+  ok("2.M4c · ⏳ `I.void` is the registry's `prohibit` — the family is drawn from the generated registry (W2), the legacy circled X gone (red until W2 is merged in)",
+    typeof family.void === "function" && registry?.void?.s === "p-prohibit" && fromRegistry && !legacyVoid,
+    j({ registryVoid: registry?.void?.s ?? null, fromRegistry, legacyVoid }));
   const ticket = squash(code(read(TICKET)));
   ok("2.M4d · the ticket card's one link carries a visible name in words, its accessible name starting with it",
     ticket.includes("aria-label={`${t.millionea.viewTicket} · ${serial}`}") && /<MaswaliSealLine line=\{line\} size=\{18\} annex="below" inert=\{shown === "cancelled"\} \/> <span[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
@@ -369,11 +395,65 @@ const heldGuardDefects = (hubSrc: string) => {
     LOCALES.every((l) => dict[l].millionea.resultForfeitedOne !== dict[l].millionea.resultWon && dict[l].millionea.resultForfeited !== dict[l].millionea.resultWonMany));
 }
 
+// R4 · the review of 24ec0d33, MEDIUM 5 and 6: no next week promised when none can follow, its day the template's; and a
+// pending carry said as "at least" on the card, as the hub's pool block says it
+{
+  const NOW = Date.parse("2026-10-17T09:00:00.000Z"); // a Saturday, 12:00 EAT
+  const MONDAY = { weekday: 1, clock: "00:00" };
+  const NEXT_MONDAY = Date.parse("2026-10-18T21:00:00.000Z"); // Monday 19 October, 00:00 EAT
+  const sellingWeek = (o: Record<string, unknown> = {}) => ({
+    id: "w42", code: "2026-W42", visibility: "PUBLIC", state: "OPEN", isFinal: false,
+    // ⚠️ opened LATE, on Tuesday 09:00 EAT: a typed seven days from here is a Tuesday, the template's next open a Monday.
+    opensAt: "2026-10-13T06:00:00.000Z", closesAt: "2026-10-18T15:00:00.000Z", closedAt: null, firstEventAt: null,
+    ticketPrice: 1_000, ticketCap: 10, selling: true, pool: { jackpot: 1_000_000, feeRate: 0.13, atLeast: false, carryPendingCode: null },
+    questions: [], resultsOut: 0, voidedMains: 0, voidedReserves: 0, nextResultAt: null,
+    mine: { held: 10, cap: 10, tickets: [] }, ...o,
+  });
+  const hubOf = (w: unknown, life = "LIVE") => ({ line: "PUBLIC", week: w, grading: null, lastWeek: null, paused: false, life, nextOpensAt: null, notices: [], asOf: "2026-10-17T09:00:00.000Z" });
+  const live = hubOf(sellingWeek());
+  const next = nextWeekOpen(live as never, MONDAY, NOW);
+  // The line as 24ec0d33 wrote it: the week's own open, plus seven typed days.
+  const typed = Date.parse(sellingWeek().opensAt as string) + 7 * 86_400_000;
+  ok("2.R4a · the next week opens on the TEMPLATE's next open, through the EAT calendar's helpers — a late-opened week's next is still the template's Monday, never its own Tuesday plus seven days",
+    next === NEXT_MONDAY && eatWeekday(en, typed) !== eatWeekday(en, NEXT_MONDAY), j({ next: next === null ? null : new Date(next).toISOString(), typed: new Date(typed).toISOString() }));
+  const none = [
+    nextWeekOpen(hubOf(sellingWeek({ isFinal: true })) as never, MONDAY, NOW),
+    nextWeekOpen(hubOf(sellingWeek(), "ENDING") as never, MONDAY, NOW),
+    nextWeekOpen(hubOf(sellingWeek(), "RETIRED") as never, MONDAY, NOW),
+    nextWeekOpen(live as never, null, NOW),
+  ];
+  ok("2.R4b · no next week when none can follow: the final week shown, a final week running (ENDING), Millionea ended (RETIRED) — and none on an unreadable template; CONTROL: a live week has one",
+    none.every((x) => x === null) && next !== null, j(none));
+  const atCap = homeCardOf(en, live as never, 0.13, NOW, next);
+  const finalAtCap = homeCardOf(en, hubOf(sellingWeek({ isFinal: true })) as never, 0.13, NOW, nextWeekOpen(hubOf(sellingWeek({ isFinal: true })) as never, MONDAY, NOW));
+  const capOf = (m: typeof atCap) => (m?.state.kind === "open" ? m.state.capFull : undefined);
+  ok("2.R4c · the card at the cap names the template's next week and its day — and in a final week names none",
+    j(capOf(atCap)) === j({ next: { week: eatIsoWeek(NEXT_MONDAY).week, opensOn: eatWeekday(en, NEXT_MONDAY) } })
+      && j(capOf(finalAtCap)) === j({ next: null }), j({ atCap: capOf(atCap), finalAtCap: capOf(finalAtCap) }));
+  const pending = homeCardOf(en, hubOf(sellingWeek({ pool: { jackpot: 1_000_000, feeRate: 0.13, atLeast: true, carryPendingCode: "2026-W41" } })) as never, 0.13, NOW, next);
+  ok("2.R4d · a carry still waiting on an earlier week makes the card's figure a lower bound, and names that week (§M8a item 9); CONTROL: a known carry is exact",
+    pending?.atLeast === true && pending.pendingWeek === 41 && atCap?.atLeast === false && atCap.pendingWeek === null, j({ pending, atCap }));
+  const card = squash(code(read(CARD)));
+  const door = squash(code(read("src/components/maswali/maswali-home-card-door.tsx")));
+  ok("2.R4e · the card draws that bound as the hub does — \"at least\" around the figure and the waiting week's line — and the door hands it the model's bound and the template's next week",
+    card.includes("return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;")
+      && card.includes("const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;")
+      && count(card, "{pending && <span") === 2
+      && door.includes("homeCardOf(t, hub, configuredFeeRate(), nowMs, nextWeekOpen(hub, millioneaOpenTemplate(), nowMs))")
+      && door.includes("atLeast={model.atLeast} pendingWeek={model.pendingWeek}"));
+  const hubSrc = squash(code(read(HUB)));
+  const model = code(read("src/components/maswali/maswali-card-model.ts"));
+  ok("2.R4f · the hub's cap line promises no next week when none follows (`capReachedOnly`), and neither the hub nor the card counts seven days from a week's open",
+    hubSrc.includes("nextOpen === null ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })")
+      && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
+      && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));
+}
+
 // ── §3 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§3 · controls — each source check fails on a planted copy");
 {
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
-  const goldCard = goldDefects(plant(CARD, '<span className="amount text-title-sm font-semibold text-text">{figure}</span>', '<span className="amount gilt-ink text-title-sm font-semibold text-text">{figure}</span>'));
+  const goldCard = goldDefects(plant(CARD, 'const run = <span className={cn("amount", className)}>{figure}</span>;', 'const run = <span className={cn("amount gilt-ink", className)}>{figure}</span>;'));
   ok("3.1 · gold planted on the card's figure is reported", goldCard.some((x) => x.startsWith(CARD)));
   const toggles = radioDefects(read(SLIP).replace("aria-checked={yesLit}", "aria-pressed={yesLit}"));
   ok("3.2 · toggle semantics put back on an answer are reported", toggles.some((x) => x.includes("aria-pressed")));

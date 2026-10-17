@@ -24,8 +24,9 @@ import type { Dict } from "@/lib/i18n-dict";
 export type HomeCardState =
   /** Before the week opens: the figure is a dash, and the day it opens. */
   | { kind: "presale"; opensOn: string }
-  /** Selling: the close and, for a signed-in player, the tickets they hold; at the cap, when the next week opens. */
-  | { kind: "open"; closesAt: number; held: number | null; capFull?: { nextWeek: number; opensOn: string } }
+  /** Selling: the close and, for a signed-in player, the tickets they hold; at the cap, when the next week opens — or no
+   *  next week at all, in a final week or while Millionea ends (`next` null). */
+  | { kind: "open"; closesAt: number; held: number | null; capFull?: { next: { week: number; opensOn: string } | null } }
   /** Sales closed, results arriving. */
   | { kind: "closed"; resultsIn: number }
   /** Settled with winners, or with no 10/10 and the pool carried. */
@@ -38,11 +39,15 @@ export type HomeCardState =
   /** The last week was voided whole: every refund landed, or they are on their way. */
   | { kind: "voided"; refundsPending: boolean };
 
-export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, href = "/millionea", className }: {
+export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
   t: Dict;
   week: number;
   /** The headline (the larger of the floor and the carry plus sales), or null before sales and while paused. */
   jackpot: number | null;
+  /** §M8a item 9 · the headline is a true lower bound while the carry waits on an earlier week: "at least", never exact. */
+  atLeast?: boolean;
+  /** …and that week, named: "plus Week 41's carry-over once it is final", as the hub's pool block says it. */
+  pendingWeek?: number | null;
   /** The week's fee rate, as a number of percent. */
   pct: number;
   /** The weekly cap, from the week's snapshot. */
@@ -54,6 +59,12 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
   className?: string;
 }) {
   const figure = jackpot === null ? "—" : formatTzs(jackpot);
+  // The figure as one unbreakable run in the money face; "at least" around it while the carry is pending (§M8a item 9).
+  const amount = (className: string) => {
+    const run = <span className={cn("amount", className)}>{figure}</span>;
+    return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;
+  };
+  const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;
   // ⛔ A WEEK BEING VOIDED OR VOIDED SHARES NO JACKPOT (the S5 UI review, MEDIUM 7): no figure and no "shared equally by
   // every 10/10 ticket" rule — the state's own words alone.
   const voidKind = state.kind === "voiding" || state.kind === "voided";
@@ -67,7 +78,9 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       // "Tiketi zako wiki hii: 10 kati ya 10" — never "Tiketi zako 10/10" under "kila tiketi ya 10/10", which reads as a
       // perfect ticket (the S5 UI review, LOW 12).
       meta = state.capFull
-        ? `${fill(t.millionea.yourTicketsThisWeek, { n: cap, cap })} · ${fill(t.millionea.nextWeekOpens, { week: state.capFull.nextWeek, day: state.capFull.opensOn })}`
+        ? [fill(t.millionea.yourTicketsThisWeek, { n: cap, cap }),
+            state.capFull.next ? fill(t.millionea.nextWeekOpens, { week: state.capFull.next.week, day: state.capFull.next.opensOn }) : null,
+          ].filter(Boolean).join(" · ")
         : (
           <>
             {fillNodes(t.millionea.salesCloseAt, { when: mono(eatWeekdayClock(t, state.closesAt)) })}
@@ -108,17 +121,16 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
         {/* The headline with its rule — in the column at 360, in the row at 1280; at 768 the figure has its own block. */}
         {!voidKind && (
           <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">
-            {fillNodes(t.millionea.ruleWithFigure, {
-              amount: <span className="amount font-semibold text-text xl:text-body-lg">{figure}</span>,
-              pct,
-            })}
+            {fillNodes(t.millionea.ruleWithFigure, { amount: amount("font-semibold text-text xl:text-body-lg"), pct })}
+            {pending && <span className="block">{pending}</span>}
           </span>
         )}
         <span className="text-body-sm text-text-subtle text-pretty xl:shrink-0 xl:whitespace-nowrap">{meta}</span>
       </span>
       {!voidKind && (
         <span className="hidden max-w-[300px] flex-col items-end gap-0.5 text-right md:flex xl:hidden">
-          <span className="amount text-title-sm font-semibold text-text">{figure}</span>
+          <span className="text-title-sm font-semibold text-text">{amount("")}</span>
+          {pending && <span className="text-body-sm text-text-muted text-pretty">{pending}</span>}
           <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.ruleShared, { pct })}</span>
         </span>
       )}
