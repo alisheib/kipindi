@@ -29,11 +29,12 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** The build has started; no product code is written yet.
-- **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); **D2 ✅ at
-  `2b335451f`**.
-- **S0.5 🔨 (the fence) — code and guard committed on `maswali-build`, not yet on `main`.**
-  - *The one reading.* `src/lib/product-line.ts` owns it. The DAL passes MASWALI through on both stores.
+**State (2026-10-17):** The fence is built and merged dark; no Millionea screen, door or sale exists for anyone.
+- **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); D2 ✅ at `2b335451f`;
+  **S0.5 ✅ at `9834aaf0`** (the work `fefc7734` + its test:all fixes `9834aaf0`).
+- **S0.5 (the fence) — what it holds.**
+  - *The one reading.* `src/lib/product-line.ts` owns it, and every branch on a line goes through it: NULL is MARKET,
+    MASWALI is MASWALI, an unknown value raises an alarm and reads as MARKET. The DAL passes MASWALI through on both stores.
   - *Refused for a week:* every generic door (bet, paid exit, resolve, auto-resolve and the sentinel, emergency void,
     reopen, settle except its VOID arm, the settle, hold and re-check actions).
   - *Kept out:* the poll scheduler, the generic settlement queue, `/live`, `/results`, performance, the leaderboard,
@@ -41,10 +42,15 @@
   - *Fail-closed until S6:* `chargedFee`, and the tax report refuses a period that holds a week.
   - *A game of its own:* the money reports and the owner's book carry Millionea as its own line.
   - *House bots:* MASWALI is `"denied"`, and `scopeAlerts` raises no daily false alarm for it.
-  - *`test:maswali-fence`* is green on both stores: memory 36/36 including the census, Postgres 29/29.
-  - **Left for S0.5:** `red:maswali-fence` (17 mutations) on the committed tree; `test:all` with the database suites;
-    `e2e:money`, `e2e:fault` and `e2e:card`; `tsc`, `next build` and local `qa:live`; the merge to `main`, dark; the
-    read-back.
+  - *Proof at `9834aaf0`:* `test:maswali-fence` memory 36/36 and Postgres 29/29; `red:maswali-fence` 17/17 caught, 0
+    files dirty; `test:all` red only on the five suites that drive a server (`admin-section-gate`, `motion`,
+    `needle-rest`, `responsive`, `revoked-deadend`), which ran against a local server in the render check;
+    `e2e:money` 64/0, `e2e:fault` 34/0, `e2e:card` 100/0 on a throwaway Postgres; `tsc` clean; `next build` and local
+    `qa:live` in the render check.
+  - *What the first `test:all` caught:* a market built before the column (a legacy row, a memory fixture) carries no
+    line, and the strict branches threw on it or turned its poll scheduler off. Every branch now reads the line
+    through `storedProductLine`. Seven static guards quoted the fence's own lines and were re-anchored, each write
+    body checked byte-identical to `main`.
 - **The delivery.** Claude Design's delivery is its round 6, with Ali's form answers applied. It is filed raw at
   [`design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md); its
   `INHERIT-MANIFEST.md` holds the verdicts, Ali's rulings, the L-rows L1–L13 and the intake checks. No gate failed,
@@ -63,7 +69,23 @@ until we decide what goes live."* He also answered three numbered choices the sa
 3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
    below.
 
-**Next:** S0.5, the fence, with the expanded scope in §7b ("S0.5 · corrections of 2026-10-17"). Then the route:
+**Next:** S1 and S2, both written on branch `maswali-s1` (worktree `C:\kipindi-maswali-s1`, Ali-Blade15) and not yet
+run; their suites are next, then each lands in its own commit and merges dark.
+- **S1 written:** the three migrations (tables, ledger types alone, the tax-lock CHECK); `jackpot-payout` in `payout.ts`
+  (an unknown fee model now refused, never coerced); the ledger accounts (`HOUSE:MASWALI_JACKPOT`,
+  `HOUSE:MASWALI_GUARANTEE`, `EXTERNAL:OWNER_CAPITAL`) and the seven movement builders; the owner's book subtracting
+  the jackpot and the guarantee from free cash; `maswali.config` and the Owner-only `maswali.licenceBasis`; nine
+  refusal reasons in three languages; the rollout (`millionea-rollout.ts`, the Owner's sealed switch, the per-request
+  resolver), `/api/health`'s `millionea` field and `qa:live`'s dark section; RULES §1, §2.4, §2.8, §2.12, §3 and §6.
+  Suites: `test:maswali-config`, `-ledger`, `-rollout`, `-law` + `red:maswali-law`, `test:house-solvency` §3b.
+- **S2 written:** `maswali-score` (the one grader), `-money`, `-commitment` (salted leaves, an RFC 6962 Merkle root,
+  inclusion proofs), `-void-reason`, `-week-label`, `-time` (event clocks across the changes), the EAT week helpers in
+  `eat-day.ts`, `maswali-dal` (both stores, the freeze), `maswali-service` (draft, attest, open, move the close, close,
+  seal, confirm, correct, the week void, the carry), `maswali-scheduler` (wired into boot and the lifecycle). Suites:
+  `test:maswali-score` (the 352 cases), `-money`, `-commitment`, `-time`, `-engine` (both stores) + `red:maswali-engine`.
+- **S1's deviations, recorded in §7b's corrections:** see "S1 · as built".
+
+The route:
 
 | Order | Session | What ships | Ali |
 |---|---|---|---|
@@ -130,12 +152,19 @@ before it went to Ali.
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
-**Last handoff (2026-10-17, Ali-Blade15, D2 closed).**
-- **The delivery moved out.** Ali placed it inside the shared checkout, at `C:\kipindi-main\Maswali\Design Handover\`.
+**Last handoff (2026-10-17, Ali-Blade15, S0.5 closed and merged dark).**
+- **Two worktrees on Ali-Blade15.** `C:\kipindi-maswali` (`maswali-build`, the release line, `npm ci` done) and
+  `C:\kipindi-maswali-s1` (`maswali-s1`, S1 and S2 uncommitted work, its `node_modules` a junction to the first). ⛔ The
+  junction shares one Prisma client: run `prisma generate` for S1's schema only when no battery is running on
+  `maswali-build`, and remove the junction with `[System.IO.Directory]::Delete(path, $false)` before `git worktree
+  remove`, never `npm ci` through it. Heavy jobs go through `~/heavy-node-lock.sh`; another session shares the lock.
+- **The money battery's fault suite** refuses a database without the disposable marker: plant it on the fresh
+  throwaway database with `scripts/load/ci-plant-marker.mjs` (loopback-only) before `e2e:fault`.
+- **Five `test:all` members need a running server** (`admin-section-gate`, `motion`, `needle-rest`, `responsive`,
+  `revoked-deadend`): run them with `BASE` against a fresh local `next dev`, as the render check does.
+- **The delivery moved out (D2).** Ali placed it inside the shared checkout, at `C:\kipindi-main\Maswali\Design Handover\`.
   It was copied outside and hash-checked, 202 of 202, and then removed from the checkout. A delivery inside a
   checkout turns `test:design-one-door` red and can ride along in another session's commit.
-- **The build worktree** is `C:\kipindi-maswali` on branch `maswali-build`, with `npm ci` and `prisma generate` done.
-  Heavy jobs go through `~/heavy-node-lock.sh`; another session shares the lock.
 - **Merged.** The D1 zip-format fix (`maswali-a6-zip`, `c4697dfde`) is merged.
 - **Guards that passed on the filed delivery:** `test:design-one-door` and `test:docs`.
 - **The D1 package record** (the cut, its checks and its three exceptions) is in `git show
@@ -152,9 +181,9 @@ never build there. The repository is public: describe anti-abuse controls by wha
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
-| S0.5 | Fence the third product line | 🔨 | code and `test:maswali-fence` committed on `maswali-build` (2026-10-17); red twin, battery and merge next |
-| S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
-| S2 | Week engine (no money, no UI) | ⬜ | |
+| S0.5 | Fence the third product line | ✅ | 9834aaf0 (2026-10-17): the fence on both stores, its red twin 17/17, test:all and the money battery green, merged to `main` dark |
+| S1 | Law, config, accounts, schema, rollout switch | 🔨 | written on `maswali-s1` (2026-10-17); its suites, the migrations on a throwaway Postgres and the merge next |
+| S2 | Week engine (no money, no UI) | 🔨 | written on `maswali-s1` (2026-10-17) beside S1; its suites next, and it lands after S1 |
 | S3 | Money path (local and throwaway PostgreSQL) | ⬜ | |
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | ⬜ | |
@@ -1046,6 +1075,29 @@ differ, these win.
   - *The `/legal/terms` sentence and the TERMS_VERSION move are deferred* to S8's launch commit (OD-18: existing
     terms do not change). The binding text is `/legal/rules/millionea`, with its own version and hash.
   - *Optional:* a `NOT VALID` → `VALIDATE` CHECK on `PredictionMarket.productLine`.
+- **S1 · as built (2026-10-17), decided under Ali's delegation.** Where these differ from S1's work order, these win.
+  - *No `productLine` CHECK.* The house-bot suites plant an unknown line on purpose, to prove a denied product is
+    refused; `storedProductLine`'s alarm is the guard for a corrupt row.
+  - *`MaswaliCycle.marketId` and `rulesSnapshot` are NULL while DRAFT.* The open creates the market, because a draft
+    market row would sit in the poll moderation lists, and stamps the rules once. The database refuses any week past
+    DRAFT without both (`MaswaliCycle_market_after_draft_check`, `…_frozen_after_draft_check`).
+  - *`parityAttestedBy` / `parityAttestedAt` on the week* hold MB-79's second reader. Any draft edit clears them, and
+    the open refuses without them.
+  - *The fee has one home per week:* `jackpotFeeRate` freezes into the market's `feeSnapshot` beside the levies; the
+    rules snapshot does not copy it.
+  - *The guarantee is committed, not owed:* the owner's book subtracts `HOUSE:MASWALI_GUARANTEE` from free cash on its
+    own line beside the jackpot liability, and neither counts as retained earnings. `/admin/house`'s derivation table
+    also gained the `HOUSE:TAX` line it was already subtracting (a platform-wide fix).
+  - *STAFF_PREVIEW is staff sessions only until S4.* The preview pass for non-staff QA players is a cookie, so it
+    ships with the route that writes it and its privacy-notice sentence (`test:privacy-notice` §4), not ahead of them.
+  - *Player-facing statements move to S5:* `/legal/rules/millionea`, the chooser, the chat assistant's block and
+    `/help` land with the screens. No player can see Millionea before S5's staff preview, and the binding text must
+    describe the engine as built (S2, S3), not as intended. The `/admin/config` caption lands with S4's console.
+  - *The licence gate's suite* folds into `test:maswali-config` §5 (the gate) and S2's engine suite (the open refused
+    without it); there is no separate `test:maswali-licence-gate`.
+  - *Carried to S6:* the house book's per-game identity must count the rollover and top-up legs before a winning week
+    settles on production, or it reports a variance on a correct week; and `purge-protected.ts` must classify the three
+    Millionea tables.
 - **S3.**
   - *The Millionea slip travels as a `BuyOpts` field,* not as a third `BetContext.kind`. `ctx.kind` means who is
     betting, and the house-bots lane pins every comparison (`SEAM_SITES`). Millionea gets its own `MASWALI:` markers,
@@ -1756,7 +1808,7 @@ ready.
 
 | ID | Sev | Gap | Treatment (within the rulings) | Owner | Closes | Src |
 |---|---|---|---|---|---|---|
-| MB-01 | C | The generic market doors treat a MASWALI row as a poll. `storedLine` and the other coercions turn it into MARKET. `nextDeadlineFor` skips only UPDOWN. `settleMarket`'s one-sided branch (noPool = 0) refunds every ticket at zero fee. `resolveMarket`, `resolveDueMarket`/sentinel, `emergencyVoidMarket`, `adminReopenMarket`, the paid exit in `cashOutPosition`, `/admin/markets/[id]` and `/admin/resolver/[id]` all accept it. The live `resolutionMode` setting would let the AI seal it, which breaks R-RESOLUTION. | Widen `ProductLine`, with one `isKnownProductLine` and exhaustive switches that have an unreachable default. `nextDeadlineFor` returns null for anything other than MARKET. Every generic door refuses MASWALI unless the call comes from `maswali-service` under a SEAM marker. `settleMarket` is reached only through its VOID arm. The cycle market is pinned to `resolutionMode` human. `chargedFee` throws on MASWALI. Add `red:maswali-fence`: plant a MASWALI row, drive every door and every read, expect a refusal each time. | Eng | S0.5 (the fence), before any MASWALI row is written | A1, B1, C20p |
+| MB-01 | C | The generic market doors treat a MASWALI row as a poll. `storedLine` and the other coercions turn it into MARKET. `nextDeadlineFor` skips only UPDOWN. `settleMarket`'s one-sided branch (noPool = 0) refunds every ticket at zero fee. `resolveMarket`, `resolveDueMarket`/sentinel, `emergencyVoidMarket`, `adminReopenMarket`, the paid exit in `cashOutPosition`, `/admin/markets/[id]` and `/admin/resolver/[id]` all accept it. The live `resolutionMode` setting would let the AI seal it, which breaks R-RESOLUTION. | Widen `ProductLine`, with one `isKnownProductLine` and exhaustive switches that have an unreachable default. `nextDeadlineFor` returns null for anything other than MARKET. Every generic door refuses MASWALI unless the call comes from `maswali-service` under a SEAM marker. `settleMarket` is reached only through its VOID arm. The cycle market is pinned to `resolutionMode` human. `chargedFee` throws on MASWALI. Add `red:maswali-fence`: plant a MASWALI row, drive every door and every read, expect a refusal each time. | Eng | S0.5 (the fence), before any MASWALI row is written · ✅ `9834aaf0` | A1, B1, C20p |
 | MB-02 | C | Nothing states a formula that keeps house money out of the rollover. `settlementPayoutEntries` tolerates a POOL that ends a shilling or two off zero. | One pure, isomorphic module:<br>• **No winner:** carryOut = R + S, F = 0, U = 0.<br>• **k ≥ 1:** J = max(1M, R + S); F = round(0.13 J); `levySplit` called once; share = floor((J − F)/k); U = max(0, F + k·share − (R + S)); carryOut = R + S + U − F − k·share.<br>One group, `maswali_settle_{id}`. POOL must end at exactly 0 (no tolerance for this product), with conservation asserted per component. Table tests over R ∈ {0, 500k, 2M}, S ∈ {0, 300k, 1.2M}, k ∈ {0, 1, 7, 870, 1,000, 1,400}. | Eng | S2 (module), S3 (booking) | A2 |
 | MB-03 | C | The 1,000,000 floor has no funded account, no entry type, no funding timing and no rule for a shortfall. HOUSE:COMMISSION is too small to cover it. When weeks overlap, the house can owe about 2M at once. | Create `HOUSE:MASWALI_GUARANTEE` and a new `MASWALI_GUARANTEE_FUND` entry type (ALTER TYPE). Funding is an Owner-only ceremony from an `EXTERNAL:OWNER_CAPITAL` counterparty, with a rail reference and typed confirmation, and a mirror ceremony to return surplus. A week refuses to open below the level set in OD-02; the balance is read inside the transaction with a null-aware read. Settlement aborts with a CRITICAL alert rather than pay less. The floor figure is shown only while it is funded. | Ali (level), Eng, Finance | S1, S3, S4 | A3, C2 |
 | MB-04 | H | The house book misreads the product in four ways:<br>• The solvency line counts the jackpot balance, every unsettled POOL and the guarantee earmark as free house cash, overstating it by 1–2M.<br>• The waterfall books the 13% fee on the house's own top-up as revenue.<br>• `gameBook` raises a false "books do not close" alarm every week.<br>• `RateProvenance` knows only two fee models. | • Add the jackpot balance and Σ unsettled POOL balances to `owedToOthers`.<br>• Show the guarantee as its own earmarked line.<br>• Add a waterfall step "Jackpot guarantee paid".<br>• `gameBook` gains carryIn, topUp and carryOut; the identity becomes handle + carryIn + topUp − paid − fee − carryOut = 0.<br>• Widen `RateProvenance`.<br>• Add RED anchors in `test:house-book`. Apply the same changes to `/admin/finance` and `finance-window.ts`. | Eng | S3 (liabilities), S6 (waterfall) | A5, A6 |
@@ -1817,7 +1869,7 @@ ready.
 | MB-39 | C | Voiding the August rulings removed the only gate on real money. Ali's general statements on 2026-09-29 and 2026-10-14 name no jackpot. The licence file never describes a fixed-price ticket, a house floor, a rollover across weeks, a payout-only fee or a sunset (OPEN-1). | • COMPLIANCE-DECISIONS gets a dated entry.<br>• Write `docs/BOARD-DISCLOSURE-MILLIONEA.md`.<br>• Add a GLI change-management row and publish the void policy.<br>• Ask which tax class applies.<br>• Code gate: `maswali.config.licenceBasis` (Owner-set, audited); `test:maswali-licence-gate` proves the refusal with a positive control.<br>• A feature-state guard. | Ali, Board | S0, S1; before S8 | A4, C1 |
 | MB-40 | H | The responsible-gambling gates hold only on the one purchase path. A jackpot payout or week-void refund lifts the rolling-24h loss limit by that amount. The session-limit refusal arrives after the player has built 15 picks. | • One path only (`buyPositionInner` with a Millionea context).<br>• e2e drives the real action for self-excluded, on-a-break, session-limit, loss-limit and suspended players.<br>• The draft is kept on refusal.<br>• Harm markers tracked per product.<br>• Loss-limit offset: OD-17. | Eng, Ali | S3, S7 | C10 |
 | MB-41 | H | The insider bar leaves four things open:<br>• which accounts (7 `STAFF_ROLES` and live desk designations);<br>• promotion mid-week;<br>• QA personas, which have no marker;<br>• D19, which forbids house wording, while R-INSIDERS wants a "clear message". | Check in the purchase lock. Staff get an explicit refusal reason. Desk accounts get a neutral one ("This account can't buy Millionea tickets. Contact support."), which satisfies both R-INSIDERS and D19. The seal path refuses an officer who holds a ticket in that week. Winners are screened against staff phones and devices. Mid-week edges, QA accounts and households: OD-12. | Eng, Ali | S3 | B29, C6 |
-| MB-42 | M | MASWALI = "denied" for house bots triggers a daily false `PRODUCT_DENIED` alarm in `scopeAlerts`. `predictorExtra` inflates counts players see. | Return early before `scopeAlerts` for MASWALI. Remove MASWALI from INTENT/TARGET lines. The ticket count comes only from the week's own count. File a COMPLIANCE-DECISIONS entry for the denial. | Eng | S1 | C7 |
+| MB-42 | M | MASWALI = "denied" for house bots triggers a daily false `PRODUCT_DENIED` alarm in `scopeAlerts`. `predictorExtra` inflates counts players see. | Return early before `scopeAlerts` for MASWALI. Remove MASWALI from INTENT/TARGET lines. The ticket count comes only from the week's own count. File a COMPLIANCE-DECISIONS entry for the denial. | Eng | S1 · ✅ S0.5 `9834aaf0` for the false alarm and the INTENT/TARGET lines; the week's own ticket count (S5) and the COMPLIANCE-DECISIONS entry remain | C7 |
 | MB-43 | H | No rule for a winning ticket disqualified after settlement (under-18, duplicate identity, sanctions, a staff alternate account, cap evasion). Settlement cannot be re-run. | Never reopen a settled week. The share is credited, frozen, and decided by Compliance under Terms §3a. New entry type `MASWALI_FORFEIT_RETURN`. Roles re-checked at settlement. The forfeited share's home: OD-07. | Ali, Eng | S3, S4 | A17, C9 |
 | MB-44 | H | Winners whose account is closed, self-excluded, suspended or cooling off cannot see or withdraw the money. Many journey players have no email. | The closure screen lists open tickets. The `CANNOT_SIGN_IN` letter goes out. No next-jackpot figure appears in any notice. Payment procedure: OD-13. | Ali, Eng | S5, S6 | C11 |
 | MB-45 | M | Under R-LAUNCH the live drive either dilutes a public week or rolls staff money into week 1. | Per OD-21. | Ali | S8 | B30 |
@@ -1877,7 +1929,7 @@ ready.
 
 | ID | Sev | Gap | Treatment | Owner | Closes | Src |
 |---|---|---|---|---|---|---|
-| MB-72 | M | Collisions with the Vodacom lane: shared files, and `house-bot-disclosure` §5.1 pins dictionaries and rulebooks byte-identical. | The widening lands first, in one integrator commit. Shared files change in small commits inside agreed windows. One `millionea` dictionary namespace. Parity diffs registered in advance. | Eng | S1, S5 | C17 |
+| MB-72 | M | Collisions with the Vodacom lane: shared files, and `house-bot-disclosure` §5.1 pins dictionaries and rulebooks byte-identical. | The widening lands first, in one integrator commit. Shared files change in small commits inside agreed windows. One `millionea` dictionary namespace. Parity diffs registered in advance. | Eng | S1, S5 · ✅ S0.5 `9834aaf0` for the integrator commit | C17 |
 
 ---
 
@@ -1902,7 +1954,7 @@ ready.
 | MB-87 | RG/Comp | M | **How the chance of winning is stated.** A jackpot invites "odds" claims. "1 in 1,024" is true only for coin-flip questions. | No numeric odds. State that "every one of the 10 counted questions must be right", publish a record of weeks won and not won, and put the RG link on the slip. OD-24. | Design, Ali | D1, S6 |
 | MB-88 | Legal | M | **Winner publicity.** Big winners will be asked for publicity. Privacy law (PDPA) and the winner's own safety are at stake. | Public pages are anonymised. A name or photo appears only with written opt-in. Marketing never names a winner without consent. OD-30. | Ali | S6 |
 | MB-89 | Player UX | L | **Several tickets at once, and quick picks.** One confirm for several different slips; a random "lucky dip" is not in the PDF. | Multi-ticket slip tied to buying N in one transaction (MB-31). Quick pick: OD-29. | Design, Ali | D1, S5 |
-| MB-90 | Platform/IA | M | **Player statistics.** "View performance" on `/positions`, leaderboard ROI tiers, `/results`, streaks and achievements would mix 1,000 TZS LOSS tickets into Yes/No statistics through "ALL" reads. | Each reader names its MASWALI handling (exclude, or show as its own section), held by `test:product-line`. | Eng | S5 |
+| MB-90 | Platform/IA | M | **Player statistics.** "View performance" on `/positions`, leaderboard ROI tiers, `/results`, streaks and achievements would mix 1,000 TZS LOSS tickets into Yes/No statistics through "ALL" reads. | Each reader names its MASWALI handling (exclude, or show as its own section), held by `test:product-line`. | Eng | S5 · ✅ S0.5 `9834aaf0` for the classification: each reader names its MASWALI handling |
 | MB-91 | Admin/Ops | M | **Disputes after settlement.** Player complaints, GBT escalation and the remedy for a proven error. Desk scripts are also missing for a death, a reversed deposit, a holiday, a wrong question and a week void. | A complaint path with a response time and an evidence pack per week (MB-92). Remedy per OD-09. Extend the MB-64 scripts. | Ali, Eng | S6 |
 | MB-92 | Reports | H | **The Board asks for an audit.** No per-week evidence export exists, and the AUDITOR role has no read access. | A per-week export: snapshot, questions, seal and void audit rows with evidence captures, objections, the commitment, the settlement group's ledger lines, guarantee funding entries, the integrity and cluster reports, ticket CSV. Read-only AUDITOR access to `/admin/maswali`. Kept 7 years. | Eng | S6 |
 | MB-93 | Notifications | M | **Push or SMS fails.** SMS is OTP and marketing only, with a 20,000 TZS credit floor kept for codes. Push reaches subscribers only. Email goes only to confirmed addresses. | The bell and the ticket page are the record. Log delivery status. Check SMS credit before a winner batch. Alert when a winner has had no notice for 24h. A desk list of uncontacted winners. | Eng | S6 |
