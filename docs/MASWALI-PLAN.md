@@ -69,8 +69,21 @@ until we decide what goes live."* He also answered three numbered choices the sa
 3. **Any session that finishes pushes `main` itself** (the header's quote). The route was approved in plan mode and is
    below.
 
-**Next:** S1 and S2, both written on branch `maswali-s1` (worktree `C:\kipindi-maswali-s1`, Ali-Blade15) and not yet
-run; their suites are next, then each lands in its own commit and merges dark.
+**Next:** S1, S2 and S3 are written and committed; their one money battery is running, and they merge into `main`
+dark together once it is green (§7b "S3 · as built", last item).
+- **Where.** Branch `maswali-s3` (worktree `C:\kipindi-maswali-s3`, Ali-Blade15) holds all three: S1 `7e505bf0`, S2
+  `6031d199`, their battery fixes `ec57887b` (from `maswali-s1`), S3 `367a9c1b` + `7727ece0`, and `main` merged in.
+- **What has run.** S1/S2's first battery (`6031d199`) found four defects, each fixed in `ec57887b` and re-checked:
+  the open never seeded the trusted sources (every open refused on both stores), and three guards quoted lines S1
+  changed (`chain-purge`'s NEVER docblock, `red:fee-model-caption`, two house-book anchors). S3's two money suites are
+  green on the memory store (`test:maswali-purchase` 68/68, `test:maswali-settle` 62/62: acceptance (a)–(f), the
+  six-week trajectory to +97,800, the sunset, held shares, OD-17, the invariants).
+- **Not yet run** (the battery, in order): `tsc`; the Postgres halves of both suites, `test:maswali-engine`,
+  `test:maswali-fence`, `test:house-bot-reports` (the Ruling 232 census), `e2e:maswali-fault`, the migration probe and
+  `verify:backup-schema`; `red:maswali-money-path` (14 plants), the four new `red:house-bot-money` marker plants,
+  `red:maswali-engine`, `red:maswali-fence`; `test:all` in three chunks; `e2e:money`, `e2e:fault`, `e2e:card`. Then
+  the merge into `maswali-build`, `next build`, the render check and the five server suites there (its `node_modules`
+  is real; the S3 worktree's is a junction, which Turbopack refuses).
 - **S1 written:** the three migrations (tables, ledger types alone, the tax-lock CHECK); `jackpot-payout` in `payout.ts`
   (an unknown fee model now refused, never coerced); the ledger accounts (`HOUSE:MASWALI_JACKPOT`,
   `HOUSE:MASWALI_GUARANTEE`, `EXTERNAL:OWNER_CAPITAL`) and the seven movement builders; the owner's book subtracting
@@ -83,6 +96,10 @@ run; their suites are next, then each lands in its own commit and merges dark.
   `eat-day.ts`, `maswali-dal` (both stores, the freeze), `maswali-service` (draft, attest, open, move the close, close,
   seal, confirm, correct, the week void, the carry), `maswali-scheduler` (wired into boot and the lifecycle). Suites:
   `test:maswali-score` (the 352 cases), `-money`, `-commitment`, `-time`, `-engine` (both stores) + `red:maswali-engine`.
+- **S3 written:** buying and the free cancel through the one bet path, the settlement (preview, digest, release),
+  the sunset, held shares and Compliance's hold/release/forfeit, the drive's own jackpot, the sales pause, OD-17, the
+  open-pools liability, the nightly invariants. Suites: `test:maswali-purchase`, `test:maswali-settle` (both stores),
+  `e2e:maswali-fault`, `red:maswali-money-path`. Every decision is in §7b "S3 · as built".
 - **S1's deviations, recorded in §7b's corrections:** see "S1 · as built".
 
 The route:
@@ -160,8 +177,10 @@ before it went to Ali.
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.
 
 **Last handoff (2026-10-17, Ali-Blade15, S0.5 closed and merged dark).**
-- **Two worktrees on Ali-Blade15.** `C:\kipindi-maswali` (`maswali-build`, the release line, `npm ci` done) and
-  `C:\kipindi-maswali-s1` (`maswali-s1`, S1 and S2 uncommitted work, its `node_modules` a junction to the first). ⛔ The
+- **Three worktrees on Ali-Blade15.** `C:\kipindi-maswali` (`maswali-build`, the release line, `npm ci` done),
+  `C:\kipindi-maswali-s1` (`maswali-s1`, S1 and S2, all committed) and `C:\kipindi-maswali-s3` (`maswali-s3`, S1–S3,
+  the one to release). Both of the last two have `node_modules` as a junction to the first: `tsc` and `tsx` work there,
+  `next build` does not (Turbopack refuses the junction), so builds and the render check run in `C:\kipindi-maswali`. ⛔ The
   junction shares one Prisma client: run `prisma generate` for S1's schema only when no battery is running on
   `maswali-build`, and remove the junction with `[System.IO.Directory]::Delete(path, $false)` before `git worktree
   remove`, never `npm ci` through it. Heavy jobs go through `~/heavy-node-lock.sh`; another session shares the lock.
@@ -189,9 +208,9 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
 | S0.5 | Fence the third product line | ✅ | 9834aaf0 (2026-10-17): the fence on both stores, its red twin 17/17, test:all and the money battery green, merged to `main` dark |
-| S1 | Law, config, accounts, schema, rollout switch | 🔨 | written on `maswali-s1` (2026-10-17); its suites, the migrations on a throwaway Postgres and the merge next |
-| S2 | Week engine (no money, no UI) | 🔨 | written on `maswali-s1` (2026-10-17) beside S1; its suites next, and it lands after S1 |
-| S3 | Money path (local and throwaway PostgreSQL) | ⬜ | |
+| S1 | Law, config, accounts, schema, rollout switch | 🔨 | 7e505bf0 + fixes ec57887b (2026-10-17); its battery found 4 defects, fixed; merges with S3 |
+| S2 | Week engine (no money, no UI) | 🔨 | 6031d199 (2026-10-17); `test:maswali-engine` refused every open until ec57887b; merges with S3 |
+| S3 | Money path (local and throwaway PostgreSQL) | 🔨 | 367a9c1b + 7727ece0 on `maswali-s3` (2026-10-17); memory halves green, the money battery running |
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | ⬜ | |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ⬜ | blocks S5 |
@@ -1119,6 +1138,54 @@ differ, these win.
   - *OD-17's loss limit:* `sumGamblingNetSince` (`prisma-dal.ts:2727`, and its memory twin) drops `BET_PAYOUT`
     rows on MASWALI positions.
   - *S3 releases on its own,* with the full money battery.
+- **S3 · as built (2026-10-17), decided under Ali's delegation.** Where these differ from S3's work order, these win.
+  - *The purchase.* `purchaseMaswaliTickets` (`maswali-service.ts`) asks the rollout first — a PUBLIC week sells only at
+    ACTIVE, a DRIVE week from STAFF_PREVIEW (who may hold a drive ticket is S8's, OD-12); otherwise
+    `millionea_not_available`. Then `buyPosition` with the slips; its ticket arm (`buyMaswaliTickets`,
+    `maswali-money-service.ts`) runs below every shared gate. Each ticket keys its position `<key>#i`; a replay answers
+    only the whole purchase with the same picks, and L2's pre-gate answer has a Millionea reader (`landedMaswaliAnswer`).
+  - *Stake bounds* are min = max = the frozen price of one ticket; a week without rules stakes nothing.
+  - *The free cancel* is one transaction — the ticket, the wallet, the position, the pool, the week's count and the
+    ledger group — only inside the frozen free window, never twice. There is no paid exit (MB-50).
+  - *The void arm* sends no Up & Down notice, reverses no wagering (a ticket accrued none, OD-27) and prices no poll fee
+    for a week (`poolFee` keeps refusing the jackpot model).
+  - *The settlement.* `previewMaswaliSettlement` prepares every figure and a digest; `settleMaswaliWeek({ weekId,
+    releasedBy, digest })` recomputes inside `maswali:chain` and `market:<id>` and pays only the figures the officer
+    saw. S is read three ways and must agree with the week's own count and its sales at close. Every refusal comes
+    before the first write; the guarantee is read inside the transaction. One transaction per week: the winners one by
+    one, the losers in one statement (`positionStore.settleMaswaliLosers`), the tickets in bulk, one ledger group
+    `maswali_settle_<weekId>`, the week's mirrored columns, the market stamped RESOLVED. A k = 0 week claims its carry
+    too, so the line of weeks always advances in `seq` order.
+  - *The sunset (MR-30, OD-03).* A final week with no 10 of 10 pays its highest score: J = R + S, no floor, no top-up,
+    R moved by `MASWALI_SUNSET`. `sunsetMaswali` (the Owner, typed `SUNSET MILLIONEA`) makes the current week final at
+    once, or a drafted week only a full week ahead. After a final week that ran nothing opens; a final week that voided
+    or sold nothing hands the role to the next week to open. The regulator-ordered stop is S4's own ceremony.
+  - *Held shares (MB-43, MB-74, OD-07).* Roles and status are re-checked at settlement. A winner with a staff role, a
+    live desk designation, or a suspended or closed account is credited the full share, the ticket carries the reason,
+    and the wallet is held BEFORE the credit by a new freeze reason, `MILLIONEA_SHARE`; account closure is refused while
+    it stands on money. Compliance then holds a share found later (`holdMaswaliShare`), releases it, or forfeits it
+    (typed `FORFEIT SHARE`): the whole share to the jackpot, never the house, refused if the wallet no longer holds it.
+  - *The drive's own jackpot (OD-21).* `HOUSE:MASWALI_JACKPOT_DRIVE`: a DRIVE week claims and rolls through it, so no
+    drive money can reach public week 1; S8 returns what it holds to the drive accounts. The owner's book counts both
+    jackpots as players' money.
+  - *The guarantee requirement (OD-02)* counts every unsettled week of BOTH lines, each at its own frozen floor. The
+    open had used the new week's floor for every week, of its own line only.
+  - *OD-17, as built.* The exclusion sits in the loss limit's own net (`responsible-gambling.ts → lossLimitNetSince`),
+    not in the DAL sum: the platform's gambling net, minus Millionea winnings settled in the window, minus refunds of
+    tickets bought before it (`ticketStore.lossLimitExclusionsSince`, both stores). The gate and the player's "used today"
+    read the same number, and the activity summary still reconciles with the DAL sum it was built on.
+  - *The owner's book.* The unsettled weeks' POOL is a liability (`maswaliOpenPools`), with its own row on `/admin/house`.
+  - *The sales pause (MB-62)* lands with the purchase it stops: its own key `maswali.salesPause`, read fresh and fail
+    closed, refusing `millionea_paused`; it never blocks a cancel, a settlement or a refund. S4 builds its control.
+  - *Nightly invariants* (`maswali-invariants.ts`), daily beside the trial balance; a broken one is a COMPLIANCE record.
+  - *Ruling 232.* Eleven positioned writes: the four Millionea writes copy the marker from their own position. The
+    census reads coverage per file, and four marker plants join `house-bot-money.anchors.mjs`.
+  - *`e2e:maswali-money`'s drive of the real action lands with the action, in S5.* S3 drives `purchaseMaswaliTickets`,
+    the function that action will call, on both stores (`test:maswali-purchase` §5), and `e2e:maswali-fault` drives the
+    settlement on a real Postgres across processes.
+  - *S1, S2 and S3 release together* from `maswali-s3`, after one money battery on the combined tree: the heavy-job lock
+    is shared with another lane, and three batteries would measure the same files three times (Ali's efficiency ruling,
+    2026-10-10). The commits stay separate.
 - **D3.** The rulings are all in hand, so D3 is the filing. N1 is filed as *"yes, if it measures"*. It is measured at
   S5's acceptance and on a real phone at S8, and if it fails its drawn fallback ships. The values (glyphs, status rows,
   the N-block) land in S5 with their first consumer, as `test:dead-css` requires.
