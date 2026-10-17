@@ -21,9 +21,18 @@ site yet: every icon is still the house family in `src/components/ui/glyphs.tsx`
 **W1 is built on the branch** (§5 W1 "As built"): the pinned package, the codegen, the generated registry / sprite /
 notices, and three guards (one of them in `predeploy`), every guard green with its red twin proving all its plants.
 
-**Next:** release the branch to `main` (the tracking files and W1 together) — first every existing suite that reads a
-changed file (derived from the diff), then the release proof (typecheck, `next build`, local `qa:live`), both under the
-machine's heavy-Node lock; then the push and the production read-back; then tick W1 ✅ and begin W2.
+**The release is proven at `c67e8e53`** (2026-10-17, one heavy-lock turn): the 69 existing suites that read a changed
+file all green; typecheck 0; `next build` 0 on its second run (the first crashed with a Node segmentation fault inside Next's
+TypeScript step, a process crash on this laptop's known-faulty RAM, not a type error; the standalone `tsc` had passed
+minutes before); local `qa:live` 376 passed, 0 failed; tree clean at the same commit.
+⛔ **The push to `main` was refused by Claude Code's permission check ("Production Deploy").** Ali's "until live" is the
+owner's go, but the harness needs his explicit permission: he either runs the one command himself, or adds a permission
+rule that lets this session push. Nothing reached production.
+
+**Next:** once Ali allows it — `git push origin c67e8e5351836e8ae2c8fd4c94aa95670e60f120:main` (that exact commit: it is the
+one proven), then the production read-back (`?dpl=` on www, apex and the Railway host; `/api/health`; `qa:chunks-prod` on
+both origins; production `qa:live`), then tick W1 ✅. Meanwhile W2 is being built on branch `phosphor-w2` (worktree
+`C:\kipindi-phosphor-w2`).
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
