@@ -120,7 +120,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   listChecks: { ph: "list-checks" },
   layoutGrid: { ph: "grid-four" }, // "all categories" — kept apart from the board's squares-four
   needle: { extra: "the brand's own mark (a disc and the needle across it); Phosphor has nothing like it" },
-  radio: { ph: "radio-button" },
+  radio: { retire: "its one use, the hub's Live row, draws `live` (R-LEXICON 5.2A); nothing else draws it" },
   pause: { ph: "pause" },
   playBare: { ph: "play" },
 
@@ -202,7 +202,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   compass: { retire: UNUSED },
   idCard: { ph: "identification-card" },
   headset: { ph: "headset" },
-  questionCircle: { ph: "question" }, // Help; the journey's board tab moves to `markets` (R-LEXICON 5.1A)
+  questionCircle: { retire: "its one use, the journey's board tab, draws `markets` (R-LEXICON 5.1A); Help draws `headset`" },
 
   // ── status & tags ──
   sealCheck: { ph: "seal-check" },
@@ -242,6 +242,31 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
 };
 
 /** New keys the lexicon adds at the swap (W2), so each meaning has its own key (docs/PHOSPHOR-MIGRATION.md §3). */
+/**
+ * Where each live key's symbols are served from (W2). "shell" keys are the always-visible chrome — the two tab bars and
+ * the two headers, as they stand after the lexicon (§3) — and their Bold drawings are inlined in the root layout, so the
+ * chrome never waits for a file on a slow first visit. "admin" keys are drawn only by the console and sit in a sprite a
+ * player never downloads. Every other key is "app": one cached file. A key drawn outside its group still works (it is
+ * fetched from its own group's sprite); the groups only decide what a page has to download.
+ */
+export const SHELL_KEYS: readonly string[] = ["markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown"];
+export const ADMIN_KEYS: readonly string[] = ["upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile"];
+
+/**
+ * Keys drawn at 27 px or more somewhere (R-WEIGHT: the Line tier is Bold up to 26 px and Regular from 27): only these ship
+ * a Regular drawing. The census of 2026-10-17 — bellRing 30, clock 28, idCard 28, gift 150; the result dialog's status
+ * glyphs at 36; the category glyph behind a question's title at 96. Any other key drawn that large falls back to Bold, so
+ * a glyph is never blank, only heavier.
+ */
+export const REGULAR_KEYS: readonly string[] = [
+  "bellRing", "clock", "idCard", "gift", "check", "x", "warning", "info",
+  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech", "shuffle", "landmark", "markets",
+];
+
+/** Keys that ship a Fill or a Duo drawing — added by the waves that use them (W3 selected states, W4 seals, W5 plates). */
+export const FILL_KEYS: readonly string[] = [];
+export const DUO_KEYS: readonly string[] = [];
+
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
   ["profile", "user"], ["hot", "flame2"], ["landmark", "bank"], ["ext", "externalLink"], ["resolved", "sealCheck"],

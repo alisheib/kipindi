@@ -348,7 +348,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               data-testid="deposit-header"
               className="btn gilt-metal btn-md btn-pill"
             >
-              <I.plus s={14} />
+              <I.arrowDownToLine s={14} />
               {/* ⛔ THE LABEL YIELDS AT THE lg–xl BAND (1024–1279), AND IT IS THE SAME RULE AS
                   BELOW `sm` ONE LINE ABOVE — not a new idea, the existing one applied to the
                   second band where the bar does not fit. E-190: with the desktop nav on and

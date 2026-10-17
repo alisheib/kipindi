@@ -6,8 +6,8 @@ carry their own licences in `node_modules`.
 ## Phosphor Icons — `@phosphor-icons/core` 2.1.1
 
 Every icon in the product is drawn from Phosphor Icons (programme `PHOSPHOR-MIGRATION`, `docs/PHOSPHOR-MIGRATION.md`).
-`scripts/glyphs/codegen.mts` reads the exact-pinned devDependency and writes the sprite in `public/icons/g/` and
-`src/components/ui/glyph-registry.generated.ts`; the sprite carries this notice in its first line.
+`scripts/glyphs/codegen.mts` reads the exact-pinned devDependency and writes the sprites in `public/icons/g/`, the
+inline chrome symbols and the glyph registry; every sprite and the inline symbols carry this notice.
 
 ```
 MIT License

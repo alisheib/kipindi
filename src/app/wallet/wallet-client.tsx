@@ -115,7 +115,7 @@ function BalanceCard({
             onClick={journey ? (event) => { event.preventDefault(); window.location.assign("/wallet/deposit"); } : undefined}
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
           >
-            <I.plus s={12} />
+            <I.arrowDownToLine s={12} />
             {journey ? t.journey.depositAction : t.common.addFunds}
           </Link>
         )}
@@ -775,12 +775,12 @@ export function WalletPageClient({
                 ink stands on the button's start padding. */}
             {depositOpen && (
             <Link href="/wallet/deposit" onClick={journey ? (event) => { event.preventDefault(); window.location.assign("/wallet/deposit"); } : undefined} className="btn btn-primary btn-md btn-pill inline-flex">
-              <I.arrowDown s={14} edge="start" text="body-600" />
+              <I.arrowDownToLine s={14} edge="start" text="body-600" />
               {journey ? t.journey.depositAction : t.common.deposit}
             </Link>
             )}
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
-              <I.arrowUp s={14} edge="start" text="body-600" />
+              <I.arrowUpFromLine s={14} edge="start" text="body-600" />
               {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
           </div>
