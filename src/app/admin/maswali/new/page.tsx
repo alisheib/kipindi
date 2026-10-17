@@ -5,6 +5,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { eatWeekStartMs } from "@/lib/eat-day";
+import { draftSuggestions } from "@/lib/server/maswali-console";
 import { WeekBuilder } from "./week-builder";
 
 export const metadata = { title: "Admin · Millionea · Draft a week" };
@@ -26,11 +27,14 @@ async function Content() {
   // The next Monday 00:00 EAT — the earliest week that can still sell a full week.
   const next = eatWeekStartMs(Date.now()) + WEEK_MS;
   const monday = new Date(next + 3 * 3_600_000).toISOString().slice(0, 10);
+  // The window a week's events fall in: from its Friday close to the Tuesday after (the results week's start). Two
+  // weeks of it, so a week drafted further ahead still sees its fixtures.
+  const suggestions = canDraft ? await draftSuggestions(next + 4 * 86_400_000, next + 3 * WEEK_MS).catch(() => []) : [];
   return (
     <>
       <AdminPageHead title="Draft a week" sw="Andaa wiki" />
       <AdminBody>
-        {canDraft ? <WeekBuilder defaultMonday={monday} /> : <ControlLocked what="Draft a week" need={CONTROL_DOMAIN.createMaswaliWeek} block />}
+        {canDraft ? <WeekBuilder defaultMonday={monday} suggestions={suggestions} /> : <ControlLocked what="Draft a week" need={CONTROL_DOMAIN.createMaswaliWeek} block />}
       </AdminBody>
     </>
   );

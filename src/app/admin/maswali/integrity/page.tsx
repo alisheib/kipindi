@@ -8,6 +8,8 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleStanding, integrityView } from "@/lib/server/maswali-console";
+import { clusterReport, pickShifts } from "@/lib/server/maswali-integrity";
+import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
 import { formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
@@ -42,6 +44,10 @@ async function Content() {
     ]),
   ]);
   const [canPause, canResume, canVoid, canHold, canRelease, canForfeit] = can;
+  // The cluster report for the latest weeks whose ticket set is fixed (closed, being sealed, or just settled).
+  const closed = (await weekStore.list({ states: ["CLOSED", "RESOLVING", "SETTLED"], limit: 3 }).catch(() => []));
+  const clusters = await Promise.all(closed.map((w) => clusterReport(w).catch(() => null)));
+  const shifts = await pickShifts().catch(() => null);
   if (!v) return (<><AdminPageHead title="Millionea · Integrity" sw="Uadilifu" /><AdminBody><p className="text-body-sm text-danger-fg">The integrity view could not be read.</p></AdminBody></>);
 
   return (
@@ -53,6 +59,43 @@ async function Content() {
           {(standing?.pause.paused ? canResume : canPause)
             ? <PauseControl paused={!!standing?.pause.paused} />
             : <ControlLocked what={standing?.pause.paused ? "Resume sales" : "Pause sales"} need={CONTROL_DOMAIN.pauseMaswaliSales} block />}
+        </AdminCard>
+
+        <AdminCard title="Answers moving while a week sells" sw="Mabadiliko ya majibu">
+          {shifts === null ? <p className="text-body-sm text-danger-fg">The pick shifts could not be read.</p>
+            : shifts.length === 0 ? <p className="text-body-sm text-text-secondary">No question's answers have swung among the latest tickets.</p>
+            : (
+              <ul className="space-y-1.5 text-body-sm">
+                {shifts.map((x) => (
+                  <li key={`${x.weekId}-${x.slot}`}>
+                    <span className="tabular">{x.code} · {x.label}</span>: YES went from {Math.round(x.before * 100)}% to {Math.round(x.recent * 100)}% over the last {x.recentTickets} tickets.
+                    <span className="text-text-tertiary"> Check the event before the close; pausing sales stops new tickets.</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+        </AdminCard>
+
+        <AdminCard title="Connected accounts" sw="Akaunti zinazohusiana" padding="p-0">
+          {clusters.length === 0 ? <EmptyState title="No closed week yet" body="Each week's report appears once its sales close and its ticket set is fixed." /> : (
+            <div className="divide-y divide-border-subtle">
+              {clusters.map((c, i) => c === null ? <p key={i} className="p-4 text-body-sm text-danger-fg">A week's report could not be read.</p> : (
+                <section key={c.weekId} className="p-4 space-y-2">
+                  <h3 className="font-semibold text-body tabular">{c.code} · {c.holders.toLocaleString("en")} holders{c.readable ? "" : " · the records could not all be read"}</h3>
+                  {c.groups.length === 0 ? <p className="text-body-sm text-text-secondary">No group to look at.</p> : (
+                    <ul className="space-y-2 text-body-sm">
+                      {c.groups.map((g, j) => (
+                        <li key={j}>
+                          <span className={g.basis === "records" ? "text-warning" : "text-text-secondary"}>{g.detail}</span>
+                          <span className="block text-caption text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ))}
+            </div>
+          )}
         </AdminCard>
 
         <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa">

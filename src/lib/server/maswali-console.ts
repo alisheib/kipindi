@@ -23,6 +23,7 @@ import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
 import { db } from "./store";
+import { marketStore } from "./market-dal";
 import { MAIN_COUNT, SLOT_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
@@ -106,6 +107,16 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
         if (since >= 12 * HOUR) out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 12 hours after its event started.` });
         else if (since >= 2 * HOUR) out.push({ level: "warning", weekId: w.id, text: `${w.code}: slot ${q.slot} is unsealed 2 hours after its event started.` });
       }
+      // A question drafted from a Yes/No market must seal the same way that market resolved: a mismatch is either a wrong
+      // seal or a wrong resolution, and both are money (S4 item 5).
+      for (const q of qs) {
+        if (!q.linkedMarketId || (q.outcome !== "YES" && q.outcome !== "NO")) continue;
+        const linked = await marketStore.get(q.linkedMarketId).catch(() => null);
+        const theirs = linked?.resolvedOutcome;
+        if ((theirs === "YES" || theirs === "NO") && theirs !== q.outcome) {
+          out.push({ level: "critical", weekId: w.id, text: `${w.code}: slot ${q.slot} is sealed ${q.outcome}, but its linked Yes/No market resolved ${theirs}.` });
+        }
+      }
       const proposed = await proposeVoidsAtDeadline(w.id, now);
       if (proposed.length) out.push({ level: "warning", weekId: w.id, text: `${w.code}: ${proposed.length} question(s) passed their void deadline unsealed; seal each as VOID (MR-15).` });
       if (w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) + cfg.releaseAlertHours * HOUR < nowMs) {
@@ -138,6 +149,43 @@ export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceBa
 export async function consoleStanding(): Promise<ConsoleStanding> {
   const rollout = await millioneaStateNow().catch(() => null);
   return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState() };
+}
+
+// ── DRAFTING HELP (MASWALI-PLAN §7b S4 item 7) ──────────────────────────────────────────────────────
+
+/**
+ * What the builder may START a question from: the event calendar's fixtures, and the AI-drafted polls the platform's
+ * own generation produced (`ai-poll-generation.ts`, reviewed or approved — never a rejected or failed one), in the
+ * week's event window. ⛔ Nothing here publishes: a suggestion only fills a card the officer then edits and saves, and
+ * every row still passes the open's checklist (OD-14, the trusted sources, the banned topics).
+ */
+export type DraftSuggestion = {
+  kind: "event" | "ai";
+  id: string;
+  category: string;
+  startsAt: string;
+  sourceUrl: string;
+  textEn: string; textSw: string; textZh: string;
+  criterionEn: string; criterionSw: string; criterionZh: string;
+};
+
+export async function draftSuggestions(fromMs: number, toMs: number, limit = 40): Promise<DraftSuggestion[]> {
+  const inWindow = (iso: string) => { const t = Date.parse(iso); return t >= fromMs && t <= toMs; };
+  const out: DraftSuggestion[] = [];
+  const { listUpcomingEvents } = await import("./events-service");
+  for (const e of (await listUpcomingEvents(500).catch(() => [])).filter((x) => inWindow(x.startsAt))) {
+    out.push({ kind: "event", id: e.id, category: e.category, startsAt: e.startsAt, sourceUrl: e.sourceUrl,
+      textEn: e.title, textSw: "", textZh: "", criterionEn: e.note ?? "", criterionSw: "", criterionZh: "" });
+  }
+  const { listAIPolls } = await import("./ai-poll-generation");
+  const polls = await listAIPolls().catch(() => []);
+  for (const p of polls) {
+    if (!["PENDING_REVIEW", "EDITING", "APPROVED", "PUBLISHED"].includes(p.state) || !inWindow(p.resolutionAt)) continue;
+    out.push({ kind: "ai", id: p.id, category: p.category, startsAt: p.resolutionAt, sourceUrl: p.sources[0]?.url ?? "",
+      textEn: p.titleEn, textSw: p.titleSw, textZh: p.titleZh, criterionEn: p.resolutionCriterion,
+      criterionSw: p.resolutionCriterionSw ?? "", criterionZh: p.resolutionCriterionZh ?? "" });
+  }
+  return out.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)).slice(0, limit);
 }
 
 // ── ACCOUNTING (/admin/maswali/pools) ───────────────────────────────────────────────────────────────
@@ -222,7 +270,9 @@ export type IntegrityView = {
 };
 
 const holderOf = async (userId: string) => {
-  const u = await db.user.findById(userId).catch(() => null);
+  // ⚠️ The memory store answers synchronously: never `.catch` the call itself, catch the awaited read.
+  let u: Awaited<ReturnType<typeof db.user.findById>> | null = null;
+  try { u = await db.user.findById(userId); } catch { u = null; }
   return { holder: u ? (u.displayName?.trim() || `…${u.phoneE164.slice(-4)}`) : "(closed account)", role: u?.role ?? "?", status: u?.status ?? "?", createdAt: u?.createdAt ?? null };
 };
 

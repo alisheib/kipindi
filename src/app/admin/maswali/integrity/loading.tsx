@@ -7,6 +7,8 @@ export default function Loading() {
       <AdminPageHead title="Millionea · Integrity" sw="Uadilifu" />
       <SkBody>
         <SkCard lines={2} titleW="w-20" />
+        <SkCard lines={2} titleW="w-56" />
+        <SkCard lines={4} titleW="w-40" />
         <SkCard lines={2} titleW="w-40" />
         <SkTableCard cols={5} rows={2} minWidth={900} headW="w-[112px]" />
         <SkTableCard cols={7} rows={4} minWidth={960} headW="w-[112px]" />

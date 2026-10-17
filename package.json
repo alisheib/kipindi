@@ -679,6 +679,7 @@
     "e2e:maswali-fault": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fault.test.mts",
     "test:maswali-rbac": "tsx scripts/maswali-rbac.test.mts",
     "test:maswali-shared-paths": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-shared-paths.test.mts",
+    "test:maswali-integrity": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-integrity.test.mts",
     "red:maswali-rbac": "node scripts/red-maswali-rbac.mjs",
     "test:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts",
     "red:simple-journey-flag": "tsx scripts/simple-journey-flag.test.mts --prove-red",

@@ -22,12 +22,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { utcToZonedLocal } from "@/lib/maswali-time";
+import type { DraftSuggestion } from "@/lib/server/maswali-console";
 import { createMaswaliWeekAction, editMaswaliQuestionAction } from "../actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 const KINDS = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"] as const;
 /** The zones Millionea's sources publish in. Any IANA zone works server-side; these are the ones the form offers. */
 const ZONES = ["Africa/Dar_es_Salaam", "Europe/London", "Europe/Madrid", "Europe/Paris", "Europe/Berlin", "Europe/Rome", "America/New_York", "Asia/Shanghai", "UTC"] as const;
+/**
+ * MB-21 · how a criterion is written, per kind of event — in English, the canonical text; the Swahili and Chinese are the
+ * officer's and the translator's, and the second reader attests all three agree (MB-79). The braces are the officer's to
+ * fill; a criterion still carrying one is not finished.
+ */
+const CRITERION_TEMPLATES: Record<string, string> = {
+  SPORT: "YES if {home} beat {away} in regulation time (90 minutes plus stoppage), as the source's final score shows; NO for a draw or an {away} win.",
+  PRICE: "YES if {asset} closes above {level} on {date}, as the source publishes its closing figure; NO otherwise. The reading is {tolerance}.",
+  WEATHER: "YES if the source reports at least {amount} mm of rain at {station} on {date}; NO otherwise.",
+  ANNOUNCEMENT: "YES if {body} announces {what} on its official channel by {time} EAT on {date}; NO otherwise.",
+};
+const kindFor = (category: string) => (category === "sports" ? "SPORT" : category === "macro" || category === "crypto" ? "PRICE" : category === "weather" ? "WEATHER" : "ANNOUNCEMENT");
 const TEXT_GUIDE = 110;
 const CRITERION_GUIDE = 240;
 
@@ -60,7 +74,7 @@ const toQuestion = (r: Row) => ({
  * `edit` opens the builder on an existing DRAFT: the week's start and line are fixed, and saving sends only the rows that
  * changed, one by one (`editDraftQuestion`; any edit clears the second reader's attestation, MB-79).
  */
-export function WeekBuilder({ defaultMonday, edit }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] } }) {
+export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] }; suggestions?: DraftSuggestion[] }) {
   const router = useRouter();
   const mayAct = useMayAct();
   const [weekStart, setWeekStart] = useState(defaultMonday);
@@ -69,6 +83,15 @@ export function WeekBuilder({ defaultMonday, edit }: { defaultMonday: string; ed
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const set = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  /** Fill a slot from a suggestion: its words, its source and its time in EAT. The officer edits from there. */
+  const fillFrom = (slotIndex: number, sg: DraftSuggestion) => {
+    const local = utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam");
+    set(slotIndex, {
+      category: sg.category, eventKind: kindFor(sg.category), textEn: sg.textEn, textSw: sg.textSw, textZh: sg.textZh,
+      criterionEn: sg.criterionEn, criterionSw: sg.criterionSw, criterionZh: sg.criterionZh, sourceUrl: sg.sourceUrl,
+      eventDate: local.slice(0, 10), eventTime: local.slice(11, 16), eventZone: "Africa/Dar_es_Salaam",
+    });
+  };
 
   const submit = () => {
     setError(null);
@@ -116,6 +139,24 @@ export function WeekBuilder({ defaultMonday, edit }: { defaultMonday: string; ed
         </div>
       )}
 
+      {suggestions.length > 0 && (
+        <details className="glass-panel p-4">
+          <summary className="cursor-pointer font-semibold text-body">Start from the calendar · {suggestions.length}</summary>
+          <p className="text-caption text-text-tertiary mt-1">Fixtures from the event calendar and AI-drafted polls in this week's window. Choosing one fills a slot; nothing is published, and every row still passes the open's checks.</p>
+          <ul className="mt-3 space-y-2">
+            {suggestions.map((sg) => (
+              <li key={`${sg.kind}-${sg.id}`} className="flex items-center gap-3 flex-wrap text-body-sm">
+                <span className="text-caption text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
+                <span className="text-caption uppercase tracking-[0.08em] text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
+                <span className="min-w-0 flex-1">{sg.textEn}</span>
+                <Select size="xs" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
+                  options={[{ value: "", label: "Fill slot…" }, ...rows.map((r, j) => ({ value: String(j), label: label(r) }))]} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {rows.map((r, i) => (
         <section key={i} className="glass-panel p-4 space-y-3" aria-label={`Question ${label(r)}`}>
           <div className="flex items-center justify-between gap-2">
@@ -130,6 +171,10 @@ export function WeekBuilder({ defaultMonday, edit }: { defaultMonday: string; ed
               <Input size="sm" value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
             </Field>
           ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="xs" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
+            {/[{}]/.test(r.criterionEn) && <span className="text-caption text-warning">Fill every {"{…}"} before saving.</span>}
+          </div>
           {([["criterionEn", "How it resolves · English"], ["criterionSw", "How it resolves · Kiswahili"], ["criterionZh", "How it resolves · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${CRITERION_GUIDE}`}>
               <Textarea rows={2} value={r[k]} onChange={(e) => set(i, { [k]: e.target.value } as Partial<Row>)} />
