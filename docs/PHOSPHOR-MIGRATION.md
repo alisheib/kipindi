@@ -21,19 +21,17 @@ site yet: every icon is still the house family in `src/components/ui/glyphs.tsx`
 **W1 is built on the branch** (§5 W1 "As built"): the pinned package, the codegen, the generated registry / sprite /
 notices, and three guards (one of them in `predeploy`), every guard green with its red twin proving all its plants.
 
-**The release was proven at `c67e8e53`** (2026-10-17, one heavy-lock turn): the 69 existing suites that read a changed
-file all green; typecheck 0; `next build` 0 on its second run (the first crashed with a Node segmentation fault inside Next's
-TypeScript step, a process crash on this laptop's known-faulty RAM, not a type error); local `qa:live` 376 passed, 0 failed.
-⛔ **The push to `main` was refused by Claude Code's permission check ("Production Deploy").** Ali's "until live" is the
-owner's go, but the harness needs his explicit permission: he either runs the one command himself, or adds a permission
-rule that lets this session push. Nothing reached production. **Then `main` moved** (three MASWALI-BUILD S0.5 commits, to
-`30582477`), so `c67e8e53` was no longer a fast-forward: the branch is **rebased onto `30582477`** (one conflict, two
-script pairs side by side in `package.json`, both kept) — W0's tick now cites `b17134e8`, W1 is `43c60f47` (re-rebased onto main `ce752dc4`; main moved only docs since `30582477`) — and the release
-proof re-runs on the rebased tree before any push.
+**The release** was proven first at `c67e8e53` (the 69 derived suites green; typecheck 0; `next build` 0; local
+`qa:live` 376/376). Its push was refused by Claude Code's auto-mode check; Ali then asked this session to push every
+finished wave live itself, approving each push (2026-10-17: *"plesa you push live anything you finsh put live evyrhtign s
+needed with th erigh tcolaboration with any sesison"*). `main` kept moving under it — the Maswali lane's S0.5, its icon
+rulings (docs), then its S1–S4 — so the branch is rebased at each move (two `package.json` conflicts, the script pairs
+kept side by side) and the push checklist re-run on the exact commit: green at `681a6b81` (typecheck 0, `next build` 0,
+local `qa:live` 376/376), then rebased onto main `0d27a830` (S1–S4, served code): W0's tick cites `ddbac8e5`, W1 is
+`c7125947`; W1's guards are green on that tree (no Maswali file draws an inline icon).
 
-**Next:** the release proof on the rebased branch tip (the same derived suites, typecheck, `next build`, local `qa:live`,
-one heavy-lock turn); then, once Ali allows it, push THAT exact commit to `main` (rebasing again first if `main` has moved:
-a moved `main` means a new proof), then the production read-back (`?dpl=` on www, apex and the Railway host;
+**Next:** the push checklist at this branch's tip on main `0d27a830` (typecheck, `next build`, local `qa:live`), the
+push (a fast-forward; Ali approves it), the production read-back (`?dpl=` on www, apex and the Railway host;
 `/api/health`; `qa:chunks-prod` on both origins; production `qa:live`), then tick W1 ✅. Meanwhile W2 is being built on
 branch `phosphor-w2` (worktree `C:\kipindi-phosphor-w2`).
 
@@ -61,7 +59,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | ✅ | b17134e8 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
+| W0 | Tracking + specimen + recognition check | ✅ | ddbac8e5 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | 🔨 | built on the branch; the derived suites and the release proof are queued |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
