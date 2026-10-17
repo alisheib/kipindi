@@ -11,7 +11,7 @@
  * the service in `src/lib/server/wallet-freeze.ts` is the only writer of the column.
  */
 
-export const WALLET_FREEZE_REASONS = ["SELF_EXCLUSION", "IDENTITY_REFUSED", "OFFICER"] as const;
+export const WALLET_FREEZE_REASONS = ["SELF_EXCLUSION", "IDENTITY_REFUSED", "OFFICER", "MILLIONEA_SHARE"] as const;
 export type WalletFreezeReason = (typeof WALLET_FREEZE_REASONS)[number];
 
 /** Officer-facing names (the admin console is English). Never shown to a player. */
@@ -19,6 +19,9 @@ export const FREEZE_REASON_LABEL: Record<WalletFreezeReason, string> = {
   SELF_EXCLUSION: "Self-exclusion",
   IDENTITY_REFUSED: "Identity refused (final)",
   OFFICER: "Officer freeze",
+  // MASWALI-BUILD S3 (MB-43, OD-07): a Millionea winning share credited to an account that changed — a staff role, a desk
+  // designation, a suspended or closed account — or one a reversed deposit funded. Compliance releases or forfeits it.
+  MILLIONEA_SHARE: "Millionea share held for Compliance",
 };
 
 export function isWalletFreezeReason(x: unknown): x is WalletFreezeReason {

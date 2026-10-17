@@ -29,6 +29,7 @@ import { revokeUserSessions } from "./session-registry";
 import { addWalletFreeze } from "./wallet-freeze";
 import { notifySelfExclusion, notifyCoolOff } from "./notification-service";
 import { formatTzs } from "@/lib/utils";
+import { ticketStore } from "./maswali-dal";
 
 /** Human-readable period labels for RG confirmation emails. */
 const PERIOD_LABEL: Record<string, string> = {
@@ -603,6 +604,18 @@ export async function checkDepositLimit(userId: string, amount: number) {
 }
 
 /**
+ * ⭐ OD-17 (MASWALI-BUILD S3) · THE NET THE LOSS LIMIT READS: the platform's gambling net, less the Millionea money that
+ * must not offset it — every winning share (Millionea winnings never offset the limit), and every refund of a stake
+ * bought before the window (a free cancel or week void offsets only a stake inside the same 24 hours). The gate and the
+ * player's "used today" read this one number, so the screen never disagrees with the refusal.
+ */
+async function lossLimitNetSince(userId: string, sinceMs: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+  const net = await db.txn.sumGamblingNetSince(userId, sinceMs, tx);
+  const excluded = await ticketStore.lossLimitExclusionsSince(userId, new Date(sinceMs).toISOString(), tx ?? undefined);
+  return net - excluded;
+}
+
+/**
  * Daily loss-limit gate (LCCP SR 3.4 / GLI-19). `dailyLossLimit` caps the net
  * REAL-money loss a player may sustain in a rolling 24h window. A new bet is
  * refused if it would push the day's loss past that cap.
@@ -625,7 +638,7 @@ export async function checkLossLimit(userId: string, stakeTzs: number, tx?: Pris
   const r = await getRgSettings(userId);
   if (r.dailyLossLimit === null) return { allowed: true as const };
   const since = Date.now() - 86_400 * 1000;
-  const net = await db.txn.sumGamblingNetSince(userId, since, tx);
+  const net = await lossLimitNetSince(userId, since, tx);
   const lossSoFar = Math.max(0, -net);
   if (lossSoFar + stakeTzs > r.dailyLossLimit) {
     return {
@@ -662,7 +675,7 @@ export async function getLimitUsage(userId: string): Promise<LimitUsage> {
     db.txn.sumDepositsSince(userId, cutoffMonth, true),
     db.txn.sumDepositsSince(userId, cutoffWeek, true),
     db.txn.sumDepositsSince(userId, cutoffDay, true),
-    db.txn.sumGamblingNetSince(userId, cutoffDay),
+    lossLimitNetSince(userId, cutoffDay),
   ]);
   return { depositDay, depositWeek, depositMonth, lossToday: Math.max(0, -net) };
 }

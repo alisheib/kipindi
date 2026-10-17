@@ -124,6 +124,33 @@ async function maybeReconcileLedger(): Promise<void> {
   }).catch(() => {});
 }
 
+// ── Nightly Maswali Millionea invariants (MASWALI-BUILD S3, item 9) ──────────
+// The same cadence and grace as the trial balance, and the same contract: read-only, and a broken invariant is a
+// WATCHED compliance record. `maswali-invariants.ts` names the five; nothing here moves money.
+let lastMaswaliInvariantsAt = 0;
+
+async function maybeCheckMaswaliInvariants(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < RECONCILE_BOOT_GRACE_MS) return;
+  if (now - lastMaswaliInvariantsAt < RECONCILE_EVERY_MS) return;
+  lastMaswaliInvariantsAt = now;
+  const { checkMaswaliInvariants } = await import("./maswali-invariants");
+  const r = await checkMaswaliInvariants();
+  if (r.ok) {
+    if (r.weeks > 0) console.log(`[lifecycle] Millionea invariants OK — ${r.weeks} week(s)`);
+    return;
+  }
+  console.error(`[lifecycle] MILLIONEA INVARIANTS BROKEN — ${r.problems.length}: ${r.problems.slice(0, 5).join(" | ")}`);
+  await audit({
+    category: "COMPLIANCE",
+    action: "maswali.invariants_broken",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { weeks: r.weeks, problems: r.problems.slice(0, 50) },
+  }).catch(() => {});
+}
+
 // ── Daily data-retention purge (audit F-01) ─────────────────────────────────
 // `/admin/retention` has published a nightly chore by this exact name for months,
 // under a card that admitted in smaller type: "This job is not wired in the current
@@ -683,6 +710,8 @@ export async function runLifecyclePass(): Promise<void> {
     // payments.fast_credit audit rows. Observed in production 2026-07-20 12:49:47.
     await maybePaymentSweeps().catch((e) => console.error("[lifecycle] payment sweeps:", e));
     await maybeReconcileLedger().catch((e) => console.error("[lifecycle] trial balance:", e));
+    // Its own catch, beside the trial balance it complements: a Millionea check that throws must not stop the pass.
+    await maybeCheckMaswaliInvariants().catch((e) => console.error("[lifecycle] Millionea invariants:", e));
     // Last in the pass, and with its own catch per the per-chore contract above: a purge
     // that fails must never take the market lifecycle down with it. Deleting aged rows is
     // the least urgent thing this ticker does.

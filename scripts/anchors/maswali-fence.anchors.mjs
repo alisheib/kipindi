@@ -26,8 +26,10 @@ export const MUTATIONS = [
   {
     name: "(2) the bet door sells a one-sided stake on a week",
     file: SVC,
-    from: "  if (isFencedMaswali(market)) return { ok: false, error: \"Market is not accepting predictions.\", code: \"INVALID\" };",
-    to: "  if (false) return { ok: false, error: \"Market is not accepting predictions.\", code: \"INVALID\" };",
+    // ⚠️ RE-ANCHORED (MASWALI-BUILD S3): the fence is now a block that routes slips to the ticket arm; removing it lets a
+    // no-picks buy fall through to the poll path — the one-sided stake this plant measures.
+    from: "  if (isFencedMaswali(market)) {",
+    to: "  if (false) {",
     expect: "2.1 · buyPosition refuses a week",
     suite: "memory",
   },

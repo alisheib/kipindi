@@ -69,6 +69,12 @@ export async function readHouseAccounts(): Promise<HouseAccounts | null> {
   const all: Record<string, number> = {};
   for (const r of rows) all[r.account] = Number(r.sum ?? 0);
   const at = (a: string) => all[a] ?? 0;
+  // ⭐ MASWALI-BUILD S3 · the Millionea weeks' pools, by the week's own market rows (served by @@index([account, createdAt])).
+  const pools = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(
+    `SELECT SUM(amount)::text AS sum
+       FROM "LedgerEntry"
+      WHERE account IN (SELECT 'POOL:' || id FROM "PredictionMarket" WHERE "productLine" = 'MASWALI')`,
+  );
   return {
     commission: at("HOUSE:COMMISSION"),
     agentCommission: at("HOUSE:AGENT_COMMISSION"),
@@ -77,8 +83,10 @@ export async function readHouseAccounts(): Promise<HouseAccounts | null> {
     aggregator: at("HOUSE:AGGREGATOR"),
     rgSuspense: at("HOUSE:RG_SUSPENSE"),
     tax: at("HOUSE:TAX"),
-    maswaliJackpot: at("HOUSE:MASWALI_JACKPOT"),
+    // The public jackpot and the drive's own (OD-21): both are players' money carried for a later week.
+    maswaliJackpot: at("HOUSE:MASWALI_JACKPOT") + at("HOUSE:MASWALI_JACKPOT_DRIVE"),
     maswaliGuarantee: at("HOUSE:MASWALI_GUARANTEE"),
+    maswaliOpenPools: Number(pools[0]?.sum ?? 0),
     all,
   };
 }

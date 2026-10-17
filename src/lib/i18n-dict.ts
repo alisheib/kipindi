@@ -2555,6 +2555,17 @@ export const dict = {
       // Sanctioned change (b)/(c): a request id that belongs to a different bet. sw/zh are drafted and marked
       // for native review; English is binding.
       failIdempotencyKeyConflict: "This request was already used for a different bet, so nothing was placed. Refresh the page and try again.",
+      // MASWALI-BUILD S1 · Millionea's refusals (failure-reasons.ts). Each names the cause and the next step; every rule
+      // number is a figure from the week's rules, never a literal. sw/zh for native review (Gate B); English is binding.
+      failMillioneaCapReached: "You have reached {ticketCap} tickets this week, the most one account can hold. Your tickets are safe; you can buy again when next week opens.",
+      failMillioneaBonusRefused: "Millionea is paid from the main balance only; bonus money does not apply here. Main balance: {balance}. Deposit to buy a ticket.",
+      failMillioneaSalesClosed: "Sales for this Millionea week have closed, before the first event. Your tickets stand; follow the results on the week's page.",
+      failMillioneaStaffBarred: "Staff accounts cannot buy Millionea tickets, so the week stays fair for players. If this account should not hold a staff role, ask the Owner to change it.",
+      failMillioneaAccountIneligible: "This account cannot buy Millionea tickets. If you think this is wrong, contact support.",
+      failMillioneaPicksIncomplete: "Answer all 15 questions, the 10 main questions and the 5 reserves, before you buy the ticket.",
+      failMillioneaWeekNotOpen: "This Millionea week is not open for tickets. The Millionea page shows the week that is selling now.",
+      failMillioneaPaused: "Millionea is paused for now. Tickets already bought are safe; you can buy again when sales resume.",
+      failMillioneaNotAvailable: "Millionea is not available yet. Nothing was charged.",
       // B2 · a WARNING before confirming, never a refusal. The bet still goes through.
       failBonusWageringOneSide: "This bet won’t count toward your bonus. You already have money on the other side of this market, and only one side counts toward the {remaining} you still need to bet before your bonus can be withdrawn.",
       browseOpenMarkets: "Browse open markets",
@@ -5242,6 +5253,16 @@ export const dict = {
       failCashoutPoolShort: "Kuna hitilafu upande wetu, hivyo dau hili haliwezi kuuzwa sasa. Wasiliana na msaada.",
       // A request id that belongs to a different bet — drafted, marked for native review.
       failIdempotencyKeyConflict: "Ombi hili tayari limetumika kwa dau tofauti, kwa hivyo hakuna kilichowekwa. Pakia upya ukurasa kisha jaribu tena.",
+      // MASWALI-BUILD S1 · Millionea — kwa ukaguzi wa mzawa (Gate B); Kiingereza ndicho kinachofunga.
+      failMillioneaCapReached: "Umefikia tiketi {ticketCap} za wiki hii, kiwango cha juu kwa akaunti moja. Tiketi zako ziko salama; utaweza kununua tena wiki ijayo ikifunguliwa.",
+      failMillioneaBonusRefused: "Millionea inalipwa kwa salio kuu tu; bonasi haitumiki hapa. Salio kuu: {balance}. Weka pesa ili ununue tiketi.",
+      failMillioneaSalesClosed: "Mauzo ya wiki hii ya Millionea yamefungwa, kabla ya tukio la kwanza. Tiketi zako zinaendelea; fuatilia matokeo kwenye ukurasa wa wiki.",
+      failMillioneaStaffBarred: "Akaunti za watumishi haziruhusiwi kununua tiketi za Millionea, ili wiki ibaki ya haki kwa wachezaji. Ikiwa akaunti hii haipaswi kuwa na nafasi ya mtumishi, mwombe Mmiliki aibadilishe.",
+      failMillioneaAccountIneligible: "Akaunti hii haiwezi kununua tiketi za Millionea. Ikiwa unaona si sahihi, wasiliana na huduma kwa wateja.",
+      failMillioneaPicksIncomplete: "Jibu maswali yote 15, maswali makuu 10 na akiba 5, kabla ya kununua tiketi.",
+      failMillioneaWeekNotOpen: "Wiki hii ya Millionea haijafunguliwa kwa tiketi. Ukurasa wa Millionea unaonyesha wiki inayouzwa sasa.",
+      failMillioneaPaused: "Millionea imesimamishwa kwa muda. Tiketi zilizonunuliwa ziko salama; utaweza kununua tena mauzo yakirejea.",
+      failMillioneaNotAvailable: "Millionea bado haipatikani. Hakuna kilichotozwa.",
       failBonusWageringOneSide: "Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa soko hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa.",
       browseOpenMarkets: "Tazama masoko yaliyo wazi",
       recoveryLinks: "Viungo vya kurejesha",
@@ -7756,6 +7777,16 @@ export const dict = {
       failCashoutPoolShort: "我们这边出现错误，您的投注暂时无法卖出。请联系客服。",
       // A request id that belongs to a different bet — drafted, marked for native review.
       failIdempotencyKeyConflict: "该请求已用于另一笔投注，因此未下注。请刷新页面后重试。",
+      // MASWALI-BUILD S1 · Millionea — pending native review (Gate B); English is binding.
+      failMillioneaCapReached: "您本周已达 {ticketCap} 张彩票上限，这是每个账户可持有的最多数量。已购彩票安全无虞；下周开放后可再次购买。",
+      failMillioneaBonusRefused: "Millionea 仅从主余额支付；奖金余额在此不适用。主余额：{balance}。请充值后购买。",
+      failMillioneaSalesClosed: "本期 Millionea 已于首个赛事开始前截止销售。已购彩票继续有效；请在本期页面查看结果。",
+      failMillioneaStaffBarred: "员工账户不能购买 Millionea 彩票，以确保对玩家公平。如此账户不应担任员工角色，请联系所有者更改。",
+      failMillioneaAccountIneligible: "此账户不能购买 Millionea 彩票。如您认为有误，请联系客服。",
+      failMillioneaPicksIncomplete: "购买前请回答全部 15 道题：10 道主题和 5 道备选题。",
+      failMillioneaWeekNotOpen: "本期 Millionea 尚未开放购票。Millionea 页面显示正在销售的一期。",
+      failMillioneaPaused: "Millionea 暂时停售。已购彩票安全无虞；恢复销售后可再次购买。",
+      failMillioneaNotAvailable: "Millionea 暂未开放。未产生任何扣款。",
       failBonusWageringOneSide: "此注不计入您的奖金要求。您在本市场的另一方已有资金，仅一方计入您提取奖金前仍需投注的 {remaining}。",
       browseOpenMarkets: "浏览开放市场",
       recoveryLinks: "恢复链接",

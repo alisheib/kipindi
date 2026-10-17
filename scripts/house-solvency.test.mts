@@ -34,7 +34,7 @@ const ok = (label: string, cond: boolean, detail = "") => {
 
 const accounts = (over: Partial<HouseAccounts> = {}): HouseAccounts => ({
   commission: 0, agentCommission: 0, traLevy: 0, gbtLevy: 0,
-  aggregator: 0, rgSuspense: 0, tax: 0, maswaliJackpot: 0, maswaliGuarantee: 0, all: {}, ...over,
+  aggregator: 0, rgSuspense: 0, tax: 0, maswaliJackpot: 0, maswaliGuarantee: 0, maswaliOpenPools: 0, all: {}, ...over,
 });
 
 const position = (a: Partial<HouseAccounts>, cash: number, liability = 0) =>
@@ -117,6 +117,19 @@ console.log("\n§3b · ⭐ the Millionea jackpot and guarantee come out of free 
     ok(`   ⛔ dropping ${k} moves the line by ${v.toLocaleString()}`, without.freeHouseCash - p.freeHouseCash === v,
       `moved ${without.freeHouseCash - p.freeHouseCash}`);
   }
+}
+
+// ── §3c · the unsettled weeks' ticket money (MASWALI-BUILD S3, item 8) ───────
+console.log("\n§3c · ⭐ an unsettled Millionea week's ticket money is owed to players, never free cash");
+{
+  // Week 2 of worked example A is selling: 400 tickets × 1,000 sit in its POOL, out of every wallet.
+  const p = position({ maswaliJackpot: 300_000, maswaliGuarantee: 2_000_000, maswaliOpenPools: 400_000, commission: 50_000 }, 3_400_000);
+  ok("the open pools are reported as payable", p.maswaliOpenPoolsPayable === 400_000, `${p.maswaliOpenPoolsPayable}`);
+  ok("⭐ free cash is 3,400,000 − 300,000 − 2,000,000 − 400,000 = 700,000", p.freeHouseCash === 700_000, `${p.freeHouseCash}`);
+  ok("⛔ the open pools are not retained earnings", p.netRetained === 50_000, `netRetained=${p.netRetained}`);
+  const without = position({ maswaliJackpot: 300_000, maswaliGuarantee: 2_000_000, maswaliOpenPools: 0, commission: 50_000 }, 3_400_000);
+  ok("   ⛔ dropping maswaliOpenPools moves the line by 400,000", without.freeHouseCash - p.freeHouseCash === 400_000,
+    `moved ${without.freeHouseCash - p.freeHouseCash}`);
 }
 
 // ── §4 · POSITIVE CONTROL ────────────────────────────────────────────────────

@@ -610,6 +610,14 @@ export interface PositionStore {
   // transaction so it costs no extra pool connection.
   findByIdempotencyKey(key: string, tx?: Prisma.TransactionClient | null): Promise<StoredPosition | null>;
   /**
+   * MASWALI-BUILD S3 · a Millionea week's settlement marks every OPEN ticket position on its market LOSS (finalPayout 0)
+   * except the winners, which it pays one by one. ⭐ ONE statement, not one per ticket (MB-31's 10,000-ticket budget),
+   * in the settlement's transaction; conditional on OPEN, so a re-run moves nothing. Returns how many moved — the
+   * caller requires it to equal the losing tickets it graded, and a mismatch rolls the settlement back.
+   * ⛔ Millionea's settlement is the only caller: a poll settles its positions one by one, with their payouts.
+   */
+  settleMaswaliLosers(marketId: string, winnerIds: readonly string[], settledAt: string, tx?: Prisma.TransactionClient | null): Promise<number>;
+  /**
    * Per-player settled totals for ONE product line inside a half-open window
    * `[fromIso, toIso)`. The aggregation the Up & Down **daily digest** is built
    * from (E-37) — one row per player who had a round settle that day.
@@ -912,6 +920,16 @@ const memoryPositions: PositionStore = {
   async findByIdempotencyKey(key, _tx) {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
     return null;
+  },
+  async settleMaswaliLosers(marketId, winnerIds, settledAt, _tx) {
+    const winners = new Set(winnerIds);
+    let n = 0;
+    for (const p of positions.values()) {
+      if (p.marketId !== marketId || p.status !== "OPEN" || winners.has(p.id)) continue;
+      p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
+      n++;
+    }
+    return n;
   },
   async dailyTotalsByUser({ fromIso, toIso, productLine }) {
     // Same shape as the SQL below, so the digest a behaviour test observes in
@@ -1557,6 +1575,14 @@ const prismaPositions: PositionStore = {
   async findByIdempotencyKey(key, tx) {
     const r = await (tx ?? pc()).position.findUnique({ where: { idempotencyKey: key } });
     return r ? toStoredPosition(r) : null;
+  },
+  async settleMaswaliLosers(marketId, winnerIds, settledAt, tx) {
+    // Served by @@index([marketId, status]). `notIn` over the winners, who are few (k is the 10-of-10 tickets).
+    const r = await (tx ?? pc()).position.updateMany({
+      where: { marketId, status: "OPEN", ...(winnerIds.length > 0 ? { id: { notIn: [...winnerIds] } } : {}) },
+      data: { status: "LOSS", finalPayout: 0, settledAt: new Date(settledAt) },
+    });
+    return r.count;
   },
   async dailyTotalsByUser({ fromIso, toIso, productLine }) {
     // ONE aggregate, like `leaderboard()`. Raw SQL rather than Prisma `groupBy`

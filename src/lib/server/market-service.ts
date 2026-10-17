@@ -76,6 +76,7 @@ import { roundStore } from "./updown-dal";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
 import { switchLine, assertNeverLine, storedProductLine } from "@/lib/product-line";
+import { buyMaswaliTickets, cancelMaswaliTicket, landedMaswaliAnswer, maswaliTicketPrice, type MaswaliBuy, type MaswaliTicketReceipt } from "./maswali-money-service";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -1032,10 +1033,14 @@ export async function stakeBoundsForMarket(market: Pick<StoredMarket, "id" | "pr
     }
     case "MARKET":
       break;
-    // A Millionea ticket's price is fixed per week (MR-8: min = max = the frozen snapshot price, S3). Until S3 the bet
-    // door refuses a Millionea week before it asks this, so the platform bounds are only ever a placeholder here.
-    case "MASWALI":
+    // A Millionea ticket's price is fixed per week (MR-8): min = max = the frozen snapshot price, per ticket. Before the
+    // week has rules there is no price, and nothing at all can be staked (min above max).
+    case "MASWALI": {
+      const price = await maswaliTicketPrice(market.id);
+      if (price == null) return { min: 1, max: 0 };
+      min = price; max = price;
       break;
+    }
     default:
       return assertNeverLine(line, "stakeBoundsForMarket");
   }
@@ -1075,6 +1080,12 @@ type BuyOpts = {
    * limit has no opinion (see `checkSessionTimeLimit`), never "exceeded".
    */
   playStartedAt?: number;
+  /**
+   * MASWALI-BUILD S3 · a Millionea purchase: the week and its slips (fifteen answers each). Present ONLY for a
+   * MASWALI market, where `side` is "YES" and `stake` is the purchase's total; the ticket arm in `buyPositionInner`
+   * reads it. A field, not a third `BetContext` kind: the context says WHO bets, and the house seam pins every kind.
+   */
+  maswali?: MaswaliBuy;
 };
 /**
  * ⭐ `placedAt` and `bonusStakeTzs` are here for the BET RECEIPT, and both are load-bearing.
@@ -1093,6 +1104,8 @@ type BuyResult = ServiceResult<{
   /** Sanctioned change (j): set on BOTH replay paths, so a caller can tell a repeat from a new bet
    *  (the house engine alerts only on a fresh placement). Absent on a new bet. */
   replayed?: true;
+  /** MASWALI-BUILD S3 · a Millionea purchase's tickets (absent on every other bet). */
+  maswali?: { weekId: string; tickets: MaswaliTicketReceipt[] };
 }>;
 
 /**
@@ -1179,6 +1192,12 @@ type ReplayReach = { reached: boolean; uncertain: boolean };
 async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult, uncertain = false): Promise<BuyResult | null> {
   const key = opts.idempotencyKey;
   if (!key) return null;
+  // MASWALI-BUILD S3 · a ticket purchase keys each ticket `<key>#i`: its own reader answers it, with the same rules.
+  if (opts.maswali) {
+    const r = await landedMaswaliAnswer(userId, { marketId: opts.marketId, stake: opts.stake, idempotencyKey: key, buy: opts.maswali },
+      refused.ok ? { ok: false, error: "" } : refused, uncertain);
+    return r as BuyResult | null;
+  }
   let landed = false;
   try {
     const p = await positionStore.findByIdempotencyKey(key);
@@ -1446,9 +1465,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
 
   const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
-  // S0.5 · the fence: a Millionea week is bought only through its own ticket path (15 picks, S3), never as a one-sided
-  // Yes/No stake. The words are a closed market's, so nothing new reaches a player.
-  if (isFencedMaswali(market)) return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
+  // MASWALI:door · S0.5 + S3 — a Millionea week is bought only through its own ticket arm (fifteen answers per slip),
+  // which runs HERE, below every shared gate above (the rate limit, maintenance, the break, the session limit, the
+  // account), so the platform's responsible-gambling gates fire for it through this one path. Without slips it is
+  // refused in a closed market's words, so a week can never be a one-sided Yes/No stake.
+  // ⚠️ House or player is read from the H0 intent, not by comparing the context (the house seam pins every comparison).
+  if (isFencedMaswali(market)) {
+    if (!opts.maswali) return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
+    const r = await buyMaswaliTickets({
+      userId, user: { role: u.role }, isHouse: houseIntent !== null, market, buy: opts.maswali, stake: opts.stake,
+      idempotencyKey: opts.idempotencyKey, reach,
+    });
+    if (r.ok && !r.data.replayed) void emitWalletBalances([userId]);
+    return r as BuyResult;
+  }
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
@@ -3363,6 +3393,10 @@ export async function cashOutPosition(
   const pre = await positionStore.get(positionId);
   if (!pre) return { ok: false, error: "Position not found.", code: "NOT_FOUND", reason: "not_your_position" };
   if (pre.userId !== userId) return { ok: false, error: "Not your position.", code: "INVALID", reason: "not_your_position" };
+  // MASWALI:cancel · S3 — a Millionea ticket's only exit is the free cancel (RULES §2.6), one transaction on its own
+  // path. Asked BEFORE this function's wallet lock: the cancel takes that lock itself. The in-lock fence below stays.
+  const preMarket = await marketStore.get(pre.marketId);
+  if (preMarket && isFencedMaswali(preMarket)) return cancelMaswaliTicket({ userId, positionId });
 
   return withLock(`wallet:${userId}`, async () => {
     // Learn the market so we can nest its lock. Lock order is ALWAYS
@@ -4225,7 +4259,10 @@ export async function settleMarket(
           await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
+      // MASWALI-BUILD S3 · a Millionea ticket recorded no turnover (OD-20), so its void refund removes none — reversing
+      // it would take progress the player earned on their other bets.
+      const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
+      if (accruedTurnover) pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // E-43 — see the one-sided branch above. Same decision, same predicate.
       // E-57 / 2026-08-22 — and the same announcement, for the same reason: every terminal
@@ -4234,13 +4271,17 @@ export async function settleMarket(
       if (!perEventNotificationsSuppressed(m)) {
         notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
       } else {
-        notifyUpDownRefund(p.userId, {
-          stake: p.stake,
-          marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
-          roundHref: updownRoundHref,
-          pushTag: updownResultPushTag(m.id),
-          positionId: p.id,
-        });
+        // MASWALI-BUILD S3 · a voided Millionea week is announced by its own notice (S6), which names the week and the
+        // carried jackpot — never the Up & Down round's "the round was voided". Exhaustive: a new line must choose.
+        if (switchLine(m.productLine, { MARKET: () => false, UPDOWN: () => true, MASWALI: () => false })) {
+          notifyUpDownRefund(p.userId, {
+            stake: p.stake,
+            marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+            roundHref: updownRoundHref,
+            pushTag: updownResultPushTag(m.id),
+            positionId: p.id,
+          });
+        }
       }
     }
   } else {

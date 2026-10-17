@@ -181,7 +181,8 @@ function auditReason(reason: FailureReason, dict: Record<string, string>): strin
   // wrong one is not a fixture.
   // ⭐ `value` (S6 A8c, 2026-10-03): the new price `price_changed` names. Without it, 2.*.figures would read that
   // correct sentence as "declared but never interpolated" — the `last4` lesson above.
-  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01", last4: "9354", limitMin: 30, playedMin: 45, value: 9_000 };
+  // ⭐ `ticketCap` (MASWALI-BUILD S1): the cap `millionea_cap_reached` names — the same lesson again.
+  const FULL_DETAIL = { min: 1_000, max: 1_000_000, balance: 500, needed: 2_000, remaining: 40_000, until: "2026-09-01", last4: "9354", limitMin: 30, playedMin: 45, value: 9_000, ticketCap: 10 };
   for (const loc of LOCALES) {
     const dict = DICT[loc].error as unknown as Record<string, string>;
     const render = (r: FailureReason, detail: object) =>

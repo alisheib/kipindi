@@ -217,7 +217,25 @@ export interface WeekStore {
   stampClose(id: string, f: { closedAt: string; ticketCount: number; salesAtClose: number; ticketMerkleRoot: string }, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** MR-21: the carry is claimed once, WHERE `rolloverIn` IS NULL. */
   claimCarry(id: string, rolloverIn: number, tx?: Prisma.TransactionClient): Promise<boolean>;
+  /** S3 · the live ticket count: +n on a purchase, −1 on a free cancel, in the money transaction. Never below 0. */
+  bumpTicketCount(id: string, delta: number, tx?: Prisma.TransactionClient): Promise<void>;
+  /**
+   * ⭐ S3 · THE SETTLEMENT'S ONE WRITE ON THE WEEK: the mirror of the ledger group, the state and `settledAt`, WHERE the
+   * week is RESOLVING and has no settlement yet. False when another settlement already won the row.
+   */
+  stampSettlement(id: string, f: WeekSettlementStamp, tx?: Prisma.TransactionClient): Promise<boolean>;
 }
+
+/** One ticket's grade as the settlement writes it; `frozenReason` is a winning share held for Compliance (MB-43). */
+export type SettledTicketRow = { id: string; score: number | null; won: boolean; payout: number; frozenReason?: string | null };
+
+/** The settlement columns a week mirrors from its ledger group (MR-26), written once. */
+export type WeekSettlementStamp = {
+  state: "SETTLED";
+  jackpot: number | null; fee: number; traLevy: number; gbtLevy: number; topUp: number;
+  winningTickets: number; sharePerTicket: number | null; paidTotal: number; carryOut: number; dustCarried: number;
+  settlementGroupId: string; settledAt: string; releasedBy: string;
+};
 
 export interface QuestionStore {
   listForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<StoredQuestion[]>;
@@ -236,12 +254,26 @@ export interface TicketStore {
   listForUser(userId: string, opts?: { cycleId?: string; limit?: number }): Promise<StoredTicket[]>;
   /** MR-11: this account's non-cancelled tickets in the week — read inside the wallet lock by the buy. */
   countLiveForUser(cycleId: string, userId: string, tx?: Prisma.TransactionClient): Promise<number>;
+  /**
+   * ⭐ OD-17 · the money a player got back from Millionea since `sinceIso` that must NOT offset their 24-hour loss limit:
+   * every winning share settled in the window (Millionea winnings never offset it), and the stake of every ticket bought
+   * BEFORE the window but refunded inside it — a free cancel or a week void (a refund offsets only a stake inside the same
+   * window). One aggregate; the loss-limit gate subtracts it from the platform's gambling net.
+   */
+  lossLimitExclusionsSince(userId: string, sinceIso: string, tx?: Prisma.TransactionClient): Promise<number>;
   create(t: StoredTicket, tx?: Prisma.TransactionClient): Promise<void>;
   /** LIVE → CANCELLED, once. */
   cancelTicket(id: string, cancelledAt: string, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** LIVE → SETTLED with its grade, once. */
   settleTicket(id: string, f: { score: number | null; won: boolean; payout: number }, tx?: Prisma.TransactionClient): Promise<boolean>;
   patch(id: string, fields: Partial<StoredTicket>): Promise<void>;
+  /** S3 · every ticket a week has ever sold, cancelled ones included — the serial counter, read under the market lock. */
+  countAllForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<number>;
+  /**
+   * S3 · settle a week's LIVE tickets in bulk, each with its own grade, in the settlement transaction. Returns how many
+   * moved LIVE → SETTLED; the caller requires it to equal the rows it passed (a mismatch rolls the settlement back).
+   */
+  settleWeekTickets(cycleId: string, rows: ReadonlyArray<SettledTicketRow>, tx?: Prisma.TransactionClient): Promise<number>;
 }
 
 // ── IN MEMORY ───────────────────────────────────────────────────────────────────────────────────────
@@ -323,6 +355,20 @@ const memoryWeeks: WeekStore = {
     memWeeks.set(id, { ...cur, rolloverIn, updatedAt: now() });
     return true;
   },
+  async bumpTicketCount(id, delta) {
+    const cur = memWeeks.get(id);
+    if (!cur) return;
+    const next = cur.ticketCount + delta;
+    if (next < 0) throw new Error("MaswaliCycle_ticketCount_check");
+    memWeeks.set(id, { ...cur, ticketCount: next, updatedAt: now() });
+  },
+  async stampSettlement(id, f) {
+    const cur = memWeeks.get(id);
+    if (!cur || cur.state !== "RESOLVING" || cur.settledAt != null || cur.settlementGroupId != null) return false;
+    if ([...memWeeks.values()].some((w) => w.id !== id && w.settlementGroupId === f.settlementGroupId)) throw new Error("MaswaliCycle_settlementGroupId_key");
+    memWeeks.set(id, { ...cur, ...f, updatedAt: now() });
+    return true;
+  },
 };
 
 const memoryQuestions: QuestionStore = {
@@ -372,6 +418,22 @@ const memoryTickets: TicketStore = {
   async countLiveForUser(cycleId, userId) {
     return [...memTickets.values()].filter((t) => t.cycleId === cycleId && t.userId === userId && t.status !== "CANCELLED").length;
   },
+  async lossLimitExclusionsSince(userId, sinceIso) {
+    const since = Date.parse(sinceIso);
+    const { positionStore } = await import("./market-dal");
+    let sum = 0;
+    for (const t of memTickets.values()) {
+      if (t.userId !== userId) continue;
+      const week = memWeeks.get(t.cycleId);
+      if (t.status === "SETTLED" && t.won && (t.payout ?? 0) > 0 && week?.settledAt && Date.parse(week.settledAt) >= since) sum += t.payout ?? 0;
+      if (Date.parse(t.createdAt) >= since) continue;
+      const p = await positionStore.get(t.positionId);
+      const cancelledIn = t.status === "CANCELLED" && t.cancelledAt != null && Date.parse(t.cancelledAt) >= since;
+      const voidedIn = p?.status === "VOID" && p.settledAt != null && Date.parse(p.settledAt) >= since;
+      if ((cancelledIn || voidedIn) && p) sum += p.stake;
+    }
+    return sum;
+  },
   async create(t) {
     for (const o of memTickets.values()) {
       if (o.positionId === t.positionId) throw new Error(`MaswaliTicket_positionId_key: ${t.positionId}`);
@@ -395,6 +457,19 @@ const memoryTickets: TicketStore = {
     refuseUnpatchable("ticketStore", fields, TICKET_PATCHABLE);
     const cur = memTickets.get(id);
     if (cur) memTickets.set(id, { ...cur, ...fields });
+  },
+  async countAllForWeek(cycleId) {
+    return [...memTickets.values()].filter((t) => t.cycleId === cycleId).length;
+  },
+  async settleWeekTickets(cycleId, rows) {
+    let n = 0;
+    for (const r of rows) {
+      const cur = memTickets.get(r.id);
+      if (!cur || cur.cycleId !== cycleId || cur.status !== "LIVE") continue;
+      memTickets.set(r.id, { ...cur, status: "SETTLED", score: r.score, won: r.won, payout: r.payout, frozenReason: r.frozenReason ?? null });
+      n++;
+    }
+    return n;
   },
 };
 
@@ -502,6 +577,21 @@ const prismaWeeks: WeekStore = {
     const r = await db_(tx).maswaliCycle.updateMany({ where: { id, rolloverIn: null }, data: { rolloverIn } });
     return r.count === 1;
   },
+  async bumpTicketCount(id, delta, tx) {
+    // An atomic increment, computed by the database; the CHECK refuses a count below 0.
+    await db_(tx).maswaliCycle.update({ where: { id }, data: { ticketCount: { increment: delta } } });
+  },
+  async stampSettlement(id, f, tx) {
+    const r = await db_(tx).maswaliCycle.updateMany({
+      where: { id, state: "RESOLVING", settledAt: null, settlementGroupId: null },
+      data: {
+        state: f.state, jackpot: f.jackpot, fee: f.fee, traLevy: f.traLevy, gbtLevy: f.gbtLevy, topUp: f.topUp,
+        winningTickets: f.winningTickets, sharePerTicket: f.sharePerTicket, paidTotal: f.paidTotal, carryOut: f.carryOut,
+        dustCarried: f.dustCarried, settlementGroupId: f.settlementGroupId, settledAt: new Date(f.settledAt), releasedBy: f.releasedBy,
+      },
+    });
+    return r.count === 1;
+  },
 };
 
 const prismaQuestions: QuestionStore = {
@@ -562,6 +652,26 @@ const prismaTickets: TicketStore = {
   async countLiveForUser(cycleId, userId, tx) {
     return db_(tx).maswaliTicket.count({ where: { cycleId, userId, NOT: { status: "CANCELLED" } } });
   },
+  async lossLimitExclusionsSince(userId, sinceIso, tx) {
+    // ⚠️ The timestamps are `timestamp WITHOUT time zone` holding UTC: the bound is an ISO string cast `::timestamp`
+    // (Postgres drops the Z and compares UTC to UTC), never a JS Date the driver could serialise in the container's zone.
+    // Sums cast `::text` and parsed here: `payout` and `stake` are Decimal(18,2).
+    const rows = await db_(tx).$queryRaw<Array<{ sum: string | null }>>`
+      SELECT COALESCE(SUM(
+               CASE WHEN t."status" = 'SETTLED' AND t."won" AND c."settledAt" >= ${sinceIso}::timestamp THEN COALESCE(t."payout", 0) ELSE 0 END
+             + CASE WHEN t."createdAt" < ${sinceIso}::timestamp
+                     AND ((t."status" = 'CANCELLED' AND t."cancelledAt" >= ${sinceIso}::timestamp)
+                       OR (p."status" = 'VOID' AND p."settledAt" >= ${sinceIso}::timestamp))
+                    THEN p."stake" ELSE 0 END
+             ), 0)::text AS "sum"
+        FROM "MaswaliTicket" t
+        JOIN "MaswaliCycle" c ON c."id" = t."cycleId"
+        JOIN "Position" p ON p."id" = t."positionId"
+       WHERE t."userId" = ${userId}`;
+    const n = Number(rows[0]?.sum ?? 0);
+    if (!Number.isFinite(n)) throw new Error("maswali-dal: the loss-limit exclusions could not be read");
+    return Math.round(n);
+  },
   async create(t, tx) {
     await db_(tx).maswaliTicket.create({
       data: {
@@ -588,6 +698,24 @@ const prismaTickets: TicketStore = {
     }
     if (Object.keys(data).length === 0) return;
     await pc().maswaliTicket.update({ where: { id }, data });
+  },
+  async countAllForWeek(cycleId, tx) {
+    return db_(tx).maswaliTicket.count({ where: { cycleId } });
+  },
+  async settleWeekTickets(cycleId, rows, tx) {
+    // ⭐ BULK, NOT ROW BY ROW (MB-31's 10,000-ticket budget): one UPDATE … FROM (VALUES …) per batch, each value bound
+    // and cast explicitly (a bound JS number is not an int4 to Postgres). Conditional on LIVE, so a re-run settles nothing.
+    let n = 0;
+    for (let i = 0; i < rows.length; i += 500) {
+      const batch = rows.slice(i, i + 500);
+      const values = Prisma.join(batch.map((r) => Prisma.sql`(${r.id}, ${r.score}::int, ${r.won}::boolean, ${r.payout}::numeric, ${r.frozenReason ?? null}::text)`));
+      n += await db_(tx).$executeRaw`
+        UPDATE "MaswaliTicket" AS t
+           SET "status" = 'SETTLED', "score" = v.score, "won" = v.won, "payout" = v.payout, "frozenReason" = v.frozen
+          FROM (VALUES ${values}) AS v(id, score, won, payout, frozen)
+         WHERE t."id" = v.id AND t."cycleId" = ${cycleId} AND t."status" = 'LIVE'`;
+    }
+    return n;
   },
 };
 

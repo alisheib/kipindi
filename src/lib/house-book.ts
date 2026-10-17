@@ -105,6 +105,12 @@ export type HouseAccounts = {
    * comes out of free cash on its own labelled line and is never counted as retained earnings.
    */
   maswaliGuarantee: number;
+  /**
+   * ⭐ Σ `POOL:<id>` over every Millionea week — the ticket money of the weeks not yet settled (a settled or voided week's
+   * pool ends at exactly 0). PLAYERS' MONEY until the week pays it out or rolls it to the jackpot, so a LIABILITY: it left
+   * the wallets (out of `playerLiability`) and the solvency line would read it as free cash (MASWALI-BUILD S3, item 8).
+   */
+  maswaliOpenPools: number;
   /** Every `HOUSE:%` account with a balance, keyed by the raw account string. */
   all: Readonly<Record<string, number>>;
 };
@@ -126,6 +132,8 @@ export type HousePosition = {
   maswaliJackpotPayable: number;
   /** ⭐ Owner capital committed to the Millionea floor. Ours, but promised: out of free cash, never retained. */
   maswaliGuaranteeCommitted: number;
+  /** ⭐ The ticket money of the Millionea weeks not yet settled. Players' money: a LIABILITY. */
+  maswaliOpenPoolsPayable: number;
   /** Owed to players — Σ ACTIVE wallet balance + hold. */
   playerLiability: number;
   /** ⚠️ The part of that credited by an ADMIN, with no deposit behind it. */
@@ -176,7 +184,7 @@ export function housePosition(input: {
    */
   adjustmentBackedLiability: number;
 }): HousePosition {
-  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission, tax, maswaliJackpot, maswaliGuarantee } = input.accounts;
+  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission, tax, maswaliJackpot, maswaliGuarantee, maswaliOpenPools } = input.accounts;
   const leviesPayable = traLevy + gbtLevy;
   // ⛔ `rgSuspense` BELONGS HERE. It is a player's deposit we are holding to return; leaving it
   // out reports it as free cash, which is the one thing it certainly is not.
@@ -188,8 +196,9 @@ export function housePosition(input: {
   // insolvency is built from". Production held 18,000 of it on 2026-09-09.
   //
   // ⭐ AND SO DOES THE MILLIONEA JACKPOT (players' money carried to the next winning week), and the guarantee, which is
-  // the owner's but promised to the floor (MASWALI-BUILD S1). Both are 0 until the first week runs.
-  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee;
+  // the owner's but promised to the floor (MASWALI-BUILD S1). Both are 0 until the first week runs. And the unsettled
+  // weeks' ticket money (S3): it left the wallets, so `playerLiability` no longer carries it.
+  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax + maswaliJackpot + maswaliGuarantee + maswaliOpenPools;
 
   // ⚠️ Clamped at zero: admin credits can exceed the wallet total (a credit later staked and
   // lost still happened), and a NEGATIVE funded liability is not a thing the owner can act on.
@@ -209,6 +218,7 @@ export function housePosition(input: {
     taxPayable: tax,
     maswaliJackpotPayable: maswaliJackpot,
     maswaliGuaranteeCommitted: maswaliGuarantee,
+    maswaliOpenPoolsPayable: maswaliOpenPools,
     playerLiability: input.playerLiability,
     playerLiabilityAdjusted: adjusted,
     playerLiabilityFunded: input.playerLiability - adjusted,
@@ -424,14 +434,15 @@ export function reconcile(booked: number, computed: number): Reconciliation {
  */
 export type RateProvenance = {
   commissionRate: number;
-  feeModel: "loser-share" | "capped-commission";
+  /** `jackpot-payout` is a Millionea week's (MASWALI-BUILD S3): its fee is a share of the jackpot, frozen per week. */
+  feeModel: "loser-share" | "capped-commission" | "jackpot-payout";
   /** `"snapshot"` = the game's own frozen rates. `"fallback"` = legacy, reconstructed. */
   origin: "snapshot" | "fallback";
 };
 
 export function rateProvenance(input: {
   /** The game's `feeSnapshot`, already parsed. `null` when it has none. */
-  snapshot: { commissionRate: number; feeModel: "loser-share" | "capped-commission" } | null;
+  snapshot: { commissionRate: number; feeModel: "loser-share" | "capped-commission" | "jackpot-payout" } | null;
   legacy: { commissionRate: number; feeModel: "loser-share" | "capped-commission" };
 }): RateProvenance {
   if (input.snapshot) return { ...input.snapshot, origin: "snapshot" };

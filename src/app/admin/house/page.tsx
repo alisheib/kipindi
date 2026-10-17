@@ -515,6 +515,9 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                       {position.maswaliGuaranteeCommitted !== 0 && (
                         <tr><td className="text-left">Millionea guarantee (Owner capital, committed)</td><td className="tabular text-right"><Signed v={-position.maswaliGuaranteeCommitted} /></td></tr>
                       )}
+                      {position.maswaliOpenPoolsPayable !== 0 && (
+                        <tr><td className="text-left">Millionea tickets in weeks not yet settled</td><td className="tabular text-right"><Signed v={-position.maswaliOpenPoolsPayable} /></td></tr>
+                      )}
                       <tr>
                         <td className="text-left font-semibold">Free house cash — strict</td>
                         <td className={["tabular text-right font-semibold", position.freeHouseCash < 0 ? "text-danger" : ""].join(" ")}>

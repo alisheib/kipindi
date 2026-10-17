@@ -145,7 +145,8 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
   const heldWallet = await db.wallet.findByUserId(userId);
   if (heldWallet) {
     const holds = currentFreezeReasons(heldWallet);
-    if ((holds.includes("IDENTITY_REFUSED") || holds.includes("OFFICER")) && heldWallet.balance + heldWallet.hold > 0) {
+    // MASWALI-BUILD S3 · a Millionea share held for Compliance (MB-43) is a decision on money too, like the officer's hold.
+    if ((holds.includes("IDENTITY_REFUSED") || holds.includes("OFFICER") || holds.includes("MILLIONEA_SHARE")) && heldWallet.balance + heldWallet.hold > 0) {
       audit({ category: "COMPLIANCE", action: "account.close_blocked_hold", actorId: userId, targetType: "User", targetId: userId, payload: { holds, balance: heldWallet.balance, hold: heldWallet.hold } });
       return { ok: false, error: "Your account can't be closed while our compliance team is reviewing it. Contact support.", code: "INVALID", reason: "account_close_held" };
     }

@@ -19,7 +19,9 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { createMarket, settleMarket } from "./market-service";
+import { buyPosition, createMarket, settleMarket } from "./market-service";
+import { millioneaStateNow } from "./millionea-switch";
+import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
 import { isSourceTrusted } from "./source-registry";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
@@ -30,7 +32,7 @@ import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories
 import { EAT_OFFSET_MS, eatWeekAt, eatWeekCode, eatWeekStartMs } from "@/lib/eat-day";
 import { zonedToUtcMs } from "@/lib/maswali-time";
 import { bannedTopicHits } from "@/lib/maswali-topics";
-import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidCertain, type GradableQuestion, type MaswaliOutcome } from "@/lib/maswali-score";
+import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidCertain, type GradableQuestion, type MaswaliOutcome, type MaswaliPick } from "@/lib/maswali-score";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
@@ -276,12 +278,21 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (!week) return refuse("No such week.");
     if (week.state !== "DRAFT") return refuse(`Week ${week.code} is already ${week.state}.`);
     if (await weekStore.openFor(week.visibility)) return refuse(`Another ${week.visibility === "DRIVE" ? "drive" : "public"} week is open (MR-3).`);
+    // MR-30 · the sunset: nothing opens after a final week that ran, and a final week that voided or sold nothing hands
+    // the role to the next PUBLIC week to open (OD-03).
+    const life = week.visibility === "PUBLIC" ? await sunsetState() : { kind: "LIVE" as const };
+    if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week.`);
+    if (life.kind === "ENDING" && life.week.id !== week.id) return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     const questions = await questionStore.listForWeek(week.id);
     const problems = await openProblems(week, questions, rules, nowMs);
-    // OD-02: the guarantee must cover every unsettled week, this one included, before it opens.
-    const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"], visibility: week.visibility });
-    const need = guaranteeRequirement([...unsettled, week].map((w) => ({ floor: rules.floorTzs, confirmedCarryIn: w.rolloverIn })));
+    // OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen
+    // floor (this one at the floor it is about to freeze), across both lines of weeks: there is one guarantee.
+    const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
+    const need = guaranteeRequirement([
+      ...unsettled.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? rules.floorTzs, confirmedCarryIn: w.rolloverIn })),
+      { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn },
+    ]);
     const held = await input.guarantee.balance().catch(() => null);
     if (held === null) problems.push("The guarantee balance could not be read, so nothing was opened.");
     else if (held < need) problems.push(`The guarantee holds TZS ${held.toLocaleString("en")}; TZS ${need.toLocaleString("en")} is needed to open (OD-02).`);
@@ -306,10 +317,62 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     });
     const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, opensAt: new Date(nowMs).toISOString() });
     if (!won) return refuse(`Week ${week.code} changed while it was being opened; nothing was opened. Refresh and try again.`);
+    if (life.kind === "PASSES_ON" && !week.isFinal) {
+      await weekStore.patch(week.id, { isFinal: true });
+      audit({ category: "COMPLIANCE", action: "maswali.sunset.passed_on", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
+        payload: { code: week.code, from: life.week.code, fromState: life.week.state } });
+    }
     const opened = (await weekStore.get(week.id))!;
     audit({ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules } });
+      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } });
     return { ok: true, week: opened };
+  });
+}
+
+// ── BUYING (MASWALI-BUILD S3) ───────────────────────────────────────────────────────────────────────
+
+type PurchaseResult = Awaited<ReturnType<typeof buyPosition>>;
+
+/**
+ * May this week sell at this rollout? A PUBLIC week sells only when Millionea is ACTIVE. A DRIVE week (OD-21, the private
+ * S8 drive) sells from STAFF_PREVIEW up; who may hold its tickets is S8's (OD-12). ⛔ WITHDRAWN sells nothing anywhere.
+ */
+export function rolloutSells(state: RolloutState, visibility: WeekVisibility): boolean {
+  if (state === "ACTIVE") return true;
+  if (state === "STAFF_PREVIEW") return visibility === "DRIVE";
+  return false;
+}
+
+/**
+ * ⭐ THE PLAYER'S PURCHASE (MR-8…MR-12) — one or more tickets of fifteen answers for one week, through the platform's ONE
+ * bet path. Here: the rollout, the week by its id, the price from its frozen rules (one ticket = one price, never a stake
+ * the player types). Then `buyPosition` — every shared gate runs there unchanged (the rate limit, maintenance, a break or
+ * cooling-off, the session limit, the account), and its ticket arm does the rest under the wallet and market locks.
+ * ⛔ The rollout is read fresh and fails closed: an unreadable switch is WITHDRAWN, and sells nothing.
+ */
+export async function purchaseMaswaliTickets(input: {
+  userId: string;
+  weekId: string;
+  slips: ReadonlyArray<ReadonlyArray<MaswaliPick>>;
+  idempotencyKey?: string;
+  playStartedAt?: number;
+  /** Tests only: the rollout read. */
+  stateNow?: () => Promise<RolloutState>;
+}): Promise<PurchaseResult> {
+  const notOpen = { ok: false as const, error: "This Millionea week is not open for tickets.", code: "INVALID" as const, reason: "millionea_week_not_open" as const };
+  let state: RolloutState = "WITHDRAWN";
+  try { state = await (input.stateNow ?? millioneaStateNow)(); } catch { state = "WITHDRAWN"; }
+  const week = await weekStore.get(input.weekId);
+  if (!week || !week.marketId || !rolloutSells(state, week.visibility)) return notOpen;
+  const rules = frozenRules(week);
+  if (!rules) return notOpen;
+  return buyPosition(input.userId, {
+    marketId: week.marketId,
+    side: "YES",
+    stake: rules.ticketPriceTzs * input.slips.length,
+    idempotencyKey: input.idempotencyKey,
+    playStartedAt: input.playStartedAt,
+    maswali: { weekId: week.id, slips: input.slips },
   });
 }
 
@@ -583,5 +646,62 @@ export async function claimCarry(input: { weekId: string; readJackpot: () => Pro
     if (!won) return { ok: true, rolloverIn: (await weekStore.get(week.id))?.rolloverIn ?? r, already: true };
     audit({ category: "ADMIN", action: "maswali.week.carry_claimed", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.id, payload: { code: week.code, rolloverIn: r } });
     return { ok: true, rolloverIn: r };
+  });
+}
+
+// ── THE SUNSET (MR-30, OD-03) ───────────────────────────────────────────────────────────────────────
+
+export const SUNSET_WORD = "SUNSET MILLIONEA";
+/** OD-03: a final week is announced at least one full week before its sales open. */
+const SUNSET_NOTICE_MS = 7 * DAY_MS;
+
+/**
+ * Where the product's life stands, read from the PUBLIC line of weeks (a DRIVE week is never final):
+ *   · LIVE      — no final week;
+ *   · ENDING    — a final week is drafted, selling or being graded: nothing after it may open;
+ *   · RETIRED   — a final week settled with sales: Millionea has ended, nothing opens again;
+ *   · PASSES_ON — the final week voided or sold nothing (OD-03): the next week to open becomes final.
+ */
+export async function sunsetState(): Promise<{ kind: "LIVE" } | { kind: "ENDING" | "RETIRED" | "PASSES_ON"; week: StoredWeek }> {
+  const finals = (await weekStore.list({ visibility: "PUBLIC" })).filter((w) => w.isFinal).sort((a, b) => b.seq - a.seq);
+  const last = finals[0];
+  if (!last) return { kind: "LIVE" };
+  if (last.state === "VOIDED" || (last.state === "SETTLED" && (last.salesAtClose ?? 0) === 0)) return { kind: "PASSES_ON", week: last };
+  if (last.state === "SETTLED") return { kind: "RETIRED", week: last };
+  return { kind: "ENDING", week: last };
+}
+
+/**
+ * ⭐ THE OWNER STOPS THE PRODUCT (MR-30, OD-03) — by making one week the FINAL week. It runs normally; if no ticket gets
+ * 10 of 10, the highest score shares the whole jackpot (`maswali-settlement.ts`). ⛔ The caller is the Owner's ceremony
+ * (S4, `requireOwner`); this checks the typed words and the rules:
+ *   · the current week (open, closed or being graded) may be made final at once — an Owner-ordered stop mid-week;
+ *   · a drafted week may be made final only if its sales open at least a full week from now (the announcement);
+ *   · no week after it may already have opened, and no other final week may still be running.
+ * A regulator-ordered stop (refund the current week; the pool to the last fully graded week's top tickets) is NOT this
+ * act — it is S4's own ceremony.
+ */
+export async function sunsetMaswali(input: { weekId: string; ownerId: string; typed: string; reason: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
+  if (input.typed.trim() !== SUNSET_WORD) return refuse(`Type ${SUNSET_WORD} to make this the final week.`);
+  const reason = input.reason.trim();
+  if (reason.length < 5 || reason.length > 300) return refuse("Write why Millionea is being stopped (5–300 characters).");
+  const nowMs = (input.now ?? new Date()).getTime();
+  return withLock(MASWALI_CHAIN_LOCK, async () => {
+    const week = await weekStore.get(input.weekId);
+    if (!week) return refuse("No such week.");
+    if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week.");
+    if (week.isFinal) return { ok: true, week };
+    if (week.state === "SETTLED" || week.state === "VOIDED") return refuse(`Week ${week.code} is already ${week.state}.`);
+    if (week.state === "DRAFT" && Date.parse(week.opensAt) - nowMs < SUNSET_NOTICE_MS) {
+      return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). To stop now, make the current week final.`);
+    }
+    const life = await sunsetState();
+    if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
+    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.seq > week.seq && w.state !== "DRAFT");
+    if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
+    await weekStore.patch(week.id, { isFinal: true });
+    audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
+      payload: { code: week.code, state: week.state, reason } });
+    return { ok: true, week: (await weekStore.get(week.id))! };
   });
 }

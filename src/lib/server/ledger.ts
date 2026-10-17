@@ -228,6 +228,12 @@ export const acct = {
    */
   maswaliJackpot: "HOUSE:MASWALI_JACKPOT" as const,
   /**
+   * ⭐ THE DRIVE'S OWN ROLLOVER (MASWALI-BUILD S3; OD-21). A private DRIVE week (the S8 live drive) rolls and claims
+   * through THIS account, never the public one, so no drive money can reach public week 1; S8 returns what it holds to
+   * the drive accounts. Players' money all the same: `house-ledger.ts` counts it in the jackpot liability.
+   */
+  maswaliDriveJackpot: "HOUSE:MASWALI_JACKPOT_DRIVE" as const,
+  /**
    * ⭐ MASWALI MILLIONEA — THE GUARANTEE (MB-03). Owner capital paid in to back the floor, drawn only as a winning
    * week's top-up (U). The owner's money, but committed: `house-book.ts` keeps it out of free cash and out of retained.
    */
@@ -721,6 +727,11 @@ export function agentRegistrationFeeEntries(opts: {
 // Millionea week moves the jackpot, the guarantee and the fee in one group, and a group that "balances" while the
 // pool ends off zero is still wrong money (the lesson of `settlementPayoutEntries`' notes). Amounts are whole shillings.
 
+/** The jackpot account of a line of weeks: the public one, or the drive's own (OD-21). */
+export function maswaliJackpotOf(visibility: "PUBLIC" | "DRIVE"): string {
+  return visibility === "DRIVE" ? acct.maswaliDriveJackpot : acct.maswaliJackpot;
+}
+
 /** A whole, non-negative number of shillings, or a throw naming what was wrong. */
 function maswaliTzs(v: number, what: string): number {
   if (!Number.isSafeInteger(v) || v < 0) throw new Error(`[ledger] Millionea ${what} must be a whole non-negative TZS amount, got ${v}`);
@@ -751,8 +762,11 @@ export function maswaliSettlementEntries(opts: {
   winners: ReadonlyArray<{ userId: string; txnId: string; share: number }>;
   /** The rounding dust, `R + S + U − F − k·share`, back to the jackpot. */
   carryOut: number;
+  /** The week's jackpot account (`maswaliJackpotOf`); the public one when absent. */
+  jackpot?: string;
 }): LedgerLine[] {
   const m = opts.marketId;
+  const jackpot = opts.jackpot ?? acct.maswaliJackpot;
   const S = maswaliTzs(opts.sales, "sales"), R = maswaliTzs(opts.rolloverIn, "rollover in");
   const U = maswaliTzs(opts.topUp, "top-up"), F = maswaliTzs(opts.fee, "fee");
   const tra = maswaliTzs(opts.traLevy, "TRA levy"), gbt = maswaliTzs(opts.gbtLevy, "GBT levy");
@@ -770,7 +784,7 @@ export function maswaliSettlementEntries(opts: {
   const lines: LedgerLine[] = [];
   if (R > 0) {
     lines.push(
-      { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_IN", amount: -R, marketId: m, memo: "Millionea carry claimed" },
+      { account: jackpot, entryType: "MASWALI_ROLLOVER_IN", amount: -R, marketId: m, memo: "Millionea carry claimed" },
       { account: pool, entryType: "MASWALI_ROLLOVER_IN", amount: R, marketId: m, memo: "Millionea carry received" },
     );
   }
@@ -808,19 +822,19 @@ export function maswaliSettlementEntries(opts: {
   if (carry > 0) {
     lines.push(
       { account: pool, entryType: "MASWALI_ROLLOVER_OUT", amount: -carry, marketId: m, memo: "Millionea rounding carried" },
-      { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: carry, marketId: m, memo: "Millionea rounding received" },
+      { account: jackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: carry, marketId: m, memo: "Millionea rounding received" },
     );
   }
   return lines;
 }
 
 /** ⭐ A NO-WINNER WEEK (k = 0): the whole of S to the jackpot. No fee, no top-up, and R stays where it is (MR-22). */
-export function maswaliRolloverEntries(opts: { marketId: string; sales: number }): LedgerLine[] {
+export function maswaliRolloverEntries(opts: { marketId: string; sales: number; jackpot?: string }): LedgerLine[] {
   const S = maswaliTzs(opts.sales, "sales");
   if (S === 0) return [];
   return [
     { account: acct.pool(opts.marketId), entryType: "MASWALI_ROLLOVER_OUT", amount: -S, marketId: opts.marketId, memo: "Millionea week rolled over" },
-    { account: acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: S, marketId: opts.marketId, memo: "Millionea rollover received" },
+    { account: opts.jackpot ?? acct.maswaliJackpot, entryType: "MASWALI_ROLLOVER_OUT", amount: S, marketId: opts.marketId, memo: "Millionea rollover received" },
   ];
 }
 
@@ -848,12 +862,12 @@ export function maswaliGuaranteeReturnEntries(opts: { amount: number; reference:
  * A frozen winning share the Owner forfeits goes back to the JACKPOT, for the players of the next winning week.
  * ⛔ Never to the house (OD-07): a forfeit that landed in `HOUSE:COMMISSION` would be the operator keeping a prize.
  */
-export function maswaliForfeitReturnEntries(opts: { marketId: string; userId: string; txnId: string; amount: number }): LedgerLine[] {
+export function maswaliForfeitReturnEntries(opts: { marketId: string; userId: string; txnId: string; amount: number; jackpot?: string }): LedgerLine[] {
   const a = maswaliTzs(opts.amount, "forfeit");
   if (a === 0) throw new Error("[ledger] a Millionea forfeit of 0 is not a ceremony");
   return [
     { account: acct.player(opts.userId), entryType: "MASWALI_FORFEIT_RETURN", amount: -a, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: "Millionea share forfeited" },
-    { account: acct.maswaliJackpot, entryType: "MASWALI_FORFEIT_RETURN", amount: a, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: "Millionea forfeit received" },
+    { account: opts.jackpot ?? acct.maswaliJackpot, entryType: "MASWALI_FORFEIT_RETURN", amount: a, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId, memo: "Millionea forfeit received" },
   ];
 }
 
