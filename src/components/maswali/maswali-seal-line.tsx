@@ -208,7 +208,7 @@ export function MaswaliSealLine({ line, size = 24, annex = "below", numbers, idB
       {line.annex.map((r) => (
         <span key={r.ordinal} id={idBase ? `${idBase}-a${r.ordinal}` : undefined} className="flex flex-col items-center gap-0.5">
           {r.carriedTo !== undefined && !inert ? (
-            <span className="inline-flex items-center gap-0.5 font-mono text-body-sm text-text-muted tabular-nums" style={{ height: a }}>
+            <span className="inline-flex items-center gap-0.5 font-mono text-body-sm leading-none text-text-muted tabular-nums" style={{ height: a }}>
               <MillioneaGlyph name="standIn" s={a <= 14 ? 12 : 14} />
               {r.carriedTo}
             </span>
