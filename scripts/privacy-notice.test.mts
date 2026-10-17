@@ -92,11 +92,14 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // PRIVACY_EN_SHA re-pinned from the measured English block (ec751bf6da90 -> 09a4c62735bf).
 // 2026-10-15.2 · Vodacom S12 WP10b: §7 names a ROUND in kp-pending-bet, its own paragraph after S8's (§4o).
 // The combined body includes S11's How-to note and S12's round paragraph.
-const PRIVACY_VERSION = "2026-10-15.2";
+// 2026-10-17 · MASWALI-BUILD S5 (MASWALI-PLAN MB-57; COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7 names the Millionea
+// slip's tab key, kp-millionea-slip:, its own paragraph after S12's (§4p holds it to the code); PRIVACY_EN_SHA re-pinned from
+// the measured English block (bd8dc162cbac -> 8393748023c3).
+const PRIVACY_VERSION = "2026-10-17";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "bd8dc162cbac";
+const PRIVACY_EN_SHA = "8393748023c3";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -1448,6 +1451,50 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
   ok("§4o control · the Swahili round paragraph removed is reported in Swahili only", dropSw !== pageSrc && roundDefects(dropSw).length > 0 && roundDefects(dropSw).every((x) => x.startsWith("sw:")));
   const noAmountZh = pageSrc.replace("回合、方向（涨或跌）和金额", "回合和方向（涨或跌）");
   ok("§4o control · the chosen amount dropped from the Chinese round paragraph is reported", noAmountZh !== pageSrc && roundDefects(noAmountZh).some((x) => x.startsWith("zh:")));
+}
+
+/* ══ §4p · MASWALI-BUILD S5: the Millionea slip's tab key, said in §7 before the slip writes it ══════════════════════ */
+{
+  // The slip keeps one week's fifteen picks in the tab (`src/app/millionea/slip/slip-client.tsx`; MASWALI-PLAN MB-57): §7
+  // says so in every language, as its own paragraph after S12's, and the code keeps exactly that key, in the tab alone.
+  const SLIP_WORDS: Record<Loc, string[]> = {
+    en: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "the week&apos;s identifier", "no identifier of you", "removed once your ticket is cut", "the tab closes", "never buy a ticket unless you confirm it"],
+    sw: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "kitambulisho cha wiki", "hayana kitambulisho chako", "tiketi yako ikishakatwa", "ukifunga kichupo", "bila wewe kuthibitisha"],
+    zh: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "该周标识符", "不含您的任何标识符", "出票后", "关闭标签页", "未经您确认绝不会出票"],
+  };
+  const slipDefects = (page: string): string[] => {
+    const d: string[] = [];
+    const bl = blocks(page);
+    for (const l of LOCS) {
+      const paras = [...section(bl[l], "7").matchAll(/<p data-policy-addition="millionea-slip">([\s\S]*?)<\/p>/g)].map((m) => m[1].replace(/\s+/g, " ").toLowerCase());
+      if (paras.length !== 1) { d.push(`${l}: ${paras.length} slip paragraphs in §7, want 1`); continue; }
+      for (const w of SLIP_WORDS[l]) if (!paras[0].includes(w.toLowerCase())) d.push(`${l}: ${w}`);
+    }
+    return d;
+  };
+  const SLIP_FILE = "src/app/millionea/slip/slip-client.tsx";
+  const TAB_CALL = /sessionStorage\.(?:getItem|setItem|removeItem)\(/g;
+  const TAB_CALL_ON_KEY = /sessionStorage\.(?:getItem|setItem|removeItem)\(slipKey\(weekId\)/g;
+  const slipCodeDefects = (src: string): string[] => {
+    const d: string[] = [];
+    const c = code(src);
+    if (!c.includes('export const MILLIONEA_SLIP_KEY_PREFIX = "kp-millionea-slip:";')) d.push("the key prefix is no longer kp-millionea-slip: — §7 names it");
+    if (!c.includes("return `${MILLIONEA_SLIP_KEY_PREFIX}${weekId}`;")) d.push("the key is no longer the prefix and the week's id alone");
+    for (const w of ["localStorage", "document.cookie", "indexedDB"]) if (c.includes(w)) d.push(`the slip touches ${w} — §7 names only the tab key`);
+    const all = (c.match(TAB_CALL) ?? []).length, onKey = (c.match(TAB_CALL_ON_KEY) ?? []).length;
+    if (all !== 3 || onKey !== 3) d.push(`the slip's tab calls: ${all}, on slipKey(weekId): ${onKey} — want its read, its keep and its forget, each on the week's key`);
+    return d;
+  };
+  const slipSrc = read(SLIP_FILE);
+  ok("§4p en/sw/zh §7 say a Millionea slip's picks for a week sit in that tab's sessionStorage as kp-millionea-slip: with the week's identifier, hold no identifier, go with the cut ticket or the closed tab and buy nothing unconfirmed — and the slip keeps exactly that key, in the tab alone",
+    slipDefects(pageSrc).length === 0 && slipCodeDefects(slipSrc).length === 0, [...slipDefects(pageSrc), ...slipCodeDefects(slipSrc)].join("; "));
+  const dropZh = pageSrc.replace(/<p data-policy-addition="millionea-slip">\s*您填写[\s\S]*?<\/p>/, "");
+  ok("§4p control · the Chinese slip paragraph removed is reported in Chinese only", dropZh !== pageSrc && slipDefects(dropZh).length > 0 && slipDefects(dropZh).every((x) => x.startsWith("zh:")));
+  const plantLocal = slipSrc.replace("window.sessionStorage.setItem(slipKey(weekId)", "window.localStorage.setItem(slipKey(weekId)");
+  const plantKey = slipSrc.replace('export const MILLIONEA_SLIP_KEY_PREFIX = "kp-millionea-slip:";', 'export const MILLIONEA_SLIP_KEY_PREFIX = "kp-mln:";');
+  ok("§4p control · the slip keeping its picks in lasting storage, or under a key §7 does not name, is reported",
+    plantLocal !== slipSrc && slipCodeDefects(plantLocal).some((x) => x.includes("localStorage"))
+      && plantKey !== slipSrc && slipCodeDefects(plantKey).some((x) => x.includes("kp-millionea-slip:")));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

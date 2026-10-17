@@ -151,7 +151,7 @@ export type PolicyPageSpec = {
    Privacy 2026-10-15.2 (Vodacom S12 WP10b): §7 also names the Up & Down round selection in necessary tab storage. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-15.2", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-17", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

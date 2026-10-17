@@ -8,6 +8,26 @@
 
 ---
 
+## 2026-10-17 · Privacy v2026-10-17 — the Maswali Millionea slip's picks in necessary tab storage (MASWALI-BUILD S5)
+
+**Authority.** [`MASWALI-PLAN.md`](MASWALI-PLAN.md) MB-57 and §7b S5 item 8: the slip is *"kept in session storage keyed
+by week, with a privacy-notice version bump (a COMPLIANCE entry)"* — a 15-pick slip on a cheap phone must survive a
+deposit round trip and a reload. S5's composition writes the key, and this entry records the published disclosure in
+the same change as its first write. It adds no account data, no analytics or marketing permission and no recipient.
+The words are the composition lane's, put to Ali with the S5 merge; ⚠️ the Swahili and Chinese sentences are for
+native review at Gate B.
+
+**What §7 says in English, Swahili and Chinese.** While a player fills a Maswali Millionea ticket, the answers picked
+for that week sit in that tab's sessionStorage as `kp-millionea-slip:` followed by the week's identifier, so a reload or
+going to deposit keeps them. The entry holds no identifier of the player, is removed once the ticket is cut or when the
+tab closes, and never buys a ticket unless the player confirms it. Privacy's version is 2026-10-17, with the English
+body pinned at `8393748023c3` by `test:privacy-notice` §1a; §4p checks each language's new paragraph and holds the slip
+(`src/app/millionea/slip/slip-client.tsx`) to exactly that key, in the tab alone. The published-words pin
+(`scripts/lib/s8-published-words.mts`) accepts the three paragraphs at their measured hashes under this version and
+nothing else; `POLICY_PAGES.privacy.codeVersion` moved with the printed version (`test:policy-lines` L0).
+
+---
+
 ## 2026-10-17 · Maswali Millionea's doors on the journey home and in Tiketi zangu deviate from the sponsor deck (owner ruling, O-7)
 
 **Authority.** Ali, on 2026-10-17, handing Claude Design's owner-ruling form to a session: *"claude design is done as
