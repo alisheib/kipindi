@@ -383,6 +383,26 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   ok("R7.5 · ⛔ the same return reference books once", !r2.ok && r2.error.includes("already recorded") && (await g()) === g0 + 2_000, r2.ok ? "booked twice" : r2.error);
   const r3 = await giveBack(1_000, "R7-RAIL-0001");
   ok("R7.6 · a reference is checked per direction: a funding's reference may name a return (control)", r3.ok && (await g()) === g0 + 1_000, r3.ok ? "" : r3.error);
+  if (W.onPostgres) {
+    // R4b · the COMPLIANCE row is written once the movement COMMITS (afterCommit): a funding inside a transaction that then
+    // rolls back books nothing and records nothing, and its reference stays free (R7 reads only what committed). Postgres
+    // only: the memory store has no transaction to roll back.
+    const { withLock } = await import("../../src/lib/server/locks.ts");
+    const before = (await g())!;
+    let rolledBack = false;
+    try {
+      await withLock("r4b:outer", async () => {
+        const inner = await fund(1_000, "R4B-ROLLBACK-0001");
+        if (!inner.ok) throw new Error(`the inner funding was refused: ${inner.error}`);
+        throw new Error("injected: the outer transaction rolls back after the funding");
+      });
+    } catch (err) { rolledBack = String((err as Error)?.message ?? err).includes("injected"); }
+    const ghost = await rowFor("maswali.guarantee.funded", "R4B-ROLLBACK-0001");
+    ok("R4b.4 · ⭐ a funding whose transaction rolls back books nothing and leaves no COMPLIANCE row (it is written on commit)",
+      rolledBack && (await g()) === before && !ghost, J({ rolledBack, before, now: await g(), ghost: ghost?.payload ?? null }));
+    const later = await fund(1_000, "R4B-ROLLBACK-0001");
+    ok("R7.7 · …and its reference is still free: the check reads only what committed (control)", later.ok && (await g()) === before + 1_000, later.ok ? "" : later.error);
+  }
 
   // R10b (the hold) + R5 · the DRIVE week pays two winners, one of them while its desk check cannot be read; the PUBLIC
   // week voids a ticket bought yesterday. Then the free winner's loss panel against the gate.
