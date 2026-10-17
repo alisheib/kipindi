@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
 import { counted } from "@/components/maswali/maswali-format";
-import { moneyRuns } from "@/lib/fill-nodes";
+import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
@@ -114,11 +114,13 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
   }
 
   // The headline: the larger of the floor and the carry plus sales, from the composer; a dash before sales and on a void.
+  // The figure is one unbreakable run; "at least" around it may wrap (a 320px column cannot hold both on one line).
+  const whole = (n: number) => <span className="amount">{money(n)}</span>;
   const figure =
     v.kind === "presale" || v.kind === "voiding" || v.kind === "voided" ? DASH
-      : v.kind === "sunset" ? money(v.pool)
-        : pending ? fill(t.millionea.atLeast, { amount: money(v.jackpot) })
-          : money(v.jackpot);
+      : v.kind === "sunset" ? whole(v.pool)
+        : pending ? fillNodes(t.millionea.atLeast, { amount: whole(v.jackpot) })
+          : whole(v.jackpot);
   const rule =
     v.kind === "sunset"
       ? counted(v.top.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: v.top.score })
@@ -128,7 +130,7 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
     <section className={cn("mat-flat flex flex-col gap-2 rounded-card p-3", className)}>
       <div className="flex flex-col gap-1">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.jackpot}</span>
-        <span className={cn("amount text-title-md font-semibold text-text", tick && "m-tick")}>{figure}</span>
+        <span className={cn("font-mono text-title-md font-semibold text-text tabular-nums", tick && "m-tick")}>{figure}</span>
         {pending && v.carriedIn && (
           <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.pendingCarry, { week: v.carriedIn.week })}</span>
         )}

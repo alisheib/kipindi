@@ -235,7 +235,7 @@ export function MaswaliTicket({
   const stubItems: Array<[string, ReactNode]> = [
     [t.millionea.stubSerial, serial],
     [t.millionea.stubWeek, weekWord(t, week)],
-    [t.millionea.stubPrice, formatTzs(stub.price)],
+    [t.millionea.stubPrice, <span key="p" className="amount">{formatTzs(stub.price)}</span>],
     [t.millionea.stubBought, <time key="t" dateTime={stub.boughtAt}>{bought}</time>],
     [t.millionea.stubHash, stub.questionSetHash],
   ];

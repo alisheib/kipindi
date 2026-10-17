@@ -20,7 +20,7 @@ import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
  * on a Millionea surface can only come from this file — the jackpot, the floor, the rollover, the stub and every other
  * line of the ledger stay neutral mono, even on a winning receipt. The fee row is the receipt's amber deduction, as on
  * every receipt (`ReceiptRow`'s `warning`), and a net below zero prints with the real minus (U+2212).
- * ⛔ No count-up (the seal's amount lands final, `roll: false`), no score on a loss (the ten positions ARE the facts —
+ * ⛔ No rolling figure (the seal's amount lands final, `roll: false`), no score on a loss (the ten positions ARE the facts —
  * no "9 of 10", no row named as the near miss), and no buy control on a receipt. The one score Millionea ever prints is
  * the sunset's top score, on the sunset settlement only (Q11).
  * ⭐ THE LEGAL LINE FOLLOWS THE REAL RESOLUTION MODE (manifest L3): one officer seals, so it reads `market.resSingleOfficer`
@@ -128,6 +128,9 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
   const L = lines;
   const money = (n: number) => formatTzs(n);
   const many = L.yours > 1;
+  // Every figure is one unbreakable run (`.amount`): a receipt row at 320 wraps its label, never "TZS" from its digits.
+  const fig = (n: number) => <span className="amount">{money(n)}</span>;
+  const quiet = (n: number) => <span className="amount text-text-muted">{money(n)}</span>;
   const gilt = (n: number, large: boolean) => (
     <span className={cn("amount gilt-ink inline-block font-bold", large ? "text-title-sm" : "text-body-lg")}>{money(n)}</span>
   );
@@ -139,18 +142,18 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         </p>
       )}
       <div className="flex flex-col border-t border-border">
-        {L.pool !== undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={money(L.pool)} />}
-        {L.floor !== undefined && <ReceiptRow className={ROW} label={t.millionea.floor} value={money(L.floor)} />}
-        {!sunset && <ReceiptRow className={ROW} label={t.millionea.jackpot} value={money(L.jackpot)} />}
-        {sunset && L.pool === undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={money(L.jackpot)} />}
+        {L.pool !== undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.pool)} />}
+        {L.floor !== undefined && <ReceiptRow className={ROW} label={t.millionea.floor} value={fig(L.floor)} />}
+        {!sunset && <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(L.jackpot)} />}
+        {sunset && L.pool === undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.jackpot)} />}
         <div className={ROW}>
-          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={money(-L.fee)} />
+          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={fig(-L.fee)} />
           {L.levies && (
             <p className="mt-0.5 text-body-sm text-text-subtle">{fill(t.millionea.levies, { tra: L.levies.tra, gbt: L.levies.gbt })}</p>
           )}
         </div>
-        <ReceiptRow className={ROW} label={t.millionea.toWinners} value={money(L.toWinners)} />
-        <ReceiptRow className={ROW} label={counted(L.winningTickets, t.millionea.perTicketOne, t.millionea.perTicket)} value={money(L.perTicket)} />
+        <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(L.toWinners)} />
+        <ReceiptRow className={ROW} label={counted(L.winningTickets, t.millionea.perTicketOne, t.millionea.perTicket)} value={fig(L.perTicket)} />
         <ReceiptRow className={ROW} label={t.millionea.forYourTicket} value={gilt(L.perTicket, !many)} />
         {many && (
           <>
@@ -159,18 +162,18 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
           </>
         )}
         {L.topUp !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={<span className="text-text-muted">{money(L.topUp)}</span>} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={quiet(L.topUp)} />
         )}
         {L.remainder !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${t.millionea.remainderNote}`} value={<span className="text-text-muted">{money(L.remainder)}</span>} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${t.millionea.remainderNote}`} value={quiet(L.remainder)} />
         )}
         {L.sunsetNoTopUp && (
           <ReceiptRow className={ROW} label={t.millionea.noTopUp} value={<span className="text-text-muted">—</span>} />
         )}
         {L.spent && (
           <>
-            <ReceiptRow className={ROW} label={counted(L.spent.tickets, t.millionea.spentThisWeekOne, t.millionea.spentThisWeek)} value={<span className="text-text-muted">{money(L.spent.amount)}</span>} />
-            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={money(L.spent.net)} />
+            <ReceiptRow className={ROW} label={counted(L.spent.tickets, t.millionea.spentThisWeekOne, t.millionea.spentThisWeek)} value={quiet(L.spent.amount)} />
+            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={fig(L.spent.net)} />
           </>
         )}
       </div>
