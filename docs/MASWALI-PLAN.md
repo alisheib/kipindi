@@ -113,7 +113,7 @@ is public: describe anti-abuse controls by what they enforce, never by their sig
 | Session | Title | Status | Note |
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
-| D1 | Design R2: the commission cut live and sent | 🔨 | sent at stamp 72ca5cff9; Claude Design's owner-ruling form answered 2026-10-17 (§0) |
+| D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
 | S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |

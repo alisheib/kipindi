@@ -155,7 +155,7 @@ against each other within a daily budget, may fetch their own price, and the ros
 | **Where** | Release and live readback: [`docs/HOUSE-BOTS.md`](HOUSE-BOTS.md) §§12.20–12.21; current programme status: [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e; management and admin instructions: `docs/50pick-house-bots-desk-guide.pdf`. |
 | **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
 
-## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16 for the management-reviewed proposal; every August ruling void; the plan, the rulings and the Claude Design R2 commission filed; nothing built** · 1/13 sessions ✅
+## ▶ 0i · MASWALI MILLIONEA — the third product, a weekly jackpot — `MASWALI-BUILD` · 🔨 **RE-PLANNED 2026-10-16 for the management-reviewed proposal; every August ruling void; the plan and the rulings filed; the Claude Design R2 commission sent and its owner questions answered 2026-10-17, the delivery awaited; nothing built** · 2/13 sessions ✅
 
 Ali, 2026-10-16: *"disregard any august rulgint he enw paln is final ruling"* · *"th enew pd is rveewd by management and
 update dlatly so any old ruels repalc ehtem if lost y those fomr the new pdf"* · *"we need to be very creative in how we
