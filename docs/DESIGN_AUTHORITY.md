@@ -2103,6 +2103,10 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    cannot push the dialog off it.
 3. ⛔ **Never import an icon library into a player surface.** Glyphs come from
    `src/components/ui/glyphs.tsx`.
+   ⚖️ **Ruled 2026-10-17 (Ali): the family moves to Phosphor**, vendored by codegen into this same home — the ruling is
+   [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-17 · Icons — every icon and glyph moves to Phosphor,
+   in waves, live as each is proven (owner)"; the work is [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md). This item is
+   rewritten when the swap lands (its W2); until then it holds exactly as written.
 4. ⛔ **Never read a `globals.css` out of a design export** — those are dated snapshots and
    they drift. The live file is the truth.
 5. **Extend the kit; never fork it.** A one-off that duplicates a primitive is how a design
