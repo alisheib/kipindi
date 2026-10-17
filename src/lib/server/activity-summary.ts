@@ -154,13 +154,16 @@ export type RgUsage = {
  * ⛔ The loss is `lossLimitNetSince`, the net `checkLossLimit` reads (OD-17, R5), never the raw
  * `sumGamblingNetSince`: a Millionea win, or a refund today of a ticket bought before the window,
  * would otherwise show headroom the gate then refuses.
+ * ⛔ The deposits count an in-flight (PROCESSING) deposit, as `checkDepositLimit` and the limit
+ * meters (`getLimitUsage`) do: it counts toward the cap, so leaving it out showed room the gate
+ * then refused.
  */
 export async function getRgUsage(userId: string, now = Date.now()): Promise<RgUsage> {
   const r = await getRgSettings(userId);
   const [depDay, depWeek, depMonth, lossNet] = await Promise.all([
-    db.txn.sumDepositsSince(userId, now - DAY_MS),
-    db.txn.sumDepositsSince(userId, now - 7 * DAY_MS),
-    db.txn.sumDepositsSince(userId, now - 30 * DAY_MS),
+    db.txn.sumDepositsSince(userId, now - DAY_MS, true),
+    db.txn.sumDepositsSince(userId, now - 7 * DAY_MS, true),
+    db.txn.sumDepositsSince(userId, now - 30 * DAY_MS, true),
     lossLimitNetSince(userId, now - DAY_MS),
   ]);
   return {
