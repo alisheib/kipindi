@@ -963,11 +963,11 @@ const forfeitF = await W.settle.forfeitMaswaliShare({ ticketId: tPF.id, officerI
   const shareE: number = (await dal.weekStore.get(E.id)).sharePerTicket;
   const resultOf = async (u: string) => (await P.millioneaNotices(u)).find((n: any) => n.notice === "RESULT" && n.weekId === E.id);
   const nK = await resultOf(PK), nF = await resultOf(PF);
-  ok("12b.11 · ⭐ RR3 · a week whose only win is HELD, or FORFEITED, is not `won` on its RESULT notice (the seal is earned money): each counts its share apart, with no amount",
-    holdK.ok && holdF.ok && forfeitF.ok
-      && J(nK) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: false, winningTickets: 0, total: null, held: 1, forfeited: 0 })
+  const earlyK = await ACT.markMillioneaNoticeSeenFor(PK, E.id, "RESULT", new Date().toISOString(), ACTIVE);
+  ok("12b.11 · ⭐ RR3 · a week whose only win was FORFEITED is not `won` on its RESULT notice (the seal is earned money) and counts the share apart, with no amount; one whose only win is HELD has no RESULT yet — it waits on the decision, as a week void's notice waits on its refunds (M3) — and cannot be put to rest before it comes",
+    holdK.ok && holdF.ok && forfeitF.ok && nK === undefined && earlyK === false
       && J(nF) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: false, winningTickets: 0, total: null, held: 0, forfeited: 1 }),
-    `${why(holdK)} · ${why(forfeitF)} · ${J({ nK, nF })}`);
+    `${why(holdK)} · ${why(forfeitF)} · ${J({ nK, nF, earlyK })}`);
   ok("12b.12 · …the control: a PAID share is `won`, with its count and its amount",
     J(nx.find((n: any) => n.notice === "RESULT" && n.weekId === E.id)) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: true, winningTickets: 1, total: shareE, held: 0, forfeited: 0 }),
     J(nx));
@@ -985,6 +985,10 @@ const forfeitF = await W.settle.forfeitMaswaliShare({ ticketId: tPF.id, officerI
       && LABEL.ticketShown({ status: "SETTLED", won: true, frozenReason: "compliance · a reason" }, "SETTLED") === "won"
       && LABEL.ticketShown({ status: "SETTLED", won: true, frozenReason: null }, "SETTLED") === "won",
     J({ row: rowK && [rowK.shown, rowK.share, rowK.paid] }));
+  const releaseK = await W.settle.releaseMaswaliShare({ ticketId: tPK.id, officerId: "usr_mln_compliance", note: "player suite releases the only share" });
+  ok("12b.14b · …and released, the share is paid and its RESULT comes now, true: `won`, with its count and its amount — the seal the release earned, never spent before it",
+    releaseK.ok && J(await resultOf(PK)) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: true, winningTickets: 1, total: shareE, held: 0, forfeited: 0 }),
+    `${why(releaseK)} · ${J(await resultOf(PK))}`);
 }
 {
   // L5 · a holder keeps their own tickets at a kill, so the owner's seen mark asks no rollout. The REAL switch is lowered

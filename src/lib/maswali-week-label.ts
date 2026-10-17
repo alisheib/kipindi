@@ -62,7 +62,7 @@ export const TICKET_SHOWN_KEY: Record<TicketShown, string> = {
  *    the row's `share`); a release makes it paid.
  */
 export function ticketShown(
-  ticket: { status: TicketState; won: boolean | null; frozenReason?: string | null },
+  ticket: { status: TicketState; won: boolean | null; frozenReason: string | null },
   week: WeekState,
   refundLanded = false,
 ): TicketShown {

@@ -19,6 +19,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-player",
   casesFile: "scripts/lib/maswali-player-child.mts",
-  minPass: { memory: 174, postgres: 174 },
+  minPass: { memory: 175, postgres: 175 },
   dbPrefix: "mlw_player",
 });

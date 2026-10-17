@@ -1161,7 +1161,9 @@ export type MillioneaNotice =
   /** A week the viewer held tickets in settled: one seal for the week (§F9), or the calm loss line. No amount on a loss.
    *  `won` — a share of theirs is PAID (the seal is earned money, §M8a item 7); `winningTickets` and `total` — those paid
    *  tickets, and their sum (null when none is paid). ⛔ A held or a forfeited share is in none of the three (M2; S5
-   *  re-review 3): a week whose only win is held or forfeited is not `won`, and `held` and `forfeited` count them. */
+   *  re-review 3), and `held` and `forfeited` count them: a week whose only win is forfeited is not `won`, and one whose
+   *  every win is still HELD is not due at all until Compliance decides (M3's rule: the notice comes when it is true, so
+   *  the seal a release earns is never spent early). */
   | { notice: "RESULT"; weekId: string; code: string; won: boolean; winningTickets: number; total: number | null; held: number; forfeited: number };
 
 /** The notices due to this viewer — unseen, newest week first in the calendar (R3) — for the line the hub shows: the
@@ -1192,11 +1194,17 @@ export async function millioneaNotices(userId: string, line: WeekVisibility = "P
     if (w.state === "SETTLED" && !isSeen(w.id, "RESULT")) {
       const shares = held.map(shareOf);
       const paid = held.filter((t) => shareOf(t) === "paid");
-      out.push({
-        notice: "RESULT", weekId: w.id, code: w.code, won: paid.length > 0, winningTickets: paid.length,
-        total: paid.length > 0 ? paid.reduce((s, t) => s + paidOf(t), 0) : null,
-        held: shares.filter((s) => s === "held").length, forfeited: shares.filter((s) => s === "forfeited").length,
-      });
+      const onHold = shares.filter((s) => s === "held").length;
+      // ⛔ Not while every win of theirs is still HELD (S5 re-review 3): its `won` waits on Compliance's decision, and a
+      //    once-only notice seen before it would never bring the seal a release earns. As a week void's notice waits for
+      //    its refunds (M3), it comes when it is true; meanwhile the ticket itself reads its hold mark.
+      if (onHold === 0 || paid.length > 0) {
+        out.push({
+          notice: "RESULT", weekId: w.id, code: w.code, won: paid.length > 0, winningTickets: paid.length,
+          total: paid.length > 0 ? paid.reduce((s, t) => s + paidOf(t), 0) : null,
+          held: onHold, forfeited: shares.filter((s) => s === "forfeited").length,
+        });
+      }
     }
   }
   return out;
