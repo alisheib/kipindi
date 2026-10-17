@@ -9,7 +9,7 @@
  *   §4 the cap (MR-11), counted inside the wallet lock: concurrent purchases of one account end at exactly the cap
  *   §5 real balance only (MR-10) and the responsible-gambling gates, through the one bet path
  *   §6 ⭐ the free cancel (MR-12): in full, in one transaction, only inside its window, never twice; no paid exit
- *   §7 the void arm: a voided week refunds every ticket in full, and sends no Up & Down notice and reverses no wagering
+ *   §7 the week void (its bulk refund, R1): every ticket refunded in full, no Up & Down notice, no wagering reversed
  *   §8 the adversarial review's findings (2026-10-17): the receipt's balance (R4a), the guarantee's answer and record
  *      (R4b), the loss panel against the gate (R5), one reference booking once (R7), the ticket arm asking the rollout
  *      itself (R10a), and the desk check failing closed at the purchase and at the settlement (R10b)
@@ -227,7 +227,7 @@ console.log("\n§6 · the free cancel");
   ok("6.8 · ⛔ nobody cancels another player's ticket", !theft.ok && (await W.bal(other)).balance === 50_000, why(theft));
 }
 
-// ── §7 · the week void through settleMarket's VOID arm ──────────────────────
+// ── §7 · the week void, through its bulk refund (R1) ─────────────────────────
 console.log("\n§7 · a voided week refunds every ticket");
 {
   // A second public week, after the first: its own buyers, every main question void on its own ground.

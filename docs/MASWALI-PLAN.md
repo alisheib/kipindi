@@ -36,7 +36,7 @@
   - *The one reading.* `src/lib/product-line.ts` owns it, and every branch on a line goes through it: NULL is MARKET,
     MASWALI is MASWALI, an unknown value raises an alarm and reads as MARKET. The DAL passes MASWALI through on both stores.
   - *Refused for a week:* every generic door (bet, paid exit, resolve, auto-resolve and the sentinel, emergency void,
-    reopen, settle except its VOID arm, the settle, hold and re-check actions).
+    reopen, settle (every arm since R1: a week void is its own bulk refund, `maswali-void.ts`), the settle, hold and re-check actions).
   - *Kept out:* the poll scheduler, the generic settlement queue, `/live`, `/results`, performance, the leaderboard,
     the journey sheet and cards, the share image, the saved deposit bet.
   - *Fail-closed until S6:* `chargedFee`, and the tax report refuses a period that holds a week.
@@ -108,7 +108,7 @@ Until the whole gate is green, S1–S4 stay 🔨.
 
   | # | Finding | Severity | Lane | State |
   |---|---|---|---|---|
-  | R1 | A week void that fails after its stamp never refunds; at a few thousand tickets the generic VOID arm times out on every attempt | HIGH | `mln-void` | 🔨 |
+  | R1 | A week void that fails after its stamp never refunds; at a few thousand tickets the generic VOID arm times out on every attempt | HIGH | `mln-void` | merged (`6c2eef1e`): one bulk refund transaction (2,000 tickets inside the budget), retried by the tick and the heal until it lands, a critical alert until then |
   | R2 | The close is not serialized with a purchase or cancel in flight: a LIVE ticket outside the root, a week that never settles | HIGH | this lane | fixed (`cac6daa2`), red plant (R2); verification running |
   | R3 | The same carry can be claimed twice; nothing checks that the jackpot covers R | MEDIUM | `mln-fix-b` | merged (`6774db38`): the claim inside the payout's own transaction, in seq order, under the jackpot; an earlier draft can no longer open after a later week |
   | R4 | Three reads after a joined money transaction see pre-commit data on Postgres: the receipt's balance, the guarantee's `balanceAfter`, the float alert | MEDIUM-LOW | `mln-fix-a` (a, b), `mln-fix-b` (c) | merged (`b5fa9249`, `6774db38`); (c) was wider than seen: the release returned the pre-commit week |
@@ -117,7 +117,7 @@ Until the whole gate is green, S1–S4 stay 🔨.
   | R7 | Funding the guarantee has no idempotency | LOW | `mln-fix-a` | merged (`b5fa9249`): one reference books once per direction |
   | R8 | Forfeit and hold write the ticket outside their transaction | LOW | `mln-fix-b` | merged (`6774db38`) |
   | R9 | A final week with a wide top-score tie may never settle: winners are paid one by one | LOW | `mln-fix-b` | merged (`6774db38`): winners in bulk; about 7,000 distinct winning players fit the 30 s budget |
-  | R10 | Defence in depth: the buy re-checks the rollout; the desk lookup fails closed; DRIVE weeks at STAFF_PREVIEW; void refunds push balances | LOW | `mln-fix-a` (a–c), `mln-void` (d) | (a, b) merged (`b5fa9249`); (c) is Ali's to rule — who may buy a DRIVE-week ticket; (d) 🔨 |
+  | R10 | Defence in depth: the buy re-checks the rollout; the desk lookup fails closed; DRIVE weeks at STAFF_PREVIEW; void refunds push balances | LOW | `mln-fix-a` (a–c), `mln-void` (d) | (a, b) merged (`b5fa9249`); (c) is Ali's to rule — who may buy a DRIVE-week ticket; (d) merged (`6c2eef1e`): the refund pushes each player's balance |
 
   Found correct by the same review: every Millionea ledger group sums to zero; the buy's refusals all precede its first
   write; the replay; the cancel; the settlement's idempotency; the lock order; the SQL casts; OD-17's exclusion; and the
