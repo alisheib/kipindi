@@ -739,6 +739,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /houseBotId:\s*_\w*/.test(memUpdate) && /\.\.\.rest\b/.test(memUpdate) && !/\.\.\.patch\b/.test(memUpdate));
   ok("8.c1 · CONTROL · an update body without the skip is caught", !SKIPS.test(`if (k === "createdAt" || k === "updatedAt") continue;`));
   ok("8.c2 · CONTROL · a memory update spreading the whole patch is caught", /\.\.\.patch\b/.test("const next = { ...t, ...patch, updatedAt: now };"));
+  // ⭐ MASWALI-BUILD R1 (2026-10-17) · the batch writer the week void's refund goes through: a key `create` writes and
+  // `createMany` forgets is a column left at its default on every refunded ticket's row, and the marker is Ruling 232's.
+  const createMany = delegateMethod("txn", "createMany");
+  const createKeys = [...create.matchAll(/^\s*([A-Za-z_]\w*)\s*:/gm)].map((m) => m[1]).filter((k) => k !== "create" && k !== "data");
+  ok("8.createMany.0 · txn.createMany resolves, and the keys txn.create writes were read",
+    createMany.length > 100 && createKeys.length >= 20 && createKeys.includes("houseBotId"), `createMany ${createMany.length} · ${createKeys.length} keys`);
+  for (const k of createKeys) ok(`8.createMany · txn.createMany writes "${k}", as txn.create does`, writesKey(createMany, k));
+  ok('8.createMany.marker · txn.createMany copies "houseBotId" from each row', createMany.includes("houseBotId: t.houseBotId ?? null,"));
+  ok("8.c3 · CONTROL · a createMany that forgets a key txn.create writes is caught",
+    writesKey(createMany, "origin") && !writesKey(createMany.replace(/^\s*origin\s*:.*$/m, ""), "origin"));
 }
 
 /* ═══ §9 · the Position house marker is create-only (PLAN §2 I8) ═════════════════════════ */

@@ -31,10 +31,13 @@ export async function voidMaswaliWeekAction(formData: FormData): Promise<ActionR
   try {
     const r = await voidWeek({ weekId: str(formData, "weekId"), actorId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
-    refresh();
     return { ok: true, note: `Week ${r.week.code} is voided; every ticket is refunded in full.` };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be voided") };
+  } finally {
+    // R1 · the void stamps the week VOIDED before its refunds, so a refusal or an error can still leave it changed (VOIDED,
+    // its refunds owed and alerted): the console is re-read on every outcome.
+    refresh();
   }
 }
 

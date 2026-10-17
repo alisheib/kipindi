@@ -497,7 +497,19 @@ grade(week, picks):
 - When voided mains outnumber the non-void reserves, the week becomes VOIDED and **every ticket is refunded 1,000 in full**.
 - No fee or levy is taken, and no top-up is paid.
 - R is untouched and carries to the next week.
-- Implementation follows the Up & Down pattern: stamp the market VOID with `objectionsClosedAt = now`, then call `settleMarket(id, {actorId: "system_maswali"})`. Its VOID branch refunds both the real and the bonus parts. It is not `emergencyVoidMarket`, which refuses a system actor.
+- Implementation (R1, 2026-10-17). It replaced the Up & Down pattern, whose `settleMarket` VOID arm made about six round
+  trips per ticket inside one 30 s transaction and was never retried once the week was stamped:
+  - `voidWeek` stamps the week VOIDED once (`stampVoid`), only on the final record, after the objection window and with
+    no objection standing;
+  - `refundVoidedWeek` (`maswali-void.ts`) then refunds every LIVE ticket in ONE bulk transaction under `maswali:chain` →
+    `market:<id>`, and takes no `wallet:` lock: one wallet credit per player in bulk (`db.wallet.creditMany`, row updates
+    only), the positions VOID, one `BET_REFUND` row per ticket, one ledger group `maswali_void_<weekId>` (POOL → each
+    player), the tickets REFUNDED, and the market stamped settled. REFUNDED is a ticket state since
+    `20261017130000_maswali_ticket_refunded`, which drops and re-adds `MaswaliTicket_status_check` wider by that one value;
+  - the market's `settledAt` is the one truth that the refunds landed. A VOIDED week without it is resumed by `voidWeek`,
+    retried by the tick and the heal, and raised critical by the console; `settleMarket` refuses every Millionea market;
+  - after the commit, each refunded player's balance is pushed to their open page (R10d). It is not `emergencyVoidMarket`,
+    which refuses a system actor.
 
 **MR-19 · Settlement gate.** `[Derived from R-RESERVES]`
 - Settlement needs:
@@ -697,7 +709,7 @@ every ledger movement is in §5b.
 | Ledger | `HOUSE:MASWALI_JACKPOT` (carried player money — a liability) and `HOUSE:MASWALI_GUARANTEE` (the house's floor fund) | `withMoneyTx`, `postLedgerEntries`, `levySplit`, `stakeEntries`, `refundEntries`; both accounts added to `house-book.ts` liabilities |
 | Settle (winners) | Its own function: grade → J = max(floor, R+S) → top-up from GUARANTEE → fee → `levySplit` → a **new** equal-split allocator with **no** winner floor → one balanced group, exactly-once inside the `market:` lock | ⛔ not `settleMarket` (it refunds a one-sided pool) and ⛔ not `allocateWinnerPayouts` (its floor throws below stake) |
 | Settle (no winner) | The week's sales move POOL → `HOUSE:MASWALI_JACKPOT`; no fee; tickets LOSS | a new rollover builder |
-| Week void | Stamp VOIDED + `objectionsClosedAt`, then `settleMarket(id, {actorId: "system_maswali"})`'s VOID arm refunds real and bonus parts | the `updown-service closeRound` precedent; ⛔ not `emergencyVoidMarket` (officer-only) |
+| Week void | Stamp the week VOIDED once, then ONE bulk refund transaction (`maswali-void.ts`, R1): every live ticket's position VOID, one credit per player, one `BET_REFUND` per ticket, one ledger group, the tickets REFUNDED and the market stamped settled — the one truth, retried until it lands | `withMoneyTx`, `refundEntries`, `postMaswaliLines`; ⛔ not `settleMarket` (its VOID arm timed a week out, and it now refuses every week) and ⛔ not `emergencyVoidMarket` (officer-only) |
 | Scheduling | `maswali-scheduler.ts` + boot hydrate + lifecycle heal and reconcile | the Up & Down scheduler pattern; `nextDeadlineFor` returns null for MASWALI |
 | Two-product assumptions | S0.5 widens every closed list and coercion before any MASWALI row exists | `test:product-line` extended + a red control that plants a MASWALI row |
 | Resolution | One officer seals; per-question objections in Millionea's own 24-hour window; REVERSE/VOID/REINSTATE | `objections-service.ts`; `twoOfficerGate` only if the platform flag is ever on |
@@ -832,7 +844,9 @@ The tax report files Commission = round(13% × Payout), then TRA and GBT on the 
 | `POOL → JACKPOT` carryOut, i.e. dust (only if > 0) | `MASWALI_ROLLOVER_OUT` |
 
 **Other events:**
-- **Week void:** every LIVE ticket `POOL → PLAYER:u` 1,000 (`REFUND`, through the `settleMarket` VOID arm). JACKPOT is untouched; R carries to the next week.
+- **Week void:** every LIVE ticket `POOL → PLAYER:u` 1,000 (`REFUND`), in one group `maswali_void_{weekId}` beside one
+  `BET_REFUND` row per ticket, in one transaction with the market's settled stamp (R1, `maswali-void.ts`). JACKPOT is
+  untouched; R carries to the next week.
 - **Forfeit:** a frozen share goes `PLAYER:u → JACKPOT` (`MASWALI_FORFEIT_RETURN`, OD-07).
 
 **Formulas (MR-20…MR-25):**
@@ -1181,8 +1195,9 @@ differ, these win.
   - *The Millionea slip travels as a `BuyOpts` field,* not as a third `BetContext.kind`. `ctx.kind` means who is
     betting, and the house-bots lane pins every comparison (`SEAM_SITES`). Millionea gets its own `MASWALI:` markers,
     its own guard, and a test that MARKET and UPDOWN output is unchanged.
-  - *Every Yes/No notice is muted on every Millionea path:* `settleMarket`'s VOID arm, which a week void uses, and
-    the cancel. Muting them is S3's job; S6 adds Millionea's own notices.
+  - *Every Yes/No notice is muted on every Millionea path:* `settleMarket`'s VOID arm, which a week void used until R1
+    (a week now refunds through `maswali-void.ts`, which sends none), and the cancel. Muting them is S3's job; S6 adds
+    Millionea's own notices.
   - *The cancel is a real one-transaction write that fails loudly.* Today `cashOutPosition` writes outside
     `withMoneyTx`, and its ledger write is fire-and-forget.
   - *OD-17's loss limit:* `sumGamblingNetSince` (`prisma-dal.ts:2727`, and its memory twin) drops `BET_PAYOUT`
@@ -1198,7 +1213,8 @@ differ, these win.
   - *The free cancel* is one transaction — the ticket, the wallet, the position, the pool, the week's count and the
     ledger group — only inside the frozen free window, never twice. There is no paid exit (MB-50).
   - *The void arm* sends no Up & Down notice, reverses no wagering (a ticket accrued none, OD-27) and prices no poll fee
-    for a week (`poolFee` keeps refusing the jackpot model).
+    for a week (`poolFee` keeps refusing the jackpot model). ⚠️ Superseded by R1: a week no longer reaches that arm; its
+    void refunds in bulk through `maswali-void.ts` (MR-18), with the same three silences.
   - *The settlement.* `previewMaswaliSettlement` prepares every figure and a digest; `settleMaswaliWeek({ weekId,
     releasedBy, digest })` recomputes inside `maswali:chain` and `market:<id>` and pays only the figures the officer
     saw. S is read three ways and must agree with the week's own count and its sales at close. Every refusal comes
@@ -1612,7 +1628,7 @@ read this repository, so `PROMPT.txt` states the rules and the figures it may dr
    - `correctSeal` (OD-09): allowed inside the window; restarts it.
    - `proposeVoidAtDeadline`: the system proposes, an officer seals.
    - `recomputeGate`: re-run on every seal, void or objection.
-   - `voidWeek`: stamp the market VOIDED with outcome VOID and `objectionsClosedAt = now`, then `settleMarket(id, {actorId: "system_maswali"})`, which is the existing VOID arm. It runs only after the objection windows of the triggering voids have closed. A pre-close void that dooms the week stops sales immediately.
+   - `voidWeek`: stamp the week VOIDED once, then `refundVoidedWeek` (`maswali-void.ts`) refunds every live ticket and stamps the market VOIDED and settled in one bulk transaction (R1; MR-18's implementation note). ⚠️ Superseded by R1: it first called `settleMarket(id, {actorId: "system_maswali"})`, the existing VOID arm, which timed a large week out. It runs only after the objection windows of the triggering voids have closed. A pre-close void that dooms the week stops sales immediately.
    - `claimCarry(weekId)`: under a `maswali:chain` lock. Stamps `rolloverIn` once (`WHERE rolloverIn IS NULL`). Settlement is in CALENDAR order (`calendarStartMs`, read from the week's fixed `finalDeadlineAt`); `seq` is only the drafting counter. Ordering by drafting stranded an out-of-order draft (the re-review, 2026-10-17).
 8. **`src/lib/server/maswali-scheduler.ts`:**
    - One timer per non-terminal week (open, close, void-deadline proposals, objection close).

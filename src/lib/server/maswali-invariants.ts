@@ -3,19 +3,19 @@
  *
  * Read-only. Each line of weeks (PUBLIC, and the S8 drive's own, OD-21) must prove, from the ledger and the weeks' own
  * mirrored columns, that:
- *   1. every settled week's POOL is exactly 0 (and every voided week's, on Postgres, where the void's refunds are booked);
+ *   1. every settled and every voided week's POOL is exactly 0 — on both stores since R1, whose void books its refunds
+ *      through Millionea's own group; a voided week still holding money is one whose refunds have not landed;
  *   2. every settled week's mirrored columns close: S + R + U = F + paid + carryOut, or a rollover's carryOut = S;
  *   3. the JACKPOT equals what the weeks say it holds — Σ over settled weeks (carryOut − the R it claimed, or S rolled) plus
  *      every forfeited share — and at most ONE unsettled week has claimed a carry, which the jackpot still covers;
  *   4. the GUARANTEE holds at least OD-02's requirement over every unsettled week;
- *   5. every week's live-ticket count equals its non-cancelled tickets.
+ *   5. every week's live-ticket count equals its non-cancelled tickets, and a voided week holds no LIVE ticket.
  * A broken invariant is a WATCHED compliance record (`lifecycle.ts` writes it), never a silent console line.
  */
 import { acct, maswaliJackpotOf } from "./ledger";
 import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { readMaswaliRulesSnapshot } from "./maswali-config";
-import { hasDatabase } from "./prisma";
 import { guaranteeRequirement } from "@/lib/maswali-money";
 
 export type MaswaliInvariantReport = { ok: boolean; weeks: number; problems: string[] };
@@ -25,14 +25,13 @@ const FORFEITED = "forfeited · ";
 export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> {
   const problems: string[] = [];
   const weeks = await weekStore.list();
-  const onPostgres = hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
 
   for (const line of ["PUBLIC", "DRIVE"] as const) {
     const mine = weeks.filter((w) => w.visibility === line);
     let expected = 0;
     for (const w of mine) {
       if (!w.marketId) continue;
-      if (w.state === "SETTLED" || (w.state === "VOIDED" && onPostgres)) {
+      if (w.state === "SETTLED" || w.state === "VOIDED") {
         const pool = await maswaliAccountBalance(acct.pool(w.marketId));
         if (pool === null) problems.push(`${w.code}: its pool could not be read.`);
         else if (pool !== 0) problems.push(`${w.code}: ${w.state} with ${pool} still in its pool (must be exactly 0).`);
@@ -69,8 +68,11 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
 
   for (const w of weeks) {
     if (w.state === "DRAFT") continue;
-    const live = (await ticketStore.listForWeek(w.id)).filter((t) => t.status !== "CANCELLED").length;
+    const tickets = await ticketStore.listForWeek(w.id);
+    const live = tickets.filter((t) => t.status !== "CANCELLED").length;
     if (live !== w.ticketCount) problems.push(`${w.code}: its count says ${w.ticketCount} tickets; ${live} are not cancelled.`);
+    const unrefunded = tickets.filter((t) => t.status === "LIVE").length;
+    if (w.state === "VOIDED" && unrefunded > 0) problems.push(`${w.code}: VOIDED with ${unrefunded} ticket(s) still LIVE — its refunds have not landed.`);
   }
   return { ok: problems.length === 0, weeks: weeks.length, problems };
 }

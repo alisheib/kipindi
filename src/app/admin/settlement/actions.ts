@@ -57,7 +57,7 @@ export async function settleMarketAction(formData: FormData): Promise<{ ok: true
   const marketId = String(formData.get("marketId") ?? "");
   if (!marketId) return { ok: false, error: "Missing market id." };
   // S0.5 · the fence: a Millionea week is released from /admin/maswali/pools (OD-06), never from this generic door —
-  // not even its VOID arm, which only its own week-void control may reach.
+  // not even a voided week, whose refund is the week void's own bulk refund (R1, maswali-void.ts).
   if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };
 
   const r = await settleMarket(marketId, { actorId: session.userId });

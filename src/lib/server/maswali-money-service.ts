@@ -64,8 +64,8 @@ const mirror = (globalThis.__50PICK_MLN_LEDGER_MIRROR ??= new Map<string, number
 const mirrorGroups = (globalThis.__50PICK_MLN_LEDGER_GROUPS ??= new Map<string, string>());
 const MIRRORED = new Set<string>([acct.maswaliJackpot, acct.maswaliDriveJackpot, acct.maswaliGuarantee]);
 const dbPresent = () => hasDatabase() && process.env.USE_PRISMA_DAL !== "false";
-/** ⚠️ A week's POOL is mirrored only through Millionea's own groups (buy, cancel, settle): a memory-store week VOIDED by
- *  `settleMarket` leaves its mirror at the sales, so nothing reads a voided week's pool from the mirror. */
+/** ⚠️ A week's POOL is mirrored only through Millionea's own groups — the buy, the cancel, the settlement and the week
+ *  void's refund (R1, `maswali-void.ts`) — so a memory-store pool answers what the Postgres ledger does at every step. */
 const mirrored = (account: string) => MIRRORED.has(account) || account.startsWith("POOL:");
 
 /**

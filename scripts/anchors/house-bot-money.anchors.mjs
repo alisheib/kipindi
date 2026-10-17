@@ -522,6 +522,16 @@ export const MUTATIONS = [
     expect: "0.232.1 ·",
     suite: "reports-mem",
   },
+  /* MASWALI-BUILD R1 (2026-10-17) · the week void's bulk refund writes one BET_REFUND per ticket through `.txn.createMany`,
+   * every row built by ONE `.map` literal, which 0.232 reads as the write's site — one marker deletion, like the four above. */
+  {
+    name: "232-marker-maswali-void · a voided week's BET_REFUND transactions stop carrying the house marker",
+    file: "src/lib/server/maswali-void.ts",
+    from: `          // SEAM:markerMaswaliVoid — a desk account never holds a ticket (refused at the purchase), kept so Ruling 232 has no exception.\n          ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),\n`,
+    to: `          // SEAM:markerMaswaliVoid — a desk account never holds a ticket (refused at the purchase), kept so Ruling 232 has no exception.\n`,
+    expect: "0.232.1 ·",
+    suite: "reports-mem",
+  },
   /* ── §12 · the two omission-only pins (2026-09-20) ───────────────────────────────────────────────────────────
    * Each of these puts back a state the platform could plausibly be in — the loss-limit gate stepping over a
    * house stake, the wallet gate letting a closed wallet pay, and a "safety" check added to settlement — and

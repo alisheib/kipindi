@@ -47,6 +47,8 @@ const MUTATORS = [
   "createAsset", "updateAsset", "setAssetEnabled",
   "voidRoundByOperator", "generateRoundNow", "openRound", "closeRound",
   "setUpDownConfig", "settleMarket", "buyPosition",
+  // MASWALI-BUILD R1 (2026-10-17): the Millionea heal's reconcile closes and voids weeks, and refunds a voided week's tickets.
+  "reconcileMaswaliWeeks", "voidWeek",
 ];
 
 const files = readdirSync(HERE).filter((f) => /^ops-.*\.(mts|mjs)$/.test(f));

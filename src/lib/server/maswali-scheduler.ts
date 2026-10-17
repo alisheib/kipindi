@@ -8,7 +8,9 @@
  *
  *   · OPEN and past its close            → `closeWeek` (the commitment, exactly once)
  *   · CLOSED / RESOLVING                 → `recomputeGate`; a void deadline passed unsealed → a proposal for an officer
- *   · a certain week void, window closed → `voidWeek` (every ticket refunded through `settleMarket`'s VOID arm)
+ *   · a certain week void, window closed → `voidWeek` (stamped VOIDED, then every ticket refunded in one bulk transaction)
+ *   · VOIDED and its refunds not landed  → `voidWeek` again, every tick until they land (R1: a refusal or a rollback
+ *     after the stamp is retried, never stranded)
  *   · ⛔ never a seal, never an open, never a winning settlement: an officer seals (MR-14), opens (S4) and an accounting
  *     officer releases (OD-06).
  *
@@ -19,10 +21,11 @@
 import { audit } from "./audit";
 import { questionStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { closeWeek, proposeVoidsAtDeadline, recomputeGate, voidWeek } from "./maswali-service";
+import { unrefundedVoids } from "./maswali-void";
 
 /** Never sleep longer than this: a clock jump or a missed change is healed within it. */
 const MAX_SLEEP_MS = 5 * 60_000;
-/** A due instant already past fires after this grace — delayed, never skipped. */
+/** The shortest sleep: an instant due sooner waits this long, so the timer never spins (a past one is no wake time). */
 const PAST_GRACE_MS = 1_000;
 
 declare global {
@@ -53,7 +56,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
     const nowMs = now.getTime();
     let weeks: StoredWeek[];
     try {
-      weeks = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
+      // R1 · a VOIDED week is listed only while its refunds are owed (its market not settled): resumed below, every tick.
+      weeks = [...await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] }), ...await unrefundedVoids()];
     } catch (e) {
       console.error("[maswali] tick could not list weeks:", e);
       report.failures++;
@@ -61,6 +65,12 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
     }
     for (const w of weeks) {
       try {
+        if (w.state === "VOIDED") {
+          const v = await voidWeek({ weekId: w.id, now });
+          if (!v.ok) throw new Error(v.error);
+          if (!v.already) report.voided++;
+          continue;
+        }
         if (w.state === "OPEN" && Date.parse(w.closesAt) <= nowMs) {
           const r = await closeWeek({ weekId: w.id, now });
           if (r.ok && !r.already) report.closed++;
@@ -80,8 +90,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
           const fresh = await weekStore.get(w.id);
           if (g.ok && g.gate.ready && g.gate.weekVoid && fresh?.objectionsCloseAt && Date.parse(fresh.objectionsCloseAt) <= nowMs) {
             const v = await voidWeek({ weekId: w.id, now });
-            if (v.ok) report.voided++;
-            else throw new Error(v.error);
+            if (!v.ok) throw new Error(v.error);
+            if (!v.already) report.voided++;
           }
         }
       } catch (e) {
@@ -97,17 +107,28 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
   return run;
 }
 
-/** The next instant any week needs the tick, or null when nothing is pending. */
+/**
+ * The next instant any week needs the tick, or null when nothing is pending.
+ * ⛔ A PAST INSTANT IS NEVER A WAKE TIME — every candidate must lie after `nowMs`. A week whose window closed while it waits
+ * for accounting's release (or a close a failing tick did not stamp) re-armed the timer at its one-second grace, and the
+ * tick took `maswali:chain` every second until someone acted. What is already due waits for the normal cadence: the timer
+ * sleeps at most MAX_SLEEP_MS, and the lifecycle's reconcile runs the tick seconds after a boot and every five minutes.
+ */
 export async function nextMaswaliDueMs(nowMs: number = Date.now()): Promise<number | null> {
   const weeks = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
   let next: number | null = null;
-  const take = (t: number) => { if (Number.isFinite(t) && (next === null || t < next)) next = t; };
+  const take = (t: number) => { if (Number.isFinite(t) && t > nowMs && (next === null || t < next)) next = t; };
   for (const w of weeks) {
     if (w.state === "OPEN") { take(Date.parse(w.closesAt)); continue; }
     if (w.objectionsCloseAt) take(Date.parse(w.objectionsCloseAt));
-    for (const q of await questionStore.listForWeek(w.id)) if (q.outcome === null && Date.parse(q.voidDeadlineAt) > nowMs) take(Date.parse(q.voidDeadlineAt));
+    for (const q of await questionStore.listForWeek(w.id)) if (q.outcome === null) take(Date.parse(q.voidDeadlineAt));
   }
   return next;
+}
+
+/** The timer's sleep before a due instant: never past the normal cadence (MAX_SLEEP_MS), never under the grace. */
+export function wakeDelayMs(due: number | null, nowMs: number): number {
+  return due === null ? MAX_SLEEP_MS : Math.min(MAX_SLEEP_MS, Math.max(PAST_GRACE_MS, due - nowMs));
 }
 
 /** Arm the one timer for the next due instant (bounded by MAX_SLEEP_MS). Never rejects. */
@@ -117,8 +138,7 @@ export async function armMaswaliTimer(): Promise<void> {
     globalThis.__50PICK_MLN_TIMER = undefined;
     if (!maswaliSchedulerEnabled()) return;
     const nowMs = Date.now();
-    const due = await nextMaswaliDueMs(nowMs);
-    const delay = due === null ? MAX_SLEEP_MS : Math.min(MAX_SLEEP_MS, Math.max(PAST_GRACE_MS, due - nowMs));
+    const delay = wakeDelayMs(await nextMaswaliDueMs(nowMs), nowMs);
     const t = setTimeout(() => {
       void runMaswaliTick().finally(() => { void armMaswaliTimer(); });
     }, delay);
@@ -129,7 +149,9 @@ export async function armMaswaliTimer(): Promise<void> {
   }
 }
 
-/** Boot: arm the timer (a close missed while the container was down fires after a short grace). */
+/** Boot: arm the timer. A close missed while the container was down is already past, so it is no wake time: the
+ *  lifecycle's first reconcile, seconds after boot, runs the tick that stamps it (sales stopped at the close anyway — the
+ *  purchase and the cancel read it on the database clock). */
 export async function hydrateMaswaliOnBoot(): Promise<void> {
   if (!maswaliSchedulerEnabled()) {
     console.warn("[maswali] MASWALI_SCHEDULER=false — the week timer is off; the 5-minute reconcile still runs the tick");
