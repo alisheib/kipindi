@@ -16,9 +16,15 @@ export type WeekState = (typeof WEEK_STATES)[number];
 export const TICKET_STATES = ["LIVE", "CANCELLED", "SETTLED", "REFUNDED"] as const;
 export type TicketState = (typeof TICKET_STATES)[number];
 
-/** What a ticket shows once its week is known: still running (its money still out), won, did not win, refunded with the
- *  week, or cancelled. */
-export type TicketShown = "running" | "won" | "lost" | "refunded" | "cancelled";
+/** What a ticket shows once its week is known: still running (its money still out), won, did not win, won with its share
+ *  forfeited after Compliance's review (OD-07), refunded with the week, or cancelled. */
+export type TicketShown = "running" | "won" | "lost" | "forfeited" | "refunded" | "cancelled";
+
+/**
+ * The settlement's mark on a winning share Compliance forfeited (OD-07): `forfeitMaswaliShare` writes the ticket's
+ * `frozenReason` as this prefix and the officer's reason. Only the prefix is ever read; the reason never leaves the server.
+ */
+export const FORFEITED_SHARE_MARK = "forfeited · ";
 
 /** The key of each week state's word. A DRAFT is never shown to a player; its key exists for the console. */
 export const WEEK_STATE_KEY: Record<WeekState, string> = {
@@ -30,11 +36,12 @@ export const WEEK_STATE_KEY: Record<WeekState, string> = {
   VOIDED: "weekStatusVoided",
 };
 
-/** The key of each shown ticket state's word. */
+/** The key of each shown ticket state's word. A forfeited share reads the composition's own `shareForfeited`. */
 export const TICKET_SHOWN_KEY: Record<TicketShown, string> = {
   running: "ticketRunning",
   won: "ticketWon",
   lost: "ticketLost",
+  forfeited: "shareForfeited",
   refunded: "ticketRefunded",
   cancelled: "ticketCancelled",
 };
@@ -45,15 +52,26 @@ export const TICKET_SHOWN_KEY: Record<TicketShown, string> = {
  * (R1; the status is written in the money's own transaction), or in a voided week one whose refund has landed
  * (`refundLanded`: its position VOID with a settlement stamp), shows refunded; one still LIVE in a voided week whose
  * refund is owed is still running — its money is out, as the platform's open position reads ("Pending"), and the void
- * lane retries the refund until it lands. A settled ticket won or did not; anything else is still running.
+ * lane retries the refund until it lands. A settled ticket won (its share forfeited, by its own mark) or did not; anything
+ * else is still running.
  * ⛔ Never "lost" before its week SETTLED — a ticket whose picks already miss is still running until the week is final.
  * ⛔ Never "refunded" from the week's VOIDED stamp alone (S5 review M3): a caller that does not know the ticket's refund
  *    passes nothing, and the ticket does not claim one.
+ * ⛔ Never "won" for a share Compliance forfeited (S5 re-review 3): the money went back to the jackpot, so the ticket reads
+ *    "forfeited", from its own mark — no caller can forget to say so. A share HELD for review still won (its hold mark is
+ *    the row's `share`); a release makes it paid.
  */
-export function ticketShown(ticket: { status: TicketState; won: boolean | null }, week: WeekState, refundLanded = false): TicketShown {
+export function ticketShown(
+  ticket: { status: TicketState; won: boolean | null; frozenReason?: string | null },
+  week: WeekState,
+  refundLanded = false,
+): TicketShown {
   if (ticket.status === "CANCELLED") return "cancelled";
   if (ticket.status === "REFUNDED") return "refunded";
   if (week === "VOIDED") return refundLanded ? "refunded" : "running";
-  if (ticket.status === "SETTLED" && week === "SETTLED") return ticket.won === true ? "won" : "lost";
+  if (ticket.status === "SETTLED" && week === "SETTLED") {
+    if (ticket.won !== true) return "lost";
+    return ticket.frozenReason?.startsWith(FORFEITED_SHARE_MARK) ? "forfeited" : "won";
+  }
   return "running";
 }

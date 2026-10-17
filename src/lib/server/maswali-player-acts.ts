@@ -9,11 +9,12 @@
  * ⭐ THE PLATFORM'S FAILURE SHAPE, ALWAYS (`ServiceResult`): every refusal carries a registered `reason`
  *    (`failure-reasons.ts`), so a screen renders that reason's copy in the reader's language and never the English
  *    sentence beside it (FAILURE-INVENTORY §1.6). Each is the money path's own or a generic one — and one is S5's own,
- *    `session_changed`, for a page drawn for another account.
- * ⛔ THE GATE FIRST, FOR THE BUY AND THE SEEN MARKS: an act on a product the rollout hides from this viewer is refused
+ *    `session_changed`, for a page drawn for another account (the buy's and the cancel's).
+ * ⛔ THE GATE FIRST, FOR THE BUY AND THE NOTICE MARK: an act on a product the rollout hides from this viewer is refused
  *    before anything else is read (`millionea_not_available`) — the route 404s, and its action does not answer either
- *    (`millionea-gate.ts`). ⭐ NOT THE FREE CANCEL (the lead's decision, S5 review L5): a kill hides the product, never a
- *    player's free exit with their money.
+ *    (`millionea-gate.ts`). ⭐ NOT THE FREE CANCEL AND NOT A TICKET'S SEEN MARK (the lead's decision, S5 review L5): a
+ *    holder keeps their own tickets, results, refunds and free cancel at every rollout state, while discovery follows
+ *    the rollout — a kill hides the product, never a player's own ticket or their free exit with their money.
  * ⛔ THE MONEY IS NOT HERE. A purchase is `purchaseMaswaliTickets` → the one bet path (every responsible-gambling gate,
  *    the cap in the wallet lock, the close on the database clock); a cancel is `cashOutPosition` → the free cancel
  *    (`cancelMaswaliTicket`). This file reads the form, refuses what is malformed, and maps the answer.
@@ -144,8 +145,12 @@ export async function buyMillioneaFromForm(
 }
 
 /**
- * ⭐ CANCEL ONE TICKET INSIDE ITS FREE WINDOW. The form carries `serial`. ⛔ A serial that is not the viewer's answers as
- * one that does not exist. The money is the platform's free cancel, behind the cash-out door's own rate limit.
+ * ⭐ CANCEL ONE TICKET INSIDE ITS FREE WINDOW. The form carries `serial`, and `expectedOwnerId` (the account the page
+ * showed) when the page sends it. ⛔ A serial that is not the viewer's answers as one that does not exist. The money is the
+ * platform's free cancel, behind the cash-out door's own rate limit.
+ *   · ⛔ an account that changed since the page rendered (the field present, and not this session's) is refused with the
+ *     buy's own `session_changed` — reload, never "we couldn't find that ticket" (S5 re-review 7). Asked before any
+ *     ticket is read, so the answer says nothing about the serial (MB-95).
  * ⭐ AT EVERY ROLLOUT STATE (the lead's decision, S5 review L5): a kill (WITHDRAWN) hides the product, never a player's
  *    free exit with their own money — as the platform's own position exit answers whatever is shown. What holds at every
  *    state is the same: owner-only, the window rules (`cancelMaswaliTicket`), and the one identical refusal.
@@ -154,6 +159,8 @@ export async function cancelMillioneaFromForm(
   userId: string,
   form: MillioneaForm,
 ): Promise<ServiceResult<{ serial: string; refunded: number; balance: number }>> {
+  const expected = form.get("expectedOwnerId");
+  if (expected != null && expected !== userId) return SESSION_CHANGED;
   const serial = normalizeMillioneaSerial(form.get("serial"));
   const ticket = serial ? await ticketStore.getBySerial(serial) : null;
   if (!ticket || ticket.userId !== userId) return NO_SUCH_TICKET;
@@ -173,27 +180,27 @@ const instantOf = (v: unknown): number => (typeof v === "string" && v.length <= 
  * view's `seen.through`, passed back by the page — never the server's clock at the mark, so a fact that lands after the
  * render still performs next time (S5 review L7).
  *   · ⛔ the instant must be one of the ticket's own facts: a made-up instant records nothing;
- *   · the stamp moves forward only — an older one never replaces a newer one;
+ *   · the stamp moves forward only — an older one never replaces a newer one, and the write itself is conditional
+ *     (`ticketStore.markViewed`), so of two marks in flight the older can never land over the newer (S5 re-review 5);
  *   · rate-limited per account like the other player actions (`millionea.seen`).
- * False when nothing was recorded (hidden product, throttled, not theirs, not one of its facts, already seen since).
+ * ⭐ AT EVERY ROLLOUT STATE (the lead's decision L5): the owner's own ticket is theirs at a kill, so the mark asks no
+ *    rollout — like the free cancel, it is owner-only, and a serial that is not theirs records nothing.
+ * ⛔ NEVER LOAD-BEARING: a read or a write that fails records nothing and answers false (S5 re-review 6); the facts
+ *    perform again next time.
+ * False when nothing was recorded (throttled, not theirs, not one of its facts, already seen since, a failed read or write).
  */
-export async function markMillioneaTicketSeenFor(
-  userId: string,
-  serial: unknown,
-  through: unknown,
-  opts: { deps?: MillioneaViewerDeps } = {},
-): Promise<boolean> {
-  const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
-  if (!access.visible) return false;
-  if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
-  const at = instantOf(through);
-  if (!Number.isFinite(at)) return false;
-  // A mark is never load-bearing: a read that fails records nothing, and the facts perform again next time.
-  const t = await millioneaTicketFacts(userId, serial).catch(() => null);
-  if (!t || !t.facts.some((f) => Date.parse(f.at) === at)) return false;
-  if (t.lastViewedAt && Date.parse(t.lastViewedAt) >= at) return false;
-  await ticketStore.patch(t.ticketId, { lastViewedAt: new Date(at).toISOString() });
-  return true;
+export async function markMillioneaTicketSeenFor(userId: string, serial: unknown, through: unknown): Promise<boolean> {
+  try {
+    if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
+    const at = instantOf(through);
+    if (!Number.isFinite(at)) return false;
+    const t = await millioneaTicketFacts(userId, serial);
+    if (!t || !t.facts.some((f) => Date.parse(f.at) === at)) return false;
+    if (t.lastViewedAt && Date.parse(t.lastViewedAt) >= at) return false;
+    return await ticketStore.markViewed(t.ticketId, new Date(at).toISOString());
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -203,6 +210,9 @@ export async function markMillioneaTicketSeenFor(
  *     is not due, so it cannot be put to rest before it is true, M3);
  *   · ⛔ an instant that is not one, or one still ahead of the server's clock, records nothing;
  *   · rate-limited per account like the other player actions (`millionea.seen`).
+ * The hub's notices follow the rollout (discovery), so this mark asks the gate first.
+ * ⛔ NEVER LOAD-BEARING: a read or a write that fails records nothing and answers false (S5 re-review 6); the notice
+ *    performs again next time.
  */
 export async function markMillioneaNoticeSeenFor(
   userId: string,
@@ -211,17 +221,19 @@ export async function markMillioneaNoticeSeenFor(
   renderedAt: unknown,
   opts: { deps?: MillioneaViewerDeps; now?: Date } = {},
 ): Promise<boolean> {
-  const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
-  if (!access.visible) return false;
-  if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
-  if (!isMaswaliNotice(notice) || typeof weekId !== "string" || weekId.length === 0) return false;
-  const at = instantOf(renderedAt);
-  if (!Number.isFinite(at) || at > (opts.now ?? new Date()).getTime()) return false;
-  const week = await weekStore.get(weekId);
-  if (!week) return false;
-  // A mark is never load-bearing: a read that fails records nothing, and the notice performs again next time.
-  let due: Awaited<ReturnType<typeof millioneaNotices>> = [];
-  try { due = await millioneaNotices(userId, await millioneaLineFor(access.state)); } catch { due = []; }
-  if (!due.some((n) => n.weekId === week.id && n.notice === notice)) return false;
-  return noticeStore.markSeen(userId, week.id, notice, new Date(at).toISOString());
+  try {
+    const access = await resolveMillioneaFor({ sessionUserId: userId }, opts.deps ?? {});
+    if (!access.visible) return false;
+    if (!(await rateCheckAsync(userId, "millionea.seen")).allowed) return false;
+    if (!isMaswaliNotice(notice) || typeof weekId !== "string" || weekId.length === 0) return false;
+    const at = instantOf(renderedAt);
+    if (!Number.isFinite(at) || at > (opts.now ?? new Date()).getTime()) return false;
+    const week = await weekStore.get(weekId);
+    if (!week) return false;
+    const due = await millioneaNotices(userId, await millioneaLineFor(access.state));
+    if (!due.some((n) => n.weekId === week.id && n.notice === notice)) return false;
+    return await noticeStore.markSeen(userId, week.id, notice, new Date(at).toISOString());
+  } catch {
+    return false;
+  }
 }

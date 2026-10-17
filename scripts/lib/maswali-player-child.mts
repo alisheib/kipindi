@@ -20,7 +20,11 @@
  *   §11 the exclusions (the board's scored positions, achievements), the wiring (surfaces, the permalink), the floor, the
  *      seen marks' rate limit (L7)
  *   §12 a won share as Compliance leaves it: held, forfeited, released (M2)
+ *   §12b the re-review (RR1–RR8): weeks in CALENDAR order, never the drafting order (R3.1's own fixture: the later week
+ *      drafted first); the register and Tiketi zangu paged with a total; a forfeited or held share is not `won`; the seen
+ *      mark forward-only, at every rollout state, and never throwing; the cancel's own session check
  *   §13 by state, never newest-N (L1); the floor fails closed on unreadable rules (L3); the hub while Millionea ends (L2)
+ *   §14 the final week (RR2): a miss is not "cannot win" there — and released, the top score wins
  *
  * ⏱ The weeks are the money world's: two and more weeks ahead, opened, closed and sealed on their own clocks; money reads
  * the real clock. ⛔ Every week and ticket goes through the product's own doors. The two FIXTURES OF A FAULT — §11's
@@ -31,7 +35,7 @@
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-player-session-secret-0123456789abcdef";
 
-const { loadMaswaliWorld, SEALER, DRAFTER, OWNER } = await import("./maswali-money-world.mts");
+const { loadMaswaliWorld, SEALER, DRAFTER, READER, OWNER } = await import("./maswali-money-world.mts");
 const W: any = await loadMaswaliWorld();
 const { svc: market } = W.w;
 const { dal, money, ledger, acct } = W;
@@ -46,6 +50,7 @@ const { positionPermalink, millioneaTicketHref }: any = await import("../../src/
 const { REASONS }: any = await import("../../src/lib/failure-reasons.ts");
 const { RATE_RULES }: any = await import("../../src/lib/server/rate-limit.ts");
 const { scoredPositions, SCORED_LINES }: any = await import("../../src/lib/leaderboard/board.ts");
+const LABEL: any = await import("../../src/lib/maswali-week-label.ts");
 const { settleArithmetic, guaranteeRequirement }: any = await import("../../src/lib/maswali-money.ts");
 const { snapshotOrLegacy }: any = await import("../../src/lib/server/market-config.ts");
 const { getMaswaliConfig }: any = await import("../../src/lib/server/maswali-config.ts");
@@ -334,9 +339,10 @@ section("§6 · the viewer's tickets");
 const p1Tickets = (await dal.ticketStore.listForUser(P1, { cycleId: A.id })).sort((a: any, b: any) => a.serial.localeCompare(b.serial));
 const [p1Win1, p1Win2, p1Lose] = p1Tickets;
 {
-  const list = await P.millioneaMyTickets(P1);
+  const mine = await P.millioneaMyTickets(P1, { perPage: 12 });
+  const list = mine.rows;
   ok("6.1 · Tiketi zangu, Millionea: the week first, its three tickets in sale order, each with its fifteen sockets",
-    list.length === 1 && list[0].week.id === A.id && list[0].tickets.map((t: any) => t.serial).join() === p1Tickets.map((t: any) => t.serial).join()
+    mine.total === 1 && list.length === 1 && list[0].week.id === A.id && list[0].tickets.map((t: any) => t.serial).join() === p1Tickets.map((t: any) => t.serial).join()
       && list[0].tickets.every((t: any) => t.slots.length === 15 && t.shown === "running"), J(list.map((w: any) => w.week.code)));
   const v = await P.millioneaTicket(P1, p1Win1.serial);
   ok("6.2 · ⭐ one ticket for its owner: its picks, its stub and salt (shown to the owner only, MB-32), its anchor id",
@@ -388,14 +394,14 @@ section("§7 · the live frame (maswali:pool) and who hears it; the seen mark; t
   stop();
 
   // L7 · the seen mark records the instant the page RENDERED: the view above held the cut alone; the cancel landed after it.
-  const early = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, rendered?.seen.through, ACTIVE);
+  const early = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, rendered?.seen.through);
   const next = await P.millioneaTicket(P5, p5Serial);
   ok("7.5a · ⭐ L7 · marked through the instant the page rendered (its newest fact, the cut), the cancel that landed after the render still performs — the server's clock at the mark would have put it to rest unseen",
     early === true && rendered?.seen.through === rendered?.boughtAt && J(next?.seen.unseen.map((f: any) => f.kind)) === J(["cancel"]),
     J({ early, through: rendered?.seen.through, unseen: next?.seen.unseen }));
-  const forged = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, new Date(Date.parse(next.seen.through) + 1).toISOString(), ACTIVE);
-  const junk = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, "yesterday", ACTIVE);
-  const caughtUp = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, next.seen.through, ACTIVE);
+  const forged = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, new Date(Date.parse(next.seen.through) + 1).toISOString());
+  const junk = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, "yesterday");
+  const caughtUp = await ACT.markMillioneaTicketSeenFor(P5, p5Serial, next.seen.through);
   const rested = await P.millioneaTicket(P5, p5Serial);
   ok("7.5b · ⛔ L7 · an instant that is none of the ticket's facts, or no instant at all, records nothing; the newer view's own instant brings every fact to rest",
     forged === false && junk === false && caughtUp === true && rested.seen.unseen.length === 0, J({ forged, junk, caughtUp, unseen: rested.seen.unseen }));
@@ -503,16 +509,16 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
   ok("8.7 · ⭐ a backlog rests: the cut, fifteen presses and the result unseen at once — more than four, so none animates",
     v.seen.unseen.length === 17 && v.seen.backlogRests === true && kinds.filter((k: string) => k === "press").length === 15
       && kinds.includes("cut") && kinds.includes("result"), J(kinds));
-  const marked = await ACT.markMillioneaTicketSeenFor(P1, p1Win1.serial, v.seen.through, ACTIVE);
+  const marked = await ACT.markMillioneaTicketSeenFor(P1, p1Win1.serial, v.seen.through);
   const after = await P.millioneaTicket(P1, p1Win1.serial);
   ok("8.8 · seen by its owner through the view's own instant, every fact rests: nothing unseen, and the backlog no longer matters",
     marked === true && after.seen.unseen.length === 0 && after.seen.backlogRests === false && Date.parse(after.seen.lastViewedAt) === Date.parse(v.seen.through), J(after.seen));
-  const back = await ACT.markMillioneaTicketSeenFor(P1, p1Win1.serial, v.boughtAt, ACTIVE);
+  const back = await ACT.markMillioneaTicketSeenFor(P1, p1Win1.serial, v.boughtAt);
   const w2 = await P.millioneaTicket(P1, p1Win2.serial);
-  const stranger = await ACT.markMillioneaTicketSeenFor(P2, p1Win2.serial, w2.seen.through, ACTIVE);
-  const hidden = await ACT.markMillioneaTicketSeenFor(P1, p1Win2.serial, w2.seen.through, at("WITHDRAWN"));
-  ok("8.9 · ⛔ the stamp only moves forward (an older fact's instant records nothing); nobody else marks a ticket seen; a hidden product records nothing",
-    back === false && stranger === false && hidden === false && (await dal.ticketStore.getBySerial(p1Win2.serial)).lastViewedAt === null, J([back, stranger, hidden]));
+  const stranger = await ACT.markMillioneaTicketSeenFor(P2, p1Win2.serial, w2.seen.through);
+  // (L5 · the mark asks no rollout: §12b drives the owner's mark with Millionea hidden.)
+  ok("8.9 · ⛔ the stamp only moves forward (an older fact's instant records nothing); nobody else marks a ticket seen",
+    back === false && stranger === false && (await dal.ticketStore.getBySerial(p1Win2.serial)).lastViewedAt === null, J([back, stranger]));
 
   const r = await P.millioneaRegisterWeek(A.code.toLowerCase());
   ok("8.10 · ⭐ the register's week: public, final, every figure the settlement's own (the case of the code does not matter)",
@@ -530,8 +536,9 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
     !!r && !J(r).includes(P1) && !J(r).includes(P2) && !/phoneE164|displayName|userId/.test(J(r)));
   const nulls = await Promise.all([P.millioneaRegisterWeek(B.code), P.millioneaRegisterWeek(D.code), P.millioneaRegisterWeek("MLN-1999-W01"), P.millioneaRegisterWeek("<script>")]);
   ok("8.14 · ⛔ never a week still selling, never a drive week, never a code that is not a week", nulls.every((x: any) => x === null), J(nulls.map((x: any) => x === null)));
-  const list = await P.millioneaRegister();
-  ok("8.15 · the register's list: the settled week, and only final public weeks", list.length === 1 && list[0].id === A.id && list.every((w: any) => w.state === "SETTLED" || w.state === "VOIDED"),
+  const reg = await P.millioneaRegister({ perPage: 12 });
+  const list = reg.rows;
+  ok("8.15 · the register's list: the settled week, and only final public weeks", reg.total === 1 && list.length === 1 && list[0].id === A.id && list.every((w: any) => w.state === "SETTLED" || w.state === "VOIDED"),
     J(list.map((w: any) => w.code)));
   const fB = await P.maswaliPoolFigure(B.id);
   ok("8.16 · ⭐ once N settled, N+1's carry is known: what the claim reads (N's remainder), no longer pending",
@@ -570,7 +577,7 @@ const carryB = (await P.maswaliPoolFigure(B.id)).carryIn;
 const releasedB = await W.release(B.id, await W.closeAndSeal(B, bStart));
 ok("9.1 · the week settled with no ten of ten", b3.ok && releasedB.ok && (await dal.weekStore.get(B.id)).winningTickets === 0, `${why(b3)} · ${why(releasedB)}`);
 {
-  const r = (await P.millioneaRegister()).find((w: any) => w.id === B.id);
+  const r = (await P.millioneaRegister({ perPage: 12 })).rows.find((w: any) => w.id === B.id);
   ok("9.2 · ⭐ the register states what was carried to the next week: R + S, the whole pool, and no fee (MR-21, MR-28)",
     !!r && r.winners === 0 && r.jackpot === null && r.fee === 0 && r.carriedForward === carryB + salesB, J(r));
   const roll = (await P.millioneaNotices(P1)).find((n: any) => n.notice === "ROLLOVER");
@@ -617,7 +624,7 @@ for (let i = 0; i < 500 && (await dal.weekStore.get(V.id)).state !== "VOIDED"; i
   ok("10.0b · ⭐ M3 · the ticket does NOT claim a refund from the week's stamp: it reads Pending ('running'), its refund pending, no refund fact, nothing it could still win",
     !!v && v.shown === "running" && J(v.refund) === J({ state: "pending" }) && !v.seen.unseen.some((f: any) => f.kind === "refund")
       && v.cannotWinSoFar === false && J(v.weekVoid) === J({ voidedMains: 10, usableReserves: 0, price }), J(v && { shown: v.shown, refund: v.refund }));
-  const rows = (await P.millioneaMyTickets(P4)).find((w: any) => w.week.id === V.id)?.tickets ?? [];
+  const rows = (await P.millioneaMyTickets(P4, { perPage: 12 })).rows.find((w: any) => w.week.id === V.id)?.tickets ?? [];
   ok("10.0c · ⭐ M3 · …and so does every row of Tiketi zangu", rows.length === 2 && rows.every((r: any) => r.shown === "running" && r.refund?.state === "pending"), J(rows.map((r: any) => [r.shown, r.refund])));
   const due = await P.millioneaNotices(P4);
   const tooEarly = await ACT.markMillioneaNoticeSeenFor(P4, V.id, "WEEK_VOID", new Date().toISOString(), ACTIVE);
@@ -626,7 +633,7 @@ for (let i = 0; i < 500 && (await dal.weekStore.get(V.id)).state !== "VOIDED"; i
   const closure = await P.millioneaClosureTickets(P4);
   ok("10.0e · ⭐ M3 · the closure screen lists both tickets as money still out: refund pending",
     closure.length === 2 && closure.every((t: any) => t.weekState === "VOIDED" && t.refundPending === true && t.shown === "running"), J(closure));
-  const reg = (await P.millioneaRegister()).find((w: any) => w.id === V.id);
+  const reg = (await P.millioneaRegister({ perPage: 12 })).rows.find((w: any) => w.id === V.id);
   const hubV = await P.millioneaHub(viewer(P4));
   ok("10.0f · ⭐ M3 · the register and the hub's last week say the week's refunds are pending — never 'every ticket refunded' before it is so",
     reg?.state === "VOIDED" && reg.refundsPending === true && hubV.lastWeek?.id === V.id && hubV.lastWeek.refundsPending === true, J({ reg, last: hubV.lastWeek }));
@@ -642,11 +649,11 @@ ok("10.1 · released, the week voided whole (MR-18)", b4.ok && voided.ok && void
       && v.seen.unseen.some((f: any) => f.kind === "refund") && v.win === null && v.loss === null, J({ refund: v.refund, weekVoid: v.weekVoid }));
   const n = (await P.millioneaNotices(P4)).find((x: any) => x.notice === "WEEK_VOID");
   ok("10.3 · the holder's week-void notice, now true: the tickets, and the whole price of each, landed", J(n) === J({ notice: "WEEK_VOID", weekId: V.id, code: V.code, tickets: 2, refunded: 2 * price }), J(n));
-  const r = (await P.millioneaRegister()).find((w: any) => w.id === V.id);
+  const r = (await P.millioneaRegister({ perPage: 12 })).rows.find((w: any) => w.id === V.id);
   ok("10.4 · the register lists the voided week with no money figures and its refunds done: the carry is untouched and waits for the next week",
     !!r && r.state === "VOIDED" && r.carriedForward === null && r.jackpot === null && r.winners === null && r.refundsPending === false, J(r));
   ok("10.5 · ⛔ the closure screen no longer lists a refunded ticket (its money is back)", (await P.millioneaClosureTickets(P4)).length === 0);
-  const rows = (await P.millioneaMyTickets(P4)).find((w: any) => w.week.id === V.id)?.tickets ?? [];
+  const rows = (await P.millioneaMyTickets(P4, { perPage: 12 })).rows.find((w: any) => w.week.id === V.id)?.tickets ?? [];
   ok("10.6 · …and every row of Tiketi zangu reads refunded, each with its own landed refund", rows.length === 2
     && rows.every((x: any) => x.shown === "refunded" && x.refund?.state === "landed" && x.refund.amount === price), J(rows.map((x: any) => [x.shown, x.refund])));
 }
@@ -761,10 +768,10 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
   const bq = await W.buy(PQ, D.id, [W.LOSE], { key: "player-pq-d-0001" });
   const [rx, ry] = br.ok ? br.data.maswali.tickets.map((t: any) => t.serial) : ["", ""];
   const vx = await P.millioneaTicket(PR, rx);
-  const first = await ACT.markMillioneaTicketSeenFor(PR, rx, vx?.seen.through, ACTIVE);
-  for (let i = 0; i < budget + 2; i++) await ACT.markMillioneaTicketSeenFor(PR, "nope", "x", ACTIVE);
+  const first = await ACT.markMillioneaTicketSeenFor(PR, rx, vx?.seen.through);
+  for (let i = 0; i < budget + 2; i++) await ACT.markMillioneaTicketSeenFor(PR, "nope", "x");
   const vy = await P.millioneaTicket(PR, ry);
-  const throttled = await ACT.markMillioneaTicketSeenFor(PR, ry, vy?.seen.through, ACTIVE);
+  const throttled = await ACT.markMillioneaTicketSeenFor(PR, ry, vy?.seen.through);
   const throttledNotice = await ACT.markMillioneaNoticeSeenFor(PR, V.id, "WEEK_VOID", new Date().toISOString(), ACTIVE);
   ok("11.15 · ⭐ L7 · the seen marks spend a per-account budget (a declared rule): the account's own good mark records, and once its budget is spent the next good mark records nothing — the fact simply performs again next time",
     budget > 0 && br.ok && first === true && throttled === false && throttledNotice === false && (await dal.ticketStore.getBySerial(ry)).lastViewedAt === null,
@@ -772,7 +779,7 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
   const qSerial = bq.ok ? bq.data.maswali.tickets[0].serial : "";
   const vq = await P.millioneaTicket(PQ, qSerial);
   ok("11.16 · …and the budget is the account's own: another account's good mark still records (the control)",
-    bq.ok && (await ACT.markMillioneaTicketSeenFor(PQ, qSerial, vq?.seen.through, ACTIVE)) === true, why(bq));
+    bq.ok && (await ACT.markMillioneaTicketSeenFor(PQ, qSerial, vq?.seen.through)) === true, why(bq));
 }
 
 // ── a held share reaches the closure screen (it holds the winner's wallet, so it runs after §11's purchases) ──────────
@@ -818,7 +825,7 @@ const hold1 = await W.settle.holdMaswaliShare({ ticketId: h1.id, officerId: "usr
 const hold2 = await W.settle.holdMaswaliShare({ ticketId: h2.id, officerId: "usr_mln_compliance", reason: "player suite holds a second share" });
 const forfeit2 = await W.settle.forfeitMaswaliShare({ ticketId: h2.id, officerId: "usr_mln_compliance", typed: W.settle.FORFEIT_SHARE_WORD, reason: "player suite forfeits the second share" });
 {
-  const rows = (await P.millioneaMyTickets(PH)).find((w: any) => w.week.id === H.id)?.tickets ?? [];
+  const rows = (await P.millioneaMyTickets(PH, { perPage: 12 })).rows.find((w: any) => w.week.id === H.id)?.tickets ?? [];
   const row = (serial: string) => rows.find((r: any) => r.serial === serial);
   ok("12.2 · ⭐ M2 · a held share shows its hold mark — never gold: no `paid` figure", hold1.ok && row(h1.serial)?.shown === "won" && row(h1.serial)?.share === "held" && row(h1.serial)?.paid === null,
     J(row(h1.serial) && { shown: row(h1.serial).shown, share: row(h1.serial).share, paid: row(h1.serial).paid }));
@@ -835,7 +842,7 @@ const forfeit2 = await W.settle.forfeitMaswaliShare({ ticketId: h2.id, officerId
 }
 const release1 = await W.settle.releaseMaswaliShare({ ticketId: h1.id, officerId: "usr_mln_compliance", note: "player suite releases the first share" });
 {
-  const rows = (await P.millioneaMyTickets(PH)).find((w: any) => w.week.id === H.id)?.tickets ?? [];
+  const rows = (await P.millioneaMyTickets(PH, { perPage: 12 })).rows.find((w: any) => w.week.id === H.id)?.tickets ?? [];
   const r1 = rows.find((r: any) => r.serial === h1.serial);
   const v1 = await P.millioneaTicket(PH, h1.serial);
   const n = (await P.millioneaNotices(PH)).find((x: any) => x.notice === "RESULT" && x.weekId === H.id);
@@ -843,6 +850,200 @@ const release1 = await W.settle.releaseMaswaliShare({ ticketId: h1.id, officerId
     release1.ok && r1?.share === "paid" && r1.paid === shareH && v1.win?.yourWinningTickets === 2 && v1.win.yourTotal === 2 * shareH
       && v1.win.yourHeldTickets === 0 && v1.win.yourForfeitedTickets === 1 && n?.winningTickets === 2 && n.total === 2 * shareH && n.held === 0 && n.forfeited === 1,
     `${why(release1)} · ${J({ share: r1?.share, win: v1.win, n })}`);
+}
+
+// ── §12b · the re-review: the calendar, never the drafting order (RR1); a held or forfeited share is not `won` (RR3);
+//    pages with a total (RR4); the seen mark forward-only (RR5), never throwing (RR6), at every rollout state (L5); the
+//    cancel's own session check (RR7) ─────────────────────────────────────────────────────────────────────────────────
+section("§12b · the re-review: calendar order, pages with a total, held and forfeited shares, the seen mark, the cancel's session");
+// R3.1's own fixture, through the product's own doors: the LATER calendar week is drafted FIRST (the lower `seq`), the
+// earlier one second. The earlier opens, sells and closes; then the later one opens and sells; both are sealed.
+const startE = W.weekStartAhead(7), startL = W.weekStartAhead(8);
+const draftAttested = async (start: number) => {
+  const c = await W.svc.createWeek({ weekStartMs: start, questions: W.questions(start), officerId: DRAFTER, now: new Date(start - 3 * DAY) });
+  if (!c.ok) throw new Error(`§12b: the draft was refused: ${c.error}`);
+  const a = await W.svc.attestParity({ weekId: c.week.id, officerId: READER });
+  if (!a.ok) throw new Error(`§12b: the attestation was refused: ${a.error}`);
+  return c.week;
+};
+const opened = async (week: any, start: number) => {
+  const o = await W.svc.openWeek({ weekId: week.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(start + 60_000) });
+  if (!o.ok) throw new Error(`§12b: the week did not open: ${o.error}`);
+  return o.week;
+};
+const lateDraft = await draftAttested(startL);
+const earlyDraft = await draftAttested(startE);
+const E = await opened(earlyDraft, startE);
+const priceE: number = W.svc.frozenRules(E).ticketPriceTzs;
+const PX = await W.user({ balance: 50_000 }), PS = await W.user({ balance: 20_000 }), PF = await W.user({ balance: 20_000 });
+const PK = await W.user({ balance: 20_000 }), PC = await W.user({ balance: 20_000 }), PZ = await W.user({ balance: 20_000 });
+const bxE = await W.buy(PX, E.id, [W.WIN, W.LOSE], { key: "player-px-e-0001" });
+const bsE = await W.buy(PS, E.id, [W.LOSE], { key: "player-ps-e-0001" });
+const bfE = await W.buy(PF, E.id, [W.WIN], { key: "player-pf-e-0001" });
+const bkE = await W.buy(PK, E.id, [W.WIN], { key: "player-pk-e-0001" });
+const bcE = await W.buy(PC, E.id, [W.LOSE], { key: "player-pc-e-0001" });
+const cSerial: string = bcE.ok ? bcE.data.maswali.tickets[0].serial : "";
+{
+  // RR7 · while the earlier week sells: a page drawn for PC, posted from another account's session.
+  const strangerC = await W.user({ balance: 0 });
+  const balC = (await W.bal(PC)).balance;
+  const changed = await ACT.cancelMillioneaFromForm(strangerC, form({ serial: cSerial, expectedOwnerId: PC }));
+  const nobodys = await ACT.cancelMillioneaFromForm(strangerC, form({ serial: `${E.code}-999999`, expectedOwnerId: PC }));
+  ok("12b.1 · ⭐ RR7 · a cancel posted from a page drawn for another account answers the buy's own session_changed — reload, never 'we couldn't find that ticket' — asked before any ticket is read (a serial nobody holds answers alike), the ticket and its money untouched",
+    bcE.ok && !changed.ok && changed.reason === "session_changed" && changed.code === "CONFLICT" && J(nobodys) === J(changed)
+      && (await dal.ticketStore.getBySerial(cSerial)).status === "LIVE" && (await W.bal(PC)).balance === balC, `${why(changed)} · ${why(nobodys)}`);
+  const strangerOwn = await ACT.cancelMillioneaFromForm(strangerC, form({ serial: cSerial, expectedOwnerId: strangerC }));
+  const own = await ACT.cancelMillioneaFromForm(PC, form({ serial: cSerial, expectedOwnerId: PC }));
+  ok("12b.2 · …the control: the field naming the session itself changes nothing — a stranger still meets the one not-found refusal (MB-95), and the owner's cancel lands in full",
+    shapeOf(strangerOwn) === NOT_FOUND_SHAPE && own.ok && own.data.refunded === priceE && (await W.bal(PC)).balance === balC + priceE
+      && (await dal.ticketStore.getBySerial(cSerial)).status === "CANCELLED", `${why(strangerOwn)} · ${why(own)}`);
+}
+await W.svc.closeWeek({ weekId: E.id, now: new Date(Date.parse(E.closesAt) + 60_000) });
+const L = await opened(lateDraft, startL);
+const bxL = await W.buy(PX, L.id, [W.LOSE], { key: "player-px-l-0001" });
+const bzL = await W.buy(PZ, L.id, [W.LOSE], { key: "player-pz-l-0001" });
+const atE = await W.closeAndSeal(E, startE);
+const atL = await W.closeAndSeal(L, startL);
+{
+  const hub = await P.millioneaHub(viewer(PX));
+  const how = await P.millioneaHowTo(viewer(null));
+  ok("12b.3 · the population is real: the later week was drafted first (the lower seq), both weeks are being graded, and no public week sells",
+    bxE.ok && bsE.ok && bfE.ok && bkE.ok && bxL.ok && bzL.ok && lateDraft.seq < earlyDraft.seq
+      && (await dal.weekStore.get(E.id)).state === "RESOLVING" && (await dal.weekStore.get(L.id)).state === "RESOLVING" && (await dal.weekStore.openFor("PUBLIC")) === null,
+    J({ lateSeq: lateDraft.seq, earlySeq: earlyDraft.seq }));
+  ok("12b.4 · ⭐ RR1 · with two weeks being graded, the hub leads with the newest IN THE CALENDAR and the how-to reads that week's frozen rules — never the one drafted last",
+    hub.week?.id === L.id && how.source === "WEEK" && how.weekCode === L.code, J({ hub: hub.week?.code, how: how.weekCode }));
+  const vL = await P.millioneaTicket(PX, (await dal.ticketStore.listForUser(PX, { cycleId: L.id }))[0].serial);
+  ok("12b.5 · RR2's control: outside the final week, a ticket with a miss reads 'cannot win on the results so far' (provisional)",
+    vL.week.isFinal === false && vL.shown === "running" && vL.cannotWinSoFar === true, J({ isFinal: vL.week.isFinal, cannot: vL.cannotWinSoFar }));
+}
+const rE = await W.release(E.id, atE);
+const rL = await W.release(L.id, atL);
+// RR3 · Compliance leaves PK's only winning share HELD, and FORFEITS PF's only one (OD-07).
+const tPK = (await dal.ticketStore.listForUser(PK, { cycleId: E.id }))[0];
+const tPF = (await dal.ticketStore.listForUser(PF, { cycleId: E.id }))[0];
+const holdK = await W.settle.holdMaswaliShare({ ticketId: tPK.id, officerId: "usr_mln_compliance", reason: "player suite holds the only share" });
+const holdF = await W.settle.holdMaswaliShare({ ticketId: tPF.id, officerId: "usr_mln_compliance", reason: "player suite holds a share to forfeit" });
+const forfeitF = await W.settle.forfeitMaswaliShare({ ticketId: tPF.id, officerId: "usr_mln_compliance", typed: W.settle.FORFEIT_SHARE_WORD, reason: "player suite forfeits the only share" });
+{
+  const Ls = await dal.weekStore.get(L.id);
+  const pxE = await dal.ticketStore.listForUser(PX, { cycleId: E.id });
+  const exLose = pxE.find((t: any) => t.won === false);
+  const lxSerial = (await dal.ticketStore.listForUser(PX, { cycleId: L.id }))[0].serial;
+  const lossE = (await P.millioneaTicket(PX, exLose.serial)).loss;
+  const lossL = (await P.millioneaTicket(PX, lxSerial)).loss;
+  ok("12b.6 · ⭐ RR1 · a losing ticket's line names the NEXT week in the calendar: the earlier week's names the later one; the later week's, with no week after it opened, names none — never the week before it, already settled",
+    rE.ok && rL.ok && J(lossE) === J({ winners: 3, carriedForward: false, nextWeekCode: L.code }) && J(lossL) === J({ winners: 0, carriedForward: true, nextWeekCode: null }),
+    `${why(rE)} · ${why(rL)} · ${J({ lossE, lossL })}`);
+  const nx = await P.millioneaNotices(PX);
+  ok("12b.7 · ⭐ RR1 · the rollover notice speaks of the latest week IN THE CALENDAR — the later week, which nobody won — and names no next week yet; the notices run newest week first",
+    J(nx.find((n: any) => n.notice === "ROLLOVER")) === J({ notice: "ROLLOVER", weekId: L.id, code: L.code, carriedForward: (Ls.rolloverIn ?? 0) + (Ls.carryOut ?? 0), nextWeekCode: null })
+      && J(nx.map((n: any) => [n.notice, n.code])) === J([["ROLLOVER", L.code], ["RESULT", L.code], ["RESULT", E.code]]), J(nx));
+  const hub = await P.millioneaHub(viewer(PX));
+  ok("12b.8 · ⭐ RR1 · the hub's 'last week' is the newest final week in the calendar, never the one drafted last", hub.week === null && hub.lastWeek?.id === L.id,
+    J({ last: hub.lastWeek?.code }));
+  const codes = (p: any) => p.rows.map((w: any) => w.code);
+  const p1 = await P.millioneaRegister({ page: 1, perPage: 4 });
+  const p2 = await P.millioneaRegister({ page: 2, perPage: 4 });
+  const p9 = await P.millioneaRegister({ page: 9, perPage: 4 });
+  ok("12b.9 · ⭐ RR1 · RR4 · the register runs newest first in the calendar, a page at a time with its total: every final public week exactly once across the pages, and a page past the end is the last page",
+    p1.total === 6 && p1.page === 1 && p1.perPage === 4 && J(codes(p1)) === J([L.code, E.code, H.code, V.code])
+      && p2.total === 6 && p2.page === 2 && J(codes(p2)) === J([B.code, A.code]) && p9.page === 2 && J(codes(p9)) === J(codes(p2)),
+    J({ p1: codes(p1), p2: codes(p2), p9: [p9.page, codes(p9)] }));
+  const nL = (await dal.ticketStore.listForUser(PX, { cycleId: L.id })).length, nE = pxE.length;
+  const t1 = await P.millioneaMyTickets(PX, { page: 1, perPage: 1 });
+  const t2 = await P.millioneaMyTickets(PX, { page: 2, perPage: 1 });
+  const tAll = await P.millioneaMyTickets(PX, { perPage: 12 });
+  const oneE = await P.millioneaMyTicketsWeek(PX, E.id);
+  ok("12b.10 · ⭐ RR1 · RR4 · Tiketi zangu pages by WEEK, newest first in the calendar, with its total — every ticket of each week shown read by its week; a page that names its week reads that week alone",
+    t1.total === 2 && t1.page === 1 && t1.rows.length === 1 && t1.rows[0].week.id === L.id && t2.page === 2 && t2.rows[0]?.week.id === E.id
+      && J(tAll.rows.map((g: any) => g.week.id)) === J([L.id, E.id]) && tAll.rows[0].tickets.length === nL && tAll.rows[1].tickets.length === nE
+      && J(oneE) === J(t2.rows[0]) && (await P.millioneaMyTicketsWeek(PX, H.id)) === null,
+    J({ t1: t1.rows.map((g: any) => g.week.code), t2: t2.rows.map((g: any) => g.week.code), total: t1.total }));
+  const shareE: number = (await dal.weekStore.get(E.id)).sharePerTicket;
+  const resultOf = async (u: string) => (await P.millioneaNotices(u)).find((n: any) => n.notice === "RESULT" && n.weekId === E.id);
+  const nK = await resultOf(PK), nF = await resultOf(PF);
+  ok("12b.11 · ⭐ RR3 · a week whose only win is HELD, or FORFEITED, is not `won` on its RESULT notice (the seal is earned money): each counts its share apart, with no amount",
+    holdK.ok && holdF.ok && forfeitF.ok
+      && J(nK) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: false, winningTickets: 0, total: null, held: 1, forfeited: 0 })
+      && J(nF) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: false, winningTickets: 0, total: null, held: 0, forfeited: 1 }),
+    `${why(holdK)} · ${why(forfeitF)} · ${J({ nK, nF })}`);
+  ok("12b.12 · …the control: a PAID share is `won`, with its count and its amount",
+    J(nx.find((n: any) => n.notice === "RESULT" && n.weekId === E.id)) === J({ notice: "RESULT", weekId: E.id, code: E.code, won: true, winningTickets: 1, total: shareE, held: 0, forfeited: 0 }),
+    J(nx));
+  const rowF = (await P.millioneaMyTicketsWeek(PF, E.id))?.tickets[0];
+  const vF = await P.millioneaTicket(PF, tPF.serial);
+  ok("12b.13 · ⭐ RR3 · a forfeited share reads its own word, never 'won' — on its row and its page, from the ticket's own mark (the word's key is the composition's `shareForfeited`); the page keeps the week's ledger with the share counted apart, no amount; the officer's reason stays on the server",
+    rowF?.shown === "forfeited" && rowF.share === "forfeited" && rowF.paid === null && vF?.shown === "forfeited" && vF.loss === null
+      && vF.win?.yourForfeitedTickets === 1 && vF.win.yourWinningTickets === 0 && vF.win.yourTotal === 0 && LABEL.TICKET_SHOWN_KEY.forfeited === "shareForfeited"
+      && LABEL.ticketShown({ status: "SETTLED", won: true, frozenReason: `${LABEL.FORFEITED_SHARE_MARK}a reason` }, "SETTLED") === "forfeited"
+      && ![J(rowF), J(vF), J(nF)].some((s) => s.includes("player suite")),
+    J({ row: rowF && [rowF.shown, rowF.share, rowF.paid], win: vF?.win }));
+  const rowK = (await P.millioneaMyTicketsWeek(PK, E.id))?.tickets[0];
+  ok("12b.14 · …the control: a share HELD for review still won (its hold mark is its `share`), as a held mark and no mark both read",
+    rowK?.shown === "won" && rowK.share === "held" && rowK.paid === null
+      && LABEL.ticketShown({ status: "SETTLED", won: true, frozenReason: "compliance · a reason" }, "SETTLED") === "won"
+      && LABEL.ticketShown({ status: "SETTLED", won: true, frozenReason: null }, "SETTLED") === "won",
+    J({ row: rowK && [rowK.shown, rowK.share, rowK.paid] }));
+}
+{
+  // L5 · a holder keeps their own tickets at a kill, so the owner's seen mark asks no rollout. The REAL switch is lowered
+  // (the ceiling, as production lowers it), as 5.18 lowers it for the free cancel.
+  const vC = await P.millioneaTicket(PC, cSerial);
+  process.env.FEATURE_MILLIONEA = "WITHDRAWN";
+  const killedC = await resolveMillioneaFor({ sessionUserId: PC });
+  const strangerMark = await ACT.markMillioneaTicketSeenFor(PS, cSerial, vC?.seen.through);
+  const ownerMark = await ACT.markMillioneaTicketSeenFor(PC, cSerial, vC?.seen.through);
+  process.env.FEATURE_MILLIONEA = "ACTIVE";
+  ok("12b.15 · ⭐ L5 · with Millionea WITHDRAWN (hidden from this very player), the owner's seen mark still records — their ticket is theirs at every rollout state — and a stranger's records nothing",
+    killedC.visible === false && strangerMark === false && ownerMark === true
+      && Date.parse((await dal.ticketStore.getBySerial(cSerial)).lastViewedAt) === Date.parse(vC.seen.through), J({ killedC, strangerMark, ownerMark }));
+  // RR5 · two marks in flight on one ticket: the newer and an older one, both started before either wrote.
+  const tPS = (await dal.ticketStore.listForUser(PS, { cycleId: E.id }))[0];
+  const vS = await P.millioneaTicket(PS, tPS.serial);
+  const [newer, older] = await Promise.all([
+    ACT.markMillioneaTicketSeenFor(PS, tPS.serial, vS.seen.through), ACT.markMillioneaTicketSeenFor(PS, tPS.serial, vS.boughtAt),
+  ]);
+  const markS = (await dal.ticketStore.getBySerial(tPS.serial)).lastViewedAt;
+  ok("12b.16 · ⭐ RR5 · two seen marks in flight — the newer and an older one, both read before either wrote — leave the NEWER standing: the write itself is conditional, so the older can never land over it",
+    Date.parse(vS.boughtAt) < Date.parse(vS.seen.through) && newer === true && Date.parse(markS) === Date.parse(vS.seen.through), J({ newer, older, markS }));
+  let blind = "";
+  try { await dal.ticketStore.patch(tPS.id, { lastViewedAt: vS.boughtAt }); } catch (e) { blind = String((e as Error)?.message ?? e); }
+  ok("12b.17 · RR5 · …and the blind door is shut on both stores: a plain patch can no longer write the seen mark, so nothing can move it back",
+    blind.includes("'lastViewedAt' is not a patchable column") && Date.parse((await dal.ticketStore.getBySerial(tPS.serial)).lastViewedAt) === Date.parse(vS.seen.through), blind);
+  // RR6 · ⚠️ FIXTURES OF A FAULT, each undone at once: the store's writes, and the notice mark's week read, made to throw,
+  // as a database that refuses them. Pending pool frames are fired first, so none reads a faulted store in the window.
+  const lz = (await dal.ticketStore.listForUser(PZ, { cycleId: L.id }))[0];
+  const vZ = await P.millioneaTicket(PZ, lz.serial);
+  const asOfZ = (await P.millioneaHub(viewer(PZ))).asOf;
+  await FEED.__flushPoolFramesForTests();
+  const refused = async () => { throw new Error("TEST-FAULT · the database refused it"); };
+  const attempt = async (f: () => Promise<unknown>) => { try { return [false, await f()]; } catch (e) { return [true, String(e)]; } };
+  const realTicket = { patch: dal.ticketStore.patch, markViewed: dal.ticketStore.markViewed };
+  dal.ticketStore.patch = refused; dal.ticketStore.markViewed = refused;
+  const ticketWrite = await attempt(() => ACT.markMillioneaTicketSeenFor(PZ, lz.serial, vZ.seen.through));
+  dal.ticketStore.patch = realTicket.patch; dal.ticketStore.markViewed = realTicket.markViewed;
+  const realMarkSeen = dal.noticeStore.markSeen;
+  dal.noticeStore.markSeen = refused;
+  const noticeWrite = await attempt(() => ACT.markMillioneaNoticeSeenFor(PZ, L.id, "RESULT", asOfZ, ACTIVE));
+  dal.noticeStore.markSeen = realMarkSeen;
+  const realWeekGet = dal.weekStore.get;
+  dal.weekStore.get = refused;
+  const weekRead = await attempt(() => ACT.markMillioneaNoticeSeenFor(PZ, L.id, "RESULT", asOfZ, ACTIVE));
+  dal.weekStore.get = realWeekGet;
+  ok("12b.18 · ⭐ RR6 · a seen mark whose write fails — the ticket's or the notice's — or whose week read fails answers false, never throws, and records nothing",
+    J([ticketWrite, noticeWrite, weekRead]) === J([[false, false], [false, false], [false, false]])
+      && (await dal.ticketStore.getBySerial(lz.serial)).lastViewedAt === null
+      && (await P.millioneaNotices(PZ)).some((n: any) => n.notice === "RESULT" && n.weekId === L.id), J({ ticketWrite, noticeWrite, weekRead }));
+  const ticketAgain = await ACT.markMillioneaTicketSeenFor(PZ, lz.serial, vZ.seen.through);
+  const noticeAgain = await ACT.markMillioneaNoticeSeenFor(PZ, L.id, "RESULT", asOfZ, ACTIVE);
+  ok("12b.19 · …the control: the store restored, the same two marks record",
+    ticketAgain === true && noticeAgain === true && !(await P.millioneaNotices(PZ)).some((n: any) => n.notice === "RESULT" && n.weekId === L.id),
+    J({ ticketAgain, noticeAgain }));
+  // RR1 · a voided week never takes the carry (MR-18): its R is untouched and waits for the week after it.
+  const vB = await P.millioneaTicket(P3, b3.data.maswali.tickets[0].serial);
+  ok("12b.20 · ⭐ RR1 · the loss line skips a voided week: the pool of the week before the void went to the week after it, in the calendar (its R waits through the void, MR-18)",
+    J(vB.loss) === J({ winners: 0, carriedForward: true, nextWeekCode: H.code }), J(vB.loss));
 }
 
 // ── §13 · by state, never newest-N (L1); the floor fails closed on unreadable rules (L3); the hub while Millionea ends (L2)
@@ -864,7 +1065,11 @@ section("§13 · by state, never newest-N; unreadable rules; the hub while Milli
   ok("13.2 · ⭐ L1 · …and the hub still leads with the selling drive week and the how-to still reads its frozen rules: both find it by its state",
     hub.week?.id === D.id && hub.week.state === "OPEN" && how.source === "WEEK" && how.weekCode === D.code, J({ hub: hub.week?.code, how: [how.source, how.weekCode] }));
 }
-const { week: F } = await W.openWeek({ weeksAhead: 6 });
+// (After §12b's two weeks in the calendar: a week never opens before one of its line that already opened, R3.)
+const { week: F, start: fStart } = await W.openWeek({ weeksAhead: 9 });
+// RR2 · one ticket in what becomes the final week, its first main to miss (§14).
+const PT = await W.user({ balance: 20_000 });
+const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
 {
   // ⚠️ A FIXTURE OF A FAULT, undone below: the drive week's frozen rules re-stamped as a version this build cannot read —
   // what a week frozen by a newer build looks like to an older container in a rolling deploy.
@@ -895,6 +1100,21 @@ const { week: F } = await W.openWeek({ weeksAhead: 6 });
   const ending = await P.millioneaHub(viewer(P3));
   ok("13.5 · ⛔ L2 · while Millionea is ENDING (a final week runs, nothing opens after it), no 'next opens' line",
     sunset.ok && ending.life === "ENDING" && ending.week?.id === F.id && ending.nextOpensAt === null, `${why(sunset)} · ${J({ life: ending.life, next: ending.nextOpensAt })}`);
+}
+
+// ── §14 · the final week (RR2): a miss is not "cannot win" there — and released, the top score wins ──────────────────
+section("§14 · the final week: no 'cannot win' line, and the top score wins");
+{
+  const atF = await W.closeAndSeal(F, fStart);
+  const tT = (await dal.ticketStore.listForUser(PT, { cycleId: F.id }))[0];
+  const vT = await P.millioneaTicket(PT, tT.serial);
+  ok("14.1 · ⭐ RR2 · in the final week a ticket with a miss is NOT 'cannot win': with no 10 of 10 the top score shares the jackpot (MR-30), so the provisional line is never drawn there",
+    bT.ok && vT.week.isFinal === true && vT.shown === "running" && vT.slots[0].mark === "missed" && vT.cannotWinSoFar === false,
+    J({ isFinal: vT.week.isFinal, mark: vT.slots[0].mark, cannot: vT.cannotWinSoFar }));
+  const relF = await W.release(F.id, atF);
+  const wT = await P.millioneaTicket(PT, tT.serial);
+  ok("14.2 · …the proof: released, the final week pays its top score — that very ticket won, its share paid, on 9 of 10 (TOP_SCORE)",
+    relF.ok && wT.shown === "won" && wT.share === "paid" && wT.win?.basis === "TOP_SCORE" && wT.win.winningScore === 9, `${why(relF)} · ${J(wT?.win)}`);
 }
 
 console.log(`${NL}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
