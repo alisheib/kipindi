@@ -339,8 +339,9 @@ export function MaswaliSlipConfirm({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const commitRef = useRef<HTMLButtonElement>(null);
   const priceText = formatTzs(price);
+  const balanceText = formatTzs(balance);
   const lines = [
-    fill(t.millionea.fromMain, { price: priceText, balance: formatTzs(balance) }),
+    fill(t.millionea.fromMain, { price: priceText, balance: balanceText }),
     fill(t.millionea.ticketNofCap, { n: ticketNumber, cap }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleShared, { pct }),
@@ -363,7 +364,7 @@ export function MaswaliSlipConfirm({
           <>
             <div className="flex gap-2 rounded-control border border-warning-border bg-warning-bg px-3 py-2">
               <I.warning s={18} className="mt-px shrink-0 text-warning-fg" />
-              <p className="text-body-sm text-text">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: formatTzs(balance), price: priceText }))}</p>
+              <p className="text-body-sm text-text">{moneyRuns(fill(t.millionea.lowBalanceBody, { balance: balanceText, price: priceText }))}</p>
             </div>
             {depositDoor}
           </>
