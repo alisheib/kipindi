@@ -21,6 +21,7 @@
  */
 import { defineConfig } from "./define-config";
 import { MAX_JACKPOT_FEE_RATE } from "@/lib/payout";
+import { formatTzs } from "@/lib/utils";
 
 export const MASWALI_CONFIG_KEY = "maswali.config";
 
@@ -136,7 +137,7 @@ function capsProblem(q: unknown): string | null {
 /** Why a candidate config is refused, in words an officer can act on — or null when it is acceptable. */
 export function maswaliConfigProblem(c: MaswaliConfig): string | null {
   if (!isWhole(c.ticketPriceTzs, STAKE_MIN_TZS, STAKE_MAX_TZS)) {
-    return `The ticket price must be a whole number of shillings from ${STAKE_MIN_TZS.toLocaleString("en")} to ${STAKE_MAX_TZS.toLocaleString("en")}.`;
+    return `The ticket price must be a whole number from ${formatTzs(STAKE_MIN_TZS)} to ${formatTzs(STAKE_MAX_TZS)}.`;
   }
   if (!isWhole(c.floorTzs, 0, 1_000_000_000)) return "The floor must be a whole number of shillings, 0 or more.";
   if (c.floorTzs > 0 && c.floorTzs < c.ticketPriceTzs) return "A floor below one ticket's price is not a floor — set it to 0 or at least the ticket price.";

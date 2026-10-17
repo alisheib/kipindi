@@ -11,7 +11,7 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-aaaa";
 
 import { db, type StoredTxn, type StoredWallet } from "../src/lib/server/store.ts";
 import { getActivitySummary, getRgUsage, periodSince } from "../src/lib/server/activity-summary.ts";
-import { setLimits, getRgSettings } from "../src/lib/server/responsible-gambling.ts";
+import { setLimits, getRgSettings, getLimitUsage } from "../src/lib/server/responsible-gambling.ts";
 // §D/§E read the schema and the page as TEXT — the partition's totality and a server component's
 // searchParams default are neither of them reachable from an in-memory fixture.
 import { readFileSync } from "node:fs";
@@ -265,6 +265,23 @@ await setLimits("act_rg", { dailyDepositLimit: 100_000, weeklyDepositLimit: 200_
   ok("daily loss limit mirrors RG settings", rg.dailyLoss.limit === (settings.dailyLossLimit ?? null));
   ok("daily loss used = 12,000 (floored net)", rg.dailyLoss.used === 12_000, `got=${rg.dailyLoss.used}`);
   ok("no monthly limit → null", rg.monthlyDeposit.limit === null);
+}
+
+// ── …and an in-flight deposit counts on the panel exactly as the gate counts it ──
+// The gate (`checkDepositLimit`) and the limit meters (`getLimitUsage`) count a PROCESSING deposit toward the cap; the
+// panel once left it out, and showed room the gate then refused.
+await mkUser("act_rg_pending");
+txn("act_rg_pending", "DEPOSIT", 30_000, now - 2 * HOUR);
+txn("act_rg_pending", "DEPOSIT", 15_000, now - 1 * HOUR, "PROCESSING");
+txn("act_rg_pending", "DEPOSIT", 9_000, now - 1 * HOUR, "FAILED");
+{
+  const rg = await getRgUsage("act_rg_pending", now);
+  const meters = await getLimitUsage("act_rg_pending");
+  ok("⭐ an in-flight deposit counts on the panel, as the gate counts it: 30,000 + 15,000 (the failed one counts nowhere)",
+    rg.dailyDeposit.used === 45_000, `got=${rg.dailyDeposit.used}`);
+  ok("…and the panel reads the very figures the limit meters read, every window",
+    rg.dailyDeposit.used === meters.depositDay && rg.weeklyDeposit.used === meters.depositWeek && rg.monthlyDeposit.used === meters.depositMonth,
+    `panel=${rg.dailyDeposit.used}/${rg.weeklyDeposit.used}/${rg.monthlyDeposit.used} meters=${meters.depositDay}/${meters.depositWeek}/${meters.depositMonth}`);
 }
 
 console.log(`\nactivity-summary: ${pass} passed, ${fail} failed`);

@@ -40,7 +40,7 @@ import { leafHash, newSalt, picksKey } from "@/lib/maswali-commitment";
 import { exitWindowFacts } from "@/lib/exit-window";
 import { readSalesPauseFresh } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, formatTzs } from "@/lib/utils";
 import type { StoredMarket, StoredPosition } from "./market-service";
 import type { ServiceResult } from "./auth-service";
 
@@ -203,7 +203,7 @@ export async function returnMaswaliGuarantee(input: { amount: number; reference:
       return { floor: r.ok ? r.rules.floorTzs : 0, confirmedCarryIn: w.rolloverIn };
     }));
     if (held - input.amount < need) {
-      return refuse(`The guarantee holds TZS ${held.toLocaleString("en")} and the open weeks need TZS ${need.toLocaleString("en")}; at most TZS ${Math.max(0, held - need).toLocaleString("en")} can be returned.`);
+      return refuse(`The guarantee holds ${formatTzs(held)} and the open weeks need ${formatTzs(need)}; at most ${formatTzs(Math.max(0, held - need))} can be returned.`);
     }
     await withMoneyTx(async (tx) => postMaswaliLines(groupId, maswaliGuaranteeReturnEntries({ amount: input.amount, reference, actorId: input.ownerId }), tx));
     const balance = held - input.amount;

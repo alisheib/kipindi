@@ -39,6 +39,7 @@ import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
 import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
+import { formatTzs } from "@/lib/utils";
 
 type Ok<T> = { ok: true } & T;
 type Refused = { ok: false; error: string };
@@ -212,6 +213,28 @@ export async function attestParity(input: { weekId: string; officerId: string; n
 /** What the open needs from the money side (S3 implements it; S2's suites inject it). */
 export type GuaranteeReader = { balance(): Promise<number | null> };
 
+/**
+ * The two conditions the open checks beside the week itself (OD-01, OD-02), each in the words it refuses with. The
+ * builder's checklist (`consoleWeekDetail`) lists them too, so the page never says every check passes while the open
+ * would refuse.
+ */
+export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records it before any week opens (OD-01).";
+
+/**
+ * OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen floor
+ * (this one at the floor it would freeze), across both lines of weeks: there is one guarantee. `null` when it does.
+ */
+export async function guaranteeProblem(week: StoredWeek, rules: MaswaliRulesSnapshot, guarantee: GuaranteeReader): Promise<string | null> {
+  const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
+  const need = guaranteeRequirement([
+    ...unsettled.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? rules.floorTzs, confirmedCarryIn: w.rolloverIn })),
+    { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn },
+  ]);
+  const held = await guarantee.balance().catch(() => null);
+  if (held === null) return "The guarantee balance could not be read; no week opens until it can be (OD-02).";
+  return held < need ? `The guarantee holds ${formatTzs(held)}; ${formatTzs(need)} is needed to open (OD-02).` : null;
+}
+
 /** Every reason a draft cannot open, in words — empty when it can. Pure over what the open read. */
 export async function openProblems(week: StoredWeek, questions: StoredQuestion[], rules: MaswaliRulesSnapshot, nowMs: number): Promise<string[]> {
   const p: string[] = [];
@@ -274,7 +297,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
   const [fresh, licence] = await Promise.all([readMaswaliConfigFresh(), readLicenceBasisFresh()]);
   if (!fresh.ok) return refuse(`The Millionea rules could not be read, so nothing was opened: ${fresh.error}`);
   if (!licence.ok) return refuse("The licence record could not be read, so nothing was opened.");
-  if (!licenceBasisAllowsOpen(licence.basis)) return refuse("No licence basis is recorded. The Owner records it before any week opens (OD-01).");
+  if (!licenceBasisAllowsOpen(licence.basis)) return refuse(NO_LICENCE_BASIS);
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -299,16 +322,8 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     await seedDefaultSources();
     const questions = await questionStore.listForWeek(week.id);
     const problems = await openProblems(week, questions, rules, nowMs);
-    // OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen
-    // floor (this one at the floor it is about to freeze), across both lines of weeks: there is one guarantee.
-    const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
-    const need = guaranteeRequirement([
-      ...unsettled.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? rules.floorTzs, confirmedCarryIn: w.rolloverIn })),
-      { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn },
-    ]);
-    const held = await input.guarantee.balance().catch(() => null);
-    if (held === null) problems.push("The guarantee balance could not be read, so nothing was opened.");
-    else if (held < need) problems.push(`The guarantee holds TZS ${held.toLocaleString("en")}; TZS ${need.toLocaleString("en")} is needed to open (OD-02).`);
+    const short = await guaranteeProblem(week, rules, input.guarantee);
+    if (short) problems.push(short);
     if (problems.length) return refuse(problems.join(" "));
 
     const qHash = questionSetHash(questions.map((q): FrozenQuestion => ({

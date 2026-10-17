@@ -32,11 +32,13 @@ import { breakSentence, breakStateOf } from "@/lib/break-end";
 import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { StripAutoScroll } from "@/components/ui/strip-autoscroll";
+import type { ProductLine } from "@/lib/product-line";
 import {
   LEADER_NATURAL_DIR,
   LEADER_PRODUCTS,
   LEADER_SORTS,
-  boardScoredPositions,
+  SCORED_LINES,
+  scoredPositions,
   buildLeaderHref,
   leaderDir,
   leaderProduct,
@@ -126,6 +128,9 @@ function seededWalk(seed: string, length: number, max = 100_000): number[] {
  *  page no longer depends on how many players the platform has. */
 const BOARD_SIZE = 50;
 
+/** How many of a row's newest scored positions its streak and sparkline walk — the per-row read's bound. */
+const ROW_RECENT = 200;
+
 /** Real TZS staked per day over the trailing `days`, oldest → newest — bucketed
  *  from positions already in memory. NOT a fabrication path: every shilling in a
  *  bucket is a position the ranking itself is built from (A-5). */
@@ -168,6 +173,9 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
 
   // Only the rows actually being rendered need a name and a streak, so this is bounded
   // by BOARD_SIZE — 50 — no matter how large the platform grows.
+  const lens = leaderProduct(state);
+  // MASWALI-BUILD S5 · the lines a row is scored on: the lens's one line, or on "all" every line but Millionea's.
+  const lines: readonly ProductLine[] = lens === "ALL" ? SCORED_LINES : [lens];
   const detail = await Promise.all(
     ranked.map(async (r) => ({
       // ⚠️ Promise.resolve(), not a bare .catch() — the dev in-memory store's
@@ -183,15 +191,11 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
       // aggregated BOTH products while the ROI beside them was about to be narrowed to one.
       // ⛔ A row whose rank says "Up & Down" and whose streak counts poll wins is the same lie
       // as a count that is not cross-filtered (§K 6c rule 4), just spread across two columns.
-      positions: await Promise.resolve(listPositionsForUser(r.userId, 200, leaderProduct(state))).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
       // MASWALI-BUILD S5 · a Millionea ticket is not a prediction this board scores (MASWALI-PLAN S5 item 9: ROI tiers,
-      // performance and streaks exclude it — a weekly jackpot ticket wins about 1 time in 1,024 by design). The ranking
-      // already skips tickets (`positionStore.leaderboard`); on the "all" lens this per-row read spans every line, so the
-      // row's tickets are named here and removed before the streak and the sparkline walk it, as /positions/performance
-      // does. A failed read leaves the row undecorated rather than decorated with tickets.
-      tickets: leaderProduct(state) === "ALL"
-        ? await Promise.resolve(listPositionsForUser(r.userId, 200, "MASWALI")).catch(() => null)
-        : [],
+      // performance and streaks exclude it). The ranking already skips tickets (`positionStore.leaderboard`); this read
+      // takes each scored line DIRECTLY, never every line less its tickets (S5 re-review 8): a row whose newest positions
+      // were all tickets kept none of its predictions and showed a streak of 0. A failed read leaves the row undecorated.
+      positions: await Promise.all(lines.map((l) => Promise.resolve(listPositionsForUser(r.userId, ROW_RECENT, l)).catch(() => null))),
     })),
   );
 
@@ -201,7 +205,7 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
     const u = detail[i].user;
     if (!u) continue; // a deleted user cannot be ranked
     const roi = roiOf(r);
-    const positions = boardScoredPositions(detail[i].positions, detail[i].tickets);
+    const positions = scoredPositions(detail[i].positions, ROW_RECENT);
     // Streak = consecutive wins from the most recent settled position. Unchanged
     // semantics; it just reads a bounded slice instead of every position ever placed.
     let streak = 0;

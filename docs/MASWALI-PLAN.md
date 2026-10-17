@@ -100,6 +100,12 @@ Until the whole gate is green, S1–S4 stay 🔨.
     share or old history would have vanished from the console. Fixed in `86eacd88`: everything is read and counted, the
     growing tables page (`AdminPagination`), and held shares are listed whole. The seal views showed a void's ground
     as its stored code; they read its label.
+  - ⭐ The S4 drive's finding: the builder's checklist left out the two conditions the open checks beside the week, the
+    licence basis (OD-01) and the guarantee (OD-02), so it could say "Every check passes" while the open refused.
+    Both now come from one place in `maswali-service.ts` (`NO_LICENCE_BASIS`, `guaranteeProblem`), which the open and
+    the checklist both read, in the open's own words. The drive runs the Owner's ceremonies when the checklist asks for
+    them, and then opens at the first press (`test:maswali-engine` 2.0 and 2.1b). The Millionea server sentences
+    format money with `formatTzs`, as the rest of the platform does.
   - Next: the verification batch over all of it (`tsc`, every fixed guard, both stores), then the render check
     (`next dev`: `qa:live`, the five server suites, `qa:maswali-admin-shots`, and `qa:maswali-admin-drive` — S4's
     acceptance drive, written in lane `mln-s4-drive`, merged in `d820222f`).
@@ -112,7 +118,7 @@ Until the whole gate is green, S1–S4 stay 🔨.
   | R2 | The close is not serialized with a purchase or cancel in flight: a LIVE ticket outside the root, a week that never settles | HIGH | this lane | fixed (`cac6daa2`), red plant (R2); verification running |
   | R3 | The same carry can be claimed twice; nothing checks that the jackpot covers R | MEDIUM | `mln-fix-b` | merged (`6774db38`): the claim inside the payout's own transaction, in seq order, under the jackpot; an earlier draft can no longer open after a later week |
   | R4 | Three reads after a joined money transaction see pre-commit data on Postgres: the receipt's balance, the guarantee's `balanceAfter`, the float alert | MEDIUM-LOW | `mln-fix-a` (a, b), `mln-fix-b` (c) | merged (`b5fa9249`, `6774db38`); (c) was wider than seen: the release returned the pre-commit week |
-  | R5 | The "limits used" panel sums a different net from the loss-limit gate | MEDIUM-LOW | `mln-fix-a` | merged (`b5fa9249`) |
+  | R5 | The "limits used" panel sums a different net from the loss-limit gate | MEDIUM-LOW | `mln-fix-a` | merged (`b5fa9249`); the lane also found the panel's deposit meters leaving out an in-flight deposit the gate counts, a platform defect older than Millionea: fixed for every player on `maswali-s4` (`test:activity`) |
   | R6 | A held share's freeze can be lifted mid-settlement | LOW-MEDIUM | `mln-fix-b` | merged (`6774db38`): holds and lifts on one lock, a refused release lifts its holds |
   | R7 | Funding the guarantee has no idempotency | LOW | `mln-fix-a` | merged (`b5fa9249`): one reference books once per direction |
   | R8 | Forfeit and hold write the ticket outside their transaction | LOW | `mln-fix-b` | merged (`6774db38`) |
@@ -221,7 +227,16 @@ before it went to Ali.
 | Q3 · the moved close | Ijumaa 23 Okt 16:00 EAT, moved earlier from 18:00, announced Alhamisi 22 Okt 10:15 | A later move could reach only Ijumaa 19:00: the first event is at 19:30 and the buffer is 30 minutes (OD-15, MB-28) |
 | Q1 · the attestation times missing from the sample | main 2 Mon 00:12 · main 3 Mon 09:10 · main 5 Mon 10:41 (the last, so results final) · main 6 Sun 20:36 · main 7 Sun 20:41 · main 9 Mon 00:14 · main 10 Sun 21:06 · A2 Mon 00:16 · A5 Mon 10:24. Timelines B and E reuse them. In D the week void becomes certain at Mon 10:24 (A5), so refunds are Tue 27 Oct 12:00 | Each time falls after its event. None falls before Sun 12:00, so the live frame's "5 kati ya 15" still holds. The windows follow MR-16 |
 
-**Blocked on Ali:** nothing until S5's staff preview (to look at it) and S8's Gate A (§6).
+**Blocked on Ali:** nothing until S5's staff preview (to look at it) and S8's Gate A (§6). R10c (who may buy a DRIVE-week
+ticket) is his to rule before S8.
+
+**Before the staff preview (2026-10-18):**
+- **The icons.** The phosphor lane's W2 swap must be on `main`, so Millionea's 13 icon keys render through `I`. Until
+  then they draw as empty boxes, and `I.void` still reads as a miss.
+- **The S5 UI review's findings, fixed in the composition lane:**
+  - HIGH: the voiding view says "refunded" before any refund exists;
+  - HIGH: the seal line draws the win line before the objection window closes;
+  - five MEDIUM and six LOW.
 
 **Owed by others:** Finance's written confirmation of the tax-report reconciling lines and of no withholding on
 winnings (OD-08, MB-77) — Gate B, before ACTIVE; it does not block the build.

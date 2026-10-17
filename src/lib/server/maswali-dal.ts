@@ -17,7 +17,8 @@
  *      · `closesAt` moves only through `moveClose` (MB-28), WHERE the week is OPEN;
  *      · the close's commitment is stamped once, by `stampClose`, WHERE the week is OPEN;
  *      · `rolloverIn` is claimed once, by `claimCarry`, WHERE it IS NULL;
- *      · a week void is stamped once, by `stampVoid`, WHERE the week is CLOSED or RESOLVING (R1).
+ *      · a week void is stamped once, by `stampVoid`, WHERE the week is CLOSED or RESOLVING (R1);
+ *      · a ticket's seen mark moves only forward, by `markViewed`, WHERE it IS NULL or is older (S5 re-review 5).
  *    Every one of those is a conditional write that answers whether it won the row, never a blind update.
  */
 import { Prisma } from "@prisma/client";
@@ -180,12 +181,12 @@ const DRAFT_EDITABLE = new Set<keyof DraftQuestionFields>([
   "probabilityEstimate", "probabilitySource", "linkedMarketId",
 ]);
 
-/** Ticket columns a plain `patch` may write — settlement's stamps and the owner's view mark. ⛔ Never the picks, the
- *  salt, the hashes, the serial or the purchase facts; `status` moves only through `cancelTicket` / `settleTicket` /
- *  `settleWeekTickets` / `refundWeekTickets`. */
+/** Ticket columns a plain `patch` may write — settlement's stamps. ⛔ Never the picks, the salt, the hashes, the serial or
+ *  the purchase facts; `status` moves only through `cancelTicket` / `settleTicket` / `settleWeekTickets` /
+ *  `refundWeekTickets`, and the owner's seen mark only forward, through `markViewed` (a blind write of it could move it
+ *  back: two marks in flight, the older landing last). */
 const TICKET_PATCHABLE: Record<string, (v: unknown) => unknown> = {
   frozenReason: (v) => v,
-  lastViewedAt: (v) => dt(v as string | null),
 };
 
 const iso = (d: Date | null | undefined): string | null => (d ? d.toISOString() : null);
@@ -261,6 +262,9 @@ export interface TicketStore {
   /** `won` narrows to the winners at the query (the console's held shares and winners read every settled week). */
   listForWeek(cycleId: string, opts?: { status?: TicketState; won?: boolean; tx?: Prisma.TransactionClient }): Promise<StoredTicket[]>;
   listForUser(userId: string, opts?: { cycleId?: string; limit?: number }): Promise<StoredTicket[]>;
+  /** S5 · every week this account holds a ticket in (a cancelled one included), each once — Tiketi zangu pages by WEEK,
+   *  never through a page of the newest tickets (S5 re-review 4). */
+  weekIdsForUser(userId: string): Promise<string[]>;
   /** MR-11: this account's non-cancelled tickets in the week — read inside the wallet lock by the buy. */
   countLiveForUser(cycleId: string, userId: string, tx?: Prisma.TransactionClient): Promise<number>;
   /**
@@ -277,6 +281,12 @@ export interface TicketStore {
   settleTicket(id: string, f: { score: number | null; won: boolean; payout: number }, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** R8 · `tx` puts the mark in the caller's transaction (a forfeit's debit, a hold's lock), so a failed commit leaves neither half. */
   patch(id: string, fields: Partial<StoredTicket>, tx?: Prisma.TransactionClient): Promise<void>;
+  /**
+   * ⭐ S5 · THE OWNER'S SEEN MARK, FORWARD ONLY (§10 2.1; S5 re-review 5): `lastViewedAt` becomes `at` WHERE it IS NULL or
+   * is older, in one conditional write — so of two marks in flight the newer stands, whichever lands last. True when this
+   * call moved it.
+   */
+  markViewed(id: string, at: string, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** S3 · every ticket a week has ever sold, cancelled ones included — the serial counter, read under the market lock. */
   countAllForWeek(cycleId: string, tx?: Prisma.TransactionClient): Promise<number>;
   /**
@@ -458,6 +468,9 @@ const memoryTickets: TicketStore = {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return (opts?.limit != null ? rows.slice(0, opts.limit) : rows).map(copyTicket);
   },
+  async weekIdsForUser(userId) {
+    return [...new Set([...memTickets.values()].filter((t) => t.userId === userId).map((t) => t.cycleId))];
+  },
   async countLiveForUser(cycleId, userId) {
     return [...memTickets.values()].filter((t) => t.cycleId === cycleId && t.userId === userId && t.status !== "CANCELLED").length;
   },
@@ -500,6 +513,13 @@ const memoryTickets: TicketStore = {
     refuseUnpatchable("ticketStore", fields, TICKET_PATCHABLE);
     const cur = memTickets.get(id);
     if (cur) memTickets.set(id, { ...cur, ...fields });
+  },
+  async markViewed(id, at) {
+    // The check and the write in one synchronous step: no await between them, as the database's one statement.
+    const cur = memTickets.get(id);
+    if (!cur || (cur.lastViewedAt != null && Date.parse(cur.lastViewedAt) >= Date.parse(at))) return false;
+    memTickets.set(id, { ...cur, lastViewedAt: new Date(at).toISOString() });
+    return true;
   },
   async countAllForWeek(cycleId) {
     return [...memTickets.values()].filter((t) => t.cycleId === cycleId).length;
@@ -727,6 +747,10 @@ const prismaTickets: TicketStore = {
     });
     return rows.map(toTicket);
   },
+  async weekIdsForUser(userId) {
+    const rows = await pc().maswaliTicket.findMany({ where: { userId }, select: { cycleId: true }, distinct: ["cycleId"] });
+    return rows.map((r) => r.cycleId);
+  },
   async countLiveForUser(cycleId, userId, tx) {
     return db_(tx).maswaliTicket.count({ where: { cycleId, userId, NOT: { status: "CANCELLED" } } });
   },
@@ -776,6 +800,14 @@ const prismaTickets: TicketStore = {
     }
     if (Object.keys(data).length === 0) return;
     await db_(tx).maswaliTicket.update({ where: { id }, data });
+  },
+  async markViewed(id, at, tx) {
+    const when = new Date(at);
+    const r = await db_(tx).maswaliTicket.updateMany({
+      where: { id, OR: [{ lastViewedAt: null }, { lastViewedAt: { lt: when } }] },
+      data: { lastViewedAt: when },
+    });
+    return r.count === 1;
   },
   async countAllForWeek(cycleId, tx) {
     return db_(tx).maswaliTicket.count({ where: { cycleId } });

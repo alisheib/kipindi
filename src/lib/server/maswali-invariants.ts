@@ -17,6 +17,7 @@ import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { maswaliAccountBalance } from "./maswali-money-service";
 import { readMaswaliRulesSnapshot } from "./maswali-config";
 import { guaranteeRequirement } from "@/lib/maswali-money";
+import { formatTzs } from "@/lib/utils";
 
 export type MaswaliInvariantReport = { ok: boolean; weeks: number; problems: string[] };
 
@@ -34,7 +35,7 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
       if (w.state === "SETTLED" || w.state === "VOIDED") {
         const pool = await maswaliAccountBalance(acct.pool(w.marketId));
         if (pool === null) problems.push(`${w.code}: its pool could not be read.`);
-        else if (pool !== 0) problems.push(`${w.code}: ${w.state} with ${pool} still in its pool (must be exactly 0).`);
+        else if (pool !== 0) problems.push(`${w.code}: ${w.state} with ${formatTzs(pool)} still in its pool (must be exactly 0).`);
       }
       if (w.state !== "SETTLED") continue;
       const problem = columnsProblem(w);
@@ -49,11 +50,11 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
     }
     const jackpot = await maswaliAccountBalance(maswaliJackpotOf(line));
     if (jackpot === null) problems.push(`${line}: the jackpot could not be read.`);
-    else if (jackpot !== expected) problems.push(`${line}: the jackpot holds ${jackpot}; the settled weeks and forfeits say ${expected}.`);
+    else if (jackpot !== expected) problems.push(`${line}: the jackpot holds ${formatTzs(jackpot)}; the settled weeks and forfeits say ${formatTzs(expected)}.`);
     const claimed = mine.filter((w) => w.rolloverIn != null && w.state !== "SETTLED" && w.state !== "VOIDED");
     if (claimed.length > 1) problems.push(`${line}: ${claimed.length} unsettled weeks have claimed a carry (${claimed.map((w) => w.code).join(", ")}); at most one may.`);
     for (const w of claimed) {
-      if (jackpot !== null && jackpot < (w.rolloverIn ?? 0)) problems.push(`${w.code}: it claimed ${w.rolloverIn} but the jackpot holds ${jackpot}.`);
+      if (jackpot !== null && jackpot < (w.rolloverIn ?? 0)) problems.push(`${w.code}: it claimed ${formatTzs(w.rolloverIn ?? 0)} but the jackpot holds ${formatTzs(jackpot)}.`);
     }
   }
 
@@ -64,7 +65,7 @@ export async function checkMaswaliInvariants(): Promise<MaswaliInvariantReport> 
   }));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (held === null) problems.push("The guarantee could not be read.");
-  else if (held < need) problems.push(`The guarantee holds ${held}; the unsettled weeks need ${need} (OD-02).`);
+  else if (held < need) problems.push(`The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).`);
 
   for (const w of weeks) {
     if (w.state === "DRAFT") continue;
