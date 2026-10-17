@@ -117,9 +117,13 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   const need = requirementOf(weeks.filter(unsettled));
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
   else if (held < need) out.push({ level: "critical", text: `The guarantee holds TZS ${held.toLocaleString("en")}; the unsettled weeks need TZS ${need.toLocaleString("en")} (OD-02).` });
-  if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
-  const pause = getSalesPause();
-  if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  // The product's own standing speaks only once Millionea has a week: before the first draft, a missing licence basis is
+  // the plan's Gate A, not an alert for every officer on the overview.
+  if (weeks.length > 0) {
+    if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
+    const pause = getSalesPause();
+    if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  }
   return out;
 }
 

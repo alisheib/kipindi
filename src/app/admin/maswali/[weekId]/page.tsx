@@ -1,3 +1,5 @@
+import Link from "next/link";
+import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -79,6 +81,7 @@ async function Content({ params }: Props) {
                 {problems.map((p, i) => <li key={i} className="flex gap-2"><span aria-hidden className="text-warning">•</span><span>{p}</span></li>)}
               </ul>
             ) : <p className="text-body-sm text-success">Every check passes: the week can open.</p>}
+            <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
             <div className="mt-3">
               <AttestOpenControls weekId={week.id} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
                 attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />

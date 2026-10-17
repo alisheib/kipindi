@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
-import { createMaswaliWeekAction } from "../actions";
+import { createMaswaliWeekAction, editMaswaliQuestionAction } from "../actions";
 
 const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "tech", "other"] as const;
 const KINDS = ["SPORT", "PRICE", "WEATHER", "ANNOUNCEMENT"] as const;
@@ -31,6 +31,7 @@ const ZONES = ["Africa/Dar_es_Salaam", "Europe/London", "Europe/Madrid", "Europe
 const TEXT_GUIDE = 110;
 const CRITERION_GUIDE = 240;
 
+export type BuilderRow = Row;
 type Row = {
   role: "MAIN" | "RESERVE"; ordinal: number; category: string; eventKind: string;
   textEn: string; textSw: string; textZh: string; criterionEn: string; criterionSw: string; criterionZh: string;
@@ -46,25 +47,50 @@ const emptyRow = (i: number): Row => ({
 });
 const label = (r: Row) => (r.role === "MAIN" ? `M${r.ordinal}` : `A${r.ordinal}`);
 
-export function WeekBuilder({ defaultMonday }: { defaultMonday: string }) {
+/** The row as the server stores it: one question of the draft, in the builder's shape. */
+const toQuestion = (r: Row) => ({
+  role: r.role, ordinal: r.ordinal, category: r.category, eventKind: r.eventKind,
+  textEn: r.textEn, textSw: r.textSw, textZh: r.textZh, criterionEn: r.criterionEn, criterionSw: r.criterionSw, criterionZh: r.criterionZh,
+  sourceUrl: r.sourceUrl, fallbackSourceUrl: r.fallbackSourceUrl || null, readingTolerance: r.readingTolerance || null,
+  eventLocalStart: r.eventDate && r.eventTime ? `${r.eventDate}T${r.eventTime}` : "", eventZone: r.eventZone,
+  probabilityEstimate: r.probabilityPct === "" ? null : Number(r.probabilityPct) / 100, probabilitySource: r.probabilitySource || null,
+});
+
+/**
+ * `edit` opens the builder on an existing DRAFT: the week's start and line are fixed, and saving sends only the rows that
+ * changed, one by one (`editDraftQuestion`; any edit clears the second reader's attestation, MB-79).
+ */
+export function WeekBuilder({ defaultMonday, edit }: { defaultMonday: string; edit?: { weekId: string; rows: Row[] } }) {
   const router = useRouter();
   const mayAct = useMayAct();
   const [weekStart, setWeekStart] = useState(defaultMonday);
   const [visibility, setVisibility] = useState<"PUBLIC" | "DRIVE">("PUBLIC");
-  const [rows, setRows] = useState<Row[]>(() => Array.from({ length: 15 }, (_, i) => emptyRow(i)));
+  const [rows, setRows] = useState<Row[]>(() => edit ? edit.rows.map((r) => ({ ...r })) : Array.from({ length: 15 }, (_, i) => emptyRow(i)));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const set = (i: number, patch: Partial<Row>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
   const submit = () => {
     setError(null);
-    const questions = rows.map((r) => ({
-      role: r.role, ordinal: r.ordinal, category: r.category, eventKind: r.eventKind,
-      textEn: r.textEn, textSw: r.textSw, textZh: r.textZh, criterionEn: r.criterionEn, criterionSw: r.criterionSw, criterionZh: r.criterionZh,
-      sourceUrl: r.sourceUrl, fallbackSourceUrl: r.fallbackSourceUrl || null, readingTolerance: r.readingTolerance || null,
-      eventLocalStart: r.eventDate && r.eventTime ? `${r.eventDate}T${r.eventTime}` : "", eventZone: r.eventZone,
-      probabilityEstimate: r.probabilityPct === "" ? null : Number(r.probabilityPct) / 100, probabilitySource: r.probabilitySource || null,
-    }));
+    if (edit) {
+      const changed = rows.map((r, i) => ({ r, i })).filter(({ r, i }) => JSON.stringify(r) !== JSON.stringify(edit.rows[i]));
+      if (changed.length === 0) { setError("Nothing changed."); return; }
+      start(async () => {
+        for (const { r } of changed) {
+          const { role: _role, ordinal: _ordinal, ...changes } = toQuestion(r);
+          void _role; void _ordinal;
+          const f = new FormData();
+          f.set("weekId", edit.weekId);
+          f.set("slot", String(r.role === "MAIN" ? r.ordinal : r.ordinal + 10));
+          f.set("changes", JSON.stringify(changes));
+          const res = await editMaswaliQuestionAction(f);
+          if (!res.ok) { setError(`${label(r)}: ${res.error}`); return; }
+        }
+        router.push(`/admin/maswali/${edit.weekId}` as Route);
+      });
+      return;
+    }
+    const questions = rows.map(toQuestion);
     const fd = new FormData();
     fd.set("weekStart", weekStart);
     fd.set("visibility", visibility);
@@ -78,15 +104,17 @@ export function WeekBuilder({ defaultMonday }: { defaultMonday: string }) {
 
   return (
     <div className="space-y-4 max-w-[960px]">
-      <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">
-        <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
-          <DateSelect value={weekStart} onChange={setWeekStart} size="sm" />
-        </Field>
-        <Field label="Line" hint="A drive week is private and never seeds a public week (OD-21).">
-          <Select size="sm" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
-            options={[{ value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive (private)" }]} />
-        </Field>
-      </div>
+      {!edit && (
+        <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">
+          <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
+            <DateSelect value={weekStart} onChange={setWeekStart} size="sm" />
+          </Field>
+          <Field label="Line" hint="A drive week is private and never seeds a public week (OD-21).">
+            <Select size="sm" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
+              options={[{ value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive (private)" }]} />
+          </Field>
+        </div>
+      )}
 
       {rows.map((r, i) => (
         <section key={i} className="glass-panel p-4 space-y-3" aria-label={`Question ${label(r)}`}>
@@ -130,7 +158,7 @@ export function WeekBuilder({ defaultMonday }: { defaultMonday: string }) {
 
       <div className="flex items-center gap-3 flex-wrap">
         {mayAct
-          ? <Button size="md" onClick={submit} disabled={pending} loading={pending}>Save the draft</Button>
+          ? <Button size="md" onClick={submit} disabled={pending} loading={pending}>{edit ? "Save the changes" : "Save the draft"}</Button>
           : <ActReadOnly />}
         {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
       </div>

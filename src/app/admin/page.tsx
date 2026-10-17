@@ -13,6 +13,10 @@ import { resolveRange } from "@/lib/server/date-range";
 import { formatTzsCompact } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import Link from "next/link";
+import type { Route } from "next";
+import { canView } from "@/lib/server/rbac";
+import { consoleAlerts } from "@/lib/server/maswali-console";
 
 export const metadata = { title: "Admin · Overview" };
 export const dynamic = "force-dynamic";
@@ -64,6 +68,11 @@ async function AdminOverviewContent() {
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
   const session = await currentSession();
+  // MASWALI-BUILD S4 · Millionea's alerts, for a viewer who may open its weeks (trading); null on a failed read hides the
+  // strip rather than inventing a quiet product.
+  const millioneaAlerts = session && (await canView(session.role, "trading").catch(() => false))
+    ? await consoleAlerts().catch(() => null)
+    : null;
   /* ⛔ OD61 · THE FEED'S COMPLIANCE AND IDENTITY ROWS ARE FOR A VIEWER WHO MAY READ COMPLIANCE. Every staff role may open
      this page, and a `marketing.suppressed.rg · User#…` row would tell any of them which player is in responsible-gambling
      standing — a `kyc.rejected · User#…` row whose identity check failed (OD61's amendment). So the whole ring is read —
@@ -162,6 +171,19 @@ async function AdminOverviewContent() {
             </div>
           </AdminCard>
         </div>
+
+        {/* MASWALI-BUILD S4 · Millionea, only when it asks for someone (S4 item 5). Full width, so the 4-up tiles below
+            keep their rhythm; absent when there is nothing to act on, and for a viewer who cannot open its weeks. */}
+        {millioneaAlerts && millioneaAlerts.length > 0 && (
+          <AdminCard title="Millionea" sw="Inahitaji hatua" action={<Link href={"/admin/maswali" as Route} className="link text-body-sm">Open the weeks</Link>}>
+            <ul className="space-y-1.5 text-body-sm">
+              {millioneaAlerts.slice(0, 4).map((a, i) => (
+                <li key={i} className={a.level === "critical" ? "text-danger-fg" : "text-warning"}>{a.text}</li>
+              ))}
+              {millioneaAlerts.length > 4 && <li className="text-text-tertiary">and {millioneaAlerts.length - 4} more on the weeks page</li>}
+            </ul>
+          </AdminCard>
+        )}
 
         {/* §C — Secondary tiles */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

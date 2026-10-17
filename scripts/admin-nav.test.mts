@@ -144,6 +144,7 @@ const ok = (label: string, cond: boolean, extra = "") => {
     // MASWALI-BUILD S4 · the builder opens from the week list's "Draft a week"; a week opens from its row there, and from
     // every alert that names it.
     "/admin/maswali/new": "the builder — from the Draft a week action at the head of /admin/maswali",
+    "/admin/maswali/[weekId]/edit": "a draft's builder — from Edit the questions on its week page",
     "/admin/maswali/[weekId]": "one week — from its row in the weeks table on /admin/maswali, and from every alert that names it",
     "/admin/agents/[id]": "the agent workstation — from the queue, refunds, invitations and roster tables on /admin/agents",
     "/admin/ai-polls/[id]": "poll detail — from the /admin/ai-polls list",
