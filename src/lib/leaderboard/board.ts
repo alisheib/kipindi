@@ -31,6 +31,7 @@
 import { oneOf, oneParam, parseDir } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters } from "@/lib/query/href";
 import type { SortDir } from "@/lib/query/sort";
+import { PRODUCT_LINES, type ProductLine } from "@/lib/product-line";
 
 /**
  * ⭐ FOUR SORTS, AND EVERY ONE OF THEM IS A COLUMN THE TABLE ACTUALLY PRINTS or the number the
@@ -161,16 +162,24 @@ export function leaderDir(state: LeaderState): SortDir {
 }
 
 /**
- * MASWALI-BUILD S5 · THE POSITIONS A ROW'S STREAK AND SPARKLINE WALK: the row's own, less its Millionea tickets
- * (MASWALI-PLAN S5 item 9 — ROI tiers, performance and streaks exclude them; a weekly jackpot ticket wins about 1 time in
- * 1,024 by design, so one ticket would end any streak and pad any sparkline). The ranking already skips tickets
- * (`positionStore.leaderboard`); the page's per-row read spans every line on the "all" lens, so the row's tickets are
- * read beside it and removed here. `tickets` is that read — `[]` on a single-product lens, whose read excludes them
- * already — and null when it failed: the row is then left undecorated (no streak, a zero sparkline) rather than
- * decorated with tickets. Pure, so the suites drive it with both stores' own reads (`test:maswali-player` §11).
+ * MASWALI-BUILD S5 · THE LINES A PREDICTION SCORE COUNTS: every product line but Millionea's (MASWALI-PLAN S5 item 9 — ROI
+ * tiers, performance and streaks exclude a ticket; a weekly jackpot ticket wins about 1 time in 1,024 by design, so one
+ * ticket would end any streak and pad any sparkline). The ranking's own rule (`positionStore.leaderboard` skips the
+ * MASWALI line), so a line added later counts here as it counts there.
  */
-export function boardScoredPositions<P extends { id: string }>(positions: readonly P[], tickets: readonly { id: string }[] | null): P[] {
-  if (tickets === null) return [];
-  const out = new Set(tickets.map((t) => t.id));
-  return positions.filter((p) => !out.has(p.id));
+export const SCORED_LINES: readonly ProductLine[] = PRODUCT_LINES.filter((l) => l !== "MASWALI");
+
+/**
+ * MASWALI-BUILD S5 · AN ACCOUNT'S NEWEST SCORED POSITIONS — what a board row's streak and sparkline walk, and what the
+ * achievement shelf counts: the newest `limit` positions on the scored lines, from one newest-first read per line, each
+ * of up to `limit` — so the newest `limit` of their union are exactly the account's newest `limit` scored positions.
+ * ⛔ READ DIRECTLY, NEVER BY SUBTRACTION (S5 re-review 8): a page of every line less its tickets holds nothing once an
+ *    account's newest positions are all tickets, and its streak read 0. For an account with no tickets this is the old
+ *    every-line page, row for row (newest first by `placedAt`, as the store orders it).
+ * A read that failed is null: the row is then left undecorated (no streak, a zero sparkline) rather than decorated from
+ * part of its book. Pure, so the suites drive it with both stores' own reads (`test:maswali-player` §11).
+ */
+export function scoredPositions<P extends { placedAt: string }>(reads: ReadonlyArray<readonly P[] | null>, limit: number): P[] {
+  if (reads.some((r) => r === null)) return [];
+  return reads.flatMap((r) => r ?? []).sort((a, b) => b.placedAt.localeCompare(a.placedAt)).slice(0, Math.max(0, limit));
 }

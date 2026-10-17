@@ -45,7 +45,7 @@ const SURF: any = await import("../../src/lib/surfaces.ts");
 const { positionPermalink, millioneaTicketHref }: any = await import("../../src/lib/position-permalink.ts");
 const { REASONS }: any = await import("../../src/lib/failure-reasons.ts");
 const { RATE_RULES }: any = await import("../../src/lib/server/rate-limit.ts");
-const { boardScoredPositions }: any = await import("../../src/lib/leaderboard/board.ts");
+const { scoredPositions, SCORED_LINES }: any = await import("../../src/lib/leaderboard/board.ts");
 const { settleArithmetic, guaranteeRequirement }: any = await import("../../src/lib/maswali-money.ts");
 const { snapshotOrLegacy }: any = await import("../../src/lib/server/market-config.ts");
 const { getMaswaliConfig }: any = await import("../../src/lib/server/maswali-config.ts");
@@ -655,7 +655,7 @@ ok("10.1 · released, the week voided whole (MR-18)", b4.ok && voided.ok && void
 section("§11 · the exclusions, the wiring, the floor, the seen marks' budget");
 {
   const ticketsOfP1 = await market.listPositionsForUser(P1, 200, "MASWALI");
-  ok("11.1 · the per-row read the leaderboard subtracts names exactly the account's ticket positions (both stores)",
+  ok("11.1 · the population is real: an account's tickets are positions on the MASWALI line — exactly its three (both stores)",
     ticketsOfP1.length === 3 && ticketsOfP1.every((p: any) => p1Tickets.some((t: any) => t.positionId === p.id)), J(ticketsOfP1.map((p: any) => p.id)));
   const { computeAchievementShelf }: any = await import("../../src/lib/server/achievements.ts");
   const shelf = await computeAchievementShelf(P1);
@@ -666,19 +666,54 @@ section("§11 · the exclusions, the wiring, the floor, the seen marks' budget")
   const poll = await W.w.poll({ graceMin: 5 });
   const bet = await market.buyPosition(P6, { marketId: poll.id, side: "YES", stake: 1_000 });
   const t6 = await W.buy(P6, D.id, [W.LOSE], { key: "player-p6-d-0001" });
-  // The board's per-row reads, as the page makes them on the "all" lens, on this store: every line, and the tickets.
-  const all = await market.listPositionsForUser(P6, 200, "ALL");
-  const tickets6 = await market.listPositionsForUser(P6, 200, "MASWALI");
-  const scored = boardScoredPositions(all, tickets6);
+  // The board's per-row reads, as the page makes them on the "all" lens, on this store: each scored line, directly.
+  const readsOf = (userId: string, bound: number) => Promise.all(SCORED_LINES.map((l: string) => market.listPositionsForUser(userId, bound, l)));
+  const scored = scoredPositions(await readsOf(P6, 200), 200);
   const betId = bet.ok ? bet.data.positionId : "";
-  ok("11.2 · ⭐ the board's streak and sparkline walk the row's positions with its tickets removed: a player with a poll bet and a ticket is scored on the bet alone; a failed ticket read leaves the row undecorated; a single-product lens passes through",
-    bet.ok && t6.ok && all.length === 2 && tickets6.length === 1 && J(scored.map((p: any) => p.id)) === J([betId])
-      && J(boardScoredPositions(all, null)) === J([]) && J(boardScoredPositions(scored, []).map((p: any) => p.id)) === J([betId]),
-    J({ all: all.map((p: any) => p.id), tickets: tickets6.map((p: any) => p.id), scored: scored.map((p: any) => p.id) }));
+  const polls6 = await market.listPositionsForUser(P6, 200, "MARKET");
+  ok("11.2 · ⭐ the board's streak and sparkline walk the scored lines — every line but Millionea's, read directly: a player with a poll bet and a ticket is scored on the bet alone; a failed read leaves the row undecorated; a single-product lens passes through",
+    bet.ok && t6.ok && !SCORED_LINES.includes("MASWALI") && SCORED_LINES.includes("MARKET") && SCORED_LINES.includes("UPDOWN")
+      && J(scored.map((p: any) => p.id)) === J([betId]) && J(scoredPositions([polls6, null], 200)) === J([]) && J(scoredPositions([polls6], 200)) === J(polls6),
+    J({ lines: SCORED_LINES, scored: scored.map((p: any) => p.id) }));
   const board = readFileSync("src/app/leaderboard/page.tsx", "utf8");
-  ok("11.2a · …and that helper is what the page hands its streak and its sparkline (the wiring)",
-    /const positions = boardScoredPositions\(detail\[i\]\.positions, detail\[i\]\.tickets\);/.test(board)
-      && /for \(const p of positions\.filter\(\(p\) => p\.status !== "OPEN"\)\)/.test(board) && /spark: dailyStakes\(positions, 14\)/.test(board));
+  const shelfSrc = readFileSync("src/lib/server/achievements.ts", "utf8");
+  ok("11.2a · …and that read is what the page hands its streak and its sparkline, and what the shelf counts (the wiring): each scored line at its bound, and ⛔ no ticket read left to subtract",
+    board.includes('const lines: readonly ProductLine[] = lens === "ALL" ? SCORED_LINES : [lens];')
+      && board.includes("positions: await Promise.all(lines.map((l) => Promise.resolve(listPositionsForUser(r.userId, ROW_RECENT, l)).catch(() => null))),")
+      && board.includes("const positions = scoredPositions(detail[i].positions, ROW_RECENT);")
+      && board.includes('for (const p of positions.filter((p) => p.status !== "OPEN"))') && board.includes("spark: dailyStakes(positions, 14)")
+      && shelfSrc.includes("const positions = scoredPositions(await Promise.all(SCORED_LINES.map((l) => listPositionsForUser(userId, SHELF_RECENT, l))), SHELF_RECENT);")
+      && !board.includes('"MASWALI"') && !shelfSrc.includes('"MASWALI"'));
+  // RR8 · the window a page of every line less its tickets lost: an account whose newest positions are all tickets. At a
+  // bound of two (the board's 200 and the shelf's 500 at their own sizes): an older poll bet, then two newer tickets.
+  const PW = await W.user({ balance: 50_000 });
+  const pollW = await W.w.poll({ graceMin: 5 });
+  const betW = await market.buyPosition(PW, { marketId: pollW.id, side: "YES", stake: 1_000 });
+  const betWId = betW.ok ? betW.data.positionId : "";
+  if (betW.ok) await W.backdate(betWId, 60 * 60_000);
+  const tW = await W.buy(PW, D.id, [W.LOSE, W.LOSE], { key: "player-pw-d-0001" });
+  const everyLine = await market.listPositionsForUser(PW, 2, "ALL");
+  const ticketIdsW = new Set((await market.listPositionsForUser(PW, 2, "MASWALI")).map((p: any) => p.id));
+  const bySubtraction = everyLine.filter((p: any) => !ticketIdsW.has(p.id));
+  const directW = scoredPositions(await readsOf(PW, 2), 2);
+  ok("11.2b · ⭐ RR8 · an account whose newest positions are all tickets keeps its prediction: every line less its tickets held nothing at the bound (the population is real), the direct read of the scored lines holds the older poll bet",
+    betW.ok && tW.ok && everyLine.length === 2 && everyLine.every((p: any) => ticketIdsW.has(p.id)) && bySubtraction.length === 0
+      && J(directW.map((p: any) => p.id)) === J([betWId]),
+    J({ everyLine: everyLine.map((p: any) => p.id), direct: directW.map((p: any) => p.id) }));
+  // RR8 · the control: an account with no tickets reads exactly its old every-line page, so nothing it shows moves.
+  const PN = await W.user({ balance: 50_000 });
+  const pollN1 = await W.w.poll({ graceMin: 5 }), pollN2 = await W.w.poll({ graceMin: 5 });
+  const n1 = await market.buyPosition(PN, { marketId: pollN1.id, side: "YES", stake: 1_000 });
+  await sleep(5);
+  const n2 = await market.buyPosition(PN, { marketId: pollN2.id, side: "NO", stake: 1_000 });
+  const oldBoard = await market.listPositionsForUser(PN, 200, "ALL");
+  const oldShelf = await market.listPositionsForUser(PN, 500);
+  ok("11.2c · ⭐ RR8 · the control: for an account with no tickets the direct read IS its old every-line page, row for row — the board's 200 and the shelf's 500 alike — so its streak, sparkline and badges are byte-identical",
+    n1.ok && n2.ok && oldBoard.length === 2 && J(scoredPositions(await readsOf(PN, 200), 200)) === J(oldBoard)
+      && J(scoredPositions(await readsOf(PN, 500), 500)) === J(oldShelf), J({ old: oldBoard.map((p: any) => p.id) }));
+  const pos = (id: string, ms: number) => ({ id, placedAt: new Date(Date.UTC(2026, 9, 1) + ms).toISOString() });
+  ok("11.2d · RR8 · the lines' reads merge newest first and are cut at the bound — the account's newest scored positions across lines",
+    J(scoredPositions([[pos("m3", 30), pos("m1", 10)], [pos("u4", 40), pos("u2", 20)]], 3).map((p: any) => p.id)) === J(["u4", "m3", "u2"]));
   const shelf6 = await computeAchievementShelf(P6);
   ok("11.4 · …while a Yes/No bet still is a first prediction, a ticket beside it notwithstanding (the control)",
     bet.ok && shelf6.find((b: any) => b.achievement === "first-prediction")?.state === "unlocked", why(bet));
