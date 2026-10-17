@@ -13,7 +13,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleWeekDetail } from "@/lib/server/maswali-console";
 import { MAIN_COUNT, slotLabel } from "@/lib/maswali-score";
 import { MASWALI_VOID_REASONS } from "@/lib/maswali-void-reason";
-import { fmtEat, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
+import { fmtEat, fmtEatClock, fmtEatDay, fmtInZone, weekStateChip } from "@/lib/maswali-admin-format";
 import { AttestOpenControls, MoveCloseForm, SealConsole, type SealRowView } from "./week-controls";
 
 export const metadata = { title: "Admin · Millionea · Week" };
@@ -65,9 +65,10 @@ async function Content({ params }: Props) {
       <AdminPageHead title={week.code} sw={`${week.visibility === "DRIVE" ? "Drive" : "Public"} week · ${chip.label}${week.isFinal ? " · final week" : ""}`}
         actions={<Chip variant={chip.variant}>{chip.label}</Chip>} />
       <AdminBody>
-        <KpiGrid cols="4">
-          <AdminKpi label="Sales open" sw="Mauzo yanafunguliwa" value={fmtEat(week.opensAt)} note="EAT" />
-          <AdminKpi label="Sales close" sw="Mauzo yanafungwa" value={fmtEat(week.closesAt)} note={week.closedAt ? `Closed ${fmtEat(week.closedAt)}` : "EAT"} />
+        <KpiGrid cols="1-sm2-xl4">
+          <AdminKpi label="Sales open" sw="Mauzo yanafunguliwa" value={fmtEatDay(week.opensAt)} note={`${fmtEatClock(week.opensAt)} EAT`} />
+          <AdminKpi label="Sales close" sw="Mauzo yanafungwa" value={fmtEatDay(week.closesAt)}
+            note={week.closedAt ? `${fmtEatClock(week.closesAt)} EAT · closed ${fmtEat(week.closedAt)}` : `${fmtEatClock(week.closesAt)} EAT`} />
           <AdminKpi label="Tickets" sw="Tiketi" value={week.ticketCount.toLocaleString("en")} note="Live count" />
           <AdminKpi label="Results" sw="Matokeo" value={week.state === "DRAFT" || week.state === "OPEN" ? "—" : row.voidCertain ? "Voids whole" : row.needs.length ? `${row.sealed} of 15` : "Final"}
             note={sealable ? (row.needs.length ? `${mainsSealed} of ${MAIN_COUNT} mains sealed · needs ${row.needs.map(slotLabel).join(", ")}` : week.objectionsCloseAt ? `Objection window to ${fmtEat(week.objectionsCloseAt)}` : undefined) : undefined}

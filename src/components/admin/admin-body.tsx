@@ -44,7 +44,7 @@ export function AdminBody({
  * band step differently, and two pages step at `md`/`sm` rather than `lg`.
  * Every entry below is a string that already ships — nothing new is introduced.
  */
-export type KpiCols = "4" | "3" | "2" | "sm3" | "md3-lg4" | "lg3-xl6" | "1-lg2";
+export type KpiCols = "4" | "3" | "2" | "sm3" | "md3-lg4" | "lg3-xl6" | "1-lg2" | "1-sm2-xl4";
 
 /* ⛔ Every entry here has at least one live caller (`4` is the default and is
  * implicit on 33 of the 38 bands). A ladder nobody uses is a ladder that will be
@@ -72,6 +72,11 @@ const KPI_COLS: Record<KpiCols, string> = {
   // four-tile band takes — stacked below `lg` (2 rows, as 2-up × 2), side by side at `lg` (1 row, as 4-across) — so the
   // route's one skeleton (four tiles) stands for both roles with no jump.
   "1-lg2":    "grid-cols-1 lg:grid-cols-2",
+  // The Millionea console's three bands (2026-10-18): four tiles whose values are a guarantee in the millions and a
+  // weekday's date. Measured in its shots, the `4` ladder clipped both — 2-up at 360 and 4-across at 1280 beside the
+  // sidebar — and §A5 forbids clipping money or a timestamp. So: one a row on a phone, 2-up from `sm`, 4-across only
+  // from `xl`, where each tile is wide enough for "TZS 10,000,000".
+  "1-sm2-xl4": "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4",
 };
 
 export function KpiGrid({

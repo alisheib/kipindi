@@ -61,7 +61,7 @@ async function Content({ searchParams }: PoolsPageProps) {
     <>
       <AdminPageHead title="Millionea · Pools" sw="Mifuko" />
       <AdminBody>
-        <KpiGrid cols="4">
+        <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Jackpot carried" sw="Jackpot" value={money(v.jackpotPublic)} note="Players' money, for the next winning week" {...(v.jackpotPublic === null ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${formatTzs(v.requirement)} (OD-02)`} {...(v.guarantee === null || short ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Payout float" sw="Akiba ya malipo" value={money(v.float)} note={`Prepared payouts: ${formatTzs(v.pendingPayout)}`} {...(floatShort ? { tone: "warning" as const } : {})} />
