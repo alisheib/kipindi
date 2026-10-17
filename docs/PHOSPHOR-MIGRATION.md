@@ -11,31 +11,27 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0's work is done. Ali saw the specimen (https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW) and
-ruled *"good i saw them proceed oerfcetly"*: its pre-selected line is adopted — every answer is in §2 (keys R-WEIGHT …
-R-BADGES), the lexicon picks in §3, the mapping in §4, the weight table in §5 W1. The specimen and its generator are
-stored in the repo at [`design-brief/phosphor-2026-10/`](design-brief/phosphor-2026-10/README.md). Then *"until live"*:
-this session takes the programme to production (the release-owner note below). Nothing visual has changed on the live
-site yet: every icon is still the house family in `src/components/ui/glyphs.tsx`.
+**State (2026-10-17):** W0 and W1 are LIVE (16:10 UTC). W0: Ali ruled the specimen
+(https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW; every answer in §2, the lexicon in §3, the specimen stored at
+[`design-brief/phosphor-2026-10/`](design-brief/phosphor-2026-10/README.md)). W1 (§5 W1 "As built"): the pinned package,
+the codegen, the generated registry / sprite / notices, and the guards — `test:glyph-source` in `predeploy` holds
+Ali's **R-ONE-SOURCE** (one source of glyphs and icons; a design is built from the family's keys) on every page. Nothing
+visual has changed yet: every icon is still the house family in `src/components/ui/glyphs.tsx` until W2.
 
-**W1 is built on the branch** (§5 W1 "As built"): the pinned package, the codegen, the generated registry / sprite /
-notices, and three guards (one of them in `predeploy`), every guard green with its red twin proving all its plants.
+**How W1 went live.** Proven first at `c67e8e53`; its push was refused by Claude Code's auto-mode check, and Ali then
+asked this session to push every finished wave live, approving each push (*"plesa you push live anything you finsh put
+live evyrhtign s needed with th erigh tcolaboration with any sesison"*). `main` moved under it three times (the Maswali
+lane's S0.5, its icon rulings, its S1–S4); at S4 the push checklist caught `main` itself failing typecheck (`ScrollX`
+without its `label` in the new Millionea console — Railway's build refused it, production stayed on `ce752dc4`), the
+Maswali lane fixed it (`43523844`), and W1 was rebased onto that, proven at its exact commit (typecheck 0, `next build`
+0, local `qa:live` 376/376) and pushed: **`9b604d8e`, live on www, apex and the Railway host 160 s later; `/api/health`
+reachable and migrated; `qa:chunks-prod` 6/6 routes on both origins; production `qa:live` 361/361.**
 
-**The release** was proven first at `c67e8e53` (the 69 derived suites green; typecheck 0; `next build` 0; local
-`qa:live` 376/376). Its push was refused by Claude Code's auto-mode check; Ali then asked this session to push every
-finished wave live itself, approving each push (2026-10-17: *"plesa you push live anything you finsh put live evyrhtign s
-needed with th erigh tcolaboration with any sesison"*). `main` kept moving under it — the Maswali lane's S0.5, its icon
-rulings (docs), then its S1–S4 — so the branch is rebased at each move (two `package.json` conflicts, the script pairs
-kept side by side) and the push checklist re-run on the exact commit: green at `681a6b81` (typecheck 0, `next build` 0,
-local `qa:live` 376/376), then rebased onto main `0d27a830` (S1–S4, served code), where the checklist failed on main's
-own code — `0d27a830` did not typecheck (`ScrollX` without its `label` in the new Millionea console; Railway's build
-refused it, so production stayed on `ce752dc4`). The Maswali lane fixed it (`43523844`); the branch is rebased onto that:
-W0's tick cites `d7a1b697`, W1 is `cf3202ab`; W1's guards are green on it (no Maswali file draws an inline icon).
-
-**Next:** the push checklist at this branch's tip on main `43523844` (typecheck, `next build`, local `qa:live`), the
-push (a fast-forward; Ali approves it), the production read-back (`?dpl=` on www, apex and the Railway host;
-`/api/health`; `qa:chunks-prod` on both origins; production `qa:live`), then tick W1 ✅. Meanwhile W2 is being built on
-branch `phosphor-w2` (worktree `C:\kipindi-phosphor-w2`).
+**Next:** W2, the swap (branch `phosphor-w2`, worktree `C:\kipindi-phosphor-w2`; §5 W2 "As built so far" and its list
+still owed): rebase onto `main`; a classic-parity baseline at `main` (the one at `c218979d` predates the Maswali merges,
+which the harness refuses as a base); the W2 compare and its "after" tiles; the generated glyph-swap entries
+(`scripts/glyphs/parity-entries.mjs`) and a clean compare; the tiles read; `test:all`, `next build`, local `qa:live`;
+the push and the production read-back.
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
@@ -62,8 +58,8 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | Wave | Title | Status | Note |
 |---|---|---|---|
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
-| W1 | Codegen + engine + guards, zero visual change | 🔨 | built on the branch; the derived suites and the release proof are queued |
-| W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
+| W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
+| W2 | The swap: the whole platform on Phosphor in one commit | 🔨 | built on branch `phosphor-w2` (§5 W2 "As built so far"); parity, tiles and the release proof next |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
