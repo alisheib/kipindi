@@ -15,11 +15,14 @@
  *   §7 the package is pinned exactly, as a devDependency, and the lockfile resolves that version
  *   §8 every mark that stands among words is Phosphor's own glyph: its key is live and maps to the mark's Phosphor name,
  *      and its centreline stroked at Regular's 16 units reaches exactly the Regular outline's bounds
+ *   §9 the chrome never waits for a file: every key the two tab bars and the two headers draw before a tap is a shell key
+ *      (inlined in the root layout); a key drawn only once a tap opens a menu or panel is named, with where, as `tap`;
+ *      every chrome file exists, every `tap` key is one its file draws, and every shell key is drawn by the chrome
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALIASES, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, type MapEntry } from "./glyphs/map";
+import { ALIASES, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, SHELL_KEYS, type MapEntry } from "./glyphs/map";
 import { EXTRAS, type Variant } from "./glyphs/extras";
 import { TEXT_MARKS, type Mark } from "./glyphs/marks";
 import { pathBounds, type Box } from "./glyphs/reach.mts";
@@ -30,6 +33,27 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 /** Keys a later wave or another lane depends on: never retired. */
 const RESERVED = ["live", "clockPending", "wifiOff"];
+/**
+ * The always-visible chrome (§9): the files the two tab bars and the two headers are drawn from, and in each the keys it
+ * draws only once a tap has opened something — those may wait for the sprite file, as page content does.
+ */
+const CHROME: Record<string, { tap?: Record<string, string> }> = {
+  "src/components/layout/top-app-bar.tsx": {},
+  "src/components/layout/bottom-nav.tsx": {},
+  "src/components/layout/nav-more.tsx": {},
+  "src/components/layout/wallet-balance-pill.tsx": {},
+  "src/components/ui/cash.tsx": {}, // CashEye: the balance pill's eye
+  "src/components/layout/notifications-panel.tsx": { tap: { x: "the open panel's close and a row's dismiss", chevronRight: "a row's door, in the open panel" } },
+  "src/components/ui/language-menu.tsx": { tap: { check: "the chosen language, in the open menu" } },
+  "src/components/layout/avatar-menu.tsx": { tap: {
+    shieldcheck: "a menu row", arrowRight: "a menu row's door", logOut: "the menu's sign-out row",
+    portfolio: "a menu row", profile: "a menu row", resolved: "a menu row", wallet: "a menu row", crown: "a menu row",
+    sparkle: "a menu row (Propose & earn)", gift: "a menu row (Invite & Earn)",
+  } },
+  "src/components/journey/journey-top-bar.tsx": {},
+  "src/components/journey/journey-tabs.tsx": {},
+  "src/lib/nav/active-tab.ts": {}, // JOURNEY_TABS: the journey's four tabs
+};
 
 type World = {
   registryKeys: string[];
@@ -44,6 +68,14 @@ type World = {
   pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
   lockVersion: string | undefined;
   readAsset: (name: string, v: Variant) => string;
+  shell: readonly string[];
+  chrome: typeof CHROME;
+};
+
+/** The keys a source text draws: `I.<key>`, and a glyph table's quoted key (§1's reading). */
+const drawnKeys = (text: string, keys: string[]) => {
+  const code = decomment(text);
+  return keys.filter((k) => new RegExp("\\bI\\." + k + "(?![A-Za-z0-9_])").test(code) || new RegExp("glyph[A-Za-z]*:\\s*[\"']" + k + "[\"']").test(code));
 };
 
 const near = (a: Box, b: Box, tol = 0.05) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
@@ -125,6 +157,20 @@ function check(w: World): string[] {
     const o = boxOfAsset(w, m.ph, "regular");
     if (!near(b, o, 0.5)) f.push(`§8 mark ${k}: its centreline at 16 units reaches ${b.map((v) => Math.round(v)).join(",")}, Phosphor's ${m.ph} reaches ${o.map((v) => Math.round(v)).join(",")}`);
   }
+  // §9
+  const keys = Object.keys(all), byChrome = new Set<string>();
+  for (const [rel, c] of Object.entries(w.chrome)) {
+    const text = w.srcFiles.get(rel);
+    if (text === undefined) { f.push(`§9 the chrome file ${rel} is not a source file — the chrome's list is stale`); continue; }
+    const drawn = drawnKeys(text, keys);
+    for (const k of drawn) {
+      if (c.tap && k in c.tap) { if (!c.tap[k].trim()) f.push(`§9 ${rel} exempts ${k} with no reason`); continue; }
+      byChrome.add(k);
+      if (!w.shell.includes(k)) f.push(`§9 ${rel} draws ${k} before a tap, and ${k} is not a shell key — on a slow first visit it waits for the sprite file`);
+    }
+    for (const k of Object.keys(c.tap ?? {})) if (!drawn.includes(k)) f.push(`§9 ${rel} exempts ${k}, which it does not draw`);
+  }
+  for (const k of w.shell) if (!byChrome.has(k)) f.push(`§9 shell key ${k} is drawn by no chrome file — every page inlines it for nothing`);
   return f;
 }
 
@@ -152,6 +198,8 @@ const world: World = {
   pkg: JSON.parse(read("package.json")),
   lockVersion: lock.packages?.[`node_modules/${PHOSPHOR_PACKAGE}`]?.version,
   readAsset: (name, v) => readFileSync(phosphorFile(name, v), "utf8"),
+  shell: SHELL_KEYS,
+  chrome: CHROME,
 };
 
 if (!process.argv.includes("--prove-red")) {
@@ -184,6 +232,15 @@ const plants: [string, RegExp, World][] = [
   ["a mark drifts off Phosphor's drawing", /§8 mark chevronRight: its centreline/, W({ marks: { ...world.marks, chevronRight: { ...world.marks.chevronRight, stroke: "M96 48L190 128L96 208" } } })],
   ["a mark on a retired key", /§8 mark sortAsc is not a live key/, W({ marks: { ...world.marks, sortAsc: { ph: "sort-ascending", stroke: "M40 40H216" } } })],
   ["a mark that names another glyph", /§8 mark chevronLeft draws caret-right/, W({ marks: { ...world.marks, chevronLeft: { ...world.marks.chevronLeft, ph: "caret-right" } } })],
+  ["the balance pill's eye leaves the shell", /§9 src\/components\/ui\/cash\.tsx draws eye before a tap/, W({ shell: world.shell.filter((k) => k !== "eye") })],
+  ["a tab bar gains a glyph the shell does not hold", /§9 src\/components\/layout\/bottom-nav\.tsx draws coins before a tap/,
+    withSrc("src/components/layout/bottom-nav.tsx", `${world.srcFiles.get("src/components/layout/bottom-nav.tsx")}\nexport const Zz = () => <I.coins s={20} />;\n`)],
+  ["an exemption for a glyph the file does not draw", /§9 src\/components\/ui\/language-menu\.tsx exempts zzGone, which it does not draw/,
+    W({ chrome: { ...CHROME, "src/components/ui/language-menu.tsx": { tap: { ...CHROME["src/components/ui/language-menu.tsx"].tap, zzGone: "nothing" } } } })],
+  ["an exemption with no reason", /§9 src\/components\/layout\/avatar-menu\.tsx exempts logOut with no reason/,
+    W({ chrome: { ...CHROME, "src/components/layout/avatar-menu.tsx": { tap: { ...CHROME["src/components/layout/avatar-menu.tsx"].tap, logOut: " " } } } })],
+  ["a chrome file moved away", /§9 the chrome file src\/components\/layout\/zz-bar\.tsx is not a source file/, W({ chrome: { ...CHROME, "src/components/layout/zz-bar.tsx": {} } })],
+  ["a shell key nothing in the chrome draws", /§9 shell key coins is drawn by no chrome file/, W({ shell: [...world.shell, "coins"] })],
 ];
 const clean = check(world);
 if (clean.length) {

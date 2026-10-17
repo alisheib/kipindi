@@ -246,12 +246,16 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
 /** New keys the lexicon adds at the swap (W2), so each meaning has its own key (docs/PHOSPHOR-MIGRATION.md §3). */
 /**
  * Where each live key's symbols are served from (W2). "shell" keys are the always-visible chrome — the two tab bars and
- * the two headers, as they stand after the lexicon (§3) — and their Bold drawings are inlined in the root layout, so the
- * chrome never waits for a file on a slow first visit. "admin" keys are drawn only by the console and sit in a sprite a
- * player never downloads. Every other key is "app": one cached file. A key drawn outside its group still works (it is
- * fetched from its own group's sprite); the groups only decide what a page has to download.
+ * the two headers, as they stand after the lexicon (§3), the balance pill's eye and lock among them — and their Bold
+ * drawings are inlined in the root layout, so the chrome never waits for a file on a slow first visit. "admin" keys are
+ * drawn only by the console and sit in a sprite a player never downloads. Every other key is "app": one cached file. A
+ * key drawn outside its group still works (it is fetched from its own group's sprite); the groups only decide what a page
+ * has to download. `test:glyph-map` §9 holds the chrome to it: every key a chrome file draws before a tap is a shell key.
  */
-export const SHELL_KEYS: readonly string[] = ["markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown"];
+export const SHELL_KEYS: readonly string[] = [
+  "markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
+  "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
+];
 export const ADMIN_KEYS: readonly string[] = ["upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile"];
 
 /**

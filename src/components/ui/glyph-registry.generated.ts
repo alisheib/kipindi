@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.af40a885.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.9c289c52.svg", admin: "/icons/g/admin.d4427285.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -65,8 +65,8 @@ export const GLYPH_REGISTRY = {
   "entertainment": { s: "p-film-slate", g: "app", i: { regular: [23.99, 224], bold: [20, 228] } },
   "ext": { s: "p-arrow-square-out", g: "app", i: { bold: [28, 228] }, m: { d: "M216 104V40H152M216 40L136 120M120 72H48a8 8 0 0 0-8 8V208a8 8 0 0 0 8 8H176a8 8 0 0 0 8-8V136", x: [40, 216] } },
   "externalLink": { s: "p-arrow-square-out", g: "app", i: { bold: [28, 228] }, m: { d: "M216 104V40H152M216 40L136 120M120 72H48a8 8 0 0 0-8 8V208a8 8 0 0 0 8 8H176a8 8 0 0 0 8-8V136", x: [40, 216] } },
-  "eye": { s: "p-eye", g: "app", i: { bold: [3.97, 252.01] } },
-  "eyeOff": { s: "p-eye-slash", g: "app", i: { bold: [3.97, 252.01] } },
+  "eye": { s: "p-eye", g: "shell", i: { bold: [3.97, 252.01] } },
+  "eyeOff": { s: "p-eye-slash", g: "shell", i: { bold: [3.97, 252.01] } },
   "fileCheck": { s: "p-certificate", g: "app", i: { bold: [20, 252] } },
   "fileSignature": { s: "p-signature", g: "app", i: { bold: [11.94, 244] } },
   "fileSpreadsheet": { s: "p-file-xls", g: "admin", i: { bold: [31.99, 224.01] } },
@@ -94,7 +94,7 @@ export const GLYPH_REGISTRY = {
   "link": { s: "p-link", g: "app", i: { bold: [11.96, 244] } },
   "listChecks": { s: "p-list-checks", g: "app", i: { bold: [27.97, 228] } },
   "live": { s: "p-broadcast", g: "shell", i: { bold: [3.96, 252] } },
-  "lock": { s: "p-lock", g: "app", i: { bold: [28, 228] } },
+  "lock": { s: "p-lock", g: "shell", i: { bold: [28, 228] } },
   "logOut": { s: "p-sign-out", g: "app", i: { bold: [36, 236.01] } },
   "mail": { s: "p-envelope-simple", g: "app", i: { bold: [20, 236] } },
   "markets": { s: "p-squares-four", g: "shell", i: { regular: [40, 216], bold: [36, 220] } },

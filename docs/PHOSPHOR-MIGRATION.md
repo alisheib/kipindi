@@ -302,6 +302,14 @@ that read the house drawings. W2's list below carries them.
   tick, where the hand-drawn one painted 1.63px over 9.2px — about the same ink, longer and finer. Its `strokeWidth: 3`
   went: a filled Phosphor outline has no stroke to thicken. Rejected: check-fat (3.1px arms at that size, heavy in a 19px
   box) and the check's Fill (a tick knocked out of a square). To be read at the tiles.
+- **The chrome never waits for a file** (found in W2's own review): the balance pill's eye (`CashEye`) and its lock are
+  header chrome, yet they were served from the app sprite, so a slow first visit would have shown the header's eye blank
+  until that file arrived. `eye`, `eyeOff` and `lock` joined `SHELL_KEYS`: twelve inline symbols, 1.5 KB brotli on
+  every page; the app sprite is 138 symbols, 16.9 KB brotli, one immutable file. `test:glyph-map` §9 now holds the
+  chrome to it: every key the two tab bars and the two headers draw before a tap is a shell key, a key drawn only in an
+  opened menu or panel is named with where, and every shell key is drawn by the chrome (six new plants, 25/25 caught).
+  The skew case is Next's: a tab opened before the deploy loads a whole new page on its next navigation (the router
+  compares the build id), so it never draws a shell glyph without the inline symbols beside it.
 - **Every guard that read the hand-drawn entries is re-pointed** at the drawings as shipped, through one shared reader
   (`scripts/lib/glyph-drawings.mts`): r4d, r4e, r5a, r5b, r7c, r8a, r9a, r10, journey-home, journey-shell,
   measure-system, offline-neutral, pager-reach, wallet-reach, glyph-motion's header. Old tile numbers stay as history;
@@ -316,8 +324,9 @@ that read the house drawings. W2's list below carries them.
 - **Parity:** `qa-classic-shell-parity` reads a sprite's content hash as `~` (an asset hash, as a chunk's), the symbol
   after `#` still compared; its proof is P.1b.
 - **Still owed for W2:** the derived battery; the parity baseline at `main` and the compare, with the generated glyph
-  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency` is red on `main` from
-  the Maswali console's tables, fixed on `maswali-s4` — W2 takes it on its rebase); the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
+  entries; the full tiles (the checkbox tick read among them); the release proof (`test:ui-consistency` and `test:measure` are red on
+  `main` from the Maswali console's tables and page widths, both fixed on `maswali-s4` — W2 takes them on its rebase);
+  the push. **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
 
 ### W3 — Selected states
