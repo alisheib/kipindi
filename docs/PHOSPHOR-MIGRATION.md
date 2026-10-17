@@ -11,22 +11,26 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0 in progress. The plan is approved by Ali and filed; this tracker, its board row, its guard,
-the AGENTS.md door and the ruling are committed on branch `phosphor-migration`. **The specimen is published** to Ali as a
-private Artifact — https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW (W0 step 3; how it was built: §2 "The specimen").
-Nothing visual has changed on the live site: every icon is still the house family in `src/components/ui/glyphs.tsx`.
+**State (2026-10-17):** W0's work is done. Ali saw the specimen (https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW) and
+ruled *"good i saw them proceed oerfcetly"*: its pre-selected line is adopted — every answer is in §2 (keys R-WEIGHT …
+R-BADGES), the lexicon picks in §3, the mapping in §4, the weight table in §5 W1. The specimen and its generator are
+stored in the repo at [`design-brief/phosphor-2026-10/`](design-brief/phosphor-2026-10/README.md). Then *"until live"*:
+this session takes the programme to production (the release-owner note below). Nothing visual has changed on the live
+site yet: every icon is still the house family in `src/components/ui/glyphs.tsx`.
 
-**Next:** W0 — Ali sends back one line from the specimen (e.g. `1B 2B 3B 4B 5.1A … 6A`). Record each answer in §2 (and
-the lexicon picks in §3, the weight table in §5 W1), run the recognition check (§3) on the picked glyphs, then tick W0 ✅
-and begin W1.
+**Next:** W1 — the codegen, the table-driven engine and the guards, with no visual change (§5 W1). First step: the
+worktree's own install with the exact-pinned devDependency `@phosphor-icons/core` 2.1.1.
 
 ### Where the work happens
-- Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`; its
-  `node_modules` is a junction to `C:\kipindi-journey\node_modules` (tsx suites only — Turbopack refuses a junction, so
-  builds and dev servers need a real install). ⛔ Unlink the junction before removing the worktree.
-- **Only the release owner pushes `main`** (the board's header names it; AGENTS.md §4). This lane pushes its branch at
-  every step; the release owner merges it. Until it is merged, a session on another machine finds this file with:
-  `git fetch && git worktree add <dir> origin/phosphor-migration`, then opens `docs/PHOSPHOR-MIGRATION.md`.
+- Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
+  real `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
+- **Who pushes `main` for this programme.** The board's release owner is the OMEGA-COMPILE01 session (Ali, 2026-10-16).
+  Asked whether this session should take the Phosphor migration to production itself, Ali answered *"until live"*
+  (2026-10-17, to the Ali-Blade15 session) — so this programme's releases are pushed to `main` by the session working it,
+  recorded in the board's header. Every release: rebase on `origin/main` immediately before the push, the release
+  checklist of AGENTS.md §4 (typecheck, `next build`, local `qa:live`, then the production read-back), and never a push
+  while another lane's release is mid-flight (`git log origin/main` first). Between releases, the branch is pushed at
+  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-migration`.
 - Every step, in ONE commit: the work, this §0 rewritten, §1 ticked, the board row's count updated. Then push the
   branch. `npm run test:phosphor-plan` asserts the tracker and the board agree.
 
@@ -41,7 +45,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 
 | Wave | Title | Status | Note |
 |---|---|---|---|
-| W0 | Tracking + specimen + recognition check | 🔨 | tracking filed on `phosphor-migration`; the specimen is published (§2); Ali's answers are next |
+| W0 | Tracking + specimen + recognition check | 🔨 | Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ⬜ | |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
@@ -70,9 +74,17 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-SPECIMEN | *"Yes, show me first"* — a side-by-side specimen before any code change; Ali's numbered answers set the weights, the tone, the selected indicator, the rail size, the lexicon and the badges |
 | R-NEW-PAGES | *"if ay new pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan and they knwow"* — every icon on every page, new or old, comes from `I`; AGENTS.md states it and a `predeploy` guard holds it from W1 |
 | R-RESUME | *"when we sya continue phosphor migration they know … dnto tolose any progress … oush rpogress"* — this file is the resume point on any machine; progress is committed and pushed at every step |
+| R-WEIGHT | **1B** — the Line tier is Phosphor **Bold up to 26 px** (20 px paints 1.88 px, 24 px 2.25 px) and Regular from 27 px. §5 W1 carries the table |
+| R-TONE | **2B** — the Duo tier is Phosphor's own Duotone: its Regular outline with the tone layer at **20%** (`--glyph-tone: 0.2`) |
+| R-INDICATOR | **3B** — a selected destination is its **Fill** glyph on an **opaque royal pill** with a lit edge, everywhere (W3) |
+| R-RAIL | **4B** — tab-bar glyphs are **24 px** (Android and iPhone size), in a pill grown to fit (W3) |
+| R-LEXICON | **5.1A–5.7A** — the board `squares-four` (both the classic "Masoko" and the journey "Maswali" tab) · Live `broadcast` · deposit / withdraw `arrow-line-down` / `arrow-line-up` · Up & Down `arrows-down-up` · results `seal-check` · proposals `lightbulb` · limits and breaks `hand-palm`. §3 and §4 carry them |
+| R-BADGES | **6A** — the profile badge medallions keep their hand-drawn art: identity art like the brand mark, outside the Phosphor family |
 
-**Awaiting Ali (W0's specimen asks them):** 1 the line weight · 2 the Duotone tone strength · 3 the selected indicator ·
-4 the rail glyph size · 5 the lexicon picks for the ambiguous meanings (§3, seven of them) · 6 the badge medallions.
+**W0's answers** — Ali, 2026-10-17, after opening the specimen: *"good i saw them proceed oerfcetly syroe anuthgi enede
+int h erpeo and keep going"*, then *"until live"*. The specimen's pre-selected line `1B 2B 3B 4B 5.1A 5.2A 5.3A 5.4A 5.5A
+5.6A 5.7A 6A` is therefore his answer, recorded above as R-WEIGHT … R-BADGES. The recognition check (§3) is answered by
+his review; a label-less check with players stays open to him at W2's full contact sheet.
 
 **The specimen** (https://claude.ai/artifact/74HNKPSDZLNdaLJvTbXGWW, published 2026-10-17). Every "today" drawing is
 read from `glyphs.tsx` at main `380edd31`; every Phosphor drawing from `@phosphor-icons/core` 2.1.1 (registry sha512
@@ -83,16 +95,28 @@ three faces loaded, no console error. Its recommended line, pre-selected: **`1B 
 - ⚠️ **The render changed one recommendation.** The plan's size → weight table (§5 W1: Bold ≤ 18 px, Regular 19–26 px)
   paints tab-bar icons THINNER than today (20 px: 1.25 px against the house's 1.58 px), which works against "more
   life". The specimen therefore recommends **1B — Bold up to 26 px** (20 px → 1.88 px, 24 px → 2.25 px), with Regular
-  only for large art (plates, empty states); 1C keeps the plan's even table. Ali's answer fixes the W1 table.
+  only for large art (plates, empty states); 1C kept the plan's even table. Ali chose 1B (R-WEIGHT), so §5 W1's table
+  is now 1B's.
 - 5.1 merges two meanings found by the inspection into one: the classic "Masoko" tab and the journey "Maswali" tab are
   the same board, so one glyph serves both.
 - 6A keeps the badge medallions as hand-drawn identity art (like the brand mark), outside the Phosphor family.
 
 ---
 
-## §3 · Lexicon — one meaning, one glyph (draft; frozen in W2 after W0's answers and the recognition check)
+## §3 · Lexicon — one meaning, one glyph (ruled 2026-10-17, R-LEXICON; applied in W2)
 
-Conflicts the inspection found (Appendix A), each to be settled by ONE pick:
+**The picks:** the board → `squares-four` · Live → `broadcast` · deposit / withdraw → `arrow-line-down` /
+`arrow-line-up` · Up & Down → `arrows-down-up` · results → `seal-check` · proposals → `lightbulb` · limits and breaks →
+`hand-palm`. The rows below without a pick (positions, the Needle, a result recorded, trust) follow the same rule in W2:
+positions are `ticket`; a result recorded is `seal-check`; `shield-check` means verified only; the Needle is a house extra.
+
+**Call sites that move in W2** so each meaning has one key: the journey tab "Maswali" from `questionCircle` (which keeps
+meaning Help) to the board's key; the classic rail's Live from `bolt` to `live`; the classic rail's Up & Down from
+`trendingUp` (which keeps meaning a rising trend) to `trade`; the hub's proposals row from `sparkle` to a new key `idea`;
+the hub's limits row from the shield to a new key `limits`; every deposit / withdraw door to `arrowDownToLine` /
+`arrowUpFromLine`.
+
+The conflicts the inspection found (Appendix A), and the candidates Ali chose from:
 
 | Meaning | Today | The conflict | Phosphor candidates |
 |---|---|---|---|
@@ -111,8 +135,8 @@ Conflicts the inspection found (Appendix A), each to be settled by ONE pick:
 | The Up & Down empty state | a compass | a weak match | `arrows-down-up` on a plate |
 | The two unlabelled Up & Down buttons | a scroll · a ticket with › | no label | labels added (en/sw/zh), glyphs from this table |
 
-Recognition check (W0): each candidate shown without its label — "what does this do?" — to Ali and 3–5 players or
-staff. A candidate most people misread is not picked.
+Recognition check: answered by Ali's review of the specimen (2026-10-17). A label-less check with 3–5 players or staff
+("what does this do?") stays open to him at W2's full contact sheet; a glyph most of them misread is swapped there.
 
 ---
 
@@ -149,13 +173,16 @@ From W1 the source of truth is `scripts/glyphs/map.ts`, and every name below is 
 | economy | chart-line-up | forex | currency-circle-dollar |
 | weather | cloud-rain | crypto | currency-btc |
 | entertainment | film-slate | tech | cpu |
-| shuffle (mixed) | shuffle | markets (other) | per §3 |
+| shuffle (mixed) | shuffle | markets (the board; the "other" category) | squares-four |
 | sealCheck · resolved | seal-check | void | prohibit |
 | cardPay | credit-card | cashOut | hand-coins |
 | headset · compass | headset · compass | qr · simCard | qr-code · sim-card |
 | megaphone · database · server | megaphone · database · hard-drives | brain · bot | brain · robot |
 | heartPulse · archive · scrollText | heartbeat · archive · scroll | target · gauge | target · gauge |
 | watch | bookmark-simple | flame · flame2 · hot | fire |
+| live | broadcast | trade | arrows-down-up |
+| arrowDownToLine · arrowUpFromLine | arrow-line-down · arrow-line-up | questionCircle (Help) | question |
+| idea (new key, proposals) | lightbulb | limits (new key, limits and breaks) | hand-palm |
 
 House extras (no Phosphor match; drawn in Phosphor's grammar — 256 grid, every shipped weight — with a reason in
 `map.ts`): at least `needle` (the brand's own geometry) and Maswali's `millionea` coronet; likely `mobileMoney`, `ussd`,
@@ -196,17 +223,16 @@ Each wave closes with its own commit and push, §1 ticked, §0 rewritten and the
   **Overturned if** the 2G film strip (CDP 250 kbps / 800 ms RTT, CPU ×4, 360 px; `/`, `/markets`, `/markets/[id]`)
   shows rail or header icons blank at the end of hydration — then the shell group is inlined as `<symbol>`s in the
   root layout.
-- **API:** one new prop, `tier?: "line" | "fill" | "duo"` (default `line`) — no call-site edits. The weight is derived
-  from the size so the painted line stays near 1.25–1.6 px:
+- **API:** one new prop, `tier?: "line" | "fill" | "duo"` (default `line`) — no call-site edits. The Line tier's weight
+  is derived from the size (R-WEIGHT, Ali's 1B):
 
-  | Size | Weight | Painted (house today) |
+  | Size | Line weight | Painted px (house today) |
   |---|---|---|
-  | ≤ 18 px | bold | 12 → 1.13 (0.95) · 14 → 1.31 (1.11) · 16 → 1.50 (1.27) · 18 → 1.69 (1.43) |
-  | 19–26 px | regular | 20 → 1.25 (1.58) · 24 → 1.50 (1.9) |
-  | 27–38 px | light | 32 → 1.50 |
-  | ≥ 39 px | thin | 48 → 1.50 · 64 → 2.0 |
+  | ≤ 26 px | bold | 12 → 1.13 (0.95) · 14 → 1.31 (1.11) · 16 → 1.50 (1.27) · 18 → 1.69 (1.43) · 20 → 1.88 (1.58) · 24 → 2.25 (1.9) |
+  | ≥ 27 px | regular | 28 → 1.75 · 32 → 2.0 · 48 → 3.0 |
 
-  Duo is composed at codegen (Phosphor's tone path + the outline at that size's weight); its 0.2 becomes `--glyph-tone`.
+  Fill is Phosphor's fill at any size. Duo is Phosphor's own Duotone — its Regular outline plus the tone layer, exactly
+  as Ali saw it in the specimen — and the tone's 0.2 becomes `--glyph-tone` (R-TONE).
 - **Marks among words** (`text`: 68 sites on 10 keys) are drawn inline as strokes on Phosphor's own centrelines (e.g.
   caret-right `M96 48l80 80-80 80`) with `.kp-gtext` + `--g-stem`, exactly today's CSS, so they keep the font's stem
   (R9-A4 / R10-A6). A guard proves every sampled outline point lies 8 ± 0.3 units from the centreline.

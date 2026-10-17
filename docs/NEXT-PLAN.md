@@ -9,7 +9,10 @@
 > OMEGA-COMPILE01 (Ali, 2026-10-16). Every other session works on its own branch. **Exception for `MASWALI-BUILD`
 > (Ali, 2026-10-17):** *"any session that finishes, let it push … each session pushes whatever it finished, until the
 > final session, who finishes everything, puts it live"*. A Maswali session merges its own finished, green step into
-> `main`, dark, per [`MASWALI-PLAN.md`](MASWALI-PLAN.md) §7a.
+> `main`, dark, per [`MASWALI-PLAN.md`](MASWALI-PLAN.md) §7a. **Exception for `PHOSPHOR-MIGRATION` (Ali, 2026-10-17, to
+> the Ali-Blade15 session asked whether it should release this programme itself):** *"until live"*. The session working
+> the Phosphor migration pushes its own verified releases to `main` — rebased on `origin/main` immediately before, with
+> the AGENTS.md §4 release checklist — per [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) §0.
 
 > ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**
 >
@@ -175,7 +178,7 @@ create its design … animations that no platform has … signature for this pla
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:maswali-plan` asserts the two agree |
 
-## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · 🔨 **PLANNED AND FILED 2026-10-17 on branch `phosphor-migration` (Ali-Blade15); W0's specimen for Ali is next; nothing visual has changed yet** · 0/10 waves ✅
+## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · 🔨 **W0 DONE 2026-10-17 — Ali ruled the specimen ("proceed", then "until live"); W1 next (codegen, engine and guards, no visual change); nothing visual has changed yet** · 0/10 waves ✅
 
 Ali, 2026-10-17: *"users liek 50pick but they say our icons dont give enough life"* · *"Switch to Phosphor"* ·
 *"Now, players see it"* · *"when we sya continue phosphor migration they know … dnto tolose any progress"* · *"if ay new
@@ -187,7 +190,7 @@ pages are cretaed we tlel them impelemtn on any new pages rth ephosphor plan"*.
 | **Why** | Players say the icons lack life. The inspection (the tracker's Appendix A): one thin line weight, 65% of icons at ≤ 14 px painting about 1.1 px, no filled selected state in any shell, three icon families live at once, outcomes told by colour only. The rulings: [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)" |
 | **Shape** | 10 waves: W0 tracking + specimen · W1 codegen, engine and guards with no visual change · W2 the one-commit swap · W3 selected states · W4 outcomes · W5 plates, money, hub, categories, admin cards · W6 empty states · W7 consolidation · W8 motion · W9 close |
 | **Every page** | Every icon on every page, new or old, comes from the glyph family `I` — [`AGENTS.md`](../AGENTS.md) §7; a `predeploy` guard holds it from W1 |
-| **Where** | Branch `phosphor-migration` off `origin/main` (worktree `C:\kipindi-phosphor`, Ali-Blade15); the release owner merges |
+| **Where** | Branch `phosphor-migration` off `origin/main` (worktree `C:\kipindi-phosphor`, Ali-Blade15); the programme's session pushes its own verified releases to `main` (the header's exception, Ali 2026-10-17: "until live") |
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:phosphor-plan` asserts the two agree |
 
