@@ -77,7 +77,7 @@ const config: NextConfig = {
   // at runtime (otherwise every KYC document upload/view crashes — fixed 2026-07-22).
   serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
-    optimizePackageImports: ["lucide-react", "date-fns"],
+    optimizePackageImports: ["date-fns"],
     // Keep emitted lazy files aligned with their preload manifests. Default small-chunk merging
     // produced absent files on both Linux CI and Windows; the exact build is checked by qa:first-load.
     // Both merge limits must be disabled together: Next 16.4 divides by a zero-size chunk when

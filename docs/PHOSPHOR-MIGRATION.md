@@ -18,8 +18,12 @@ stored in the repo at [`design-brief/phosphor-2026-10/`](design-brief/phosphor-2
 this session takes the programme to production (the release-owner note below). Nothing visual has changed on the live
 site yet: every icon is still the house family in `src/components/ui/glyphs.tsx`.
 
-**Next:** W1 — the codegen, the table-driven engine and the guards, with no visual change (§5 W1). First step: the
-worktree's own install with the exact-pinned devDependency `@phosphor-icons/core` 2.1.1.
+**W1 is built on the branch** (§5 W1 "As built"): the pinned package, the codegen, the generated registry / sprite /
+notices, and three guards (one of them in `predeploy`), every guard green with its red twin proving all its plants.
+
+**Next:** release the branch to `main` (the tracking files and W1 together) — first every existing suite that reads a
+changed file (derived from the diff), then the release proof (typecheck, `next build`, local `qa:live`), both under the
+machine's heavy-Node lock; then the push and the production read-back; then tick W1 ✅ and begin W2.
 
 ### Where the work happens
 - Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
@@ -46,7 +50,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | Wave | Title | Status | Note |
 |---|---|---|---|
 | W0 | Tracking + specimen + recognition check | ✅ | b95d0c25 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
-| W1 | Codegen + engine + guards, zero visual change | ⬜ | |
+| W1 | Codegen + engine + guards, zero visual change | 🔨 | built on the branch; the derived suites and the release proof are queued |
 | W2 | The swap: the whole platform on Phosphor in one commit | ⬜ | |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
@@ -206,6 +210,26 @@ Each wave closes with its own commit and push, §1 ticked, §0 rewritten and the
 4. Recognition check (§3). Record every answer in §2/§3; W0 ✅.
 
 ### W1 — Codegen + engine + guards, ZERO visual change
+
+**As built (2026-10-17).** W1 landed purely additive, so "no visual change" holds by construction — nothing on the
+site imports a new file yet:
+- `@phosphor-icons/core` 2.1.1, an exact devDependency (lockfile integrity = the registry's sha512, verified).
+- `scripts/glyphs/`: `map.ts` (all 182 house keys: 144 stay — Phosphor names, 3 house extras, 9 alias pairs — and 38
+  retire, each with its reason; plus the two new keys `idea` / `limits`, so 146 live), `extras.ts` (the needle, mobileMoney and ussd in Phosphor's grammar),
+  `reach.mts` (the house's own bounds reader, x and y), `codegen.mts` (`glyphs:gen`; `--check`; `--sheet <out>` writes
+  the contact sheet for W2).
+- Generated: `src/components/ui/glyph-registry.generated.ts` (per key: symbol stem + ink box per variant),
+  `public/icons/g/glyphs.<hash8>.svg` (548 symbols — every variant of every live key, 281 KB raw / 55 KB gzip; W2 ships
+  only the variants each surface draws, split by reach), `THIRD_PARTY_NOTICES.md` (the MIT text, verbatim).
+- Guards, each with an in-process red twin: `test:glyph-map` (14/14 plants caught), `test:glyph-sync` (7/7 — it also
+  carries the licence checks), `test:glyph-source` (8/8; **in `predeploy`** — the law for every page; its inline-`<svg>`
+  ratchet starts at the census: 40 files, 75 drawings, each with its reason).
+- `next.config.ts`: the stale `lucide-react` entry left `optimizePackageImports`.
+
+**Moved to W2, on purpose:** the engine rewrite (a "bridge" engine in W1 would have been deleted again by the swap,
+and eight guards read the house entries' exact text), parity harness v5 with its baseline (it must be taken against the
+`main` the swap lands on), the `qa:first-load` gzip rows, the sprite's split by reach, and the amendments of the guards
+that read the house drawings. W2's list below carries them.
 - **Source:** `@phosphor-icons/core` (MIT; 2.1.1 at design time — pin the exact version installed) as an exact-pinned
   devDependency only. Never `@phosphor-icons/react` (each of its modules ships all six weights). Strokes on the 256
   grid: thin 8 · light 12 · regular 16 · bold 24 units; all four weights share one centreline.
@@ -256,6 +280,10 @@ Each wave closes with its own commit and push, §1 ticked, §0 rewritten and the
 - Remove the stale `lucide-react` entry from `next.config.ts` `optimizePackageImports` (the package left 2026-07-20).
 
 ### W2 — The swap (one commit: land, measure, add the measured layout entries, squash)
+0. **Carried from W1:** parity harness v5 and its baseline against the `main` the swap lands on; the `qa:first-load`
+   gzip/brotli rows and the `GlyphRegistry` / `GlyphPaths` markers; the sprite trimmed to the variants each surface draws
+   and split by reach (shell / app / admin); the three CSS literals that carry house geometry; `test:glyph-tiers` and
+   `test:glyph-keys`; the amendments of every guard that reads the house drawings (§5 W1 lists them).
 1. Ali reviews the FULL contact sheet (`glyphs:gen --sheet`, every key in its weights); `map.ts` is frozen.
 2. `glyphs.tsx`: the entries and `G`/`GL` go; `I` is built from the registry (sprite renderer + inline centrelines);
    `GLYPH_SET`/`KEY_OF` rebuilt. Call sites unchanged.
