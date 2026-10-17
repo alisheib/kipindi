@@ -24,6 +24,11 @@ export const RELEASER = "usr_mln_accounting";
 const DAY = 86_400_000;
 
 export async function loadMaswaliWorld() {
+  // R10a · THE TICKET ARM ASKS THE REAL ROLLOUT ITSELF (defence in depth), so the world's purchases meet it too: the
+  // ceiling is raised to ACTIVE the way production raises it (`FEATURE_MILLIONEA`; a fresh store's switch is unset, so the
+  // ceiling decides). `buy`'s injected `state` still drives `purchaseMaswaliTickets`' own check; a case that needs the
+  // product itself below ACTIVE sets the variable and puts it back.
+  process.env.FEATURE_MILLIONEA = "ACTIVE";
   const w = await loadWorld();
   const svc: Any = await import("../../src/lib/server/maswali-service.ts");
   const money: Any = await import("../../src/lib/server/maswali-money-service.ts");
@@ -88,7 +93,10 @@ export async function loadMaswaliWorld() {
   const WIN = slip("YES");
   const LOSE = slip("YES", 0);
 
-  /** A purchase through the one bet path, the rollout read as `state` (ACTIVE unless a case says otherwise). */
+  /**
+   * A purchase through the one bet path, `purchaseMaswaliTickets`' rollout read as `state` (ACTIVE unless a case says
+   * otherwise). ⚠️ The ticket arm then reads the REAL rollout (`FEATURE_MILLIONEA`, set above) — R10a.
+   */
   async function buy(userId: string, weekId: string, slips: Any[], o: { key?: string; state?: string } = {}): Promise<Any> {
     return svc.purchaseMaswaliTickets({
       userId, weekId, slips, idempotencyKey: o.key, stateNow: async () => o.state ?? "ACTIVE",

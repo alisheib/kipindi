@@ -1,7 +1,9 @@
 /**
  * qa:maswali-admin-shots — the Millionea console at 360 / 768 / 1280 / 1920 (MASWALI-BUILD S4 acceptance).
  *
- *   BASE=http://localhost:3410 node scripts/maswali-admin-shots.mjs     (a FRESH in-memory `next dev`, 2FA off)
+ *   BASE=http://localhost:3410 node scripts/maswali-admin-shots.mjs     (a FRESH in-memory `next dev`, 2FA off,
+ *                                                                        started with FEATURE_MILLIONEA=ACTIVE: the seed
+ *                                                                        sells, and the ticket arm reads the real rollout)
  *
  * Signs in as the Owner (`/api/dev-test/seed-admin`), seeds one week in each state (`/api/dev-test/seed-maswali`), then
  * opens every console page at four widths: no console error, no horizontal overflow, the page's own heading on screen,

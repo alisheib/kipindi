@@ -607,9 +607,10 @@ export async function checkDepositLimit(userId: string, amount: number) {
  * ⭐ OD-17 (MASWALI-BUILD S3) · THE NET THE LOSS LIMIT READS: the platform's gambling net, less the Millionea money that
  * must not offset it — every winning share (Millionea winnings never offset the limit), and every refund of a stake
  * bought before the window (a free cancel or week void offsets only a stake inside the same 24 hours). The gate and the
- * player's "used today" read this one number, so the screen never disagrees with the refusal.
+ * player's "used today" read this one number, so the screen never disagrees with the refusal — the limit meter
+ * (`getLimitUsage`) and the activity page's "limits used" panel (`activity-summary.ts → getRgUsage`, R5) both.
  */
-async function lossLimitNetSince(userId: string, sinceMs: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+export async function lossLimitNetSince(userId: string, sinceMs: number, tx?: Prisma.TransactionClient | null): Promise<number> {
   const net = await db.txn.sumGamblingNetSince(userId, sinceMs, tx);
   const excluded = await ticketStore.lossLimitExclusionsSince(userId, new Date(sinceMs).toISOString(), tx ?? undefined);
   return net - excluded;
