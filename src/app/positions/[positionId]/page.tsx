@@ -43,7 +43,9 @@ export default async function PositionPermalinkPage({ params }: { params: Promis
   // target; on failure we fall back to /markets/<id>, whose own redirect is the
   // safety net for Up & Down tickets.
   const market = await marketStore.get(position.marketId).catch(() => null);
-  const productLine = market?.productLine === "UPDOWN" ? "UPDOWN" : "MARKET";
+  // The stored line as the DAL reads it (a Millionea ticket goes to its own segment, S0.5); a market that could not be
+  // read degrades to the poll route, whose own redirect is the safety net, as before.
+  const productLine = market?.productLine ?? "MARKET";
   // Only ask for a round when the market says it is an Up & Down one — a lookup per long-form
   // ticket would be a query nobody reads.
   const round = productLine === "UPDOWN"

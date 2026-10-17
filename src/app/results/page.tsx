@@ -205,7 +205,9 @@ async function ResultsContent({
   // The read is still COMPLETE — it has to be, per the E-169 note above: the search, the
   // product filter and every category count below are folded from the whole set, so a
   // windowed read would quietly make the counts wrong. It just stops being repeated.
-  const terminal = await listTerminalMarkets("ALL");
+  // ⛔ The polls' and the rounds' archive only (S0.5): a settled Millionea week is not one question with one outcome, and
+  // it gets a section of its own in S5 (MB-90). Removed at the read, so no count, filter or row below ever sees it.
+  const terminal = (await listTerminalMarkets("ALL")).filter((m) => m.productLine !== "MASWALI");
 
   /**
    * The rows the contract reasons about.
@@ -219,6 +221,7 @@ async function ResultsContent({
   const archiveRows: ArchiveRow[] = terminal.map((m) => ({
     id: m.id,
     category: m.category,
+    // Two-valued on purpose: MASWALI never reaches this map (filtered at the read above, S0.5).
     productLine: m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET",
     // ⚠️ A VOIDED market whose outcome column was never stamped still resolved one way: void.
     outcome: (m.resolvedOutcome ?? (m.status === "VOIDED" ? "VOID" : null)) as ArchiveRow["outcome"],

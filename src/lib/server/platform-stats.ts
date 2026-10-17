@@ -110,7 +110,7 @@ declare global {
  */
 function settledAmount(m: StoredMarket): number | null {
   if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;
-  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));
+  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, ratesFor(m));
   return c.refunded ? null : c.netPool;
 }
 
@@ -127,7 +127,7 @@ function settledNoFigureReason(m: StoredMarket): "refunded" | "empty" | null {
   if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") return null;
   const pool = Math.max(0, m.yesPool) + Math.max(0, m.noPool);
   if (pool <= 0) return "empty";
-  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, ratesFor(m));
+  const c = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, ratesFor(m));
   return c.refunded ? "refunded" : null;
 }
 

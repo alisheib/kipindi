@@ -141,8 +141,12 @@ export async function settlementFeesByPoll(period: Window = "28d"): Promise<Sett
     const ts = new Date(m.settledAt).getTime();
     if (ts < start || ts >= end) continue;
     if (m.resolvedOutcome !== "YES" && m.resolvedOutcome !== "NO") continue; // VOID = refund, 0 fee
+    // ⛔ S0.5 · a Millionea week's fee is the jackpot-payout model, read from its settlement columns, and this view
+    // learns it in S6 — before any week can settle (MASWALI-PLAN §7b corrections). Until then it is named and skipped
+    // here, never run through the poll mirror below (which throws on it by design).
+    if (m.productLine === "MASWALI") continue;
     const rates = ratesFor(m);
-    const fb = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome }, rates);
+    const fb = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: m.resolvedOutcome, productLine: m.productLine }, rates);
     if (fb.refunded) continue; // one side only: every stake refunded at 0 fee (settleMarket's one-sided branch)
     const fee = Math.round(fb.fee);
     const { operatorNet } = levySplit(fee, rates);

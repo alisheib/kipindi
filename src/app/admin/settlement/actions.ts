@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
-import { settleMarket } from "@/lib/server/market-service";
+import { settleMarket, getMarket, isFencedMaswali, MASWALI_FENCE_ERROR } from "@/lib/server/market-service";
 import { holdSettlementAsOfficer, OBJECTION_REASONS } from "@/lib/server/objections-service";
 import type { ObjectionReason } from "@/lib/server/store";
 import { formatTzs } from "@/lib/utils";
@@ -56,6 +56,9 @@ export async function settleMarketAction(formData: FormData): Promise<{ ok: true
 
   const marketId = String(formData.get("marketId") ?? "");
   if (!marketId) return { ok: false, error: "Missing market id." };
+  // S0.5 · the fence: a Millionea week is released from /admin/maswali/pools (OD-06), never from this generic door —
+  // not even its VOID arm, which only its own week-void control may reach.
+  if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };
 
   const r = await settleMarket(marketId, { actorId: session.userId });
   if (!r.ok) {
@@ -99,6 +102,8 @@ export async function holdSettlementAction(formData: FormData): Promise<{ ok: tr
 
   const marketId = String(formData.get("marketId") ?? "");
   if (!marketId) return { ok: false, error: "Missing market id." };
+  // S0.5 · the fence: a Millionea week is held per question, in its own 24-hour window (MR-16), never by this door.
+  if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };
   const rawReason = String(formData.get("reason") ?? "");
   // Narrowed against the service's own list rather than cast — an unknown reason must be a
   // refusal here, not a string that reaches the stored row and reads as a category later.

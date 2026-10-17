@@ -45,6 +45,14 @@ import { txnProviderLabel } from "@/components/admin/status-badge";
 import { outcomeWordIn } from "@/lib/side-label";
 import { describeFeeModel } from "@/lib/payout";
 import { ratesFor } from "@/lib/server/market-service";
+import { PRODUCT_LINES, type ProductLine } from "@/lib/product-line";
+
+/** The book's word for each game line (S0.5: a Millionea week is its own game, never folded into Polls). */
+const GAME_LINE_LABEL: Readonly<Record<ProductLine, { many: string; one: string }>> = {
+  MARKET: { many: "Polls", one: "Poll" },
+  UPDOWN: { many: "Up & Down", one: "Up & Down" },
+  MASWALI: { many: "Millionea", one: "Millionea" },
+};
 import { hasOwnSnapshot } from "@/lib/server/market-config";
 import { trialBalance } from "@/lib/server/ledger";
 import { marketStore } from "@/lib/server/market-dal";
@@ -177,7 +185,7 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
   const meta = gameRows ? await marketStore.bookByIds(ids).catch(() => null) : null;
   type Row = GameBook & {
     title: string | null;
-    productLine: "MARKET" | "UPDOWN";
+    productLine: ProductLine;
     settledAt: string | null;
     rateCaption: string | null;
     ownSnapshot: boolean;
@@ -229,7 +237,7 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
   /* Per-product subtotals over the UNFILTERED set — always. A filter narrows what is
    * rendered, never what is summed, or the subtotals would agree only with themselves. */
   const byProduct = rows
-    ? (["MARKET", "UPDOWN"] as const).map((pl) => {
+    ? PRODUCT_LINES.map((pl) => {
         const set = rows.filter((r) => r.productLine === pl);
         return {
           pl,
@@ -239,15 +247,17 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
           handle: set.reduce((s, r) => s + r.handle, 0),
         };
       })
+        // Millionea's row appears once the window holds a Millionea game; polls and rounds always print, as before.
+        .filter((p) => p.pl !== "MASWALI" || p.n > 0)
     : null;
 
-  const product = sp.product === "MARKET" || sp.product === "UPDOWN" ? sp.product : null;
+  const product = (PRODUCT_LINES as readonly string[]).includes(sp.product ?? "") ? (sp.product as ProductLine) : null;
   const shown = rows ? (product ? rows.filter((r) => r.productLine === product) : rows) : null;
   const sorted = shown ? [...shown].sort((a, b) => b.netRetained - a.netRetained) : null;
   const gpage = parsePage(sp.gpage, sorted?.length ?? 0);
   const gameSlice = (sorted ?? []).slice((gpage - 1) * PER_PAGE, gpage * PER_PAGE);
   const gameBase = buildBaseHref("/admin/house", { range: sp.range, from: sp.from, to: sp.to, tab: sp.tab, product: sp.product }, "gpage");
-  const productHref = (p: "MARKET" | "UPDOWN" | null) =>
+  const productHref = (p: ProductLine | null) =>
     buildBaseHref("/admin/house", { range: sp.range, from: sp.from, to: sp.to, tab: sp.tab, product: p ?? undefined }, "gpage");
 
   const epage = parsePage(sp.epage, feeBySource?.length ?? 0);
@@ -699,7 +709,7 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                         that moved with the filter would only ever agree with itself. */}
                     {byProduct.map((p) => (
                       <tr key={p.pl}>
-                        <td className="text-left">{p.pl === "UPDOWN" ? "Up & Down" : "Polls"}</td>
+                        <td className="text-left">{GAME_LINE_LABEL[p.pl].many}</td>
                         <td className="tabular text-right font-semibold"><Amt v={p.net} /></td>
                         <td className="tabular text-right"><Amt v={p.handle} /></td>
                         <td className="tabular text-right"><Amt v={p.fee} /></td>
@@ -762,7 +772,7 @@ async function AdminHouseContent({ searchParams }: { searchParams: Promise<SP> }
                             </Link>
                             {!r.title && <span className="block text-text-tertiary">market row missing — the money is still ours</span>}
                           </td>
-                          <td className="text-left whitespace-nowrap">{r.productLine === "UPDOWN" ? "Up & Down" : "Poll"}</td>
+                          <td className="text-left whitespace-nowrap">{GAME_LINE_LABEL[r.productLine].one}</td>
                           <td className="text-left whitespace-nowrap">
                             {/* ⛔ THE WORD COMES FROM THE LEXICON AND IS PRODUCT-AWARE. Up & Down
                                 stores YES/NO and a reader must see Up and Down; a VOID is never

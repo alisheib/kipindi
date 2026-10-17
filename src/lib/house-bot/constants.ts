@@ -551,6 +551,10 @@ export type HouseProductPolicy = "polls" | "updown" | "denied";
 export const HOUSE_PRODUCT_POLICY = {
   MARKET: "polls",
   UPDOWN: "updown",
+  // Maswali Millionea (MASWALI-BUILD S0.5): DENIED. Ali, 2026-10-16, R-INSIDERS: "house bots MASWALI: denied" —
+  // house and desk accounts may not hold a ticket, and no bot ever sees a week. It also stays out of
+  // INTENT_PRODUCT_LINES and TARGET_PRODUCT_LINES (their DB CHECKs pin them, `test:house-bot-migrations`).
+  MASWALI: "denied",
 } as const satisfies Record<ProductLine, HouseProductPolicy>;
 
 /** The product lines house bots may touch — derived, so there is one list (04 A12 `inScope`). */

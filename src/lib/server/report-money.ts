@@ -378,7 +378,7 @@ export async function loadMoneyAttribution(positionIds?: readonly string[]): Pro
     // ⛔ Demo rows are excluded HERE ONLY. See the note above: the two callers differ, and
     // that difference is preserved rather than tidied.
     if (!isDemoMarket(m)) catByMarket.set(m.id, m.category);
-    plByMarket.set(m.id, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
+    plByMarket.set(m.id, m.productLine); // the DAL's one reading (`storedProductLine`): a known line is itself
   }
   const marketOfPosition = new Map<string, string>();
   for (const p of positionRows) marketOfPosition.set(p.id, p.marketId);
@@ -403,7 +403,11 @@ export async function loadMoneyAttribution(positionIds?: readonly string[]): Pro
  * determined. `UNATTRIBUTED` is NOT a game and must never be presented as one; it exists
  * so the per-game split can DISCLOSE what it does not know instead of guessing.
  */
-export type GameLine = "MARKET" | "UPDOWN" | "UNATTRIBUTED";
+// MASWALI (Maswali Millionea weeks) is a game of its own from S0.5 — never folded into MARKET.
+// ⚠️ OWED BY S6 (MASWALI-PLAN §7b, S6 item 5): a Millionea week's hold is its FEE only. Stakes carried to
+// HOUSE:MASWALI_JACKPOT are money owed to players, not GGR, so `stakes − payouts − refunds` overstates it until S6
+// teaches this split the jackpot model. No week can settle before S6.
+export type GameLine = "MARKET" | "UPDOWN" | "MASWALI" | "UNATTRIBUTED";
 
 export type GameMoney = {
   game: GameLine;
@@ -461,7 +465,7 @@ export async function moneyByGame(
   /** Pass the snapshot from `loadReportWindow()` when the caller also runs
    *  `categoryBreakdown` — see the DG-A-01 notes above. Omit and it reads its own. */
   ctx?: ReportWindow,
-): Promise<{ market: GameMoney; updown: GameMoney; unattributed: GameMoney }> {
+): Promise<{ market: GameMoney; updown: GameMoney; maswali: GameMoney; unattributed: GameMoney }> {
   const allTxn = await windowTxns(ctx, start, end);
   const attr = await windowAttribution(ctx, start, end, allTxn);
   // ⛔ `?? "MARKET"` here is UNCHANGED and is not the F-03 defect below: this resolves a
@@ -474,6 +478,7 @@ export async function moneyByGame(
   const out: Record<GameLine, GameMoney & { _players: Set<string> }> = {
     MARKET: { ...emptyGame("MARKET"), _players: new Set<string>() },
     UPDOWN: { ...emptyGame("UPDOWN"), _players: new Set<string>() },
+    MASWALI: { ...emptyGame("MASWALI"), _players: new Set<string>() },
     UNATTRIBUTED: { ...emptyGame("UNATTRIBUTED"), _players: new Set<string>() },
   };
 
@@ -500,7 +505,7 @@ export async function moneyByGame(
       bets: g.bets, players: g._players.size,
     };
   };
-  return { market: finish(out.MARKET), updown: finish(out.UPDOWN), unattributed: finish(out.UNATTRIBUTED) };
+  return { market: finish(out.MARKET), updown: finish(out.UPDOWN), maswali: finish(out.MASWALI), unattributed: finish(out.UNATTRIBUTED) };
 }
 
 export type DailyPnlRow = {

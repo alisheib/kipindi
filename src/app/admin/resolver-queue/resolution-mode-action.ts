@@ -48,6 +48,11 @@ export async function recheckMarketNowAction(formData: FormData): Promise<
   if (!g.ok) return { ok: false, error: g.error };
   const marketId = String(formData.get("marketId") ?? "").trim();
   if (!marketId) return { ok: false, error: "marketId is required." };
+  // S0.5 · the fence: no AI re-check of a Millionea week (MR-14) — refused before the paid call, not after it.
+  {
+    const { getMarket, isFencedMaswali, MASWALI_FENCE_ERROR } = await import("@/lib/server/market-service");
+    if (isFencedMaswali(await getMarket(marketId))) return { ok: false, error: MASWALI_FENCE_ERROR };
+  }
 
   try {
     const { sentinelCheckOne } = await import("@/lib/server/market-sentinel");

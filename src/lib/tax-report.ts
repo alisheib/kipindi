@@ -439,9 +439,14 @@ export function classifyRefund(input: {
 // 5 · PRODUCTS AND EXCEPTIONS
 // ════════════════════════════════════════════════════════════════════════════════════════════
 
-/** The product filter. `MARKET` is a poll; `UPDOWN` an Up & Down round (PredictionMarket.productLine). */
-export type ProductFilter = "ALL" | "MARKET" | "UPDOWN";
-export const PRODUCT_LABEL: Readonly<Record<ProductFilter, string>> = Object.freeze({ ALL: "All products", MARKET: "Polls", UPDOWN: "Up & Down" });
+/**
+ * The product filter. `MARKET` is a poll; `UPDOWN` an Up & Down round; `MASWALI` a Maswali Millionea week
+ * (PredictionMarket.productLine). ⛔ MASWALI is in the type from S0.5 so no read can file a week as a poll, but it is
+ * not selectable (`parseProduct`, the page's PRODUCTS) and a period holding a week is refused, until S6 teaches the
+ * report the jackpot-payout model and its reconciling lines (OD-08).
+ */
+export type ProductFilter = "ALL" | "MARKET" | "UPDOWN" | "MASWALI";
+export const PRODUCT_LABEL: Readonly<Record<ProductFilter, string>> = Object.freeze({ ALL: "All products", MARKET: "Polls", UPDOWN: "Up & Down", MASWALI: "Millionea" });
 
 export function parseProduct(v: unknown): ProductFilter {
   const s = typeof v === "string" ? v.trim().toUpperCase() : "";

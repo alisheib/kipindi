@@ -125,7 +125,8 @@ const text = (tenths: number): string => `${Math.floor(tenths / 10)}.${tenths % 
  * `null` only for an Up & Down round.
  */
 export function estimateFor(input: EstimateInput): Estimate | null {
-  if (input.productLine === "UPDOWN") return null;
+  // A poll only (S0.5): never a round, and never a Millionea ticket — a held ticket never shows a figure it might win.
+  if (input.productLine === "UPDOWN" || input.productLine === "MASWALI") return null;
   const yes = tzs(input.yesPool);
   const no = tzs(input.noPool);
   const own = input.side === "YES" ? yes : no;

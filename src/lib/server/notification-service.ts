@@ -662,9 +662,9 @@ export function notifySelectionClosed(userId: string, opts: {
   // ⚠️ "MARKET" is correct here, and it is ESTABLISHED rather than assumed: an Up & Down round
   // never reaches this function. The guard is NOT `perEventNotificationsSuppressed()` — the
   // only caller, `notifySelectionClosedForMarket`, does not consult it. What keeps rounds out
-  // is `nextDeadlineFor()` returning null for productLine UPDOWN (`market-scheduler.ts:147`),
-  // so no round is ever armed for the `notify-closed` transition. ⛔ If a second caller is ever
-  // added, re-establish that — do not trust the predicate's name.
+  // is `nextDeadlineFor()` returning null for every line but MARKET (S0.5: rounds and Millionea
+  // weeks alike), so no non-poll row is ever armed for the `notify-closed` transition. ⛔ If a
+  // second caller is ever added, re-establish that — do not trust the predicate's name.
   const yesW = { en: sideWordIn("en", "YES", "MARKET"), sw: sideWordIn("sw", "YES", "MARKET"), zh: sideWordIn("zh", "YES", "MARKET") };
   const noW = { en: sideWordIn("en", "NO", "MARKET"), sw: sideWordIn("sw", "NO", "MARKET"), zh: sideWordIn("zh", "NO", "MARKET") };
   const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };

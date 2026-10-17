@@ -32,6 +32,19 @@
 **State (2026-10-17):** The build has started; no product code is written yet.
 - **Done:** S0 ✅ at `de8a00619`; D1 ✅ at `e224aef46` (the R2 package, stamp `72ca5cff9`); **D2 ✅ at
   `2b335451f`**.
+- **S0.5 🔨 (the fence) — code and guard committed on `maswali-build`, not yet on `main`.**
+  - *The one reading.* `src/lib/product-line.ts` owns it. The DAL passes MASWALI through on both stores.
+  - *Refused for a week:* every generic door (bet, paid exit, resolve, auto-resolve and the sentinel, emergency void,
+    reopen, settle except its VOID arm, the settle, hold and re-check actions).
+  - *Kept out:* the poll scheduler, the generic settlement queue, `/live`, `/results`, performance, the leaderboard,
+    the journey sheet and cards, the share image, the saved deposit bet.
+  - *Fail-closed until S6:* `chargedFee`, and the tax report refuses a period that holds a week.
+  - *A game of its own:* the money reports and the owner's book carry Millionea as its own line.
+  - *House bots:* MASWALI is `"denied"`, and `scopeAlerts` raises no daily false alarm for it.
+  - *`test:maswali-fence`* is green on both stores: memory 36/36 including the census, Postgres 29/29.
+  - **Left for S0.5:** `red:maswali-fence` (17 mutations) on the committed tree; `test:all` with the database suites;
+    `e2e:money`, `e2e:fault` and `e2e:card`; `tsc`, `next build` and local `qa:live`; the merge to `main`, dark; the
+    read-back.
 - **The delivery.** Claude Design's delivery is its round 6, with Ali's form answers applied. It is filed raw at
   [`design-system/v6-2026-10-17-millionea/`](design-system/v6-2026-10-17-millionea/INHERIT-MANIFEST.md); its
   `INHERIT-MANIFEST.md` holds the verdicts, Ali's rulings, the L-rows L1–L13 and the intake checks. No gate failed,
@@ -139,7 +152,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 |---|---|---|---|
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
-| S0.5 | Fence the third product line | ⬜ | before any session that writes a MASWALI row |
+| S0.5 | Fence the third product line | 🔨 | code and `test:maswali-fence` committed on `maswali-build` (2026-10-17); red twin, battery and merge next |
 | S1 | Law, config, accounts, schema, rollout switch | ⬜ | no behaviour |
 | S2 | Week engine (no money, no UI) | ⬜ | |
 | S3 | Money path (local and throwaway PostgreSQL) | ⬜ | |

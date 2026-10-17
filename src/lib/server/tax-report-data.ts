@@ -202,7 +202,7 @@ function openAt(p: StoredPosition, t: number): boolean {
 function roundKeep(b: MarketBook): { keepCents: number; bookedFeeTzs: number; roundingCents: number; expectedWinningsTzs: number } | null {
   const verdict = b.resolvedOutcome;
   if (verdict !== "YES" && verdict !== "NO" && verdict !== "VOID") return null;
-  const fee = chargedFee({ yesPool: b.yesPool, noPool: b.noPool, resolvedOutcome: verdict }, snapshotOrLegacy(b.feeSnapshot));
+  const fee = chargedFee({ yesPool: b.yesPool, noPool: b.noPool, resolvedOutcome: verdict, productLine: b.productLine }, snapshotOrLegacy(b.feeSnapshot));
   if (fee.refunded) return { keepCents: 0, bookedFeeTzs: 0, roundingCents: 0, expectedWinningsTzs: 0 };
   const poolCents = toCents(b.yesPool) + toCents(b.noPool);
   // ⭐ Exactly settlement's arithmetic: winners share floor(netPool) (`allocateWinnerPayouts`), the
@@ -502,6 +502,12 @@ export async function buildTaxReportData(opts: {
   const rates = await readTaxRates();
   if (!rates.ok) return { ok: false, error: `The tax rates could not be read (${rates.error}). No figure was computed.` };
   const L = await load(opts.period, opts.nowMs, rates.versions);
+  // ⛔ S0.5 · THE FENCE, FAIL-CLOSED. A Millionea week's money is the jackpot-payout model with its own reconciling
+  // lines (jackpot brought forward, house floor top-up, carried to the jackpot — OD-08), which this report learns in
+  // S6, before any week can settle. A period that holds one is refused out loud, never filed as polls or skipped.
+  if ([...L.books.values()].some((b) => b.productLine === "MASWALI")) {
+    return { ok: false, error: "This period holds Maswali Millionea weeks. The tax report learns Millionea in MASWALI-PLAN S6; until then no figure is computed for it." };
+  }
   const main = figuresFor(L, opts.product);
   const byProduct = opts.product === "ALL" ? (["MARKET", "UPDOWN"] as const).map((p) => figuresFor(L, p).fig) : null;
   const unattributedRecords = L.records.filter((r) => productOfBet(r.positionId ? L.bets.get(r.positionId) : undefined, L.books) === null).length;

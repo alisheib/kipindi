@@ -133,7 +133,9 @@ async function HouseGameContent({
    * refunded whatever the verdict), and `poolFee(…, winner)` priced a loser-share fee off the funded side there —
    * a variance manufactured on a correct book. `chargedFee` mirrors settlement's own branches. */
   const computed = rates && meta && winner && settled
-    ? Math.round(chargedFee({ yesPool: meta.yesPool, noPool: meta.noPool, resolvedOutcome: winner }, rates).fee)
+    // A Millionea week's fee is the jackpot-payout model (S6 teaches this recompute); until then there is no poll
+    // mirror to recompute it with, so the check reads "not computed", never a wrong figure (S0.5).
+    ? (meta.productLine === "MASWALI" ? null : Math.round(chargedFee({ yesPool: meta.yesPool, noPool: meta.noPool, resolvedOutcome: winner, productLine: meta.productLine }, rates).fee))
     : null;
   /* ⛔ THE SETTLEMENT SLICE ONLY. `poolFee` does not model an early exit, and the early-exit fee
    * is booked per exit against the pool as it stood then — including it would report a variance
@@ -166,7 +168,7 @@ async function HouseGameContent({
         actions={back}
       />
       <AdminBody>
-        <AdminCard title={title} sw={rowMissing ? undefined : (productLine === "UPDOWN" ? "Up & Down" : "Poll")}>
+        <AdminCard title={title} sw={rowMissing ? undefined : (productLine === "UPDOWN" ? "Up & Down" : productLine === "MASWALI" ? "Millionea" : "Poll")}>
           {rowMissing ? (
             <p className="text-body-sm text-text-secondary">
               There is no market row for <span className="font-mono">{marketId}</span> any more —

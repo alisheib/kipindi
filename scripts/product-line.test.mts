@@ -386,6 +386,13 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).filter((i) =>
      `got ${row?.productLine}`);
   const got = ids(await listMarkets());
   ok("B8 · and it appears on the default (long-form) board", got.includes("pl_legacy"), `got [${got}]`);
+  // MASWALI-BUILD S0.5 · a KNOWN third line is never folded into MARKET: a Millionea week reads as itself, stays off the
+  // default board, and is listed only by an "ALL" read. (The Postgres store's reading is held by `test:maswali-fence`.)
+  await marketStore.set({ ...mk("pl_week", "MARKET"), productLine: "MASWALI" });
+  const week = await marketStore.get("pl_week");
+  ok("B8 · a MASWALI row reads as MASWALI, never MARKET", week?.productLine === "MASWALI", `got ${week?.productLine}`);
+  ok("B8 · and it is never on the default (long-form) board", !ids(await listMarkets()).includes("pl_week"));
+  ok("B8 · an \"ALL\" read lists it", ids(await listMarkets({ productLine: "ALL" })).includes("pl_week"));
 }
 
 // B9 — THE MONEY ATTRIBUTION READ SEES BOTH PRODUCTS, and a demo row is excluded from the

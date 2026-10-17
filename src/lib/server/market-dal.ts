@@ -9,6 +9,7 @@ import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
 import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLine, ProductLineFilter } from "./market-service";
+import { storedProductLine } from "@/lib/product-line";
 // R9-D: every market write tells the memos over this table which row it changed, once that row is committed.
 import { afterCommit } from "./locks";
 import { isTerminalStatus, noteMarketsChanged } from "./market-change-log";
@@ -122,9 +123,9 @@ function num(d: unknown): number {
   if (d == null) return 0;
   return Number(d);
 }
-/** A stored `productLine`, coerced as `toStoredMarket` coerces it: anything but UPDOWN is a long-form poll. */
+/** A stored `productLine`, read as every store reads it (`storedProductLine`): NULL is a poll, a known line is itself. */
 function storedLine(v: unknown): ProductLine {
-  return v === "UPDOWN" ? "UPDOWN" : "MARKET";
+  return storedProductLine(v);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,9 +188,9 @@ function toStoredMarket(r: any): StoredMarket {
     // for house stakes even after its Sentinel fields are wiped.
     reopenedAt: iso(r.reopenedAt) ?? null,
     reopenCount: r.reopenCount ?? null,
-    // Coerced, not trusted: a row read before the column existed (or through an old
-    // client) has no value, and every such row is a long-form poll.
-    productLine: r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET",
+    // Read, not trusted: a row read before the column existed (or through an old client) has no value, and every
+    // such row is a long-form poll. A known line passes through — MASWALI is never folded into MARKET (S0.5).
+    productLine: storedProductLine(r.productLine),
     proposedBy: r.proposedBy,
     createdAt: iso(r.createdAt)!,
     updatedAt: iso(r.updatedAt)!,
@@ -787,7 +788,7 @@ const memoryMarkets: MarketStore = {
       out.set(id, {
         id: m.id,
         titleEn: m.titleEn,
-        productLine: (m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+        productLine: storedProductLine(m.productLine),
         status: m.status,
         resolvedOutcome: m.resolvedOutcome ?? null,
         settledAt: m.settledAt ?? null,
@@ -876,6 +877,8 @@ const memoryPositions: PositionStore = {
     const acc = new Map<string, { resolved: number; staked: number; paidOut: number }>();
     for (const p of positions.values()) {
       if (p.status === "OPEN") continue;
+      // Millionea tickets never count on the leaderboard, on any lens (S0.5; MASWALI-PLAN S5 item 9) — as the SQL twin.
+      if (markets.get(p.marketId)?.productLine === "MASWALI") continue;
       if (pl && (markets.get(p.marketId)?.productLine ?? "MARKET") !== pl) continue;
       const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };
       e.resolved += 1;
@@ -897,8 +900,12 @@ const memoryPositions: PositionStore = {
     const all = new Set<string>(), market = new Set<string>(), updown = new Set<string>();
     for (const p of positions.values()) {
       if (p.status === "OPEN") continue;
+      // Millionea tickets never count on the leaderboard (MASWALI-PLAN S5 item 9): skipped before `all`, as the SQL
+      // twin skips them.
+      const line = storedProductLine(markets.get(p.marketId)?.productLine);
+      if (line === "MASWALI") continue;
       all.add(p.userId);
-      ((markets.get(p.marketId)?.productLine ?? "MARKET") === "UPDOWN" ? updown : market).add(p.userId);
+      (line === "UPDOWN" ? updown : market).add(p.userId);
     }
     return { all: all.size, market: market.size, updown: updown.size };
   },
@@ -1257,7 +1264,7 @@ const prismaMarkets: MarketStore = {
       category: r.category as MarketCategory,
       // Same coercion as `toStoredMarket` (line 86) — an unknown or absent value is MARKET,
       // never UPDOWN, so a bad row cannot invent Up & Down turnover.
-      productLine: (r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+      productLine: storedProductLine(r.productLine),
     }));
   },
   async poolsByIds(ids) {
@@ -1335,7 +1342,7 @@ const prismaMarkets: MarketStore = {
         titleEn: r.titleEn,
         // Same coercion as `attribution()` — an unknown value is MARKET, never UPDOWN, so a
         // bad row cannot invent Up & Down turnover.
-        productLine: (r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") as ProductLine,
+        productLine: storedProductLine(r.productLine),
         status: r.status as MarketStatus,
         resolvedOutcome: r.resolvedOutcome ?? null,
         settledAt: r.settledAt ? r.settledAt.toISOString() : null,
@@ -1501,6 +1508,7 @@ const prismaPositions: PositionStore = {
          from "public"."Position" p
          ${pl ? `join "public"."PredictionMarket" m on m."id" = p."marketId"` : ""}
         where p."status" <> 'OPEN'
+          and p."marketId" not in (select "id" from "public"."PredictionMarket" where "productLine" = 'MASWALI')
           ${pl ? `and coalesce(m."productLine", 'MARKET') = $2` : ""}
         group by p."userId"
         order by ${leaderboardOrderBy(opts)}
@@ -1520,11 +1528,12 @@ const prismaPositions: PositionStore = {
     //    the platform's player count. Measured on production: 41 all, 28 polls, 30 Up & Down.
     const [row] = await pc().$queryRawUnsafe<Array<{ all: bigint; market: bigint; updown: bigint }>>(
       `select count(distinct p."userId")                                                        as "all",
-              count(distinct p."userId") filter (where coalesce(m."productLine",'MARKET') <> 'UPDOWN') as "market",
+              count(distinct p."userId") filter (where coalesce(m."productLine",'MARKET') =  'MARKET') as "market",
               count(distinct p."userId") filter (where coalesce(m."productLine",'MARKET') =  'UPDOWN') as "updown"
          from "public"."Position" p
          join "public"."PredictionMarket" m on m."id" = p."marketId"
-        where p."status" <> 'OPEN'`,
+        where p."status" <> 'OPEN'
+          and coalesce(m."productLine",'MARKET') <> 'MASWALI'`,
     );
     return { all: Number(row?.all ?? 0), market: Number(row?.market ?? 0), updown: Number(row?.updown ?? 0) };
   },

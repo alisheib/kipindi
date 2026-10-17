@@ -24,13 +24,15 @@
  * not a safe default: a page that filters the other product line will render "no positions yet"
  * over a bet the player is holding, which is a money surface stating something false.
  */
-export type PositionProductLine = "MARKET" | "UPDOWN";
+import { assertNeverLine, type ProductLine } from "@/lib/product-line";
+
+export type PositionProductLine = ProductLine;
 
 export type TicketDestination = {
   /** Where to send the player. Always carries the fragment so the row can be scrolled to. */
   href: string;
   /** Which surface actually carries the details. `*-list` means we could not do better. */
-  surface: "market" | "updown-round" | "updown-list" | "market-list";
+  surface: "market" | "updown-round" | "updown-list" | "market-list" | "millionea-list";
   /**
    * True when we landed on a LIST rather than on the position itself. Callers may want to
    * say so; nothing may treat it as success. It exists so "we degraded" is a value that can
@@ -58,7 +60,13 @@ export function positionAnchorId(positionId: string): string {
  */
 export function positionListHref(productLine: PositionProductLine, positionId: string): string {
   const frag = `#${positionAnchorId(positionId)}`;
-  return productLine === "UPDOWN" ? `/updown/history${frag}` : `/positions${frag}`;
+  switch (productLine) {
+    case "UPDOWN": return `/updown/history${frag}`;
+    case "MARKET": return `/positions${frag}`;
+    // A Millionea ticket's portfolio is its own Tiketi zangu segment (MR-2), never `/positions` (S0.5).
+    case "MASWALI": return `/millionea/tickets${frag}`;
+    default: return assertNeverLine(productLine, "positionListHref");
+  }
 }
 
 export function positionPermalink(input: {
@@ -79,6 +87,12 @@ export function positionPermalink(input: {
     // before its round, or one removed by an ops reset); the Up & Down portfolio still lists
     // the bet, and the other game's page still cannot.
     return { href: positionListHref("UPDOWN", positionId), surface: "updown-list", isFallback: true };
+  }
+
+  // ⛔ A Millionea ticket never goes to `/markets/<id>` — a week has no poll page (S0.5). Its own ticket page is keyed by
+  // serial (`/millionea/tickets/[serial]`, S5), which this pure function does not hold, so it lands on the list.
+  if (productLine === "MASWALI") {
+    return { href: positionListHref("MASWALI", positionId), surface: "millionea-list", isFallback: true };
   }
 
   if (marketId) return { href: `/markets/${marketId}${frag}`, surface: "market", isFallback: false };

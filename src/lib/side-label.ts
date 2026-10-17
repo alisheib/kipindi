@@ -45,9 +45,14 @@
  * already `.toUpperCase()` at the call site.
  */
 import { dict, type Locale, type Dict } from "@/lib/i18n-dict";
+import { assertNeverLine, type ProductLine } from "@/lib/product-line";
 
-/** The two product lines, as `PredictionMarket.productLine` stores them. */
-export type LabelProductLine = "MARKET" | "UPDOWN";
+/**
+ * The product lines, as `PredictionMarket.productLine` stores them. MASWALI (Maswali Millionea) joined at S0.5: its
+ * picks are NDIO / HAPANA, so its side and outcome words are the poll vocabulary. Every branch below is exhaustive,
+ * with no default, so a fourth line is a compile error here and not a silent "poll".
+ */
+export type LabelProductLine = ProductLine;
 
 /** How a side is STORED — one vocabulary for both products. */
 export type StoredSide = "YES" | "NO";
@@ -80,8 +85,13 @@ export function toStoredSide(side: StoredSide | Direction): StoredSide {
  */
 export function sideWord(t: Dict, side: StoredSide | Direction, productLine: LabelProductLine): string {
   const stored = toStoredSide(side);
-  if (productLine === "UPDOWN") return stored === "YES" ? t.market.udUp : t.market.udDown;
-  return stored === "YES" ? t.common.yes : t.common.no;
+  switch (productLine) {
+    case "UPDOWN": return stored === "YES" ? t.market.udUp : t.market.udDown;
+    case "MARKET":
+    case "MASWALI": // a Millionea pick is NDIO or HAPANA, in the poll's words
+      return stored === "YES" ? t.common.yes : t.common.no;
+    default: return assertNeverLine(productLine, "sideWord");
+  }
 }
 
 /**
@@ -111,9 +121,15 @@ export function outcomeWord(t: Dict, outcome: StoredOutcome | Direction, product
  * down, never "yes" — the /live carousel read "inaelekea ndiyo" over a round whose sides are Juu and Chini.
  */
 export function leanWords(t: Dict, productLine: LabelProductLine): { leansYes: string; leansNo: string } {
-  return productLine === "UPDOWN"
-    ? { leansYes: t.market.udLeansUp, leansNo: t.market.udLeansDown }
-    : { leansYes: t.market.leansYes, leansNo: t.market.leansNo };
+  switch (productLine) {
+    case "UPDOWN": return { leansYes: t.market.udLeansUp, leansNo: t.market.udLeansDown };
+    case "MARKET":
+    // No Millionea surface ever shows a crowd lean (OD-24: no pick aggregates before settlement); the arm exists so
+    // the switch stays exhaustive.
+    case "MASWALI":
+      return { leansYes: t.market.leansYes, leansNo: t.market.leansNo };
+    default: return assertNeverLine(productLine, "leanWords");
+  }
 }
 
 export function sideWordIn(locale: Locale, side: StoredSide | Direction, productLine: LabelProductLine): string {
@@ -155,7 +171,15 @@ export type PositionStatusValue = "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT
  * shared, and are the same words the card uses.
  */
 export function positionOutcomeWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
-  if (productLine === "UPDOWN") return positionStatusWord(t, status, productLine);
+  switch (productLine) {
+    case "UPDOWN": return positionStatusWord(t, status, productLine);
+    // A Millionea ticket reads in the poll's short words until S5 adds its one word of its own (the free-window
+    // cancel, v6 manifest L11).
+    case "MARKET":
+    case "MASWALI":
+      break;
+    default: return assertNeverLine(productLine, "positionOutcomeWord");
+  }
   switch (status) {
     case "OPEN": return t.common.open;
     case "WIN": return t.market.posWon;
@@ -166,6 +190,8 @@ export function positionOutcomeWord(t: Dict, status: PositionStatusValue, produc
 }
 
 export function positionStatusWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
+  if (productLine !== "UPDOWN" && productLine !== "MARKET" && productLine !== "MASWALI") return assertNeverLine(productLine, "positionStatusWord");
+  // MASWALI shares the poll's chip words (v6 manifest L11: one word per state across the products); S5 adds its cancel word.
   if (productLine === "UPDOWN") {
     switch (status) {
       case "OPEN": return t.market.udPosOpen;

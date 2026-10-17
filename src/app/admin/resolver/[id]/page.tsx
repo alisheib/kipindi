@@ -37,6 +37,21 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
   const { id } = await params;
   const m = await getMarket(id).catch(() => null);
   if (!m) notFound();
+  // S0.5 · the fence: a Millionea week is never sealed as one question. Its fifteen are sealed one by one in its own
+  // console (MR-14), and `resolveMarket` refuses it — so no ceremony is offered here.
+  if (m.productLine === "MASWALI") {
+    return (
+      <>
+        <AdminPageHead title="Resolution ceremony" sw="Sherehe ya utatuzi" />
+        <AdminCard>
+          <p className="text-body-sm text-text-secondary">
+            This is a Millionea week ({m.titleEn}). Its fifteen questions are sealed one by one in{" "}
+            <Link href={"/admin/maswali" as Route} className="underline">/admin/maswali</Link> — never here.
+          </p>
+        </AdminCard>
+      </>
+    );
+  }
 
   const session = await currentSession();
   const currentOfficerId = session?.userId ?? "";

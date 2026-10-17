@@ -210,7 +210,7 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   const { bettable, estimates } = cardFigures(m, nowMs);
   const close = cardCloseLabel(m, nowMs);
   const face = cardFace({ productLine: m.productLine, status: m.status, resolvedOutcome: m.resolvedOutcome, bettable, estimates, close, onBreak });
-  const openSheet = face.picks.kind === "open" && m.productLine !== "UPDOWN" && sheet?.bettable && sheet.id === m.id ? sheet : null;
+  const openSheet = face.picks.kind === "open" && m.productLine === "MARKET" && sheet?.bettable && sheet.id === m.id ? sheet : null;
   const title = cardTitle(locale, m);
   const competition = normaliseCompetition(m.competition);
   const where = [marketCategoryLabel(t, m.category), competition ? competitionLabel(t, competition) : null]
@@ -218,7 +218,9 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
     .join(" · ");
   const label = face.meta ? metaWords(face.meta, close, t) : null;
   const settledIso = m.settledAt ?? m.resolutionAt;
-  const target = m.productLine === "UPDOWN" && roundId !== undefined ? (roundId ? `/updown/${roundId}` : "/updown") : `/markets/${m.id}`;
+  // A Millionea week is never a question card; if one ever reached here it links to its own hub, never a poll page (S0.5).
+  const target = m.productLine === "MASWALI" ? "/millionea"
+    : m.productLine === "UPDOWN" && roundId !== undefined ? (roundId ? `/updown/${roundId}` : "/updown") : `/markets/${m.id}`;
   const pickHref = (side: "YES" | "NO") => `/markets/${m.id}?side=${side}${from === "home" ? "&from=home" : ""}`;
   const pick = (side: "YES" | "NO", pf: PickFace) => (
     <Link

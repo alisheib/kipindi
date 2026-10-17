@@ -25,6 +25,7 @@ import {
   HOOK_SEMAPHORE,
   HOOK_SOFT_CACHE_MS,
   HOUSE_PRODUCTS,
+  HOUSE_PRODUCT_POLICY,
   RUNTIME_KEY,
   SWEEP_LOOKBACK_MS,
   SWEEP_MAX_LOOKBACK_MS,
@@ -406,9 +407,13 @@ async function bothSides(row: TriggerRow, alerts: EngineAlerts): Promise<boolean
 async function scopeAlerts(view: PublicMarketView, denied: boolean, alerts: EngineAlerts): Promise<void> {
   try {
     const code = scopeCode(view);
+    // A line whose policy row SAYS "denied" (Maswali Millionea, MASWALI-BUILD S0.5) was decided, not missed: its
+    // tickets are refused on their own path, so there is no daily PRODUCT_DENIED for it. The alert stays for a raw
+    // line no policy row admits at all — the hole it exists to report (04 F1).
+    const decidedDenied = (HOUSE_PRODUCT_POLICY as Readonly<Record<string, string>>)[view.productLine] === "denied";
     if (code === "UD_NO_ROUND") {
       await alertOnce(ALERT_KEY.udOrphanMarket(view.id), alerts, { code: "UD_ORPHAN_MARKET", marketId: view.id });
-    } else if (denied && !view.isDemo) {
+    } else if (denied && !view.isDemo && !decidedDenied) {
       await alertOnce(ALERT_KEY.productDenied(view.productLine), alerts, { code: "PRODUCT_DENIED", marketId: view.id, detail: { productLine: view.productLine } });
     } else if (code == null && view.round) {
       const cutoff = cutoffOf(view);

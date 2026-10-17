@@ -102,7 +102,8 @@ export async function generateMetadata(
   const { t, locale } = await getServerT();
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
   try { m = await getMarket(id); } catch { return { title: t.market.title }; }
-  if (!m) return notFoundMetadata();
+  // A Millionea week has no page here (S0.5), so it gets the not-found metadata the page itself renders.
+  if (!m || m.productLine === "MASWALI") return notFoundMetadata();
   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
@@ -199,6 +200,9 @@ export default async function MarketDetail({
   // (a shared /live card, an old bookmark, a search result) is bounced to the round
   // page. Fixing it at the destination means every caller routes correctly, not just
   // the ones we remembered to special-case.
+  // ⛔ S0.5 · the fence: a Millionea week is never a poll page (this route's bet panel would sell a one-sided stake).
+  // Its own pages arrive in S5 (/millionea), and until then the week has no public page at all.
+  if (m.productLine === "MASWALI") notFound();
   if (m.productLine === "UPDOWN") {
     const round = await roundStore.getByMarketId(m.id).catch(() => null);
     // The SAME guard the SidePicker below takes (`initialSide`). `side` is TYPED

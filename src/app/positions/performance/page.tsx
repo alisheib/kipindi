@@ -66,11 +66,17 @@ export default async function PerformancePage({
    */
   // B-1 — no swallow: a failed positions read must throw to positions/error.tsx,
   // never render the "no performance yet" empty state to a player with history.
-  const [positions, pollPositions, udPositions] = await Promise.all([
+  const [positionsAll, pollPositions, udPositions, millioneaPositions] = await Promise.all([
     listPositionsForUser(session.userId, 5_000),
     listPositionsForUser(session.userId, 5_000, "MARKET"),
     listPositionsForUser(session.userId, 5_000, "UPDOWN"),
+    listPositionsForUser(session.userId, 5_000, "MASWALI"),
   ]);
+  // ⛔ A Millionea ticket is not a prediction this page scores (MASWALI-PLAN S5 item 9: performance, ROI tiers and
+  // streaks exclude it — a weekly jackpot ticket wins about 1 time in 1,024 by design). Named and removed here, before
+  // the population is counted, so it never lands in the `other` residual arm either (S0.5).
+  const millioneaIds = new Set(millioneaPositions.map((p) => p.id));
+  const positions = positionsAll.filter((p) => !millioneaIds.has(p.id));
   const pollIds = new Set(pollPositions.map((p) => p.id));
   const udIds = new Set(udPositions.map((p) => p.id));
   const productOf = (id: string): PerfProduct =>
@@ -179,7 +185,7 @@ export default async function PerformancePage({
       // "YES · TZS 5,000" on their own history, in all three languages.
       // ⭐ The market row is already in hand on the line above, so the product line was
       // never missing here — only unasked for.
-      side: m ? sideWord(t, p.side, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET") : null,
+      side: m ? sideWord(t, p.side, m.productLine) : null,
       stake: p.stake,
       // §L4 — the day in the reader's month words on the East Africa clock, with the year only when it is not this
       // EAT year (`formatEatDate`); `formatDayShort` printed English months in every locale.

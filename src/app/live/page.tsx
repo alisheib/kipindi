@@ -85,7 +85,9 @@ export default async function LivePage({
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
-  const live = liveRaw.filter((m) => !isClosedByTime(m));
+  // ⛔ /live is where the polls and the rounds meet — and only they (S0.5): a Millionea week is a week, not a live
+  // card, and its one public page is its own hub (S5). Excluded here, before any label is chosen.
+  const live = liveRaw.filter((m) => !isClosedByTime(m) && m.productLine !== "MASWALI");
 
   /**
    * ⭐ PLAYER QUERY, TASK 4.9 — `?q=` MOVES INTO THE URL, AND THE FILTER MOVES WITH IT.
@@ -166,6 +168,7 @@ export default async function LivePage({
     timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
     traders: traderMap.get(m.id),
+    // Two-valued on purpose: MASWALI never reaches this map (filtered out of `live` above, S0.5).
     productLine: m.productLine === "UPDOWN" ? ("UPDOWN" as const) : ("MARKET" as const),
     roundId: roundByMarket.get(m.id) ?? null,
   }));

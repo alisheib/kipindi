@@ -41,7 +41,8 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = join(ROOT, "src");
 const LOCALES: Locale[] = ["en", "sw", "zh"];
-const LINES: LabelProductLine[] = ["MARKET", "UPDOWN"];
+// MASWALI joined at MASWALI-BUILD S0.5: every arm must resolve to a real word for it too.
+const LINES: LabelProductLine[] = ["MARKET", "UPDOWN", "MASWALI"];
 
 let fail = 0;
 const log = (m: string) => console.log(m);

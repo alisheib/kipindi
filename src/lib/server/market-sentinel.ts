@@ -526,6 +526,9 @@ export function sentinelSourceVerdict(
 export async function sentinelCheckOne(marketId: string, opts?: { model?: string }): Promise<SentinelResult | null> {
   const m = await marketStore.get(marketId);
   if (!m) return null;
+  // S0.5 · the fence: the sentinel never assesses a Millionea week as one question — its fifteen are sealed one by one by
+  // an officer, and an AI may only attach evidence to a question, never decide it (MR-14). Same answer as a missing row.
+  if (m.productLine === "MASWALI") return null;
   const model = opts?.model ?? (await getSentinelModel());
   return deepCheckMarket(marketInputFromStored(m), model);
 }

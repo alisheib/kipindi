@@ -34,7 +34,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     ]);
     const walletBalance = wallet && wallet.currency === "TZS" && Number.isFinite(wallet.balance) && wallet.balance >= 0
       ? wallet.balance : null;
-    if (!market || market.productLine === "UPDOWN") {
+    // Only a poll is a saved deposit bet (S0.5): a round never was, and a Millionea ticket is never placed from a saved
+    // bet — it needs fifteen picks the player makes on its own slip (MASWALI-PLAN S3 item 1).
+    if (!market || market.productLine !== "MARKET") {
       const answer: ReturnChoice = { state: "missing", seed: null, title: "", walletBalance, similar: [] };
       return NextResponse.json(answer, { headers: PRIVATE });
     }

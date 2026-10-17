@@ -121,16 +121,18 @@ export function cardFace(input: CardFaceInput): CardFace {
       oneSidedNote: null,
     };
   }
-  const updown = input.productLine === "UPDOWN";
+  // Only a poll's card shows estimates and the one-sided note (S0.5): a round shows words, and a Millionea week is
+  // never a question card at all — if one ever reached here it reads as words, never a figure it might win.
+  const wordsOnly = input.productLine !== "MARKET";
   const empty = input.estimates?.YES?.emptySide ?? input.estimates?.NO?.emptySide ?? null;
-  const oneSidedNote = !updown && (empty === "YES" || empty === "NO") ? empty : null;
+  const oneSidedNote = !wordsOnly && (empty === "YES" || empty === "NO") ? empty : null;
   if (!input.bettable) {
     return { meta: { kind: "waiting", emphasis: "muted" }, picks: { kind: "closed" }, oneSidedNote };
   }
   if (input.onBreak) return { meta: openMeta(input.close), picks: { kind: "break", until: input.onBreak.until }, oneSidedNote };
   return {
     meta: openMeta(input.close),
-    picks: { kind: "open", YES: pickFace(input.estimates?.YES ?? null, updown), NO: pickFace(input.estimates?.NO ?? null, updown) },
+    picks: { kind: "open", YES: pickFace(input.estimates?.YES ?? null, wordsOnly), NO: pickFace(input.estimates?.NO ?? null, wordsOnly) },
     oneSidedNote,
   };
 }

@@ -3,6 +3,7 @@ import { RecategoriseControl } from "@/app/admin/markets/recategorise-control";
 import { ShortTitleControl } from "@/app/admin/markets/short-title-control";
 import { MARKET_CATEGORIES } from "@/lib/server/market-service";
 import Link from "next/link";
+import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -94,6 +95,19 @@ async function MarketPredictorsContent({
   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
   try { m = await getMarket(id); } catch { /* graceful */ }
   if (!m) notFound();
+  // S0.5 · the fence: a Millionea week is never run from this poll console. Its holders are ticket holders, its fee
+  // is the jackpot model and every poll door here refuses it, so the page says where it is run instead (S4).
+  if (m.productLine === "MASWALI") {
+    return (
+      <AdminBody>
+        <AdminPageHead title="Market predictors" sw="Watabiri wa soko" />
+        <Callout tone="info" title="This is a Millionea week">
+          {m.titleEn} — it is run from <Link href={"/admin/maswali" as Route} className="underline">/admin/maswali</Link>: its
+          fifteen questions are sealed there one by one, and its settlement is previewed and released there.
+        </Callout>
+      </AdminBody>
+    );
+  }
 
   const sp = await searchParams;
   const query = (sp.q ?? "").trim().toLowerCase();
@@ -177,12 +191,12 @@ async function MarketPredictorsContent({
   // winner, so show BOTH scenarios (and, once resolved, the fee actually charged).
   // Before a verdict: the outcome-neutral projection (capped-commission). After: what settlement debits.
   const marketFee = outcome
-    ? chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome }, marketRates)
+    ? chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: outcome, productLine: m.productLine }, marketRates)
     : poolFee(m.yesPool, m.noPool, marketRates);
   // Each scenario is what settlement WOULD debit if that side won — 0 on a one-sided pool, which the
   // ONE-SIDED callout below says is refunded (it used to sit beside a "Fee if NO wins" nobody would pay).
-  const feeIfYes = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "YES" }, marketRates);
-  const feeIfNo = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "NO" }, marketRates);
+  const feeIfYes = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "YES", productLine: m.productLine }, marketRates);
+  const feeIfNo = chargedFee({ yesPool: m.yesPool, noPool: m.noPool, resolvedOutcome: "NO", productLine: m.productLine }, marketRates);
   const smallerSide = Math.min(m.yesPool, m.noPool);
   // ⭐ C1 review · A REFUND (a void, or one side only) is ONE line, not fee stats: "Fee charged", "Fee if NO wins"
   // and "13% of the YES pool" beside a zero describe a charge nobody pays, and a refund has no winners, so no

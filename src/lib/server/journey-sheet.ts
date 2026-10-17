@@ -137,9 +137,9 @@ export function cardFigures(
   };
 }
 
-/** A sheet's market: not an Up & Down round, and LIVE. Anything else answers null (the route's 404). */
+/** A sheet's market: a poll (never an Up & Down round or a Millionea week, S0.5), and LIVE. Anything else answers null (the route's 404). */
 function isSheetMarket(m: Pick<StoredMarket, "productLine" | "status">): boolean {
-  return m.productLine !== "UPDOWN" && m.status === "LIVE";
+  return m.productLine === "MARKET" && m.status === "LIVE";
 }
 
 /**

@@ -201,7 +201,8 @@ export async function recordShortTitleAgreement(opts: {
   const note = "The sentinel's reading of the card wording only — it never approves or changes anything.";
   try {
     const m = await marketStore.get(opts.marketId);
-    if (!m || m.productLine === "UPDOWN") return null;
+    // Short titles exist only on a poll's card: never on an Up & Down round or a Millionea week (S0.5).
+    if (!m || m.productLine !== "MARKET") return null;
     const shorts: Partial<Record<Locale, string>> = {};
     for (const loc of wanted) {
       const v = shortTitleFor(loc, m);
@@ -307,6 +308,8 @@ export async function applyShortTitles(opts: {
     const m = await marketStore.get(marketId, tx);
     if (!m) return { ok: false, error: "Market not found." };
     if (m.productLine === "UPDOWN") return { ok: false, error: "An Up & Down round has no short title — its round card is built from the asset." };
+    // S0.5 · the fence: a Millionea week is never a card; its fifteen questions carry their own text.
+    if (m.productLine === "MASWALI") return { ok: false, error: "A Millionea week has no short title — it is never a question card." };
     const before: MarketShortTitleFields = {
       shortTitleEn: m.shortTitleEn ?? null,
       shortTitleSw: m.shortTitleSw ?? null,

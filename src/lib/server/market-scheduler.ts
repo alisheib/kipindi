@@ -147,7 +147,10 @@ export function nextDeadlineFor(m: StoredMarket, offsetMs = 0, now = Date.now())
   // notify transitions below are meaningless on a 5-minute round anyway. Returning
   // null here — plus `marketStore.pending()` defaulting to "MARKET" — is what keeps
   // the two apart. Do not "unify" the schedulers.
-  if (m.productLine === "UPDOWN") return null;
+  // ⛔ ONLY A POLL GETS A DEADLINE HERE (S0.5). A Millionea week has its own scheduler (`maswali-scheduler.ts`, S2) and
+  // is never auto-resolved or auto-settled (MR-14): returning null for every line but MARKET keeps a third product out
+  // of this engine by construction, not by remembering to name it.
+  if (m.productLine !== "MARKET") return null;
   const candidates: Deadline[] = [];
   const demo = isDemoMarket(m);
   if (m.status === "LIVE") {

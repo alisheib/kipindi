@@ -563,9 +563,17 @@ export interface ChargedFee extends FeeBreakdown {
 }
 
 export function chargedFee(
-  m: { yesPool: number; noPool: number; resolvedOutcome: Side | "VOID" },
+  // `productLine` is a plain string so this module stays import-free (it ships to the client): the stored value is enough.
+  m: { yesPool: number; noPool: number; resolvedOutcome: Side | "VOID"; productLine?: string | null },
   rates: Partial<FeeRates>,
 ): ChargedFee {
+  // ⛔ S0.5 · THE FENCE. A Millionea week holds every shilling on one side, so this mirror of `settleMarket` would call
+  // it a zero-fee refund. Its fee is its own model (13% of the jackpot, at payout only — RULES §2.12 from S1), read
+  // from the week's settlement columns, and the readers learn it in S6. Until then a caller that hands one in fails
+  // loudly rather than printing a wrong figure. Every caller passes `productLine` (`test:maswali-fence` census).
+  if (m.productLine === "MASWALI") {
+    throw new Error("chargedFee: a Millionea week's fee is the jackpot-payout model, read from its settlement (MASWALI-PLAN S6) — never this poll mirror.");
+  }
   const isOneSided = m.resolvedOutcome !== "VOID"
     && ((m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0));
   if (isOneSided || m.resolvedOutcome === "VOID") {

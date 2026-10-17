@@ -58,7 +58,9 @@ export async function GET(
 ) {
   const { id } = await params;
   const m = await getMarket(id);
-  if (!m) return new Response("Not found", { status: 404 });
+  // A Millionea week has no poll share card (S0.5): its OG images come only after close, from its own pages (S5 item 6),
+  // so picks can never leak through one.
+  if (!m || m.productLine === "MASWALI") return new Response("Not found", { status: 404 });
   // The count players see (`predictors.ts`) — a pure read of the row `getMarket` already returned, no new await.
   const predictors = shownPredictors(m);
   const price = sharePreviewPrice(m.yesPool, m.noPool, predictors);

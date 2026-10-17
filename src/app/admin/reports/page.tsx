@@ -507,7 +507,7 @@ async function AdminReportsContent({
           </AdminCard>
         )}
 
-        {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.unattributed.stakes > 0) && (
+        {byGame && (byGame.market.stakes > 0 || byGame.updown.stakes > 0 || byGame.maswali.stakes > 0 || byGame.unattributed.stakes > 0) && (
           <AdminCard title="By game" sw="Kwa mchezo · Markets vs Up &amp; Down" padding="p-0">
             <ScrollX label="Money by game">
               {/* `admin-table` was a typo — that class does not exist anywhere,
@@ -529,6 +529,11 @@ async function AdminReportsContent({
                   {[
                     { label: "Markets · long-form polls", g: byGame.market, unknown: false },
                     { label: "Up & Down · price rounds", g: byGame.updown, unknown: false },
+                    // Maswali Millionea weeks (MASWALI-BUILD S0.5): a game of its own, never folded into Markets.
+                    // Shown once the window holds any of its money; always inside the total below.
+                    ...(byGame.maswali.stakes > 0 || byGame.maswali.payouts > 0 || byGame.maswali.refunds > 0
+                      ? [{ label: "Millionea · weekly jackpot", g: byGame.maswali, unknown: false }]
+                      : []),
                     // 🔴 DISCLOSED, NEVER FOLDED. Bet money whose Position row no longer
                     // resolves, so the game cannot be determined. This line used to be
                     // added to "Markets", which overstated long-form GGR by an amount no
@@ -556,12 +561,12 @@ async function AdminReportsContent({
                         MARKET line. Combined is therefore unchanged by that fix — only the
                         per-game attribution above it became honest. */}
                     <td className="text-left font-bold text-text">Combined</td>
-                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes + byGame.unattributed.stakes)}</td>
-                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts + byGame.unattributed.payouts)}</td>
-                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds + byGame.unattributed.refunds)}</td>
-                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr + byGame.unattributed.ggr)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.stakes + byGame.updown.stakes + byGame.maswali.stakes + byGame.unattributed.stakes)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.payouts + byGame.updown.payouts + byGame.maswali.payouts + byGame.unattributed.payouts)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{formatTzs(byGame.market.refunds + byGame.updown.refunds + byGame.maswali.refunds + byGame.unattributed.refunds)}</td>
+                    <td className="font-mono tabular text-right font-bold text-text">{formatTzs(byGame.market.ggr + byGame.updown.ggr + byGame.maswali.ggr + byGame.unattributed.ggr)}</td>
                     <td className="font-mono tabular text-right font-bold text-text">—</td>
-                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets + byGame.unattributed.bets).toLocaleString()}</td>
+                    <td className="font-mono tabular text-right font-bold text-text-tertiary">{(byGame.market.bets + byGame.updown.bets + byGame.maswali.bets + byGame.unattributed.bets).toLocaleString()}</td>
                   </tr>
                 </tfoot>
               </table>

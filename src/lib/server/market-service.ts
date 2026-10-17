@@ -75,6 +75,7 @@ import { isTerminalStatus, marketChangeMark, marketsChangedSince } from "./marke
 import { roundStore } from "./updown-dal";
 import { formatTzs, formatDateTime } from "@/lib/utils";
 import { sideWordIn, outcomeWordIn } from "@/lib/side-label";
+import { switchLine, assertNeverLine } from "@/lib/product-line";
 // E-101 · one rule for "where does this ticket live", shared with the wallet, the round page
 // and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -216,8 +217,12 @@ export type Side = "YES" | "NO";
  * is created a few times a day, a chain emits a row every few minutes. The
  * discriminator is what keeps the player board from scanning hundreds of thousands
  * of settled rounds to render a dozen polls.
+ *
+ * A third line, MASWALI (Maswali Millionea weeks), shares the table since MASWALI-BUILD S0.5. The union lives in
+ * `@/lib/product-line`, which also owns the ONE reading of a stored value (`storedProductLine`) and the exhaustive
+ * branch (`switchLine` / `assertNeverLine`): "not UPDOWN" no longer means "a poll" anywhere.
  */
-export type ProductLine = "MARKET" | "UPDOWN";
+export type ProductLine = import("@/lib/product-line").ProductLine;
 
 /**
  * The product filter a read may ask for. `"ALL"` is the deliberate opt-in for money
@@ -227,6 +232,18 @@ export type ProductLineFilter = ProductLine | "ALL";
 
 /** The default every player-facing board gets: long-form polls only. */
 export const DEFAULT_PRODUCT_LINE: ProductLine = "MARKET";
+
+/**
+ * S0.5 · THE FENCE (MASWALI-PLAN §7b). A Millionea week shares this table, but no Yes/No or Up & Down door may act on
+ * it: it is sealed one question at a time, settled by its own function, refunded by its own week-void control and
+ * bought only through its own ticket path. Every generic door asks this first and refuses (`test:maswali-fence`).
+ */
+export function isFencedMaswali(m: { productLine?: ProductLine | null } | null | undefined): boolean {
+  return m?.productLine === "MASWALI";
+}
+
+/** The officer-facing refusal a generic door gives a Millionea week (the console is English-only). */
+export const MASWALI_FENCE_ERROR = "This is a Millionea week. It is run from /admin/maswali; this door serves Yes/No markets only.";
 
 export type StoredMarket = {
   id: string;
@@ -809,7 +826,8 @@ export async function createMarket(input: CreateMarketInput) {
   // The Vodacom plan S2: short titles and competition, normalised by the one rule module. ⛔ An Up & Down round
   // gets none (it is never a card); a value with a HARD issue is stored as NULL, so a caller that skipped the check
   // still cannot store a bad one.
-  const isRound = (input.productLine ?? DEFAULT_PRODUCT_LINE) === "UPDOWN";
+  // A Millionea week gets none either: it is never a card; its questions carry their own text (S0.5).
+  const isRound = switchLine(input.productLine ?? DEFAULT_PRODUCT_LINE, { MARKET: () => false, UPDOWN: () => true, MASWALI: () => true });
   const shorts = isRound ? null : normaliseShortTitleSet(input);
 
   const m: StoredMarket = {
@@ -871,7 +889,8 @@ export async function createMarket(input: CreateMarketInput) {
   //   · `market.settled`             — THE MONEY: winnersPaid, pools, positionsSettled.
   // Cutting any of those would trade audit volume for a compliance record, which is not a
   // trade to make on a licensed operator's tamper-evident chain.
-  if (m.productLine !== "UPDOWN") {
+  // A Millionea week is one row a week, so its creation is audited like a poll's (S0.5: said, not defaulted).
+  if (switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => false, MASWALI: () => true })) {
     audit({
       category: "ADMIN",
       action: "market.created",
@@ -948,7 +967,9 @@ async function armMarketTimer(id: string): Promise<void> {
  * write in it, that is the bug.
  */
 export function perEventNotificationsSuppressed(m: Pick<StoredMarket, "productLine">): boolean {
-  return m.productLine === "UPDOWN";
+  // MASWALI too (S0.5): a Millionea week never sends a Yes/No notice — not on a refund through `settleMarket`'s VOID arm,
+  // not anywhere. Its own notices arrive in S6 (comms-registry), in its own words.
+  return switchLine(m.productLine, { MARKET: () => false, UPDOWN: () => true, MASWALI: () => true });
 }
 
 /**
@@ -1002,9 +1023,20 @@ export async function stakeBoundsForMarket(market: Pick<StoredMarket, "id" | "pr
   const stakeCfg = await getEffectiveConfig(market.id);
   let min = stakeCfg.minStake;
   let max = stakeCfg.maxStake;
-  if (market.productLine === "UPDOWN") {
-    const b = await stakeBoundsForUpDownMarket(market.id);
-    if (b) { min = b.min; max = b.max; }
+  switch (market.productLine) {
+    case "UPDOWN": {
+      const b = await stakeBoundsForUpDownMarket(market.id);
+      if (b) { min = b.min; max = b.max; }
+      break;
+    }
+    case "MARKET":
+      break;
+    // A Millionea ticket's price is fixed per week (MR-8: min = max = the frozen snapshot price, S3). Until S3 the bet
+    // door refuses a Millionea week before it asks this, so the platform bounds are only ever a placeholder here.
+    case "MASWALI":
+      break;
+    default:
+      return assertNeverLine(market.productLine, "stakeBoundsForMarket");
   }
   return { min, max };
 }
@@ -1413,6 +1445,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
 
   const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  // S0.5 · the fence: a Millionea week is bought only through its own ticket path (15 picks, S3), never as a one-sided
+  // Yes/No stake. The words are a closed market's, so nothing new reaches a player.
+  if (isFencedMaswali(market)) return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (market.status !== "LIVE") return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
@@ -1787,7 +1822,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
           // vocabulary of the product they actually bet on. English by design: a txn
           // description is an operational record. ⚠️ That it is NOT translated is a separate,
           // filed gap (§7.2c) — a word fix here, a rendering change there.
-          const betSideWord = sideWordIn("en", opts.side, market.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
+          const betSideWord = sideWordIn("en", opts.side, market.productLine);
 
           // The real-wallet ledger records only the REAL cash that left `balance`
           // (-realPart). The bonus-funded portion moves on the bonus wallet and is
@@ -2676,6 +2711,9 @@ export async function resolveDueMarket(
 ): Promise<ResolveTriggerResult> {
   const pre = await marketStore.get(marketId);
   if (!pre) return { status: "skipped" };
+  // S0.5 · the fence: no automatic or AI resolution ever reaches a Millionea week (MR-14: one officer seals each of
+  // its questions). The scheduler never arms one (`nextDeadlineFor`); this is the door's own refusal.
+  if (isFencedMaswali(pre)) return { status: "skipped" };
   // Demo markets: dev-only random auto-resolution — no AI, no ceremony.
   if (isDemoMarket(pre)) {
     await resolveDemoMarketOne(marketId);
@@ -3368,6 +3406,8 @@ export async function cashOutPosition(
 
     const m = await marketStore.get(p.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const, reason: "market_not_live" as const };
+    // S0.5 · the fence: a Millionea ticket has no paid exit. Its only exit is the free cancellation, on its own path (S3).
+    if (isFencedMaswali(m)) return { ok: false as const, error: "Market is not accepting predictions.", code: "INVALID" as const, reason: "market_not_live" as const };
     if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false as const, error: "Market has been settled — position is final.", code: "INVALID" as const, reason: "market_settled" as const };
 
     // THE EXIT SHUTS WHEN THE ENTRY SHUTS.
@@ -3695,6 +3735,7 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> => {
   const m = await marketStore.get(opts.marketId);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  if (isFencedMaswali(m)) return { ok: false, error: MASWALI_FENCE_ERROR, code: "INVALID" };
   if (m.status === "RESOLVED" || m.status === "VOIDED") return { ok: false, error: "Market already resolved.", code: "INVALID" };
 
   // ── TWO-ADMIN MODE, first call: STAGE the outcome (LIVE → CLOSED, no money) ──
@@ -3874,6 +3915,10 @@ export async function settleMarket(
   }
   if (m.settledAt) return { ok: false, error: "Market is already settled.", code: "INVALID" };
   if (!m.resolvedOutcome) return { ok: false, error: "Market has no recorded outcome.", code: "INVALID" };
+  // S0.5 · the fence (MR-18): a Millionea week reaches this function only through its week-void control, and only on the
+  // VOID arm — a full refund of every ticket. A graded week is settled by its own function (S3), never here: this
+  // function's one-sided branch would refund every ticket at zero fee.
+  if (isFencedMaswali(m) && m.resolvedOutcome !== "VOID") return { ok: false, error: MASWALI_FENCE_ERROR, code: "INVALID" };
 
   // ── The deep link carried by every Up & Down result row (owner decision 2026-08-22).
   //
@@ -4127,7 +4172,10 @@ export async function settleMarket(
     const udReason = m.productLine === "UPDOWN"
       ? await roundStore.getByMarketId(m.id).then((r) => r?.voidReason ?? null).catch(() => null)
       : null;
-    const refundDescription = VOID_REFUND_DESCRIPTION[udReason ?? ""] ?? null;
+    // A Millionea week reaches this arm only as a whole-week void (MR-18): name it, never "voided" over a ticket.
+    const refundDescription = m.productLine === "MASWALI"
+      ? "Refund · Millionea week voided, ticket refunded in full"
+      : VOID_REFUND_DESCRIPTION[udReason ?? ""] ?? null;
 
     // Refund everyone
     for (const p of myPositions) {
@@ -4306,7 +4354,7 @@ export async function settleMarket(
             provider: "INTERNAL", providerRef: null, msisdn: null,
             // 🔴 §L1 — the other half of Ali's report: "NO won" over a round whose sides are
             // Up and Down. Same stored-token cause as the stake row above.
-            description: `${outcomeWordIn("en", opts.outcome, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")} won · "${m.titleEn.slice(0, 60)}"`,
+            description: `${outcomeWordIn("en", opts.outcome, m.productLine)} won · "${m.titleEn.slice(0, 60)}"`,
             positionId: p.id,
             // SEAM:markerWin
             ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
@@ -4634,8 +4682,11 @@ export async function listSettlementQueue(): Promise<SettlementQueueRow[]> {
   // this no longer reads the whole table. "ALL" is deliberate: this is a MONEY
   // worklist — an unsettled Up & Down round is money that has not moved and must
   // never be invisible to the officer who has to act on it.
+  // ⛔ A Millionea week is NOT in this worklist (S0.5): its settlement is previewed and released from
+  // `/admin/maswali/pools` (OD-06), and this queue's Settle button is a generic door the fence refuses. Its unsettled
+  // money is shown there, with its own "unsettled by Tuesday" alert (S4) — never hidden, never on the wrong button.
   const unsettled = (await marketStore.pending("ALL")).filter(
-    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
+    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt && !isFencedMaswali(m),
   );
   const { countOpenObjections } = await import("./objections-service");
 
@@ -4689,9 +4740,10 @@ export async function getSettlementHealth(): Promise<SettlementHealth> {
   const now = Date.now();
   // Indexed, and "ALL" on purpose — see listSettlementQueue. A settle timer dropped
   // on an Up & Down round is exactly the silent money-shaped failure this readout
-  // exists to make loud.
+  // exists to make loud. A Millionea week is excluded, as from `listSettlementQueue`: its release is an accounting act
+  // with its own preview and its own overdue alert (S0.5 / S4), and no settle timer ever arms for it.
   const unsettled = (await marketStore.pending("ALL")).filter(
-    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt,
+    (m) => (m.status === "RESOLVED" || m.status === "VOIDED") && !m.settledAt && !isFencedMaswali(m),
   );
 
   const { countOpenObjections } = await import("./objections-service");
@@ -4743,6 +4795,8 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
   const result = await withLock(`market:${marketId}`, async () => {
     const m = await marketStore.get(marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
+    // S0.5 · the fence: a Millionea week's close is write-once (MR-13: the ticket commitment is stamped at close).
+    if (isFencedMaswali(m)) return { ok: false as const, error: MASWALI_FENCE_ERROR, code: "INVALID" as const };
     if (m.status !== "CLOSED") return { ok: false as const, error: "Only closed markets can be reopened.", code: "INVALID" as const };
     if (m.resolutionStage1By) return { ok: false as const, error: "Cannot reopen — resolution already started.", code: "INVALID" as const };
 
@@ -4845,6 +4899,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
+    // S0.5 · the fence: a whole Millionea week is voided by its own Compliance control (OD-26), which also keeps the
+    // carried-in jackpot whole (MR-18). Never through this generic door.
+    if (isFencedMaswali(m)) return { ok: false as const, error: MASWALI_FENCE_ERROR, code: "INVALID" as const };
     // The test is whether the MONEY has moved, not what the status says. Since
     // F11 a market can be RESOLVED (verdict recorded) while its pool is still
     // whole and every position OPEN — and that is exactly the state an officer
