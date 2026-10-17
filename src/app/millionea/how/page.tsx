@@ -50,14 +50,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** The example's line: every main matched, main 4 voided and reserve A1 standing in for it, the other reserves unused —
- *  drawn by the one grader from an illustrative record (L9), never a hand-made socket. */
+ *  drawn by the one grader from an illustrative record (L9), never a hand-made socket. It illustrates a SETTLED week, so
+ *  it says `final` itself; a real ticket's line is final only once its week settled (`millionea-view.ts → lineOf`). */
 function exampleLine() {
   const qs: GradableQuestion[] = [
     ...Array.from({ length: MAIN_COUNT }, (_, i) => ({ role: "MAIN" as const, ordinal: i + 1, outcome: i + 1 === EXAMPLE_VOIDED_MAIN ? "VOID" as const : "YES" as const })),
     ...Array.from({ length: RESERVE_COUNT }, (_, i) => ({ role: "RESERVE" as const, ordinal: i + 1, outcome: "YES" as const })),
   ];
   const picks: MaswaliPick[] = Array.from({ length: MAIN_COUNT + RESERVE_COUNT }, () => "YES");
-  return sealLineOf(qs, picks);
+  return sealLineOf(qs, picks, { final: true });
 }
 
 /** The week's three phases from the rules on the page: the template's open and close, the events after the close and its

@@ -103,7 +103,9 @@ function clauseSocket(t: Dict, c: TicketClause, line: SealLine): { mark: SocketM
           ),
         };
       }
-      return { mark: "void", words: t.millionea.voidAwaiting };
+      // The S5 UI review (MEDIUM 3): when the voided mains already outnumber the reserves that could come back usable,
+      // no reserve will take this place — the week is due to be voided (`weekVoidCertain`, the delivery's Timeline D).
+      return { mark: "void", words: line.voidCertain ? t.millionea.voidWeekCertain : t.millionea.voidAwaiting };
     }
     return { mark: m.mark, words: socketWord(t, m.mark) };
   }
@@ -166,7 +168,7 @@ function Clause({ t, c, line, inert, press }: { t: Dict; c: TicketClause; line: 
 
 export function MaswaliTicket({
   t, locale, serverNow, serial, week, weekState, checkWindow, shown, clauses, line, idBase, stub, closedAt,
-  wonAmount, notice, live, cannotWin, seal, cancel, cancelWindowMins, ended, finality, play, className,
+  wonAmount, notice, live, cannotWin, seal, cancel, cancelWindowMins, finality, play, className,
 }: {
   t: Dict;
   locale: Locale;
@@ -191,7 +193,8 @@ export function MaswaliTicket({
   wonAmount?: number;
   /** One line above the Seal Line — a week voided whole, said in the dictionary's sentence. */
   notice?: ReactNode;
-  /** While the week resolves: how many results are in, the valid reserves left, the next event. */
+  /** While the week resolves: how many results are in, the valid reserves left, the next event. `valid` may be below
+   *  zero — the voided mains outnumber the reserves left — and is then said in words, never as a negative (D-20). */
   live?: { resultsIn: number; reservesLeft?: { valid: number; of: number }; nextEventAt?: number };
   /** On the results so far this ticket cannot win (the composer's verdict; never a score). */
   cannotWin?: boolean;
@@ -201,14 +204,15 @@ export function MaswaliTicket({
   cancel?: ReactNode;
   /** The window, in minutes, from the week's snapshot: the line under the cancel. */
   cancelWindowMins?: number;
-  /** How the ticket ended without a result: its stamp line on the stub. */
-  ended?: "refunded" | "cancelled";
   /** Settled: the finality line, and the attestation's short hash when the week was resolved. */
   finality?: { hash?: string };
   play?: TicketMoments;
   className?: string;
 }) {
   const inert = shown === "cancelled";
+  // How the ticket ended without a result — its stamp line on the stub — from its one state (the S5 UI review, LOW 11: a
+  // second prop let a "Pending" chip sit over an "IMEREJESHWA" stamp).
+  const ended = shown === "refunded" || shown === "cancelled" ? shown : undefined;
   const base = idBase ?? `mln-${serial}`;
   // The moments as locals, so each class that names one is a plain condition (the eyebrow census reads them as written).
   const { cut, press, carry, draw, lock, reveal } = play ?? {};
@@ -223,7 +227,11 @@ export function MaswaliTicket({
   const liveText = live
     ? [
         fill(t.millionea.resultsOut, { n: live.resultsIn }),
-        live.reservesLeft ? fill(t.millionea.reservesLeft, { a: live.reservesLeft.valid, b: live.reservesLeft.of }) : null,
+        live.reservesLeft
+          ? live.reservesLeft.valid < 0
+            ? fill(t.millionea.reservesShort, { b: live.reservesLeft.of })
+            : fill(t.millionea.reservesLeft, { a: live.reservesLeft.valid, b: live.reservesLeft.of })
+          : null,
         live.nextEventAt !== undefined ? fill(t.millionea.nextEvent, { when: eatWeekdayClock(t, live.nextEventAt) }) : null,
       ].filter(Boolean).join(" · ")
     : null;
@@ -255,7 +263,13 @@ export function MaswaliTicket({
           <div className="border-y border-border py-2">
             <MaswaliSealLine line={line} size={24} numbers idBase={base} play={{ carry, draw }} inert={inert} />
           </div>
-          {liveText && <p className="text-body-sm text-text-muted">{liveText}</p>}
+          {/* ONE POLITE REGION, MOUNTED FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7): a
+              region mounted together with its words is often not read, so this one is always there and only its words
+              change — each result that arrives, and the ticket's own word when it changes (the chip says it to the eye). */}
+          <p aria-live="polite" aria-atomic="true" data-testid="millionea-ticket-live" className={cn("text-body-sm text-text-muted", !liveText && "sr-only")}>
+            <span className="sr-only">{`${millioneaWord(t, TICKET_SHOWN_KEY[shown])}. `}</span>
+            {liveText}
+          </p>
           {cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}
           {seal}
         </div>
@@ -368,8 +382,14 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         <Chip size="sm" metrics="base" variant="neutral">{weekWord(t, week)}</Chip>
         <Chip size="sm" metrics="base" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
       </div>
-      <Link href={href as never} aria-label={serial} className="-my-1.5 flex flex-col justify-center py-1.5" style={{ minHeight: "var(--h-control-md)" }}>
+      {/* The card's one link names itself in words as well as by its line (the S5 UI review, MEDIUM 4): until the Phosphor
+          swap draws Millionea's new marks, a line of open sockets can be blank, and a link must never be an invisible box. */}
+      <Link href={href as never} aria-label={`${t.millionea.viewTicket} · ${serial}`} className="-my-1.5 flex flex-col justify-center gap-1 py-1.5" style={{ minHeight: "var(--h-control-md)" }}>
         <MaswaliSealLine line={line} size={18} annex="below" inert={shown === "cancelled"} />
+        <span className="inline-flex items-center gap-1 self-start text-body-sm text-text-link">
+          {t.millionea.viewTicket}
+          <I.chevronRight s={14} edge="end" className="shrink-0" />
+        </span>
       </Link>
       <div className="grid grid-cols-2 gap-2">
         <Stat label={t.dialog.stakeLabel} value={formatTzs(price)} money />
@@ -380,7 +400,8 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         ) : shown === "running" ? (
           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : (
-          <Stat label={t.journey.ticketFinalPayout} value={formatTzs(payout ?? 0)} money />
+          // The S5 UI review (LOW 10): a payout the record does not hold is a dash, never a fabricated TZS 0 (AGENTS §6).
+          <Stat label={t.journey.ticketFinalPayout} value={payout === null ? "—" : formatTzs(payout)} money={payout !== null} />
         )}
       </div>
       <div className="flex flex-col gap-1 text-body-sm text-text-muted">

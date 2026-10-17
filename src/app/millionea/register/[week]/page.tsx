@@ -164,8 +164,11 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
   rows.push({ key: "pool", node: <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(carryIn + sales)} /> });
   rows.push({ key: "floor", node: <ReceiptRow className={ROW} label={t.millionea.floor} value={fig(w.floor)} /> });
   if (w.state === "VOIDED") {
-    rows.push({ key: "refund", node: <ReceiptRow className={ROW} label={fill(t.millionea.refundEach, { price: formatTzs(w.ticketPrice) })} value={fig(sales)} /> });
-    if (w.refundsPending) rows.push({ key: "pending", node: <ReceiptRow className={ROW} emphasis="muted" label={fill(t.millionea.refundPending, { price: formatTzs(w.ticketPrice) })} value="" /> });
+    // "Every ticket refunded" only once every refund landed (MR-18, the read model's `refundsPending`); until then, that
+    // the money is on its way back — never a refund stated before it happened (the S5 UI review, HIGH 1).
+    rows.push({ key: "refund", node: w.refundsPending
+      ? <ReceiptRow className={ROW} emphasis="muted" label={fill(t.millionea.refundEachPending, { price: formatTzs(w.ticketPrice) })} value={fig(sales)} />
+      : <ReceiptRow className={ROW} label={fill(t.millionea.refundEach, { price: formatTzs(w.ticketPrice) })} value={fig(sales)} /> });
     rows.push({ key: "again", node: <ReceiptRow className={ROW} label={t.millionea.carriedForwardAgain} value={fig(carryIn)} /> });
   } else if ((w.winners ?? 0) > 0) {
     rows.push({ key: "jackpot", node: <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(w.jackpot)} /> });

@@ -40,12 +40,12 @@ import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { cn, fill, formatTzs } from "@/lib/utils";
-import { RESERVE_COUNT } from "@/lib/maswali-score";
+import { RESERVE_COUNT, weekVoidCertain } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
 import { HubNotices, type HubNotice } from "./hub-notices";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks, registerWeekHref, signInHref, ticketPageHref } from "./millionea-parts";
-import { bySlot, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, textIn } from "./millionea-view";
+import { bySlot, gradableOf, lineOf, msOf, nextWeekNumber, ordinalOf, phaseNow, phasesOf, textIn } from "./millionea-view";
 
 export const dynamic = "force-dynamic";
 
@@ -65,9 +65,24 @@ function weekEyebrow(t: Dict, w: { code: string; state: MillioneaHubWeek["state"
   return `${weekWord(t, weekNumberOf(w.code))} · ${millioneaWord(t, WEEK_STATE_KEY[w.state])}`;
 }
 
-/** Valid reserves left (§10 §3.10): the five, less each voided reserve and each reserve a voided main will take. */
-function reservesLeft(w: MillioneaHubWeek): number {
-  return Math.max(0, RESERVE_COUNT - w.voidedReserves - w.voidedMains);
+/**
+ * Valid reserves left (§10 §3.10): the five, less each voided reserve and each reserve a voided main will take — and below
+ * zero, when the voided mains outnumber them, said in words (the v6 delivery's D-20; the S5 UI review, MEDIUM 3), never a
+ * negative and never a false "0 of 5" over a week that is due to be voided.
+ */
+function reservesLeftLine(t: Dict, w: MillioneaHubWeek): string {
+  const valid = RESERVE_COUNT - w.voidedReserves - w.voidedMains;
+  return valid < 0 ? fill(t.millionea.reservesShort, { b: RESERVE_COUNT }) : fill(t.millionea.reservesLeft, { a: valid, b: RESERVE_COUNT });
+}
+
+/** The week's void is already certain (MR-18, the one grader's `weekVoidCertain`): its pool is "being voided", never a
+ *  jackpot shared by every 10/10 ticket (the S5 UI review, HIGH 1 and MEDIUM 7). A record the grader refuses is not. */
+function voidingNow(w: MillioneaHubWeek): boolean {
+  try {
+    return w.state !== "OPEN" && weekVoidCertain(gradableOf(w.questions));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -87,7 +102,7 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Pro
       return { weekId: n.weekId, notice: n.notice, text, door: null };
     }
     if (n.notice === "WEEK_VOID") {
-      return { weekId: n.weekId, notice: n.notice, text: counted(n.tickets, t.millionea.awayRefundedOne, t.millionea.awayRefunded, { week }), door: null };
+      return { weekId: n.weekId, notice: n.notice, text: counted(n.tickets, t.millionea.resultRefundedOne, t.millionea.resultRefunded, { week }), door: null };
     }
     const mine = results.find((g) => g.week.id === n.weekId)?.tickets.filter((x) => x.shown === "won" || x.shown === "lost") ?? [];
     const lost = mine.filter((x) => x.shown === "lost").length;
@@ -95,10 +110,10 @@ async function noticesOf(t: Dict, hub: MillioneaHub, userId: string | null): Pro
     // neither line (MB-43, OD-07), so a week whose only win was forfeited says the week's word, not "your ticket won".
     const winning = n.winningTickets + n.held;
     const text = !n.won || winning === 0
-      ? (lost > 0 || !n.won ? counted(Math.max(lost, 1), t.millionea.awayLostOne, t.millionea.awayLost, { week }) : `${weekWord(t, week)} · ${t.millionea.weekStatusSettled}`)
+      ? (lost > 0 || !n.won ? counted(Math.max(lost, 1), t.millionea.resultLostOne, t.millionea.resultLost, { week }) : `${weekWord(t, week)} · ${t.millionea.weekStatusSettled}`)
       : lost > 0
-        ? fill(t.millionea.awayMixed, { week, w: winning, l: lost })
-        : counted(winning, t.millionea.awayWon, t.millionea.awayWonMany, { week });
+        ? fill(t.millionea.resultMixed, { week, w: winning, l: lost })
+        : counted(winning, t.millionea.resultWon, t.millionea.resultWonMany, { week });
     const won = mine.find((x) => x.shown === "won" && x.share !== "forfeited");
     return {
       weekId: n.weekId, notice: n.notice, text,
@@ -216,7 +231,7 @@ function BuyBlock({ t, w, signedIn, nowMs, breakBody }: {
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
   const live = w.state !== "OPEN"
-    ? [fill(t.millionea.resultsOut, { n: w.resultsOut }), fill(t.millionea.reservesLeft, { a: reservesLeft(w), b: RESERVE_COUNT })].join(" · ")
+    ? [fill(t.millionea.resultsOut, { n: w.resultsOut }), reservesLeftLine(t, w)].join(" · ")
     : null;
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
@@ -287,6 +302,7 @@ export default async function MillioneaHubPage() {
                   initial={w.pool}
                   price={w.ticketPrice}
                   opensAt={w.opensAt}
+                  voiding={voidingNow(w)}
                   carryFrom={rolloverUnseen && hub.lastWeek ? CARRIED_FIGURE_ID : undefined}
                   carryPlay={rolloverUnseen}
                 />

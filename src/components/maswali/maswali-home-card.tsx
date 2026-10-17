@@ -32,7 +32,11 @@ export type HomeCardState =
   | { kind: "settledWon"; winners: number }
   | { kind: "settledRollover"; carried: number }
   /** Sales paused by an operator (never on a break: that card is not drawn). */
-  | { kind: "paused" };
+  | { kind: "paused" }
+  /** The week's void is already certain (MR-18): no jackpot and no rule — its refunds, if the void stands. */
+  | { kind: "voiding" }
+  /** The last week was voided whole: every refund landed, or they are on their way. */
+  | { kind: "voided"; refundsPending: boolean };
 
 export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, href = "/millionea", className }: {
   t: Dict;
@@ -50,6 +54,9 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
   className?: string;
 }) {
   const figure = jackpot === null ? "—" : formatTzs(jackpot);
+  // ⛔ A WEEK BEING VOIDED OR VOIDED SHARES NO JACKPOT (the S5 UI review, MEDIUM 7): no figure and no "shared equally by
+  // every 10/10 ticket" rule — the state's own words alone.
+  const voidKind = state.kind === "voiding" || state.kind === "voided";
   const mono = (s: string) => <span className="font-mono">{s}</span>;
   let meta: ReactNode = null;
   switch (state.kind) {
@@ -57,12 +64,14 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       meta = fill(t.millionea.opensOn, { day: state.opensOn });
       break;
     case "open":
+      // "Tiketi zako wiki hii: 10 kati ya 10" — never "Tiketi zako 10/10" under "kila tiketi ya 10/10", which reads as a
+      // perfect ticket (the S5 UI review, LOW 12).
       meta = state.capFull
-        ? `${fill(t.millionea.yourTicketsShort, { n: cap, cap })} · ${fill(t.millionea.nextWeekOpens, { week: state.capFull.nextWeek, day: state.capFull.opensOn })}`
+        ? `${fill(t.millionea.yourTicketsThisWeek, { n: cap, cap })} · ${fill(t.millionea.nextWeekOpens, { week: state.capFull.nextWeek, day: state.capFull.opensOn })}`
         : (
           <>
             {fillNodes(t.millionea.salesCloseAt, { when: mono(eatWeekdayClock(t, state.closesAt)) })}
-            {state.held !== null && ` · ${fill(t.millionea.yourTicketsShort, { n: state.held, cap })}`}
+            {state.held !== null && ` · ${fill(t.millionea.yourTicketsThisWeek, { n: state.held, cap })}`}
           </>
         );
       break;
@@ -78,6 +87,12 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
     case "paused":
       meta = t.millionea.pausedShort;
       break;
+    case "voiding":
+      meta = t.millionea.weekVoidingShort;
+      break;
+    case "voided":
+      meta = state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort;
+      break;
   }
   return (
     <Link
@@ -91,18 +106,22 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
         <span className="font-display text-body-lg font-semibold text-text xl:shrink-0">{productWeek(t, week)}</span>
         {finalWeek && <span className="text-body-sm text-text">{t.millionea.finalWeek}</span>}
         {/* The headline with its rule — in the column at 360, in the row at 1280; at 768 the figure has its own block. */}
-        <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">
-          {fillNodes(t.millionea.ruleWithFigure, {
-            amount: <span className="amount font-semibold text-text xl:text-body-lg">{figure}</span>,
-            pct,
-          })}
-        </span>
+        {!voidKind && (
+          <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">
+            {fillNodes(t.millionea.ruleWithFigure, {
+              amount: <span className="amount font-semibold text-text xl:text-body-lg">{figure}</span>,
+              pct,
+            })}
+          </span>
+        )}
         <span className="text-body-sm text-text-subtle text-pretty xl:shrink-0 xl:whitespace-nowrap">{meta}</span>
       </span>
-      <span className="hidden max-w-[300px] flex-col items-end gap-0.5 text-right md:flex xl:hidden">
-        <span className="amount text-title-sm font-semibold text-text">{figure}</span>
-        <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.ruleShared, { pct })}</span>
-      </span>
+      {!voidKind && (
+        <span className="hidden max-w-[300px] flex-col items-end gap-0.5 text-right md:flex xl:hidden">
+          <span className="amount text-title-sm font-semibold text-text">{figure}</span>
+          <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.ruleShared, { pct })}</span>
+        </span>
+      )}
       <I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle md:mt-0" />
     </Link>
   );

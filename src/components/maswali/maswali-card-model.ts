@@ -14,6 +14,7 @@ import type { HomeCardState } from "@/components/maswali/maswali-home-card";
 import { eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
 import { eatIsoWeek } from "@/lib/eat-day";
 import { pctNum } from "@/lib/utils";
+import { MAIN_COUNT, weekVoidCertain, type GradableQuestion } from "@/lib/maswali-score";
 import type { Dict } from "@/lib/i18n-dict";
 
 const DAY_MS = 86_400_000;
@@ -32,8 +33,10 @@ function msOf(iso: string | null | undefined): number | null {
  *   · a week on sale: its close, the reader's tickets of the cap, and — at the cap — when the next week opens (a week
  *     later than this one opened: the template's own weekday, MR-3);
  *   · paused by an operator: no figure (§10 §3.1);
- *   · sales closed, results arriving: how many of the fifteen are out;
- *   · no week on sale: the last settled week's line, else the day the next one opens (MB-84: no pre-sale).
+ *   · sales closed, results arriving: how many of the fifteen are out — unless its void is already certain (MR-18):
+ *     then "being voided", with no jackpot and no rule (the S5 UI review, MEDIUM 7);
+ *   · no week on sale: the last settled week's line — or a voided one's, its refunds landed or on their way — else the
+ *     day the next one opens (MB-84: no pre-sale).
  * `fallbackRate` is the configured fee share, used ONLY where no week froze one; a week's card prints its frozen rate (L2).
  * ⛔ A week whose figure cannot be read draws no card, rather than a rule without its rate.
  */
@@ -53,11 +56,15 @@ export function homeCardOf(t: Dict, hub: MillioneaHub, fallbackRate: number | nu
         : undefined;
       return { ...base, jackpot: w.pool.jackpot, state: { kind: "open", closesAt, held, capFull } };
     }
+    if (voidCertainOf(w.questions)) return { ...base, jackpot: null, state: { kind: "voiding" } };
     return { ...base, jackpot: w.pool.jackpot, state: { kind: "closed", resultsIn: w.resultsOut } };
   }
   if (fallbackRate === null || !Number.isFinite(fallbackRate)) return null;
   const pct = pctNum(fallbackRate);
   const last = hub.lastWeek;
+  if (last && last.state === "VOIDED") {
+    return { week: weekNumberOf(last.code), pct, cap: 0, finalWeek: last.isFinal, jackpot: null, state: { kind: "voided", refundsPending: last.refundsPending } };
+  }
   if (last && last.state === "SETTLED") {
     const week = weekNumberOf(last.code);
     if ((last.winners ?? 0) > 0) {
@@ -70,4 +77,13 @@ export function homeCardOf(t: Dict, hub: MillioneaHub, fallbackRate: number | nu
     return { week: eatIsoWeek(opens).week, pct, cap: 0, finalWeek: false, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, opens) } };
   }
   return null;
+}
+
+/** The week's void is already certain (the one grader's `weekVoidCertain`); a record it refuses is not. */
+function voidCertainOf(questions: ReadonlyArray<{ slot: number; role: "MAIN" | "RESERVE"; outcome: GradableQuestion["outcome"] }>): boolean {
+  try {
+    return weekVoidCertain(questions.map((q) => ({ role: q.role, ordinal: q.role === "MAIN" ? q.slot : q.slot - MAIN_COUNT, outcome: q.outcome })));
+  } catch {
+    return false;
+  }
 }

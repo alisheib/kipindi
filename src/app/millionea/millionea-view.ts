@@ -70,14 +70,20 @@ export function picksOf(slots: readonly MillioneaSlot[]): MaswaliPick[] {
 /** ⭐ A ticket's Seal Line: the one grader over the week's fifteen and this ticket's picks; the engine's word on a week
  *  voided whole (MR-18), which the questions alone may not show. */
 export function lineOf(questions: readonly MillioneaQuestion[], slots: readonly MillioneaSlot[], weekState: WeekState): SealLine {
-  return sealLineOf(gradableOf(questions), picksOf(slots), { weekVoid: weekState === "VOIDED" });
+  return sealLineOf(gradableOf(questions), picksOf(slots), lineOpts(weekState));
+}
+
+/** The line's finality is the WEEK's (the S5 UI review, HIGH 2): final once it SETTLED — after MR-16's objections, never at
+ *  the settlement gate alone — and voided whole once the engine stamped it VOIDED. Until then the line is PENDING. */
+function lineOpts(weekState: WeekState): { weekVoid: boolean; final: boolean } {
+  return { weekVoid: weekState === "VOIDED", final: weekState === "SETTLED" };
 }
 
 /** A ticket's Seal Line from its own fifteen slots — each carries its role, its place and the sealed outcome — where the
  *  week's questions are not read (Tiketi zangu's list). The same grader, so the same answer as `lineOf`. */
 export function lineOfSlots(slots: readonly MillioneaSlot[], weekState: WeekState): SealLine {
   const gq: GradableQuestion[] = slots.map((s) => ({ role: s.role, ordinal: ordinalOf(s), outcome: s.outcome }));
-  return sealLineOf(gq, picksOf(slots), { weekVoid: weekState === "VOIDED" });
+  return sealLineOf(gq, picksOf(slots), lineOpts(weekState));
 }
 
 /**
@@ -137,18 +143,16 @@ export function nextWeekNumber(opensAt: string): number {
  * ⛔ The floor is passed through as the figure states it: null whenever it may not be shown (MB-56), and the block then
  * has no floor line.
  */
-export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: string): PoolView {
+export function poolViewOf(fig: MaswaliPoolFigure, price: number, opensAt: string, voiding = false): PoolView {
   const carriedIn = fig.carryPendingCode !== null
     ? { week: weekNumberOf(fig.carryPendingCode), amount: null }
     : (fig.carryIn ?? 0) > 0 ? { week: previousWeekNumber(opensAt), amount: fig.carryIn } : null;
-  return {
-    kind: "selling",
-    carriedIn,
-    sales: { tickets: price > 0 ? Math.round(fig.sales / price) : 0, amount: fig.sales },
-    pool: (fig.carryIn ?? 0) + fig.sales,
-    floor: fig.floor,
-    jackpot: fig.jackpot,
-  };
+  const sales = { tickets: price > 0 ? Math.round(fig.sales / price) : 0, amount: fig.sales };
+  const pool = (fig.carryIn ?? 0) + fig.sales;
+  // A week whose void is already certain prints no jackpot and no "shared by every 10/10" rule: its refund, if the void
+  // stands (the S5 UI review, HIGH 1).
+  if (voiding) return { kind: "voiding", carriedIn, sales, pool, floor: fig.floor, price };
+  return { kind: "selling", carriedIn, sales, pool, floor: fig.floor, jackpot: fig.jackpot };
 }
 
 /** The three phases of a week, from its own instants: sales from the open to the close; events from the first to the

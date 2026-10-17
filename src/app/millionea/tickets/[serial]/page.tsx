@@ -118,21 +118,15 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   const cap = cancellable ? (await millioneaHowTo({ userId: gate.userId, state: gate.state })).ticketCap : 0;
   const paid = view.win !== null && view.share === "paid";
 
-  // The week voided whole: the dictionary's sentence, and — until THIS ticket's refund lands — that it is on its way.
+  // The week voided whole: the dictionary's sentence — "every ticket refunded" only once THIS ticket's refund landed, and
+  // until then that it is on its way back (MR-18; the S5 UI review, HIGH 1: never a refund claimed before it happened).
   const voidLine = view.weekVoid
-    ? fill(t.millionea.weekVoidedBody, { voided: view.weekVoid.voidedMains, valid: view.weekVoid.usableReserves, price: formatTzs(view.weekVoid.price) })
+    ? fill(refund === "pending" ? t.millionea.weekVoidedBodyPending : t.millionea.weekVoidedBody, {
+        voided: view.weekVoid.voidedMains, valid: view.weekVoid.usableReserves, price: formatTzs(view.weekVoid.price),
+      })
     : null;
   const share = shareLine(t, view);
-  const notice = voidLine || share
-    ? (
-      <>
-        {voidLine ?? share}
-        {view.weekVoid && refund === "pending" && (
-          <span className="mt-1 block text-text-muted">{fill(t.millionea.refundPending, { price: formatTzs(view.weekVoid.price) })}</span>
-        )}
-      </>
-    )
-    : undefined;
+  const notice = voidLine ?? share ?? undefined;
 
   // A won week where this player was paid on more than one ticket: the seal and the ledger name every paid serial (D-45).
   const paidSerials = paid && view.win && view.win.yourWinningTickets > 1
@@ -166,7 +160,8 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           notice={notice}
           live={running && graded ? {
             resultsIn: view.resultsOut,
-            reservesLeft: { valid: Math.max(0, RESERVE_COUNT - voidedReserves - voidedMains), of: RESERVE_COUNT },
+            // Unclamped: below zero the ticket says so in words (D-20), never "0 of 5" over a week that will void.
+            reservesLeft: { valid: RESERVE_COUNT - voidedReserves - voidedMains, of: RESERVE_COUNT },
             nextEventAt: msOf(view.nextResultAt) ?? undefined,
           } : undefined}
           cannotWin={running && view.cannotWinSoFar}
@@ -174,7 +169,6 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           cancel={cancellable && cancelUntil !== null
             ? <TicketCancel serial={view.serial} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={cap} />
             : undefined}
-          ended={view.shown === "cancelled" ? "cancelled" : view.shown === "refunded" ? "refunded" : undefined}
           play={play}
         />
       </div>

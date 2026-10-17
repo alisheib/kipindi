@@ -139,6 +139,15 @@ console.log("\n§3 · L5 — a kill hides the product, never a player's own tick
   const doors = code(read("src/lib/server/millionea-doors.ts"));
   ok("3.3 · Tiketi zangu's third kind and the /positions row ask the same decision (one rule for the door and the route)",
     doors.includes('millioneaTicketAdmission(false, userId,') && doors.includes('=== "HOLDER"'));
+  // The lead's L5 list (2026-10-18): WITHDRAWN with an owner (3.1 HOLDER), with a stranger (3.1 NOT_FOUND, and 3.4 for a
+  // stranger who holds tickets of their own), and signed out (3.1, and the edge's 404 in §4).
+  const ticketPage = squash(code(read(`${APP}/tickets/[serial]/page.tsx`)));
+  ok("3.4 · a signed-in stranger — holding none, or holding tickets of their own — meets the same 404 as an unknown serial at every state: the ticket read is the owner's, and null is one answer for both (no existence oracle, MB-95)",
+    ticketPage.includes("const view = await millioneaTicket(gate.userId, serial, now); if (!view) notFound();"));
+  const permalink = squash(code(read("src/app/positions/[positionId]/page.tsx")));
+  const ownerFirst = permalink.indexOf("if (!position || position.userId !== session.userId) notFound();");
+  ok("3.5 · the permalink sends the OWNER to their ticket at every rollout state (it asks no rollout) and 404s anyone else's position before it",
+    !permalink.includes("resolveMillionea") && ownerFirst > 0 && ownerFirst < permalink.indexOf('if (productLine === "MASWALI") {'));
 }
 
 // ── §4 · the edge ──────────────────────────────────────────────────────────────────────────────────────────────────
