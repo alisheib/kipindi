@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
+import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { consoleStanding, integrityView } from "@/lib/server/maswali-console";
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
@@ -34,6 +35,9 @@ export default async function AdminMaswaliIntegrityPage() {
 
 async function Content() {
   const session = await currentSession();
+  // ⛔ D19/259, guard 0.434: this page renders records read from the audit log (the new-device seals), so it decides its
+  // audience on the STORED role before it reads anything; the section gate above decides what is painted, not what is sent.
+  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/maswali/integrity"))) return null;
   const role = session?.role;
   const [v, standing, can] = await Promise.all([
     integrityView().catch(() => null),

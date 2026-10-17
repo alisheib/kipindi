@@ -1472,6 +1472,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
   // ⚠️ House or player is read from the H0 intent, not by comparing the context (the house seam pins every comparison).
   if (isFencedMaswali(market)) {
     if (!opts.maswali) return { ok: false, error: "Market is not accepting predictions.", code: "INVALID" };
+    // SEAM:maswaliHouse — Millionea's door learns house-or-player from the H0 intent and refuses every desk account.
     const r = await buyMaswaliTickets({
       userId, user: { role: u.role }, isHouse: houseIntent !== null, market, buy: opts.maswali, stake: opts.stake,
       idempotencyKey: opts.idempotencyKey, reach,

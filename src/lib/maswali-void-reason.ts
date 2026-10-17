@@ -31,6 +31,19 @@ export function isMaswaliVoidReason(v: unknown): v is MaswaliVoidReason {
   return typeof v === "string" && (MASWALI_VOID_REASONS as readonly string[]).includes(v);
 }
 
+/**
+ * The console's name for each ground (English, as the admin console reads), so no control de-underscores the stored
+ * code into a misspelling (`test:labels` §11a). A player reads the ground through `MASWALI_VOID_REASON_KEY` below.
+ */
+export const MASWALI_VOID_REASON_LABEL: Record<MaswaliVoidReason, string> = {
+  not_played: "Not played by its void deadline",
+  abandoned: "Abandoned, no official result",
+  no_source: "No reading from the sources",
+  settled_before_close: "Settled before the sales close",
+  criterion_wrong: "Criterion wrong, or the texts diverge",
+  criterion_objection: "Objection to the criterion upheld",
+};
+
 /** The dictionary key of each ground's sentence, under the `millionea` namespace, so no caller writes its own copy. */
 export const MASWALI_VOID_REASON_KEY: Record<MaswaliVoidReason, string> = {
   not_played: "voidNotPlayed",

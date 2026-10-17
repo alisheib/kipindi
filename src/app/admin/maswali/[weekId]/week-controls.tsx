@@ -20,6 +20,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
 import {
   attestMaswaliParityAction, confirmMaswaliSealAction, correctMaswaliSealAction, moveMaswaliCloseAction, openMaswaliWeekAction,
   sealMaswaliQuestionsAction, voidMaswaliQuestionAction,
@@ -175,7 +176,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
         body={
           <div className="space-y-3 text-left">
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
-            <Field label="Ground"><Select size="sm" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: v.replace(/_/g, " ") }))]} /></Field>
+            <Field label="Ground"><Select size="sm" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
             <Field label="Evidence"><Input size="sm" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
           </div>
         }
@@ -187,7 +188,7 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
           <div className="space-y-3 text-left">
             <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
             <Field label="Correct result"><Select size="sm" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
-            {correction.outcome === "VOID" && <Field label="Ground"><Select size="sm" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: v.replace(/_/g, " ") }))]} /></Field>}
+            {correction.outcome === "VOID" && <Field label="Ground"><Select size="sm" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
             <Field label="Evidence"><Input size="sm" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
           </div>
         }

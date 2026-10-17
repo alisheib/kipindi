@@ -182,11 +182,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // from 012aa885e (same blob as the integrated tip), not a blanket exemption.
     // S8 round V2 (S8-PLAN A25 item 13, 2026-10-16) changes two zh sheet strings only — sheetHolds and
     // sheetFirstOnSide bracket their side word 「{side}」 (DESIGN_AUTHORITY L4) — pinned at 95a00a9f5.
-    // None of the versioned policy strings move.
+    // MASWALI-BUILD S1/S3 (2026-10-17) adds only the nine Millionea refusal lines (`failMillionea*`, en/sw/zh, sw and zh
+    // for native review at Gate B), each emitted by a registered failure reason (`test:failure-reasons`) — pinned at
+    // 367a9c1b7, whose blob is the dictionary as it stands. None of the versioned policy strings move.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "95a00a9f5"],
+      ["src/lib/i18n-dict.ts", "367a9c1b7"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };

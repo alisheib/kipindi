@@ -11,6 +11,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { safeError } from "@/lib/server/safe-error";
+import { formatTzs } from "@/lib/utils";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { settleMaswaliWeek } from "@/lib/server/maswali-settlement";
@@ -54,7 +55,7 @@ export async function fundMaswaliGuaranteeAction(formData: FormData): Promise<Ac
     const r = await fundMaswaliGuarantee({ amount, reference: str(formData, "reference"), typed: str(formData, "typed"), ownerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     refresh();
-    return { ok: true, note: `The guarantee now holds TZS ${r.balance.toLocaleString("en")}.` };
+    return { ok: true, note: `The guarantee now holds ${formatTzs(r.balance)}.` };
   } catch (err) {
     return { ok: false, error: safeError(err, "The guarantee could not be funded") };
   }
@@ -68,7 +69,7 @@ export async function returnMaswaliGuaranteeAction(formData: FormData): Promise<
     const r = await returnMaswaliGuarantee({ amount, reference: str(formData, "reference"), typed: str(formData, "typed"), ownerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     refresh();
-    return { ok: true, note: `The guarantee now holds TZS ${r.balance.toLocaleString("en")}.` };
+    return { ok: true, note: `The guarantee now holds ${formatTzs(r.balance)}.` };
   } catch (err) {
     return { ok: false, error: safeError(err, "The guarantee money could not be returned") };
   }
