@@ -1073,9 +1073,12 @@ section("§13 · by state, never newest-N; unreadable rules; the hub while Milli
 }
 // (After §12b's two weeks in the calendar: a week never opens before one of its line that already opened, R3.)
 const { week: F, start: fStart } = await W.openWeek({ weeksAhead: 9 });
-// RR2 · one ticket in what becomes the final week, its first main to miss (§14).
+// One ticket in F, its first main to miss: F closes before the Owner's stop, so it settles under its own rules (§14).
 const PT = await W.user({ balance: 20_000 });
-const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
+const bF = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
+// G, the week after F: the Owner's stop, ordered once F has closed, makes it the final week (13.5, §14).
+const gStart = W.weekStartAhead(10);
+let G: any = null;
 {
   // ⚠️ A FIXTURE OF A FAULT, undone below: the drive week's frozen rules re-stamped as a version this build cannot read —
   // what a week frozen by a newer build looks like to an older container in a rolling deploy.
@@ -1102,7 +1105,16 @@ const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
   const live = await P.millioneaHub(viewer(P3));
   ok("13.4 · L2 · the control: no public week on sale and Millionea LIVE — the hub states when the next week opens",
     closedF.ok && live.life === "LIVE" && live.week?.id === F.id && typeof live.nextOpensAt === "string", J({ life: live.life, next: live.nextOpensAt }));
-  const sunset = await W.svc.sunsetMaswali({ weekId: F.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
+  // S7 · THE OWNER'S STOP AFTER A CLOSE (MR-30, OD-03; the lead's decision of 2026-10-18): F's sales have closed, so its
+  // results are being decided and it is never made final; the stop takes effect from the next week to open, G.
+  const refusedF = await W.svc.sunsetMaswali({ weekId: F.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
+  ok("13.5a · ⛔ a closed week is never made the final week: its results are being decided, so the stop takes effect from the next week",
+    !refusedF.ok && /results are being decided/.test(why(refusedF)) && (await dal.weekStore.get(F.id))?.isFinal === false, why(refusedF));
+  const g = await W.svc.createWeek({ weekStartMs: gStart, questions: W.questions(gStart), officerId: DRAFTER, now: new Date(gStart - 3 * DAY) });
+  if (!g.ok) throw new Error(`§13: week G was not drafted: ${g.error}`);
+  await W.svc.attestParity({ weekId: g.week.id, officerId: READER });
+  G = g.week;
+  const sunset = await W.svc.sunsetMaswali({ weekId: G.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "player suite ends Millionea" });
   const ending = await P.millioneaHub(viewer(P3));
   ok("13.5 · ⛔ L2 · while Millionea is ENDING (a final week runs, nothing opens after it), no 'next opens' line",
     sunset.ok && ending.life === "ENDING" && ending.week?.id === F.id && ending.nextOpensAt === null, `${why(sunset)} · ${J({ life: ending.life, next: ending.nextOpensAt })}`);
@@ -1111,16 +1123,27 @@ const bT = await W.buy(PT, F.id, [W.LOSE], { key: "player-pt-f-0001" });
 // ── §14 · the final week (RR2): a miss is not "cannot win" there — and released, the top score wins ──────────────────
 section("§14 · the final week: no 'cannot win' line, and the top score wins");
 {
+  // F first, under its own rules: no 10 of 10, so it rolls over and its 9 of 10 is paid nothing — and the final week G
+  // claims its carry in chain order (MR-3).
   const atF = await W.closeAndSeal(F, fStart);
-  const tT = (await dal.ticketStore.listForUser(PT, { cycleId: F.id }))[0];
+  const relF = await W.release(F.id, atF);
+  const fT = (await dal.ticketStore.listForUser(PT, { cycleId: F.id }))[0];
+  ok("14.0 · ⭐ the week refused as final settles under its own rules: no 10 of 10, so it rolls over and its 9 of 10 is paid nothing (a score decides money only in a final week)",
+    bF.ok && relF.ok && relF.week.state === "SETTLED" && (relF.week.winningTickets ?? 0) === 0 && fT?.won === false && (fT?.payout ?? 0) === 0, `${why(relF)} · ${J({ won: fT?.won, payout: fT?.payout })}`);
+  const oG = await W.svc.openWeek({ weekId: G.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date(gStart + 60_000) });
+  if (!oG.ok) throw new Error(`§14: the final week did not open: ${oG.error}`);
+  // RR2 · one ticket in the final week, its first main to miss.
+  const bT = await W.buy(PT, G.id, [W.LOSE], { key: "player-pt-g-0001" });
+  const atG = await W.closeAndSeal(oG.week, gStart);
+  const tT = (await dal.ticketStore.listForUser(PT, { cycleId: G.id }))[0];
   const vT = await P.millioneaTicket(PT, tT.serial);
   ok("14.1 · ⭐ RR2 · in the final week a ticket with a miss is NOT 'cannot win': with no 10 of 10 the top score shares the jackpot (MR-30), so the provisional line is never drawn there",
     bT.ok && vT.week.isFinal === true && vT.shown === "running" && vT.slots[0].mark === "missed" && vT.cannotWinSoFar === false,
     J({ isFinal: vT.week.isFinal, mark: vT.slots[0].mark, cannot: vT.cannotWinSoFar }));
-  const relF = await W.release(F.id, atF);
+  const relG = await W.release(G.id, atG);
   const wT = await P.millioneaTicket(PT, tT.serial);
   ok("14.2 · …the proof: released, the final week pays its top score — that very ticket won, its share paid, on 9 of 10 (TOP_SCORE)",
-    relF.ok && wT.shown === "won" && wT.share === "paid" && wT.win?.basis === "TOP_SCORE" && wT.win.winningScore === 9, `${why(relF)} · ${J(wT?.win)}`);
+    relG.ok && wT.shown === "won" && wT.share === "paid" && wT.win?.basis === "TOP_SCORE" && wT.win.winningScore === 9, `${why(relG)} · ${J(wT?.win)}`);
 }
 
 console.log(`${NL}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

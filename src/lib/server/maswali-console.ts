@@ -14,12 +14,16 @@
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
-import { frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+import {
+  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState,
+} from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
+import { holidayOn } from "./maswali-holidays";
+import { getAuditForTargetsDurable } from "./audit";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -89,6 +93,8 @@ export type ConsoleWeekDetail = {
   rules: MaswaliRulesSnapshot | null;
   /** DRAFT only: every reason the open would refuse, in words; empty when it would open. */
   problems: string[] | null;
+  /** DRAFT only: what the officer reviews before the open — never a refusal (MB-85: a public holiday the close falls on). */
+  warnings: string[] | null;
   /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
   proposedVoids: number[];
 };
@@ -99,19 +105,29 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
   const questions = await questionStore.listForWeek(week.id);
   let rules = frozenRules(week);
   let problems: string[] | null = null;
+  let warnings: string[] | null = null;
   if (week.state === "DRAFT") {
     try { rules = snapshotMaswaliRules(getMaswaliConfig(), now); } catch { rules = null; }
     if (!rules) problems = ["The Millionea rules do not validate; fix them on the rules page first."];
     else {
       // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
-      // every check passes while the open refused for want of a licence basis or the guarantee.
-      problems = await openProblems(week, questions, rules, now.getTime());
+      // every check passes while the open refused for want of a licence basis or the guarantee. ⭐ S7 · on the deadlines
+      // the open would re-freeze (`deadlinesUnderRules`), never the draft's own, so the two can never disagree.
+      const due = deadlinesUnderRules(week, questions, rules);
+      problems = await openProblems(due.week, due.questions, rules, now.getTime());
       if (!licenceBasisAllowsOpen(getLicenceBasis())) problems.unshift(NO_LICENCE_BASIS);
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }
+    // ⭐ S7 · THE HOLIDAY REVIEW (MB-85, OD-27): the Owner's list of public holidays, read against the day the sales close.
+    //    A warning, never a refusal: the week opens, and the officer brings the close forward once it is open (R-WEEK).
+    warnings = [];
+    const holiday = holidayOn(Date.parse(week.closesAt));
+    if (holiday) {
+      warnings.push(`The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). The week may still open: bring the close forward once it is open (R-WEEK), or skip the week with notice (OD-27).`);
+    }
   }
-  return { week, row: await rowOf(week), questions, rules, problems, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
+  return { week, row: await rowOf(week), questions, rules, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
 }
 
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
@@ -160,6 +176,7 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
       }
     }
   }
+  out.push(...await floatShortAlerts());
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   const need = requirementOf(weeks.filter(unsettled));
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
@@ -170,6 +187,39 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
     if (!licenceBasisAllowsOpen(getLicenceBasis())) out.push({ level: "warning", text: "No licence basis is recorded; no week can open until the Owner records it (OD-01)." });
     const pause = getSalesPause();
     if (pause.paused) out.push({ level: "warning", text: `Sales are paused: ${pause.reason ?? "no reason recorded"}.` });
+  }
+  return out;
+}
+
+/** The settlement's float check's own row (`floatCheck`, maswali-settlement.ts): what it found, at the payout. */
+const FLOAT_LOW_ACTION = "maswali.settlement.float_low";
+
+/**
+ * ⭐ S7 · A SHORT PAYOUT FLOAT, ON THE CONSOLE (MB-11, MB-63; FL.4). The settlement's float check is a read after the
+ * commit, never a block: when a week's paid total leaves the disbursement float short of the payout and its headroom, it
+ * records the payout, the float and the headroom — and until now that row reached the audit trail alone. Each line's
+ * newest week that PAID is the payout its winners are withdrawing, so its finding stands here, beside it, with the
+ * amount short, until the next week of that line pays and its own check speaks. Critical when the float held less than
+ * the payout itself. A row whose figures cannot be read still raises the week, never a guessed amount.
+ */
+async function floatShortAlerts(): Promise<ConsoleAlert[]> {
+  const settled = await weekStore.list({ states: ["SETTLED"] });
+  const payouts = (["PUBLIC", "DRIVE"] as const)
+    .map((line) => settled.filter((w) => w.visibility === line && (w.paidTotal ?? 0) > 0).sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0])
+    .filter((w): w is StoredWeek => !!w);
+  if (payouts.length === 0) return [];
+  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id), actions: [FLOAT_LOW_ACTION], sinceIso: new Date(0).toISOString(), limit: 10 });
+  const out: ConsoleAlert[] = [];
+  for (const w of payouts) {
+    const row = rows.entries.find((e) => e.targetId === w.id);
+    if (!row) continue;
+    const paid = Number(row.payload?.paid), float = Number(row.payload?.float), headroom = Number(row.payload?.buffer);
+    if (![paid, float, headroom].every(Number.isFinite)) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its payout found the payout float short, and the figures of that check cannot be read. Finance checks the float before the winners withdraw (MB-11).` });
+      continue;
+    }
+    out.push({ level: float < paid ? "critical" : "warning", weekId: w.id,
+      text: `${w.code}: the payout float held ${formatTzs(float)} when the week paid ${formatTzs(paid)} — ${formatTzs(paid + headroom - float)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
   }
   return out;
 }

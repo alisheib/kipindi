@@ -39,7 +39,7 @@ async function Content({ params }: Props) {
   const { weekId } = await params;
   const d = await consoleWeekDetail(weekId).catch(() => null);
   if (!d) notFound();
-  const { week, row, questions, problems, proposedVoids } = d;
+  const { week, row, questions, problems, warnings, proposedVoids } = d;
   const session = await currentSession();
   const [canAttest, canOpen, canMove, canSeal, canVoid, canCorrect, canConfirm] = await Promise.all([
     canUseControl(session?.role, "attestMaswaliParity"), canUseControl(session?.role, "openMaswaliWeek"),
@@ -82,6 +82,8 @@ async function Content({ params }: Props) {
                 {problems.map((p, i) => <li key={i} className="flex gap-2"><span aria-hidden className="text-warning">•</span><span>{p}</span></li>)}
               </ul>
             ) : <p className="text-body-sm text-success">Every check passes: the week can open.</p>}
+            {/* S7 · the holiday review (MB-85): a warning to act on, never a refusal — the week opens either way. */}
+            {(warnings ?? []).map((w, i) => <p key={i} className="mt-3 text-body-sm text-warning">{w}</p>)}
             <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
             <div className="mt-3">
               <AttestOpenControls weekId={week.id} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}

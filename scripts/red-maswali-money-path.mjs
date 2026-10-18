@@ -10,7 +10,9 @@
  * jackpot, a close that does not wait for a purchase in flight, a week void that pushes no balance, refunds twice, books
  * no ledger group or leaves its tickets LIVE, and S7's adversarial fixes (a close moved on the container's clock, a
  * correction that skips a seal's rules, an insider's second signature, a reclassified week sold, a reversed deposit paid
- * free, the memory store's product line, OD-12's promotion) — runs the memory child that mutation names
+ * free, the memory store's product line, OD-12's promotion) and S7-F's (a close stamped on the container's clock, a short
+ * float kept off the console, a ticket holder designated to the desk, the holiday review unread, a closed week made
+ * final, any draft made final at short notice, a week's deadlines not re-frozen at the open) — runs the memory child that mutation names
  * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void` or
  * `test:maswali-adversarial`, the last on the plant's own sections), and requires it to go red ON THAT MUTATION'S OWN
  * ASSERTION. Then it puts every file back byte for byte.

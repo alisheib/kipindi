@@ -7,7 +7,7 @@
  * shows is the row a service enforces.
  *
  *   always                      role · closed · not ACTIVE · no password · RG lockout · wallet · balance read
- *   designate (no bot)          already a live bot · the owner's own account · roster full
+ *   designate (no bot)          already a live bot · the owner's own account · roster full · a Millionea ticket (OD-12)
  *   designate, reverify, start  open ERASURE request
  *   designate, reverify         sign-in locked · password last set by support · password history unreadable
  *   start (bot)                 the live causes · RG backstop · holder's own loss limit · today's loss cap
@@ -65,6 +65,8 @@ export const ELIGIBILITY_BLOCKING_CODES = [
   "RG_SINCE_VERIFIED",
   "DAILY_LOSS_STOP",
   "OWNER_LOSS_LIMIT",
+  "MILLIONEA_TICKET",
+  "MILLIONEA_UNREADABLE",
 ] as const;
 export type EligibilityBlockingCode = (typeof ELIGIBILITY_BLOCKING_CODES)[number];
 
@@ -301,6 +303,17 @@ export async function houseBotEligibility(
     if (count >= control.maxDesignatedBots) {
       blocking.push(row("ROSTER_FULL", `Roster full (${count} of ${control.maxDesignatedBots})`,
         `The roster is full (${count} of ${control.maxDesignatedBots}). Remove an account or raise the roster limit on Limits →`, CONSOLE_LIMITS_HREF));
+    }
+    // ⛔ OD-12 · AN ACCOUNT HOLDING A MILLIONEA TICKET IN A WEEK THAT HAS NOT SETTLED IS NOT DESIGNATED (MASWALI-BUILD S7,
+    //    IN.9): an insider never holds a live ticket (MR-10), and a ticket bought before a designation is one the purchase's
+    //    own refusal never met. The question the Owner's staff role change asks, in its words; loaded on use (the Millionea
+    //    service reaches the market engine). ⛔ A read that fails is a blocking row, never an absent one.
+    try {
+      const { millioneaPromotionBlock } = await import("../maswali-service");
+      const held = await millioneaPromotionBlock(userId);
+      if (held) blocking.push(row("MILLIONEA_TICKET", "Holds a Millionea ticket", held));
+    } catch {
+      blocking.push(row("MILLIONEA_UNREADABLE", "Millionea tickets unreadable", "Couldn't read their Millionea tickets. Refresh to try again."));
     }
   }
 

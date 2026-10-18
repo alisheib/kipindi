@@ -212,8 +212,9 @@ export interface WeekStore {
   maxSeq(): Promise<number>;
   create(w: StoredWeek): Promise<void>;
   patch(id: string, fields: Partial<StoredWeek>, tx?: Prisma.TransactionClient): Promise<void>;
-  /** ⭐ The open's one write: market, rules, question-set hash and state, WHERE the week is still DRAFT. */
-  stampOpen(id: string, f: { marketId: string; rulesSnapshot: unknown; questionSetHash: string; opensAt: string }, tx?: Prisma.TransactionClient): Promise<boolean>;
+  /** ⭐ The open's one write: market, rules, question-set hash and state, WHERE the week is still DRAFT — and the final
+   *  deadline re-frozen from those rules (S7, `deadlinesUnderRules`), the one write that ever moves it. */
+  stampOpen(id: string, f: { marketId: string; rulesSnapshot: unknown; questionSetHash: string; opensAt: string; finalDeadlineAt?: string }, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** MB-28: the close moves only while OPEN, and only from the value the caller read. */
   moveClose(id: string, fromCloseAt: string, toCloseAt: string, tx?: Prisma.TransactionClient): Promise<boolean>;
   /** ⭐ The close's one write, exactly once: OPEN → CLOSED with the commitment. */
@@ -376,7 +377,8 @@ const memoryWeeks: WeekStore = {
   async stampOpen(id, f) {
     const cur = memWeeks.get(id);
     if (!cur || cur.state !== "DRAFT" || cur.rulesSnapshot != null) return false;
-    const next: StoredWeek = { ...cur, marketId: f.marketId, rulesSnapshot: JSON.parse(JSON.stringify(f.rulesSnapshot)), questionSetHash: f.questionSetHash, opensAt: f.opensAt, state: "OPEN", updatedAt: now() };
+    const next: StoredWeek = { ...cur, marketId: f.marketId, rulesSnapshot: JSON.parse(JSON.stringify(f.rulesSnapshot)), questionSetHash: f.questionSetHash, opensAt: f.opensAt,
+      ...(f.finalDeadlineAt ? { finalDeadlineAt: f.finalDeadlineAt } : {}), state: "OPEN", updatedAt: now() };
     memWeekInvariants(next, id);
     memWeeks.set(id, next);
     return true;
@@ -650,7 +652,10 @@ const prismaWeeks: WeekStore = {
   async stampOpen(id, f, tx) {
     const r = await db_(tx).maswaliCycle.updateMany({
       where: { id, state: "DRAFT", rulesSnapshot: { equals: Prisma.DbNull } },
-      data: { marketId: f.marketId, rulesSnapshot: f.rulesSnapshot as Prisma.InputJsonValue, questionSetHash: f.questionSetHash, opensAt: new Date(f.opensAt), state: "OPEN" },
+      data: {
+        marketId: f.marketId, rulesSnapshot: f.rulesSnapshot as Prisma.InputJsonValue, questionSetHash: f.questionSetHash, opensAt: new Date(f.opensAt),
+        ...(f.finalDeadlineAt ? { finalDeadlineAt: new Date(f.finalDeadlineAt) } : {}), state: "OPEN",
+      },
     });
     return r.count === 1;
   },

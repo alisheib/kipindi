@@ -24,6 +24,9 @@ process.env.SESSION_SECRET ??= "maswali-engine-session-secret-0123456789abcdef";
 const { eatWeekStartMs, eatWeekAt } = await import("../../src/lib/eat-day.ts");
 const { utcToZonedLocal } = await import("../../src/lib/maswali-time.ts");
 const svc = await import("../../src/lib/server/maswali-service.ts");
+// S7 · the weeks run on an injected week clock, weeks ahead, and a close that is not early is checked on the database's
+// clock (MB-84): the suite hands the close that same week clock as the database's, as the money world does.
+svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs);
 const { weekStore, questionStore, ticketStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
 const { recordLicenceBasis } = await import("../../src/lib/server/maswali-licence.ts");
 const { saveMaswaliConfig } = await import("../../src/lib/server/maswali-config.ts");

@@ -161,7 +161,7 @@ export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: st
       <UnsavedChangesGuard dirty={reason.trim() !== ""} body="A reason for the final week has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
         title="Stop Millionea after this week?" confirmLabel="Make it final"
-        body="A drafted week becomes final only a full week before it opens (OD-03); the current week becomes final at once. After a final week that ran, no week opens again."
+        body="The week on sale becomes final at once; a drafted week only a full week before it opens (OD-03) — or, while a closed week's results are being decided, the next week to open, at shorter notice. A week whose sales have closed settles under its own rules. After a final week that ran, no week opens again."
         onConfirm={() => run(() => sunsetMaswaliAction(fd({ weekId, reason, typed: SUNSET_WORD })), () => { setOpen(false); setReason(""); })} />
     </div>
   );

@@ -362,4 +362,64 @@ export const MUTATIONS = [
     expect: "IN.1b",
     suite: "adversarial:IN",
   },
+  /* ── MASWALI-BUILD S7-F · the follow-ups to A7's KNOWN-RED, one plant each, caught on the plant's own section. PL.3 (the
+     database's product-line trigger, `20261018130000_maswali_product_line_fence`) is POSTGRES-ONLY, as R4a/R4b and R8 are:
+     no memory child can show a trigger red, so its red twin is the Postgres half of test:maswali-adversarial — KNOWN-RED
+     before the migration, PL.3 and PL.3c green after it. ── */
+  {
+    name: "(S7-close-db-clock) a close that is not early is stamped on the container's clock: a fast container closes the sales early (MB-84)",
+    file: SVC,
+    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return refuse(\"The close has not arrived on the database's clock (MB-84).\");",
+    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse(\"The close has not arrived on the database's clock (MB-84).\");",
+    expect: "CS.4 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(S7-float-alert) a short payout float reaches the audit trail only, never the console (MB-63)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  out.push(...await floatShortAlerts());",
+    to: "  void floatShortAlerts;",
+    expect: "FL.4 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(S7-designate-ticket) a desk designation meets no Millionea row: an account holding a live ticket is designated (OD-12)",
+    file: "src/lib/server/house-bot/eligibility.ts",
+    from: "      if (held) blocking.push(row(\"MILLIONEA_TICKET\", \"Holds a Millionea ticket\", held));",
+    to: "      void held;",
+    expect: "IN.9 · ⭐",
+    suite: "adversarial:IN",
+  },
+  {
+    name: "(S7-holiday-review) the pre-open checklist never reads the Owner's holiday list (MB-85)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    const holiday = holidayOn(Date.parse(week.closesAt));",
+    to: "    const holiday = null as string | null;",
+    expect: "HF.2 · ⭐",
+    suite: "adversarial:HF",
+  },
+  {
+    name: "(S7-sunset-closed) a week whose sales have closed is made final mid-results (MR-30, the lead's decision of 2026-10-18)",
+    file: SVC,
+    from: "    if (salesClosed(week, clockMs)) {",
+    to: "    if (false) {",
+    expect: "SU.2 · ⭐",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(S7-sunset-next-only) any draft, not only the next week to open, is made final at short notice after a close (OD-03)",
+    file: SVC,
+    from: "        if (onSale || !deciding || next?.id !== week.id) {",
+    to: "        if (onSale || !deciding) {",
+    expect: "SU.4 · ⛔",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(S7-deadlines-refrozen) the open keeps the deadlines the draft computed: a week runs on figures its frozen rules do not state",
+    file: SVC,
+    from: "    const { week: due, questions } = deadlinesUnderRules(week, drafted, rules);",
+    to: "    const { week: due, questions } = { week, questions: drafted };",
+    expect: "DL.1 · ⭐",
+    suite: "adversarial:DL",
+  },
 ];

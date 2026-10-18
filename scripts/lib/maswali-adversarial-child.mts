@@ -20,10 +20,13 @@
  *   §11 TK · the winner-takeover pattern (MB-96)
  *   §12 CC · both clock-change weekends, through the open's close guard and the void deadline (MB-30, MR-4, OD-09b)
  *   §13 HF · a holiday Friday (MB-85, OD-27)
- *   §14    · the invariants and the books over everything above
+ *   §14 DL · a week's deadlines at the open are its frozen rules' (OD-09b, MB-75; lane L's review, finding 8)
+ *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
+ *   §16    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
  *    database is exactly that split, so §1 makes it on the real clock: a week left OPEN past its close, as a slow
- *    container leaves it, and a week closed by a clock that runs fast.
+ *    container leaves it, and a week closed by a clock that runs fast. Every other section's close reads its week clock
+ *    as the database's (the world's `weekCloseClock`); §1 takes that away and meets the database's own clock.
  * ⛔ Every week and ticket goes through the product's own doors. Each fixture that cannot is declared where it is made.
  * ⚠️ This file carries no backslash: line breaks are built from their code points, and patterns use character classes.
  */
@@ -50,6 +53,8 @@ const { merkleRoot } = await import("../../src/lib/maswali-commitment.ts");
 const { displayMap } = await import("../../src/lib/maswali-score.ts");
 const objections = await import("../../src/lib/server/objections-service.ts");
 const sources = await import("../../src/lib/server/source-registry.ts");
+const holidays = await import("../../src/lib/server/maswali-holidays.ts");
+const { formatTzs } = await import("../../src/lib/utils.ts");
 const { getAuditForTargetDurable, auditFlush } = await import("../../src/lib/server/audit.ts");
 const { trialBalance } = await import("../../src/lib/server/ledger.ts");
 const { setRequireTwoOfficerResolution } = await import("../../src/lib/server/resolution-policy.ts");
@@ -197,22 +202,26 @@ function expect5b(R: number, S: number, k: number, f: { floor: number; rate: num
   const share = Math.floor((Jk - F) / k), paid = k * share, U = Math.max(0, F + paid - (R + S));
   return { k, J: Jk, F, tra, gbt, share, paid, U, carry: R + S + U - F - paid };
 }
-/** The audit rows of one action on one week, waited for: a check after a commit records on its own turn. */
-async function weekAudit(weekId: string, action: string, tries = 40): Promise<any[]> {
+/** The audit rows of one action on one target, waited for: a check after a commit records on its own turn. */
+async function auditRows(targetType: string, targetId: string, action: string, tries = 40): Promise<any[]> {
   for (let i = 0; i < tries; i++) {
     await new Promise((res) => setTimeout(res, 50));
     await auditFlush();
-    const rows = (await getAuditForTargetDurable("MaswaliCycle", weekId, { limit: 100 })).entries.filter((e: any) => e.action === action);
+    const rows = (await getAuditForTargetDurable(targetType, targetId, { limit: 100 })).entries.filter((e: any) => e.action === action);
     if (rows.length > 0) return rows;
   }
   return [];
 }
+const weekAudit = (weekId: string, action: string, tries = 40) => auditRows("MaswaliCycle", weekId, action, tries);
 
 await W.setup({ guarantee: FUND });
 
 // ═══ §1 · CS · clock skew past the close ═════════════════════════════════════════════════════════════════════════════
-if (runs("CS")) section("§1 · CS · clock skew past the close: a purchase, a cancel and a move of the close answer to the database clock (MB-84, MB-28, MR-12)");
+if (runs("CS")) section("§1 · CS · clock skew past the close: a purchase, a cancel, a move of the close and the close itself answer to the database clock (MB-84, MB-28, MR-12)");
 if (runs("CS")) {
+  // ⏱ §1 MEETS THE DATABASE'S OWN CLOCK: the world's close reads its week clock as the database's (`weekCloseClock`), so
+  //    it is taken away here — the close then reads the database as production's does — and put back after CS.6.
+  W.svc.__setMaswaliCloseClockForTests(null);
   // THE SKEW, MADE ON THE REAL CLOCK. A week opened now, its close brought to a minute ahead, and then left OPEN past it:
   // no tick runs here, which is exactly the state a container with a slow clock leaves — on its clock the close has not
   // come; on the database's it has. ⚠️ The week is frozen with no free-exit grace (the platform's own config, set and put
@@ -280,13 +289,14 @@ if (runs("CS")) {
   // THE OTHER SKEW: a container whose clock runs FAST, reading the close as passed while the database is days before it.
   const fastAt = new Date(Date.parse((await dal.weekStore.get(fw.id)).closesAt) + MIN);
   const fast = await W.svc.closeWeek({ weekId: fw.id, now: fastAt });
-  knownRed("MB-84", "CS.4 · KNOWN-RED MB-84 · a container whose clock runs fast cannot stamp the close before the database's clock reaches it (MB-84, §6.2: the close is checked on the DB clock)",
-    !fast.ok && (await dal.weekStore.get(fw.id)).state === "OPEN",
+  ok("CS.4 · ⭐ a container whose clock runs fast cannot stamp the close before the database's clock reaches it (MB-84, §6.2: the close is checked on the DB clock)",
+    !fast.ok && /has not arrived/.test(errOf(fast)) && (await dal.weekStore.get(fw.id)).state === "OPEN",
     fast.ok ? `closed at the container's ${fastAt.toISOString()} while the database reads ${new Date().toISOString()}` : errOf(fast));
   if ((await dal.weekStore.get(fw.id)).state === "OPEN") await W.svc.closeWeek({ weekId: fw.id, early: true, now: new Date(start + 2 * HOUR) });
   await sealRest(fw.id, start, ALL_VOID);
   const v = await voided(fw.id);
-  ok("CS.6 · the fast-closed week voids whole and refunds its one live ticket", v.week.state === "VOIDED" && v.refunded === 1 && (await bal(holder)) === 50_000, errOf(v));
+  ok("CS.6 · the fast container's week, closed early in its stead, voids whole and refunds its one live ticket", v.week.state === "VOIDED" && v.refunded === 1 && (await bal(holder)) === 50_000, errOf(v));
+  W.svc.__setMaswaliCloseClockForTests(W.weekCloseClock);
 }
 
 // ═══ §2 · CH · a six-week chain ══════════════════════════════════════════════════════════════════════════════════════
@@ -615,6 +625,9 @@ if (runs("GU")) {
   const exact = await W.release(a.id, at);
   ok("GU.4 · ⭐ funded to EXACTLY the top-up, the same week releases: covered to the last shilling, the guarantee left at 0",
     exact.ok && exact.week.topUp === U && (await guarantee()) === 0 && (await bal(w1)) === 49_000 + exact.week.sharePerTicket, errOf(exact));
+  const floatAlertFor = async (weekId: string, at: Date) => (await consoleRead.consoleAlerts(at)).find((x) => x.weekId === weekId && /float/i.test(x.text));
+  ok("FL.0 · control: a payout whose float could not be read raises no float alert (the payments console shows an unreadable float)",
+    !(await floatAlertFor(a.id, at)));
   await topUp(FUND);
 
   // GU-B and GU-C · two floor weeks of seven winners each, prepared side by side; the guarantee holds both top-ups less one.
@@ -651,14 +664,17 @@ if (runs("GU")) {
   const floatRows = await weekAudit(b.id, "maswali.settlement.float_low");
   ok("FL.2 · ⭐ the float alert names the paid total the settlement committed — 869,995, the held share counted in it (MB-11)",
     floatRows.length === 1 && floatRows[0].payload?.paid === 869_995, J(floatRows.map((e: any) => e.payload)));
-  knownRed("MB-63", "FL.4 · KNOWN-RED MB-63 · the console's alerts carry the short float after the release, beside its week (MB-11: alert the Owner and Finance; MB-63's 'float short')",
-    (await consoleRead.consoleAlerts(atB)).some((x) => x.weekId === b.id && /float/i.test(x.text)), "the float_low row is written to the audit trail only");
+  const floatB = await floatAlertFor(b.id, atB);
+  ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
+    !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));
   await topUp(1);
   const rC2 = await W.release(c.id, atC);
   ok("GU.8 · …the Owner funds the one shilling, and it releases with the whole top-up", rC2.ok && rC2.week.topUp === ac?.U && (await guarantee()) === 0, errOf(rC2));
+  ok("FL.4c · …and B's float alert stands until the next week of its line pays: once C has paid (its own check, the float unreadable here, finds nothing to say), B's gives way",
+    !(await floatAlertFor(b.id, atC)) && !(await floatAlertFor(c.id, atC)));
   await topUp(FUND);
   const heldTicket = (await dal.ticketStore.listForWeek(b.id)).find((t: any) => t.userId === wB[0] && t.won);
   await settle.releaseMaswaliShare({ ticketId: heldTicket.id, officerId: OWNER, note: "the account's review is closed" });
@@ -707,14 +723,43 @@ if (runs("PL")) {
   await W.mdal.marketStore.set({ ...row, productLine: "MARKET" });
   ok("PL.2 · ⭐ a full-row write from a copy naming MARKET keeps the week MASWALI — on both stores", (await lineOf()) === "MASWALI", `${await lineOf()}`);
   let dbRefused = false;
+  /** ⚠️ A FIXTURE, DECLARED: the database's fence switched off for one statement — what a hand edit made with the trigger
+   *  disabled presents — so PL.4 measures the application's own refusal on Postgres too. */
+  const FENCE = `"PredictionMarket_productLine_maswali_fence"`;
+  const relineFenceOff = async (line: string) => {
+    await W.prisma()!.$executeRawUnsafe(`ALTER TABLE "PredictionMarket" DISABLE TRIGGER ${FENCE}`);
+    try {
+      await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = '${line}' WHERE "id" = $1`, wk.marketId);
+    } finally {
+      await W.prisma()!.$executeRawUnsafe(`ALTER TABLE "PredictionMarket" ENABLE TRIGGER ${FENCE}`);
+    }
+  };
   if (W.onPostgres) {
     try {
       await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'MARKET' WHERE "id" = $1`, wk.marketId);
     } catch {
       dbRefused = true;
     }
-    knownRed("PL.DB", "PL.3 · KNOWN-RED PL.DB · the database refuses a raw reclassification of a Millionea week's market (a direct UPDATE of its productLine): the fence rests on the line",
+    ok("PL.3 · ⭐ (Postgres) the database refuses a raw reclassification of a Millionea week's market (a direct UPDATE of its productLine): the fence rests on the line, in the database too",
       dbRefused && (await lineOf()) === "MASWALI", `the row now reads ${await lineOf()}`);
+    const poll = await W.poll();
+    const pollLine = async () => (await W.mdal.marketStore.get(poll.id))?.productLine;
+    let asRound = "", intoWeek = false;
+    try {
+      await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'UPDOWN' WHERE "id" = $1`, poll.id);
+      asRound = String(await pollLine());
+    } finally {
+      await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'MARKET' WHERE "id" = $1`, poll.id);
+    }
+    ok("PL.3b · (Postgres) control: the fence is the Millionea line's alone — a poll still re-lines to a round and back, as the house suites' fixtures do",
+      asRound === "UPDOWN" && (await pollLine()) === "MARKET", `${asRound} · ${await pollLine()}`);
+    try {
+      await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'MASWALI' WHERE "id" = $1`, poll.id);
+    } catch {
+      intoWeek = true;
+    }
+    ok("PL.3c · (Postgres) ⭐ …and no poll is ever re-lined INTO Millionea: the trigger refuses the move both ways", intoWeek && (await pollLine()) === "MARKET", `${await pollLine()}`);
+    await relineFenceOff("MARKET");
   } else {
     // ⚠️ A FIXTURE, DECLARED: the memory store hands back its live row, and the line is written on it directly — the shape a
     //    database edit presents (as the house-bot suites plant a line).
@@ -728,7 +773,7 @@ if (runs("PL")) {
       && ((await market.listPositionsForMarket(wk.marketId)) as any[]).length === before.positions && (await dal.weekStore.get(wk.id)).ticketCount === before.count),
     J({ reclassified, r: r.ok ? "sold" : r }));
   if (W.onPostgres) {
-    if (!dbRefused) await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'MASWALI' WHERE "id" = $1`, wk.marketId);
+    await relineFenceOff("MASWALI");
   } else {
     (await W.mdal.marketStore.get(wk.marketId)).productLine = "MASWALI";
   }
@@ -758,14 +803,17 @@ if (runs("IN")) {
   ok("IN.1b · ⭐ …and the Owner's staff role change asks it before it writes the role (both staff actions pass through that one function)",
     asked > 0 && writes > asked, J({ asked, writes }));
   ok("IN.2 · control: an account holding no live ticket may be made staff", (await W.svc.millioneaPromotionBlock(q)) === null);
-  let deskRows: Array<{ code: string; message: string }> = [];
-  try {
-    deskRows = (await houseBotEligibility(deskHolder, { context: "designate", actorId: OWNER })).blocking;
-  } catch (err) {
-    deskRows = [{ code: "THREW", message: String((err as Error)?.message ?? err) }];
-  }
-  knownRed("OD-12", "IN.9 · KNOWN-RED OD-12 · a desk designation of an account holding a ticket in a week that has not settled is refused (OD-12's other half: the house-bot eligibility)",
-    deskRows.some((x) => /Millionea/i.test(x.message)), J(deskRows.map((x) => x.code)));
+  const deskRowsOf = async (u: string): Promise<Array<{ code: string; message: string }>> => {
+    try {
+      return (await houseBotEligibility(u, { context: "designate", actorId: OWNER })).blocking;
+    } catch (err) {
+      return [{ code: "THREW", message: String((err as Error)?.message ?? err) }];
+    }
+  };
+  const deskRows = await deskRowsOf(deskHolder);
+  const deskRow = deskRows.find((x) => x.code === "MILLIONEA_TICKET");
+  ok("IN.9 · ⭐ a desk designation of an account holding a ticket in a week that has not settled is refused (OD-12's other half: the house-bot eligibility), the refusal naming the week",
+    !!deskRow && /Millionea/i.test(deskRow.message) && deskRow.message.includes(wk.code), J(deskRows.map((x) => x.code)));
   // ⚠️ A FIXTURE, DECLARED: a promotion that slipped through (a database edit, or one made before OD-12 was enforced), to
   //    one of the seven staff roles.
   await W.setUserFields(p, { role: "MODERATOR" });
@@ -799,6 +847,8 @@ if (runs("IN")) {
     tw.won === true && tw.payout === r.week.sharePerTicket && tw.frozenReason === "staff account" && (await heldOf(p)), J({ won: tw.won, payout: tw.payout, frozen: tw.frozenReason }));
   ok("IN.7b · …and their losing ticket settles as any other: LOSS, nothing paid, nothing held", tl.status === "SETTLED" && tl.won === false && tl.payout === 0 && tl.frozenReason === null);
   ok("IN.8 · once the week has settled, nothing stands in the way of the promotion", (await W.svc.millioneaPromotionBlock(p)) === null);
+  ok("IN.9b · control: …nor of the desk designation — its ticket settled, the account meets no Millionea row",
+    !(await deskRowsOf(deskHolder)).some((x) => x.code === "MILLIONEA_TICKET" || x.code === "MILLIONEA_UNREADABLE"));
   await settle.releaseMaswaliShare({ ticketId: win.ticketId, officerId: OWNER, note: "the promotion review is closed" });
   await W.setUserFields(p, { role: "PLAYER" });
 }
@@ -969,10 +1019,26 @@ if (runs("HF")) {
   const hw = await drafted(hs, { visibility: "DRIVE" });
   ok("HF.1 · the holiday week drafts with its template close ON the holiday: Friday 18:00 EAT",
     hw.closesAt === new Date(eatWeekAt(hs, 5, "18:00")).toISOString() && eatDate(Date.parse(hw.closesAt)) === holiday.date, `${holiday.date} · ${hw.closesAt}`);
-  const detail = await consoleRead.consoleWeekDetail(hw.id, new Date(hs - DAY));
-  knownRed("MB-85", "HF.2 · KNOWN-RED MB-85 · the builder's pre-open checklist names the public holiday its close falls on (the holiday review)",
-    (detail?.problems ?? []).some((x) => /holiday/i.test(x)), J(detail?.problems));
-  const wk = await opened(hw, hs);
+  // THE HOLIDAY REVIEW reads the Owner's list of public holidays (`maswali-holidays.ts`), which is empty until recorded.
+  const reviewOf = () => consoleRead.consoleWeekDetail(hw.id, new Date(hs - DAY));
+  const quiet = await reviewOf();
+  ok("HF.2a · control: the Owner's holiday list is empty by default, so the checklist names no holiday",
+    holidays.getMaswaliHolidays().dates.length === 0 && !(quiet?.warnings ?? []).some((x) => /holiday/i.test(x)), J(quiet?.warnings));
+  const bad = await holidays.saveMaswaliHolidays([holiday.date, `${holiday.date.slice(0, 4)}-02-30`], OWNER);
+  ok("HF.2b · ⛔ the list is validated: a date that is not on the calendar refuses the whole save, and nothing changes",
+    !bad.ok && /not a calendar date/.test(errOf(bad)) && holidays.getMaswaliHolidays().dates.length === 0, errOf(bad));
+  const saved = await holidays.saveMaswaliHolidays([holiday.date], OWNER);
+  const detail = await reviewOf();
+  ok("HF.2 · ⭐ the builder's pre-open checklist names the public holiday its close falls on (the holiday review, MB-85) — a warning, never one of the open's refusals",
+    saved.ok && (detail?.warnings ?? []).some((x) => x.includes(holiday.date) && /holiday/i.test(x)) && !(detail?.problems ?? []).some((x) => /holiday/i.test(x)),
+    J({ saved: errOf(saved), warnings: detail?.warnings, problems: detail?.problems }));
+  const recorded = await auditRows("MaswaliHolidays", "global", "maswali.holidays.updated");
+  ok("HF.2c · …and the Owner's edit is audited: the dates it set beside the ones it replaced",
+    recorded.some((e: any) => J(e.payload?.after?.dates) === J([holiday.date]) && J(e.payload?.before?.dates) === J([])), J(recorded.map((e: any) => e.payload)));
+  const o = await W.svc.openWeek({ weekId: hw.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(hs + MIN) });
+  ok("HF.2d · ⭐ …and the week opens on its holiday close: the review warns, the open never refuses (OD-27: every week runs)", o.ok, errOf(o));
+  if (!o.ok) throw new Error(`HF: the holiday week did not open: ${o.error}`);
+  const wk = o.week;
   const [h1, h2] = await people(2, 50_000);
   const [early] = await bought(h1, wk.id, [MISS_M1]);
   const eve = new Date(eatWeekAt(hs, 4, "18:00")).toISOString();
@@ -992,10 +1058,118 @@ if (runs("HF")) {
   await sealRest(wk.id, hs);
   const r = await released(wk.id);
   ok("HF.5 · the holiday week settles in its own line: no winner, its 1,000 of sales roll to the DRIVE jackpot", r.week.state === "SETTLED" && (await driveJackpot()) - d0 === 1_000, `${(await driveJackpot()) - d0}`);
+  const cleared = await holidays.saveMaswaliHolidays([], OWNER);
+  if (!cleared.ok) throw new Error(`HF: the holiday list could not be cleared: ${cleared.error}`);
 }
 
-// ═══ §14 · the invariants and the books ═════════════════════════════════════════════════════════════════════════════
-if (runs("INV")) section("§14 · the invariants and the books, over everything above");
+// ═══ §14 · DL · the week's deadlines at the open ════════════════════════════════════════════════════════════════════
+if (runs("DL")) section("§14 · DL · a week's deadlines are its frozen rules': the open recomputes them from its snapshot (OD-09b, MB-75; lane L's review, finding 8)");
+if (runs("DL")) {
+  const cfgMod = await import("../../src/lib/server/maswali-config.ts");
+  const { questionSetHash } = await import("../../src/lib/maswali-commitment.ts");
+  const s1 = W.weekStartAhead(ahead++), s2 = W.weekStartAhead(ahead++);
+  const d1 = await drafted(s1), d2 = await drafted(s2);
+  const voidsOf = async (weekId: string) => (await dal.questionStore.listForWeek(weekId)).map((q: any) => q.voidDeadlineAt as string);
+  const drafted1 = await voidsOf(d1.id);
+  // The control first: drafted and opened on the same rules, a week keeps the deadlines it was drafted with.
+  const o1 = await opened(d1, s1);
+  ok("DL.0 · control: a week opened on the rules it was drafted with keeps every deadline it was drafted with, and records no re-freeze",
+    o1.finalDeadlineAt === d1.finalDeadlineAt && J(await voidsOf(o1.id)) === J(drafted1) && (await weekAudit(o1.id, "maswali.week.deadlines_refrozen", 5)).length === 0,
+    J({ drafted: d1.finalDeadlineAt, opened: o1.finalDeadlineAt }));
+  await closed(o1.id);
+  await sealRest(o1.id, s1, ALL_VOID);
+  await voided(o1.id);
+  // THE EDIT BETWEEN THE DRAFT AND THE OPEN: the Owner shortens the void deadline and moves the final deadline, after the
+  // second week was drafted on the old rules. Put back whatever happens.
+  const rules0 = cfgMod.getMaswaliConfig();
+  const drafted2 = await voidsOf(d2.id);
+  const edit = await cfgMod.saveMaswaliConfig({ voidDeadlineHours: 24, finalDeadlineWeekday: 2, finalDeadlineAt: "12:00" }, OWNER);
+  if (!edit.ok) throw new Error(`DL: the rules could not be edited: ${edit.error}`);
+  let o2: any;
+  try {
+    o2 = await opened(d2, s2);
+  } finally {
+    const back = await cfgMod.saveMaswaliConfig({ voidDeadlineHours: rules0.voidDeadlineHours, finalDeadlineWeekday: rules0.finalDeadlineWeekday, finalDeadlineAt: rules0.finalDeadlineAt }, OWNER);
+    if (!back.ok) throw new Error(`DL: the rules could not be put back: ${back.error}`);
+  }
+  const frozen = W.svc.frozenRules(o2);
+  const finalMs = eatWeekAt(s2 + 7 * DAY, 2, "12:00");
+  const q2 = await dal.questionStore.listForWeek(o2.id);
+  ok("DL.1 · ⭐ the opened week's final deadline is its snapshot's — Tuesday 12:00 EAT of the results week, not the Monday 23:59 it was drafted with",
+    frozen?.finalDeadlineWeekday === 2 && frozen.finalDeadlineAt === "12:00" && o2.finalDeadlineAt === new Date(finalMs).toISOString() && d2.finalDeadlineAt !== o2.finalDeadlineAt,
+    J({ drafted: d2.finalDeadlineAt, opened: o2.finalDeadlineAt }));
+  const due = q2.map((q: any) => new Date(Math.min(Date.parse(q.eventStartsAt) + 24 * HOUR, finalMs)).toISOString());
+  ok("DL.2 · ⭐ …and every question's void deadline is the snapshot's: 24 hours after its event, capped at that final deadline — never the drafted 48",
+    frozen?.voidDeadlineHours === 24 && J(q2.map((q: any) => q.voidDeadlineAt)) === J(due) && J(drafted2) !== J(due), J({ drafted: drafted2.slice(0, 2), opened: q2.slice(0, 2).map((q: any) => q.voidDeadlineAt) }));
+  ok("DL.3 · the week's market resolves at that same final deadline", (await W.mdal.marketStore.get(o2.marketId))?.resolutionAt === o2.finalDeadlineAt);
+  ok("DL.4 · ⭐ the commitment covers the deadlines the week runs on: its question-set hash is the hash of its stored questions",
+    o2.questionSetHash === questionSetHash(q2), `${o2.questionSetHash} · ${questionSetHash(q2)}`);
+  const refrozen = await weekAudit(o2.id, "maswali.week.deadlines_refrozen");
+  ok("DL.5 · the re-freeze is audited, naming what moved: the final deadline and all fifteen void deadlines",
+    refrozen.length === 1 && refrozen[0].payload?.finalDeadlineAt?.to === o2.finalDeadlineAt && refrozen[0].payload?.voidDeadlines?.length === 15,
+    J(refrozen.map((e: any) => ({ final: e.payload?.finalDeadlineAt, voids: e.payload?.voidDeadlines?.length }))));
+  await closed(o2.id);
+  await sealRest(o2.id, s2, ALL_VOID);
+  await voided(o2.id);
+}
+
+// ═══ §15 · SU · the sunset after a close ═══════════════════════════════════════════════════════════════════════════
+if (runs("SU")) section("§15 · SU · the sunset after a close: a week whose results are being decided is never made final; the next week may be, inside its week (MR-30, OD-03)");
+if (runs("SU")) {
+  // THE LEAD'S DECISION OF 2026-10-18: the 13% fee is taken from a sunset payout and never from a rollover, so a stop
+  // ordered once a week's results are in view could choose who is paid. Every earlier PUBLIC week of this run has settled
+  // or voided (§2's skipped week can never open), so no final week stands and A is the newest week of the line to open.
+  const sA = W.weekStartAhead(ahead++), sB = sA + 7 * DAY, sC = sA + 14 * DAY;
+  ahead += 2;
+  const A = await openWeekAt(sA);
+  const B = await drafted(sB), C = await drafted(sC);
+  const stop = (weekId: string, now: Date) =>
+    W.svc.sunsetMaswali({ weekId, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "the Owner stops Millionea (adversarial suite)", now });
+  const isFinal = async (weekId: string) => (await dal.weekStore.get(weekId)).isFinal === true;
+  ok("SU.0 · the line is LIVE: no final week stands", (await W.svc.sunsetState()).kind === "LIVE");
+  const pastClose = new Date(Date.parse(A.closesAt) + MIN);
+  const unstamped = await stop(A.id, pastClose);
+  ok("SU.1 · ⛔ a week left OPEN past its close (no tick has stamped it) is not on sale: refused as closed, and not made final",
+    !unstamped.ok && /sales have closed/.test(errOf(unstamped)) && !(await isFinal(A.id)), errOf(unstamped));
+  const c = await W.svc.closeWeek({ weekId: A.id, now: pastClose });
+  if (!c.ok) throw new Error(`SU: week A did not close: ${c.error}`);
+  const shut = await stop(A.id, new Date(Date.parse(A.closesAt) + HOUR));
+  ok("SU.2 · ⭐ a CLOSED week is refused: its results are being decided, so a stop could choose who is paid with them in view — it settles under its own rules, and the refusal names the next week to make final instead",
+    !shut.ok && /results are being decided/.test(errOf(shut)) && /rolls over as always/.test(errOf(shut)) && errOf(shut).includes(B.code) && !(await isFinal(A.id)), errOf(shut));
+  const sealAt = new Date(sA + 5 * DAY + 12 * HOUR);
+  await sealSlots(A.id, [1], {}, sealAt);
+  const grading = await stop(A.id, new Date(sealAt.getTime() + MIN));
+  ok("SU.3 · ⭐ a RESOLVING week is refused the same way",
+    (await dal.weekStore.get(A.id)).state === "RESOLVING" && !grading.ok && /results are being decided/.test(errOf(grading)) && !(await isFinal(A.id)), errOf(grading));
+  // Wednesday of B's week: B has not opened yet, and C — the week after it — opens inside a week.
+  const midB = new Date(sB + 2 * DAY);
+  const laterDraft = await stop(C.id, midB);
+  ok("SU.4 · ⛔ a later draft inside its week of notice is still refused: only the next week to open may be made final at shorter notice (OD-03)",
+    Date.parse(C.opensAt) - midB.getTime() < 7 * DAY && !laterDraft.ok && /full week ahead/.test(errOf(laterDraft)) && errOf(laterDraft).includes(B.code) && !(await isFinal(C.id)),
+    errOf(laterDraft));
+  const nextDraft = await stop(B.id, midB);
+  ok("SU.5 · ⭐ …and after the refusals the next week to open is made final inside its week: the Owner's stop takes effect from it",
+    nextDraft.ok && nextDraft.week.isFinal === true && (await W.svc.sunsetState()).kind === "ENDING", errOf(nextDraft));
+  const ordered = await weekAudit(B.id, "maswali.sunset.ordered");
+  ok("SU.5b · …recorded as a compliance row naming its basis: the next week, after a close", ordered.length === 1 && ordered[0].payload?.basis === "NEXT_AFTER_CLOSE",
+    J(ordered.map((e: any) => e.payload)));
+  // ⚠️ A FIXTURE, DECLARED: the Owner's order withdrawn, which no act can do, so the line is LIVE again for the last case:
+  //    a week on sale with no final week standing.
+  await dal.weekStore.patch(B.id, { isFinal: false });
+  const onSale = await W.svc.openWeek({ weekId: B.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(midB.getTime() + MIN) });
+  if (!onSale.ok) throw new Error(`SU: week B did not open: ${onSale.error}`);
+  const atOnce = await stop(B.id, new Date(midB.getTime() + 2 * MIN));
+  ok("SU.6 · control: the week ON SALE, no result known, is made final at once", atOnce.ok && atOnce.week.isFinal === true && atOnce.week.state === "OPEN", errOf(atOnce));
+  // The books close behind the cases: both weeks sold nothing and void whole, so the line's jackpot is untouched.
+  await sealRest(A.id, sA, ALL_VOID);
+  await voided(A.id);
+  await closed(B.id);
+  await sealRest(B.id, sB, ALL_VOID);
+  await voided(B.id);
+}
+
+// ═══ §16 · the invariants and the books ═════════════════════════════════════════════════════════════════════════════
+if (runs("INV")) section("§16 · the invariants and the books, over everything above");
 if (runs("INV")) {
   const inv = await checkMaswaliInvariants();
   ok("INV.1 · ⭐ every pool at 0, every week's columns close, each jackpot equals its weeks and forfeits, the guarantee covers", inv.ok, J(inv.problems));
