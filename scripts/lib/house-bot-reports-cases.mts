@@ -2332,7 +2332,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      paying week; the alert's figures are the week's own paid total and the float read now — no row's payload is read. */
   /* S7-F3 (2026-10-18): the read takes the console's own latch too (float_covered, written once a reading covers the
      payout and its headroom), and still reduces to one yes/no per week. */
-  "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) and the console's latch (float_covered) of each line's newest paying week, read by action and reduced to whether an uncovered finding stands — never a row or its payload handed on",
+  /* S7-F4 (2026-10-18): the latch is gone — a finding is judged on each read against the week's shares not yet withdrawn —
+     so the read is the settlement's two rows again, still reduced to one yes/no per week. */
+  "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, read by action and reduced to whether a finding stands — never a row or its payload handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
      officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` rows (officer,

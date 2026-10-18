@@ -739,7 +739,7 @@ if (runs("GU")) {
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
   // ⭐ S7-F2 · THE FINDING IS JUDGED ON THE FLOAT AS IT STANDS (the S7 review, round 2): Finance's top-up clears it.
-  //    S7-F3 · the reading that covers it is recorded and ends it for good, so the readings that keep it come first.
+  //    S7-F4 · against what the winners can still withdraw of the payout — all of it here, nobody has withdrawn yet.
   const headroom = Number(floatRows[0]?.payload?.buffer ?? Number.NaN);
   const almost = await floatAlertFor(b.id, atB, 869_995 + headroom - 1);
   ok("FL.4d · control: a top-up one shilling short of the headroom keeps it — a warning now, the payout itself covered — naming the shilling",
@@ -749,12 +749,35 @@ if (runs("GU")) {
     !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
   ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
     Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
-  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED (the review of S7-F2, MEDIUM): the float is there for the winners to withdraw,
-  //    and their withdrawals take it back down by the very payout it covered.
-  const latched = await weekAudit(b.id, "maswali.settlement.float_covered");
-  const drained = await floatAlertFor(b.id, atB, 0);
-  ok("FL.4g · ⭐ S7-F3 · …and once covered it stays ended: the winners withdraw, the float falls back to 0, and no alert returns (the covering reading is recorded on the week)",
-    latched.length === 1 && Number(latched[0].payload?.paid) === 869_995 && !drained, J({ latched: latched.map((e: any) => e.payload), drained: drained ?? "no float alert" }));
+  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED BY THE WINNERS' OWN WITHDRAWALS (the review of S7-F2, MEDIUM): the float is
+  //    there for them to withdraw, and their withdrawals take it back down by what they withdrew. ⚠️ A FIXTURE, DECLARED:
+  //    the six free winners' completed withdrawals of their shares are CONFIRMED rows on their accounts (the held one
+  //    cannot withdraw; no wallet or ledger is touched), and the float reads as the covering top-up less the same. Marked
+  //    FAILED below, so nothing after this section counts them.
+  const shareB = Number(ab?.share ?? 0);
+  const free = wB.slice(1);
+  const settledB = Date.parse((await dal.weekStore.get(b.id)).settledAt ?? "");
+  const outIso = new Date(Math.max(Date.now(), (Number.isFinite(settledB) ? settledB : 0) + 1_000)).toISOString();
+  const outs: string[] = [];
+  for (const u of free) {
+    const wl = (await W.db.wallet.findByUserId(u))!;
+    const id = `txn_fl4g_${process.pid}_${outs.length}`;
+    await W.db.txn.create({ id, walletId: wl.id, userId: u, type: "WITHDRAWAL", status: "CONFIRMED", amount: -shareB, fee: 0, taxWithheld: 0,
+      balanceAfter: wl.balance, currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null,
+      description: "FL.4g fixture: a winner withdraws the share", positionId: null, amlReason: null,
+      createdAt: outIso, updatedAt: outIso, completedAt: outIso });
+    outs.push(id);
+  }
+  const covering = 869_995 + headroom;
+  const afterWinners = await floatAlertFor(b.id, atB, covering - free.length * shareB);
+  ok("FL.4g · ⭐ S7-F3 · …and once covered, the winners' own withdrawals never bring it back: the float falls by what they withdrew, and what is left — the held share — is still covered with its headroom",
+    shareB === 124_285 && !afterWinners, J({ shareB, afterWinners: afterWinners ?? "no float alert" }));
+  // ⭐ S7-F4 · THE FLOAT IS EVERY PLATFORM WITHDRAWAL'S (the review of S7-F3, LOW): S7-F3's latch ended the finding on one
+  //    covering reading, so other players' withdrawals draining the float before the winners had theirs left silence.
+  const byOthers = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4i · ⭐ S7-F4 · …but once other withdrawals drain the shared float, the alert returns: the held share is still owed, and nothing covers it — critical, below what is owed",
+    !!byOthers && byOthers.level === "critical" && byOthers.text.includes(formatTzs(shareB)) && /short of the payout/.test(byOthers.text), J(byOthers ?? "no float alert"));
+  for (const id of outs) await W.db.txn.update(id, { status: "FAILED" });
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));

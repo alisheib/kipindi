@@ -32,14 +32,15 @@
  * Merged into mln-sf (2026-10-18), where S7-F2's first green run had printed 184 and 192: the floor is S7-F3's, the
  * higher, until the merged tree's first green run prints its own counts — then it rises to them.
  * ⭐ S7-F4 (2026-10-18): SC.1 — with no week to offer, the stop control names the Owner's next act — and its control
- * SC.2, on each store: 187 on memory, 195 on Postgres.
+ * SC.2, on each store: 187 on memory, 195 on Postgres. And FL.4i — the float finding judged against the week's shares
+ * not yet withdrawn returns once other withdrawals drain the shared float — on each: 188 on memory, 196 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 187, postgres: 195 },
+  minPass: { memory: 188, postgres: 196 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
