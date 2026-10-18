@@ -1116,6 +1116,12 @@ const CHECKS = /* js */ `(() => {
           const hs = [...nav.querySelectorAll(".kp-rail__item")].filter(vis).map((n) => Math.round(n.getBoundingClientRect().height));
           if (new Set(hs).size > 1) bad.push({ what: "the centre slot changed the rail's row height", measured: "slot heights " + hs.join(","), where: sel(nav) });
 
+          /* ⭐ PHOSPHOR-MIGRATION W3 · EVERY LABEL ON ONE LINE. The 32px pips moved the flanking labels 3px down, and the
+             coin's pull and the gap under it were re-derived so its label meets theirs (globals.css, the coin's pull note).
+             Measured here rather than trusted, like the rise. */
+          const tops = [...nav.querySelectorAll(".kp-rail__label")].filter(vis).map((n) => n.getBoundingClientRect().top);
+          if (tops.length && Math.max(...tops) - Math.min(...tops) > 0.75) bad.push({ what: "the rail's labels do not share one line", measured: "label tops " + tops.map((t) => t.toFixed(1)).join(","), where: sel(nav) });
+
           /* THE RESERVE, measured at the document's END — and the scroll is ASSERTED first, because
              \`footer-reachable\` once printed a clean 102/102 over a page it had never scrolled. */
           const se = document.scrollingElement || document.documentElement;

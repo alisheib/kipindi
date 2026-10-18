@@ -7,8 +7,9 @@
  * AppShell (WP6b) renders this for a journey request and the classic rail for every other one.
  *
  * ── WHAT IS THE SAME AS THE CLASSIC RAIL, AND WHY ──────────────────────────────────────────────────────────────
- * The surface, the slot, the 44×26 pip that wears `--pill-active` when current, and the label are the classic rail's
- * own classes, worn unchanged: one rail language on a phone, whichever shell drew it. The nav keeps the Needle's
+ * The surface, the slot, the pip and the label are the classic rail's own classes, worn unchanged: one rail language on a
+ * phone, whichever shell drew it. Since PHOSPHOR-MIGRATION W3 the pip is 56×32 around a 24px glyph, and the lit tab
+ * draws its Fill glyph on the opaque `--nav-pill` (`NavGlyph`; R-INDICATOR 3B, R-RAIL 4B). The nav keeps the Needle's
  * keep-out, for the reason the classic rail gives (the fidget must never take a tap meant for a tab). Below 360 alone
  * the label may wrap (A17), and there the slots stack from the top so a two-line label cannot lift its pip above
  * its neighbours' (`globals.css`, the journey rail's rules).
@@ -29,7 +30,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { NavGlyph } from "@/components/ui/nav-glyph";
 import { formatNumber } from "@/lib/utils";
 import { Dot } from "@/components/ui/dot";
 import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
@@ -66,12 +67,13 @@ export function JourneyTabs({ userId }: { userId: string | null }) {
       >
         <ul>
           {JOURNEY_TABS.map((d) => {
-            const Ico = I[d.glyph];
             const on = active === d.key;
             const body = (unread: number | null) => (
               <>
+                {/* PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B, R-RAIL 4B): the tab's Fill glyph on the opaque royal pill when it
+                    is lit, at 24px in the classic rail's 56×32 pip. */}
                 <span className="kp-rail__pip">
-                  <Ico s={20} />
+                  <NavGlyph glyph={d.glyph} on={on} s={24} restsUnlit />
                   {unread !== null && unread > 0 && <Dot tone="brand" size={8} className="kp-rail__badge" />}
                 </span>
                 <span className="kp-rail__label kp-jtab__label">{tabLabel(t, d.label)}</span>

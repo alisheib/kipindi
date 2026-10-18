@@ -19,18 +19,19 @@
   - the parity entries regenerated from the final code.
   §5 W2 records all of it.
 - **Ali's review page:** https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, with seven calls he may overrule.
-- **W3 so far, the shared pieces:**
-  - `NavGlyph` draws Line, or Fill for the current destination, and morphs only into the current one;
-  - the pill's tokens, `--nav-pill` and `--nav-pill-edge`;
-  - the six tab-bar keys' Fill, inlined;
-  - the previous sprite kept for one release (`PREVIOUS_SPRITES`).
+- **W3 so far:**
+  - the shared pieces: `NavGlyph` (Line, or Fill for the current destination, morphing only into it), the pill's
+    tokens `--nav-pill` and `--nav-pill-edge`, the six tab-bar keys' Fill inlined, and the previous sprite kept for one
+    release (`PREVIOUS_SPRITES`);
+  - the classic rail and the journey's tabs: 24px glyphs in a 56 × 32 pip, Fill on the pill, and the focus ring on the
+    pill. The coin's pull is re-derived so it keeps its 14px rise and its label meets the others (V26 now measures that);
+  - both desktop bars: the same pill. The journey's underline goes (`test:journey-shell` 7.destination, re-pinned openly);
+  - the not-found rule also puts the lit tab's Line back before the scripts run (r4j 5.12).
 
 **Next:**
 1. W3, selected states (R-INDICATOR 3B, R-RAIL 4B). §5 W3 holds the plan and the guards to re-pin:
-   - the classic rail and the journey tabs: 24px glyphs on a 56 × 32 pill, with the focus ring on the pill;
-   - both desktop bars: the same pill;
    - the admin sidebar and drawer: one glyph per destination, on the same pill;
-   - the proof, then the release.
+   - the derived battery, the classic parity entries (measured), then the proof and the release.
 2. Ali's answers to the review page's calls.
 
 ### Where the work happens
@@ -62,7 +63,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
-| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: the shared pieces (NavGlyph, the pill tokens, the six Fills inlined, the previous sprite kept one release) |
+| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: the shared pieces, the two tab bars (24px, Fill on the pill) and both desktop bars; the admin sidebar next |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |

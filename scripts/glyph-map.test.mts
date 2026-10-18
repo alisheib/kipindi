@@ -73,9 +73,10 @@ type World = {
 };
 
 /** The keys a source text draws: `I.<key>`, and a glyph table's quoted key (§1's reading). */
+// A key is drawn as `I.key`, named in a table (`glyph: "key"`), or — since W3 — handed to NavGlyph (`glyph="key"`).
 const drawnKeys = (text: string, keys: string[]) => {
   const code = decomment(text);
-  return keys.filter((k) => new RegExp("\\bI\\." + k + "(?![A-Za-z0-9_])").test(code) || new RegExp("glyph[A-Za-z]*:\\s*[\"']" + k + "[\"']").test(code));
+  return keys.filter((k) => new RegExp("\\bI\\." + k + "(?![A-Za-z0-9_])").test(code) || new RegExp("glyph[A-Za-z]*\\s*[:=]\\s*\\{?\\s*[\"']" + k + "[\"']").test(code));
 };
 
 const near = (a: Box, b: Box, tol = 0.05) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
@@ -235,6 +236,8 @@ const plants: [string, RegExp, World][] = [
   ["the balance pill's eye leaves the shell", /§9 src\/components\/ui\/cash\.tsx draws eye before a tap/, W({ shell: world.shell.filter((k) => k !== "eye") })],
   ["a tab bar gains a glyph the shell does not hold", /§9 src\/components\/layout\/bottom-nav\.tsx draws coins before a tap/,
     withSrc("src/components/layout/bottom-nav.tsx", `${world.srcFiles.get("src/components/layout/bottom-nav.tsx")}\nexport const Zz = () => <I.coins s={20} />;\n`)],
+  ["a tab bar hands NavGlyph a glyph the shell does not hold", /§9 src\/components\/layout\/nav-more\.tsx draws coins before a tap/,
+    withSrc("src/components/layout/nav-more.tsx", `${world.srcFiles.get("src/components/layout/nav-more.tsx")}\nexport const Zz = () => <NavGlyph glyph="coins" on={false} s={24} />;\n`)],
   ["an exemption for a glyph the file does not draw", /§9 src\/components\/ui\/language-menu\.tsx exempts zzGone, which it does not draw/,
     W({ chrome: { ...CHROME, "src/components/ui/language-menu.tsx": { tap: { ...CHROME["src/components/ui/language-menu.tsx"].tap, zzGone: "nothing" } } } })],
   ["an exemption with no reason", /§9 src\/components\/layout\/avatar-menu\.tsx exempts logOut with no reason/,

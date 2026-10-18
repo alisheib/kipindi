@@ -3,7 +3,8 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import type { GlyphKey } from "@/components/ui/glyphs";
+import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
 import { MARK } from "@/lib/brand-mark";
@@ -42,6 +43,9 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  *    glow, both hand-typed. The desktop bar said it with `--pill-active`. Two active languages for
  *    one idea, and one of them a literal. **Active is now `--pill-active` on the pip plus a
  *    `--text` label, the same sentence the desktop bar speaks.** Aqua is gone from navigation.
+ *    ⭐ Since PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B, Ali 2026-10-17) that sentence is the destination's
+ *    FILL glyph on the opaque `--nav-pill`, in every destination bar: the rail, the journey's tabs,
+ *    both desktop bars and the admin sidebar. `--pill-active` stays the filters' and menus' selection.
  *
  * ── AND THE SURFACE ITSELF ────────────────────────────────────────────────────────────────────
  * It was a floating inset capsule on a 78% `--bg-elevated` mix with a 16px backdrop blur — the
@@ -284,12 +288,11 @@ function RailDest({
   on,
 }: {
   href: string;
-  glyph: keyof typeof I;
+  glyph: GlyphKey;
   label: string;
   accent?: boolean;
   on: boolean;
 }) {
-  const Ico = I[glyph];
   return (
     <li className="flex">
       <Link
@@ -299,10 +302,11 @@ function RailDest({
         className="kp-rail__item min-w-0"
         data-on={on ? "1" : undefined}
       >
-        {/* The 44×26 pip carries the active state — `--pill-active`, the same fill the
-            desktop bar uses behind a current destination. */}
+        {/* The pip carries the current state in the platform's one selected language (PHOSPHOR-MIGRATION W3,
+            R-INDICATOR 3B): the destination's Fill glyph on the opaque royal pill, the desktop bar's own. 24px
+            glyphs (R-RAIL 4B) in a 56×32 pip grown to fit them. */}
         <span className="kp-rail__pip">
-          <Ico s={20} />
+          <NavGlyph glyph={glyph} on={on} s={24} />
           {/* The product-line dot, same 5px gilt mark as the desktop nav. */}
           {accent && <span className="kp-rail__dot" aria-hidden />}
         </span>

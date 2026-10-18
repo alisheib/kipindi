@@ -1616,12 +1616,17 @@ function g7Header(W: World, ok: Ok) {
       && bar.includes("const active = activeTabFor(pathname);") && bar.includes(`type="button"`) && bar.includes(`aria-haspopup="dialog"`)
       && count(bar, "className={JNAV}") === 2 && bar.includes(`const JNAV = "kp-jnav__link";`) && !bar.includes("<NavMore") && !bar.includes("kp-navlink"));
   const jnav = css.split(LF).filter((l) => l.includes(".kp-jnav"));
-  ok("7.underline · the destinations speak the kit's SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)",
-    baseRule(css, ".kp-jnav__link::after").includes("transform: scaleX(0)")
-      && baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])::after").includes("background: var(--brand-500)")
-      && baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])::after").includes("transform: scaleX(1)")
-      && jnav.length >= 4 && !jnav.some((l) => l.includes("--pill-active")),
-    show(jnav.filter((l) => l.includes("--pill-active"))));
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18). This was 7.underline: "the destinations speak the kit's
+  // SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)".
+  // Ali's R-INDICATOR 3B (2026-10-17) and the W3 plan he approved collapse the four "you are here" styles into one, so
+  // the current link now wears the destination pill (--nav-pill), the classic bar's and the rail's. What the old check
+  // also held stays held: never the filters' see-through --pill-active, and no second mark (the underline is gone).
+  ok("7.destination · the destinations speak the platform's one DESTINATION language (R-INDICATOR 3B): the opaque royal pill with its lit edge when current, no underline — never the filters' see-through --pill-active",
+    baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])").includes("background: var(--nav-pill)")
+      && baseRule(css, ".kp-jnav__link:is([aria-current], [data-on])").includes("box-shadow: var(--nav-pill-edge)")
+      && baseRule(css, ".kp-jnav__link").includes("background: transparent")
+      && jnav.length >= 4 && !jnav.some((l) => l.includes("--pill-active") || l.includes("::after")),
+    show(jnav.filter((l) => l.includes("--pill-active") || l.includes("::after"))));
   const flat = squash(bar);
   ok("7.cluster · the right-hand controls are ONE cluster straight after the spacer, the money first; language and the account show from 1024 only (on a phone the hub holds them), each in a wrapper span, never on a kit control",
     count(bar, `<div className="kp-jhdr__cluster">`) === 1
@@ -1747,17 +1752,29 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && rail.includes("onClick={() => setSheetOpen(true)}") && !rail.includes("preventDefault")
       && rail.includes(`d.key === "tickets" && userId === null ? (`) && count(rail, "<TicketsGuestSheet") === 1
       && rail.includes("{userId === null && <TicketsGuestSheet"));
-  ok("8.glyphs · each tab draws its glyph from the table at the rail's 20px",
-    rail.includes("const Ico = I[d.glyph];") && rail.includes("<Ico s={20} />"));
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3: was "at the rail's 20px" (`<Ico s={20} />`). R-RAIL 4B makes tab glyphs
+  // 24px, and R-INDICATOR 3B draws the lit tab's Fill — NavGlyph does both, and carries the lit tab's Line for R4-J.
+  ok("8.glyphs · each tab draws its glyph from the table at the rail's 24px, through NavGlyph: Line, or Fill when lit (R-RAIL 4B, R-INDICATOR 3B)",
+    rail.includes("<NavGlyph glyph={d.glyph} on={on} s={24} restsUnlit />") && count(rail, "<NavGlyph") === 1
+      && !/\bI\[/.test(rail) && !rail.includes("s={20}"));
   ok("8.dot · the Akaunti dot: the bell's count from the journey's counter (mode poll), the 8px brand dot, and the count in words after the label",
     count(rail, "useUnreadCount(") === 1 && rail.includes(`useUnreadCount({ userId, mode: "poll" })`)
       && rail.includes(`<Dot tone="brand" size={8} className="kp-rail__badge" />`)
       && count(rail, "unread !== null && unread > 0") === 2 && rail.includes("t.notif.unreadOne") && rail.includes("t.notif.unreadN"));
   const badge = baseRule(css, ".kp-rail__badge");
-  ok("8.badge · the dot sits on the pip's corner, cut out of the glyph by a ring of the rail's own fill",
-    badge.includes("position: absolute") && badge.includes("top: -2px") && badge.includes("right: 6px")
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3: was "top: -2px; right: 6px" on the 44×26 pip around a 20px glyph. The dot
+  // keeps its place on the glyph's top-right corner — its centre 2px right of the glyph's box and 1px above it — so the
+  // two numbers are now DERIVED from the pip's rule and the tabs' 24px glyph (8.glyphs), never typed: a pip that changes
+  // size without the dot following fails here.
+  const pipRule = baseRule(css, ".kp-rail__pip");
+  const pipW = Number(/(?:^|[\s;{])width: (\d+)px/.exec(pipRule)?.[1]), pipH = Number(/(?:^|[\s;{])height: (\d+)px/.exec(pipRule)?.[1]);
+  const TAB_GLYPH = 24, DOT = 8;
+  const dotRight = (pipW - TAB_GLYPH) / 2 - 2 - DOT / 2, dotTop = (pipH - TAB_GLYPH) / 2 - 1 - DOT / 2;
+  ok("8.badge · the dot sits on the glyph's top-right corner (its centre 2px right of the glyph's box, 1px above it — derived from the pip and the 24px glyph), cut out of the glyph by a ring of the rail's own fill",
+    Number.isFinite(dotRight) && Number.isFinite(dotTop)
+      && badge.includes("position: absolute") && badge.includes(`top: ${dotTop}px`) && badge.includes(`right: ${dotRight}px`)
       && badge.includes("box-shadow: 0 0 0 2px var(--panel)"),
-    badge);
+    `${badge} · want top ${dotTop}px, right ${dotRight}px from a ${pipW}×${pipH} pip`);
 
   // A17 · the rail label, measured: wrap to two lines below 360 only where a label would otherwise ellipsise.
   const micro = parseFloat(tokenValue(css, "type-micro"));
@@ -3092,6 +3109,11 @@ ${s}`);
       withFile(WORLD, POLLER_HELPER, () => `import { useLgUp } from "./one-poller";${LF}export const useWide = () => useLgUp();${LF}`),
       SHELL, (s) => `${s}${LF}import { useWide } from "@/lib/journey/width-helper";${LF}`);
     const pillFill = withCss(inRule(".kp-jnav__link:is([aria-current], [data-on])", "color: var(--text);", "color: var(--text); background: var(--pill-active);"));
+    // PHOSPHOR-MIGRATION W3: the destination pill's plants — the underline back, the pill gone, the pip grown without the dot.
+    const underlineBack = withCss((s) => s.replace(`${LF}.kp-jnav__link:not(:hover) { transition: none; }`,
+      `${LF}.kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(1); background: var(--brand-500); }${LF}.kp-jnav__link:not(:hover) { transition: none; }`));
+    const pillGone = withCss(inRule(".kp-jnav__link:is([aria-current], [data-on])", "background: var(--nav-pill); ", ""));
+    const pipWider = withCss(inRule(".kp-rail__pip", "width: 56px", "width: 64px"));
     const gridOnNav = withCss((s) => s.replace(".kp-rail--journey > ul {", ".kp-rail--journey {"));
     const labelEllipsis = withCss(inRule(".kp-jtab__label", "white-space: normal", "white-space: nowrap"));
     const badgeBare = withCss(inRule(".kp-rail__badge", "box-shadow: 0 0 0 2px var(--panel)", "box-shadow: none"));
@@ -3551,8 +3573,12 @@ ${s}`);
         world: phoneOnlyBlock, landed: cssChanged(phoneOnlyBlock), landedAs: "the same rule, in the shape a one-line reader cannot see" },
       { name: "the pill follows the session, not the header state", expect: at("7.state ·"),
         world: pillForAnyPlayer, landed: changed(pillForAnyPlayer, JHDR), landedAs: "+ Weka pesa offered on a break, to a held wallet and on the deposit screen itself" },
-      { name: "the desktop destinations wear the filter pill's fill", expect: at("7.underline ·"),
+      { name: "the desktop destinations wear the filter pill's fill", expect: at("7.destination ·"),
         world: pillFill, landed: cssChanged(pillFill), landedAs: "the capsule language on a section link (§0h point 7)" },
+      { name: "the desktop destinations' underline comes back beside the pill", expect: at("7.destination ·"),
+        world: underlineBack, landed: cssChanged(underlineBack), landedAs: "two marks for one current link, the section language on a destination" },
+      { name: "the current desktop link loses the destination pill", expect: at("7.destination ·"),
+        world: pillGone, landed: cssChanged(pillGone), landedAs: "the current link said only by its ink, a 1.0:1 change on the bar" },
       { name: "an inline height on the header", expect: at("7.frame ·"),
         world: inlineHeight, landed: changed(inlineHeight, JHDR), landedAs: "the canvas's 64px, typed where no probe can tell it from a decision" },
       { name: "the bell's slot loses its 4px", expect: at("7.bell ·"),
@@ -3588,6 +3614,8 @@ ${s}`);
         world: labelEllipsis, landed: cssChanged(labelEllipsis), landedAs: "the rail reads Tiketi zan… on a 320 phone" },
       { name: "the unread dot loses its cut-out", expect: at("8.badge ·"),
         world: badgeBare, landed: cssChanged(badgeBare), landedAs: "an 8px dot lost against the glyph under it" },
+      { name: "the pip grows and the unread dot stays where it was", expect: at("8.badge ·"),
+        world: pipWider, landed: cssChanged(pipWider), landedAs: "the dot 4px off the glyph's corner, floating on the pill" },
       { name: "the journey's slots centre below 360", expect: at("8.align ·"),
         world: pipsLifted, landed: cssChanged(pipsLifted), landedAs: "on a 320 phone in Swahili the Tiketi pip sits 6px above the other three" },
       { name: "the unread dot shows at a count of zero", expect: at("8.dot ·"),

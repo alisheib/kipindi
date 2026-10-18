@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { NavGlyph } from "@/components/ui/nav-glyph";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { Toggle } from "@/components/ui/toggle";
 import { useT } from "@/lib/i18n";
@@ -135,8 +136,10 @@ export function NavMore({
           className="kp-rail__item"
           data-on={anyActive ? "1" : undefined}
         >
+          {/* The rail's own pip and glyph (PHOSPHOR-MIGRATION W3): Fill on the pill while a destination behind it is
+              the current page, as every rail slot says "you are here". */}
           <span className="kp-rail__pip">
-            <I.menu s={20} />
+            <NavGlyph glyph="menu" on={anyActive} s={24} />
           </span>
           {/* Capitalised by class, like the bar trigger below: `common.more` stays lowercase for its mid-sentence use. */}
           <span className="kp-rail__label capitalize">{label}</span>
@@ -248,6 +251,8 @@ export function NavMore({
         // items is the current page" fact that `aria-current="page"` cannot honestly carry on a
         // menu button. `--pill-active` remains the ONE active treatment across header, rail and
         // this menu — it is just declared in CSS now instead of here.
+        // ⭐ PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B): a current destination in a bar now says it with the
+        // opaque `--nav-pill` (`.kp-navlink`, the rail's pip); this menu's rows keep `--pill-active`.
         data-active={anyActive ? "" : undefined}
         className="kp-navlink inline-flex items-center gap-1 whitespace-nowrap"
         style={{
