@@ -138,13 +138,17 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      only way to /wallet, so it stays. */
   const walletRow: { href: string; label: string }[] =
     walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
-  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13;
-     DESIGN_AUTHORITY §M8a item 11): never a slot of this rail — five equal tracks with the centre coin. Drawn only on the
-     shell's own answer (the rollout admits the request, the reader is not on a break), as `inviteVisible` is. */
-  const millioneaRow: { href: string; label: string; glyph: ReactNode }[] = millionea
-    ? [{ href: "/millionea", label: t.millionea.productLabel, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 text-text-muted" /> }]
+  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13):
+     this rail keeps its five equal tracks around the centre coin, so Millionea is a row behind More here, never a slot.
+     Drawn only on the shell's own answer (the rollout admits the request, the reader is not on a break), as
+     `inviteVisible` is.
+     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row wears the tab's own treatment: its words in the
+     three money colours (`kp-millionea-ink`, globals.css) and its mark in gold, the one ink every nav gives Millionea —
+     the journey's tab and both desktop links wear the same class. */
+  const millioneaRow: { href: string; label: string; glyph: ReactNode; ink: boolean }[] = millionea
+    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]
     : [];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode }[] = isAuthed
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode; ink?: boolean }[] = isAuthed
     ? [
         ...millioneaRow,
         { href: "/results",        label: t.common.results },

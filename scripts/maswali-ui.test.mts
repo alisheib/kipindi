@@ -381,6 +381,57 @@ const doorDefects = (src: (rel: string) => string) => {
     !thirdGated(switchSrc.replace('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),', '{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" },')));
 }
 
+// ── §5b · S5-TAB: Millionea's ink (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) ─────────────────────────────────
+console.log("\n§5b · the ink: one class of tokens alone, a still gradient that never moves, plain under forced colours, worn by every nav");
+/** Every nav that draws Millionea and the exact markup it wears the ink with (`n` times). Each S5-TAB item adds its nav. */
+const INK_WEARERS: ReadonlyArray<{ rel: string; at: string; n: number }> = [
+  { rel: "src/components/layout/nav-more.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 2 },
+  { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
+];
+const cssCode = (s: string) => squash(s.replace(/\/\*[\s\S]*?\*\//g, ""));
+const RAW_COLOUR = /#[0-9a-f]{3,8}\b|\b(?:oklch|oklab|rgba?|hsla?|lab|lch|hwb)\(|\b(?:red|green|gold|yellow|orange|white|black)\b/i;
+const INK_VAR = /^--(?:yes|gold|no)-\d{2,3}$/;
+const inkDefects = (src: (rel: string) => string) => {
+  const d: string[] = [];
+  const css = cssCode(src("src/app/globals.css"));
+  const rules = [...css.matchAll(/([^{}]*kp-millionea-[^{}]*)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }));
+  if (rules.length === 0) d.push("the ink: no rule names it");
+  for (const r of rules) {
+    const vars = [...r.body.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]);
+    if (RAW_COLOUR.test(r.body.replace(/var\([^)]*\)/g, ""))) d.push(`the ink: a raw colour in "${r.sel}"`);
+    for (const v of vars) if (!INK_VAR.test(v)) d.push(`the ink: "${r.sel}" reads ${v}, which is not a money colour token`);
+    if (/\b(?:animation|transition)(?:-[a-z-]+)?\s*:/.test(r.body) && !/\b(?:animation|transition)\s*:\s*none\b/.test(r.body)) d.push(`the ink: "${r.sel}" moves (an animation or a transition)`);
+  }
+  if (/@keyframes kp-millionea|kp-millionea-[a-z-]*\s*\{[^}]*\b(?:animation|transition)\b/.test(css)) d.push("the ink: a keyframe or a motion rule names it");
+  if (count(css, ".kp-millionea-ink { color: var(--gold-300); }") !== 1) d.push("the ink: not defined once");
+  const sup = css.slice(css.indexOf("@supports ((-webkit-background-clip: text) or (background-clip: text)) { .kp-millionea-ink {"));
+  const fill = sup.slice(0, sup.indexOf("}"));
+  if (!sup || !/background-image: linear-gradient\(90deg, var\(--yes-\d+\), var\(--gold-\d+\), var\(--no-\d+\)\);/.test(fill)
+    || !fill.includes("background-clip: text;") || !fill.includes("-webkit-text-fill-color: transparent;")) d.push("the ink: the fill is not green to gold to red clipped to the word, behind @supports");
+  if (!/filter: drop-shadow\(0 0 \dpx color-mix\(in oklab, var\(--gold-\d+\) \d+%, transparent\)\);/.test(fill) || /text-shadow/.test(sup.slice(0, sup.indexOf("} }")))) d.push("the ink: the halo is not a faint gold drop-shadow (and never a text-shadow)");
+  if (!css.includes("@media (forced-colors: active) { .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink { background-image: none; color: inherit; -webkit-text-fill-color: currentColor; filter: none; }")) d.push("the ink: forced colours do not draw it as plain system text");
+  for (const w of INK_WEARERS) {
+    const n = count(squash(code(src(w.rel))), w.at);
+    if (n !== w.n) d.push(`the ink: ${w.rel} wears it ${n} times, not ${w.n}`);
+  }
+  return d;
+};
+{
+  const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
+  const d = inkDefects(read);
+  ok("5b.1 · one ink class: green to gold to red clipped to the word, a faint gold drop-shadow — tokens alone", d.filter((x) => !/moves|motion rule|forced|wears/.test(x)).length === 0, d.join(" | "));
+  ok("5b.2 · the ink never moves (no animation, no transition, no keyframe); forced colours draw plain system text", d.filter((x) => /moves|motion rule|forced/.test(x)).length === 0, d.join(" | "));
+  ok("5b.3 · every nav that draws Millionea wears the one class (More's rows, the classic rail's row)", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
+  const rawColour = inkDefects(plant("src/app/globals.css", "var(--yes-300), var(--gold-300), var(--no-300));", "var(--yes-300), var(--gold-300), oklch(70% 0.2 22));"));
+  ok("5b.4 · CONTROL · a raw colour in the class is reported", rawColour.some((x) => x.includes("raw colour")), j(rawColour));
+  const moving = inkDefects(plant("src/app/globals.css", "    -webkit-text-fill-color: transparent;\n", "    -webkit-text-fill-color: transparent;\n    animation: kp-millionea-drift 9s ease-in-out infinite alternate;\n"));
+  ok("5b.5 · CONTROL · an animation planted in the class is reported", moving.some((x) => x.includes("moves")), j(moving));
+  const plainGone = inkDefects(plant("src/app/globals.css", "  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink { background-image: none; color: inherit;", "  .kp-millionea-x { background-image: none; color: inherit;"));
+  ok("5b.6 · CONTROL · the forced-colours rule removed is reported", plainGone.some((x) => x.includes("forced colours")), j(plainGone));
+  const inkDropped = inkDefects(plant("src/components/layout/nav-more.tsx", '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', "{it.label}"));
+  ok("5b.7 · CONTROL · the ink dropped from one nav is reported", inkDropped.some((x) => x.includes("nav-more.tsx wears it 1 times")), j(inkDropped));
+}
+
 // ── §6 · the slip ──────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§6 · the slip: kept in the tab, bought from the confirm alone; the overlays stand down");
 const slipDefects = (src: string) => {
@@ -584,6 +635,6 @@ const perfDefects = (readAt: (rel: string) => string) => {
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
  *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 67 call sites, two of them in loops that run 6 (§3.1) and 9 (§4.3). */
-const MIN_ASSERTIONS = 80;
+const MIN_ASSERTIONS = 87; // 80 + S5-TAB's seven (§5b, 2026-10-19)
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

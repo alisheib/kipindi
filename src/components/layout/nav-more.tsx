@@ -34,8 +34,10 @@ export function NavMore({
   cardSpacing,
 }: {
   /** `glyph`: a row's own mark, drawn before its words — Maswali Millionea's row only (MASWALI-BUILD S5; the v6 delivery's
-   *  frames H13 and the 1280 overflow), a product line among destinations; every other row stays words alone. */
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode }[];
+   *  frames H13 and the 1280 overflow), a product line among destinations; every other row stays words alone.
+   *  `ink`: the row's words in Millionea's ink (`kp-millionea-ink`, globals.css; Ali, 2026-10-19, §M8a item 11) — the one
+   *  class every nav that draws Millionea wears; every other row's words stay bare, byte for byte. */
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode; ink?: boolean }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -216,7 +218,7 @@ export function NavMore({
                   }}
                 >
                   {it.glyph}
-                  {it.label}
+                  {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
                   {/* DG-P-11 — the rail branch accepted `proposalsBadge` in its props and threw
                       it away, so the same destination read "Propose & earn · Coming soon" on a
                       laptop and a bare "Propose" on a phone. Same flag, both variants. */}
@@ -289,7 +291,7 @@ export function NavMore({
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
                 {it.glyph}
-                {it.label}
+                {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
                 )}
