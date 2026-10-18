@@ -161,6 +161,19 @@ export async function resolveMarketAction(formData: FormData) {
   if (outcome !== "YES" && outcome !== "NO" && outcome !== "VOID") {
     return { ok: false as const, error: "Invalid outcome.", code: "INVALID" as const };
   }
+  // ⛔ MASWALI-BUILD S7-F5 · THE CEREMONY THE PAGE DREW IS THE ONE THAT RUNS. The control posts whether it drew the
+  //    two-officer ceremony (`drawnTwoAdmin`); a setting that reads otherwise now (toggled between the render and the
+  //    click), cannot be read, or was not posted refuses before anything is recorded. A page drawn for one ceremony never
+  //    runs the other: a stage-1 click never seals, and a seal never skips its confirmation.
+  const drawn = String(formData.get("drawnTwoAdmin") ?? "");
+  const { readRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
+  const twoOfficerNow = await readRequireTwoOfficerResolution().catch(() => null);
+  if (twoOfficerNow === null) {
+    return { ok: false as const, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment.", code: "INVALID" as const };
+  }
+  if (drawn !== (twoOfficerNow ? "1" : "0")) {
+    return { ok: false as const, error: "The two-officer setting changed after this page was drawn, so nothing was resolved. Reload the page and resolve again.", code: "INVALID" as const };
+  }
   const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence });
   if (r.ok) {
     revalidatePath("/admin/resolver-queue");

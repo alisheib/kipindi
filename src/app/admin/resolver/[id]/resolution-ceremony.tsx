@@ -88,6 +88,8 @@ export function ResolutionCeremony({
       const fd = new FormData();
       fd.set("marketId", marketId);
       fd.set("outcome", outcome);
+      // S7-F5 · the ceremony this page drew: the action refuses if the setting reads otherwise now.
+      fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");
       if (evidenceText.trim()) fd.set("evidence", evidenceText.trim());
       const r = await runAdminAction(() => resolveMarketAction(fd));
       if (!r.ok) {

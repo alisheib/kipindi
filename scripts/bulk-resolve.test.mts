@@ -525,6 +525,18 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      /const requireTwoOfficer = twoOfficerRead !== false;/.test(p) && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
        && /const requireTwoOfficer = twoOfficerRead !== false;/.test(marketPage) && /twoOfficerRead === null \? \(/.test(marketPage)
        && /if \(twoOfficerRead === null\) \{[^}]*process\.exit\(2\)/.test(census));
+  // ⛔ MASWALI-BUILD S7-F5 · an unknown setting drawn strict removed the seal's confirmation: the controls posted only the
+  //    market and the outcome, and the action re-read the setting (OFF once it answered) — a one-click seal with no typed
+  //    word. Now no control is offered while it is unknown, and the action runs only the ceremony the page drew.
+  const controls = read("src/app/admin/resolver-queue/resolve-controls.tsx");
+  const ceremony = read("src/app/admin/resolver/[id]/resolution-ceremony.tsx");
+  const actions = read("src/app/markets/actions.ts");
+  ok("11.5d while the setting is unknown neither page offers a resolve control: the queue and the market page say it is unreadable instead",
+     before(p, "twoOfficerRead === null ? (", "<ResolveControls") && before(marketPage, "canResolve && twoOfficerRead === null ? (", "<ResolutionCeremony"));
+  ok("11.5e both controls post the ceremony they drew, and the action refuses an unread, missing or changed setting BEFORE resolveMarket",
+     [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
+       && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")
+       && /if \(twoOfficerNow === null\)/.test(actions) && /if \(drawn !== \(twoOfficerNow \? "1" : "0"\)\)/.test(actions));
 
   const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
   ok("11.6 the bar reads the ACT gate", /useMayAct\(\)/.test(bar));

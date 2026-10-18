@@ -604,7 +604,12 @@ async function ResolverQueueContent({
 
                   <div className="p-4 space-y-3">
                     {canResolve ? (
-                      <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                      // S7-F5 · an unknown setting offers no resolve control: either ceremony drawn could be the wrong one.
+                      twoOfficerRead === null ? (
+                        <p className="text-body-sm text-warning">The two-officer setting could not be read, so no market can be resolved here now. Reload the page.</p>
+                      ) : (
+                        <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                      )
                     ) : (
                       <ControlLocked what="Resolve YES / NO / VOID" need={CONTROL_DOMAIN.resolveMarket} block />
                     )}

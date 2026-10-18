@@ -322,6 +322,9 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                     </p>
                   </div>
                 </div>
+              ) : canResolve && twoOfficerRead === null ? (
+                // S7-F5 · an unknown setting offers no ceremony: either one drawn could be the wrong one.
+                <p className="text-body-sm text-warning">The two-officer setting could not be read, so this market cannot be resolved now. Reload the page.</p>
               ) : canResolve ? (
                 <ResolutionCeremony
                   marketId={m.id}
