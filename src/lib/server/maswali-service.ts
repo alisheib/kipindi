@@ -19,7 +19,8 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { buyPosition, createMarket } from "./market-service";
+import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
+import { dbNowMs } from "./maswali-money-service";
 import { refundVoidedWeek } from "./maswali-void";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
@@ -399,6 +400,14 @@ export async function purchaseMaswaliTickets(input: {
   }
   const rules = frozenRules(week);
   if (!rules) return notOpen;
+  // ⛔ S7 · THE WEEK'S MARKET MUST STILL BE A MILLIONEA MARKET (the fence, MB-01). The bet path routes a stake by its market's
+  //    product line, so a week whose row was reclassified would be sold as a one-sided Yes/No stake on the week's own pool:
+  //    a position with no ticket, and sales that never again agree three ways. Nothing is sold, and the server log says why.
+  const market = await marketStore.get(week.marketId);
+  if (!isFencedMaswali(market)) {
+    console.error(`[maswali] ALARM · week ${week.code}'s market ${week.marketId} is not a Millionea market; nothing was sold`);
+    return notOpen;
+  }
   const r = await buyPosition(input.userId, {
     marketId: week.marketId,
     side: "YES",
@@ -420,12 +429,17 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
   const nowMs = (input.now ?? new Date()).getTime();
   const toMs = Date.parse(input.toCloseAt);
   if (!Number.isFinite(toMs)) return refuse("The new close is not a time.");
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return refuse(`Week ${week.code} is ${week.state}; only an open week's close can move.`);
     const fromMs = Date.parse(week.closesAt);
-    if (fromMs <= nowMs) return refuse("The close has already passed; it can never move back (MR-13).");
+    // ⛔ S7 · THE CLOSE HAS PASSED ONCE EITHER CLOCK SAYS SO (MB-84: the close is the database's instant). A purchase and a
+    //    cancel stop on the database clock, so a container whose own clock runs slow still read the week as before its
+    //    close, moved it later and reopened sales the database had already closed. The later of the two clocks decides,
+    //    and it measures the earlier close's lead too.
+    const atMs = Math.max(nowMs, await dbNowMs(lockTx));
+    if (fromMs <= atMs) return refuse("The close has already passed; it can never move back (MR-13).");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // Every sold ticket keeps its free-cancel window (RULES §2.6, frozen in the week's feeSnapshot): an earlier close must
@@ -433,10 +447,15 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
     const market = week.marketId ? await marketStore.get(week.marketId) : null;
     const graceMin = (market?.feeSnapshot as { freeExitGraceMinutes?: number } | undefined)?.freeExitGraceMinutes ?? DEFAULT_FREE_EXIT_GRACE_MINUTES;
     const minLeadMs = (graceMin + 1) * 60_000;
-    if (toMs < nowMs + minLeadMs) return refuse(`An earlier close must still be at least ${graceMin + 1} minutes away, so every ticket keeps its free-cancel window.`);
+    if (toMs < atMs + minLeadMs) return refuse(`An earlier close must still be at least ${graceMin + 1} minutes away, so every ticket keeps its free-cancel window.`);
     const questions = await questionStore.listForWeek(week.id);
-    const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
-    if (toMs > earliest - rules.minLockBufferMinutes * 60_000) return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);
+    if (questions.length === 0) return refuse(`Week ${week.code}'s questions could not be read.`);
+    // MR-4 · the refusal names the question whose event the close would run into.
+    const first = questions.reduce((a, q) => (Date.parse(q.eventStartsAt) < Date.parse(a.eventStartsAt) ? q : a));
+    const earliest = Date.parse(first.eventStartsAt);
+    if (toMs > earliest - rules.minLockBufferMinutes * 60_000) {
+      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);
+    }
     if (toMs === fromMs) return refuse("That is already the close.");
     const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString());
     if (!won) return refuse("The close changed while it was being moved; refresh and try again.");
@@ -565,6 +584,10 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     if (q.twoOfficerAtStage1 !== true) return refuse("This seal needs no second officer.");
     if (q.stage2By) return refuse("Already confirmed.");
     if (q.sealedBy === input.officerId) return refuse("The officer who sealed it cannot confirm it — a second officer must.");
+    // ⛔ S7 · the seal's own bar (MR-14): the second signature on a result is a seal too, so no officer holding a ticket in
+    //    the week gives it — an account made staff mid-week while its ticket runs included.
+    const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
+    if (holds) return refuse("An officer who holds a ticket in this week cannot confirm its seals.");
     await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() });
     audit({ category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
     const r = await recomputeGateLocked(week.id, nowMs);
@@ -580,7 +603,13 @@ export async function correctSeal(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
 }): Promise<Result> {
   const nowMs = (input.now ?? new Date()).getTime();
+  if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
+  // ⛔ S7 · A CORRECTION IS A SEAL, AND MEETS A SEAL'S RULES (MR-14, MR-15): it records its evidence, and it voids only on a
+  //    ground available now. Without them an officer could seal YES and correct it to "not played" inside the very deadline
+  //    a seal refuses, or replace a result with no evidence at all.
+  const evidence = input.evidence.trim();
+  if (evidence.length < 10) return refuse("A correction records its evidence (at least 10 characters).");
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -589,9 +618,12 @@ export async function correctSeal(input: {
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing sealed to correct.");
     if (q.sealedBy !== input.officerId) return refuse("Only the officer who sealed a question may correct it; anyone else files an objection.");
+    if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
+      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+    }
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
-      evidence: input.evidence.trim(), sealedAt: new Date(nowMs).toISOString(), stage2By: null, stage2At: null,
+      evidence, sealedAt: new Date(nowMs).toISOString(), stage2By: null, stage2At: null,
     });
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
     await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });
@@ -776,4 +808,21 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
       payload: { code: week.code, state: week.state, reason } });
     return { ok: true, week: (await weekStore.get(week.id))! };
   });
+}
+
+// ── OD-12 · NO INSIDER HOLDS A TICKET ───────────────────────────────────────────────────────────────
+
+/**
+ * ⭐ OD-12 · MAY THIS ACCOUNT BE MADE STAFF NOW? Not while it holds a ticket in a week that has not settled: an insider never
+ * holds a live ticket (MR-10, R-INSIDERS), and a promotion mid-week would hand one to a person who may then read the week's
+ * console. The Owner makes the change once the week settles. The refusal in the Owner's words, or null when nothing stands.
+ * ⛔ No override is built: OD-12's "the Owner refunds the tickets first" would refund single tickets out of a committed
+ *    week, which nothing may do (MR-13). ⛔ A read that fails throws, so the promotion fails closed (the action reports it).
+ */
+export async function millioneaPromotionBlock(userId: string): Promise<string | null> {
+  const live = (await ticketStore.listForUser(userId)).filter((t) => t.status === "LIVE");
+  if (live.length === 0) return null;
+  const codes: string[] = [];
+  for (const cycleId of new Set(live.map((t) => t.cycleId))) codes.push((await weekStore.get(cycleId))?.code ?? cycleId);
+  return `This account holds ${live.length} Millionea ticket(s) in a week that has not settled (${codes.join(", ")}). An insider never holds a ticket (OD-12): make the change once that week has settled.`;
 }
