@@ -38,7 +38,7 @@ import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidC
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
-import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
 import { formatTzs } from "@/lib/utils";
 
@@ -334,6 +334,12 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (life.kind === "ENDING" && life.week.id !== week.id && calendarStartMs(week) > calendarStartMs(life.week)) {
       return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
     }
+    // ⛔ MR-30 · OD-03 · A FINAL WEEK OPENS NO EARLIER THAN ANNOUNCED. The hub and the home card name it, with its drafted
+    //    open, from the moment it is made final: that is the time its buyers were told, and an early press would cut the
+    //    notice the rules promise (the S6 legal review, round 2). An ordinary week may still open early.
+    if (week.isFinal && nowMs < Date.parse(week.opensAt)) {
+      return refuse(`Week ${week.code} is the final week, announced to open at ${week.opensAt}; it cannot open before then.`);
+    }
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
     await seedDefaultSources();
@@ -600,6 +606,11 @@ export async function sealQuestion(input: {
     if (q.outcome !== null) return refuse(`${slotLabel(q.slot)} is already sealed; correct it through its own correction (OD-09).`);
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
       return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+    }
+    // ⛔ MR-15 · MR-16 · an objection is upheld only after the sales close, so its ground cannot be sealed on a week still on
+    //    sale: there, a criterion found wrong voids on `criterion_wrong` (the closed list's own definitions).
+    if (input.outcome === "VOID" && input.voidReason === "criterion_objection" && week.state === "OPEN") {
+      return refuse(`"${MASWALI_VOID_REASON_LABEL.criterion_objection}" is a ground only after the sales close; while week ${week.code} is on sale, void ${slotLabel(q.slot)} on "${MASWALI_VOID_REASON_LABEL.criterion_wrong}".`);
     }
     const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
     if (holds) return refuse("An officer who holds a ticket in this week cannot seal its questions.");

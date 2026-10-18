@@ -415,6 +415,22 @@ export const MUTATIONS = [
     suite: "adversarial:SU",
   },
   {
+    name: "(SF-final-early-open) a final week opens before the time it was announced with (MR-30, OD-03; the S6 legal review)",
+    file: SVC,
+    from: "    if (week.isFinal && nowMs < Date.parse(week.opensAt)) {",
+    to: "    if (false && week.isFinal && nowMs < Date.parse(week.opensAt)) {",
+    expect: "SU.5c · ⛔",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(SF-objection-on-sale) a question voids on 'objection upheld' while its week is still on sale (MR-15, MR-16)",
+    file: SVC,
+    from: "    if (input.outcome === \"VOID\" && input.voidReason === \"criterion_objection\" && week.state === \"OPEN\") {",
+    to: "    if (false && input.outcome === \"VOID\" && input.voidReason === \"criterion_objection\" && week.state === \"OPEN\") {",
+    expect: "VG.1 · ⛔",
+    suite: "adversarial:RP",
+  },
+  {
     name: "(S7-deadlines-refrozen) the open keeps the deadlines the draft computed: a week runs on figures its frozen rules do not state",
     file: SVC,
     from: "    const { week: due, questions } = deadlinesUnderRules(week, drafted, rules);",

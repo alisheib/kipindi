@@ -403,6 +403,25 @@ if (runs("RP")) {
   await released(wk.id);
 }
 if (runs("RP")) {
+  // VG · an objection is upheld only after the sales close (MR-16), so its ground is no ground while the week is on sale.
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  const onSale = new Date(start + 2 * HOUR);
+  const slotOf5 = async () => (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 5);
+  const vg1 = await W.svc.sealQuestion({ weekId: wk.id, slot: 5, outcome: "VOID", voidReason: "criterion_objection", evidence: "The criterion names the wrong competition", officerId: SEALER, now: onSale });
+  ok("VG.1 · ⛔ a void on 'objection upheld' while the week is on sale is refused, and the question stays unsealed (MR-15, MR-16)",
+    !vg1.ok && /only after the sales close/.test(errOf(vg1)) && (await slotOf5()).outcome === null && (await dal.weekStore.get(wk.id)).state === "OPEN", errOf(vg1));
+  const vg2 = await W.svc.sealQuestion({ weekId: wk.id, slot: 5, outcome: "VOID", voidReason: "criterion_wrong", evidence: "The criterion names the wrong competition", officerId: SEALER, now: onSale });
+  ok("VG.2 · control: the same void on 'criterion wrong' lands while the week is on sale",
+    vg2.ok && (await slotOf5()).voidReason === "criterion_wrong", errOf(vg2));
+  await closed(wk.id);
+  const vg3 = await W.svc.sealQuestion({ weekId: wk.id, slot: 6, outcome: "VOID", voidReason: "criterion_objection", evidence: "Objection upheld: the criterion was materially wrong", officerId: SEALER, now: new Date(Date.parse(wk.closesAt) + 2 * HOUR) });
+  ok("VG.3 · control: after the close, a void on 'objection upheld' lands",
+    vg3.ok && (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === 6).voidReason === "criterion_objection", errOf(vg3));
+  await sealRest(wk.id, start);
+  await released(wk.id);
+}
+if (runs("RP")) {
   // RP-A · M3 void with A1 void (A2 stands in), then the sealer reinstates A1: A1 stands in, and the other ticket wins.
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
@@ -1153,6 +1172,11 @@ if (runs("SU")) {
   const ordered = await weekAudit(B.id, "maswali.sunset.ordered");
   ok("SU.5b · …recorded as a compliance row naming its basis: the next week, after a close", ordered.length === 1 && ordered[0].payload?.basis === "NEXT_AFTER_CLOSE",
     J(ordered.map((e: any) => e.payload)));
+  // ⭐ (the lead, 2026-10-18; the S6 legal review, round 2): a FINAL week opens no earlier than the time it was announced
+  //    with — the hub and the home card name it from the moment it is set, and an early press would cut that notice.
+  const early = await W.svc.openWeek({ weekId: B.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(Date.parse(B.opensAt) - HOUR) });
+  ok("SU.5c · ⛔ the final week cannot open before its announced time, and stays a draft",
+    !early.ok && /final week, announced to open/.test(errOf(early)) && (await dal.weekStore.get(B.id)).state === "DRAFT", errOf(early));
   // ⚠️ A FIXTURE, DECLARED: the Owner's order withdrawn, which no act can do, so the line is LIVE again for the last case:
   //    a week on sale with no final week standing.
   await dal.weekStore.patch(B.id, { isFinal: false });
