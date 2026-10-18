@@ -198,6 +198,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // final week's announcement and its rule at purchase, and the rounding remainder's three notes in place of "never
     // paid from house money" (D19, MR-25) — each locale's sw and zh for native review at Gate B; no versioned policy
     // string moves. Re-pinned at 48ddb855b: a final week's carry and remainder stay in the jackpot account (MR-30).
+    // Re-pinned at e47159f7b (S7 round 3's merge, 2026-10-18): the stale-slip refusal's words (`millionea_week_final`)
+    // in three languages — sw and zh for native review at Gate B; nothing else in the dictionary moves.
     // MASWALI-BUILD S5 pages (2026-10-17) publishes Privacy v2026-10-17 (COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7's
     // Millionea slip paragraph in three languages — and, by the lead's decision of 2026-10-18, WITH THE CEILING: each paragraph
     // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
@@ -209,7 +211,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "48ddb855b"],
+      ["src/lib/i18n-dict.ts", "e47159f7b"],
       ["src/app/legal/privacy/page.tsx", "f8828dcb7"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
