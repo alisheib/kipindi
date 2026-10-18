@@ -430,7 +430,7 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // evidence", attributed to the person this action names — and this officer typed neither
   // of them. The excerpt survives on the market row and in the audit payload.
   ok("10.9 NOTHING is written as the officer's player-facing evidence",
-     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId \}\)/.test(a)
+     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId, twoOfficerNow: async \(\) => requireTwoOfficer \}\)/.test(a)
      && !/evidence: (override|typed|m\.sentinelEvidence)/.test(a));
   ok("10.10 a tampered payload naming an unselected market is refused",
      /is not selected/.test(a));
@@ -547,6 +547,8 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      bulkBar.includes('fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");')
        && /if \(String\(formData\.get\("drawnTwoAdmin"\) \?\? ""\) !== \(twoOfficerRead \? "1" : "0"\)\) \{/.test(bulkAction)
        && before(bulkAction, 'formData.get("drawnTwoAdmin")', "for (const id of unique)"));
+  ok("11.5i one read decides the ceremony: both actions hand resolveMarket the read that checked the drawn ceremony, so it never reads again",
+     actions.includes("twoOfficerNow: async () => twoOfficerNow") && bulkAction.includes("twoOfficerNow: async () => requireTwoOfficer"));
   const toggle = read("src/app/admin/resolver-queue/two-admin-toggle.tsx");
   ok("11.5f the two-admin switch names an unread setting as unknown, with no switch — never drawn ON (it is handed the read, null included)",
      /enabled: boolean \| null/.test(toggle) && /if \(enabled === null\) \{/.test(toggle) && /<TwoAdminToggle enabled=\{twoOfficerRead\} \/>/.test(p));

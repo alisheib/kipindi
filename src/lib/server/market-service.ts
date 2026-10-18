@@ -3752,7 +3752,7 @@ function recordRefusedSale(
   });
 }
 
-export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string; /** Tests only: the setting's read. */ twoOfficerNow?: () => Promise<boolean | null> }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
+export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string; /** The setting's read: the action passes its own, so one read decides the ceremony (S7-F6; tests hand theirs). */ twoOfficerNow?: () => Promise<boolean | null> }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
   // ADM2 ceremony — the officer's declared evidence excerpt (the source quote
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.

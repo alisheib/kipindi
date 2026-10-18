@@ -174,7 +174,8 @@ export async function resolveMarketAction(formData: FormData) {
   if (drawn !== (twoOfficerNow ? "1" : "0")) {
     return { ok: false as const, error: "The two-officer setting changed after this page was drawn, so nothing was resolved. Reload the page and resolve again.", code: "INVALID" as const };
   }
-  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence });
+  // S7-F6 · the read that checked the drawn ceremony is the one that decides it: resolveMarket never reads again.
+  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence, twoOfficerNow: async () => twoOfficerNow });
   if (r.ok) {
     revalidatePath("/admin/resolver-queue");
     revalidatePath("/markets");

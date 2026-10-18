@@ -274,7 +274,8 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
        * words nobody wrote.
        */
       try {
-        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });
+        // S7-F6 · the batch's one read decides every market's ceremony: resolveMarket never reads again.
+        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });
         if (r.ok) {
           if (r.data?.stage === "stage1") {
             staged.push({ marketId: id, title, outcome, awaitingSecond: true });
