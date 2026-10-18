@@ -15,7 +15,7 @@
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
 import {
-  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState,
+  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
 } from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
@@ -273,12 +273,19 @@ function requirementOf(weeks: StoredWeek[]): number | null {
   return floors.ok ? guaranteeRequirement(floors.weeks) : null;
 }
 
-/** The product's switches at a glance — the head of every Millionea page. */
-export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>> };
+/**
+ * The product's switches at a glance — the head of every Millionea page. `stopNextAct` is the Owner's next act to stop
+ * Millionea, as a stop reads the line (`stopNextActNow`; S7-F4): the stop control names it when it offers no week. Null
+ * when it cannot be read — shown as unknown, never as a control that names no act.
+ */
+export type ConsoleStanding = {
+  rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>>; stopNextAct: string | null;
+};
 
-export async function consoleStanding(): Promise<ConsoleStanding> {
+export async function consoleStanding(now?: Date): Promise<ConsoleStanding> {
   const rollout = await millioneaStateNow().catch(() => null);
-  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState() };
+  const stopNextAct = await stopNextActNow(now).catch(() => null);
+  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState(), stopNextAct };
 }
 
 // ── DRAFTING HELP (MASWALI-PLAN §7b S4 item 7) ──────────────────────────────────────────────────────

@@ -547,7 +547,7 @@ export const MUTATIONS = [
   {
     name: "(F2-stop-final-first) a stop while a final week stands is answered by a rule it no longer concerns (MR-30)",
     file: SVC,
-    from: "    if (life.kind === \"ENDING\") return refuse(`Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`);",
+    from: "  if (life.kind === \"ENDING\") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;",
     to: "",
     expect: "SN.3 · ⭐",
     suite: "adversarial:SN",

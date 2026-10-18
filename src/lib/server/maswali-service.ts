@@ -907,11 +907,12 @@ function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | 
  * instead, read from the line as the stop reads it. The week on sale may be made final at once; while a week's results
  * are decided, the next week to open may be made final at shorter notice; otherwise a draft is made final a full week
  * before it opens, or the next week once it is on sale. A refusal that ended on an empty sentence left the Owner, once
- * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale.
+ * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale;
+ * null when no week was asked (the console's stop control, `stopNextActNow`).
  */
-function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek, clockMs: number): string {
+function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek | null, clockMs: number): string {
   const { onSale, deciding, next } = s;
-  if (onSale && onSale.id !== asked.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
+  if (onSale && onSale.id !== asked?.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
   if (deciding) {
     return next
       ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`
@@ -922,6 +923,26 @@ function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek, cloc
     return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now (OD-03).`;
   }
   return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
+}
+
+/** A final week standing, in the Owner's words — answered before any rule a later act could meet — or null when none stands. */
+function finalStandingWords(life: Awaited<ReturnType<typeof sunsetState>>): string | null {
+  if (life.kind === "ENDING") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;
+  if (life.kind === "RETIRED") return `Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`;
+  return null;
+}
+
+/**
+ * ⭐ S7-F4 · THE OWNER'S NEXT ACT WITH NO WEEK ASKED (the S6 legal review): what the console's stop control names when it
+ * offers no week — none on sale, a week's results being decided, no draft — read as the stop reads it: a final week
+ * standing first, then the PUBLIC line on the later of the two clocks (MB-84). A control that said only that no week can
+ * be made final now left the Owner with no act named. ⛔ A read that fails throws: the console shows the act as unknown.
+ */
+export async function stopNextActNow(now?: Date): Promise<string> {
+  const standingFinal = finalStandingWords(await sunsetState());
+  if (standingFinal) return standingFinal;
+  const clockMs = Math.max((now ?? new Date()).getTime(), await dbNowMs(null));
+  return stopNextAct(stopStanding(await weekStore.list({ visibility: "PUBLIC" }), clockMs), null, clockMs);
 }
 
 /**
@@ -953,9 +974,8 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     if (!week) return refuse("No such week: reload the page and choose the final week again.");
     if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week: make a public week the final week.");
     if (week.isFinal) return { ok: true, week };
-    const life = await sunsetState();
-    if (life.kind === "ENDING") return refuse(`Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`);
-    if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`);
+    const standingFinal = finalStandingWords(await sunsetState());
+    if (standingFinal) return refuse(standingFinal);
     // The later of the two clocks decides (MB-84), as a move of the close reads it: a container whose clock runs slow
     // never reads a closed week as on sale, nor a draft as further off than it is.
     const clockMs = Math.max(nowMs, await dbNowMs(lockTx));
