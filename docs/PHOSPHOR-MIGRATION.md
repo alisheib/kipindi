@@ -30,12 +30,17 @@
   - the admin sidebar and drawer: one glyph per destination (50: 24 reused keys, 26 new console keys), the current
     one's Fill on the same pill (§3 "Admin destinations (W3)", §5 W3's admin step).
 
+  - an adversarial review of the whole diff: ten findings, each fixed or kept with its reason (§5 W3);
+  - the classic parity, measured:
+    - a baseline at main `e2eb9cd6` (52/52, 224 cells);
+    - the first compare at `9c6067af`, 66/68: W3's rail and header in every cell, and the known `/watchlist` gap (§7);
+    - its entries generated (`npm run glyphs:parity-entries -- <baseline> <capture> --measured header,rail --wave W3`):
+      every one of the 224 matrix cells named, and nothing else unexplained but the 4 gap cells.
+
 **Next:**
 1. W3, selected states (R-INDICATOR 3B, R-RAIL 4B). §5 W3 holds the plan and the guards:
-   - the classic parity, measured: a baseline at main `e2eb9cd6`, the first compare, the entries
-     (`npm run glyphs:parity-entries -- <baseline> <capture> --measured header,rail --wave W3`), the clean compare with
-     `--prove-red`;
-   - the before and after tiles, read; the derived battery; then the release proof and the push.
+   - the before and after tiles (91 each), read;
+   - the derived battery, the clean compare with `--prove-red`, the release proof, then the push.
 2. Ali's answers to the review page's calls.
 
 ### Where the work happens
@@ -67,7 +72,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
-| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: the two tab bars (24px, Fill on the pill), both desktop bars and the admin sidebar (50 glyphs) built; the parity and the proof next |
+| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: built and reviewed; the parity entries measured (224 cells); the tiles, the battery and the proof next |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |
