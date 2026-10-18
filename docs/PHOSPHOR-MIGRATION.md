@@ -640,6 +640,23 @@ compare's servers (`scratchpad/phos/w3tiles/`).
     current row and its end.
 - **Main's own red, measured on a throwaway checkout of `95c480f1`:** `red:wallet-reach` case 21 catches its plant on
   8c.2, not 8c.3 (26/27). The plant is in the journey's top bar, which W3 does not touch; it is for that bar's lane.
+
+**The derived battery (2026-10-18, at `633e6424` on main `95c480f1`): 162 suites, from the diff (`w3-derive.sh`):
+145 green; the other 17 are main's own or need what this machine does not run, and W3 adds none.**
+- **Red on main itself, run the same on a throwaway checkout of `95c480f1`:**
+  - `red:enter-where-pressed` 118/119, `red:journey-tickets` 114/115, `red:journey-updown` (a wrong reason),
+    `red:root-has` (a stale plant in modal.tsx), `red:shell-boundary` 6/7, `test:motion` and `test:presence-class`;
+  - `red:wallet-reach` case 21 (above).
+- **Red on main, listed by the Maswali session as S5's own and fixed on its branch:** `test:visual-pass-r5a` 8.13,
+  r5h 3.5, r5j 1.1, r6c 11.2, r7c 3.9.
+- **Need a database or a server:**
+  - `test:house-bot-console` and `test:visual-pass-r8d-stores` (Postgres);
+  - `red:house-bot-console`, which refuses when a DB-bound baseline is red;
+  - `red:journey-header-fit`, which runs only by name against a server.
+- ⚠️ **The lock took over the live battery.** It ran 5h50m: `red:house-bot-console` spent about 3 hours, and
+  `red:campaign-visuals` about 2. After 3 hours the lock treated it as abandoned, and the next waiter, the clean
+  compare, started beside it. Free memory fell to 1.39 GB and the compare's server died at cell 94, so its 46/66 is void
+  (`w3-c2-failed-overlap.log`). It runs again alone. Batteries now stay far under 3 hours.
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart
 (§A4). Inks from `src/lib/status-tone.ts` (§B11). Won = the Fill seal in gold (earned money, §M3a); lost / void / pending
 = quiet Line marks (§M7: a loss is bookkeeping); void slate; result crests success/danger (`test:betting-ink` §7a).
