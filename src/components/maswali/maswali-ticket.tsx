@@ -13,7 +13,7 @@ import { playerStatusChip, positionStatusChip, type StatusChipVariant } from "@/
 import { sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { slotOf, type MaswaliOutcome, type MaswaliPick } from "@/lib/maswali-score";
 
@@ -230,7 +230,7 @@ export function MaswaliTicket({
   const bought = `${eatWeekday(t, boughtMs)} ${formatEatDateTime(boughtMs, serverNow, t.common.monthsShort, locale)}`;
   const liveText = live
     ? [
-        fill(t.millionea.resultsOut, { n: live.resultsIn }),
+        fill(t.millionea.resultsOut, { n: formatNumber(live.resultsIn) }),
         live.reservesLeft
           ? live.reservesLeft.valid < 0
             ? fill(t.millionea.reservesShort, { b: live.reservesLeft.of })

@@ -10,7 +10,7 @@
  */
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { LIST_TAG } from "@/lib/rail-list";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The ISO weekday (0 = Monday … 6 = Sunday) and the 24-hour EAT clock of an instant. */
@@ -91,5 +91,5 @@ export function millioneaWord(t: Dict, key: string): string {
 
 /** The singular or the counted form of a string pair (`…One` when there is exactly one). */
 export function counted(n: number, one: string, many: string, vars: Record<string, string | number> = {}): string {
-  return n === 1 ? fill(one, vars) : fill(many, { ...vars, n });
+  return n === 1 ? fill(one, vars) : fill(many, { ...vars, n: formatNumber(n) });
 }

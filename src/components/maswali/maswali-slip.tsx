@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type MaswaliPick } from "@/lib/maswali-score";
 import { sideWord } from "@/lib/side-label";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { stemOf } from "@/lib/display-stem";
 
 /**
@@ -229,7 +229,7 @@ export function MaswaliSlip({
   const refusalBody = unanswered.length === 0 ? ""
     : unanswered.length === 1
       ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
-      : fill(t.millionea.refusalIncompleteBody, { n: unanswered.length, list: joinList(locale, unanswered.map(labelOf)) });
+      : fill(t.millionea.refusalIncompleteBody, { n: formatNumber(unanswered.length), list: joinList(locale, unanswered.map(labelOf)) });
   const groups = [{ steps: MAIN_COUNT, done: progress.mains }, { steps: RESERVE_COUNT, done: progress.reserves }];
   const press = () => (progress.ready ? onContinue() : setRefused(true));
   const row = (q: SlipQuestion) => (
@@ -239,7 +239,7 @@ export function MaswaliSlip({
   const strong = (s: string) => <span className="font-mono text-text">{s}</span>;
   const rules = [
     t.millionea.reserveRule,
-    fill(t.millionea.capRule, { cap, n: ticketNumber }),
+    fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) }),
     t.millionea.mainOnly,
   ];
   return (
@@ -307,7 +307,7 @@ export function MaswaliSlip({
             <PicksList questions={questions} picks={picks} />
             <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">
               <div className="flex justify-between gap-2"><span>{t.millionea.price}</span><span className="amount text-text">{priceText}</span></div>
-              <span>{fill(t.millionea.capRule, { cap, n: ticketNumber })}</span>
+              <span>{fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) })}</span>
             </div>
             <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} className="self-start" />
             <div className="flex flex-col gap-2">
@@ -379,7 +379,7 @@ export function MaswaliSlipConfirm({
   const balanceText = formatTzs(balance);
   const lines = [
     fill(t.millionea.fromMain, { price: priceText, balance: balanceText }),
-    fill(t.millionea.ticketNofCap, { n: ticketNumber, cap }),
+    fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleShared, { pct }),
   ].filter((l): l is string => l !== null);

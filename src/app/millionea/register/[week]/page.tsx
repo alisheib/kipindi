@@ -34,7 +34,7 @@ import { isMaswaliVoidReason, MASWALI_VOID_REASON_KEY } from "@/lib/maswali-void
 import { marketCategoryLabel } from "@/lib/localized";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { MAIN_COUNT } from "@/lib/maswali-score";
-import { fill, formatTzs, pctNum } from "@/lib/utils";
+import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
 import { keepConnectives } from "@/components/ui/keep-run";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
@@ -164,7 +164,7 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
   const pct = w.feeRate !== null ? pctNum(w.feeRate) : null;
   const rows: Array<{ key: string; node: React.ReactNode }> = [];
   if (carryIn > 0) rows.push({ key: "in", node: <ReceiptRow className={ROW} label={fill(t.millionea.carriedIn, { week: prev })} value={fig(carryIn)} /> });
-  rows.push({ key: "sold", node: <ReceiptRow className={ROW} label={fill(t.millionea.regTicketsSold, { n: w.tickets, price: formatTzs(w.ticketPrice) })} value={fig(sales)} /> });
+  rows.push({ key: "sold", node: <ReceiptRow className={ROW} label={fill(t.millionea.regTicketsSold, { n: formatNumber(w.tickets), price: formatTzs(w.ticketPrice) })} value={fig(sales)} /> });
   rows.push({ key: "pool", node: <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(carryIn + sales)} /> });
   rows.push({ key: "floor", node: <ReceiptRow className={ROW} label={t.millionea.floor} value={fig(w.floor)} /> });
   if (w.state === "VOIDED") {

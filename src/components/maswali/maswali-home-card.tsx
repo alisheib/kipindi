@@ -5,7 +5,7 @@ import { I, plateGlyph } from "@/components/ui/glyphs";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, eatWeekdayClock, productWeek } from "@/components/maswali/maswali-format";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -78,18 +78,18 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       // "Tiketi zako wiki hii: 10 kati ya 10" — never "Tiketi zako 10/10" under "kila tiketi ya 10/10", which reads as a
       // perfect ticket (the S5 UI review, LOW 12).
       meta = state.capFull
-        ? [fill(t.millionea.yourTicketsThisWeek, { n: cap, cap }),
+        ? [fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(cap), cap: formatNumber(cap) }),
             state.capFull.next ? fill(t.millionea.nextWeekOpens, { week: state.capFull.next.week, day: state.capFull.next.opensOn }) : null,
           ].filter(Boolean).join(" · ")
         : (
           <>
             {fillNodes(t.millionea.salesCloseAt, { when: mono(eatWeekdayClock(t, state.closesAt)) })}
-            {state.held !== null && ` · ${fill(t.millionea.yourTicketsThisWeek, { n: state.held, cap })}`}
+            {state.held !== null && ` · ${fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(state.held), cap: formatNumber(cap) })}`}
           </>
         );
       break;
     case "closed":
-      meta = fill(t.millionea.resultsOut, { n: state.resultsIn });
+      meta = fill(t.millionea.resultsOut, { n: formatNumber(state.resultsIn) });
       break;
     case "settledWon":
       meta = counted(state.winners, t.millionea.settledWonOne, t.millionea.settledWon, { week });
