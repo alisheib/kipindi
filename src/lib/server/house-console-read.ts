@@ -7405,9 +7405,10 @@ export async function houseCancelIntentForConsole(
  * so the action's own gate is the only protection there is. Each resolves the viewer's STORED row FIRST and reads
  * nothing before the verdict.
  *
- * ⛔ THE COPY IS THE CONSOLE'S OWN (owner-delegated ruling 453). `eligibility.ts` writes twenty-five blocking rows
- * and seven warnings in the ENGINE'S vocabulary — measured, they say "Only a player account can provide liquidity.",
- * "This account is already a house bot.", "Liquidity stakes can't continue — resolve the request or remove the bot."
+ * ⛔ THE COPY IS THE CONSOLE'S OWN (owner-delegated ruling 453). `eligibility.ts` writes a row for every code of its two
+ * unions, `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES`, in the ENGINE'S vocabulary — measured, they say
+ * "Only a player account can provide liquidity.", "This account is already a house bot.", "Liquidity stakes can't
+ * continue — resolve the request or remove the bot."
  * D19 exempts those: they are the engine's and the admin bell's internal words and no screenshot-facing surface
  * renders them. This one would. So the check card paints a sentence per CODE from the table below, the population is
  * derived from the service's own two unions rather than typed here, and nothing the wizard renders comes from a
@@ -7961,17 +7962,16 @@ export async function houseAccountListForConsole(
  * ⛔ THE CONSOLE'S OWN SENTENCE FOR EVERY ELIGIBILITY ROW (ruling 453, and the same shape `CONSOLE_ACT_REFUSAL`
  * already has one card over).
  *
- * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the twenty-seven blocking rows (twenty-five until
- * MASWALI-BUILD S7 added OD-12's two Millionea rows, neither of which names the feature) and seven warnings
- * `eligibility.ts` writes, ELEVEN name the feature in the sentence an officer reads — on *liquidity*
- * (`AGENT_ACCOUNT`, `STAFF_ACCOUNT`, `ERASURE_REQUEST`), on the bare word *bot* (`ALREADY_LIVE_BOT`,
+ * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the blocking rows and warnings `eligibility.ts` writes,
+ * these name the feature in the sentence an officer reads (OD-12's Millionea rows, added by MASWALI-BUILD S7, do not)
+ * — on *liquidity* (`AGENT_ACCOUNT`, `STAFF_ACCOUNT`, `ERASURE_REQUEST`), on the bare word *bot* (`ALREADY_LIVE_BOT`,
  * `ACCOUNT_CLOSED`, `WALLET_MISSING`, `IDENTITY_REFUSED`, `PASSWORD_CHANGED`), on *house stakes*
  * (`ACCOUNT_CLOSED`, `OWNER_LOSS_LIMIT`, `RECRUITED`) and on *house bot* itself.
  * ⛔ SO THE TABLE COVERS EVERY CODE, NOT ONLY THE DIRTY ONES. A per-row "override it if it is dirty" rule cannot
  * be checked from source — the shared sentences are built at run time out of dates, counts and names — so the
- * console answers from its own closed table for all thirty-four, and `test:house-bot-console` derives the population
- * from `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES` themselves. A code added to either union later
- * cannot reach an owner's screen as the shared sentence or as a bare identifier.
+ * console answers from its own closed table for every code of both unions, and `test:house-bot-console` derives
+ * the population from `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES` themselves. A code added to
+ * either union later cannot reach an owner's screen as the shared sentence or as a bare identifier.
  * ⚠️ WHAT IS LOST BY IT IS NAMED: the DATES and FIGURES the shared rows interpolate do not come through. The
  * console says what is stopping the designation and carries the row's own `href` to the thing that has to change;
  * the holder's own screens carry the detail, which is where a player's dates and money legitimately are (456).

@@ -93,7 +93,10 @@ export type ConsoleWeekDetail = {
   rules: MaswaliRulesSnapshot | null;
   /** DRAFT only: every reason the open would refuse, in words; empty when it would open. */
   problems: string[] | null;
-  /** DRAFT only: what the officer reviews before the open — never a refusal (MB-85: a public holiday the close falls on). */
+  /**
+   * What the officer reviews while they can still act on it — a DRAFT, and an OPEN week whose close is still ahead —
+   * never a refusal (MB-85: a public holiday the close falls on). Null once the close has passed.
+   */
   warnings: string[] | null;
   /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
   proposedVoids: number[];
@@ -119,12 +122,19 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }
-    // ⭐ S7 · THE HOLIDAY REVIEW (MB-85, OD-27): the Owner's list of public holidays, read against the day the sales close.
-    //    A warning, never a refusal: the week opens, and the officer brings the close forward once it is open (R-WEEK).
+  }
+  // ⭐ S7 · THE HOLIDAY REVIEW (MB-85, OD-27): the Owner's list of public holidays, read against the day the sales close —
+  //    WHEREVER AN OFFICER CAN STILL ACT ON IT: a draft (it opens, and the close is brought forward, or the week is
+  //    skipped with notice) and an open week whose close is still ahead (brought forward, R-WEEK, MB-28). It used to end
+  //    at the open, though the act it asks for, moving the close, is done only once the week is open. Once the close has
+  //    passed nothing can move it (MR-13), so the review is silent there. A warning, never a refusal.
+  if (week.state === "DRAFT" || (week.state === "OPEN" && Date.parse(week.closesAt) > now.getTime())) {
     warnings = [];
     const holiday = holidayOn(Date.parse(week.closesAt));
     if (holiday) {
-      warnings.push(`The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). The week may still open: bring the close forward once it is open (R-WEEK), or skip the week with notice (OD-27).`);
+      warnings.push(week.state === "DRAFT"
+        ? `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). The week may still open: bring the close forward once it is open (R-WEEK), or skip the week with notice (OD-27).`
+        : `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). Bring the close forward while it is still ahead (R-WEEK, MB-28).`);
     }
   }
   return { week, row: await rowOf(week), questions, rules, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };

@@ -465,6 +465,14 @@ export const MUTATIONS = [
     suite: "adversarial:CS",
   },
   {
+    name: "(F2-holiday-open) the holiday review ends at the open, though the close it asks to move moves only once the week is open (MB-85)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  if (week.state === \"DRAFT\" || (week.state === \"OPEN\" && Date.parse(week.closesAt) > now.getTime())) {",
+    to: "  if (week.state === \"DRAFT\") {",
+    expect: "HF.2e · ⭐",
+    suite: "adversarial:HF",
+  },
+  {
     name: "(F2-stop-next-act) a stop refused at short notice names no next act once no week is on sale or being decided (MR-30, OD-03)",
     file: SVC,
     from: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);",

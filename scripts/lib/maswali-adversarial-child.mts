@@ -1135,6 +1135,13 @@ if (runs("HF")) {
   ok("HF.2d · ⭐ …and the week opens on its holiday close: the review warns, the open never refuses (OD-27: every week runs)", o.ok, errOf(o));
   if (!o.ok) throw new Error(`HF: the holiday week did not open: ${o.error}`);
   const wk = o.week;
+  // ⭐ S7-F2 · THE REVIEW STAYS WHILE THE CLOSE CAN MOVE: bringing it forward is done once the week is open.
+  const openDetail = await consoleRead.consoleWeekDetail(wk.id, new Date(hs + HOUR));
+  ok("HF.2e · ⭐ …and once the week is open, its page still names the holiday while the close is ahead — the officer brings it forward there (R-WEEK, MB-28)",
+    (openDetail?.warnings ?? []).some((x) => x.includes(holiday.date) && /forward/.test(x)), J(openDetail?.warnings));
+  const pastDetail = await consoleRead.consoleWeekDetail(wk.id, new Date(Date.parse(wk.closesAt) + MIN));
+  ok("HF.2f · control: read past its close (still OPEN, no tick has stamped it), the week asks for no act it can no longer take",
+    pastDetail?.week.state === "OPEN" && (pastDetail?.warnings ?? []).length === 0, J(pastDetail?.warnings));
   const [h1, h2] = await people(2, 50_000);
   const [early] = await bought(h1, wk.id, [MISS_M1]);
   const eve = new Date(eatWeekAt(hs, 4, "18:00")).toISOString();

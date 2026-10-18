@@ -94,6 +94,8 @@ async function Content({ params }: Props) {
 
         {week.state === "OPEN" && (
           <AdminCard title="Move the sales close" sw="Badilisha muda wa kufunga" >
+            {/* S7-F2 · the holiday review (MB-85) stays while the close can still move: bringing it forward is done here. */}
+            {(warnings ?? []).map((w, i) => <p key={i} className="mb-3 text-body-sm text-warning">{w}</p>)}
             {canMove ? <MoveCloseForm weekId={week.id} currentEat={fmtEat(week.closesAt)} />
               : <ControlLocked what="Move the close" need={CONTROL_DOMAIN.moveMaswaliClose} block />}
           </AdminCard>
