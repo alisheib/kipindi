@@ -7,7 +7,8 @@
  * code happens to do. A rule the code still breaks, whose fix is not this lane's, stays in as `KNOWN-RED <id>`: booked
  * apart (it prints KNOWN-RED and counts in `known`, never in `pass` or `fail`), and the day it PASSES it fails the suite,
  * so its mark is struck and it is counted (a strict expected failure).
- *   §1  CS · clock skew past the close: a purchase, a cancel and a move of the close answer to the database clock (MB-84)
+ *   §1  CS · clock skew past the close: a purchase, a cancel and a move of the close answer to the database clock (MB-84),
+ *          and a close that clock refused wakes the scheduler the moment it arrives (L1)
  *   §2  CH · a six-week chain — week 3 voided, week 4 skipped — each week opening while the last waits (MR-3, MR-21, MB-16)
  *   §3  RP · reserve patterns × late voids × a reinstatement: the money follows the FINAL record (MR-17, MR-19, MB-15)
  *   §4  OB · an objection during settlement (MR-16, MB-23)
@@ -299,6 +300,35 @@ if (runs("CS")) {
   const v = await voided(fw.id);
   ok("CS.6 · the fast container's week, closed early in its stead, voids whole and refunds its one live ticket", v.week.state === "VOIDED" && v.refunded === 1 && (await bal(holder)) === 50_000, errOf(v));
   W.svc.__setMaswaliCloseClockForTests(W.weekCloseClock);
+}
+if (runs("CS")) {
+  // ⭐ S7-F2 (L1) · THE TIMER FIRED A FEW MS EARLY ON THE CONTAINER'S CLOCK. The close is refused until the database's
+  //    clock reaches it (CS.4); the scheduler must then wake the moment it does, never sleep to the 5-minute reconcile
+  //    while the console's "the close is not stamped" alert counts down. The database's clock is the close's injected
+  //    one (the world's seam, on both stores): here it reads 40 ms behind the container's. No other week is unsettled.
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  const firedAt = Date.parse(wk.closesAt) + 5;
+  scheduler.__resetMaswaliScheduler();
+  W.svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs - 40);
+  let early: any = null, due: number | null = null;
+  try {
+    early = await scheduler.runMaswaliTick(new Date(firedAt));
+    due = await scheduler.nextMaswaliDueMs(firedAt);
+  } finally {
+    W.svc.__setMaswaliCloseClockForTests(W.weekCloseClock);
+  }
+  ok("CS.7 · the tick 5 ms past the close on the container's clock, with the database's 35 ms short of it: the close is refused, the week still OPEN, nothing failed",
+    early?.closed === 0 && early?.failures === 0 && (await dal.weekStore.get(wk.id)).state === "OPEN", J(early));
+  ok("CS.8 · ⭐ …and the next wake is the moment the database's clock reaches the close, plus a second (closesAt − dbNow + 1 s) — never the 5-minute reconcile (L1)",
+    due === firedAt + 35 + 1_000 && scheduler.wakeDelayMs(due, firedAt) === 1_035,
+    `due ${due === null ? "none" : new Date(due).toISOString()} · sleep ${scheduler.wakeDelayMs(due, firedAt)} ms`);
+  const onTime = await scheduler.runMaswaliTick(new Date(firedAt + 1_035));
+  const after = await dal.weekStore.get(wk.id);
+  ok("CS.9 · control: the tick at that wake, the database's clock past the close, stamps it once, at that instant",
+    onTime.closed === 1 && after.state === "CLOSED" && after.closedAt === new Date(firedAt + 1_035).toISOString(), J({ onTime, closedAt: after.closedAt }));
+  await sealRest(wk.id, start, ALL_VOID);
+  await voided(wk.id);
 }
 
 // ═══ §2 · CH · a six-week chain ══════════════════════════════════════════════════════════════════════════════════════

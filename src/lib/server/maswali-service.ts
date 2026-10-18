@@ -531,11 +531,14 @@ export function __setMaswaliCloseClockForTests(clock: ((weekClockMs: number) => 
   closeClockForTests = clock;
 }
 
+/** A close refused because the database's clock is short of it, and by how much (S7-F2, L1: the scheduler waits that long). */
+export type CloseNotYet = Refused & { dbShortMs: number };
+
 /**
  * ⭐ CLOSE THE SALES, EXACTLY ONCE: the commitment over every live ticket (MR-13), its count and its sales, stamped in
  * one claim WHERE the week is still OPEN. `early` closes now (a certain week void stops sales at once, MR-18).
  */
-export async function closeWeek(input: { weekId: string; actorId?: string; early?: boolean; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean }>> {
+export async function closeWeek(input: { weekId: string; actorId?: string; early?: boolean; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean }> | CloseNotYet> {
   const nowMs = (input.now ?? new Date()).getTime();
   return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
@@ -544,9 +547,10 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     // ⛔ S7 · A CLOSE THAT IS NOT EARLY WAITS FOR THE DATABASE'S CLOCK (MB-84: the close is the database's instant, the one a
     //    purchase and a cancel stop on). A container whose clock ran fast read its own clock as past the close and stamped
     //    the commitment while the database still sold: the sales ended before their advertised close. It is refused until
-    //    the database's clock reaches the close, and stamped at the database's instant.
+    //    the database's clock reaches the close, and stamped at the database's instant. ⭐ S7-F2 (L1) · the refusal says how
+    //    far that clock is short, so the scheduler asks again the moment it arrives, never at the 5-minute reconcile.
     const atMs = input.early ? nowMs : closeClockForTests ? closeClockForTests(nowMs) : await dbNowMs(lockTx);
-    if (!input.early && Date.parse(week.closesAt) > atMs) return refuse("The close has not arrived on the database's clock (MB-84).");
+    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse("The close has not arrived on the database's clock (MB-84)."), dbShortMs: Date.parse(week.closesAt) - atMs };
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside

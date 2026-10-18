@@ -369,8 +369,8 @@ export const MUTATIONS = [
   {
     name: "(S7-close-db-clock) a close that is not early is stamped on the container's clock: a fast container closes the sales early (MB-84)",
     file: SVC,
-    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return refuse(\"The close has not arrived on the database's clock (MB-84).\");",
-    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse(\"The close has not arrived on the database's clock (MB-84).\");",
+    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
+    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
     expect: "CS.4 · ⭐",
     suite: "adversarial:CS",
   },
@@ -455,6 +455,14 @@ export const MUTATIONS = [
     to: "  week = await weekStore.get(input.weekId);",
     expect: "FR.2 · ⭐",
     suite: "adversarial:FR",
+  },
+  {
+    name: "(F2-close-retry) a close the database's clock refused is left to the 5-minute reconcile: the tick records no retry (L1)",
+    file: "src/lib/server/maswali-scheduler.ts",
+    from: "          else if (\"dbShortMs\" in r) closeRetry.set(w.id, nowMs + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);",
+    to: "",
+    expect: "CS.8 · ⭐",
+    suite: "adversarial:CS",
   },
   {
     name: "(F2-stop-next-act) a stop refused at short notice names no next act once no week is on sale or being decided (MR-30, OD-03)",

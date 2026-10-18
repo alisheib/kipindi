@@ -17,15 +17,16 @@
  * ⭐ S7-F (2026-10-18): CS.4, FL.4, IN.9 and HF.2 struck on both stores and PL.3 on Postgres (each fixed, each with a red
  * plant), their controls beside them, and §14 DL and §15 SU added: 134 on memory, 140 on Postgres, with 3 KNOWN-RED on
  * each (OB.0, RD.5, TK.2 — the objection door, the wallet lane and MB-35's alerting).
- * ⭐ S7-F2 (2026-10-18): §8b FR — a purchase whose week or market read fails is refused as busy, never thrown — and §14b
- * SN — every refused stop names the Owner's next act — five each on each store: 144 on memory, 150 on Postgres.
+ * ⭐ S7-F2 (2026-10-18): §8b FR — a purchase whose week or market read fails is refused as busy, never thrown — §14b SN —
+ * every refused stop names the Owner's next act — and CS.7–CS.9 — a close the database's clock refused wakes the
+ * scheduler the moment that clock arrives (L1) — thirteen on each store: 147 on memory, 153 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 144, postgres: 150 },
+  minPass: { memory: 147, postgres: 153 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
