@@ -64,6 +64,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { decomment } from "./lib/decomment.mts";
 import { isDirective } from "./lib/is-directive.mts";
 import { policyLineTagCount, stripPolicyLineTags } from "./lib/policy-line-source.mts";
+// Privacy §7 carries Millionea's slip paragraph inside its MillioneaWording wrapper, printed at an ACTIVE ceiling only:
+// the English pin is production's rendering, read through the one reader test:privacy-notice uses (MASWALI-BUILD S5).
+import { millioneaDarkSource } from "./lib/millionea-wording-source.mts";
 import { KEPT_PROMISES, PROMISE_KEYS, promisesIn, type KeptPromise, type PromiseKey } from "../src/lib/legal/kept-promises.ts";
 import {
   ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, EMPTY_POLICY_LINES, POLICY_DEFAULT_SEND_WINDOW, POLICY_LINE_DEFAULTS,
@@ -556,7 +559,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const rgPin = impl.src.rgSuite.match(/RG_EN_SHA = "([0-9a-f]{12})"/)?.[1] ?? "";
     const prPin = impl.src.privacySuite.match(/PRIVACY_EN_SHA = "([0-9a-f]{12})"/)?.[1] ?? "";
     const rgSha = sha12(englishBlock(rg).replace(JS_WS, " ").trim());
-    const prSha = sha12(englishBlock(privacy).replace(JS_WS, " ").trim());
+    const prSha = sha12(englishBlock(millioneaDarkSource(privacy)).replace(JS_WS, " ").trim());
     if (rgPin === "" || rgSha !== rgPin) problems.push(`the RG English hashes ${rgSha}, test:rg-policy pins "${rgPin}"`);
     if (prPin === "" || prSha !== prPin) problems.push(`the Privacy English hashes ${prSha}, test:privacy-notice pins "${prPin}"`);
     ok(p(L.l1), problems.length === 0, problems.length > 0 ? problems.slice(0, 6).join(" | ") : `RG ${rgSha} · Privacy ${prSha} · ${rgW.length + prW.length} wrappers`);
@@ -1064,7 +1067,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && src.server.includes("export function policyLinesReadable(): boolean");
     const specsOf = (s: string): string[] => [...s.matchAll(/from[ ]*"([^"]+)"/g)].map((m) => m[1]);
     const pureOk = !isDirective(src.pureRaw, "use client") && !isDirective(src.pureRaw, "use server")
-      && JSON.stringify(specsOf(src.pure)) === JSON.stringify(["./kept-promises", "../contacts/contact-fields", "../eat-day", "../marketing/sms-settings"])
+      // MASWALI-BUILD S5 (2026-10-18): the privacy code version follows the Millionea ceiling (POLICY_PAGES.privacy), read
+      // from the isomorphic rollout module — constants and one environment variable, no store, no I/O.
+      && JSON.stringify(specsOf(src.pure)) === JSON.stringify(["./kept-promises", "../contacts/contact-fields", "../eat-day", "../marketing/sms-settings", "../millionea-rollout"])
       && specsOf(src.kept).length === 0 && !isDirective(src.keptRaw, "use client");
     const pinAt = src.cgs.indexOf("const PINNED = [");
     const pinned = pinAt < 0 ? "" : src.cgs.slice(pinAt, src.cgs.indexOf("];", pinAt));
