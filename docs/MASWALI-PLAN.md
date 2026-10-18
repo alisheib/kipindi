@@ -2024,9 +2024,21 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
     open leaves moved void deadlines on a draft, which the next open recomputes); OD-12's check before a staff promotion
     can be raced and the bootstrap admin-on-login path skips it — the purchase's staff bar, the seal and confirm bars and
     the settlement's hold all still hold — and its "no override" departs from OD-12's refund-first text.
-  - *On `mln-s7-f2`* (a helper, writing): the console forms for `maswali.config` and the holiday list, the close re-armed
-    on the database clock, the sunset's refusal guidance, the purchase refusing a failed read, PL.3/PL.4/IN.1b made
-    to fail on the old code.
+  - *The review's smaller items* (`mln-s7-f2`, merged at `9088c5a5`):
+    - **Admins can change everything:** `/admin/maswali` carries the rules form (every `maswali.config` field, read
+      fresh, validated by the config's own validator, a confirm listing each change, MB-75's sentence) and the holiday
+      list. Both are the Owner's (`ops`: trading never touches money config, and accounting on a trading page would
+      break E-23); everyone else sees the values read-only. The licence basis is not on the form.
+    - A close refused on the database clock re-arms at `closesAt − dbNow + 1 s`, never waiting for the reconcile; every
+      sunset refusal names the Owner's next act; a purchase whose reads fail refuses `system_busy` (never "the week is
+      shut"); a seal made while the two-officer setting cannot be read is refused (the platform's poll resolution reads
+      the same flag fail-open, matching its ruled single-admin default, `test:two-admin` — recorded, not changed).
+    - **Unreadable floors fail closed everywhere:** one helper, `unsettledFloors`, serves the console's requirement
+      ("Needed now: Unreadable" and a critical alert naming the week), the guarantee's return and the open (both
+      refused) and the invariants. The short-float alert is judged on the live float, and an unreadable float is its
+      own critical alert — so dev and staging, which read no Selcom float, show it on every paying week.
+    - The role change moved to `staff-role-change.ts`: an export of a "use server" file is a callable action, and that
+      core has no Owner check of its own. PL.3/PL.4/IN.1b now fail on the old code.
 
 #### S8 · Live drive and public launch
 
