@@ -27,7 +27,7 @@ import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-mess
 // for everybody, and during the reader's break shows no door to the three programmes (its header has why it is not the prompt).
 import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";
 import { useT } from "@/lib/i18n";
-import { isJourneySurface } from "@/lib/surfaces";
+import { isJourneySurface, isSlipSurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import { CHAT_STORAGE_KEY, historyFor, historyRecord } from "@/lib/chat/history";
@@ -255,6 +255,10 @@ export function ChatRoot({ supportEmail, chatOwner }: { supportEmail: string; ch
      Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
      the player left it on the next page that shows the bubble. */
   if (journeyOn && isJourneySurface(pathname) && !notFoundShown) return null;
+  /* MASWALI-BUILD S5 (the v6 delivery's D-25): not on the Millionea slip, for any reader — its pay control and confirm
+     sheet are on screen. Like the journey's term above it closes nothing and clears nothing — and, like it, stands down
+     only while the page is there: on the slip's not-found page the bubble is back (the S5 review of 24ec0d33, LOW 11). */
+  if (isSlipSurface(pathname) && !notFoundShown) return null;
   // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
   if (isMobile === null) return null;
 

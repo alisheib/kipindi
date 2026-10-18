@@ -429,11 +429,24 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       return sp < 0 ? null : rest.slice(0, sp);
     };
     const seen: string[] = [];
+    // ⭐ MASWALI-BUILD S5 (the lead's decision of 2026-10-18): privacy's code version follows the Millionea ceiling — META is
+    // the notice production prints, below it — so META is held to the code version AT WITHDRAWN, whatever this process's
+    // environment says (`test:privacy-notice` §1 holds the version printed above the ceiling).
+    const codeAtWithdrawn = (page: (typeof POLICY_PAGE_KEYS)[number]): string => {
+      const was = process.env.FEATURE_MILLIONEA;
+      try {
+        process.env.FEATURE_MILLIONEA = "WITHDRAWN";
+        return POLICY_PAGES[page].codeVersion;
+      } finally {
+        if (was === undefined) delete process.env.FEATURE_MILLIONEA; else process.env.FEATURE_MILLIONEA = was;
+      }
+    };
     const versionsOk = POLICY_PAGE_KEYS.every((page) => {
       const src = page === "rg" ? impl.src.rgPageRaw : impl.src.privacyPageRaw;
       const got = POLICY_LOCALES.map((l) => metaVersion(src, l));
-      seen.push(`${page} ${got.join("/")} vs ${POLICY_PAGES[page].codeVersion}`);
-      return isPolicyVersion(POLICY_PAGES[page].codeVersion) && got.every((v) => v === POLICY_PAGES[page].codeVersion);
+      const code = codeAtWithdrawn(page);
+      seen.push(`${page} ${got.join("/")} vs ${code}`);
+      return isPolicyVersion(code) && got.every((v) => v === code);
     });
     const sourcesRead = Object.values(impl.src).every((s) => s.length > 200);
     ok(p(L.l0), keysOk && pagesOk && clearable === "privacy.lawfulLicence,profile.outreachNote"

@@ -9,6 +9,11 @@
  *      and no Millionea trace in the served documents of the pages where an entry will live (the journey home's card,
  *      the classic board's card, the More row). A signed-out visitor is never staff, so STAFF_PREVIEW changes nothing
  *      for this reader; only ACTIVE may show them.
+ *      ⭐ HOW the route answers depends on the CEILING, because the edge reads only the ceiling (`millionea-edge.ts`):
+ *        · a ceiling below ACTIVE — the edge rewrites a dark address to the private segment: the router's own 404 STATUS;
+ *        · an ACTIVE ceiling with a lower state — the Owner's kill, during an incident — the edge lets the address through
+ *          and the page's own gate answers, after the root loading state has sent its 200: so the proof is the CONTENT —
+ *          the platform's not-found words, and no Millionea trace (the S5 review of 24ec0d33, MEDIUM 7).
  *   3. Its own controls: the trace matcher is seen to catch every trace and to pass a page without one.
  *
  * ⏳ The LOCAL positive control (a staff session at STAFF_PREVIEW sees the card and the routes) arrives with the first
@@ -17,6 +22,19 @@
  */
 
 const ROLLOUT_WORDS = ["WITHDRAWN", "STAFF_PREVIEW", "ACTIVE"];
+
+/** The platform's not-found words in English, the language `kp-locale=en` asks for — `NOT_FOUND_WORDS.en.notFound`
+ *  (`src/components/ui/not-found-words.ts`); `test:maswali-ui` 4.9 holds the two equal. */
+export const NOT_FOUND_EN = "Page not found";
+
+/**
+ * ⭐ IS THIS THE ANSWER OF A DARK ROUTE? Below an ACTIVE ceiling, the router's 404 status; under an ACTIVE ceiling with a
+ * lower state, the not-found page itself — its words, and no Millionea trace — whatever status a streamed page sent.
+ */
+export function darkAnswerOk(killUnderActive, status, html) {
+  if (!killUnderActive) return status === 404;
+  return (status === 200 || status === 404) && String(html ?? "").includes(NOT_FOUND_EN) && millioneaTracesIn(html).length === 0;
+}
 
 /** Every route Millionea owns or will own, by the plan's route table (MASWALI-PLAN §0) — each must 404 while dark. */
 export const MILLIONEA_ROUTES = [
@@ -90,15 +108,23 @@ export async function millioneaDarkSection({ base, ok, log = console.log }) {
     log("  · Millionea is ACTIVE — every reader may see it; the dark checks do not apply.");
     return state;
   }
+  // The Owner's kill under an ACTIVE ceiling: the edge lets the address through, and the not-found page is the proof.
+  const killUnderActive = agrees && ml.ceiling === "ACTIVE";
   for (const route of MILLIONEA_ROUTES) {
-    let code = 0, why = "";
+    let code = 0, html = "", why = "";
     try {
-      const r = await fetch(base + route, { redirect: "manual", headers: { accept: "text/html" } });
+      const r = await fetch(base + route, { redirect: "manual", headers: { accept: "text/html", cookie: "kp-locale=en" } });
       code = r.status;
-      await r.arrayBuffer().catch(() => null);
+      if (killUnderActive) html = await r.text();
+      else await r.arrayBuffer().catch(() => null);
     } catch (e) { why = String(e?.message ?? e); }
-    ok(`${route} is a 404 for a signed-out visitor while Millionea is ${state ?? "unreadable"}`, code === 404,
-      why ? `(fetch failed: ${why})` : `(HTTP ${code})`);
+    const label = killUnderActive
+      ? `${route} answers the platform's not-found page for a signed-out visitor while the Owner holds Millionea at ${state} under an ACTIVE ceiling (the edge reads the ceiling alone, so the page's gate answers)`
+      : `${route} is a 404 for a signed-out visitor while Millionea is ${state ?? "unreadable"}`;
+    ok(label, darkAnswerOk(killUnderActive, code, html),
+      why ? `(fetch failed: ${why})` : killUnderActive
+        ? `(HTTP ${code}; ${html.includes(NOT_FOUND_EN) ? "the not-found words" : "NOT the not-found words"}; traces ${millioneaTracesIn(html).join(", ") || "none"})`
+        : `(HTTP ${code})`);
   }
   for (const page of MILLIONEA_ENTRY_PAGES) {
     let html = "", code = 0, why = "";

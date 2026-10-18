@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { sideWord } from "@/lib/side-label";
+import { outcomeWord } from "@/lib/side-label";
 import { cn } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
@@ -17,8 +17,9 @@ import type { MaswaliOutcome } from "@/lib/maswali-score";
  * from the seen state: a data change while the player is looking, or up to four unseen results on opening (§10 §2).
  */
 export function outcomeStampText(t: Dict, outcome: MaswaliOutcome): string {
-  const word = outcome === "VOID" ? t.millionea.void : sideWord(t, outcome, "MASWALI");
-  return `${t.millionea.stampResult} · ${word}`;
+  // The platform's own word for a settled outcome (`outcomeWord`): a void reads as every void on 50pick does — one
+  // definition site (§L2; the S5 UI review, LOW 13: this stamp once kept a VOID word of its own).
+  return `${t.millionea.stampResult} · ${outcomeWord(t, outcome, "MASWALI")}`;
 }
 
 export function MaswaliOutcomeStamp({ t, outcome, press, index = 0, size = "caption", className }: {

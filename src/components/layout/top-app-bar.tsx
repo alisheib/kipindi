@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
@@ -8,6 +8,7 @@ import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
+import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { WalletBalancePill, useLiveBalance } from "@/components/layout/wallet-balance-pill";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
@@ -52,6 +53,8 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
+  /** More's rows only (`NavMore`): Maswali Millionea's mark before its name (MASWALI-BUILD S5). */
+  glyph?: ReactNode;
   /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
      destination that is not part of the product is dropped from the list entirely (see
      MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
@@ -88,7 +91,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
   // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
@@ -125,10 +128,18 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ];
+  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b)–(c), D-13;
+     DESIGN_AUTHORITY §M8a item 11) — never an inline link (the 1024–1279 band already overflows) and never a rail slot.
+     ⛔ Drawn only on the shell's own answer (`millionea`: the rollout admits the request and the reader is not on a break),
+     resolved on the server and handed down as `inviteVisible` is; for everybody else the menu is today's, byte for byte. */
+  const MILLIONEA_ROW: NavItem[] = millionea
+    ? [{ href: "/millionea", label: t.millionea.productLabel, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 text-text-muted" /> }]
+    : [];
   // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
   // the current state flag (gilt coming-soon / amber maintenance / none active).
   const MORE_ITEMS: NavItem[] = user.isAuthed
     ? [
+        ...MILLIONEA_ROW,
         ...(proposalsState !== "DISABLED"
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
@@ -147,7 +158,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
-    : [];
+    : MILLIONEA_ROW;
 
   return (
     <header

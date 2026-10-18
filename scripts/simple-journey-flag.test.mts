@@ -701,8 +701,12 @@ function g10Wiring(W: World) {
   // Round 6 (2026-10-09, reviews C1 and C13): …and its account menu's two door answers — the agent's standing (`inviteAgent`,
   // the invite row's one name) and `kycOffered` (its KYC row only where /profile and the hub offer it); the classic arm's
   // props are unchanged, character for character.
-  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
-  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
+  // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5 (2026-10-17; MASWALI-PLAN §10 §3.2 (b)–(d), DESIGN_AUTHORITY §M8a item 11): BOTH
+  // classic arms gain one prop, `millionea={millioneaRow}` — Maswali Millionea as More's first row, recorded as a change to
+  // the accepted classic discovery layer. It is false for every reader the rollout does not show Millionea to (and for a
+  // reader on a break), so while Millionea is WITHDRAWN a classic viewer is still served exactly what they were.
+  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} millionea={millioneaRow} />}";
+  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} millionea={millioneaRow} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
   const DYNAMIC_LINES = [
@@ -924,7 +928,7 @@ const PLANTS: Plant[] = [
   { name: "the journey tabs render for everyone (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
     world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs", "{true ? <LazyJourneyTabs") }) },
   { name: "the classic rail is dropped (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
-    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}", " : null}") }) },
+    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} millionea={millioneaRow} />}", " : null}") }) },
   { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
     world: (w) => ({ ...w, shell: w.shell.replace("supportPhoneTel={SUPPORT_PHONE_TEL()} />}", "supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown />}") }) },
   // ⚠️ RE-ANCHORED 2026-10-12: R9-B (c4f65f6e) gave this link `keep={journeyShown}`, so the old anchor matched nothing and

@@ -53,6 +53,11 @@ export const TAB_ROUTES: readonly TabRoute[] = [
   // Maswali — the home board, the board and every question.
   { prefix: "/", tab: "questions", exact: true },
   { prefix: "/markets", tab: "questions" },
+  // MASWALI-BUILD S5 · Maswali Millionea takes no tab (§M8a item 11, D-15): its tickets are Tiketi zangu's third kind —
+  // ⚠️ ABOVE `/millionea`, whose row would claim them first — and every other Millionea page lights Maswali, the tab whose
+  // home carries its card.
+  { prefix: "/millionea/tickets", tab: "tickets" },
+  { prefix: "/millionea", tab: "questions" },
   // ⚠️ ABOVE `/updown`: Up & Down tickets are tickets, and the game's row below would claim this path first.
   { prefix: "/updown/history", tab: "tickets" },
   { prefix: "/updown", tab: "updown" },

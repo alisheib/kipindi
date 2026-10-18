@@ -22,6 +22,7 @@ import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
+import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay, formatEatDateTime } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
 import { formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
@@ -89,6 +90,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // ⭐ S6 WP9 — the one cached resolver, asked once for this request: a journey reader is on Tiketi zangu's Up & Down
   // kind, and only the header below changes for them.
   const { journey } = await resolveSimpleJourney();
+  // MASWALI-BUILD S5 · the switch's third kind, asked BESIDE this page's own reads (the S5 review of 24ec0d33, LOW 10):
+  // one cached read, which `TicketsHead` awaits where it draws.
+  if (journey) void millioneaTicketsDoor();
 
   // ── The digest's deep link (`?day=YYYY-MM-DD`), one EAT calendar day ──────
   //

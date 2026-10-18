@@ -26,7 +26,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { getPrefs, type NeedleTheme } from "@/lib/haptics";
-import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+import { isMoneySurface, isJourneySurface, isSlipSurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
@@ -1054,8 +1054,12 @@ export function Needle() {
   // Written to a ref so the engine picks it up even if it finishes mounting after this runs.
   useEffect(() => {
     const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname) && !notFoundShown);
-    wantSuppressed.current = suppressed;
-    apiRef.current?.setSuppressed(suppressed);
+    // MASWALI-BUILD S5 (the v6 delivery's D-25): and on the Millionea slip for every reader — its pay control and confirm
+    // sheet are on screen. Joined here, beside the pinned line above, which stays today's word for word. ⛔ Not on its
+    // not-found page (the S5 review of 24ec0d33, LOW 11): a dark slip is a missing page, with nothing to pay on it.
+    const standDown = suppressed || (isSlipSurface(pathname) && !notFoundShown);
+    wantSuppressed.current = standDown;
+    apiRef.current?.setSuppressed(standDown);
     // A new page is new content under the rail (E-400 ①).
     apiRef.current?.recheckRest();
   }, [hiddenPref, pathname, journeyOn, notFoundShown]);

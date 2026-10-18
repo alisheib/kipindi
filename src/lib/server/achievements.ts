@@ -9,6 +9,10 @@ import { listPositionsForUser } from "./market-service";
 import { getPlayerReferralSummary, getAgentDashboard, inviteViewerFor } from "./affiliate-service";
 import type { AchievementId } from "@/components/badges/icons";
 import { inviteIsLiveFor } from "@/lib/feature-state";
+import { SCORED_LINES, scoredPositions } from "@/lib/leaderboard/board";
+
+/** How many of the account's newest scored positions the shelf counts. */
+const SHELF_RECENT = 500;
 
 export type ShelfItem = {
   achievement: AchievementId;
@@ -20,9 +24,9 @@ export type ShelfItem = {
 export async function computeAchievementShelf(userId: string) {
   // MASWALI-BUILD S5 · a Millionea ticket is not a prediction the shelf scores (MASWALI-PLAN S5 item 9, MB-90): a ticket
   // that wins about 1 time in 1,024 by design would sink "Sharp"'s accuracy, and a jackpot share is not a "First Win" of
-  // a prediction. Named and removed before any badge counts, as /positions/performance does.
-  const tickets = new Set((await listPositionsForUser(userId, 500, "MASWALI")).map((p) => p.id));
-  const positions = (await listPositionsForUser(userId, 500)).filter((p) => !tickets.has(p.id));
+  // a prediction. The scored lines are read DIRECTLY, never every line less its tickets (S5 re-review 8): an account
+  // whose newest positions were all tickets kept none of its predictions on the shelf.
+  const positions = scoredPositions(await Promise.all(SCORED_LINES.map((l) => listPositionsForUser(userId, SHELF_RECENT, l))), SHELF_RECENT);
   const settled = positions.filter((p) => p.status === "WIN" || p.status === "LOSS");
   const wins = positions.filter((p) => p.status === "WIN").length;
   const hasBet = positions.length > 0;

@@ -10,6 +10,7 @@ import { AnalyticsChoice } from "@/components/analytics/analytics-choice";
 // ⭐ U33p · three bullets are admin-edited lines (Admin → System → Public policy lines): `PolicyLine` prints the words an
 // admin saved, and the literal bullet inside it until then (a review keeps the literal); `policyMeta` prints the version.
 import { PolicyLine, policyMeta } from "@/lib/server/legal/policy-lines";
+import { MillioneaWording } from "@/lib/server/legal/millionea-wording";
 
 export async function generateMetadata() {
   const { locale } = await getServerT();
@@ -228,6 +229,12 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p data-policy-addition="pending-round">
           For an Up &amp; Down round, the same kp-pending-bet entry holds the round, the direction (up or down) and the amount you chose when you go from it to deposit, or on to the next round, under the same 24-hour rule; it places no bet.
         </p>
+        <MillioneaWording>
+          <p data-policy-addition="millionea-slip">
+            While you fill a Maswali Millionea ticket, the answers you have picked for that week are kept in that tab&apos;s sessionStorage as kp-millionea-slip: followed by the week&apos;s identifier,
+            so they survive a reload or going to deposit. They hold no identifier of you, are removed once your ticket is cut or when the tab closes, and never buy a ticket unless you confirm it.
+          </p>
+        </MillioneaWording>
         <AnalyticsChoice />
       </LegalSection>
 
@@ -361,6 +368,12 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p data-policy-addition="pending-round">
           Kwa raundi ya Juu na Chini, rekodi hiyohiyo ya kp-pending-bet huhifadhi raundi, upande (juu au chini) na kiasi ulichochagua unapotoka humo kwenda kuweka pesa, au kwenda raundi inayofuata, kwa kanuni ileile ya saa 24; haiweki dau lolote.
         </p>
+        <MillioneaWording>
+          <p data-policy-addition="millionea-slip">
+            Unapojaza tiketi ya Maswali Millionea, majibu uliyochagua kwa wiki hiyo huhifadhiwa kwenye sessionStorage ya kichupo hicho kama kp-millionea-slip: ikifuatiwa na kitambulisho cha wiki,
+            ili yabaki ukipakia ukurasa upya au ukienda kuweka pesa. Hayana kitambulisho chako, huondolewa tiketi yako ikishakatwa au ukifunga kichupo, na kamwe hayakati tiketi bila wewe kuthibitisha.
+          </p>
+        </MillioneaWording>
         <AnalyticsChoice />
       </LegalSection>
 
@@ -485,6 +498,11 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p data-policy-addition="pending-round">
           对于涨跌回合，当您从该回合前往充值或前往下一回合时，同一 kp-pending-bet 记录会保存您选择的回合、方向（涨或跌）和金额，同样最长 24 小时；它不会替您投注。
         </p>
+        <MillioneaWording>
+          <p data-policy-addition="millionea-slip">
+            您填写 Maswali Millionea 彩票时，您为该周所选的答案会以 kp-millionea-slip: 后接该周标识符的名称保存在该标签页的 sessionStorage 中，使其在重新加载页面或前往充值后仍然保留。这些答案不含您的任何标识符，在您的彩票出票后或关闭标签页时即被移除，且未经您确认绝不会出票。
+          </p>
+        </MillioneaWording>
         <AnalyticsChoice />
       </LegalSection>
 

@@ -9,7 +9,7 @@ import { MaswaliEarnedAmount, MaswaliEarnedStat } from "@/components/maswali/mas
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { eatWeekday, eatWeekdayClock, millioneaWord, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { TICKET_SHOWN_KEY, WEEK_STATE_KEY, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
-import { playerStatusChip, positionStatusChip } from "@/lib/status-tone";
+import { playerStatusChip, positionStatusChip, type StatusChipVariant } from "@/lib/status-tone";
 import { sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -67,11 +67,15 @@ export type TicketMoments = {
 /**
  * The chip a ticket's state wears. The platform's position chips (`positionStatusChip`) — LOSS keeps the betting rose by
  * its own recorded ruling — and the one Millionea-only row: a won ticket's chip is the success green (O-6, manifest L4).
+ * A share forfeited after review (round 3) is terminal and inert: the neutral chip, slate's — the tone a cancelled ticket
+ * and a forfeited grant wear — never the win's green, and never the loss's rose (it won; the review took its share back).
+ * Every state named, with the return type stated, so a new one is a compile error here.
  */
-export function millioneaTicketChip(shown: TicketShown) {
+export function millioneaTicketChip(shown: TicketShown): StatusChipVariant | "no" {
   switch (shown) {
     case "running": return positionStatusChip("OPEN");
     case "won": return playerStatusChip("MILLIONEA_WIN") ?? "success";
+    case "forfeited": return "neutral";
     case "lost": return positionStatusChip("LOSS");
     case "refunded": return positionStatusChip("VOID");
     case "cancelled": return playerStatusChip("CANCELLED") ?? "neutral";
@@ -103,7 +107,9 @@ function clauseSocket(t: Dict, c: TicketClause, line: SealLine): { mark: SocketM
           ),
         };
       }
-      return { mark: "void", words: t.millionea.voidAwaiting };
+      // The S5 UI review (MEDIUM 3): when the voided mains already outnumber the reserves that could come back usable,
+      // no reserve will take this place — the week is due to be voided (`weekVoidCertain`, the delivery's Timeline D).
+      return { mark: "void", words: line.voidCertain ? t.millionea.voidWeekCertain : t.millionea.voidAwaiting };
     }
     return { mark: m.mark, words: socketWord(t, m.mark) };
   }
@@ -166,7 +172,7 @@ function Clause({ t, c, line, inert, press }: { t: Dict; c: TicketClause; line: 
 
 export function MaswaliTicket({
   t, locale, serverNow, serial, week, weekState, checkWindow, shown, clauses, line, idBase, stub, closedAt,
-  wonAmount, notice, live, cannotWin, seal, cancel, cancelWindowMins, ended, finality, play, className,
+  wonAmount, notice, live, cannotWin, seal, cancel, cancelWindowMins, finality, play, className,
 }: {
   t: Dict;
   locale: Locale;
@@ -191,7 +197,8 @@ export function MaswaliTicket({
   wonAmount?: number;
   /** One line above the Seal Line — a week voided whole, said in the dictionary's sentence. */
   notice?: ReactNode;
-  /** While the week resolves: how many results are in, the valid reserves left, the next event. */
+  /** While the week resolves: how many results are in, the valid reserves left, the next event. `valid` may be below
+   *  zero — the voided mains outnumber the reserves left — and is then said in words, never as a negative (D-20). */
   live?: { resultsIn: number; reservesLeft?: { valid: number; of: number }; nextEventAt?: number };
   /** On the results so far this ticket cannot win (the composer's verdict; never a score). */
   cannotWin?: boolean;
@@ -201,14 +208,15 @@ export function MaswaliTicket({
   cancel?: ReactNode;
   /** The window, in minutes, from the week's snapshot: the line under the cancel. */
   cancelWindowMins?: number;
-  /** How the ticket ended without a result: its stamp line on the stub. */
-  ended?: "refunded" | "cancelled";
   /** Settled: the finality line, and the attestation's short hash when the week was resolved. */
   finality?: { hash?: string };
   play?: TicketMoments;
   className?: string;
 }) {
   const inert = shown === "cancelled";
+  // How the ticket ended without a result — its stamp line on the stub — from its one state (the S5 UI review, LOW 11: a
+  // second prop let a "Pending" chip sit over an "IMEREJESHWA" stamp).
+  const ended = shown === "refunded" || shown === "cancelled" ? shown : undefined;
   const base = idBase ?? `mln-${serial}`;
   // The moments as locals, so each class that names one is a plain condition (the eyebrow census reads them as written).
   const { cut, press, carry, draw, lock, reveal } = play ?? {};
@@ -223,7 +231,11 @@ export function MaswaliTicket({
   const liveText = live
     ? [
         fill(t.millionea.resultsOut, { n: live.resultsIn }),
-        live.reservesLeft ? fill(t.millionea.reservesLeft, { a: live.reservesLeft.valid, b: live.reservesLeft.of }) : null,
+        live.reservesLeft
+          ? live.reservesLeft.valid < 0
+            ? fill(t.millionea.reservesShort, { b: live.reservesLeft.of })
+            : fill(t.millionea.reservesLeft, { a: live.reservesLeft.valid, b: live.reservesLeft.of })
+          : null,
         live.nextEventAt !== undefined ? fill(t.millionea.nextEvent, { when: eatWeekdayClock(t, live.nextEventAt) }) : null,
       ].filter(Boolean).join(" · ")
     : null;
@@ -248,14 +260,22 @@ export function MaswaliTicket({
               <Chip metrics="status" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
               <span className="font-mono text-label uppercase eyebrow text-text-subtle">{weekLine(t, week, weekState, checkWindow)}</span>
             </div>
-            <span className="font-mono text-title-md font-bold text-text break-all">{serial}</span>
+            {/* The page's one heading: the ticket is named by its serial (`test:visual-pass-r7b` 1.6 registers this head,
+                its eyebrow the week line above). */}
+            <h1 className="font-mono text-title-md font-bold text-text break-all">{serial}</h1>
             {wonAmount !== undefined && <MaswaliEarnedAmount t={t} amount={wonAmount} />}
             {notice && <p className="text-body-sm text-text text-pretty">{notice}</p>}
           </div>
           <div className="border-y border-border py-2">
             <MaswaliSealLine line={line} size={24} numbers idBase={base} play={{ carry, draw }} inert={inert} />
           </div>
-          {liveText && <p className="text-body-sm text-text-muted">{liveText}</p>}
+          {/* ONE POLITE REGION, MOUNTED FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7): a
+              region mounted together with its words is often not read, so this one is always there and only its words
+              change — each result that arrives, and the ticket's own word when it changes (the chip says it to the eye). */}
+          <p aria-live="polite" aria-atomic="true" data-testid="millionea-ticket-live" className={cn("text-body-sm text-text-muted", !liveText && "sr-only")}>
+            <span className="sr-only">{`${millioneaWord(t, TICKET_SHOWN_KEY[shown])}. `}</span>
+            {liveText}
+          </p>
           {cannotWin && <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text text-pretty">{t.millionea.cannotWin}</p>}
           {seal}
         </div>
@@ -340,7 +360,7 @@ export function MaswaliTicket({
  * ⛔ The payout is "when the result is in" until the week settles — never a projected figure (§C3, SJ-4); the amount a
  * won ticket was paid is the only gold, from the win ledger.
  */
-export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, placedAt, className }: {
+export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, shown, line, price, payout, share, placedAt, className }: {
   t: Dict;
   locale: Locale;
   serverNow: number;
@@ -351,8 +371,12 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
   shown: TicketShown;
   line: SealLine;
   price: number;
-  /** What the ticket was finally paid: the share when won, the price back when refunded or cancelled, 0 when lost. */
+  /** What the ticket was finally paid: the share when won AND paid, the price back when refunded or cancelled, 0 when
+   *  lost; null while its result is not in — and for a won share held for review or forfeited (`share`). */
   payout: number | null;
+  /** A won ticket's share as the settlement and Compliance left it (MB-43, OD-07): a held or a forfeited one shows its
+   *  word in the payout's place — never gold, never a figure. */
+  share?: "paid" | "held" | "forfeited" | null;
   /** When it was bought (ISO). */
   placedAt: string;
   className?: string;
@@ -364,17 +388,28 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         <Chip size="sm" metrics="base" variant="neutral">{weekWord(t, week)}</Chip>
         <Chip size="sm" metrics="base" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
       </div>
-      <Link href={href as never} aria-label={serial} className="-my-1.5 flex flex-col justify-center py-1.5" style={{ minHeight: "var(--h-control-md)" }}>
+      {/* The card's one link names itself in words as well as by its line (the S5 UI review, MEDIUM 4): until the Phosphor
+          swap draws Millionea's new marks, a line of open sockets can be blank, and a link must never be an invisible box. */}
+      <Link href={href as never} aria-label={`${t.millionea.viewTicket} · ${serial}`} className="-my-1.5 flex flex-col justify-center gap-1 py-1.5" style={{ minHeight: "var(--h-control-md)" }}>
         <MaswaliSealLine line={line} size={18} annex="below" inert={shown === "cancelled"} />
+        <span className="inline-flex items-center gap-1 self-start text-body-sm text-text-link">
+          {t.millionea.viewTicket}
+          <I.chevronRight s={14} edge="end" className="shrink-0" />
+        </span>
       </Link>
       <div className="grid grid-cols-2 gap-2">
         <Stat label={t.dialog.stakeLabel} value={formatTzs(price)} money />
         {shown === "won" && payout !== null ? (
           <MaswaliEarnedStat t={t} amount={payout} />
+        ) : shown === "forfeited" || (shown === "won" && share === "held") ? (
+          // A share held for review, or one forfeited after it (round 3: that ticket reads "forfeited", never "won"): its
+          // word in the payout's place — never gold, never a figure (MB-43, OD-07).
+          <Stat label={t.journey.ticketFinalPayout} value={shown === "forfeited" ? t.millionea.shareForfeited : t.millionea.shareHeld} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : shown === "running" ? (
           <Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />
         ) : (
-          <Stat label={t.journey.ticketFinalPayout} value={formatTzs(payout ?? 0)} money />
+          // The S5 UI review (LOW 10): a payout the record does not hold is a dash, never a fabricated TZS 0 (AGENTS §6).
+          <Stat label={t.journey.ticketFinalPayout} value={payout === null ? "—" : formatTzs(payout)} money={payout !== null} />
         )}
       </div>
       <div className="flex flex-col gap-1 text-body-sm text-text-muted">

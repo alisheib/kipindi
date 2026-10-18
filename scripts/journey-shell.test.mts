@@ -503,6 +503,10 @@ const EXPECTED: Record<string, Expect> = {
   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
   "/auth/register": AUTH, "/auth/reset-password": AUTH, "/auth/verify-email": AUTH,
   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
+  // MASWALI-BUILD S5 (decided with the pages, as 1.census asks): Millionea takes no tab (§M8a item 11, D-15) — its tickets
+  // light Tiketi zangu, every other Millionea page Maswali, the tab whose home carries its card.
+  "/millionea": Q, "/millionea/slip": Q, "/millionea/how": Q, "/millionea/register": Q, "/millionea/register/[week]": Q,
+  "/millionea/tickets": T, "/millionea/tickets/[serial]": T,
   // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
   // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
   // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.
@@ -516,7 +520,7 @@ const AHEAD_OF_DISK: ReadonlySet<string> = new Set<string>();
 /** A dynamic segment, filled the way a real URL fills it. */
 const probe = (route: string) => route.replace(/\[[^\]]+\]/g, "x1");
 /** Paths that share a row's letters but not its segment — each must be claimed by NO row (A18). */
-const LOOKALIKES = ["/settings", "/sx/abc", "/s-promo", "/wallets", "/marketsx", "/updownx", "/positionsx", "/accounts", "/helpdesk", "/profiles", "/authority", "/offline/x"];
+const LOOKALIKES = ["/settings", "/sx/abc", "/s-promo", "/wallets", "/marketsx", "/updownx", "/positionsx", "/accounts", "/helpdesk", "/profiles", "/authority", "/offline/x", "/millioneas"];
 /** A12: "page" only on the tab's own href, "true" for section membership, nothing for another tab's page. */
 const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/", "questions", "page"],
@@ -534,6 +538,9 @@ const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/results", "questions", undefined],
   ["/auth/login", "account", undefined],
   ["/s/x1", "questions", undefined],
+  // MASWALI-BUILD S5 · Tiketi zangu's third kind is in the tickets section, never the page of the tab's own href.
+  ["/millionea/tickets", "tickets", "true"],
+  ["/millionea", "questions", "true"],
 ];
 // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.1A, one meaning one glyph): Maswali is the
 // board, so it draws the board's glyph `markets` (Phosphor's squares-four) — the classic rail's Masoko draws the same. Its
@@ -1982,6 +1989,10 @@ const INVITE_DOOR: Gate = (_k, d) => d.inviteVisible;
 const PROPOSALS_DOOR: Gate = (_k, d) => d.proposalsVisible;
 const MEMBER_PROPOSALS: Gate = (k, d) => k.signedIn && d.proposalsVisible;
 const AGENT_DOOR: Gate = (_k, d) => d.agentDoorVisible;
+/** MASWALI-BUILD S5 (2026-10-17) · Maswali Millionea's More row (MASWALI-PLAN §10 §3.2 (b)–(c)), for a player and a guest
+ *  alike: drawn on the rollout's answer and not during a break, neither of which a census kind varies — every kind it walks
+ *  is shown an ACTIVE product and is on no break. A hidden product draws no row, and its pages answer the identical 404. */
+const MILLIONEA_SHOWN: Gate = () => true;
 type ChromeDoor = { href: string; file: string; gate: Gate };
 
 /** The classic chrome's own doors, each gated as its file gates it: the bar (with More), the rail (coin and More), the avatar menu, the bell. */
@@ -1999,6 +2010,7 @@ const CLASSIC_DOORS: readonly ChromeDoor[] = [
   { href: "/wallet/deposit", file: TOP_BAR_FILE, gate: MONEY_IN },
   { href: "/auth/login", file: TOP_BAR_FILE, gate: GUEST_ONLY },
   { href: "/auth/register", file: TOP_BAR_FILE, gate: GUEST_ONLY },
+  { href: "/millionea", file: TOP_BAR_FILE, gate: MILLIONEA_SHOWN },
   { href: "/markets", file: BOTTOM_NAV, gate: ANYONE },
   { href: "/updown", file: BOTTOM_NAV, gate: ANYONE },
   { href: "/live", file: BOTTOM_NAV, gate: ANYONE },
@@ -2010,6 +2022,7 @@ const CLASSIC_DOORS: readonly ChromeDoor[] = [
   { href: "/fairness", file: BOTTOM_NAV, gate: GUEST_ONLY },
   { href: "/profile/invite", file: BOTTOM_NAV, gate: MEMBER_INVITE },
   { href: "/proposals", file: BOTTOM_NAV, gate: PROPOSALS_DOOR },
+  { href: "/millionea", file: BOTTOM_NAV, gate: MILLIONEA_SHOWN },
   { href: "/profile", file: AVATAR_FILE, gate: MEMBER },
   { href: "/wallet", file: AVATAR_FILE, gate: MEMBER },
   { href: "/profile/invite", file: AVATAR_FILE, gate: MEMBER_INVITE },

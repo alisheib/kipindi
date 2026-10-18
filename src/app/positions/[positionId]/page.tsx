@@ -3,7 +3,6 @@ import { currentSession } from "@/lib/server/auth-service";
 import { positionStore, marketStore } from "@/lib/server/market-dal";
 import { roundStore } from "@/lib/server/updown-dal";
 import { ticketStore } from "@/lib/server/maswali-dal";
-import { resolveMillionea } from "@/lib/server/millionea-preview";
 import { positionPermalink } from "@/lib/position-permalink";
 
 /**
@@ -53,12 +52,12 @@ export default async function PositionPermalinkPage({ params }: { params: Promis
   const round = productLine === "UPDOWN"
     ? await roundStore.getByMarketId(position.marketId).catch(() => null)
     : null;
-  // MASWALI-BUILD S5 · a Millionea ticket lands on its OWN page, keyed by its serial (MR-2: never a Yes/No position) —
-  // and only for a viewer the rollout admits: while Millionea is hidden from them, the permalink answers exactly as a
-  // missing ticket does, and never names a hidden product's route.
+  // MASWALI-BUILD S5 · a Millionea ticket lands on its OWN page, keyed by its serial (MR-2: never a Yes/No position) — at
+  // EVERY rollout state, because the position is the viewer's own (checked above): a kill hides the product, never a
+  // player's own tickets (the lead's decision L5, 2026-10-17; the ticket page's own gate is `millioneaTicketGate`, which
+  // admits a holder). A stranger's position is still the one identical 404 above.
   let ticketSerial: string | null = null;
   if (productLine === "MASWALI") {
-    if (!(await resolveMillionea()).visible) notFound();
     ticketSerial = (await ticketStore.getByPositionId(position.id).catch(() => null))?.serial ?? null;
   }
 

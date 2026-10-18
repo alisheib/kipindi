@@ -5,7 +5,7 @@ import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MaswaliCarry } from "@/components/maswali/maswali-carry";
 import { MaswaliUnbrokenLine } from "@/components/maswali/maswali-unbroken-line";
 import { reserveLabel } from "@/components/maswali/maswali-format";
-import { gradedSet, MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type GradableQuestion, type GradedSet, type MaswaliPick } from "@/lib/maswali-score";
+import { gradedSet, MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, weekVoidCertain, type GradableQuestion, type GradedSet, type MaswaliPick } from "@/lib/maswali-score";
 import { cn } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
@@ -27,7 +27,10 @@ import type { Dict } from "@/lib/i18n-dict";
  *
  * ⛔ ONE GRADER (L9). `sealLineOf` reads `maswali-score.ts` and adds no rule of its own: until the record is final it
  * grades nothing ("no running score" — a sealed main shows matched or missed, a reserve stays "standby" whatever its own
- * event did, MR-17), and the carries, the unused reserves and the Unbroken Line exist only once `gradedSet` is final.
+ * event did, MR-17), and the carries, the unused reserves and the Unbroken Line exist only once the CALLER says the week
+ * is final (`final`: the week SETTLED). ⛔ NEVER AT THE SETTLEMENT GATE ALONE (the S5 UI review, HIGH 2): a ready gate is
+ * still inside MR-16's objection window, where a REVERSE, VOID or REINSTATE can change the graded set — a carry or a
+ * line drawn there could be un-drawn, and §M8a item 1 forbids an un-carry ("you won" never before the seal).
  */
 
 export type SocketMark = "awaiting" | "matched" | "missed" | "void" | "standby" | "unused";
@@ -40,6 +43,9 @@ export type SealLine = {
   final: boolean;
   /** The week voided whole (MR-18): every socket rests and nothing is counted. */
   weekVoid: boolean;
+  /** The voided mains already outnumber the reserves that could still come back usable (MR-18, `weekVoidCertain`): the
+   *  week is due to be voided, so no voided main may be told a reserve will take its place (the S5 UI review, MEDIUM 3). */
+  voidCertain: boolean;
   /** All ten graded questions matched — the Unbroken Line (M5). Never true before `final`. */
   unbroken: boolean;
 };
@@ -48,11 +54,13 @@ export type SealLine = {
  * A ticket's line from the week's fifteen questions and the ticket's picks (`picks[slot − 1]`, `canonicalPicks`'s order).
  * `picks` null draws a line with no picks to compare (a public or an inert view): sealed mains read "awaiting" there.
  * `weekVoid` is the ENGINE's verdict (a week voided for integrity, MR-18), which the questions alone may not show.
+ * `final` is the CALLER's: true only for a SETTLED week (or a worked example of one). Omitted, the line is PENDING
+ * whatever the gate says — the safe default, so a caller that forgets can never draw a carry an objection could undo.
  */
 export function sealLineOf(
   questions: readonly GradableQuestion[],
   picks: readonly MaswaliPick[] | null,
-  opts: { weekVoid?: boolean } = {},
+  opts: { weekVoid?: boolean; final?: boolean } = {},
 ): SealLine {
   const outcomeOf = (role: GradableQuestion["role"], ordinal: number) =>
     questions.find((q) => q.role === role && q.ordinal === ordinal)?.outcome ?? null;
@@ -62,6 +70,7 @@ export function sealLineOf(
   };
   let set: GradedSet;
   if (opts.weekVoid) set = { kind: "WEEK_VOID" };
+  else if (opts.final !== true) set = { kind: "PENDING", needs: [] };
   else {
     try {
       set = questions.length === SLOT_COUNT ? gradedSet(questions) : { kind: "PENDING", needs: [] };
@@ -70,12 +79,14 @@ export function sealLineOf(
       set = { kind: "PENDING", needs: [] };
     }
   }
+  let voidCertain = false;
+  try { voidCertain = questions.length === SLOT_COUNT && weekVoidCertain(questions); } catch { voidCertain = false; }
   const mains: MainSocket[] = [];
   const annex: AnnexSocket[] = [];
   if (set.kind === "WEEK_VOID") {
     for (let o = 1; o <= MAIN_COUNT; o++) mains.push({ ordinal: o, mark: outcomeOf("MAIN", o) === "VOID" ? "void" : "unused" });
     for (let o = 1; o <= RESERVE_COUNT; o++) annex.push({ ordinal: o, mark: outcomeOf("RESERVE", o) === "VOID" ? "void" : "unused" });
-    return { mains, annex, final: true, weekVoid: true, unbroken: false };
+    return { mains, annex, final: true, weekVoid: true, voidCertain: true, unbroken: false };
   }
   if (set.kind === "PENDING") {
     for (let o = 1; o <= MAIN_COUNT; o++) {
@@ -83,7 +94,7 @@ export function sealLineOf(
       mains.push({ ordinal: o, mark: out === null ? "awaiting" : out === "VOID" ? "void" : judged(slotOf("MAIN", o), out) });
     }
     for (let o = 1; o <= RESERVE_COUNT; o++) annex.push({ ordinal: o, mark: outcomeOf("RESERVE", o) === "VOID" ? "void" : "standby" });
-    return { mains, annex, final: false, weekVoid: false, unbroken: false };
+    return { mains, annex, final: false, weekVoid: false, voidCertain, unbroken: false };
   }
   // Final: the graded set and its pairs (display only; the k-th voided main took the k-th usable reserve).
   const byMain = new Map(set.pairs.map((p) => [p.main, p.reserve]));
@@ -106,7 +117,7 @@ export function sealLineOf(
     else if (into !== undefined && (out === "YES" || out === "NO")) annex.push({ ordinal: o, mark: judged(slot, out), carriedTo: into });
     else annex.push({ ordinal: o, mark: "unused" });
   }
-  return { mains, annex, final: true, weekVoid: false, unbroken: mains.every((m) => m.mark === "matched") };
+  return { mains, annex, final: true, weekVoid: false, voidCertain: false, unbroken: mains.every((m) => m.mark === "matched") };
 }
 
 /** The word a mark says (the clause rows, the loss receipt). */

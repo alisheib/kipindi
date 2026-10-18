@@ -55,6 +55,15 @@ export function reserveLabel(ordinal: number): string {
   return `A${ordinal}`;
 }
 
+/**
+ * The ISO week a week's stamped code names ("MLN-2026-W44" → 44, a drive week's "MLD-…" alike): every "Wiki 44" a player
+ * reads is the engine's own stamp (`eatWeekCode`), never a count of weeks typed or kept here. 0 for a code that is not one.
+ */
+export function weekNumberOf(code: string): number {
+  const m = /-W([0-9]{1,2})$/.exec(code);
+  return m ? Number(m[1]) : 0;
+}
+
 /** "Wiki 42" / "Week 42" / "第42周". */
 export function weekWord(t: Dict, week: number): string {
   return fill(t.millionea.week, { week });
@@ -73,8 +82,7 @@ export function joinList(locale: Locale, items: readonly string[]): string {
 /**
  * A `millionea` word named by a lookup map's key (`WEEK_STATE_KEY`, `TICKET_SHOWN_KEY`, `MASWALI_VOID_REASON_KEY`).
  * ⛔ A key the dictionary lacks shows as itself, as `fill` leaves an unknown placeholder: a typo is seen, never blank.
- * Every key of the three maps resolves in en, sw and zh today; S5's planned `test:maswali-i18n` (MASWALI-PLAN §7b) is the
- * suite that will hold them there.
+ * Every key of the three maps resolves in en, sw and zh, and `test:maswali-i18n` §2 holds them there (MASWALI-PLAN §7b).
  */
 export function millioneaWord(t: Dict, key: string): string {
   const v = (t.millionea as unknown as Record<string, unknown>)[key];

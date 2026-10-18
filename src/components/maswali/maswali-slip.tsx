@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
@@ -123,6 +123,26 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
   const { t } = useT();
   const reserve = q.role === "RESERVE";
   const yesLit = pick === "YES", noLit = pick === "NO";
+  const rowId = `q-${labelOf(q)}`;
+  const yesRef = useRef<HTMLButtonElement>(null);
+  const noRef = useRef<HTMLButtonElement>(null);
+  /**
+   * ⭐ ONE RADIO GROUP PER QUESTION (the S5 UI review, MEDIUM 5; the APG radio group): the two answers are radios, named by
+   * the question's number and its words, and the group is ONE Tab stop — the chosen answer holds it, or Ndio before either
+   * is chosen (fifteen stops, never thirty identical "Ndio"/"Hapana" ones). An arrow moves to the other answer AND chooses
+   * it, as a radio group does; Space and Enter choose the focused one (a native button's own click). ⛔ No <label> and no
+   * preventDefault on a click: the pick stays the button's own press (the platform's checkbox-label trap).
+   */
+  const onArrow = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (closed) return;
+    const arrow = e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp";
+    if (!arrow) return;
+    e.preventDefault();
+    // Two answers: every arrow goes to the other one, wrapping at either end.
+    const to: MaswaliPick = document.activeElement === yesRef.current ? "NO" : "YES";
+    onPick(to);
+    (to === "YES" ? yesRef : noRef).current?.focus();
+  };
   const meta = [fill(t.millionea.sourceLine, { source: q.source }), q.eventAt === null ? null : fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })]
     .filter(Boolean).join(" · ");
   return (
@@ -134,10 +154,10 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
       )}
       style={reserve ? { background: "var(--wash-inset)" } : undefined}
     >
-      <span className={cn("font-mono text-body font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>{labelOf(q)}</span>
+      <span id={`${rowId}-n`} className={cn("font-mono text-body font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>{labelOf(q)}</span>
       <div className="flex min-w-0 flex-col gap-1">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{q.category}</span>
-        <p className="text-body text-text text-pretty">{q.text}</p>
+        <p id={`${rowId}-t`} className="text-body text-text text-pretty">{q.text}</p>
         <span className="text-body-sm text-text-subtle">{meta}</span>
         {flagged && (
           <span className="self-start rounded-full border border-dashed border-border-strong px-1.5 py-0.5 font-mono text-caption uppercase eyebrow text-text-subtle">
@@ -145,13 +165,23 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
           </span>
         )}
       </div>
-      {/* One lit control per row: the chosen side in its betting ink with the check, the other a ghost (§B2). */}
-      <div className="col-start-2 grid grid-cols-2 gap-2 md:col-start-3 md:row-start-1" style={closed ? { opacity: "var(--state-disabled-opacity)" } : undefined}>
-        <Button type="button" size="md" variant={yesLit ? "yes" : "ghost"} aria-pressed={yesLit} disabled={closed} onClick={() => onPick("YES")}
+      {/* One lit control per row: the chosen side in its betting ink with the check, the other a ghost (§B2). Closed, the two
+          rest at the disabled control's own opacity — never multiplied by a second one on this wrapper, which left the
+          player's own pick at about a fifth of its ink (the S5 UI review, LOW 8). */}
+      <div
+        role="radiogroup"
+        aria-labelledby={`${rowId}-n ${rowId}-t`}
+        aria-disabled={closed || undefined}
+        onKeyDown={onArrow}
+        className="col-start-2 grid grid-cols-2 gap-2 md:col-start-3 md:row-start-1"
+      >
+        <Button ref={yesRef} type="button" role="radio" aria-checked={yesLit} tabIndex={noLit ? -1 : 0} size="md" variant={yesLit ? "yes" : "ghost"}
+          disabled={closed} onClick={() => onPick("YES")}
           leading={yesLit ? <I.check s={16} /> : undefined} className={yesLit ? "px-1.5" : "border-border-control px-1.5"}>
           {t.common.yes}
         </Button>
-        <Button type="button" size="md" variant={noLit ? "no" : "ghost"} aria-pressed={noLit} disabled={closed} onClick={() => onPick("NO")}
+        <Button ref={noRef} type="button" role="radio" aria-checked={noLit} tabIndex={noLit ? 0 : -1} size="md" variant={noLit ? "no" : "ghost"}
+          disabled={closed} onClick={() => onPick("NO")}
           leading={noLit ? <I.check s={16} /> : undefined} className={noLit ? "px-1.5" : "border-border-control px-1.5"}>
           {t.common.no}
         </Button>
@@ -194,6 +224,10 @@ export function MaswaliSlip({
   const reserves = questions.filter((q) => q.role === "RESERVE");
   const priceText = formatTzs(price);
   const progressText = `${fill(t.millionea.mainsProgress, { a: progress.mains })} · ${fill(t.millionea.reservesProgress, { b: progress.reserves })}`;
+  const refusalBody = unanswered.length === 0 ? ""
+    : unanswered.length === 1
+      ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
+      : fill(t.millionea.refusalIncompleteBody, { n: unanswered.length, list: joinList(locale, unanswered.map(labelOf)) });
   const groups = [{ steps: MAIN_COUNT, done: progress.mains }, { steps: RESERVE_COUNT, done: progress.reserves }];
   const press = () => (progress.ready ? onContinue() : setRefused(true));
   const row = (q: SlipQuestion) => (
@@ -214,7 +248,7 @@ export function MaswaliSlip({
           <span>{fillNodes(t.millionea.salesClosedAt, { when: strong(eatWeekdayClock(t, closesAt)) })}</span>
         </p>
       )}
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[640px_400px]">
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]">
         <div className="flex min-w-0 flex-col gap-4">
           <header className="flex flex-col gap-1.5">
             <h1 className="font-display text-title-lg font-bold text-text">{fill(t.millionea.slipTitle, { week })}</h1>
@@ -243,16 +277,17 @@ export function MaswaliSlip({
             <ol>{reserves.map(row)}</ol>
             <div aria-hidden className="h-3 rounded-b-card border border-t-0 border-border" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }} />
           </div>
+          {/* ONE POLITE REGION, MOUNTED EMPTY FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7):
+              a status mounted together with its words is often not read, so the refusal's words arrive in this one. */}
+          <p aria-live="polite" aria-atomic="true" className="sr-only" data-testid="millionea-slip-live">
+            {showRefusal && unanswered.length > 0 ? `${t.millionea.refusalIncomplete}. ${refusalBody}` : ""}
+          </p>
           {showRefusal && unanswered.length > 0 && (
-            <div role="status" className="mat-flat flex gap-2 rounded-control px-3 py-2">
+            <div className="mat-flat flex gap-2 rounded-control px-3 py-2">
               <I.info s={18} className="mt-px shrink-0 text-text-muted" />
               <div className="flex flex-col gap-1">
                 <span className="font-display text-body font-semibold text-text">{t.millionea.refusalIncomplete}</span>
-                <span className="text-body-sm text-text-muted">
-                  {unanswered.length === 1
-                    ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
-                    : fill(t.millionea.refusalIncompleteBody, { n: unanswered.length, list: joinList(locale, unanswered.map(labelOf)) })}
-                </span>
+                <span className="text-body-sm text-text-muted">{refusalBody}</span>
                 <a href={`#q-${labelOf(unanswered[0])}`} className="inline-flex items-center self-start text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
                   {fill(t.millionea.jumpTo, { n: labelOf(unanswered[0]) })}
                 </a>

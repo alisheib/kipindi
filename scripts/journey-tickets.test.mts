@@ -472,8 +472,11 @@ function g4Words(W: World, ok: Ok) {
 }
 
 /* ══ §5 · THE SWITCH ═════════════════════════════════════════════════════════════════════════════════════════ */
+/** RE-PINNED (MASWALI-BUILD S5 pages, deliberately): Millionea is the third kind (MASWALI-PLAN §10 §3.9, §M8a item 11),
+ *  drawn for a request its door admits (`millionea-doors.ts → millioneaTicketsDoor`) — the two kinds stand as they were. */
 const KINDS = [`{ value: "questions", labelEn: t.journey.tabQuestions, href: "/positions" }`,
-  `{ value: "updown", labelEn: t.nav.updown, href: "/updown/history" }`];
+  `{ value: "updown", labelEn: t.nav.updown, href: "/updown/history" }`,
+  `{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }`];
 /** The wrapper's one element: the kit's underline rail, handed the switch's three props and nothing else. */
 const RAIL_TABS = `<Tabs variant="line" ariaLabel={ariaLabel} value={value} tabs={tabs} />`;
 /**

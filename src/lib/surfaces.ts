@@ -78,6 +78,19 @@ export function isJourneySurface(path: string | null): boolean {
   return !!path && JOURNEY_ROUTE.some((re) => re.test(path));
 }
 
+/**
+ * ⭐ MASWALI-BUILD S5 · THE MILLIONEA SLIP, FOR EVERY READER (the v6 delivery's D-25; MASWALI-PLAN §10): the slip's pay
+ * control and its confirm sheet are on screen there, so the Needle and the chat bubble stand down on it for a classic
+ * reader too — whom `isJourneySurface` (a journey reader's term) never reaches. ⛔ Not `MONEY_ROUTE`, whose line is pinned
+ * verbatim and means the wallet alone, and not the hub, where the Needle stays (D-25). The install invitation, the consent
+ * prompt and the channels panel already stand down here through `COMMIT_ROUTE`.
+ */
+const SLIP_ROUTE = /^\/millionea\/slip$/;
+
+export function isSlipSurface(path: string | null): boolean {
+  return !!path && SLIP_ROUTE.test(path);
+}
+
 /** S9's payment focus is an exact route family, used before the player shell paints any chrome. */
 export function isFocusedJourneyPaymentPath(path: string | null): boolean {
   return !!path && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -32,7 +32,9 @@ export function NavMore({
   active,
   cardSpacing,
 }: {
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState }[];
+  /** `glyph`: a row's own mark, drawn before its words — Maswali Millionea's row only (MASWALI-BUILD S5; the v6 delivery's
+   *  frames H13 and the 1280 overflow), a product line among destinations; every other row stays words alone. */
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -210,6 +212,7 @@ export function NavMore({
                     background: a ? "var(--pill-active)" : "transparent",
                   }}
                 >
+                  {it.glyph}
                   {it.label}
                   {/* DG-P-11 — the rail branch accepted `proposalsBadge` in its props and threw
                       it away, so the same destination read "Propose & earn · Coming soon" on a
@@ -280,6 +283,7 @@ export function NavMore({
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors hover:bg-bg-overlay"
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
+                {it.glyph}
                 {it.label}
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />

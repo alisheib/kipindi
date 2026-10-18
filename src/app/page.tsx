@@ -7,6 +7,7 @@ import { JourneyHome } from "@/components/journey/home/journey-home";
 import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { millioneaCardShown } from "@/lib/server/millionea-doors";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +50,15 @@ export default async function LandingPage({ searchParams }: {
      render) — never the pass cookie, never `simpleJourneyFor`. A journey request is drawn the deck's home, its own ghost
      standing while the list is on its way (a Suspense boundary of the home's own: the root loading file stays as it is);
      every other request takes the one classic return below, today's element after one cached await. The tab's title is
-     the one `generateMetadata` gives every reader (Open point 25's decision). */
+     the one `generateMetadata` gives every reader (Open point 25's decision). MASWALI-BUILD S5: the ghost holds the
+     Millionea card's slot when the doors say it will be offered (`millioneaCardShown`, React-cached), so the page lands
+     where its ghost stood. */
   const { journey } = await resolveSimpleJourney();
   if (journey) {
     const { t } = await getServerT();
+    const millionea = await millioneaCardShown();
     return (
-      <Suspense fallback={<JourneyHomeGhost t={t} />}>
+      <Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>
         <JourneyHome searchParams={searchParams} />
       </Suspense>
     );
