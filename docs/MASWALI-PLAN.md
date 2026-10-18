@@ -29,7 +29,7 @@
 
 ## §0 · RESUME AT
 
-**⏩ LIVE STATE (2026-10-18 15:46 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
+**⏩ LIVE STATE (2026-10-18 15:49 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
 The State paragraph below is the last push's.)**
 - **`main` = `d09fd050` + this docs commit:** S1–S4 and S5's foundations, dark (`WITHDRAWN`; every Millionea route
   answers not found). Seven Millionea `test:all` reds on `main` leave with the S5 push. Six other red harnesses on `main`
@@ -154,13 +154,19 @@ The State paragraph below is the last push's.)**
        `test:house-bot-reports` (it says whether the new audit action must be listed), and whatever the diff
        derivation adds. Then its next review (rounds 8–10).
 - **At the merges** (each branch trial-merged onto `mln-sf` with `git merge-tree`, 15:30 UTC; ⛔ resolve every hunk by
-  hand, never `checkout --ours/--theirs` a file — either side alone drops the other's work; after any dictionary
-  change re-pin D19a in a follow-up commit):
+  hand, never `checkout --ours/--theirs` a file — either side alone drops the other's work; after any change to a
+  file D19a pins — `house-bot-absence-cases.mts` APPROVED_EXTRA: the dictionary, the legal pages — re-pin it in a
+  follow-up commit to a commit whose copy equals the merged file, ⛔ always one on the integration branch (the merge
+  itself), never a lane commit: the lanes are squash-merged and their branches deleted, so a fresh clone could not
+  read it):
   - **`mln-s7-f3`:** only `maswali-adversarial.test.mts`'s `minPass` (take the higher, then raise to the counts the
-    merged tree's first green run prints).
+    merged tree's first green run prints); its dictionary (the new failure reason's copy) already differs from its
+    D19a pin — re-pin at the merge.
   - **L:** the dictionary's three `ruleSunset` lines (take L's, then add round 3's stale-form clause), the rest of
     both sides' strings kept; COMPLIANCE-DECISIONS (L's 2026-10-18 entries above S5's 2026-10-17 one); `package.json`
-    a union; `test:maswali-fairness` on the merged tree; regenerate the PDFs (`node scripts/generate-rates-pdf.mjs`,
+    a union; L also changes `src/app/legal/rules/page.tsx`, which D19a pins too — re-pin the dictionary and that page
+    (and approve any new legal file the census names; of the lanes, only L and round 3 touch a pinned file);
+    `test:maswali-fairness` on the merged tree; regenerate the PDFs (`node scripts/generate-rates-pdf.mjs`,
     `node scripts/generate-pdfs.mjs` — the operator guide has never been made).
   - **D:** `maswali-rbac.anchors.mjs` (both sides number new plants from (7): keep both, renumber D's after S7's and
     their `expect` strings with them); `maswali-rbac.test.mts` (both sides take §6: D's sections follow S7's, the case
