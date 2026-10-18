@@ -11,43 +11,40 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0, W1 and W2 are LIVE. W2, the swap, went live at **`732efbc5`**, pushed at 23:10 UTC on Ali's
-*"push lov enayhtng please"*:
-- **What it does.** Every icon on the platform is drawn by Phosphor. The chrome's twelve glyphs are inlined in every
-  page; the rest come from one immutable sprite file. Every route's first load is 6.4–6.5 KB lighter, gzipped.
-- **The proof before the push:**
-  - typecheck 0 and `next build` 0;
-  - local `qa:live`: 377 passed. Its last section, [M], was cut off when the machine guard stopped the dev server at
-    26 MB free, and production reads it again;
-  - a 103-suite battery green, except `main`'s known reds;
-  - an independent code review and a four-reader screenshot review, read and fixed.
+**State (2026-10-18):** W0, W1 and W2 are LIVE; W3 is being built on the branch **`phosphor-w3`** (worktree
+`C:\kipindi-phosphor`).
+- **W2, the swap,** went live at `732efbc5` (2026-10-17, 23:10 UTC), and every follow-up is done (`cf0e39f9`):
+  - production read back: `qa:live` 363/363, `qa:chunks-prod` on both origins;
+  - release part two: local `qa:live` 387/387, the review's fixes seen in a real browser;
+  - the parity entries regenerated from the final code.
+  §5 W2 records all of it.
 - **Ali's review page:** https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, with seven calls he may overrule.
-- **Production, read back:** all three hosts served `732efbc5` 220 s after the push, health is reachable and migrated,
-  the sprite is served 200 and immutable, `qa:chunks-prod` passes on both origins, and production `qa:live` passed
-  363/363 (23:30 UTC).
+- **W3 so far, the shared pieces:**
+  - `NavGlyph` draws Line, or Fill for the current destination, and morphs only into the current one;
+  - the pill's tokens, `--nav-pill` and `--nav-pill-edge`;
+  - the six tab-bar keys' Fill, inlined;
+  - the previous sprite kept for one release (`PREVIOUS_SPRITES`).
 
 **Next:**
-1. The swap's follow-ups:
-   - release part two: section [M] alone, the review's fixes and the checkbox drive in a real browser;
-   - a parity compare at `732efbc5`, then `npm run glyphs:parity-entries` on its capture, then the clean compare with
-     `--prove-red`;
-   - Ali's answers to the review page's calls.
-2. W3, selected states (R-INDICATOR 3B, R-RAIL 4B):
-   - the classic rail, the journey tabs, the desktop bars and the admin sidebar;
-   - Line when inactive, Fill on one opaque royal pill when selected, tab glyphs at 24px (which also balances the
-     journey's Akaunti person);
-   - the codegen keeps the previous sprite for one release (deploy skew).
+1. W3, selected states (R-INDICATOR 3B, R-RAIL 4B). §5 W3 holds the plan and the guards to re-pin:
+   - the classic rail and the journey tabs: 24px glyphs on a 56 × 32 pill, with the focus ring on the pill;
+   - both desktop bars: the same pill;
+   - the admin sidebar and drawer: one glyph per destination, on the same pill;
+   - the proof, then the release.
+2. Ali's answers to the review page's calls.
 
 ### Where the work happens
-- Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
-  real `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
+- Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`, now
+  **`phosphor-w3`**. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own real `node_modules`
+  (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
 - **Who pushes `main` for this programme.** The board's release owner is the OMEGA-COMPILE01 session (Ali, 2026-10-16).
   Asked whether this session should take the Phosphor migration to production itself, Ali answered *"until live"*
   (2026-10-17, to the Ali-Blade15 session) — so this programme's releases are pushed to `main` by the session working it,
   recorded in the board's header. Every release: rebase on `origin/main` immediately before the push, the release
   checklist of AGENTS.md §4 (typecheck, `next build`, local `qa:live`, then the production read-back), and never a push
   while another lane's release is mid-flight (`git log origin/main` first). Between releases, the branch is pushed at
-  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-migration`.
+  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-w3` (the
+  current wave's branch).
 - Every step, in ONE commit: the work, this §0 rewritten, §1 ticked, the board row's count updated. Then push the
   branch. `npm run test:phosphor-plan` asserts the tracker and the board agree.
 
@@ -65,7 +62,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
-| W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
+| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: the shared pieces (NavGlyph, the pill tokens, the six Fills inlined, the previous sprite kept one release) |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |

@@ -277,8 +277,20 @@ export const FILL_KEYS: readonly string[] = [
   "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
   "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
+  // W3 (R-INDICATOR 3B): the two tab bars' destinations — the current one draws its Fill on the pill (NavGlyph). Shell
+  // keys, so their Fill is inlined beside their Bold.
+  "markets", "trade", "live", "menu", "ticket", "user",
 ];
 export const DUO_KEYS: readonly string[] = [];
+
+/**
+ * DEPLOY SKEW (W3): a page a player opened before a release still asks for the sprite its HTML named. Each release that
+ * changes a sprite keeps the one production served before it here, so that open page keeps its icons until its next
+ * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
+ * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
+ * File names inside `public/icons/g/`.
+ */
+export const PREVIOUS_SPRITES: readonly string[] = ["app.a7babf1a.svg", "admin.d4427285.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

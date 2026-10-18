@@ -476,6 +476,12 @@
   --brand-200: oklch(88% 0.090 262);
   --brand-soft: oklch(34% 0.120 262);
   --pill-active: oklch(40% 0.12 262 / 0.35);  /* one active filter/tab fill everywhere */
+  /* THE CURRENT DESTINATION'S PILL (PHOSPHOR-MIGRATION W3; R-INDICATOR 3B, Ali 2026-10-17, from the W0 specimen): opaque
+     royal with the even lit ring (M1) and a 1px royal edge, behind the destination's Fill glyph and its --text label — the
+     classic rail's pip, the journey's tab pip, both desktop bars' links and the admin sidebar's and drawer's rows. ⛔ Its
+     own tokens: --pill-active (1.18:1 on the bar) stays the see-through selection of filters, menus and page tabs. */
+  --nav-pill: oklch(36% 0.16 266);
+  --nav-pill-edge: var(--edge-lit), 0 0 0 1px oklch(72% 0.14 266 / 0.35);
   --gilt-strong:   var(--gold-400);
 
   /* ═══ STRUCK GILT — the four gradient tokens ATOM 12 deferred (ATOM C, 2026-08-07)

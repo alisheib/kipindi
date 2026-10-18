@@ -16,6 +16,11 @@
  * any of the three reduced-motion gates — the stacked pair would then render
  * PERMANENTLY under `animation: none`. The swap-in half alone reads as the
  * morph; the reduced-motion branches in motion.css render its end frame.
+ *
+ * `onlyOn` morphs only a change INTO a truthy state, and cuts the change out of
+ * it: a destination becoming the current one morphs to its Fill, and the one it
+ * leaves is back to Line at once (`NavGlyph`, PHOSPHOR-MIGRATION W3), so one
+ * destination is lit in every frame.
  */
 
 import { useRef, type ReactNode } from "react";
@@ -23,11 +28,14 @@ import { cn } from "@/lib/utils";
 
 export function GlyphSwap({
   state,
+  onlyOn = false,
   className,
   children,
 }: {
   /** The value whose CHANGE constitutes the state morph (e.g. `watching`). */
   state: string | number | boolean;
+  /** Morph only into a truthy `state`; a change back is a cut. */
+  onlyOn?: boolean;
   className?: string;
   /** The glyph currently representing `state` — render exactly one. */
   children: ReactNode;
@@ -39,7 +47,7 @@ export function GlyphSwap({
     <span
       key={String(state)}
       aria-hidden
-      className={cn("inline-flex shrink-0", changed.current && "g-swap-in", className)}
+      className={cn("inline-flex shrink-0", changed.current && (!onlyOn || Boolean(state)) && "g-swap-in", className)}
     >
       {children}
     </span>

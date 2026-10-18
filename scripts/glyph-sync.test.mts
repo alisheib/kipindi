@@ -7,7 +7,8 @@
  *   npx tsx scripts/glyph-sync.test.mts --prove-red   (npm run red:glyph-sync — in-process plants, no file is written)
  *
  *   §1 no drift: the registry, the inline chrome symbols, the offline glyphs, both sprites and THIRD_PARTY_NOTICES.md
- *      equal a fresh build from the pinned package, and no stale sprite sits beside the current ones
+ *      equal a fresh build from the pinned package, and no stale sprite sits beside the current ones — except the ones
+ *      production served before this release, named in map.ts PREVIOUS_SPRITES (deploy skew, W3), which must be there
  *   §2 every shipped (key, variant) of the registry has its symbol where the engine will look: the chrome's Bold and Fill
  *      in the inline symbols, everything else in the app or the admin sprite that GLYPH_SPRITES names
  *   §3 the notice: THIRD_PARTY_NOTICES.md carries the package's LICENSE verbatim; both sprites and the inline symbols open
@@ -17,7 +18,7 @@ import { readFileSync } from "node:fs";
 import {
   build, drift, realDisk, NOTICES_PATH, REGISTRY_PATH, SHELL_PATH, SPRITE_DIR, VARIANTS, type Disk,
 } from "./glyphs/codegen.mts";
-import { PHOSPHOR_PACKAGE, PHOSPHOR_VERSION } from "./glyphs/map.ts";
+import { PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, PREVIOUS_SPRITES } from "./glyphs/map.ts";
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 const LICENCE = readFileSync(new URL(`../node_modules/${PHOSPHOR_PACKAGE}/LICENSE`, import.meta.url), "utf8").replace(/\r\n/g, "\n").trim();
@@ -27,9 +28,9 @@ const SHELL_NOTICE = new RegExp(`GLYPH_SHELL_SYMBOLS = "${NOTICE}`);
 const REGISTRY_NOTICE = new RegExp(`${esc(PHOSPHOR_PACKAGE)} ${esc(PHOSPHOR_VERSION)} \\(MIT License`);
 const built = build();
 
-function check(disk: Disk): string[] {
+function check(disk: Disk, previous: readonly string[] = PREVIOUS_SPRITES): string[] {
   const f: string[] = [];
-  for (const d of drift(built, disk)) f.push(`§1 ${d}`);
+  for (const d of drift(built, disk, previous)) f.push(`§1 ${d}`);
   const reg = disk.read(REGISTRY_PATH) ?? "";
   const shell = disk.read(SHELL_PATH) ?? "";
   const urls = { app: reg.match(/app: "\/([^"]+)"/)?.[1], admin: reg.match(/admin: "\/([^"]+)"/)?.[1] };
@@ -73,9 +74,11 @@ const overlay = (edit: (rel: string, text: string | null) => string | null, extr
 const app = built.sprites.app;
 const firstAppSymbol = [...(built.files.get(app) ?? "").matchAll(/<symbol id="[^"]+"[^]*?<\/symbol>/g)][0]?.[0] ?? "";
 const firstShellId = (built.files.get(SHELL_PATH) ?? "").match(/<symbol id=\\"([^"\\]+)\\"/)?.[1] ?? "";
-const plants: [string, RegExp, Disk][] = [
+const plants: [string, RegExp, Disk, (readonly string[])?][] = [
   ["a hand edit to the registry", /§1 .*glyph-registry\.generated\.ts differs/, overlay((rel, t) => (rel === REGISTRY_PATH && t ? t.replace("i: {", "i:  {") : t))],
   ["a stale sprite left behind", /§1 .*app\.deadbeef\.svg is a stale sprite/, overlay((_, t) => t, ["app.deadbeef.svg"])],
+  ["a kept previous sprite that is not there", /§1 .*app\.cafebabe\.svg is kept for one release \(PREVIOUS_SPRITES\) but is not there/,
+    realDisk, ["app.cafebabe.svg"]],
   ["a symbol gone from the app sprite", /§2 .* is not in the app sprite/, overlay((rel, t) => (rel === app && t ? t.replace(firstAppSymbol, "") : t))],
   ["a symbol gone from the inline chrome", /§2 .* is not in the inline chrome symbols/, overlay((rel, t) => (rel === SHELL_PATH && t ? t.split(`id=\\"${firstShellId}\\"`).join('id=\\"zz\\"') : t))],
   ["a sprite loses its notice", /§3 the app sprite does not open/, overlay((rel, t) => (rel === app && t ? t.replace(/<!--[^]*?-->/, "") : t))],
@@ -90,8 +93,8 @@ if (clean.length) {
   process.exit(1);
 }
 let proved = 0;
-for (const [name, want, disk] of plants) {
-  const fired = check(disk).some((x) => want.test(x));
+for (const [name, want, disk, previous] of plants) {
+  const fired = check(disk, previous).some((x) => want.test(x));
   if (fired) proved++;
   console.log(`${fired ? "PROVED" : "BLIND"}`.padEnd(8) + ` ${name}`);
 }
