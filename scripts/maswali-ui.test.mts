@@ -177,21 +177,32 @@ console.log("\n§3 · L5 — a kill hides the product, never a player's own tick
     const got = await millioneaTicketAdmission(visible, userId, h);
     ok(`3.1 · ${name} → ${want}`, got === want, `got ${got}`);
   }
-  const gate = code(read("src/lib/server/millionea-gate.ts"));
-  ok("3.2 · the tickets' gate turns NOT_FOUND into the 404 a missing page gives, and admits a holder as one (holder: true)",
-    /const admitted = await millioneaTicketAdmission\(r\.visible, userId, holdsAMillioneaTicket\);\s*if \(admitted === "NOT_FOUND"\) notFound\(\);\s*return \{ \.\.\.r, userId, holder: admitted === "HOLDER" \};/.test(gate));
-  const doors = code(read("src/lib/server/millionea-doors.ts"));
-  ok("3.3 · Tiketi zangu's third kind and the /positions row ask the same decision (one rule for the door and the route)",
-    doors.includes('millioneaTicketAdmission(false, userId,') && doors.includes('=== "HOLDER"'));
+  // Each wiring line as a reader of its source, so each is seen to fail on a planted copy below.
+  const GATE = "src/lib/server/millionea-gate.ts", DOORS = "src/lib/server/millionea-doors.ts";
+  const TICKET_PAGE_SRC = `${APP}/tickets/[serial]/page.tsx`, PERMALINK = "src/app/positions/[positionId]/page.tsx";
+  const gateWired = (src: string) => /const admitted = await millioneaTicketAdmission\(r\.visible, userId, holdsAMillioneaTicket\);\s*if \(admitted === "NOT_FOUND"\) notFound\(\);\s*return \{ \.\.\.r, userId, holder: admitted === "HOLDER" \};/.test(code(src));
+  const doorsAsk = (src: string) => code(src).includes("millioneaTicketAdmission(false, userId,") && code(src).includes('=== "HOLDER"');
+  const ownerRead = (src: string) => squash(code(src)).includes("const view = await millioneaTicket(gate.userId, serial, now); if (!view) notFound();");
+  const ownerFirstOk = (src: string) => {
+    const p = squash(code(src));
+    const ownerFirst = p.indexOf("if (!position || position.userId !== session.userId) notFound();");
+    return !p.includes("resolveMillionea") && ownerFirst > 0 && ownerFirst < p.indexOf('if (productLine === "MASWALI") {');
+  };
+  ok("3.2 · the tickets' gate turns NOT_FOUND into the 404 a missing page gives, and admits a holder as one (holder: true)", gateWired(read(GATE)));
+  ok("3.3 · Tiketi zangu's third kind and the /positions row ask the same decision (one rule for the door and the route)", doorsAsk(read(DOORS)));
   // The lead's L5 list (2026-10-18): WITHDRAWN with an owner (3.1 HOLDER), with a stranger (3.1 NOT_FOUND, and 3.4 for a
   // stranger who holds tickets of their own), and signed out (3.1, and the edge's 404 in §4).
-  const ticketPage = squash(code(read(`${APP}/tickets/[serial]/page.tsx`)));
   ok("3.4 · a signed-in stranger — holding none, or holding tickets of their own — meets the same 404 as an unknown serial at every state: the ticket read is the owner's, and null is one answer for both (no existence oracle, MB-95)",
-    ticketPage.includes("const view = await millioneaTicket(gate.userId, serial, now); if (!view) notFound();"));
-  const permalink = squash(code(read("src/app/positions/[positionId]/page.tsx")));
-  const ownerFirst = permalink.indexOf("if (!position || position.userId !== session.userId) notFound();");
+    ownerRead(read(TICKET_PAGE_SRC)));
   ok("3.5 · the permalink sends the OWNER to their ticket at every rollout state (it asks no rollout) and 404s anyone else's position before it",
-    !permalink.includes("resolveMillionea") && ownerFirst > 0 && ownerFirst < permalink.indexOf('if (productLine === "MASWALI") {'));
+    ownerFirstOk(read(PERMALINK)));
+  // ── §3's own controls.
+  ok("3.2′ CONTROL · a gate that lets NOT_FOUND through is reported", !gateWired(read(GATE).replace('if (admitted === "NOT_FOUND") notFound();', "")));
+  ok("3.3′ CONTROL · a door that asks the decision as though the product were shown is reported",
+    !doorsAsk(read(DOORS).replace("millioneaTicketAdmission(false, userId,", "millioneaTicketAdmission(true, userId,")));
+  ok("3.4′ CONTROL · a ticket page that renders a serial it could not read as the owner's is reported", !ownerRead(read(TICKET_PAGE_SRC).replace("if (!view) notFound();", "")));
+  const asksRollout = read(PERMALINK).replace('if (productLine === "MASWALI") {', 'if (productLine === "MASWALI") { await resolveMillionea();');
+  ok("3.5′ CONTROL · a permalink that asks the rollout before sending an owner to their ticket is reported", asksRollout !== read(PERMALINK) && !ownerFirstOk(asksRollout));
 }
 
 // ── §4 · the edge ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -414,12 +425,19 @@ const slipDefects = (src: string) => {
 // ── §7 · a ticket's address ────────────────────────────────────────────────────────────────────────────────────────
 console.log("\n§7 · a ticket's address: one spelling");
 {
-  const parts = code(read(`${APP}/millionea-parts.tsx`));
-  const m = /export function ticketPageHref\(serial: string\): string \{\s*return (`[^`]*`);/.exec(parts);
-  const own = m ? (new Function("serial", `return ${m[1]};`) as (s: string) => string) : null;
   const serials = ["1043", "MLN-2026-W42-000017", "a b/c?d#e"];
+  /** The serials the pages' `ticketPageHref` (its literal, run) spells otherwise than the permalink's own spelling. */
+  const spellingDefects = (partsSrc: string) => {
+    const m = /export function ticketPageHref\(serial: string\): string \{\s*return (`[^`]*`);/.exec(code(partsSrc));
+    const own = m ? (new Function("serial", `return ${m[1]};`) as (s: string) => string) : null;
+    return own ? serials.filter((s) => own(s) !== millioneaTicketHref(s)) : ["(no ticketPageHref literal)"];
+  };
+  const PARTS = `${APP}/millionea-parts.tsx`;
+  const d = spellingDefects(read(PARTS));
   ok("7.1 · the pages' ticketPageHref names a ticket exactly as the permalink's millioneaTicketHref does, for every serial (the census reads the pages' literal)",
-    !!own && serials.every((s) => own(s) === millioneaTicketHref(s)), j(serials.map((s) => [own?.(s), millioneaTicketHref(s)])));
+    d.length === 0, j(d));
+  const unescaped = read(PARTS).replace("encodeURIComponent(serial)", "serial");
+  ok("7.1′ CONTROL · a page spelling that stops escaping the serial is reported", unescaped !== read(PARTS) && spellingDefects(unescaped).includes("a b/c?d#e"));
 }
 
 // ── §8 · controls ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -557,7 +575,8 @@ const perfDefects = (readAt: (rel: string) => string) => {
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ Set from the first green run. */
-const MIN_ASSERTIONS = 1;
+/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
+ *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 67 call sites, two of them in loops that run 6 (§3.1) and 9 (§4.3). */
+const MIN_ASSERTIONS = 80;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -466,7 +466,8 @@ console.log("\n§3 · controls — each source check fails on a planted copy");
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ Set from the first green run (W2). */
-const MIN_ASSERTIONS = 1;
+/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
+ *  run (on a tree with W2) prints it (the S5 review of 24ec0d33, MEDIUM 8): 60 call sites, none in a loop. */
+const MIN_ASSERTIONS = 60;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
