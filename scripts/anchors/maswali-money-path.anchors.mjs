@@ -377,7 +377,7 @@ export const MUTATIONS = [
   {
     name: "(S7-float-alert) a short payout float reaches the audit trail only, never the console (MB-63)",
     file: "src/lib/server/maswali-console.ts",
-    from: "  out.push(...await floatShortAlerts());",
+    from: "  out.push(...await floatShortAlerts(deps.readFloat));",
     to: "  void floatShortAlerts;",
     expect: "FL.4 · ⭐",
     suite: "adversarial:GU",
@@ -463,6 +463,22 @@ export const MUTATIONS = [
     to: "",
     expect: "CS.8 · ⭐",
     suite: "adversarial:CS",
+  },
+  {
+    name: "(F2-float-covered) a short-float finding outlives the top-up that covered it: the float as it stands is never asked (MB-11)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    if (short <= 0) continue;",
+    to: "",
+    expect: "FL.4b · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F2-float-unread) a payout whose float could not be read leaves no finding: the console stays silent (MB-11, fail closed)",
+    file: SETTLE,
+    from: "    const action = !float ? \"maswali.settlement.float_unread\" : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? \"maswali.settlement.float_low\" : null;",
+    to: "    const action = !float ? null : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? \"maswali.settlement.float_low\" : null;",
+    expect: "FL.0 · ⭐",
+    suite: "adversarial:GU",
   },
   {
     name: "(F2-holiday-open) the holiday review ends at the open, though the close it asks to move moves only once the week is open (MB-85)",

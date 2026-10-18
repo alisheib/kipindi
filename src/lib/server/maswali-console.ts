@@ -18,7 +18,7 @@ import {
   calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState,
 } from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
-import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
+import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
@@ -143,7 +143,8 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
 export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
 
-export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAlert[]> {
+/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own). */
+export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: FloatReader } = {}): Promise<ConsoleAlert[]> {
   const nowMs = now.getTime();
   const out: ConsoleAlert[] = [];
   const cfg = getMaswaliConfig();
@@ -186,7 +187,7 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
       }
     }
   }
-  out.push(...await floatShortAlerts());
+  out.push(...await floatShortAlerts(deps.readFloat));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
   const need = requirementOf(weeks.filter(unsettled));
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
@@ -201,35 +202,46 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   return out;
 }
 
-/** The settlement's float check's own row (`floatCheck`, maswali-settlement.ts): what it found, at the payout. */
+/** The settlement's float check's own rows (`floatCheck`, maswali-settlement.ts): what it found, at the payout. */
 const FLOAT_LOW_ACTION = "maswali.settlement.float_low";
+const FLOAT_UNREAD_ACTION = "maswali.settlement.float_unread";
+
+/** The disbursement float as it stands, or null when it cannot be read (the payments console says why). */
+export type FloatReader = () => Promise<{ balance: number } | null>;
 
 /**
  * ⭐ S7 · A SHORT PAYOUT FLOAT, ON THE CONSOLE (MB-11, MB-63; FL.4). The settlement's float check is a read after the
- * commit, never a block: when a week's paid total leaves the disbursement float short of the payout and its headroom, it
- * records the payout, the float and the headroom — and until now that row reached the audit trail alone. Each line's
- * newest week that PAID is the payout its winners are withdrawing, so its finding stands here, beside it, with the
- * amount short, until the next week of that line pays and its own check speaks. Critical when the float held less than
- * the payout itself. A row whose figures cannot be read still raises the week, never a guessed amount.
+ * commit, never a block: it records what it found when a week's paid total leaves the disbursement float short of the
+ * payout and its headroom — or, S7-F2, when it could not read the float at all. Each line's newest week that PAID is the
+ * payout its winners are withdrawing, so a finding on it stands here, beside it, until the next week of that line pays
+ * and its own check speaks.
+ * ⭐ S7-F2 · JUDGED ON THE FLOAT AS IT STANDS, read once, only when a finding stands (the S7 review, round 2): it clears
+ * once the float covers that payout and its headroom — it used to outlive Finance's top-up — and shows what is still
+ * short while it does not, critical below the payout itself. ⛔ A float that cannot be read is its own critical alert,
+ * fail closed: the finding used to vanish when the next paying week's check could not read the float, leaving silence.
  */
-async function floatShortAlerts(): Promise<ConsoleAlert[]> {
+async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]> {
   const settled = await weekStore.list({ states: ["SETTLED"] });
   const payouts = (["PUBLIC", "DRIVE"] as const)
     .map((line) => settled.filter((w) => w.visibility === line && (w.paidTotal ?? 0) > 0).sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0])
     .filter((w): w is StoredWeek => !!w);
   if (payouts.length === 0) return [];
-  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id), actions: [FLOAT_LOW_ACTION], sinceIso: new Date(0).toISOString(), limit: 10 });
+  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id), actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION], sinceIso: new Date(0).toISOString(), limit: 10 });
+  const found = payouts.filter((w) => rows.entries.some((e) => e.targetId === w.id));
+  if (found.length === 0) return [];
+  const read: FloatReader = readFloat ?? (async () => (await import("./payments")).getFloatBalance());
+  const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
   const out: ConsoleAlert[] = [];
-  for (const w of payouts) {
-    const row = rows.entries.find((e) => e.targetId === w.id);
-    if (!row) continue;
-    const paid = Number(row.payload?.paid), float = Number(row.payload?.float), headroom = Number(row.payload?.buffer);
-    if (![paid, float, headroom].every(Number.isFinite)) {
-      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its payout found the payout float short, and the figures of that check cannot be read. Finance checks the float before the winners withdraw (MB-11).` });
+  for (const w of found) {
+    const paid = w.paidTotal ?? 0;
+    if (float === null) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: it paid ${formatTzs(paid)}, and the payout float cannot be read now. Finance checks the float before the winners withdraw (MB-11).` });
       continue;
     }
+    const short = paid + FLOAT_ALERT_BUFFER_TZS - float;
+    if (short <= 0) continue;
     out.push({ level: float < paid ? "critical" : "warning", weekId: w.id,
-      text: `${w.code}: the payout float held ${formatTzs(float)} when the week paid ${formatTzs(paid)} — ${formatTzs(paid + headroom - float)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
+      text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(paid)} this week paid — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
   }
   return out;
 }

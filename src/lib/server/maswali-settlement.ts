@@ -483,24 +483,24 @@ export async function settleMaswaliWeek(input: {
 }
 
 /** The headroom the payout float keeps after a week's shares, below which accounting is told before players withdraw. */
-const FLOAT_ALERT_BUFFER_TZS = 500_000;
+export const FLOAT_ALERT_BUFFER_TZS = 500_000;
 
 /**
  * MB-11 · after a payout, is the disbursement float deep enough for the winners to withdraw? A read, never a block (the
  * shares are credited; the float is topped up by Finance). Records an alert when Σ shares exceeds the float minus the
- * buffer; silent when the float cannot be read (the payments console already shows that). ⭐ R4c · `paid` is the total
- * the settlement committed, handed over after the commit — never a week row read inside the lock.
+ * buffer, and ⭐ S7-F2 its own when the float cannot be read (fail closed: never silence; the console raises both).
+ * ⭐ R4c · `paid` is the total the settlement committed, handed over after the commit — never a row read in the lock.
  */
 async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>): Promise<void> {
   try {
     const paid = week.paid;
     if (paid <= 0) return;
-    const float = readFloat ? await readFloat() : await (await import("./payments")).getFloatBalance();
-    if (!float) return;
-    if (paid > float.balance - FLOAT_ALERT_BUFFER_TZS) {
-      console.error(`[maswali-settlement] week ${week.code} paid ${paid}; the payout float holds ${float.balance}.`);
-      audit({ category: "COMPLIANCE", action: "maswali.settlement.float_low", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.weekId,
-        payload: { code: week.code, paid, float: float.balance, buffer: FLOAT_ALERT_BUFFER_TZS } });
+    const float = await (readFloat ?? (async () => (await import("./payments")).getFloatBalance()))().catch(() => null);
+    const action = !float ? "maswali.settlement.float_unread" : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? "maswali.settlement.float_low" : null;
+    if (action) {
+      console.error(`[maswali-settlement] week ${week.code} paid ${paid}; the payout float ${float ? `holds ${float.balance}` : "could not be read"}.`);
+      audit({ category: "COMPLIANCE", action, actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.weekId,
+        payload: { code: week.code, paid, float: float?.balance ?? null, buffer: FLOAT_ALERT_BUFFER_TZS } });
     }
   } catch { /* a read about money already paid never surfaces as the payment failing */ }
 }

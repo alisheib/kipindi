@@ -676,9 +676,19 @@ if (runs("GU")) {
   const exact = await W.release(a.id, at);
   ok("GU.4 · ⭐ funded to EXACTLY the top-up, the same week releases: covered to the last shilling, the guarantee left at 0",
     exact.ok && exact.week.topUp === U && (await guarantee()) === 0 && (await bal(w1)) === 49_000 + exact.week.sharePerTicket, errOf(exact));
-  const floatAlertFor = async (weekId: string, at: Date) => (await consoleRead.consoleAlerts(at)).find((x) => x.weekId === weekId && /float/i.test(x.text));
-  ok("FL.0 · control: a payout whose float could not be read raises no float alert (the payments console shows an unreadable float)",
-    !(await floatAlertFor(a.id, at)));
+  /** The console's float alert for one week, with the float read now as `float` says (null: it cannot be read). */
+  const floatAlertFor = async (weekId: string, at: Date, float: number | null) =>
+    (await consoleRead.consoleAlerts(at, { readFloat: async () => (float === null ? null : { balance: float }) }))
+      .find((x) => x.weekId === weekId && /float/i.test(x.text));
+  // ⭐ S7-F2 · A's release was handed no float reader, and this world has no payments provider to ask: the check at its
+  //    payout could not read the float, and records that, fail closed (the S7 review, round 2).
+  const unreadA = await weekAudit(a.id, "maswali.settlement.float_unread");
+  const alertA = await floatAlertFor(a.id, at, null);
+  ok("FL.0 · ⭐ a payout whose float could not be read raises its own alert — critical, never silence (fail closed)",
+    unreadA.length === 1 && Number(unreadA[0].payload?.paid) === exact.week.paidTotal && !!alertA && alertA.level === "critical" && /cannot be read/.test(alertA.text),
+    J({ rows: unreadA.map((e: any) => e.payload), alert: alertA ?? "no float alert" }));
+  ok("FL.0b · control: …and once the float reads, covering that payout and its headroom, the alert clears",
+    !(await floatAlertFor(a.id, at, (exact.week.paidTotal ?? 0) + Number(unreadA[0]?.payload?.buffer ?? Number.NaN))));
   await topUp(FUND);
 
   // GU-B and GU-C · two floor weeks of seven winners each, prepared side by side; the guarantee holds both top-ups less one.
@@ -715,17 +725,33 @@ if (runs("GU")) {
   const floatRows = await weekAudit(b.id, "maswali.settlement.float_low");
   ok("FL.2 · ⭐ the float alert names the paid total the settlement committed — 869,995, the held share counted in it (MB-11)",
     floatRows.length === 1 && floatRows[0].payload?.paid === 869_995, J(floatRows.map((e: any) => e.payload)));
-  const floatB = await floatAlertFor(b.id, atB);
+  const floatB = await floatAlertFor(b.id, atB, 0);
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
+  // ⭐ S7-F2 · THE FINDING IS JUDGED ON THE FLOAT AS IT STANDS (the S7 review, round 2): Finance's top-up clears it.
+  const headroom = Number(floatRows[0]?.payload?.buffer ?? Number.NaN);
+  ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
+    Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
+  const almost = await floatAlertFor(b.id, atB, 869_995 + headroom - 1);
+  ok("FL.4d · control: a top-up one shilling short of the headroom keeps it — a warning now, the payout itself covered — naming the shilling",
+    !!almost && almost.level === "warning" && almost.text.includes(`${formatTzs(1)} short`), J(almost ?? "no float alert"));
+  const blind = await floatAlertFor(b.id, atB, null);
+  ok("FL.4e · ⭐ …and a float that cannot be read now raises the week as critical — never the finding gone quiet (fail closed)",
+    !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));
   await topUp(1);
   const rC2 = await W.release(c.id, atC);
   ok("GU.8 · …the Owner funds the one shilling, and it releases with the whole top-up", rC2.ok && rC2.week.topUp === ac?.U && (await guarantee()) === 0, errOf(rC2));
-  ok("FL.4c · …and B's float alert stands until the next week of its line pays: once C has paid (its own check, the float unreadable here, finds nothing to say), B's gives way",
-    !(await floatAlertFor(b.id, atC)) && !(await floatAlertFor(c.id, atC)));
+  // ⭐ S7-F2 · C's release read no float: its own check speaks (FL.0's row), so C's finding stands in B's place.
+  const unreadC = await weekAudit(c.id, "maswali.settlement.float_unread");
+  const alertC = await floatAlertFor(c.id, atC, null);
+  ok("FL.4c · ⭐ …and once C has paid with a float its check could not read, C's own alert stands in B's place — never silence (the S7 review, round 2)",
+    unreadC.length === 1 && !!alertC && alertC.level === "critical" && /cannot be read/.test(alertC.text) && !(await floatAlertFor(b.id, atC, null)),
+    J({ rows: unreadC.length, alert: alertC ?? "no float alert" }));
+  ok("FL.4f · control: …and C's clears once the float reads, covering its payout and headroom",
+    rC2.ok && !(await floatAlertFor(c.id, atC, (rC2.week.paidTotal ?? 0) + headroom)));
   await topUp(FUND);
   const heldTicket = (await dal.ticketStore.listForWeek(b.id)).find((t: any) => t.userId === wB[0] && t.won);
   await settle.releaseMaswaliShare({ ticketId: heldTicket.id, officerId: OWNER, note: "the account's review is closed" });
@@ -1023,7 +1049,9 @@ if (runs("TK")) {
     !away.ok && (away as any).reason === "payout_destination_not_registered" && (await bal(winner)) === afterWin, J(away));
   const pw = await changePassword(winner, "", "Mlw-adversarial-takeover-2026");
   const home = await wallet.withdraw(winner, { provider: "MPESA", amount: 10_000, msisdn: mine });
-  const alerts = await consoleRead.consoleAlerts(new Date());
+  // ⚠️ The payout float's alert (FL) speaks of the winners' withdrawals too, and since S7-F2 this week's own payout, its
+  //    float unread here, raises one: it is about the float, never a takeover, so it is not counted as one.
+  const alerts = (await consoleRead.consoleAlerts(new Date())).filter((x) => !/payout float/i.test(x.text));
   knownRed("MB-96", "TK.2 · KNOWN-RED MB-96 · a password changed after a Millionea credit, then a withdrawal attempt, raises a takeover alert for Compliance (an alert only: 2026-10-10 removed withdrawal holds)",
     pw.ok && alerts.some((x) => /takeover|password|withdraw/i.test(x.text)), J({ password: pw.ok, attempt: home.ok ? "sent" : (home as any).reason ?? home.code, alerts: alerts.length }));
 }
