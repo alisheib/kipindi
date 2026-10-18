@@ -29,16 +29,21 @@
     model). They ran again after `prisma generate`, after the push (§5 W3).
 - **Production, read back (11:25 UTC):** www, apex and the Railway host served `ee62451c` 200 s after the push;
   health is reachable and migrated; the new sprite answers 200 and immutable; and both kept sprites answer 200 on
-  both origins.
+  both origins. Then production `qa:live` passed 363/363 and `qa:chunks-prod` both origins (11:55 UTC).
+- **After the push:** `prisma generate`, then typecheck 0 and build 0 on the live code.
+- **Ali's review page for the wave:** https://claude.ai/artifact/Ar7ABsBuKmuVzVP6G5LX2f. It has 12 before and after
+  pairs and two calls: Live's and Up & Down's Fill keep Phosphor's thinner strokes, and More's Fill is a solid tile.
 
 **Next:**
-1. The selected states' follow-ups:
-   - production `qa:live` and `qa:chunks-prod` on both origins;
-   - the clean classic-parity compare with `--prove-red` (its first run was voided by the lock's takeover);
-   - the typecheck and build again after `prisma generate`;
-   - Ali's review page for the wave, with the final tiles and two glyph calls (Live's and Up & Down's Fill keep
-     Phosphor's thinner strokes; More's Fill is a solid tile).
-2. Ali's answers to the swap's review page calls (https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo).
+1. The selected states' follow-ups, blocked by the laptop's memory. The machine guard stopped each dev server at
+   0.77 GB free, with Firefox and VS Code holding about 6.5 GB:
+   - the clean classic-parity compare with `--prove-red`. Its entries are verified against the first compare's
+     capture, and production passed;
+   - `qa:journey-shell`'s focus and tabs sections, and the lit, focus and admin tiles after the last fixes
+     (`scratchpad/phos/w3-drives.sh`);
+   - a stale-anchor note for six other lanes' red harnesses is in §7.
+2. Ali's answers to the review pages' calls: the swap's (https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo) and the
+   selected states'.
 3. W4, outcomes and status (§5 W4): tickets, positions, results, chips, receipts, notifications.
 
 ### Where the work happens
@@ -760,6 +765,20 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
   "您的休息期至 2026年10月18日 06:21" fills the card's width exactly, so a wider time, 07:07, wraps it to two lines and
   moves everything under it down about 18px. Live data, not W3; it is for the journey's own lane.
 - The floating chat bubble covers the card's "Maelezo" link at 360 and 390 in classic guest Swahili, as it did before W3.
+- **Red harnesses whose anchors other lanes' commits moved** (W3's battery, 2026-10-18; traced by the Maswali session on
+  its S5 merge with W3, `817e2a02`). Each fails the same way on a clean main, and none is W3's. They are left to their
+  lanes, since editing another lane's harness mid-flight could undo work there:
+  - `red:enter-where-pressed`: `<KeyGuard />` now occurs twice in `app-shell.tsx` (the focused-payment shell, `49acd4ed`,
+    Vodacom S9);
+  - `red:journey-tickets`: `UNRESOLVED_STAT` no longer matches `ticket-card.tsx` (its Stat gained font and value
+    classes, `635feb27`, S12);
+  - `red:journey-updown`: a wrong reason on `updown-card.tsx` (S8 `95a00a9f`/`696a4a43`, S12 `635feb27`);
+  - `red:root-has`: its modal plant looks for a rule that moved into the loaded CSS (`97d0aec1`);
+  - `red:shell-boundary`: the hub's SEARCH row is no longer a `/markets` link (Vodacom S7 WP9 `21887be6` made it a
+    search field), so its "console in the hub's rows" mutation finds no anchor. Re-anchoring it on another link row
+    (`kind: "link"`) would restore that plant;
+  - `red:wallet-reach` case 21: the journey bar's hidden-words plant is caught by 8c.2 before 8c.3 (the bar changed in
+    W2 `cb1853c6`, S9 `49acd4ed` and S10 `5461c178`/`d562a111`); the harness expects the other check.
 
 ---
 
