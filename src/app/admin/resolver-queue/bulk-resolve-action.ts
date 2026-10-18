@@ -151,6 +151,13 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
     if (twoOfficerRead === null) {
       return { ok: false, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment." };
     }
+    // ⛔ MASWALI-BUILD S7-F6 · THE BATCH THE BAR DREW IS THE ONE THAT RUNS (as `resolveMarketAction`): the bar posts whether
+    //    it drew the two-officer batch (`drawnTwoAdmin`). A setting that reads otherwise now (a toggle, or a read that
+    //    recovered), or a post without it, refuses the whole batch before any market is attempted: a batch confirmed as
+    //    staging never seals, and a seal is never confirmed without its warning.
+    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {
+      return { ok: false, error: "The two-officer setting changed after this page was drawn, so nothing was resolved. Reload the page and resolve again." };
+    }
     const requireTwoOfficer: boolean = twoOfficerRead;
     const disabledCategories = new Set(disabledList);
 

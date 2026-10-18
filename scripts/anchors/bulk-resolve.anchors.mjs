@@ -344,4 +344,11 @@ export const MUTATIONS = [
   const everyMarketEver = await listMarkets();
   void everyMarketEver;`,
   },
+  {
+    name: "S7-F6 · the bulk action runs whatever ceremony the setting reads now, never the one the bar drew",
+    file: ACTION,
+    expect: "11.5h the bar posts the batch it drew",
+    from: `    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {`,
+    to: `    if (false) {`,
+  },
 ];

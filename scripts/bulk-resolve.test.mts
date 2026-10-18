@@ -537,6 +537,16 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
        && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")
        && /if \(twoOfficerNow === null\)/.test(actions) && /if \(drawn !== \(twoOfficerNow \? "1" : "0"\)\)/.test(actions));
+  // ⛔ MASWALI-BUILD S7-F6 · the bulk bar, the same kind: drawn strict while the setting was unknown, its confirm read as
+  //    staging while the action re-read the setting, so a read that recovered OFF sealed N markets confirmed as staging.
+  const bulkBar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
+  const bulkAction = read("src/app/admin/resolver-queue/bulk-resolve-action.ts");
+  ok("11.5g while the setting is unknown the queue draws no bulk bar: it says the setting is unreadable instead",
+     before(p, "{canBulk ? (", "twoOfficerRead === null ? (") && /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<BulkResolveBar\b/.test(p));
+  ok("11.5h the bar posts the batch it drew, and the bulk action refuses a missing or changed ceremony BEFORE any market is attempted",
+     bulkBar.includes('fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");')
+       && /if \(String\(formData\.get\("drawnTwoAdmin"\) \?\? ""\) !== \(twoOfficerRead \? "1" : "0"\)\) \{/.test(bulkAction)
+       && before(bulkAction, 'formData.get("drawnTwoAdmin")', "for (const id of unique)"));
   const toggle = read("src/app/admin/resolver-queue/two-admin-toggle.tsx");
   ok("11.5f the two-admin switch names an unread setting as unknown, with no switch — never drawn ON (it is handed the read, null included)",
      /enabled: boolean \| null/.test(toggle) && /if \(enabled === null\) \{/.test(toggle) && /<TwoAdminToggle enabled=\{twoOfficerRead\} \/>/.test(p));

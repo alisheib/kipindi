@@ -358,13 +358,17 @@ async function ResolverQueueContent({
               sibling of all three. */}
           <AdminCard>
             {canBulk ? (
-              <BulkResolveBar
-                rows={bulkRows}
-                totalPending={pending.length}
-                requireTwoOfficer={requireTwoOfficer}
-                canOverride={canOverride}
-                objectionWindowHours={objectionWindowHours}
-              />
+              twoOfficerRead === null ? (
+                <p className="text-body-sm text-warning">The two-officer setting could not be read. Reload the page to resolve.</p>
+              ) : (
+                <BulkResolveBar
+                  rows={bulkRows}
+                  totalPending={pending.length}
+                  requireTwoOfficer={requireTwoOfficer}
+                  canOverride={canOverride}
+                  objectionWindowHours={objectionWindowHours}
+                />
+              )
             ) : (
               <ControlLocked what="Resolve selected markets" need={CONTROL_DOMAIN.bulkResolveMarkets} block />
             )}
