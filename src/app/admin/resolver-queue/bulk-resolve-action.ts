@@ -133,18 +133,25 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
   try {
     const { getMarket, resolveMarket, resolvePublishCategory } = await import("@/lib/server/market-service");
     const { getEffectiveConfig, getEffectiveResolutionMode } = await import("@/lib/server/market-config");
-    const { getRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
+    const { readRequireTwoOfficerResolution } = await import("@/lib/server/resolution-policy");
     const { sentinelSourceVerdict } = await import("@/lib/server/market-sentinel");
     const { listSources, sourceMatchesAny, listDisabledCategories } = await import("@/lib/server/source-registry");
     const { armMarket } = await import("@/lib/server/market-scheduler");
 
     // Read ONCE for the whole batch. `isSourceTrusted` re-reads the registry per call, so
     // asking it per market is a 20× store read for one answer that cannot change mid-batch.
-    const [requireTwoOfficer, sources, disabledList] = await Promise.all([
-      getRequireTwoOfficerResolution(),
+    const [twoOfficerRead, sources, disabledList] = await Promise.all([
+      readRequireTwoOfficerResolution().catch(() => null),
       listSources({ enabledOnly: true }),
       listDisabledCategories(),
     ]);
+    // ⛔ MASWALI-BUILD S7-F3 · THE SETTING IS READ, OR THE BATCH REFUSES WHOLE, before any market is attempted: the plain
+    //    getter answered the code default (one officer) while its read failed, so every verdict below was drawn, and every
+    //    seal made, single-officer with the setting ON. `resolveMarket` refuses on its own read as well.
+    if (twoOfficerRead === null) {
+      return { ok: false, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment." };
+    }
+    const requireTwoOfficer: boolean = twoOfficerRead;
     const disabledCategories = new Set(disabledList);
 
     for (const id of unique) {

@@ -51,7 +51,7 @@ import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type Ho
 import { houseShownExtra } from "./house-bot/shown-count";
 import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
 import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT, HOUSE_BOT_ENGINE_ENV } from "@/lib/house-bot/constants";
-import { getRequireTwoOfficerResolution } from "./resolution-policy";
+import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed, pushOnly,
@@ -3752,7 +3752,11 @@ function recordRefusedSale(
   });
 }
 
-export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
+export async function resolveMarket(opts: {
+  marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string;
+  /** Tests only: the two-officer setting's read (`readRequireTwoOfficerResolution`). */
+  twoOfficerNow?: () => Promise<boolean | null>;
+}): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
   // ADM2 ceremony — the officer's declared evidence excerpt (the source quote
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
@@ -3765,7 +3769,14 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   // hard-lock. Toggled ONLY from the resolver-queue header (resolution-policy.ts).
   // NOTE: AI auto-resolve (resolutionMode:auto) is a SEPARATE, orthogonal axis — it
   // governs the AI path (resolveDueMarket), not this human path.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution();
+  // ⛔ MASWALI-BUILD S7-F3 · THE SETTING IS READ, OR NOTHING IS RESOLVED (platform consistency with the Millionea seal,
+  //    S7-F2). The plain getter answers the code default — one officer — until a read has answered, so a resolution made
+  //    while the read failed was single-officer with the setting ON: fail open. Asked before the lock and before any
+  //    write, so a refusal leaves nothing behind; a read that answers keeps the single-officer default (`test:two-admin`).
+  const requireTwoOfficer = await (opts.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);
+  if (requireTwoOfficer === null) {
+    return { ok: false, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment." };
+  }
 
   // No money moves in this function — the refund/wagering bookkeeping lives in settleMarket().
   const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> => {

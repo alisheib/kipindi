@@ -492,6 +492,12 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      before(a, "const resolved: BulkResolveOutcome[] = []", "  try {"));
   ok("10.24 an aborted batch still writes its run-boundary row", /aborted: true/.test(a));
   ok("10.18 the settle timer is armed per market", /armMarket\(id\)/.test(a));
+  // ⛔ MASWALI-BUILD S7-F3 · the plain getter answered the code default (one officer) while its read failed, so a batch
+  //    drew every verdict and made every seal single-officer with the two-officer setting ON (fail open).
+  ok("10.25 the two-officer setting is READ (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
+     /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(a) && !/getRequireTwoOfficerResolution/.test(a));
+  ok("10.26 …and an unread setting refuses the whole batch BEFORE any market is attempted",
+     before(a, "if (twoOfficerRead === null)", "for (const id of unique)") && /const requireTwoOfficer: boolean = twoOfficerRead;/.test(a));
 
   // ⛔ A "use server" module may export ONLY async functions — a type exported from it
   // typechecks clean and fails the BUILD.

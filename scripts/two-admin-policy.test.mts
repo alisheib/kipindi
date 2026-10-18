@@ -16,7 +16,7 @@
  *      adjudication records which authorization path sealed it.
  */
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
-import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsForUser } from "../src/lib/server/market-service.ts";
+import { createMarket, buyPosition, resolveMarket, settleMarket, listPositionsForUser, getMarket } from "../src/lib/server/market-service.ts";
 import { setRequireTwoOfficerResolution, getRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
@@ -147,6 +147,31 @@ const adjA = adminAudit.find((e) => e.action === "market.adjudicated" && e.targe
 ok("audit: single-admin adjudication tagged resolutionAuth=single-admin", adjA?.payload?.resolutionAuth === "single-admin", `auth=${adjA?.payload?.resolutionAuth}`);
 const adjB = adminAudit.find((e) => e.action === "market.adjudicated" && e.targetId === mB.id);
 ok("audit: two-admin adjudication tagged resolutionAuth=two-officer", adjB?.payload?.resolutionAuth === "two-officer", `auth=${adjB?.payload?.resolutionAuth}`);
+
+// ── E · MASWALI-BUILD S7-F3 · the setting is READ, or nothing is resolved (the Millionea seal's rule, platform-wide) ─
+// The plain getter answered the code default (one officer) while its read failed, so a resolution made then was
+// single-officer with the setting ON — fail open. `twoOfficerNow` stands in for the read: null is a read that could not
+// ask. ⭐ The single-admin default above (A) is the same read answering OFF.
+{
+  const mE = await mkMarket("E market");
+  await buyPosition("playerP", { marketId: mE.id, side: "YES", stake: 1_000 });
+  const before = await getMarket(mE.id);
+  const unread = await resolveMarket({ marketId: mE.id, outcome: "YES", officerId: "clean", twoOfficerNow: async () => null });
+  const thrown = await resolveMarket({ marketId: mE.id, outcome: "YES", officerId: "clean", twoOfficerNow: async () => { throw new Error("injected: the setting's read failed"); } });
+  const after = await getMarket(mE.id);
+  ok("E.1 ⛔ an unread two-officer setting refuses the resolution, and so does a read that throws: nothing staged, nothing sealed",
+    !unread.ok && /could not be read/.test(unread.error) && !thrown.ok && /could not be read/.test(thrown.error)
+      && after?.status === before?.status && !after?.resolutionStage1By && (after?.resolvedOutcome ?? null) === null,
+    `${unread.ok ? "resolved" : unread.error} · status ${before?.status} → ${after?.status} · stage1 ${after?.resolutionStage1By ?? "-"}`);
+  const off = await resolveMarket({ marketId: mE.id, outcome: "YES", officerId: "clean", twoOfficerNow: async () => false });
+  ok("E.2 control: read OFF, one officer resolves in one action", off.ok && off.data?.stage === "complete", off.ok ? "" : off.error);
+  const mF = await mkMarket("F market");
+  await buyPosition("playerP", { marketId: mF.id, side: "NO", stake: 1_000 });
+  const first = await resolveMarket({ marketId: mF.id, outcome: "NO", officerId: "clean", twoOfficerNow: async () => true });
+  const second = await resolveMarket({ marketId: mF.id, outcome: "NO", officerId: "officerY", twoOfficerNow: async () => true });
+  ok("E.3 control: read ON, the first officer stages and the second officer's step seals",
+    first.ok && first.data?.stage === "stage1" && second.ok && second.data?.stage === "complete", `${first.ok ? first.data?.stage : first.error} · ${second.ok ? second.data?.stage : second.error}`);
+}
 
 console.log(`\ntwo-admin-policy: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
