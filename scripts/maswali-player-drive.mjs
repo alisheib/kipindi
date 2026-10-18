@@ -4,7 +4,12 @@
  *
  *   BASE=http://localhost:3410 node scripts/maswali-player-drive.mjs
  *
- * ⚠️ PREMISE — a FRESH in-memory `next dev` (`rm -rf .next` first; no DATABASE_URL), started with
+ * ⭐ RUN IT TWICE — production's configuration and the product's (the S5 review of 24ec0d33, LOW 13):
+ *   · against a server with NO FEATURE_MILLIONEA (the shipped WITHDRAWN ceiling, production today) it runs step W alone:
+ *     the edge's real 404 for a guest on every route, no door on the home, the board, /positions or More, and a signed-in
+ *     player who holds no ticket meeting the plain not-found on the tickets — no word of the product, ghost included;
+ *   · against a server with FEATURE_MILLIONEA=ACTIVE it runs steps 1–6 below.
+ * ⚠️ PREMISE — a FRESH in-memory `next dev` (`rm -rf .next` first; no DATABASE_URL), and, for steps 1–6,
  *    FEATURE_MILLIONEA=ACTIVE (the seed sells, and the ticket arm reads the real rollout), DISABLE_ADMIN_TOTP=true (the
  *    Owner's switch and the staff preview pass), and the journey previewable (FEATURE_SIMPLEJOURNEY=STAFF_PREVIEW or
  *    ACTIVE, for Tiketi zangu's third kind). It refuses, exit 2, when any of that is absent — never a half-run.
@@ -30,6 +35,7 @@
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
+import { MILLIONEA_ENTRY_PAGES, MILLIONEA_ROUTES } from "./live/millionea-dark.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3410";
 const OUT = ".50pick-shots/maswali-player";
@@ -44,7 +50,11 @@ const die = (why) => { console.error(`\nPREMISE ABSENT — ${why}\n`); process.e
 const pre = await premise(BASE);
 if (pre.refuse) die(pre.refuse);
 const ml = pre.health?.millionea;
-if (!ml || ml.ceiling !== "ACTIVE" || ml.state !== "ACTIVE") die(`/api/health says millionea = ${JSON.stringify(ml)}: start next dev with FEATURE_MILLIONEA=ACTIVE and no stored switch`);
+/** Production's configuration: the shipped ceiling, nothing raised — step W alone. */
+const DARK = !!ml && ml.ceiling === "WITHDRAWN" && ml.state === "WITHDRAWN";
+if (!DARK && (!ml || ml.ceiling !== "ACTIVE" || ml.state !== "ACTIVE")) {
+  die(`/api/health says millionea = ${JSON.stringify(ml)}: start next dev with no FEATURE_MILLIONEA (step W, production's configuration), or with FEATURE_MILLIONEA=ACTIVE and no stored switch (steps 1–6)`);
+}
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -63,6 +73,60 @@ async function open(page, path) {
 const tile = (page, name) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
 const notFoundShown = async (page) => (await page.getByRole("heading", { name: NOT_FOUND }).count()) > 0;
 const traceOf = (html) => /data-testid="millionea-[a-z-]+"|href="\/millionea(?:[/?#][^"]*)?"/.test(html);
+
+// ── W · PRODUCTION'S CONFIGURATION — the shipped WITHDRAWN ceiling (the S5 review of 24ec0d33, LOW 13) ─────────────────
+/** The words the Millionea ghosts once printed (en): none may be in a not-found document's HTML (HIGH 2's wordless ghosts). */
+const GHOST_WORDS = ["Maswali Millionea", "Your Millionea tickets"];
+async function darkPass() {
+  // W.1 the edge: a guest gets the router's own 404 status, and its page, on every Millionea route.
+  const guest = await contextWith([]);
+  const gp = await guest.newPage();
+  gp.on("pageerror", (e) => errs.push(String(e)));
+  for (const route of MILLIONEA_ROUTES) {
+    const res = await open(gp, route);
+    ok(`W.1 the edge answers ${route} for a guest with the router's own 404 (status ${res?.status()})`, res?.status() === 404 && (await notFoundShown(gp)));
+  }
+  // W.2 the dark doors, for a guest: the home and the board carry no Millionea card or link.
+  for (const page of MILLIONEA_ENTRY_PAGES) {
+    const html = (await (await open(gp, page))?.text().catch(() => "")) ?? "";
+    ok(`W.2 ${page} carries no Millionea door for a guest`, html.length > 0 && !traceOf(html));
+  }
+  await tile(gp, "W-guest-board-360");
+  await guest.close();
+  // W.3–W.4 the dark doors, for a signed-in player (no pass): the board and /positions, and More's rows at 1280.
+  const reader = await contextWith([await demoSession(browser, BASE)], { width: 1280, height: 900 });
+  const rp = await reader.newPage();
+  rp.on("pageerror", (e) => errs.push(String(e)));
+  for (const page of ["/markets", "/positions"]) {
+    const html = (await (await open(rp, page))?.text().catch(() => "")) ?? "";
+    ok(`W.3 ${page} carries no Millionea door for a signed-in player`, html.length > 0 && !traceOf(html));
+  }
+  await open(rp, "/results");
+  await rp.getByRole("button", { name: "More" }).first().click();
+  const rows = await rp.getByRole("menuitem").allTextContents();
+  ok("W.4 the top bar's More holds no Millionea row (≥1024)", rows.length > 0 && !rows.some((r) => r.includes("Millionea")), JSON.stringify(rows));
+  await rp.keyboard.press("Escape");
+  // W.5 a signed-in player who holds no ticket passes the edge to the tickets' gate (L5): the plain not-found — no word of
+  // the product in what they see, and none of the ghosts' old words anywhere in the document.
+  await rp.setViewportSize({ width: 360, height: 780 });
+  for (const route of ["/millionea/tickets", "/millionea/tickets/NO-SUCH-SERIAL"]) {
+    const res = await open(rp, route);
+    const html = (await res?.text().catch(() => "")) ?? "";
+    const seen = await rp.locator("body").innerText().catch(() => "");
+    const words = GHOST_WORDS.filter((w) => html.includes(w));
+    ok(`W.5 a signed-in non-holder meets the plain not-found on ${route} (status ${res?.status()}): no word of the product on screen or in the document`,
+      (await notFoundShown(rp)) && !/Millionea/.test(seen) && words.length === 0, JSON.stringify({ words, seen: seen.slice(0, 120) }));
+  }
+  await tile(rp, "W-nonholder-tickets-360");
+  await reader.close();
+}
+if (DARK) {
+  await darkPass();
+  ok("W.6 no page error on the pages read", errs.length === 0, errs.slice(0, 3).join(" | "));
+  await browser.close();
+  console.log(`\nmaswali-player-drive (production's configuration, WITHDRAWN): ${pass} passed, ${fail} failed · tiles in ${OUT}/`);
+  process.exit(fail === 0 ? 0 : 1);
+}
 
 // ── 1 · the Owner seeds the weeks ─────────────────────────────────────────────────────────────────────────────────
 const owner = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -127,8 +191,10 @@ ok("3b.1 the free cancel stands under the ticket inside its window", (await canc
 await cancel.click();
 const dlg = p.getByRole("alertdialog").or(p.getByRole("dialog")).filter({ hasText: `Cancel ticket ${first}?` });
 await dlg.getByRole("button", { name: "Cancel ticket", exact: true }).click();
-await p.getByText("Ticket cancelled").first().waitFor({ timeout: 120_000 });
-ok("3b.2 the cancel answers with the neutral result", true);
+// The result as the platform's neutral modal says it: a dialog (an error crest would be an alertdialog) naming the cancel.
+const cancelled = await p.getByRole("dialog").filter({ hasText: "Ticket cancelled" }).first().waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
+const alarmed = await p.getByRole("alertdialog").filter({ hasText: "Ticket cancelled" }).count();
+ok("3b.2 the cancel answers with the neutral result — a dialog naming the cancel, never the danger crest", cancelled && alarmed === 0, `dialog ${cancelled} · alertdialog ${alarmed}`);
 await p.keyboard.press("Escape");
 await open(p, `/millionea/tickets/${encodeURIComponent(first)}`);
 ok("3b.3 the ticket now reads cancelled", ((await p.getByTestId("millionea-ticket").textContent()) ?? "").toLowerCase().includes("cancel"));
