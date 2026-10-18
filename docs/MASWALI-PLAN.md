@@ -29,6 +29,50 @@
 
 ## §0 · RESUME AT
 
+**⏩ LIVE STATE (2026-10-18 10:50 UTC, Ali-Blade15) — read this first; the State paragraph below is the last push's.**
+- **`main` = `95c480f1`** (live, read back): S1–S4 and S5's foundations, dark. ⚠️ Seven `test:all` guards are red on
+  `main` from those foundations (`maswali-design` 2.M4a, `visual-pass-r5a` 8.13, `-r5j` 1.1, `-r6c` 10.1/11.2, `-r7c`
+  2.1/3.9, `rate-copy` 1b, `-r5h` 3.5). None is in predeploy; all are fixed on `maswali-s4` and leave with the S5 push.
+- **`maswali-s4` = `bfd257d4`, the S5 integration (the player screens), VERIFIED:** `tsc` ✅, `next build` ✅ and
+  `test:all` ✅. The pages' first `test:all` had 25 red suites — the pages met about twenty platform censuses for the
+  first time — fixed in `35ff078c`…`bfd257d4` (in the code where a census was right, ruled and registered where the
+  surface was new). **Next, in order:** the render jobs (the dark check at `WITHDRAWN`, the player drive and the player
+  shots at 320–1920 in sw, en and zh, the console, the server suites), the shots read tile by tile, the push to `main`
+  with the production read-back, then **STAFF_PREVIEW** — Ali: run `railway login` once on the lead's machine, or set
+  `FEATURE_MILLIONEA=STAFF_PREVIEW` in the Railway dashboard (a restart; `WITHDRAWN` undoes it).
+- **S6, in four lanes (each round from an independent review; none merged yet):**
+  - `mln-s6-reports` `f1769983` (round 4 done): Millionea's jackpot model beside GGR in the tax report, the GBT pack,
+    money-by-game, the finance window and the house book; the S16 measures and the harm watch judged on players without a
+    ticket from the first PUBLIC week's opening. Its rounds 3–4 await their review.
+  - `mln-s6-data` `3eba711b` (round 3 done, under review): one data-export allowlist, erasure (the seen marks erased),
+    the evidence export, the cluster report (a crowded place counted among non-holders), the support lookup.
+  - `mln-s6-legal` `2695ac5a` (round 3 done, under review): the binding rules, /fairness, help, the chatbot, the
+    operator guide — stating only what the system does. Four sentences wait on code the lead lands first: the final week
+    named on the hub and the home card while still a draft; `openWeek` refusing an early open of a final week; the slip
+    and its confirm sheet stating the final-week rule; S7's correction-evidence minimum.
+  - `mln-s6-notices` (round 4 writing): the seven notices once each, the winner SMS exactly once (a lease and a unique
+    index, migration `20261018120000_maswali_winner_sms_once`), the marketing-claims lint. Lead's ruling: a campaign
+    already RUNNING when the lint ships is flagged on the console, never paused, until its next save.
+- **S7:** `mln-s7-adv` `8d073bd3` (the adversarial suite, eight money defects fixed) and `mln-s7-fix` `0adcfaba` (the
+  follow-ups: the sunset after a close, the close on the database clock, the product-line trigger migration
+  `20261018130000_maswali_product_line_fence`, the house-desk designation block, the short-float alert, the holiday list,
+  the week's deadlines re-frozen at the open) — under review together. ⚠️ Decide at its merge: the trigger's 3 s lock on
+  `PredictionMarket` can fail under load, and a failed migration blocks every later deploy (P3009).
+- **Decisions taken under delegation this round** (each reversible): a stop ordered after a week's sales close lets that
+  week settle under its own rules and makes the next week final (the fee applies to a sunset payout, not to a rollover);
+  the insider rule names the staff role only (D19); the How page's `{hours}` is the house's complete duration; a held
+  share's reason is neutral in the regulator's and the player's exports, and on the console only the five safe reasons
+  show; the Auditor stays off the trading pages (the evidence page is the Auditor's record).
+- **Gate B (before ACTIVE):** MB-23 the objection door; OD-26 the regulator's stop and a week void for a 50pick fault;
+  MB-69 the rules version on each ticket; a console form for `maswali.config` and the holiday list; the restore runbook
+  re-applies the database's triggers and functions (a backup carries none).
+- **The machine.** The heavy-job lock is v4.2 since 10:35 UTC: a live holder is never taken over (pid and Windows pid
+  recorded), after a 5-hour battery was overlapped under the old 3-hour rule. Its state, rules and events:
+  `bash ~/heavy-node-lock.sh status`, `~/.heavy-node-events.log`; the machine guard: `bash ~/machine-guard-start.sh`
+  after a reboot. At most four agents per session.
+- **For Ali:** the STAFF_PREVIEW access above; R10c (who may buy a DRIVE-week ticket); and, when S6 merges, the
+  complaint-answer time (a setting, default 5 days) and that a player's own export lists the Millionea notices seen.
+
 **State (2026-10-18):** S0.5 to S4, D3, the S3 review's fixes and S5's foundations are on `main`, dark: no Millionea
 screen, door or sale exists for anyone. The rollout is `WITHDRAWN` on production, and no week can open there without
 the licence basis and the guarantee (Gate A, §6).
