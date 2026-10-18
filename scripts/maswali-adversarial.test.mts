@@ -32,7 +32,7 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 180, postgres: 188 },
+  minPass: { memory: 184, postgres: 192 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
