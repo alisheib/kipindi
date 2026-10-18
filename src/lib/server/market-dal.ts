@@ -705,6 +705,9 @@ const memoryMarkets: MarketStore = {
     // so a full-row write from a copy read before an increment cannot erase it — and this twin keeps the stored value
     // for the same reason. The usual call passes the stored object itself, which is stored untouched.
     const cur = markets.get(m.id);
+    // ⛔ MASWALI-BUILD S7 · A ROW'S PRODUCT LINE IS FIXED AT CREATION, as the Postgres twin's UPDATE arm keeps it: a full-row
+    //    write from a copy naming another line keeps the stored one, so neither store reclassifies a week as a poll (MB-01).
+    if (cur && cur !== m && (m.productLine ?? "MARKET") !== (cur.productLine ?? "MARKET")) return memoryMarkets.set({ ...m, productLine: cur.productLine }, _tx);
     if (cur && cur !== m && (m.predictorExtra ?? 0) !== (cur.predictorExtra ?? 0)) {
       markets.set(m.id, { ...m, predictorExtra: cur.predictorExtra ?? 0 });
     } else {
@@ -713,6 +716,8 @@ const memoryMarkets: MarketStore = {
     noteMarketsChanged([m.id], m.productLine ?? "MARKET");
   },
   async stamp(id, fields, _tx) {
+    // ⛔ MASWALI-BUILD S7 · as the Postgres twin's allowlist refuses it (STAMPABLE): no stamp writes a row's product line.
+    if ("productLine" in fields) throw new Error("marketStore.stamp: 'productLine' is not a stampable column (pool/title fields must not be written this way)");
     const cur = markets.get(id);
     if (!cur) return;
     const next = { ...cur, ...fields };

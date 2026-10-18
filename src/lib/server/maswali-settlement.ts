@@ -56,7 +56,7 @@ const refuse = (error: string): Refused => ({ ok: false, error });
 const SYSTEM = "system_maswali";
 
 /** Why a winning share is held for Compliance (MB-43), or null when it is paid free. */
-export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed";
+export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed" | "deposit under review" | "deposit check unreadable";
 
 /** One graded winning ticket, as the release pays it. */
 type Winner = { ticket: StoredTicket; score: number; hold: HoldReason | null };
@@ -200,8 +200,8 @@ async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: t
   const guaranteeHeld = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (guaranteeHeld === null) return refuse("The guarantee balance could not be read, so the settlement could not be prepared.");
 
-  const winners: Winner[] = [];
-  for (const g of winnersGraded) winners.push({ ...g, hold: await holdFor(g.ticket.userId) });
+  const winners: Winner[] = [], disputed = await depositHolds(winnersGraded.map((g) => g.ticket.userId));
+  for (const g of winnersGraded) winners.push({ ...g, hold: (await holdFor(g.ticket.userId)) ?? disputed(g.ticket.userId) });
 
   const figures = {
     weekId: week.id, sales: byTickets, liveTickets: live.length, rolloverIn, basis, winningScore, arithmetic,
@@ -705,4 +705,43 @@ export async function forfeitMaswaliShare(input: { ticketId: string; officerId: 
   await seams.beforeLift?.();
   await liftHoldIfClear(userId, input.officerId, `Millionea ${first.week.code} · ${first.ticket.serial} forfeited`);
   return { ok: true };
+}
+
+// ── MB-74 · A WINNER WHOSE DEPOSIT THE PROVIDER CONTRADICTED ────────────────────────────────────────
+
+/**
+ * ⭐ MB-74 · the winners whose accounts carry a credited deposit the payment provider has since contradicted — a reversal,
+ * or another amount, which the webhook marks for review and leaves in the wallet (`settlePaymentWebhook`). Their shares
+ * are credited in full and HELD for Compliance (OD-07: frozen, then released or forfeited to the jackpot), never paid free:
+ * the contradicted money may be what bought the ticket, and money is not traced shilling by shilling.
+ * ONE read for every winner, never one per winner (R9's settlement budget), answered as a lookup. ⛔ Fails CLOSED, as the
+ * desk check does (R10b): a read that fails holds every winner's share in its own words, and Compliance releases them.
+ * The ticket's grade, the commitment and the sales are untouched: the ticket stays in the week (MB-74).
+ */
+async function depositHolds(userIds: readonly string[]): Promise<(userId: string) => HoldReason | null> {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) return () => null;
+  try {
+    const { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } = await import("../wallet/deposit-review");
+    const flagged = new Set<string>();
+    const c = hasDatabase() && process.env.USE_PRISMA_DAL !== "false" ? prisma() : null;
+    if (c) {
+      for (let i = 0; i < unique.length; i += 5_000) {
+        const rows = await c.transaction.findMany({
+          where: { userId: { in: unique.slice(i, i + 5_000) }, type: "DEPOSIT", status: "CONFIRMED", providerStatus: DEPOSIT_STATUS_REVIEW_MARK },
+          select: { userId: true }, distinct: ["userId"],
+        });
+        for (const r of rows) flagged.add(r.userId);
+      }
+    } else {
+      for (const userId of unique) {
+        const deposits = await db.txn.findByUserTypes(userId, ["DEPOSIT"], 10_000);
+        if (deposits.some((t) => t.status === "CONFIRMED" && hasDepositStatusReview(t))) flagged.add(userId);
+      }
+    }
+    return (userId) => (flagged.has(userId) ? "deposit under review" : null);
+  } catch (err) {
+    console.error("[maswali-settlement] the winners' deposits could not be checked, so every share is held:", (err as Error)?.message ?? err);
+    return () => "deposit check unreadable";
+  }
 }

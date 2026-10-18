@@ -29,6 +29,7 @@ import { sendEmailToUser, staffRoleChangedHtml } from "@/lib/server/email";
 import { ROLE_LABEL, type Role } from "@/lib/server/roles";
 import { validateRoleChange, isStaffAssignable, checkStaffPhone, checkStaffReason, type AssignableRole } from "@/lib/server/staff-roles";
 import { safeError } from "@/lib/server/safe-error";
+import { millioneaPromotionBlock } from "@/lib/server/maswali-service";
 
 async function applyRoleChange(
   officerId: string,
@@ -38,6 +39,12 @@ async function applyRoleChange(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const prevRole = target.role;
   try {
+    // ⛔ OD-12 · an account holding a Millionea ticket in a week that has not settled is made staff only once that week
+    //    settles: an insider never holds a live ticket. Asked inside the try, so a read that fails refuses the change.
+    if (newRole !== "PLAYER") {
+      const held = await millioneaPromotionBlock(target.id);
+      if (held) return { ok: false, error: held };
+    }
     await db.user.update(target.id, { role: newRole });
     // Role lives in the signed session cookie — revoke so the next request re-mints it
     // with the new role (nav/route/action gates then apply immediately).
