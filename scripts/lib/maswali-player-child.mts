@@ -499,7 +499,7 @@ ok("8.3 · the week settled: two tickets of ten of ten", releasedA.ok && (await 
   ok("8.5 · ⭐ the win ledger: jackpot, the fee, to the winners, the equal share, ×2 for the viewer's two, the top-up — every figure the settlement's; no share held or forfeited",
     J(v.win) === J({
       jackpot: expectA.J, fee: expectA.F, traLevy: expectA.tra, gbtLevy: expectA.gbt, toWinners: expectA.J - expectA.F, winners: 2, share: expectA.share,
-      paid: expectA.paid, remainder: expectA.dust, topUp: expectA.U, yourWinningTickets: 2, yourTotal: 2 * expectA.share,
+      paid: expectA.paid, remainder: expectA.dust, carriedOut: expectA.carryOut, topUp: expectA.U, yourWinningTickets: 2, yourTotal: 2 * expectA.share,
       yourHeldTickets: 0, yourForfeitedTickets: 0, basis: "TEN_OF_TEN", winningScore: 10,
     }), J(v.win));
   const l = await P.millioneaTicket(P1, p1Lose.serial);
