@@ -54,4 +54,21 @@ export const MUTATIONS = [
     expect: "5 · nav /admin/maswali/integrity",
     suite: "rbac",
   },
+  /* ── MASWALI-BUILD S7-F2 · the Owner's two forms on the trading page. ── */
+  {
+    name: "(7) the public-holiday list is handed to the week's own officer (trading)",
+    file: "src/lib/server/control-gates.ts",
+    from: "  saveMaswaliHolidays: \"ops\",",
+    to: "  saveMaswaliHolidays: \"trading\",",
+    expect: "2 · saveMaswaliHolidays is registered ops",
+    suite: "rbac",
+  },
+  {
+    name: "(8) the rules save is enforced as the draft's control, so a trading officer could change the price and the floor",
+    file: "src/app/admin/maswali/actions.ts",
+    from: "requireStaff(CONTROL_DOMAIN.saveMaswaliConfig, \"saveMaswaliConfig\")",
+    to: "requireStaff(CONTROL_DOMAIN.createMaswaliWeek, \"saveMaswaliConfig\")",
+    expect: "3 · saveMaswaliConfig is enforced",
+    suite: "rbac",
+  },
 ];

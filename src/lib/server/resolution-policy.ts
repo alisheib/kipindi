@@ -57,6 +57,16 @@ export async function getRequireTwoOfficerResolution(): Promise<boolean> {
   return store.requireTwoOfficer;
 }
 
+/**
+ * ⭐ THE FLAG, OR null WHEN IT CANNOT BE READ (MASWALI-BUILD S7-F2). Until a read has answered, the reader above returns the
+ * code default — single officer — which is exactly the answer a caller that must not act on a default cannot take: a
+ * Millionea seal refuses on null rather than seal single-officer with the setting ON (`maswali-service.ts`).
+ */
+export async function readRequireTwoOfficerResolution(): Promise<boolean | null> {
+  await ensureHydrated();
+  return globalThis.__50PICK_RES_POLICY_HYDRATED ? store.requireTwoOfficer : null;
+}
+
 /** Enable/disable two-admin authorization. Persisted + COMPLIANCE-audited. */
 export async function setRequireTwoOfficerResolution(enabled: boolean, officerId: string): Promise<void> {
   await ensureHydrated();

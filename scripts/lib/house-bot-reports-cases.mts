@@ -2324,6 +2324,10 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
   "src/lib/server/marketing/rg.ts": "the marketing RG standing: one player's two self-exclusion actions (rg.self_exclusion.activated / reopened), read by action and reduced to two instants; no row is handed on",
+  /* Classified 2026-10-18 (MASWALI-BUILD S7-F2), read from the source (`floatShortAlerts`): S7-F's short-float alert added
+     the reader without its entry, and S7-F2 rewrote it. It asks only WHETHER a float finding stands on each line's newest
+     paying week; the alert's figures are the week's own paid total and the float read now — no row's payload is read. */
+  "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, read by action and reduced to whether a finding stands — never a row or its payload handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
      officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` rows (officer,
@@ -2373,6 +2377,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/marketing/campaign-live.ts": "handedOn",
   "src/lib/server/marketing/referee-exclusion.ts": "folded",
   "src/lib/server/marketing/rg.ts": "folded",
+  "src/lib/server/maswali-console.ts": "folded",
   "src/lib/server/maswali-integrity.ts": "handedOn",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",

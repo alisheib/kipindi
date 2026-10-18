@@ -12,7 +12,10 @@
  * correction that skips a seal's rules, an insider's second signature, a reclassified week sold, a reversed deposit paid
  * free, the memory store's product line, OD-12's promotion) and S7-F's (a close stamped on the container's clock, a short
  * float kept off the console, a ticket holder designated to the desk, the holiday review unread, a closed week made
- * final, any draft made final at short notice, a week's deadlines not re-frozen at the open) — runs the memory child that mutation names
+ * final, any draft made final at short notice, a week's deadlines not re-frozen at the open) and S7-F2's (a failed read
+ * thrown at the buyer, a close the database's clock refused left to the reconcile, a refused stop naming no next act, a
+ * float finding that outlives its top-up or goes silent, the holiday review ending at the open, an unreadable week's
+ * floor counted as 0, the rules form storing a percentage as typed) — runs the memory child that mutation names
  * (`test:maswali-purchase`, `test:maswali-settle`, `test:maswali-close-race`, `test:maswali-void` or
  * `test:maswali-adversarial`, the last on the plant's own sections), and requires it to go red ON THAT MUTATION'S OWN
  * ASSERTION. Then it puts every file back byte for byte.

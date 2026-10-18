@@ -57,7 +57,8 @@ async function Content({ searchParams }: PoolsPageProps) {
   }
   const trailPage = parsePage(sp.tpage, v.trail.length, CONSOLE_PER_PAGE);
   const trailRows = v.trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
-  const short = v.guarantee !== null && v.guarantee < v.requirement;
+  // S7-F2 · a requirement that cannot be read (a week's frozen rules unreadable) is unknown, shown so, never as covered.
+  const short = v.guarantee !== null && v.requirement !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
     <>
@@ -65,7 +66,7 @@ async function Content({ searchParams }: PoolsPageProps) {
       <AdminBody>
         <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Jackpot carried" sw="Jackpot" value={money(v.jackpotPublic)} note="Players' money, for the next winning week" {...(v.jackpotPublic === null ? { tone: "danger" as const } : {})} />
-          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${formatTzs(v.requirement)} (OD-02)`} {...(v.guarantee === null || short ? { tone: "danger" as const } : {})} />
+          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${money(v.requirement)} (OD-02)`} {...(v.guarantee === null || v.requirement === null || short ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Payout float" sw="Akiba ya malipo" value={money(v.float)} note={`Prepared payouts: ${formatTzs(v.pendingPayout)}`} {...(floatShort ? { tone: "warning" as const } : {})} />
           <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own (OD-21)" />
         </KpiGrid>

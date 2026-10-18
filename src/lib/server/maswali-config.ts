@@ -9,15 +9,15 @@
  *
  * ⛔ A CHANGE APPLIES FROM THE NEXT WEEK, NEVER TO A RUNNING ONE (MB-75). `snapshotMaswaliRules` freezes every field
  * into the week's `rulesSnapshot` when the week opens, and the week reads only its snapshot from then on — the same
- * rule every poll's `feeSnapshot` keeps. `/admin/config` says so beside the form.
+ * rule every poll's `feeSnapshot` keeps. The form says so beside its fields (`/admin/maswali`, S7-F2, the Owner's).
  *
  * ⛔ THE FEE HAS ONE HOME PER WEEK. `jackpotFeeRate` is edited here, but a week freezes it into its market's
  * `feeSnapshot` (`feeModel: "jackpot-payout"`, `market-config.ts → snapshotFromConfig`) beside the TRA and GBT rates
  * that global config freezes for every product. The rules snapshot does NOT copy it: two frozen copies of one rate are
  * two answers to one question.
  *
- * ⛔ THE LICENCE BASIS IS NOT HERE. It is the Owner's record (`maswali-licence.ts`), so a trading officer's save of
- * this form can never touch it.
+ * ⛔ THE LICENCE BASIS IS NOT HERE. It is the Owner's own record and ceremony (`maswali-licence.ts`, on /pools), so a
+ * save of the rules form can never touch it.
  */
 import { defineConfig } from "./define-config";
 import { MAX_JACKPOT_FEE_RATE } from "@/lib/payout";
@@ -207,6 +207,17 @@ export async function readMaswaliConfigFresh(): Promise<{ ok: true; config: Masw
 }
 
 /**
+ * The rules read FRESH for the Owner's form (`/admin/maswali`, S7-F2): the stored row as the next open would read it,
+ * with the validator's words when it no longer validates — the form shows it anyway, or rules that stopped validating
+ * could never be corrected where they are kept. ⛔ A read that could not ask answers why, and the form is not drawn.
+ */
+export async function readMaswaliConfigForForm(): Promise<{ ok: true; config: MaswaliConfig; problem: string | null } | { ok: false; error: string }> {
+  const r = await cfg.reload();
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, config: { ...r.config, questionCaps: { ...r.config.questionCaps } }, problem: maswaliConfigProblem(r.config) };
+}
+
+/**
  * Save the rules for the coming weeks. The ONE writer, and it VERIFIES the write (`setVerified`): the officer is told
  * "saved" only after the row was read back. A running week is untouched — it reads its snapshot.
  */
@@ -250,4 +261,24 @@ export function readMaswaliRulesSnapshot(raw: unknown): { ok: true; rules: Maswa
   if (why) return { ok: false, error: `The week's frozen rules do not validate: ${why}` };
   const r = s as unknown as MaswaliRulesSnapshot;
   return { ok: true, rules: { ...r, questionCaps: { ...r.questionCaps } } };
+}
+
+/**
+ * ⭐ OD-02 · EACH UNSETTLED WEEK AT ITS OWN FROZEN FLOOR, as `guaranteeRequirement` counts them — or the weeks whose frozen
+ * rules cannot be read. ⛔ FAIL CLOSED (MASWALI-BUILD S7-F2): such a week's floor is unknown, so the requirement is, and
+ * the readers that counted it as 0 understated what the guarantee must hold — the console's "Needed now" and its
+ * alert stayed quiet, and the Owner's return could take back money a week still needed. The open, the return, the
+ * console and the nightly invariants ask here, as the settlement aborts rather than pay less and the player's floor line
+ * shows no floor (`maswali-player.ts`).
+ */
+export function unsettledFloors(weeks: ReadonlyArray<{ id: string; code: string; rulesSnapshot: unknown; rolloverIn: number | null }>):
+  { ok: true; weeks: Array<{ floor: number; confirmedCarryIn: number | null }> } | { ok: false; unreadable: Array<{ id: string; code: string }> } {
+  const counted: Array<{ floor: number; confirmedCarryIn: number | null }> = [];
+  const unreadable: Array<{ id: string; code: string }> = [];
+  for (const w of weeks) {
+    const r = readMaswaliRulesSnapshot(w.rulesSnapshot);
+    if (r.ok) counted.push({ floor: r.rules.floorTzs, confirmedCarryIn: w.rolloverIn });
+    else unreadable.push({ id: w.id, code: w.code });
+  }
+  return unreadable.length > 0 ? { ok: false, unreadable } : { ok: true, weeks: counted };
 }

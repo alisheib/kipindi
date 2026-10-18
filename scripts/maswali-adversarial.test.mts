@@ -17,13 +17,22 @@
  * ⭐ S7-F (2026-10-18): CS.4, FL.4, IN.9 and HF.2 struck on both stores and PL.3 on Postgres (each fixed, each with a red
  * plant), their controls beside them, and §14 DL and §15 SU added: 134 on memory, 140 on Postgres, with 3 KNOWN-RED on
  * each (OB.0, RD.5, TK.2 — the objection door, the wallet lane and MB-35's alerting).
+ * ⭐ S7-F2 (2026-10-18): §8b FR — a purchase whose week or market read fails is refused as busy, never thrown — §14b SN —
+ * every refused stop names the Owner's next act — CS.7–CS.9 — a close the database's clock refused wakes the scheduler the
+ * moment that clock arrives (L1) — HF.2e–HF.2f — the holiday review stays while an open week's close can move — and
+ * FL.0b, FL.4b, FL.4d–FL.4f — the float alert judged on the float as it stands, an unreadable float its own alert — and
+ * IN.1c, the control of IN.1b (now the Owner's staff role change, driven), on Postgres PL.3d and PL.5a, the re-line
+ * fixture's own lines (a failed step named, never a crash; PL.4 now requires the re-line to have landed), and §14a GR —
+ * an unreadable week's frozen rules leave OD-02's requirement unknown, and every reader fails closed — nine on each
+ * store — §14c RF, the console's rules form and holiday list, eleven on each — and §9b TO, a seal that cannot read the
+ * two-officer setting refuses, five on each: 180 on memory, 188 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 134, postgres: 140 },
+  minPass: { memory: 180, postgres: 188 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

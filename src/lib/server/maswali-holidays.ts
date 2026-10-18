@@ -57,6 +57,15 @@ export function getMaswaliHolidays(): MaswaliHolidays {
   return { dates: [...cfg.get().dates] };
 }
 
+/**
+ * The list read FRESH from its row, for the Owner's form (S7-F2): the form replaces the list whole, so it starts from the
+ * stored list, never this container's boot value. ⛔ Fails closed: a read that could not ask answers why.
+ */
+export async function readMaswaliHolidaysFresh(): Promise<{ ok: true; holidays: MaswaliHolidays } | { ok: false; error: string }> {
+  const r = await cfg.reload();
+  return r.ok ? { ok: true, holidays: { dates: [...r.config.dates] } } : { ok: false, error: r.error };
+}
+
 /** The listed holiday the East Africa Time date of `atMs` falls on, or null. */
 export function holidayOn(atMs: number, holidays: MaswaliHolidays = getMaswaliHolidays()): string | null {
   const day = eatDayKey(atMs);
