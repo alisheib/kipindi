@@ -215,7 +215,8 @@ export function MaswaliSlip({
   closedJustNow?: boolean;
   /** Fifteen answers and a press on "Endelea": the composer opens the confirm sheet. */
   onContinue: () => void;
-  /** The sunset week (MR-30): its buyers are told its own rule before they buy, here and on the confirm sheet. */
+  /** The sunset week (MR-30): a slip opened once the week is final states its rule, here and on the confirm sheet. ⏳ A
+   *  slip opened before a stop ordered on sale shows it only when reopened (an S7 follow-up refuses that purchase). */
   finalWeek?: boolean;
   className?: string;
 }) {
