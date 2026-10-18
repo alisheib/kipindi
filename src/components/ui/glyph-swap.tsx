@@ -16,30 +16,45 @@
  * any of the three reduced-motion gates — the stacked pair would then render
  * PERMANENTLY under `animation: none`. The swap-in half alone reads as the
  * morph; the reduced-motion branches in motion.css render its end frame.
+ *
+ * `onlyOn` morphs only a change INTO a truthy state, and cuts the change out of
+ * it: a destination becoming the current one morphs to its Fill, and the one it
+ * leaves is back to Line at once (`NavGlyph`, PHOSPHOR-MIGRATION W3), so one
+ * destination is lit in every frame.
+ *
+ * Only a COMMITTED change counts (W3's review). A router transition can render
+ * a state and then throw that render away — tap Live, then Masoko again before
+ * Live's page lands — so the flag is raised after commit, in an effect, and
+ * only read during render: a discarded render leaves no trace, and Masoko does
+ * not replay a morph for a change that never happened.
  */
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export function GlyphSwap({
   state,
+  onlyOn = false,
   className,
   children,
 }: {
   /** The value whose CHANGE constitutes the state morph (e.g. `watching`). */
   state: string | number | boolean;
+  /** Morph only into a truthy `state`; a change back is a cut. */
+  onlyOn?: boolean;
   className?: string;
   /** The glyph currently representing `state` — render exactly one. */
   children: ReactNode;
 }) {
   const initial = useRef(state);
   const changed = useRef(false);
-  if (state !== initial.current) changed.current = true;
+  useEffect(() => { if (state !== initial.current) changed.current = true; }, [state]);
+  const morph = (changed.current || state !== initial.current) && (!onlyOn || Boolean(state));
   return (
     <span
       key={String(state)}
       aria-hidden
-      className={cn("inline-flex shrink-0", changed.current && "g-swap-in", className)}
+      className={cn("inline-flex shrink-0", morph && "g-swap-in", className)}
     >
       {children}
     </span>

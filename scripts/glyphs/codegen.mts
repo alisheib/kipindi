@@ -10,7 +10,9 @@
  *   src/components/ui/glyph-registry.generated.ts      per key: symbol stem, group, the ink box of each shipped variant,
  *                                                      and — for the ten marks that stand among words — the centreline
  *   src/components/ui/glyph-shell-sprite.generated.ts  the chrome's symbols, inlined by the root layout
- *   public/icons/g/app.<hash8>.svg · admin.<hash8>.svg every other shipped symbol, content-hashed, MIT notice inside
+ *   public/icons/g/app.<hash8>.svg · admin.<hash8>.svg every other shipped symbol, content-hashed, MIT notice inside;
+ *                                                      the ones production served before stay one release (map.ts
+ *                                                      PREVIOUS_SPRITES, deploy skew), every other stale one is deleted
  *   src/lib/offline-glyphs.generated.ts                the offline page's two glyphs, inline (it cannot load a sprite)
  *   THIRD_PARTY_NOTICES.md                             the package's licence, verbatim
  * Variants: bold and regular (the Line tier: Bold up to 26 px, Regular from 27 — R-WEIGHT), fill, duo (Phosphor's
@@ -21,8 +23,8 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, unlink
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import {
-  ADMIN_KEYS, ALIASES, DUO_KEYS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, REGULAR_KEYS, SHELL_KEYS,
-  type MapEntry,
+  ADMIN_KEYS, ALIASES, DUO_KEYS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, PREVIOUS_SPRITES, REGULAR_KEYS,
+  SHELL_KEYS, type MapEntry,
 } from "./map.ts";
 import { EXTRAS, type Drawing, type Variant } from "./extras.ts";
 import { TEXT_MARKS } from "./marks.ts";
@@ -227,8 +229,11 @@ export const realDisk: Disk = {
   },
 };
 
-/** What differs between a fresh build and the repository: changed or missing files, and any stale sprite left behind. */
-export function drift(built: Built = build(), disk: Disk = realDisk): string[] {
+/**
+ * What differs between a fresh build and the repository: changed or missing files, any stale sprite left behind, and a
+ * kept previous sprite (map.ts PREVIOUS_SPRITES, the deploy-skew release) that is not there.
+ */
+export function drift(built: Built = build(), disk: Disk = realDisk, previous: readonly string[] = PREVIOUS_SPRITES): string[] {
   const out: string[] = [];
   for (const [rel, content] of built.files) {
     const have = disk.read(rel);
@@ -236,8 +241,13 @@ export function drift(built: Built = build(), disk: Disk = realDisk): string[] {
     else if (have !== content) out.push(`${rel} differs from a fresh build — run npm run glyphs:gen`);
   }
   const current = new Set([built.sprites.app, built.sprites.admin]);
-  for (const f of disk.list(SPRITE_DIR)) {
-    if (!current.has(`${SPRITE_DIR}/${f}`)) out.push(`${SPRITE_DIR}/${f} is a stale sprite — the current ones are ${[...current].join(" and ")}`);
+  const listed = disk.list(SPRITE_DIR);
+  for (const f of listed) {
+    if (current.has(`${SPRITE_DIR}/${f}`) || previous.includes(f)) continue;
+    out.push(`${SPRITE_DIR}/${f} is a stale sprite — the current ones are ${[...current].join(" and ")}`);
+  }
+  for (const f of previous) {
+    if (!listed.includes(f)) out.push(`${SPRITE_DIR}/${f} is kept for one release (PREVIOUS_SPRITES) but is not there`);
   }
   return out;
 }
@@ -282,7 +292,8 @@ function main() {
   }
   const dir = new URL(`${SPRITE_DIR}/`, ROOT);
   mkdirSync(dir, { recursive: true });
-  const keep = new Set([built.sprites.app, built.sprites.admin]);
+  // The current sprites, and the ones production served before this release (deploy skew, map.ts PREVIOUS_SPRITES).
+  const keep = new Set([built.sprites.app, built.sprites.admin, ...PREVIOUS_SPRITES.map((f) => `${SPRITE_DIR}/${f}`)]);
   for (const f of readdirSync(dir)) if (!keep.has(`${SPRITE_DIR}/${f}`)) unlinkSync(new URL(f, dir));
   for (const [rel, content] of built.files) writeFileSync(new URL(rel, ROOT), content);
   console.log(`glyphs: wrote ${[...built.files.keys()].join(", ")} (${built.symbols} symbols)`);

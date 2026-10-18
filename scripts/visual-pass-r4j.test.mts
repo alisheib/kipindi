@@ -207,11 +207,15 @@ section("2 · E37 E41 · no cross-fade of the chrome, one current destination an
       && /::view-transition-old\(root\),\s*::view-transition-new\(root\) \{[^}]*animation-duration: var\(--t-quick\);/.test(CSS));
 }
 {
-  const jnavCut = (css: string) => /\n\.kp-jnav__link:not\(:hover\), \.kp-jnav__link:not\(:hover\)::after \{ transition: none; \}/.test(css)
-    && /transition: transform var\(--t-base\)/.test(rule(css, ".kp-jnav__link::after"));
-  ok("2.3 · the desktop destinations: the current mark changes at once — leaving and arriving — and only a hover draws its preview in (0,2,0 over the base's 0,1,0)", jnavCut(CSS));
-  ok("2.3′ PLANT · the cut removed (two underlines for 220ms, tile 315) is reported",
-    !jnavCut(CSS.replace(".kp-jnav__link:not(:hover), .kp-jnav__link:not(:hover)::after { transition: none; }", "")));
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the current mark was an underline (`::after`, scaling in over
+  // --t-base); since R-INDICATOR 3B it is the destination pill, a background and a box-shadow that fade over --t-quick.
+  // The cut is the same rule on the link alone: no current mark fades, only a hover's preview does.
+  const jnavCut = (css: string) => /\n\.kp-jnav__link:not\(:hover\) \{ transition: none; \}/.test(css)
+    && /transition: color var\(--t-quick\) ease-out, background var\(--t-quick\) ease-out;/.test(rule(css, ".kp-jnav__link"))
+    && !/\.kp-jnav__link[^{\n]*::after/.test(css);
+  ok("2.3 · the desktop destinations: the current mark (the destination pill, W3) changes at once — leaving and arriving — and only a hover fades its preview in (0,2,0 over the base's 0,1,0)", jnavCut(CSS));
+  ok("2.3′ PLANT · the cut removed (two current pills for 140ms, as the two underlines of tile 315) is reported",
+    !jnavCut(CSS.replace(".kp-jnav__link:not(:hover) { transition: none; }", "")));
   const railCut = (css: string) => /\n\.kp-rail--journey \.kp-rail__item, \.kp-rail--journey \.kp-rail__pip \{ transition: none; \}/.test(css);
   ok("2.4 · the journey rail: ink, pip and weight change together, at once (the pip half-lit on the tab being left for 140ms, tiles 301 306 333)", railCut(CSS));
   ok("2.4′ PLANT · the journey rail's cut removed is reported", !railCut(CSS.replace(".kp-rail--journey .kp-rail__item, .kp-rail--journey .kp-rail__pip { transition: none; }", "")));
@@ -518,17 +522,26 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   const unlit = (css: string) => {
     const at = (sel: string) => rule(css, `${FLAGGED} ${sel}`);
     const decl = (body: string, prop: string) => new RegExp(`(?:^|;)\\s*${esc(prop)}:\\s*([^;]+);`).exec(body)?.[1].trim();
+    // ⭐ PHOSPHOR-MIGRATION W3: the desktop link's lit values are the destination pill's background and edge (the underline,
+    // `after`, is gone), and the lit tab's glyph is its Fill — put back to Line by showing the Line drawing NavGlyph carries
+    // hidden beside it (`restsUnlit`), the drawing an unlit slot shows.
     const base = { item: decl(rule(css, ".kp-rail__item"), "color"), label: decl(rule(css, ".kp-rail__label"), "font-weight"),
-      link: decl(rule(css, ".kp-jnav__link"), "color"), after: decl(rule(css, ".kp-jnav__link::after"), "transform"),
-      pipBg: decl(rule(css, ".kp-rail__pip"), "background") ?? "none", pipShadow: decl(rule(css, ".kp-rail__pip"), "box-shadow") ?? "none" };
+      link: decl(rule(css, ".kp-jnav__link"), "color"), linkBg: decl(rule(css, ".kp-jnav__link"), "background"),
+      linkShadow: decl(rule(css, ".kp-jnav__link"), "box-shadow") ?? "none",
+      pipBg: decl(rule(css, ".kp-rail__pip"), "background") ?? "none", pipShadow: decl(rule(css, ".kp-rail__pip"), "box-shadow") ?? "none",
+      fill: "none", line: "block" };
     const got = { item: decl(at(".kp-rail--journey .kp-rail__item[data-on]"), "color"),
       pipBg: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "background"),
       pipShadow: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "box-shadow"),
       label: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__label"), "font-weight"),
       link: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "color"),
-      after: decl(at(".kp-jnav__link:is([aria-current], [data-on])::after"), "transform") };
-    const keys = ["item", "pipBg", "pipShadow", "label", "link", "after"] as const;
-    return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.after === "scaleX(0)", base, got };
+      linkBg: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "background"),
+      linkShadow: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "box-shadow"),
+      fill: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__fill"), "display"),
+      line: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__line"), "display") };
+    const keys = ["item", "pipBg", "pipShadow", "label", "link", "linkBg", "linkShadow", "fill", "line"] as const;
+    return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.linkBg === "transparent"
+      && decl(rule(css, ".kp-navglyph__line"), "display") === "none", base, got };
   };
   const now = unlit(CSS);
   ok(`5.12 · until the scripts run, the server's not-found verdict (${id}) unlights the tab the server lit, every lit value put back to the slot's own`, now.ok, JSON.stringify({ base: now.base, got: now.got }));
@@ -536,6 +549,11 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
     !unlit(CSS.replace(`${FLAGGED} .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }`, "")).ok);
   ok("5.12″ PLANT · the rules no longer reading the watcher's flag (a missing question's, round's or proposal's first paint keeps its tab lit) is reported",
     !unlit(CSS.split(FLAGGED).join(`:root:is(#${NF.NOT_FOUND_MARK})`)).ok);
+  ok("5.12‴ PLANT · the lit tab's Fill glyph left on a not-found page's first paint (W3) is reported",
+    !unlit(CSS.replace(`${FLAGGED} .kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__fill { display: none; }`, "")).ok);
+  ok("5.12⁗ PLANT · the current desktop link's pill left on a not-found page's first paint (W3) is reported",
+    !unlit(CSS.replace(`${FLAGGED} .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); background: transparent; box-shadow: none; }`,
+      `${FLAGGED} .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }`)).ok);
 }
 {
   // ⭐ ROUND 5 (review F5) · WHAT THE SERVER'S HTML OF A MISSING RECORD CARRIES, on React's own server renderer — Next's

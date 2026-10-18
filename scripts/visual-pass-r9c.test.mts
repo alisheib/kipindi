@@ -825,12 +825,18 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   ok("4.2 · the stylesheet holds exactly those widths: the slots stack from the top (the base rule), each language centres them from its width (`:lang()`), and from 360 every slot centres; mobile-first — no width-capping query reaches the rail",
     RR.holds, j(RR));
   // THE NUMBERS. A slot is 64px with 6px of padding; below 360 a label's line is 1.15 × 11, from 360 it is 1 × 11.
-  const slot = 64, pad = 6, pip = 26, gap = token("--sp-1");
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18): the pip was the literal 26 here, so these numbers went on
+  // describing the 44×26 pip after W3 grew it to 56×32 around a 24px glyph (R-RAIL 4B) — and stayed green. Its height is
+  // now READ from `.kp-rail__pip`, and the numbers are re-derived from it: 7.675 | 7.675 at 320 in English and Chinese,
+  // 8.5 at 390, and Swahili's Tiketi slot 32 + 4 + 2 × 12.65 = 61.3px, which below 332.8px sets the rail's height (61.3 +
+  // the 12px of padding, + its 1px border: 74.3px, under --rail-h's 88).
+  const pipRule = /\n\.kp-rail__pip \{([^}]*)\}/.exec(CSS)?.[1] ?? "";
+  const slot = 64, pad = 6, pip = Number(/(?:^|[\s;])height: (\d+)px/.exec(pipRule)?.[1] ?? NaN), gap = token("--sp-1");
   const oneLine = (lh: number) => pip + gap + lh;
   const centred = (lh: number) => (slot - 2 * pad - oneLine(lh)) / 2 + pad;
   const en320 = centred(1.15 * micro), at390 = centred(micro);
-  ok(`4.3 · English and Chinese at 320: the items centred ${en320.toFixed(3)} | ${en320.toFixed(3)} under the rail's edge and over its foot (the tiles read 6 | 15); at 390 ${at390.toFixed(1)} | ${at390.toFixed(1)} as before; Swahili at 320 still stacks (its Tiketi slot is 26 + 4 + 2 × 12.65 = ${(pip + gap + 2 * 1.15 * micro).toFixed(1)}px) and centres from 332.8 — CONFIRM IN BROWSER (any journey page, 320 × 780, en and zh: the pip 10.7px under the rail's top border)`,
-    near(en320, 10.675, 1e-9) && near(at390, 11.5) && near(pip + gap + 2 * 1.15 * micro, 55.3, 1e-9));
+  ok(`4.3 · English and Chinese at 320: the items centred ${en320.toFixed(3)} | ${en320.toFixed(3)} under the rail's edge and over its foot; at 390 ${at390.toFixed(1)} | ${at390.toFixed(1)}; Swahili at 320 still stacks (its Tiketi slot is ${pip} + ${gap} + 2 × 12.65 = ${(pip + gap + 2 * 1.15 * micro).toFixed(1)}px) and centres from 332.8 — the ${pip}px pip read from .kp-rail__pip — CONFIRM IN BROWSER (any journey page, 320 × 780, en and zh: the pip ${en320.toFixed(1)}px under the rail's top border)`,
+    pip === 32 && near(en320, 7.675, 1e-9) && near(at390, 8.5) && near(pip + gap + 2 * 1.15 * micro, 61.3, 1e-9));
   // PLANTS: a longer label moves its language's width, so the stylesheet no longer matches it; the old one-language rule.
   const longer = fitsFrom("en", TAB.JOURNEY_TABS.map((d) => TAB.tabLabel(dict.en, d.label)).map((s) => (s === "My tickets" ? "My open tickets" : s)));
   ok(`4.1′ PLANT · English's Tiketi label grown to "My open tickets" moves its width to ${longer}px: the very check fails on today's stylesheet`, longer > W.en && !railRules(CSS, { ...W, en: longer }).holds);
