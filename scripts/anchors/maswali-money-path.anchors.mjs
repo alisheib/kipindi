@@ -5,6 +5,8 @@
  *   · settle   — `test:maswali-settle`   (`scripts/lib/maswali-settle-child.mts`)
  *   · closerace — `test:maswali-close-race` (`scripts/lib/maswali-close-race-child.mts`; R2 of the review, 2026-10-17)
  *   · void     — `test:maswali-void`     (`scripts/lib/maswali-void-child.mts`, MASWALI-BUILD R1)
+ *   · adversarial — `test:maswali-adversarial` (`scripts/lib/maswali-adversarial-child.mts`, MASWALI-BUILD S7), named
+ *     `adversarial:<ids>` so the drive runs only the plant's own sections (`--only <ids>`)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -14,6 +16,8 @@ const MONEY = "src/lib/server/maswali-money-service.ts";
 const SETTLE = "src/lib/server/maswali-settlement.ts";
 const SVC = "src/lib/server/maswali-service.ts";
 const VOID = "src/lib/server/maswali-void.ts";
+/** A line break, built from its code point: an anchor spanning two lines joins them with it (the resolver matches either ending). */
+const LF = String.fromCharCode(10);
 /** The week void's one post-commit line (R10d's push), which (6), (6b) and (14) each rewrite. */
 const VOID_PUSH = "  if (out.ok && !out.already) await emitWalletBalances(credited.map((c) => c.userId));";
 
@@ -268,5 +272,94 @@ export const MUTATIONS = [
     to: "",
     expect: "R6.8 · ⭐",
     suite: "settle",
+  },
+  /* ── MASWALI-BUILD S7 · the adversarial suite's fixes, one plant each, every one caught by `test:maswali-adversarial`'s
+     memory child run on the plant's own section alone (`adversarial:<ids>` passes `--only <ids>`, so a plant costs seconds,
+     and §1's minute on the real clock is spent once). ── */
+  {
+    name: "(S7-move-clock) a move of the close reads the container's clock alone: a slow container moves a close the database passed",
+    file: SVC,
+    from: "    const atMs = Math.max(nowMs, await dbNowMs(lockTx));",
+    to: "    const atMs = nowMs;",
+    expect: "CS.3 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(S7-move-names) a close moved past the first event is refused without naming the question (MR-4)",
+    file: SVC,
+    from: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);",
+    to: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);",
+    expect: "HF.4",
+    suite: "adversarial:HF",
+  },
+  {
+    name: "(S7-correct-ground) a correction voids on 'not played' before the void deadline a seal refuses (MR-15)",
+    file: SVC,
+    from: [
+      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "    if (input.outcome === \"VOID\" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {",
+    ].join(LF),
+    to: [
+      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "    if (false) {",
+    ].join(LF),
+    expect: "CV.1",
+    suite: "adversarial:RP",
+  },
+  {
+    name: "(S7-correct-evidence) a correction lands with no evidence (MR-14)",
+    file: SVC,
+    from: "  if (evidence.length < 10) return refuse(\"A correction records its evidence (at least 10 characters).\");",
+    to: "",
+    expect: "CV.2",
+    suite: "adversarial:RP",
+  },
+  {
+    name: "(S7-confirm-holder) an officer holding a ticket in the week gives a seal its second signature (MR-14)",
+    file: SVC,
+    from: "    if (holds) return refuse(\"An officer who holds a ticket in this week cannot confirm its seals.\");",
+    to: "",
+    expect: "IN.6 · ⭐",
+    suite: "adversarial:IN",
+  },
+  {
+    name: "(S7-week-line) a week whose market is no longer MASWALI is sold as a one-sided Yes/No stake on its pool (MB-01)",
+    file: SVC,
+    from: "  if (!isFencedMaswali(market)) {",
+    to: "  if (false) {",
+    expect: "PL.4",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-deposit-hold) a winner whose credited deposit the provider reversed is paid free (MB-74)",
+    file: SETTLE,
+    from: "  const winners: Winner[] = [], disputed = await depositHolds(winnersGraded.map((g) => g.ticket.userId));",
+    to: "  const winners: Winner[] = [], disputed = (_userId: string): HoldReason | null => null;",
+    expect: "RD.1",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-memory-set) the memory market store reclassifies a row on a full-row write from a copy",
+    file: "src/lib/server/market-dal.ts",
+    from: "    if (cur && cur !== m && (m.productLine ?? \"MARKET\") !== (cur.productLine ?? \"MARKET\")) return memoryMarkets.set({ ...m, productLine: cur.productLine }, _tx);",
+    to: "",
+    expect: "PL.2",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-memory-stamp) the memory market store stamps a product line the Postgres twin refuses",
+    file: "src/lib/server/market-dal.ts",
+    from: "    if (\"productLine\" in fields) throw new Error(\"marketStore.stamp: 'productLine' is not a stampable column (pool/title fields must not be written this way)\");",
+    to: "",
+    expect: "PL.1",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-promotion) the Owner's staff role change no longer asks OD-12's question before it writes the role",
+    file: "src/app/admin/staff/actions.ts",
+    from: "      const held = await millioneaPromotionBlock(target.id);",
+    to: "      const held = null as string | null;",
+    expect: "IN.1b",
+    suite: "adversarial:IN",
   },
 ];

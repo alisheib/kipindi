@@ -96,6 +96,14 @@ const section = (title: string) => {
   (globalThis as any).__50PICK_RL_RESET_HOOK?.();
   console.log(`${LF}${title}`);
 };
+/**
+ * `--only CS,PL` runs those sections alone (by the ids in the header) — how `red:maswali-money-path` drives one plant
+ * against its own section in seconds. Each section stands on the world's setup alone: the one thing a section leaves the
+ * next is an empty jackpot, and a filtered run starts with one. With no `--only` everything runs, as the suite always does.
+ */
+const ONLY = (process.argv.find((_, i) => process.argv[i - 1] === "--only") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+const runs = (id: string) => ONLY.length === 0 || ONLY.includes(id);
+if (ONLY.length > 0) console.log(`ONLY ${ONLY.join(", ")} — a filtered run (the red drive's); the suite itself runs every section`);
 const FUND = 30_000_000;
 let ahead = 2;
 let serial = 0;
@@ -203,8 +211,8 @@ async function weekAudit(weekId: string, action: string, tries = 40): Promise<an
 await W.setup({ guarantee: FUND });
 
 // ═══ §1 · CS · clock skew past the close ═════════════════════════════════════════════════════════════════════════════
-section("§1 · CS · clock skew past the close: a purchase, a cancel and a move of the close answer to the database clock (MB-84, MB-28, MR-12)");
-{
+if (runs("CS")) section("§1 · CS · clock skew past the close: a purchase, a cancel and a move of the close answer to the database clock (MB-84, MB-28, MR-12)");
+if (runs("CS")) {
   // THE SKEW, MADE ON THE REAL CLOCK. A week opened now, its close brought to a minute ahead, and then left OPEN past it:
   // no tick runs here, which is exactly the state a container with a slow clock leaves — on its clock the close has not
   // come; on the database's it has. ⚠️ The week is frozen with no free-exit grace (the platform's own config, set and put
@@ -254,7 +262,7 @@ section("§1 · CS · clock skew past the close: a purchase, a cancel and a move
   const v = await voided(wk.id);
   ok("CS.5b · …and the week voids whole, refunding that ticket in full", v.week.state === "VOIDED" && v.refunded === 1 && (await bal(early)) === 50_000, errOf(v));
 }
-{
+if (runs("CS")) {
   const start = W.weekStartAhead(ahead++);
   const fw = await openWeekAt(start);
   const [holder] = await people(1, 50_000);
@@ -282,8 +290,8 @@ section("§1 · CS · clock skew past the close: a purchase, a cancel and a move
 }
 
 // ═══ §2 · CH · a six-week chain ══════════════════════════════════════════════════════════════════════════════════════
-section("§2 · CH · a six-week chain — week 3 voided, week 4 skipped — each week opening while the one before still waits to settle (MR-3, MR-18, MR-21, MB-16, OD-27)");
-{
+if (runs("CH")) section("§2 · CH · a six-week chain — week 3 voided, week 4 skipped — each week opening while the one before still waits to settle (MR-3, MR-18, MR-21, MB-16, OD-27)");
+if (runs("CH")) {
   const crowd = await people(100);
   /** `k` winning tickets, one to an account (the crowd's first k), then losing tickets ten to an account. */
   const sellWeek = async (weekId: string, total: number, k: number) => {
@@ -360,8 +368,8 @@ section("§2 · CH · a six-week chain — week 3 voided, week 4 skipped — eac
 }
 
 // ═══ §3 · RP · reserve patterns × late voids × a reinstatement ═══════════════════════════════════════════════════════
-section("§3 · RP · reserve patterns × late voids × a reinstatement: what pays is what the FINAL record grades (MR-17, MR-19, MB-14, MB-15, OD-09)");
-{
+if (runs("RP")) section("§3 · RP · reserve patterns × late voids × a reinstatement: what pays is what the FINAL record grades (MR-17, MR-19, MB-14, MB-15, OD-09)");
+if (runs("RP")) {
   // CV · a correction is a seal, and meets a seal's own rules.
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
@@ -384,7 +392,7 @@ section("§3 · RP · reserve patterns × late voids × a reinstatement: what pa
   await sealRest(wk.id, start);
   await released(wk.id);
 }
-{
+if (runs("RP")) {
   // RP-A · M3 void with A1 void (A2 stands in), then the sealer reinstates A1: A1 stands in, and the other ticket wins.
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
@@ -420,7 +428,7 @@ section("§3 · RP · reserve patterns × late voids × a reinstatement: what pa
     r.ok && J(await winnersOf(wk.id)) === J([tB.ticketId]) && (await dal.ticketStore.get(tA.ticketId)).won === false && (await dal.ticketStore.get(tB.ticketId)).payout === r.week.sharePerTicket,
     J({ won: await winnersOf(wk.id), A: tA.ticketId, B: tB.ticketId }));
 }
-{
+if (runs("RP")) {
   // RP-B · a late void: M3 void (A1 stands in), then the sealer corrects M7 to VOID — A2 is pulled in for it.
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
@@ -444,7 +452,7 @@ section("§3 · RP · reserve patterns × late voids × a reinstatement: what pa
   ok("LV.2 · ⭐ …and the money follows: D's ticket (M7 wrong, no longer graded) wins; C's (A2 wrong, now graded) does not",
     r.ok && J(await winnersOf(wk.id)) === J([tD.ticketId]) && (await dal.ticketStore.get(tC.ticketId)).won === false, J({ won: await winnersOf(wk.id), C: tC.ticketId, D: tD.ticketId }));
 }
-{
+if (runs("RP")) {
   // RP-C · a doomed week reinstated: six mains void against five reserves — certain — then the sealer reinstates M6.
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
@@ -476,8 +484,8 @@ section("§3 · RP · reserve patterns × late voids × a reinstatement: what pa
 }
 
 // ═══ §4 · OB · an objection during settlement ═══════════════════════════════════════════════════════════════════════
-section("§4 · OB · an objection during settlement: no week pays while one stands, however late it lands (MR-16, MB-23)");
-{
+if (runs("OB")) section("§4 · OB · an objection during settlement: no week pays while one stands, however late it lands (MR-16, MB-23)");
+if (runs("OB")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const [holder, filler] = await people(2, 50_000);
@@ -527,8 +535,8 @@ section("§4 · OB · an objection during settlement: no week pays while one sta
 }
 
 // ═══ §5 · SD · a source domain switched off mid-week ═════════════════════════════════════════════════════════════════
-section("§5 · SD · a source domain switched off mid-week: the open week keeps the sources it froze; only a week not yet open meets the change (MB-22)");
-{
+if (runs("SD")) section("§5 · SD · a source domain switched off mid-week: the open week keeps the sources it froze; only a week not yet open meets the change (MB-22)");
+if (runs("SD")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const [winner, filler, late] = await people(3, 50_000);
@@ -566,8 +574,8 @@ section("§5 · SD · a source domain switched off mid-week: the open week keeps
 }
 
 // ═══ §6 · GU · an under-funded guarantee at k ≥ 1, and a short float ═════════════════════════════════════════════════
-section("§6 · GU · an under-funded guarantee at k ≥ 1, to the shilling, and a short float (MR-22, MB-03, MB-11, MB-63)");
-{
+if (runs("GU")) section("§6 · GU · an under-funded guarantee at k ≥ 1, to the shilling, and a short float (MR-22, MB-03, MB-11, MB-63)");
+if (runs("GU")) {
   const topUp = async (amount: number) => {
     const f = await money.fundMaswaliGuarantee({ amount, reference: ref("FUND"), typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
     if (!f.ok) throw new Error(`GU: the guarantee could not be funded: ${f.error}`);
@@ -658,8 +666,8 @@ section("§6 · GU · an under-funded guarantee at k ≥ 1, to the shilling, and
 }
 
 // ═══ §7 · WF · no winner floor ═══════════════════════════════════════════════════════════════════════════════════════
-section("§7 · WF · no winner floor: 950 winning tickets at the floor are each paid below the ticket's price, never lifted to it (MR-25, OD-19)");
-{
+if (runs("WF")) section("§7 · WF · no winner floor: 950 winning tickets at the floor are each paid below the ticket's price, never lifted to it (MR-25, OD-19)");
+if (runs("WF")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const crowd = await people(95, 20_000);
@@ -684,8 +692,8 @@ section("§7 · WF · no winner floor: 950 winning tickets at the floor are each
 }
 
 // ═══ §8 · PL · an attempt to reclassify productLine ═════════════════════════════════════════════════════════════════
-section("§8 · PL · an attempt to reclassify a week's productLine, through the store and in the database (MB-01, the fence)");
-{
+if (runs("PL")) section("§8 · PL · an attempt to reclassify a week's productLine, through the store and in the database (MB-01, the fence)");
+if (runs("PL")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const [buyer, late] = await people(2, 50_000);
@@ -732,8 +740,8 @@ section("§8 · PL · an attempt to reclassify a week's productLine, through the
 }
 
 // ═══ §9 · IN · an insider promoted mid-week ═════════════════════════════════════════════════════════════════════════
-section("§9 · IN · an insider promoted mid-week: the tickets they hold, and what they may still do (MR-10, MR-14, OD-12, MB-43)");
-{
+if (runs("IN")) section("§9 · IN · an insider promoted mid-week: the tickets they hold, and what they may still do (MR-10, MR-14, OD-12, MB-43)");
+if (runs("IN")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const [p, q, filler] = await people(3, 100_000);
@@ -796,8 +804,8 @@ section("§9 · IN · an insider promoted mid-week: the tickets they hold, and w
 }
 
 // ═══ §10 · RD · a reversed deposit funding a winner ═════════════════════════════════════════════════════════════════
-section("§10 · RD · a reversed deposit funding a winner: the ticket stays in the week; its share is paid and held for Compliance (MB-74, OD-07)");
-{
+if (runs("RD")) section("§10 · RD · a reversed deposit funding a winner: the ticket stays in the week; its share is paid and held for Compliance (MB-74, OD-07)");
+if (runs("RD")) {
   const deposited = async (amount: number) => {
     const u = await W.user({ balance: amount });
     const providerRef = ref("DEP");
@@ -851,8 +859,8 @@ section("§10 · RD · a reversed deposit funding a winner: the ticket stays in 
 }
 
 // ═══ §11 · TK · the winner-takeover pattern ═════════════════════════════════════════════════════════════════════════
-section("§11 · TK · the winner-takeover pattern: a winner's money leaves only to the account's own number, and a takeover is watched (MB-96)");
-{
+if (runs("TK")) section("§11 · TK · the winner-takeover pattern: a winner's money leaves only to the account's own number, and a takeover is watched (MB-96)");
+if (runs("TK")) {
   const start = W.weekStartAhead(ahead++);
   const wk = await openWeekAt(start);
   const [winner, filler] = await people(2, 50_000);
@@ -887,8 +895,8 @@ let clockYear = new Date().getUTCFullYear();
 while (eatWeekAt(eatWeekStartMs(sundayOf(clockYear, 9, 31, -1)) + 7 * DAY, 1, "23:59") < Date.now() + DAY) clockYear++;
 const CLOCK_WEEKS = { ukStart: eatWeekStartMs(sundayOf(clockYear, 9, 31, -1)), usStart: eatWeekStartMs(sundayOf(clockYear, 10, 1, 1)) };
 
-section("§12 · CC · both clock-change weekends: an event typed in its own zone is guarded on that day's offset (MB-30, MR-4, OD-09b)");
-{
+if (runs("CC")) section("§12 · CC · both clock-change weekends: an event typed in its own zone is guarded on that day's offset (MB-30, MR-4, OD-09b)");
+if (runs("CC")) {
   const { ukStart, usStart } = CLOCK_WEEKS;
   const day = (start: number, n: number) => eatDate(start + n * DAY);
   const withEvents = (start: number, over: Record<number, { local: string; zone: string }>) =>
@@ -941,8 +949,8 @@ section("§12 · CC · both clock-change weekends: an event typed in its own zon
 }
 
 // ═══ §13 · HF · a holiday Friday ════════════════════════════════════════════════════════════════════════════════════
-section("§13 · HF · a holiday Friday: the week runs, its close falls on the holiday, and the officer may bring it forward (MB-85, OD-27; a skipped week is §2's week 4)");
-{
+if (runs("HF")) section("§13 · HF · a holiday Friday: the week runs, its close falls on the holiday, and the officer may bring it forward (MB-85, OD-27; a skipped week is §2's week 4)");
+if (runs("HF")) {
   /** The first fixed-date Tanzanian public holiday that falls on a Friday, in a week starting at least `fromMs`. */
   const holidayFriday = (fromMs: number): { date: string; noonMs: number } => {
     const fixed = ["01-01", "01-12", "04-07", "04-26", "05-01", "07-07", "08-08", "10-14", "12-09", "12-25", "12-26"];
@@ -987,8 +995,8 @@ section("§13 · HF · a holiday Friday: the week runs, its close falls on the h
 }
 
 // ═══ §14 · the invariants and the books ═════════════════════════════════════════════════════════════════════════════
-section("§14 · the invariants and the books, over everything above");
-{
+if (runs("INV")) section("§14 · the invariants and the books, over everything above");
+if (runs("INV")) {
   const inv = await checkMaswaliInvariants();
   ok("INV.1 · ⭐ every pool at 0, every week's columns close, each jackpot equals its weeks and forfeits, the guarantee covers", inv.ok, J(inv.problems));
   if (W.onPostgres) {
