@@ -7961,14 +7961,15 @@ export async function houseAccountListForConsole(
  * ⛔ THE CONSOLE'S OWN SENTENCE FOR EVERY ELIGIBILITY ROW (ruling 453, and the same shape `CONSOLE_ACT_REFUSAL`
  * already has one card over).
  *
- * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the twenty-five blocking rows and seven warnings
+ * MEASURED against `scripts/lib/house-bot-vocabulary.mjs`: of the twenty-seven blocking rows (twenty-five until
+ * MASWALI-BUILD S7 added OD-12's two Millionea rows, neither of which names the feature) and seven warnings
  * `eligibility.ts` writes, ELEVEN name the feature in the sentence an officer reads — on *liquidity*
  * (`AGENT_ACCOUNT`, `STAFF_ACCOUNT`, `ERASURE_REQUEST`), on the bare word *bot* (`ALREADY_LIVE_BOT`,
  * `ACCOUNT_CLOSED`, `WALLET_MISSING`, `IDENTITY_REFUSED`, `PASSWORD_CHANGED`), on *house stakes*
  * (`ACCOUNT_CLOSED`, `OWNER_LOSS_LIMIT`, `RECRUITED`) and on *house bot* itself.
  * ⛔ SO THE TABLE COVERS EVERY CODE, NOT ONLY THE DIRTY ONES. A per-row "override it if it is dirty" rule cannot
  * be checked from source — the shared sentences are built at run time out of dates, counts and names — so the
- * console answers from its own closed table for all thirty-two, and `test:house-bot-console` derives the population
+ * console answers from its own closed table for all thirty-four, and `test:house-bot-console` derives the population
  * from `ELIGIBILITY_BLOCKING_CODES` and `ELIGIBILITY_WARNING_CODES` themselves. A code added to either union later
  * cannot reach an owner's screen as the shared sentence or as a bare identifier.
  * ⚠️ WHAT IS LOST BY IT IS NAMED: the DATES and FIGURES the shared rows interpolate do not come through. The
@@ -8001,6 +8002,8 @@ const CONSOLE_ELIGIBILITY_COPY: Readonly<Record<string, string>> = {
   RG_SINCE_VERIFIED: "A self-exclusion or break has run since their permission was last confirmed.",
   DAILY_LOSS_STOP: "The day's loss limit has already been reached.",
   OWNER_LOSS_LIMIT: "Their own daily loss limit has been reached.",
+  MILLIONEA_TICKET: "They hold a Millionea ticket in a week that has not settled. Try again once that week has settled.",
+  MILLIONEA_UNREADABLE: "Couldn't read their Millionea tickets. Refresh to try again.",
   EMAIL_UNVERIFIED: "Their email is not confirmed, so they cannot withdraw until they confirm it.",
   IDENTITY_NOT_APPROVED: "Their identity has never been approved, so they cannot withdraw until it is.",
   RECRUITED: "An agent recruited them. No commission is paid on anything staked from the desk.",

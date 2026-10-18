@@ -48,7 +48,9 @@ async function Content({ searchParams }: PoolsPageProps) {
   ]);
   const [canRelease, canFund, canReturn, canSunset, canLicence, canRollout] = can;
   // Every public week by its state, never the newest few: a drafted week far ahead can still be made the final one.
-  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => [])).filter((w) => !w.isFinal && w.state !== "SETTLED" && w.state !== "VOIDED");
+  // ⛔ S7 · never a week whose sales have closed: its results are being decided, and the stop refuses it (`sunsetMaswali`).
+  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => []))
+    .filter((w) => !w.isFinal && (w.state === "DRAFT" || w.state === "OPEN"));
 
   if (!v) {
     return (<><AdminPageHead title="Millionea · Pools" sw="Mifuko" /><AdminBody><p className="text-body-sm text-danger-fg">The pools could not be read.</p></AdminBody></>);

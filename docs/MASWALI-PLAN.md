@@ -1259,9 +1259,15 @@ differ, these win.
     `maswali_settle_<weekId>`, the week's mirrored columns, the market stamped RESOLVED. A k = 0 week claims its carry
     too, so the line of weeks always advances in `seq` order.
   - *The sunset (MR-30, OD-03).* A final week with no 10 of 10 pays its highest score: J = R + S, no floor, no top-up,
-    R moved by `MASWALI_SUNSET`. `sunsetMaswali` (the Owner, typed `SUNSET MILLIONEA`) makes the current week final at
-    once, or a drafted week only a full week ahead. After a final week that ran nothing opens; a final week that voided
-    or sold nothing hands the role to the next week to open. The regulator-ordered stop is S4's own ceremony.
+    R moved by `MASWALI_SUNSET`. `sunsetMaswali` (the Owner, typed `SUNSET MILLIONEA`) makes the week on sale final at
+    once, or a drafted week only a full week ahead. ⛔ A week whose sales have closed (CLOSED, RESOLVING, or OPEN past
+    its close) is refused, the lead's decision of 2026-10-18 (S7-F): the 13% fee is taken from a sunset payout and never
+    from a rollover, so a stop ordered while a week's results are being decided could choose who is paid with them in
+    view. That week settles under its own rules, and the stop takes effect from the next week to open, which may then be
+    made final although it opens in less than a full week (only that one draft, only while no week is on sale and a
+    week's results are being decided; its buyers are told at purchase). After a final week that ran nothing opens; a
+    final week that voided or sold nothing hands the role to the next week to open. The regulator-ordered stop is S4's
+    own ceremony.
   - *Held shares (MB-43, MB-74, OD-07).* Roles and status are re-checked at settlement. A winner with a staff role, a
     live desk designation, or a suspended or closed account is credited the full share, the ticket carries the reason,
     and the wallet is held BEFORE the credit by a new freeze reason, `MILLIONEA_SHARE`; account closure is refused while
