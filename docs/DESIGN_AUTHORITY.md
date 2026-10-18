@@ -2124,6 +2124,15 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    Phosphor name (house extras only where Phosphor has nothing, each with its reason), and the build adds the key to
    `map.ts` before any page draws it. ⛔ A design's own SVGs, sprites, icon fonts or icon images are never imported, and
    a design is never asked to draw, redraw or "audit the strokes of" an icon: Phosphor draws them; a design chooses.
+   ⭐ **ONE "YOU ARE HERE" FOR A DESTINATION (PHOSPHOR-MIGRATION W3; R-INDICATOR 3B, Ali 2026-10-17).** Every bar of
+   destinations — the classic rail, the journey's tabs, both desktop bars, the admin sidebar and its drawer — marks the
+   current one on the opaque royal pill `--nav-pill` with its lit edge `--nav-pill-edge`, in `--text`. Where the bar
+   draws a glyph (the rail, the tabs, the admin rows) the current one is that glyph in **Fill** (`NavGlyph`: Line
+   otherwise, and the change into the current one morphs with M5's swap); the desktop bars' links are words, so the pill
+   alone marks them, and in forced colours, which strip the pill, a 1px system-ink outline does. Tab-bar glyphs are 24px
+   (R-RAIL 4B), in a 56×32 pip; a tab's focus ring is drawn around its pill. ⛔ `--pill-active` is not a destination's
+   mark: it stays the see-through selection of filters, menus and a page's section tabs (§K 7c), whose language inside a
+   page is still the underline.
    ⚖️ **Ruled 2026-10-17 (Ali): "Switch to Phosphor"** — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) §
    "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)"; the work and
    its rulings (weight, tone, the selected state, the lexicon) are [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md).

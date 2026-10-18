@@ -12341,11 +12341,17 @@ export default function Ruling513Control() {
         && body.indexOf("houseConsoleAudience") < body.indexOf("saveHouseBotLimits"), j(body.replace(/\s+/g, " ").slice(0, 200)));
   }
 
-  /* 1.333 · the nav item carries no badge. */
+  /* 1.333 · the nav item carries no badge.
+   * ⭐ RE-PINNED AT PHOSPHOR-MIGRATION W3 (R-ADMIN, R-INDICATOR 3B), AND THE SUBJECT IS UNCHANGED. Every nav item now
+   * wears a REQUIRED glyph (`NavItem.glyph`), so the desk's literal grew `glyph: "desk"` — its label's own neutral word,
+   * drawn in the sidebar of every Owner page and named in that glyph's `data-g`. The pin names the glyph exactly, so a
+   * feature word cannot take its place without this line going red, and ruling 453's lexicon is asked of it too. */
   const nav = decomment(read("src/components/admin/admin-nav-groups.ts"));
-  ok("1.333 · the desk's nav item is `ownerOnly` and carries NO badge — the chrome is shared by 47 routes",
-    /\{ href: "\/admin\/desk", label: "Desk", key: "desk", domain: "ops", ownerOnly: true \}/.test(nav)
-      && !/key: "desk"[^}]*badge/.test(nav), "");
+  const deskGlyph = /\{ href: "\/admin\/desk", [^}]* glyph: "([^"]*)"/.exec(nav)?.[1] ?? "";
+  ok("1.333 · the desk's nav item is `ownerOnly`, carries NO badge, and wears its label's own neutral glyph — the chrome is shared by 47 routes",
+    /\{ href: "\/admin\/desk", label: "Desk", key: "desk", glyph: "desk", domain: "ops", ownerOnly: true \}/.test(nav)
+      && !/key: "desk"[^}]*badge/.test(nav)
+      && deskGlyph === "desk" && !NEUTRAL.test(deskGlyph), j({ deskGlyph }));
   ok("1.333 · and there is NO `CRUMB_LABELS` entry for it — that is the one place a neutral segment could be mapped back inside a client chunk",
     !/CRUMB_LABELS[\s\S]*?\n\};/.exec(nav)?.[0].includes("desk"), "");
 

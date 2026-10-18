@@ -11,43 +11,50 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-17):** W0, W1 and W2 are LIVE. W2, the swap, went live at **`732efbc5`**, pushed at 23:10 UTC on Ali's
-*"push lov enayhtng please"*:
-- **What it does.** Every icon on the platform is drawn by Phosphor. The chrome's twelve glyphs are inlined in every
-  page; the rest come from one immutable sprite file. Every route's first load is 6.4–6.5 KB lighter, gzipped.
-- **The proof before the push:**
-  - typecheck 0 and `next build` 0;
-  - local `qa:live`: 377 passed. Its last section, [M], was cut off when the machine guard stopped the dev server at
-    26 MB free, and production reads it again;
-  - a 103-suite battery green, except `main`'s known reds;
-  - an independent code review and a four-reader screenshot review, read and fixed.
+**State (2026-10-18):** W0, W1 and W2 are LIVE; W3 is being built on the branch **`phosphor-w3`** (worktree
+`C:\kipindi-phosphor`).
+- **W2, the swap,** went live at `732efbc5` (2026-10-17, 23:10 UTC), and every follow-up is done (`cf0e39f9`):
+  - production read back: `qa:live` 363/363, `qa:chunks-prod` on both origins;
+  - release part two: local `qa:live` 387/387, the review's fixes seen in a real browser;
+  - the parity entries regenerated from the final code.
+  §5 W2 records all of it.
 - **Ali's review page:** https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, with seven calls he may overrule.
-- **Production, read back:** all three hosts served `732efbc5` 220 s after the push, health is reachable and migrated,
-  the sprite is served 200 and immutable, `qa:chunks-prod` passes on both origins, and production `qa:live` passed
-  363/363 (23:30 UTC).
+- **W3 so far:**
+  - the shared pieces: `NavGlyph` (Line, or Fill for the current destination, morphing only into it), the pill's
+    tokens `--nav-pill` and `--nav-pill-edge`, the six tab-bar keys' Fill inlined, and the previous sprite kept for one
+    release (`PREVIOUS_SPRITES`);
+  - the classic rail and the journey's tabs: 24px glyphs in a 56 × 32 pip, Fill on the pill, and the focus ring on the
+    pill. The coin's pull is re-derived so it keeps its 14px rise and its label meets the others (V26 now measures that);
+  - both desktop bars: the same pill. The journey's underline goes (`test:journey-shell` 7.destination, re-pinned openly);
+  - the not-found rule also puts the lit tab's Line back before the scripts run (r4j 5.12);
+  - the admin sidebar and drawer: one glyph per destination (50: 24 reused keys, 26 new console keys), the current
+    one's Fill on the same pill (§3 "Admin destinations (W3)", §5 W3's admin step).
+
+  - an adversarial review of the whole diff: ten findings, each fixed or kept with its reason (§5 W3);
+  - the classic parity, measured:
+    - a baseline at main `e2eb9cd6` (52/52, 224 cells);
+    - the first compare at `9c6067af`, 66/68: W3's rail and header in every cell, and the known `/watchlist` gap (§7);
+    - its entries generated (`npm run glyphs:parity-entries -- <baseline> <capture> --measured header,rail --wave W3`):
+      every one of the 224 matrix cells named, and nothing else unexplained but the 4 gap cells.
 
 **Next:**
-1. The swap's follow-ups:
-   - release part two: section [M] alone, the review's fixes and the checkbox drive in a real browser;
-   - a parity compare at `732efbc5`, then `npm run glyphs:parity-entries` on its capture, then the clean compare with
-     `--prove-red`;
-   - Ali's answers to the review page's calls.
-2. W3, selected states (R-INDICATOR 3B, R-RAIL 4B):
-   - the classic rail, the journey tabs, the desktop bars and the admin sidebar;
-   - Line when inactive, Fill on one opaque royal pill when selected, tab glyphs at 24px (which also balances the
-     journey's Akaunti person);
-   - the codegen keeps the previous sprite for one release (deploy skew).
+1. W3, selected states (R-INDICATOR 3B, R-RAIL 4B). §5 W3 holds the plan and the guards:
+   - the before and after tiles (91 each), read;
+   - the derived battery, the clean compare with `--prove-red`, the release proof, then the push.
+2. Ali's answers to the review page's calls.
 
 ### Where the work happens
-- Branch **`phosphor-migration`** off `origin/main`. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own
-  real `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
+- Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`, now
+  **`phosphor-w3`**. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own real `node_modules`
+  (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
 - **Who pushes `main` for this programme.** The board's release owner is the OMEGA-COMPILE01 session (Ali, 2026-10-16).
   Asked whether this session should take the Phosphor migration to production itself, Ali answered *"until live"*
   (2026-10-17, to the Ali-Blade15 session) — so this programme's releases are pushed to `main` by the session working it,
   recorded in the board's header. Every release: rebase on `origin/main` immediately before the push, the release
   checklist of AGENTS.md §4 (typecheck, `next build`, local `qa:live`, then the production read-back), and never a push
   while another lane's release is mid-flight (`git log origin/main` first). Between releases, the branch is pushed at
-  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-migration`.
+  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-w3` (the
+  current wave's branch).
 - Every step, in ONE commit: the work, this §0 rewritten, §1 ticked, the board row's count updated. Then push the
   branch. `npm run test:phosphor-plan` asserts the tracker and the board agree.
 
@@ -65,7 +72,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W0 | Tracking + specimen + recognition check | ✅ | d7a1b697 — Ali ruled the specimen; answers in §2 and §3; the specimen is stored at `design-brief/phosphor-2026-10/` |
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
-| W3 | Selected states: Fill + one indicator; admin sidebar icons | ⬜ | |
+| W3 | Selected states: Fill + one indicator; admin sidebar icons | 🔨 | on `phosphor-w3`: built and reviewed; the parity entries measured (224 cells); the tiles, the battery and the proof next |
 | W4 | Outcomes and status: glyph + ink + word | ⬜ | |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |
@@ -158,6 +165,78 @@ The conflicts the inspection found (Appendix A), and the candidates Ali chose fr
 
 Recognition check: answered by Ali's review of the specimen (2026-10-17). A label-less check with 3–5 players or staff
 ("what does this do?") stays open to him at W2's full contact sheet; a glyph most of them misread is swapped there.
+
+### Admin destinations (W3)
+
+R-ADMIN gave the console icons; R-INDICATOR 3B makes the current row its Fill glyph on the opaque `--nav-pill`. Every
+item of `NAV_GROUPS` (`src/components/admin/admin-nav-groups.ts`) wears ONE key, required by the `NavItem` type. A
+destination whose meaning a key already carries wears that key ("reused"); the meanings no key had got a console-only
+key ("new", in `ADMIN_KEYS`). Every one ships its Fill (`FILL_KEYS`). `test:admin-nav` §8 holds three things: a live
+key, one destination per glyph across the whole sidebar, and the Fill. `map.ts` stays the source of each Phosphor name;
+this table records the W3 choice.
+
+| Group · item | Key | Phosphor | |
+|---|---|---|---|
+| Overview · Overview | `dashboard` | layout | new |
+| Overview · Live ops | `live` | broadcast | reused (R-LEXICON 5.2A) |
+| Overview · New journey | `journey` | path | new |
+| Money · Insights | `insights` | presentation-chart | new |
+| Money · Settlement | `settlement` | money | new |
+| Money · Finance | `finance` | calculator | new |
+| Money · House | `house` | building-office | new (the house as the firm; W3's review moved it off `house`, Phosphor's Home mark) |
+| Money · Desk | `desk` | desk | new (the label's own neutral word, ruling 453) |
+| Money · Reports | `reports` | clipboard-text | new |
+| Money · Tax report | `tax` | invoice | new |
+| Money · Payments ops | `mobileMoney` | house extra (a handset carrying money) | reused |
+| Money · Transactions | `receipt` | receipt | reused (a player's wallet receipts: one record per money movement; W3's review, `table` read as the Overview at 18px) |
+| Players · Roster | `roster` | user-list | new |
+| Players · Cohorts | `cohorts` | chart-donut | new |
+| Markets · Event calendar | `calendar` | calendar-blank | reused |
+| Markets · AI poll generation | `bot` | robot | reused (the page's own mark) |
+| Markets · AI candidates | `brain` | brain | reused (the page's own mark) |
+| Markets · Player proposals | `idea` | lightbulb | reused (R-LEXICON 5.6A) |
+| Markets · Curation queue | `markets` | squares-four | reused (the board, 5.1A) |
+| Markets · Resolver queue | `resolved` | seal-check | reused (results, 5.5A) |
+| Markets · Sources & categories | `sources` | newspaper | new |
+| Markets · Rates & fees | `percent` | percent | reused |
+| Up & Down · Overview | `trade` | arrows-down-up | reused (R-LEXICON 5.4A) |
+| Up & Down · AI proposals | `sparkle` | sparkle | reused (the AI generation switch's mark) |
+| Up & Down · Rounds | `rounds` | timer | new |
+| Millionea · Weeks | `weeks` | list-numbers | new (see the note below) |
+| Millionea · Pools | `pools` | treasure-chest | new |
+| Millionea · Integrity | `integrity` | gavel | new |
+| Growth · Affiliate | `users` | users | reused (the friends programme's player rows) |
+| Growth · Bonuses | `gift` | gift | reused |
+| Growth · Contacts | `contacts` | address-book | new |
+| Growth · Invites | `invites` | paper-plane-tilt | new |
+| Growth · SMS campaigns | `megaphone` | megaphone | reused (marketing) |
+| Growth · Traffic | `traffic` | chart-line | new |
+| Compliance · Agents | `agent` | handshake | new |
+| Compliance · Compliance | `tippingScales` | scales | reused (the rules) |
+| Compliance · KYC queue | `idCard` | identification-card | reused (the player's identity row) |
+| Compliance · Objections | `flag` | flag | reused (an objection, on /fairness and the resolution panel) |
+| Compliance · Comment moderation | `comment` | chat-text | reused |
+| Compliance · AML queue | `shieldAlert` | shield-warning | reused |
+| Compliance · Self-exclusions | `circleStop` | stop-circle | reused (the player's Jizuie row) |
+| Compliance · Privacy / DSAR | `privacy` | folder-user | new |
+| Compliance · Retention | `archive` | archive | reused |
+| Compliance · Audit log | `audit` | clock-counter-clockwise | new |
+| System · System | `server` | hard-drives | reused |
+| System · AI usage & credits | `aiUsage` | speedometer | new (a meter of what was spent; W3's review, `activity` means an activity log) |
+| System · Approvals | `approvals` | check-square-offset | new |
+| System · 2FA setup | `keyRound` | key | reused (security credentials) |
+| Access · Staff & roles | `staff` | user-circle-gear | new (user-gear's Fill reaches 0.25 past its box) |
+| Access · Role permissions | `roles` | lock-key | new (what a role may open; W3's review, the shield already carries AML's warning) |
+
+**Left for later waves, seen while choosing:**
+- Some player and console rows already wear a different mark for these meanings:
+  - an agent: the hub's "Kuwa wakala" row and the profile's agent row draw `shieldcheck` (verified only, §3);
+  - the friends programme: the avatar menu's Invite & Earn draws `gift`, where the journey rows draw `users`;
+  - a player's detail tabs: KYC `shieldcheck`, self-exclusion `shieldOff`, limits `lock`, audit `alertCircle`;
+  - the hub's staff-console row draws `server`, the System glyph.
+  W5 (admin cards) or W7 can move each to its key above.
+- Millionea's Weeks is the game's home. Once the Maswali lane's `millionea` key lands (MASWALI-PLAN §10c, its S5), the
+  row may wear the game's mark, as Up & Down's Overview wears `trade`; `weeks` is then drawn nowhere and retires.
 
 ---
 
@@ -465,7 +544,119 @@ collapse into one. The rail's square, edge-to-edge focus ring follows the pill.
     committed;
   - the classic shell parity: W3's rail and header changes are named entries, measured.
 
-### W4 — Outcomes and status
+**The admin step (written on `phosphor-w3-admin`, 2026-10-18; the codegen, typecheck and guards are the release's):**
+- **The lexicon:** 50 destinations, one glyph each (§3 "Admin destinations (W3)"). 24 reuse the key that already
+  carries their meaning; 26 are new console keys in `NEW_KEYS` and `ADMIN_KEYS`. Each new name was checked free in
+  `map.ts`, apart from the Maswali lane's 13, and present in all four weights of 2.1.1. The sidebar draws each at 18px
+  in Bold and Fill, and the W3 block of `FILL_KEYS` ships every Fill. The 29 console keys' Fills go to the admin sprite.
+  The 18 reused app keys' Fills go to the app sprite: about 7 KB of raw path data that a player's sprite carries for the
+  console alone. A per-variant placement in the codegen (an admin-only Fill in the admin sprite) would take it out; it
+  was not built here.
+- **The type:** `NavItem.glyph: GlyphKey` is required (R-NEW-PAGES). The drawer now types its rows with the shared
+  `NavGroup`, where it had kept a narrower copy of its own.
+- **The rows** (`admin-sidebar-nav.tsx`, `admin-mobile-nav.tsx`):
+  - `<NavGlyph glyph={it.glyph} on={active} s={18} />` sits before the label, 10px apart, and the pip stays at the
+    right. The gap is `gap-[10px]`, the same-pixel literal: `gap-2.5` is an inverted key, and `test:spacing-scale` only
+    lets their count fall;
+  - the current row wears `--nav-pill` with `--nav-pill-edge`, its ink `--text`;
+  - the comments that said `--pill-active` owns this job are rewritten: it stays the selection of filters, menus and
+    page tabs. The admin brand link's hover keeps it, and its comment says why.
+- **Guards re-pinned:**
+  - `test:house-bot-console` 1.333 pins the desk's literal with its glyph, the neutral `desk`, and asks ruling 453's
+    lexicon of that glyph;
+  - the anchors `red:house-bot-console` 321-nav and `red:maswali-rbac` (6) carry the glyph in their literals;
+  - `test:visual-pass-r9a` §1.3 names eight more drawings that Phosphor sets off their box: the Fills of `bot`,
+    `comment`, `gift`, `megaphone` and `shieldAlert`, `journey`'s Bold, and `roles`' Bold and Fill. Each offset is read
+    by hand from the path data, so the release's run confirms them.
+- **Guards added:**
+  - `test:admin-nav` §8: a live key, one destination per glyph across the sidebar, the Fill shipped, with a planted
+    control;
+  - `test:glyph-map` §10: the console's own keys stay in the console, with four plants.
+- **Integrated** onto `phosphor-w3` (2026-10-18; cherry-picked as `43162096` and `8a693b12`, the two conflicts resolved
+  as the helper named them), then `npm run glyphs:gen`:
+  - 258 symbols; `app.715e8904.svg` grows from 81.6 to 90.0 KB raw (20.6 → 22.1 KB brotli, so 1.56 KB, cached once) and
+    `admin.94a79047.svg` from 4.6 to 29.8 KB raw;
+  - `app.a7babf1a.svg` and `admin.d4427285.svg`, production's now, stay one release (`PREVIOUS_SPRITES`);
+  - the guards it touches are green, and r9a confirms the eight hand-read offsets: glyph-sync, glyph-map (red 30/30),
+    admin-nav 29/29, r9a 55/55 and glyph-source.
+  - Per-variant placement is not built. W4 and W5 draw several of those Fills for players (statuses, plates), so the
+    1.56 KB would come back.
+
+**W3's adversarial review (2026-10-18; read-only, the whole diff from `e2eb9cd6`): ten findings, each answered:**
+- **Fixed:**
+  - `test:visual-pass-r5b` 2.3 still read the removed journey underline. It would have gone red in `test:all`; it is
+    re-pinned openly.
+  - `test:visual-pass-r9c` 4.3 held the pip at a literal 26 and stayed green. It now reads the pip from
+    `.kp-rail__pip`: 7.675 at 320, 8.5 at 390, and Swahili's two-line Tiketi slot 61.3px (the rail 74.3px below
+    332.8px, under `--rail-h`'s 88). The stylesheet's note is corrected.
+  - GlyphSwap wrote its "changed" flag during render, so a router transition's discarded render could replay a morph.
+    Only a committed change counts now; the flag is raised in an effect.
+  - The admin rows faded the pill's fill and snapped its edge. The box-shadow now fades over `--t-quick`, as
+    `.kp-navlink`'s does.
+  - Nothing tied the tab bars' NavGlyph keys to `FILL_KEYS`: a lost Fill would have drawn Line in silence.
+    `test:glyph-map` §9b holds them, with two plants.
+  - `PREVIOUS_SPRITES` was a hand-kept list nothing tied to production. `test:glyph-sync` §1b reads the sprites
+    `origin/main` serves and fails a tree that would delete them, with a plant; it says "not measured" without git.
+  - DESIGN_AUTHORITY and the contrast audit said the desktop bars draw a Fill glyph; they draw words. Both are
+    corrected, and in forced colours (which strip the pill) the current desktop link now keeps a 1px system-ink outline.
+  - `parity-entries.mjs` wrote a pair subset it had not re-checked. The subset is re-applied; failing that, the whole
+    pool is written.
+  - **Four admin glyphs:**
+    - House is no longer Phosphor's Home mark (`building-office`);
+    - Transactions reuses `receipt` (a wallet receipt is one record per money movement; `table` read as the Overview's
+      `layout` at 18px);
+    - Role permissions is `lock-key` (the shield already carries AML's warning);
+    - AI usage is a new `aiUsage`, a speedometer (`activity` already means an activity log).
+- **Kept, and shown to Ali:** the Fills of `live` (broadcast) and `trade` (arrows-down-up) keep Phosphor's thinner
+  strokes, 16 units against Bold's 24, where only their centre and heads go solid. So the current Live and Up & Down
+  tabs draw 1.5px waves and shafts beside 2.25px neighbours. A composite would be a house drawing where Phosphor has
+  one, which R-ONE-SOURCE rules out. The tiles show both; the call stays open to Ali.
+
+**The tiles, read (2026-10-18):** 91 before (main `e2eb9cd6`) and 91 after (`9c6067af`), from the baseline's and the first
+compare's servers (`scratchpad/phos/w3tiles/`).
+- **The chrome, 60 pairs, read by a reader in full:**
+  - classic and journey rails at 320–768 and both headers at 1280, in sw, en and zh, for a guest and a player;
+  - no clipping, no overlap, no new truncation or wrap; every label on one line, the coin's included, and the coin's
+    rise unchanged; the gilt and unread dots on their icons' corners; both headers' current links on the pill, nothing
+    moved.
+- **One change measured, as predicted:** at 320px in Swahili, where "Tiketi zangu" takes two lines, the journey rail is
+  about 6px taller (74.3px, r9c 4.3). That is still under `--rail-h`'s 88, so the page's bottom reserve still clears it.
+- **The lit, focus and admin pairs, 31, read by a second reader in full:**
+  - **Fixed:**
+    - On the deposit page two tabs were lit. More's Wallet row (`/wallet`) is a prefix of the coin's route
+      (`/wallet/deposit`); the bug was older, but the opaque pill made it plain. More no longer lights while the coin is
+      current.
+    - A desktop link's focus ring ran into the current link's pill beside it, because the links stand edge to edge. The
+      ring is now drawn inside the link (-2px), in `--brand-300` on the current link's own pill (3:1 there; a contrast
+      row). `qa:journey-shell`'s focus cell is re-pinned.
+    - The rail's ring, 2px out, met the label 4px under the pip. It is now 1px out.
+  - **Kept:**
+    - More's Fill (Phosphor's `list-fill`, a solid tile with its lines cut out) reads more like a card than a menu. It is
+      Phosphor's own Fill, and it is on Ali's review page beside Live's and Up & Down's.
+    - Four console glyphs look alike at 18px, with their labels beside them: Finance's calculator and Payments ops'
+      handset, and Retention's archive and System's drives. W5, which gives the admin cards their icons, revisits them.
+  - **Not in these tiles**, so taken again at the release: Sources & categories, the drawer's lower rows, and a lit
+    drawer row other than Overview and House. The capture now scrolls the sidebar to its middle and the drawer to its
+    current row and its end.
+- **Main's own red, measured on a throwaway checkout of `95c480f1`:** `red:wallet-reach` case 21 catches its plant on
+  8c.2, not 8c.3 (26/27). The plant is in the journey's top bar, which W3 does not touch; it is for that bar's lane.
+
+**The derived battery (2026-10-18, at `633e6424` on main `95c480f1`): 162 suites, from the diff (`w3-derive.sh`):
+145 green; the other 17 are main's own or need what this machine does not run, and W3 adds none.**
+- **Red on main itself, run the same on a throwaway checkout of `95c480f1`:**
+  - `red:enter-where-pressed` 118/119, `red:journey-tickets` 114/115, `red:journey-updown` (a wrong reason),
+    `red:root-has` (a stale plant in modal.tsx), `red:shell-boundary` 6/7, `test:motion` and `test:presence-class`;
+  - `red:wallet-reach` case 21 (above).
+- **Red on main, listed by the Maswali session as S5's own and fixed on its branch:** `test:visual-pass-r5a` 8.13,
+  r5h 3.5, r5j 1.1, r6c 11.2, r7c 3.9.
+- **Need a database or a server:**
+  - `test:house-bot-console` and `test:visual-pass-r8d-stores` (Postgres);
+  - `red:house-bot-console`, which refuses when a DB-bound baseline is red;
+  - `red:journey-header-fit`, which runs only by name against a server.
+- ⚠️ **The lock took over the live battery.** It ran 5h50m: `red:house-bot-console` spent about 3 hours, and
+  `red:campaign-visuals` about 2. After 3 hours the lock treated it as abandoned, and the next waiter, the clean
+  compare, started beside it. Free memory fell to 1.39 GB and the compare's server died at cell 94, so its 46/66 is void
+  (`w3-c2-failed-overlap.log`). It runs again alone. Batteries now stay far under 3 hours.
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart
 (§A4). Inks from `src/lib/status-tone.ts` (§B11). Won = the Fill seal in gold (earned money, §M3a); lost / void / pending
 = quiet Line marks (§M7: a loss is bookkeeping); void slate; result crests success/danger (`test:betting-ink` §7a).
@@ -548,7 +739,11 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
   against 82px, in the 4 player `/watchlist` cells.
   The question page already solves this: `break-end-clock` writes one canonical same-format time before geometry,
   calibrated from the ff8c pair. The same treatment for book cells would close it; the 090bbf76 pair already proves the
-  moments differ.
+  moments differ. W3's compare (2026-10-18, against `e2eb9cd6`) saw the same 4 cells again.
+- **The journey's break banner at 320px in Chinese is one digit from wrapping** (W3's tile read, 2026-10-18). Its title
+  "您的休息期至 2026年10月18日 06:21" fills the card's width exactly, so a wider time, 07:07, wraps it to two lines and
+  moves everything under it down about 18px. Live data, not W3; it is for the journey's own lane.
+- The floating chat bubble covers the card's "Maelezo" link at 360 and 390 in classic guest Swahili, as it did before W3.
 
 ---
 

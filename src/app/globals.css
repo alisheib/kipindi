@@ -476,6 +476,12 @@
   --brand-200: oklch(88% 0.090 262);
   --brand-soft: oklch(34% 0.120 262);
   --pill-active: oklch(40% 0.12 262 / 0.35);  /* one active filter/tab fill everywhere */
+  /* THE CURRENT DESTINATION'S PILL (PHOSPHOR-MIGRATION W3; R-INDICATOR 3B, Ali 2026-10-17, from the W0 specimen): opaque
+     royal with the even lit ring (M1) and a 1px royal edge, behind the destination's Fill glyph and its --text label — the
+     classic rail's pip, the journey's tab pip, both desktop bars' links and the admin sidebar's and drawer's rows. ⛔ Its
+     own tokens: --pill-active (1.18:1 on the bar) stays the see-through selection of filters, menus and page tabs. */
+  --nav-pill: oklch(36% 0.16 266);
+  --nav-pill-edge: var(--edge-lit), 0 0 0 1px oklch(72% 0.14 266 / 0.35);
   --gilt-strong:   var(--gold-400);
 
   /* ═══ STRUCK GILT — the four gradient tokens ATOM 12 deferred (ATOM C, 2026-08-07)
@@ -7297,17 +7303,38 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-navlink {
   color: var(--text-subtle);
   background: transparent;
-  /* ⛔ Never `transition: all` — one rule per property, from the motion ladder. */
-  transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out;
+  /* ⛔ Never `transition: all` — one rule per property, from the motion ladder. W3: the pill's edge fades with its fill. */
+  transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
 }
 .kp-navlink[data-accent] { color: var(--brand-300); }
 /* TWO WAYS TO SAY "THIS IS THE CURRENT DESTINATION", because two elements say it: a real <a> says
    it with `aria-current="page"`, and the "More" <button> cannot — it is a menu trigger, not a page,
    so claiming `aria-current="page"` there would be a lie to a screen reader. It carries
    `data-active` instead. One class, one paint, two honest declarations of the same fact. */
+/* ⭐ PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B, Ali 2026-10-17): the current destination stands on the opaque royal pill with
+   its lit edge, the rail's pip's own paint — one "you are here" in every destination bar. `--pill-active` (1.18:1 on
+   the bar) stays the selection of filters and menus. */
 .kp-navlink[aria-current="page"],
-.kp-navlink[data-active] { color: var(--text); background: var(--pill-active); }
+.kp-navlink[data-active] { color: var(--text); background: var(--nav-pill); box-shadow: var(--nav-pill-edge); }
 .kp-navlink:not([aria-current="page"]):not([data-active]):hover { color: var(--text); background: var(--bg-overlay); }
+/* ⭐ IN FORCED COLOURS THE CURRENT DESKTOP LINK KEEPS A MARK (PHOSPHOR-MIGRATION W3's review). The pill is a background and
+   a box-shadow, which forced colours strip, and a desktop bar's link is words only — so the current one, here and in the
+   journey's bar, would carry no cue at all (the rail keeps its Fill glyph and its bolder label). A 1px outline in the
+   system's ink, drawn inside the link, marks it there without moving it (E-129's lesson: forced colours keep an outline,
+   never a shadow); it steps aside while the link holds focus, so the focus ring is never replaced. Nothing changes in
+   any other mode. */
+@media (forced-colors: active) {
+  .kp-navlink:is([aria-current="page"], [data-active]):not(:focus-visible),
+  .kp-jnav__link:is([aria-current], [data-on]):not(:focus-visible) { outline: 1px solid CanvasText; outline-offset: -1px; }
+}
+/* ⭐ THE DESKTOP LINKS' FOCUS RING IS DRAWN INSIDE THE LINK (PHOSPHOR-MIGRATION W3's tile read, focus tile 1280). The bar's
+   links stand edge to edge, so the catch-all's ring, 2px outside a link, ran into the current link's pill beside it and
+   read as one merged shape. Drawn inside, it never meets a neighbour (the lesson `[data-section-rail]` already wrote
+   down); on the current link's own pill it is --brand-300, which keeps 3:1 there (--brand-500 on --nav-pill is about
+   2.8:1). */
+.kp-navlink:focus-visible, .kp-jnav__link:focus-visible { outline-offset: -2px; }
+.kp-navlink:is([aria-current="page"], [data-active]):focus-visible,
+.kp-jnav__link:is([aria-current], [data-on]):focus-visible { outline-color: var(--brand-300); }
 
 /* =====================================================================
    THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14 (batch 3, 2026-08-13)
@@ -7374,21 +7401,31 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-rail__item:hover { color: var(--text); }
 /* The ring sits INSIDE the slot: the catch-all ring is drawn 2px outside, and the rail's end slots touch the screen's
    edges, so the last tab's ring lost its right and bottom sides off-screen (WP12's tiles, 2026-10-08, 390 in all three
-   languages) — as `[data-section-rail]` already learned. The coin keeps its own ring. */
-.kp-rail__item:not(.kp-rail__item--coin):focus-visible { outline-offset: -2px; }
+   languages) — as `[data-section-rail]` already learned. The coin keeps its own ring.
+   ⭐ PHOSPHOR-MIGRATION W3: the ring is the PILL's, not the slot's. The slot's square, edge-to-edge ring goes; the
+   catch-all's 2px --brand-500 ring is drawn around the pip, the shape that says "this destination" (the way
+   `.kp-udclock__watch` hugs its label), and a 56px pip in a slot of 64px or more keeps it on screen at every width.
+   1px out, not the catch-all's 2: the label stands 4px under the pip, and a ring 2px out met its letters (W3's tile
+   read); at 1px it leaves the label a pixel and the lit pill a hairline of the bar between it and its ring. */
+.kp-rail__item:not(.kp-rail__item--coin):focus-visible { outline: none; }
+.kp-rail__item:not(.kp-rail__item--coin):focus-visible .kp-rail__pip { outline: 2px solid var(--brand-500); outline-offset: 1px; }
+/* ⭐ PHOSPHOR-MIGRATION W3 (R-RAIL 4B, R-INDICATOR 3B, Ali 2026-10-17): 24px glyphs, as Android's and iPhone's tab bars
+   draw them, in a 56×32 pip grown to fit them (4px above and below the glyph, 16px either side; the W0 specimen's), and
+   a current destination is its Fill glyph on the opaque royal pill. The slot's 64px floor holds the taller pip:
+   32 + 4 + 11 = 47px of content in the slot's 52. */
 .kp-rail__pip {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 26px;
+  width: 56px;
+  height: 32px;
   border-radius: var(--r-pill);
   transition: background var(--t-quick) ease-out, box-shadow var(--t-quick) ease-out;
 }
 .kp-rail__item[data-on] .kp-rail__pip {
-  background: var(--pill-active);
-  box-shadow: var(--edge-lit);
+  background: var(--nav-pill);
+  box-shadow: var(--nav-pill-edge);
 }
 .kp-rail__label {
   font-family: var(--font-mono);
@@ -7405,11 +7442,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   padding-inline: 2px;
 }
 .kp-rail__item[data-on] .kp-rail__label { font-weight: 700; }
-/* The product-line dot — the same 5px gilt mark the desktop nav carries, on the pip's corner. */
+/* The product-line dot — the same 5px gilt mark the desktop nav carries, on the pip's corner.
+   ⭐ W3: it keeps its place beside the glyph — 2px right of the glyph's box and 2px above it, as on the 44×26 pip — so
+   on the 56×32 pip around a 24px glyph it stands 9px from the right and 2px from the top, inside the lit pill's curve. */
 .kp-rail__dot {
   position: absolute;
-  top: 1px;
-  right: 5px;
+  top: 2px;
+  right: 9px;
   width: 5px;
   height: 5px;
   border-radius: var(--r-pill);
@@ -7517,33 +7556,37 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 1024px) { .kp-jhdr__row { gap: var(--sp-3); padding-inline: var(--sp-8); } }
 @media (min-width: 1280px) { .kp-jhdr__row { gap: var(--sp-5); } }
 
-/* ⭐ THE DESTINATIONS FROM 1024 — the kit's SECTION language (§0h point 7; DESIGN_AUTHORITY §K rule 7c, "the underline
-   is the section language"), not the canvas's pills: the `Tabs` line variant's geometry and ink, written once here
-   because these are links in a bar rather than a rail on a page. The underline says "you are here" on a destination's
-   own page and on every page of its section (A12 tells the two apart for a screen reader, not for the eye). Hover
-   previews it in a non-brand ink, so a preview is never mistaken for the selection. */
+/* ⭐ THE DESTINATIONS FROM 1024 — since PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B, Ali 2026-10-17), the platform's one
+   DESTINATION language: the current link stands on the opaque royal pill with its lit edge (`--nav-pill`), the classic
+   bar's own paint, as the rail's tab under it does. It was the kit's SECTION language (§0h point 7; DESIGN_AUTHORITY §K
+   rule 7c, "the underline is the section language": a brand underline that scaled in), and the W3 plan Ali approved
+   collapses the four "you are here" styles — the rail's pip, the classic link, this underline and the admin row — into
+   one; the underline stays the language of SECTIONS inside a page (the `Tabs` line variant). The pill says "you are here"
+   on a destination's own page and on every page of its section (A12 tells the two apart for a screen reader, not for
+   the eye). Hover previews in the sunken `--bg-overlay`, never the pill, so a preview is never mistaken for the
+   selection. */
 .kp-jnav { align-items: center; gap: 2px; margin-inline-start: var(--sp-3); }
 .kp-jnav__link { position: relative; display: inline-flex; align-items: center; min-height: var(--h-control-md); padding: 0 var(--sp-3); border-radius: var(--r-sm); font-size: var(--type-small); font-weight: 600; white-space: nowrap; color: var(--text-muted); background: transparent; transition: color var(--t-quick) ease-out, background var(--t-quick) ease-out; }
-.kp-jnav__link::after { content: ""; position: absolute; left: var(--sp-3); right: var(--sp-3); bottom: 0; height: 2px; border-radius: var(--r-pill); background: var(--border-strong); transform: scaleX(0); transition: transform var(--t-base) var(--m-glide); }
 .kp-jnav__link:not([aria-current]):not([data-on]):hover { color: var(--text); background: var(--bg-overlay); }
-.kp-jnav__link:not([aria-current]):not([data-on]):hover::after { transform: scaleX(1); }
-.kp-jnav__link:is([aria-current], [data-on]) { color: var(--text); }
-.kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(1); background: var(--brand-500); box-shadow: 0 0 8px color-mix(in oklab, var(--brand-500) 50%, transparent); }
+.kp-jnav__link:is([aria-current], [data-on]) { color: var(--text); background: var(--nav-pill); box-shadow: var(--nav-pill-edge); }
 /* ⭐ ONE DESTINATION IS CURRENT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 292 315 338 at
    1280). The current mark moves when the router commits the new page, and with the transitions above the old link's
-   underline shrank over --t-base (220ms) while the new one stood full: two underlines, and two links in the current ink,
-   for most of a quarter second. So the mark changes at once, everywhere but on the way IN to a hover: a transition plays
-   by the rules of the state it goes to, and the hovered state is the only one that keeps them, so a hover still draws
-   its preview underline in, and every other change (the current mark arriving or leaving, a hover ending) is a cut. */
-.kp-jnav__link:not(:hover), .kp-jnav__link:not(:hover)::after { transition: none; }
+   mark faded out while the new one stood full: two current links for most of a quarter second (then two underlines,
+   now it would be two pills). So the mark changes at once, everywhere but on the way IN to a hover: a transition plays
+   by the rules of the state it goes to, and the hovered state is the only one that keeps them, so a hover still fades
+   its preview in, and every other change (the current mark arriving or leaving, a hover ending) is a cut. */
+.kp-jnav__link:not(:hover) { transition: none; }
 
 /* ⭐ THE JOURNEY RAIL — four equal tabs (SJ-16) on the classic rail's own surface, slot, pip and label, worn unchanged.
    ⛔ `.kp-rail` itself is not edited: the admin pending-changes bar wears it too. The grid goes on the LIST (A18): on
    the nav, the whole list would be one grid cell. */
 .kp-rail--journey > ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; }
 /* The Akaunti tab's unread mark: the 8px brand dot on the pip's corner, cut out of the glyph by a ring of the rail's
-   own fill, so it reads against any glyph. */
-.kp-rail__badge { position: absolute; top: -2px; right: 6px; box-shadow: 0 0 0 2px var(--panel); }
+   own fill, so it reads against any glyph.
+   ⭐ W3: it keeps its place on the glyph's top-right corner — its centre 2px right of the glyph's box and 1px above it,
+   as on the 44×26 pip around a 20px glyph — so on the 56×32 pip around a 24px glyph it stands 10px from the right and
+   1px above the top. On the lit pill the same ring cuts it out of the pill as well. */
+.kp-rail__badge { position: absolute; top: -1px; right: 10px; box-shadow: 0 0 0 2px var(--panel); }
 /* ⚠️ THE ONE LABEL THAT DOES NOT FIT, MEASURED RATHER THAN GUESSED (A17). The classic label ellipsises. A quarter of a
    320 phone is 80px, and "Tiketi zangu" at the rail's 11px mono (0.6em a glyph) needs 12 × 6.6 + 4 = 83.2px, so it
    would read "Tiketi zan…" there; `test:journey-shell` §8 measures every tab label in sw, en and zh at 320 and 360.
@@ -7553,8 +7596,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
 @media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 /* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
-   slot to the tallest one, so where the Tiketi slot wraps (26 + 4 + 2 × 12.65 = 55.3px of content) it sets the rail's
-   height and the three one-line slots would centre their pips about 6px below its pip. So there the journey's slots
+   slot to the tallest one, so where the Tiketi slot wraps (32 + 4 + 2 × 12.65 = 61.3px of content since PHOSPHOR-MIGRATION
+   W3's 32px pip; it was 26 + 4 + 2 × 12.65 = 55.3px) it sets the rail's height and the three one-line slots would centre
+   their pips about 6px below its pip (6.3px, at either pip size). So there the journey's slots
    stack from the top and every pip sits on the slot's padding. `.kp-rail__item` itself is not edited.
    ⭐ …ONLY WHERE A LABEL WRAPS (round 9 of the visual pass, R9-C, 2026-10-11; R3-D1 and R6-D1, two readers, tiles 243
    246 302). Below 360 every language stacked from the top, though only Swahili wraps: in English and Chinese at 320 the
@@ -7604,8 +7648,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 :root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
 :root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
 :root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
-:root:is([data-not-found], #kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
-:root:is([data-not-found], #kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
+:root:is([data-not-found], #kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); background: transparent; box-shadow: none; }
+/* ⭐ …AND THE LIT TAB'S GLYPH (PHOSPHOR-MIGRATION W3). A lit tab draws its Fill, and a `<use>` cannot be re-pointed by CSS,
+   so the journey's lit tab carries its Line drawing too, hidden (`NavGlyph restsUnlit`): here the Line is put back and the
+   Fill set aside, so the first paint of a not-found page lights no glyph either. Once the scripts run the tab is unlit
+   and draws Line alone. */
+.kp-navglyph__line { display: none; }
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__fill { display: none; }
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__line { display: block; }
 /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
@@ -7964,8 +8014,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    WHOLE rail taller and eats into the footer's 88px reserve. The negative margin is what lifts
    the coin without adding to the slot's flow height. */
 .kp-rail__item--coin {
-  /* Measured, not reasoned: see the pull-vs-rise note above. */
-  --kp-coin-pull: 27px;
+  /* Measured, not reasoned: see the pull-vs-rise note above.
+     ⭐ PHOSPHOR-MIGRATION W3: 27 → 23.5, with 3.5px more room under the coin (its label, below). The 32px pip grew the
+     flanking slots' content by 6px and the slot centres it, so their labels stand 3px lower (44.5px into the slot, from
+     41.5). The coin keeps its 14px rise and its label meets theirs: with the coin slot's content C = (52 − pull) + 4 +
+     gap + 11 centred in the slot's 52px, the rise is 0.5 + (pull + gap) / 2 and the label's top 54.5 + (gap − pull) / 2
+     — the model reproduces the measured 14.0 at pull 27 — so a rise of 14 and a label at 44.5 give pull 23.5 and gap
+     3.5. C is then 47px, the flanking slots' own: every slot stays 64px, as V26 asserts. */
+  --kp-coin-pull: 23.5px;
 }
 .kp-coin {
   position: relative;
@@ -8037,6 +8093,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    across the whole rail; that is a rail-wide change and Ali's call, not a lone exception here,
    because a single 12px label among four 11px ones breaks the shared baseline it asks for. */
 .kp-rail__item--coin .kp-rail__label {
+  /* W3: the label meets the flanking labels' line under the 32px pips (the pull's note above). */
+  margin-top: 3.5px;
   font-weight: 800;
   color: var(--gilt);
 }

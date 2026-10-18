@@ -185,7 +185,10 @@ export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { active
       style={{ width: 216, background: "var(--panel)" }}>
       {/* ⭐ DG-A-18 · the console's own brand link had NO hover response on any of its 44 pages —
           the hover probe's only universal miss. It is a link to /admin; it now says so on approach,
-          using the same `--pill-active` fill the nav rows below it use for their active state. */}
+          with the see-through `--pill-active` fill, the selection fill of filters, menus and page tabs.
+          ⚠️ It is no longer what the nav rows below it wear for their current page: since
+          PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B) that row is its Fill glyph on the opaque `--nav-pill`,
+          and an approach is not a selection, so this hover keeps the lighter fill on purpose. */}
       <Link href="/admin" className="min-h-[var(--tap-min)] flex items-center gap-2 px-2 pb-3 mb-2 rounded-md border-b border-dashed border-border-subtle transition-colors hover:bg-[var(--pill-active)]">
         <FiftyMark size={18} simplified aria-hidden />
         <span className="font-display font-bold text-body-sm text-text">50pick · admin</span>

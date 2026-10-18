@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { activeKeyFromPath, type NavGroup } from "./admin-nav-groups";
 import { CountBadge } from "@/components/ui/count-badge";
+import { NavGlyph } from "@/components/ui/nav-glyph";
 
 // The route→nav-key resolver is imported from admin-nav-groups.ts — see the note
 // there. This file's local copy was the one missing /admin/payments, /admin/kyc and
@@ -44,21 +45,33 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
                   // claimed the whole surface. A comment that overstates its own reach is how the
                   // next session decides a row is finished without measuring it — the drawer takes
                   // `--h-control-md` (44), not this rung, because it is a MOBILE target (§A2).
-                  "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
+                  // W3's review: the pill's edge (box-shadow) fades with its fill over --t-quick, as
+                  // `.kp-navlink`'s does; `transition-colors` faded the fill and snapped the edge.
+                  "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-[color,background-color,box-shadow] duration-quick ease-out",
                   active
                     ? "text-text font-semibold"
                     : "text-text-subtle hover:text-text",
                 ].join(" ")}
-                // ⭐ DG-A-18 · §B9. This was `oklch(40% 0.12 268 / 0.5)`, typed here — and it had
-                // already DIVERGED from the token that owns this exact job: `--pill-active` is
-                // `oklch(40% 0.12 262 / 0.35)`, i.e. a different hue AND a different alpha, for
-                // "one active filter/tab fill everywhere". Two homes for one design truth, drifting
-                // apart in the dark — which is the whole argument of B9 in one line.
-                // ⛔ `ui-consistency`'s `hardcoded-pill-active` rule could not see it: that rule
-                // matches the token's LITERAL text, and this was a different literal.
-                style={active ? { background: "var(--pill-active)" } : undefined}
+                // ⭐ PHOSPHOR-MIGRATION W3 · R-INDICATOR 3B (Ali, 2026-10-17): the current destination is its
+                // Fill glyph on the OPAQUE royal pill with a lit edge, `--nav-pill` + `--nav-pill-edge`
+                // (globals.css) — the one selected language the player's tab bars and desktop bars speak
+                // too. Its ink is --text; every other row keeps its subtle ink, and the glyph follows the
+                // row's ink (currentColor), so the two can never disagree.
+                // ⛔ NOT `--pill-active` any more. That token is see-through (40% L at alpha 0.35, 1.18:1 on
+                // a bar) and it stays the selection of filters, menus and page tabs; a destination is not a
+                // filter. DG-A-18 (§B9) still stands: this row reads a token and never types a literal —
+                // it once typed its own, which had drifted in hue and alpha from the token it copied.
+                style={active ? { background: "var(--nav-pill)", boxShadow: "var(--nav-pill-edge)" } : undefined}
               >
-                <span>{it.label}</span>
+                {/* ⭐ W3 (R-ADMIN, "Yes, sidebar + cards"): one glyph per destination, before its label, 10px
+                    apart; Line in its row, Fill while current, morphing only INTO the current one (NavGlyph).
+                    The pair stays together on the left; the pip below stays at the right.
+                    ⛔ `gap-[10px]`, the same-pixel literal, never `gap-2.5`: that key reads bigger than `gap-2`
+                    and paints smaller (10px under 12px), and `test:spacing-scale` only lets their count fall. */}
+                <span className="flex min-w-0 items-center gap-[10px]">
+                  <NavGlyph glyph={it.glyph} on={active} s={18} />
+                  <span>{it.label}</span>
+                </span>
                 {/* ⭐ The kit pip. `count-badge.tsx`'s own header names "admin sidebar" as one of
                     the FOUR implementations it was written to consolidate, and this call site was
                     never migrated — so it kept the 4px corner B10.2 calls a second definition site,

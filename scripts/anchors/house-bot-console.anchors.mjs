@@ -616,8 +616,10 @@ export const MUTATIONS = [
   {
     name: "321-nav · the nav item stops being ownerOnly, so it enters every staff payload",
     file: NAV,
-    from: `      { href: "/admin/desk", label: "Desk", key: "desk", domain: "ops", ownerOnly: true },`,
-    to: `      { href: "/admin/desk", label: "Desk", key: "desk", domain: "ops" },`,
+    /* PHOSPHOR-MIGRATION W3: the item's literal carries its REQUIRED glyph now (`NavItem.glyph`), so the anchor does too —
+       the plant is unchanged: only `ownerOnly` goes. */
+    from: `      { href: "/admin/desk", label: "Desk", key: "desk", glyph: "desk", domain: "ops", ownerOnly: true },`,
+    to: `      { href: "/admin/desk", label: "Desk", key: "desk", glyph: "desk", domain: "ops" },`,
     expect: "13 · …and the desk is still absent from SUPPORT's nav",
     suite: "rbac",
   },

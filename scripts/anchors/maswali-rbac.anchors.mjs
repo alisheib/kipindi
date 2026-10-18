@@ -48,8 +48,9 @@ export const MUTATIONS = [
   {
     name: "(6) the integrity page's nav entry claims trading",
     file: "src/components/admin/admin-nav-groups.ts",
-    from: "{ href: \"/admin/maswali/integrity\", label: \"Integrity\", key: \"maswali-integrity\", domain: \"compliance\" },",
-    to: "{ href: \"/admin/maswali/integrity\", label: \"Integrity\", key: \"maswali-integrity\", domain: \"trading\" },",
+    // PHOSPHOR-MIGRATION W3: the item carries its REQUIRED glyph now (`NavItem.glyph`); the plant is unchanged — the domain.
+    from: "{ href: \"/admin/maswali/integrity\", label: \"Integrity\", key: \"maswali-integrity\", glyph: \"integrity\", domain: \"compliance\" },",
+    to: "{ href: \"/admin/maswali/integrity\", label: \"Integrity\", key: \"maswali-integrity\", glyph: \"integrity\", domain: \"trading\" },",
     expect: "5 · nav /admin/maswali/integrity",
     suite: "rbac",
   },

@@ -256,7 +256,14 @@ export const SHELL_KEYS: readonly string[] = [
   "markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
   "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
 ];
-export const ADMIN_KEYS: readonly string[] = ["upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile"];
+export const ADMIN_KEYS: readonly string[] = [
+  "upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile",
+  // W3 (R-ADMIN, R-INDICATOR 3B): the console's own destinations (NEW_KEYS below), drawn only by its sidebar and drawer.
+  // A destination that reuses a player key (live, the board, results, KYC…) leaves that key in its own group.
+  "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "aiUsage",
+  "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic", "agent",
+  "privacy", "audit", "approvals", "staff", "roles",
+];
 
 /**
  * Keys drawn at 27 px or more somewhere (R-WEIGHT: the Line tier is Bold up to 26 px and Regular from 27): only these ship
@@ -277,8 +284,28 @@ export const FILL_KEYS: readonly string[] = [
   "playBare", // W2: the How-to card's play on its royal plate stays solid, as the hand-drawn one was (a play button reads solid)
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
   "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
+  // W3 (R-INDICATOR 3B): the two tab bars' destinations — the current one draws its Fill on the pill (NavGlyph). Shell
+  // keys, so their Fill is inlined beside their Bold.
+  "markets", "trade", "live", "menu", "ticket", "user",
+  // W3 (R-INDICATOR 3B): the admin sidebar's destinations — the current one draws its Fill (NavGlyph).
+  // In the sidebar's order (admin-nav-groups.ts NAV_GROUPS); `live`, `markets` and `trade` are listed above. The console's
+  // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
+  "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "mobileMoney",
+  "receipt", "roster", "cohorts", "calendar", "bot", "brain", "idea", "resolved", "sources", "percent", "sparkle",
+  "rounds", "weeks", "pools", "integrity", "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
+  "tippingScales", "idCard", "flag", "comment", "shieldAlert", "circleStop", "privacy", "archive", "audit", "server",
+  "aiUsage", "approvals", "keyRound", "staff", "roles",
 ];
 export const DUO_KEYS: readonly string[] = [];
+
+/**
+ * DEPLOY SKEW (W3): a page a player opened before a release still asks for the sprite its HTML named. Each release that
+ * changes a sprite keeps the one production served before it here, so that open page keeps its icons until its next
+ * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
+ * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
+ * File names inside `public/icons/g/`.
+ */
+export const PREVIOUS_SPRITES: readonly string[] = ["app.a7babf1a.svg", "admin.d4427285.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
@@ -310,4 +337,43 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   // W2 (W2's review): the category "Other" — and any category the map does not know — took the board's key, which the
   // lexicon redrew as squares-four, so it read as "All" (grid-four) and as the board tab. Assorted topics: shapes.
   assorted: { ph: "shapes" },
+
+  // ── W3 (R-ADMIN "Yes, sidebar + cards"; R-INDICATOR 3B): the admin console's destinations, one glyph each, drawn by its
+  // sidebar and drawer (admin-nav-groups.ts NAV_GROUPS; docs/PHOSPHOR-MIGRATION.md §3 "Admin destinations (W3)"). A
+  // destination whose meaning a key already carries wears that key (live, the board, Up & Down, results, proposals, KYC,
+  // AML, self-exclusion…); these are the meanings no key had. Console-only (ADMIN_KEYS), each with its Fill (FILL_KEYS).
+  dashboard: { ph: "layout" }, // the console's overview: one page of panes
+  journey: { ph: "path" }, // the new player journey's rollout and preview: a route from its start to its end
+  insights: { ph: "presentation-chart" }, // the owner's insight board: the funnel, lifetime value, cohort value
+  settlement: { ph: "money" }, // paying a resolved market's winners once its objection window closes
+  finance: { ph: "calculator" }, // the books and their proof: the trial balance, the drift
+  // the operator's own book (/admin/house: what we hold, what we made) — the house as the firm, never a "home" glyph: W3's
+  // review moved it off Phosphor's `house`, the universal Home mark, which beside the console's Overview read as "home"
+  house: { ph: "building-office" },
+  desk: { ph: "desk" }, // the Owner's desk (/admin/desk): its label's own neutral word, never a feature word (ruling 453)
+  reports: { ph: "clipboard-text" }, // the statutory report library: packs prepared, signed and downloaded
+  tax: { ph: "invoice" }, // the government tax report: what is owed to TRA and GBT, per day, week or month
+  roster: { ph: "user-list" }, // the player roster
+  cohorts: { ph: "chart-donut" }, // players in segments: by status, region, age band
+  sources: { ph: "newspaper" }, // the trusted sources markets are generated and resolved from, and their categories
+  rounds: { ph: "timer" }, // Up & Down's rounds, each a timed window
+  weeks: { ph: "list-numbers" }, // Millionea's weeks, each fifteen numbered questions
+  pools: { ph: "treasure-chest" }, // Millionea's prize pools and the jackpot
+  integrity: { ph: "gavel" }, // Millionea's integrity rulings: the sales pause, voids, held shares, winners screened
+  contacts: { ph: "address-book" }, // the marketing contact book
+  invites: { ph: "paper-plane-tilt" }, // invitations sent (the invite campaigns)
+  traffic: { ph: "chart-line" }, // the site's traffic over time
+  agent: { ph: "handshake" }, // an agent: a business partner vetted, priced and paid
+  privacy: { ph: "folder-user" }, // privacy requests (DSAR): one person's own data, exported, corrected or erased
+  audit: { ph: "clock-counter-clockwise" }, // the audit log: what was done, in order
+  approvals: { ph: "check-square-offset" }, // sign-offs waiting on an officer (KYC files with us, AML holds, source of funds)
+  staff: { ph: "user-circle-gear" }, // staff accounts and the role each holds (user-gear's Fill reaches 0.25 past its box)
+  // role permissions: what each role may open (W3's review: the shield already carries about five meanings, AML's warning
+  // among them, so the permission is a lock with its key)
+  roles: { ph: "lock-key" },
+  // AI usage and credits: what the generators spent against what is left, a meter (W3's review: `activity`'s pulse already
+  // means an activity log — a player's own page and the console's player Activity tab)
+  aiUsage: { ph: "speedometer" },
+  // (W3's review: Transactions wears `receipt`, the meaning a player's wallet receipts already carry — one record per money
+  // movement; `table` read as the Overview's `layout` at 18px.)
 };
