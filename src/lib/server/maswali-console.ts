@@ -111,7 +111,7 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
   let warnings: string[] | null = null;
   if (week.state === "DRAFT") {
     try { rules = snapshotMaswaliRules(getMaswaliConfig(), now); } catch { rules = null; }
-    if (!rules) problems = ["The Millionea rules do not validate; fix them on the rules page first."];
+    if (!rules) problems = ["The Millionea rules do not validate; the Owner fixes them under Rules for the next week, on the Millionea page, first."];
     else {
       // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
       // every check passes while the open refused for want of a licence basis or the guarantee. ⭐ S7 · on the deadlines

@@ -25,6 +25,7 @@
  *   §14 DL · a week's deadlines at the open are its frozen rules' (OD-09b, MB-75; lane L's review, finding 8)
  *   §14a GR · a week whose frozen rules cannot be read: the requirement is unknown, every reader fails closed (OD-02)
  *   §14b SN · a refused stop names the Owner's next act, in every branch (MR-30, OD-03; the S7 review, round 2)
+ *   §14c RF · the console's rules form and holiday list: the save, the refusal, the frozen week, the Owner's list (MB-75)
  *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
  *   §16    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
@@ -1380,6 +1381,95 @@ if (runs("SN")) {
   await closed(Q.id);
   await sealRest(Q.id, sQ, ALL_VOID);
   await voided(Q.id);
+}
+
+// ═══ §14c · RF · the console's rules form and holiday list ═════════════════════════════════════════════════════════
+if (runs("RF")) section("§14c · RF · the console's rules form and holiday list: every field round-trips, a save lands audited, a refusal stores nothing, a running week keeps what it froze, and only the Owner keeps the holiday list (MB-75, MB-85; the S7 review, round 2)");
+if (runs("RF")) {
+  const cfgMod = await import("../../src/lib/server/maswali-config.ts");
+  const { canUseControl } = await import("../../src/lib/server/control-gates.ts");
+  // The form's own module, as the page and the action read it; a tree without it answers a FAIL line, never a crash.
+  const form: any = await import("../../src/app/admin/maswali/rules-form.ts").catch((err: unknown) => String((err as Error)?.message ?? err));
+  /** Key order is not a value: objects compared with their keys sorted, all the way down. */
+  const canon = (o: any): any => (o && typeof o === "object" && !Array.isArray(o) ? Object.fromEntries(Object.keys(o).sort().map((k) => [k, canon(o[k])])) : o);
+  /** The form posted with these values, as the action reads it: a key the form did not send is absent. */
+  const posted = (values: Record<string, string>) => (k: string) => (k in values ? values[k] : null);
+  if (typeof form === "string") {
+    ok("RF.0 · the console's rules form exists (src/app/admin/maswali/rules-form.ts)", false, form);
+  } else {
+    const rules0 = cfgMod.getMaswaliConfig();
+    const values0 = form.rulesFormValues(rules0);
+    const parsed0 = form.parseRulesForm(posted(values0));
+    const { paidExitWindowMinutes: _pinned, ...stored } = rules0;
+    void _pinned;
+    // The population, derived from the config itself: every field but the pinned paid exit, the question rules' own four.
+    const fieldKeys = new Set(form.RULES_FIELDS.map((f: any) => f.key));
+    const configKeys = [...Object.keys(cfgMod.MASWALI_DEFAULTS).filter((k) => k !== "paidExitWindowMinutes" && k !== "questionCaps"), ...Object.keys(cfgMod.MASWALI_DEFAULTS.questionCaps)];
+    const missing = configKeys.filter((k) => !fieldKeys.has(k));
+    ok("RF.1 · ⭐ every field of maswali.config but the pinned paid exit is on the form, and the form as drawn reads back as the stored rules — each percentage as its rate",
+      missing.length === 0 && parsed0.ok && J(canon(parsed0.updates)) === J(canon(stored)), J({ missing, parsed: parsed0.ok ? parsed0.updates : parsed0 }));
+
+    // R runs on the rules as they stand; N is the next week to open. The save below must reach N and never R (MB-75).
+    const sR = W.weekStartAhead(ahead++), sN = W.weekStartAhead(ahead++);
+    const R = await openWeekAt(sR);
+    const N = await drafted(sN);
+    const price1 = rules0.ticketPriceTzs * 2;
+    const values1 = { ...values0, ticketPriceTzs: price1.toLocaleString("en"), closeAt: "17:30" };
+    const p1 = form.parseRulesForm(posted(values1));
+    const saved = p1.ok ? await cfgMod.saveMaswaliConfig(p1.updates, OWNER) : p1;
+    const fresh1 = await cfgMod.readMaswaliConfigFresh();
+    const row = (await auditRows("MaswaliConfig", "global", "maswali.config.updated"))
+      .find((e: any) => e.payload?.after?.ticketPriceTzs === price1 && e.payload?.before?.ticketPriceTzs === rules0.ticketPriceTzs && e.payload?.after?.closeAt === "17:30");
+    ok("RF.2 · ⭐ the save lands — read back fresh, the price posted in its thousands groups — and is audited with what it set beside what it replaced",
+      saved.ok && fresh1.ok && fresh1.config.ticketPriceTzs === price1 && fresh1.config.closeAt === "17:30" && !!row, J({ saved: errOf(saved), found: !!row }));
+    const rowsBefore = (await auditRows("MaswaliConfig", "global", "maswali.config.updated")).length;
+    const p2 = form.parseRulesForm(posted({ ...values1, ticketPriceTzs: "100" }));
+    const refused = p2.ok ? await cfgMod.saveMaswaliConfig(p2.updates, OWNER) : p2;
+    const words = p2.ok ? cfgMod.maswaliConfigProblem({ ...cfgMod.getMaswaliConfig(), ...p2.updates }) : null;
+    const fresh2 = await cfgMod.readMaswaliConfigFresh();
+    ok("RF.3 · ⭐ a value out of range is refused in the validator's own words, and nothing is stored: the rules and the audit trail as they were",
+      !refused.ok && !!words && errOf(refused) === words && fresh2.ok && fresh2.config.ticketPriceTzs === price1
+        && (await auditRows("MaswaliConfig", "global", "maswali.config.updated")).length === rowsBefore, J({ refused: errOf(refused), words }));
+    const emptied = form.parseRulesForm(posted({ ...values1, floorTzs: "" }));
+    ok("RF.3b · …and an emptied box is refused at its own field before any save — never stored as a floor of 0", !emptied.ok && emptied.field === "floorTzs", J(emptied));
+    const frozenR = W.svc.frozenRules(await dal.weekStore.get(R.id));
+    const [buyer] = await people(1, 50_000);
+    const sold = await W.buy(buyer, R.id, [MISS_M1]);
+    ok("RF.4 · ⭐ a week already running keeps the rules it froze: its ticket still costs the old price, and its rules still read the old close (MB-75)",
+      frozenR?.ticketPriceTzs === rules0.ticketPriceTzs && frozenR?.closeAt === rules0.closeAt && sold.ok && (await bal(buyer)) === 50_000 - rules0.ticketPriceTzs,
+      J({ frozen: frozenR && { price: frozenR.ticketPriceTzs, closeAt: frozenR.closeAt }, sold: sold.ok ? "sold" : sold }));
+    await closed(R.id);
+    const oN = await opened(N, sN);
+    ok("RF.5 · ⭐ …and the next week to open freezes the saved rules: its ticket costs the new price", W.svc.frozenRules(oN)?.ticketPriceTzs === price1,
+      J({ frozen: W.svc.frozenRules(oN)?.ticketPriceTzs }));
+    const back = form.parseRulesForm(posted(values0));
+    const restored = back.ok ? await cfgMod.saveMaswaliConfig(back.updates, OWNER) : back;
+    ok("RF.6 · control: the rules put back through the same form are the ruled values again", restored.ok && J(canon(cfgMod.getMaswaliConfig())) === J(canon(rules0)), errOf(restored));
+
+    // ⭐ THE HOLIDAY LIST IS THE OWNER'S: the action asks `requireStaff(CONTROL_DOMAIN.saveMaswaliHolidays)`, whose answer is
+    //    canUseControl's (the trading officer reads the list on the same page, and may not save it).
+    const refusedRoles = await Promise.all(["MODERATOR", "COMPLIANCE", "FINANCE", "AUDITOR", "SUPPORT"].map((r) => canUseControl(r, "saveMaswaliHolidays")));
+    ok("RF.7 · ⭐ a non-Owner's holiday save is refused at the action's own gate, the trading officer who reads the list included; the Owner's passes — and the rules form is the Owner's too",
+      refusedRoles.every((g) => g === false) && (await canUseControl("ADMIN", "saveMaswaliHolidays")) === true && (await canUseControl("MODERATOR", "saveMaswaliConfig")) === false,
+      J(refusedRoles));
+    const day = eatDate(sN + 4 * DAY);
+    const list = form.parseHolidayList(JSON.stringify([day]));
+    const savedH = list ? await holidays.saveMaswaliHolidays(list, OWNER) : { ok: false, error: "the posted list could not be read" };
+    ok("RF.8 · ⭐ …and the Owner's list, posted as the form posts it, lands: validated, read back", savedH.ok && J(holidays.getMaswaliHolidays().dates) === J([day]), errOf(savedH));
+    const badList = form.parseHolidayList(JSON.stringify([day, `${day.slice(0, 4)}-02-30`]));
+    const refusedH = badList ? await holidays.saveMaswaliHolidays(badList, OWNER) : { ok: false, error: "the posted list could not be read" };
+    ok("RF.9 · control: a list holding a date not on the calendar is refused whole, in the store's words, and the list stands",
+      !refusedH.ok && /not a calendar date/.test(errOf(refusedH)) && J(holidays.getMaswaliHolidays().dates) === J([day]), errOf(refusedH));
+    ok("RF.10 · control: a post that is not a list of dates is read as nothing, never as an empty list", form.parseHolidayList("not a list") === null && form.parseHolidayList("[1]") === null);
+    const cleared = await holidays.saveMaswaliHolidays([], OWNER);
+    if (!cleared.ok) throw new Error(`RF: the holiday list could not be cleared: ${cleared.error}`);
+    // The books close behind the cases: R refunds its one ticket and N sold nothing; both void whole.
+    await sealRest(R.id, sR, ALL_VOID);
+    await voided(R.id);
+    await closed(N.id);
+    await sealRest(N.id, sN, ALL_VOID);
+    await voided(N.id);
+  }
 }
 
 // ═══ §15 · SU · the sunset after a close ═══════════════════════════════════════════════════════════════════════════

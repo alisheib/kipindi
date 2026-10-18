@@ -13,9 +13,12 @@
  *   §4 no control is placed on a page its acting role cannot open (the E-23 lesson: a control a role can work but
  *      never reach is not a control).
  *   §5 the nav: one Millionea group, each item in its page's own domain.
+ *   §6 S7-F2 · the Owner's two forms on the trading page (the rules of the next week, the holiday list): each rendered
+ *      behind its own flag, with a locked alternative naming its own control — and the values read by every viewer.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { decomment } from "./lib/decomment.mts";
 import { CONTROL_DOMAIN, canUseControl, type ControlId } from "../src/lib/server/control-gates.ts";
 import { canView } from "../src/lib/server/rbac.ts";
 import { domainForPath, type Role } from "../src/lib/server/roles.ts";
@@ -44,6 +47,8 @@ const CONTROLS: Array<{ id: ControlId; domain: string; route: keyof typeof ROUTE
     .map((id) => ({ id, domain: "compliance", route: "integrity" as const })),
   ...(["fundMaswaliGuarantee", "returnMaswaliGuarantee", "sunsetMaswali", "setMaswaliLicenceBasis", "setMillioneaRollout"] as const)
     .map((id) => ({ id, domain: "ops", route: "pools" as const })),
+  // S7-F2 · the Owner's (ops) forms on the trading page: the Owner opens every page, so §4 has no other actor to reach it.
+  ...(["saveMaswaliConfig", "saveMaswaliHolidays"] as const).map((id) => ({ id, domain: "ops", route: "week" as const })),
 ];
 
 // The acting role per domain, as DEFAULT_GRANTS ships it (`roles.ts`). ADMIN (the Owner) bypasses the table.
@@ -56,7 +61,7 @@ for (const [name, r] of Object.entries(ROUTES)) {
 }
 
 // ── §2 · every role × every control ─────────────────────────────────────────
-ok("2 · there are 21 Millionea controls, each registered", CONTROLS.length === 21 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
+ok("2 · there are 23 Millionea controls, each registered", CONTROLS.length === 23 && CONTROLS.every((c) => c.id in CONTROL_DOMAIN), `${CONTROLS.length}`);
 for (const c of CONTROLS) {
   ok(`2 · ${c.id} is registered ${c.domain}`, CONTROL_DOMAIN[c.id] === c.domain, `registered ${CONTROL_DOMAIN[c.id]}`);
   for (const role of ROLES) {
@@ -90,6 +95,22 @@ for (const c of CONTROLS) {
     ok(`5 · nav ${item.href} is in its page's domain (${domainForPath(item.href)})`, item.domain === domainForPath(item.href), `nav says ${item.domain}`);
   }
   ok("5 · the group holds the three pages", (g?.items ?? []).map((i) => i.href).join(",") === "/admin/maswali,/admin/maswali/pools,/admin/maswali/integrity");
+}
+
+// ── §6 · S7-F2 · the Owner's forms: behind their own flags, locked and read-only for every other role ─────────────
+{
+  const page = decomment(read("src/app/admin/maswali/page.tsx"));
+  for (const [id, flag, form] of [["saveMaswaliConfig", "canRules", "RulesForm"], ["saveMaswaliHolidays", "canHolidays", "HolidaysForm"]] as const) {
+    ok(`6 · the page asks canUseControl(${id}) for the viewer's role`, page.includes(`canUseControl(session?.role, "${id}")`));
+    const uses = page.split(`<${form} `).length - 1;
+    ok(`6 · <${form}> is rendered once, behind ${flag}`, uses === 1 && page.includes(`${flag} ? <${form} `), `${uses} uses`);
+    ok(`6 · …and its locked alternative names ${id}'s own domain`, page.includes(`need={CONTROL_DOMAIN.${id}}`));
+  }
+  ok("6 · a role that may not change them still reads every rule and the holiday list (MB-75, MB-85)",
+    page.includes("<RulesReadOnly ") && page.includes("<HolidayList "));
+  ok("6 · the rules card says a change applies from the next week to open, never to a running one (MB-75)",
+    page.includes("A change applies from the next week to open, never to a running one"));
+  ok("6 · ⛔ the licence basis is not on this form: no licence control on the trading page", !page.includes("setMaswaliLicenceBasis") && !page.includes("LicenceCeremony"));
 }
 
 console.log(`\nmaswali-rbac: ${pass} passed, ${fail} failed`);

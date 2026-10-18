@@ -9,15 +9,15 @@
  *
  * ⛔ A CHANGE APPLIES FROM THE NEXT WEEK, NEVER TO A RUNNING ONE (MB-75). `snapshotMaswaliRules` freezes every field
  * into the week's `rulesSnapshot` when the week opens, and the week reads only its snapshot from then on — the same
- * rule every poll's `feeSnapshot` keeps. `/admin/config` says so beside the form.
+ * rule every poll's `feeSnapshot` keeps. The form says so beside its fields (`/admin/maswali`, S7-F2, the Owner's).
  *
  * ⛔ THE FEE HAS ONE HOME PER WEEK. `jackpotFeeRate` is edited here, but a week freezes it into its market's
  * `feeSnapshot` (`feeModel: "jackpot-payout"`, `market-config.ts → snapshotFromConfig`) beside the TRA and GBT rates
  * that global config freezes for every product. The rules snapshot does NOT copy it: two frozen copies of one rate are
  * two answers to one question.
  *
- * ⛔ THE LICENCE BASIS IS NOT HERE. It is the Owner's record (`maswali-licence.ts`), so a trading officer's save of
- * this form can never touch it.
+ * ⛔ THE LICENCE BASIS IS NOT HERE. It is the Owner's own record and ceremony (`maswali-licence.ts`, on /pools), so a
+ * save of the rules form can never touch it.
  */
 import { defineConfig } from "./define-config";
 import { MAX_JACKPOT_FEE_RATE } from "@/lib/payout";
@@ -204,6 +204,17 @@ export async function readMaswaliConfigFresh(): Promise<{ ok: true; config: Masw
   const why = maswaliConfigProblem(r.config);
   if (why) return { ok: false, error: `The stored Millionea rules do not validate: ${why}` };
   return { ok: true, config: { ...r.config, questionCaps: { ...r.config.questionCaps } } };
+}
+
+/**
+ * The rules read FRESH for the Owner's form (`/admin/maswali`, S7-F2): the stored row as the next open would read it,
+ * with the validator's words when it no longer validates — the form shows it anyway, or rules that stopped validating
+ * could never be corrected where they are kept. ⛔ A read that could not ask answers why, and the form is not drawn.
+ */
+export async function readMaswaliConfigForForm(): Promise<{ ok: true; config: MaswaliConfig; problem: string | null } | { ok: false; error: string }> {
+  const r = await cfg.reload();
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, config: { ...r.config, questionCaps: { ...r.config.questionCaps } }, problem: maswaliConfigProblem(r.config) };
 }
 
 /**

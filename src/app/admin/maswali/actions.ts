@@ -1,7 +1,8 @@
 "use server";
 
 /**
- * /admin/maswali — the TRADING officer's acts on a Millionea week (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 items 1 and 3).
+ * /admin/maswali — the TRADING officer's acts on a Millionea week (MASWALI-BUILD S4; MASWALI-PLAN §7b S4 items 1 and 3),
+ * and the Owner's two beside them (S7-F2): the rules of the next week and the public-holiday list.
  *
  * Every act names its control and takes its domain from `CONTROL_DOMAIN` (E-27), so the page can ask the question the
  * action will ask and render a locked control instead of one that bounces. `requireStaff` checks the stored role, writes
@@ -19,11 +20,14 @@ import {
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { noteSealDevice } from "@/lib/server/maswali-integrity";
+import { saveMaswaliConfig } from "@/lib/server/maswali-config";
+import { saveMaswaliHolidays } from "@/lib/server/maswali-holidays";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
+import { parseHolidayList, parseRulesForm } from "./rules-form";
 
-type ActionResult = { ok: true; weekId?: string } | { ok: false; error: string };
+type ActionResult = { ok: true; weekId?: string } | { ok: false; error: string; field?: string };
 
 const refresh = (weekId?: string) => {
   revalidatePath("/admin/maswali");
@@ -189,6 +193,40 @@ export async function confirmMaswaliSealAction(formData: FormData): Promise<Acti
     return { ok: true, weekId };
   } catch (err) {
     return { ok: false, error: safeError(err, "The confirmation could not be recorded") };
+  }
+}
+
+/**
+ * ⭐ S7-F2 · THE RULES OF THE NEXT WEEK (`maswali.config`): every field, read back by the form's own list, validated by
+ * the config's own validator and saved through its own verified setter, which audits `{ before, after, changes }`. A
+ * running week is untouched — it reads the rules it froze at its open (MB-75). The Owner's (`ops`, CONTROL_DOMAIN).
+ */
+export async function saveMaswaliConfigAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.saveMaswaliConfig, "saveMaswaliConfig");
+  try {
+    const parsed = parseRulesForm((k) => { const v = formData.get(k); return typeof v === "string" ? v : null; });
+    if (!parsed.ok) return { ok: false, error: parsed.error, field: parsed.field };
+    const r = await saveMaswaliConfig(parsed.updates, session.userId);
+    if (!r.ok) return { ok: false, error: r.error };
+    refresh();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The Millionea rules could not be saved") };
+  }
+}
+
+/** ⭐ S7-F2 · the Owner's list of public holidays (MB-85, OD-27), validated by its own store and read back before "saved". */
+export async function saveMaswaliHolidaysAction(formData: FormData): Promise<ActionResult> {
+  const session = await requireStaff(CONTROL_DOMAIN.saveMaswaliHolidays, "saveMaswaliHolidays");
+  try {
+    const dates = parseHolidayList(str(formData, "dates"));
+    if (!dates) return { ok: false, error: "The holiday list could not be read. Reload the page and try again." };
+    const r = await saveMaswaliHolidays(dates, session.userId);
+    if (!r.ok) return { ok: false, error: r.error };
+    refresh();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: safeError(err, "The holiday list could not be saved") };
   }
 }
 

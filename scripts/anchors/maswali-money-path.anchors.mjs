@@ -497,6 +497,14 @@ export const MUTATIONS = [
     suite: "adversarial:GR",
   },
   {
+    name: "(F2-rules-percent) the rules form stores a percentage as typed: a fee of 13 becomes a rate of 13 (the form no longer reads back the stored rules)",
+    file: "src/app/admin/maswali/rules-form.ts",
+    from: "const asRate = (text: string) => Math.round(Number(text) * 100) / 10_000;",
+    to: "const asRate = (text: string) => Number(text);",
+    expect: "RF.1 · ⭐",
+    suite: "adversarial:RF",
+  },
+  {
     name: "(F2-holiday-open) the holiday review ends at the open, though the close it asks to move moves only once the week is open (MB-85)",
     file: "src/lib/server/maswali-console.ts",
     from: "  if (week.state === \"DRAFT\" || (week.state === \"OPEN\" && Date.parse(week.closesAt) > now.getTime())) {",
