@@ -467,7 +467,9 @@ export async function purchaseMaswaliTickets(input: {
   //    opens: a slip opened before the stop never stated the final week's rule. Its purchase is refused before anything
   //    moves, and the buyer is sent back to the slip, which now states the rule. ⭐ A key that already bought answers with
   //    its own receipt (L2: a gate guards a new purchase; a replay places nothing), as `buyPosition`'s refusals do.
-  if (week.isFinal && input.shownFinal === false) {
+  //    ⛔ S7-F4 · An OPEN week's refusal only: a final week that has CLOSED or been VOIDED sells to no slip, so its own
+  //    answer stands (sales closed, not open), the one a slip that stated the rule gets, and a landed key still replays.
+  if (week.isFinal && input.shownFinal === false && week.state === "OPEN") {
     const stale = {
       ok: false as const, code: "INVALID" as const, reason: "millionea_week_final" as const,
       error: "This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.",
