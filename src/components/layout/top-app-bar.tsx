@@ -55,6 +55,8 @@ type NavItem = {
   proposalsBadge?: ProposalsState;
   /** More's rows only (`NavMore`): Maswali Millionea's mark before its name (MASWALI-BUILD S5). */
   glyph?: ReactNode;
+  /** More's rows only (`NavMore`): the words in Millionea's ink, the one class every nav gives it (Ali, 2026-10-19). */
+  ink?: boolean;
   /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
      destination that is not part of the product is dropped from the list entirely (see
      MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
@@ -131,9 +133,11 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b)–(c), D-13;
      DESIGN_AUTHORITY §M8a item 11) — never an inline link (the 1024–1279 band already overflows) and never a rail slot.
      ⛔ Drawn only on the shell's own answer (`millionea`: the rollout admits the request and the reader is not on a break),
-     resolved on the server and handed down as `inviteVisible` is; for everybody else the menu is today's, byte for byte. */
+     resolved on the server and handed down as `inviteVisible` is; for everybody else the menu is today's, byte for byte.
+     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row wears the tab's ink and a gold mark, as the
+     phone rail's row does. His ruling makes it a core link right after Up & Down; that move is S5-TAB's next item. */
   const MILLIONEA_ROW: NavItem[] = millionea
-    ? [{ href: "/millionea", label: t.millionea.productLabel, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 text-text-muted" /> }]
+    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]
     : [];
   // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
   // the current state flag (gilt coming-soon / amber maintenance / none active).

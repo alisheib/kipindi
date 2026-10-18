@@ -387,6 +387,7 @@ console.log("\n§5b · the ink: one class of tokens alone, a still gradient that
 const INK_WEARERS: ReadonlyArray<{ rel: string; at: string; n: number }> = [
   { rel: "src/components/layout/nav-more.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 2 },
   { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
+  { rel: "src/components/layout/top-app-bar.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
 ];
 const cssCode = (s: string) => squash(s.replace(/\/\*[\s\S]*?\*\//g, ""));
 const RAW_COLOUR = /#[0-9a-f]{3,8}\b|\b(?:oklch|oklab|rgba?|hsla?|lab|lch|hwb)\(|\b(?:red|green|gold|yellow|orange|white|black)\b/i;
@@ -421,7 +422,7 @@ const inkDefects = (src: (rel: string) => string) => {
   const d = inkDefects(read);
   ok("5b.1 · one ink class: green to gold to red clipped to the word, a faint gold drop-shadow — tokens alone", d.filter((x) => !/moves|motion rule|forced|wears/.test(x)).length === 0, d.join(" | "));
   ok("5b.2 · the ink never moves (no animation, no transition, no keyframe); forced colours draw plain system text", d.filter((x) => /moves|motion rule|forced/.test(x)).length === 0, d.join(" | "));
-  ok("5b.3 · every nav that draws Millionea wears the one class (More's rows, the classic rail's row)", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
+  ok("5b.3 · every nav that draws Millionea wears the one class (More's rows: the classic rail's and the top bar's)", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
   const rawColour = inkDefects(plant("src/app/globals.css", "var(--yes-300), var(--gold-300), var(--no-300));", "var(--yes-300), var(--gold-300), oklch(70% 0.2 22));"));
   ok("5b.4 · CONTROL · a raw colour in the class is reported", rawColour.some((x) => x.includes("raw colour")), j(rawColour));
   const moving = inkDefects(plant("src/app/globals.css", "    -webkit-text-fill-color: transparent;\n", "    -webkit-text-fill-color: transparent;\n    animation: kp-millionea-drift 9s ease-in-out infinite alternate;\n"));
