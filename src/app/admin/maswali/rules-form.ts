@@ -24,8 +24,8 @@ export const RULES_FIELDS = [
   { key: "closeWeekday", label: "Sales close on", kind: "weekday", group: "week" },
   { key: "closeAt", label: "Sales close at (EAT)", kind: "clock", group: "week" },
   { key: "minLockBufferMinutes", label: "Close before the first event (minutes)", kind: "whole", group: "week" },
-  { key: "voidDeadlineHours", label: "A question voids unsettled after (hours)", kind: "whole", group: "results" },
-  { key: "finalDeadlineWeekday", label: "Final deadline, the results week's", kind: "weekday", group: "results" },
+  { key: "voidDeadlineHours", label: "Void deadline after an event (hours)", kind: "whole", group: "results" },
+  { key: "finalDeadlineWeekday", label: "Final deadline (results week)", kind: "weekday", group: "results" },
   { key: "finalDeadlineAt", label: "Final deadline at (EAT)", kind: "clock", group: "results" },
   { key: "objectionWindowHours", label: "Objection window (hours)", kind: "whole", group: "results" },
   { key: "objectionNotBeforeAt", label: "Objection window closes no earlier than (EAT)", kind: "clock", group: "results" },
@@ -45,7 +45,7 @@ export const RULES_GROUPS = [
   { id: "money", title: "Money" },
   { id: "week", title: "The week" },
   { id: "results", title: "Results" },
-  { id: "questions", title: "The fifteen questions" },
+  { id: "questions", title: "The questions" },
 ] as const;
 
 /** ISO weekdays (1 = Monday … 7 = Sunday), as `eat-day.ts` counts the week. */
