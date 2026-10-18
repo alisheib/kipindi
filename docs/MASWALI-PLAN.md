@@ -38,8 +38,10 @@ The State paragraph below is the last push's.)**
   1. **S5 → `main`.** `maswali-s4` = `817e2a02` = S5 + main's PHOSPHOR W3, a clean merge proven by `tsc` and every census
      either side changed. Still owed before the push: the four render jobs, each on one fresh `next dev` (in-memory
      store: no `DATABASE_URL`; `DISABLE_ADMIN_TOTP=true`; `BASE=http://localhost:<port>`):
-     - **dark** (`FEATURE_MILLIONEA=WITHDRAWN`): `node scripts/pre-deploy-live-check.mjs`, `node scripts/maswali-player-drive.mjs`;
-     - **player** (`FEATURE_MILLIONEA=ACTIVE`): `node scripts/maswali-player-drive.mjs`, `node scripts/maswali-player-shots.mjs`;
+     - **dark** (`FEATURE_MILLIONEA=WITHDRAWN`): `node scripts/pre-deploy-live-check.mjs`, then the player drive
+       (`maswali-player-drive.mjs`, in `maswali-s4`'s scripts folder — S5's, not yet on `main`);
+     - **player** (`FEATURE_MILLIONEA=ACTIVE`): the player drive, then the player shots (`maswali-player-shots.mjs`, the
+       same folder);
      - **console** (`ACTIVE`): `node scripts/maswali-admin-shots.mjs`, `node scripts/maswali-admin-drive.mjs`;
      - **servers** (`ACTIVE`): `revoked-deadend.test.mjs`, `motion-adoption-verify.mjs`, `admin-section-gate.test.mjs`,
        `needle-rest.test.mjs` (the five server-bound `test:all` members);
