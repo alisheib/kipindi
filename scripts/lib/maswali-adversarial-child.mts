@@ -728,15 +728,22 @@ if (runs("GU")) {
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
   // ⭐ S7-F2 · THE FINDING IS JUDGED ON THE FLOAT AS IT STANDS (the S7 review, round 2): Finance's top-up clears it.
+  //    S7-F3 · the reading that covers it is recorded and ends it for good, so the readings that keep it come first.
   const headroom = Number(floatRows[0]?.payload?.buffer ?? Number.NaN);
-  ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
-    Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
   const almost = await floatAlertFor(b.id, atB, 869_995 + headroom - 1);
   ok("FL.4d · control: a top-up one shilling short of the headroom keeps it — a warning now, the payout itself covered — naming the shilling",
     !!almost && almost.level === "warning" && almost.text.includes(`${formatTzs(1)} short`), J(almost ?? "no float alert"));
   const blind = await floatAlertFor(b.id, atB, null);
   ok("FL.4e · ⭐ …and a float that cannot be read now raises the week as critical — never the finding gone quiet (fail closed)",
     !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
+  ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
+    Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
+  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED (the review of S7-F2, MEDIUM): the float is there for the winners to withdraw,
+  //    and their withdrawals take it back down by the very payout it covered.
+  const latched = await weekAudit(b.id, "maswali.settlement.float_covered");
+  const drained = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4g · ⭐ S7-F3 · …and once covered it stays ended: the winners withdraw, the float falls back to 0, and no alert returns (the covering reading is recorded on the week)",
+    latched.length === 1 && Number(latched[0].payload?.paid) === 869_995 && !drained, J({ latched: latched.map((e: any) => e.payload), drained: drained ?? "no float alert" }));
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));
@@ -749,6 +756,9 @@ if (runs("GU")) {
   ok("FL.4c · ⭐ …and once C has paid with a float its check could not read, C's own alert stands in B's place — never silence (the S7 review, round 2)",
     unreadC.length === 1 && !!alertC && alertC.level === "critical" && /cannot be read/.test(alertC.text) && !(await floatAlertFor(b.id, atC, null)),
     J({ rows: unreadC.length, alert: alertC ?? "no float alert" }));
+  const drainedC = await floatAlertFor(c.id, atC, 0);
+  ok("FL.4h · control: …while C, never covered, still raises its alert on a drained float — critical, below the payout itself",
+    !!drainedC && drainedC.level === "critical" && /short of the payout/.test(drainedC.text), J(drainedC ?? "no float alert"));
   ok("FL.4f · control: …and C's clears once the float reads, covering its payout and headroom",
     rC2.ok && !(await floatAlertFor(c.id, atC, (rC2.week.paidTotal ?? 0) + headroom)));
   await topUp(FUND);

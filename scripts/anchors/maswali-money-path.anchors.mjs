@@ -467,9 +467,17 @@ export const MUTATIONS = [
   {
     name: "(F2-float-covered) a short-float finding outlives the top-up that covered it: the float as it stands is never asked (MB-11)",
     file: "src/lib/server/maswali-console.ts",
-    from: "    if (short <= 0) continue;",
-    to: "",
+    from: "    if (short <= 0) {",
+    to: "    if (Number.isNaN(short)) {",
     expect: "FL.4b · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F3-float-latch) a covered short-float finding is judged afresh: the winners' withdrawals bring the alert back (MB-11)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  const found = payouts.filter((w) => has(w, false) && !has(w, true));",
+    to: "  const found = payouts.filter((w) => has(w, false));",
+    expect: "FL.4g · ⭐",
     suite: "adversarial:GU",
   },
   {

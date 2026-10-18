@@ -26,13 +26,15 @@
  * an unreadable week's frozen rules leave OD-02's requirement unknown, and every reader fails closed — nine on each
  * store — §14c RF, the console's rules form and holiday list, eleven on each — and §9b TO, a seal that cannot read the
  * two-officer setting refuses, five on each: 180 on memory, 188 on Postgres.
+ * ⭐ S7-F3 (2026-10-18): FL.4g — a covered float finding stays ended once the winners withdraw — and its control FL.4h,
+ * on each store: 182 on memory, 190 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 180, postgres: 188 },
+  minPass: { memory: 182, postgres: 190 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

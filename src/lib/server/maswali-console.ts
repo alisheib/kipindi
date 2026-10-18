@@ -23,7 +23,7 @@ import { unrefundedVoids } from "./maswali-void";
 import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
 import { holidayOn } from "./maswali-holidays";
-import { getAuditForTargetsDurable } from "./audit";
+import { audit, getAuditForTargetsDurable } from "./audit";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -211,6 +211,8 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
 /** The settlement's float check's own rows (`floatCheck`, maswali-settlement.ts): what it found, at the payout. */
 const FLOAT_LOW_ACTION = "maswali.settlement.float_low";
 const FLOAT_UNREAD_ACTION = "maswali.settlement.float_unread";
+/** S7-F3 · the console's own row: a reading of the float that covered the week's payout and its headroom (the latch). */
+const FLOAT_COVERED_ACTION = "maswali.settlement.float_covered";
 
 /** The disbursement float as it stands, or null when it cannot be read (the payments console says why). */
 export type FloatReader = () => Promise<{ balance: number } | null>;
@@ -225,6 +227,10 @@ export type FloatReader = () => Promise<{ balance: number } | null>;
  * once the float covers that payout and its headroom — it used to outlive Finance's top-up — and shows what is still
  * short while it does not, critical below the payout itself. ⛔ A float that cannot be read is its own critical alert,
  * fail closed: the finding used to vanish when the next paying week's check could not read the float, leaving silence.
+ * ⭐ S7-F3 · AND ONCE COVERED, IT STAYS ENDED (the review of S7-F2, MEDIUM). The float exists for the winners to withdraw,
+ * so after Finance's top-up their withdrawals drain it again by the very payout it covered, and judged afresh the alert
+ * came back with nothing left to fund. The first reading that covers the payout and its headroom is recorded on the
+ * week (`float_covered`, awaited, so the next read sees it), and a covered week is never judged again.
  */
 async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]> {
   const settled = await weekStore.list({ states: ["SETTLED"] });
@@ -232,8 +238,10 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
     .map((line) => settled.filter((w) => w.visibility === line && (w.paidTotal ?? 0) > 0).sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0])
     .filter((w): w is StoredWeek => !!w);
   if (payouts.length === 0) return [];
-  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id), actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION], sinceIso: new Date(0).toISOString(), limit: 10 });
-  const found = payouts.filter((w) => rows.entries.some((e) => e.targetId === w.id));
+  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id),
+    actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION, FLOAT_COVERED_ACTION], sinceIso: new Date(0).toISOString(), limit: 50 });
+  const has = (w: StoredWeek, covered: boolean) => rows.entries.some((e) => e.targetId === w.id && (e.action === FLOAT_COVERED_ACTION) === covered);
+  const found = payouts.filter((w) => has(w, false) && !has(w, true));
   if (found.length === 0) return [];
   const read: FloatReader = readFloat ?? (async () => (await import("./payments")).getFloatBalance());
   const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
@@ -245,7 +253,11 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
       continue;
     }
     const short = paid + FLOAT_ALERT_BUFFER_TZS - float;
-    if (short <= 0) continue;
+    if (short <= 0) {
+      await audit({ category: "COMPLIANCE", action: FLOAT_COVERED_ACTION, actorId: "system_maswali", targetType: "MaswaliCycle", targetId: w.id,
+        payload: { code: w.code, paid, float, buffer: FLOAT_ALERT_BUFFER_TZS } });
+      continue;
+    }
     out.push({ level: float < paid ? "critical" : "warning", weekId: w.id,
       text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(paid)} this week paid — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
   }
