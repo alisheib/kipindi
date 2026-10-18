@@ -1070,7 +1070,7 @@ const historyNoPoller = swap(HISTORY, HISTORY_POLLER, "");
 const openQuoted: Impl["payout"] = (p) => (p.status === "OPEN" ? { kind: "final", amount: 6_911, won: false } : REAL.payout(p));
 const lossPaid: Impl["payout"] = (p) => (p.status === "LOSS" ? { kind: "final", amount: 9_999, won: false } : REAL.payout(p));
 const figureOnOpen = swap(CARD, "value={t.journey.ticketPayoutAtResult}", "value={formatTzs(p.stake)}");
-const UNRESOLVED_STAT = `<Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" />`;
+const UNRESOLVED_STAT = `<Stat label={t.journey.ticketPayout} value={t.journey.ticketPayoutAtResult} tone="muted" font="body" valueClassName="font-normal text-body-sm leading-snug text-balance" />`;
 const stampedShowsExact = swap(CARD, UNRESOLVED_STAT,
   `m.selectionClosedNotifiedAt ? <Stat label={t.market.payoutIfWin} value={formatTzs(p.stake)} tone="gold" money hint={t.market.payoutExactNote} /> : ${UNRESOLVED_STAT}`);
 const cardIsALink = swap(CARD, "<h2 className=", `<Link href={"/markets" as never}>open</Link><h2 className=`);

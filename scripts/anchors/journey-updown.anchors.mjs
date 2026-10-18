@@ -96,7 +96,7 @@ export const MUTATIONS = [
     file: "src/components/updown/updown-card.tsx",
     from: `                bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation`,
     to: `                bet={bet} pricing={pricing} assetName={assetName} size="detail" stopPropagation`,
-    expect: "6.1 every base line of the five classic files is still there, in order, but for the named swaps",
+    expect: "6.1 every base line of the five classic files is still there, in order, but for the named swaps and DotSeq footer",
   },
   {
     name: "board page — the journey prop handed to every card (a classic card's props and flight data gain a key)",
