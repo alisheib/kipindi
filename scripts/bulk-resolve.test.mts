@@ -537,6 +537,9 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
        && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")
        && /if \(twoOfficerNow === null\)/.test(actions) && /if \(drawn !== \(twoOfficerNow \? "1" : "0"\)\)/.test(actions));
+  const toggle = read("src/app/admin/resolver-queue/two-admin-toggle.tsx");
+  ok("11.5f the two-admin switch names an unread setting as unknown, with no switch — never drawn ON (it is handed the read, null included)",
+     /enabled: boolean \| null/.test(toggle) && /if \(enabled === null\) \{/.test(toggle) && /<TwoAdminToggle enabled=\{twoOfficerRead\} \/>/.test(p));
 
   const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
   ok("11.6 the bar reads the ACT gate", /useMayAct\(\)/.test(bar));

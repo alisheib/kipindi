@@ -283,7 +283,7 @@ async function ResolverQueueContent({
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             {canSetPolicy ? (
-              <TwoAdminToggle enabled={requireTwoOfficer} />
+              <TwoAdminToggle enabled={twoOfficerRead} />
             ) : (
               // Still shows WHICH mode is live — a trading officer needs to know
               // whether a resolution will take one officer or two — but does not
