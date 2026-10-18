@@ -64,8 +64,8 @@
   groups; the measures' horizon rule above; a campaign named as Millionea's is never grandfathered by the claims lint's
   rollout (it is judged in full).
 - **Gate B (before ACTIVE):** MB-23 the objection door; OD-26 the regulator's stop and a week void for a 50pick fault;
-  MB-69 the rules version on each ticket; S7's three KNOWN-RED cases (§6.1 line 14, `FAILURE-INVENTORY.md` §9); the
-  restore runbook re-applies the database's triggers and functions (a backup carries none).
+  MB-69 the rules version on each ticket; S7's three KNOWN-RED cases (recorded on `mln-sf`: §6.1 line 14,
+  `FAILURE-INVENTORY.md` §9); the restore runbook re-applies the database's triggers and functions (a backup carries none).
 - **The machine.** The heavy-job lock is v4.2.1 since 10:43 UTC (a ticket keeps its pid last, and a removed ticket is
   restored under its own name). Its state and events: `bash ~/heavy-node-lock.sh status`, `~/.heavy-node-events.log`;
   the machine guard: `bash ~/machine-guard-start.sh` after a reboot. At most four agents per session.
