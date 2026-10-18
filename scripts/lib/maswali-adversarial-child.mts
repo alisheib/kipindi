@@ -15,6 +15,7 @@
  *   §6  GU · an under-funded guarantee at k ≥ 1, to the shilling, and a short float (MR-22, MB-03, MB-11, MB-63)
  *   §7  WF · no winner floor: 950 winners at the floor, each paid below the ticket's price (MR-25, OD-19)
  *   §8  PL · an attempt to reclassify a week's productLine, through the store and in the database (MB-01)
+ *   §8b FR · a purchase whose read of its week or its market fails: refused as busy, never thrown (L6)
  *   §9  IN · an insider promoted mid-week: the tickets they hold, what they may still do (MR-10, MR-14, OD-12, MB-43)
  *   §10 RD · a reversed deposit funding a winner (MB-74, OD-07)
  *   §11 TK · the winner-takeover pattern (MB-96)
@@ -801,6 +802,51 @@ if (runs("PL")) {
   await closed(wk.id);
   await sealRest(wk.id, start);
   await released(wk.id);
+}
+
+// ═══ §8b · FR · a purchase whose read fails ═════════════════════════════════════════════════════════════════════════
+if (runs("FR")) section("§8b · FR · a purchase whose read of its week or its market fails is refused as busy, never thrown: nothing has moved (L6)");
+if (runs("FR")) {
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  const [buyer] = await people(1, 50_000);
+  const stateOf = async () => ({
+    bal: await bal(buyer), count: (await dal.weekStore.get(wk.id)).ticketCount,
+    positions: ((await market.listPositionsForMarket(wk.marketId)) as any[]).length, pool: await pool(wk.marketId),
+  });
+  /** ⚠️ A FAULT, DECLARED: one store's `get` throws for one row during one purchase, then is put back — a read that failed
+   *  (a dropped connection, a timeout), which no door of the product produces on purpose. */
+  const failing = async (store: any, id: string): Promise<{ r: any; threw: string }> => {
+    const real = store.get;
+    store.get = async (x: string, tx?: unknown) => {
+      if (x === id) throw new Error("FR · the read failed (a planted fault)");
+      return real.call(store, x, tx);
+    };
+    try {
+      return { r: await W.buy(buyer, wk.id, [MISS_M1]), threw: "" };
+    } catch (err) {
+      return { r: null, threw: String((err as Error)?.message ?? err) };
+    } finally {
+      store.get = real;
+    }
+  };
+  const before = await stateOf();
+  const m = await failing(W.mdal.marketStore, wk.marketId);
+  ok("FR.1 · ⭐ a purchase whose market read fails is refused as busy — the stake never moved, the same key may retry — never a throw (L6)",
+    !m.threw && !!m.r && !m.r.ok && m.r.reason === "system_busy" && m.r.code === "BUSY", m.threw || J(m.r));
+  ok("FR.1b · …and nothing moved: the buyer's balance, the week's count, its positions and its pool", J(await stateOf()) === J(before),
+    J({ before, after: await stateOf() }));
+  const w = await failing(dal.weekStore, wk.id);
+  ok("FR.2 · ⭐ a purchase whose week read fails is refused the same way, never a throw",
+    !w.threw && !!w.r && !w.r.ok && w.r.reason === "system_busy" && w.r.code === "BUSY", w.threw || J(w.r));
+  ok("FR.2b · …and nothing moved", J(await stateOf()) === J(before), J({ before, after: await stateOf() }));
+  const fine = await W.buy(buyer, wk.id, [MISS_M1]);
+  ok("FR.3 · control: the reads answering again, the same buyer buys the ticket",
+    fine.ok && (await bal(buyer)) === 49_000 && (await dal.weekStore.get(wk.id)).ticketCount === 1, J(fine.ok ? "sold" : fine));
+  // The books close behind the cases: the week voids whole and refunds its one ticket, so the jackpot is untouched.
+  await closed(wk.id);
+  await sealRest(wk.id, start, ALL_VOID);
+  await voided(wk.id);
 }
 
 // ═══ §9 · IN · an insider promoted mid-week ═════════════════════════════════════════════════════════════════════════

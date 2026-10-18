@@ -438,4 +438,22 @@ export const MUTATIONS = [
     expect: "DL.1 · ⭐",
     suite: "adversarial:DL",
   },
+  /* ── MASWALI-BUILD S7-F2 · the second review's follow-ups (L1, L5, L6 and the sunset's next act), one plant each, caught on
+     the plant's own section. ── */
+  {
+    name: "(F2-market-read) a purchase whose market read fails throws at the buyer instead of refusing (L6)",
+    file: SVC,
+    from: "  try { market = await marketStore.get(week.marketId); } catch (err) { return busy(`week ${week.code}'s market`, err); }",
+    to: "  market = await marketStore.get(week.marketId);",
+    expect: "FR.1 · ⭐",
+    suite: "adversarial:FR",
+  },
+  {
+    name: "(F2-week-read) a purchase whose week read fails throws at the buyer instead of refusing (L6)",
+    file: SVC,
+    from: "  try { week = await weekStore.get(input.weekId); } catch (err) { return busy(`week ${input.weekId}`, err); }",
+    to: "  week = await weekStore.get(input.weekId);",
+    expect: "FR.2 · ⭐",
+    suite: "adversarial:FR",
+  },
 ];

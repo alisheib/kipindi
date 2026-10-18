@@ -427,9 +427,18 @@ export async function purchaseMaswaliTickets(input: {
   stateNow?: () => Promise<RolloutState>;
 }): Promise<PurchaseResult> {
   const notOpen = { ok: false as const, error: "This Millionea week is not open for tickets.", code: "INVALID" as const, reason: "millionea_week_not_open" as const };
+  // ⛔ S7 (L6) · A READ THAT FAILS REFUSES, NEVER THROWS. Nothing has moved before `buyPosition`, so the buyer is told
+  //    exactly that and may retry with the same key: the platform's busy answer (`system_busy`, the stake never moved),
+  //    the one the ticket arm gives when its own desk read fails (R10b). Calling a week on sale shut, or Millionea
+  //    unavailable, would send its buyer away.
+  const busy = (what: string, err: unknown) => {
+    console.error(`[maswali] ${what} could not be read, so the purchase is refused:`, (err as Error)?.message ?? err);
+    return { ok: false as const, error: "We're busy right now — your stake hasn't moved. Try again in a moment.", code: "BUSY" as const, reason: "system_busy" as const, retryAfterSec: 1 };
+  };
   let state: RolloutState = "WITHDRAWN";
   try { state = await (input.stateNow ?? millioneaStateNow)(); } catch { state = "WITHDRAWN"; }
-  const week = await weekStore.get(input.weekId);
+  let week: StoredWeek | null;
+  try { week = await weekStore.get(input.weekId); } catch (err) { return busy(`week ${input.weekId}`, err); }
   if (!week || !week.marketId) return notOpen;
   if (!rolloutSells(state, week.visibility)) {
     return { ok: false, error: "Millionea is not available yet.", code: "INVALID", reason: "millionea_not_available" };
@@ -439,7 +448,8 @@ export async function purchaseMaswaliTickets(input: {
   // ⛔ S7 · THE WEEK'S MARKET MUST STILL BE A MILLIONEA MARKET (the fence, MB-01). The bet path routes a stake by its market's
   //    product line, so a week whose row was reclassified would be sold as a one-sided Yes/No stake on the week's own pool:
   //    a position with no ticket, and sales that never again agree three ways. Nothing is sold, and the server log says why.
-  const market = await marketStore.get(week.marketId);
+  let market: Awaited<ReturnType<typeof marketStore.get>>;
+  try { market = await marketStore.get(week.marketId); } catch (err) { return busy(`week ${week.code}'s market`, err); }
   if (!isFencedMaswali(market)) {
     console.error(`[maswali] ALARM · week ${week.code}'s market ${week.marketId} is not a Millionea market; nothing was sold`);
     return notOpen;
