@@ -124,6 +124,26 @@ console.log("\n§4 · the week's frozen rules");
   ok("4.8 · ⛔ a snapshot with no freeze time is refused", !readMaswaliRulesSnapshot({ ...snap, frozenAt: undefined }).ok);
   ok("4.9 · ⛔ a tampered snapshot (a cap of 0) is refused", !readMaswaliRulesSnapshot({ ...snap, ticketCapPerWeek: 0 }).ok);
   ok("4.10 · ⛔ no snapshot at all is refused", !readMaswaliRulesSnapshot(null).ok);
+  // S7-F3 · LOW-3 · A RUNNING WEEK IS READ AGAINST ITS OWN VERSION, NEVER TODAY'S VALIDATOR. A week frozen while the ranges
+  // were wider (a cap of 150, a price of 1.5M, a 2-minute buffer) must stay readable once today's ranges are narrower:
+  // `maswaliConfigProblem` refuses each value below, as a tightened validator would, and the week's rules still read.
+  const looser = { ...JSON.parse(JSON.stringify(snap)), ticketCapPerWeek: 150, ticketPriceTzs: 1_500_000, minLockBufferMinutes: 2 };
+  const tightened = [with_({ ticketCapPerWeek: 150 }), with_({ ticketPriceTzs: 1_500_000, floorTzs: 2_000_000 }), with_({ minLockBufferMinutes: 2 })].map((c) => maswaliConfigProblem(c));
+  const kept = readMaswaliRulesSnapshot(looser);
+  ok("4.11 · ⭐ S7-F3 · a week frozen under wider ranges stays readable after today's validator narrowed them (its cap, price and buffer as frozen)",
+    tightened.every((why) => why !== null) && kept.ok && kept.rules.ticketCapPerWeek === 150 && kept.rules.ticketPriceTzs === 1_500_000 && kept.rules.minLockBufferMinutes === 2,
+    JSON.stringify({ tightened, kept: kept.ok ? "read" : kept.error }));
+  // …the control: a snapshot that is not version 1's shape is still unreadable, field by field.
+  const malformed: Array<[string, Record<string, unknown>]> = [
+    ["a cap written as text", { ticketCapPerWeek: "10" }], ["a fractional cap", { ticketCapPerWeek: 2.5 }], ["a price of 0", { ticketPriceTzs: 0 }],
+    ["a negative floor", { floorTzs: -1 }], ["no close", { closeAt: undefined }], ["a close at 24:00", { closeAt: "24:00" }],
+    ["the close at the open", { closeWeekday: 1, closeAt: "00:00" }], ["a void deadline of 0", { voidDeadlineHours: 0 }],
+    ["a reversed probability band", { questionCaps: { probabilityMin: 0.7, probabilityMax: 0.3, maxPerCompetition: 4, minReserveSources: 3 } }],
+    ["no question rules", { questionCaps: null }], ["a policy v1 does not know", { guaranteeReservePolicy: "PAY_FROM_HOUSE_CASH" }],
+    ["a paid exit", { paidExitWindowMinutes: 5 }],
+  ];
+  const readable = malformed.filter(([, over]) => readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ...over }).ok).map(([name]) => name);
+  ok("4.12 · ⛔ …and a snapshot that is not version 1's shape is still refused, each malformation on its own (control)", readable.length === 0, readable.join(", "));
 }
 
 // ── §5 · the licence basis ──────────────────────────────────────────────────
