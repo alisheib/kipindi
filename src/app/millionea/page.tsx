@@ -154,7 +154,7 @@ function QuestionRow({ t, locale, q }: { t: Dict; locale: Locale; q: MillioneaHu
 function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   const qs = bySlot(w.questions);
   return (
-    <section id="mln-questions" aria-labelledby="mln-questions-h" className="flex scroll-mt-24 flex-col" data-testid="millionea-hub-questions">
+    <section id="mln-questions" aria-labelledby="mln-questions-h" className="flex scroll-mt-[96px] flex-col" data-testid="millionea-hub-questions">
       <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{t.millionea.weekQuestions}</h2>
       <ol>{qs.filter((q) => q.role === "MAIN").map((q) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} />)}</ol>
       <div className="flex flex-col gap-0.5 border-t border-border px-1 pb-1.5 pt-2" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}>

@@ -53,7 +53,7 @@ export function JourneyHomeGhost({ t, millionea = false }: { t: Dict; millionea?
         </div>
         {millionea && (
           <div aria-hidden className="mat-raised flex items-start gap-2 rounded-card p-3" data-ghost-part="millionea">
-            <span className="block h-12 w-12 shrink-0 rounded-card bg-bg-overlay kp-shimmer-track" />
+            <span className="kp-jhome-ghost__plate kp-shimmer-track" />
             <span className="flex min-w-0 flex-1 flex-col gap-1.5 pt-1">
               <span className="kp-jhome-ghost__bar kp-jhome-ghost__bar--where" />
               <span className="kp-jhome-ghost__line" />

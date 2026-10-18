@@ -1498,7 +1498,10 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
   // says so in every language, as its own paragraph after S12's, and the code keeps exactly that key, in the tab alone.
   const SLIP_WORDS: Record<Loc, string[]> = {
     en: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "the week&apos;s identifier", "no identifier of you", "removed once your ticket is cut", "the tab closes", "never buy a ticket unless you confirm it"],
-    sw: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "kitambulisho cha wiki", "hayana kitambulisho chako", "tiketi yako ikishakatwa", "ukifunga kichupo", "bila wewe kuthibitisha"],
+    // 2026-10-18 (S5 integration): "msimbo wa wiki" and "taarifa yoyote inayokutambulisha", not "kitambulisho" — the word
+    // for an identity document, which beside "kuweka pesa" and "bila" read as money moving without identity
+    // (`test:kyc-copy-truth` §2 rule 1), and which a reader takes the same way. The English and Chinese never said it.
+    sw: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "msimbo wa wiki", "hayana taarifa yoyote inayokutambulisha", "tiketi yako ikishakatwa", "ukifunga kichupo", "bila wewe kuthibitisha"],
     zh: ["maswali millionea", "kp-millionea-slip:", "sessionStorage", "该周标识符", "不含您的任何标识符", "出票后", "关闭标签页", "未经您确认绝不会出票"],
   };
   const slipDefects = (page: string): string[] => {

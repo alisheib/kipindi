@@ -46,8 +46,11 @@ const ROUND_VERSION = "2026-10-15.2";
  * S12's 2026-10-15.2, production's. Accepted only as all three paragraphs at these hashes, each the whole of its wrapper and
  * none outside one, with the wrapper's one import and S12's three present; legacy comparison strips the wrappers and the
  * import, so production's notice compares as itself.
+ * 2026-10-18 (S5 integration): the Swahili re-measured, 2eb3dfe4da7e → 30403f82c027 — "msimbo wa wiki" and "taarifa
+ * yoyote inayokutambulisha" replace "kitambulisho" (an identity document's word; `test:kyc-copy-truth` §2 rule 1). The
+ * paragraph was never printed: production's ceiling is WITHDRAWN.
  */
-const SLIP_NOTICE_HASH: Record<string, string> = { en: "d30f80325746", sw: "2eb3dfe4da7e", zh: "fc15d478bef9" };
+const SLIP_NOTICE_HASH: Record<string, string> = { en: "d30f80325746", sw: "30403f82c027", zh: "fc15d478bef9" };
 const SLIP_PARAGRAPH = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/;
 const SLIP_PARAGRAPHS = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/g;
 const WORDING_BLOCK = /\n {8}<MillioneaWording>[\s\S]*?\n {8}<\/MillioneaWording>/g;

@@ -370,8 +370,8 @@ function content(): Record<Locale, React.ReactNode> { return {
         </p>
         <MillioneaWording>
           <p data-policy-addition="millionea-slip">
-            Unapojaza tiketi ya Maswali Millionea, majibu uliyochagua kwa wiki hiyo huhifadhiwa kwenye sessionStorage ya kichupo hicho kama kp-millionea-slip: ikifuatiwa na kitambulisho cha wiki,
-            ili yabaki ukipakia ukurasa upya au ukienda kuweka pesa. Hayana kitambulisho chako, huondolewa tiketi yako ikishakatwa au ukifunga kichupo, na kamwe hayakati tiketi bila wewe kuthibitisha.
+            Unapojaza tiketi ya Maswali Millionea, majibu uliyochagua kwa wiki hiyo huhifadhiwa kwenye sessionStorage ya kichupo hicho kama kp-millionea-slip: ikifuatiwa na msimbo wa wiki,
+            ili yabaki ukipakia ukurasa upya au ukienda kuweka pesa. Hayana taarifa yoyote inayokutambulisha, huondolewa tiketi yako ikishakatwa au ukifunga kichupo, na kamwe hayakati tiketi bila wewe kuthibitisha.
           </p>
         </MillioneaWording>
         <AnalyticsChoice />

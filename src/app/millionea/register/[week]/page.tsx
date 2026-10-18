@@ -89,32 +89,35 @@ function Questions({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: Millio
         ))}
       </ol>
       <ScrollX label={t.millionea.weekQuestions} className="hidden md:block">
-        <table className="w-full text-left text-body-sm">
+        {/* ⚠️ TABLE LAW (`legal/rules/_shared.tsx`): `.admin-tbl` is the product's ONLY table skin — /fairness, /leaderboard,
+            the rules pages and the account page wear it too — so the cells take its padding, header and dividers, and
+            carry only their own ink, width and wrapping. */}
+        <table className="admin-tbl">
           <thead className="font-mono text-micro uppercase eyebrow text-text-subtle">
-            <tr className="border-b border-border">
-              <th scope="col" className="py-2 pr-2">#</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColCategory}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColQuestion}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColSource}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColEvent}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColOfficer}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColAttested}</th>
-              <th scope="col" className="py-2 pr-2">{t.millionea.regColOutcome}</th>
-              <th scope="col" className="py-2">{t.millionea.regColVoidReason}</th>
+            <tr>
+              <th scope="col" className="text-left">#</th>
+              <th scope="col" className="text-left">{t.millionea.regColCategory}</th>
+              <th scope="col" className="text-left">{t.millionea.regColQuestion}</th>
+              <th scope="col" className="text-left">{t.millionea.regColSource}</th>
+              <th scope="col" className="text-left">{t.millionea.regColEvent}</th>
+              <th scope="col" className="text-left">{t.millionea.regColOfficer}</th>
+              <th scope="col" className="text-left">{t.millionea.regColAttested}</th>
+              <th scope="col" className="text-left">{t.millionea.regColOutcome}</th>
+              <th scope="col" className="text-left">{t.millionea.regColVoidReason}</th>
             </tr>
           </thead>
           <tbody>
             {qs.map((q) => (
-              <tr key={q.slot} className="border-b border-border align-top" style={q.role === "RESERVE" ? { background: "var(--wash-inset)" } : undefined}>
-                <th scope="row" className="py-2 pr-2 font-mono font-bold text-text-muted tabular-nums">{placeOf(q)}</th>
-                <td className="py-2 pr-2 text-text-muted">{marketCategoryLabel(t, q.category)}</td>
-                <td className="min-w-[220px] py-2 pr-2 text-text">{textIn(locale, q.text)}</td>
-                <td className="py-2 pr-2 text-text-muted [overflow-wrap:anywhere]">{q.sourceDomain}</td>
-                <td className="py-2 pr-2 font-mono text-text-muted">{when(t, locale, q.eventStartsAt, nowMs)}</td>
-                <td className="py-2 pr-2 text-text-muted">{role(q)}</td>
-                <td className="py-2 pr-2 font-mono text-text-muted">{when(t, locale, q.sealedAt, nowMs)}</td>
-                <td className="py-2 pr-2">{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} /> : "—"}</td>
-                <td className="py-2 text-text-muted">{q.outcome === "VOID" ? reasonOf(t, q) : "—"}</td>
+              <tr key={q.slot} className="align-top" style={q.role === "RESERVE" ? { background: "var(--wash-inset)" } : undefined}>
+                <th scope="row" className="text-left font-mono text-text-muted tabular-nums">{placeOf(q)}</th>
+                <td className="text-text-muted">{marketCategoryLabel(t, q.category)}</td>
+                <td className="min-w-[220px] text-text">{textIn(locale, q.text)}</td>
+                <td className="text-text-muted [overflow-wrap:anywhere]">{q.sourceDomain}</td>
+                <td className="font-mono text-text-muted">{when(t, locale, q.eventStartsAt, nowMs)}</td>
+                <td className="text-text-muted">{role(q)}</td>
+                <td className="font-mono text-text-muted">{when(t, locale, q.sealedAt, nowMs)}</td>
+                <td>{q.outcome !== null ? <MaswaliOutcomeStamp t={t} outcome={q.outcome} /> : "—"}</td>
+                <td className="text-text-muted">{q.outcome === "VOID" ? reasonOf(t, q) : "—"}</td>
               </tr>
             ))}
           </tbody>
