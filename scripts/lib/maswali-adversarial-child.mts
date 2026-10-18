@@ -1359,6 +1359,9 @@ if (runs("GR")) {
     const pools1 = await consoleRead.poolsView(at);
     ok("GR.1 · ⭐ a week whose frozen rules cannot be read makes the requirement unknown — null, never a floor of 0 that understates it",
       W.svc.frozenRules(await dal.weekStore.get(U.id)) === null && pools1.requirement === null, J({ requirement: pools1.requirement }));
+    const uRow1 = pools1.weeks.find((x: any) => x.row.id === U.id);
+    ok("GR.1b · ⭐ S7-F3 · …and that week's own row on accounting's page reads its sales and worst top-up as unknown — null, never 0",
+      !!uRow1 && uRow1.sales === null && uRow1.worstTopUp === null, J(uRow1 ? { sales: uRow1.sales, worstTopUp: uRow1.worstTopUp } : "no row"));
     const unknown = (await guaranteeAlerts()).find((x) => x.weekId === U.id);
     ok("GR.2 · ⭐ …and the console's alert fires, naming the week: the guarantee cannot be shown to cover the unsettled weeks",
       !!unknown && unknown.level === "critical" && /cannot be read/.test(unknown.text) && unknown.text.includes(U.code), J(unknown ?? "no alert"));
@@ -1377,6 +1380,11 @@ if (runs("GR")) {
   ok("GR.6 · control: the rules read again — the exact requirement returns, the alert clears and the invariants name the week no more",
     pools2.requirement === expected && (await guaranteeAlerts()).length === 0 && (await uProblems()).length === 0,
     J({ requirement: pools2.requirement, alerts: (await guaranteeAlerts()).map((x) => x.text), problems: await uProblems() }));
+  const uRow2 = pools2.weeks.find((x: any) => x.row.id === U.id);
+  const uFloor = W.svc.frozenRules(await dal.weekStore.get(U.id))?.floorTzs ?? Number.NaN;
+  ok("GR.6b · control: …and U's row has its figures again: it sold nothing, so its worst top-up is its floor less the jackpot",
+    !!uRow2 && uRow2.sales === 0 && typeof uRow2.worstTopUp === "number" && uRow2.worstTopUp >= 0 && uRow2.worstTopUp <= uFloor,
+    J(uRow2 ? { sales: uRow2.sales, worstTopUp: uRow2.worstTopUp, floor: uFloor } : "no row"));
   const back2 = await money.returnMaswaliGuarantee({ amount: 1, reference: ref("RET"), typed: money.GUARANTEE_RETURN_WORD, ownerId: OWNER });
   ok("GR.7 · control: …a return inside the headroom lands", back2.ok && (await guarantee()) === g0 - 1, errOf(back2));
   const refill = await money.fundMaswaliGuarantee({ amount: 1, reference: ref("FUND"), typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });

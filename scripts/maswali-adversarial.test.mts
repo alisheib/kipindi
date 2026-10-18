@@ -27,15 +27,15 @@
  * store — §14c RF, the console's rules form and holiday list, eleven on each — and §9b TO, a seal that cannot read the
  * two-officer setting refuses, five on each: 180 on memory, 188 on Postgres.
  * ⭐ S7-F3 (2026-10-18): FL.4g — a covered float finding stays ended once the winners withdraw — and its control FL.4h,
- * on each store — and CS.10, a refused close's retry still wakes the timer once the rest of the tick ran past it:
- * 183 on memory, 191 on Postgres.
+ * on each store — and CS.10, a refused close's retry still wakes the timer once the rest of the tick ran past it — and
+ * GR.1b with its control GR.6b, an unreadable week's sales and worst top-up null on /pools: 185 on memory, 193 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 183, postgres: 191 },
+  minPass: { memory: 185, postgres: 193 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

@@ -85,10 +85,11 @@ async function Content({ searchParams }: PoolsPageProps) {
                         <tr key={w.row.id}>
                           <td className="text-left tabular">{w.row.code}{w.row.visibility === "DRIVE" ? " · drive" : ""}</td>
                           <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
-                          <td className="text-right tabular">{formatTzs(w.sales)}</td>
+                          {/* S7-F3 · a figure the week's frozen rules cannot give is said so, never shown as 0. */}
+                          <td className="text-right tabular">{w.sales === null ? "Cannot be read" : formatTzs(w.sales)}</td>
                           <td className="text-right tabular">{w.rolloverIn === null ? "Not yet" : formatTzs(w.rolloverIn)}</td>
                           <td className="text-right tabular">{w.distinctCombos.toLocaleString("en")} of 1,024 · {(w.coverage * 100).toFixed(1)}%</td>
-                          <td className="text-right tabular">{formatTzs(w.worstTopUp)}</td>
+                          <td className="text-right tabular">{w.worstTopUp === null ? "Cannot be read" : formatTzs(w.worstTopUp)}</td>
                           <td className="text-left align-top min-w-[280px]">
                             {w.preview ? (
                               <div className="space-y-1">

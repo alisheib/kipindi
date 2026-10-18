@@ -322,13 +322,15 @@ export async function draftSuggestions(fromMs: number, toMs: number, limit = 40)
 
 export type PoolsWeek = {
   row: ConsoleWeekRow;
-  sales: number;
+  /** Null when the week's frozen rules cannot be read: unknown, never 0 (S7-F3). */
+  sales: number | null;
   rolloverIn: number | null;
   /** MB-36 · the share of the 1,024 ways to answer the ten mains that some live ticket holds, 0…1. */
   coverage: number;
   distinctCombos: number;
-  /** The most this week could still draw from the guarantee: a single winner at the floor. */
-  worstTopUp: number;
+  /** The most this week could still draw from the guarantee: a single winner at the floor. Null when its rules or the
+   *  jackpot cannot be read (S7-F3). */
+  worstTopUp: number | null;
   /** A settlement ready to release (results final, window closed): its prepared figures, or why not. */
   preview: MaswaliSettlementPreview | null;
   previewRefusal: string | null;
@@ -362,9 +364,11 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
     const rules = frozenRules(w);
     const live = await ticketStore.listForWeek(w.id, { status: "LIVE" });
     const combos = new Set(live.map((t) => t.selections.slice(0, MAIN_COUNT).join("")));
-    const sales = live.length * (rules?.ticketPriceTzs ?? 0);
-    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic) ?? 0;
-    const worstTopUp = Math.max(0, (rules?.floorTzs ?? 0) - jackpot - sales);
+    // ⛔ S7-F3 · AN UNREADABLE WEEK'S FIGURES ARE UNKNOWN — null, never 0 (S7-F2's rule for the requirement): its price and
+    //    floor are its frozen rules', and a jackpot that cannot be read leaves the worst top-up unknown as well.
+    const sales = rules ? live.length * rules.ticketPriceTzs : null;
+    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic);
+    const worstTopUp = rules && sales !== null && jackpot !== null ? Math.max(0, rules.floorTzs - jackpot - sales) : null;
     let preview: MaswaliSettlementPreview | null = null, previewRefusal: string | null = null;
     if (w.state === "RESOLVING" && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
       const p = await previewMaswaliSettlement(w.id, now);
