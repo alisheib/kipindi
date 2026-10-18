@@ -2488,10 +2488,17 @@ Every money figure is `.amount`: mono, tabular, never letter-spaced, sized for `
 
 ##### 3.2 Classic-shell entry point (OPEN; recommendation)
 
+⭐ **Ali, 2026-10-19 — Millionea's own tab** (`docs/DESIGN_AUTHORITY.md` §M8a item 11, with his words): *"the maswali should
+have a new tab next to up and down like them but it should have a unique design the same tab but with writing in it kind of
+colors … in mixed glowing green red color and gold like 50pick design for uniqueness like kalshi"*. Millionea's tab sits
+right after Up & Down in every nav that has tabs, while it is visible to the viewer, its label in one still gradient of the
+three money colours (`.kp-millionea-ink`; no animation, by the lead's reading of the Owner's Kalshi reference). It reverses
+(c) below and the journey's "no tab" (D-13 (b), D-15); (a), (b) on the phone rail, (d) and (e) stand.
+
 - **(a) The same card at the head of the classic `/markets` board,** above the filters, at every width. Record it as a change to the accepted v3 discovery layer.
-- **(b) "Millionea" as the first row of `NavMore`,** for signed-in players and guests. Guests reach the hub, and buying asks them to sign in.
-- **(c) At 1024 and above, a row in the top bar's overflow menu.** No inline link: the row's own comments record it as over-subscribed.
-- **(d) No bottom-rail slot.** The rail is five equal tracks with the centre coin.
+- **(b) "Millionea" as the first row of the phone rail's `NavMore`,** for signed-in players and guests, wearing the tab's ink (S5-TAB 1). Guests reach the hub, and buying asks them to sign in.
+- **(c) At 1024 and above, a core link of the top bar right after Up & Down** (Ali, 2026-10-19). While it shows, Results folds into More at 1024–1279 and returns inline from 1280, paying for the link in the band that already runs short in Swahili (E-190). ~~A row in the top bar's overflow menu; no inline link~~ (struck 2026-10-19).
+- **(d) No bottom-rail slot on the classic phone rail.** It is five equal tracks with the centre coin, so Millionea stays More's first row there.
 - **(e) Classic `/positions`:** one NoticeBar-style row, "Tiketi za Millionea wiki hii: 2 →", only when the player holds tickets.
 
 ##### 3.3 Hub `/millionea` (`reading` tier)

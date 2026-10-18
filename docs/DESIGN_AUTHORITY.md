@@ -2602,7 +2602,9 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
 
    ### 8b — The four-slot journey rail (SJ-16)
 
-   *Maswali Millionea takes no slot on this rail; its doors are placed by §M8a item 11.*
+   *Maswali Millionea takes a fifth tab on this rail, right after Juu/Chini, while it is visible to the viewer (Ali,
+   2026-10-19, §M8a item 11): five equal tracks then, four when it is not. ~~Millionea takes no slot on this rail~~
+   (struck 2026-10-19).*
 
    `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; its one table is `JOURNEY_TABS` in
    `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge`.
@@ -2964,10 +2966,33 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
    shows a potential payout, and pick aggregates or an "alive" count never show before settlement.
 10. **One seal per player per week (§F9).** A week's wins are announced once, as one seal for the week, through the
     presence classes; a RETURNING player gets the calm bar and the seal on their own tap.
-11. **Placement (O-7, §K8b).** Millionea takes no rail slot. Its doors: one card on the journey home after the head (the
-    How-to card and the headline) and before the topic chips; on classic, one card at the head of `/markets` and the first
-    row of More; and a third switch in Tiketi zangu. Placing the card there deviates from the sponsor deck's home
-    (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
+11. **Placement: Millionea's own tab (Ali, 2026-10-19; it reverses O-7's "no rail slot", §K8b).** *Ali, typed on his
+    phone: "the maswali should have a new tab next to up and down like them but it should have a unique design the same
+    tab but with writing in it kind of colors … in mixed glowing green red color and gold like 50pick design for
+    uniqueness like kalshi how it states some of its tabs … perfect with perfect visual appearance of what we have".*
+    Millionea gets its OWN tab, right after Up & Down / Juu/Chini, in every nav that has tabs, and only while Millionea
+    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav is byte-identical to before): the journey
+    rail's fifth tab (five equal tracks while it shows, four when it does not), the journey's desktop link, and a core
+    link of the classic top bar (at 1024–1279, while it shows, Results folds into More; inline again from 1280). The
+    classic phone rail keeps its five tracks around the centre coin, so there Millionea stays More's first row.
+    `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu.
+    **The look.** The tab is its siblings' own (slot, pip, lit pill, label size, weight and spacing) and ONLY the label's
+    ink differs: one static horizontal gradient of the three money colours across the word, green to gold to red
+    (`--yes-300`, `--gold-300`, `--no-300`: the darkest point, `--no-300`, is 8.98:1 on `--panel`, above the unlit
+    siblings' `--text-subtle` at 6.93), with a faint gold `filter: drop-shadow` halo (never a text-shadow under the
+    transparent fill), and a hover that brightens it one tint. ⛔ **It never moves** (the lead's evaluation of the
+    Owner's Kalshi reference, 2026-10-19: Kalshi's "Midterms" tab is a still gradient fill at its siblings' size and
+    weight, and persistent navigation must not animate, WCAG 2.2.2). Forced colours draw plain system text. One class,
+    `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by every nav that draws Millionea; its mark is
+    Millionea's own glyph in gold. This gold is the Owner's label for a destination, not money: item 7 is untouched.
+    The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
+    topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
+    there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
+    ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
+    2026-10-19 by the ruling above.
+    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row. The journey tab, the journey and classic
+    desktop links and the table (`TAB_ROUTES`) are S5-TAB 2 and 3, still owed; until they land, the code's own notes
+    describe the S5 placement.*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`
