@@ -925,10 +925,17 @@ function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek | nul
   return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
 }
 
-/** A final week standing, in the Owner's words — answered before any rule a later act could meet — or null when none stands. */
+/**
+ * A final week standing, in the Owner's words — answered before any rule a later act could meet — or null when none stands.
+ * ⭐ S7-F5 · PASSES_ON is a stop still standing: the final week voided or sold nothing, so the next week to open becomes the
+ * final week by itself at its open (`openWeek`). The Owner is never told to draft a week and make it final then.
+ */
 function finalStandingWords(life: Awaited<ReturnType<typeof sunsetState>>): string | null {
   if (life.kind === "ENDING") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;
   if (life.kind === "RETIRED") return `Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`;
+  if (life.kind === "PASSES_ON") {
+    return `Week ${life.week.code} was the final week and ${life.week.state === "VOIDED" ? "was voided" : "sold no ticket"}, so the stop passes on: the next week to open becomes the final week by itself, and nothing more is needed.`;
+  }
   return null;
 }
 

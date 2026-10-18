@@ -27,8 +27,8 @@
  *   §14a GR · a week whose frozen rules cannot be read: the requirement is unknown, every reader fails closed (OD-02)
  *   §14b SN · a refused stop names the Owner's next act, in every branch (MR-30, OD-03; the S7 review, round 2)
  *   §14c RF · the console's rules form and holiday list: the save, the refusal, the frozen week, the Owner's list (MB-75)
+ *   §14d SC · the stop control names the Owner's next act when it offers no week (MR-30, OD-03; the S6 legal review)
  *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
- *   §15b SC · the stop control names the Owner's next act when it offers no week (MR-30, OD-03; the S6 legal review)
  *   §16    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
  *    database is exactly that split, so §1 makes it on the real clock: a week left OPEN past its close, as a slow
@@ -1558,6 +1558,35 @@ if (runs("RF")) {
   }
 }
 
+// ═══ §14d · SC · the stop control names the Owner's next act when it offers no week ═════════════════════════════════
+if (runs("SC")) section("§14d · SC · with no week on sale, a week's results being decided and no draft, the console names the Owner's next act — never a stop control that names none (MR-30, OD-03; the S6 legal review)");
+if (runs("SC")) {
+  // ⭐ Run BEFORE §15 SU: SU ends with its final week voided, so the line passes on (PASSES_ON) and the next week to open
+  //    becomes final by itself. Here the line is LIVE (SN and RF leave it so), and SC leaves it LIVE for SU.0.
+  // X is the newest week to open and its sales have closed; no draft follows it. The pools page offers only drafts and
+  // weeks on sale, so its stop control has no week to offer, and shows the console's next act instead (S7-F4).
+  const sX = W.weekStartAhead(ahead++), sY = sX + 7 * DAY;
+  ahead += 1;
+  const X = await openWeekAt(sX);
+  await closed(X.id);
+  const atX = new Date(Date.parse(X.closesAt) + HOUR);
+  const bare = await consoleRead.consoleStanding(atX);
+  const act0 = bare.stopNextAct ?? "";
+  ok("SC.1 · ⭐ none on sale, X's results decided, no draft: the console names the Owner's next act — draft the next week and make it final, at shorter notice while X is decided",
+    /^To stop Millionea, draft the next week and make it the final week: while week /.test(act0) && act0.includes(X.code), J(bare.stopNextAct));
+  const Y = await drafted(sY);
+  const act1 = (await consoleRead.consoleStanding(atX)).stopNextAct ?? "";
+  ok("SC.2 · control: with the next week drafted, the act named is to make that week final, as a refused stop names it",
+    /^To stop Millionea, make the next week to open, /.test(act1) && act1.includes(Y.code), J(act1));
+  // The books close behind the cases: X sold nothing and voids whole; Y opens, sells nothing and voids whole too.
+  await sealRest(X.id, sX, ALL_VOID);
+  await voided(X.id);
+  await opened(Y, sY);
+  await closed(Y.id);
+  await sealRest(Y.id, sY, ALL_VOID);
+  await voided(Y.id);
+}
+
 // ═══ §15 · SU · the sunset after a close ═══════════════════════════════════════════════════════════════════════════
 if (runs("SU")) section("§15 · SU · the sunset after a close: a week whose results are being decided is never made final; the next week may be, inside its week (MR-30, OD-03)");
 if (runs("SU")) {
@@ -1616,33 +1645,16 @@ if (runs("SU")) {
   await closed(B.id);
   await sealRest(B.id, sB, ALL_VOID);
   await voided(B.id);
-}
-
-// ═══ §15b · SC · the stop control names the Owner's next act when it offers no week ═════════════════════════════════
-if (runs("SC")) section("§15b · SC · with no week on sale, a week's results being decided and no draft, the console names the Owner's next act — never a stop control that names none (MR-30, OD-03; the S6 legal review)");
-if (runs("SC")) {
-  // X is the newest week to open and its sales have closed; no draft follows it. The pools page offers only drafts and
-  // weeks on sale, so its stop control has no week to offer, and shows the console's next act instead (S7-F4).
-  const sX = W.weekStartAhead(ahead++), sY = sX + 7 * DAY;
-  ahead += 1;
-  const X = await openWeekAt(sX);
-  await closed(X.id);
-  const atX = new Date(Date.parse(X.closesAt) + HOUR);
-  const bare = await consoleRead.consoleStanding(atX);
-  const act0 = bare.stopNextAct ?? "";
-  ok("SC.1 · ⭐ none on sale, X's results decided, no draft: the console names the Owner's next act — draft the next week and make it final, at shorter notice while X is decided",
-    /^To stop Millionea, draft the next week and make it the final week: while week /.test(act0) && act0.includes(X.code), J(bare.stopNextAct));
-  const Y = await drafted(sY);
-  const act1 = (await consoleRead.consoleStanding(atX)).stopNextAct ?? "";
-  ok("SC.2 · control: with the next week drafted, the act named is to make that week final, as a refused stop names it",
-    /^To stop Millionea, make the next week to open, /.test(act1) && act1.includes(Y.code), J(act1));
-  // The books close behind the cases: X sold nothing and voids whole; Y opens, sells nothing and voids whole too.
-  await sealRest(X.id, sX, ALL_VOID);
-  await voided(X.id);
-  await opened(Y, sY);
-  await closed(Y.id);
-  await sealRest(Y.id, sY, ALL_VOID);
-  await voided(Y.id);
+  // ⭐ S7-F5 · THE STOP PASSES ON: B, the final week, voided, so the next week to open becomes final by itself. The console
+  //    names that, never "draft the next week and make it final", and a stop asked now is answered the same way.
+  const atPass = new Date(Date.parse(B.closesAt) + 10 * DAY);
+  const passAct = (await consoleRead.consoleStanding(atPass)).stopNextAct ?? "";
+  ok("SU.7 · ⭐ S7-F5 · once the final week has voided, the console's next act says the stop passes on — the next week to open becomes final by itself — never to draft one and make it final",
+    (await W.svc.sunsetState()).kind === "PASSES_ON" && /passes on/.test(passAct) && /becomes the final week by itself/.test(passAct) && passAct.includes(B.code)
+      && !/draft the next week/.test(passAct), J(passAct));
+  const againC = await stop(C.id, atPass);
+  ok("SU.7b · …and a stop asked while it passes on is answered with those words: nothing more is needed, and no week is made final",
+    !againC.ok && /becomes the final week by itself/.test(errOf(againC)) && !(await isFinal(C.id)), errOf(againC));
 }
 
 // ═══ §16 · the invariants and the books ═════════════════════════════════════════════════════════════════════════════
