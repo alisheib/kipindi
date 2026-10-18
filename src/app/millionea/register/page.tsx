@@ -56,7 +56,7 @@ export default async function MillioneaRegisterPage({ searchParams }: { searchPa
     perPage: PLAYER_PER_PAGE,
   });
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-register">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.registerTitle} />
         {gate.preview && <MillioneaPreviewMark t={t} />}

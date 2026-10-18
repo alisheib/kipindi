@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** The page when no slip is drawn: its name, the reason, and the way back to the hub. */
 function NoSlip({ t, preview, children }: { t: Dict; preview: boolean; children: React.ReactNode }) {
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-5" data-testid="millionea-slip-none">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.titleSlip} />
         {preview && <MillioneaPreviewMark t={t} />}
@@ -97,7 +97,7 @@ export default async function MillioneaSlipPage() {
   const cancelAt = msOf(slip.cancelIfBoughtNow);
   const deposit = `/wallet/deposit?${new URLSearchParams({ amount: String(Math.max(0, slip.ticketPrice - (slip.balance ?? 0))) })}`;
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       {/* The way back to the hub over the slip's head, as the S-slip frames draw it ("‹ MASWALI MILLIONEA"). */}
       <BackLink fallbackHref={MILLIONEA_HREF.hub} label={t.millionea.productTitle} />
       {gate.preview && <MillioneaPreviewMark t={t} />}

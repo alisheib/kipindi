@@ -190,8 +190,12 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
     ticket.includes("live.reservesLeft.valid < 0 ? fill(t.millionea.reservesShort, { b: live.reservesLeft.of })")
       && squash(code(read(HUB))).includes("return valid < 0 ? fill(t.millionea.reservesShort, { b: RESERVE_COUNT })")
       && ![HUB, TICKET_PAGE].some((f) => /Math\.max\(0, RESERVE_COUNT/.test(code(read(f)))));
-  const d20 = LOCALES.filter((l) => !/\b0\b/.test(dict[l].millionea.reservesShort) || !dict[l].millionea.reservesShort.includes("{b}"));
-  ok("2.M3e · the D-20 sentence exists in all three languages", d20.length === 0, j(d20));
+  // D-20 in plain words (the S5 review of 24ec0d33, LOW 14): what is true — not enough reserves for the voided questions —
+  // never a figure below zero ("below 0 of 5" read as nonsense).
+  const plain = (s: string) => s.trim() !== "" && !/[0-9]/.test(s) && !s.includes("{b}") && !s.includes("{a}");
+  const d20 = LOCALES.filter((l) => !plain(dict[l].millionea.reservesShort) || dict[l].millionea.reservesShort === dict[l].millionea.reservesLeft);
+  ok("2.M3e · the D-20 sentence says it in words in all three languages — no figure, never \"below 0\"; CONTROL: the old line is refused",
+    d20.length === 0 && !plain("Valid reserves left: below 0 of {b}"), j(d20.map((l) => dict[l].millionea.reservesShort)));
 }
 
 // M4 · the family, and a link with a name
@@ -447,6 +451,37 @@ const heldGuardDefects = (hubSrc: string) => {
     hubSrc.includes("nextOpen === null ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })")
       && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
       && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));
+}
+
+// R5 · the review of 24ec0d33, LOW 14: Millionea's Chinese breaks as the platform's does — every page root and each part
+// drawn on another page carries the one rule
+{
+  const ROOTS: ReadonlyArray<[string, string]> = [
+    [HUB, '<PageContainer tier="reading" className="kp-mln-zh">'],
+    ["src/app/millionea/how/page.tsx", '<PageContainer tier="reading" className="kp-mln-zh">'],
+    ["src/app/millionea/slip/page.tsx", '<PageContainer tier="reading" className="kp-mln-zh">'],
+    ["src/app/millionea/register/page.tsx", '<PageContainer tier="reading" className="kp-mln-zh">'],
+    [REGISTER_WEEK, '<PageContainer tier="reading" className="kp-mln-zh">'],
+    ["src/app/millionea/tickets/page.tsx", '<PageContainer tier="reading" className="kp-mln-zh space-y-6">'],
+    [TICKET_PAGE, '<PageContainer tier="receipt" id={view.positionId} className="kp-mln-zh space-y-5">'],
+    [CARD, 'className={cn("kp-mln-zh mat-raised flex items-start gap-2 rounded-card p-3'],
+    ["src/app/positions/page.tsx", 'className="kp-mln-zh mat-flat flex min-h-[44px] items-center gap-3 rounded-control'],
+  ];
+  const zhDefects = (readAt: (rel: string) => string) => {
+    const d = ROOTS.filter(([f, root]) => !code(readAt(f)).includes(root)).map(([f]) => f);
+    // Every PageContainer a Millionea page draws carries it (the slip draws two).
+    for (const f of MLN_FILES.filter((x) => x.startsWith("src/app/millionea/") && x.endsWith("/page.tsx"))) {
+      const s = code(readAt(f));
+      if (count(s, "<PageContainer") !== count(s, 'className="kp-mln-zh')) d.push(`${f}: a PageContainer without kp-mln-zh`);
+    }
+    const css = readAt("src/app/globals.css");
+    if (!css.includes(".kp-mln-zh:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }")) d.push("globals.css: the rule");
+    return d;
+  };
+  const z = zhDefects(read);
+  ok("2.R5a · every Millionea page root, the home card and the /positions row carry `.kp-mln-zh`, the one rule that keeps a Chinese word whole (keep-all, and anywhere as the floor)", z.length === 0, z.join(" | "));
+  const plantedZh = zhDefects((r) => (r === CARD ? read(r).replace('"kp-mln-zh mat-raised', '"mat-raised') : read(r)));
+  ok("2.R5a′ CONTROL · the card without the rule is reported", plantedZh.includes(CARD));
 }
 
 // ── §3 · controls ─────────────────────────────────────────────────────────────────────────────────────────────────────

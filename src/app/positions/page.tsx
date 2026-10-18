@@ -351,7 +351,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         <Link
           href={"/millionea/tickets" as never}
           data-testid="positions-millionea-row"
-          className="mat-flat flex min-h-[44px] items-center gap-3 rounded-control px-4 py-3 text-body-sm text-text transition-colors hover:bg-bg-overlay"
+          className="kp-mln-zh mat-flat flex min-h-[44px] items-center gap-3 rounded-control px-4 py-3 text-body-sm text-text transition-colors hover:bg-bg-overlay"
         >
           <MillioneaGlyph name="millionea" s={16} className="shrink-0 text-text-muted" />
           <span className="min-w-0 flex-1">

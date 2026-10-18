@@ -125,7 +125,7 @@ export default async function MillioneaHowPage() {
   ];
   const H2 = "font-display text-title-sm font-bold text-text";
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-how">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.howToPlay} />
         {gate.preview && <MillioneaPreviewMark t={t} />}

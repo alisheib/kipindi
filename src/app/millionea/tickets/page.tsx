@@ -90,7 +90,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   const selling = hubWeek?.selling ? hubWeek : null;
 
   return (
-    <PageContainer tier="reading" className="space-y-6">
+    <PageContainer tier="reading" className="kp-mln-zh space-y-6">
       <RefreshPoller intervalMs={60_000} enabled={anyLive} />
       {journey
         ? <TicketsHead current="millionea" t={t} />

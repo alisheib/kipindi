@@ -4700,6 +4700,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    (`footer.licensedByGbt`'s zero-width spaces). A run longer than its line still breaks rather than overflow — the
    `.kp-hub__sub:lang(zh)` rule. */
 .kp-hero__trust:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+/* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
+   root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
+   Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still
+   breaks rather than overflow. Both properties inherit, so the root sets every run under it; other languages are untouched. */
+.kp-mln-zh:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */

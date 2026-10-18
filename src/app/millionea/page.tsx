@@ -281,7 +281,7 @@ export default async function MillioneaHubPage() {
   const phases = w ? phasesOf(w) : null;
 
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       <div data-testid="millionea-hub" className="flex flex-col gap-6">
         <RefreshPoller intervalMs={60_000} />
         <PageHeader eyebrow={w ? weekEyebrow(t, w) : undefined} title={t.millionea.productTitle} />

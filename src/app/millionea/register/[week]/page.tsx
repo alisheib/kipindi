@@ -206,7 +206,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
   const nowMs = Date.now();
   const week = weekNumberOf(w.code);
   return (
-    <PageContainer tier="reading">
+    <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-register-week">
         <BackLink fallbackHref={MILLIONEA_HREF.register} label={t.millionea.registerTitle} />
         <PageHeader eyebrow={t.millionea.registerTitle} title={`${weekWord(t, week)} · ${millioneaWord(t, WEEK_STATE_KEY[w.state])}`} />

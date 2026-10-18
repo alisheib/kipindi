@@ -141,7 +141,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
   const forfeited = view.win?.yourForfeitedTickets ?? 0;
 
   return (
-    <PageContainer tier="receipt" id={view.positionId} className="space-y-5">
+    <PageContainer tier="receipt" id={view.positionId} className="kp-mln-zh space-y-5">
       <HashFocus />
       {(running || graded) && <RefreshPoller intervalMs={60_000} />}
       <TicketSeen serial={view.serial} through={view.seen.through} />

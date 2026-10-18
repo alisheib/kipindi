@@ -110,7 +110,7 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
   return (
     <Link
       href={href as never}
-      className={cn("mat-raised flex items-start gap-2 rounded-card p-3 text-text md:items-center md:gap-3 xl:gap-4 xl:px-4", className)}
+      className={cn("kp-mln-zh mat-raised flex items-start gap-2 rounded-card p-3 text-text md:items-center md:gap-3 xl:gap-4 xl:px-4", className)}
     >
       <IconPlate size={48} bg="var(--bg-overlay)" fg="var(--text-muted)" border="1px solid var(--border)">
         <MillioneaGlyph name="millionea" s={plateGlyph(48)} />
