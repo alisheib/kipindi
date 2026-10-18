@@ -8,6 +8,45 @@
 
 ---
 
+## 2026-10-18 · Counts as: a desk account's own stakes placed by hand count too (owner ruling)
+
+**Authority.** Ali, 2026-10-18, in the session, choosing between "count bets placed by hand from a desk account too" and
+"keep it to the desk's automatic stakes": *"make the by hand place also count please"*, then *"and push the fix live
+please"*.
+
+**Why it came up.** Management set desk accounts' **Counts as** above 1 and saw no change on the polls the accounts were
+in. Production (read-only, 2026-10-18 14:30 EAT) showed why: officers sign in to desk accounts and stake polls **by hand**,
+like players — 34 such stakes on 13 open polls — and a stake placed by hand carries no house marker, so the 2026-10-11
+rule (§ "2026-10-11 · A desk account may count as more than one predictor in the count players see", item 2: "the FIRST
+stake **the desk places**") counted none of them. Only the desk's own automatic stakes were counted.
+
+**What changed** (the release carrying migration `20261018150000_counts_as_by_hand`):
+1. A desk account counts as its **Counts as** number on a market from its holder's FIRST stake there, whether the desk
+   placed it or an officer placed it by hand from the account. A later stake adds nothing, whoever places it.
+2. Changing the number moves every open (LIVE or CLOSED) market the account's holder is on — staked by the desk or by
+   hand. Finished markets keep the number they ended with (unchanged from 2026-10-11).
+3. **Catch-up, once:** the release's migration adds each account's weight to the open markets its holder had staked
+   ONLY by hand before this release (13 open polls at the read; the desk-staked ones already carried it).
+4. A **REMOVED** account's holder is an ordinary player again: their stakes count as 1.
+
+**What did NOT change:** no money moves for it — stakes, pools, odds, payouts, fees, levies and every ledger row are what
+they would be without it (the Gaming Board's condition as Ali reported it on 2026-10-11). `predictorCount`, the TRUE count
+every report, the match-integrity report and every admin page read, is untouched; D19, D20a and D20d stand as the
+2026-10-11 entry states them. A stake placed by hand stays the holder's own stake in every money rule (wagering, the
+opposite-side rule, refunds) — nothing here touches the house marker.
+
+**Amends:** § "2026-10-11 · A desk account may count as more than one predictor in the count players see", item 2 (the
+desk's stakes only) — marked in place.
+
+**Controls:** the stamp is the bet's own transaction under the bettor's wallet lock — the lock every change of the number
+also takes — so a stake and a change of weight are ordered and every open market carries exactly `Counts as − 1` for
+each account whose holder is on it (`test:house-bot-seam` §6 (s) by hand, `test:house-bot-money` §13b on both stores,
+the catch-up statement itself proved on Postgres in §13c, the shift's population in `test:house-bot-console` 2.ca; each
+assertion proved by a planted defect, `red:house-bot-money` / `red:house-bot-console` `--only ca-`). Build record:
+[`HOUSE-BOTS.md`](HOUSE-BOTS.md) §12.22.
+
+---
+
 ## 2026-10-17 · Maswali Millionea's doors on the journey home and in Tiketi zangu deviate from the sponsor deck (owner ruling, O-7)
 
 **Authority.** Ali, on 2026-10-17, handing Claude Design's owner-ruling form to a session: *"claude design is done as
@@ -532,6 +571,8 @@ and D21's. Ali reports that the Board approved this as long as the money is unch
    (section "Market cards") and in a sortable roster column.
 2. The FIRST stake the desk places from an account on a market (a poll or an Up & Down round) makes the count
    **players** see on that market count the account as that many predictors instead of one. A later stake adds nothing.
+   ⚠️ **Amended 2026-10-18** (§ "2026-10-18 · Counts as: a desk account's own stakes placed by hand count too"): the
+   holder's FIRST stake on the market counts it, whether the desk placed it or an officer placed it by hand.
 3. Changing the number moves the count on every market that account is on that is still open (LIVE or CLOSED), in the
    save's own locked transaction; a finished market (RESOLVED, VOIDED) keeps the number it ended with. Lowering it
    lowers what players see.

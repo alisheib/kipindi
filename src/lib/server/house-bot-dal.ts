@@ -1438,9 +1438,9 @@ export interface HouseBotStore {
   /** CAS on `rulesVersion` (+1). Only `rules` and `BOT_CAP_FIELDS`; engine code never calls it. */
   saveRules(id: string, baseVersion: number, patch: HouseBotRulesPatch, tx?: HouseTx): Promise<CasResult<StoredHouseBot>>;
   /**
-   * "Counts as" moved (owner ruling 2026-10-11): add `delta` to `predictorExtra` on every LIVE or CLOSED market where
-   * this account holds a position carrying its marker (any status), floored at 0. RESOLVED and VOIDED markets keep the
-   * number they ended with. Postgres locks the rows in id order. Never touches `updatedAt`: a change of weight is not
+   * "Counts as" moved (owner rulings 2026-10-11 and 2026-10-18): add `delta` to `predictorExtra` on every LIVE or CLOSED
+   * market where this account's holder holds a position (any status) — the desk's or one placed by hand — floored at 0.
+   * RESOLVED and VOIDED markets keep the number they ended with. Postgres locks the rows in id order. Never touches `updatedAt`: a change of weight is not
    * market activity.
    * ⛔ ONE CALLER: `saveHouseBotRules`, under `wallet:<holder>`, in the CAS's own transaction, after the CAS. A rules
    * write that skips it (a test writing through `saveRules` directly) leaves the counts as they were.
@@ -2413,18 +2413,23 @@ function designatedBot(bot: NewHouseBot, now: string): StoredHouseBot {
 const PAUSED_ONLY: readonly HouseBotStatus[] = ["PAUSED", "AUTO_PAUSED"];
 
 /**
- * ⭐ THE MARKETS A "COUNTS AS" CHANGE MOVES (owner ruling 2026-10-11) — ONE predicate per twin, shared by the shift and
- * its count, so the number an officer is told before Save is the number the save moves: still open (LIVE or CLOSED;
- * RESOLVED and VOIDED keep the number they ended with) and holding a position that carries this account's marker,
- * whatever that position's status.
+ * ⭐ THE MARKETS A "COUNTS AS" CHANGE MOVES (owner rulings 2026-10-11 and 2026-10-18) — ONE predicate per twin, shared by
+ * the shift and its count, so the number an officer is told before Save is the number the save moves: still open (LIVE
+ * or CLOSED; RESOLVED and VOIDED keep the number they ended with) and holding a position of this account's HOLDER,
+ * whatever that position's status — the desk's (it carries the marker) or one placed by hand from the account (it does
+ * not). Ali, 2026-10-18: "make the by hand place also count". The bet path stamps the extra at the holder's first stake
+ * on a market, whoever places it (`house-bot/shown-count.ts`), so this is exactly the set of markets that carry it.
  */
 function shownMarketsWhere(accountParam: string): string {
   return `m."status" IN ('LIVE', 'CLOSED')
-          AND EXISTS (SELECT 1 FROM "Position" x WHERE x."marketId" = m."id" AND x."houseBotId" = ${accountParam})`;
+          AND EXISTS (SELECT 1 FROM "Position" x JOIN "HouseBot" b ON b."userId" = x."userId"
+                      WHERE x."marketId" = m."id" AND b."id" = ${accountParam})`;
 }
 type MemMarket = NonNullable<Awaited<ReturnType<typeof marketStore.get>>>;
 async function memShownMarkets(houseBotId: string): Promise<MemMarket[]> {
-  const ids = [...new Set((await positionStore.values()).filter((p) => p.houseBotId === houseBotId).map((p) => p.marketId))].sort();
+  const holder = memBots.get(houseBotId)?.userId;
+  if (!holder) return [];
+  const ids = [...new Set((await positionStore.values()).filter((p) => p.userId === holder).map((p) => p.marketId))].sort();
   const out: MemMarket[] = [];
   for (const id of ids) {
     const m = await marketStore.get(id);

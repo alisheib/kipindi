@@ -4830,6 +4830,32 @@ import Link from "next/link";`,
     expect: "2.ca.3 · 1 → 100: LIVE and CLOSED move by 99",
     suite: "console-pg",
   },
+  /* ⭐ BY HAND (owner ruling 2026-10-18): the shift's population is the HOLDER's markets — a market staked only by hand
+     moves too, a market only another account's holder staked by hand does not. Caught by 2.ca.3's byHand/othersByHand. */
+  {
+    name: "ca-shift-marker-only · the memory shift moves only markets carrying the marker, not the holder's by hand",
+    file: "src/lib/server/house-bot-dal.ts",
+    from: `  const ids = [...new Set((await positionStore.values()).filter((p) => p.userId === holder).map((p) => p.marketId))].sort();`,
+    to: `  const ids = [...new Set((await positionStore.values()).filter((p) => p.houseBotId === houseBotId).map((p) => p.marketId))].sort();`,
+    expect: "2.ca.3 · 1 → 100: LIVE and CLOSED move by 99",
+    suite: "console-mem",
+  },
+  {
+    name: "ca-shift-marker-only-sql · the Postgres shift moves only markets carrying the marker, not the holder's by hand",
+    file: "src/lib/server/house-bot-dal.ts",
+    from: `          AND EXISTS (SELECT 1 FROM "Position" x JOIN "HouseBot" b ON b."userId" = x."userId"`,
+    to: `          AND EXISTS (SELECT 1 FROM "Position" x JOIN "HouseBot" b ON b."id" = x."houseBotId"`,
+    expect: "2.ca.3 · 1 → 100: LIVE and CLOSED move by 99",
+    suite: "console-pg",
+  },
+  {
+    name: "ca-shift-any-holder · the memory shift moves every market any account's holder staked on",
+    file: "src/lib/server/house-bot-dal.ts",
+    from: `  const ids = [...new Set((await positionStore.values()).filter((p) => p.userId === holder).map((p) => p.marketId))].sort();`,
+    to: `  const ids = [...new Set((await positionStore.values()).filter((p) => p.userId !== "").map((p) => p.marketId))].sort();`,
+    expect: "2.ca.3 · 1 → 100: LIVE and CLOSED move by 99",
+    suite: "console-mem",
+  },
   {
     name: "ca-shift-old-weight · the save shifts from 1 instead of the weight the stored document holds",
     file: "src/lib/server/house-bot/rules-save.ts",

@@ -126,8 +126,12 @@ function checks(read: (rel: string) => string): Check[] {
   /* §6 · the bet path */
   const svcRaw = read("src/lib/server/market-service.ts");
   const svc = decomment(svcRaw);
-  ok("6 · the bet path names the extra only through the seam's read, inside the one pool increment, and never for a player",
-    svcRaw.split(String.fromCharCode(13)).join("").includes(["    // SEAM:shownCount", '    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 0;'].join(String.fromCharCode(10)))
+  /* ⭐ Since the owner ruling of 2026-10-18 ("make the by hand place also count") the seam reads EVERY stake's bettor: a
+     desk account's holder counts as its weight whether the desk or a person placed the stake; a bettor with no live desk
+     account (every ordinary player) reads 0 — `house-bot/shown-count.ts`, proved on the stores by `test:house-bot-seam`
+     §6 (s) by hand and `test:house-bot-money` §13b. */
+  ok("6 · the bet path names the extra only through the seam's read, inside the one pool increment, read for the bettor (0 for an ordinary player)",
+    svcRaw.split(String.fromCharCode(13)).join("").includes(["    // SEAM:shownCount", "    const shownExtra = await houseShownExtra({ tx: lockTx, userId, mine });"].join(String.fromCharCode(10)))
       && /const shown = shownExtra > 0 \? \{ predictorExtra: shownExtra \} : \{\};/.test(svc)
       && (svc.match(/predictorCount: firstForThisPlayer, \.\.\.shown \}/g) ?? []).length === 2
       && (svc.match(/\bpredictorExtra\b/g) ?? []).length === 3,

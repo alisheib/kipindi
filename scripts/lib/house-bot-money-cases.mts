@@ -1456,6 +1456,125 @@ section("§13 · Counts as at the bet, both stores");
     JSON.stringify({ ok: p2.ok, reason: p2.reason, count: m3.predictorCount, extra: m3.predictorExtra }));
 }
 
+/* §13b · BY HAND (owner ruling 2026-10-18 — "make the by hand place also count"). An officer signed in to a desk account
+ * stakes like a player: no house marker, and the account still counts as its weight — once per market, at its holder's
+ * FIRST stake there, whoever places it — with not one shilling moved that the stake would not have moved. */
+section("§13b · Counts as by hand, both stores");
+{
+  const market = await w.poll({ graceMin: 0 });
+  const desk = await w.bot();
+  await w.setCaps(desk.botId, { rules: { schemaVersion: 1, display: { countsAs: 50 } } });
+  await w.limits({ gStaffChosenMaxCounterpartyShare: 100 });
+  const m0: Any = { ...(await w.svc.getMarket(market.id)) };
+  const before = Number(((await w.bal(desk.userId)) as Any).balance);
+  const h1: Any = await w.svc.buyPosition(desk.userId, { marketId: market.id, side: "NO", stake: 2_000, idempotencyKey: crypto.randomUUID() });
+  const m1: Any = { ...(await w.svc.getMarket(market.id)) };
+  const after = Number(((await w.bal(desk.userId)) as Any).balance);
+  const hp: Any = h1.ok ? await w.mdal.positionStore.get(h1.data.positionId) : null;
+  ok("13.4 · BY HAND · a desk account counted as 50: its holder's own first stake adds 1 to the true count and 49 to the extra, carries no marker, and moves only its own 2,000",
+    h1.ok === true && hp !== null && (hp.houseBotId ?? null) === null
+      && m1.predictorCount === m0.predictorCount + 1 && Number(m1.predictorExtra) === 49
+      && m1.noPool === m0.noPool + 2_000 && m1.yesPool === m0.yesPool && before - after === 2_000,
+    JSON.stringify({ ok: h1.ok, reason: h1.reason, marker: hp?.houseBotId ?? null, count: m1.predictorCount, extra: m1.predictorExtra, debit: before - after }));
+  if (h1.ok) await w.backdate(h1.data.positionId, 10_000);
+  const h2: Any = await w.svc.buyPosition(desk.userId, { marketId: market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const m2: Any = { ...(await w.svc.getMarket(market.id)) };
+  ok("13.5 · BY HAND · its second stake by hand adds nothing to either count",
+    h2.ok === true && m2.predictorCount === m1.predictorCount && Number(m2.predictorExtra) === 49,
+    JSON.stringify({ ok: h2.ok, reason: h2.reason, count: m2.predictorCount, extra: m2.predictorExtra }));
+  /* The other order: the DESK stakes first, then the holder by hand. (A desk stake AFTER the holder's own position is
+     refused by H2 as a market conflict, so that order never reaches the seam.) */
+  const marketD = await w.poll({ graceMin: 0 });
+  const d1: Any = await w.place(desk, await w.intent(desk, marketD.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+  const md1: Any = { ...(await w.svc.getMarket(marketD.id)) };
+  if (d1.ok && d1.data?.positionId) await w.backdate(d1.data.positionId, 10_000);
+  const d2: Any = await w.svc.buyPosition(desk.userId, { marketId: marketD.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const md2: Any = { ...(await w.svc.getMarket(marketD.id)) };
+  ok("13.6 · BY HAND · after the desk's stake from the account, its holder's stake by hand adds nothing — the account is already counted there",
+    d1.ok === true && md1.predictorCount === 1 && Number(md1.predictorExtra) === 49
+      && d2.ok === true && md2.predictorCount === 1 && Number(md2.predictorExtra) === 49,
+    JSON.stringify({ desk: { ok: d1.ok, reason: d1.reason, count: md1.predictorCount, extra: md1.predictorExtra },
+      hand: { ok: d2.ok, reason: d2.reason, count: md2.predictorCount, extra: md2.predictorExtra } }));
+  const gone = await w.bot();
+  await w.setCaps(gone.botId, { rules: { schemaVersion: 1, display: { countsAs: 50 } } });
+  const removed: Any = await w.dal.houseBotStore.setStatus(gone.botId, {
+    from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "13.7 fixture", cause: "MANUAL" },
+  });
+  const market2 = await w.poll({ graceMin: 0 });
+  const r4: Any = await w.svc.buyPosition(gone.userId, { marketId: market2.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const m4: Any = { ...(await w.svc.getMarket(market2.id)) };
+  ok("13.7 · BY HAND · the holder of a REMOVED account counted as 50 is an ordinary player again: 1 on the true count, nothing on top",
+    removed !== null && r4.ok === true && m4.predictorCount === 1 && Number(m4.predictorExtra ?? 0) === 0,
+    JSON.stringify({ removed: removed?.status ?? null, ok: r4.ok, reason: r4.reason, count: m4.predictorCount, extra: m4.predictorExtra }));
+}
+
+/* §13c · THE ONE-TIME CATCH-UP (`prisma/migrations/20261018150000_counts_as_by_hand`), run on Postgres over fixtures that
+ * look like the stakes placed before this release: hand positions (no marker) that stamped nothing. The migration's own
+ * statement, read from its file — so what is proved here is what production runs. */
+if (w.onPostgres) {
+  section("§13c · Postgres: the by-hand catch-up migration");
+  const j = (v: unknown): string => JSON.stringify(v);
+  const migration = readFileSync(fileURLToPath(new URL("../../prisma/migrations/20261018150000_counts_as_by_hand/migration.sql", import.meta.url)), "utf8");
+  const statement = migration.slice(migration.indexOf('WITH "weight"')).trim().replace(/;\s*$/, "");
+  const account = async (countsAs: unknown): Promise<{ botId: string; userId: string }> => {
+    const b = await w.bot();
+    await w.setCaps(b.botId, { rules: { schemaVersion: 1, display: { countsAs } } });
+    return b;
+  };
+  const A = await account(7);
+  const B = await account(3);
+  const C = await account(1);
+  const D = await account(9);
+  await w.dal.houseBotStore.setStatus(D.botId, {
+    from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "13c fixture", cause: "MANUAL" },
+  });
+  const E = await account("12");
+  const F = await account(2.5);
+  const player = await w.user({ balance: 100_000 });
+  const hold = async (userId: string, marketId: string, houseBotId: string | null): Promise<void> => {
+    await w.mdal.positionStore.set({
+      id: w.uid("pos"), userId, marketId, side: "YES", stake: 1_000, bonusStakeTzs: 0, potentialPayout: 2_000, status: "OPEN",
+      finalPayout: null, placedAt: w.iso(), settledAt: null, idempotencyKey: null, houseBotId,
+    } as Any);
+  };
+  const marketWith = async (status: string | null, ...holders: Array<[string, string | null]>): Promise<string> => {
+    const m: Any = await w.poll();
+    for (const [userId, marker] of holders) await hold(userId, m.id, marker);
+    if (status) await w.mdal.marketStore.stamp(m.id, { status });
+    return m.id;
+  };
+  const MK = {
+    live: await marketWith(null, [A.userId, null]),
+    closed: await marketWith("CLOSED", [A.userId, null]),
+    resolved: await marketWith("RESOLVED", [A.userId, null]),
+    voided: await marketWith("VOIDED", [A.userId, null]),
+    deskStaked: await marketWith(null, [A.userId, null], [A.userId, A.botId]),
+    shared: await marketWith(null, [A.userId, null], [B.userId, null], [player, null]),
+    weightOne: await marketWith(null, [C.userId, null]),
+    removed: await marketWith(null, [D.userId, null]),
+    strayWeight: await marketWith(null, [E.userId, null], [F.userId, null]),
+    playerOnly: await marketWith(null, [player, null]),
+  };
+  const extras = async (): Promise<Record<string, number>> => Object.fromEntries(await Promise.all(Object.entries(MK).map(
+    async ([k, id]) => [k, Number(((await w.svc.getMarket(id)) as Any)?.predictorExtra ?? 0)] as const)));
+  const e0 = await extras();
+  const counts0 = j(await Promise.all(Object.values(MK).map(async (id) => ((await w.svc.getMarket(id)) as Any)?.predictorCount)));
+  await w.prisma()!.$executeRawUnsafe(statement);
+  const e1 = await extras();
+  const moved = Object.fromEntries(Object.keys(MK).map((k) => [k, e1[k] - e0[k]]));
+  ok("13c.1 · the catch-up adds Counts as − 1 for an account its holder staked by hand on an OPEN market: LIVE +6, CLOSED +6",
+    moved.live === 6 && moved.closed === 6, j(moved));
+  ok("13c.2 · …and nothing on a FINISHED market (RESOLVED, VOIDED keep the number they ended with)", moved.resolved === 0 && moved.voided === 0, j(moved));
+  ok("13c.3 · …nothing where the desk already staked from the account (it was counted at that stake)", moved.deskStaked === 0, j(moved));
+  ok("13c.4 · …the sum of every account by hand on one market, and nothing for an ordinary player there: 6 + 2 = 8", moved.shared === 8, j(moved));
+  ok("13c.5 · …nothing for a weight of 1, a REMOVED account, a stray stored weight (\"12\" as text, 2.5) — read RAW as countsAsOf reads them — or a market only players are on",
+    moved.weightOne === 0 && moved.removed === 0 && moved.strayWeight === 0 && moved.playerOnly === 0, j(moved));
+  ok("13c.6 · …and the TRUE count is untouched on every market", j(await Promise.all(Object.values(MK).map(async (id) => ((await w.svc.getMarket(id)) as Any)?.predictorCount))) === counts0);
+  ok("13c.p · population · the fixtures started at 0 and the catch-up really moved them, so 13c.1–13c.5 measured a change", Object.values(e0).every((v) => v === 0) && moved.live > 0);
+} else {
+  console.log("NOT MEASURED [memory] 13c · the catch-up is a Postgres migration; the memory store has no migrations to run");
+}
+
 /* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
  * `red:house-bot-money` matches a run's FAIL lines with `fails.find((l) => l.includes(d.expect))`, so an `expect` that
  * is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the drive exits 1 —

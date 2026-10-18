@@ -125,9 +125,35 @@ export const MUTATIONS = [
   {
     name: "ca-every-stake · shown-count.ts adds the extra at EVERY stake, not at the account's first on the market",
     file: "src/lib/server/house-bot/shown-count.ts",
-    from: `  if (input.mine.some((p) => p.houseBotId === input.botId)) return 0;`,
-    to: `  if (input.mine.some((p) => p.houseBotId === "never")) return 0;`,
+    from: `  if (input.mine.length > 0) return 0;`,
+    to: `  if (input.mine.length > 99) return 0;`,
     expect: "6.s3 · its SECOND stake on the same market adds nothing to either count",
+    suite: "seam",
+  },
+  /* ⭐ BY HAND (owner ruling 2026-10-18 — "make the by hand place also count"): the holder's own unmarked stake counts the
+     account too, and a REMOVED account's holder is an ordinary player again. Each caught by §6's by-hand (s) cases. */
+  {
+    name: "ca-hand-ignored · market-service.ts counts only the desk's stakes again, not the holder's by hand",
+    file: SVC,
+    from: `    const shownExtra = await houseShownExtra({ tx: lockTx, userId, mine });`,
+    to: `    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, userId, mine }) : 0;`,
+    expect: "6.s4 · BY HAND · a desk account counted as 50",
+    suite: "seam",
+  },
+  {
+    name: "ca-removed-counted · shown-count.ts counts the holder of a REMOVED account as its old weight",
+    file: "src/lib/server/house-bot/shown-count.ts",
+    from: `  const account = await houseBotStore.findLiveByUserId(input.userId, input.tx);`,
+    to: `  const account = (await houseBotStore.listByUserId(input.userId, input.tx))[0] ?? null;`,
+    expect: "6.s8 · BY HAND · the holder of a REMOVED account",
+    suite: "seam",
+  },
+  {
+    name: "ca-hand-every-stake · shown-count.ts counts the desk's stake again after the holder's hand stake",
+    file: "src/lib/server/house-bot/shown-count.ts",
+    from: `  if (input.mine.length > 0) return 0;`,
+    to: `  if (input.mine.some((p) => p.houseBotId != null)) return 0;`,
+    expect: "6.s5 · BY HAND · its second stake by hand adds nothing",
     suite: "seam",
   },
   {
@@ -141,8 +167,8 @@ export const MUTATIONS = [
   {
     name: "ca-player-extra · market-service.ts gives a PLAYER's stake an extra",
     file: SVC,
-    from: `    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 0;`,
-    to: `    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 1;`,
+    from: `    const shownExtra = await houseShownExtra({ tx: lockTx, userId, mine });`,
+    to: `    const shownExtra = (await houseShownExtra({ tx: lockTx, userId, mine })) || 1;`,
     expect: "6.s1 · a player's stake",
     suite: "seam",
   },
