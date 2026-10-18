@@ -1008,12 +1008,14 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     // ⛔ S7-F4 · AN OPEN WEEK IS MADE FINAL UNDER ITS MARKET'S LOCK (MR-30): a purchase asks the week's finality again
     //    inside `market:` (`buyMaswaliTickets`), so the stop waits for a purchase in flight on this week's market, and a
     //    purchase that waits for the stop reads it. `maswali:chain` → `market:` is a permitted order (`locks.ts`).
-    const markFinal = async () => { await weekStore.patch(week.id, { isFinal: true }); };
+    //    S7-F5 · the mark joins the lock's transaction: it commits with the lock's release, never before it. The week is
+    //    answered as marked (a read outside the transaction would not see the mark yet).
+    const markFinal = async (tx?: Parameters<typeof weekStore.patch>[2] | null) => { await weekStore.patch(week.id, { isFinal: true }, tx ?? undefined); };
     if (week.state === "OPEN" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);
-    else await markFinal();
+    else await markFinal(lockTx);
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, state: week.state, reason, basis } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    return { ok: true, week: { ...week, isFinal: true } };
   });
 }
 
