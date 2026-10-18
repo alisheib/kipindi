@@ -22,7 +22,8 @@
  *   §13 HF · a holiday Friday (MB-85, OD-27)
  *   §14    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
- *    database is exactly that split, so §1 makes it on purpose: a week opened on a clock that reads last Monday.
+ *    database is exactly that split, so §1 makes it on the real clock: a week left OPEN past its close, as a slow
+ *    container leaves it, and a week closed by a clock that runs fast.
  * ⛔ Every week and ticket goes through the product's own doors. Each fixture that cannot is declared where it is made.
  * ⚠️ This file carries no backslash: line breaks are built from their code points, and patterns use character classes.
  */
@@ -539,7 +540,7 @@ section("§5 · SD · a source domain switched off mid-week: the open week keeps
   await sources.setCategoryEnabled("crypto", false, OWNER);
   const qs = await dal.questionStore.listForWeek(wk.id);
   ok("SD.0 · the week froze three questions on the source now switched off (M5, M10, A5)",
-    qs.filter((q: any) => q.sourceDomain === "coingecko.com").map((q: any) => q.slot).join(",") === "5,10,15", J(qs.map((q: any) => q.sourceDomain)));
+    qs.filter((q: any) => String(q.sourceDomain).endsWith("coingecko.com")).map((q: any) => q.slot).join(",") === "5,10,15", J(qs.map((q: any) => q.sourceDomain)));
   const buy = await W.buy(late, wk.id, [MISS_M1]);
   ok("SD.1 · ⭐ the open week keeps selling: a registry edit never touches an open week", buy.ok, J(buy.ok ? true : buy));
   await closed(wk.id);
@@ -642,7 +643,7 @@ section("§6 · GU · an under-funded guarantee at k ≥ 1, to the shilling, and
   const floatRows = await weekAudit(b.id, "maswali.settlement.float_low");
   ok("FL.2 · ⭐ the float alert names the paid total the settlement committed — 869,995, the held share counted in it (MB-11)",
     floatRows.length === 1 && floatRows[0].payload?.paid === 869_995, J(floatRows.map((e: any) => e.payload)));
-  knownRed("MB-63", "FL.4 · KNOWN-RED MB-63 · the console's alerts carry the short float after the release, beside its week (MB-11: alert the Owner and Finance; MB-63's \"float short\")",
+  knownRed("MB-63", "FL.4 · KNOWN-RED MB-63 · the console's alerts carry the short float after the release, beside its week (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     (await consoleRead.consoleAlerts(atB)).some((x) => x.weekId === b.id && /float/i.test(x.text)), "the float_low row is written to the audit trail only");
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
@@ -749,11 +750,17 @@ section("§9 · IN · an insider promoted mid-week: the tickets they hold, and w
   ok("IN.1b · ⭐ …and the Owner's staff role change asks it before it writes the role (both staff actions pass through that one function)",
     asked > 0 && writes > asked, J({ asked, writes }));
   ok("IN.2 · control: an account holding no live ticket may be made staff", (await W.svc.millioneaPromotionBlock(q)) === null);
-  const desk = await houseBotEligibility(deskHolder, { context: "designate", actorId: OWNER });
+  let deskRows: Array<{ code: string; message: string }> = [];
+  try {
+    deskRows = (await houseBotEligibility(deskHolder, { context: "designate", actorId: OWNER })).blocking;
+  } catch (err) {
+    deskRows = [{ code: "THREW", message: String((err as Error)?.message ?? err) }];
+  }
   knownRed("OD-12", "IN.9 · KNOWN-RED OD-12 · a desk designation of an account holding a ticket in a week that has not settled is refused (OD-12's other half: the house-bot eligibility)",
-    desk.blocking.some((x: any) => /Millionea/i.test(x.message)), J(desk.blocking.map((x: any) => x.code)));
-  // ⚠️ A FIXTURE, DECLARED: a promotion that slipped through (a database edit, or one made before OD-12 was enforced).
-  await W.setUserFields(p, { role: "TRADING" });
+    deskRows.some((x) => /Millionea/i.test(x.message)), J(deskRows.map((x) => x.code)));
+  // ⚠️ A FIXTURE, DECLARED: a promotion that slipped through (a database edit, or one made before OD-12 was enforced), to
+  //    one of the seven staff roles.
+  await W.setUserFields(p, { role: "MODERATOR" });
   const more = await W.buy(p, wk.id, [ALL_YES]);
   ok("IN.3 · ⭐ a holder made staff can buy no more tickets: refused as staff, nothing moved (MR-10)",
     !more.ok && more.reason === "millionea_staff_barred" && (await dal.weekStore.get(wk.id)).ticketCount === 9, J(more.ok ? "sold" : more));

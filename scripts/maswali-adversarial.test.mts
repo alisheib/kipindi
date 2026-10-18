@@ -11,15 +11,16 @@
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED): the clock skew, the rollbacks and the database's own
  *    refusals are Postgres's, so the second run is the one that measures them.
  *
- * The floor is per store (the database cases — the raw reclassification, the commission account, the trial balance and
- * the groups' sums — run on Postgres alone). It only ever rises.
+ * The floor is per store (the commission account, the trial balance and the ledger groups' sums are read on Postgres
+ * alone, and the raw reclassification is a KNOWN-RED there): 109 on memory, 112 on Postgres, with 7 and 8 KNOWN-RED
+ * booked beside them (2026-10-18). It only ever rises — a KNOWN-RED struck becomes one more.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 0, postgres: 0 },
+  minPass: { memory: 109, postgres: 112 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
