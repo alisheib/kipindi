@@ -65,7 +65,13 @@ database, migrate it and drop it at the end, so they need no `DATABASE_URL`, no 
 npm run load:maswali-cross-instance   # S16: the cap, a key, a reference, the close, two releases, a correction,
                                       #      a void — each from two instances at once — and 10,000 tickets settled
                                       #      in both shapes (3 winners; ~7,000 distinct winning players), timed
+npm run load:maswali-rush             # S17 (MB-31): the Friday 18:00 rush at 10× the expected rate on two
+                                      #      instances, Up & Down running, the close on the real clock; latency
+                                      #      percentiles, refusals by reason, then POOL, drift and the trial balance
 ```
+
+S17's latency targets are named constants at `TBD-BASELINE`: the lead sets them from the first measured
+baseline (S7's acceptance) and records them beside their results.
 
 Knobs and what each act asserts are in each script's header.
 

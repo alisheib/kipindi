@@ -615,6 +615,7 @@
     "load:nida-race": "tsx scripts/load/s14-kyc-nida-race.mts",
     "load:kyc-race": "tsx scripts/load/s15-kyc-decision-race.mts",
     "load:maswali-cross-instance": "tsx scripts/db-scratch.mts --run npx tsx scripts/load/s16-maswali-cross-instance.mts",
+    "load:maswali-rush": "tsx scripts/db-scratch.mts --run npx tsx scripts/load/s17-maswali-rush.mts",
     "ops:admin-2fa-readiness": "node scripts/admin-2fa-readiness.mjs",
     "ops:deposit-failures": "node scripts/live/ops/deposit-failures.cjs",
     "ops:backup-status": "node scripts/live/ops/backup-status.cjs",
