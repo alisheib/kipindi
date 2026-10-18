@@ -515,6 +515,16 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.4 the bar is gated on canBulk with a locked alternative",
      /canBulk \?/.test(p) && /<ControlLocked/.test(p));
   ok("11.5 the override gate is passed down separately", /canOverride=\{canOverride\}/.test(p));
+  // ⛔ MASWALI-BUILD S7-F4 · the queue, the market page and the ops census read the two-officer setting as the actions do
+  //    (10.25): the getter answered the code default (one officer) while unread, shown and drawn as single-officer.
+  const marketPage = read("src/app/admin/resolver/[id]/page.tsx");
+  const census = read("scripts/ops-verdict-census.mts");
+  ok("11.5b the queue, the market page and the ops census read the setting FAIL-CLOSED (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
+     [p, marketPage, census].every((s) => /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(s) && !/getRequireTwoOfficerResolution/.test(s)));
+  ok("11.5c …an unknown is drawn as the stricter ceremony and named as unknown on both pages, and the census draws nothing",
+     /const requireTwoOfficer = twoOfficerRead !== false;/.test(p) && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
+       && /const requireTwoOfficer = twoOfficerRead !== false;/.test(marketPage) && /twoOfficerRead === null \? \(/.test(marketPage)
+       && /if \(twoOfficerRead === null\) \{[^}]*process\.exit\(2\)/.test(census));
 
   const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
   ok("11.6 the bar reads the ACT gate", /useMayAct\(\)/.test(bar));

@@ -18,7 +18,7 @@ import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { TwoAdminToggle } from "./two-admin-toggle";
 import { RecheckButton } from "./recheck-button";
-import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { readRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { getEffectiveConfig, getEffectiveResolutionMode } from "@/lib/server/market-config";
@@ -161,7 +161,11 @@ async function ResolverQueueContent({
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
   // Two-admin authorization: OFF (default) = single admin resolves in one action;
   // ON = two-officer ceremony. This is the ONE place it is controlled.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ MASWALI-BUILD S7-F4 · read FAIL-CLOSED, as the actions read it (S7-F3): null is UNKNOWN, never the code default (one
+  //    officer) while the setting may be ON. An unknown is drawn as the stricter two-officer ceremony and named as unknown;
+  //    every action refuses on its own read.
+  const twoOfficerRead = await readRequireTwoOfficerResolution().catch(() => null);
+  const requireTwoOfficer = twoOfficerRead !== false;
 
   // E-18: this page is the `trading` domain, but two of its three controls demand
   // `compliance` — disjoint sets under DEFAULT_GRANTS. Ask the SAME question the
@@ -285,7 +289,7 @@ async function ResolverQueueContent({
               // whether a resolution will take one officer or two — but does not
               // offer the switch, which is a compliance decision (POCA §16).
               <ControlLocked
-                what={requireTwoOfficer ? "Two-admin auth" : "Single-admin"}
+                what={twoOfficerRead === null ? "Setting unreadable" : requireTwoOfficer ? "Two-admin auth" : "Single-admin"}
                 need={CONTROL_DOMAIN.setTwoAdminAuth}
               />
             )}
