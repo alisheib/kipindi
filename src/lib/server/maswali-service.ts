@@ -26,7 +26,7 @@ import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
-import { getRequireTwoOfficerResolution } from "./resolution-policy";
+import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
 import { questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
@@ -604,6 +604,8 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
  */
 export async function sealQuestion(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
+  /** Tests only: the two-officer setting's read. */
+  twoOfficerNow?: () => Promise<boolean | null>;
 }): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
@@ -611,7 +613,12 @@ export async function sealQuestion(input: {
   if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
-  const twoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ S7-F2 · THE TWO-OFFICER SETTING IS READ, OR THE SEAL REFUSES (MR-14; MB-82: its value at stage 1 is the seal's own).
+  //    A read that could not ask answered the code default, one officer, so a seal made while it failed was single-officer
+  //    with the setting ON — fail open. Asked before the lock and before any write, so a refusal leaves nothing behind.
+  //    `confirmSeal` and `correctSeal` read no setting: each reads the seal's own stage-1 marker.
+  const twoOfficer = await (input.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);
+  if (twoOfficer === null) return refuse("The two-officer setting could not be read, so nothing was sealed. Try again in a moment.");
   const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");

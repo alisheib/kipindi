@@ -24,14 +24,15 @@
  * IN.1c, the control of IN.1b (now the Owner's staff role change, driven), on Postgres PL.3d and PL.5a, the re-line
  * fixture's own lines (a failed step named, never a crash; PL.4 now requires the re-line to have landed), and §14a GR —
  * an unreadable week's frozen rules leave OD-02's requirement unknown, and every reader fails closed — nine on each
- * store — and §14c RF, the console's rules form and holiday list, eleven on each: 175 on memory, 183 on Postgres.
+ * store — §14c RF, the console's rules form and holiday list, eleven on each — and §9b TO, a seal that cannot read the
+ * two-officer setting refuses, five on each: 180 on memory, 188 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 175, postgres: 183 },
+  minPass: { memory: 180, postgres: 188 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

@@ -497,6 +497,14 @@ export const MUTATIONS = [
     suite: "adversarial:GR",
   },
   {
+    name: "(F2-seal-two-officer) a seal whose two-officer read fails seals anyway, single-officer by the code default (MR-14, MB-82)",
+    file: SVC,
+    from: "  if (twoOfficer === null) return refuse(\"The two-officer setting could not be read, so nothing was sealed. Try again in a moment.\");",
+    to: "",
+    expect: "TO.1 · ⭐",
+    suite: "adversarial:TO",
+  },
+  {
     name: "(F2-rules-percent) the rules form stores a percentage as typed: a fee of 13 becomes a rate of 13 (the form no longer reads back the stored rules)",
     file: "src/app/admin/maswali/rules-form.ts",
     from: "const asRate = (text: string) => Math.round(Number(text) * 100) / 10_000;",

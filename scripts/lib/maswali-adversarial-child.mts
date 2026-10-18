@@ -18,6 +18,7 @@
  *   §8  PL · an attempt to reclassify a week's productLine, through the store and in the database (MB-01)
  *   §8b FR · a purchase whose read of its week or its market fails: refused as busy, never thrown (L6)
  *   §9  IN · an insider promoted mid-week: the tickets they hold, what they may still do (MR-10, MR-14, OD-12, MB-43)
+ *   §9b TO · a seal reads the two-officer setting or refuses: a failed read never seals single-officer (MR-14, MB-82)
  *   §10 RD · a reversed deposit funding a winner (MB-74, OD-07)
  *   §11 TK · the winner-takeover pattern (MB-96)
  *   §12 CC · both clock-change weekends, through the open's close guard and the void deadline (MB-30, MR-4, OD-09b)
@@ -1002,6 +1003,39 @@ if (runs("IN")) {
     !(await deskRowsOf(deskHolder)).some((x) => x.code === "MILLIONEA_TICKET" || x.code === "MILLIONEA_UNREADABLE"));
   await settle.releaseMaswaliShare({ ticketId: win.ticketId, officerId: OWNER, note: "the promotion review is closed" });
   await W.setUserFields(p, { role: "PLAYER" });
+}
+
+// ═══ §9b · TO · the two-officer setting, read at the seal ═══════════════════════════════════════════════════════════
+if (runs("TO")) section("§9b · TO · a seal reads the two-officer setting or refuses: a read that fails never seals single-officer (MR-14, MB-82; the S7 review, round 2)");
+if (runs("TO")) {
+  const start = W.weekStartAhead(ahead++);
+  const wk = await openWeekAt(start);
+  await closed(wk.id);
+  const sealAt = new Date(start + 9 * DAY);
+  const seal = (slot: number, twoOfficerNow: () => Promise<boolean | null>) =>
+    W.svc.sealQuestion({ weekId: wk.id, slot, outcome: "YES", evidence: `Official result for event ${slot}`, officerId: SEALER, now: sealAt, twoOfficerNow });
+  const slotOf = async (slot: number) => (await dal.questionStore.listForWeek(wk.id)).find((q: any) => q.slot === slot);
+  /** ⚠️ A FAULT, DECLARED: the setting's read fails (a dropped connection at a container's first read), for one seal. */
+  const failing = async (): Promise<boolean | null> => { throw new Error("TO · the setting's read failed (a planted fault)"); };
+  const refused = await seal(1, failing);
+  const q1 = await slotOf(1);
+  ok("TO.1 · ⭐ a seal whose two-officer read fails is refused, naming the setting, and nothing is written: the question unsealed, the week still CLOSED, no seal recorded",
+    !refused.ok && /two-officer setting could not be read/.test(errOf(refused)) && q1?.outcome === null && q1?.sealedBy === null
+      && (await dal.weekStore.get(wk.id)).state === "CLOSED" && (await auditRows("MaswaliQuestion", q1?.id ?? "", "maswali.question.sealed", 5)).length === 0,
+    errOf(refused) || J({ outcome: q1?.outcome, sealedBy: q1?.sealedBy }));
+  const unknown = await seal(1, async () => null);
+  ok("TO.1b · …and a read that answers nothing is refused the same way — never the code default of one officer", !unknown.ok && (await slotOf(1))?.outcome === null, errOf(unknown));
+  const on = await seal(1, async () => true);
+  const q1on = await slotOf(1);
+  ok("TO.2 · control: the read answering ON, the seal lands with its marker — two officers, and it awaits the second (MB-82)",
+    on.ok && q1on?.outcome === "YES" && q1on?.twoOfficerAtStage1 === true && q1on?.stage2By === null, errOf(on) || J({ marker: q1on?.twoOfficerAtStage1 }));
+  const off = await seal(2, async () => false);
+  ok("TO.3 · control: the read answering OFF, the seal lands single-officer", off.ok && (await slotOf(2))?.twoOfficerAtStage1 === false, errOf(off));
+  const second = await W.svc.confirmSeal({ weekId: wk.id, slot: 1, officerId: READER, now: sealAt });
+  ok("TO.4 · control: …and a second officer confirms the two-officer seal, which reads its own marker, not the setting", second.ok && (await slotOf(1))?.stage2By === READER, errOf(second));
+  // The books close behind the cases: the rest void, so the week voids whole; it sold nothing.
+  await sealRest(wk.id, start, ALL_VOID);
+  await voided(wk.id);
 }
 
 // ═══ §10 · RD · a reversed deposit funding a winner ═════════════════════════════════════════════════════════════════
