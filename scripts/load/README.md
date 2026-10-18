@@ -55,6 +55,20 @@ npx tsx scripts/load/s10-cross-instance.mts                   # S10: cross-insta
 Always `reset-db.mjs` before a run that asserts on money totals — a persistent DB carries
 state across runs (fixed IDs collide, audit chains don't chain across runs).
 
+## Millionea (MASWALI-BUILD S7) — self-contained
+
+These two boot the on-box scratch cluster themselves (`scripts/db-scratch.mts`), create their own
+database, migrate it and drop it at the end, so they need no `DATABASE_URL`, no marker row and no
+`reset-db.mjs`. Every act is several OS processes on one database, started at one instant by a barrier.
+
+```powershell
+npm run load:maswali-cross-instance   # S16: the cap, a key, a reference, the close, two releases, a correction,
+                                      #      a void — each from two instances at once — and 10,000 tickets settled
+                                      #      in both shapes (3 winners; ~7,000 distinct winning players), timed
+```
+
+Knobs and what each act asserts are in each script's header.
+
 ## The instrumentation hook
 
 Each spike installs its **own** pool-limited `PrismaClient` on `globalThis.__50PICK_PRISMA`
