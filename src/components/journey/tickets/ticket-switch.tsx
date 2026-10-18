@@ -16,18 +16,18 @@
  * ⭐ MILLIONEA IS THE THIRD KIND (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.9; DESIGN_AUTHORITY §M8a item 11, §K8b): drawn
  * for a request the door admits — the product visible to it, or, while it is hidden, an account that holds a Millionea
  * ticket (the lead's decision L5: a kill hides the product, never a player's own tickets). For everybody else the rail is
- * the two kinds it always was, byte for byte. The answer is the doors' one per-request read (`millionea-doors.ts`).
+ * the two kinds it always was, byte for byte. The answer is the doors' one per-request read (`millionea-doors.ts →
+ * millioneaTicketsDoor`), which each PAGE reads and hands down: the journey's Tiketi files read nothing
+ * (`test:journey-tickets` §8).
  */
 import { PageHeader } from "@/components/ui/page-header";
 import { TicketSwitchRail } from "@/components/journey/tickets/ticket-switch-rail";
-import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import type { Dict } from "@/lib/i18n-dict";
 
 /** The kinds of ticket. */
 export type TicketKind = "questions" | "updown" | "millionea";
 
-export async function TicketSwitch({ current, t }: { current: TicketKind; t: Dict }) {
-  const millionea = await millioneaTicketsDoor();
+export function TicketSwitch({ current, millionea, t }: { current: TicketKind; millionea: boolean; t: Dict }) {
   return (
     <TicketSwitchRail
       ariaLabel={t.journey.ticketsKindAria}
@@ -46,11 +46,11 @@ export async function TicketSwitch({ current, t }: { current: TicketKind; t: Dic
  * canvas draws it (the classic one says "Nafasi") — and then the switch. ⛔ It holds the page's one `<h1>`, on both
  * routes; the Utendaji link is the view's, below the list (§0h point 33), so nothing sits beside the name.
  */
-export function TicketsHead({ current, t }: { current: TicketKind; t: Dict }) {
+export function TicketsHead({ current, millionea, t }: { current: TicketKind; millionea: boolean; t: Dict }) {
   return (
     <div className="space-y-4">
       <PageHeader title={t.journey.tabTickets} />
-      <TicketSwitch current={current} t={t} />
+      <TicketSwitch current={current} millionea={millionea} t={t} />
     </div>
   );
 }

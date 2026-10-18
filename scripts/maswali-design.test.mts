@@ -42,7 +42,7 @@ import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
 import type { MillioneaNotice } from "../src/lib/server/maswali-player.ts";
 import { MILLIONEA_GLYPHS } from "../src/components/maswali/maswali-glyph.tsx";
 import { I } from "../src/components/ui/glyphs.tsx";
-import { GLYPH_MAP } from "./glyphs/map.ts";
+import { GLYPH_MAP, NEW_KEYS } from "./glyphs/map.ts";
 import { decomment } from "./lib/decomment.mts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -212,15 +212,18 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
   const REGISTRY_FILE = "src/components/ui/glyph-registry.generated.ts";
   const registry: Record<string, { s?: string }> | null = existsSync(join(ROOT, REGISTRY_FILE))
     ? ((await import(`../${REGISTRY_FILE}`)) as { GLYPH_REGISTRY: Record<string, { s?: string }> }).GLYPH_REGISTRY : null;
+  // The map as the codegen reads it (`scripts/glyphs/codegen.mts`: `{ ...GLYPH_MAP, ...NEW_KEYS }`) — since W2 the thirteen
+  // Millionea keys are in NEW_KEYS, the keys the lexicon did not have before (2026-10-18).
+  const MAP: Record<string, unknown> = { ...GLYPH_MAP, ...NEW_KEYS };
   const missing = MILLIONEA_GLYPHS.filter((k) => typeof family[k] !== "function");
   const unpicked = MILLIONEA_GLYPHS.filter((k) => !(k in PICKS));
-  const mapWrong = Object.entries(PICKS).filter(([k, ph]) => (GLYPH_MAP[k] as { ph?: string } | undefined)?.ph !== ph).map(([k]) => k);
+  const mapWrong = Object.entries(PICKS).filter(([k, ph]) => (MAP[k] as { ph?: string } | undefined)?.ph !== ph).map(([k]) => k);
   const drawnWrong = registry === null ? ["(no generated registry)"]
     : Object.entries(PICKS).filter(([k, ph]) => registry[k]?.s !== `p-${ph}`).map(([k]) => `${k}: ${registry[k]?.s ?? "absent"}`);
-  ok(`2.M4a · ⏳ every Millionea key is on the family I, drawn from §10c's Phosphor pick — the map names it and the generated registry draws it (red until W2 is merged in): ${missing.length} of ${MILLIONEA_GLYPHS.length} missing from I`,
+  ok(`2.M4a · every Millionea key is on the family I, drawn from §10c's Phosphor pick — the map names it and the generated registry draws it: ${missing.length} of ${MILLIONEA_GLYPHS.length} missing from I`,
     missing.length === 0 && unpicked.length === 0 && mapWrong.length === 0 && drawnWrong.length === 0,
     j({ missing, unpicked, mapWrong, drawnWrong }));
-  const voidEntry = GLYPH_MAP.void as { ph?: string } | undefined;
+  const voidEntry = MAP.void as { ph?: string } | undefined;
   ok("2.M4b · `void` is Phosphor's `prohibit` in the map (§10c: one meaning, one glyph)", voidEntry?.ph === "prohibit", j(voidEntry));
   const glyphs = code(read("src/components/ui/glyphs.tsx"));
   const legacyVoid = read("src/components/ui/glyphs.tsx").includes('void: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.5" /><path d="M9 9l6 6M15 9l-6 6" /></G>,');

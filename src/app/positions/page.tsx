@@ -61,9 +61,10 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   // render branches, just above the classic JSX.
   const { journey } = await resolveSimpleJourney();
   // MASWALI-BUILD S5 · Millionea's door, started BESIDE this page's own reads (the S5 review of 24ec0d33, LOW 10): the
-  // classic arm's row count, or the journey switch's third kind — each one cached read, awaited where it is drawn.
+  // classic arm's row count, or the journey switch's third kind — each one cached read, awaited by this page before it
+  // draws (the journey's view reads nothing of its own: `test:journey-tickets` §8).
   const millioneaHeldNow = journey ? null : millioneaHeldThisWeek(session.userId);
-  if (journey) void millioneaTicketsDoor();
+  const millioneaKindNow = journey ? millioneaTicketsDoor() : null;
   const sp = await searchParams;
 
   /**
@@ -291,6 +292,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const myRefCode = !breakEnd && inviteIsLiveFor(await inviteViewerFor(session.userId))
     ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
     : undefined;
+  // MASWALI-BUILD S5 · the journey switch's third kind: the door's answer, started above beside this page's reads.
+  const millionea = (await millioneaKindNow) === true;
 
   /**
    * ⭐ TIKETI ZANGU, FOR A JOURNEY REQUEST (the Vodacom plan S6, SJ-16 and SJ-19; S6-PLAN WP9 as amended by A7, A8 and
@@ -311,6 +314,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
         locale={locale}
         t={t}
         breakBody={breakBody}
+        millionea={millionea}
       />
     );
   }

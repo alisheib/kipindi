@@ -2514,9 +2514,12 @@ const LOST_GUARD = {
 /** The offline banner: imported statically by AppShell and mounted in its own boundary — never a deferred part. */
 const OFFLINE_BANNER = "src/components/ui/offline-banner.tsx";
 const OFFLINE_MOUNT = "<Suspense fallback={null}><OfflineBanner /></Suspense>";
-/** The win celebration's module, and the three files that import it statically for `dispatchWinCelebration`. */
+/** The win celebration's module, and the four files that import it statically for `dispatchWinCelebration`. The fourth
+ *  (MASWALI-BUILD S5, 2026-10-18) is a won Millionea ticket's seal door: the seal opens on its owner's own tap (Q7), and
+ *  that page already loads the modal, the dictionary, the haptics and the money formatters the module imports, so its
+ *  first load gains the host's code alone. */
 const WIN_HOME = "src/components/markets/win-celebration.tsx";
-const WIN_IMPORTERS = ["src/components/layout/away-summary-bar.tsx", "src/components/markets/notify-poller.tsx", "src/components/updown/updown-result-announcer.tsx"];
+const WIN_IMPORTERS = ["src/app/millionea/tickets/[serial]/ticket-acts.tsx", "src/components/layout/away-summary-bar.tsx", "src/components/markets/notify-poller.tsx", "src/components/updown/updown-result-announcer.tsx"];
 /**
  * THE NEXT/DYNAMIC CENSUS (the Vodacom plan S7's LIVE FIX L1, S7-PLAN A13(b), with A24 item 5's fifth file; 2026-10-12).
  * Every file in src that imports `next/dynamic`, BY NAME: a part loaded through it is a fetch of its own, and a fetch that
@@ -2668,7 +2671,7 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
     const got = file === null ? [] : [...(G.into.get(file) ?? [])].sort();
     return { b, got, same: show(got) === show(want) };
   }).filter((r) => !r.same).map((r) => `${r.b}: ${r.got.join(", ") || "nothing"}`);
-  ok("12.parts.home · the shell's lazy module is each part's one loader (a static import anywhere else puts that part's code back in that file's first load), save the three named files that import the win celebration's module for dispatchWinCelebration (a fourth is a finding)",
+  ok("12.parts.home · the shell's lazy module is each part's one loader (a static import anywhere else puts that part's code back in that file's first load), save the four named files that import the win celebration's module for dispatchWinCelebration (a fifth is a finding)",
     unresolved.length === 0 && strayLoaders.length === 0, strayLoaders.join(" | "));
   const serverLazy = [...W.files].filter(([, s]) => !isClient(s) && (LAZY_CALL.test(s) || LAZY_IMPORT.test(s))).map(([p]) => p);
   ok("12.nolazy.platform · no server module in src calls or imports React's lazy, the defect AppShell had (a client module may)",

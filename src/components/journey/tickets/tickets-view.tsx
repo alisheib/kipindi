@@ -50,7 +50,7 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 /** Every ticket matches: the view has no search box, so no text narrows it. */
 const ANY_TEXT = () => true;
 
-export function TicketsView({ rows, positions, markets, prices, lens, page, serverNow, locale, t, breakBody = null }: {
+export function TicketsView({ rows, positions, markets, prices, lens, page, serverNow, locale, t, breakBody = null, millionea }: {
   /** The decorated rows the page built (a position whose market is missing is already dropped). */
   rows: readonly PortfolioRow[];
   positions: ReadonlyMap<string, TicketPosition>;
@@ -65,6 +65,9 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
   /** R4-I · the reader's break, as the page words it (`rg.breakActive` with its end), or null: the first-ticket empty state
    *  then says it instead of "pick a question…", and offers no way to bet. The page reads it; this view only draws. */
   breakBody?: KeptBody | null;
+  /** MASWALI-BUILD S5 · whether the switch draws Millionea, the third kind — the door's answer, which the page reads and
+   *  hands down (§8: this view reads nothing). */
+  millionea: boolean;
 }) {
   const state: PortfolioState = { ...PORTFOLIO_DEFAULT_STATE, tab: lens };
   const shown = sortPortfolio(filterPortfolio(rows, state, serverNow, ANY_TEXT), state);
@@ -96,7 +99,7 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
     <PageContainer tier="reading" className="space-y-6">
       <RefreshPoller intervalMs={20_000} />
       <HashFocus />
-      <TicketsHead current="questions" t={t} />
+      <TicketsHead current="questions" millionea={millionea} t={t} />
       {hasTickets && <PositionsBarJourney state={state} t={t} />}
       {paged.length === 0 ? (
         <EmptyState

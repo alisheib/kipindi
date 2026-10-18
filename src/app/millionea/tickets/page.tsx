@@ -93,7 +93,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
     <PageContainer tier="reading" className="kp-mln-zh space-y-6">
       <RefreshPoller intervalMs={60_000} enabled={anyLive} />
       {journey
-        ? <TicketsHead current="millionea" t={t} />
+        ? <TicketsHead current="millionea" millionea t={t} />
         : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.myTicketsTitle} />}
       {gate.preview && <MillioneaPreviewMark t={t} />}
       <MillioneaTicketsBar lens={lens} t={t} />

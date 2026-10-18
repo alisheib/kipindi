@@ -233,11 +233,15 @@ const CLASSIC_RETURN = `<PageContainer tier="reading" className="space-y-6">`;
 /** The view as the page hands it over: what the page read and priced, by name, and nothing read for it alone. */
 // R4-I (2026-10-09): `breakBody` — the reader's break, worded once by the page for BOTH views (the classic empty state reads
 // it too), so the first-ticket call to bet is not shown during a break. Not a read made for the view alone.
+/* RE-PINNED 2026-10-18 (MASWALI-BUILD S5 integration, deliberately): the head and the view take `millionea`, the switch's
+   third kind — Millionea's door, which each PAGE reads beside its own reads and hands down, because §8 holds every
+   journey Tiketi file to reading nothing (the first build awaited the door inside the switch). It is a visibility answer,
+   never a figure the classic arm could disagree with. */
 const VIEW_ELEMENT = ["<TicketsView", "rows={rows}", "positions={byId}", "markets={marketMap}", "prices={pricedById}",
-  "lens={state.tab}", "page={pageNum}", "serverNow={serverNow}", "locale={locale}", "t={t}", "breakBody={breakBody}", "/>"].join("");
+  "lens={state.tab}", "page={pageNum}", "serverNow={serverNow}", "locale={locale}", "t={t}", "breakBody={breakBody}", "millionea={millionea}", "/>"].join("");
 /** The history page's header: two sibling ternaries, each where its element stood — the tickets' head for a journey request, today's back link and header for everybody else. */
 const HISTORY_HEAD_OPEN = "{journey ? <TicketsHead";
-const HISTORY_HEAD = [`{journey ? <TicketsHead current="updown" t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}`,
+const HISTORY_HEAD = [`{journey ? <TicketsHead current="updown" millionea={millionea} t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}`,
   `{journey ? null : (`, `<div className="mt-3">`,
   `<PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />`,
   `</div>`, `)}`].join("");
@@ -510,7 +514,7 @@ function g5Switch(W: World, ok: Ok) {
     show({ switchImportsTabs: TABS_VALUE_IMPORT.test(sw), client: isClient(rail), lazy: count(rail, LAZY_TABS), guard: count(rail, RAIL_GUARD), ssr: rail.includes("ssr") }));
   ok("5.current · each page passes its own kind: /positions is Maswali and /updown/history is Juu/Chini, so the current link is the page being read (A12)",
     count(text(W, VIEW), `current="questions"`) === 1 && !text(W, VIEW).includes(`current="updown"`)
-      && count(text(W, HISTORY), `<TicketsHead current="updown" t={t} />`) === 1 && !text(W, HISTORY).includes(`current="questions"`));
+      && count(text(W, HISTORY), `<TicketsHead current="updown" millionea={millionea} t={t} />`) === 1 && !text(W, HISTORY).includes(`current="questions"`));
 }
 
 /* ══ §6 · THE GUEST SHEET ════════════════════════════════════════════════════════════════════════════════════ */
@@ -532,7 +536,7 @@ const OWN_ID = /[ ]id=[{]p[.]id[}]/;
 /** The Utendaji link: the classic page's quiet small link, as the journey's view draws it below the list. */
 const UTENDAJI = `<Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5">`;
 /** The head takes its kind and its words, and nothing to set beside the name. */
-const HEAD_FN = "export function TicketsHead({ current, t }: { current: TicketKind; t: Dict })";
+const HEAD_FN = "export function TicketsHead({ current, millionea, t }: { current: TicketKind; millionea: boolean; t: Dict })";
 
 function g7View(W: World, ok: Ok) {
   const view = text(W, VIEW);
@@ -1118,7 +1122,7 @@ const staticTabs = withFile(SWITCH, (s) => `import { Tabs } from "@/components/u
 const railNoServerRender = swap(RAIL, LAZY_TABS, `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs).catch(nothingIfLost), { ssr: false });`);
 const railUnguarded = swap(RAIL, LAZY_TABS, `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs));`);
 const wrongKind = swap(VIEW, `current="questions"`, `current="updown"`);
-const historyWrongKind = swap(HISTORY, `<TicketsHead current="updown" t={t} />`, `<TicketsHead current="questions" t={t} />`);
+const historyWrongKind = swap(HISTORY, `<TicketsHead current="updown" millionea={millionea} t={t} />`, `<TicketsHead current="questions" millionea={millionea} t={t} />`);
 // §6 — the guest sheet
 const guestLost = swap(GUEST_SHEET, `"/auth/login?next=%2Fpositions"`, `"/auth/login"`);
 // §7 — the view

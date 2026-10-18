@@ -362,14 +362,21 @@ const doorDefects = (src: (rel: string) => string) => {
   const plantedRead = heldDefects(doors.replace('if (millioneaCeiling().ceiling === "WITHDRAWN") return 0;', ""));
   ok("5.4′ CONTROL · a count that reads at a WITHDRAWN ceiling is reported", plantedRead.some((x) => x.includes("count reads")));
   const history = squash(code(read("src/app/updown/history/page.tsx")));
-  const asked = history.indexOf("const { journey } = await resolveSimpleJourney();"), warm = history.indexOf("if (journey) void millioneaTicketsDoor();");
-  ok("5.5 · the journey's two Tiketi zangu pages start the switch's door beside their own reads (one cached read, awaited where it draws)",
+  // 2026-10-18 (S5 integration): each page awaits its own door read and hands the answer down — the journey's Tiketi
+  // files read nothing (`test:journey-tickets` §8), so the switch takes `millionea` as a prop instead of awaiting the door.
+  const START = "const millioneaKindNow = journey ? millioneaTicketsDoor() : null;";
+  const AWAIT = "const millionea = (await millioneaKindNow) === true;";
+  const asked = history.indexOf("const { journey } = await resolveSimpleJourney();"), warm = history.indexOf(START);
+  const handsDown = (s: string, head: string) => s.indexOf(START) > 0 && s.indexOf(AWAIT) > s.indexOf(START) && count(s, head) === 1;
+  ok("5.5 · the journey's two Tiketi zangu pages start the switch's door beside their own reads and await it themselves, handing the answer down (one cached read)",
     warm > asked && asked > 0 && warm < history.indexOf("await getMyUpDownHistory(")
-      && squash(code(read("src/app/positions/page.tsx"))).includes("if (journey) void millioneaTicketsDoor();"));
+      && handsDown(history, '<TicketsHead current="updown" millionea={millionea} t={t} />')
+      && handsDown(squash(code(read("src/app/positions/page.tsx"))), "millionea={millionea} />"));
   const switchSrc = squash(code(read("src/components/journey/tickets/ticket-switch.tsx")));
   const thirdGated = (s: string) => s.includes('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),')
-    && s.includes("const millionea = await millioneaTicketsDoor();") && count(s, 'value: "millionea"') === 1;
-  ok("5.6 · Tiketi zangu's third kind sits inside its `millionea ? [...] : []` gate, on the door's one answer", thirdGated(switchSrc));
+    && s.includes("export function TicketSwitch({ current, millionea, t }: { current: TicketKind; millionea: boolean; t: Dict })")
+    && !s.includes("millioneaTicketsDoor") && count(s, 'value: "millionea"') === 1;
+  ok("5.6 · Tiketi zangu's third kind sits inside its `millionea ? [...] : []` gate, on the answer its page hands down (the switch reads nothing)", thirdGated(switchSrc));
   ok("5.6′ CONTROL · the third kind drawn outside its gate is reported",
     !thirdGated(switchSrc.replace('...(millionea ? [{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" }] : []),', '{ value: "millionea", labelEn: t.millionea.productLabel, href: "/millionea/tickets" },')));
 }

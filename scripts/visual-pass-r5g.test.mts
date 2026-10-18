@@ -540,7 +540,7 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
   ok(`3.1 · RUN: /updown/history's tab follows its h1 — "${hm[0].title}" for a journey reader (Tiketi zangu's Up & Down kind, as /positions' tab), "${hm[1].title}" for everybody else`,
     hm.every((m) => m.title === (m.jr ? word(m.l, "journey.tabTickets") : word(m.l, "market.udHistoryTitle"))), j(hm));
   ok("3.1′ CONTROL · its h1 for a journey reader IS \"Tiketi zangu\" (the tickets' head), and its tab was \"Juu na Chini zako\" for everybody",
-    has(HISTORY, '{journey ? <TicketsHead current="updown" t={t} />') && has("src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />")
+    has(HISTORY, '{journey ? <TicketsHead current="updown" millionea={millionea} t={t} />') && has("src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />")
       && word("sw", "market.udHistoryTitle") === "Juu na Chini zako");
   const ud = squash(code("src/app/updown/page.tsx"));
   ok("3.2 · the Up & Down board's history pill names the page it opens for a journey reader — \"Tiketi zangu\" and the tab's ticket sign — and keeps \"Juu na Chini zako\" and its portfolio sign for everybody else",
