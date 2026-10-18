@@ -9,10 +9,11 @@
 -- only when "productLine" is a target of the UPDATE (the pool increments every bet makes never name it), refuses a change
 -- that moves a row to or from 'MASWALI'. Every other line change stands as before ('MARKET', 'UPDOWN' and the rest).
 --
--- Hand-written, additive, re-runnable (AGENTS.md §5): CREATE OR REPLACE FUNCTION, and the trigger dropped IF EXISTS and
--- created again in the same transaction, so a replay leaves exactly one. Nothing existing is altered and no row is read.
--- CREATE TRIGGER takes a brief SHARE ROW EXCLUSIVE lock on "PredictionMarket"; the lock timeout makes a busy table fail
--- the apply fast rather than queue the bets behind it.
+-- Hand-written, additive, re-runnable (AGENTS.md §5): CREATE OR REPLACE FUNCTION and CREATE OR REPLACE TRIGGER
+-- (PostgreSQL 14+; production runs 18), so a replay leaves exactly one of each. Nothing existing is altered and no row is
+-- read. ⛔ No DROP TRIGGER: it would take an ACCESS EXCLUSIVE lock on the busiest table, queueing every read behind it.
+-- The trigger's own create takes a brief SHARE ROW EXCLUSIVE lock on "PredictionMarket" (it waits for writes, never for
+-- reads); the lock timeout makes a busy table fail the apply fast rather than queue the bets behind it.
 -- ⚠️ `db:backup` rebuilds the schema from `prisma migrate diff` and the catalog's indexes and constraints, which do not
 --    include functions or triggers: a database restored from it lacks this fence until this file is applied to it again.
 BEGIN;
@@ -30,8 +31,7 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS "PredictionMarket_productLine_maswali_fence" ON "PredictionMarket";
-CREATE TRIGGER "PredictionMarket_productLine_maswali_fence"
+CREATE OR REPLACE TRIGGER "PredictionMarket_productLine_maswali_fence"
   BEFORE UPDATE OF "productLine" ON "PredictionMarket"
   FOR EACH ROW EXECUTE FUNCTION "maswali_product_line_fence"();
 
