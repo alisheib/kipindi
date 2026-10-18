@@ -310,18 +310,28 @@ if (runs("CS")) {
   const firedAt = Date.parse(wk.closesAt) + 5;
   scheduler.__resetMaswaliScheduler();
   W.svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs - 40);
-  let early: any = null, due: number | null = null;
+  let early: any = null, due: number | null = null, tickMs = 0;
   try {
+    const t0 = Date.now();
     early = await scheduler.runMaswaliTick(new Date(firedAt));
+    tickMs = Date.now() - t0;
     due = await scheduler.nextMaswaliDueMs(firedAt);
   } finally {
     W.svc.__setMaswaliCloseClockForTests(W.weekCloseClock);
   }
   ok("CS.7 · the tick 5 ms past the close on the container's clock, with the database's 35 ms short of it: the close is refused, the week still OPEN, nothing failed",
     early?.closed === 0 && early?.failures === 0 && (await dal.weekStore.get(wk.id)).state === "OPEN", J(early));
-  ok("CS.8 · ⭐ …and the next wake is the moment the database's clock reaches the close, plus a second (closesAt − dbNow + 1 s) — never the 5-minute reconcile (L1)",
-    due === firedAt + 35 + 1_000 && scheduler.wakeDelayMs(due, firedAt) === 1_035,
-    `due ${due === null ? "none" : new Date(due).toISOString()} · sleep ${scheduler.wakeDelayMs(due, firedAt)} ms`);
+  // S7-F3 · measured from the refusal's own instant: the tick's clock plus the time it had run, so at most `tickMs` later.
+  ok("CS.8 · ⭐ …and the next wake is the moment the database's clock reaches the close, plus a second (closesAt − dbNow + 1 s), from the refusal's own instant — never the 5-minute reconcile (L1)",
+    due !== null && due >= firedAt + 35 + 1_000 && due <= firedAt + 35 + 1_000 + tickMs && scheduler.wakeDelayMs(due, firedAt) === due - firedAt,
+    `due ${due === null ? "none" : new Date(due).toISOString()} · sleep ${scheduler.wakeDelayMs(due, firedAt)} ms · tick ${tickMs} ms`);
+  // ⭐ S7-F3 · THE REST OF THE TICK RAN ON PAST THE SHORTFALL AND THE MARGIN: the timer is armed after the tick, on the
+  //    container's clock, so the retry it recorded had passed by then — and a passed instant was dropped, leaving the
+  //    week OPEN to the 5-minute reconcile. Here the arm comes half a second after the retry.
+  const armedLate = firedAt + 35 + 1_000 + tickMs + 500;
+  const lateDue = await scheduler.nextMaswaliDueMs(armedLate);
+  ok("CS.10 · ⭐ S7-F3 · …and when the rest of the tick runs past the shortfall plus the margin, the passed retry still wakes the timer, at the grace — never the 5-minute reconcile",
+    lateDue === armedLate + 1_000 && scheduler.wakeDelayMs(lateDue, armedLate) === 1_000, `due ${lateDue === null ? "none" : `${lateDue - armedLate} ms after the arm`}`);
   const onTime = await scheduler.runMaswaliTick(new Date(firedAt + 1_035));
   const after = await dal.weekStore.get(wk.id);
   ok("CS.9 · control: the tick at that wake, the database's clock past the close, stamps it once, at that instant",
@@ -728,15 +738,22 @@ if (runs("GU")) {
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
   // ⭐ S7-F2 · THE FINDING IS JUDGED ON THE FLOAT AS IT STANDS (the S7 review, round 2): Finance's top-up clears it.
+  //    S7-F3 · the reading that covers it is recorded and ends it for good, so the readings that keep it come first.
   const headroom = Number(floatRows[0]?.payload?.buffer ?? Number.NaN);
-  ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
-    Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
   const almost = await floatAlertFor(b.id, atB, 869_995 + headroom - 1);
   ok("FL.4d · control: a top-up one shilling short of the headroom keeps it — a warning now, the payout itself covered — naming the shilling",
     !!almost && almost.level === "warning" && almost.text.includes(`${formatTzs(1)} short`), J(almost ?? "no float alert"));
   const blind = await floatAlertFor(b.id, atB, null);
   ok("FL.4e · ⭐ …and a float that cannot be read now raises the week as critical — never the finding gone quiet (fail closed)",
     !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
+  ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
+    Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
+  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED (the review of S7-F2, MEDIUM): the float is there for the winners to withdraw,
+  //    and their withdrawals take it back down by the very payout it covered.
+  const latched = await weekAudit(b.id, "maswali.settlement.float_covered");
+  const drained = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4g · ⭐ S7-F3 · …and once covered it stays ended: the winners withdraw, the float falls back to 0, and no alert returns (the covering reading is recorded on the week)",
+    latched.length === 1 && Number(latched[0].payload?.paid) === 869_995 && !drained, J({ latched: latched.map((e: any) => e.payload), drained: drained ?? "no float alert" }));
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));
@@ -749,6 +766,9 @@ if (runs("GU")) {
   ok("FL.4c · ⭐ …and once C has paid with a float its check could not read, C's own alert stands in B's place — never silence (the S7 review, round 2)",
     unreadC.length === 1 && !!alertC && alertC.level === "critical" && /cannot be read/.test(alertC.text) && !(await floatAlertFor(b.id, atC, null)),
     J({ rows: unreadC.length, alert: alertC ?? "no float alert" }));
+  const drainedC = await floatAlertFor(c.id, atC, 0);
+  ok("FL.4h · control: …while C, never covered, still raises its alert on a drained float — critical, below the payout itself",
+    !!drainedC && drainedC.level === "critical" && /short of the payout/.test(drainedC.text), J(drainedC ?? "no float alert"));
   ok("FL.4f · control: …and C's clears once the float reads, covering its payout and headroom",
     rC2.ok && !(await floatAlertFor(c.id, atC, (rC2.week.paidTotal ?? 0) + headroom)));
   await topUp(FUND);
@@ -1339,6 +1359,9 @@ if (runs("GR")) {
     const pools1 = await consoleRead.poolsView(at);
     ok("GR.1 · ⭐ a week whose frozen rules cannot be read makes the requirement unknown — null, never a floor of 0 that understates it",
       W.svc.frozenRules(await dal.weekStore.get(U.id)) === null && pools1.requirement === null, J({ requirement: pools1.requirement }));
+    const uRow1 = pools1.weeks.find((x: any) => x.row.id === U.id);
+    ok("GR.1b · ⭐ S7-F3 · …and that week's own row on accounting's page reads its sales and worst top-up as unknown — null, never 0",
+      !!uRow1 && uRow1.sales === null && uRow1.worstTopUp === null, J(uRow1 ? { sales: uRow1.sales, worstTopUp: uRow1.worstTopUp } : "no row"));
     const unknown = (await guaranteeAlerts()).find((x) => x.weekId === U.id);
     ok("GR.2 · ⭐ …and the console's alert fires, naming the week: the guarantee cannot be shown to cover the unsettled weeks",
       !!unknown && unknown.level === "critical" && /cannot be read/.test(unknown.text) && unknown.text.includes(U.code), J(unknown ?? "no alert"));
@@ -1357,6 +1380,11 @@ if (runs("GR")) {
   ok("GR.6 · control: the rules read again — the exact requirement returns, the alert clears and the invariants name the week no more",
     pools2.requirement === expected && (await guaranteeAlerts()).length === 0 && (await uProblems()).length === 0,
     J({ requirement: pools2.requirement, alerts: (await guaranteeAlerts()).map((x) => x.text), problems: await uProblems() }));
+  const uRow2 = pools2.weeks.find((x: any) => x.row.id === U.id);
+  const uFloor = W.svc.frozenRules(await dal.weekStore.get(U.id))?.floorTzs ?? Number.NaN;
+  ok("GR.6b · control: …and U's row has its figures again: it sold nothing, so its worst top-up is its floor less the jackpot",
+    !!uRow2 && uRow2.sales === 0 && typeof uRow2.worstTopUp === "number" && uRow2.worstTopUp >= 0 && uRow2.worstTopUp <= uFloor,
+    J(uRow2 ? { sales: uRow2.sales, worstTopUp: uRow2.worstTopUp, floor: uFloor } : "no row"));
   const back2 = await money.returnMaswaliGuarantee({ amount: 1, reference: ref("RET"), typed: money.GUARANTEE_RETURN_WORD, ownerId: OWNER });
   ok("GR.7 · control: …a return inside the headroom lands", back2.ok && (await guarantee()) === g0 - 1, errOf(back2));
   const refill = await money.fundMaswaliGuarantee({ amount: 1, reference: ref("FUND"), typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });

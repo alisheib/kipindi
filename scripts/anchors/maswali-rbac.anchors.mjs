@@ -71,4 +71,13 @@ export const MUTATIONS = [
     expect: "3 · saveMaswaliConfig is enforced",
     suite: "rbac",
   },
+  /* ── MASWALI-BUILD S7-F3 · the holiday save's own gate, beside (7)'s registry plant. ── */
+  {
+    name: "(9) the holiday save is enforced as the draft's control, so a trading officer could change the days no week opens or closes on",
+    file: "src/app/admin/maswali/actions.ts",
+    from: 'requireStaff(CONTROL_DOMAIN.saveMaswaliHolidays, "saveMaswaliHolidays")',
+    to: 'requireStaff(CONTROL_DOMAIN.createMaswaliWeek, "saveMaswaliHolidays")',
+    expect: "3 · saveMaswaliHolidays is enforced",
+    suite: "rbac",
+  },
 ];

@@ -1145,6 +1145,20 @@ section("§14 · the final week: no 'cannot win' line, and the top score wins");
   const openedHub = await P.millioneaHub(viewer(P3));
   ok("14.0b · F1 · once the final week opens it is the hub's own week, saying so itself, and nothing is announced as still to come",
     openedHub.finalAhead === null && openedHub.week?.id === G.id && openedHub.week?.isFinal === true, J({ finalAhead: openedHub.finalAhead, week: openedHub.week?.id }));
+  // S7 · MR-30 · THE SLIP'S OWN FORM in the final week: a slip opened before the stop posts that it stated no final week,
+  // and a form that says nothing reads the same way. Both are refused before anything moves; the slip that states it buys.
+  // (Its slip misses every main, so G's top score below stays PT's 9 of 10.)
+  const PS = await W.user({ balance: 20_000 });
+  const finalForm = (key: string, shown?: string) =>
+    form({ expectedOwnerId: PS, weekId: G.id, idempotencyKey: key, slips: J([W.slip("NO")]), ...(shown === undefined ? {} : { shownFinal: shown }) });
+  const staleForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0001", "0"), ACTIVE);
+  const silentForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0002"), ACTIVE);
+  ok("14.0c · ⛔ MR-30 · in the final week a slip that did not state it is refused, and so is a form that says nothing; nothing moved",
+    !staleForm.ok && staleForm.reason === "millionea_week_final" && !silentForm.ok && silentForm.reason === "millionea_week_final"
+      && (await W.bal(PS)).balance === 20_000 && (await dal.ticketStore.listForUser(PS)).length === 0, `${why(staleForm)} · ${why(silentForm)}`);
+  const shownForm = await ACT.buyMillioneaFromForm(PS, finalForm("act-ps-g-0003", "1"), ACTIVE);
+  ok("14.0d · …and the slip that states the final week buys its ticket (control)",
+    shownForm.ok && shownForm.data.tickets.length === 1 && (await dal.ticketStore.listForUser(PS, { cycleId: G.id })).length === 1, why(shownForm));
   // RR2 · one ticket in the final week, its first main to miss.
   const bT = await W.buy(PT, G.id, [W.LOSE], { key: "player-pt-g-0001" });
   const atG = await W.closeAndSeal(oG.week, gStart);

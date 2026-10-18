@@ -125,8 +125,11 @@ export async function buyMillioneaFromForm(
     return { ok: false, error: `You can hold at most ${rules.ticketCapPerWeek} tickets a week.`, code: "INVALID", reason: "millionea_cap_reached", detail: { ticketCap: rules.ticketCapPerWeek } };
   }
 
+  // MR-30 · the finality the slip showed when it opened: only an explicit "1" says the final week's rule was stated, so a
+  // slip from before the stop (or a form that says nothing) is refused once the week is final (`millionea_week_final`).
   const r = await purchaseMaswaliTickets({
     userId, weekId: week.id, slips, idempotencyKey: key, playStartedAt: opts.playStartedAt, stateNow: deps.stateNow,
+    shownFinal: form.get("shownFinal") === "1",
   });
   if (!r.ok) return r;
   const bought = r.data?.maswali;

@@ -146,6 +146,8 @@ export type FailureReason =
   | "millionea_paused"
   /** The licence gate, or the rollout below what this viewer may see. */
   | "millionea_not_available"
+  /** MR-30 · the week was made the final week after the buyer's slip opened, so the slip never stated its rule (S7). */
+  | "millionea_week_final"
   // ── B2 · a WARNING shown before confirming, not a refusal ─────────────────
   | "bonus_wagering_one_side"
   // ── C2 SECOND TRANCHE · wallet, KYC, auth, proposals, objections ──────────
@@ -362,6 +364,8 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   millionea_week_not_open:      { severity: "info",    channel: "toast",  key: "failMillioneaWeekNotOpen" },
   millionea_paused:             { severity: "info",    channel: "toast",  key: "failMillioneaPaused" },
   millionea_not_available:      { severity: "info",    channel: "toast",  key: "failMillioneaNotAvailable" },
+  // The buyer fixes it by reading the slip again, which now states the final week's rule → warning.
+  millionea_week_final:         { severity: "warning", channel: "toast",  key: "failMillioneaWeekFinal" },
 
   bonus_wagering_one_side: { severity: "warning", channel: "inline", key: "failBonusWageringOneSide", needs: ["remaining"] },
 

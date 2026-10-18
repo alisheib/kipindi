@@ -250,15 +250,43 @@ export function snapshotMaswaliRules(c: MaswaliConfig, frozenAt: Date): MaswaliR
   return { ...rest, questionCaps: { ...c.questionCaps }, v: 1, frozenAt: frozenAt.toISOString() };
 }
 
+/**
+ * ⛔ VERSION 1'S OWN SHAPE, FROZEN WITH THE VERSION (MASWALI-BUILD S7-F3; the review's LOW-3, taken as MEDIUM). A week's
+ * rules are read against the version they froze, never against today's validator: `maswaliConfigProblem` decides what
+ * the NEXT week may freeze, and a later change to its ranges (a lower cap, a narrower price range, a longer buffer) must
+ * never make a running week unreadable — its open, the Owner's return and the alarms all refuse a week they cannot read.
+ * So this asks only what a v1 week's code needs to read each field: present, with its type; whole where it is money or
+ * a count; a weekday and a clock where it is a time; the close after the open; the fifteen questions' own limits; the one
+ * guarantee policy v1 knows; no paid exit (MB-50). ⛔ Never edited to follow the config validator: a field or a meaning
+ * version 1 cannot carry is a new version, with its own reader beside this one.
+ */
+function rulesV1Problem(s: Record<string, unknown>): string | null {
+  const ANY = Number.MAX_SAFE_INTEGER;
+  if (!isWhole(s.ticketPriceTzs, 1, ANY)) return "the ticket price is not a whole number of shillings";
+  if (!isWhole(s.floorTzs, 0, ANY)) return "the floor is not a whole number of shillings";
+  if (!isWhole(s.ticketCapPerWeek, 1, ANY)) return "the ticket cap is not a whole number of tickets";
+  if (!isWeekday(s.openWeekday) || !isClock(s.openAt) || !isWeekday(s.closeWeekday) || !isClock(s.closeAt)) return "the open or the close is not a weekday and a time";
+  if (weekMinute(s.closeWeekday as IsoWeekday, s.closeAt as EatClock) <= weekMinute(s.openWeekday as IsoWeekday, s.openAt as EatClock)) return "the close does not come after the open";
+  if (!isWhole(s.minLockBufferMinutes, 0, ANY)) return "the close buffer is not a whole number of minutes";
+  if (!isWhole(s.voidDeadlineHours, 1, ANY) || !isWhole(s.objectionWindowHours, 1, ANY) || !isWhole(s.releaseAlertHours, 1, ANY)) return "a window is not a whole number of hours";
+  if (!isWeekday(s.finalDeadlineWeekday) || !isClock(s.finalDeadlineAt) || !isClock(s.objectionNotBeforeAt)) return "the final deadline or the objection window's earliest close is not a weekday and a time";
+  const q = s.questionCaps as Record<string, unknown> | null | undefined;
+  if (!q || typeof q !== "object" || !isRate(q.probabilityMin, 0, 1) || !isRate(q.probabilityMax, 0, 1) || (q.probabilityMin as number) >= (q.probabilityMax as number)
+    || !isWhole(q.maxPerCompetition, 1, 15) || !isWhole(q.minReserveSources, 1, 5)) return "the question rules are unreadable";
+  if (s.guaranteeReservePolicy !== "FLOOR_LESS_CARRY_PER_OPEN_WEEK") return "the guarantee policy is not one version 1 knows";
+  if (s.paidExitWindowMinutes !== 0) return "it carries a paid early exit, which a Millionea ticket never has (MB-50)";
+  return null;
+}
+
 /** Read a stored `rulesSnapshot` back, or refuse it. ⛔ Never defaulted: a week's rules are what it froze, or nothing. */
 export function readMaswaliRulesSnapshot(raw: unknown): { ok: true; rules: MaswaliRulesSnapshot } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "The week has no frozen rules." };
   const s = raw as Record<string, unknown>;
   if (s.v !== 1) return { ok: false, error: `The week's rules are version ${JSON.stringify(s.v)}, which this build cannot read.` };
   if (typeof s.frozenAt !== "string" || Number.isNaN(Date.parse(s.frozenAt))) return { ok: false, error: "The week's rules carry no freeze time." };
-  const asConfig = { ...(s as unknown as MaswaliRulesSnapshot), jackpotFeeRate: 0 } as MaswaliConfig;
-  const why = maswaliConfigProblem(asConfig);
-  if (why) return { ok: false, error: `The week's frozen rules do not validate: ${why}` };
+  // S7-F3 · against version 1's own shape, never `maswaliConfigProblem` (above).
+  const why = rulesV1Problem(s);
+  if (why) return { ok: false, error: `The week's frozen rules do not read as version 1: ${why}.` };
   const r = s as unknown as MaswaliRulesSnapshot;
   return { ok: true, rules: { ...r, questionCaps: { ...r.questionCaps } } };
 }

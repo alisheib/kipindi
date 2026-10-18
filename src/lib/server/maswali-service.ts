@@ -20,7 +20,7 @@ import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
 import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
-import { dbNowMs } from "./maswali-money-service";
+import { dbNowMs, landedMaswaliAnswer } from "./maswali-money-service";
 import { refundVoidedWeek } from "./maswali-void";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
@@ -426,6 +426,11 @@ export async function purchaseMaswaliTickets(input: {
   slips: ReadonlyArray<ReadonlyArray<MaswaliPick>>;
   idempotencyKey?: string;
   playStartedAt?: number;
+  /**
+   * MR-30 · whether the buyer's slip stated the final week's rule when it was opened. The player's form always says
+   * (`buyMillioneaFromForm`: a form that is silent did not state it); a server caller with no slip leaves it out.
+   */
+  shownFinal?: boolean;
   /** Tests only: the rollout read. */
   stateNow?: () => Promise<RolloutState>;
 }): Promise<PurchaseResult> {
@@ -456,6 +461,23 @@ export async function purchaseMaswaliTickets(input: {
   if (!isFencedMaswali(market)) {
     console.error(`[maswali] ALARM · week ${week.code}'s market ${week.marketId} is not a Millionea market; nothing was sold`);
     return notOpen;
+  }
+  // ⛔ S7 · A SLIP OPENED BEFORE THE STOP NEVER SELLS A FINAL-WEEK TICKET (MR-30; the lead's decision from the S6 legal
+  //    review). The Owner may make the week on sale its final week, and a slip reads the week's finality once, when it
+  //    opens: a slip opened before the stop never stated the final week's rule. Its purchase is refused before anything
+  //    moves, and the buyer is sent back to the slip, which now states the rule. ⭐ A key that already bought answers with
+  //    its own receipt (L2: a gate guards a new purchase; a replay places nothing), as `buyPosition`'s refusals do.
+  if (week.isFinal && input.shownFinal === false) {
+    const stale = {
+      ok: false as const, code: "INVALID" as const, reason: "millionea_week_final" as const,
+      error: "This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.",
+    };
+    if (!input.idempotencyKey) return stale;
+    const landed = await landedMaswaliAnswer(input.userId, {
+      marketId: week.marketId, stake: rules.ticketPriceTzs * input.slips.length, idempotencyKey: input.idempotencyKey,
+      buy: { weekId: week.id, slips: input.slips },
+    }, stale, false);
+    return (landed as PurchaseResult | null) ?? stale;
   }
   const r = await buyPosition(input.userId, {
     marketId: week.marketId,
