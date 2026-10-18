@@ -197,11 +197,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
     // place only above the ceiling (`POLICY_PAGES.privacy`). Nothing else — pinned at 92768c34f, whose blob is the page as it
     // stands (test:privacy-notice §1 and §4q, and the published-words helper, hold the paragraphs and the wrapper themselves).
+    // MASWALI-BUILD S5 integration (2026-10-18): the Swahili slip paragraph's two "kitambulisho" become "msimbo wa wiki"
+    // and "taarifa yoyote inayokutambulisha" (test:kyc-copy-truth §2 rule 1 read an identity document beside "kuweka pesa");
+    // nothing else on the page moves — pinned at f8828dcb7, whose blob is the page as it stands.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
       ["src/lib/i18n-dict.ts", "0c3a02130"],
-      ["src/app/legal/privacy/page.tsx", "92768c34f"],
+      ["src/app/legal/privacy/page.tsx", "f8828dcb7"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
