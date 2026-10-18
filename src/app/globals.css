@@ -7322,6 +7322,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-navlink:is([aria-current="page"], [data-active]):not(:focus-visible),
   .kp-jnav__link:is([aria-current], [data-on]):not(:focus-visible) { outline: 1px solid CanvasText; outline-offset: -1px; }
 }
+/* ⭐ THE DESKTOP LINKS' FOCUS RING IS DRAWN INSIDE THE LINK (PHOSPHOR-MIGRATION W3's tile read, focus tile 1280). The bar's
+   links stand edge to edge, so the catch-all's ring, 2px outside a link, ran into the current link's pill beside it and
+   read as one merged shape. Drawn inside, it never meets a neighbour (the lesson `[data-section-rail]` already wrote
+   down); on the current link's own pill it is --brand-300, which keeps 3:1 there (--brand-500 on --nav-pill is about
+   2.8:1). */
+.kp-navlink:focus-visible, .kp-jnav__link:focus-visible { outline-offset: -2px; }
+.kp-navlink:is([aria-current="page"], [data-active]):focus-visible,
+.kp-jnav__link:is([aria-current], [data-on]):focus-visible { outline-color: var(--brand-300); }
 
 /* =====================================================================
    THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14 (batch 3, 2026-08-13)
@@ -7390,10 +7398,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    edges, so the last tab's ring lost its right and bottom sides off-screen (WP12's tiles, 2026-10-08, 390 in all three
    languages) — as `[data-section-rail]` already learned. The coin keeps its own ring.
    ⭐ PHOSPHOR-MIGRATION W3: the ring is the PILL's, not the slot's. The slot's square, edge-to-edge ring goes; the
-   catch-all's 2px --brand-500 ring is drawn 2px around the pip, the shape that says "this destination" (the way
-   `.kp-udclock__watch` hugs its label), and a 56px pip in a slot of 64px or more keeps it on screen at every width. */
+   catch-all's 2px --brand-500 ring is drawn around the pip, the shape that says "this destination" (the way
+   `.kp-udclock__watch` hugs its label), and a 56px pip in a slot of 64px or more keeps it on screen at every width.
+   1px out, not the catch-all's 2: the label stands 4px under the pip, and a ring 2px out met its letters (W3's tile
+   read); at 1px it leaves the label a pixel and the lit pill a hairline of the bar between it and its ring. */
 .kp-rail__item:not(.kp-rail__item--coin):focus-visible { outline: none; }
-.kp-rail__item:not(.kp-rail__item--coin):focus-visible .kp-rail__pip { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.kp-rail__item:not(.kp-rail__item--coin):focus-visible .kp-rail__pip { outline: 2px solid var(--brand-500); outline-offset: 1px; }
 /* ⭐ PHOSPHOR-MIGRATION W3 (R-RAIL 4B, R-INDICATOR 3B, Ali 2026-10-17): 24px glyphs, as Android's and iPhone's tab bars
    draw them, in a 56×32 pip grown to fit them (4px above and below the glyph, 16px either side; the W0 specimen's), and
    a current destination is its Fill glyph on the opaque royal pill. The slot's 64px floor holds the taller pip:

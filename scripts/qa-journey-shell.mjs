@@ -1344,7 +1344,8 @@ async function noHub(vw) {
  * One focus cell: the target’s ring at rest, then focus on the control before it, one real Tab, and the ring it
  * wears: :focus-visible, a 2px solid outline at `offset` (globals.css: the `:where(a, button, …):focus-visible`
  * catch-all, `.btn:focus-visible` and motion.css’s `.gilt-metal:focus-visible` at 2px; `.kp-hub__card`’s rows at -2px;
- * since PHOSPHOR-MIGRATION W3 a rail tab's ring on its pill at 2px, read from the pill (`step.ring`)), a ring that was
+ * since PHOSPHOR-MIGRATION W3 a rail tab's ring on its pill at 1px, read from the pill (`step.ring`), and a desktop
+ * link's inside it at -2px), a ring that was
  * not drawn at rest, and all of it inside the viewport (`FOCUS_PROBE.onScreen`).
  * A box-shadow alone is never a ring: the capsule and the gilt pill wear one at rest.
  */
@@ -1812,9 +1813,10 @@ async function focusSection() {
     { width: 390, state: 'focus-capsule', sel: CAPSULE, offset: '2px', what: 'the captioned balance' },
     { width: 390, state: 'focus-pill', sel: PILL, offset: '2px', what: 'the gold + Weka pesa' },
     // ⭐ -2px from 2026-10-08 (the end slots touch the screen's edges, so the slot's ring was drawn inside it); since
-    // PHOSPHOR-MIGRATION W3 the ring is the pill's, 2px around the 56×32 pip, which sits well inside the slot.
-    { width: 390, state: 'focus-tab', sel: `${RAIL} a.kp-rail__item[href='/account']`, ring: '.kp-rail__pip', offset: '2px', what: 'the Akaunti tab, its ring on the pill' },
-    { width: 1280, state: 'focus-link', sel: `${JOURNEY_BAR} nav.kp-jnav .kp-jnav__link`, offset: '2px', what: 'the first desktop link' },
+    // PHOSPHOR-MIGRATION W3 the ring is the pill's, 1px around the 56×32 pip, which sits well inside the slot; a desktop
+    // link's ring is drawn inside the link (-2px), so it never runs into the current link's pill beside it.
+    { width: 390, state: 'focus-tab', sel: `${RAIL} a.kp-rail__item[href='/account']`, ring: '.kp-rail__pip', offset: '1px', what: 'the Akaunti tab, its ring on the pill' },
+    { width: 1280, state: 'focus-link', sel: `${JOURNEY_BAR} nav.kp-jnav .kp-jnav__link`, offset: '-2px', what: 'the first desktop link, its ring inside it' },
   ];
   for (const locale of LOCALES) {
     if (!(await visit(mainV, '/', { locale, width: 390, label: `focus/root/player/${locale}` }))) continue;

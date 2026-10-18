@@ -612,7 +612,34 @@ collapse into one. The rail's square, edge-to-edge focus ring follows the pill.
   tabs draw 1.5px waves and shafts beside 2.25px neighbours. A composite would be a house drawing where Phosphor has
   one, which R-ONE-SOURCE rules out. The tiles show both; the call stays open to Ali.
 
-### W4 — Outcomes and status
+**The tiles, read (2026-10-18):** 91 before (main `e2eb9cd6`) and 91 after (`9c6067af`), from the baseline's and the first
+compare's servers (`scratchpad/phos/w3tiles/`).
+- **The chrome, 60 pairs, read by a reader in full:**
+  - classic and journey rails at 320–768 and both headers at 1280, in sw, en and zh, for a guest and a player;
+  - no clipping, no overlap, no new truncation or wrap; every label on one line, the coin's included, and the coin's
+    rise unchanged; the gilt and unread dots on their icons' corners; both headers' current links on the pill, nothing
+    moved.
+- **One change measured, as predicted:** at 320px in Swahili, where "Tiketi zangu" takes two lines, the journey rail is
+  about 6px taller (74.3px, r9c 4.3). That is still under `--rail-h`'s 88, so the page's bottom reserve still clears it.
+- **The lit, focus and admin pairs, 31, read by a second reader in full:**
+  - **Fixed:**
+    - On the deposit page two tabs were lit. More's Wallet row (`/wallet`) is a prefix of the coin's route
+      (`/wallet/deposit`); the bug was older, but the opaque pill made it plain. More no longer lights while the coin is
+      current.
+    - A desktop link's focus ring ran into the current link's pill beside it, because the links stand edge to edge. The
+      ring is now drawn inside the link (-2px), in `--brand-300` on the current link's own pill (3:1 there; a contrast
+      row). `qa:journey-shell`'s focus cell is re-pinned.
+    - The rail's ring, 2px out, met the label 4px under the pip. It is now 1px out.
+  - **Kept:**
+    - More's Fill (Phosphor's `list-fill`, a solid tile with its lines cut out) reads more like a card than a menu. It is
+      Phosphor's own Fill, and it is on Ali's review page beside Live's and Up & Down's.
+    - Four console glyphs look alike at 18px, with their labels beside them: Finance's calculator and Payments ops'
+      handset, and Retention's archive and System's drives. W5, which gives the admin cards their icons, revisits them.
+  - **Not in these tiles**, so taken again at the release: Sources & categories, the drawer's lower rows, and a lit
+    drawer row other than Overview and House. The capture now scrolls the sidebar to its middle and the drawer to its
+    current row and its end.
+- **Main's own red, measured on a throwaway checkout of `95c480f1`:** `red:wallet-reach` case 21 catches its plant on
+  8c.2, not 8c.3 (26/27). The plant is in the journey's top bar, which W3 does not touch; it is for that bar's lane.
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart
 (§A4). Inks from `src/lib/status-tone.ts` (§B11). Won = the Fill seal in gold (earned money, §M3a); lost / void / pending
 = quiet Line marks (§M7: a loss is bookkeeping); void slate; result crests success/danger (`test:betting-ink` §7a).
@@ -695,7 +722,11 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
   against 82px, in the 4 player `/watchlist` cells.
   The question page already solves this: `break-end-clock` writes one canonical same-format time before geometry,
   calibrated from the ff8c pair. The same treatment for book cells would close it; the 090bbf76 pair already proves the
-  moments differ.
+  moments differ. W3's compare (2026-10-18, against `e2eb9cd6`) saw the same 4 cells again.
+- **The journey's break banner at 320px in Chinese is one digit from wrapping** (W3's tile read, 2026-10-18). Its title
+  "您的休息期至 2026年10月18日 06:21" fills the card's width exactly, so a wider time, 07:07, wraps it to two lines and
+  moves everything under it down about 18px. Live data, not W3; it is for the journey's own lane.
+- The floating chat bubble covers the card's "Maelezo" link at 360 and 390 in classic guest Swahili, as it did before W3.
 
 ---
 

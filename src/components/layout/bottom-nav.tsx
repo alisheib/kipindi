@@ -164,8 +164,10 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
   /** The coin reads as current on its own route — prefix, because /wallet/deposit has a
    *  `/return` child the player lands on coming back from the provider. */
   const coinOn = pathname.startsWith(coinHref);
-  /** `More` reads as current when the page behind it is one of its own. */
-  const moreActive = moreItems.some((m) => pathname.startsWith(m.href));
+  /** `More` reads as current when the page behind it is one of its own — and never while the coin is current. Its Wallet
+   *  row (`/wallet`) is a prefix of the coin's `/wallet/deposit`, so on the coin's own page both lit: two "you are here"
+   *  marks on one bar, which the opaque pill made plain (PHOSPHOR-MIGRATION W3's tile read; the double-lit was older). */
+  const moreActive = !coinOn && moreItems.some((m) => pathname.startsWith(m.href));
 
   return (
     <nav

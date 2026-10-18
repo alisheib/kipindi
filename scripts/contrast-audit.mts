@@ -1026,6 +1026,9 @@ const CHECKS: Check[] = [
   { name: "W3 · a current destination's label and Fill glyph (--text on --nav-pill)", fg: T.text, bg: token("nav-pill"), min: 4.5 },
   { name: "W3 · the destination pill against the bar (--nav-pill on --panel; decorative — exempt, never the sole sign)", fg: token("nav-pill"), bg: T.panel, min: 3.0, decorative: true },
   { name: "W3 · the tab's focus ring around its pill (--brand-500 on --panel, non-text 3.0)", fg: token("brand-500"), bg: T.panel, min: 3.0 },
+  // A desktop link's ring is drawn inside the link (the links stand edge to edge); on the current link it sits on the pill.
+  { name: "W3 · a current desktop link's focus ring, inside its pill (--brand-300 on --nav-pill, non-text 3.0)", fg: token("brand-300"), bg: token("nav-pill"), min: 3.0 },
+  { name: "W3 · any other desktop link's focus ring, inside it (--brand-500 on --panel, non-text 3.0)", fg: token("brand-500"), bg: T.panel, min: 3.0 },
   { name: "W3 · the Up & Down gilt dot on a current tab's pill (--gilt on --nav-pill, non-text 3.0)", fg: T.gilt, bg: token("nav-pill"), min: 3.0 },
 ];
 
