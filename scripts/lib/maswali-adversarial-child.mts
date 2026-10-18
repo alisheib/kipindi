@@ -22,6 +22,7 @@
  *   §12 CC · both clock-change weekends, through the open's close guard and the void deadline (MB-30, MR-4, OD-09b)
  *   §13 HF · a holiday Friday (MB-85, OD-27)
  *   §14 DL · a week's deadlines at the open are its frozen rules' (OD-09b, MB-75; lane L's review, finding 8)
+ *   §14b SN · a refused stop names the Owner's next act, in every branch (MR-30, OD-03; the S7 review, round 2)
  *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
  *   §16    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
@@ -1178,12 +1179,55 @@ if (runs("DL")) {
   await voided(o2.id);
 }
 
+// ═══ §14b · SN · a refused stop names the Owner's next act ══════════════════════════════════════════════════════════
+if (runs("SN")) section("§14b · SN · a refused stop names the Owner's next act — here no week is on sale and none is being decided, so the short-notice exception is closed (MR-30, OD-03; the S7 review, round 2)");
+if (runs("SN")) {
+  // P runs and its results are decided whole (it sells nothing and voids), so no week is on sale and none is being
+  // decided; Q is the next week to open, asked inside its week of notice. Every earlier PUBLIC week is terminal: LIVE.
+  const sP = W.weekStartAhead(ahead++), sQ = sP + 7 * DAY, sR = sP + 14 * DAY;
+  ahead += 2;
+  const P = await openWeekAt(sP);
+  const Q = await drafted(sQ);
+  const stop = (weekId: string, now: Date) =>
+    W.svc.sunsetMaswali({ weekId, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "the Owner stops Millionea (adversarial suite)", now });
+  const isFinal = async (weekId: string) => (await dal.weekStore.get(weekId)).isFinal === true;
+  await closed(P.id);
+  await sealRest(P.id, sP, ALL_VOID);
+  await voided(P.id);
+  const inNotice = new Date(Date.parse(Q.opensAt) - 2 * DAY);
+  ok("SN.0 · the line is LIVE: P has voided, nothing is on sale or being decided, and Q is the next week to open, inside its week of notice",
+    (await W.svc.sunsetState()).kind === "LIVE" && (await dal.weekStore.get(P.id)).state === "VOIDED" && Date.parse(Q.opensAt) - inNotice.getTime() < 7 * DAY);
+  const shortNotice = await stop(Q.id, inNotice);
+  ok("SN.1 · ⭐ the next week inside its week of notice is refused, and the refusal names the Owner's next act: make it final once it opens, or a week a full week ahead",
+    !shortNotice.ok && /full week ahead/.test(errOf(shortNotice)) && /To stop Millionea, make week /.test(errOf(shortNotice)) && /once it opens/.test(errOf(shortNotice))
+      && errOf(shortNotice).includes(Q.code) && !(await isFinal(Q.id)), errOf(shortNotice));
+  const decided = await stop(P.id, inNotice);
+  ok("SN.1b · ⭐ …and a week already decided is refused the same way: the refusal names the next week to make final, never stops at the week's state",
+    !decided.ok && /already VOIDED/.test(errOf(decided)) && /To stop Millionea/.test(errOf(decided)) && errOf(decided).includes(Q.code), errOf(decided));
+  // The first act it named, taken: Q opens, and the week on sale is made final at once.
+  const o = await W.svc.openWeek({ weekId: Q.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(Date.parse(Q.opensAt) + MIN) });
+  if (!o.ok) throw new Error(`SN: week Q did not open: ${o.error}`);
+  const atOnce = await stop(Q.id, new Date(Date.parse(Q.opensAt) + 2 * MIN));
+  ok("SN.2 · control: the act it named lands — Q, open, is made final at once as the week on sale", atOnce.ok && atOnce.week.isFinal === true && atOnce.week.state === "OPEN", errOf(atOnce));
+  const R = await drafted(sR);
+  const another = await stop(R.id, new Date(Date.parse(Q.opensAt) + 3 * MIN));
+  ok("SN.3 · ⭐ while a final week stands, another stop is answered with that first — nothing more is needed — never a rule or a week on sale it no longer concerns",
+    !another.ok && /already the final week/.test(errOf(another)) && /nothing more is needed/.test(errOf(another)) && errOf(another).includes(Q.code) && !(await isFinal(R.id)),
+    errOf(another));
+  // ⚠️ A FIXTURE, DECLARED (as §15's): the Owner's order withdrawn, which no act can do, so the line is LIVE again for §15.
+  //    R stays a draft that can never open once a later week has (MR-3), as §2's skipped week.
+  await dal.weekStore.patch(Q.id, { isFinal: false });
+  await closed(Q.id);
+  await sealRest(Q.id, sQ, ALL_VOID);
+  await voided(Q.id);
+}
+
 // ═══ §15 · SU · the sunset after a close ═══════════════════════════════════════════════════════════════════════════
 if (runs("SU")) section("§15 · SU · the sunset after a close: a week whose results are being decided is never made final; the next week may be, inside its week (MR-30, OD-03)");
 if (runs("SU")) {
   // THE LEAD'S DECISION OF 2026-10-18: the 13% fee is taken from a sunset payout and never from a rollover, so a stop
   // ordered once a week's results are in view could choose who is paid. Every earlier PUBLIC week of this run has settled
-  // or voided (§2's skipped week can never open), so no final week stands and A is the newest week of the line to open.
+  // or voided (§2's and §14b's skipped drafts can never open), so no final week stands and A is the newest week to open.
   const sA = W.weekStartAhead(ahead++), sB = sA + 7 * DAY, sC = sA + 14 * DAY;
   ahead += 2;
   const A = await openWeekAt(sA);

@@ -456,4 +456,20 @@ export const MUTATIONS = [
     expect: "FR.2 · ⭐",
     suite: "adversarial:FR",
   },
+  {
+    name: "(F2-stop-next-act) a stop refused at short notice names no next act once no week is on sale or being decided (MR-30, OD-03)",
+    file: SVC,
+    from: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);",
+    to: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03).`);",
+    expect: "SN.1 · ⭐",
+    suite: "adversarial:SN",
+  },
+  {
+    name: "(F2-stop-final-first) a stop while a final week stands is answered by a rule it no longer concerns (MR-30)",
+    file: SVC,
+    from: "    if (life.kind === \"ENDING\") return refuse(`Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`);",
+    to: "",
+    expect: "SN.3 · ⭐",
+    suite: "adversarial:SN",
+  },
 ];

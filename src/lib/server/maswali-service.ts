@@ -865,6 +865,28 @@ function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | 
 }
 
 /**
+ * ⭐ S7-F2 · THE OWNER'S NEXT ACT (the S7 review, round 2): every refusal of a stop ends with what the Owner can do
+ * instead, read from the line as the stop reads it. The week on sale may be made final at once; while a week's results
+ * are decided, the next week to open may be made final at shorter notice; otherwise a draft is made final a full week
+ * before it opens, or the next week once it is on sale. A refusal that ended on an empty sentence left the Owner, once
+ * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale.
+ */
+function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek, clockMs: number): string {
+  const { onSale, deciding, next } = s;
+  if (onSale && onSale.id !== asked.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
+  if (deciding) {
+    return next
+      ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`
+      : `To stop Millionea, draft the next week and make it the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`;
+  }
+  if (!next) return "To stop Millionea, draft the next week and make it the final week, a full week before it opens or once it is on sale (OD-03).";
+  if (Date.parse(next.opensAt) - clockMs >= SUNSET_NOTICE_MS) {
+    return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now (OD-03).`;
+  }
+  return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
+}
+
+/**
  * ⭐ THE OWNER STOPS THE PRODUCT (MR-30, OD-03) — by making one week the FINAL week. It runs normally; if no ticket gets
  * 10 of 10, the highest score shares the whole jackpot (`maswali-settlement.ts`). ⛔ The caller is the Owner's ceremony
  * (S4, `requireOwner`); this checks the typed words and the rules:
@@ -878,6 +900,8 @@ function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | 
  *     ordered after a close, takes effect from that next week, and its buyers are told at purchase (the slip names the
  *     final week). Any other draft keeps the full week of notice;
  *   · no week after it may already have opened, and no other final week may still be running.
+ * A final week already standing is answered first, before any rule a later act could meet; every other refusal ends
+ * with the Owner's next act (`stopNextAct`).
  * A regulator-ordered stop (refund the current week; the pool to the last fully graded week's top tickets) is NOT this
  * act — it is S4's own ceremony.
  */
@@ -888,36 +912,34 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
   const nowMs = (input.now ?? new Date()).getTime();
   return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
-    if (!week) return refuse("No such week.");
-    if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week.");
+    if (!week) return refuse("No such week: reload the page and choose the final week again.");
+    if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week: make a public week the final week.");
     if (week.isFinal) return { ok: true, week };
-    if (week.state === "SETTLED" || week.state === "VOIDED") return refuse(`Week ${week.code} is already ${week.state}.`);
+    const life = await sunsetState();
+    if (life.kind === "ENDING") return refuse(`Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`);
+    if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`);
     // The later of the two clocks decides (MB-84), as a move of the close reads it: a container whose clock runs slow
     // never reads a closed week as on sale, nor a draft as further off than it is.
     const clockMs = Math.max(nowMs, await dbNowMs(lockTx));
     const line = await weekStore.list({ visibility: "PUBLIC" });
-    const { onSale, deciding, next } = stopStanding(line, clockMs);
+    const standing = stopStanding(line, clockMs);
+    const { onSale, deciding, next } = standing;
+    if (week.state === "SETTLED" || week.state === "VOIDED") return refuse(`Week ${week.code} is already ${week.state}. ${stopNextAct(standing, week, clockMs)}`);
     if (salesClosed(week, clockMs)) {
-      const instead = onSale ? `make the week on sale, ${onSale.code}, the final week.`
-        : `make the next week to open${next ? `, ${next.code},` : " (once it is drafted)"} the final week: it may be made final although it opens in less than a full week (OD-03).`;
-      return refuse(`Week ${week.code}'s sales have closed, so its results are being decided: a stop now could choose who is paid with those results in view. It settles under its own rules (with no 10 of 10, its jackpot rolls over as always). To stop Millionea, ${instead}`);
+      return refuse(`Week ${week.code}'s sales have closed, so its results are being decided: a stop now could choose who is paid with those results in view. It settles under its own rules (with no 10 of 10, its jackpot rolls over as always). ${stopNextAct(standing, week, clockMs)}`);
     }
+    const later = line.find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
+    if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open. ${stopNextAct(standing, week, clockMs)}`);
     let basis: "ON_SALE" | "FULL_NOTICE" | "NEXT_AFTER_CLOSE" = "ON_SALE";
     if (week.state === "DRAFT") {
       basis = "FULL_NOTICE";
       if (Date.parse(week.opensAt) - clockMs < SUNSET_NOTICE_MS) {
         if (onSale || !deciding || next?.id !== week.id) {
-          const instead = onSale ? ` To stop now, make the week on sale, ${onSale.code}, the final week.`
-            : deciding && next ? ` While week ${deciding.code}'s results are decided, only the next week to open, ${next.code}, may be made final at shorter notice.` : "";
-          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03).${instead}`);
+          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);
         }
         basis = "NEXT_AFTER_CLOSE";
       }
     }
-    const life = await sunsetState();
-    if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
-    const later = line.find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
-    if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
     await weekStore.patch(week.id, { isFinal: true });
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, state: week.state, reason, basis } });
