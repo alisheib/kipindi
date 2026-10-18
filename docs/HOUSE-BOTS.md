@@ -2927,6 +2927,10 @@ weight read raw): **0 mismatches** — so no market fell in the deploy window. 1
 open markets' extra summed 16 before the release and 150 after. The four-account poll (true count 15) shows **41** on
 its page ("Watabiri 41") and in `/live`'s payload. (The weights moved twice during the day — officers re-saved — so the
 catch-up's own sums are not those of the morning's dry run; the read-back compares against the weights stored at the read.)
+The production gauntlet (`BASE=https://50pick.tz`, read-only, on `d09fd050` — this release plus its docs): **360 passed, 0
+failed**; [E3] NOT MEASURED by design (no QA sign-in on this machine). The LOCAL gauntlet before the push passed [A]–[E3];
+its [F]/[M] were not measured — the machine guard stopped the in-memory `next dev` at 781 MB free (14:58 UTC), and
+production's [M] covers Millionea's dark checks.
 
 ⚠️ **The deploy window.** `prisma migrate deploy` runs at the new container's boot while the previous build still serves
 (`railway.json`: 60 s overlap, 30 s draining). A holder's FIRST hand stake on a market placed by the OLD build after the
