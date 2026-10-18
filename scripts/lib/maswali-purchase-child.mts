@@ -452,5 +452,34 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   ok("R5.4 · …while the raw gambling net, which the panel read before, counts the win and the refund as money back", raw > 0, `${raw}`);
 }
 
+// ── §9 · the stale slip (S7, MR-30) ─────────────────────────────────────────
+console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop never sells a final-week ticket`);
+{
+  // A PUBLIC week after every other (the last to open), made the final week while it is ON SALE by the Owner's own act.
+  // `shownFinal` is what the player's slip posts: whether it stated the final week's rule when it opened.
+  const { week: Z } = await W.openWeek({ weeksAhead: 6 });
+  const buyAs = (u: string, shownFinal: boolean, key: string) =>
+    W.svc.purchaseMaswaliTickets({ userId: u, weekId: Z.id, slips: [W.LOSE], idempotencyKey: key, shownFinal, stateNow: async () => "ACTIVE" });
+  const count = async () => (await dal.weekStore.get(Z.id)).ticketCount;
+  const early = await W.user({ balance: 50_000 });
+  const plain = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.1 · a week never final sells to a slip that stated no final week, as before (control)", plain.ok && !plain.data.replayed && (await count()) === 1, why(plain));
+  const stop = await W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite stops Millionea" });
+  ok("SF.2 · the Owner makes the week on sale the final week (the fixture)", stop.ok && stop.week.isFinal === true && stop.week.state === "OPEN", why(stop));
+  const stale = await W.user({ balance: 50_000 });
+  const refused = await buyAs(stale, false, "s7-stale-slip-0001");
+  ok("SF.3 · ⛔ a slip opened before the stop is refused: the week is final now and the slip did not say so",
+    !refused.ok && refused.reason === "millionea_week_final" && refused.code === "INVALID", why(refused));
+  ok("SF.4 · …and nothing moved: no debit, no ticket, the week's count unchanged",
+    (await W.bal(stale)).balance === 50_000 && (await dal.ticketStore.listForUser(stale)).length === 0 && (await count()) === 1, J({ bal: await W.bal(stale), count: await count() }));
+  const fresh = await buyAs(stale, true, "s7-fresh-slip-0001");
+  ok("SF.5 · a slip opened after the stop (it states the final week) is sold (control)",
+    fresh.ok && !fresh.data.replayed && (await W.bal(stale)).balance === 50_000 - price && (await count()) === 2, why(fresh));
+  const replay = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.6 · ⭐ L2 · the same key of a purchase that landed before the stop answers its own receipt, never the refusal, and charges nothing",
+    replay.ok && replay.data.replayed === true && J(replay.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replay));
+}
+
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);

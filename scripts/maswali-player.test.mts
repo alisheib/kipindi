@@ -14,13 +14,14 @@
  *
  * The floor is per store and the same on both: every case runs on both. It only ever rises. 175 → 177 (S7-F, 2026-10-18):
  * a closed week is no longer made final (13.5a), so the Owner's stop takes effect from the next week, G, and the week it
- * refused settles under its own rules (14.0).
+ * refused settles under its own rules (14.0). → 182 (S7-F3): the final week's slip form, refused when it did not state the
+ * final week and sold when it did (14.0c, 14.0d).
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-player",
   casesFile: "scripts/lib/maswali-player-child.mts",
-  minPass: { memory: 180, postgres: 180 },
+  minPass: { memory: 182, postgres: 182 },
   dbPrefix: "mlw_player",
 });

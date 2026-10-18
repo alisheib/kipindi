@@ -150,6 +150,9 @@ export function SlipClient({
     fd.set("weekId", weekId);
     fd.set("idempotencyKey", key);
     fd.set("slips", JSON.stringify([picks]));
+    // MR-30 · the finality this slip stated: a week made final after it opened refuses the purchase, and the refresh
+    // below redraws the slip with the final week's rule.
+    fd.set("shownFinal", finalWeek ? "1" : "0");
     start(async () => {
       const r = await buyMillioneaTicketsAction(fd);
       if (r.ok && r.data) {
