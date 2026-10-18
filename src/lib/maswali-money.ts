@@ -103,8 +103,8 @@ export type RemainderFate = "carried" | "kept" | "part";
 /**
  * ⭐ MR-25 · WHERE THE ROUNDING REMAINDER WENT, read off a settled week's own figures: `dust` = J − F − k·share and
  * `carryOut` = what the week handed the next. The week's own money carries the remainder as far as it covers it; a
- * floor's top-up pays only what is paid out (U above), so whatever the week's money did not cover stays with the
- * guarantee — all of it in a week the guarantee topped up (carryOut is then 0).
+ * floor's top-up covers only the fee and the shares (U above), so whatever the week's money did not cover stays with
+ * the guarantee — all of it in a week the guarantee topped up (carryOut is then 0).
  *   · "carried" — the whole remainder joined the next jackpot (carryOut = dust: the week's money covered it);
  *   · "kept"    — none of it did (a topped-up week, or the week's money covered none of it);
  *   · "part"    — the week's money covered part of it, and the rest stayed with the guarantee.
