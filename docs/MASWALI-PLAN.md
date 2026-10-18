@@ -29,9 +29,9 @@
 
 ## §0 · RESUME AT
 
-**⏩ LIVE STATE (2026-10-18 15:49 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
+**⏩ LIVE STATE (2026-10-18 18:40 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
 The State paragraph below is the last push's.)**
-- **`main` = `d09fd050` + this docs commit:** S1–S4 and S5's foundations, dark (`WITHDRAWN`; every Millionea route
+- **`main` = `e296c57f` + this docs commit:** S1–S4 and S5's foundations, dark (`WITHDRAWN`; every Millionea route
   answers not found). Seven Millionea `test:all` reds on `main` leave with the S5 push. Six other red harnesses on `main`
   are other lanes' anchors: four repaired on `mln-redfix` (below), two the phosphor session's.
 - **⏭ NEXT, IN ORDER (any machine):**
@@ -49,28 +49,43 @@ The State paragraph below is the last push's.)**
      gained CODE since: another session's "Counts as by hand" (`50cfe630`, with a migration), so `prisma generate`,
      the migration probe and the censuses it touches before the gate — then `tsc` + `next build`, push, the production read-back (AGENTS.md §4: `?dpl=` on www and the apex, `/api/health`,
      `qa:chunks-prod`, production `qa:live`, the Millionea routes 404), then **STAFF_PREVIEW** — Ali.
-  2. **S7 → `main`** after S5: `mln-sf` = `fbec9ce1` (S5 + S7 + the lead's F1–F5 + the review's follow-ups `mln-s7-f2` + W3).
-     ✅ **PROVEN on `acf4caf8` (2026-10-18 15:13 UTC): `tsc` and all 54 derived suites green** — every static census
-     and gate, and on both stores `maswali-player` (180/180), `maswali-adversarial` (184/192, its floors raised to the
-     printed counts in `fbec9ce1`), `-engine` (109), `-settle` (100), `-purchase`, `-void`, `-shared-paths`,
-     `-close-race`, `-config`, `-rbac`; `e2e:maswali-fault` 16/0; and `prisma migrate deploy` applied every migration —
-     the fence's lock-wait retry included — to a scratch Postgres 18. Still owed: its two red harnesses
-     (`red:maswali-money-path`, `red:maswali-rbac`, each alone on a clean tree — after round 3's merge, which moves
-     their anchors); shots of `/admin/maswali`
-     (the rules and holiday forms) and `/pools`; S7 rounds 3 and 4 (below); then `test:all` + `e2e:money`/`e2e:fault`/
-     `e2e:card` on a throwaway Postgres (a money push), and the push.
-     ⏭ **S7 round 3 is BUILT on `mln-s7-f3` = `5e8f7eea`** (unmerged; **reviewed 15:30 UTC: no BLOCKER, no HIGH — merge
-     it**, then round 4 below): the stale-slip refusal (new
-     failure reason `millionea_week_final`: a slip opened before its week was made final never sells), the frozen
-     snapshot read against its own version (`rulesV1Problem`), the short-float alert latched once covered
-     (`maswali.settlement.float_covered`), the platform's own resolution refusing an unread two-officer setting, the
-     close retry measured from the refusal's instant, `poolsView` nulls, a red plant on the holiday save's gate. Floors
-     `test:maswali-purchase` 103/106, `test:maswali-player` 182/182, `test:maswali-adversarial` 185/193 (re-pin to the
-     printed counts). To merge into `mln-sf`: re-pin the dictionary for D19a (APPROVED_EXTRA "src/lib/i18n-dict.ts" →
-     the merge's commit), then its derived suites (the list in its hand-back: purchase, player, adversarial, config,
-     two-admin, bulk-resolve, failure-reasons, i18n, rbac + red, money-path red, red-anchors, house-bot-reports and
-     -disclosure, ui, design, privacy-notice, popup-fit, control-gates, results-freshness, engine, void, shared-paths).
-     ⏭ **S7 round 4** (from round 3's review; build on the merged `mln-sf`, then its derived suites):
+  2. **S7 → `main`** after S5: `mln-sf` = `1b8744e8` (S5 + S7 + the lead's F1–F5 + rounds 2 and 3 + W3).
+     ✅ **PROVEN before round 3 (`acf4caf8`, 2026-10-18 15:13 UTC): `tsc` and all 54 derived suites green** — every
+     static census and gate, and on both stores `maswali-player` (180/180), `maswali-adversarial` (184/192),
+     `-engine` (109), `-settle` (100), `-purchase`, `-void`, `-shared-paths`, `-close-race`, `-config`, `-rbac`;
+     `e2e:maswali-fault` 16/0; and `prisma migrate deploy` applied every migration — the fence's lock-wait retry
+     included — to a scratch Postgres 18.
+     ✅ **Round 3 MERGED** (`e47159f7`; reviewed clean: no BLOCKER, no HIGH; its one conflict, the adversarial floor,
+     taken at round 3's until the merged run prints its counts; D19a re-pinned at the merge in `1b8744e8`): a slip
+     opened before its week was made final never sells (`millionea_week_final`); a running week's frozen rules are
+     read against their own version; the float latch; the platform's own resolution fails closed on an unread
+     two-officer setting; the close retry is measured from the refusal; `/pools` shows unreadable figures as unknown;
+     the holiday-save plant. ✅ **On the merged tree (`1b8744e8`, 18:24 UTC) the twelve derived checks that need no
+     Postgres are green:** `test:house-bot-disclosure` (the D19a re-pin), `test:failure-reasons`, `test:i18n`,
+     `test:maswali-i18n`, `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
+     `test:maswali-design`, `test:maswali-ui`, `test:two-admin`, `test:bulk-resolve`.
+     **Still owed on the merged tree:** `tsc`; the derived suites that need Postgres or a server — `test:maswali-purchase`
+     (103/106), `test:maswali-player` (182/182), `test:maswali-adversarial` (185/193), `-config`, `-engine`, `-void`,
+     `-shared-paths`, `test:maswali-rbac` and its red, `red:maswali-money-path`, `test:house-bot-reports`,
+     `test:results-freshness` — each floor then raised to its printed count; shots of `/admin/maswali` (the rules and
+     holiday forms) and `/pools`; round 4 (below); then `test:all` + `e2e:money`/`e2e:fault`/`e2e:card` on a
+     throwaway Postgres (a money push), and the push.
+     ⏭ **S7 round 4 — being built on `mln-s7-f4`** (from `1b8744e8`), from round 3's review — **items 1–4 DONE, `931a9c91`** (not
+     yet reviewed; nothing run): the refusal is an OPEN week's only (SF.7, SF.8); the stale-slip check also runs inside
+     the locks — the money service refuses after its fresh week read, after the wallet-lock replay and before the money
+     transaction — and the stop makes an OPEN week final under that week's market lock (SF.2a, SF.6a, SF.6b), the
+     Ruling 232 census re-pinned (both positioned writes byte-identical, six lines lower); the refusal's words say the
+     final week's rule now applies (en/sw/zh — D19a red until re-pinned at the merge); the ops census and both
+     resolver pages read the two-officer setting fail-closed (an unknown drawn strict and named). Floors (static):
+     `test:maswali-purchase` 108/111, `test:bulk-resolve` 200. Run: `test:maswali-purchase`, `test:house-bot-reports`,
+     `test:maswali-engine`, `red:maswali-money-path`, `test:failure-reasons`, `test:predictor-shown`,
+     `test:bulk-resolve`, `test:one-sided`, `test:unsaved-changes`, `test:house-bot-console` (each with its red twin
+     where one exists), `test:control-gates`, `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`,
+     `test:i18n`, `test:maswali-i18n`, `test:criterion-i18n`, `test:red-anchors`, the design gate's eyebrow-roles
+     check, `tsc`, and a render of `/admin/resolver-queue`, `/admin/resolver/[id]` and `/admin/maswali/pools`.
+     **Left (in the scope below):** the Pools stop control's next act (plan: a next act needing no asked week,
+     exported beside `stopNextAct`, carried on the console's standing read and shown by the sunset control), the
+     float latch, the version-1 ceiling. The scope:
      - MEDIUM — the stale-slip check reads the week BEFORE the wallet and market locks, and the stop never serialises
        with it, so a stop committing during a purchase's flight (seconds in a sales rush) still sells from a stale slip
        (`maswali-service.ts:449/470`): carry the finality the slip showed into the money service (`shownFinal` on
@@ -102,66 +117,60 @@ The State paragraph below is the last push's.)**
      - `mln-s6-data` `80992915` — **merge-ready** (round 8 reviewed clean: THREE tiers on the integrity page — weeks not
        yet settled, then settled weeks still holding a share, then decided weeks, the one order within each; round 9 =
        comments and labels only; floors `test:maswali-integrity` 50/store, `test:maswali-evidence` 67/69, 22 red plants).
-     - `mln-s6-reports` `89d43366` — **not merge-ready.** Round 7 (`ffe83cc4`): R4 reads each sign-up's FIRST ticket
-       only and R2 each chunk's own span (both confirmed exact by its review); the harm watch's ticket read on its own
-       time budget; one header vocabulary; "Cannot be read" for every missing figure on the Pools page. Its review: the
-       code is correct, but the lane's cases, two guards and some comments still let a detector's parameters be
-       derived, the generic guard misses several forms, and the time budget's race has no real-clock case. Round 8, in
-       this order: those comments and guards (with `docs/S13-PLAN.md`, `COMPLIANCE-DECISIONS.md` and a test comment
-       already on `main` reworded the same way — the pushed history stays as it is), the generic guard over every form
-       and file, the real-clock race case, the LOWs. **Round 8 DONE (`47297f6f`):** each fixture described by what its
-       account exercises; H.10 rejects any stray duration or amount literal in the module's code (its control and plant
-       made-up literals); the harm watch's header, `S13-PLAN.md`, `COMPLIANCE-DECISIONS.md` and a test comment
-       reworded by what the detectors enforce; the budget's race proven on the real clock (H.11i2, with its plant); the
-       read's comment and `S13-PLAN.md`'s reader lines corrected. Ruled: the pack's jackpot metric names stay (the
-       regulator pack's own). Floors (static counts): `test:harm-watch` 28/store, `test:journey-measures` 27/30,
-       `-view` 51, `test:maswali-reporting` 53/58; run `test:harm-watch`, `test:rg-doors`, `test:journey-measures`
-       (each with its red twin), `-view`, `test:maswali-reporting`, typecheck. **Round 9 (`89d43366`):** the read's
-       chunk size has a test seam (the product never sets it) and a two-chunk case on both stores, every mark equal to
-       the one-chunk read's (`test:journey-measures` 28/31). **Left — the generic guard H.10e** (still round 7's one
-       pattern over one file): over the prose of the cases, the test, `harm-watch.ts` and `docs/S13-PLAN.md` (comment
-       lines joined across their wraps, plan paragraphs joined; a line opening with a case id starts a new sentence; a
-       figure glued to a case id is no figure), flag a sentence that names a detector together with a figure and a
-       time unit in either order (a hyphen or a space before the unit) or a counted noun in digits or words, and
-       "margin" beside a window, a candidate or a duration constant; a plant per form, each figure made up. Then its
-       next review (rounds 8–9).
+     - `mln-s6-reports` `bafccdc1` — **not merge-ready** (round 12 below). Built and reviewed through round 10: R4
+       reads each sign-up's FIRST ticket only and R2 each chunk's own span (both confirmed exact); the harm watch's
+       ticket read has its own time budget, its race proven on the real clock (H.11i2); one header vocabulary;
+       "Cannot be read" for every missing figure on the Pools page; the pack's jackpot metric names stay (the
+       regulator pack's own — ruled). The public repository: each fixture is described by what its account exercises;
+       the harm watch's header, `docs/S13-PLAN.md`, `COMPLIANCE-DECISIONS.md` and `rg-doors.test.mts` (its control
+       fixtures now built from made-up tokens) say what the detectors enforce — the pushed history stays as it is;
+       H.10 sets aside only the module's own constants, by name, and fails any other constant, product or literal
+       carrying a figure; H.10e reads the prose of the cases, the test, `harm-watch.ts` and the plan sentence by
+       sentence and fails a sentence that names a detector beside a figure with a time unit or a counted number, or
+       slack beside a span — a plant per form, every figure made up (its review: every earlier gap closed, nothing
+       legitimate flagged). Round 11 (`bafccdc1`, not yet reviewed): those test strings and H.10's allowlist; the read's
+       chunk-size seam refuses any size but a whole number ≥ 1; M.12j reads with a marked unit last in a chunk and
+       counts the reads on both stores. **Round 12** (the lead's ruling from round 10's review): a sentence that names
+       a detector carries no unit of time at all, figure or not (the detectors are described as recent); the scan
+       reads string and template literals as well as comments, every name a detector goes by, each sentence with the
+       one before it, and every file that discusses the detectors (`rg-doors.test.mts`, `COMPLIANCE-DECISIONS.md`
+       added); its slack and abbreviation words widened. Floors (static counts): `test:harm-watch` 28/store (its red
+       twin 36 plants), `test:journey-measures` 29/32, `-view` 51, `test:maswali-reporting` 53/58; run
+       `test:rg-doors`, `test:harm-watch`, `test:journey-measures` (each with its red twin), `-view`,
+       `test:maswali-reporting`, typecheck — then the review of rounds 11–12.
        **Left for the lead to schedule:** derive the harm watch's candidate window from the detectors' own constants
        (`responsible-gambling.ts` exports none: inline literals in a module that many anchor files and scripts pin).
-     - `mln-s6-notices` `fefc24c4` — **not merge-ready.** Rounds 6–7 (`42da9331`) widened the claims lint (prize stems,
-       implicit claims, number words, look-alike digits) and resolve an uncertain win or refund letter through the
-       provider's outbound search (found → confirmed; absent → resent once, never again; unreadable → listed for an
-       officer on `/admin/maswali/integrity`, never resent automatically). Their review (1 HIGH, 5 MEDIUM) briefed round
-       8, in this order: a money letter's newest attempt with no outcome is ambiguous, never done; only an attempt older
-       than a margin is searched, so a search never races the provider's own in-flight send; "found" must match THIS
-       letter (the provider's metadata naming the letter, or the attempt's own time window and subject), never a later
-       letter's tag; the lint's question test anchored to the sentence's start and never exempting a figure that a
-       winning or getting verb introduces, a generic subject, or the reader addressed as a possible winner; the lead's
-       refined limit ruling (below); comments and case names that say what is enforced; then the LOWs. **Round 8 DONE
-       (`e77c8b0e`):** all of those, and the LOWs but two — a letter's search now matches the provider's record of THAT
-       letter (its metadata) within the attempt's own dates; "never left" needs the connection's own failure; a cut-short
-       read of a holder's letters is read again, then alarms. **Round 9 DONE (`4e2f4975`):** the lead's rulings on the
-       last open class (a prize or win word anywhere in a figure's sentence makes it a claim, in a question too; so
-       does a sentence putting the figure in the reader's hands or future; a prize verb before digits makes them a
-       figure whatever their shape) — every probe of the review now refused and every ordinary campaign passing, by the lane's
-       own model of the lint (no suite has run); the attempt records the address it went to as a peppered hash, and a
-       letter whose address has changed since is left for an officer, never searched or resent; the unresolved-letters
-       read is bounded to the newest weeks and says on the page when older ones were left out. **Round 10 DONE
-       (`fefc24c4`):** the officer's action to clear a checked row — a typed confirmation and a note, its own
-       compliance control in every registry, one audited record that must land or the row stays; a later run lists the
-       row again. Floors (static counts): `test:maswali-claims` 429, `test:maswali-notify` 117/122, the Millionea
-       control count in `test:maswali-rbac` one higher; run typecheck, `test:control-gates`, `test:maswali-rbac`,
-       `test:maswali-notify`, `test:maswali-claims`, `test:cert-c2`, `test:audit`, `test:dal-parity`,
-       `test:house-bot-reports` (it says whether the new audit action must be listed), and whatever the diff
-       derivation adds. Then its next review (rounds 8–10).
-- **At the merges** (each branch trial-merged onto `mln-sf` with `git merge-tree`, 15:30 UTC; ⛔ resolve every hunk by
+     - `mln-s6-notices` `5bfb267f` — **the letters merge-ready, the lint not yet.** The LETTER PATH (reviewed through
+       round 10: merge-ready, LOWs only): an uncertain win or refund letter is resolved through the provider's outbound
+       search on THAT letter's own metadata within the attempt's own dates — found → confirmed; absent → resent once,
+       never again; unreadable → listed for an officer on `/admin/maswali/integrity`, never resent automatically; only
+       an attempt older than a margin is searched, so a search never races the provider's own send; a bare attempt, or
+       an outcome that never landed, stays unresolved, never done; the attempt records the address it went to as a
+       peppered hash, and a letter whose address has changed is left for an officer (a pepper rotation leaves every
+       pending letter listed, never resent — a runbook line); "never left" needs the connection's own failure; the
+       unresolved-letters read is bounded and says so on the page; the officer's clear action (a typed confirmation and
+       a note, its own compliance control in every registry, one audited record that must land; a later run lists the
+       row again). The CLAIMS LINT (prize stems, implicit claims, number words, look-alike digits; the lead's rulings
+       below), round 11 (not yet reviewed): a prize or win word anywhere in a figure's sentence ends the limit reading;
+       a figure is a price only when a ticket, entry or price word heads its phrase; a reader word makes a money figure
+       a claim outside a question too; a "next" frames a figure beside the reader or in a "who … next" question, a
+       waiting verb in its present or future forms frames it, and a sales count after a figure reads as a count — the
+       review's ordinary campaigns are controls (`5bfb267f`; the lead confirmed both readings). **Left (round 12, the
+       LOWs):** the console orders weeks by when
+       they settled (a drive week never hides behind public ones) and says on the page when the clearance read was cut
+       short; a phone word after a number also makes it a phone; a named third person's figure in a reader question
+       with no prize word is not a claim; a provider 5xx is ambiguous (searched before any resend). Floors (static
+       counts): `test:maswali-claims` 440, `test:maswali-notify` 117/122, `test:maswali-rbac`'s control count one
+       higher than its base; run typecheck, `test:maswali-claims`, `test:maswali-notify`, `test:cert-c2`,
+       `test:control-gates`, `test:maswali-rbac`, `test:audit`, `test:dal-parity`, `test:house-bot-reports`, and
+       whatever the diff derivation adds — then the review of rounds 11–12.
+- **At the merges** (each branch trial-merged onto `mln-sf` with `git merge-tree` before round 3 merged, 15:30 UTC — re-run it on the current head; ⛔ resolve every hunk by
   hand, never `checkout --ours/--theirs` a file — either side alone drops the other's work; after any change to a
   file D19a pins — `house-bot-absence-cases.mts` APPROVED_EXTRA: the dictionary, the legal pages — re-pin it in a
   follow-up commit to a commit whose copy equals the merged file, ⛔ always one on the integration branch (the merge
   itself), never a lane commit: the lanes are squash-merged and their branches deleted, so a fresh clone could not
   read it):
-  - **`mln-s7-f3`:** only `maswali-adversarial.test.mts`'s `minPass` (take the higher, then raise to the counts the
-    merged tree's first green run prints); its dictionary (the new failure reason's copy) already differs from its
-    D19a pin — re-pin at the merge.
+  - **`mln-s7-f4`** (round 4) changes the dictionary (the refusal's words): re-pin D19a at its merge.
   - **L:** the dictionary's three `ruleSunset` lines (take L's, then add round 3's stale-form clause), the rest of
     both sides' strings kept; COMPLIANCE-DECISIONS (L's 2026-10-18 entries above S5's 2026-10-17 one); `package.json`
     a union; L also changes `src/app/legal/rules/page.tsx`, which D19a pins too — re-pin the dictionary and that page
@@ -171,13 +180,17 @@ The State paragraph below is the last push's.)**
   - **D:** `maswali-rbac.anchors.mjs` (both sides number new plants from (7): keep both, renumber D's after S7's and
     their `expect` strings with them); `maswali-rbac.test.mts` (both sides take §6: D's sections follow S7's, the case
     names with them); `admin-nav-groups.ts` (main's PHOSPHOR rows carry a `glyph`: D's Evidence and Ticket-lookup rows
-    need one too, from the Phosphor set).
-  - **R:** `package.json` a union; `maswali-console.ts`'s imports a union; one word for a missing figure on the Pools
-    page, "Cannot be read" (align S7's "Needed now: Unreadable"), and `pools/page.tsx`'s `formatTzs(v.requirement)`
+    need one too, from the Phosphor set); `maswali-config.ts` (take round 3's `rulesV1Problem`: a frozen snapshot is
+    read against its own version, and D's new setting is one no week freezes, so D's adaptation of the old check falls
+    away).
+  - **R:** `package.json` a union; round 3 and R made the same unknown-never-zero change to `poolsView` and the Pools
+    table independently — keep R's (its `money()` helper), with the union of `maswali-console.ts`'s imports; one word for a missing figure on the Pools
+    page, "Cannot be read" (align S7's "Needed now: Unreadable" and `/admin/maswali`'s standing figures, `page.tsx:57-60`), and `pools/page.tsx`'s `formatTzs(v.requirement)`
     → the nullable-aware `money()`; `test:house-book` MIN_ASSERTIONS to its printed count.
   - **N**: `package.json`; the money-path anchors and red harness (both sides' suites);
-    `control-gates.test.mts` (each role's row gains both sides' controls); `maswali-rbac.test.mts`'s Millionea control
-    count (recount the union); `maswali-console.ts`'s imports; `maswali-service.ts` (the close's lock callback keeps
+    `control-gates.test.mts` (each role's row gains both sides' controls); ⚠️ `maswali-rbac.test.mts`'s Millionea
+    control count — both sides now pin the SAME number, so git merges it with no conflict although the union is
+    higher: recount it after the merge; `maswali-console.ts`'s imports; `maswali-service.ts` (the close's lock callback keeps
     S7's lock transaction AND N's after-commit hook). Measure the production "SmsMessage" table read-only before its
     winner-SMS migration ships (the query is in its header).
   - **Between the lanes** (pairwise trial merges): the integrity page (D, R, N), `maswali-console.ts` (R, N, round 3),
@@ -191,8 +204,8 @@ The State paragraph below is the last push's.)**
   named as Millionea's is never grandfathered by the claims lint, and elsewhere a figure is a claim beside a prize or
   win word, judged within the figure's own clause; a figure is a limit only where a money-movement or limit word
   introduces it — a period alone never makes one (weekly is Millionea's own cadence); a prize or win word anywhere in a
-  figure's sentence makes it a claim, in a question too, and so does a sentence putting the figure in the reader's
-  hands or future; a money letter whose fate is unknown is
+  figure's sentence makes it a claim, in a question too and the limit reading included (a limit message names no
+  prize), and so does a sentence putting the figure in the reader's hands or future; a money letter whose fate is unknown is
   checked against the provider's search, never resent blind; the rules and holiday forms are the Owner's; a final week's
   carry stays in the jackpot account; a week made final while on sale is announced to every form opened after it, and a form opened before it cannot buy.
 - **Gate B (before ACTIVE):** MB-23 the objection door; OD-26 the regulator's stop and a week void for a 50pick fault;
