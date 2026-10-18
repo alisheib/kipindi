@@ -487,7 +487,7 @@ export async function purchaseMaswaliTickets(input: {
     stake: rules.ticketPriceTzs * input.slips.length,
     idempotencyKey: input.idempotencyKey,
     playStartedAt: input.playStartedAt,
-    maswali: { weekId: week.id, slips: input.slips },
+    maswali: { weekId: week.id, slips: input.slips, shownFinal: input.shownFinal },
   });
   // S5 · a sale moved the week's pool: the live hub hears it, coalesced, after the purchase committed (MB-31). A replay
   // moved nothing.
@@ -978,7 +978,12 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
         basis = "NEXT_AFTER_CLOSE";
       }
     }
-    await weekStore.patch(week.id, { isFinal: true });
+    // ⛔ S7-F4 · AN OPEN WEEK IS MADE FINAL UNDER ITS MARKET'S LOCK (MR-30): a purchase asks the week's finality again
+    //    inside `market:` (`buyMaswaliTickets`), so the stop waits for a purchase in flight on this week's market, and a
+    //    purchase that waits for the stop reads it. `maswali:chain` → `market:` is a permitted order (`locks.ts`).
+    const markFinal = async () => { await weekStore.patch(week.id, { isFinal: true }); };
+    if (week.state === "OPEN" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);
+    else await markFinal();
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, state: week.state, reason, basis } });
     return { ok: true, week: (await weekStore.get(week.id))! };

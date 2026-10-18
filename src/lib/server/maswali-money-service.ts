@@ -233,8 +233,8 @@ export async function dbNowMs(tx: Prisma.TransactionClient | null): Promise<numb
 
 // ── BUYING TICKETS (MR-8…MR-12, MB-31) ───────────────────────────────────────────────────────────────
 
-/** A purchase: one or more slips of fifteen answers, for one week. */
-export type MaswaliBuy = { weekId: string; slips: ReadonlyArray<ReadonlyArray<MaswaliPick>> };
+/** A purchase: one or more slips of fifteen answers, for one week; `shownFinal`, whether its slip stated the final week's rule (MR-30). */
+export type MaswaliBuy = { weekId: string; slips: ReadonlyArray<ReadonlyArray<MaswaliPick>>; shownFinal?: boolean };
 
 export type MaswaliTicketReceipt = { ticketId: string; positionId: string; serial: string; selectionsHash: string };
 
@@ -420,6 +420,12 @@ export async function buyMaswaliTickets(input: {
         const nowMs = await dbNowMs(mTx);
         if (!fresh || fresh.state !== "OPEN" || nowMs >= Date.parse(fresh.closesAt)) {
           return refuse("Sales for this Millionea week have closed.", { code: "SELECTION_CLOSED", reason: "millionea_sales_closed" });
+        }
+        // ⛔ S7-F4 · THE STALE SLIP, asked again INSIDE the market lock (MR-30): `sunsetMaswali` makes an OPEN week final under
+        //    this lock, so a stop that commits while this purchase is in flight is read here, before any money moves: after
+        //    the replay (a landed key keeps its receipt), before `withMoneyTx` (the memory store has nothing to undo).
+        if (fresh.isFinal && buy.shownFinal === false) {
+          return refuse("This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.", { code: "INVALID", reason: "millionea_week_final" });
         }
         const placedAt = new Date(nowMs).toISOString();
         const receipts: MaswaliTicketReceipt[] = [];
