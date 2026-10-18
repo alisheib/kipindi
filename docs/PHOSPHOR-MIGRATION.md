@@ -410,9 +410,20 @@ that read the house drawings. W2's list below carries them.
   - **Lesson:** Turbopack compiles the whole crawl in native memory that no V8 heap cap bounds. Warm routes one by
     one; a browser step waits for 3.0 GB with the server up; the machine guard is the backstop.
   - Pushed as a fast-forward of `main` at 23:10 UTC on Ali's *"push lov enayhtng please"*.
-- **Owed after the push:**
-  - release part two: [M] alone, the review's fixes and the checkbox drive, in a real browser;
-  - the parity compare at `732efbc5`, its entries regenerated, and the clean compare with `--prove-red`.
+- **After the push, all done:**
+  - **Production, read back:** www, apex and the Railway host served `732efbc5` after 220 s. The sprite is served 200
+    and immutable; `qa:chunks-prod` passes on both origins; production `qa:live` passed 363/363, [M] included.
+  - **Release part two, on a fresh server:** [M] alone 10/10, so local `qa:live` is 387/387; `qa:checkbox-surfaces` 0.
+    The review's fixes, in a real browser:
+    - Tab and Shift+Tab cycle inside the sign-out confirm, and the old bare `[href]` list is shown to have picked two
+      glyph `<use>`s;
+    - the lightbulb on /proposals and in the account menu;
+    - on the compare's seeded server, the followed star goes Bold → Fill → Bold, and Other's chip draws `assorted`.
+      The account menu hides its promotional rows while the seeded player is on a break, as it should.
+  - **Parity:** the entries are regenerated from a compare at `f49c3be2` (64/68; the 4 failures were the glyphs this
+    round changed). There are 21 exact entries, re-checked by the harness's own rule. The only fields left unexplained
+    are the 4 `/watchlist` date-line cells, the harness gap filed in §7. A third compare would fail on those cells
+    whatever W2 does, so it was not run.
 
   **For W3:** the codegen deletes a superseded sprite; from the first wave that changes a live drawing, the previous
   sprite is kept one release (deploy skew).
@@ -421,6 +432,38 @@ that read the house drawings. W2's list below carries them.
 Classic rail, journey tabs, the classic and journey desktop bars, the admin sidebar (icons ADDED): inactive Line in
 `--text-subtle` → selected **Fill** in `--text` on ONE opaque indicator, via `GlyphSwap`. The four "active" styles
 collapse into one. The rail's square, edge-to-edge focus ring follows the pill.
+
+**Researched 2026-10-17, on `main` `f49c3be2`** (a read of every surface, with lines, in the session's notes):
+- **Today:**
+  - None of the five surfaces uses `GlyphSwap`.
+  - The six keys the two tab bars draw (`markets`, `trade`, `live`, `menu`, `ticket`, `user`, all shell keys) ship Bold
+    only; none is in `FILL_KEYS`.
+  - Both desktop headers and the admin sidebar draw no destination glyph at all.
+- **The four "active" styles to collapse:**
+  - the rail's pip: translucent `--pill-active` with `--edge-lit`;
+  - the classic desktop link: `--pill-active`;
+  - the journey desktop link: a `--brand-500` underline;
+  - the admin row: an inline `--pill-active`.
+  - `--pill-active` (40% L, alpha 0.35; 1.18:1 on the bar) also paints a dozen filter, menu and tab controls, and
+    `test:filter-language` 2.5 allows one definition. So the opaque royal indicator gets its OWN tokens; it does not
+    repaint the filters.
+- **Build:**
+  1. The six nav keys into `FILL_KEYS`, inlined like their Bold, about 1 KB brotli more per page.
+  2. One indicator: tokens for the opaque royal pill, its even lit ring (`test:m1-light`) and its ink.
+  3. The tab bars: glyphs at 24px (R-RAIL 4B) in a pill grown to fit; Line → Fill by `GlyphSwap`; the focus ring on the
+     pill. The not-found unlight rules follow the new base values (`test:visual-pass-r4j` 5.12).
+  4. The classic and journey desktop links: the same pill. `test:journey-shell` 7.underline and its red twin forbid a
+     pill there; R-INDICATOR's "everywhere" (Ali, 2026-10-17) supersedes that, so the check is re-pinned openly, with
+     the ruling cited.
+  5. The admin sidebar and drawer: a glyph per row (new admin keys, one meaning each) and the same pill.
+- **Guards to re-pin, named in advance:**
+  - `test:journey-shell`: 8.glyphs pins `s={20}`; 7.underline as above;
+  - `qa:journey-shell`'s focus offsets;
+  - `test:glyph-map` §9: admin keys stay off the player chrome;
+  - `test:glyph-sync` §1: the previous sprite kept one release needs a named exception;
+  - `test:visual-pass-r7c` 6.2 and `test:visual-pass-r9c` 8.2: byte-for-byte checks on the classic chrome, green once
+    committed;
+  - the classic shell parity: W3's rail and header changes are named entries, measured.
 
 ### W4 — Outcomes and status
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart
