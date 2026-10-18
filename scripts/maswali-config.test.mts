@@ -216,6 +216,8 @@ console.log("\n§7 · ⚠️ POSITIVE CONTROLS");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI CONFIG: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTED (MASWALI-BUILD S1, the first run); it only rises, to a printed number. */
-const MIN_ASSERTIONS = 1;
+// S7-F5 (2026-10-18, the lead): the static count of its `ok(` sites, 56 (one runs in a loop, so a green run prints more):
+// a case that silently stops running fails the floor.
+const MIN_ASSERTIONS = 56;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
