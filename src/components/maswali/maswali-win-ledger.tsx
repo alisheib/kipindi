@@ -106,6 +106,8 @@ export type WinLines = {
    *  week's own money covered it, and the guarantee for the rest). */
   remainder?: number;
   remainderFate?: RemainderFate;
+  /** The week was Millionea's final one (MR-30): what it carried stays in the jackpot account. */
+  finalWeek?: boolean;
   /** When the week's spend exceeds the win, the spend and the net (U+2212 below zero). */
   spent?: { tickets: number; amount: number; net: number };
   /** The sunset week: no floor top-up and no 10/10 (Timeline E). */
@@ -168,7 +170,7 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
           <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={quiet(L.topUp)} />
         )}
         {L.remainder !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${remainderNoteOf(t, L.remainderFate ?? "carried")}`} value={quiet(L.remainder)} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${remainderNoteOf(t, L.remainderFate ?? "carried", L.finalWeek === true)}`} value={quiet(L.remainder)} />
         )}
         {L.sunsetNoTopUp && (
           <ReceiptRow className={ROW} label={t.millionea.noTopUp} value={<span className="text-text-muted">—</span>} />

@@ -188,8 +188,9 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
     if ((w.topUp ?? 0) > 0) rows.push({ key: "topup", node: <ReceiptRow className={ROW} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={fig(w.topUp)} /> });
     rows.push({ key: "share", node: <ReceiptRow className={ROW} label={counted(w.winners ?? 0, t.millionea.perTicketOne, t.millionea.perTicket)} value={fig(w.share)} /> });
     rows.push({ key: "paid", node: <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(w.paid)} /> });
-    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={`${t.millionea.remainder} · ${remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0))}`} value={fig(w.remainder)} /> });
-    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={fill(t.millionea.carriedOut, { week: next })} value={fig(w.carriedForward)} /> });
+    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={`${t.millionea.remainder} · ${remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal)}`} value={fig(w.remainder)} /> });
+    // ⛔ A final week that paid has no next week (MR-30): what it carried stays in the jackpot account, never "Week N+1".
+    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={w.isFinal ? t.millionea.keptInJackpot : fill(t.millionea.carriedOut, { week: next })} value={fig(w.carriedForward)} /> });
   } else {
     rows.push({ key: "fee", node: <ReceiptRow className={ROW} label={t.millionea.fee} value={<span className="amount text-text-muted">{t.millionea.feeZero}</span>} /> });
     rows.push({ key: "out", node: <ReceiptRow className={ROW} label={fill(t.millionea.carriedOut, { week: next })} value={fig(w.carriedForward)} /> });

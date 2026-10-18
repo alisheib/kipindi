@@ -91,9 +91,12 @@ export function millioneaWord(t: Dict, key: string): string {
 }
 
 /** The rounding remainder's note (MR-25): where it went, as `remainderFate` reads the settled week — one wording for the
- *  register and the win receipt. ⛔ Never "house" (D19): what the week's money did not cover stays with the guarantee. */
-export function remainderNoteOf(t: Dict, fate: RemainderFate): string {
-  return fate === "carried" ? t.millionea.remainderNote : fate === "kept" ? t.millionea.remainderNoteKept : t.millionea.remainderNotePart;
+ *  register and the win receipt. ⛔ Never "house" (D19): what the week's money did not cover stays with the guarantee.
+ *  ⛔ A FINAL week has no next jackpot (MR-30): what its money carried stays in the jackpot account. */
+export function remainderNoteOf(t: Dict, fate: RemainderFate, finalWeek = false): string {
+  if (fate === "kept") return t.millionea.remainderNoteKept;
+  if (fate === "carried") return finalWeek ? t.millionea.remainderNoteFinal : t.millionea.remainderNote;
+  return finalWeek ? t.millionea.remainderNoteFinalPart : t.millionea.remainderNotePart;
 }
 
 /** The singular or the counted form of a string pair (`…One` when there is exactly one). */

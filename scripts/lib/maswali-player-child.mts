@@ -1099,6 +1099,13 @@ let G: any = null;
   ok("13.3 · ⛔ L3 · an unsettled week whose frozen rules cannot be read leaves the requirement unknown, so no week shows its floor (fail closed) — and restored, the floor returns",
     before?.floor === floor && unreadable && dBlind === null && !!blind && blind.floor === null && blind.jackpot === (blind.carryIn ?? 0) + blind.sales && after?.floor === floor,
     J({ before: before?.floor, unreadable, blind: blind && { floor: blind.floor, jackpot: blind.jackpot }, after: after?.floor }));
+  // The How page on the PUBLIC line, whose week on sale is F: its frozen rules unreadable for the same reason.
+  await restamp(F.id, 2);
+  const howBlind = await P.millioneaHowTo(viewer(P3)).then(() => "answered", (e: unknown) => String((e as Error)?.message ?? e));
+  await restamp(F.id, 1);
+  const howBack = await P.millioneaHowTo(viewer(P3));
+  ok("13.3b · ⛔ the How page fails closed on a running week whose frozen terms cannot be read — never today's settings as if no week ran — and restored, it states the week's own",
+    /frozen terms cannot be read/.test(howBlind) && howBack.source === "WEEK" && howBack.weekCode === F.code, J({ howBlind, back: [howBack.source, howBack.weekCode] }));
 }
 {
   const closedF = await W.svc.closeWeek({ weekId: F.id, now: new Date(Date.parse(F.closesAt) + 60_000) });

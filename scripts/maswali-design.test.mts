@@ -504,13 +504,22 @@ const heldGuardDefects = (hubSrc: string) => {
       && between.kind === "PAYOUT" && between.U === 0 && between.carryOut > 0 && between.carryOut < between.dust && fateOf(between) === "part",
     j({ big, topped, between }));
   const notes = (l: (typeof LOCALES)[number]) => [dict[l].millionea.remainderNote, dict[l].millionea.remainderNoteKept, dict[l].millionea.remainderNotePart];
+  const register = squash(code(read(REGISTER_WEEK)));
+  const view = squash(code(read("src/app/millionea/millionea-view.ts")));
   ok("2.F4b · the register and the receipt say it through one helper, the receipt in every paying week; no note names the house's money",
-    squash(code(read(REGISTER_WEEK))).includes("remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0))")
-      && squash(code(read(LEDGER))).includes('remainderNoteOf(t, L.remainderFate ?? "carried")')
-      && squash(code(read("src/app/millionea/millionea-view.ts"))).includes("remainderFate: win.remainder > 0 ? remainderFate(win.remainder, win.carriedOut) : undefined,")
+    register.includes("remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal)")
+      && squash(code(read(LEDGER))).includes('remainderNoteOf(t, L.remainderFate ?? "carried", L.finalWeek === true)')
+      && view.includes("remainderFate: win.remainder > 0 ? remainderFate(win.remainder, win.carriedOut) : undefined,")
       && remainderNoteOf(en, "carried") === en.millionea.remainderNote && remainderNoteOf(en, "kept") === en.millionea.remainderNoteKept
       && remainderNoteOf(en, "part") === en.millionea.remainderNotePart
       && LOCALES.every((l) => notes(l).every((n) => n.length > 0 && !/house|nyumba|平台资金/i.test(n))), j(LOCALES.map(notes)));
+  const finals = (l: (typeof LOCALES)[number]) => [dict[l].millionea.remainderNoteFinal, dict[l].millionea.remainderNoteFinalPart, dict[l].millionea.keptInJackpot];
+  ok("2.F4c · ⛔ a final week has no next jackpot (MR-30): what its money carried stays in the jackpot account on the register and the receipt, never \"Week N+1\" — while a topped-up final week's remainder still stays with the guarantee",
+    remainderNoteOf(en, "carried", true) === en.millionea.remainderNoteFinal && remainderNoteOf(en, "part", true) === en.millionea.remainderNoteFinalPart
+      && remainderNoteOf(en, "kept", true) === en.millionea.remainderNoteKept
+      && register.includes("label={w.isFinal ? t.millionea.keptInJackpot : fill(t.millionea.carriedOut, { week: next })}")
+      && view.includes("finalWeek: finalWeek || undefined,") && squash(code(read(TICKET_PAGE))).includes("winLinesOf(view.win, view.week.isFinal)")
+      && LOCALES.every((l) => finals(l).every((n) => n.length > 0 && !/house|nyumba|平台资金/i.test(n))), j(LOCALES.map(finals)));
 }
 
 // R5 · the review of 24ec0d33, LOW 14: Millionea's Chinese breaks as the platform's does — every page root and each part
@@ -563,6 +572,6 @@ console.log("\n§3 · controls — each source check fails on a planted copy");
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
  *  run (on a tree with W2) prints it (the S5 review of 24ec0d33, MEDIUM 8): 62 call sites, none in a loop. */
-const MIN_ASSERTIONS = 69;
+const MIN_ASSERTIONS = 70;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

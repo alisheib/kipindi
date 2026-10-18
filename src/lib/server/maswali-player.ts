@@ -1049,6 +1049,9 @@ export async function millioneaHowTo(viewer: MillioneaViewer): Promise<Millionea
   // (R3) — the hub's own week.
   const current = (await weekStore.openFor(line)) ?? newestFirst(await weekStore.list({ visibility: line, states: GRADING }))[0] ?? null;
   const terms = current ? await termsOf(current) : null;
+  // ⛔ FAIL CLOSED (the S6 legal review, round 4): a week runs but its frozen terms cannot be read — today's settings are
+  //    not its figures, and "no week is on sale" would be false. The page's error boundary answers instead.
+  if (current && !terms) throw new Error(`[maswali-player] week ${current.code}'s frozen terms cannot be read: the How page states no figure`);
   let base: Omit<MillioneaHowTo, "examples">;
   if (current && terms) {
     const r = terms.rules;
