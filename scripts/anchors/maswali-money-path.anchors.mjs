@@ -560,4 +560,28 @@ export const MUTATIONS = [
     expect: "SN.3 · ⭐",
     suite: "adversarial:SN",
   },
+  {
+    name: "(F4-stale-in-lock) the stale-slip check is not asked again inside the market lock: a stop landing mid-purchase still sells (MR-30)",
+    file: MONEY,
+    from: "        if (fresh.isFinal && buy.shownFinal === false) {",
+    to: "        if (false) {",
+    expect: "SF.6a · ⛔ S7-F4",
+    suite: "purchase",
+  },
+  {
+    name: "(F4-stop-market-lock) the stop marks an OPEN week final outside its market's lock: it never waits for a purchase in flight (MR-30)",
+    file: SVC,
+    from: "    if (week.state === \"OPEN\" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);",
+    to: "    if (week.state === \"OPEN\" && week.marketId) await markFinal();",
+    expect: "SF.2a · ⛔ S7-F4",
+    suite: "purchase",
+  },
+  {
+    name: "(F4-stale-open-only) the stale-slip refusal answers a CLOSED final week too, in place of the closed week's own answer (MR-30)",
+    file: SVC,
+    from: "  if (week.isFinal && input.shownFinal === false && week.state === \"OPEN\") {",
+    to: "  if (week.isFinal && input.shownFinal === false) {",
+    expect: "SF.7 · ⛔",
+    suite: "purchase",
+  },
 ];
