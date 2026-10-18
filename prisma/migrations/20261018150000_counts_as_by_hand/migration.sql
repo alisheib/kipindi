@@ -23,6 +23,18 @@
 -- 20261018150000_counts_as_by_hand` and redeploy.
 SET LOCAL lock_timeout = '10s';
 
+-- ⛔ A NO-OP WHERE THE DESK DOES NOT EXIST. The house tables (`HouseBot`, the `Position."houseBotId"` marker) come from
+-- the `*_house_bot_*` folders, and `test:house-bot-migrations` §a2 migrates a database WITHOUT them (every other folder,
+-- this one included) before laying the house files on by hand. PL/pgSQL plans a statement only when it first runs it,
+-- so behind this IF the catch-up below is never planned against tables that are not there.
+DO $$
+BEGIN
+  IF to_regclass('"HouseBot"') IS NULL
+     OR NOT EXISTS (SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = current_schema() AND table_name = 'Position' AND column_name = 'houseBotId') THEN
+    RETURN;
+  END IF;
+
 WITH "weight" AS (
   SELECT b."id", b."userId",
     -- ⛔ NESTED, NOT ONE AND-CHAIN: PostgreSQL does not promise to evaluate AND left to right, and a `::numeric` cast of
@@ -50,3 +62,5 @@ WITH "weight" AS (
 UPDATE "PredictionMarket" AS m SET "predictorExtra" = m."predictorExtra" + p."add"
 FROM "perMarket" p
 WHERE m."id" = p."marketId";
+END
+$$;

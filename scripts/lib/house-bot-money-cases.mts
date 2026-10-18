@@ -1518,7 +1518,10 @@ if (w.onPostgres) {
   section("§13c · Postgres: the by-hand catch-up migration");
   const j = (v: unknown): string => JSON.stringify(v);
   const migration = readFileSync(fileURLToPath(new URL("../../prisma/migrations/20261018150000_counts_as_by_hand/migration.sql", import.meta.url)), "utf8");
-  const statement = migration.slice(migration.indexOf('WITH "weight"')).trim().replace(/;\s*$/, "");
+  /* The migration's own DO block — its no-op guard (no house tables → nothing) and the catch-up inside it — exactly as
+     production runs it. (Its `SET LOCAL lock_timeout` line is a separate statement and a one-statement prepared call
+     cannot carry two; the guard's other half, the database WITHOUT the house tables, is `test:house-bot-migrations` §a2.) */
+  const statement = migration.slice(migration.indexOf("DO $$"), migration.lastIndexOf("$$;") + 2);
   const account = async (countsAs: unknown): Promise<{ botId: string; userId: string }> => {
     const b = await w.bot();
     await w.setCaps(b.botId, { rules: { schemaVersion: 1, display: { countsAs } } });
