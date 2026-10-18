@@ -25,7 +25,7 @@ slip (`src/app/millionea/slip/slip-client.tsx`) to exactly that key, in the tab 
 
 **Published with the ceiling (the lead's decision of 2026-10-18, under Ali's delegation).** /legal/privacy is live while
 Millionea is dark, and a live notice must not name a product nobody can open. So the paragraph and this version print
-only while the server's ceiling admits Millionea — `millioneaCeiling()` above WITHDRAWN (`millioneaWordingPublished`,
+only while the server's ceiling admits the public to Millionea — an ACTIVE `millioneaCeiling()` (`millioneaWordingPublished`,
 `src/lib/millionea-rollout.ts`). Each language's paragraph sits inside the `MillioneaWording` wrapper
 (`src/lib/server/legal/millionea-wording.tsx`, server-rendered: below the ceiling nothing of it reaches the page), and
 `POLICY_PAGES.privacy.codeVersion` — which `policyMeta` prints in META's place — is 2026-10-17 above the ceiling and
@@ -35,9 +35,10 @@ below the ceiling, `8393748023c3` under 2026-10-17 above it — and §4q holds e
 the wrapper to the ceiling's answer alone, and production's rendering free of the product's name in every language. The
 published-words pin (`scripts/lib/s8-published-words.mts`) accepts the three paragraphs at their measured hashes, each the
 whole of its wrapper, and nothing else; `test:policy-lines` L0 holds META to the code version at WITHDRAWN.
-⚠️ **The wording publishes with the ceiling; Ali and the native readers approve it at Gate B, before ACTIVE.** ⚠️ From a
-STAFF_PREVIEW ceiling on, the paragraph prints to every reader of /legal/privacy — the notice is public though the product
-is not — and the decision accepts that: from that ceiling on a staff member's tab can hold the key, so the notice says so.
+⚠️ **The wording publishes with the ACTIVE ceiling; Ali and the native readers approve it at Gate B, before ACTIVE.** A
+STAFF_PREVIEW ceiling keeps production's notice (the lead's decision of 2026-10-18, revising the composition lane's
+first rule, which printed it from STAFF_PREVIEW on): the public notice never names a product the public cannot see, and
+the staff testing the preview, whose tabs can hold the key, are told internally.
 
 ---
 

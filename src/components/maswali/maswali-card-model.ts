@@ -12,12 +12,11 @@
 import type { MillioneaHub } from "@/lib/server/maswali-player";
 import type { HomeCardState } from "@/components/maswali/maswali-home-card";
 import { eatWeekday, weekNumberOf } from "@/components/maswali/maswali-format";
-import { eatIsoWeek, eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
+import { eatIsoWeek, eatNextWeekAt } from "@/lib/eat-day";
 import { pctNum } from "@/lib/utils";
 import { MAIN_COUNT, weekVoidCertain, type GradableQuestion } from "@/lib/maswali-score";
 import type { Dict } from "@/lib/i18n-dict";
 
-const DAY_MS = 86_400_000;
 
 /** The card's props (`MaswaliHomeCard`), minus the dictionary. `atLeast` and `pendingWeek` say a carry still waiting on
  *  an earlier week (§M8a item 9): the figure is then a true lower bound, never an exact jackpot. */
@@ -39,9 +38,7 @@ export type OpenTemplate = { weekday: number; clock: string };
 export function nextWeekOpen(hub: Pick<MillioneaHub, "life" | "week">, template: OpenTemplate | null, nowMs: number): number | null {
   if (template === null || hub.life === "ENDING" || hub.life === "RETIRED" || hub.week?.isFinal === true) return null;
   try {
-    const start = eatWeekStartMs(nowMs);
-    const thisWeek = eatWeekAt(start, template.weekday, template.clock);
-    return thisWeek > nowMs ? thisWeek : eatWeekAt(start + 7 * DAY_MS, template.weekday, template.clock);
+    return eatNextWeekAt(nowMs, template.weekday, template.clock);
   } catch {
     return null;
   }

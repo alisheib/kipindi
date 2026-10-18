@@ -144,6 +144,17 @@ export function eatWeekAt(weekStartMs: number, weekday: number, clock: string): 
   return weekStartMs + (weekday - 1) * DAY_MS + (Number(m[1]) * 60 + Number(m[2])) * 60_000;
 }
 
+/**
+ * The next instant at a weekday and an EAT clock after `nowMs`: this ISO week's while it is still ahead, else next week's
+ * (R-WEEK). The ONE reading of a weekly template's next occurrence — Millionea's hub and its home card both ask this.
+ * Throws as `eatWeekAt` does.
+ */
+export function eatNextWeekAt(nowMs: number, weekday: number, clock: string): number {
+  const start = eatWeekStartMs(nowMs);
+  const thisWeek = eatWeekAt(start, weekday, clock);
+  return thisWeek > nowMs ? thisWeek : eatWeekAt(start + 7 * DAY_MS, weekday, clock);
+}
+
 /** A week's code: `MLN-2026-W44` (the prefix is the product's), from its ISO week in EAT. Immutable once stamped. */
 export function eatWeekCode(prefix: string, atMs: number): string {
   if (!/^[A-Z]{2,5}$/.test(prefix)) throw new Error(`[eat-day] a week code prefix is 2–5 capital letters, got ${JSON.stringify(prefix)}`);

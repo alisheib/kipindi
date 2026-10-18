@@ -44,9 +44,8 @@ import {
 import { guaranteeRequirement, settleArithmetic, type WeekArithmetic } from "@/lib/maswali-money";
 import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
 import { exitWindowFacts } from "@/lib/exit-window";
-import { eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
+import { eatNextWeekAt } from "@/lib/eat-day";
 
-const DAY_MS = 86_400_000;
 const UNSETTLED: WeekState[] = ["OPEN", "CLOSED", "RESOLVING"];
 const GRADING: WeekState[] = ["CLOSED", "RESOLVING"];
 const TERMINAL: WeekState[] = ["SETTLED", "VOIDED"];
@@ -546,9 +545,7 @@ async function hubWeekOf(week: StoredWeek, viewer: MillioneaViewer, nowMs: numbe
 function templateNextOpen(nowMs: number): string | null {
   try {
     const cfg = getMaswaliConfig();
-    const start = eatWeekStartMs(nowMs);
-    const thisWeek = eatWeekAt(start, cfg.openWeekday, cfg.openAt);
-    return new Date(thisWeek > nowMs ? thisWeek : eatWeekAt(start + 7 * DAY_MS, cfg.openWeekday, cfg.openAt)).toISOString();
+    return new Date(eatNextWeekAt(nowMs, cfg.openWeekday, cfg.openAt)).toISOString();
   } catch {
     return null;
   }

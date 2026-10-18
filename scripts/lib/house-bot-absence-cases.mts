@@ -189,6 +189,9 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // (the server lane, review L6), each locale's sw and zh for native review at Gate B, pinned at 1c210f39e, the S5 server
     // merge, whose blob is the dictionary as it stands. Every key is in a block of its own, and no versioned policy
     // string moves.
+    // MASWALI-BUILD S5 integration (2026-10-18): the pages lane's keys join it (the hub, slip, tickets, register and
+    // the round-3 wording), each locale's sw and zh for native review at Gate B — pinned at 0c3a02130, the integration
+    // merge, whose blob is the dictionary as it stands.
     // MASWALI-BUILD S5 pages (2026-10-17) publishes Privacy v2026-10-17 (COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7's
     // Millionea slip paragraph in three languages — and, by the lead's decision of 2026-10-18, WITH THE CEILING: each paragraph
     // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
@@ -197,7 +200,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "1c210f39e"],
+      ["src/lib/i18n-dict.ts", "0c3a02130"],
       ["src/app/legal/privacy/page.tsx", "92768c34f"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

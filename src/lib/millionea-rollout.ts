@@ -47,15 +47,16 @@ export function millioneaCeiling(): { ceiling: RolloutState; source: "ENV" | "CO
 }
 
 /**
- * ⭐ IS MILLIONEA NAMED IN THE PUBLISHED LEGAL TEXT? (the lead's decision of 2026-10-18, under Ali's delegation): only while
- * the CEILING admits the product at all — above WITHDRAWN. Privacy §7's slip paragraph, and the version it moves the
+ * ⭐ IS MILLIONEA NAMED IN THE PUBLISHED LEGAL TEXT? (the lead's decisions of 2026-10-18, under Ali's delegation): only at an
+ * ACTIVE ceiling, when the public can open the slip. A STAFF_PREVIEW ceiling keeps production's notice: the public notice
+ * never names a product the public cannot see, and the staff testing the preview are told internally. Privacy §7's slip paragraph, and the version it moves the
  * notice to, print then and only then (`server/legal/millionea-wording.tsx`, `POLICY_PAGES.privacy`); below it — on
  * production today — the notice is the one production has always printed, byte for byte. The ceiling, never the Owner's
  * stored switch: the slip's tab key can exist only where the ceiling has let someone open the slip, and a kill pauses the
  * product without unwriting what a tab already holds — the notice keeps saying what is true.
  */
 export function millioneaWordingPublished(): boolean {
-  return millioneaCeiling().ceiling !== "WITHDRAWN";
+  return millioneaCeiling().ceiling === "ACTIVE";
 }
 
 /**

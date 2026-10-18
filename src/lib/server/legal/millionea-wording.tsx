@@ -4,7 +4,7 @@
  *
  * /legal/privacy is live, and §7's slip paragraph names Maswali Millionea. So the paragraph, and the version it moves the
  * notice to (`POLICY_PAGES.privacy.codeVersion`, printed in META's place by `policyMeta`), appear only while the server's
- * ceiling admits the product (`millioneaWordingPublished`: `millioneaCeiling()` above WITHDRAWN). Below it — production
+ * ceiling admits the public to the product (`millioneaWordingPublished`: an ACTIVE `millioneaCeiling()`). Below it — production
  * today — the page is the notice that stood before, byte for byte: no paragraph, the earlier version.
  * ⛔ SERVER-RENDERED: below the ceiling the children are never rendered, so no word of them reaches the page's HTML or
  *    its payload — this is not a hidden element.

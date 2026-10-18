@@ -194,12 +194,12 @@ ok("§1a the version is one label in en/sw/zh, equal to the pin, over the pinned
   `v${PRIVACY_VERSION} · en ${enSha(millioneaDarkSource(pageSrc))} · with the ceiling v${PRIVACY_VERSION_MILLIONEA} · en ${enSha(millioneaPublishedSource(pageSrc))}`);
 {
   const metaEn = pageSrc.match(/en: "(Version [^"]*)"/)?.[1] ?? "";
-  const dark = codeVersionAt("WITHDRAWN"), shown = codeVersionAt("STAFF_PREVIEW"), active = codeVersionAt("ACTIVE"), typo = codeVersionAt("active");
-  ok("§1b the code version follows the ceiling: production's below it (META's own), the Millionea version above it, and a typo is the shipped WITHDRAWN — and META prints that version in its place, byte for byte below the ceiling",
-    dark === PRIVACY_VERSION && shown === PRIVACY_VERSION_MILLIONEA && active === PRIVACY_VERSION_MILLIONEA && typo === PRIVACY_VERSION
+  const dark = codeVersionAt("WITHDRAWN"), preview = codeVersionAt("STAFF_PREVIEW"), shown = codeVersionAt("ACTIVE"), typo = codeVersionAt("active");
+  ok("§1b the code version follows the ceiling: production's at WITHDRAWN and at STAFF_PREVIEW (META's own — the public notice never names a product the public cannot see), the Millionea version at ACTIVE, and a typo is the shipped WITHDRAWN — and META prints that version in its place, byte for byte below ACTIVE",
+    dark === PRIVACY_VERSION && preview === PRIVACY_VERSION && shown === PRIVACY_VERSION_MILLIONEA && typo === PRIVACY_VERSION
       && metaEn.startsWith(`Version ${PRIVACY_VERSION} · `) && metaAtCode(metaEn, dark) === metaEn
       && metaAtCode(metaEn, shown) === metaEn.replace(PRIVACY_VERSION, PRIVACY_VERSION_MILLIONEA),
-    "", JSON.stringify({ dark, shown, active, typo, meta: metaAtCode(metaEn, shown) }));
+    "", JSON.stringify({ dark, preview, shown, typo, meta: metaAtCode(metaEn, shown) }));
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -1566,8 +1566,8 @@ console.log("\n§4q · the Millionea wording publishes with the ceiling");
   const at = (v: string | undefined) => { if (v === undefined) delete process.env.FEATURE_MILLIONEA; else process.env.FEATURE_MILLIONEA = v; return millioneaWordingPublished(); };
   const answers = { WITHDRAWN: at("WITHDRAWN"), STAFF_PREVIEW: at("STAFF_PREVIEW"), ACTIVE: at("ACTIVE"), typo: at("staff_preview"), unset: at(undefined) };
   at(was);
-  ok("§4q′ the wording is published above WITHDRAWN only — the ceiling's answer, and a typo or an unset environment is the shipped WITHDRAWN",
-    JSON.stringify(answers) === JSON.stringify({ WITHDRAWN: false, STAFF_PREVIEW: true, ACTIVE: true, typo: false, unset: false }), "", JSON.stringify(answers));
+  ok("§4q′ the wording is published at an ACTIVE ceiling only — not at STAFF_PREVIEW (the public notice never names a product the public cannot see), and a typo or an unset environment is the shipped WITHDRAWN",
+    JSON.stringify(answers) === JSON.stringify({ WITHDRAWN: false, STAFF_PREVIEW: false, ACTIVE: true, typo: false, unset: false }), "", JSON.stringify(answers));
   // The Swahili paragraph's wrapper tags removed (its words kept): found by the reader's own markers, CRLF or LF alike.
   const swAt = pageSrc.indexOf("\n  sw: (");
   const openAt = pageSrc.indexOf("<MillioneaWording>", swAt), closeAt = pageSrc.indexOf("</MillioneaWording>", swAt);
