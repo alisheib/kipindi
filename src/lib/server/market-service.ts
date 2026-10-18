@@ -1654,11 +1654,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       if (h2) return h2;
     }
 
-    // ── "Counts as" (owner rulings 2026-10-11 and 2026-10-18; sanctioned change (s)) — what a desk account's FIRST stake
-    // on this market adds to the count players see, placed by the desk OR by hand from the account (Ali, 2026-10-18:
-    // "make the by hand place also count"). No money: the pool increment below carries it, in this transaction, so an
-    // aborted bet adds nothing. A bettor who holds no live desk account reads 0, and its UPDATE is the statement it
-    // always was.
+    // ── "Counts as" (owner rulings 2026-10-11, 2026-10-18; sanctioned change (s)) — what a desk account's FIRST stake on
+    // this market adds to the count players see, by the desk or BY HAND from it. No money: the pool increment below carries
+    // it, in this transaction, so an aborted bet adds nothing. A bettor holding no live desk account reads 0.
     // SEAM:shownCount
     const shownExtra = await houseShownExtra({ tx: lockTx, userId, mine });
 
