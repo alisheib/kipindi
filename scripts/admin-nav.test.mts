@@ -14,10 +14,13 @@
  *   1. it is still ONE definition (no second copy has reappeared);
  *   2. every route it can emit is owned by a real nav item;
  *   3. every nav item's own href resolves back to its own key — the round trip.
+ * And since PHOSPHOR-MIGRATION W3 (§8): every destination wears ONE glyph of the family — a live key, its own across the
+ * whole sidebar, its Fill shipped — so the current row can draw its Fill on the pill (R-INDICATOR 3B).
  */
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { NAV_GROUPS, activeKeyFromPath, navKeys, assertNavKeysResolve } from "../src/components/admin/admin-nav-groups.ts";
+import { FILL_KEYS, GLYPH_MAP, NEW_KEYS } from "./glyphs/map.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -206,6 +209,62 @@ const ok = (label: string, cond: boolean, extra = "") => {
   ok("7 · ⭐ E-17 — the Up & Down 'AI proposals' nav entry exists AND its page does",
      hrefs.has("/admin/updown/proposals") && pages.includes("/admin/updown/proposals"),
      "this is the gap Ali spotted in the menu; the merge is what closes it");
+}
+
+// ── 8 · Every destination wears ONE glyph, its own (PHOSPHOR-MIGRATION W3) ──
+//
+// Ali ruled that the console gets icons (R-ADMIN, "Yes, sidebar + cards") and that the current destination is its Fill
+// glyph on the opaque royal pill (R-INDICATOR 3B). `NavItem.glyph` is REQUIRED, so a new page cannot be added without
+// choosing one (R-NEW-PAGES); this section holds what the type cannot:
+//   · the glyph is a LIVE key of the family (scripts/glyphs/map.ts) — a retired or unknown one draws nothing;
+//   · it ships its FILL — otherwise the current row quietly falls back to Line, and the selected state is half drawn;
+//   · no two destinations wear the same glyph, within a group or across the sidebar (one meaning, one glyph). Two
+//     destinations that truly mean the same thing may share one only when SHARED_GLYPHS names it, with why.
+// docs/PHOSPHOR-MIGRATION.md §3 "Admin destinations (W3)" is the lexicon these were chosen from.
+{
+  type GlyphNav = ReadonlyArray<{ group: { en: string }; items: ReadonlyArray<{ key: string; glyph?: string }> }>;
+  /** A glyph two destinations may share, with why — only when both mean the same thing. None today. */
+  const SHARED_GLYPHS: Record<string, string> = {};
+  const live = new Set(Object.entries({ ...GLYPH_MAP, ...NEW_KEYS }).filter(([, e]) => !("retire" in e)).map(([k]) => k));
+  const fill = new Set<string>(FILL_KEYS);
+  const glyphProblems = (groups: GlyphNav): string[] => {
+    const out: string[] = [];
+    const wornBy = new Map<string, string>();
+    for (const g of groups) {
+      const inGroup = new Map<string, string>();
+      for (const it of g.items) {
+        const k = it.glyph;
+        if (!k) { out.push(`${it.key} wears no glyph`); continue; }
+        if (!live.has(k)) out.push(`${it.key} wears "${k}", which is not a live key of the family (scripts/glyphs/map.ts)`);
+        if (!fill.has(k)) out.push(`${it.key} wears "${k}", which ships no Fill — its current row would fall back to Line (add it to FILL_KEYS)`);
+        const twin = inGroup.get(k);
+        if (twin) out.push(`${g.group.en}: ${twin} and ${it.key} both wear "${k}"`);
+        else inGroup.set(k, it.key);
+        const other = wornBy.get(k);
+        if (other && !twin && !(k in SHARED_GLYPHS)) out.push(`${other} and ${it.key} both wear "${k}" — one meaning, one glyph; a true sharing is named in SHARED_GLYPHS with why`);
+        if (!other) wornBy.set(k, it.key);
+      }
+    }
+    return out;
+  };
+  const real = NAV_GROUPS as unknown as GlyphNav;
+  const problems = glyphProblems(real);
+  ok("8 · ⭐ every destination wears a live glyph that ships its Fill, and no two destinations wear the same one",
+     problems.length === 0, problems.join(" | "));
+  // ⛔ CONTROL — each way §8 can fail, planted on an in-memory copy (nothing is written), must be reported.
+  const plant = (f: (it: { key: string; glyph?: string }) => { key: string; glyph?: string }): GlyphNav =>
+    real.map((g) => ({ ...g, items: g.items.map(f) }));
+  const first = real[0].items[0], second = real[0].items[1], far = real[real.length - 1].items[0];
+  const plants: Array<[string, RegExp, GlyphNav]> = [
+    ["a destination with no glyph", new RegExp(`^${first.key} wears no glyph`), plant((it) => (it.key === first.key ? { ...it, glyph: undefined } : it))],
+    ["a retired key", /wears "sortAsc", which is not a live key/, plant((it) => (it.key === first.key ? { ...it, glyph: "sortAsc" } : it))],
+    ["a glyph that ships no Fill", /wears "bell", which ships no Fill/, plant((it) => (it.key === first.key ? { ...it, glyph: "bell" } : it))],
+    ["two destinations of one group, one glyph", new RegExp(`: ${first.key} and ${second.key} both wear`), plant((it) => (it.key === second.key ? { ...it, glyph: first.glyph } : it))],
+    ["two destinations across the sidebar, one glyph", new RegExp(`^${first.key} and ${far.key} both wear .*one meaning, one glyph`), plant((it) => (it.key === far.key ? { ...it, glyph: first.glyph } : it))],
+  ];
+  const blind = plants.filter(([, want, groups]) => !glyphProblems(groups).some((p) => want.test(p))).map(([name]) => name);
+  ok("8 · CONTROL · each way §8 can fail is reported on a planted copy (the real nav above is clean, so these are the plants')",
+     problems.length === 0 && blind.length === 0, blind.length ? `blind to: ${blind.join(", ")}` : `${plants.length}/${plants.length} caught`);
 }
 
 console.log(`\nadmin-nav: ${pass} passed, ${fail} failed`);

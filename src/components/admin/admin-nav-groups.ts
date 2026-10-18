@@ -12,6 +12,7 @@
  * no nav item owns — so a typo cannot silently highlight nothing again.
  */
 import type { AdminDomain } from "@/lib/server/roles";
+import type { GlyphKey } from "@/components/ui/glyphs";
 
 /** Segments whose title-cased form is wrong or unreadable. Title-casing turns
  *  "updown" into "Updown", which is not the product's name — the game is "Up & Down"
@@ -131,11 +132,20 @@ export function adminNextDest(dest: string): string {
 
 /** A nav item carries the RBAC `domain` it belongs to (drives visibility). Two
  *  flags override the domain check: `allStaff` (always shown to any staff — e.g.
- *  2FA setup) and `ownerOnly` (only ADMIN — e.g. staff/roles). See `filterNavGroups`. */
+ *  2FA setup) and `ownerOnly` (only ADMIN — e.g. staff/roles). See `filterNavGroups`.
+ *
+ *  ⭐ `glyph` IS REQUIRED (PHOSPHOR-MIGRATION W3; Ali's R-ADMIN "Yes, sidebar + cards" and R-INDICATOR 3B): every
+ *  destination wears ONE glyph of the family `I`, drawn Line in its row and Fill on the opaque royal pill while it is the
+ *  current page (`NavGlyph`, in the sidebar and the drawer). Required, so a new admin page cannot be added without
+ *  choosing one (R-NEW-PAGES). One meaning, one glyph: reuse the key that already carries the destination's meaning,
+ *  otherwise add one to `scripts/glyphs/map.ts` (NEW_KEYS, ADMIN_KEYS and FILL_KEYS) and run `npm run glyphs:gen`.
+ *  `test:admin-nav` §8 holds the rest: a live key, distinct across the whole sidebar, its Fill shipped.
+ *  docs/PHOSPHOR-MIGRATION.md §3 "Admin destinations (W3)" is the lexicon. */
 export type NavItem = {
   href: string;
   label: string;
   key: string;
+  glyph: GlyphKey;
   badge?: string;
   domain: AdminDomain;
   ownerOnly?: boolean;
@@ -147,42 +157,43 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     group: { en: "Overview", sw: "Muhtasari" },
     items: [
-      { href: "/admin",      label: "Overview", key: "overview", domain: "overview" },
-      { href: "/admin/live", label: "Live ops", key: "live", domain: "overview" },
+      { href: "/admin",      label: "Overview", key: "overview", glyph: "dashboard", domain: "overview" },
+      { href: "/admin/live", label: "Live ops", key: "live", glyph: "live", domain: "overview" },
       /* ⭐ THE NEW JOURNEY'S SWITCH AND PREVIEW (Vodacom plan S1). `overview`, because EVERY staff role must reach it
        * (SJ-23: SUPPORT included) to turn its own preview on; only the Owner moves the rollout, and that is decided
        * on the STORED role by the ceremony, not by this domain. ⛔ `ROUTE_DOMAINS` in roles.ts carries the same pair
        * (`test:rbac` §7b holds the two to agreeing). */
-      { href: "/admin/journey", label: "New journey", key: "journey", domain: "overview" },
+      { href: "/admin/journey", label: "New journey", key: "journey", glyph: "journey", domain: "overview" },
     ],
   },
   {
     group: { en: "Money", sw: "Pesa" },
     items: [
-      { href: "/admin/insights", label: "Insights", key: "insights", domain: "accounting" },
-      { href: "/admin/settlement",    label: "Settlement", key: "settlement", domain: "accounting" },
-      { href: "/admin/finance", label: "Finance", key: "finance", domain: "accounting" },
+      { href: "/admin/insights", label: "Insights", key: "insights", glyph: "insights", domain: "accounting" },
+      { href: "/admin/settlement",    label: "Settlement", key: "settlement", glyph: "settlement", domain: "accounting" },
+      { href: "/admin/finance", label: "Finance", key: "finance", glyph: "finance", domain: "accounting" },
       /* ⭐ THE OWNER'S BOOK — what we hold, what we made, per game, and which rate applied.
        * Beside Finance because it is read against it: Finance keeps the books and proves them
        * (trial balance, drift); House answers what is left after everything owed to somebody
        * else comes out. ⛔ Without this entry `test:admin-nav` §7 reports the page as having
        * no way in — a route nobody can reach from the console is a route nobody reads. */
-      { href: "/admin/house", label: "House", key: "house", domain: "accounting" },
+      { href: "/admin/house", label: "House", key: "house", glyph: "house", domain: "accounting" },
       /* ⭐ THE DESK — the Owner's own trading desk, beside the book it is read against. `ownerOnly` is the ONLY flag
        * that removes an item before serialisation: `filterNavGroups` is called SERVER-side in `AdminSidebar` and
        * `AdminTopBar`, and `isOwner` comes from the STORED role, so this item never enters a non-Owner's payload.
-       * ⛔ Its label and key carry no feature word and no record id, and there is NO `CRUMB_LABELS` entry: the
+       * ⛔ Its label, key and glyph carry no feature word and no record id (the glyph is `desk`, the label's own word,
+       * PHOSPHOR-MIGRATION W3 — a glyph's key is painted in its `data-g`), and there is NO `CRUMB_LABELS` entry: the
        * title-caser already yields "Desk", and a `CRUMB_LABELS` row is the one place a neutral segment could be
        * mapped back to something else inside a client chunk — this module is value-imported by THREE `"use client"`
        * components, and a built chunk of this codebase ships `ROUTE_KEYS` and `CRUMB_LABELS` verbatim. */
-      { href: "/admin/desk", label: "Desk", key: "desk", domain: "ops", ownerOnly: true },
-      { href: "/admin/reports", label: "Reports", key: "reports", domain: "accounting" },
+      { href: "/admin/desk", label: "Desk", key: "desk", glyph: "desk", domain: "ops", ownerOnly: true },
+      { href: "/admin/reports", label: "Reports", key: "reports", glyph: "reports", domain: "accounting" },
       /* ⭐ THE GOVERNMENT TAX REPORT (docs/TAX-REPORT.md) — Sales, Payout, On hold, Refunds and the TRA/GBT tax on
        * them, per day, week or month, locked when Finance files it. Beside Reports because it is the filing
        * the statutory library sits next to; its own item because it is a working page, not a download card. */
-      { href: "/admin/tax", label: "Tax report", key: "tax", domain: "accounting" },
-      { href: "/admin/payments", label: "Payments ops", key: "payments", domain: "accounting" },
-      { href: "/admin/transactions", label: "Transactions", key: "transactions", domain: "accounting" },
+      { href: "/admin/tax", label: "Tax report", key: "tax", glyph: "tax", domain: "accounting" },
+      { href: "/admin/payments", label: "Payments ops", key: "payments", glyph: "mobileMoney", domain: "accounting" },
+      { href: "/admin/transactions", label: "Transactions", key: "transactions", glyph: "transactions", domain: "accounting" },
     ],
   },
   {
@@ -190,22 +201,22 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     items: [
       // Roster is `support` (the player desk); cohorts is aggregate `growth` analytics —
       // so this group shows different items to Support vs Growth.
-      { href: "/admin/players",         label: "Roster",  key: "players", domain: "support" },
-      { href: "/admin/players/cohorts", label: "Cohorts", key: "cohorts", domain: "growth" },
+      { href: "/admin/players",         label: "Roster",  key: "players", glyph: "roster", domain: "support" },
+      { href: "/admin/players/cohorts", label: "Cohorts", key: "cohorts", glyph: "cohorts", domain: "growth" },
     ],
   },
   {
     group: { en: "Markets", sw: "Masoko" },
     items: [
-      { href: "/admin/events",          label: "Event calendar", key: "events", domain: "trading" },
-      { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls", domain: "trading" },
-      { href: "/admin/candidates",     label: "AI candidates", key: "candidates", domain: "trading" },
-      { href: "/admin/proposals",      label: "Player proposals", key: "proposals", domain: "trading" },
-      { href: "/admin/markets",        label: "Curation queue", key: "markets", domain: "trading" },
-      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver", domain: "trading" },
-      { href: "/admin/sources",        label: "Sources & categories", key: "sources", domain: "trading" },
+      { href: "/admin/events",          label: "Event calendar", key: "events", glyph: "calendar", domain: "trading" },
+      { href: "/admin/ai-polls",        label: "AI poll generation", key: "ai-polls", glyph: "bot", domain: "trading" },
+      { href: "/admin/candidates",     label: "AI candidates", key: "candidates", glyph: "brain", domain: "trading" },
+      { href: "/admin/proposals",      label: "Player proposals", key: "proposals", glyph: "idea", domain: "trading" },
+      { href: "/admin/markets",        label: "Curation queue", key: "markets", glyph: "markets", domain: "trading" },
+      { href: "/admin/resolver-queue", label: "Resolver queue", key: "resolver", glyph: "resolved", domain: "trading" },
+      { href: "/admin/sources",        label: "Sources & categories", key: "sources", glyph: "sources", domain: "trading" },
       // Rates & fees change platform economics (money-grade) — `accounting`, not trading.
-      { href: "/admin/config",         label: "Rates & fees", key: "config", domain: "accounting" },
+      { href: "/admin/config",         label: "Rates & fees", key: "config", glyph: "percent", domain: "accounting" },
     ],
   },
   {
@@ -215,11 +226,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     // long-form-poll surfaces.
     group: { en: "Up & Down", sw: "Juu na Chini" },
     items: [
-      { href: "/admin/updown",           label: "Overview",     key: "updown", domain: "trading" },
+      { href: "/admin/updown",           label: "Overview",     key: "updown", glyph: "trade", domain: "trading" },
       // "AI proposals", not "Proposals" — /admin/proposals is the PLAYER proposal queue, and
       // two identically-labelled entries in one console is a support ticket waiting to happen.
-      { href: "/admin/updown/proposals", label: "AI proposals", key: "updown-proposals", domain: "trading" },
-      { href: "/admin/updown/rounds",    label: "Rounds",       key: "updown-rounds", domain: "trading" },
+      { href: "/admin/updown/proposals", label: "AI proposals", key: "updown-proposals", glyph: "sparkle", domain: "trading" },
+      { href: "/admin/updown/rounds",    label: "Rounds",       key: "updown-rounds", glyph: "rounds", domain: "trading" },
     ],
   },
   {
@@ -227,23 +238,23 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     // page in the domain that acts on it — trading runs the week, accounting releases, compliance pauses and decides.
     group: { en: "Millionea", sw: "Millionea" },
     items: [
-      { href: "/admin/maswali",           label: "Weeks",     key: "maswali", domain: "trading" },
-      { href: "/admin/maswali/pools",     label: "Pools",     key: "maswali-pools", domain: "accounting" },
-      { href: "/admin/maswali/integrity", label: "Integrity", key: "maswali-integrity", domain: "compliance" },
+      { href: "/admin/maswali",           label: "Weeks",     key: "maswali", glyph: "weeks", domain: "trading" },
+      { href: "/admin/maswali/pools",     label: "Pools",     key: "maswali-pools", glyph: "pools", domain: "accounting" },
+      { href: "/admin/maswali/integrity", label: "Integrity", key: "maswali-integrity", glyph: "integrity", domain: "compliance" },
     ],
   },
   {
     group: { en: "Growth", sw: "Ukuaji" },
     items: [
-      { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", domain: "growth" },
-      { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", domain: "growth" },
-      { href: "/admin/contacts",  label: "Contacts",  key: "contacts", domain: "growth" },
-      { href: "/admin/invites",   label: "Invites",   key: "invites", domain: "growth" },
+      { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", glyph: "users", domain: "growth" },
+      { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", glyph: "gift", domain: "growth" },
+      { href: "/admin/contacts",  label: "Contacts",  key: "contacts", glyph: "contacts", domain: "growth" },
+      { href: "/admin/invites",   label: "Invites",   key: "invites", glyph: "invites", domain: "growth" },
       /* ⭐ U36 · THE SMS CAMPAIGN LIST. ⛔ "SMS campaigns", never "Campaigns" — `/admin/invites` heads "Invite campaigns".
        * `ROUTE_DOMAINS` in roles.ts carries the same pair (`test:rbac` §7b holds the two to agreeing), and the badge beside
        * it is read only for a viewer who may see growth (`getSidebarBadges`, admin-shell.tsx). */
-      { href: "/admin/campaigns", label: "SMS campaigns", key: "campaigns", domain: "growth" },
-      { href: "/admin/traffic",   label: "Traffic",   key: "traffic", domain: "growth" },
+      { href: "/admin/campaigns", label: "SMS campaigns", key: "campaigns", glyph: "megaphone", domain: "growth" },
+      { href: "/admin/traffic",   label: "Traffic",   key: "traffic", glyph: "traffic", domain: "growth" },
     ],
   },
   {
@@ -251,35 +262,35 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     items: [
       // ⭐ Agents are COMPLIANCE, not Growth: the officer who vets, prices and pays a business
       // partner is the one who must see every switch that controls agent money.
-      { href: "/admin/agents", label: "Agents", key: "agents", domain: "compliance" },
-      { href: "/admin/compliance",      label: "Compliance",     key: "compliance", domain: "compliance" },
+      { href: "/admin/agents", label: "Agents", key: "agents", glyph: "agent", domain: "compliance" },
+      { href: "/admin/compliance",      label: "Compliance",     key: "compliance", glyph: "tippingScales", domain: "compliance" },
       /* ⭐ THE KYC QUEUE — its own entry, high in the group (2026-09-13). From that date identity is asked
        * before a withdrawal and nothing else, so a file waiting on us can be a player waiting on their own
        * money (COMPLIANCE-DECISIONS 2026-09-13, S14). Until then /admin/kyc had no index and the review lived
        * only as one card inside "Approvals", a page framed around the AML co-sign ceremony. */
-      { href: "/admin/kyc",             label: "KYC queue",      key: "kyc", domain: "compliance" },
+      { href: "/admin/kyc",             label: "KYC queue",      key: "kyc", glyph: "idCard", domain: "compliance" },
       // F11 — an OPEN objection freezes a market's settlement, so this queue holds
       // real money hostage until an officer clears it. It sits high on purpose.
-      { href: "/admin/objections",      label: "Objections",     key: "objections", domain: "compliance" },
+      { href: "/admin/objections",      label: "Objections",     key: "objections", glyph: "flag", domain: "compliance" },
       // Comment moderation is content ops (Trading's remit) even though it lives in
       // the Compliance group visually — so it shows to Trading, not to Compliance.
-      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation", domain: "trading" },
-      { href: "/admin/aml",             label: "AML queue",      key: "aml", domain: "compliance" },
-      { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx", domain: "compliance" },
-      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy", domain: "compliance" },
-      { href: "/admin/retention",       label: "Retention",      key: "retention", domain: "compliance" },
-      { href: "/admin/audit",           label: "Audit log",      key: "audit", domain: "compliance" },
+      { href: "/admin/moderation",      label: "Comment moderation", key: "moderation", glyph: "comment", domain: "trading" },
+      { href: "/admin/aml",             label: "AML queue",      key: "aml", glyph: "shieldAlert", domain: "compliance" },
+      { href: "/admin/self-exclusions", label: "Self-exclusions", key: "sx", glyph: "circleStop", domain: "compliance" },
+      { href: "/admin/privacy",         label: "Privacy / DSAR", key: "privacy", glyph: "privacy", domain: "compliance" },
+      { href: "/admin/retention",       label: "Retention",      key: "retention", glyph: "archive", domain: "compliance" },
+      { href: "/admin/audit",           label: "Audit log",      key: "audit", glyph: "audit", domain: "compliance" },
     ],
   },
   {
     group: { en: "System", sw: "Mfumo" },
     items: [
-      { href: "/admin/system",    label: "System",    key: "system", domain: "ops" },
-      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage", domain: "ops" },
-      { href: "/admin/approvals", label: "Approvals", key: "approvals", domain: "compliance" },
+      { href: "/admin/system",    label: "System",    key: "system", glyph: "server", domain: "ops" },
+      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage", glyph: "activity", domain: "ops" },
+      { href: "/admin/approvals", label: "Approvals", key: "approvals", glyph: "approvals", domain: "compliance" },
       // 2FA setup secures the logged-in officer's own account — every staff role must
       // reach it (the layout even force-redirects here on first login).
-      { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa", domain: "ops", allStaff: true },
+      { href: "/admin/2fa/setup", label: "2FA setup", key: "2fa", glyph: "keyRound", domain: "ops", allStaff: true },
     ],
   },
   {
@@ -288,8 +299,8 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     // so a granted-ops role can never see or reach them.
     group: { en: "Access", sw: "Ufikiaji" },
     items: [
-      { href: "/admin/staff", label: "Staff & roles", key: "staff", domain: "ops", ownerOnly: true },
-      { href: "/admin/roles", label: "Role permissions", key: "roles", domain: "ops", ownerOnly: true },
+      { href: "/admin/staff", label: "Staff & roles", key: "staff", glyph: "staff", domain: "ops", ownerOnly: true },
+      { href: "/admin/roles", label: "Role permissions", key: "roles", glyph: "roles", domain: "ops", ownerOnly: true },
     ],
   },
 ];

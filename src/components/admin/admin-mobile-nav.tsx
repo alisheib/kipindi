@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { activeKeyFromPath } from "./admin-nav-groups";
+import { activeKeyFromPath, type NavGroup } from "./admin-nav-groups";
 import { I } from "@/components/ui/glyphs";
+import { NavGlyph } from "@/components/ui/nav-glyph";
 import { FiftyMark } from "@/components/brand";
 import { CountBadge } from "@/components/ui/count-badge";
 
-type NavItem = { href: string; label: string; key: string; badge?: string };
-type NavGroup = { group: { en: string; sw: string }; items: ReadonlyArray<NavItem> };
+// ⭐ THE SHARED `NavGroup`, never a local copy (PHOSPHOR-MIGRATION W3). This drawer kept its own narrower item type,
+// and a field the sidebar draws (the destination's `glyph`) would have been one more thing the two could disagree on.
 
 /**
  * ⚠️ `fallbackKey`, NOT `activeKey`. The value the server hands down is computed in
@@ -133,16 +134,22 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
                             ? "text-text font-semibold"
                             : "text-text-secondary hover:bg-bg-overlay hover:text-text",
                         ].join(" ")}
-                        // ⭐ DG-A-18 · §B9, and the SECOND HOME the sidebar's own fix left standing.
-                        // This was `bg-bg-inset text-royal-300` — a different fill and a different
-                        // ink for the one semantic `--pill-active` owns ("one active filter/tab fill
-                        // everywhere", globals.css:423), one file from the commit that named the
-                        // problem. ⛔ `ui-consistency`'s `hardcoded-pill-active` could not see it
-                        // either: that rule matches the token's LITERAL TEXT, and this was not a
-                        // copy of the literal but a different answer to the same question.
-                        style={active ? { background: "var(--pill-active)" } : undefined}
+                        // ⭐ PHOSPHOR-MIGRATION W3 · R-INDICATOR 3B (Ali, 2026-10-17): the SAME pill and the
+                        // same Fill glyph as the desktop sidebar — the current destination on the opaque royal
+                        // `--nav-pill` with its lit `--nav-pill-edge`, its ink --text, the glyph following the
+                        // row's ink. One answer in both files, which is what DG-A-18 (§B9) asked for when this
+                        // drawer still painted its own `bg-bg-inset text-royal-300`.
+                        // ⛔ NOT `--pill-active`: that see-through token (1.18:1 on a bar) stays the selection
+                        // of filters, menus and page tabs; a destination is not a filter.
+                        style={active ? { background: "var(--nav-pill)", boxShadow: "var(--nav-pill-edge)" } : undefined}
                       >
-                        <span>{it.label}</span>
+                        {/* ⭐ W3 (R-ADMIN): the destination's one glyph before its label, 10px apart (NavGlyph:
+                            Line, Fill while current), `gap-[10px]` as the sidebar's, for the same reason
+                            (`test:spacing-scale`). Words wrap rather than clip in this drawer (`test:popup-fit`). */}
+                        <span className="flex min-w-0 items-center gap-[10px]">
+                          <NavGlyph glyph={it.glyph} on={active} s={18} />
+                          <span>{it.label}</span>
+                        </span>
                         {/* the same kit pip as the desktop sidebar — `count-badge.tsx` names this
                             drawer as its fourth implementation. One pip, one cap, one radius. */}
                         {badge && <CountBadge count={Number(badge)} tone="brand" size="sm" />}

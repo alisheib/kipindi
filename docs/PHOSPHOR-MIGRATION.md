@@ -157,6 +157,78 @@ The conflicts the inspection found (Appendix A), and the candidates Ali chose fr
 Recognition check: answered by Ali's review of the specimen (2026-10-17). A label-less check with 3–5 players or staff
 ("what does this do?") stays open to him at W2's full contact sheet; a glyph most of them misread is swapped there.
 
+### Admin destinations (W3)
+
+R-ADMIN gave the console icons; R-INDICATOR 3B makes the current row its Fill glyph on the opaque `--nav-pill`. Every
+item of `NAV_GROUPS` (`src/components/admin/admin-nav-groups.ts`) wears ONE key, required by the `NavItem` type. A
+destination whose meaning a key already carries wears that key ("reused"); the meanings no key had got a console-only
+key ("new", in `ADMIN_KEYS`). Every one ships its Fill (`FILL_KEYS`). `test:admin-nav` §8 holds three things: a live
+key, one destination per glyph across the whole sidebar, and the Fill. `map.ts` stays the source of each Phosphor name;
+this table records the W3 choice.
+
+| Group · item | Key | Phosphor | |
+|---|---|---|---|
+| Overview · Overview | `dashboard` | layout | new |
+| Overview · Live ops | `live` | broadcast | reused (R-LEXICON 5.2A) |
+| Overview · New journey | `journey` | path | new |
+| Money · Insights | `insights` | presentation-chart | new |
+| Money · Settlement | `settlement` | money | new |
+| Money · Finance | `finance` | calculator | new |
+| Money · House | `house` | house | new (the operator's own book, never "home") |
+| Money · Desk | `desk` | desk | new (the label's own neutral word, ruling 453) |
+| Money · Reports | `reports` | clipboard-text | new |
+| Money · Tax report | `tax` | invoice | new |
+| Money · Payments ops | `mobileMoney` | house extra (a handset carrying money) | reused |
+| Money · Transactions | `transactions` | table | new |
+| Players · Roster | `roster` | user-list | new |
+| Players · Cohorts | `cohorts` | chart-donut | new |
+| Markets · Event calendar | `calendar` | calendar-blank | reused |
+| Markets · AI poll generation | `bot` | robot | reused (the page's own mark) |
+| Markets · AI candidates | `brain` | brain | reused (the page's own mark) |
+| Markets · Player proposals | `idea` | lightbulb | reused (R-LEXICON 5.6A) |
+| Markets · Curation queue | `markets` | squares-four | reused (the board, 5.1A) |
+| Markets · Resolver queue | `resolved` | seal-check | reused (results, 5.5A) |
+| Markets · Sources & categories | `sources` | newspaper | new |
+| Markets · Rates & fees | `percent` | percent | reused |
+| Up & Down · Overview | `trade` | arrows-down-up | reused (R-LEXICON 5.4A) |
+| Up & Down · AI proposals | `sparkle` | sparkle | reused (the AI generation switch's mark) |
+| Up & Down · Rounds | `rounds` | timer | new |
+| Millionea · Weeks | `weeks` | list-numbers | new (see the note below) |
+| Millionea · Pools | `pools` | treasure-chest | new |
+| Millionea · Integrity | `integrity` | gavel | new |
+| Growth · Affiliate | `users` | users | reused (the friends programme's player rows) |
+| Growth · Bonuses | `gift` | gift | reused |
+| Growth · Contacts | `contacts` | address-book | new |
+| Growth · Invites | `invites` | paper-plane-tilt | new |
+| Growth · SMS campaigns | `megaphone` | megaphone | reused (marketing) |
+| Growth · Traffic | `traffic` | chart-line | new |
+| Compliance · Agents | `agent` | handshake | new |
+| Compliance · Compliance | `tippingScales` | scales | reused (the rules) |
+| Compliance · KYC queue | `idCard` | identification-card | reused (the player's identity row) |
+| Compliance · Objections | `flag` | flag | reused (an objection, on /fairness and the resolution panel) |
+| Compliance · Comment moderation | `comment` | chat-text | reused |
+| Compliance · AML queue | `shieldAlert` | shield-warning | reused |
+| Compliance · Self-exclusions | `circleStop` | stop-circle | reused (the player's Jizuie row) |
+| Compliance · Privacy / DSAR | `privacy` | folder-user | new |
+| Compliance · Retention | `archive` | archive | reused |
+| Compliance · Audit log | `audit` | clock-counter-clockwise | new |
+| System · System | `server` | hard-drives | reused |
+| System · AI usage & credits | `activity` | pulse | reused (the AI toolkit's own link to the page) |
+| System · Approvals | `approvals` | check-square-offset | new |
+| System · 2FA setup | `keyRound` | key | reused (security credentials) |
+| Access · Staff & roles | `staff` | user-circle-gear | new (user-gear's Fill reaches 0.25 past its box) |
+| Access · Role permissions | `roles` | shield-chevron | new |
+
+**Left for later waves, seen while choosing:**
+- Some player and console rows already wear a different mark for these meanings:
+  - an agent: the hub's "Kuwa wakala" row and the profile's agent row draw `shieldcheck` (verified only, §3);
+  - the friends programme: the avatar menu's Invite & Earn draws `gift`, where the journey rows draw `users`;
+  - a player's detail tabs: KYC `shieldcheck`, self-exclusion `shieldOff`, limits `lock`, audit `alertCircle`;
+  - the hub's staff-console row draws `server`, the System glyph.
+  W5 (admin cards) or W7 can move each to its key above.
+- Millionea's Weeks is the game's home. Once the Maswali lane's `millionea` key lands (MASWALI-PLAN §10c, its S5), the
+  row may wear the game's mark, as Up & Down's Overview wears `trade`; `weeks` is then drawn nowhere and retires.
+
 ---
 
 ## §4 · Mapping — house key → Phosphor
@@ -462,6 +534,35 @@ collapse into one. The rail's square, edge-to-edge focus ring follows the pill.
   - `test:visual-pass-r7c` 6.2 and `test:visual-pass-r9c` 8.2: byte-for-byte checks on the classic chrome, green once
     committed;
   - the classic shell parity: W3's rail and header changes are named entries, measured.
+
+**The admin step (written on `phosphor-w3-admin`, 2026-10-18; the codegen, typecheck and guards are the release's):**
+- **The lexicon:** 50 destinations, one glyph each (§3 "Admin destinations (W3)"). 24 reuse the key that already
+  carries their meaning; 26 are new console keys in `NEW_KEYS` and `ADMIN_KEYS`. Each new name was checked free in
+  `map.ts`, apart from the Maswali lane's 13, and present in all four weights of 2.1.1. The sidebar draws each at 18px
+  in Bold and Fill, and the W3 block of `FILL_KEYS` ships every Fill. The 29 console keys' Fills go to the admin sprite.
+  The 18 reused app keys' Fills go to the app sprite: about 7 KB of raw path data that a player's sprite carries for the
+  console alone. A per-variant placement in the codegen (an admin-only Fill in the admin sprite) would take it out; it
+  was not built here.
+- **The type:** `NavItem.glyph: GlyphKey` is required (R-NEW-PAGES). The drawer now types its rows with the shared
+  `NavGroup`, where it had kept a narrower copy of its own.
+- **The rows** (`admin-sidebar-nav.tsx`, `admin-mobile-nav.tsx`):
+  - `<NavGlyph glyph={it.glyph} on={active} s={18} />` sits before the label, 10px apart, and the pip stays at the
+    right. The gap is `gap-[10px]`, the same-pixel literal: `gap-2.5` is an inverted key, and `test:spacing-scale` only
+    lets their count fall;
+  - the current row wears `--nav-pill` with `--nav-pill-edge`, its ink `--text`;
+  - the comments that said `--pill-active` owns this job are rewritten: it stays the selection of filters, menus and
+    page tabs. The admin brand link's hover keeps it, and its comment says why.
+- **Guards re-pinned:**
+  - `test:house-bot-console` 1.333 pins the desk's literal with its glyph, the neutral `desk`, and asks ruling 453's
+    lexicon of that glyph;
+  - the anchors `red:house-bot-console` 321-nav and `red:maswali-rbac` (6) carry the glyph in their literals;
+  - `test:visual-pass-r9a` §1.3 names eight more drawings that Phosphor sets off their box: the Fills of `bot`,
+    `comment`, `gift`, `megaphone` and `shieldAlert`, `journey`'s Bold, and `roles`' Bold and Fill. Each offset is read
+    by hand from the path data, so the release's run confirms them.
+- **Guards added:**
+  - `test:admin-nav` §8: a live key, one destination per glyph across the sidebar, the Fill shipped, with a planted
+    control;
+  - `test:glyph-map` §10: the console's own keys stay in the console, with four plants.
 
 ### W4 — Outcomes and status
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart
