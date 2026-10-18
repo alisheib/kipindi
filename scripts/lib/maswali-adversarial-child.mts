@@ -23,6 +23,7 @@
  *   §12 CC · both clock-change weekends, through the open's close guard and the void deadline (MB-30, MR-4, OD-09b)
  *   §13 HF · a holiday Friday (MB-85, OD-27)
  *   §14 DL · a week's deadlines at the open are its frozen rules' (OD-09b, MB-75; lane L's review, finding 8)
+ *   §14a GR · a week whose frozen rules cannot be read: the requirement is unknown, every reader fails closed (OD-02)
  *   §14b SN · a refused stop names the Owner's next act, in every branch (MR-30, OD-03; the S7 review, round 2)
  *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
  *   §16    · the invariants and the books over everything above
@@ -1269,6 +1270,73 @@ if (runs("DL")) {
   await closed(o2.id);
   await sealRest(o2.id, s2, ALL_VOID);
   await voided(o2.id);
+}
+
+// ═══ §14a · GR · a week whose frozen rules cannot be read ═══════════════════════════════════════════════════════════
+if (runs("GR")) section("§14a · GR · an unsettled week whose frozen rules cannot be read leaves the guarantee's requirement unknown, and every reader fails closed (OD-02; the S7 review, round 2)");
+if (runs("GR")) {
+  /** ⚠️ A FIXTURE, DECLARED (the player suite's 13.3): a week's frozen rules restamped to a version this build cannot read —
+   *  what a corrupt or newer row presents — and put back after, whatever happens. */
+  const restamp = async (weekId: string, v: number) => {
+    if (W.onPostgres) {
+      await W.prisma()!.$executeRawUnsafe(`UPDATE "MaswaliCycle" SET "rulesSnapshot" = jsonb_set("rulesSnapshot", '{v}', $1::jsonb) WHERE "id" = $2`, String(v), weekId);
+    } else {
+      (globalThis as any).__50PICK_MLN_WEEKS.get(weekId).rulesSnapshot.v = v;
+    }
+  };
+  // U is the one unsettled week (every earlier one is terminal); D, a drive draft, is the other line's next open.
+  const sU = W.weekStartAhead(ahead++), sD = W.weekStartAhead(ahead++);
+  const U = await openWeekAt(sU);
+  const D = await drafted(sD, { visibility: "DRIVE" });
+  const at = new Date(sU + HOUR);
+  const unsettledNow = (await dal.weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] })) as any[];
+  // §5b's own sum, re-derived here: each unsettled week's frozen floor less its confirmed carry.
+  const expected = unsettledNow.reduce((s: number, w: any) => s + Math.max(0, (W.svc.frozenRules(w)?.floorTzs ?? Number.NaN) - (w.rolloverIn ?? 0)), 0);
+  const guaranteeAlerts = async () => (await consoleRead.consoleAlerts(at, { readFloat: async () => null })).filter((x) => /guarantee/i.test(x.text));
+  const uProblems = async () => (await checkMaswaliInvariants()).problems.filter((x: string) => x.includes(U.code));
+  const pools0 = await consoleRead.poolsView(at);
+  ok("GR.0 · control: every unsettled week readable, accounting's \"Needed now\" is the exact requirement and no guarantee alert stands",
+    unsettledNow.some((w) => w.id === U.id) && Number.isFinite(expected) && expected > 0 && pools0.requirement === expected && (await guaranteeAlerts()).length === 0,
+    J({ requirement: pools0.requirement, expected, alerts: (await guaranteeAlerts()).map((x) => x.text) }));
+  const g0 = await guarantee();
+  await restamp(U.id, 2);
+  try {
+    const pools1 = await consoleRead.poolsView(at);
+    ok("GR.1 · ⭐ a week whose frozen rules cannot be read makes the requirement unknown — null, never a floor of 0 that understates it",
+      W.svc.frozenRules(await dal.weekStore.get(U.id)) === null && pools1.requirement === null, J({ requirement: pools1.requirement }));
+    const unknown = (await guaranteeAlerts()).find((x) => x.weekId === U.id);
+    ok("GR.2 · ⭐ …and the console's alert fires, naming the week: the guarantee cannot be shown to cover the unsettled weeks",
+      !!unknown && unknown.level === "critical" && /cannot be read/.test(unknown.text) && unknown.text.includes(U.code), J(unknown ?? "no alert"));
+    const back = await money.returnMaswaliGuarantee({ amount: 1, reference: ref("RET"), typed: money.GUARANTEE_RETURN_WORD, ownerId: OWNER });
+    ok("GR.3 · ⭐ …the Owner's return of guarantee money is refused, naming the week, and nothing moves",
+      !back.ok && /cannot be read/.test(errOf(back)) && errOf(back).includes(U.code) && (await guarantee()) === g0, errOf(back) || `returned · the guarantee now ${await guarantee()}`);
+    const broken = await uProblems();
+    ok("GR.4 · ⭐ …the nightly invariants report it, naming the week — never a requirement quietly met", broken.some((x) => /cannot be read/.test(x)), J(broken));
+    const o = await W.svc.openWeek({ weekId: D.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(sD + MIN) });
+    ok("GR.5 · ⭐ …and no week opens on a stand-in floor: the other line's open is refused, naming the week, and stays a draft",
+      !o.ok && /cannot be read/.test(errOf(o)) && errOf(o).includes(U.code) && (await dal.weekStore.get(D.id)).state === "DRAFT", errOf(o));
+  } finally {
+    await restamp(U.id, 1);
+  }
+  const pools2 = await consoleRead.poolsView(at);
+  ok("GR.6 · control: the rules read again — the exact requirement returns, the alert clears and the invariants name the week no more",
+    pools2.requirement === expected && (await guaranteeAlerts()).length === 0 && (await uProblems()).length === 0,
+    J({ requirement: pools2.requirement, alerts: (await guaranteeAlerts()).map((x) => x.text), problems: await uProblems() }));
+  const back2 = await money.returnMaswaliGuarantee({ amount: 1, reference: ref("RET"), typed: money.GUARANTEE_RETURN_WORD, ownerId: OWNER });
+  ok("GR.7 · control: …a return inside the headroom lands", back2.ok && (await guarantee()) === g0 - 1, errOf(back2));
+  const refill = await money.fundMaswaliGuarantee({ amount: 1, reference: ref("FUND"), typed: money.GUARANTEE_FUND_WORD, ownerId: OWNER });
+  if (!refill.ok) throw new Error(`GR: the guarantee could not be refilled: ${refill.error}`);
+  const opened2 = await W.svc.openWeek({ weekId: D.id, officerId: DRAFTER, guarantee: money.guaranteeReader, now: new Date(sD + MIN) });
+  ok("GR.8 · control: …and the other line's week opens", opened2.ok, errOf(opened2));
+  // The books close behind the cases: both weeks sold nothing and void whole.
+  await closed(U.id);
+  await sealRest(U.id, sU, ALL_VOID);
+  await voided(U.id);
+  if ((await dal.weekStore.get(D.id)).state === "OPEN") {
+    await closed(D.id);
+    await sealRest(D.id, sD, ALL_VOID);
+    await voided(D.id);
+  }
 }
 
 // ═══ §14b · SN · a refused stop names the Owner's next act ══════════════════════════════════════════════════════════

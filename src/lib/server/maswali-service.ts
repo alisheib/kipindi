@@ -27,7 +27,7 @@ import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
-import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
+import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
 import { questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
@@ -224,13 +224,16 @@ export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records
 /**
  * OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen floor
  * (this one at the floor it would freeze), across both lines of weeks: there is one guarantee. `null` when it does.
+ * ⛔ S7-F2 · an unsettled week whose frozen rules cannot be read has an unknown floor, so the requirement is unknown and
+ *    no week opens — it was counted at this week's floor, a stand-in that understates a week frozen with a higher one.
  */
 export async function guaranteeProblem(week: StoredWeek, rules: MaswaliRulesSnapshot, guarantee: GuaranteeReader): Promise<string | null> {
   const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
-  const need = guaranteeRequirement([
-    ...unsettled.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? rules.floorTzs, confirmedCarryIn: w.rolloverIn })),
-    { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn },
-  ]);
+  const floors = unsettledFloors(unsettled);
+  if (!floors.ok) {
+    return `Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the guarantee must cover is unknown; no week opens until they can be (OD-02).`;
+  }
+  const need = guaranteeRequirement([...floors.weeks, { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn }]);
   const held = await guarantee.balance().catch(() => null);
   if (held === null) return "The guarantee balance could not be read; no week opens until it can be (OD-02).";
   return held < need ? `The guarantee holds ${formatTzs(held)}; ${formatTzs(need)} is needed to open (OD-02).` : null;

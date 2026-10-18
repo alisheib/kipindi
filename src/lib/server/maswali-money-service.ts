@@ -26,7 +26,7 @@ import {
 } from "./ledger";
 import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { guaranteeRequirement } from "@/lib/maswali-money";
-import { readMaswaliRulesSnapshot, type MaswaliRulesSnapshot } from "./maswali-config";
+import { readMaswaliRulesSnapshot, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { randomId } from "./crypto";
 import { db } from "./store";
 import { marketStore, positionStore } from "./market-dal";
@@ -198,10 +198,10 @@ export async function returnMaswaliGuarantee(input: { amount: number; reference:
     const held = await maswaliAccountBalance(acct.maswaliGuarantee, lockTx);
     if (held === null) return refuse("The guarantee balance could not be read, so nothing was returned.");
     const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
-    const need = guaranteeRequirement(unsettled.map((w) => {
-      const r = readMaswaliRulesSnapshot(w.rulesSnapshot);
-      return { floor: r.ok ? r.rules.floorTzs : 0, confirmedCarryIn: w.rolloverIn };
-    }));
+    // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so nothing is returned.
+    const floors = unsettledFloors(unsettled);
+    if (!floors.ok) return refuse(`Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the open weeks need is unknown and nothing was returned (OD-02).`);
+    const need = guaranteeRequirement(floors.weeks);
     if (held - input.amount < need) {
       return refuse(`The guarantee holds ${formatTzs(held)} and the open weeks need ${formatTzs(need)}; at most ${formatTzs(Math.max(0, held - need))} can be returned.`);
     }

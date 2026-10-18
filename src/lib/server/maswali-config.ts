@@ -251,3 +251,23 @@ export function readMaswaliRulesSnapshot(raw: unknown): { ok: true; rules: Maswa
   const r = s as unknown as MaswaliRulesSnapshot;
   return { ok: true, rules: { ...r, questionCaps: { ...r.questionCaps } } };
 }
+
+/**
+ * ⭐ OD-02 · EACH UNSETTLED WEEK AT ITS OWN FROZEN FLOOR, as `guaranteeRequirement` counts them — or the weeks whose frozen
+ * rules cannot be read. ⛔ FAIL CLOSED (MASWALI-BUILD S7-F2): such a week's floor is unknown, so the requirement is, and
+ * the readers that counted it as 0 understated what the guarantee must hold — the console's "Needed now" and its
+ * alert stayed quiet, and the Owner's return could take back money a week still needed. The open, the return, the
+ * console and the nightly invariants ask here, as the settlement aborts rather than pay less and the player's floor line
+ * shows no floor (`maswali-player.ts`).
+ */
+export function unsettledFloors(weeks: ReadonlyArray<{ id: string; code: string; rulesSnapshot: unknown; rolloverIn: number | null }>):
+  { ok: true; weeks: Array<{ floor: number; confirmedCarryIn: number | null }> } | { ok: false; unreadable: Array<{ id: string; code: string }> } {
+  const counted: Array<{ floor: number; confirmedCarryIn: number | null }> = [];
+  const unreadable: Array<{ id: string; code: string }> = [];
+  for (const w of weeks) {
+    const r = readMaswaliRulesSnapshot(w.rulesSnapshot);
+    if (r.ok) counted.push({ floor: r.rules.floorTzs, confirmedCarryIn: w.rolloverIn });
+    else unreadable.push({ id: w.id, code: w.code });
+  }
+  return unreadable.length > 0 ? { ok: false, unreadable } : { ok: true, weeks: counted };
+}

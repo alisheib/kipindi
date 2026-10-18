@@ -20,7 +20,7 @@ import {
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
 import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
-import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
+import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
 import { holidayOn } from "./maswali-holidays";
 import { getAuditForTargetsDurable } from "./audit";
@@ -189,9 +189,15 @@ export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: 
   }
   out.push(...await floatShortAlerts(deps.readFloat));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
-  const need = requirementOf(weeks.filter(unsettled));
+  // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
+  //    to cover the unsettled weeks and the alert fires, naming the week. Counted as 0, its floor kept this alert silent.
+  const floors = unsettledFloors(weeks.filter(unsettled));
+  for (const w of floors.ok ? [] : floors.unreadable) {
+    out.push({ level: "critical", weekId: w.id, text: `${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks (OD-02).` });
+  }
+  const need = floors.ok ? guaranteeRequirement(floors.weeks) : null;
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
-  else if (held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
+  else if (need !== null && held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
   // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
   if ((await weekStore.maxSeq()) > 0) {
@@ -246,9 +252,13 @@ async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]
   return out;
 }
 
-/** OD-02 over a set of unsettled weeks, each at its own frozen floor. */
-function requirementOf(weeks: StoredWeek[]): number {
-  return guaranteeRequirement(weeks.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? 0, confirmedCarryIn: w.rolloverIn })));
+/**
+ * OD-02 over a set of unsettled weeks, each at its own frozen floor — or null, unknown, when a week's frozen rules cannot
+ * be read (S7-F2, fail closed: such a floor was counted as 0, and "Needed now" understated the requirement).
+ */
+function requirementOf(weeks: StoredWeek[]): number | null {
+  const floors = unsettledFloors(weeks);
+  return floors.ok ? guaranteeRequirement(floors.weeks) : null;
 }
 
 /** The product's switches at a glance — the head of every Millionea page. */
@@ -320,7 +330,8 @@ export type PoolsTrailRow = {
 };
 
 export type PoolsView = {
-  jackpotPublic: number | null; jackpotDrive: number | null; guarantee: number | null; requirement: number;
+  /** `requirement` is null when a week's frozen rules cannot be read: unknown, never 0 (S7-F2). */
+  jackpotPublic: number | null; jackpotDrive: number | null; guarantee: number | null; requirement: number | null;
   float: number | null; pendingPayout: number;
   weeks: PoolsWeek[];
   trail: PoolsTrailRow[];

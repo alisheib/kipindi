@@ -481,6 +481,22 @@ export const MUTATIONS = [
     suite: "adversarial:GU",
   },
   {
+    name: "(F2-floors-zero) a week whose frozen rules cannot be read counts as a floor of 0: every reader of OD-02's requirement understates it",
+    file: "src/lib/server/maswali-config.ts",
+    from: "    else unreadable.push({ id: w.id, code: w.code });",
+    to: "    else counted.push({ floor: 0, confirmedCarryIn: w.rolloverIn });",
+    expect: "GR.1 · ⭐",
+    suite: "adversarial:GR",
+  },
+  {
+    name: "(F2-requirement-alert) the console says nothing when a week's frozen rules cannot be read: the guarantee alert stays silent (OD-02)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  for (const w of floors.ok ? [] : floors.unreadable) {",
+    to: "  for (const w of [] as Array<{ id: string; code: string }>) {",
+    expect: "GR.2 · ⭐",
+    suite: "adversarial:GR",
+  },
+  {
     name: "(F2-holiday-open) the holiday review ends at the open, though the close it asks to move moves only once the week is open (MB-85)",
     file: "src/lib/server/maswali-console.ts",
     from: "  if (week.state === \"DRAFT\" || (week.state === \"OPEN\" && Date.parse(week.closesAt) > now.getTime())) {",
