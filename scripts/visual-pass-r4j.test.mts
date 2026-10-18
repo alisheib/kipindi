@@ -474,7 +474,9 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   walk("src");
   const loaders = files.filter((f) => /from "@\/lib\/not-found-mark"/.test(read(f)));
   const servers = loaders.filter((f) => !hasDirective(read(f), "use client"));
-  ok(`5.3 · only client code loads it (${loaders.length}: ${loaders.map((f) => f.split("/").pop()).join(", ")})`, loaders.length === 6 && servers.length === 0, JSON.stringify(servers));
+  // MASWALI-BUILD S5 (2026-10-18, 9ace1b3f): the consent prompt is the seventh — it stands down over a commit surface (the
+  // Millionea slip is one) only while that surface is drawn, never over its not-found page, as the Needle and the chat do.
+  ok(`5.3 · only client code loads it (${loaders.length}: ${loaders.map((f) => f.split("/").pop()).join(", ")})`, loaders.length === 7 && servers.length === 0, JSON.stringify(servers));
 }
 {
   // The three overlays: the stand-down term joined by `&& !notFoundShown`, the mark read once each.

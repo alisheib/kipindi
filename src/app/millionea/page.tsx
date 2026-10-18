@@ -41,7 +41,7 @@ import { breakSentence } from "@/lib/break-end";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { marketCategoryLabel } from "@/lib/localized";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { RESERVE_COUNT, weekVoidCertain } from "@/lib/maswali-score";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { HubPool } from "./hub-pool";
@@ -194,7 +194,7 @@ function MineBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
   const held = w.mine.tickets.filter((x) => x.shown !== "cancelled");
   return (
     <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
-      <p className="text-body-sm text-text-muted">{fill(t.millionea.yourTicketsThisWeek, { n: w.mine.held, cap: w.mine.cap })}</p>
+      <p className="text-body-sm text-text-muted">{fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) })}</p>
       {held.map((row) => (
         <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
       ))}
@@ -236,7 +236,7 @@ function BuyBlock({ t, w, signedIn, nowMs, nextOpen, breakBody }: {
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
   const live = w.state !== "OPEN"
-    ? [fill(t.millionea.resultsOut, { n: w.resultsOut }), reservesLeftLine(t, w)].join(" · ")
+    ? [fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }), reservesLeftLine(t, w)].join(" · ")
     : null;
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
@@ -259,7 +259,7 @@ function GradingBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
   return (
     <section aria-label={weekEyebrow(t, w)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
       <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{weekEyebrow(t, w)}</span>
-      <p className="text-body-sm text-text-muted">{fill(t.millionea.resultsOut, { n: w.resultsOut })}</p>
+      <p className="text-body-sm text-text-muted">{fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })}</p>
       <MineBlock t={t} w={w} />
     </section>
   );

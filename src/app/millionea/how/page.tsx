@@ -29,7 +29,8 @@ import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { marketCategoryLabel } from "@/lib/localized";
 import { eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
 import { MAIN_COUNT, RESERVE_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
-import { fill, formatTzs, pctNum } from "@/lib/utils";
+import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { durationHours } from "@/lib/duration-phrase";
 import type { Dict } from "@/lib/i18n-dict";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import { MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
@@ -88,12 +89,12 @@ function WorkedLedger({ t, label, ex, pct }: { t: Dict; label: string; ex: Milli
     <section aria-label={label} className="mat-flat flex flex-col rounded-card p-3">
       <span className="pb-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>
       <div className="flex flex-col border-t border-border">
-        <ReceiptRow className={ROW} label={fill(t.millionea.regTicketsSold, { n: ex.tickets, price: formatTzs(ex.sales / Math.max(1, ex.tickets)) })} value={fig(ex.sales)} />
+        <ReceiptRow className={ROW} label={fill(t.millionea.regTicketsSold, { n: formatNumber(ex.tickets), price: formatTzs(ex.sales / Math.max(1, ex.tickets)) })} value={fig(ex.sales)} />
         {f.U > 0 && <ReceiptRow className={ROW} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={fig(f.U)} />}
         <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(f.J)} />
         <ReceiptRow className={ROW} tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct })} value={fig(-f.F)} />
         <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(f.J - f.F)} />
-        <ReceiptRow className={ROW} label={ex.winners === 1 ? t.millionea.perTicketOne : fill(t.millionea.perTicket, { n: ex.winners })} value={fig(f.share)} />
+        <ReceiptRow className={ROW} label={ex.winners === 1 ? t.millionea.perTicketOne : fill(t.millionea.perTicket, { n: formatNumber(ex.winners) })} value={fig(f.share)} />
       </div>
     </section>
   );
@@ -119,7 +120,7 @@ export default async function MillioneaHowPage() {
     t.millionea.ruleMainOnly,
     fill(t.millionea.ruleCancel, { mins: h.freeCancelMinutes, runway: h.freeCancelMinutes }),
     t.millionea.ruleEvents,
-    fill(t.millionea.ruleCheck, { hours: h.objectionWindowHours }),
+    fill(t.millionea.ruleCheck, { hours: durationHours(locale, h.objectionWindowHours) }),
     t.millionea.ruleInsider,
     t.millionea.ruleSunset,
   ];

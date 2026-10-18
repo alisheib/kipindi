@@ -194,6 +194,10 @@ const LEFT: Record<string, string> = {
   "src/components/ui/progress-bar.tsx :: toLocaleString :: safeMax.toLocaleString()": "the operator console's progress bar (no player file imports it — 1.4), English-only by the admin convention",
   "src/app/notifications/bulk-bar.tsx :: jsx :: countLabel": "a phrase its page builds with the count already grouped (`unreadN` filled by `formatNumber` — 1.6)",
   "src/components/updown/updown-card.tsx :: jsx :: playersText": "the count already grouped, memoised (`formatNumber(players)` — 2.4)",
+  // MASWALI-BUILD S5 (2026-10-18): a Millionea question is named by its place among the ten mains; the counts beside them
+  // (tickets, winners, held, results out) go through `formatNumber`.
+  "src/app/millionea/how/page.tsx :: slot {n} :: EXAMPLE_VOIDED_MAIN": `${ORDINAL}: the worked example's voided main question, by its number (1–10)`,
+  "src/app/millionea/register/[week]/page.tsx :: slot {n} :: s.main": `${ORDINAL}: the main question a reserve stood in for, by its number (1–10)`,
 };
 {
   const found: string[] = [];

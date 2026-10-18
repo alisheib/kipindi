@@ -258,7 +258,8 @@ export function MaswaliTicket({
           <div className="flex flex-col gap-1.5">
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <Chip metrics="status" variant={millioneaTicketChip(shown)}>{millioneaWord(t, TICKET_SHOWN_KEY[shown])}</Chip>
-              <span className="font-mono text-label uppercase eyebrow text-text-subtle">{weekLine(t, week, weekState, checkWindow)}</span>
+              {/* `kp-track-end`: the row's last word ends on the card's edge, so its trailing tracking is taken back (r7c 2.1). */}
+              <span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{weekLine(t, week, weekState, checkWindow)}</span>
             </div>
             {/* The page's one heading: the ticket is named by its serial (`test:visual-pass-r7b` 1.6 registers this head,
                 its eyebrow the week line above). */}
@@ -394,7 +395,7 @@ export function MaswaliTicketCard({ t, locale, serverNow, href, serial, week, sh
         <MaswaliSealLine line={line} size={18} annex="below" inert={shown === "cancelled"} />
         <span className="inline-flex items-center gap-1 self-start text-body-sm text-text-link">
           {t.millionea.viewTicket}
-          <I.chevronRight s={14} edge="end" className="shrink-0" />
+          <I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />
         </span>
       </Link>
       <div className="grid grid-cols-2 gap-2">

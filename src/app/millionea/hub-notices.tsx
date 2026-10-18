@@ -55,7 +55,7 @@ export function HubNotices({ notices, renderedAt }: {
             {n.door && (
               <Link href={n.door.href as never} className="inline-flex items-center gap-1 self-start text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
                 {n.door.label}
-                <I.chevronRight s={14} edge="end" />
+                <I.chevronRight s={14} edge="end" text="body-400" />
               </Link>
             )}
           </span>

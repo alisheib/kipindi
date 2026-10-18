@@ -166,6 +166,8 @@ const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/updown/page.tsx": "one row per chain. Chains are created by an operator one at a time and every one must be visible to be controlled",
   // MASWALI-BUILD S4 (2026-10-17): the week page's two tables (the questions, and the seal console over the same rows).
   "src/app/admin/maswali/[weekId]/page.tsx": "one row per question of ONE week: exactly fifteen (ten mains, five reserves), fixed by the product's grading (MR-1), and the seal console must show all fifteen at once to be sealed",
+  // MASWALI-BUILD S5 (2026-10-18): the public register of one week (D-38) — its table is the same fifteen.
+  "src/app/millionea/register/[week]/page.tsx": "one row per question of ONE week: exactly fifteen (MR-1), and the public register shows the whole set at once — a reader checks every question against its source, so the record is never split across pages",
   "src/app/admin/sources/page.tsx": "the trusted-source allowlist. It grows only when a compliance officer adds a domain, and the whole allowlist must be readable in one view to be auditable",
   "src/app/admin/live/page.tsx": "its table is live matches in progress — bounded by reality, not by a limit. Its two audit feeds are deliberately a newest-few glance, and each already links to /admin/audit?category=…, which IS fully paged and filterable. A second pager here would duplicate that surface on a page an operator refreshes constantly",
   // ⭐ N5 (2026-10-15) · THE DESK'S ENTRY IS GONE, AS ITS OWN LAST LINES SAID IT WOULD BE. Ali raised the roster

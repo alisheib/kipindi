@@ -513,6 +513,8 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
     // The Vodacom plan S7, WP6: the How to Play sheet — the guest sheet's title class (its 24px modifier) on the corner ✕.
     "src/components/onboarding/how-to-play-sheet.tsx": "title",
     "src/components/markets/bet-confirm-modal.tsx": "header-row", "src/components/markets/sell-confirm-modal.tsx": "header-row", "src/components/ui/modal.tsx": "header-row",
+    // MASWALI-BUILD S5 (2026-10-18): Millionea's confirm sheet opens on its eyebrow, as the bet confirm — its ✕ in the header row.
+    "src/components/maswali/maswali-slip.tsx": "header-row",
     "src/components/layout/wallet-sheet.tsx": "none", "src/components/onboarding/first-visit-primer.tsx": "none",
     "src/components/markets/operation-result-modal.tsx": "crest", "src/components/markets/win-celebration.tsx": "crest",
   };
@@ -594,8 +596,10 @@ section("11 · C3 the warning census counts the family in every spelling, and ev
   // read the stop now — four `var(--warning-500)` mixes — and the toast's bar and rail are `bg-warning`) and −4 (four
   // words and glyphs left the stop for the ink: the maintenance flag's label, MAINTENANCE_AMBER.fg, the apply slot's
   // word, the result crest's glyph) = 63. Typed-only identity (2026-10-10) took one more: the KYC page's extra-document
-  // card and its amber disc (a `bg-warning-bg` wash) went with player uploads = 62.
-  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity`, old.length === 62, String(old.length));
+  // card and its amber disc (a `bg-warning-bg` wash) went with player uploads = 62. MASWALI-BUILD S5 (2026-10-18) adds two:
+  // the Millionea confirm's short-balance box, its frame and wash (`border-warning-border bg-warning-bg`; its glyph is the
+  // ink, `text-warning-fg`) — ruled in r8a §3 = 64.
+  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity, 64 with Millionea's confirm`, old.length === 64, String(old.length));
   const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
   // R8-A (2026-10-10): the fourth, the maintenance flag, paints no spelling of its own any more — its label took the
   // family's ink through the Callout's `MAINTENANCE_AMBER` (as its wash and edge already did), counted where that lives.

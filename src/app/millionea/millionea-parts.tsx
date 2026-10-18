@@ -53,6 +53,9 @@ export function MillioneaPreviewMark({ t }: { t: Dict }) {
 /**
  * The doors a reading page ends on (§10 §3.3 item 7): How to play and the week's register by default, and the hub where a
  * page is reached from it. Each page leaves out the door to itself.
+ * ⛔ A GROUP OF RELATED LINKS, NOT A RAIL (§K rule 7g, `test:section-rail`): a `<nav>` that maps destinations names the
+ * current one, and these never hold the page being read — so they are a plain group, with no landmark claiming to be the
+ * product's navigation (the shell's own rails are that).
  */
 export function MillioneaReadingLinks({ t, how = true, register = true, hub = false }: { t: Dict; how?: boolean; register?: boolean; hub?: boolean }) {
   const link = "inline-flex items-center gap-1 text-body-sm text-text-link hover:text-text-linkHover";
@@ -62,13 +65,13 @@ export function MillioneaReadingLinks({ t, how = true, register = true, hub = fa
     ...(register ? [{ href: MILLIONEA_HREF.register, label: t.millionea.register }] : []),
   ];
   return (
-    <nav aria-label={t.millionea.productTitle} className="flex flex-wrap gap-x-5 gap-y-1">
+    <div className="flex flex-wrap gap-x-5 gap-y-1">
       {doors.map((d) => (
         <Link key={d.href} href={d.href as never} className={link} style={{ minHeight: "var(--h-control-md)" }}>
           {d.label}
-          <I.chevronRight s={14} edge="end" />
+          <I.chevronRight s={14} edge="end" text="body-400" />
         </Link>
       ))}
-    </nav>
+    </div>
   );
 }

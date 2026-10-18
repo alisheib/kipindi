@@ -35,6 +35,7 @@ import { marketCategoryLabel } from "@/lib/localized";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { MAIN_COUNT } from "@/lib/maswali-score";
 import { fill, formatTzs, pctNum } from "@/lib/utils";
+import { keepConnectives } from "@/components/ui/keep-run";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { MILLIONEA_HREF, MillioneaPreviewMark, MillioneaReadingLinks } from "../../millionea-parts";
 import { bySlot, msOf, nextWeekNumber, ordinalOf, previousWeekNumber, textIn } from "../../millionea-view";
@@ -208,6 +209,8 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
   if (!w) notFound();
   const nowMs = Date.now();
   const week = weekNumberOf(w.code);
+  // The two proof labels never end a line on a connective ("Seti ya / maswali"): kept as every eyebrow is (r9b 3.9).
+  const hashHead = `${t.millionea.regHash} · ${fill(t.millionea.regPublished, { when: when(t, locale, w.opensAt, nowMs) })}`;
   return (
     <PageContainer tier="reading" className="kp-mln-zh">
       <div className="flex flex-col gap-6" data-testid="millionea-register-week">
@@ -216,11 +219,11 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
         {gate.preview && <MillioneaPreviewMark t={t} />}
         <section className="mat-flat flex flex-col gap-2 rounded-card p-3">
           <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{`${t.millionea.regHash} · ${fill(t.millionea.regPublished, { when: when(t, locale, w.opensAt, nowMs) })}`}</span>
+            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{keepConnectives(hashHead)}</span>
             <span className="font-mono text-body-sm text-text break-all">{w.questionSetHash ?? "—"}</span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.millionea.regRoot}</span>
+            <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{keepConnectives(t.millionea.regRoot)}</span>
             <span className="font-mono text-body-sm text-text break-all">{w.ticketMerkleRoot ?? "—"}</span>
           </div>
         </section>
@@ -242,7 +245,7 @@ export default async function MillioneaRegisterWeekPage({ params }: { params: Pr
         )}
         <Link href={"/fairness" as never} className="inline-flex items-center gap-1 self-start text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
           {t.millionea.auditChain}
-          <I.chevronRight s={14} edge="end" />
+          <I.chevronRight s={14} edge="end" text="body-400" />
         </Link>
         <MillioneaReadingLinks t={t} hub />
       </div>

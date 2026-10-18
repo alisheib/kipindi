@@ -386,6 +386,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
     "src/components/markets/market-card.tsx": [2, "data: the day-ago move's ▲/▼ before its points"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
+    // MASWALI-BUILD S5 (2026-10-18): the worked example's eyebrow, beside its figures in their own mono face.
+    "src/app/millionea/how/page.tsx": [1, "data: the worked example's voided main → its reserve (“4 → A1”, as MASWALI-PLAN §10 §3.4 draws it)"],
   };
   const charSeen: Record<string, number> = {};
   for (const f of PLAYER_TSX) { const n = [...code(f).matchAll(ARROWS)].length; if (n) charSeen[f] = n; }

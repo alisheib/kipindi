@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { CloseX, Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useCountdown } from "@/components/updown/round-countdown";
@@ -12,6 +12,7 @@ import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type MaswaliPick } from "@/lib/maswali-score";
 import { sideWord } from "@/lib/side-label";
 import { cn, fill, formatTzs } from "@/lib/utils";
+import { stemOf } from "@/lib/display-stem";
 
 /**
  * THE SLIP — fill a ticket (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.5–§3.6; the v6 delivery's S-purchase frames).
@@ -223,6 +224,7 @@ export function MaswaliSlip({
   const mains = questions.filter((q) => q.role === "MAIN");
   const reserves = questions.filter((q) => q.role === "RESERVE");
   const priceText = formatTzs(price);
+  const title = fill(t.millionea.slipTitle, { week });
   const progressText = `${fill(t.millionea.mainsProgress, { a: progress.mains })} · ${fill(t.millionea.reservesProgress, { b: progress.reserves })}`;
   const refusalBody = unanswered.length === 0 ? ""
     : unanswered.length === 1
@@ -251,7 +253,7 @@ export function MaswaliSlip({
       <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]">
         <div className="flex min-w-0 flex-col gap-4">
           <header className="flex flex-col gap-1.5">
-            <h1 className="font-display text-title-lg font-bold text-text">{fill(t.millionea.slipTitle, { week })}</h1>
+            <h1 data-stem={stemOf(title)} className="font-display text-title-lg font-bold text-text">{title}</h1>
             <div className="flex flex-col gap-0.5 text-body-sm text-text-muted">
               <span>{fillNodes(t.millionea.salesCloseColon, { when: strong(eatWeekdayClock(t, closesAt)) })}</span>
               {firstEventAt !== null && <span>{fillNodes(t.millionea.firstEventAt, { when: strong(eatWeekdayClock(t, firstEventAt)) })}</span>}
@@ -384,12 +386,23 @@ export function MaswaliSlipConfirm({
   return (
     // Focus opens on the commit, whose press IS the act (the bet confirm's rule), and the way out is named (`safeFocus`), so
     // an Enter meant for a dialog drawn over this one can at worst close it. Short of money, focus opens on the way out.
-    <Modal open={open} onClose={onClose} sheet maxWidth={480} labelledBy={titleId} ariaBusy={pending} safeFocus={cancelRef}
-      initialFocus={lowBalance ? cancelRef : commitRef} closeOnScrim={!pending} closeOnEsc={!pending}>
+    <Modal open={open} onClose={() => { if (!pending) onClose(); }} sheet maxWidth={480} labelledBy={titleId} ariaBusy={pending}
+      safeFocus={cancelRef} initialFocus={lowBalance ? cancelRef : commitRef} closeOnScrim={!pending} closeOnEsc={!pending}
+      showClose={false}>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
-          <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
+            <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
+          </div>
+          {/* ⭐ THE HEADER ROW'S ✕, as the bet confirm's (the one convention, `CloseX` in modal.tsx; r6c §10 "header-row"):
+              this sheet opens on its eyebrow, so the ✕ comes to the TITLE's first line — under the 16px eyebrow line and
+              2px, its capitals centre 18 + 28/2 − 0.025 × 22 = 31.45px down; the 48px box centres 24px down, so `mt-[7.5px]`
+              lowers it and `-mb-[7.5px]` gives the room back. 16px inside the panel's edge, as Modal pins every ✕ (the
+              panel's `p-5 lg:p-6`, stepped out 8px / 16px). While the cut is in flight it is WITHHELD (the in-flight rule,
+              r5a 8.13): Ghairi is disabled then, and its box stays, so the title never moves. */}
+          <CloseX withheld={pending} onClick={() => { if (!pending) onClose(); }} label={t.common.close}
+            className="mt-[7.5px] -mb-[7.5px] -mr-1.5 lg:-mr-3 shrink-0" />
         </div>
         <PicksList questions={questions} picks={picks} />
         <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">

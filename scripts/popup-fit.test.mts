@@ -241,6 +241,19 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * MAX. PASSES — its live rectangle, every exit reachable without scrolling at 320×640, 360×640, 390×844 and 1280 in sw,
  * en and zh, is WP11's (`qa:journey-home`, S7-PLAN A6 item 5).
  */
+/*
+ * ── 2026-10-18 · +2: Maswali Millionea's two page-level popups (MASWALI-BUILD S5), opened and judged like the record above.
+ *   · `app/millionea/slip/slip-client.tsx` — the cut's result: the kit `OperationResultModal` with props only and no class
+ *     of its own, as `markets/sell-result.tsx` (2026-10-04): no `truncate`, no `line-clamp-*`, no `whitespace-nowrap`, no
+ *     `text-ellipsis`, no `max-h-*`, no `overflow-hidden`, no fixed height on any text. Its title is the ticket's serial
+ *     (`MLN-2026-W44-000123`, mono), which breaks at its hyphens rather than leaving the panel; the subtitle and the
+ *     eyebrow are blocks that wrap; the Modal scrolls. The confirm sheet it follows is `maswali-slip.tsx`, on the record.
+ *   · `app/millionea/tickets/[serial]/ticket-acts.tsx` — the free cancel: the kit `ConfirmModal` (`loading` while the
+ *     cancel is in flight, so its ✕, Cancel, scrim and Esc hold) and the kit `OperationResultModal`, props only. The title
+ *     carries the serial, the body two figures; title, body and both labels are blocks that wrap inside the kit's own
+ *     dialog, which grows and scrolls. PASSES.
+ *   The live rectangles at 320–1920 in sw, en and zh are the S5 player drive's and its shots (read tile by tile).
+ */
 const REVIEWED: readonly string[] = [
   "src/components/journey/bet-sheet/bet-sheet.tsx", // S8 WP6 A14: one capped scrolling middle, fixed chosen-side row/CloseX and commit; keyboard lift uses visualViewport. Every terminal/refusal wraps; ticket id breaks anywhere. WP11 measures the real panel in all frames and languages.
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
@@ -309,6 +322,8 @@ const REVIEWED: readonly string[] = [
   "src/components/markets/share-button.tsx",
   "src/components/markets/win-celebration.tsx",
   "src/components/maswali/maswali-slip.tsx",   // reviewed 2026-10-17 (MASWALI-BUILD S5) — the confirm sheet: no truncate, no clamp, no max-h; the picks wrap in two columns, the lines are `text-pretty`, and Modal scrolls
+  "src/app/millionea/slip/slip-client.tsx",   // reviewed 2026-10-18 (MASWALI-BUILD S5) — the cut's result: the kit OperationResultModal with props only (no class of its own); the serial title breaks at its hyphens, the subtitle wraps, the Modal scrolls
+  "src/app/millionea/tickets/[serial]/ticket-acts.tsx",   // reviewed 2026-10-18 (MASWALI-BUILD S5) — the free cancel: the kit ConfirmModal (loading while in flight) and OperationResultModal, props only; title, body and labels are blocks that wrap
   "src/components/onboarding/first-visit-primer.tsx",
   "src/components/onboarding/how-to-play-sheet.tsx",   // reviewed 2026-10-12 (Vodacom S7 WP6) — a capped panel whose steps region is its scrolling partner
   "src/components/pwa/install-invite.tsx",

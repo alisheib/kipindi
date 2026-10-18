@@ -342,6 +342,9 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   // MASWALI-BUILD S5 — Millionea's two ambers, each where somebody must act or money is deducted.
   "src/components/maswali/maswali-slip.tsx": [3, "the confirm's short main balance — the player deposits before cutting a ticket (its box's frame and wash, its glyph)"],
   "src/components/maswali/maswali-win-ledger.tsx": [1, "the fee row's amber (a deduction), the receipt's own `ReceiptRow` tone"],
+  // 2026-10-18 (S5 integration): the same deduction on the two pages that print a week's money as a receipt.
+  "src/app/millionea/how/page.tsx": [1, "the worked example's fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
+  "src/app/millionea/register/[week]/page.tsx": [1, "the week's ledger fee row (a deduction), the receipt's own `ReceiptRow` tone — as the win ledger's"],
 };
 section("3 · the warning census — every warning paint in the player's code is a §B11 warning, ruled and registered");
 const wcensus = new Map<string, Hit[]>();

@@ -299,6 +299,8 @@ const RUNTIME: Array<{ file: string; cls: string; on: string[]; also?: string[][
   { file: "src/components/journey/bet-sheet/guest-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "the public guest sheet uses the same delegated pick feedback before opening its sign-in frame" },
   { file: "src/components/ui/route-transition.tsx", cls: "route-enter", on: ["route-enter"], why: "the route frame re-arms its own entrance" },
   { file: "src/components/layout/needle.tsx", cls: "on", on: [], why: "the needle's wake halo breathes while it is awake (`#needle-root #wake.on`; the halo is placed by `inset`)" },
+  // MASWALI-BUILD S5 (2026-10-18): N1 Kubeba (§M8a item 1). Its two callers: the pool figure (no class) and the seal line (`max-w-full`).
+  { file: "src/components/maswali/maswali-carry.tsx", cls: "maswali-carry", on: ["inline-flex"], also: [["inline-flex", "max-w-full"]], why: "the carry: the destination's wrapper takes the class for one run, bound from one measurement (`--carry-dx/-dy/-s`), and drops it at its own animationend — the wrapper writes no translate or scale of its own" },
 ];
 const PRESS_HELPER = "src/lib/press-feedback.ts";
 /** Follow the exact helper import, including named aliases/namespaces. A new caller must have its element profile

@@ -185,6 +185,9 @@ const REGISTRY: Record<string, [number, string]> = {
   // unearned, §M8a item 7) — the ticket draws its won amount through the win ledger's component.
   "src/components/maswali/maswali-win-ledger.tsx": [3, "earned money only (§M8a items 7–8): `.gilt-ink` on 'Kwa tiketi yako' / 'Jumla yako' and on a won ticket's paid amount; the ticket card's struck payout stat (the platform card's own)"],
   "src/components/maswali/maswali-slip.tsx": [2, "the Millionea money commit (§M3a): the confirm sheet's armed 'Kata tiketi', the kit's gold Button in `.gilt-metal` — the slip's 'Endelea' is brand primary"],
+  // 2026-10-18 (S5 integration): the slip page's door to deposit is a DEPOSIT DOOR (§M3a), as the wallet's and the bet
+  // sheet's are — not Millionea's own gold, which stays the two files above (§M8a item 7 rules on unearned figures).
+  "src/app/millionea/slip/slip-client.tsx": [2, "the deposit door when the balance is short of the ticket (§M3a: deposit doors are gold, `btn-gold` + `.gilt-metal`, as the Wallet's)"],
   "src/lib/notification-appearance.ts": [3, "WIN — 'the only money outcome that is gold'"],
   // R8-A (2026-10-10): −1 — TONE_INK.amber (`text-warning-fg`) is amber, not gold (Ali's ruling (1)).
   "src/lib/status-tone.ts": [2, "the dictionary's struck gilt: RESOLVED, WIN (§B11)"],

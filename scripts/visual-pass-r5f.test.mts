@@ -117,7 +117,11 @@ section("§1 · no bar on the page — a defect, a page with nothing to filter, 
   };
   const stickyRoutes = new Map(sticky.map((f) => [routeOf(f), f.replace(/\\/g, "/")]));
   /** ⛔ The one deliberate absence, with its reason — the same reason `count-truth-drive.mjs` records for all four drives. */
-  const EXCLUDED: Record<string, string> = { "/profile/invite": "the agent recruit book renders only for an approved agent; /auth/demo mints a player" };
+  const EXCLUDED: Record<string, string> = {
+    "/profile/invite": "the agent recruit book renders only for an approved agent; /auth/demo mints a player",
+    // MASWALI-BUILD S5 (2026-10-18): a fixture gap of the same kind, not a missing rail.
+    "/millionea/tickets": "Millionea's tickets list 404s at a WITHDRAWN ceiling (the drives' dev server) and lists only a holder's tickets; `maswali-player-drive.mjs` opens it for a seeded holder at an ACTIVE ceiling, and `maswali-player-shots.mjs` draws its bar at 320–1920 in sw, en and zh",
+  };
   const surfaces = driveSurfaces();
   const ids = new Set(surfaces.map((s) => s.id));
   ok("1.6 · fixture · the drive's SURFACES evaluate, and the census finds the sticky bars", surfaces.length >= 12 && stickyRoutes.size >= 12, `${surfaces.length} surfaces · ${stickyRoutes.size} sticky bars`);

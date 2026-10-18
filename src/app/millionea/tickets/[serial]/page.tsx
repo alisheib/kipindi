@@ -34,6 +34,7 @@ import { Callout } from "@/components/ui/callout";
 import { MaswaliTicket, type TicketMoments } from "@/components/maswali/maswali-ticket";
 import { MaswaliLossReceipt, MaswaliWinLedger } from "@/components/maswali/maswali-win-ledger";
 import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
@@ -190,8 +191,9 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
       {view.win && (held > 0 || forfeited > 0) && (
         <Callout tone="neutral" role="status">
           <span className="flex flex-col gap-1">
-            {held > 0 && <span>{counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote)}</span>}
-            {forfeited > 0 && <span>{counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote)}</span>}
+            {/* Drawn through the notice keep (r10 9.3): "Tiketi zako", "jumla yako" never torn at a line's end. */}
+            {held > 0 && <span>{noticeBody(counted(held, t.millionea.shareHeldNoteOne, t.millionea.shareHeldNote))}</span>}
+            {forfeited > 0 && <span>{noticeBody(counted(forfeited, t.millionea.shareForfeitedNoteOne, t.millionea.shareForfeitedNote))}</span>}
           </span>
         </Callout>
       )}
