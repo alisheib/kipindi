@@ -339,9 +339,9 @@ export const MUTATIONS = [
     suite: "adversarial:RD",
   },
   {
-    name: "(S7-memory-set) the memory market store reclassifies a row on a full-row write from a copy",
+    name: "(S7-memory-set) the memory market store reclassifies a Millionea week on a full-row write from a copy",
     file: "src/lib/server/market-dal.ts",
-    from: "    if (cur && cur !== m && (m.productLine ?? \"MARKET\") !== (cur.productLine ?? \"MARKET\")) return memoryMarkets.set({ ...m, productLine: cur.productLine }, _tx);",
+    from: "    if (cur && cur !== m && (m.productLine ?? \"MARKET\") !== (cur.productLine ?? \"MARKET\") && (m.productLine === \"MASWALI\" || cur.productLine === \"MASWALI\")) return memoryMarkets.set({ ...m, productLine: cur.productLine }, _tx);",
     to: "",
     expect: "PL.2",
     suite: "adversarial:PL",
