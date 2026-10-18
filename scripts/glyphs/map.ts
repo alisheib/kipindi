@@ -260,7 +260,7 @@ export const ADMIN_KEYS: readonly string[] = [
   "upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile",
   // W3 (R-ADMIN, R-INDICATOR 3B): the console's own destinations (NEW_KEYS below), drawn only by its sidebar and drawer.
   // A destination that reuses a player key (live, the board, results, KYC…) leaves that key in its own group.
-  "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "transactions",
+  "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "aiUsage",
   "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic", "agent",
   "privacy", "audit", "approvals", "staff", "roles",
 ];
@@ -291,10 +291,10 @@ export const FILL_KEYS: readonly string[] = [
   // In the sidebar's order (admin-nav-groups.ts NAV_GROUPS); `live`, `markets` and `trade` are listed above. The console's
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "mobileMoney",
-  "transactions", "roster", "cohorts", "calendar", "bot", "brain", "idea", "resolved", "sources", "percent", "sparkle",
+  "receipt", "roster", "cohorts", "calendar", "bot", "brain", "idea", "resolved", "sources", "percent", "sparkle",
   "rounds", "weeks", "pools", "integrity", "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
   "tippingScales", "idCard", "flag", "comment", "shieldAlert", "circleStop", "privacy", "archive", "audit", "server",
-  "activity", "approvals", "keyRound", "staff", "roles",
+  "aiUsage", "approvals", "keyRound", "staff", "roles",
 ];
 export const DUO_KEYS: readonly string[] = [];
 
@@ -347,11 +347,12 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   insights: { ph: "presentation-chart" }, // the owner's insight board: the funnel, lifetime value, cohort value
   settlement: { ph: "money" }, // paying a resolved market's winners once its objection window closes
   finance: { ph: "calculator" }, // the books and their proof: the trial balance, the drift
-  house: { ph: "house" }, // the operator's own book (/admin/house: what we hold, what we made) — never a "home" glyph
+  // the operator's own book (/admin/house: what we hold, what we made) — the house as the firm, never a "home" glyph: W3's
+  // review moved it off Phosphor's `house`, the universal Home mark, which beside the console's Overview read as "home"
+  house: { ph: "building-office" },
   desk: { ph: "desk" }, // the Owner's desk (/admin/desk): its label's own neutral word, never a feature word (ruling 453)
   reports: { ph: "clipboard-text" }, // the statutory report library: packs prepared, signed and downloaded
   tax: { ph: "invoice" }, // the government tax report: what is owed to TRA and GBT, per day, week or month
-  transactions: { ph: "table" }, // the ledger: every money movement, one row each
   roster: { ph: "user-list" }, // the player roster
   cohorts: { ph: "chart-donut" }, // players in segments: by status, region, age band
   sources: { ph: "newspaper" }, // the trusted sources markets are generated and resolved from, and their categories
@@ -367,5 +368,12 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   audit: { ph: "clock-counter-clockwise" }, // the audit log: what was done, in order
   approvals: { ph: "check-square-offset" }, // sign-offs waiting on an officer (KYC files with us, AML holds, source of funds)
   staff: { ph: "user-circle-gear" }, // staff accounts and the role each holds (user-gear's Fill reaches 0.25 past its box)
-  roles: { ph: "shield-chevron" }, // role permissions: each role's rank of access
+  // role permissions: what each role may open (W3's review: the shield already carries about five meanings, AML's warning
+  // among them, so the permission is a lock with its key)
+  roles: { ph: "lock-key" },
+  // AI usage and credits: what the generators spent against what is left, a meter (W3's review: `activity`'s pulse already
+  // means an activity log — a player's own page and the console's player Activity tab)
+  aiUsage: { ph: "speedometer" },
+  // (W3's review: Transactions wears `receipt`, the meaning a player's wallet receipts already carry — one record per money
+  // movement; `table` read as the Overview's `layout` at 18px.)
 };

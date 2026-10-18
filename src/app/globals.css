@@ -7312,6 +7312,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-navlink[aria-current="page"],
 .kp-navlink[data-active] { color: var(--text); background: var(--nav-pill); box-shadow: var(--nav-pill-edge); }
 .kp-navlink:not([aria-current="page"]):not([data-active]):hover { color: var(--text); background: var(--bg-overlay); }
+/* ⭐ IN FORCED COLOURS THE CURRENT DESKTOP LINK KEEPS A MARK (PHOSPHOR-MIGRATION W3's review). The pill is a background and
+   a box-shadow, which forced colours strip, and a desktop bar's link is words only — so the current one, here and in the
+   journey's bar, would carry no cue at all (the rail keeps its Fill glyph and its bolder label). A 1px outline in the
+   system's ink, drawn inside the link, marks it there without moving it (E-129's lesson: forced colours keep an outline,
+   never a shadow); it steps aside while the link holds focus, so the focus ring is never replaced. Nothing changes in
+   any other mode. */
+@media (forced-colors: active) {
+  .kp-navlink:is([aria-current="page"], [data-active]):not(:focus-visible),
+  .kp-jnav__link:is([aria-current], [data-on]):not(:focus-visible) { outline: 1px solid CanvasText; outline-offset: -1px; }
+}
 
 /* =====================================================================
    THE BOTTOM RAIL — round-2 kit §2 / COMPONENTS §14 (batch 3, 2026-08-13)
@@ -7571,8 +7581,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
 @media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 /* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
-   slot to the tallest one, so where the Tiketi slot wraps (26 + 4 + 2 × 12.65 = 55.3px of content) it sets the rail's
-   height and the three one-line slots would centre their pips about 6px below its pip. So there the journey's slots
+   slot to the tallest one, so where the Tiketi slot wraps (32 + 4 + 2 × 12.65 = 61.3px of content since PHOSPHOR-MIGRATION
+   W3's 32px pip; it was 26 + 4 + 2 × 12.65 = 55.3px) it sets the rail's height and the three one-line slots would centre
+   their pips about 6px below its pip (6.3px, at either pip size). So there the journey's slots
    stack from the top and every pip sits on the slot's padding. `.kp-rail__item` itself is not edited.
    ⭐ …ONLY WHERE A LABEL WRAPS (round 9 of the visual pass, R9-C, 2026-10-11; R3-D1 and R6-D1, two readers, tiles 243
    246 302). Below 360 every language stacked from the top, though only Swahili wraps: in English and Chinese at 320 the

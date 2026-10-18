@@ -145,9 +145,14 @@ section("2 · F6 the journey's section rails start on the column edge (tiles 165
   ok("2.1″ PLANT · a rail that does not bleed puts the label 12px in again, and is reported",
     geom(0, px(pad ?? ""), inset, px(bg?.[1] ?? "")).label !== 0);
   ok("2.2 · the bleed is drawn on screen: 12px into the 16px phone gutter (PageContainer `px-3`)", px(bleed ?? "") <= twStep("3") && twStep("3") === 16);
-  const jnav = rule(CSS, ".kp-jnav__link"), jafter = rule(CSS, ".kp-jnav__link::after");
-  ok("2.3 · it is the journey header's own line-tab geometry: `.kp-jnav__link` pads 12 a side and its underline is 12 in",
-    /padding:\s*0 var\(--sp-3\)/.test(jnav) && /left:\s*var\(--sp-3\); right:\s*var\(--sp-3\)/.test(jafter) && pad === "--sp-3");
+  // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18; R-INDICATOR 3B, Ali 2026-10-17). This also held the header link's
+  // underline 12px in (`.kp-jnav__link::after`); W3 gave the header's current link the destination pill and removed the
+  // underline (test:journey-shell 7.destination), so its inset is no longer the header's to hold — the section rail's own
+  // underline, above, still is. What stays: the header link pads 12 a side, the rail option's own padding, and no
+  // underline comes back beside the pill.
+  const jnav = rule(CSS, ".kp-jnav__link");
+  ok("2.3 · it is the journey header's own line-tab padding: `.kp-jnav__link` pads 12 a side, the rail option's `pad` (its underline went with W3's destination pill)",
+    /padding:\s*0 var\(--sp-3\)/.test(jnav) && pad === "--sp-3" && rule(CSS, ".kp-jnav__link::after") === "");
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): /wallet's picture is drawn in the browser, by `wallet-ghost.tsx` beside the
   // loading file (which asks the server the one thing the browser cannot: whether the bonus programme is live).
   const ghost = read("src/app/wallet/wallet-ghost.tsx");

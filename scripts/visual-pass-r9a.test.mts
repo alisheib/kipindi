@@ -235,10 +235,10 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // PHOSPHOR-MIGRATION W3 (R-INDICATOR 3B): the admin sidebar's destinations ship their Fill, and two new console keys
     // are drawn off their box the same way — each offset read from Phosphor's own path data (the box's extremes are line
     // ends and arc tops), the same family as the entries above: the robot's antenna, the bubble's tail, the bow's loops,
-    // the megaphone's mouth, the shield's point; and the path's end-dot (journey), the chevron shield's point (roles).
+    // the megaphone's mouth, the shield's point; the path's end-dot (journey); and the lock-key's shackle (roles, since W3's review), as lock.bold's.
     "bot.fill": [0, -12, PHOSPHOR_PLACED], "comment.fill": [0, 16, PHOSPHOR_PLACED], "gift.fill": [0, -12.01, PHOSPHOR_PLACED],
     "megaphone.fill": [12.21, -3.98, PHOSPHOR_PLACED], "shieldAlert.fill": [0, 12, PHOSPHOR_PLACED],
-    "journey.bold": [0, 12, PHOSPHOR_PLACED], "roles.bold": [0, 12, PHOSPHOR_PLACED], "roles.fill": [0, 12, PHOSPHOR_PLACED],
+    "journey.bold": [0, 12, PHOSPHOR_PLACED], "roles.bold": [0, -12, PHOSPHOR_PLACED], "roles.fill": [0, -12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {

@@ -193,7 +193,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
        * the statutory library sits next to; its own item because it is a working page, not a download card. */
       { href: "/admin/tax", label: "Tax report", key: "tax", glyph: "tax", domain: "accounting" },
       { href: "/admin/payments", label: "Payments ops", key: "payments", glyph: "mobileMoney", domain: "accounting" },
-      { href: "/admin/transactions", label: "Transactions", key: "transactions", glyph: "transactions", domain: "accounting" },
+      { href: "/admin/transactions", label: "Transactions", key: "transactions", glyph: "receipt", domain: "accounting" },
     ],
   },
   {
@@ -286,7 +286,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     group: { en: "System", sw: "Mfumo" },
     items: [
       { href: "/admin/system",    label: "System",    key: "system", glyph: "server", domain: "ops" },
-      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage", glyph: "activity", domain: "ops" },
+      { href: "/admin/ai-usage",  label: "AI usage & credits", key: "ai-usage", glyph: "aiUsage", domain: "ops" },
       { href: "/admin/approvals", label: "Approvals", key: "approvals", glyph: "approvals", domain: "compliance" },
       // 2FA setup secures the logged-in officer's own account — every staff role must
       // reach it (the layout even force-redirects here on first login).

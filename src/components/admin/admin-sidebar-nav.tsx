@@ -45,7 +45,9 @@ export function AdminSidebarNav({ groups, badges, fallbackKey }: { groups: Reado
                   // claimed the whole surface. A comment that overstates its own reach is how the
                   // next session decides a row is finished without measuring it — the drawer takes
                   // `--h-control-md` (44), not this rung, because it is a MOBILE target (§A2).
-                  "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
+                  // W3's review: the pill's edge (box-shadow) fades with its fill over --t-quick, as
+                  // `.kp-navlink`'s does; `transition-colors` faded the fill and snapped the edge.
+                  "flex min-h-[var(--h-control-sm)] items-center justify-between rounded-md px-2.5 text-body-sm transition-[color,background-color,box-shadow] duration-quick ease-out",
                   active
                     ? "text-text font-semibold"
                     : "text-text-subtle hover:text-text",

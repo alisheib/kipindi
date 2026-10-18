@@ -298,7 +298,10 @@ for (const [list, key] of SECTIONS) {
         if (!hit.length) { for (const [k] of pending) unexplained.push(`${list} ${k} ${field} — no pool of measured pairs explains it`); break; }
         pending = pending.filter((c) => !hit.includes(c));
         // Only the pairs this population uses: a pair no hit cell's baseline holds is left out (it explains nothing here).
-        const used = pairs.filter(([x]) => hit.some(([, [w]]) => w.includes(x)));
+        // ⚠️ Re-checked as written (W3's review): pairs apply in turn, so a pair whose run only appears once an earlier
+        // pair has run would be dropped by that filter; then the whole pool is written instead.
+        const kept = pairs.filter(([x]) => hit.some(([, [w]]) => w.includes(x)));
+        const used = hit.every(([, [w, n]]) => applyReplace(w, kept) === n) ? kept : pairs;
         const id = `${WAVE.toLowerCase()}-${list}-${region}-${kind}${round > 1 ? `-${round}` : ""}`;
         out[list].push({
           id, field, cells: hit.length, replace: used,

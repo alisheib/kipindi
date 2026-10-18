@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.715e8904.svg", admin: "/icons/g/admin.94a79047.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.9032012a.svg", admin: "/icons/g/admin.86ca5167.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -14,8 +14,9 @@ export type GlyphInk = readonly [x0: number, x1: number];
  * stands among words `m`: its centreline `d` and that geometry's x-reach `x`, plus any solid part `f` and its reach `fx`.
  */
 export const GLYPH_REGISTRY = {
-  "activity": { s: "p-pulse", g: "app", i: { bold: [12, 244], fill: [24, 232] } },
+  "activity": { s: "p-pulse", g: "app", i: { bold: [12, 244] } },
   "agent": { s: "p-handshake", g: "admin", i: { bold: [0.02, 255.99], fill: [0.01, 255.99] } },
+  "aiUsage": { s: "p-speedometer", g: "admin", i: { bold: [12, 244], fill: [15.98, 240] } },
   "alertCircle": { s: "p-warning-circle", g: "app", i: { bold: [20, 236] } },
   "alertOctagon": { s: "p-warning-octagon", g: "app", i: { bold: [20, 236] } },
   "approvals": { s: "p-check-square-offset", g: "admin", i: { bold: [27.97, 228], fill: [32, 224] } },
@@ -98,7 +99,7 @@ export const GLYPH_REGISTRY = {
   "hot": { s: "p-fire", g: "app", i: { bold: [36, 220] } },
   "hourglassHalf": { s: "p-hourglass-medium", g: "app", i: { bold: [52, 204] } },
   "hourglassOff": { s: "p-hourglass-low", g: "app", i: { bold: [52, 204] } },
-  "house": { s: "p-house", g: "admin", i: { bold: [28, 228], fill: [32, 224] } },
+  "house": { s: "p-building-office", g: "admin", i: { bold: [12, 256], fill: [16, 256] } },
   "howTo": { s: "p-book-open-text", g: "app", i: { bold: [12, 244] } },
   "idCard": { s: "p-identification-card", g: "app", i: { regular: [24, 232], bold: [20, 236], fill: [24, 232] } },
   "idea": { s: "p-lightbulb", g: "app", i: { bold: [36, 220], fill: [40, 216] } },
@@ -136,14 +137,14 @@ export const GLYPH_REGISTRY = {
   "privacy": { s: "p-folder-user", g: "admin", i: { bold: [20, 236], fill: [24, 232] } },
   "profile": { s: "p-user", g: "app", i: { bold: [19.81, 235.8] } },
   "qr": { s: "p-qr-code", g: "app", i: { bold: [36, 220] } },
-  "receipt": { s: "p-receipt", g: "app", i: { bold: [20, 236] } },
+  "receipt": { s: "p-receipt", g: "app", i: { bold: [20, 236], fill: [24, 232] } },
   "reconcile": { s: "p-equals", g: "admin", i: { bold: [28, 228] } },
   "refund": { s: "p-arrow-u-down-left", g: "app", i: { bold: [19.99, 236] } },
   "register": { s: "p-notebook", g: "app", i: { bold: [28, 228] } },
   "reports": { s: "p-clipboard-text", g: "admin", i: { bold: [36, 220], fill: [40, 216] } },
   "reserve": { s: "p-lifebuoy", g: "app", i: { bold: [20, 236] } },
   "resolved": { s: "p-seal-check", g: "app", i: { regular: [16, 240], bold: [12, 244], fill: [16, 240] } },
-  "roles": { s: "p-shield-chevron", g: "admin", i: { bold: [28, 228], fill: [32, 224] } },
+  "roles": { s: "p-lock-key", g: "admin", i: { bold: [28, 228], fill: [32, 224] } },
   "roster": { s: "p-user-list", g: "admin", i: { bold: [4, 256], fill: [8, 256] } },
   "rotateCcw": { s: "p-arrow-counter-clockwise", g: "app", i: { bold: [12, 228] } },
   "rounds": { s: "p-timer", g: "admin", i: { bold: [32, 224], fill: [32, 224] } },
@@ -180,7 +181,6 @@ export const GLYPH_REGISTRY = {
   "tippingScales": { s: "p-scales", g: "app", i: { bold: [12, 244], fill: [16, 240] } },
   "trade": { s: "p-arrows-down-up", g: "shell", i: { bold: [35.97, 220.03], fill: [39.99, 216.01] } },
   "traffic": { s: "p-chart-line", g: "admin", i: { bold: [20, 236.58], fill: [24, 232] } },
-  "transactions": { s: "p-table", g: "admin", i: { bold: [20, 236], fill: [24, 232] } },
   "trash": { s: "p-trash", g: "app", i: { bold: [28, 228] } },
   "trendingDown": { s: "p-trend-down", g: "app", i: { bold: [11.97, 244] } },
   "trendingUp": { s: "p-trend-up", g: "app", i: { bold: [11.97, 244] } },

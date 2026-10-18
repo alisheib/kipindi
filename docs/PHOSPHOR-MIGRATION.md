@@ -178,12 +178,12 @@ this table records the W3 choice.
 | Money · Insights | `insights` | presentation-chart | new |
 | Money · Settlement | `settlement` | money | new |
 | Money · Finance | `finance` | calculator | new |
-| Money · House | `house` | house | new (the operator's own book, never "home") |
+| Money · House | `house` | building-office | new (the house as the firm; W3's review moved it off `house`, Phosphor's Home mark) |
 | Money · Desk | `desk` | desk | new (the label's own neutral word, ruling 453) |
 | Money · Reports | `reports` | clipboard-text | new |
 | Money · Tax report | `tax` | invoice | new |
 | Money · Payments ops | `mobileMoney` | house extra (a handset carrying money) | reused |
-| Money · Transactions | `transactions` | table | new |
+| Money · Transactions | `receipt` | receipt | reused (a player's wallet receipts: one record per money movement; W3's review, `table` read as the Overview at 18px) |
 | Players · Roster | `roster` | user-list | new |
 | Players · Cohorts | `cohorts` | chart-donut | new |
 | Markets · Event calendar | `calendar` | calendar-blank | reused |
@@ -217,11 +217,11 @@ this table records the W3 choice.
 | Compliance · Retention | `archive` | archive | reused |
 | Compliance · Audit log | `audit` | clock-counter-clockwise | new |
 | System · System | `server` | hard-drives | reused |
-| System · AI usage & credits | `activity` | pulse | reused (the AI toolkit's own link to the page) |
+| System · AI usage & credits | `aiUsage` | speedometer | new (a meter of what was spent; W3's review, `activity` means an activity log) |
 | System · Approvals | `approvals` | check-square-offset | new |
 | System · 2FA setup | `keyRound` | key | reused (security credentials) |
 | Access · Staff & roles | `staff` | user-circle-gear | new (user-gear's Fill reaches 0.25 past its box) |
-| Access · Role permissions | `roles` | shield-chevron | new |
+| Access · Role permissions | `roles` | lock-key | new (what a role may open; W3's review, the shield already carries AML's warning) |
 
 **Left for later waves, seen while choosing:**
 - Some player and console rows already wear a different mark for these meanings:
@@ -576,6 +576,36 @@ collapse into one. The rail's square, edge-to-edge focus ring follows the pill.
     admin-nav 29/29, r9a 55/55 and glyph-source.
   - Per-variant placement is not built. W4 and W5 draw several of those Fills for players (statuses, plates), so the
     1.56 KB would come back.
+
+**W3's adversarial review (2026-10-18; read-only, the whole diff from `e2eb9cd6`): ten findings, each answered:**
+- **Fixed:**
+  - `test:visual-pass-r5b` 2.3 still read the removed journey underline. It would have gone red in `test:all`; it is
+    re-pinned openly.
+  - `test:visual-pass-r9c` 4.3 held the pip at a literal 26 and stayed green. It now reads the pip from
+    `.kp-rail__pip`: 7.675 at 320, 8.5 at 390, and Swahili's two-line Tiketi slot 61.3px (the rail 74.3px below
+    332.8px, under `--rail-h`'s 88). The stylesheet's note is corrected.
+  - GlyphSwap wrote its "changed" flag during render, so a router transition's discarded render could replay a morph.
+    Only a committed change counts now; the flag is raised in an effect.
+  - The admin rows faded the pill's fill and snapped its edge. The box-shadow now fades over `--t-quick`, as
+    `.kp-navlink`'s does.
+  - Nothing tied the tab bars' NavGlyph keys to `FILL_KEYS`: a lost Fill would have drawn Line in silence.
+    `test:glyph-map` §9b holds them, with two plants.
+  - `PREVIOUS_SPRITES` was a hand-kept list nothing tied to production. `test:glyph-sync` §1b reads the sprites
+    `origin/main` serves and fails a tree that would delete them, with a plant; it says "not measured" without git.
+  - DESIGN_AUTHORITY and the contrast audit said the desktop bars draw a Fill glyph; they draw words. Both are
+    corrected, and in forced colours (which strip the pill) the current desktop link now keeps a 1px system-ink outline.
+  - `parity-entries.mjs` wrote a pair subset it had not re-checked. The subset is re-applied; failing that, the whole
+    pool is written.
+  - **Four admin glyphs:**
+    - House is no longer Phosphor's Home mark (`building-office`);
+    - Transactions reuses `receipt` (a wallet receipt is one record per money movement; `table` read as the Overview's
+      `layout` at 18px);
+    - Role permissions is `lock-key` (the shield already carries AML's warning);
+    - AI usage is a new `aiUsage`, a speedometer (`activity` already means an activity log).
+- **Kept, and shown to Ali:** the Fills of `live` (broadcast) and `trade` (arrows-down-up) keep Phosphor's thinner
+  strokes, 16 units against Bold's 24, where only their centre and heads go solid. So the current Live and Up & Down
+  tabs draw 1.5px waves and shafts beside 2.25px neighbours. A composite would be a house drawing where Phosphor has
+  one, which R-ONE-SOURCE rules out. The tiles show both; the call stays open to Ali.
 
 ### W4 — Outcomes and status
 Tickets, positions, results, market chips, receipts, notifications: glyph + ink + word, so shape alone tells them apart

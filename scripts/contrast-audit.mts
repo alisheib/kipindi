@@ -1017,9 +1017,11 @@ const CHECKS: Check[] = [
 
   // ── PHOSPHOR-MIGRATION W3 · the current destination's pill (R-INDICATOR 3B) ─────
   // The label (11px mono 700 on the rail, 13.5px on the desktop bars, 14px in the admin sidebar) and the Fill glyph
-  // stand on --nav-pill in --text: text, so 4.5. The pill against the bar is measured and printed, not gated: it is
-  // never the sole sign of the current destination — the Fill glyph's shape, the --text ink (against the resting
-  // --text-subtle, scored above) and the bolder label say it too, so 1.4.11 does not require it to reach 3.0.
+  // stand on --nav-pill in --text: text, so 4.5. The pill against the bar is measured and printed, not gated. On the
+  // bars that draw a glyph (the rail, the tabs, the admin rows) it is never the sole sign of the current destination —
+  // the Fill glyph's shape, the --text ink (against the resting --text-subtle, scored above) and the bolder label say it
+  // too. The desktop bars' links are words: there the pill and the ink say it, aria-current says it to a screen reader,
+  // and in forced colours (which strip the pill) a 1px system-ink outline does (globals.css, beside `.kp-navlink`).
   // The focus ring (--brand-500, 2px around the pip) is drawn over the bar: non-text, 3.0.
   { name: "W3 · a current destination's label and Fill glyph (--text on --nav-pill)", fg: T.text, bg: token("nav-pill"), min: 4.5 },
   { name: "W3 · the destination pill against the bar (--nav-pill on --panel; decorative — exempt, never the sole sign)", fg: token("nav-pill"), bg: T.panel, min: 3.0, decorative: true },

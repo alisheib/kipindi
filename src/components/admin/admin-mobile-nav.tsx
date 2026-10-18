@@ -129,7 +129,8 @@ export function AdminMobileNavTrigger({ groups, badges, fallbackKey, roleLabel }
                         // 42 DOWN to 40. `--h-control-md` is documented at its line as "44, not 40,
                         // so it equals --h-input". Stated as the FLOOR and centred, never summed to.
                         className={[
-                          "flex min-h-[var(--h-control-md)] items-center justify-between rounded-md px-2.5 text-body-sm transition-colors",
+                          // W3's review: the pill's edge fades with its fill (as the sidebar's).
+                          "flex min-h-[var(--h-control-md)] items-center justify-between rounded-md px-2.5 text-body-sm transition-[color,background-color,box-shadow] duration-quick ease-out",
                           active
                             ? "text-text font-semibold"
                             : "text-text-secondary hover:bg-bg-overlay hover:text-text",
