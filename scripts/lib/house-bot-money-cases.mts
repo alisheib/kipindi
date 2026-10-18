@@ -1485,14 +1485,17 @@ section("§13b · Counts as by hand, both stores");
   /* The other order: the DESK stakes first, then the holder by hand. (A desk stake AFTER the holder's own position is
      refused by H2 as a market conflict, so that order never reaches the seam.) */
   const marketD = await w.poll({ graceMin: 0 });
+  const opener = await w.user({ balance: 100_000 });
+  const d0: Any = await w.svc.buyPosition(opener, { marketId: marketD.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+  if (d0.ok) await w.backdate(d0.data.positionId, 10_000);
   const d1: Any = await w.place(desk, await w.intent(desk, marketD.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
   const md1: Any = { ...(await w.svc.getMarket(marketD.id)) };
   if (d1.ok && d1.data?.positionId) await w.backdate(d1.data.positionId, 10_000);
   const d2: Any = await w.svc.buyPosition(desk.userId, { marketId: marketD.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
   const md2: Any = { ...(await w.svc.getMarket(marketD.id)) };
   ok("13.6 · BY HAND · after the desk's stake from the account, its holder's stake by hand adds nothing — the account is already counted there",
-    d1.ok === true && md1.predictorCount === 1 && Number(md1.predictorExtra) === 49
-      && d2.ok === true && md2.predictorCount === 1 && Number(md2.predictorExtra) === 49,
+    d0.ok === true && d1.ok === true && md1.predictorCount === 2 && Number(md1.predictorExtra) === 49
+      && d2.ok === true && md2.predictorCount === 2 && Number(md2.predictorExtra) === 49,
     JSON.stringify({ desk: { ok: d1.ok, reason: d1.reason, count: md1.predictorCount, extra: md1.predictorExtra },
       hand: { ok: d2.ok, reason: d2.reason, count: md2.predictorCount, extra: md2.predictorExtra } }));
   const gone = await w.bot();
