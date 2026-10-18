@@ -178,7 +178,7 @@ create its design … animations that no platform has … signature for this pla
 | **Next** | Read it from the tracker's §0, never from this cell |
 | **Rule** | Every session rewrites the tracker's §0 and ticks §1 in its own commit, and **updates this row's count in the same commit** — `npm run test:maswali-plan` asserts the two agree |
 
-## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · 🔨 **W0 + W1 + W2 LIVE 2026-10-17 (`732efbc5`) — every icon on the platform drawn by Phosphor (W2), on the codegen and the one-icon-source law in predeploy (W1); W3, selected states, next** · 3/10 waves ✅
+## ▶ 0j · PHOSPHOR MIGRATION — every icon and glyph on Phosphor — `PHOSPHOR-MIGRATION` · 🔨 **W0–W3 LIVE 2026-10-18 (`ee62451c`) — W3: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); W2: every icon on the platform drawn by Phosphor; W1: the codegen and the one-icon-source law in predeploy; W4, outcomes and status, next** · 4/10 waves ✅
 
 Ali, 2026-10-17: *"users liek 50pick but they say our icons dont give enough life"* · *"Switch to Phosphor"* ·
 *"Now, players see it"* · *"when we sya continue phosphor migration they know … dnto tolose any progress"* · *"if ay new
