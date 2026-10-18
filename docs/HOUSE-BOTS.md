@@ -2903,6 +2903,23 @@ limits were raised above their opener's stake — was true and still stands; it 
 reads it (wagering, the opposite-side rule, refunds) — a hand stake stays the holder's own. `predictorCount` and every
 report, admin page and audit row (D20a/D20d). D19.
 
+**Guards and proofs (measured on `e4af4ebb`, over `origin/main` `83c815f3`).**
+- `typecheck` 0 errors · `next build` complete (76/76 static pages, route table, `BUILD_ID`) · `verify:house-bot-bundle`
+  ALL PASS (402 client files, prerendered documents, `public/`) · `verify:backup-schema` 13/13.
+- `test:all` (every `test:*`, DB suites included, `--jobs 2`): **600/614**. The 14: eight red on `origin/main` `0e2beeca`
+  with the same failure counts (`guards-exist` — the `test:maswali-i18n` citation; `visual-pass-r5a/r5j/r6c/r7c/r5h`,
+  `presence-class`, `rate-copy` — the Millionea lane's); five that need a dev server (`responsive`, `motion`,
+  `revoked-deadend`, `admin-section-gate`, `needle-rest`, none of them reading a changed file); and ONE of this change:
+  `test:house-bot-migrations` a2.1 — the catch-up named `HouseBot` on a database migrated WITHOUT the house folders. It
+  now runs inside a `DO` block behind `to_regclass` + the marker column (`e4af4ebb`); re-run green, and
+  `test:house-bot-money` re-run green on both stores with §13c executing that very block.
+- Planted defects: `red:house-bot-money --only ca-` 6/6 caught (the seam's (s), three new: hand stake ignored, a REMOVED
+  holder counted, a second hand stake counted); `red:house-bot-console --only ca-` 11/11 caught on memory and Postgres
+  (three new: the shift by marker only — both twins — and the shift over every holder); `red:predictor-shown` 40/40. 0
+  files left dirty.
+- `verify:house-bot-migrations-old-build` NOT MEASURED (exit 3: it needs a separate checkout of `origin/main` with its own
+  `npm ci`). The migration is data only — no DDL — so the old build reads no schema it does not know.
+
 ⚠️ **The deploy window.** `prisma migrate deploy` runs at the new container's boot while the previous build still serves
 (`railway.json`: 60 s overlap, 30 s draining). A holder's FIRST hand stake on a market placed by the OLD build after the
 catch-up ran would carry nothing for that account; the post-deploy read compares every open market's extra with the sum
