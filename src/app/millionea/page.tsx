@@ -68,6 +68,16 @@ function weekEyebrow(t: Dict, w: { code: string; state: MillioneaHubWeek["state"
 }
 
 /**
+ * MR-30 · OD-03 · THE ANNOUNCEMENT of a final week still to open: its number and, while that time is ahead, when it opens
+ * (it never opens before it, `openWeek`). An announced time already past is not printed as if it were to come.
+ */
+function finalAheadLine(t: Dict, f: NonNullable<MillioneaHub["finalAhead"]>, nowMs: number): string {
+  const week = weekNumberOf(f.code);
+  const at = msOf(f.opensAt);
+  return at !== null && at > nowMs ? fill(t.millionea.finalAheadAt, { week, when: eatWeekdayClock(t, at) }) : fill(t.millionea.finalAhead, { week });
+}
+
+/**
  * Valid reserves left (§10 §3.10): the five, less each voided reserve and each reserve a voided main will take — and below
  * zero, when the voided mains outnumber them, said in words (the v6 delivery's D-20; the S5 UI review, MEDIUM 3), never a
  * negative and never a false "0 of 5" over a week that is due to be voided.
@@ -290,6 +300,7 @@ export default async function MillioneaHubPage() {
         {hub.life === "RETIRED" && hub.lastWeek && (
           <Callout tone="neutral" role="status">{fill(t.millionea.stoppedSunset, { week: weekNumberOf(hub.lastWeek.code) })}</Callout>
         )}
+        {hub.finalAhead && <Callout tone="info" glyph="flag" role="status">{finalAheadLine(t, hub.finalAhead, nowMs)}</Callout>}
         {hub.paused && <Callout tone="neutral" role="status">{t.millionea.paused}</Callout>}
         {w?.isFinal && <Callout tone="info" glyph="flag" role="status">{t.millionea.finalWeek}</Callout>}
 

@@ -39,7 +39,7 @@ export type HomeCardState =
   /** The last week was voided whole: every refund landed, or they are on their way. */
   | { kind: "voided"; refundsPending: boolean };
 
-export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
+export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, finalAhead = null, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
   t: Dict;
   week: number;
   /** The headline (the larger of the floor and the carry plus sales), or null before sales and while paused. */
@@ -53,8 +53,10 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
   /** The weekly cap, from the week's snapshot. */
   cap: number;
   state: HomeCardState;
-  /** The final week of a sunset (announced in advance). */
+  /** The final week of a sunset: this card's own week. */
   finalWeek?: boolean;
+  /** The final week's number while it is still to open (MR-30, OD-03): the card names it, whatever week it shows. */
+  finalAhead?: number | null;
   href?: string;
   className?: string;
 }) {
@@ -118,6 +120,7 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       <span className="flex min-w-0 flex-1 flex-col gap-1 md:gap-0.5 xl:flex-row xl:items-center xl:gap-4">
         <span className="font-display text-body-lg font-semibold text-text xl:shrink-0">{productWeek(t, week)}</span>
         {finalWeek && <span className="text-body-sm text-text">{t.millionea.finalWeek}</span>}
+        {!finalWeek && finalAhead !== null && <span className="text-body-sm text-text">{fill(t.millionea.finalAheadShort, { week: finalAhead })}</span>}
         {/* The headline with its rule — in the column at 360, in the row at 1280; at 768 the figure has its own block. */}
         {!voidKind && (
           <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">

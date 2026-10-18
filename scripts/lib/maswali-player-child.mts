@@ -1118,6 +1118,9 @@ let G: any = null;
   const ending = await P.millioneaHub(viewer(P3));
   ok("13.5 · ⛔ L2 · while Millionea is ENDING (a final week runs, nothing opens after it), no 'next opens' line",
     sunset.ok && ending.life === "ENDING" && ending.week?.id === F.id && ending.nextOpensAt === null, `${why(sunset)} · ${J({ life: ending.life, next: ending.nextOpensAt })}`);
+  ok("13.5b · ⛔ F1 · while the final week is still a draft the hub ANNOUNCES it: its week and the time it was announced to open (MR-30, OD-03)",
+    ending.finalAhead?.code === G.code && ending.finalAhead?.opensAt === G.opensAt && (await dal.weekStore.get(G.id))?.state === "DRAFT",
+    J({ finalAhead: ending.finalAhead, g: G.code }));
 }
 
 // ── §14 · the final week (RR2): a miss is not "cannot win" there — and released, the top score wins ──────────────────
@@ -1132,6 +1135,9 @@ section("§14 · the final week: no 'cannot win' line, and the top score wins");
     bF.ok && relF.ok && relF.week.state === "SETTLED" && (relF.week.winningTickets ?? 0) === 0 && fT?.won === false && (fT?.payout ?? 0) === 0, `${why(relF)} · ${J({ won: fT?.won, payout: fT?.payout })}`);
   const oG = await W.svc.openWeek({ weekId: G.id, officerId: DRAFTER, guarantee: W.money.guaranteeReader, now: new Date(gStart + 60_000) });
   if (!oG.ok) throw new Error(`§14: the final week did not open: ${oG.error}`);
+  const openedHub = await P.millioneaHub(viewer(P3));
+  ok("14.0b · F1 · once the final week opens it is the hub's own week, saying so itself, and nothing is announced as still to come",
+    openedHub.finalAhead === null && openedHub.week?.id === G.id && openedHub.week?.isFinal === true, J({ finalAhead: openedHub.finalAhead, week: openedHub.week?.id }));
   // RR2 · one ticket in the final week, its first main to miss.
   const bT = await W.buy(PT, G.id, [W.LOSE], { key: "player-pt-g-0001" });
   const atG = await W.closeAndSeal(oG.week, gStart);

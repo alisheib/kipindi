@@ -19,10 +19,11 @@ import type { Dict } from "@/lib/i18n-dict";
 
 
 /** The card's props (`MaswaliHomeCard`), minus the dictionary. `atLeast` and `pendingWeek` say a carry still waiting on
- *  an earlier week (§M8a item 9): the figure is then a true lower bound, never an exact jackpot. */
+ *  an earlier week (§M8a item 9): the figure is then a true lower bound, never an exact jackpot. `finalAhead` is the
+ *  announced final week's number while it is still to open (MR-30, OD-03; the hub's `finalAhead`), else null. */
 export type HomeCardModel = {
   week: number; jackpot: number | null; pct: number; cap: number; state: HomeCardState; finalWeek: boolean;
-  atLeast: boolean; pendingWeek: number | null;
+  atLeast: boolean; pendingWeek: number | null; finalAhead: number | null;
 };
 
 /** The week's opening on the published template (`maswali-config.ts`: its weekday, 1 = Monday, and its EAT time). */
@@ -59,11 +60,21 @@ function msOf(iso: string | null | undefined): number | null {
  *   · sales closed, results arriving: how many of the fifteen are out — unless its void is already certain (MR-18):
  *     then "being voided", with no jackpot and no rule (the S5 UI review, MEDIUM 7);
  *   · no week on sale: the last settled week's line — or a voided one's, its refunds landed or on their way — else the
- *     day the next one opens (MB-84: no pre-sale).
+ *     day the next one opens (MB-84: no pre-sale), or, while Millionea ends, the day its announced final week opens;
+ *   · and on every card but the final week's own, the announced final week by its number (`finalAhead`).
  * `fallbackRate` is the configured fee share, used ONLY where no week froze one; a week's card prints its frozen rate (L2).
  * ⛔ A week whose figure cannot be read draws no card, rather than a rule without its rate.
  */
 export function homeCardOf(t: Dict, hub: MillioneaHub, fallbackRate: number | null, nowMs: number, nextOpenMs: number | null = null): HomeCardModel | null {
+  const model = homeCardBody(t, hub, fallbackRate, nowMs, nextOpenMs);
+  if (!model) return null;
+  // ⛔ MR-30 · OD-03 · THE ANNOUNCED FINAL WEEK IS NAMED ON THE CARD TOO, whatever week the card shows — unless that week
+  //    is the final one itself (its own "final week" line says so), so the card and the hub announce it together.
+  const ahead = hub.finalAhead ? weekNumberOf(hub.finalAhead.code) : null;
+  return { ...model, finalAhead: ahead !== null && ahead > 0 && !model.finalWeek ? ahead : null };
+}
+
+function homeCardBody(t: Dict, hub: MillioneaHub, fallbackRate: number | null, nowMs: number, nextOpenMs: number | null): Omit<HomeCardModel, "finalAhead"> | null {
   const exact = { atLeast: false, pendingWeek: null };
   const w = hub.week;
   if (w) {
@@ -98,6 +109,12 @@ export function homeCardOf(t: Dict, hub: MillioneaHub, fallbackRate: number | nu
   const opens = msOf(hub.nextOpensAt);
   if (opens !== null && hub.life !== "RETIRED") {
     return { week: eatIsoWeek(opens).week, pct, cap: 0, finalWeek: false, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, opens) } };
+  }
+  // No week and no last week, while the final week waits to open (the hub's `nextOpensAt` is null while Millionea ends):
+  // the final week's own presale line, on the time it was announced to open.
+  const finalOpens = hub.finalAhead ? msOf(hub.finalAhead.opensAt) : null;
+  if (hub.finalAhead && finalOpens !== null && finalOpens > nowMs) {
+    return { week: weekNumberOf(hub.finalAhead.code), pct, cap: 0, finalWeek: true, ...exact, jackpot: null, state: { kind: "presale", opensOn: eatWeekday(t, finalOpens) } };
   }
   return null;
 }

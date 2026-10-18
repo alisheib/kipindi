@@ -508,6 +508,10 @@ export type MillioneaHub = {
   paused: boolean;
   /** MR-30 · LIVE; ENDING (a final week runs); RETIRED (Millionea has ended); PASSES_ON (the next week becomes final). */
   life: "LIVE" | "ENDING" | "RETIRED" | "PASSES_ON";
+  /** MR-30 · OD-03 · THE ANNOUNCEMENT: the public final week while it is still a draft — its code and the time it was
+   *  announced to open, which it never opens before (`openWeek`). Null once it opens (it is then `week`, and says so
+   *  itself), on the drive line, and whenever no final week waits to open. */
+  finalAhead: { code: string; opensAt: string } | null;
   /** No week on sale: when the template opens the next one (MB-84 — no pre-sale). A fact of the published schedule, never
    *  a promise a week will open (a week may be skipped, OD-27). Null while a week sells, and while Millionea is ending
    *  (a final week runs, so nothing after it opens) or has ended (S5 review L2). */
@@ -568,13 +572,18 @@ export async function millioneaHub(viewer: MillioneaViewer, now: Date = new Date
   const last = newestFirst(await weekStore.list({ visibility: line, states: TERMINAL }))[0] ?? null;
   const paused = getSalesPause().paused;
   let life: MillioneaHub["life"] = "LIVE";
-  try { life = (await sunsetState()).kind; } catch { life = "LIVE"; }
+  let finalAhead: MillioneaHub["finalAhead"] = null;
+  try {
+    const sun = await sunsetState();
+    life = sun.kind;
+    if (sun.kind === "ENDING" && sun.week.state === "DRAFT" && line === "PUBLIC") finalAhead = { code: sun.week.code, opensAt: sun.week.opensAt };
+  } catch { life = "LIVE"; }
   return {
     line,
     week: lead ? await hubWeekOf(lead, viewer, nowMs, paused) : null,
     grading: other ? await hubWeekOf(other, viewer, nowMs, paused) : null,
     lastWeek: last ? await summaryOf(last) : null,
-    paused, life,
+    paused, life, finalAhead,
     nextOpensAt: open || life === "ENDING" || life === "RETIRED" ? null : templateNextOpen(nowMs),
     notices: viewer.userId ? await millioneaNotices(viewer.userId, line).catch(() => []) : [],
     asOf: now.toISOString(),
@@ -736,8 +745,10 @@ export type MillioneaTicketView = MillioneaTicketRow & {
     toWinners: number;
     winners: number; share: number;
     /** k × share; with `remainder` — the rounding of the equal split, (J − F) − k × share (MR-25) — it is `toWinners`.
-     *  The remainder joins the next jackpot only in a week the house did not top up (U already excludes it). */
+     *  The remainder joins the next jackpot as far as the week's own money covers it (`remainderFate`). */
     paid: number; remainder: number;
+    /** What the week handed the next (its settled carry-out): with `remainder`, where the remainder went. */
+    carriedOut: number;
     /** The house's floor top-up — printed, and it never rolls (MR-22). */
     topUp: number;
     /** The viewer's winning tickets this week whose share is THEIRS (paid), and those shares' sum. ⛔ A held or a
@@ -838,7 +849,7 @@ export async function millioneaTicket(userId: string, serial: string, now: Date 
     const J = week.jackpot ?? 0, F = week.fee ?? 0, paid = week.paidTotal ?? 0;
     win = {
       jackpot: J, fee: F, traLevy: week.traLevy ?? 0, gbtLevy: week.gbtLevy ?? 0, toWinners: J - F,
-      winners: week.winningTickets ?? 0, share: week.sharePerTicket ?? 0, paid, remainder: J - F - paid,
+      winners: week.winningTickets ?? 0, share: week.sharePerTicket ?? 0, paid, remainder: J - F - paid, carriedOut: week.carryOut ?? 0,
       topUp: week.topUp ?? 0, yourWinningTickets: paidMine.length, yourTotal: paidMine.reduce((s, x) => s + paidOf(x), 0),
       yourHeldTickets: sharesOf("held").length, yourForfeitedTickets: sharesOf("forfeited").length,
       basis: t.score != null && t.score < MAIN_COUNT ? "TOP_SCORE" : "TEN_OF_TEN", winningScore: t.score ?? MAIN_COUNT,

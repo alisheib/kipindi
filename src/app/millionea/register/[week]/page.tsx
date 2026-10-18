@@ -25,7 +25,8 @@ import { ReceiptRow } from "@/components/ui/receipt-row";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
-import { counted, millioneaWord, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, millioneaWord, remainderNoteOf, reserveLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { remainderFate } from "@/lib/maswali-money";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaRegisterWeek, type MillioneaRegisterQuestion, type MillioneaRegisterWeek } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
@@ -187,7 +188,7 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
     if ((w.topUp ?? 0) > 0) rows.push({ key: "topup", node: <ReceiptRow className={ROW} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={fig(w.topUp)} /> });
     rows.push({ key: "share", node: <ReceiptRow className={ROW} label={counted(w.winners ?? 0, t.millionea.perTicketOne, t.millionea.perTicket)} value={fig(w.share)} /> });
     rows.push({ key: "paid", node: <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(w.paid)} /> });
-    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={`${t.millionea.remainder} · ${t.millionea.remainderNote}`} value={fig(w.remainder)} /> });
+    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={`${t.millionea.remainder} · ${remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0))}`} value={fig(w.remainder)} /> });
     rows.push({ key: "out", node: <ReceiptRow className={ROW} label={fill(t.millionea.carriedOut, { week: next })} value={fig(w.carriedForward)} /> });
   } else {
     rows.push({ key: "fee", node: <ReceiptRow className={ROW} label={t.millionea.fee} value={<span className="amount text-text-muted">{t.millionea.feeZero}</span>} /> });

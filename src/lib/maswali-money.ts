@@ -97,6 +97,23 @@ export function settleArithmetic(input: {
   return { kind: "PAYOUT", k, J, F, tra: lv.traLevy, gbt: lv.gbtLevy, net: lv.operatorNet, share, paid, U, dust, carryOut, jackpotAfter: carryOut };
 }
 
+/** Where a paying week's rounding remainder went (MR-25) — what a register or a receipt may say about it. */
+export type RemainderFate = "carried" | "kept" | "part";
+
+/**
+ * ⭐ MR-25 · WHERE THE ROUNDING REMAINDER WENT, read off a settled week's own figures: `dust` = J − F − k·share and
+ * `carryOut` = what the week handed the next. The week's own money carries the remainder as far as it covers it; a
+ * floor's top-up pays only what is paid out (U above), so whatever the week's money did not cover stays with the
+ * guarantee — all of it in a week the guarantee topped up (carryOut is then 0).
+ *   · "carried" — the whole remainder joined the next jackpot (carryOut = dust: the week's money covered it);
+ *   · "kept"    — none of it did (a topped-up week, or the week's money covered none of it);
+ *   · "part"    — the week's money covered part of it, and the rest stayed with the guarantee.
+ */
+export function remainderFate(dust: number, carryOut: number): RemainderFate {
+  if (carryOut >= dust) return "carried";
+  return carryOut <= 0 ? "kept" : "part";
+}
+
 /**
  * ⭐ OD-02 · how much guarantee must be held before a week may open: Σ max(0, floor − confirmed carry-in) over EVERY
  * unsettled week, the new one included. A week whose carry is not yet confirmed (its predecessor unsettled) counts its

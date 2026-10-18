@@ -105,6 +105,7 @@ export default async function MillioneaSlipPage() {
         userId={gate.userId}
         weekId={slip.week.id}
         weekNumber={weekNumberOf(slip.week.code)}
+        finalWeek={slip.week.isFinal}
         closesAt={closesAt}
         firstEventAt={msOf(slip.firstEventAt)}
         serverNow={nowMs}

@@ -81,13 +81,15 @@ type Cut = { serial: string; weekNumber: number; cancelUntil: string | null };
  *   · Sales closing while the slip is open: the band reveals on the mark's axis, the controls rest, the rail leaves (M2).
  */
 export function SlipClient({
-  userId, weekId, weekNumber, closesAt, firstEventAt, serverNow, questions, hiddenSlots, price, cap, held, balance, cancelIfBoughtNow,
+  userId, weekId, weekNumber, finalWeek, closesAt, firstEventAt, serverNow, questions, hiddenSlots, price, cap, held, balance, cancelIfBoughtNow,
   pct, depositHref,
 }: {
   /** The account this page was drawn for: a page drawn for A never debits B (the action refuses a changed account). */
   userId: string;
   weekId: string;
   weekNumber: number;
+  /** The sunset week (MR-30): the slip and its confirm sheet state its rule. */
+  finalWeek: boolean;
   closesAt: number;
   firstEventAt: number | null;
   serverNow: number;
@@ -204,6 +206,7 @@ export function SlipClient({
         closed={closed}
         closedJustNow={closed && !closedAtRender}
         onContinue={openConfirm}
+        finalWeek={finalWeek}
       />
       <MaswaliSlipConfirm
         open={confirmOpen && !closed}
@@ -217,6 +220,7 @@ export function SlipClient({
         cap={cap}
         cancelUntil={cancelIfBoughtNow}
         pct={pct}
+        finalWeek={finalWeek}
         lowBalance={lowBalance}
         depositDoor={depositDoor}
         pending={pending}

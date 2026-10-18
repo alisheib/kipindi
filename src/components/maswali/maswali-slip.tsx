@@ -192,7 +192,8 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
 }
 
 export function MaswaliSlip({
-  week, questions, picks, onPick, closesAt, firstEventAt, serverNow, price, cap, ticketNumber, closed, closedJustNow, onContinue, className,
+  week, questions, picks, onPick, closesAt, firstEventAt, serverNow, price, cap, ticketNumber, closed, closedJustNow, onContinue, finalWeek = false,
+  className,
 }: {
   week: number;
   /** All fifteen, mains first. */
@@ -214,6 +215,8 @@ export function MaswaliSlip({
   closedJustNow?: boolean;
   /** Fifteen answers and a press on "Endelea": the composer opens the confirm sheet. */
   onContinue: () => void;
+  /** The sunset week (MR-30): its buyers are told its own rule before they buy, here and on the confirm sheet. */
+  finalWeek?: boolean;
   className?: string;
 }) {
   const { t, locale } = useT();
@@ -237,7 +240,10 @@ export function MaswaliSlip({
       flagged={showRefusal && !picks[slotOfQ(q) - 1]} onPick={(p) => onPick(slotOfQ(q), p)} />
   );
   const strong = (s: string) => <span className="font-mono text-text">{s}</span>;
+  // ⛔ MR-30 · A FINAL WEEK'S BUYER IS TOLD ITS RULE AT PURCHASE (the lead's decision of 2026-10-18): with no 10/10 the
+  //    highest scores share the pool, with no floor top-up — first, because it is the rule this week's ticket differs by.
   const rules = [
+    ...(finalWeek ? [t.millionea.finalRule] : []),
     t.millionea.reserveRule,
     fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) }),
     t.millionea.mainOnly,
@@ -349,7 +355,8 @@ export function MaswaliSlip({
  * With the main balance short, the platform's own deposit entry (`depositDoor`, the composer's) replaces the commit.
  */
 export function MaswaliSlipConfirm({
-  open, onClose, week, questions, picks, price, balance, ticketNumber, cap, cancelUntil, pct, lowBalance, depositDoor, pending, onCommit,
+  open, onClose, week, questions, picks, price, balance, ticketNumber, cap, cancelUntil, pct, finalWeek = false, lowBalance, depositDoor, pending,
+  onCommit,
 }: {
   open: boolean;
   onClose: () => void;
@@ -365,6 +372,8 @@ export function MaswaliSlipConfirm({
   cancelUntil: number | null;
   /** The week's fee rate, as a number of percent. */
   pct: number;
+  /** The sunset week (MR-30): the sheet states its rule beside the fee rule, so the press is made knowing it. */
+  finalWeek?: boolean;
   /** The main balance is below the price: say so, and offer the deposit entry instead of the commit. */
   lowBalance?: boolean;
   depositDoor?: ReactNode;
@@ -382,6 +391,7 @@ export function MaswaliSlipConfirm({
     fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleShared, { pct }),
+    finalWeek ? t.millionea.finalRule : null,
   ].filter((l): l is string => l !== null);
   return (
     // Focus opens on the commit, whose press IS the act (the bet confirm's rule), and the way out is named (`safeFocus`), so
