@@ -459,9 +459,17 @@ export const MUTATIONS = [
   {
     name: "(F2-close-retry) a close the database's clock refused is left to the 5-minute reconcile: the tick records no retry (L1)",
     file: "src/lib/server/maswali-scheduler.ts",
-    from: "          else if (\"dbShortMs\" in r) closeRetry.set(w.id, nowMs + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);",
+    from: '          if (!r.ok && "dbShortMs" in r) closeRetry.set(w.id, nowMs + (Date.now() - startedMs) + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);',
     to: "",
     expect: "CS.8 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(F3-close-retry-passed) a refused close's retry that the rest of the tick ran past is dropped: the week waits for the 5-minute reconcile",
+    file: "src/lib/server/maswali-scheduler.ts",
+    from: "      if (retry !== undefined && Date.parse(w.closesAt) <= nowMs) take(Math.max(retry, nowMs + PAST_GRACE_MS));",
+    to: "      if (retry !== undefined) take(retry);",
+    expect: "CS.10 · ⭐",
     suite: "adversarial:CS",
   },
   {

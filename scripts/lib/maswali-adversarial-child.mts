@@ -310,18 +310,28 @@ if (runs("CS")) {
   const firedAt = Date.parse(wk.closesAt) + 5;
   scheduler.__resetMaswaliScheduler();
   W.svc.__setMaswaliCloseClockForTests((weekClockMs: number) => weekClockMs - 40);
-  let early: any = null, due: number | null = null;
+  let early: any = null, due: number | null = null, tickMs = 0;
   try {
+    const t0 = Date.now();
     early = await scheduler.runMaswaliTick(new Date(firedAt));
+    tickMs = Date.now() - t0;
     due = await scheduler.nextMaswaliDueMs(firedAt);
   } finally {
     W.svc.__setMaswaliCloseClockForTests(W.weekCloseClock);
   }
   ok("CS.7 · the tick 5 ms past the close on the container's clock, with the database's 35 ms short of it: the close is refused, the week still OPEN, nothing failed",
     early?.closed === 0 && early?.failures === 0 && (await dal.weekStore.get(wk.id)).state === "OPEN", J(early));
-  ok("CS.8 · ⭐ …and the next wake is the moment the database's clock reaches the close, plus a second (closesAt − dbNow + 1 s) — never the 5-minute reconcile (L1)",
-    due === firedAt + 35 + 1_000 && scheduler.wakeDelayMs(due, firedAt) === 1_035,
-    `due ${due === null ? "none" : new Date(due).toISOString()} · sleep ${scheduler.wakeDelayMs(due, firedAt)} ms`);
+  // S7-F3 · measured from the refusal's own instant: the tick's clock plus the time it had run, so at most `tickMs` later.
+  ok("CS.8 · ⭐ …and the next wake is the moment the database's clock reaches the close, plus a second (closesAt − dbNow + 1 s), from the refusal's own instant — never the 5-minute reconcile (L1)",
+    due !== null && due >= firedAt + 35 + 1_000 && due <= firedAt + 35 + 1_000 + tickMs && scheduler.wakeDelayMs(due, firedAt) === due - firedAt,
+    `due ${due === null ? "none" : new Date(due).toISOString()} · sleep ${scheduler.wakeDelayMs(due, firedAt)} ms · tick ${tickMs} ms`);
+  // ⭐ S7-F3 · THE REST OF THE TICK RAN ON PAST THE SHORTFALL AND THE MARGIN: the timer is armed after the tick, on the
+  //    container's clock, so the retry it recorded had passed by then — and a passed instant was dropped, leaving the
+  //    week OPEN to the 5-minute reconcile. Here the arm comes half a second after the retry.
+  const armedLate = firedAt + 35 + 1_000 + tickMs + 500;
+  const lateDue = await scheduler.nextMaswaliDueMs(armedLate);
+  ok("CS.10 · ⭐ S7-F3 · …and when the rest of the tick runs past the shortfall plus the margin, the passed retry still wakes the timer, at the grace — never the 5-minute reconcile",
+    lateDue === armedLate + 1_000 && scheduler.wakeDelayMs(lateDue, armedLate) === 1_000, `due ${lateDue === null ? "none" : `${lateDue - armedLate} ms after the arm`}`);
   const onTime = await scheduler.runMaswaliTick(new Date(firedAt + 1_035));
   const after = await dal.weekStore.get(wk.id);
   ok("CS.9 · control: the tick at that wake, the database's clock past the close, stamps it once, at that instant",

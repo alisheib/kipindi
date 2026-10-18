@@ -46,8 +46,8 @@ const proposed = (globalThis.__50PICK_MLN_PROPOSED ??= new Set<string>());
  * ⭐ S7-F2 (L1) · week id → the container instant its refused close is asked again. The timer fires on the container's
  * clock and the close is checked on the database's (MB-84), so a timer a few ms early met a refusal, and the next wake
  * was the 5-minute reconcile: the week stayed OPEN, and the console's "the close is not stamped" alert could fire on a
- * week nothing was wrong with. A refusal records closesAt − dbNow + 1 s here; a stamped close, or a week no longer OPEN,
- * ends it.
+ * week nothing was wrong with. A refusal records closesAt − dbNow + 1 s here, from its own instant (S7-F3); the next
+ * attempt, or a week no longer OPEN, ends it.
  */
 const closeRetry = (globalThis.__50PICK_MLN_CLOSE_RETRY ??= new Map<string, number>());
 
@@ -67,6 +67,8 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
   const run = (async (): Promise<TickReport> => {
     const report: TickReport = { closed: 0, voided: 0, proposals: 0, failures: 0 };
     const nowMs = now.getTime();
+    /** The container's instant this tick began, so a step's own instant on the tick's clock is `nowMs` + the time run. */
+    const startedMs = Date.now();
     let weeks: StoredWeek[];
     try {
       // R1 · a VOIDED week is listed only while its refunds are owed (its market not settled): resumed below, every tick.
@@ -85,10 +87,13 @@ export function runMaswaliTick(now: Date = new Date()): Promise<TickReport> {
           continue;
         }
         if (w.state === "OPEN" && Date.parse(w.closesAt) <= nowMs) {
+          // S7-F3 · the attempt consumes a recorded retry: only a fresh refusal on the database's clock records one again.
+          closeRetry.delete(w.id);
           const r = await closeWeek({ weekId: w.id, now });
           if (r.ok && !r.already) report.closed++;
-          if (r.ok) closeRetry.delete(w.id);
-          else if ("dbShortMs" in r) closeRetry.set(w.id, nowMs + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);
+          // ⭐ S7-F3 · measured from the refusal's own instant (the tick's clock plus the time it has run), never the tick's
+          //    start: the weeks before this one may have taken longer than the shortfall and the margin.
+          if (!r.ok && "dbShortMs" in r) closeRetry.set(w.id, nowMs + (Date.now() - startedMs) + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);
           continue;
         }
         if (w.state === "CLOSED" || w.state === "RESOLVING") {
@@ -136,7 +141,15 @@ export async function nextMaswaliDueMs(nowMs: number = Date.now()): Promise<numb
   const take = (t: number) => { if (Number.isFinite(t) && t > nowMs && (next === null || t < next)) next = t; };
   for (const id of closeRetry.keys()) if (!weeks.some((w) => w.id === id && w.state === "OPEN")) closeRetry.delete(id);
   for (const w of weeks) {
-    if (w.state === "OPEN") { take(Date.parse(w.closesAt)); take(closeRetry.get(w.id) ?? Number.NaN); continue; }
+    // ⭐ S7-F3 · a recorded retry stays a wake time once passed — at the grace, the one past instant that is: the tick that
+    //    recorded it may have run on past it, and the database's clock has then reached the close. Only while the close
+    //    itself is due, so the next tick's attempt consumes it and it never spins (the doctrine above stands otherwise).
+    const retry = closeRetry.get(w.id);
+    if (w.state === "OPEN") {
+      take(Date.parse(w.closesAt));
+      if (retry !== undefined && Date.parse(w.closesAt) <= nowMs) take(Math.max(retry, nowMs + PAST_GRACE_MS));
+      continue;
+    }
     if (w.objectionsCloseAt) take(Date.parse(w.objectionsCloseAt));
     for (const q of await questionStore.listForWeek(w.id)) if (q.outcome === null) take(Date.parse(q.voidDeadlineAt));
   }
