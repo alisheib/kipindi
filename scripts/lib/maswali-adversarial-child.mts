@@ -34,9 +34,6 @@
  * ⚠️ This file carries no backslash: line breaks are built from their code points, and patterns use character classes.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 process.env.SESSION_SECRET ??= "maswali-adversarial-session-secret-0123456789abcdef";
@@ -65,7 +62,6 @@ const { houseBotEligibility } = await import("../../src/lib/server/house-bot/eli
 const wallet = await import("../../src/lib/server/wallet-service.ts");
 const { changePassword } = await import("../../src/lib/server/password-reset.ts");
 const { DEPOSIT_STATUS_REVIEW_MARK } = await import("../../src/lib/wallet/deposit-review.ts");
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 process.exitCode = 1;
 let pass = 0, fail = 0, known = 0;
@@ -800,16 +796,27 @@ if (runs("PL")) {
   await W.mdal.marketStore.set({ ...row, productLine: "MARKET" });
   ok("PL.2 · ⭐ a full-row write from a copy naming MARKET keeps the week MASWALI — on both stores", (await lineOf()) === "MASWALI", `${await lineOf()}`);
   let dbRefused = false;
-  /** ⚠️ A FIXTURE, DECLARED: the database's fence switched off for one statement — what a hand edit made with the trigger
-   *  disabled presents — so PL.4 measures the application's own refusal on Postgres too. */
-  const FENCE = `"PredictionMarket_productLine_maswali_fence"`;
-  const relineFenceOff = async (line: string) => {
-    await W.prisma()!.$executeRawUnsafe(`ALTER TABLE "PredictionMarket" DISABLE TRIGGER ${FENCE}`);
+  /** One raw statement, its failure answered as a sentence naming the step — never a throw (S7-F2). */
+  const sqlStep = async (what: string, statement: string, ...args: unknown[]): Promise<string | null> => {
     try {
-      await W.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = '${line}' WHERE "id" = $1`, wk.marketId);
-    } finally {
-      await W.prisma()!.$executeRawUnsafe(`ALTER TABLE "PredictionMarket" ENABLE TRIGGER ${FENCE}`);
+      await W.prisma()!.$executeRawUnsafe(statement, ...args);
+      return null;
+    } catch (err) {
+      return `${what}: ${String((err as Error)?.message ?? err).slice(0, 160)}`;
     }
+  };
+  /** ⚠️ A FIXTURE, DECLARED: the database's fence switched off for one statement — what a hand edit made with the trigger
+   *  disabled presents — so PL.4 measures the application's own refusal on Postgres too. ⭐ S7-F2 · a step that fails is a
+   *  FAIL line naming it (a tree without the fence's trigger cannot switch it off), never a crash that hides every case
+   *  after it; with no trigger to switch off the write still runs, as that hand edit would. */
+  const FENCE = `"PredictionMarket_productLine_maswali_fence"`;
+  const relineFenceOff = async (line: string, label: string): Promise<void> => {
+    const off = await sqlStep("DISABLE TRIGGER", `ALTER TABLE "PredictionMarket" DISABLE TRIGGER ${FENCE}`);
+    const write = await sqlStep("UPDATE productLine", `UPDATE "PredictionMarket" SET "productLine" = '${line}' WHERE "id" = $1`, wk.marketId);
+    const on = off ? null : await sqlStep("ENABLE TRIGGER", `ALTER TABLE "PredictionMarket" ENABLE TRIGGER ${FENCE}`);
+    const failed = off ?? write ?? on;
+    ok(`${label} · (Postgres) the fixture re-lines the week's market to ${line} with the fence off for one statement — a step that fails is named, never a crash`,
+      failed === null, failed ?? "");
   };
   if (W.onPostgres) {
     try {
@@ -836,7 +843,9 @@ if (runs("PL")) {
       intoWeek = true;
     }
     ok("PL.3c · (Postgres) ⭐ …and no poll is ever re-lined INTO Millionea: the trigger refuses the move both ways", intoWeek && (await pollLine()) === "MARKET", `${await pollLine()}`);
-    await relineFenceOff("MARKET");
+    // A database that let the poll in (PL.3c red) is put back as far as it allows, so the sections after it read a poll.
+    if (!intoWeek) await sqlStep("UPDATE the poll back", `UPDATE "PredictionMarket" SET "productLine" = 'MARKET' WHERE "id" = $1`, poll.id);
+    await relineFenceOff("MARKET", "PL.3d");
   } else {
     // ⚠️ A FIXTURE, DECLARED: the memory store hands back its live row, and the line is written on it directly — the shape a
     //    database edit presents (as the house-bot suites plant a line).
@@ -845,12 +854,13 @@ if (runs("PL")) {
   const reclassified = (await lineOf()) !== "MASWALI";
   const before = { bal: await bal(late), count: (await dal.weekStore.get(wk.id)).ticketCount, positions: ((await market.listPositionsForMarket(wk.marketId)) as any[]).length };
   const r = await W.buy(late, wk.id, [ALL_YES]);
-  ok("PL.4 · ⭐ a week whose market no longer reads as a Millionea market sells nothing — never a one-sided Yes/No stake on its pool",
-    !reclassified || (!r.ok && r.reason === "millionea_week_not_open" && (await bal(late)) === before.bal
-      && ((await market.listPositionsForMarket(wk.marketId)) as any[]).length === before.positions && (await dal.weekStore.get(wk.id)).ticketCount === before.count),
+  // ⭐ S7-F2 · the re-line must have LANDED, on both stores: a fixture that wrote nothing made this case pass on nothing.
+  ok("PL.4 · ⭐ a week whose market no longer reads as a Millionea market sells nothing — never a one-sided Yes/No stake on its pool (the re-line itself landed)",
+    reclassified && !r.ok && r.reason === "millionea_week_not_open" && (await bal(late)) === before.bal
+      && ((await market.listPositionsForMarket(wk.marketId)) as any[]).length === before.positions && (await dal.weekStore.get(wk.id)).ticketCount === before.count,
     J({ reclassified, r: r.ok ? "sold" : r }));
   if (W.onPostgres) {
-    await relineFenceOff("MASWALI");
+    await relineFenceOff("MASWALI", "PL.5a");
   } else {
     (await W.mdal.marketStore.get(wk.marketId)).productLine = "MASWALI";
   }
@@ -919,11 +929,17 @@ if (runs("IN")) {
   const block = await W.svc.millioneaPromotionBlock(p);
   ok("IN.1 · ⭐ OD-12 · an account holding a ticket in a week that has not settled is not made staff: the refusal names the week",
     typeof block === "string" && block.includes(wk.code), String(block));
-  const src = readFileSync(join(ROOT, "src/app/admin/staff/actions.ts"), "utf8");
-  const body = src.slice(src.indexOf("async function applyRoleChange("), src.indexOf("export async function setStaffRoleAction("));
-  const asked = body.indexOf("await millioneaPromotionBlock(target.id)"), writes = body.indexOf("db.user.update(target.id, { role: newRole })");
-  ok("IN.1b · ⭐ …and the Owner's staff role change asks it before it writes the role (both staff actions pass through that one function)",
-    asked > 0 && writes > asked, J({ asked, writes }));
+  // ⭐ S7-F2 · THE OWNER'S STAFF ACTION ITSELF, DRIVEN (the S7 review, round 2: IN.1b read its source). Both staff actions
+  //    pass through `applyRoleChange` once the Owner's gate has passed; its write is what is under test. A tree without
+  //    the module answers a FAIL line naming it, never a crash.
+  const staffChange: any = await import("../../src/lib/server/staff-role-change.ts").catch((err: unknown) => String((err as Error)?.message ?? err));
+  const changeRole = async (u: string, role: string) => (typeof staffChange === "string"
+    ? { ok: false, error: `the staff role change could not be loaded: ${staffChange}` }
+    : staffChange.applyRoleChange(OWNER, await W.db.user.findById(u), role, "the adversarial suite changes a role (OD-12)"));
+  const roleOf = async (u: string) => (await W.db.user.findById(u))?.role;
+  const refused = await changeRole(p, "MODERATOR");
+  ok("IN.1b · ⭐ …and the Owner's staff role change itself refuses it in those words, before any write: the role is unchanged (both staff actions pass through that one function)",
+    !refused.ok && errOf(refused).includes(wk.code) && (await roleOf(p)) === "PLAYER", J({ refused: errOf(refused), role: await roleOf(p) }));
   ok("IN.2 · control: an account holding no live ticket may be made staff", (await W.svc.millioneaPromotionBlock(q)) === null);
   const deskRowsOf = async (u: string): Promise<Array<{ code: string; message: string }>> => {
     try {
@@ -945,6 +961,17 @@ if (runs("IN")) {
   const cancel = await market.cashOutPosition(p, spare.positionId);
   ok("IN.4 · …and may still take their own money back: a ticket inside its free window cancels in full (it leaves the insider one ticket fewer, OD-12's aim)",
     cancel.ok, J(cancel));
+  // The control to IN.1b: an account whose only ticket is gone — cancelled inside its free window (MR-12) — is made staff
+  // by the same action, and put back by it (a change to PLAYER asks nothing).
+  const [holderGone] = await people(1, 50_000);
+  const [only] = await bought(holderGone, wk.id, [MISS_M1]);
+  const whileLive = await changeRole(holderGone, "MODERATOR");
+  const gone = await market.cashOutPosition(holderGone, only.positionId);
+  const promoted = await changeRole(holderGone, "MODERATOR");
+  ok("IN.1c · control: once its only ticket is gone, the same action makes the account staff — the role written",
+    !whileLive.ok && gone.ok && promoted.ok && (await roleOf(holderGone)) === "MODERATOR",
+    J({ whileLive: errOf(whileLive), gone: gone.ok, promoted: errOf(promoted), role: await roleOf(holderGone) }));
+  if ((await roleOf(holderGone)) !== "PLAYER") await changeRole(holderGone, "PLAYER");
   await closed(wk.id);
   const sealAt = new Date(start + 9 * DAY);
   const seal = await W.svc.sealQuestion({ weekId: wk.id, slot: 1, outcome: "YES", evidence: "Official result for event 1", officerId: p, now: sealAt });

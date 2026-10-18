@@ -11,72 +11,28 @@
  *      only takes effect once their session is re-minted; revoking forces a fresh login.
  *   4. A COMPLIANCE audit entry (immutable, hash-chained) is the authoritative record.
  *
- * The pure validation lives in ../../../lib/server/staff-roles.ts so it can be unit-tested.
+ * The pure validation lives in ../../../lib/server/staff-roles.ts so it can be unit-tested; the role change both actions
+ * pass through lives in ../../../lib/server/staff-role-change.ts (MASWALI-BUILD S7-F2): an export of this file is an
+ * action any client may POST, so the ungated core is never one, and a suite drives it on the real write path.
  *
  * ⭐ vb8 (2026-10-03) · THE REASON IS READ WHOLE AND CHECKED, NEVER CUT. Both actions used to `.slice(0, 500)` the
  * reason before any rule saw it, so a longer one was silently shortened into the compliance log. They now hand the
  * raw text to `checkStaffReason` (through `validateRoleChange` for a role change): over 500 characters, or holding a
  * phone number, is refused at the `reason` field, and what is stored is the cleaned text the rule checked.
  */
-import { runOutsideLock } from "@/lib/server/locks";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
-import { audit } from "@/lib/server/audit";
-import { revokeUserSessions } from "@/lib/server/session-registry";
 import { requireOwner } from "@/lib/server/rbac-guard";
 import { fieldError, type ActionFailure } from "@/lib/server/field-error";
-import { sendEmailToUser, staffRoleChangedHtml } from "@/lib/server/email";
 import { ROLE_LABEL, type Role } from "@/lib/server/roles";
 import { validateRoleChange, isStaffAssignable, checkStaffPhone, checkStaffReason, type AssignableRole } from "@/lib/server/staff-roles";
-import { safeError } from "@/lib/server/safe-error";
-import { millioneaPromotionBlock } from "@/lib/server/maswali-service";
+import { applyRoleChange } from "@/lib/server/staff-role-change";
 
-async function applyRoleChange(
-  officerId: string,
-  target: { id: string; role: string; displayName?: string | null },
-  newRole: AssignableRole,
-  reason: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const prevRole = target.role;
-  try {
-    // ⛔ OD-12 · an account holding a Millionea ticket in a week that has not settled is made staff only once that week
-    //    settles: an insider never holds a live ticket. Asked inside the try, so a read that fails refuses the change.
-    if (newRole !== "PLAYER") {
-      const held = await millioneaPromotionBlock(target.id);
-      if (held) return { ok: false, error: held };
-    }
-    await db.user.update(target.id, { role: newRole });
-    // Role lives in the signed session cookie — revoke so the next request re-mints it
-    // with the new role (nav/route/action gates then apply immediately).
-    await revokeUserSessions(target.id);
-    // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
-    runOutsideLock(() => {
-      void import("@/lib/server/house-bot/holder-hook").then((m) => m.onHolderAccountChanged(target.id, "ROLE_CHANGED")).catch(() => {});
-    });
-    audit({
-      category: "COMPLIANCE",
-      action: "staff.role_changed",
-      actorId: officerId,
-      targetType: "User",
-      targetId: target.id,
-      payload: { prevRole, newRole, reason },
-    });
-    // Notify the person by email (fire-and-forget; sendEmailToUser no-ops cleanly when
-    // there's no address on file, so a staffer without an email never blocks the change).
-    const isStaff = newRole !== "PLAYER";
-    void sendEmailToUser(target.id, (email) => ({
-      to: email,
-      subject: isStaff ? `Your 50pick role is now ${ROLE_LABEL[newRole as Role]}` : "Your 50pick staff access was removed",
-      html: staffRoleChangedHtml({ name: target.displayName || "there", roleLabel: ROLE_LABEL[newRole as Role] ?? newRole, isStaff }),
-      tag: "staff-role-change",
-    }));
-    revalidatePath("/admin/staff");
-    revalidatePath(`/admin/staff/${target.id}`);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: safeError(err, "Role change failed") };
-  }
-}
+/** Once a change has landed: the staff list and the person's own page re-read the role. */
+const refreshStaff = (targetId: string) => {
+  revalidatePath("/admin/staff");
+  revalidatePath(`/admin/staff/${targetId}`);
+};
 
 /** Change an existing staffer's (or any account's) role. */
 export async function setStaffRoleAction(formData: FormData): Promise<{ ok: true } | ActionFailure> {
@@ -90,7 +46,9 @@ export async function setStaffRoleAction(formData: FormData): Promise<{ ok: true
   const v = validateRoleChange({ actorId: officerId, targetId, prevRole: target?.role ?? "", newRole, reason });
   if (!v.ok) return v;
   if (!target) return { ok: false, error: "Account not found." };
-  return applyRoleChange(officerId, target, v.newRole, v.reason);
+  const r = await applyRoleChange(officerId, target, v.newRole, v.reason);
+  if (r.ok) refreshStaff(target.id);
+  return r;
 }
 
 /** Promote an existing account (looked up by phone) to a staff role. The person must
@@ -115,5 +73,6 @@ export async function addStaffByPhoneAction(formData: FormData): Promise<{ ok: t
   if (target.role === newRole) return fieldError("role", `Already ${ROLE_LABEL[newRole as Role]}.`);
 
   const r = await applyRoleChange(officerId, target, newRole as AssignableRole, reason.reason);
+  if (r.ok) refreshStaff(target.id);
   return r.ok ? { ok: true, userId: target.id } : r;
 }

@@ -356,7 +356,7 @@ export const MUTATIONS = [
   },
   {
     name: "(S7-promotion) the Owner's staff role change no longer asks OD-12's question before it writes the role",
-    file: "src/app/admin/staff/actions.ts",
+    file: "src/lib/server/staff-role-change.ts",
     from: "      const held = await millioneaPromotionBlock(target.id);",
     to: "      const held = null as string | null;",
     expect: "IN.1b",
