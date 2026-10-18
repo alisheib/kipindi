@@ -170,8 +170,9 @@ const headerCallOk = (file: string, el: string) => {
     "src/app/proposals/[id]/page.tsx": { none: "the proposal's question is the head; its chips stand above it" },
     "src/app/updown/[roundId]/page.tsx": { none: "the asset's mark and the game's name" },
     // MASWALI-BUILD S5 pages (2026-10-18): a Millionea ticket's page is named by its serial; the week line above it is
-    // its eyebrow, in the subtle ink (the v6 delivery's T-ticket frames).
-    "src/components/maswali/maswali-ticket.tsx": { eyebrow: '<span className="font-mono text-label uppercase eyebrow text-text-subtle">{weekLine(t, week, weekState, checkWindow)}</span>' },
+    // its eyebrow, in the subtle ink (the v6 delivery's T-ticket frames); it takes back its trailing tracking at the row's
+    // end (`kp-track-end`, r7c 2.1, 2026-10-18).
+    "src/components/maswali/maswali-ticket.tsx": { eyebrow: '<span className="font-mono text-label uppercase eyebrow text-text-subtle kp-track-end">{weekLine(t, week, weekState, checkWindow)}</span>' },
     "src/app/profile/invite/page.tsx": { none: "sr-only <h1>; its title row is the name alone" },
     "src/app/profile/invite/agent-dashboard.tsx": { none: "sr-only <h1>; the dashboard's rows" },
     "src/app/agent/apply/page.tsx": { none: "sr-only <h1>; the steps' line is subtle (apply-client)" },

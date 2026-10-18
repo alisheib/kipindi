@@ -4,7 +4,6 @@ import { PageContainer } from "@/components/layout/page-container";
 import { GhostBar, GhostLine } from "@/components/maswali/maswali-ghost";
 import { BackLinkGhost } from "@/components/ui/back-link";
 import { useT } from "@/lib/i18n";
-import { stemOf } from "@/lib/display-stem";
 
 /** The mains a phone's first screens hold. */
 const ROWS = [0, 1, 2, 3];
@@ -23,8 +22,9 @@ export function MillioneaSlipGhost() {
       <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]" aria-busy="true">
         <div className="flex min-w-0 flex-col gap-4" aria-hidden>
           <div className="flex flex-col gap-1.5">
-            {/* The head's stem, as the slip's own h1 asks it (r7c 3.9): an attribute from the title's first letter — no word drawn. */}
-            <p data-stem={stemOf(t.millionea.slipTitle)} className="font-display text-title-lg font-bold"><GhostLine className="w-[264px]" /></p>
+            {/* The title's line box (text-title-lg's 28/34) holding a bar, never words: no display face, so no display stem —
+                the stem corrects a first glyph's ink (r7c 3.9), and a drawing reads no Millionea word at all (maswali-ui 1.3). */}
+            <p className="text-title-lg font-bold"><GhostLine className="w-[264px]" /></p>
             <GhostBar className="h-4 w-[220px]" />
             <GhostBar className="h-4 w-[200px]" />
           </div>
