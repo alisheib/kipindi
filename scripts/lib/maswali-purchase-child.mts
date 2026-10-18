@@ -464,6 +464,18 @@ console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop neve
   const early = await W.user({ balance: 50_000 });
   const plain = await buyAs(early, false, "s7-stale-before-0001");
   ok("SF.1 · a week never final sells to a slip that stated no final week, as before (control)", plain.ok && !plain.data.replayed && (await count()) === 1, why(plain));
+  // S7-F5 · the control first: with no lock held, the same stop finishes inside the same wait, so SF.2a's wait is the
+  // lock's, never a slow store's. ⚠️ A FIXTURE, DECLARED: the Owner's order is then withdrawn (no act can do that), so the
+  // held stop below meets the week as it was.
+  let freeDone = false;
+  const freeStop = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite: the unheld control" })
+    .then((r: any) => { freeDone = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const freeInTime = freeDone;
+  const freeR = await freeStop;
+  ok("SF.2b · control: with no lock held, the same stop finishes inside the same wait (the wait SF.2a meets is the lock's)",
+    freeInTime && freeR.ok && freeR.week.isFinal === true, `${freeInTime ? "in time" : "late"} · ${why(freeR)}`);
+  await dal.weekStore.patch(Z.id, { isFinal: false });
   // S7-F4 · the stop waits for a purchase in flight on the week's market: the market lock is held here, as a purchase holds
   // it from its in-lock finality read to its commit, while the Owner's stop runs.
   const { withLock } = await import("../../src/lib/server/locks.ts");
