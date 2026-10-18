@@ -2920,6 +2920,14 @@ report, admin page and audit row (D20a/D20d). D19.
 - `verify:house-bot-migrations-old-build` NOT MEASURED (exit 3: it needs a separate checkout of `origin/main` with its own
   `npm ci`). The migration is data only — no DDL — so the old build reads no schema it does not know.
 
+**LIVE `50cfe630` — read back 2026-10-18 18:03 EAT** (the release `?dpl=` from 15:03:40 UTC; health 200). `_prisma_migrations`
+records `20261018150000_counts_as_by_hand` finished 15:03:15 UTC, 1 step, no rollback, empty logs. Every one of the **56
+open markets** carries exactly the extra the rule owes (Σ over live accounts whose holder is on it of `countsAs − 1`,
+weight read raw): **0 mismatches** — so no market fell in the deploy window. 18 open markets carry desk accounts; the
+open markets' extra summed 16 before the release and 150 after. The four-account poll (true count 15) shows **41** on
+its page ("Watabiri 41") and in `/live`'s payload. (The weights moved twice during the day — officers re-saved — so the
+catch-up's own sums are not those of the morning's dry run; the read-back compares against the weights stored at the read.)
+
 ⚠️ **The deploy window.** `prisma migrate deploy` runs at the new container's boot while the previous build still serves
 (`railway.json`: 60 s overlap, 30 s draining). A holder's FIRST hand stake on a market placed by the OLD build after the
 catch-up ran would carry nothing for that account; the post-deploy read compares every open market's extra with the sum

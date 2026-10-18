@@ -112,7 +112,8 @@ Nothing here blocks betting. §0c's build order is DONE; **the one build in deve
 (§0d, approved 2026-09-28)**. What was found and fixed on
 2026-09-26 is `docs/HOUSE-BOTS.md` §12.5; (a)–(e) of the old list are done or decided (§0c, §5).
 
-- **2026-10-18 · "Counts as" BY HAND (Ali: "make the by hand place also count please") — §12.22.** Officers stake polls
+- **✅ 2026-10-18 · "Counts as" BY HAND — LIVE `50cfe630` (18:03 EAT, read back: migration applied, 56/56 open markets
+  carry exactly what the rule owes; the four-account poll shows 41) (Ali: "make the by hand place also count please") — §12.22.** Officers stake polls
   by hand from desk accounts; those stakes carry no marker and were not counted. Now the holder's FIRST stake on a market
   counts the account, whoever places it; the shift moves every open market the holder is on; migration
   `20261018150000_counts_as_by_hand` catches up the open markets staked only by hand (a no-op without the house tables).
