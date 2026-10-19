@@ -310,14 +310,16 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
   `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
   `qa:live` 363/0.
-- ⏳ **Release B — specifying** (workflow `wf_cef82fe2-70d`, read-only): five area build specs (the round card in every
-  state; the live line and the big chart made to agree with it; the board and the two chip rows; the market card; system,
-  motion, palette and copy), each adversarially reviewed, then a completeness critic against Round 0's 135 findings.
-  ⚠️ Found while specifying: the big chart's line plots each minute bar's CLOSE at its label time, while settlement reads
-  the OPEN of the bar labelled T (`updown-feed.ts`) — one minute apart, $0.29–$0.87 on gold — which is why Round 0 saw
-  the chart and the card disagree. Release B's line and the fixed chart both plot opens.
-- Then: build (one worktree per area, rebased onto PHOSPHOR 1b if it lands first) → integrate → the verify loop (10/10
-  twice) → release (this session pushes, rebased onto `main`).
+- ⏳ **Release B — NOT STARTED IN CODE; HANDED OVER (Ali, 2026-10-19: the three lanes move to Codex).** ▶ **START HERE:**
+  `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
+  packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
+  system, motion, palette and copy), the guards, the tools, the release steps, and the three lanes' push lock
+  (`F:/kipindi-locks/main-push.lock`). Records beside it: `ROUND0-REGISTER.md` (135 measured findings) and
+  `PANEL-SYNTHESIS.md` (the panel's proposal; the rulings win). ⚠️ Found while specifying: the big chart's line plots each
+  minute bar's CLOSE at its label time while settlement reads the OPEN of the bar labelled T (`updown-feed.ts`) — $0.29–$0.87
+  apart on gold — which is why Round 0 saw the chart and the card disagree; release B's line and the fixed chart plot opens.
+- Worktree on OMEGA: `C:\50pick-ssd\kipindi-udv` (own `node_modules`), branch `claude/updown-visual-10` = `main` at the
+  handover. Start release B on a fresh branch from `origin/main`.
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.

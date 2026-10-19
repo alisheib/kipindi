@@ -8,10 +8,18 @@
  * ⛔ LOCAL ONLY. It seeds through /api/dev-test/* and signs in through /auth/demo, all of which answer 404 in
  * production; it refuses to start against a BASE that is not localhost. Needs `next dev` on the in-memory store.
  *
+ * ⚠️ START THE SERVER WITH `UPDOWN_SCHEDULER=false UPDOWN_HEALER=false` (2026-10-19, U43 release B). With the chain timer
+ * running, the round under test (opened off the timer's grid by the handover endpoint) shares the board with a second
+ * round the timer opens at the next grid boundary, newer by boundary — the board shows THAT one as current, and release
+ * A's run photographed a fresh 4:36 round in place of the last 30 seconds and the lock. With the timer off, this driver
+ * performs every handover itself (the settle fallback below), which is exactly production's shape: one settle closes the
+ * round and opens its successor. The healer is off too, or it voids a round the timer was meant to close.
+ *
  * ⭐ NOTHING IS A FIXTURE. Rounds are opened, locked, closed and settled by the production service functions: a few
  * pre-roll rounds are armed and settled through /api/dev-test/updown-handover (the board gains history), the round under
- * test is the successor the last settle opened, and the dev server's own chain timer settles it at its close; a moved price is a confirmed read planted
- * through /api/dev-test/updown-observe; the demo player's stake is a real quick bet clicked on the card.
+ * test is the successor the last settle opened, and this driver settles it through the same endpoint after its close; a
+ * moved price is a confirmed read planted through /api/dev-test/updown-observe; the demo player's stake is a real quick
+ * bet clicked on the card.
  *
  * The phases, each photographed in every open page at once (the states are minutes long, so the matrix is shot in
  * parallel rather than one cell after another):
@@ -245,9 +253,10 @@ await photograph("p7-locked");
 await waitUntil(closeMs + 3_000, "the close");
 await photograph("p8-closed");
 
-// The settle is the SCHEDULER's, as on production: the dev server runs the same chain timer, which settles the round at
-// its close and opens the successor. Watch the board for the round's card leaving the live phases; only if the
-// scheduler has not settled it 40 s after the close does the driver settle it itself (the handover endpoint).
+// The settle: with the chain timer off (the header's run mode, UPDOWN_SCHEDULER=false) the driver performs it 40 s after
+// the close — the confirming state stays on screen for p8 — through the handover endpoint, whose one advanceChain call
+// closes the round and opens its successor exactly as production's settle does. With the timer on, it waits for the
+// timer's own settle first (the board's card leaving the live phases) and only then falls back.
 console.log("=== settle");
 const settledOnBoard = async () => bettor.page.evaluate((id) => {
   const card = document.querySelector(`article.mcardp:has(a[href="/updown/${id}"])`);
