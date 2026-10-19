@@ -409,6 +409,8 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+\{p\.side === "UP" \? "↑" : "↓"\} \{formatTzs\(p\.stake\)\}$/,
       /^\s+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var\(--text-muted\)" .*<circle cx="12" cy="8" r="3\.4" \/>.*<\/svg>$/,
       /^\s+\{outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" .*<path d=\{outcomeArrow\} \/><\/svg>\}$/,
+      // …and the side's word rides for a screen reader beside the hidden arrow (W4's review: "↑" was announced).
+      /^import \{ outcomeWord \} from "@\/lib\/side-label";$/,
     ],
     [CARD]: [
       /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,

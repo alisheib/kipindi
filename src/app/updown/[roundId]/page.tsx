@@ -35,7 +35,7 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
 import { pickLocalized } from "@/lib/localized";
 import { roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
-import { outcomeWord } from "@/lib/side-label";
+import { outcomeWord, sideWord } from "@/lib/side-label";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
 // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
@@ -685,7 +685,7 @@ export default async function UpDownRoundPage({
                         >
                           <span className="flex min-w-0 items-center gap-1.5">
                             <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
-                              {p.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}{formatTzs(p.stake)}
+                              {p.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}<span className="sr-only">{sideWord(t, p.side, "UPDOWN")} </span>{formatTzs(p.stake)}
                             </Chip>
                             <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
                           </span>

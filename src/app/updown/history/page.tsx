@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+import { sideWord } from "@/lib/side-label";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
@@ -548,7 +549,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                     </span>
                     {g.bets.map((b) => (
                       <Chip key={b.positionId} className="tabular-nums" variant={b.side === "UP" ? "yes" : "no"}>
-                        {b.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}{formatTzs(b.stake)}
+                        {b.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}<span className="sr-only">{sideWord(t, b.side, "UPDOWN")} </span>{formatTzs(b.stake)}
                       </Chip>
                     ))}
                   </div>
