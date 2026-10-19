@@ -196,9 +196,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // dictionary as it stands: `millionea.ruleInsider` names the staff role only (D19: no player surface names the
     // house's own accounts), in the binding rules' own words.
     // MASWALI-BUILD S5-TAB (2026-10-19) adds one navigation label, `journey.tabTicketsShort` (the journey rail's words for
-    // Tiketi zangu while Millionea's tab makes five: sw "Tiketi", for native review at Gate B; en and zh repeat their
-    // `tabTickets`), appended at each locale's journey block's end — pinned at 2f1312a41, whose blob is the dictionary as
-    // it stands. No versioned policy string and no house word moves.
+    // Tiketi zangu while Millionea's tab makes five: sw "Tiketi", for native review at Gate B; en "Tickets", the lead's
+    // ruling the same day; zh repeats its `tabTickets`), appended at each locale's journey block's end — pinned at
+    // e2d5d7e91, whose blob is the dictionary as it stands (2f1312a41 held en "My tickets"). No versioned policy string and
+    // no house word moves.
     // MASWALI-BUILD S5 pages (2026-10-17) publishes Privacy v2026-10-17 (COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7's
     // Millionea slip paragraph in three languages — and, by the lead's decision of 2026-10-18, WITH THE CEILING: each paragraph
     // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
@@ -210,7 +211,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "2f1312a41"],
+      ["src/lib/i18n-dict.ts", "e2d5d7e91"],
       ["src/app/legal/privacy/page.tsx", "f8828dcb7"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
