@@ -7488,8 +7488,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   }
   :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-200), var(--gold-200), var(--no-200)); }
 }
-/* Millionea's own mark: on the journey rail's pip and beside a More row's words, in gold and drawn crisp (no halo). A lit
-   tab keeps the siblings' treatment, its Fill glyph in their ink on the pill. */
+/* Millionea's own mark: on the journey rail's pip, where every tab carries one, in gold and drawn crisp (no halo); a More
+   row and the classic bar's link are words alone (every More row's words at one x). A lit tab keeps the siblings'
+   treatment, its Fill glyph in their ink on the pill. */
 .kp-millionea-glyph { color: var(--gold-300); }
 .kp-rail__item[data-on] .kp-millionea-glyph { color: inherit; }
 @media (forced-colors: active) {

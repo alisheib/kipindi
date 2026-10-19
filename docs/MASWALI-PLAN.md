@@ -2973,7 +2973,7 @@ platform's lexicon already owns a meaning, Millionea uses that key and adds none
 
 | Meaning | Where it shows | `I` key | Phosphor | Why this one |
 |---|---|---|---|---|
-| **Millionea, the product** | home card, the More row, the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
+| **Millionea, the product** | home card, the journey rail's tab (S5-TAB: a More row and the classic bar's link carry no mark), the Tiketi zangu segment, the hub's head | `millionea` (new) | `diamond` — ⏳ **Ali's pick** among `diamond` (recommended), `star-four`, `crown-simple`, `medal` | Phosphor's `diamond` is the card-suit rhombus, not a cut gem (its only gem is a brand logo); it reads as "the big prize" at 14 px and is unlike any other mark on 50pick. Not `crown` (the Leaderboard) nor `trophy` (a win). Replaces the coronet (O-5) |
 | A ticket | the ticket page, the switch's ticket counts | `ticket` (lexicon) | `ticket` | The platform's word for a held position |
 | A question not yet sealed | the ticket's 15 marks, the register | `markPending` (new) | `circle-dashed` | An open ring: "not known yet", never "wrong". Replaces `sealNil` |
 | Your answer matched the result | the ticket's marks | `checkCircle` (lexicon) | `check-circle` (Fill, success ink) | The platform's own "done right"; the word beside it carries the meaning (glyph + ink + word, Phosphor W4) |

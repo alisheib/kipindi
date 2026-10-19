@@ -3007,22 +3007,26 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     ⛔ **It never moves** (the lead's evaluation of the Owner's Kalshi reference, 2026-10-19: Kalshi's "Midterms" tab is a
     still gradient fill at its siblings' size and weight, and persistent navigation must not animate, WCAG 2.2.2).
     Forced colours draw plain system text. One class, `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by
-    every nav that draws Millionea; its mark — on the journey rail's pip and beside the classic rail's More row — is
-    Millionea's own glyph (`millionea`) in gold, and a lit tab draws the siblings' Fill on the pill; the classic bar's core
-    link carries no mark, as its siblings carry none. This gold is the Owner's label for a destination, not money: item 7
-    is untouched.
+    every nav that draws Millionea. Its mark, Millionea's own glyph (`millionea`) in gold (a lit tab draws the siblings'
+    Fill on the pill), is drawn only where every sibling carries one: on the journey rail's pip. The classic bar's core
+    link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
+    words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
+    More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
+    was 95% under a backdrop blur, and at 1280 the page's own words read through it. This gold is the Owner's label for
+    a destination, not money: item 7 is untouched.
     The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
     topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
     ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
     2026-10-19 by the ruling above.
-    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row; S5-TAB 4 and 6 the rest. The journey's
+    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row; S5-TAB 4, 6, 7 and 9 the rest. The journey's
     tab and desktop link are one drawn list, `journeyTabsFor(millionea)` (`src/lib/nav/active-tab.ts`), lit from that list
     (the `/millionea` row's `fallback` lights Maswali where the four are drawn); the rail draws five tracks while five show
     (§K 8b), the tab's glyph a shell key with its Fill (`scripts/glyphs/map.ts`), so the rail never waits for a sprite
     file. The classic bar's core link stands after Up & Down, and Results is More's first row at every width while it
     shows (one More, current on /results). A journey not-found page's first paint puts the lit
     Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
+    More keeps no slot for a mark and both its panels paint the whole surface (`test:maswali-ui` §5c).
     One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the

@@ -1,13 +1,12 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
-import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { MARK } from "@/lib/brand-mark";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -142,13 +141,14 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      this rail keeps its five equal tracks around the centre coin, so Millionea is a row behind More here, never a slot.
      Drawn only on the shell's own answer (the rollout admits the request, the reader is not on a break), as
      `inviteVisible` is.
-     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row wears the tab's own treatment: its words in the
-     three money colours (`kp-millionea-ink`, globals.css) and its mark in gold, the one ink every nav gives Millionea —
-     the journey's tab and both desktop links wear the same class. */
-  const millioneaRow: { href: string; label: string; glyph: ReactNode; ink: boolean }[] = millionea
-    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]
+     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row's words wear the three money colours
+     (`kp-millionea-ink`, globals.css), the one ink every nav gives Millionea — the journey's tab and both desktop links
+     wear the same class — and NO MARK: More's other rows carry none, and a mark before this row's words alone set them
+     ~28px right of every other row's (the lead's tile read, 2026-10-19). Words in the ink, as the classic bar's core link. */
+  const millioneaRow: { href: string; label: string; ink: boolean }[] = millionea
+    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }]
     : [];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode; ink?: boolean }[] = isAuthed
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; ink?: boolean }[] = isAuthed
     ? [
         ...millioneaRow,
         { href: "/results",        label: t.common.results },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
@@ -33,11 +33,12 @@ export function NavMore({
   active,
   cardSpacing,
 }: {
-  /** `glyph`: a row's own mark, drawn before its words — Maswali Millionea's row only (MASWALI-BUILD S5; the v6 delivery's
-   *  frames H13 and the 1280 overflow), a product line among destinations; every other row stays words alone.
-   *  `ink`: the row's words in Millionea's ink (`kp-millionea-ink`, globals.css; Ali, 2026-10-19, §M8a item 11) — the one
-   *  class every nav that draws Millionea wears; every other row's words stay bare, byte for byte. */
-  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; glyph?: ReactNode; ink?: boolean }[];
+  /** `ink`: the row's words in Millionea's ink (`kp-millionea-ink`, globals.css; Ali, 2026-10-19, §M8a item 11) — the one
+   *  class every nav that draws Millionea wears; every other row's words stay bare, byte for byte.
+   *  ⛔ No row carries a mark: every row's words start at one x. Millionea's row once drew its glyph before its words (the
+   *  v6 delivery's frame H13) and stood ~28px right of every other row; it is words in the ink now, as the classic bar's
+   *  core link is (the lead's tile read, MASWALI-BUILD S5-TAB, 2026-10-19). */
+  items: readonly { href: string; label: string; proposalsBadge?: ProposalsState; ink?: boolean }[];
   label: string;
   variant?: "bar" | "rail";
   /** Rail only: `More` reads as current when the page behind it is one of its own. */
@@ -217,7 +218,6 @@ export function NavMore({
                     background: a ? "var(--pill-active)" : "transparent",
                   }}
                 >
-                  {it.glyph}
                   {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
                   {/* DG-P-11 — the rail branch accepted `proposalsBadge` in its props and threw
                       it away, so the same destination read "Propose & earn · Coming soon" on a
@@ -277,7 +277,10 @@ export function NavMore({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated/95 p-1 backdrop-blur-xl shadow-overlay"
+          /* OPAQUE: the kit's elevated surface whole (`bg-bg-elevated`), the rail panel's and the language menu's. It was
+             95% under a backdrop blur, and at 1280 the page's own words and icon read through it (the lead's tile read,
+             MASWALI-BUILD S5-TAB, 2026-10-19): a menu over a page shows the menu alone. Border and radius unchanged. */
+          className="absolute right-0 top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay"
         >
           {items.map((it) => {
             const active = pathname.startsWith(it.href);
@@ -290,7 +293,6 @@ export function NavMore({
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] transition-colors hover:bg-bg-overlay"
                 style={{ color: active ? "var(--text)" : "var(--text-subtle)", fontWeight: active ? 600 : 500 }}
               >
-                {it.glyph}
                 {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
                 {it.proposalsBadge && (
                   <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />

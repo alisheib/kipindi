@@ -400,7 +400,9 @@ console.log("\n§5b · the ink: one class of tokens alone, a still gradient that
 /** Every nav that draws Millionea and the exact markup it wears the ink with (`n` times). Each S5-TAB item adds its nav. */
 const INK_WEARERS: ReadonlyArray<{ rel: string; at: string; n: number }> = [
   { rel: "src/components/layout/nav-more.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 2 },
-  { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
+  // RE-PINNED OPENLY, S5-TAB (the lead's tile read, 2026-10-19): the classic phone rail's More row dropped its mark (§5c) —
+  // was `ink: true, glyph: <MillioneaGlyph name="millionea" s={16} … kp-millionea-glyph" />`. Its words keep the ink.
+  { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }]', n: 1 },
   // S5-TAB B: the classic bar's core link (no mark: its siblings carry none), its words in the ink.
   { rel: "src/components/layout/top-app-bar.tsx", at: 'const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];', n: 1 },
   { rel: "src/components/layout/top-app-bar.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 1 },
@@ -468,6 +470,51 @@ const inkDefects = (src: (rel: string) => string) => {
   ok("5b.9 · CONTROL · a lit door that keeps the resting -300s is reported", litFlat.some((x) => x.includes("lit door")), j(litFlat));
   const nfLit = inkDefects(plant("src/app/globals.css", ":root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph { color: var(--gold-300); }", ""));
   ok("5b.10 · CONTROL · a not-found page's first paint that leaves the lit tab's glyph in the siblings' ink is reported", nfLit.some((x) => x.includes("not-found")), j(nfLit));
+}
+
+// ── §5c · S5-TAB: More's panels (the lead's tile read, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) ─────────────────────
+console.log("\n§5c · More's panels: every row's words start at one x (no row carries a mark), and both panels are opaque");
+/** Both panels' paint: the kit's elevated surface whole (the language menu's), border and radius as they were. */
+const PANEL_PAINT = ["rounded-modal", "border", "border-border-strong", "bg-bg-elevated"];
+const morePanelDefects = (src: (rel: string) => string) => {
+  const d: string[] = [];
+  const more = squash(code(src("src/components/layout/nav-more.tsx")));
+  const rail = squash(code(src("src/components/layout/bottom-nav.tsx")));
+  // One x: a mark before one row's words set them ~28px right of every other row's (the 16px glyph, its 6px margin, the
+  // row's 6px gap). Millionea's row is its words in the ink alone, as the classic bar's core link, and More keeps no slot.
+  const at = more.indexOf("items: readonly {");
+  const itemsType = at < 0 ? "" : more.slice(at, more.indexOf("}[];", at));
+  if (!itemsType || /\bglyph\b|ReactNode/.test(itemsType) || /\{it\.glyph\}/.test(more)) d.push("one x: More's rows keep a slot for a mark before their words");
+  const row = rail.slice(rail.indexOf("const millioneaRow"), rail.indexOf("const moreItems"));
+  if (!row.includes('millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];') || /glyph/i.test(row) || rail.includes("MillioneaGlyph")) d.push("one x: the phone rail's Millionea row carries a mark");
+  // Opaque: no page reads through either panel — the surface whole (no alpha step), no backdrop blur.
+  const panels = [...more.matchAll(/role="menu" className="([^"]*)"/g)].map((m) => m[1].split(" "));
+  const named = panels.map((cls) => ({ cls, which: cls.includes("top-[calc(100%+6px)]") ? "the bar's" : cls.includes("bottom-[calc(100%+8px)]") ? "the rail's" : "an unknown" }));
+  if (named.map((p) => p.which).sort().join() !== "the bar's,the rail's") d.push(`opaque: the More panels found are ${j(named.map((p) => p.which))}, not the bar's and the rail's`);
+  for (const { cls, which } of named) {
+    const bg = cls.filter((c) => c.startsWith("bg-"));
+    if (bg.some((c) => /\/\d+$/.test(c))) d.push(`opaque: ${which} panel paints a see-through surface (${bg.join(" ")})`);
+    if (cls.some((c) => c.startsWith("backdrop-"))) d.push(`opaque: ${which} panel blurs what is behind it`);
+    for (const c of PANEL_PAINT) if (!cls.includes(c)) d.push(`opaque: ${which} panel lost "${c}"`);
+  }
+  return d;
+};
+{
+  const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
+  const d = morePanelDefects(read);
+  ok("5c.1 · every row of a More list starts its words at one x: no row carries a mark — the phone rail's Millionea row is its words in the ink alone, as the bar's core link is, and More keeps no slot for one",
+    d.filter((x) => x.startsWith("one x")).length === 0, d.join(" | "));
+  ok("5c.2 · both More panels are opaque — the kit's elevated surface whole (bg-bg-elevated, the language menu's), no alpha step, no backdrop blur — border and radius unchanged: no page reads through a menu",
+    d.filter((x) => x.startsWith("opaque")).length === 0, d.join(" | "));
+  const marked = morePanelDefects(plant("src/components/layout/bottom-nav.tsx", "label: t.millionea.productLabel, ink: true }]", 'label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0" /> }]'));
+  ok("5c.1′ CONTROL · the mark put back on the phone rail's Millionea row is reported", marked.some((x) => x.includes("phone rail's Millionea row")), j(marked));
+  const slot = morePanelDefects(plant("src/components/layout/nav-more.tsx", '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', '{it.glyph}{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}'));
+  ok("5c.1″ CONTROL · a slot for a mark put back into More's rows is reported", slot.some((x) => x.includes("keep a slot")), j(slot));
+  const barSeen = morePanelDefects(plant("src/components/layout/nav-more.tsx", "top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated p-1 shadow-overlay", "top-[calc(100%+6px)] z-[50] min-w-[190px] rounded-modal border border-border-strong bg-bg-elevated/95 p-1 backdrop-blur-xl shadow-overlay"));
+  ok("5c.2′ CONTROL · the bar's panel back at 95% under a backdrop blur (the tile read's see-through panel) is reported",
+    barSeen.some((x) => x.includes("the bar's panel paints a see-through")) && barSeen.some((x) => x.includes("the bar's panel blurs")), j(barSeen));
+  const railSeen = morePanelDefects(plant("src/components/layout/nav-more.tsx", "bg-bg-elevated p-1 shadow-overlay max-h-[70dvh]", "bg-bg-elevated/90 p-1 shadow-overlay max-h-[70dvh]"));
+  ok("5c.2″ CONTROL · the rail's panel at a see-through step is reported", railSeen.some((x) => x.includes("the rail's panel paints a see-through")), j(railSeen));
 }
 
 // ── §6 · the slip ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -682,6 +729,6 @@ const perfDefects = (readAt: (rel: string) => string) => {
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
  *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 67 call sites, two of them in loops that run 6 (§3.1) and 9 (§4.3). */
-const MIN_ASSERTIONS = 94; // 80 + S5-TAB's seven (§5b, 2026-10-19) + S5-TAB A and B's seven (5b.7′, 5b.8–5b.10, 8.5′–8.5‴): 94 printed
+const MIN_ASSERTIONS = 100; // 80 + S5-TAB's seven (§5b, 2026-10-19) + S5-TAB A and B's seven (5b.7′, 5b.8–5b.10, 8.5′–8.5‴) + §5c's six (the lead's tile read): 100 printed
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
