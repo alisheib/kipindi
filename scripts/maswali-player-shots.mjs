@@ -94,6 +94,10 @@ async function open(page, path) {
   await page.waitForTimeout(500);
   return res;
 }
+async function verifyLocale(page, locale, name, width) {
+  const rendered = await page.locator("html").getAttribute("lang");
+  ok(`${name} · ${locale} @${width} · html language matches the cookie`, rendered === locale, `lang=${rendered}`);
+}
 
 // The weeks: seeded here on a fresh server, or a drive's already there (the seed answers 409 then).
 const owner = await browser.newContext();
@@ -166,6 +170,7 @@ for (const locale of LOCALES) {
       // page draws the ticket — a tile of the wrong page must fail here, not reach the reader.
       ok(`${name} · ${locale} @${width} · not the not-found page`, (await page.getByText(/^404 · /).count()) === 0);
       if (name === "ticket") ok(`ticket · ${locale} @${width} · the page draws the ticket`, (await page.getByTestId("millionea-ticket").count()) === 1);
+      await verifyLocale(page, locale, name, width);
       await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}.png`, fullPage: false });
       await shootScrolled(page, name, locale, width);
     }
@@ -186,6 +191,7 @@ for (const locale of passCookie ? LOCALES : []) {
     ok(`journey home · ${locale} @${width} · the card stands after the head`, (await page.getByTestId("millionea-home-card").count()) === 1);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(`journey home · ${locale} @${width} · no horizontal overflow`, over <= 1, `overflow=${over}px`);
+    await verifyLocale(page, locale, "journey home", width);
     await page.screenshot({ path: `${OUT}/journey-home-${locale}-${width}.png`, fullPage: false });
   }
   await ctx.close();

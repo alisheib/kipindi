@@ -988,6 +988,19 @@ const shotsScrollDefects = (src: string) => {
   if (!scroll.includes("if (coveredBottom < total - 1) throw new Error(")) d.push("an incomplete page can pass after the tile cap");
   return d;
 };
+const shotsLocaleDefects = (src: string) => {
+  const s = squash(code(src));
+  const helper = s.slice(s.indexOf("async function verifyLocale("), s.indexOf("const owner = await browser.newContext();"));
+  const normal = s.slice(s.indexOf("for (const locale of LOCALES) {"), s.indexOf("const passCookie ="));
+  const journey = s.slice(s.indexOf("for (const locale of passCookie ? LOCALES : []) {"), s.indexOf('ok("no page error on any page"'));
+  const d: string[] = [];
+  if (!helper.includes('page.locator("html").getAttribute("lang")') || !helper.includes("rendered === locale")) d.push("the rendered html language is not compared with the requested cookie");
+  const normalCheck = normal.indexOf("await verifyLocale(page, locale, name, width);");
+  if (normalCheck < 0 || normal.indexOf("await page.screenshot(", normalCheck) < 0) d.push("a player page can be shot before its language is checked");
+  const journeyCheck = journey.indexOf('await verifyLocale(page, locale, "journey home", width);');
+  if (journeyCheck < 0 || journey.indexOf("await page.screenshot(", journeyCheck) < 0) d.push("the journey home can be shot before its language is checked");
+  return d;
+};
 {
   const d = shotsOpenDefects(read(SHOTS));
   ok("12.1 · the full screenshot sweep reads load, a bounded quiet attempt, fonts, two frames and a settle beat", d.length === 0, d.join(" | "));
@@ -1002,10 +1015,37 @@ const shotsScrollDefects = (src: string) => {
   ok("12.4 · CONTROL · the old 120px gap behind fixed chrome is reported", narrow.includes("scroll overlap is smaller than the fixed top and bottom chrome with margin"), narrow.join(" | "));
   const incomplete = shotsScrollDefects(src.replace("if (coveredBottom < total - 1) throw new Error(", "if (false) throw new Error("));
   ok("12.5 · CONTROL · a page that silently ends at the tile cap is reported", incomplete.includes("an incomplete page can pass after the tile cap"), incomplete.join(" | "));
+  const language = shotsLocaleDefects(src);
+  ok("12.6 · every player page and journey home read html lang after the cookie before capture", language.length === 0, language.join(" | "));
+  const wrongLanguage = shotsLocaleDefects(src.replace("rendered === locale", "rendered !== locale"));
+  ok("12.7 · CONTROL · accepting the wrong html language is reported", wrongLanguage.includes("the rendered html language is not compared with the requested cookie"), wrongLanguage.join(" | "));
+  const noPlayerLanguage = shotsLocaleDefects(src.replace("await verifyLocale(page, locale, name, width);", "void page;"));
+  ok("12.8 · CONTROL · omitting a player page's language read is reported", noPlayerLanguage.includes("a player page can be shot before its language is checked"), noPlayerLanguage.join(" | "));
+  const noJourneyLanguage = shotsLocaleDefects(src.replace('await verifyLocale(page, locale, "journey home", width);', "void page;"));
+  ok("12.9 · CONTROL · omitting journey home's language read is reported", noJourneyLanguage.includes("the journey home can be shot before its language is checked"), noJourneyLanguage.join(" | "));
+}
+
+console.log("\n§13 · the shared receipt row leaves a readable gap beside a long money label");
+const receiptGapDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (!s.includes('"flex items-baseline justify-between gap-x-2"')) d.push("receipt label and value have no reserved horizontal gap");
+  if (!s.includes('const LABEL = "min-w-0 font-mono')
+    || !s.includes('toneCls ? "min-w-0 font-mono')) d.push("normal or fee label cannot shrink to wrap before its value");
+  return d;
+};
+{
+  const src = read("src/components/ui/receipt-row.tsx");
+  const d = receiptGapDefects(src);
+  ok("13.1 · normal and fee receipt rows reserve a gap while their labels can wrap", d.length === 0, d.join(" | "));
+  const noGap = receiptGapDefects(src.replace('justify-between gap-x-2', 'justify-between'));
+  ok("13.2 · CONTROL · the zero-gap How-to example is reported", noGap.includes("receipt label and value have no reserved horizontal gap"), noGap.join(" | "));
+  const noShrink = receiptGapDefects(src.replace('const LABEL = "min-w-0 font-mono', 'const LABEL = "font-mono'));
+  ok("13.3 · CONTROL · an unshrinkable label beside the figure is reported", noShrink.includes("normal or fee label cannot shrink to wrap before its value"), noShrink.join(" | "));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 136; // 2026-10-19 green run, through §12
+const MIN_ASSERTIONS = 143; // 2026-10-19 green run, through §13
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

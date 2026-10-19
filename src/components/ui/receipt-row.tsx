@@ -44,7 +44,7 @@ import { keepConnectives } from "@/components/ui/keep-run";
 /** The figure's role in the receipt. One rendering per role — that is the fix. */
 export type ReceiptEmphasis = "row" | "amount" | "fee" | "total" | "muted";
 
-const LABEL = "font-mono text-micro uppercase eyebrow text-text-subtle";
+const LABEL = "min-w-0 font-mono text-micro uppercase eyebrow text-text-subtle";
 
 const VALUE: Record<ReceiptEmphasis, string> = {
   // The reference/context lines — provider, phone, recipient name.
@@ -93,7 +93,7 @@ export function ReceiptRow({
   return (
     <div
       className={cn(
-        "flex items-baseline justify-between",
+        "flex items-baseline justify-between gap-x-2",
         divider && "border-t border-border pt-1.5",
         toneCls,
         className,
@@ -101,7 +101,7 @@ export function ReceiptRow({
     >
       {/* When the row carries a tone, the label must NOT re-assert `text-text-subtle`
           or it fights the row colour and only half the line reads as one thing. */}
-      <span className={toneCls ? "font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>
+      <span className={toneCls ? "min-w-0 font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>
       <span className={cn(VALUE[emphasis], alignEnd && "text-right")}>
         {money ? <Cash>{value}</Cash> : value}
       </span>
