@@ -333,8 +333,15 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   overlapping round windows: the local handover fixture rewound chains, and the board did not reject the contradictory
   pair. The local fixture, board display, layout and words are being corrected with their own guards and red mutations.
   The `/markets` count now reads the same Open word as its tab in every language; `/live` keeps its separate Live word.
-  Next: a fresh state run, then the full seven-width, three-language matrix twice. There are no after scores yet and no
-  Release B production push.
+  The 320px board fold, locked-card height, floating controls and receipt/detail words have focused guards and red
+  proofs. A browser hit test now measures at least 40px live reach for Info, Share and Details on `/markets` and the
+  featured home card at 320/360 in sw/en/zh; the old short reach is caught on both surfaces. The earned-money colour
+  audit also found pre-win gold on classic and Journey commit controls; those have been moved to brand with focused
+  guards and red plants. The pre-release R6 state drive was discarded: all 13 first-state cells reported a readiness
+  problem and an isolated local browser still had only one React-hydrated element, a `--:--` clock and aborted Next.js
+  JavaScript chunks. The dev server was stopped. A development-only static-cache rule is under investigation before a
+  fresh state drive; the R6 files are not evidence and no after score has been awarded. Next: restore local hydration,
+  run the full seven-width, three-language state matrix twice, then build and release. Release B is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
