@@ -325,8 +325,16 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   chips now fit in their visible row, so the duplicate filter sheet disappears and the first card starts 60px higher in
   the measured frame. The market footer now fits pool, info, Share and Details on one row; its loading skeleton matches
   the measured card height. A live successor pod no longer shows a blank countdown. Focused guards and deliberate red
-  mutations for these fixes passed and restored their source files. The next fresh state capture is running, followed by
-  the complete seven-width, three-language review. There are no after scores yet and no Release B production push.
+  mutations for these fixes passed and restored their source files. The R5 state capture then completed all 14 phases
+  with zero capture errors; its adversarial frame review set provisional score ceilings rather than awarding 10s. It
+  found that the 320px board's bet buttons sit under the fixed navigation, the locked card collapses vertically, floating
+  Chat/Needle controls cover content, and two action targets miss the 40px floor by half a pixel. The receipt needs grouped
+  dollars and 24-hour EAT time, while the settled detail repeats its next-round message. The Gold test frame also showed
+  overlapping round windows: the local handover fixture rewound chains, and the board did not reject the contradictory
+  pair. The local fixture, board display, layout and words are being corrected with their own guards and red mutations.
+  The `/markets` count now reads the same Open word as its tab in every language; `/live` keeps its separate Live word.
+  Next: a fresh state run, then the full seven-width, three-language matrix twice. There are no after scores yet and no
+  Release B production push.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
