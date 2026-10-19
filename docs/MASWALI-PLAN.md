@@ -388,7 +388,7 @@ The State paragraph below is the last push's.)**
   reference (a date, a line reference, a plan, section or case id) is no figure.
 - **Gate B (before ACTIVE):** MB-23 the objection door; OD-26 the regulator's stop and a week void for a 50pick fault;
   MB-69 the rules version on each ticket; S7's three KNOWN-RED cases (§6.1 line 14 and `FAILURE-INVENTORY.md` §9, on
-  `mln-sf`); the restore runbook re-applies the database's triggers and functions (a backup carries none).
+  `mln-sf`); the restore runbook proves that backup artifacts carry and restore the database's functions and triggers.
 - **Helpers** follow AGENTS.md (the one rules file). On Ali-Blade15 (failing RAM) a lane writes and runs nothing — the
   lead runs every heavy job through `~/heavy-node-lock.sh`, one at a time — and spawns no agents; at most four agents per
   session. Each lane round is briefed from its independent review's findings.
