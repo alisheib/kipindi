@@ -953,8 +953,40 @@ const plantDrive = (from: string, to: string) => {
     swallowed.includes("tile swallows a settle error before screenshot"), swallowed.join(" | "));
 }
 
+console.log("\n§12 · the full player screenshot sweep settles quickly without skipping the loaded page");
+const SHOTS = "scripts/maswali-player-shots.mjs";
+const shotsOpenDefects = (src: string) => {
+  const s = squash(code(src));
+  const from = s.indexOf("async function open(page, path) {");
+  const to = s.indexOf("const owner = await browser.newContext();", from);
+  const open = from < 0 || to < 0 ? "" : s.slice(from, to);
+  const steps = [
+    'await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 180_000 })',
+    'await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {})',
+    'await document.fonts.ready',
+    'requestAnimationFrame(() => requestAnimationFrame(() => done(true)))',
+    'await page.waitForTimeout(500)',
+  ];
+  let last = -1;
+  for (const step of steps) {
+    const at = open.indexOf(step, last + 1);
+    if (at < 0) return [`the screenshot open does not keep its loaded page, bounded quiet attempt, fonts, frames and settle beat in order: ${step}`];
+    last = at;
+  }
+  return [];
+};
+{
+  const d = shotsOpenDefects(read(SHOTS));
+  ok("12.1 · the full screenshot sweep reads load, a bounded quiet attempt, fonts, two frames and a settle beat", d.length === 0, d.join(" | "));
+  const src = read(SHOTS);
+  const from = 'await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {})';
+  if (count(src, from) !== 1) throw new Error("screenshot wait plant premise absent or ambiguous");
+  const slow = shotsOpenDefects(src.replace(from, 'await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {})'));
+  ok("12.2 · CONTROL · a minute-long quiet wait before every screenshot is reported", slow.length === 1, slow.join(" | "));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 113; // 2026-10-19 green run: 100 through §9, five in §10, eight in §11
+const MIN_ASSERTIONS = 133; // 2026-10-19 green run, through §12
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
