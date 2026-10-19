@@ -873,6 +873,14 @@ market-card information control takes the kit glyph size for its 44px target. Bo
 `plateGlyph(26)`; on the activity page, long translated labels sit below the plate so a 320px screen has room for the
 whole word. Release 2d covers the console's cards and statuses.
 
+Release 2d candidate: the shared `AdminKpi` chooses a stable subject glyph from the card's label, then draws that
+Duotone mark on the identity plate for both measured and unavailable figures. The plate moves above the caption on a
+narrow phone; the live indicator keeps its own first-row space. The shared admin status badges name their stored state
+with a filled family glyph beside the word, as do the chain/backup/error roundels and the payout-rail status. The
+existing admin KPI real-page probe now reads the caption itself inside the new header and plants clipping and broken
+row alignment after the change. The admin's private icon tiles in feature settings, restricted views and AI poll
+results/empty views join `IconPlate`'s identity, warning, success, danger or empty variants, and draw at `plateGlyph`.
+
 ### W6 — Empty states, one family
 `ui/empty-state.tsx`'s private drawings retire; W2 already retired the unused `GL` art. An empty state is a Duotone
 glyph on the shared plate. DA §C7 owns its size and single `--metal-gold` accent (§Q5), never money gold (`test:visual-pass-r5c` §2.9,

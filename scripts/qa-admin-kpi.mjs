@@ -22,12 +22,12 @@ const record = (label, pass, detail = "") => { results.push({ label, pass, detai
 function readKpis() {
   const rect = element => { const r = element.getBoundingClientRect(); return { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right, bottom:r.bottom }; };
   const read = element => {
-    const header = element.children[0], label = header.tagName === "SPAN" ? header : header.children[0];
+    const header = element.children[0], label = header.querySelector("[data-kpi-caption]");
     const body = element.children[1], figure = body?.children[0];
     if (!label || !figure) return { error:"Missing caption/body/figure" };
     const range = document.createRange(); range.selectNodeContents(label);
     const box = rect(label), rows = [...range.getClientRects()].filter(r=>r.width > 0).map(r=>({x:r.x,y:r.y,right:r.right,bottom:r.bottom}));
-    const style = getComputedStyle(label), pulse = header.tagName === "DIV" ? header.children[1] : null;
+    const style = getComputedStyle(label), pulse = header.querySelector("[data-kpi-pulse]");
     return {
       label:label.textContent, box:rect(element), caption:box, glyphs:rows, figure:rect(figure),
       parent:[...document.querySelectorAll(".admin-kpi")].map(n=>n.parentElement).indexOf(element.parentElement),
@@ -49,9 +49,13 @@ function verdict(cell) {
   if (cell.fonts!=="loaded" || cell.woff<3) issues.push("Project font resources did not load");
   for (const tile of cell.tiles) {
     if (!tile.full) issues.push(`Caption cut: ${tile.label}`);
+    if (tile.caption.x<tile.box.x-1 || tile.caption.right>tile.box.right+1) issues.push(`Caption escapes tile: ${tile.label}`);
     if (tile.style.size!=="9.5px") issues.push(`Caption size changed: ${tile.label}`);
     if (tile.figure.y<tile.caption.bottom-1) issues.push(`Figure collides with caption: ${tile.label}`);
-    if (tile.pulse && (tile.pulse.x<tile.caption.right-1 || tile.pulse.right>tile.box.right-1 || tile.pulse.y<tile.caption.y-1 || tile.pulse.bottom>tile.caption.y+20)) issues.push(`Live signal escapes first line: ${tile.label}`);
+    if (tile.pulse && (tile.pulse.right>tile.box.right-1 || tile.pulse.x<tile.box.x+1 ||
+        (tile.pulse.x<tile.caption.right-1 && tile.pulse.right>tile.caption.x+1 &&
+         tile.pulse.y<tile.caption.bottom-1 && tile.pulse.bottom>tile.caption.y+1)))
+      issues.push(`Live signal overlaps the caption or escapes its card: ${tile.label}`);
   }
   const bands = new Map();
   for (const tile of cell.tiles) {
@@ -84,10 +88,13 @@ try {
           cells.push({label,status:response.status(),...cell,issues,pageErrors});
           record(label,response.status()===200 && cell.lang===locale && !issues.length && !pageErrors.length,issues.join("; "));
           await page.screenshot({path:join(OUT,`${locale}-${width}-${route.replaceAll("/","_")}.png`)});
-          // Every cell uses the same geometry verdict: restore the actual old truncate declaration.
+          // Every cell uses the same geometry verdict: restore the old single-line
+          // truncation under a narrow budget, since the new mobile plate gives the
+          // caption the full card width rather than squeezing it beside the glyph.
           await page.evaluate(()=>document.querySelectorAll(".admin-kpi").forEach(element=>{
-            const header=element.children[0],caption=header.tagName==="SPAN"?header:header.children[0];
+            const caption=element.querySelector("[data-kpi-caption]");
             caption.style.whiteSpace="nowrap";caption.style.overflow="hidden";caption.style.textOverflow="ellipsis";
+            caption.style.maxWidth="35px";
           }));
           if (width===320 && ["/admin","/admin/markets"].includes(route)) {
             const planted=await page.evaluate(readKpis),truncated = verdict(planted);
@@ -95,8 +102,8 @@ try {
           }
           if (route==="/admin/markets" && width===320) {
             await page.evaluate(()=>document.querySelectorAll(".admin-kpi").forEach(element=>{
-              const header=element.children[0],caption=header.tagName==="SPAN"?header:header.children[0];
-              caption.style.whiteSpace="normal";caption.style.overflow="visible";caption.style.textOverflow="clip";
+              const caption=element.querySelector("[data-kpi-caption]");
+              caption.style.whiteSpace="normal";caption.style.overflow="visible";caption.style.textOverflow="clip";caption.style.maxWidth="";
               element.style.gridTemplateRows="auto auto";element.style.gridRow="auto";
             }));
             const unaligned = verdict(await page.evaluate(readKpis));

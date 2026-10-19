@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Tabs } from "@/components/ui/tabs";
 import { I, plateGlyph } from "@/components/ui/glyphs";
-import { IconPlate } from "@/components/ui/icon-plate";
+import { IconPlate, type PlateVariant } from "@/components/ui/icon-plate";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -62,33 +62,34 @@ const STATE_ORDER: ProposalsState[] = ["ACTIVE", "COMING_SOON", "MAINTENANCE", "
 const STATE_META: Record<ProposalsState, {
   label: string; sw: string; note: string;
   icon: (typeof I)[keyof typeof I];
+  plateVariant: PlateVariant;
   fg: string; selBg: string; selBorder: string;
 }> = {
   ACTIVE: {
     label: "Active", sw: "Inatumika",
     note: "Live — players can propose, vote, and earn the approval reward. No badge shown.",
-    icon: I.trophy, fg: "var(--brand-300)",
+    icon: I.live, plateVariant: "info", fg: "var(--brand-300)",
     selBg: "color-mix(in oklab, var(--brand-500) 16%, transparent)",
     selBorder: "color-mix(in oklab, var(--brand-500) 45%, transparent)",
   },
   COMING_SOON: {
     label: "Coming soon", sw: "Inakuja",
     note: "Gilt “coming soon” badge shows on every entry point. Proposing & voting are blocked; players are guided that it opens soon.",
-    icon: I.clock, fg: "var(--gold-300)",
+    icon: I.clock, plateVariant: "quiet", fg: "var(--gold-300)",
     selBg: "color-mix(in oklab, var(--gold-500) 16%, transparent)",
     selBorder: "color-mix(in oklab, var(--gold-500) 45%, transparent)",
   },
   MAINTENANCE: {
     label: "Maintenance", sw: "Matengenezo",
     note: "Amber “temporarily unavailable” treatment. Proposing & voting are blocked; players are told it’s back shortly.",
-    icon: I.pause, fg: "var(--warning-500)",
+    icon: I.pause, plateVariant: "warning", fg: "var(--warning-500)",
     selBg: "color-mix(in oklab, var(--warning-500) 18%, transparent)",
     selBorder: "color-mix(in oklab, var(--warning-500) 46%, transparent)",
   },
   DISABLED: {
     label: "Disabled", sw: "Imezimwa",
     note: "Every entry point is hidden and /proposals is redirected to an honest “not available” page.",
-    icon: I.xCircle, fg: "var(--text-muted)",
+    icon: I.xCircle, plateVariant: "quiet", fg: "var(--text-muted)",
     selBg: "color-mix(in oklab, var(--text-subtle) 14%, transparent)",
     selBorder: "var(--border-strong)",
   },
@@ -697,11 +698,10 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
                 40px tile. Size and radius now agree. */}
             <IconPlate
               size={40}
-              bg="color-mix(in oklab, var(--bg-base) 45%, transparent)"
-              fg={meta.fg}
-              border={`1px solid ${meta.selBorder}`}
+              variant={meta.plateVariant}
+              aria-hidden="true"
             >
-              <HeaderIcon s={plateGlyph(40)} />
+              <HeaderIcon s={plateGlyph(40)} tier="fill" />
             </IconPlate>
             <div className="min-w-0">
               <div className="text-[15px] font-bold">Proposals feature · state</div>

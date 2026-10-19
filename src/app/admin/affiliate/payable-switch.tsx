@@ -109,10 +109,10 @@ export function PayableSwitch({ copy, act }: { copy: InvitePayableCopy; act: Pay
       <div className="flex flex-wrap items-start gap-4">
         <IconPlate
           size={44}
-          bg={payable ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
-          fg={payable ? "var(--royal-300)" : "var(--warning-fg)"}
+          variant={payable ? "identity" : "warning"}
+          aria-hidden="true"
         >
-          {payable ? <I.unlock s={plateGlyph(44)} /> : <I.lock s={plateGlyph(44)} />}
+          {payable ? <I.unlock s={plateGlyph(44)} tier="duo" /> : <I.lock s={plateGlyph(44)} tier="fill" />}
         </IconPlate>
         <div className="min-w-0 flex-1 basis-[14rem]">
           <h2 id={titleId} className="font-display text-body-lg font-bold text-text">{copy.title}</h2>

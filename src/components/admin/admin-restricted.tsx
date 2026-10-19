@@ -12,6 +12,7 @@
  */
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 
 export function AdminRestricted({
   title,
@@ -29,12 +30,9 @@ export function AdminRestricted({
       <div className="px-4 lg:px-6 py-5">
         <AdminCard title="Restricted" sw="Imezuiliwa">
           <div className="flex items-start gap-3">
-            {/* ⛔ LITERALS, NOT `h-10 w-10` — the spacing scale is overridden
-                (tailwind.config.ts:200-215) and that pair is 80×80px beside 13.5px body
-                copy. 40px = --tap-min, the kit's glyph-tile size. */}
-            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-no-500/10 text-no-300">
-              <I.lock s={plateGlyph(40)} />
-            </span>
+            <IconPlate size={40} variant="warning" aria-hidden="true">
+              <I.lock s={plateGlyph(40)} tier="fill" />
+            </IconPlate>
             <div>
               <p className="text-[13.5px] font-semibold text-text">Your role cannot view this page.</p>
               <p className="mt-1 text-body-sm leading-relaxed text-text-muted">

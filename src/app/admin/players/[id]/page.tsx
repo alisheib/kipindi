@@ -277,7 +277,7 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
                 </p>
               )}
               <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <AccountStatusBadge status={user.status} dot />
+                <AccountStatusBadge status={user.status} />
                 {kyc && canSeePII && (
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
                     <Chip size="sm" variant={kycStatusVariant(kyc.status)}>

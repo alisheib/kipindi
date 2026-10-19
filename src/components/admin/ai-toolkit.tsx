@@ -26,7 +26,8 @@ import { useRouter } from "next/navigation";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmModal, useExitPhase } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/toast";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Spinner } from "@/components/ui/spinner";
 import type { AiToolkitStatus } from "@/lib/server/ai-controls";
 import {
@@ -174,9 +175,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           style={{ transformOrigin: "top right" }}
         >
           <div className="flex items-center gap-2 mb-3">
-            {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so this
-                glyph tile had no brand wash behind it. */}
-            <span className="grid h-7 w-7 place-items-center rounded-md bg-brand-500/[0.12] text-brand-300"><I.sparkle s={15} /></span>
+            <IconPlate size={32} variant="identity" aria-hidden="true"><I.sparkle s={plateGlyph(32)} tier="duo" /></IconPlate>
             <div className="min-w-0">
               <p className="font-display text-[13px] font-semibold text-text leading-tight">AI toolkit</p>
               {/* DG-A-14 — "Every AI feature · one place" identifies nothing; it is the

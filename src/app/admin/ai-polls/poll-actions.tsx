@@ -24,7 +24,8 @@ import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { Toggle } from "@/components/ui/toggle";
 import { DurationInput } from "@/components/ui/duration-input";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import {
   generatePollAction,
   generatePollBatchAction,
@@ -512,7 +513,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                           so `h-8` was a 48px disc round an 18px glyph, while the sibling result
                           medallion at L659 was `h-9` = 64px: the same object at two sizes. All
                           four are 36px now. Decorative, so no tap floor applies. */}
-                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-yes-500/15 text-yes-300 shrink-0"><I.check s={18} /></span>
+                      <IconPlate size={36} variant="success" aria-hidden="true"><I.checkCircle s={plateGlyph(36)} tier="fill" /></IconPlate>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Poll ready for review</p>
                         <p className="font-mono text-[11px] text-yes-300">Quality: {result.quality}%</p>
@@ -526,7 +527,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   <>
                     <div className="flex items-center gap-2.5">
                       {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
-                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-warning-bg text-warning-fg shrink-0"><I.warning s={18} /></span>
+                      <IconPlate size={36} variant="warning" aria-hidden="true"><I.alertCircle s={plateGlyph(36)} tier="fill" /></IconPlate>
                       <div>
                         <p className="font-display text-[15px] font-semibold text-text">Didn&apos;t pass quality checks</p>
                         <p className="font-mono text-[11px] text-warning-fg">Try generating again</p>
@@ -542,7 +543,7 @@ export function GenerateForm({ generatable }: { generatable: string[] }) {
                   <>
                     <div className="flex items-center gap-2.5">
                       {/* ⚠️ LITERALS — see the pass medallion above. `h-8` is 48px here. */}
-                      <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-full bg-no-500/15 text-no-300 shrink-0"><I.x s={18} /></span>
+                      <IconPlate size={36} variant="danger" aria-hidden="true"><I.xCircle s={plateGlyph(36)} tier="fill" /></IconPlate>
                       <div>
                         {/* ⭐ A KNOWN REFUSAL NAMES ITSELF. "Generation failed" says what did not
                             happen; "AI credit limit reached" says what DID, and only the second can
@@ -811,9 +812,9 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
                 <div className="flex items-center gap-3">
                   {/* ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale) — 36px, the same
                       as the three result medallions above in this same component. */}
-                  <span className={`grid h-[36px] w-[36px] shrink-0 place-items-center rounded-full ${error ? "bg-no-500/15 text-no-300" : "bg-yes-500/15 text-yes-300"}`}>
-                    {error ? <I.x s={18} /> : <I.check s={18} />}
-                  </span>
+                  <IconPlate size={36} variant={error ? "danger" : "success"} aria-hidden="true">
+                    {error ? <I.xCircle s={plateGlyph(36)} tier="fill" /> : <I.checkCircle s={plateGlyph(36)} tier="fill" />}
+                  </IconPlate>
                   <p className="font-display text-[15px] font-semibold text-text">
                     {/* A known refusal NAMES ITSELF — "Batch failed" only says what did not happen. */}
                     {error ? (refusalTitle(refusal) ?? "Batch failed") : `Batch complete — ${summary?.total ?? 0} generated`}

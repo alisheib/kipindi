@@ -314,7 +314,7 @@ export const FILL_KEYS: readonly string[] = [
   // A status in a status container: the doors Callout, NoticeBar, StatusFlag, Toast, a receipt's status, the KYC panel's
   // plate and the proposal's chip draw their glyph in Fill. Circled keys only for a tick or a cross: Phosphor fills a
   // bare `check` or `x` into a solid square, which reads as a checkbox.
-  "info", "warning", "alertCircle", "checkCircle", "xCircle", "clock", "lock", "shieldcheck", "bellOff", "eye",
+  "info", "warning", "alertCircle", "checkCircle", "xCircle", "clock", "clockPending", "lock", "shieldcheck", "bellOff", "eye",
   "rotateCcw", "mail", "camera", "flame2", "edit",
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
@@ -340,6 +340,12 @@ export const DUO_KEYS: readonly string[] = [
   "chart", "receipt", "bellRing", "fileSignature", "device", "megaphone", "vibrate", "sparkle", "clock",
   // W5 boxed stat tiles: the number's subject is an identity, not a status claim.
   "calendarClock", "trophy", "net",
+  // R-ADMIN: the console's KPI subjects use the same Duotone identity grammar as player stats.
+  "dashboard", "insights", "settlement", "finance", "house", "desk", "tax", "aiUsage",
+  "roster", "cohorts", "rounds", "weeks", "pools", "integrity", "contacts", "invites",
+  "traffic", "privacy", "approvals", "staff", "roles", "bot", "brain", "gauge",
+  "reconcile", "shieldAlert", "shieldOff", "archive", "megaphone", "calendar", "sources",
+  "keyRound", "refund", "limits", "agent", "globe", "server", "receipt", "checkCircle", "clockPending", "lock", "unlock",
   "devicePhone", "deviceDesktop", "deviceTablet",
   // W6: the empty-state family uses the same key as its page, on one identity plate.
   "markets", "audit", "sources", "reports", "compass",
@@ -357,7 +363,7 @@ export const DUO_KEYS: readonly string[] = [
  * File names inside `public/icons/g/`.
  */
 export const PREVIOUS_SPRITES: readonly string[] = [
-  "app.76a3696e.svg", "admin.75aeb290.svg",
+  "app.438dde1d.svg", "admin.75aeb290.svg",
 ];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */

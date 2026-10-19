@@ -217,7 +217,9 @@ function StatusPill({ status }: { status: Status }) {
         : { borderColor: "var(--border)", color: "var(--text-muted)" };
   return (
     <span className="inline-flex items-center gap-1 rounded-sm border px-2 h-6 font-mono text-micro font-bold uppercase tracking-[0.1em]" style={style}>
-      {status === "operational" ? <I.check s={11} className="text-yes-300" /> : <I.alertCircle s={11} />}
+      {status === "operational" ? <I.checkCircle s={11} tier="fill" aria-hidden="true" />
+        : status === "delayed" ? <I.alertCircle s={11} tier="fill" aria-hidden="true" />
+        : <I.xCircle s={11} tier="fill" aria-hidden="true" />}
       {status}
     </span>
   );

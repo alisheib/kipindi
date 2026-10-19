@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 
 export default function PollNotFound() {
   return (
@@ -21,11 +22,7 @@ export default function PollNotFound() {
       <div className="px-4 lg:px-6 py-5">
         <AdminCard>
           <div className="flex flex-col items-center gap-4 py-8 text-center">
-            {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
-                so `h-12` rendered a 128px disc round a 22px glyph. */}
-            <div className="h-[48px] w-[48px] rounded-pill bg-bg-overlay flex items-center justify-center">
-              <I.search s={22} className="text-text-subtle" />
-            </div>
+            <IconPlate size={48} variant="empty" aria-hidden="true"><I.search s={plateGlyph(48)} tier="duo" /></IconPlate>
             <div>
               <p className="font-display text-[16px] font-bold text-text">Poll not found</p>
               <p className="text-[13px] italic text-text-tertiary mt-1">Kura haikupatikana</p>

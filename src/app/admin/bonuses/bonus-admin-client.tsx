@@ -85,10 +85,10 @@ function RouteCard({
           kit atom rather than a retyped plate; see the note at that file's 36px site. */}
       <IconPlate
         size={36}
-        bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)"}
-        fg={on ? "var(--royal-300)" : "var(--text-muted)"}
+        variant="identity"
+        aria-hidden="true"
       >
-        <Icon s={plateGlyph(36)} />
+        <Icon s={plateGlyph(36)} tier="duo" />
       </IconPlate>
       <div className="flex-1 min-w-0">
         <div className="text-[14px] font-bold">
@@ -157,10 +157,10 @@ export function BonusAdminClient({ config, productWithdrawn = false }: { config:
       >
         <IconPlate
           size={44}
-          bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
-          fg={on ? "var(--royal-300)" : "var(--warning-fg)"}
+          variant={on ? "identity" : "warning"}
+          aria-hidden="true"
         >
-          {on ? <I.gift s={plateGlyph(44)} /> : <I.pause s={plateGlyph(44)} />}
+          {on ? <I.gift s={plateGlyph(44)} tier="duo" /> : <I.pause s={plateGlyph(44)} tier="fill" />}
         </IconPlate>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">

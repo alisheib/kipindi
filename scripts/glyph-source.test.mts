@@ -143,7 +143,7 @@ const TEXT_ICONS: Record<string, [count: number, why: string]> = {
 /** The console's files (`src/app/admin/`, `src/components/admin/`) and the server's (`src/lib/server/`, `src/app/api/`). */
 const CONSOLE_SRC = /^src\/(?:app|components)\/admin\//;
 const SERVER_SRC = /^src\/(?:lib\/server|app\/api)\//;
-const CONSOLE_TEXT_ICONS = 128; // release 3 brings it to the console's punctuation alone (W4's review: +1, the affiliate page's "tap the ‹")
+const CONSOLE_TEXT_ICONS = 123; // R-ADMIN: the status roundels and player-account chip no longer type five icon characters.
 const SERVER_TEXT_ICONS = 140; // log lines, alerts and the console's messages built on the server
 
 /** Every image file under public/ (the family's sprites, public/icons/g/, are test:glyph-sync's) — what each one is. */
@@ -321,7 +321,7 @@ const plants: [string, RegExp, World][] = [
     edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
   ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
     edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],
-  ["the console gains a typed mark", new RegExp("§7 the console types 129 icon character[(]s[)], more than its 128"),
+  ["the console gains a typed mark", new RegExp("§7 the console types 124 icon character[(]s[)], more than its 123"),
     withFile("src/app/admin/zz/page.tsx", "export default function P() { return <span>✓</span>; }\n")],
   ["the server's text loses its marks and the total is not lowered", new RegExp("§7 the server now types 1[0-3][0-9] icon character"),
     edit("src/lib/server/marketing/owner-save.ts", (t) => t.split("✓").join("ok"))],

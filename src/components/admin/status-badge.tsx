@@ -27,6 +27,7 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
+import type { FillGlyphKey } from "@/components/ui/glyphs";
 import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE, KYC_APPROVAL, FUNDED } from "@/lib/admin-status-lexicon";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
@@ -79,6 +80,9 @@ const LABEL: Record<MarketStatus, string> = {
   RESOLVED: LIFECYCLE.resolved.en,
   VOIDED: LIFECYCLE.voided.en,
 };
+const MARKET_GLYPH: Record<MarketStatus, FillGlyphKey> = {
+  DRAFT: "edit", LIVE: "live", CLOSED: "lock", RESOLVED: "resolved", VOIDED: "xCircle",
+};
 
 export function MarketStatusBadge({
   status,
@@ -88,7 +92,7 @@ export function MarketStatusBadge({
   size?: "sm" | "md" | "lg";
 }) {
   return (
-    <Chip size={size} variant={VARIANT[status] ?? "neutral"}>
+    <Chip size={size} variant={VARIANT[status] ?? "neutral"} glyph={MARKET_GLYPH[status]}>
       {LABEL[status] ?? status}
     </Chip>
   );
@@ -139,7 +143,11 @@ export function kycStatusLabel(status: KycStatus, rejectReason?: string | null):
 }
 
 export function KycStatusBadge({ status, rejectReason, size = "sm" }: { status: KycStatus; rejectReason?: string | null; size?: "sm" | "md" | "lg" }) {
-  return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status, rejectReason)}</Chip>;
+  const glyph: Record<KycStatus, FillGlyphKey> = {
+    NOT_STARTED: "idCard", IN_PROGRESS: "clock", PENDING_REVIEW: "clockPending",
+    APPROVED: "checkCircle", REJECTED: "xCircle", ADDITIONAL_INFO_REQUIRED: "alertCircle",
+  };
+  return <Chip size={size} variant={kycStatusVariant(status)} glyph={glyph[status]}>{kycStatusLabel(status, rejectReason)}</Chip>;
 }
 
 /* ── KYC STAGE — the roster's DERIVED identity column (2026-09-11) ────────── */
@@ -195,7 +203,12 @@ export function kycStageLabel(cell: KycCell): string {
 }
 
 export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm" | "md" | "lg" }) {
-  return <Chip size={size} variant={kycStageVariant(cell)}>{kycStageLabel(cell)}</Chip>;
+  const glyph: Record<KycCell, FillGlyphKey> = {
+    nothing_yet: "idCard", funded_nothing_yet: "idCard", uploaded: "clockPending",
+    with_us: "clockPending", more_needed: "alertCircle", rejected_after_upload: "xCircle",
+    rejected_no_docs: "xCircle", approved: "checkCircle", unreadable: "alertCircle",
+  };
+  return <Chip size={size} variant={kycStageVariant(cell)} glyph={glyph[cell]}>{kycStageLabel(cell)}</Chip>;
 }
 
 /* ── How an APPROVED identity was approved (2026-10-10) ───────────────────── */
@@ -321,7 +334,7 @@ export function DsarStatusBadge({ status, size = "sm", deletionFailed = false }:
     : status === "PARTIAL" ? (deletionFailed ? REVIEW.dsarPartialDeleteFailed.en : REVIEW.dsarPartial.en)
     : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
     : REVIEW.dsarRejected.en;
-  return <Chip size={size} variant={variant}>{label}</Chip>;
+  return <Chip size={size} variant={variant} glyph={status === "FULFILLED" ? "checkCircle" : status === "REJECTED" ? "xCircle" : status === "PARTIAL" && deletionFailed ? "alertCircle" : "clockPending"}>{label}</Chip>;
 }
 
 /* ── Objection status (F11, Family 5) ────────────────────────────────────── */
@@ -343,7 +356,7 @@ export function ObjectionStatusBadge({ status, size = "sm" }: { status: Objectio
     status === "OPEN" ? OBJECTION.open.en
     : status === "UPHELD" ? OBJECTION.upheld.en
     : OBJECTION.rejected.en;
-  return <Chip size={size} variant={variant}>{label}</Chip>;
+  return <Chip size={size} variant={variant} glyph={status === "OPEN" ? "lock" : status === "UPHELD" ? "checkCircle" : "xCircle"}>{label}</Chip>;
 }
 
 /* ── Account status — players AND staff (Family 6) ───────────────────────── */
@@ -382,8 +395,11 @@ function humanise(token: string): string {
   return flat.charAt(0).toUpperCase() + flat.slice(1);
 }
 
-export function AccountStatusBadge({ status, size = "sm", dot }: { status: string; size?: "sm" | "md" | "lg"; dot?: boolean }) {
-  return <Chip size={size} variant={playerStatusVariant(status)}>{dot ? "● " : ""}{accountStatusLabel(status)}</Chip>;
+export function AccountStatusBadge({ status, size = "sm" }: { status: string; size?: "sm" | "md" | "lg" }) {
+  const presented = presentedAccountStatus(status);
+  const glyph: FillGlyphKey = presented === "ACTIVE" ? "checkCircle"
+    : presented === "COOLED_OFF" ? "clock" : presented === "SUSPENDED" || presented === "SELF_EXCLUDED" ? "lock" : "xCircle";
+  return <Chip size={size} variant={playerStatusVariant(status)} glyph={glyph}>{accountStatusLabel(status)}</Chip>;
 }
 
 /* ── DSAR request TYPE (Family 4) ────────────────────────────────────────── */

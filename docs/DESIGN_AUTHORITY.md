@@ -2202,7 +2202,7 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      A tick or a cross in Fill is always the circled one: Phosphor fills a bare check or ✕ into a square, which reads as a
      checkbox.
    - **Duotone** — identity on a plate (W5 and W6): hub rows, notification plates, help and trust cells, category sigils,
-     empty states. Life without claiming a state.
+     empty states and the admin's KPI subjects. Life without claiming a state.
    - **Line** (Bold up to 26px, Regular from 27) — what is acted on or read past: actions, chevrons and arrows, marks among
      words, meta beside data (a time, a count), inactive destinations, form adornments, and the quiet outcomes — lost,
      void, pending — because a loss is bookkeeping (§M7). A resolved market keeps the seal's Line: only a win is solid.
@@ -2220,6 +2220,12 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    category watermark sits behind a question or its controls. A boxed stat uses `StatIcon` for the same derived glyph
    size and identity material; a long translated label can sit below its plate and use the tile's full width.
    Deposit and withdrawal doors keep their respective arrows above, including a low-balance route to deposit.
+   **Admin cards and status badges (R-ADMIN):** `AdminKpi` chooses the subject once through `adminKpiGlyph` and places
+   its Duotone glyph on the shared identity plate, including when the figure cannot be computed. On narrow phones the
+   plate sits above the whole caption so a live indicator cannot crush the words. The admin's shared status badges
+   pass their stored status's `FillGlyphKey` to `Chip`; a round status pill and the payout rail do the same. Every status
+   still says its word beside or immediately after the mark. Admin feature rows, restricted views and AI poll results
+   use the same `IconPlate` variants and derive the glyph size with `plateGlyph`.
    ⚖️ **Ruled 2026-10-17 (Ali): "Switch to Phosphor"** — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) §
    "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)"; the work and
    its rulings (weight, tone, the selected state, the lexicon) are [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md).

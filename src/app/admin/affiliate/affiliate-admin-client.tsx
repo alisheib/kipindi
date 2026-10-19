@@ -143,10 +143,10 @@ function RewardCard({
             four. The glyph stays the caller's, derived by `plateGlyph`. */}
         <IconPlate
           size={36}
-          bg={active ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)"}
-          fg={active ? "var(--royal-300)" : "var(--text-muted)"}
+          variant="identity"
+          aria-hidden="true"
         >
-          <Icon s={plateGlyph(36)} />
+          <Icon s={plateGlyph(36)} tier="duo" />
         </IconPlate>
         <div className="flex-1 min-w-0">
           <div className="text-[14.5px] font-bold">

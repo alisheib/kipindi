@@ -167,7 +167,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <AdminCard title="Audit chain · integrity" sw="Mlolongo wa ukaguzi">
             <div className="flex items-center gap-4">
-              <StatusPill status={chain.valid ? "ok" : "fail"} label={chain.valid ? "OK" : "✗"} />
+              <StatusPill status={chain.valid ? "ok" : "fail"} />
               <div className="flex-1 min-w-0">
                 <p className="font-display font-bold text-body-sm text-text">
                   {chain.valid ? "Chain valid" : `Chain broken at index ${chain.index}`}
@@ -218,7 +218,6 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
             <div className="flex items-center gap-4">
               <StatusPill
                 status={backup.kind === "ok" ? "ok" : backup.kind === "unverified" || backup.kind === "stale" ? "warn" : "fail"}
-                label={backup.kind === "ok" ? "✓" : backup.kind === "unverified" || backup.kind === "stale" ? "!" : "✗"}
               />
               <div className="flex-1 min-w-0">
                 <p className="font-display font-bold text-body-sm text-text">
@@ -288,7 +287,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
               hardcoded backup tick this page used to carry. */}
           <AdminCard title="Error monitoring" sw="Ufuatiliaji wa hitilafu">
             <div className="flex items-center gap-4">
-              <StatusPill status={alerting ? "ok" : "warn"} label={alerting ? "✓" : "!"} />
+              <StatusPill status={alerting ? "ok" : "warn"} />
               <div className="flex-1 min-w-0">
                 <p className="font-display font-bold text-body-sm text-text">
                   {alerting ? "Durable and alerting" : "Durable — but nobody is paged"}

@@ -34,6 +34,7 @@
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { I, type FillGlyphKey } from "./glyphs";
 
 type Variant =
   | "neutral" | "cat"
@@ -193,6 +194,7 @@ export function Chip({
   metrics,
   selected,
   dot,
+  glyph,
   className,
   children,
   style,
@@ -211,10 +213,14 @@ export function Chip({
   metrics?: "status" | "base";
   selected?: boolean;
   dot?: boolean;
+  /** A status's family glyph. Callers choose its meaning; this atom supplies the
+   * compact Fill treatment beside the word, so colour is never the only cue. */
+  glyph?: FillGlyphKey;
 }) {
   const sz = sizeStyles[size];
   const tall = metrics ? metrics === "status" : isStatus(variant);
   const { height, ...szRest } = tall ? sz.status : sz.base;
+  const StatusGlyph = glyph ? I[glyph] : null;
   return (
     <span
       /**
@@ -296,6 +302,7 @@ export function Chip({
       {...rest}
     >
       {dot && <span className="live-dot shrink-0" style={{ width: sz.dot, height: sz.dot }} />}
+      {StatusGlyph && <StatusGlyph s={size === "xs" ? 10 : size === "sm" ? 11 : 13} tier="fill" aria-hidden="true" className="shrink-0" />}
       {children}
     </span>
   );

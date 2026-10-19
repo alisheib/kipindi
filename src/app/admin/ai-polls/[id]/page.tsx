@@ -3,7 +3,8 @@ import Link from "next/link";
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { Chip } from "@/components/ui/chip";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { formatDateTimeSafe, formatUsd } from "@/lib/utils";
 import { SELECTION } from "@/lib/admin-status-lexicon";
 import { aiPollStateLabel } from "@/components/admin/status-badge";
@@ -220,11 +221,7 @@ async function PollDetailContent({ params }: PollDetailProps) {
             <QualityBadges indicators={poll.qualityIndicators} overall={poll.overallQuality} />
           ) : (
             <div className="flex items-center gap-2 py-3">
-              {/* ⚠️ LITERALS, not `h-8 w-8` — spacing is overridden (tailwind.config.ts:200-215)
-                  so `h-8` was a 48px disc round a 14px glyph. */}
-              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
-                <I.shieldAlert s={14} className="text-text-subtle" />
-              </div>
+              <IconPlate size={32} variant="empty" aria-hidden="true"><I.chart s={plateGlyph(32)} tier="duo" /></IconPlate>
               <div>
                 <p className="text-body-sm text-text-muted">No quality data</p>
                 <p className="text-body-sm text-text-subtle">
@@ -262,10 +259,7 @@ async function PollDetailContent({ params }: PollDetailProps) {
             </div>
           ) : (
             <div className="flex items-center gap-2 py-3">
-              {/* ⚠️ LITERALS — see the quality medallion above. `h-8` is 48px here. */}
-              <div className="h-[32px] w-[32px] rounded-pill bg-bg-overlay flex items-center justify-center">
-                <I.fileCheck s={14} className="text-text-subtle" />
-              </div>
+              <IconPlate size={32} variant="empty" aria-hidden="true"><I.sources s={plateGlyph(32)} tier="duo" /></IconPlate>
               <p className="text-body-sm text-text-muted">
                 {poll.state === "VALIDATION_FAILED" || poll.state === "FILTERED"
                   ? "No sources were returned by the AI provider."

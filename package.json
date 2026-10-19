@@ -544,6 +544,8 @@
     "red:phosphor-stat-plates": "tsx scripts/phosphor-stat-plates.test.mts --prove-red",
     "test:phosphor-w5-controls": "tsx scripts/phosphor-w5-controls.test.mts",
     "red:phosphor-w5-controls": "tsx scripts/phosphor-w5-controls.test.mts --prove-red",
+    "test:phosphor-admin-cards": "tsx scripts/phosphor-admin-cards.test.mts",
+    "red:phosphor-admin-cards": "tsx scripts/phosphor-admin-cards.test.mts --prove-red",
     "test:glyph-sync": "tsx scripts/glyph-sync.test.mts",
     "red:glyph-sync": "tsx scripts/glyph-sync.test.mts --prove-red",
     "test:glyph-source": "tsx scripts/glyph-source.test.mts",

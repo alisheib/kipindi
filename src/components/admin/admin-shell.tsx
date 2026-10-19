@@ -9,7 +9,9 @@ import { cache as reactCache } from "react";
 import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
 import { EmptyStateSection } from "@/components/ui/empty-state";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
+import { adminKpiGlyph } from "./admin-kpi-glyph";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminCrumbs } from "./admin-crumbs";
 import { AdminSidebarNav } from "./admin-sidebar-nav";
@@ -467,13 +469,18 @@ export function AdminKpi({
    *  genuine zero. */
   unavailable?: boolean;
 }) {
+  const SubjectGlyph = I[adminKpiGlyph(label)];
+  const subject = <IconPlate size={26} variant="identity" aria-hidden="true"><SubjectGlyph s={plateGlyph(26)} tier="duo" /></IconPlate>;
   if (unavailable) {
     return (
       <div
         className="glass-panel admin-kpi p-2 grid grid-rows-subgrid row-span-2 gap-1.5 min-h-[110px]"
         title="This figure could not be computed — a data read failed. It is NOT zero."
       >
-        <span className="font-mono uppercase text-text-tertiary min-w-0 whitespace-normal" style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}>{label}</span>
+        <div className="min-w-0 flex items-start gap-2 max-sm:flex-col">
+          {subject}
+          <span data-kpi-caption="" className="font-mono uppercase text-text-tertiary min-w-0 whitespace-normal" style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}>{label}</span>
+        </div>
         <div className="min-w-0 flex flex-col gap-1.5">
         <div className="font-mono font-bold text-text-tertiary leading-none" style={{ fontSize: 20, letterSpacing: "-0.01em" }}>n/a</div>
         {sw && <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>}
@@ -500,19 +507,23 @@ export function AdminKpi({
   // had 895 elements computing to `transition: all 0s ease`.
   return (
     <div className="glass-panel admin-kpi p-2 grid grid-rows-subgrid row-span-2 gap-1.5 min-h-[110px]">
-      <div className="min-w-0 flex items-start justify-between gap-2">
+      <div className="min-w-0 flex items-start justify-between gap-2 max-sm:relative">
         {/* Phone review 2026-10-13: a hover title left "ACTIVE …" ambiguous on touch screens.
             Whole balanced captions keep the existing mono size/tracking; the live signal stays
             at the first line. Shared header/body subgrid tracks align every figure in the row
             to the longest caption, including unavailable tiles, without a guessed line reserve. */}
-        <span
-          className="min-w-0 flex-1 font-mono uppercase text-text-tertiary whitespace-normal"
-          title={typeof label === "string" ? label : undefined}
-          style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}
-        >{label}</span>
+        <div className="min-w-0 flex-1 flex items-start gap-2 max-sm:flex-col max-sm:gap-1.5">
+          {subject}
+          <span
+            data-kpi-caption=""
+            className="min-w-0 flex-1 font-mono uppercase text-text-tertiary whitespace-normal"
+            title={typeof label === "string" ? label : undefined}
+            style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}
+          >{label}</span>
+        </div>
         {pulse && (
           // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
-          <span className="shrink-0 inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider" style={{ color: "var(--aqua-400)" }}>
+          <span data-kpi-pulse="" className="shrink-0 inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider max-sm:absolute max-sm:top-0 max-sm:right-0" style={{ color: "var(--aqua-400)" }}>
             <span className="h-1.5 w-1.5 rounded-pill inline-block animate-pulse" style={{ background: "var(--aqua-400)" }} />
             live
           </span>
@@ -884,10 +895,8 @@ export function AdminStackedBar({
 
 export function StatusPill({
   status,
-  label,
 }: {
   status: "ok" | "warn" | "fail";
-  label: string;
 }) {
   const cls = {
     ok: "bg-success/15 text-success",
@@ -896,6 +905,7 @@ export function StatusPill({
   }[status];
   return (
     <span
+      aria-label={status === "ok" ? "OK" : status === "warn" ? "Warning" : "Failed"}
       className={[
         // ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
         // (tailwind.config.ts:200-215) and that pair is a 48px disc for a one-character
@@ -905,7 +915,9 @@ export function StatusPill({
         cls,
       ].join(" ")}
     >
-      {label}
+      {status === "ok" ? <I.checkCircle s={18} tier="fill" aria-hidden="true" />
+        : status === "warn" ? <I.alertCircle s={18} tier="fill" aria-hidden="true" />
+        : <I.xCircle s={18} tier="fill" aria-hidden="true" />}
     </span>
   );
 }
