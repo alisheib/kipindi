@@ -29,25 +29,40 @@
 
 ## §0 · RESUME AT
 
-**⏳ IN FLIGHT (2026-10-19 from 07:00 UTC, OMEGA-COMPILE01 — the lead session; Ali: "this machine has good compute
-power, it's ok to parallelize").** The LIVE STATE below is still the plan; this block says who is on what right now.
-- **Item 3 is DONE in this push:** `mln-redfix`'s commit cherry-picked onto `main` `04b24a44` — on that tree `tsc` 0,
-  the four green suites (`enter-where-pressed`, `journey-tickets` 51, `journey-updown` 54, `root-has` 12) and the four
-  reds (120/120, 115/115, 16/16, 19 plants) all green, `next build` ✅, local `qa:live` 386/386. `mln-redfix` can be
-  deleted on origin after the read-back.
-- **Item 1 (S5):** `maswali-s4` = `6bb91bfd` = S5 + `main` `04b24a44` merged (one conflict, COMPLIANCE-DECISIONS: both
-  top entries kept, newest first); `prisma generate` done; `house-bot-disclosure` 122, `journey-tickets` 51,
-  `visual-pass-r4i` 129, `house-bot-seam` 149, `predictor-shown` 27, `migration-ownership` 13, `maswali-ui` 80,
-  `maswali-design` 62 green on it; `tsc`, `maswali-fence`, `house-bot-migrations`, `verify:backup-schema` and
-  `house-bot-reports` running. The tab (`mln-s5-tab`): a helper lane is building the journey tab and the top bar's core
-  link; it merges into `maswali-s4` before the four render jobs.
-- **Item 2 (S7):** a helper lane merges `mln-s7-f4` into `mln-sf` (the code is identical: `mln-s7-f4`'s base is
-  `mln-sf`'s code head), re-pins D19a at the merge, then runs the round's whole derived list once, on the merged tree.
-- **Item 4 (S6):** `mln-s6-reports` round 15 (the figure rule) in a helper lane; `mln-s6-notices` rounds 13–16 under an
-  independent review, with its runs.
-- **Worktrees (OMEGA, SSD, each with its own `npm ci`):** `C:\50pick-ssd\kipindi-mln-s4` (`maswali-s4`), `-mln-tab`
-  (`mln-s5-tab`), `-mln-f4` (`mln-s7-f4` → `mln-sf`), `-mln-rep` (`mln-s6-reports`), `-mln-not` (`mln-s6-notices`),
-  `-mln-redfix` (the item-3 release). Every lane pushes its branch after each commit; nothing lives only on OMEGA.
+**⏳ IN FLIGHT (2026-10-19, updated ~09:45 UTC, OMEGA-COMPILE01 — the lead session; Ali: "this machine has good
+compute power, it's ok to parallelize" · "push live as you go" · "nothing but perfect work accepted" · "if visually you
+decide to change how anything looks for perfect visual results, even if the thing already exists, it's ok").** The LIVE
+STATE below is still the plan; this block says who is on what right now. Every branch named here is on origin.
+- **Item 3 DONE, LIVE on `main` `13299425`** (test-only + docs): on that tree `tsc` 0, the four green suites and the four
+  reds all green, `next build` ✅, local `qa:live` 386/386. ⏳ Its production read-back waits on Ali: the auto-mode
+  classifier refuses even the public-HTTP read-back ("Production Reads") — he approves it in manual mode.
+- **Item 1 (S5) — `maswali-s4` = `7270c3d8`:** `main` `04b24a44` merged in (one conflict, COMPLIANCE-DECISIONS: both top
+  entries kept, newest first); `tsc` 0; `maswali-fence` 29+3, `house-bot-migrations` 744, `verify:backup-schema` 13,
+  `house-bot-reports` 81+3 and nine light suites green. **The first render pre-run (no tab yet):** console shots 65/0,
+  console drive 61/0 (one named skip), `motion`/`admin-section-gate`/`needle-rest` green, `revoked-deadend` red only on its
+  secret (the runner's, fixed); the player shots 316/0 and the player drive 36/2 → fixed: four drive/shots-script defects
+  (the not-found heading, the "Why" label, waits after client navigation, the 60s networkidle per tile, the ticket serial
+  read from the card's text) and ONE PLATFORM DEFECT older than Millionea — an aborted route cross-fade was an uncaught page
+  error (`route-transition.tsx` now observes the View Transition's promises; proven in a browser: 0 errors on the fix, 3/16
+  moves on the old code; `visual-pass-r4j` 2.1b + plant). **The tile read** (three readers, en/sw/zh, all 151 tiles):
+  consolidated into ~30 findings (2 HIGH: the register-week table cut off at 768, the cut-ticket stamp over a confirm sheet
+  whose answers had reset; the 768 card without "Jackpot"; line breaks inside phrases; a cancelled ticket called a "final
+  payout"; How-to-play's void example drawn as a win; zh "支付"/"主题"/"赛事", sw agreement errors…) → two fix lanes:
+  `mln-s5-vis-p` (every player surface) and `mln-s5-vis-r` (the register). **The tab (`mln-s5-tab` `af7d3cd0`):** the
+  journey's fifth tab and the classic bar's core link built (Results moves into More while Millionea shows — measured: the
+  bar never holds both); the lead's rulings sent: the English five-tab rail label "Tickets" (every label one line from 317),
+  More's Millionea row ink-only (aligned), More's panel opaque. Then: merge tab + VIS-P + VIS-R into `maswali-s4`, re-pin
+  D19a once there, the four render jobs again, the full tile read, `next build`, push, read-back, STAFF_PREVIEW (Ali).
+- **Item 2 (S7) — `mln-sf` `b2bc1eda`:** `mln-s7-f4` merged in, D19a re-pinned at the merge, S7-F7 fixes from its runs;
+  the derived list still running in its lane.
+- **Item 4 (S6):** `mln-s6-reports` `57624a2f` (round 15 built, floors raised); `mln-s6-notices` under independent review
+  (rounds 13–16) with its runs; **`mln-s6-int` `337ea69c`** = `mln-sf` + the LEGAL lane squash-merged (D19a re-pinned at
+  the squash, the PDFs regenerated) + the DATA lane next — the S6 integration branch (legal and data first, as planned).
+- **Other sessions on OMEGA today:** PHOSPHOR W4 (`phosphor-w4`) and the Up & Down visual pass (`claude/updown-visual-10`).
+  Agreed: whoever lands on `main` second re-runs `glyphs:gen` and re-points D19a's dictionary pin; each messages the others
+  before a release window.
+- **Worktrees (OMEGA, SSD, each with its own `npm ci`):** `C:\50pick-ssd\kipindi-mln-s4` (`maswali-s4`), `-mln-tab`,
+  `-mln-vp`, `-mln-vr`, `-mln-f4` (`mln-sf`), `-mln-rep`, `-mln-not`, `-mln-int`, `-mln-redfix` (releases to `main`).
 
 **⏩ LIVE STATE (2026-10-18 22:44 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
 The State paragraph below is the last push's.)**
