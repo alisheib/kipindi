@@ -312,13 +312,17 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
   `qa:live` 363/0.
 - ⏳ **Release B — IN CODE, not released.** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
-  board order, B4 market card, B5 system and copy are in this branch. Focused B1–B5 guards and mutation proofs are
-  green; B2 now covers the 72-minute span of a 60-minute choice through one shared vendor read (brief §4 correction).
-  The first local state run exposed 18 capture-premise failures. The second reached all 14 phases and exposed one more
-  capture premise: it demanded numeric clocks on settled cards that correctly say "waiting" or show an em dash. The
-  driver now waits for numeric clocks on running cards only, and has a full width × language × guest/player mode. These
-  changes require a clean rerun. The production before-frame matrix is being captured. The last price-consistency and
-  one-game-name audits are in progress; visual scores and production release remain unverified.
+  board order, B4 market card, B5 system and copy are in this branch. B2 covers the 72-minute span of a 60-minute
+  choice through one shared vendor read (brief §4 correction). The price on the card and the detail chart is now
+  neutral; the shared pool needle and the separate positions win-rate needle are neutral too. Side outcomes keep their
+  green/red ink, while gold marks earned money. The one-game-name display audit is guarded without changing stored
+  market titles. Focused guards and mutations are being rerun after these changes.
+  The production before-frame capture finished at all seven widths in three languages (72 pages, zero capture errors).
+  The third local state run reached all 14 phases and proved the tested round settled through the real handover call,
+  then its successor opened. Its 105 reported "not hydrated" flags were a capture-tool defect: the selector read the
+  word caption rather than the ticking digit leaf, and expected a board card on the separate round page. Both premises
+  are corrected and guarded; a clean state rerun is next. There are no after scores yet, and no Release B production
+  push has happened.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
