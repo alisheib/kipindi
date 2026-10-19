@@ -50,6 +50,17 @@ www, apex and Railway served its SHA, health was reachable and migrated, both pu
 `qa:live` passed. **Resume:** complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
 W5 is partly landed; its remaining sites belong to release 2c.
 
+⏳ **Release 2b (W6) in flight:** the twelve private empty-state drawings and the bell panel's private drawing now use
+family Duotone glyphs on the shared empty plate; error states use the filled danger glyph. The served W6 code passed
+typecheck, a build, local `qa:live`, motion, and the full three-language responsive sweep; the final-commit build remains
+before push. The database battery has seven failures already present on live `main`. Classic parity's same-code null
+comparison passed 68/68. Its W6 comparison found only the empty `/positions` card in 24 signed-in cells; the exact
+main-region HTML and layout pairs are generated into the parity register, preserving W3's entries. Four book-clock
+width changes remain outside the register because their displayed time advances independently. The new generator
+selection and preservation guard passes, and its two dropped-flag mutations are caught. The long campaign red proof,
+classic parity red proof and final comparison remain before the live push. Release 2c follows with category plates,
+money doors and stat tiles.
+
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
 - the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
@@ -232,8 +243,8 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
-| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a part 1 live at `e4b148a05`; part 2 and later W5 releases are in the hand-over and §8d |
-| W6 | Empty states: one family | ⬜ | |
+| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a parts 1 and 2 live at `e4b148a05` and `e30d599cb`; the remainder is release 2c and 2d (§8d) |
+| W6 | Empty states: one family | 🔨 | Release 2b candidate: one shared Duotone plate for the twelve empty kinds and the bell panel; parity and release checks in progress |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
 | W8 | Motion on the existing primitives | ⬜ | |
 | W9 | Close: adversarial audit, test:all, full tiles, the law final | ⬜ | |

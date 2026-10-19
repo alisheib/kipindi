@@ -8,8 +8,7 @@
  *
  * The kit explicitly forbids mascots / full-color cartoons.
  *
- * Kinds map to the same glyph as their page:
- *   markets · positions · leaderboard · notifications · audit · sources · default
+ * Each kind maps to its page's family glyph through EMPTY_GLYPH below.
  */
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -122,7 +121,7 @@ export function EmptyState({
   );
 }
 
-/** Compact error-state — same chrome, no-rose accent. */
+/** Compact error state — the failure uses the shared danger plate and filled circled cross. */
 export function ErrorState({
   title,
   detail,
