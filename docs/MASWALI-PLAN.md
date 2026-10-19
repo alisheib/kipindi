@@ -29,40 +29,65 @@
 
 ## §0 · RESUME AT
 
-**⏳ IN FLIGHT (2026-10-19, updated ~09:45 UTC, OMEGA-COMPILE01 — the lead session; Ali: "this machine has good
-compute power, it's ok to parallelize" · "push live as you go" · "nothing but perfect work accepted" · "if visually you
-decide to change how anything looks for perfect visual results, even if the thing already exists, it's ok").** The LIVE
-STATE below is still the plan; this block says who is on what right now. Every branch named here is on origin.
-- **Item 3 DONE, LIVE on `main` `13299425`** (test-only + docs): on that tree `tsc` 0, the four green suites and the four
-  reds all green, `next build` ✅, local `qa:live` 386/386. ⏳ Its production read-back waits on Ali: the auto-mode
-  classifier refuses even the public-HTTP read-back ("Production Reads") — he approves it in manual mode.
-- **Item 1 (S5) — `maswali-s4` = `7270c3d8`:** `main` `04b24a44` merged in (one conflict, COMPLIANCE-DECISIONS: both top
-  entries kept, newest first); `tsc` 0; `maswali-fence` 29+3, `house-bot-migrations` 744, `verify:backup-schema` 13,
-  `house-bot-reports` 81+3 and nine light suites green. **The first render pre-run (no tab yet):** console shots 65/0,
-  console drive 61/0 (one named skip), `motion`/`admin-section-gate`/`needle-rest` green, `revoked-deadend` red only on its
-  secret (the runner's, fixed); the player shots 316/0 and the player drive 36/2 → fixed: four drive/shots-script defects
-  (the not-found heading, the "Why" label, waits after client navigation, the 60s networkidle per tile, the ticket serial
-  read from the card's text) and ONE PLATFORM DEFECT older than Millionea — an aborted route cross-fade was an uncaught page
-  error (`route-transition.tsx` now observes the View Transition's promises; proven in a browser: 0 errors on the fix, 3/16
-  moves on the old code; `visual-pass-r4j` 2.1b + plant). **The tile read** (three readers, en/sw/zh, all 151 tiles):
-  consolidated into ~30 findings (2 HIGH: the register-week table cut off at 768, the cut-ticket stamp over a confirm sheet
-  whose answers had reset; the 768 card without "Jackpot"; line breaks inside phrases; a cancelled ticket called a "final
-  payout"; How-to-play's void example drawn as a win; zh "支付"/"主题"/"赛事", sw agreement errors…) → two fix lanes:
-  `mln-s5-vis-p` (every player surface) and `mln-s5-vis-r` (the register). **The tab (`mln-s5-tab` `af7d3cd0`):** the
-  journey's fifth tab and the classic bar's core link built (Results moves into More while Millionea shows — measured: the
-  bar never holds both); the lead's rulings sent: the English five-tab rail label "Tickets" (every label one line from 317),
-  More's Millionea row ink-only (aligned), More's panel opaque. Then: merge tab + VIS-P + VIS-R into `maswali-s4`, re-pin
-  D19a once there, the four render jobs again, the full tile read, `next build`, push, read-back, STAFF_PREVIEW (Ali).
-- **Item 2 (S7) — `mln-sf` `b2bc1eda`:** `mln-s7-f4` merged in, D19a re-pinned at the merge, S7-F7 fixes from its runs;
-  the derived list still running in its lane.
-- **Item 4 (S6):** `mln-s6-reports` `57624a2f` (round 15 built, floors raised); `mln-s6-notices` under independent review
-  (rounds 13–16) with its runs; **`mln-s6-int` `337ea69c`** = `mln-sf` + the LEGAL lane squash-merged (D19a re-pinned at
-  the squash, the PDFs regenerated) + the DATA lane next — the S6 integration branch (legal and data first, as planned).
-- **Other sessions on OMEGA today:** PHOSPHOR W4 (`phosphor-w4`) and the Up & Down visual pass (`claude/updown-visual-10`).
-  Agreed: whoever lands on `main` second re-runs `glyphs:gen` and re-points D19a's dictionary pin; each messages the others
-  before a release window.
-- **Worktrees (OMEGA, SSD, each with its own `npm ci`):** `C:\50pick-ssd\kipindi-mln-s4` (`maswali-s4`), `-mln-tab`,
-  `-mln-vp`, `-mln-vr`, `-mln-f4` (`mln-sf`), `-mln-rep`, `-mln-not`, `-mln-int`, `-mln-redfix` (releases to `main`).
+**⏹ STOPPED (2026-10-19 ~11:00 UTC, OMEGA-COMPILE01 — the lead) — RESUME HERE, from any machine.** Ali: *"push live
+everything you finished and stop running new things, push progress clearly, and we proceed later with the maswali
+plan."* This block supersedes the LIVE STATE below wherever they differ. Every branch named here is on origin. The detail
+behind each line — each lane's final state, its proofs and its steps in order, the S5 tile-read findings and the decided
+words, the briefs and the OMEGA tools — is on branch **`maswali-handover-20261019`**, `handover/maswali-2026-10-19/`
+(`HANDOVER-LANES.md`, `S5-VIS-FINDINGS.md`, `briefs/`, `omega-tools/`).
+- **Live on `main` today:** `13299425` (item 3 — four red harnesses re-anchored, test-only) and this push: the PLATFORM fix
+  (an aborted route cross-fade is never an uncaught page error — `route-transition.tsx` observes the View Transition's
+  promises; proven in a browser, 0 errors on the fix vs 3 in 16 moves before it; `visual-pass-r4j` 2.1b + plant) and
+  main's docs no longer citing S5's maswali-i18n suite as a guard main has (`test:guards-exist` green again). On the pushed
+  tree: `tsc` 0, `next build` ✅, local `qa:live` 386/386. ⏳ **The production read-backs of both pushes wait on Ali**:
+  the auto-mode classifier refuses them as "Production Reads" — he switches the mode to manual approval, says go, and
+  clicks Allow; then run `omega-tools/mln-readback.sh <sha> <tree>` from the handover branch.
+- **Known reds on `main` (S5’s foundations, measured by the U43 session’s full `test:all` on `adb3551e` and after):** `visual-pass-r5a` (8.13 the slip’s ✕ while pending; 1.1 counts not through formatNumber), `-r5j` (1.1; 10.1 the slip’s unruled Modal; 11.2 the census 64 vs 62), `-r6c` (10.1, 11.2; 2.1 the ticket’s trailing tracking), `-r7c` (2.1; 3.9 the slip’s h1 stem), `-r5h` (3.5 `maswali-carry.tsx` unclassified), `rate-copy` (1b.sw/1b.zh: `ruleCheck` doubles the unit beside {hours}), `presence-class` (8.1/8.3: awayWon/awayLost/awayMixed defined three times). Each names a Millionea file and leaves with the S5 push (S5’s branches carry the census updates; check each is green on the merged tree). `guards-exist` was fixed today.
+- **⏭ NEXT, IN ORDER:**
+  1. **S5 → `main`.** `maswali-s4` = `f54d5745` (S5 + `main` `04b24a44`; the drive/shots fixes; the player shots now shoot
+     every page to its end and at 1024). Merge into it `mln-s5-tab` = `85e67d9f` — **DONE**: Millionea's own tab (one drawn
+     list for the journey's rail and links; the classic bar's core link after Up & Down, Results then More's first row at
+     every width — measured), the ink, More's rows aligned and its panels opaque, the English five-tab rail label
+     "Tickets"; trial merge clean. Then FINISH the two tile-read fix lanes and merge them: `mln-s5-vis-p` = `e984abbe`
+     (WIP: the A1 fact-line helper and the decided words, no page wired — 17 steps left) and `mln-s5-vis-r` = `f1ffa1fb`
+     (WIP: the register's week page rebuilt — cards below 1024, a six-column table from 1024 — unverified in a browser;
+     9 steps left). At that merge: wire the slip's source line to `sourceLabel`; `PREVIOUS_SPRITES` = the pair production
+     serves then, and `glyphs:gen` re-run on the merged `map.ts` (PHOSPHOR W4 landed `70c069cb` first, so the S5 merge is the second lander); re-pin D19a's dictionary pin ONCE, at
+     the merge commit; merge `origin/main` (now with U43 release A `9393dcb5`, PHOSPHOR W4 `70c069cb` and this push). Then the four render jobs
+     (dark, player, console, servers), the full tile read (every page to its end, 320/360/768/1024/1280/1920 × en/sw/zh),
+     `tsc`, `next build`, push, read-back, then STAFF_PREVIEW — Ali.
+  2. **S7 → `main` after S5:** `mln-sf` = `b2bc1eda` — rounds 4–6 merged (the code equals `mln-s7-f4`'s), D19a re-pinned at the
+     merge, S7-F7 fixes 1–5 from its runs. ⚠️ Its lane was stopped by the account’s session limit (~11:20 UTC) before its final report: what it fixed is in its commits (S7-F7 1–5); `red:house-bot-money` had caught 73 plants with about nine left. Owed: re-run the round’s derived list on `mln-sf` (BRIEF-S7 on the handover branch lists it) to know what is green, raise each floor to its printed count, the admin renders (`/admin/resolver-queue` and `/admin/resolver/[id]` with the two-officer setting unknown, on and off; `/admin/maswali/pools`; `/admin/maswali`; `/pools`). Then merge `main`, `test:all` + `e2e:money`/`e2e:fault`/`e2e:card` on a
+     throwaway Postgres, push.
+  3. **S6, squash-merged after S7, in the order L → D → R → N:** L and D are squashed on **`mln-s6-int` = `81c60f0f`** (off
+     `mln-sf` `3f6af84e`; D19a re-pinned at the squash; the PDFs regenerated — the Millionea operator guide's first render).
+     Open there: `maswali-config` floor 56 → 83; three census decisions on D's lookup form (`admin-act-gate`,
+     `unsaved-changes`) and `type-scale`; the stale-form rule stated only in How to play's `ruleSunset`; lane shas that will
+     dangle when the lane branches go; the DB suites and reds not yet run. R = **`mln-s6-reports` = `57624a2f`**: round 15
+     BUILT and green (harm-watch 28/28 on both stores, its red 66/66 + 12/12) — awaiting the lead's review and rulings
+     (a)–(c). N = **`mln-s6-notices` = `1d22c1e3`: NOT merge-ready** — its independent review found two BLOCKERs (every win
+     and refund letter can go out twice — its running-jobs set shares a global name with S5's `maswali-dal` store,
+     reproduced on both stores; a money letter lost for good after one failed read of its records), its suite has not
+     compiled since round 7 (rounds 7–16 never ran), and lint escapes and regressions (M1–M5, L1–L4): round 17 first, each
+     item with its file:line and fix in HANDOVER-LANES.
+- **Rulings taken today (each reversible):** the English five-tab rail label "Tickets" (sw "Tiketi", zh unchanged); More's
+  Millionea row ink-only; More's panels opaque; Results is More's first row at every width while Millionea's link shows
+  (measured: the bar never holds both); the tile read's P8/P9 were mid-transition captures (measured settled) and P15 keeps
+  the v6 delivery's 1080 reading measure; zh Millionea ordinals unspaced ("第{week}周"); the register's guards in their own
+  suite (`test:maswali-register`); one `sourceLabel` (drops "www.") for the register and the slip; the dev seed seals as a
+  real MODERATOR; the words of S5-VIS-FINDINGS §D (zh 派奖 · 正选题 · 事件 · 由所有 10/10 彩票平分 · 认证人 · 每周公示 · 已中奖 ·
+  待结算 · 退款; sw itakapokamilika · linahamishiwa · Kiwango cha chini kilichohakikishwa · Makuu · Limesitishwa ·
+  UTHIBITISHO · Zinazoendelea / Zilizokamilika / Ulizoshinda · Imerejeshwa; en "Week register", "Week {n}'s questions",
+  "Refunded").
+- **For Ali:** the production read-backs above; the tab's ink tint (-300 vs -400) at STAFF_PREVIEW; STAFF_PREVIEW after the
+  S5 push (`FEATURE_MILLIONEA=STAFF_PREVIEW` on Railway — reversible); R10c (who may buy a DRIVE-week ticket); the
+  complaint-answer default (5 days, now on the Owner's rules form); the platform-wide words for native review at Gate B
+  (sw "bwawa", "NDIO", "Jackpot"; zh "EAT").
+- **Other sessions on OMEGA today:** PHOSPHOR W4 (live at `70c069cb`) and the Up & Down visual pass (U43 release A live at
+  `9393dcb5`). Agreed: whoever lands on `main` second re-runs `glyphs:gen` and re-points D19a's dictionary pin; each messages
+  the others before a release window.
+- **OMEGA worktrees kept for the resume** (each with its own npm ci): `C:\50pick-ssd\kipindi-mln-{s4,tab,vp,vr,f4,rep,not,
+  int,redfix}`. Another machine needs none of them.
 
 **⏩ LIVE STATE (2026-10-18 22:44 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
 The State paragraph below is the last push's.)**
@@ -562,9 +587,9 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close; the console's shots read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
-| S5 | Player surfaces | 🔨 | components, read models, gate and actions on `main` dark at `f312d652`; the pages on `mln-s5-pages` (two independent reviews, fixes in), merging next; the staff preview after its batch |
-| S6 | Fairness, notices, reports, legal, data | 🔨 | four lanes: `mln-s6-notices` done and under review; `mln-s6-reports`, `mln-s6-data`, `mln-s6-legal` writing or next |
-| S7 | Adversarial hardening | ⬜ | |
+| S5 | Player surfaces | 🔨 | components, read models, gate and actions on `main` dark at `f312d652`; the pages and every fix on `maswali-s4` `f54d5745`; the tab DONE on `mln-s5-tab` `85e67d9f`; the tile read’s fixes WIP on `mln-s5-vis-p` / `mln-s5-vis-r` (§0 ⏹); the staff preview after its batch |
+| S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 built on `mln-s6-reports` `57624a2f`; notices NOT merge-ready (two BLOCKERs, round 17) on `mln-s6-notices` — §0 ⏹ |
+| S7 | Adversarial hardening | 🔨 | rounds 1–6 merged on `mln-sf` `b2bc1eda` with S7-F7 fixes; its derived list to finish; lands after S5 — §0 ⏹ |
 | S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
