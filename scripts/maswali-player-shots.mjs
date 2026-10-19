@@ -21,8 +21,20 @@ import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journ
 
 const BASE = process.env.BASE || "http://localhost:3410";
 const OUT = ".50pick-shots/maswali-player-shots";
-const WIDTHS = [320, 360, 768, 1280, 1920];
-const LOCALES = ["en", "sw", "zh"];
+/** A focused re-shoot of what a fix touched (the full run is the default and the acceptance): comma lists in
+ *  MASWALI_SHOTS_PAGES (the page names below, plus "journey-home"), MASWALI_SHOTS_LOCALES and MASWALI_SHOTS_WIDTHS. A
+ *  focused run prints its scope first, so it can never be mistaken for the full one. */
+const only = (name, all) => {
+  const raw = (process.env[name] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return raw.length ? all.filter((x) => raw.includes(String(x))) : all;
+};
+const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1280, 1920]);
+const LOCALES = only("MASWALI_SHOTS_LOCALES", ["en", "sw", "zh"]);
+const PAGE_FILTER = (process.env.MASWALI_SHOTS_PAGES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const wantPage = (name) => PAGE_FILTER.length === 0 || PAGE_FILTER.includes(name);
+if (PAGE_FILTER.length || WIDTHS.length < 5 || LOCALES.length < 3) {
+  console.log(`FOCUSED RUN — pages ${PAGE_FILTER.join(",") || "all"} · locales ${LOCALES.join(",")} · widths ${WIDTHS.join(",")} (not the acceptance run)`);
+}
 const HEIGHT = 780;
 
 let pass = 0, fail = 0;
@@ -100,7 +112,7 @@ const PAGES = [
   ["tickets", "/millionea/tickets"],
   ...(serial ? [["ticket", `/millionea/tickets/${encodeURIComponent(serial)}`]] : []),
   ["markets-card", "/markets"],
-];
+].filter(([name]) => wantPage(name));
 
 for (const locale of LOCALES) {
   const fresh = await demoSession(browser, BASE);
@@ -135,8 +147,8 @@ for (const locale of LOCALES) {
 }
 
 // The journey home's card, with a staff preview pass beside the player.
-const passCookie = await mintStaffPass(browser, BASE);
-for (const locale of LOCALES) {
+const passCookie = wantPage("journey-home") ? await mintStaffPass(browser, BASE) : null;
+for (const locale of passCookie ? LOCALES : []) {
   const ctx = await contextWith([await demoSession(browser, BASE), passCookie], locale);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errs.push(`${locale} journey: ${e}`));
