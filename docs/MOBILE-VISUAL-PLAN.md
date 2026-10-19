@@ -337,11 +337,18 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   proofs. A browser hit test now measures at least 40px live reach for Info, Share and Details on `/markets` and the
   featured home card at 320/360 in sw/en/zh; the old short reach is caught on both surfaces. The earned-money colour
   audit also found pre-win gold on classic and Journey commit controls; those have been moved to brand with focused
-  guards and red plants. The pre-release R6 state drive was discarded: all 13 first-state cells reported a readiness
-  problem and an isolated local browser still had only one React-hydrated element, a `--:--` clock and aborted Next.js
-  JavaScript chunks. The dev server was stopped. A development-only static-cache rule is under investigation before a
-  fresh state drive; the R6 files are not evidence and no after score has been awarded. Next: restore local hydration,
-  run the full seven-width, three-language state matrix twice, then build and release. Release B is not on production.
+  guards and red plants. R6–R8 state drives were discarded: simultaneous development page loads repeatedly cancelled
+  their own chunks, leaving `--:--` clocks and no usable first-state evidence. A production-only immutable cache rule
+  now lets Next revalidate development chunks (guard and red passed); Webpack proved one page can hydrate. The state
+  driver now bounds simultaneous loads, with a guard and red proof. R9 completed 14 phases, including the bet receipt,
+  lock, real one-sided refund and handover, but 12 readiness failures in its cold/open, moved-up and successor frames
+  still invalidate the run. Frame reopening also caught a race: a full frame can show a placeholder clock even if its
+  crop is live. The driver is gaining a warm-up and a post-shot check before evidence is accepted. At 768px, an explicit
+  shared-card height had still stretched the settled neighbor; its card-specific correction passed guard and red and the
+  measured settled card is now 133px slimmer. R9 review found another B2 gap: when vendor history is unavailable, the
+  round card needs a visible translated explanation. That fix is in progress. No after score has been awarded. Next:
+  repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and release. Release B
+  is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
