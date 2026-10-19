@@ -2632,13 +2632,12 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      quarter of a 320 phone), and there the slots stack from the top so no pip is lifted; from 360 the classic
      one-line label and centred slot stand. ⛔ If copy ever lets every label fit at 320, the wrap goes in that same
      commit — `test:journey-shell` 8.label.measure says so.
-   - ⭐ **With five tabs the tickets tab says its short rail label** (`journey.tabTicketsShort`: Swahili "Tiketi";
-     English and Chinese keep their words, which fit), the lead's ruling of 2026-10-19: a fifth of a 360 phone is 72px
-     and "Tiketi zangu" needs 83.2 — as Juu/Chini's rail label is the short `nav.updown`, its page and the desktop link
-     keep the full words. Every label then sits on one line from 360, the English "My tickets" from 350 (the one label
-     that still wraps below it, so in English alone the five slots stack from the top at 320–349); each language's
-     five-slot centring width is its own (Swahili and Chinese 317, English 350; `test:visual-pass-r9c` §4b,
-     `test:journey-shell` 8.label.measure.five and 8.align.five).
+   - ⭐ **With five tabs the tickets tab says its short rail label** (`journey.tabTicketsShort`: Swahili "Tiketi",
+     English "Tickets"; Chinese keeps 我的注单, which fits), the lead's rulings of 2026-10-19: a fifth of a 320 phone is
+     64px, and "Tiketi zangu" needs 83.2, "My tickets" 70 — as Juu/Chini's rail label is the short `nav.updown`, its page,
+     its title and the desktop link keep the full words. Every five-tab label of every language then sits on ONE line
+     from 317 (its longest, 63.4px, × 5) — at every width we hold, 320 included — so one rule centres the five slots from
+     317 in all three languages (`test:visual-pass-r9c` §4b, `test:journey-shell` 8.label.measure.five and 8.align.five).
    - The page clears the rail with `--rail-h`, the one name for its reserve (WP11) — ⛔ never a second literal for the
      page's reserve. The chat bubble's 80 and the install card's 148 stay literal because gates pin them
      (`test:stacking`'s chat-fab locator, `test:install-invite` 5.4), each naming `--rail-h` as its source.
@@ -2993,9 +2992,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     More's first row, beside Results, which has lived in that More since the coin.
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
-    its card. While five tabs show, the journey rail's tickets tab says its short rail label, Swahili "Tiketi" (the lead's
-    ruling, 2026-10-19: a fifth of a 360 phone cannot hold "Tiketi zangu"; its page and the desktop link keep the full
-    words — §K 8b).
+    its card. While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
+    "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
+    line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单) — so every five-tab label
+    sits on one line at every width we hold (§K 8b). From 1024 to 1279, while five destinations show, the journey bar's
+    nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
+    player — measured, `qa:journey-header-fit`), and takes it back from 1280.
     **The look.** The tab is its siblings' own (slot, pip, lit pill, label size, weight and spacing) and ONLY the label's
     ink differs: one static horizontal gradient of the three money colours across the word, green to gold to red
     (`--yes-300`, `--gold-300`, `--no-300`: the darkest point, `--no-300`, is 8.98:1 on `--panel`, above the unlit

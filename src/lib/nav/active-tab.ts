@@ -64,11 +64,11 @@ export const MILLIONEA_TAB: JourneyTabDef = { key: "millionea", href: "/millione
 /**
  * The five tabs, built from the four so they cannot drift: Millionea spliced in right after Juu/Chini, and the tickets tab
  * given its short rail label.
- * ⭐ THE SHORT RAIL LABEL WHILE FIVE TABS SHOW (the lead's ruling, 2026-10-19, measured with `test:visual-pass-r9c`'s own
- * model): a fifth of a 360 phone is 72px, and the Swahili "Tiketi zangu" needs 83.2 (12 × 6.6 + 4), so the rail says
- * "Tiketi" (`journey.tabTicketsShort`) — as Juu/Chini's rail label is the short `nav.updown` — while its page and its
- * desktop link keep the full words. English and Chinese keep theirs ("My tickets" 70px, 我的注单 48px), so every label
- * sits on one line from 360, the English one from 350.
+ * ⭐ THE SHORT RAIL LABEL WHILE FIVE TABS SHOW (the lead's rulings, 2026-10-19, measured with `test:visual-pass-r9c`'s own
+ * model): a fifth of a 320 phone is 64px, and the Swahili "Tiketi zangu" needs 83.2 (12 × 6.6 + 4), the English "My
+ * tickets" 70, so the rail says "Tiketi" and "Tickets" (`journey.tabTicketsShort`) — as Juu/Chini's rail label is the
+ * short `nav.updown` — while its page and its desktop link keep the full words; Chinese keeps 我的注单 (48px). Every
+ * five-tab label of every language then sits on one line from 317 (the longest, 63.4px, × 5), so at every width we hold.
  */
 const WITH_MILLIONEA: readonly JourneyTabDef[] = (() => {
   const at = JOURNEY_TABS.findIndex((d) => d.key === "updown") + 1;

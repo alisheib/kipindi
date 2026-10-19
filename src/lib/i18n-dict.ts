@@ -3314,12 +3314,14 @@ export const dict = {
       udUseInstead: "Use {amount} instead",
       udQuickStakes: "Quick amounts",
       /**
-       * MASWALI-BUILD S5-TAB (the lead's ruling, 2026-10-19): the phone rail's words for Tiketi zangu while five tabs share
-       * it (Millionea's tab shows; `journeyTabsFor` in lib/nav/active-tab.ts). A fifth of a 360 phone holds 72px and the
-       * Swahili "Tiketi zangu" needs 83.2, so sw says "Tiketi" there, as the rail's Juu/Chini is the short `nav.updown`.
-       * The page, its title and the desktop link keep `tabTickets`. en and zh keep their words: both fit.
+       * MASWALI-BUILD S5-TAB (the lead's rulings, 2026-10-19): the phone rail's words for Tiketi zangu while five tabs
+       * share it (Millionea's tab shows; `journeyTabsFor` in lib/nav/active-tab.ts). A fifth of a 320 phone holds 64px:
+       * the Swahili "Tiketi zangu" needs 83.2 and the English "My tickets" 70, so the rail says "Tiketi" and "Tickets"
+       * there (50.2px at most), as the rail's Juu/Chini is the short `nav.updown` — and every five-tab label of every
+       * language sits on one line from 317. The page, its title and the desktop link keep `tabTickets`. zh keeps 我的注单
+       * (48px), which fits.
        */
-      tabTicketsShort: "My tickets",
+      tabTicketsShort: "Tickets",
     },
     /**
      * MASWALI MILLIONEA (MASWALI-BUILD S5; MASWALI-PLAN §7b "S5 · Player surfaces", the v6 delivery's i18n draft as

@@ -7618,6 +7618,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    by the rules of the state it goes to, and the hovered state is the only one that keeps them, so a hover still fades
    its preview in, and every other change (the current mark arriving or leaving, a hover ending) is a cut. */
 .kp-jnav__link:not(:hover) { transition: none; }
+/* ⭐ FIVE DESTINATIONS WHILE MASWALI MILLIONEA SHOWS (MASWALI-BUILD S5-TAB, 2026-10-19; DESIGN_AUTHORITY §M8a item 11).
+   Measured (`qa:journey-header-fit`, Chromium with the real fonts): with Millionea's link the row ran 5.1px into the page's
+   gutter at 1024 in Swahili for a signed-in player at TZS 999,999 or with hidden balances (the row's least slack −5.1px)
+   — the header's edge off the page's edge (the owner's rule of 2026-10-08). So while five destinations show (`data-tabs`
+   on the nav, as on the rail) the nav drops its own leading 12px from 1024 to 1279: the row's one gap (12px there) stands
+   between the 18+ mark and the first destination, as between every other group of the row. From 1280, where the lockup
+   returns and the row has room, the margin comes back. The links are untouched: their 12px is the Tiketi switch's own
+   (`test:visual-pass-r5b` 2.3), and a reader drawn four destinations is drawn today's header. */
+.kp-jnav[data-tabs="5"] { margin-inline-start: 0; }
+@media (min-width: 1280px) { .kp-jnav[data-tabs="5"] { margin-inline-start: var(--sp-3); } }
 
 /* ⭐ THE JOURNEY RAIL — four equal tabs (SJ-16) on the classic rail's own surface, slot, pip and label, worn unchanged.
    ⛔ `.kp-rail` itself is not edited: the admin pending-changes bar wears it too. The grid goes on the LIST (A18): on
@@ -7662,20 +7672,18 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    the five labels' own centring widths. ⛔ The four-track rules above are not edited — a reader who is not shown
    Millionea is drawn today's rail, its markup and its boxes — and these come after them, so at equal specificity the
    five-track answer wins where both match.
-   The widths are R9-C's rule with five slots: a label wraps where it needs more than a fifth of the phone, so each
-   language centres its slots from five times its longest label (the rail's 11px mono at 0.6em a letter and 1em a Chinese
-   character, plus the label's 2 × 2px). With the tickets tab's short rail label (`journey.tabTicketsShort`, the lead's
-   ruling: Swahili "Tiketi"), Swahili's longest are "Juu/Chini" and "Millionea", 59.4 + 4 = 63.4px × 5 = 317; English's
-   "My tickets" 66 + 4 = 70px × 5 = 350, so it alone takes two lines from 320 to 349 (its slots stack from the top
-   there, for the reason given above); Chinese's "Millionea" (Latin in every language) 317. From 360, a fifth is 72px and
-   every label fits one line. `test:visual-pass-r9c` §4b derives the three widths from the dictionary and holds these
-   rules to them. */
+   The width is R9-C's rule with five slots: a label wraps where it needs more than a fifth of the phone, so the slots
+   centre from five times the longest label (the rail's 11px mono at 0.6em a letter and 1em a Chinese character, plus the
+   label's 2 × 2px). With the tickets tab's short rail label (`journey.tabTicketsShort`, the lead's rulings: Swahili
+   "Tiketi", English "Tickets"), every language's longest label is 9 letters — "Juu/Chini", "Millionea" (Latin in every
+   language), "Questions", "Up & Down" — 59.4 + 4 = 63.4px × 5 = 317, so ONE rule centres the slots from 317 in sw, en
+   and zh alike: at 320, the narrowest width we hold, every label sits on one line and every slot is centred. Below 317
+   (no width we hold) the slots stack from the top, as R9-C's rule says where a label would wrap. A copy change that makes
+   one language longer splits this by `:lang()`, as the four-track rules above are split. `test:visual-pass-r9c` §4b
+   derives the width from the dictionary and holds this rule to it. */
 .kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: flex-start; }
-@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-rail__item { justify-content: center; } }
-@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item { justify-content: center; } }
-@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
-@media (min-width: 360px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: center; } }
+@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: center; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold

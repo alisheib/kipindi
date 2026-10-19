@@ -48,7 +48,9 @@
  * never a link whose navigation is cancelled: the progress bar listens in the capture phase.
  * ⭐ MASWALI-BUILD S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11): the links are `journeyTabsFor(millionea)`, the
  * rail's own list, lit from that same list — so Millionea's link stands right after Juu/Chini while it shows, the
- * siblings' own link with only its words in Millionea's ink (`kp-millionea-ink`), and the two can never disagree.
+ * siblings' own link with only its words in Millionea's ink (`kp-millionea-ink`), and the two can never disagree. The nav
+ * says how many it draws (`data-tabs`, absent for four): with five it gives up its own leading 12px from 1024 to 1279,
+ * where the Swahili row otherwise ran 5.1px into the page's gutter (globals.css, the destinations' rules).
  */
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -184,7 +186,7 @@ export function JourneyTopBar({
         {/* No aria-label: the text is the name, and ARIA allows none on a plain span. */}
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
 
-        <nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary}>
+        <nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary} data-tabs={tabs.length === 4 ? undefined : tabs.length}>
           {tabs.map((d) =>
             d.key === "tickets" && !user.isAuthed ? (
               <button

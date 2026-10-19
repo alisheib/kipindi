@@ -1703,11 +1703,19 @@ function g7Header(W: World, ok: Ok) {
   // ⭐ RE-PINNED OPENLY, MASWALI-BUILD S5-TAB (2026-10-19): the destinations are the drawn list, `journeyTabsFor(millionea)`
   // (five while Millionea shows), and both the lit link and aria-current are asked of that same list — the rail's own.
   ok(`7.desktop · from 1024 the drawn destinations (four; five while Millionea shows), each lit by the one table over that same list (A12: aria-current from tabAriaCurrent, never a "page" literal), a guest's Tiketi zangu a dialog button — and no NavMore`,
-    bar.includes(`<nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary}>`) && count(bar, "tabs.map(") === 1
+    bar.includes(`<nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary} data-tabs={tabs.length === 4 ? undefined : tabs.length}>`) && count(bar, "tabs.map(") === 1
       && bar.includes("const tabs = journeyTabsFor(millionea);") && !bar.includes("JOURNEY_TABS")
       && count(bar, "aria-current={tabAriaCurrent(pathname, d.key, tabs)}") === 1 && !bar.includes(`? "page"`)
       && bar.includes("const active = activeTabFor(pathname, tabs);") && bar.includes(`type="button"`) && bar.includes(`aria-haspopup="dialog"`)
       && count(bar, "className={JNAV}") === 2 && bar.includes(`const JNAV = "kp-jnav__link";`) && !bar.includes("<NavMore") && !bar.includes("kp-navlink"));
+  // ⭐ S5-TAB (2026-10-19) · five destinations at 1024 ran the row 5.1px into the page's gutter in Swahili (qa:journey-header-
+  // fit's least slack, −5.1px, a signed-in player at TZS 999,999 or with hidden balances). The nav, saying how many it
+  // draws, drops its own leading 12px from 1024 to 1279 and takes it back from 1280; the links' padding is untouched.
+  ok("7.desktop.five · while five destinations show the nav says so (data-tabs) and drops its own leading 12px from 1024 to 1279, taking it back from 1280 — the links' own padding untouched, and four destinations keep today's margin",
+    baseRule(css, `.kp-jnav[data-tabs="5"]`).includes("margin-inline-start: 0") && minWidthRule(css, 1280, `.kp-jnav[data-tabs="5"]`).includes("margin-inline-start: var(--sp-3)")
+      && baseRule(css, ".kp-jnav").includes("margin-inline-start: var(--sp-3)") && baseRule(css, ".kp-jnav__link").includes("padding: 0 var(--sp-3)")
+      && bar.includes("data-tabs={tabs.length === 4 ? undefined : tabs.length}"),
+    show({ five: baseRule(css, `.kp-jnav[data-tabs="5"]`), from1280: minWidthRule(css, 1280, `.kp-jnav[data-tabs="5"]`) }));
   const jnav = css.split(LF).filter((l) => l.includes(".kp-jnav"));
   // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18). This was 7.underline: "the destinations speak the kit's
   // SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)".
@@ -1909,16 +1917,14 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && minWidthRule(css, 360, ".kp-jtab__label").includes("white-space: nowrap")
       && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
     baseRule(css, ".kp-jtab__label"));
-  // ⭐ S5-TAB (the lead's ruling, 2026-10-19) · THE SAME MEASURE WITH FIVE TABS, in the words the rail says (the tickets
-  // tab's short rail label): at 320 a label still needs more than its fifth of the phone (English "My tickets", so the wrap
-  // is still earned), it fits two lines there, no word is wider than a fifth, and from 360 every label fits one.
+  // ⭐ S5-TAB (the lead's rulings, 2026-10-19) · THE SAME MEASURE WITH FIVE TABS, in the words the rail says (the tickets
+  // tab's short rail label: sw "Tiketi", en "Tickets", zh 我的注单): every label of every language fits ONE line in its fifth
+  // of a 320 phone — 320 is one of the five widths we hold — so no five-tab label needs the wrap.
   const five = railWords(I.tabsFor(true));
   const over320f = five.filter((l) => oneLine(l.s) > 320 / 5);
-  const over360f = five.filter((l) => oneLine(l.s) > 360 / 5);
-  const notTwoF = over320f.filter((l) => linesIn(l.s, 320 / 5) > 2 || l.s.split(" ").some((w) => oneLine(w) > 320 / 5));
-  ok("8.label.measure.five · with five tabs, measured: at 320 a label needs more than its fifth of the phone and fits two lines there, and from 360 every label — the tickets tab's short rail label among them — fits one",
-    Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15 && over320f.length > 0 && over360f.length === 0 && notTwoF.length === 0,
-    show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)}`), over360: over360f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)}`), notTwo: notTwoF.map((l) => l.s) }));
+  ok("8.label.measure.five · with five tabs, measured: every label in sw, en and zh — the tickets tab's short rail label among them — fits one line in its fifth of a 320 phone, so none needs the wrap",
+    Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15 && over320f.length === 0,
+    show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)} > ${320 / 5}`) }));
   ok("8.label.five · the rail says each tab's rail label where it has one (the tickets tab's short words among five); the desktop link keeps the label, which its page is titled by",
     rail.includes("const label = tabLabel(t, d.railLabel ?? d.label);") && !bar.includes("railLabel") && count(bar, "tabLabel(t, d.label)") === 3);
   // The grid stretches every slot to the tallest, and the classic slot centres: a two-line label would lift its pip.
@@ -1934,17 +1940,18 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     !wraps || (align.below.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")
       && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320),
     show(align));
-  // ⭐ S5-TAB · R9-C's rule with FIVE tabs: each language centres from five times its longest rail word (Swahili and
-  // Chinese 317 — "Juu/Chini", "Millionea" — English 350, "My tickets"), keyed on the five-tab nav, so only English
-  // stacks at 320.
+  // ⭐ S5-TAB · R9-C's rule with FIVE tabs: the slots centre from five times the longest rail word — the same 317 in every
+  // language ("Juu/Chini", "Millionea", "Questions", "Up & Down", each 63.4px) — so ONE rule on the five-tab nav centres them
+  // from 317, every width we hold; below it (no width we hold) they would stack from the top, as R9-C's rule says.
   const FIVE = `.kp-rail--journey[data-tabs="5"]`;
   const fitsFrom5 = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((5 * Math.max(...five.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
-  const perLang5 = Object.fromEntries(Object.entries(fitsFrom5).map(([loc, w]) => [loc, minWidthRule(css, w, `${FIVE}:lang(${loc}) .kp-rail__item`)]));
-  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from360: minWidthRule(css, 360, `${FIVE} .kp-rail__item`), fitsFrom: fitsFrom5, perLang: perLang5 };
-  ok("8.align.five · with five tabs, where a label wraps the slots stack from the top; each language centres them from the width its longest rail word fits its fifth of the phone, and from 360 every slot centres",
-    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from360.includes("justify-content: center")
-      && Object.values(perLang5).every((r) => r.includes("justify-content: center")) && fitsFrom5.en > 320 && fitsFrom5.sw <= 320 && fitsFrom5.zh <= 320),
-    show(align5));
+  const from5 = Math.max(...Object.values(fitsFrom5));
+  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from: minWidthRule(css, from5, `${FIVE} .kp-rail__item`), fitsFrom: fitsFrom5,
+    perLang: (["en", "sw", "zh"] as const).filter((loc) => css.includes(`${FIVE}:lang(${loc})`)) };
+  ok("8.align.five · with five tabs every language's longest rail word fits its fifth from the same width, 317, so one rule centres the slots from there (they stack from the top only below it) — centred at every width we hold",
+    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from.includes("justify-content: center") && align5.perLang.length === 0
+      && from5 <= 320 && Object.values(fitsFrom5).every((w) => w === from5)),
+    show({ ...align5, from5 }));
 
   // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
   const both = ([null, true, false] as const).filter((w) => I.pollers(w).bell && I.pollers(w).dot);
@@ -3286,8 +3293,10 @@ ${s}`);
     const lockupAtLg = withFile(WORLD, JHDR, (s) => s.replace("mark-flip-i inline-flex xl:hidden", "mark-flip-i inline-flex lg:hidden"));
     const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
     const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key, tabs)}", `aria-current={active === d.key ? "page" : undefined}`));
-    // S5-TAB: the desktop links drawing the four tabs whatever the shell answers, while the rail draws five.
+    // S5-TAB: the desktop links drawing the four tabs whatever the shell answers, while the rail draws five; and the five
+    // destinations keeping the nav's leading 12px at 1024 (the row 5.1px into the gutter in Swahili).
     const linksFour = withFile(WORLD, JHDR, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
+    const fiveKeepMargin = withCss((s) => s.replace(`${LF}.kp-jnav[data-tabs="5"] { margin-inline-start: 0; }`, ""));
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`, "<LanguageMenu journey />"));
     const headerForgetsCodes = withFile(WORLD, JHDR, (s) => s.replace(
       `authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`,
@@ -3314,7 +3323,7 @@ ${s}`);
     const railFour = withFile(WORLD, JTABS, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
     const railLongWords = withFile(WORLD, JTABS, (s) => s.replace("const label = tabLabel(t, d.railLabel ?? d.label);", "const label = tabLabel(t, d.label);"));
     const fiveInFour = withCss((s) => s.replace(`${LF}.kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }`, ""));
-    const fiveSwAt332 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw)`, `@media (min-width: 332.8px) { .kp-rail--journey[data-tabs="5"]:lang(sw)`));
+    const fiveAt350 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`, `@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`));
     const fiveCentredBelow = withCss(inRule(`.kp-rail--journey[data-tabs="5"] .kp-rail__item`, "justify-content: flex-start", "justify-content: center"));
     const accountNamed = withFile(WORLD, JTABS, (s) => s.replace("<Link", "<Link aria-label={tabLabel(t, d.label)}"));
     const guestCancelled = withFile(WORLD, JTABS, (s) => s.replace("<button", `<Link href="/positions" onClick={(e) => e.preventDefault()}`).replace("</button>", "</Link>"));
@@ -3764,6 +3773,8 @@ ${s}`);
         world: sectionSaysPage, landed: changed(sectionSaysPage, JHDR), landedAs: "Matokeo announced as the Akaunti page" },
       { name: "the desktop links draw the four tabs whatever the shell answers (S5-TAB)", expect: at("7.desktop ·"),
         world: linksFour, landed: changed(linksFour, JHDR), landedAs: "Millionea's tab on the phone and no link to it from 1024" },
+      { name: "five destinations keep the nav's leading 12px at 1024 (S5-TAB)", expect: at("7.desktop.five ·"),
+        world: fiveKeepMargin, landed: cssChanged(fiveKeepMargin), landedAs: "the Swahili row 5.1px into the page's gutter at 1024 for a signed-in player" },
       { name: "the language menu shows on a phone", expect: at("7.cluster ·"),
         world: languageOnPhones, landed: changed(languageOnPhones, JHDR), landedAs: "a 44px control the 320 row has no room for" },
       { name: "a phone-only max-width rule in the shell", expect: at("7.first ·"),
@@ -3809,10 +3820,10 @@ ${s}`);
         world: railFour, landed: changed(railFour, JTABS), landedAs: "Millionea's link from 1024 and no tab on the phone" },
       { name: "the rail's tickets tab says its long words among five (S5-TAB)", expect: at("8.label.five ·"),
         world: railLongWords, landed: changed(railLongWords, JTABS), landedAs: "\"Tiketi zangu\" in a 72px fifth of a 360 phone" },
-      { name: "five tabs' Swahili centring keyed at the four tabs' width (S5-TAB)", expect: at("8.align.five ·"),
-        world: fiveSwAt332, landed: cssChanged(fiveSwAt332), landedAs: "Swahili's five slots stack from the top up to 332px, though every label fits one line from 317" },
-      { name: "the five-tab slots centred below their widths (S5-TAB)", expect: at("8.align.five ·"),
-        world: fiveCentredBelow, landed: cssChanged(fiveCentredBelow), landedAs: "on a 320 phone in English the Tiketi pip sits above the other four" },
+      { name: "the five tabs' centring keyed at the old English width, 350 (S5-TAB)", expect: at("8.align.five ·"),
+        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone the five slots stack from the top, though every label fits one line from 317" },
+      { name: "the five-tab slots centred below their width (S5-TAB)", expect: at("8.align.five ·"),
+        world: fiveCentredBelow, landed: cssChanged(fiveCentredBelow), landedAs: "below 317 a slot whose label no longer fits would lift its pip above the others" },
       { name: "a tab says page for its whole section (A12)", expect: at("8.aria ·"),
         world: railSaysPage, landed: changed(railSaysPage, JTABS), landedAs: "the board announces Maswali as the current page" },
       { name: "a tab link gets an aria-label", expect: at("8.name ·"),
