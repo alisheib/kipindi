@@ -98,8 +98,11 @@ const MUTATIONS = [
   {
     name: "§1b · the round vocabulary collapses into the poll's — the ROOT of Ali's bug",
     file: p("src", "lib", "side-label.ts"),
-    from: `  if (productLine === "UPDOWN") return stored === "YES" ? t.market.udUp : t.market.udDown;`,
-    to: `  if (productLine === "UPDOWN") return stored === "YES" ? t.common.yes : t.common.no;`,
+    // ⚠️ RE-ANCHORED 2026-10-19 (MASWALI-BUILD S7-F7 3): MASWALI-BUILD S0.5 (9834aaf0) turned `sideWord`'s if-chain into a
+    //    switch over every product line, and this anchor stopped resolving ("anchor missing — cannot inject") on main and
+    //    every branch since. The same defect on the line as it stands.
+    from: `    case "UPDOWN": return stored === "YES" ? t.market.udUp : t.market.udDown;`,
+    to: `    case "UPDOWN": return stored === "YES" ? t.common.yes : t.common.no;`,
   },
   {
     name: "§4 · a further private copy of the word map appears",
