@@ -320,10 +320,13 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   The production before-frame capture finished at all seven widths in three languages (72 pages, zero capture errors).
   The fourth local state run reached all 14 phases with zero capture problems: the tested round settled through the
   real handover call, its one-sided bet was refunded, and the successor opened. The prior run's 105 false hydration
-  flags were capture-tool premises; the corrected run found none. Frame review found one real ordering defect: an older
-  confirming round sat between the bettable round and the just-settled round. The card and palette refinements, guard
-  mutations, and the complete seven-width, three-language review are next. There are no after scores yet, and no
-  Release B production push has happened.
+  flags were capture-tool premises; the corrected run found none. Frame review found and fixed one real ordering defect:
+  an older confirming round sat between the bettable round and the just-settled round. At 320px in Swahili the duration
+  chips now fit in their visible row, so the duplicate filter sheet disappears and the first card starts 60px higher in
+  the measured frame. The market footer now fits pool, info, Share and Details on one row; its loading skeleton matches
+  the measured card height. A live successor pod no longer shows a blank countdown. Focused guards and deliberate red
+  mutations for these fixes passed and restored their source files. The next fresh state capture is running, followed by
+  the complete seven-width, three-language review. There are no after scores yet and no Release B production push.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
