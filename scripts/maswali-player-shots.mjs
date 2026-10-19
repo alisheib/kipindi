@@ -1,6 +1,6 @@
 /**
- * qa:maswali-player-shots — the player's Millionea at 320 / 360 / 768 / 1280 / 1920 in English, Swahili and Chinese
- * (MASWALI-BUILD S5 acceptance; the composition brief's item 7; MASWALI-PLAN §7b S5).
+ * qa:maswali-player-shots — the player's Millionea at 320 / 360 / 768 / 1024 / 1280 / 1920 in English, Swahili and
+ * Chinese, every page shot down to its end (MASWALI-BUILD S5 acceptance; the composition brief's item 7; MASWALI-PLAN §7b S5).
  *
  *   BASE=http://localhost:3410 node scripts/maswali-player-shots.mjs
  *
@@ -28,11 +28,32 @@ const only = (name, all) => {
   const raw = (process.env[name] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   return raw.length ? all.filter((x) => raw.includes(String(x))) : all;
 };
-const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1280, 1920]);
+// ⭐ 1024 TOO (the lead, 2026-10-19): the lg breakpoint, where the classic top bar replaces the phone rail and the
+// register's week switches from cards to its table — the five platform widths alone never shot that switch.
+const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1024, 1280, 1920]);
+/** ⭐ THE WHOLE PAGE, NOT ITS FIRST SCREEN (the lead, 2026-10-19, after the tile read): a page longer than the viewport is
+ *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 120px of overlap between steps so nothing
+ *  falls between two tiles — viewport tiles, never a full-page capture (the fixed bars stay where a reader sees them).
+ *  The two card doors (`markets-card`, `journey-home`) are about the card at their head, so they keep one screen.
+ *  MASWALI_SHOTS_SCROLL=0 turns it off for a quick focused run. */
+const SCROLL = process.env.MASWALI_SHOTS_SCROLL !== "0";
+const SCROLL_PAGES = new Set(["hub", "slip", "how", "register", "register-week", "tickets", "ticket"]);
+const MAX_STEPS = 14;
+async function shootScrolled(page, name, locale, width) {
+  if (!SCROLL || !SCROLL_PAGES.has(name)) return;
+  const total = await page.evaluate(() => document.documentElement.scrollHeight);
+  for (let n = 2, y = HEIGHT - 120; n <= MAX_STEPS && y < total - 40; n++, y += HEIGHT - 120) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}-s${n}.png`, fullPage: false });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
 const LOCALES = only("MASWALI_SHOTS_LOCALES", ["en", "sw", "zh"]);
 const PAGE_FILTER = (process.env.MASWALI_SHOTS_PAGES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const wantPage = (name) => PAGE_FILTER.length === 0 || PAGE_FILTER.includes(name);
-if (PAGE_FILTER.length || WIDTHS.length < 5 || LOCALES.length < 3) {
+if (PAGE_FILTER.length || WIDTHS.length < 6 || LOCALES.length < 3 || !SCROLL) {
   console.log(`FOCUSED RUN — pages ${PAGE_FILTER.join(",") || "all"} · locales ${LOCALES.join(",")} · widths ${WIDTHS.join(",")} (not the acceptance run)`);
 }
 const HEIGHT = 780;
@@ -141,6 +162,7 @@ for (const locale of LOCALES) {
       ok(`${name} · ${locale} @${width} · not the not-found page`, (await page.getByText(/^404 · /).count()) === 0);
       if (name === "ticket") ok(`ticket · ${locale} @${width} · the page draws the ticket`, (await page.getByTestId("millionea-ticket").count()) === 1);
       await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}.png`, fullPage: false });
+      await shootScrolled(page, name, locale, width);
     }
   }
   await ctx.close();
