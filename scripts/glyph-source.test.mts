@@ -319,7 +319,11 @@ const plants: [string, RegExp, World][] = [
   ["a named file types one more", new RegExp("§7 src/app/updown/history/page[.]tsx types 4 icon character[(]s[)], more than its 3"),
     edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
   ["the Millionea example gains a second typed arrow", new RegExp("§7 src/app/millionea/how/page[.]tsx types 2 icon character[(]s[)], more than its 1"),
-    edit("src/app/millionea/how/page.tsx", (t) => t.replace(' · ${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}', ' → ${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}'))],
+    edit("src/app/millionea/how/page.tsx", (t) => {
+      const site = '${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}';
+      if (t.split(site).length !== 2) throw new Error("The Millionea example's one arrow site is absent or duplicated");
+      return t.replace(site, '${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)} →');
+    })],
   ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
     edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],
   ["the console gains a typed mark", new RegExp("§7 the console types 129 icon character[(]s[)], more than its 128"),
