@@ -313,7 +313,12 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   `qa:live` 363/0.
 - ⏳ **Release B — IN CODE, not released.** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
   board order, B4 market card, B5 system and copy are being implemented in this branch. The B3 filter guard and all
-  18 mutations are green. Visual scores and production release remain unverified. ▶ **WORKING BRIEF:**
+  18 mutations are green. B2's open-price mapping and red controls, B3's board-order and capture controls, B4's card
+  guards and 15 red controls, and B5's duration/word/motion guard are green locally. A first local state run reached all
+  phases but failed its capture premise in 18 cells: the tool touched React nodes before hydration, photographed asset
+  glyphs before their sprite painted, and lost cards during a refresh. Those capture defects are being fixed and the
+  state matrix must be rerun before a visual score is valid. Visual scores and production release remain unverified.
+  ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
   system, motion, palette and copy), the guards, the tools, the release steps, and the three lanes' push lock
