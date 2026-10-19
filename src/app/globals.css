@@ -4706,6 +4706,40 @@ html[data-sheet-open] .route-enter { animation: none; }
    (`footer.licensedByGbt`'s zero-width spaces). A run longer than its line still breaks rather than overflow — the
    `.kp-hub__sub:lang(zh)` rule. */
 .kp-hero__trust:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+/* ⭐ MASWALI-BUILD S5 · VIS-P · MILLIONEA'S FACT LINES (S5-VIS-FINDINGS A1; `maswali-facts.tsx` says why). A "·"-joined line
+   never tears a phrase and never starts or ends a line with its separator. Each fact is a flex item: facts that fit share
+   a line; one that does not moves WHOLE to the next; one longer than its line wraps inside itself (`min-width: 0`), so
+   nothing overflows at 320. The separator is each fact's own LEADING mark, drawn in the `--mln-sep` gap before it; the
+   list is pulled back by that gap and clipped there (`clip-path`: the start side only, every other side left open), so
+   the mark of the fact that opens each line is cut away, and a leading mark can never end a line. `--stack` puts one
+   fact on each line at every width and `--phone` below 768 — with no marks at all, so a stacked list may be centred.
+   The mark is declared twice: an engine without generated content's alternative text keeps the plain mark; the rest
+   give it empty text, since the DOM carries the " · " a screen reader and a copy read (sr-only). */
+.kp-mln-facts {
+  --mln-sep: 0.9em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-inline-start: calc(-1 * var(--mln-sep));
+  clip-path: inset(-1em -100vw -1em var(--mln-sep));
+}
+.kp-mln-fact { min-width: 0; padding-inline-start: var(--mln-sep); }
+.kp-mln-fact::before {
+  content: "·";
+  content: "·" / "";
+  display: inline-block;
+  width: var(--mln-sep);
+  margin-inline-start: calc(-1 * var(--mln-sep));
+  text-align: center;
+}
+.kp-mln-facts--stack { flex-direction: column; align-items: flex-start; margin-inline-start: 0; clip-path: none; }
+.kp-mln-facts--stack > .kp-mln-fact { padding-inline-start: 0; }
+.kp-mln-facts--stack > .kp-mln-fact::before { content: none; }
+@media (max-width: 767.98px) {
+  .kp-mln-facts--phone { flex-direction: column; align-items: flex-start; margin-inline-start: 0; clip-path: none; }
+  .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 0; }
+  .kp-mln-facts--phone > .kp-mln-fact::before { content: none; }
+}
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
    root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still
