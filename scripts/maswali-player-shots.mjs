@@ -32,22 +32,27 @@ const only = (name, all) => {
 // register's week switches from cards to its table — the five platform widths alone never shot that switch.
 const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1024, 1280, 1920]);
 /** ⭐ THE WHOLE PAGE, NOT ITS FIRST SCREEN (the lead, 2026-10-19, after the tile read): a page longer than the viewport is
- *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 120px of overlap between steps so nothing
- *  falls between two tiles — viewport tiles, never a full-page capture (the fixed bars stay where a reader sees them).
+ *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 240px of overlap between steps so fixed top
+ *  and bottom bars cannot hide a strip between tiles — viewport tiles, never a full-page capture.
  *  The two card doors (`markets-card`, `journey-home`) are about the card at their head, so they keep one screen.
  *  MASWALI_SHOTS_SCROLL=0 turns it off for a quick focused run. */
 const SCROLL = process.env.MASWALI_SHOTS_SCROLL !== "0";
 const SCROLL_PAGES = new Set(["hub", "slip", "how", "register", "register-week", "tickets", "ticket"]);
-const MAX_STEPS = 14;
+const OVERLAP = 240;
+const MAX_STEPS = 24;
 async function shootScrolled(page, name, locale, width) {
   if (!SCROLL || !SCROLL_PAGES.has(name)) return;
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
-  for (let n = 2, y = HEIGHT - 120; n <= MAX_STEPS && y < total - 40; n++, y += HEIGHT - 120) {
-    await page.evaluate((top) => window.scrollTo(0, top), y);
+  let coveredBottom = HEIGHT;
+  for (let n = 2; n <= MAX_STEPS && coveredBottom < total - 1; n++) {
+    const top = Math.min((n - 1) * (HEIGHT - OVERLAP), Math.max(0, total - HEIGHT));
+    await page.evaluate((y) => window.scrollTo(0, y), top);
     await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}-s${n}.png`, fullPage: false });
+    coveredBottom = (await page.evaluate(() => window.scrollY)) + HEIGHT;
   }
+  if (coveredBottom < total - 1) throw new Error(`${name} · ${locale} @${width}: full page was not covered by ${MAX_STEPS} viewport tiles`);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 const LOCALES = only("MASWALI_SHOTS_LOCALES", ["en", "sw", "zh"]);

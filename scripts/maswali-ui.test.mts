@@ -975,6 +975,19 @@ const shotsOpenDefects = (src: string) => {
   }
   return [];
 };
+const shotsScrollDefects = (src: string) => {
+  const s = squash(code(src));
+  const from = s.indexOf("async function shootScrolled(page, name, locale, width) {");
+  const to = s.indexOf("const LOCALES =", from);
+  const scroll = from < 0 || to < 0 ? "" : s.slice(from, to);
+  const overlap = Number(s.match(/const OVERLAP = (\d+);/)?.[1]);
+  const d: string[] = [];
+  if (!Number.isFinite(overlap) || overlap < 200) d.push("scroll overlap is smaller than the fixed top and bottom chrome with margin");
+  if (!scroll.includes("(n - 1) * (HEIGHT - OVERLAP)")) d.push("each subsequent tile does not use the overlap");
+  if (!scroll.includes("coveredBottom = (await page.evaluate(() => window.scrollY)) + HEIGHT;")) d.push("coverage is not measured from the browser's actual scroll position");
+  if (!scroll.includes("if (coveredBottom < total - 1) throw new Error(")) d.push("an incomplete page can pass after the tile cap");
+  return d;
+};
 {
   const d = shotsOpenDefects(read(SHOTS));
   ok("12.1 · the full screenshot sweep reads load, a bounded quiet attempt, fonts, two frames and a settle beat", d.length === 0, d.join(" | "));
@@ -983,10 +996,16 @@ const shotsOpenDefects = (src: string) => {
   if (count(src, from) !== 1) throw new Error("screenshot wait plant premise absent or ambiguous");
   const slow = shotsOpenDefects(src.replace(from, 'await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {})'));
   ok("12.2 · CONTROL · a minute-long quiet wait before every screenshot is reported", slow.length === 1, slow.join(" | "));
+  const coverage = shotsScrollDefects(src);
+  ok("12.3 · each viewport tile overlaps fixed chrome and the last tile reaches the real page end", coverage.length === 0, coverage.join(" | "));
+  const narrow = shotsScrollDefects(src.replace("const OVERLAP = 240;", "const OVERLAP = 120;"));
+  ok("12.4 · CONTROL · the old 120px gap behind fixed chrome is reported", narrow.includes("scroll overlap is smaller than the fixed top and bottom chrome with margin"), narrow.join(" | "));
+  const incomplete = shotsScrollDefects(src.replace("if (coveredBottom < total - 1) throw new Error(", "if (false) throw new Error("));
+  ok("12.5 · CONTROL · a page that silently ends at the tile cap is reported", incomplete.includes("an incomplete page can pass after the tile cap"), incomplete.join(" | "));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 133; // 2026-10-19 green run, through §12
+const MIN_ASSERTIONS = 136; // 2026-10-19 green run, through §12
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);
