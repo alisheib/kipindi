@@ -156,6 +156,7 @@ const card = p.getByTestId("millionea-home-card");
 ok("2.1 the classic board carries the Millionea card at its head", (await card.count()) === 1);
 await tile(p, "2-markets-card-360");
 await Promise.all([p.waitForURL(`${BASE}/millionea`, { timeout: 120_000 }), card.getByRole("link").first().click()]);
+await p.getByRole("heading", { level: 1, name: /Millionea/ }).first().waitFor({ timeout: 60_000 }).catch(() => {});
 ok("2.2 the card opens the hub", p.url() === `${BASE}/millionea` && (await p.getByRole("heading", { level: 1 }).first().textContent())?.includes("Millionea") === true);
 await p.setViewportSize({ width: 1280, height: 900 });
 await open(p, "/results");
@@ -173,6 +174,7 @@ async function buyOne(label) {
   ok(`${label}.1 the hub offers "Fill a ticket"`, (await fillDoor.count()) === 1);
   await Promise.all([p.waitForURL(`${BASE}/millionea/slip`, { timeout: 120_000 }), fillDoor.click()]);
   const groups = p.getByRole("radiogroup");
+  await groups.first().waitFor({ timeout: 60_000 }).catch(() => {});
   ok(`${label}.2 the slip asks fifteen questions, each one radio group`, (await groups.count()) === 15, `${await groups.count()}`);
   for (let i = 0; i < 15; i++) await groups.nth(i).getByRole("radio").first().click();
   await tile(p, `${label}-slip-answered-360`);
@@ -188,6 +190,9 @@ async function buyOne(label) {
   ok(`${label}.4 the cut ticket's stamp names its serial`, ((await p.getByRole("dialog").first().textContent()) ?? "").includes("Ticket cut"));
   await tile(p, `${label}-stamp-360`);
   await Promise.all([p.waitForURL(/\/millionea\/tickets\/[^/]+$/, { timeout: 120_000 }), view.click()]);
+  // The URL changes when the client navigation starts, before the ticket page has rendered (a second OMEGA run counted
+  // 0 here while its tile, a moment later, showed the ticket): wait for the ticket, then count it.
+  await p.getByTestId("millionea-ticket").first().waitFor({ timeout: 60_000 }).catch(() => {});
   ok(`${label}.5 the ticket page draws the ticket`, (await p.getByTestId("millionea-ticket").count()) === 1);
   await tile(p, `${label}-ticket-360`);
   return decodeURIComponent(p.url().split("/").pop() ?? "");
