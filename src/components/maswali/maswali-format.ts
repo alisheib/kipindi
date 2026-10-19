@@ -50,6 +50,14 @@ export function eatRange(t: Dict, fromMs: number, toMs: number): string {
   return `${end(fromMs)} – ${end(toMs)}`;
 }
 
+/**
+ * A question's source as a reader sees it: its domain without a leading "www." ("www.nbc.co.tz" → "nbc.co.tz"; S5 VIS R2)
+ * — the register and the slip print one source one way (A5). Nothing else is touched: another subdomain, the case, the rest.
+ */
+export function sourceLabel(domain: string): string {
+  return domain.replace(/^www\./i, "");
+}
+
 /** The label a player reads for a reserve: A1…A5 ("Akiba", O-8); the code and the rules keep R1…R5. */
 export function reserveLabel(ordinal: number): string {
   return `A${ordinal}`;

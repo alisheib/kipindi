@@ -7,7 +7,7 @@ import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useCountdown } from "@/components/updown/round-countdown";
 import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
-import { eatClock, eatWeekdayClock, joinList, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
+import { eatClock, eatWeekdayClock, joinList, reserveLabel, sourceLabel, weekWord } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type MaswaliPick } from "@/lib/maswali-score";
@@ -147,7 +147,7 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
   };
   // The source and the event: a fact line (S5 VIS P7, A1) — "Event Saturday 09:00" one run, never "…Saturday" / "09:00".
   const meta = [
-    keepFact(locale, fill(t.millionea.sourceLine, { source: q.source })),
+    keepFact(locale, fill(t.millionea.sourceLine, { source: sourceLabel(q.source) })),
     q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>,
   ];
   return (

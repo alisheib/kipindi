@@ -36,6 +36,11 @@ import { utcToZonedLocal } from "@/lib/maswali-time";
 
 const DAY = 86_400_000;
 const OWNER = "usr_dev_owner";
+/** The seals' officer (S5 VIS R11): a real staff account — a MODERATOR, the role whose default grant acts on `trading`, the
+ *  domain `sealMaswaliQuestion` asks through `requireStaff` — so the public register reads its ROLE as it reads every real
+ *  seal's, never "—" (a seal by an id with no account behind it is a state the product cannot produce). Created once,
+ *  beside the players, with an empty wallet and no deposit. */
+const SEALER = "usr_dev_sealer";
 const SOURCES = ["https://www.nbc.co.tz/results", "https://www.tff.or.tz/fixtures", "https://www.bot.go.tz/rates", "https://www.meteo.go.tz/bulletin", "https://www.coingecko.com/en/coins/bitcoin"];
 const CATS = ["sports", "sports", "macro", "weather", "crypto"];
 
@@ -53,16 +58,17 @@ function questions(weekStart: number): DraftQuestionInput[] {
   });
 }
 
-async function player(balance: number): Promise<string> {
-  const id = `usr_${randomId(12)}`, now = new Date().toISOString();
+/** A seeded account: a player with `balance` deposited — or, given `role` and `id`, the staff account that seals, with none. */
+async function player(balance: number, role: "PLAYER" | "MODERATOR" = "PLAYER", id = `usr_${randomId(12)}`): Promise<string> {
+  const now = new Date().toISOString();
   await db.user.create({
     id, phoneE164: `+2557${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`, email: null, passwordHash: null, passwordSalt: null,
-    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: `Dev player ${id.slice(-4)}`, dob: null,
+    failedLoginCount: 0, lockedUntil: null, role, status: "ACTIVE", locale: "EN", displayName: role === "PLAYER" ? `Dev player ${id.slice(-4)}` : "Dev results officer", dob: null,
     region: null, acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
     recruitedBy: null, createdAt: now, updatedAt: now, lastLoginAt: null, closedAt: null,
   } as unknown as StoredUser);
   await db.wallet.create({ id: `wal_${id}`, userId: id, balance, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now } as unknown as StoredWallet);
-  await postLedgerEntries(`seed_${id}`, depositEntries({ txnId: `seed_${id}`, userId: id, amount: balance, provider: "DEV_SEED" }));
+  if (balance > 0) await postLedgerEntries(`seed_${id}`, depositEntries({ txnId: `seed_${id}`, userId: id, amount: balance, provider: "DEV_SEED" }));
   return id;
 }
 
@@ -96,7 +102,7 @@ async function closeAndSeal(week: { id: string; closesAt: string }, ms: number, 
     const r = await sealQuestion({
       weekId: week.id, slot, outcome: voided ? "VOID" : "YES", voidReason: voided ? "abandoned" : null,
       evidence: voided ? `Event ${slot} was abandoned with no official result (dev seed)` : `Official result for event ${slot} (dev seed)`,
-      officerId: "usr_dev_sealer", now: new Date(ms + 9 * DAY),
+      officerId: SEALER, now: new Date(ms + 9 * DAY),
     });
     if (!r.ok) throw new Error(`seal ${slot}: ${r.error}`);
   }
@@ -116,6 +122,7 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "Millionea weeks already exist on this store; restart the dev server to seed again." }, { status: 409 });
     }
     const players = await Promise.all(Array.from({ length: 12 }, () => player(200_000)));
+    await player(0, "MODERATOR", SEALER);
     // A settled week (with one winner), a week ready to release, a closed week to seal, a week that voids whole, a selling
     // week, then a draft — each opened only once the one before it stopped selling (MR-3).
     const m1 = eatWeekStartMs(Date.now()) + 2 * 7 * DAY;
