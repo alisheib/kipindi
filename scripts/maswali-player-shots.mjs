@@ -42,9 +42,18 @@ async function contextWith(cookies, locale) {
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined }))]);
   return ctx;
 }
+/** Opens a page and lets it settle before it is measured and shot: the load event, the network quiet for a beat (a
+ *  signed-in page polls, so "networkidle" may never come — it is waited for 8s at most, never the 60s that made one
+ *  run of 135 tiles take hours on OMEGA, 2026-10-19), the webfonts, two frames, and a short beat for the effects that
+ *  commit after hydration (the balance capsule's mask lifts in its first render after hydration — journey-header-fit). */
 async function open(page, path) {
-  const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-  await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
+  const res = await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 180_000 });
+  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))));
+  }).catch(() => {});
+  await page.waitForTimeout(500);
   return res;
 }
 
