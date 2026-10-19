@@ -45,6 +45,7 @@ import { guaranteeRequirement, settleArithmetic, type WeekArithmetic } from "@/l
 import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } from "@/lib/maswali-week-label";
 import { exitWindowFacts } from "@/lib/exit-window";
 import { eatNextWeekAt } from "@/lib/eat-day";
+import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 
 const UNSETTLED: WeekState[] = ["OPEN", "CLOSED", "RESOLVING"];
 const GRADING: WeekState[] = ["CLOSED", "RESOLVING"];
@@ -657,11 +658,7 @@ export async function millioneaCancelUntil(weekId: string, placedAt: string, now
 // ── THE VIEWER'S TICKETS (§10 3.8, 3.9) ──────────────────────────────────────────────────────────────
 
 /** A serial as minted (`MLN-2026-W44-000123`, or `MLD-…` for a drive week), or null: nothing else is ever looked up. */
-export function normalizeMillioneaSerial(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const s = raw.trim().toUpperCase();
-  return /^ML[ND]-\d{4}-W\d{2}-\d{6,9}$/.test(s) ? s : null;
-}
+export { normalizeMillioneaSerial } from "@/lib/millionea-serial";
 
 export type MillioneaTicketsWeek = {
   week: { id: string; code: string; visibility: WeekVisibility; state: WeekState; closesAt: string; settledAt: string | null };

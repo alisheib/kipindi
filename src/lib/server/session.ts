@@ -11,6 +11,7 @@ import { cache } from "react";
 import { signSession, verifySession, randomId, pepperedLetters } from "./crypto";
 import { audit } from "./audit";
 import { readActiveSession, setActiveSessionId, clearActiveSession } from "./session-registry";
+import { SESSION_IDLE_TIMEOUT_MS } from "@/lib/session-limits";
 
 /**
  * B-13 — request-scoped "this session just ENDED, and why" signal.
@@ -85,7 +86,6 @@ export type SessionData = {
 
 const COOKIE_NAME = "kp_session";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;            // 7-day absolute cap
-const IDLE_TIMEOUT_MS = 24 * 60 * 60 * 1000;               // 24 h since last activity
 const REFRESH_THROTTLE_MS = 5 * 60 * 1000;                 // resign cookie at most every 5 min
 /* E-235 — a gap this long ends one play session and begins the next.
  *
@@ -191,7 +191,7 @@ export async function getSessionState(): Promise<SessionState> {
   // account-protection: idle browsers that left the tab open should not
   // remain authenticated for the full 7-day cap.
   const lastSeen = session.lastSeenAt ?? session.iat ?? now;
-  if (now - lastSeen > IDLE_TIMEOUT_MS) {
+  if (now - lastSeen > SESSION_IDLE_TIMEOUT_MS) {
     auditOnce(`idle:${session.sessionId}`, () =>
       audit({
         category: "AUTH",

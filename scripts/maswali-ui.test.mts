@@ -221,17 +221,20 @@ console.log("\n§4 · the edge — a dark address answers the router's own 404 w
     j({ missed: yes.filter((p) => !isMillioneaPath(p)), caught: no.filter(isMillioneaPath) }));
   ok("4.2 · the tickets are the list and one ticket", isMillioneaTicketsPath("/millionea/tickets") && isMillioneaTicketsPath("/millionea/tickets/1043")
     && !isMillioneaTicketsPath("/millionea") && !isMillioneaTicketsPath("/millionea/ticketsx"));
-  type V = { signedIn: boolean; staff: boolean };
-  const GUEST: V = { signedIn: false, staff: false }, PLAYER: V = { signedIn: true, staff: false }, STAFF: V = { signedIn: true, staff: true };
+  type V = { signedIn: boolean; staff: boolean; holder: boolean };
+  const GUEST: V = { signedIn: false, staff: false, holder: false }, PLAYER: V = { signedIn: true, staff: false, holder: false };
+  const HOLDER: V = { signedIn: true, staff: false, holder: true }, STAFF: V = { signedIn: true, staff: true, holder: false };
   const PAGES = ["/millionea", "/millionea/slip", "/millionea/how", "/millionea/register", "/millionea/register/2026-W42", "/legal/rules/millionea"];
   const TICKETS = ["/millionea/tickets", "/millionea/tickets/1043"];
   const table: Array<[string, "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE", V, boolean, boolean]> = [
     // [who, ceiling, viewer, the pages dark?, the tickets dark?]
     ["a guest", "WITHDRAWN", GUEST, true, true],
-    ["a player", "WITHDRAWN", PLAYER, true, false],
-    ["staff", "WITHDRAWN", STAFF, true, false],
+    ["a player without a ticket", "WITHDRAWN", PLAYER, true, true],
+    ["a ticket holder", "WITHDRAWN", HOLDER, true, false],
+    ["staff without a ticket", "WITHDRAWN", STAFF, true, true],
     ["a guest", "STAFF_PREVIEW", GUEST, true, true],
-    ["a player", "STAFF_PREVIEW", PLAYER, true, false],
+    ["a player without a ticket", "STAFF_PREVIEW", PLAYER, true, true],
+    ["a ticket holder", "STAFF_PREVIEW", HOLDER, true, false],
     ["staff", "STAFF_PREVIEW", STAFF, false, false],
     ["a guest", "ACTIVE", GUEST, false, false],
     ["a player", "ACTIVE", PLAYER, false, false],
@@ -251,7 +254,8 @@ console.log("\n§4 · the edge — a dark address answers the router's own 404 w
 const PROXY_BELT = [
   "if (millioneaEdgeAsks(pathname)) {",
   "const session = await readVerifiedSession(cookie);",
-  'if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role) })) {',
+  "const holder = isMillioneaTicketsPath(pathname) ? await millioneaTicketEntitledAtEdge(pathname, session) : false;",
+  'if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role), holder })) {',
   "const url = req.nextUrl.clone();",
   "url.pathname = MILLIONEA_DARK_PATH;",
   "return withSecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), secure);",
@@ -263,6 +267,7 @@ const proxyDefects = (proxy: string) => {
   for (const line of PROXY_BELT) at.push(s.indexOf(line, at.length === 0 ? s.indexOf('requestHeaders.set( "x-kp-document"') : at[at.length - 1] + 1));
   const d: string[] = [];
   if (!s.includes('import { MILLIONEA_DARK_PATH, millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";')) d.push("the proxy does not import the edge's decision");
+  if (!s.includes('import { millioneaTicketEntitledAtEdge } from "@/lib/server/millionea-edge-entitlement";')) d.push("the proxy does not import the pre-render ticket entitlement");
   if (at.some((n) => n < 0) || at.some((n, i) => i > 0 && n < at[i - 1])) d.push(`the belt is not written in order: ${j(at)}`);
   const setDoc = s.indexOf('requestHeaders.set( "x-kp-document"'), passOn = s.indexOf("NextResponse.next({ request: { headers: requestHeaders } })");
   if (!(setDoc >= 0 && at[0] > setDoc && passOn > at[at.length - 1])) d.push(`the belt is not between the header sets and the pass-on: ${j({ setDoc, belt: at[0], passOn })}`);
@@ -272,6 +277,93 @@ const proxyDefects = (proxy: string) => {
   const d = proxyDefects(read("src/proxy.ts"));
   ok("4.8 · the proxy wires the belt after it sets the request headers and before it passes them on: a dark address is rewritten to the private segment under those same headers, so the 404 renders as an unknown address's does",
     d.length === 0, d.join(" | "));
+}
+const verifiedClaimsDefects = (src: string) => {
+  const s = squash(code(src));
+  return ["role", "userId", "sessionId", "exp", "iat", "lastSeenAt"]
+    .filter((key) => !s.includes(`${key}: payload.${key}`));
+};
+{
+  const { signSession } = await import("../src/lib/server/crypto.ts");
+  const { readVerifiedSession } = await import("../src/lib/proxy-session.ts");
+  const now = Date.now();
+  const claims = { role: "PLAYER", userId: "owner", sessionId: "sess_owner", exp: now + 60_000, iat: now - 1000, lastSeenAt: now - 1000 };
+  const token = signSession(claims);
+  const decoded = await readVerifiedSession(token);
+  ok("4.8a · the proxy's HMAC verifier actually returns every signed claim the pre-render entitlement needs",
+    decoded !== null && Object.entries(claims).every(([key, value]) => decoded[key as keyof typeof decoded] === value));
+  ok("4.8b · a damaged signature and an expired cookie hand no claims to the ticket belt",
+    await readVerifiedSession(`${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`) === null
+      && await readVerifiedSession(signSession({ ...claims, exp: now - 1 })) === null);
+  ok("4.8c · the source returns the claims that were verified, not a role-only shell",
+    verifiedClaimsDefects(read("src/lib/proxy-session.ts")).length === 0, verifiedClaimsDefects(read("src/lib/proxy-session.ts")).join(", "));
+}
+{
+  const { millioneaTicketEntitledAtEdge } = await import("../src/lib/server/millionea-edge-entitlement.ts");
+  const now = Date.now();
+  const signed = { userId: "owner", sessionId: "sess_owner", exp: now + 60_000, iat: now - 1000, lastSeenAt: now - 1000 };
+  let listReads = 0, detailReads = 0;
+  const reads = {
+    activeSession: async () => ({ state: "active" as const, sessionId: signed.sessionId }),
+    holdsAny: async (userId: string) => { listReads++; return userId === "owner"; },
+    ownerOf: async (serial: string) => { detailReads++; return serial === "MLN-2026-W42-000017" ? "owner" : serial === "MLN-2026-W42-000018" ? "other" : null; },
+  };
+  const list = "/millionea/tickets", own = `${list}/mln-2026-w42-000017`, foreign = `${list}/MLN-2026-W42-000018`, missing = `${list}/MLN-2026-W42-000019`;
+  ok("4.8a · a valid, active session that holds a ticket reaches its list through exactly one scoped holding read",
+    await millioneaTicketEntitledAtEdge(list, signed, reads, now) && listReads === 1 && detailReads === 0);
+  ok("4.8b · its own serial reaches the detail through an owner read, with the same normalization as the page",
+    await millioneaTicketEntitledAtEdge(own, signed, reads, now) && listReads === 2 && detailReads === 1);
+  const noOwn = await millioneaTicketEntitledAtEdge(foreign, signed, reads, now);
+  const noMissing = await millioneaTicketEntitledAtEdge(missing, signed, reads, now);
+  const noMalformed = await millioneaTicketEntitledAtEdge(`${list}/MLN-2026-W42-000017/extra`, signed, reads, now);
+  ok("4.8c · another owner's serial, an unknown serial and a malformed nested path all get the same deny decision",
+    !noOwn && !noMissing && !noMalformed && listReads === 5 && detailReads === 3);
+  const noCookie = await millioneaTicketEntitledAtEdge(list, null, reads, now);
+  const expired = await millioneaTicketEntitledAtEdge(list, { ...signed, exp: now - 1 }, reads, now);
+  const idle = await millioneaTicketEntitledAtEdge(list, { ...signed, lastSeenAt: now - 25 * 3_600_000 }, reads, now);
+  const absent = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, activeSession: async () => ({ state: "absent" as const }) }, now);
+  const displaced = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, activeSession: async () => ({ state: "active" as const, sessionId: "newer" }) }, now);
+  const registryError = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, activeSession: async () => { throw new Error("registry read failed"); } }, now);
+  ok("4.8d · a missing, expired, idle, revoked, displaced or unexpectedly failed session never reaches a holding read",
+    !noCookie && !expired && !idle && !absent && !displaced && !registryError && listReads === 5);
+  const unread = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, activeSession: async () => ({ state: "unavailable" as const }) }, now);
+  const listDenied = await millioneaTicketEntitledAtEdge(list, signed, { ...reads, holdsAny: async () => { throw new Error("read failed"); } }, now);
+  const detailDenied = await millioneaTicketEntitledAtEdge(own, signed, { ...reads, holdsAny: async () => { throw new Error("read failed"); } }, now);
+  let detailFailed = false;
+  try { await millioneaTicketEntitledAtEdge(own, signed, { ...reads, ownerOf: async () => { throw new Error("read failed"); } }, now); }
+  catch { detailFailed = true; }
+  ok("4.8e · an unreadable registry follows getSessionState; a failed holding admission denies both routes privately, while a later detail read surfaces its error (B-1)",
+    unread && !listDenied && !detailDenied && detailFailed);
+}
+const edgeTicketDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  if (!s.includes('activeSession: readActiveSession') || !s.includes('ticketStore.listForUser(userId, { limit: 1 })')) d.push("the list does not check this session and its own held ticket");
+  if (!s.includes('ticketStore.getBySerial(serial)') || !s.includes('(await reads.ownerOf(serial)) === session.userId')) d.push("the detail does not compare the serial's owner to the signed account");
+  if (!s.includes('const serial = normalizeMillioneaSerial(decoded);') || !s.includes('try { decoded = decodeURIComponent(tail); } catch { return false; }') || !s.includes('if (!tail || tail.includes("/")) return false;')) d.push("the detail does not parse one minted serial like the page");
+  if (!s.includes('try { active = await reads.activeSession(session.userId, session.sessionId); } catch { return false; }')
+    || !s.includes('if (active.state === "absent" || (active.state === "active" && active.sessionId !== session.sessionId)) return false;')) d.push("an ended session is not denied before the ticket read");
+  if (!s.includes('now - lastSeen > SESSION_IDLE_TIMEOUT_MS') || !s.includes('now > session.exp')) d.push("an expired or idle cookie is not denied before the ticket read");
+  if (!s.includes('try { holds = await reads.holdsAny(session.userId); } catch { return false; }')
+    || !s.includes('if (!holds) return false;')
+    || !s.includes('return serial !== null && (await reads.ownerOf(serial)) === session.userId;')) d.push("the holding admission or later detail-read error policy differs from the page");
+  return d;
+};
+{
+  const src = read("src/lib/server/millionea-edge-entitlement.ts");
+  ok("4.8f · the production proxy entitlement uses the active-session registry, bounded own-list lookup and serial owner lookup, and fails closed",
+    edgeTicketDefects(src).length === 0, edgeTicketDefects(src).join(" | "));
+}
+const darkDriveStatusDefects = (src: string) => {
+  const s = squash(code(src));
+  const from = s.indexOf('for (const route of ["/millionea/tickets", "/millionea/tickets/NO-SUCH-SERIAL"])');
+  const to = s.indexOf('await tile(rp, "W-nonholder-tickets-360")', from);
+  const block = from >= 0 && to > from ? s.slice(from, to) : "";
+  return block.includes('res?.status() === 404 && (await notFoundShown(rp))') ? [] : ["the signed-in dark drive does not assert the real 404 before its not-found body"];
+};
+{
+  const d = darkDriveStatusDefects(read("scripts/maswali-player-drive.mjs"));
+  ok("4.8g · the hard-request dark drive asserts 404 status for a signed-in non-holder's list and unknown detail", d.length === 0, d.join(" | "));
 }
 {
   // qa:live's dark section, driven against a served site of its own (a stubbed fetch): both ways a dark route answers.
@@ -601,6 +693,28 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   ok("8.3 · a title that asks the throwing gate again is reported", throwingTitle.some((x) => x.includes("title")));
   const unbelted = proxyDefects(read("src/proxy.ts").replace("if (millioneaEdgeAsks(pathname)) {", "if (false) {"));
   ok("8.4 · a proxy whose belt never runs is reported", unbelted.length > 0);
+  const proxy = read("src/proxy.ts"), entitlement = read("src/lib/server/millionea-edge-entitlement.ts");
+  const noPreflight = proxy.replace("await millioneaTicketEntitledAtEdge(pathname, session)", "true");
+  ok("8.4a · a proxy that lets every signed non-holder stream a not-found page is reported",
+    noPreflight !== proxy && proxyDefects(noPreflight).length > 0);
+  const verifier = read("src/lib/proxy-session.ts");
+  const noUserClaim = verifier.replace("userId: payload.userId,", "");
+  ok("8.4a′ · a verifier that signs off on a cookie but returns no account claim is reported",
+    noUserClaim !== verifier && verifiedClaimsDefects(noUserClaim).includes("userId"));
+  const noOwner = entitlement.replace('(await reads.ownerOf(serial)) === session.userId', 'true');
+  ok("8.4b · a detail read that admits another account's serial is reported",
+    noOwner !== entitlement && edgeTicketDefects(noOwner).some((x) => x.includes("owner")));
+  const noRegistry = entitlement.replace('activeSession: readActiveSession', 'activeSession: async () => ({ state: "unavailable" })');
+  ok("8.4c · a pre-render check that no longer reads session revocation is reported",
+    noRegistry !== entitlement && edgeTicketDefects(noRegistry).some((x) => x.includes("session")));
+  const thrownAdmission = entitlement.replace('try { holds = await reads.holdsAny(session.userId); } catch { return false; }',
+    'holds = await reads.holdsAny(session.userId);');
+  ok("8.4d · a failed holding admission leaked as an error instead of a private 404 is reported",
+    thrownAdmission !== entitlement && edgeTicketDefects(thrownAdmission).some((x) => x.includes("holding admission")));
+  const drive = read("scripts/maswali-player-drive.mjs");
+  const softStatus = drive.replace('res?.status() === 404 && (await notFoundShown(rp))', '(await notFoundShown(rp))');
+  ok("8.4e · a signed-in dark drive that accepts a streamed 200 with not-found words is reported",
+    softStatus !== drive && darkDriveStatusDefects(softStatus).length > 0);
   const railSlot = doorDefects(plant("src/components/layout/bottom-nav.tsx", "const items = [", 'const items = [{ href: "/millionea", label: "M", icon: null },'));
   ok("8.5 · Millionea in a classic rail slot is reported (the classic phone rail keeps it as More's first row)", railSlot.some((x) => x.includes("rail slot")));
   // S5-TAB B's controls: the bar's core link never drawn; Results kept inline beside it (the Swahili bar then loses its
