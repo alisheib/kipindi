@@ -24,23 +24,12 @@ export const MUTATIONS = [
   {
     name: "an exemption whose site vanished must be pruned, not left as a hole",
     // The round page's hand-drawn outcome arrow was this plant's site until PHOSPHOR-MIGRATION W4 drew it from the family
-    // and pruned its exemption. The countdown ring's two circles are the whole of its chart shape (its label matches no
-    // detector), so taking them out leaves the ring's exemption standing on nothing — the hole §3.2 must catch.
-    file: "src/components/positions/countdown-ring.tsx",
-    from: `      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-overlay)" strokeWidth={sw} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={r}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={sw}
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={c * (1 - frac)}
-        style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.5s linear" }}
-      />`,
-    to: "",
+    // and pruned its exemption. The badge ring's dash is the whole of Badge.tsx's chart shape, on one line (a one-line
+    // anchor: this harness matches a checkout's own line endings), so taking it out leaves the badge's exemption standing
+    // on nothing — the hole §3.2 must catch.
+    file: "src/components/badges/Badge.tsx",
+    from: "strokeDasharray={C} strokeDashoffset={C * (1 - pct)} />",
+    to: "/>",
     expect: "3.2 every exemption still matches a detector",
   },
   {

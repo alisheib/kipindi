@@ -92,6 +92,20 @@ export function depositResultKind(row: { type: string; status: string; amlReason
  * filters, counts and tones are unchanged), but every surface NAMES it "Held for return" (`txnStatusHeld`, through
  * `receiptStatusWord(…, held)`), never "Reversed" — the title matches the body that says the money is held for return.
  */
+/**
+ * The glyph beside a presented status's word — colour is never the only signal (§A4). ONE map: the list's row and the
+ * receipt's own page both read it, and both draw it in Fill — a payment's status, stated by its chip (PHOSPHOR-MIGRATION
+ * §8c). Key names of the glyph family `I`.
+ */
+export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock" | "alertCircle" | "rotateCcw" | "xCircle"> = {
+  CONFIRMED: "checkCircle",
+  PENDING: "clock",
+  PROCESSING: "clock",
+  AML_REVIEW: "clock",
+  FAILED: "alertCircle",
+  REVERSED: "rotateCcw",
+  CANCELLED: "xCircle",
+};
 export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null; providerStatus?: string | null }): TxnStatusValue {
   if (hasDepositStatusReview(row)) return "AML_REVIEW";
   if (row.type !== "DEPOSIT") return row.status;

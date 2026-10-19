@@ -30,20 +30,8 @@ import { Chip } from "@/components/ui/chip";
 import { Cash } from "@/components/ui/cash";
 import { IconPlate } from "@/components/ui/icon-plate";
 import type { StatusChipVariant } from "@/lib/status-tone";
-import type { ReceiptType } from "@/lib/wallet/receipts";
+import { RECEIPT_STATUS_GLYPH, type ReceiptType } from "@/lib/wallet/receipts";
 import type { TxnStatusValue } from "@/lib/wallet/ledger";
-
-/** The glyph beside the status word — colour is never the only signal (§A4). ONE map: the receipt's own page reads it
- *  too. Drawn in Fill: a payment's status, stated by its chip (PHOSPHOR-MIGRATION §8c). */
-export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock" | "alertCircle" | "rotateCcw" | "xCircle"> = {
-  CONFIRMED: "checkCircle",
-  PENDING: "clock",
-  PROCESSING: "clock",
-  AML_REVIEW: "clock",
-  FAILED: "alertCircle",
-  REVERSED: "rotateCcw",
-  CANCELLED: "xCircle",
-};
 
 export function ReceiptListRow({
   id,

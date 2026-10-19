@@ -49,7 +49,7 @@ import { formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { playerStatusChip } from "@/lib/status-tone";
 import { STATE_STATUSES } from "@/lib/wallet/ledger";
-import { hasDepositStatusReview, hasReceipt, isRgHeldDeposit, methodLabel, presentedStatus, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
+import { hasDepositStatusReview, hasReceipt, isRgHeldDeposit, methodLabel, presentedStatus, RECEIPT_STATUS_GLYPH, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Cash } from "@/components/ui/cash";
 import { keepIdRuns } from "@/components/ui/keep-words";
@@ -57,7 +57,6 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Callout } from "@/components/ui/callout";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
-import { RECEIPT_STATUS_GLYPH } from "@/components/wallet/receipt-list-row";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
