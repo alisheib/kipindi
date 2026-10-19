@@ -900,7 +900,12 @@ if (runs("PL")) {
   }
   const reclassified = (await lineOf()) !== "MASWALI";
   const before = { bal: await bal(late), count: (await dal.weekStore.get(wk.id)).ticketCount, positions: ((await market.listPositionsForMarket(wk.marketId)) as any[]).length };
-  const r = await W.buy(late, wk.id, [ALL_YES]);
+  // ⛔ MASWALI-BUILD S7-F7 3 · A THROW IS THIS CASE'S FAILURE, NEVER THE CHILD'S END. Without the fence's refusal the generic bet
+  //    path meets the payout model's own guard (`poolFee` will not price a jackpot-payout week) and throws: nothing sells, but
+  //    the child died before PL.4 could say so and every case after it went unrun (red:maswali-money-path's S7-week-line read
+  //    WRONG-ASSERTION). The purchase must REFUSE, so a throw is reported here, as the fixture's own steps are (S7-F2).
+  let r: any;
+  try { r = await W.buy(late, wk.id, [ALL_YES]); } catch (err) { r = { ok: false, reason: "threw", error: String((err as Error)?.message ?? err).slice(0, 160) }; }
   // ⭐ S7-F2 · the re-line must have LANDED, on both stores: a fixture that wrote nothing made this case pass on nothing.
   ok("PL.4 · ⭐ a week whose market no longer reads as a Millionea market sells nothing — never a one-sided Yes/No stake on its pool (the re-line itself landed)",
     reclassified && !r.ok && r.reason === "millionea_week_not_open" && (await bal(late)) === before.bal

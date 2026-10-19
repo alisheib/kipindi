@@ -237,10 +237,24 @@ console.log("\n§7 · a voided week refunds every ticket");
   const a = await W.user({ balance: 50_000 }), b = await W.user({ balance: 50_000 });
   // `a` holds a bonus with progress made on other bets: a ticket accrues no turnover (OD-27), so its refund must remove none.
   const bonus = await import("../../src/lib/server/bonus-service.ts");
-  await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+  // ⛔ MASWALI-BUILD S7-F7 2 · THE BONUS IS THIS CASE'S FIXTURE, SO ITS FEATURE IS ON FOR THE GRANT ALONE. The bonus wallet is
+  //    WITHDRAWN from the product (`feature-state.ts`) and `creditBonus` refuses while it sleeps, so `a` held no bonus: 7.0b
+  //    and 7.3b compared 0 with 0, and red:maswali-money-path's (6b) — a void refund that reverses turnover — stayed green.
+  //    The switch is the server-side one an operator would set, scoped as `withdrawn-features` §4 scopes it and put back
+  //    after; the accrual, the summary and a reversal never read it. 7.0a refuses to go on without the premise.
+  const bonusWas = process.env.FEATURE_BONUS;
+  process.env.FEATURE_BONUS = "ACTIVE";
+  let granted: Awaited<ReturnType<typeof bonus.creditBonus>>;
+  try {
+    granted = await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+  } finally {
+    if (bonusWas === undefined) delete process.env.FEATURE_BONUS; else process.env.FEATURE_BONUS = bonusWas;
+  }
   await bonus.recordWagering(a, 5_000);
   const wagerLeft = async () => (await bonus.getBonusSummary(a)).activeWagerRemainingTzs;
   const leftBefore = await wagerLeft();
+  ok("7.0a · the premise: `a` holds a bonus with turnover both made and still to make (10,000 at ×10, 5,000 played: 95,000 left) — without it 7.0b and 7.3b compare nothing",
+    granted.ok && leftBefore === 95_000, `${granted.ok ? "granted" : granted.error} · ${leftBefore} left`);
   await W.buy(a, v.id, [W.WIN, W.LOSE]);
   ok("7.0b · buying tickets accrues no turnover against the bonus", (await wagerLeft()) === leftBefore, `${leftBefore} → ${await wagerLeft()}`);
   await W.buy(b, v.id, [W.WIN]);
