@@ -23,6 +23,7 @@
  *   check   — the week as the database holds it (its row, tickets, positions, the pool three ways, payout and refund
  *             rows, the root over its live tickets), the accounts asked for, and on `ledger` the trial balance and the
  *             Millionea invariants.
+ *   suspend — after tickets were bought, fixture-suspend one named group in bounded batches; no wallet is touched.
  * ⛔ Not run directly. ⛔ The orchestrator refuses any database it did not create.
  * ⚠️ This file carries no backslash: line breaks are built from their code points.
  */
@@ -198,6 +199,7 @@ try {
     say({
       ok: r.ok === true, already: r.ok ? r.already === true : false, error: errOf(r), t, ms: Date.now() - t, previewMs: tp - t, settleMs: Date.now() - tp,
       share: r.ok && !r.already && p.ok ? p.preview.arithmetic?.share ?? null : null,
+      previewHeld: p.ok ? p.preview.held : null,
     });
   } else if (job.kind === "correct") {
     const t = await started();
@@ -211,6 +213,16 @@ try {
     const t = await started();
     const r: any = await W.money.fundMaswaliGuarantee({ amount: job.amount, reference: job.reference, typed: W.money.GUARANTEE_FUND_WORD, ownerId: OWNER });
     say({ ok: r.ok === true, balance: r.ok ? r.balance : null, error: errOf(r), t });
+  } else if (job.kind === "suspend") {
+    // A fixture of the account decision AFTER purchase. The product's purchase gate must see ACTIVE players; the release
+    // must see SUSPENDED winners. The world explicitly allows setUserFields to stand in for the officer's status flow.
+    const ids = players[String(job.group)] ?? [];
+    if (ids.length === 0 || new Set(ids).size !== ids.length) throw new Error("suspend needs a nonempty, unique player group");
+    for (let i = 0; i < ids.length; i += 250) {
+      await Promise.all(ids.slice(i, i + 250).map((id) => W.setUserFields(id, { status: "SUSPENDED" })));
+    }
+    const confirmed = await W.prisma()!.user.count({ where: { id: { in: ids }, status: "SUSPENDED" } });
+    say({ ok: confirmed === ids.length, group: job.group, requested: ids.length, confirmed });
   } else if (job.kind === "check") {
     const r: any = { ok: true, jackpot: await W.balanceOf(W.acct.maswaliJackpot), guarantee: await W.balanceOf(W.acct.maswaliGuarantee) };
     if (job.weekId) Object.assign(r, await weekFacts(job.weekId));
@@ -223,6 +235,27 @@ try {
     if (Array.isArray(job.sumUsers)) {
       const agg: any = await W.prisma()!.wallet.aggregate({ _sum: { balance: true }, where: { userId: { in: job.sumUsers } } });
       r.sum = Number(agg?._sum?.balance ?? 0);
+    }
+    if (job.heldGroup) {
+      const ids = players[String(job.heldGroup)] ?? [];
+      if (!job.weekId || ids.length === 0 || new Set(ids).size !== ids.length) throw new Error("heldGroup needs a week and unique players");
+      const pc = W.prisma()!;
+      const [suspended, frozenWallets, heldTickets] = await Promise.all([
+        pc.user.count({ where: { id: { in: ids }, status: "SUSPENDED" } }),
+        pc.wallet.count({ where: { userId: { in: ids }, status: "FROZEN", freezeReasons: { has: "MILLIONEA_SHARE" } } }),
+        pc.maswaliTicket.count({ where: { cycleId: job.weekId, userId: { in: ids }, status: "SETTLED", won: true, frozenReason: "account suspended" } }),
+      ]);
+      // Freeze audits are one per changed wallet, not one per ticket. Count durable rows and distinct accounts, not
+      // audit text or player records; every account in this shape owns exactly one winning ticket.
+      const audits: any[] = await pc.$queryRawUnsafe(
+        `SELECT count(*)::int AS "rows", count(DISTINCT "targetId")::int AS "users" FROM "AuditLog"
+          WHERE "action" = 'wallet.freeze_added' AND "targetType" = 'User'
+            AND "targetId" = ANY($1::text[])
+            AND left("payload"->>'note', length($2::text)) = $2::text`,
+        ids, `Millionea ${r.week.code} ·`,
+      );
+      r.held = { players: ids.length, suspended, frozenWallets, heldTickets,
+        auditRows: Number(audits[0]?.rows ?? 0), auditUsers: Number(audits[0]?.users ?? 0) };
     }
     if (job.ledger) {
       const tb: any = await W.ledger.trialBalance();

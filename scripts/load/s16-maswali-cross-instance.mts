@@ -7,6 +7,7 @@
  *
  *   npm run load:maswali-cross-instance                 (boots the on-box Postgres through db-scratch)
  *   S16_WIDE_WINNERS=9000 npm run load:maswali-cross-instance     (the wide shape's distinct winning players)
+ *   S16_SHAPES=held npm run load:maswali-cross-instance            (7,000 winning accounts suspended after purchase)
  *   S16_SHAPES=none npm run load:maswali-cross-instance            (§1–§5 and §7 only: minutes, not the 10,000s)
  *
  * Every act is two or three OS processes (`s16-maswali-worker.mts`), each its own Prisma pool, started at one instant by a
@@ -18,11 +19,11 @@
  *   §4 a correction and the release on two instances whose clocks straddle the objection window's end: exactly one lands,
  *      and the winners are the record's;
  *   §5 a week void sent by two instances, one by `voidWeek` and one by the scheduler's tick: refunded once;
- *   §6 ⭐ 10,000 tickets settled inside the 30-second transaction budget, in BOTH shapes — three winners, and about 7,000
- *      distinct winning players (R9's recorded limit) — each sold through the one bet path and each release timed;
+ *   §6 ⭐ 10,000 tickets settled inside the 30-second transaction budget, in the few- and wide-winner shapes; the optional
+ *      all-held wide shape suspends the winners after purchase and reads back every freeze, ticket and audit count;
  *   §7 the identities over everything: the trial balance (no drifting wallet, no unbalanced group), every invariant.
  *
- * Knobs: S16_TICKETS (10000), S16_WIDE_WINNERS (7000), S16_SHAPES ("few,wide" | "few" | "wide" | "none"),
+ * Knobs: S16_TICKETS (10000), S16_WIDE_WINNERS (7000), S16_SHAPES ("few,wide" | "few" | "wide" | "held" | "none"),
  * S16_CLOSE_BUYERS (120), S16_CLOSE_DELAY_MS (1500: how long the closers wait behind the buyers' stream), S16_JOB_TIMEOUT_MIN (60).
  * ⛔ Loopback clusters only: the database is created and dropped here. ⛔ A load harness: run it detached under the
  *    heavy-node lock, alone, never in `test:all` or `predeploy` (scripts/load/README.md).
@@ -35,6 +36,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { heldWideProblems } from "./s16-maswali-held-verdict.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WORKER = "scripts/load/s16-maswali-worker.mts";
@@ -58,7 +60,7 @@ const CLOSE_BUYERS = num("S16_CLOSE_BUYERS", 120);
 const CLOSE_DELAY_MS = num("S16_CLOSE_DELAY_MS", 1_500);
 const JOB_TIMEOUT_MS = num("S16_JOB_TIMEOUT_MIN", 60) * 60_000;
 const SHAPES = (process.env.S16_SHAPES ?? "few,wide").split(",").map((s) => s.trim()).filter(Boolean);
-const wantFew = SHAPES.includes("few"), wantWide = SHAPES.includes("wide");
+const wantFew = SHAPES.includes("few"), wantWide = SHAPES.includes("wide"), wantHeld = SHAPES.includes("held");
 /** The release's whole transaction must fit the lock's own timeout (`src/lib/server/locks.ts`: `timeout: 30000`). */
 const SETTLE_BUDGET_MS = 30_000;
 /** What R9 recorded (MASWALI-PLAN §0, the S3 review's R9 row): about this many distinct winning players fit the budget. */
@@ -114,7 +116,7 @@ function launch(job: Record<string, unknown>, go: string): Kid {
     for (let i = buf.indexOf(NL); i >= 0; i = buf.indexOf(NL)) { onLine(buf.slice(0, i)); buf = buf.slice(i + 1); }
   });
   child.stderr.on("data", (d) => { text += String(d); });
-  const timer = setTimeout(() => killTree(child.pid), JOB_TIMEOUT_MS);
+  const timer = setTimeout(() => killTree(child.pid), Number(job.timeoutMs ?? JOB_TIMEOUT_MS));
   const done = new Promise<any>((resolve) => child.on("exit", (code) => {
     clearTimeout(timer);
     if (buf) onLine(buf);
@@ -173,6 +175,7 @@ try {
     w3win: { count: 5, balance: BALANCE }, w3lose: { count: 15, balance: BALANCE }, w4: { count: 10, balance: BALANCE },
     ...(wantFew ? { fewWin: { count: FEW, balance: BALANCE }, fewLose: { count: Math.ceil((TICKETS - FEW) / 10), balance: BALANCE } } : {}),
     ...(wantWide ? { wideWin: { count: WIDE, balance: BALANCE }, wideLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
+    ...(wantHeld ? { heldWin: { count: WIDE, balance: BALANCE }, heldLose: { count: Math.ceil((TICKETS - WIDE) / 10), balance: BALANCE } } : {}),
   };
   const t0 = Date.now();
   const setup = await runJob({ kind: "setup", guarantee: 30_000_000, groups });
@@ -323,19 +326,29 @@ try {
     J({ state: c5?.week?.state, tickets: c5?.tickets, refunds: c5?.refunds, pool: c5?.pool }));
   ok("5.3 · R untouched: the voided week claimed nothing, and the jackpot is as week 3 left it", c5?.week?.rolloverIn === null && c5.jackpot === c4?.jackpot, J({ R: c5?.week?.rolloverIn, jackpot: [c4?.jackpot, c5?.jackpot] }));
 
-  // ── §6 · 10,000 tickets in both shapes ─────────────────────────────────────────────────────────────────────────
+  // ── §6 · 10,000 tickets in each selected shape ──────────────────────────────────────────────────────────────────
   const shapes = [
-    ...(wantFew ? [{ tag: "few", win: FEW, winGroup: "fewWin", loseGroup: "fewLose", ahead: 6 }] : []),
-    ...(wantWide ? [{ tag: "wide", win: WIDE, winGroup: "wideWin", loseGroup: "wideLose", ahead: 7 }] : []),
+    ...(wantFew ? [{ tag: "few", win: FEW, winGroup: "fewWin", loseGroup: "fewLose", ahead: 6, held: false }] : []),
+    ...(wantWide ? [{ tag: "wide", win: WIDE, winGroup: "wideWin", loseGroup: "wideLose", ahead: 7, held: false }] : []),
+    ...(wantHeld ? [{ tag: "held", win: WIDE, winGroup: "heldWin", loseGroup: "heldLose", ahead: 8, held: true }] : []),
   ];
   for (const [i, s] of shapes.entries()) {
-    const label = `${TICKETS.toLocaleString("en")} tickets, ${s.win.toLocaleString("en")} distinct winning player(s)`;
+    const label = `${TICKETS.toLocaleString("en")} tickets, ${s.win.toLocaleString("en")} distinct winning player(s)${s.held ? ", all held" : ""}`;
     console.log(`${NL}§6.${i + 1} · ${label}: sold, sealed and released in one transaction`);
     const wk = await runJob({ kind: "week", weeksAhead: s.ahead, seal: "YES", lots: [
       { group: s.winGroup, tickets: s.win, slip: "WIN", perPlayer: 1 }, { group: s.loseGroup, tickets: TICKETS - s.win, slip: "LOSE", perPlayer: 10 }] });
     ok(`6.${i + 1}.1 · sold through the one bet path, closed and sealed`, wk?.ok === true, wk?.ok ? `${Math.round(wk.sellMs / 1000)} s to sell` : J(wk));
     if (!wk?.ok) continue;
-    const settled = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt });
+    if (s.held) {
+      const suspended = await runJob({ kind: "suspend", group: s.winGroup });
+      ok(`6.${i + 1}.hold · every winning account suspended AFTER its purchase`, suspended?.ok === true && suspended.confirmed === s.win,
+        J({ requested: suspended?.requested, confirmed: suspended?.confirmed }));
+      if (!suspended?.ok || suspended.confirmed !== s.win) continue;
+    }
+    // The held shape has a ten-minute process watchdog. A timed-out settlement may need to lift its already committed
+    // holds; a missing worker result is a failure, then the independent check names whatever the database retained.
+    const settled = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt,
+      ...(s.held ? { timeoutMs: Math.min(JOB_TIMEOUT_MS, 10 * 60_000) } : {}) });
     const timing = `the release ${settled?.settleMs} ms, its preparation ${settled?.previewMs} ms`;
     measured.push(`${label}: ${settled?.ok ? timing : `FAILED — ${settled?.error} (${timing})`} · budget ${SETTLE_BUDGET_MS} ms`);
     // A release whose transaction ran past the budget is rolled back by the database client: one that landed fit it, and
@@ -344,13 +357,32 @@ try {
     ok(`6.${i + 1}.2 · ⭐ settled in one transaction, inside the ${SETTLE_BUDGET_MS / 1000}-second budget`,
       settled?.ok === true && settled.already === false && settled.settleMs < SETTLE_BUDGET_MS,
       `${timing}${s.tag === "wide" ? ` (R9 recorded about ${R9_RECORDED_WINNERS.toLocaleString("en")} distinct winning players inside it)` : ""}${settled?.ok ? "" : ` — ${settled?.error}`}`);
-    const c6 = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup] });
+    const c6 = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], ...(s.held ? { heldGroup: s.winGroup } : {}) });
     const f6 = expect5b(c6?.week?.rolloverIn ?? NaN, TICKETS * price, s.win, c6?.rates ?? {});
     ok(`6.${i + 1}.3 · exactly once: ${s.win} WIN, ${TICKETS - s.win} LOSS, one payout row per winning ticket, the pool at 0, §5b's figures`,
       c6?.positions?.win === s.win && c6.positions.loss === TICKETS - s.win && c6.payouts === s.win && c6.pool.ledger === 0 && same(c6.week.figures, f6),
       J({ positions: c6?.positions, payouts: c6?.payouts, pool: c6?.pool, got: c6?.week?.figures, want: f6 }));
     ok(`6.${i + 1}.4 · every winning player was paid one share: their balances sum to what they had, less a ticket, plus a share each`,
       c6?.sum === s.win * (BALANCE - price + (f6.share ?? 0)), `${c6?.sum} against ${s.win * (BALANCE - price + (f6.share ?? 0))}`);
+    if (s.held) {
+      const problems = heldWideProblems(s.win, settled, c6?.held ?? null);
+      ok(`6.${i + 1}.5 · every winning account and ticket is held, with one durable freeze audit per account`, problems.length === 0,
+        J({ problems, held: c6?.held, previewHeld: settled?.previewHeld, settleMs: settled?.settleMs }));
+      if (!settled?.ok) {
+        ok(`6.${i + 1}.6 · a timed-out or refused release left no partial payout`,
+          c6?.week?.state === "RESOLVING" && c6?.tickets?.live === TICKETS && c6?.positions?.open === TICKETS
+            && c6?.payouts === 0 && c6?.pool?.ledger === TICKETS * price && c6?.sum === s.win * (BALANCE - price),
+          J({ error: settled?.error, week: c6?.week?.state, tickets: c6?.tickets, positions: c6?.positions, payouts: c6?.payouts,
+            pool: c6?.pool, held: c6?.held }));
+      } else {
+        const replay = await runJob({ kind: "release", weekId: wk.weekId, at: wk.releaseAt });
+        const twice = await runJob({ kind: "check", weekId: wk.weekId, sumUsers: P[s.winGroup], heldGroup: s.winGroup });
+        ok(`6.${i + 1}.6 · replay pays nothing and adds no second freeze audit`,
+          replay?.ok === true && replay.already === true && twice?.payouts === c6?.payouts && twice?.sum === c6?.sum
+            && twice?.held?.auditRows === c6?.held?.auditRows && twice?.held?.frozenWallets === s.win,
+          J({ replay, payouts: [c6?.payouts, twice?.payouts], audits: [c6?.held?.auditRows, twice?.held?.auditRows] }));
+      }
+    }
   }
 
   // ── §7 · the identities ────────────────────────────────────────────────────────────────────────────────────────
