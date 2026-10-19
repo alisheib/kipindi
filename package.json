@@ -697,6 +697,7 @@
     "test:maswali-i18n": "tsx scripts/maswali-i18n.test.mts",
     "test:maswali-design": "tsx scripts/maswali-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
+    "test:maswali-fairness": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fairness.test.mts",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",

@@ -514,6 +514,11 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/auth/register/register-form.tsx', '<I.arrowRight s={13} edge="end" text="display-700" />', 1, "text", "the error panel's way-on pill's end — the login page's twin (R10-A6)"],
     ['src/app/auth/reset-password/page.tsx', '<I.chevronLeft s={14} edge="start" text="mono-400" />', 1, "text", "a back link's start"],
     ['src/app/fairness/page.tsx', '<I.ext s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
+    // MASWALI-BUILD S6 (2026-10-18): Millionea's text links — the register, a week's register, Tiketi zangu, the rules, How to
+    // play and /fairness's how-it-works — each ends on its run's edge in its 13px body/400 words' stroke (S8's word links).
+    ['src/app/fairness/millionea-section.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 3, "text", "the Millionea section's three text links' end: a week's register, the register, Tiketi zangu"],
+    ['src/app/fairness/millionea/[serial]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the inclusion proof's how-it-works link's end"],
+    ['src/app/help/millionea-help.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 2, "text", "the help block's two text links' end: the rules and How to play"],
     ['src/app/live/featured-contest.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 1, "text", "the featured contest's market link ends after its body-600 label"],
     ['src/app/live/loading.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", "the featured contest ghost's Button slot keeps the same label stroke"],
     ['src/app/legal/rules/page.tsx', '<I.chevronRight s={14} className="shrink-0 text-text-subtle" />', 1, "frozen", "a rules card's row end — the file is in the published-words population D19a pins byte for byte (test:house-bot-disclosure 5.1) — named for the integrator"],

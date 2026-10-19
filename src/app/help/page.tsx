@@ -16,6 +16,10 @@ import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { fillNodes } from "@/lib/fill-nodes";
+// MASWALI-BUILD S6 (MB-71) · Millionea's block, for a reader the rollout admits: the gate's own answer, then the rules.
+import { resolveMillionea } from "@/lib/server/millionea-preview";
+import { millioneaHowTo } from "@/lib/server/maswali-player";
+import { MillioneaHelp } from "./millionea-help";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -72,6 +76,10 @@ export default async function HelpPage() {
   const chatEnabled = await isChatbotEnabled().catch(() => true);
   // The shell's own cached answer: a journey reader's door to /positions says the journey's name for it (round 6, C14).
   const { journey } = await resolveSimpleJourney();
+  // MASWALI-BUILD S6 (MB-71): below the rollout nothing is read and nothing is drawn; a rules read that fails hides the
+  // block rather than this page.
+  const mln = await resolveMillionea();
+  const millioneaRules = mln.visible ? await millioneaHowTo({ userId: null, state: mln.state }).catch(() => null) : null;
   return (
     <PageContainer tier="reading" className="space-y-5">
       <PageHero glow="info">
@@ -182,6 +190,8 @@ export default async function HelpPage() {
           })}
         </div>
       </section>
+
+      {millioneaRules && <MillioneaHelp t={t} locale={locale} h={millioneaRules} />}
 
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard

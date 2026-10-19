@@ -281,19 +281,21 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
   );
   const msgShape = /const messages = \[\s*\.\.\.history\.slice\(-10\),\s*\{ role: "user" as const, content: userText \},\s*\];/.test(chatSrc);
   // S11 WP6: the third argument is the GLOBAL rollout's state — a setting, never the reader (privacy-notice §2c).
-  const systemShape = /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE"\),/.test(chatSrc);
+  // MASWALI-BUILD S6 (2026-10-18): the fourth is Millionea's GLOBAL rollout's facts (`millioneaChatFacts()`, null below
+  // ACTIVE, read with no user — `test:maswali-fairness` C.10, `test:privacy-notice` §2c) — a setting too.
+  const systemShape = /system: systemPrompt\(locale, \(await getGlobalConfig\(\)\)\.objectionWindowHours, \(await simpleJourneyStateNow\(\)\) === "ACTIVE", await millioneaChatFacts\(\)\),/.test(chatSrc);
   ok(
-    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare call — `systemPrompt`, today's `buildSystemPrompt` template or (from the S15 flip, by the global rollout) the journey's fixed swaps over it — with no concatenation and no appended context",
+    "6.5b · what the model is told is the player's own conversation and nothing else: `messages` is the last ten turns plus the sentence just typed, and `system` is a bare call — `systemPrompt`, today's `buildSystemPrompt` template or (from the S15 flip, by the global rollout) the journey's fixed swaps over it, and (at Millionea's global ACTIVE) Millionea's passage — with no concatenation and no appended context",
     msgShape && systemShape,
     `messages shape ${msgShape ? "pinned" : "MOVED"} · system shape ${systemShape ? "pinned" : "MOVED"}`,
   );
 
   // ── §6.6 · the guard is provable WITHOUT touching the file that talks to players ─────────────────
-  const diff = trunkDiff(ROOT, [CHAT_TS], "8ce376ca0");
+  const diff = trunkDiff(ROOT, [CHAT_TS], CHAT_PROMPT_PIN);
   ok(
-    "6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved S11 journey prompt checkpoint 8ce376ca0 — today's template and fixed journey swaps stay pinned without editing or importing the action",
+    `6.6 · D19a · src/app/_actions/chat.ts is byte-identical to the approved prompt checkpoint ${CHAT_PROMPT_PIN} (MASWALI-BUILD S6) — today's template, the journey's fixed swaps and Millionea's passage stay pinned without editing or importing the action`,
     diff.measured && diff.clean,
-    diff.measured ? `clean against 8ce376ca0 (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,
+    diff.measured ? `clean against ${CHAT_PROMPT_PIN} (${diff.sha}) · ${diff.files} file(s) compared` : `⛔ NOT MEASURED — ${diff.why}`,
   );
 
   // ── §6.7 / §6.8 · POSITIVE CONTROLS · what must still be ALLOWED and PRESENT ─────────────────────
@@ -545,6 +547,17 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
  * completely blind. So the measure is two-part: the ref must resolve AND every path must be a real blob on
  * it, or the case is NOT MEASURED and says so. 6.c10 is the control on exactly this.
  */
+/**
+ * The approved checkpoint 6.6 holds `chat.ts` to — ONE constant, read by the case and by `red:house-bot-chatbot`, whose
+ * shadow repository names its pristine copy by it (a sha of this repository resolves nowhere else).
+ * 2026-10-18 · 8ce376ca0 (the S11 journey prompt) → 7ff0cfde3 (MASWALI-BUILD S6): the fourth input, Millionea's global
+ * rollout's facts, and its passage — every market-only line scoped in its own words (S6 review #11), the facts reader's
+ * import failing to no facts (#10). With no facts the prompt is origin/main's, byte for byte (`test:maswali-fairness` C.1).
+ * 2026-10-18 · 7ff0cfde3 → 4c70541af (MASWALI-BUILD S6 round 5): Millionea's floor clause is a 10 of 10 week's — a final week's
+ * top-score payout has no floor — and nothing else in the action moved (`test:maswali-fairness` C.12).
+ */
+export const CHAT_PROMPT_PIN = "4c70541af";
+
 function trunkDiff(ROOT: string, paths: string[], ref = "origin/main"): { measured: boolean; clean: boolean; files: number; sha: string; why: string } {
   const git = (args: string[]) => execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8" }).trim();
   let sha = "";

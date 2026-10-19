@@ -44,14 +44,16 @@
 <body>
 
 <h1>50pick — how rates and payouts are calculated</h1>
-<p class="sub">A guide for administrators. Covers both games: normal polls and Up &amp; Down.</p>
+<p class="sub">A guide for administrators. Covers the two pari-mutuel games — normal polls and Up &amp; Down — and
+Maswali Millionea, the weekly jackpot (section 5), which is not on sale yet.</p>
 
-<p>50pick does not set odds. Both games are <strong>pari-mutuel</strong>: the players' own money makes the price.
-We take a fee from the losing side, and everyone on the winning side shares what is left, in proportion to what
-they staked.</p>
+<p>50pick does not set odds. Normal polls and Up &amp; Down are <strong>pari-mutuel</strong>: the players' own money
+makes the price. We take a fee from the losing side, and everyone on the winning side shares what is left, in
+proportion to what they staked. Maswali Millionea works differently — a fixed-price ticket and a weekly jackpot — and
+has a section of its own.</p>
 
-<p><strong>One rule, both games.</strong> Up &amp; Down and normal polls are charged in exactly the same way. The
-games differ in how the result is decided and how long they last — never in how the money is worked out.</p>
+<p><strong>One rule, both pari-mutuel games.</strong> Up &amp; Down and normal polls are charged in exactly the same
+way. The games differ in how the result is decided and how long they last — never in how the money is worked out.</p>
 
 <h2>1. The rates</h2>
 
@@ -68,6 +70,10 @@ games differ in how the result is decided and how long they last — never in ho
   <tr><td>Minimum deposit</td><td class="n">TZS 1,000</td></tr>
   <tr><td>Minimum withdrawal</td><td>The smallest amount that still leaves at least TZS 1,000 after the fee — <strong>TZS 1,015</strong> at a 1.5% fee (the fee is rounded to the shilling). The withdrawal screen states it.</td></tr>
 </table>
+
+<div class="note"><strong>These are the two pari-mutuel games' rates.</strong> Maswali Millionea has its own
+(section 5): a fixed ticket price, a fee on the jackpot taken only in a week someone wins, and 10 tickets per account
+per week. The withdrawal and deposit rows apply to the whole platform.</div>
 
 <div class="note"><strong>Rates are frozen when a market is created.</strong> Changing a rate today affects new
 polls and new rounds only — never a bet that has already been placed. Two markets running side by side can
@@ -87,9 +93,11 @@ what bound it.</div>
 <p>A payout always <strong>includes the stake</strong>. A player who stakes 60,000 and is paid 86,100 has made a
 profit of 26,100.</p>
 
-<div class="note"><strong>A winning bet is never paid less than it staked.</strong> The fee only ever comes out of
-the losing side, so the winners' own stakes are untouched — whatever the shape of the market. Even on a market as
-lopsided as 999,000 against 1,000, a winning 10,000 bet on the crowded side still pays 10,009.</div>
+<div class="note"><strong>On normal polls and Up &amp; Down, a winning bet is never paid less than it
+staked.</strong> The fee only ever comes out of the losing side, so the winners' own stakes are untouched — whatever
+the shape of the market. Even on a market as lopsided as 999,000 against 1,000, a winning 10,000 bet on the crowded
+side still pays 10,009. <em>Maswali Millionea is the exception: a winning ticket's share can be smaller than the
+ticket's price (section 5).</em></div>
 
 <h2>3. Game one — normal polls</h2>
 <p>The result is decided by an officer, on evidence, after the event. Polls can run for days or weeks.</p>
@@ -297,22 +305,122 @@ outcome, not a fault.</div>
 side won we earned 39,000. That is the same 13% rule both times — it is the losing side that changed size. Our
 income follows how the players lined up, and never comes out of a winner's own stake.</div>
 
-<h2>5. The two games, side by side</h2>
+<div class="pagebreak"></div>
+
+<h2>5. Game three — Maswali Millionea</h2>
+
+<div class="note"><strong>Not on sale yet.</strong> Millionea is switched off for every player until the Owner turns it
+on, and no week can open until the Owner has recorded the licence basis and funded the guarantee. The figures below
+are its rules' defaults. Each week freezes its own at its open, and the week's page shows them — if a player disputes
+a figure, read <em>their</em> week's.</div>
+
+<p>Millionea is <strong>not pari-mutuel</strong>. A player buys a <strong>ticket at a fixed price</strong> and answers
+fifteen YES/NO questions — ten main questions and five reserves. Only ten are graded. Every ticket with
+<strong>10 of 10</strong> shares the week's jackpot equally; if nobody gets 10 of 10, the whole week's sales roll into
+the next week's jackpot.</p>
+
 <table>
-  <tr><th style="width:34%">&nbsp;</th><th>Normal polls</th><th>Up &amp; Down</th></tr>
-  <tr><td>Our fee</td><td colspan="2" style="text-align:center"><strong>13% of the losing side — identical</strong></td></tr>
-  <tr><td>Stake limits</td><td colspan="2" style="text-align:center"><strong>500 minimum · 1,000,000 maximum per bet — identical</strong></td></tr>
-  <tr><td>Who decides the result</td><td>An officer, on evidence, with an objection window</td><td>The price feed, automatically, at the boundary</td></tr>
-  <tr><td>How long it runs</td><td>Days or weeks</td><td>3 to 60 minutes</td></tr>
-  <tr><td>Can everyone be refunded?</td><td>If one side is empty, or the poll is cancelled</td><td>Also whenever the price stays inside the band</td></tr>
+  <tr><th style="width:32%">Item</th><th>Maswali Millionea</th></tr>
+  <tr><td><strong>Ticket</strong></td><td class="n">TZS 1,000, fixed — from the real balance only</td></tr>
+  <tr><td>Tickets per account</td><td>10 a week</td></tr>
+  <tr><td><strong>Our fee</strong></td><td><strong>13% of the jackpot</strong>, taken only in a week with at least one 10 of 10 ticket. Nothing at all in a week nobody wins.</td></tr>
+  <tr><td>Tax on our fee</td><td>TRA 10% + GBT 5% <em>of the fee we earned</em> — as on the other games.</td></tr>
+  <tr><td>The floor</td><td>A winning week's jackpot is <strong>at least TZS 1,000,000</strong>, counted before the fee. The guarantee — Owner capital — tops it up.</td></tr>
+  <tr><td>Free cancellation</td><td>5 minutes after buying, full refund — and never in the last 5 minutes before the close. No paid exit.</td></tr>
+  <tr><td>The week</td><td>Sales Monday 00:00 to Friday 18:00 EAT; results and payout on the Monday or Tuesday after.</td></tr>
 </table>
 
-<div class="note"><strong>If a customer asks what we charge, there is now one answer for the whole platform:</strong>
-13% of the losing side, and nothing from the winners.</div>
+<h4>How a week's money is worked out</h4>
+<ol>
+  <li><strong>The jackpot</strong> — the carry-over plus the week's sales, or the floor, whichever is larger.</li>
+  <li><strong>Our fee</strong> — 13% of the jackpot, only if at least one ticket has 10 of 10.</li>
+  <li><strong>Each share</strong> — the jackpot minus the fee, divided equally among the winning tickets, rounded down
+      to the shilling. A player with two winning tickets gets two shares.</li>
+  <li><strong>The top-up</strong> — when the week's own money (the carry-over plus the sales) is less than the fee plus
+      the shares, the guarantee pays the difference. Only in a week with a winner.</li>
+  <li><strong>What is left over</strong> — the few shillings an equal split cannot share. They join the next jackpot as
+      far as the week's own money covers them; the rest stays with the guarantee, whose top-up covers only the fee and the
+      shares — so in a week the guarantee tops up, the whole remainder stays with it.</li>
+</ol>
+
+<div class="note"><strong>A winning ticket can be paid less than it cost.</strong> There is no minimum share. In a
+1,500-ticket week where 1,400 tickets reach 10 of 10, the jackpot is 1,500,000, our fee 195,000, and each share
+1,305,000 ÷ 1,400 = <strong>932</strong> — less than the 1,000 the ticket cost; the 200 shillings the split cannot
+share join the next jackpot. The player is told this in the rules, in Help and by the assistant.</div>
+
+<h3>Example 1 — six weeks, to the shilling</h3>
+<table>
+  <tr><th>Week</th><th class="n">Tickets</th><th class="n">Carried in</th><th>Result</th><th class="n">Jackpot</th><th class="n">Top-up</th><th class="n">Fee</th><th class="n">TRA · GBT</th><th class="n">Paid</th><th class="n">Carried on</th></tr>
+  <tr><td>1</td><td class="n">300</td><td class="n">0</td><td>no winner</td><td class="n">—</td><td class="n">—</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">300,000</td></tr>
+  <tr><td>2</td><td class="n">400</td><td class="n">300,000</td><td>1 winner</td><td class="n">1,000,000</td><td class="n">300,000</td><td class="n">130,000</td><td class="n">13,000 · 6,500</td><td class="n">870,000</td><td class="n">0</td></tr>
+  <tr><td>3</td><td class="n">500</td><td class="n">0</td><td>no winner</td><td class="n">—</td><td class="n">—</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">500,000</td></tr>
+  <tr><td>4</td><td class="n">600</td><td class="n">500,000</td><td>no winner</td><td class="n">—</td><td class="n">—</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">1,100,000</td></tr>
+  <tr><td>5</td><td class="n">700</td><td class="n">1,100,000</td><td>no winner</td><td class="n">—</td><td class="n">—</td><td class="n">0</td><td class="n">—</td><td class="n">0</td><td class="n">1,800,000</td></tr>
+  <tr><td>6</td><td class="n">800</td><td class="n">1,800,000</td><td>3 winners</td><td class="n">2,600,000</td><td class="n">0</td><td class="n">338,000</td><td class="n">33,800 · 16,900</td><td class="n">754,000 × 3</td><td class="n">0</td></tr>
+  <tr class="sum"><td>Total</td><td class="n">3,300</td><td class="n">&nbsp;</td><td>&nbsp;</td><td class="n">&nbsp;</td><td class="n">300,000</td><td class="n">468,000</td><td class="n">46,800 · 23,400</td><td class="n">3,132,000</td><td class="n">&nbsp;</td></tr>
+</table>
+<p class="tie">Check: 3,300,000 sold + 300,000 top-up = 3,132,000 paid + 468,000 fee. 50pick keeps 397,800 of fee after
+TRA and GBT, less the 300,000 top-up: <strong>+97,800</strong> over the six weeks. While week 5 sells, week 4 is still
+being graded: week 5's jackpot shows its own sales only until week 4 settles, then week 4's 1,100,000 joins it.</p>
+
+<h3>Example 2 — just above the floor, one winner</h3>
+<table>
+  <tr><td>Carried in 50,000, plus 1,000 tickets sold</td><td class="n">1,050,000</td></tr>
+  <tr><td>The jackpot — above the floor, so no top-up</td><td class="n">1,050,000</td></tr>
+  <tr><td>Our fee, 13% of the jackpot</td><td class="n">136,500</td></tr>
+  <tr><td>TRA 10% · GBT 5% of our fee</td><td class="n">−13,650 · −6,825</td></tr>
+  <tr class="sum"><td>50pick keeps</td><td class="n">116,025</td></tr>
+  <tr class="sum"><td>Paid to the one winning ticket</td><td class="n">913,500</td></tr>
+</table>
+<p class="tie">Check: 913,500 paid + 136,500 fee = 1,050,000 jackpot.</p>
+
+<h3>Example 3 — seven winners, and the shillings a split cannot share</h3>
+<table>
+  <tr><th>&nbsp;</th><th class="n">1,500 tickets, nothing carried</th><th class="n">300 tickets, nothing carried</th></tr>
+  <tr><td>The jackpot</td><td class="n">1,500,000</td><td class="n">1,000,000 (the floor)</td></tr>
+  <tr><td>Our fee, 13%</td><td class="n">195,000</td><td class="n">130,000</td></tr>
+  <tr><td>Each of the 7 shares</td><td class="n">186,428</td><td class="n">124,285</td></tr>
+  <tr><td>Paid in all</td><td class="n">1,304,996</td><td class="n">869,995</td></tr>
+  <tr><td>Top-up from the guarantee</td><td class="n">0</td><td class="n">699,995</td></tr>
+  <tr class="sum"><td>Left over, into the next jackpot</td><td class="n">4</td><td class="n">0</td></tr>
+</table>
+<p class="tie">In the floor week the top-up covers only the fee and the shares (130,000 + 869,995 − 300,000 = 699,995), so
+nothing carries into the next jackpot: the 5 shillings the split cannot share stay with the guarantee, and the register
+prints them.</p>
+
+<h3>Example 4 — a week that voids whole</h3>
+<p>Six of the ten main questions void and only four reserves can stand in. Every ticket is refunded its 1,000 in full;
+no fee is taken and no top-up paid; a carried jackpot of, say, 1,100,000 carries on untouched to the next week.</p>
+
+<h3>Example 5 — the final week</h3>
+<p>If the Owner stops the product, the final week runs normally. If no ticket gets 10 of 10, the highest score shares
+the whole jackpot — no floor, no top-up, and our fee applies. Carried 1,800,000 plus 800 tickets: a jackpot of
+2,600,000, our fee 338,000, and the four tickets with the best score (9 of 10) share 2,262,000 — <strong>565,500
+each</strong>.</p>
+
+<div class="note"><strong>The guarantee is funded before a week opens.</strong> It must hold the floor, less any
+confirmed carry-over, for every week not yet settled — the new one included. Week N+1 opens while week N is still
+being graded, so before week 1 the Owner pays in <strong>TZS 2,000,000</strong>. A settlement whose top-up the
+guarantee cannot cover stops and waits; it never pays less.</div>
+
+<h2>6. The three games, side by side</h2>
+<table>
+  <tr><th style="width:24%">&nbsp;</th><th>Normal polls</th><th>Up &amp; Down</th><th>Maswali Millionea</th></tr>
+  <tr><td>Our fee</td><td colspan="2" style="text-align:center"><strong>13% of the losing side — identical</strong></td><td><strong>13% of the jackpot</strong>, only in a week someone wins</td></tr>
+  <tr><td>What a player puts in</td><td colspan="2" style="text-align:center"><strong>500 minimum · 1,000,000 maximum per bet — identical</strong></td><td>A fixed 1,000 ticket; 10 a week</td></tr>
+  <tr><td>Who decides the result</td><td>An officer, on evidence, with an objection window</td><td>The price feed, automatically, at the boundary</td><td>An officer per question, on evidence, with a 24-hour check window</td></tr>
+  <tr><td>How long it runs</td><td>Days or weeks</td><td>3 to 60 minutes</td><td>A week: sales Monday to Friday, results by Monday</td></tr>
+  <tr><td>Can a winner get less than they paid?</td><td colspan="2" style="text-align:center"><strong>Never</strong></td><td>Yes — when very many tickets win</td></tr>
+  <tr><td>Can everyone be refunded?</td><td>If one side is empty, or the poll is cancelled</td><td>Also whenever the price stays inside the band</td><td>If the week voids whole</td></tr>
+</table>
+
+<div class="note"><strong>If a customer asks what we charge:</strong> on normal polls and Up &amp; Down, 13% of the losing
+side, and nothing from the winners. On Maswali Millionea, 13% of the jackpot — and only in a week someone wins.</div>
 
 <footer>50pick — internal guide for administrators. Rules agreed 14 August 2026; the minimum stake lowered to TZS 500 on 12 October 2026. Every figure was produced by
 50pick's own settlement calculation at the rates in section 1. Markets opened before these rules take effect settle
-on the rates that were frozen onto them at the time.</footer>
+on the rates that were frozen onto them at the time. Maswali Millionea's rules were decided on 16 October 2026 and are
+not on sale until the Owner switches the product on; section 5's figures come from its own settlement arithmetic.</footer>
 
 </body>
 </html>

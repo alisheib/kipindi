@@ -222,6 +222,17 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
     const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
     const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel)) && approvedEqual(rel, read(rel));
+    // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
+    // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`), its route (gated: a
+    // hidden product's address answers as the 404) and the chooser's third door (each change a slot whose else arm is
+    // today's expression, `test:maswali-fairness` L.10–L.11) — pinned at 4c70541af, whose blobs are the three files as they
+    // stand (round 2: the binding text states only what is built; re-pinned 2026-10-18 from 7ff0cfde3 for round 3, from
+    // 87893ff8d for round 4 and from 3e8ba9a6e for round 5: the top-up's fee and shares, a final week's remainder, a
+    // week's close). Set beside the Map, not in it, so the integration's own pins merge untouched. ⛔ The dictionary's pin
+    // is the lead's, at the merge.
+    for (const rel of ["src/app/legal/rules/page.tsx", "src/app/legal/rules/_content-millionea.tsx", "src/app/legal/rules/millionea/page.tsx"]) {
+      APPROVED_EXTRA.set(rel, "4c70541af");
+    }
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
       let compared = 0;

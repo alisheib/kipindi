@@ -58,6 +58,13 @@ const P = /** @type {Record<string, string>} */ (D19D_PLANTS);
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, expect: string, why: string, stillGreen?: string[], alsoRed?: string[] }} RedMutation */
 
+/**
+ * ⚠️ 2026-10-18 (MASWALI-BUILD S6) · THE 6.6 NEEDLE. Every chat.ts case named 6.6 as "byte-identical to origin/main", and
+ * since the S8–S12 rebaseline (da31a161) 6.6 says "byte-identical to the approved … checkpoint", so §2 could find no
+ * label for the comment case and every `alsoRed` matched nothing. The needle is now the part of 6.6's label that names
+ * the file and the measure, whichever checkpoint it is pinned to.
+ */
+
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
   // ── the four channels a player can be shown ──────────────────────────────────────────────────────
@@ -68,7 +75,7 @@ export const MUTATIONS = [
     why: "the single likeliest way this feature leaks: someone answers 'is this fair?' by writing a comforting sentence into the model's own instructions, and every player who asks is then handed a lie",
     from: "RULES:\n1. NEVER recommend which side to pick (YES or NO).",
     to: "RULES:\n0. " + P["en/never bets against you"] + "\n1. NEVER recommend which side to pick (YES or NO).",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "fallback-gains-a-reassurance",
@@ -77,7 +84,7 @@ export const MUTATIONS = [
     why: "the trouble fallback is handed to a player VERBATIM when the model fails — it is player-read text that no prompt-only guard would ever look at",
     from: '  en: "I\'m having trouble right now. Please try again in a moment, or reach out to support.",',
     to: '  en: "I\'m having trouble right now. Please try again in a moment, or reach out to support. ' + P["en/all stakes are from real players"] + '",',
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "stub-gains-a-reassurance",
@@ -120,7 +127,7 @@ export const MUTATIONS = [
     from: "WHAT YOU KNOW",
     to: "WHAT YOU KNOW\n- Some markets are seeded with " + HOUSE_WORD_SAMPLES[0] + " so there is always a price on both sides.",
     stillGreen: ["no D19d assurance in the LIVE SYSTEM PROMPT"],
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-vocabulary-loses-a-word",
@@ -139,7 +146,7 @@ export const MUTATIONS = [
     why: "a new interpolation is a new door for text to enter the system prompt — the only way a house fact could ever reach a model that is given no tools and no retrieval. Closing the SET is what refuses the next door; policing the existing six would not",
     from: "3. If you don't know a 50pick answer, say so briefly",
     to: "${extraContext}\n3. If you don't know a 50pick answer, say so briefly",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-call-gains-a-tool",
@@ -148,7 +155,7 @@ export const MUTATIONS = [
     why: "the way a disclosure leak actually becomes possible: give the assistant a lookup tool 'so it can answer account questions', and a tool result can now carry a house fact into the conversation. The nested input_schema is deliberate — a key-set regex that stopped at the first closing brace would miss it",
     from: "      max_tokens: 350,",
     to: '      max_tokens: 350,\n      tools: [{ name: "account_lookup", description: "look up the caller\'s account", input_schema: { type: "object", properties: {} } }],',
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-token-cap-is-retuned",
@@ -157,30 +164,39 @@ export const MUTATIONS = [
     why: "⭐ THE CONTROL'S OWN ANCHOR CAN ROT, AND NOTHING ELSE WOULD SAY SO. 6.c6 plants its tool array by replacing `max_tokens: 350,`; retune the cap — the most ordinary edit this file will ever get — and the control silently plants nothing while still printing a key list. This is the inline-anchor failure the sidecar convention exists for, living inside a case instead of a harness",
     from: "      max_tokens: 350,",
     to: "      max_tokens: 400,",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-system-gains-appended-context",
     file: CHAT,
     expect: "what the model is told is the player's own conversation",
     why: "the other half of the same door, and the cheaper one to write: leave the prompt alone and append retrieved context to it at the call site. 6.4 cannot see this — the template never changed — which is why 6.5b pins the call's own shape",
-    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),',
-    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE") + (await buildAccountContext(session.userId)),',
-    alsoRed: ["byte-identical to origin/main"],
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()) + (await buildAccountContext(session.userId)),',
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-journey-words-follow-the-reader",
     file: CHAT,
     expect: "what the model is told is the player's own conversation",
     why: "S11 WP6: the prompt's third input is the GLOBAL rollout's state. Keyed on the reader instead — the session, or a preview pass — the vendor would learn who is previewing, which the privacy notice's §4 premise forbids; 6.5b pins the call's shape exactly",
-    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE"),',
-    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, Boolean(session.userId)),',
-    alsoRed: ["byte-identical to origin/main"],
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, Boolean(session.userId), await millioneaChatFacts()),',
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
+  },
+  {
+    name: "the-millionea-facts-follow-the-reader",
+    file: CHAT,
+    expect: "what the model is told is the player's own conversation",
+    why: "MASWALI-BUILD S6: the prompt's fourth input is Millionea's GLOBAL rollout's facts, read with no user. Read for the reader instead — their account, or a preview of theirs — the vendor would learn who is previewing Millionea, which the privacy notice's §4 premise forbids; 6.5b pins the call's shape exactly",
+    from: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts()),',
+    to: '      system: systemPrompt(locale, (await getGlobalConfig()).objectionWindowHours, (await simpleJourneyStateNow()) === "ACTIVE", await millioneaChatFacts(session.userId)),',
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "a-comment-is-added-to-chat-ts",
     file: CHAT,
-    expect: "byte-identical to origin/main",
+    expect: "src/app/_actions/chat.ts is byte-identical to",
     why: "⭐ THE CASE WITH THE NARROWEST BLAST RADIUS, AND THAT IS ITS POINT. A comment changes no player-read word, so every other assertion in §6 stays green — only the D19a byte-identity pin moves. If 6.6 could not see this, it could not see anything, and its claim that 'the chatbot keeps main's words' would rest on nothing",
     from: "      // The window the assistant quotes is the one in force, read at answer time.",
     to: "      // The window the assistant quotes is the one in force, read at answer time.\n      // (clarified while reading this file — no behaviour change)",
@@ -195,7 +211,7 @@ export const MUTATIONS = [
     from: "is pointed to the tools that stop the play.",
     to: "is pointed to a free national service.",
     stillGreen: ["no D19d assurance in the LIVE SYSTEM PROMPT", "nor in the STUB corpus"],
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "rule-2-drops-its-tools-wording",
@@ -204,7 +220,7 @@ export const MUTATIONS = [
     why: "the twin of the case above, pointed at 6.5's name sweep: RULE 2 says 'our responsible gambling tools', so a sweep for `tools` over code that still carries its strings reports that line — and rewording RULE 2 is the cheapest way to green such a guard. 6.c6b asserts the wording is still there precisely so nobody is paid for deleting it",
     from: "our responsible gambling tools at Profile > Responsible Gambling",
     to: "our responsible-gambling settings at Profile",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "stub-loses-its-side-refusal",
@@ -224,7 +240,7 @@ export const MUTATIONS = [
     why: "🔴 THE DEFECT THAT ALREADY HAPPENED ONCE IN THIS SECTION'S OWN FIRST DRAFT. The slice ends at the template's closing backtick; add a `.trimEnd()` and that anchor is gone. A slice that silently becomes empty — or runs past its template into the rest of the module — is a scanner gone blind, and a blind scanner is GREEN exactly like a clean codebase",
     from: "support team.`;",
     to: "support team.`.trimEnd();",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
   {
     name: "the-prompt-loses-a-heading",
@@ -233,7 +249,7 @@ export const MUTATIONS = [
     why: "the other way the population pin drifts: the prompt is reorganised and a heading the floor names disappears. The floor then says so, instead of scanning whatever the slice happens to hold now",
     from: "KEY PAGES: /markets",
     to: "PAGES: /markets",
-    alsoRed: ["byte-identical to origin/main"],
+    alsoRed: ["src/app/_actions/chat.ts is byte-identical to"],
   },
 
   // ── the ruling the lexicon is derived from ───────────────────────────────────────────────────────

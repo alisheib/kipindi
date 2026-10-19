@@ -756,6 +756,7 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
     "src/app/legal/terms/page.tsx": "legal prose (D19a), running text: a held 25–40 character name would leave a hole of most of a phone line in the paragraph",
     "src/app/legal/rules/_content-up-down.tsx": "legal prose (D19a), as above",
     "src/app/legal/rules/_content-yes-no.tsx": "legal prose (D19a), as above",
+    "src/app/legal/rules/_content-millionea.tsx": "legal prose (D19a), as above — Maswali Millionea's binding rules (MASWALI-BUILD S6), their own version and text hash",
     "src/app/_actions/chat.ts": "the assistant's instructions: never shown as written",
     "src/app/api/dev-test/marketing-typed-test-seed/route.ts": "a development seed, never served in production",
     "src/lib/marketing/consent-basis.ts": "staff console wording (a list's basis), not a player's line",

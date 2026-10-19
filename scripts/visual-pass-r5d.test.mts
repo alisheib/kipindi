@@ -725,6 +725,8 @@ section("5 · F4's pattern · every useSyncExternalStore reader is classified, a
     "src/lib/journey/use-unread-count.ts": "the unread feed, not a page's state",
     // Came in with main (S14's U47b-2, 4116d4be) after this suite was written; classified at the merge.
     "src/components/admin/admin-crumbs.tsx": "a record page's registered name for its last crumb, read by the admin header KEYED BY THE PATH BEING DRAWN (crumbNames.get(lastSegmentOf(pathname))): a page that is left cannot name the next one — F4's own principle, already",
+    // Classified with the page (MASWALI-BUILD S6, 2026-10-18): the store is a no-op subscription, used only for its null server snapshot.
+    "src/app/fairness/millionea/[serial]/proof-check.tsx": "a pure computation over the page's own props (the owner's browser re-checks a Millionea inclusion proof): no store, no mark, read by nothing outside the page — the server's null snapshot keeps the first frame at \"checking\"",
   };
   const readers = (text: (p: string) => string) => SRC_FILES.filter((p) => /\buseSyncExternalStore\s*(?:<[^>]*>)?\s*\(/.test(text(p))).sort();
   const now = readers(srcCode);

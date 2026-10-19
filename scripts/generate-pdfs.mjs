@@ -25,6 +25,9 @@ const TARGETS = [
   /* ⭐ 2026-09-23 · the desk's admin guide. Its HTML is GENERATED from the console's own field list and help
      sentences — run `npm run docs:house-bots-guide` first, or this renders yesterday's copy. */
   { in: "docs/house-bots-desk-guide.html", out: "docs/50pick-house-bots-desk-guide.pdf" },
+  /* MASWALI-BUILD S6 (2026-10-18) · the weekly jackpot's operator guide, written beside the Up & Down guide in its format;
+     no screenshots yet (the console is shot once the product is on a served build). */
+  { in: "docs/maswali-operator-guide.html", out: "docs/50pick-maswali-operator-guide.pdf" },
 ];
 
 const browser = await chromium.launch();

@@ -40,7 +40,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/house-bot-chatbot.anchors.mjs";
-import { runChatbotCases } from "./lib/house-bot-chatbot-cases.mts";
+import { runChatbotCases, CHAT_PROMPT_PIN } from "./lib/house-bot-chatbot-cases.mts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -134,6 +134,10 @@ try {
     git(template, ["add", "-A", "-f"]);
     git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "pristine"]);
     git(template, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    // 6.6 holds chat.ts to an approved checkpoint of THIS repository, a sha the scratch repository cannot resolve — so the
+    // pristine copy is named by it too (a tag of that name), and a mutated chat.ts differs from it for the reason 6.6
+    // names (2026-10-18; until then every shadow run reported 6.6 NOT MEASURED, and §1.2 could not pass).
+    git(template, ["tag", CHAT_PROMPT_PIN, "HEAD"]);
     ok("0.1 · the shadow carries every file §6 reads, committed as its own origin/main",
        SHADOW_READS.every((rel) => existsSync(join(template, rel))) && git(template, ["rev-parse", "--short", "origin/main"]).trim().length >= 7,
        `${SHADOW_READS.length} file(s) · scratch origin/main ${git(template, ["rev-parse", "--short", "origin/main"]).trim()} · ${parent}`);

@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>50pick · Maswali Millionea — Operator Guide</title>
+<style>
+  /* Self-contained: no web fonts, no network. A PDF must render identically offline. */
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    font-size: 9.8pt; line-height: 1.42; color: #16233d; margin: 0;
+  }
+  h1 { font-size: 21pt; margin: 0 0 1mm; letter-spacing: -0.4pt; }
+  h2 {
+    font-size: 12.5pt; margin: 6mm 0 2.2mm; padding-bottom: 1.2mm;
+    border-bottom: 1.1pt solid #1e3a8a; color: #1e3a8a; page-break-after: avoid;
+  }
+  h3 { font-size: 10.2pt; margin: 4mm 0 1.2mm; page-break-after: avoid; color: #1e3a8a; }
+  p { margin: 0 0 1.9mm; }
+  ul, ol { margin: 0 0 2.2mm; padding-left: 5.2mm; }
+  li { margin-bottom: 0.9mm; }
+  .sub { color: #5a6577; font-size: 9.4pt; margin-bottom: 4mm; }
+  code {
+    font-family: "Consolas", "Courier New", monospace; font-size: 8.7pt;
+    background: #eef2fb; padding: 0.2mm 1mm; border-radius: 1mm;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 3mm; page-break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 1.5mm 2mm; border-bottom: 0.5pt solid #ccd5e6; }
+  th { background: #eef2fb; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.3pt; color: #1e3a8a; }
+  td { font-size: 9.1pt; }
+  td.n, th.n { text-align: right; font-family: "Consolas", monospace; }
+  .box {
+    border: 0.7pt solid #1e3a8a; background: #f5f8ff;
+    padding: 2.3mm 2.8mm; margin: 0 0 3mm; border-radius: 1.2mm; page-break-inside: avoid;
+  }
+  .warn { border-color: #a2600a; background: #fdf6e9; }
+  .stop { border-color: #9b1c2e; background: #fdf0f1; }
+  .good { border-color: #146c43; background: #eef8f2; }
+  .box p:last-child { margin-bottom: 0; }
+  .pill {
+    display: inline-block; background: #1e3a8a; color: #fff; font-size: 7.8pt;
+    padding: 0.25mm 1.6mm; border-radius: 3mm; margin-right: 1mm; vertical-align: 1.5px;
+    white-space: nowrap;
+  }
+  .pill.r { background: #9b1c2e; } .pill.a { background: #a2600a; } .pill.g { background: #146c43; }
+  figure { margin: 0 0 3mm; page-break-inside: avoid; }
+  figure img { width: 100%; display: block; border: 0.5pt solid #b9c4da; border-radius: 1.2mm; }
+  figcaption { font-size: 8.4pt; color: #5a6577; margin-top: 1.1mm; line-height: 1.35; }
+  figcaption b { color: #1e3a8a; }
+  .split { display: flex; gap: 3.5mm; page-break-inside: avoid; margin-bottom: 3mm; }
+  .split .narrow { flex: 0 0 34mm; }
+  .split .narrow img { width: 100%; border: 0.5pt solid #b9c4da; border-radius: 1.2mm; display: block; }
+  .split .text { flex: 1; }
+  .flow { display: flex; gap: 1.6mm; margin: 0 0 3mm; page-break-inside: avoid; }
+  .flow div {
+    flex: 1; border: 0.5pt solid #ccd5e6; border-radius: 1.2mm;
+    padding: 2mm; font-size: 8.5pt; background: #fbfcff;
+  }
+  .flow b { display: block; color: #1e3a8a; font-size: 8.8pt; margin-bottom: 0.6mm; }
+  .f {
+    font-family: "Consolas", "Courier New", monospace; font-size: 8.8pt;
+    background: #f3f6fd; border-left: 2pt solid #1e3a8a; padding: 2mm 2.6mm;
+    margin: 0 0 2.2mm; border-radius: 0 1.2mm 1.2mm 0; white-space: pre-wrap; line-height: 1.45;
+  }
+  .eg { background: #eef8f2; border-left-color: #146c43; }
+  footer { margin-top: 5mm; padding-top: 1.6mm; border-top: 0.5pt solid #ccd5e6; font-size: 8.4pt; color: #6b7688; }
+  .pb { page-break-before: always; }
+  .rules { counter-reset: r; }
+  .rules > div {
+    position: relative; padding: 1.9mm 2.6mm 1.9mm 8.4mm; margin-bottom: 1.6mm;
+    border: 0.5pt solid #ccd5e6; border-radius: 1.2mm; background: #fbfcff;
+    page-break-inside: avoid; font-size: 9.2pt;
+  }
+  .rules > div::before {
+    counter-increment: r; content: counter(r);
+    position: absolute; left: 2.4mm; top: 1.9mm;
+    font-family: "Consolas", monospace; font-weight: bold; font-size: 10.5pt; color: #1e3a8a;
+  }
+  .rules em { color: #5a6577; font-style: normal; display: block; margin-top: 0.5mm; font-size: 8.6pt; }
+</style>
+</head>
+
+<body>
+
+<h1>Maswali Millionea — Operator Guide</h1>
+<p class="sub">For 50pick staff who run Maswali Millionea, the weekly jackpot. No technical knowledge required.</p>
+
+<div class="box stop">
+<p><span class="pill r">NOT ON SALE YET</span> <b>Millionea is built and switched off.</b> No player can see it until
+the Owner moves its rollout to <i>Everyone</i>, and no week can open until the Owner has recorded the licence basis and
+funded the guarantee. Until then this guide describes the console, not anything a player has met.</p>
+<p>Every figure below is the rules’ <b>default</b>. Each is an admin setting, and every week freezes its own figures the
+moment it opens — the week’s page always shows that week’s. Where this guide and a week’s page disagree, the page is
+right.</p>
+</div>
+
+<h2 style="margin-top:2mm">Operating rules — read before you begin</h2>
+
+<div class="rules">
+<div><b>A week’s rules freeze the moment it opens.</b> The ticket price, the floor, the fee, the ticket cap, the void
+deadlines, the check window, the fifteen questions and their sources are fixed when an officer presses
+<b>Open the week</b>. Nothing changes them afterwards; a change to the settings applies from the next week. The one thing
+that can still move is the close, within its bounds, while the week sells (section 6).
+<em>If a player disputes a figure, read the figures on <i>their</i> week’s page — never today’s settings.</em></div>
+
+<div><b>A week is fifteen questions: ten mains and five reserves.</b> A ticket answers all fifteen, YES or NO. Only ten
+are graded, and a ticket wins only on <b>10 of 10</b>. When a main voids, the first usable reserve, in order, takes its
+place. <em>If more mains void than there are usable reserves, the whole week voids and every ticket is refunded in
+full.</em></div>
+
+<div><b>Only an officer seals a result — never the AI.</b> The AI may attach evidence and a suggestion; the seal is an
+officer’s act, with the evidence written down. <em>Seal what the source says, and only that.</em></div>
+
+<div><b>The seal console shows no ticket data, by design.</b> No picks, no holders, nothing about what a result would
+cost. An officer who could see which answer pays whom could be steered. The seal log on the integrity page shows the
+record only once a week’s results can no longer change.</div>
+
+<div><b>Seal all fifteen.</b> Reserves are sealed in order, all fifteen by default. <em>A correction that voids a main
+later, inside the check window, can pull an unused reserve in, and that reserve must already carry its result.</em></div>
+
+<div><b>A void has a ground from a closed list, and evidence.</b> Six grounds (section 7), each printed on the week’s
+public register. There is no “management may refund” ground on Millionea, and a fault on 50pick’s side is never a ground
+for voiding one question. A whole-week void for such a fault is not built yet (OD-26): report a fault to engineering and
+Compliance at once.</div>
+
+<div><b>The check window: 24 hours, never closing before 12:00 EAT.</b> It opens when the results are final. Only the
+officer who sealed a question may correct it, and never after the window closes — the console offers <b>Correct…</b>
+while the window is open — with its evidence (at least ten characters, as a seal). A corrected result is confirmed by a
+second officer whenever the original seal needed one, and a correction starts the window again.</div>
+
+<div><b>One accounting officer releases the money, from figures prepared in advance.</b> The release pays exactly the
+figures shown, in one transaction. If anything changed since they were prepared, it refuses and you read the new
+figures. <em>An alert fires when a week’s results are final, its window has closed and it is still not released 4 hours
+later.</em></div>
+
+<div><b>The guarantee backs the floor before a week can open.</b> It must hold the floor, less any confirmed carry-over,
+for every unsettled week — the new one included. <em>Week N+1 opens while week N is still being graded, so before week 1
+the Owner pays in TZS 2,000,000: two floors.</em></div>
+
+<div><b>Pause, void and stop are three different acts.</b> A pause stops new tickets and nothing else — settlements,
+refunds and cancellations go on. A whole-week void refunds every ticket and leaves the carried jackpot where it is.
+Stopping the product is the Owner’s final-week ceremony.</div>
+
+<div><b>Staff never buy tickets.</b> Accounts that hold a staff role, and accounts 50pick operates, are refused at the
+purchase.</div>
+
+<div><b>Never tell a player which answers to choose.</b> Not a hint, not “most people say”, not how many tickets to buy.
+Explain the rules and point to the page (section 11).</div>
+</div>
+
+<div class="box stop">
+<p><span class="pill r">DO NOT</span> <b>Do not seal from memory or from the AI’s suggestion. Do not leave a fixture that
+moved earlier for later. Do not release a week whose figures you have not read.</b> These are the three ways this game
+goes wrong, and all three look like saving time.</p>
+</div>
+
+<h2>1 · What the game is</h2>
+
+<p>A player buys a ticket at a fixed price and answers fifteen YES/NO questions about the coming weekend’s events. Every
+ticket that gets all ten graded questions right shares the week’s jackpot equally. If nobody does, the whole week’s
+sales roll into the next jackpot.</p>
+
+<div class="flow">
+  <div><b>1 · Draft</b>A trading officer writes the fifteen questions in English, Swahili and Chinese — the Wednesday before.</div>
+  <div><b>2 · Attest and open</b>A second reader confirms the three languages agree; the week opens on its Monday, 00:00 EAT.</div>
+  <div><b>3 · Sales</b>Players buy, up to 10 tickets each a week, until Friday 18:00 EAT.</div>
+  <div><b>4 · Close</b>Sales stop on their own. The tickets’ fingerprint is stamped and published on /fairness.</div>
+  <div><b>5 · Seal</b>An officer seals each result from its source as the events finish, Friday evening to Monday.</div>
+  <div><b>6 · Check and release</b>A 24-hour check window, then one accounting officer releases the money.</div>
+</div>
+
+<div class="f">J, the jackpot   = the larger of the floor (TZS 1,000,000) and the carry-over plus the week’s sales
+F, our fee       = 13% of J — only in a week where at least one ticket has 10 of 10
+each share       = (J − F) ÷ the number of winning tickets, rounded down to the shilling
+the remainder    = under one shilling per winner — it joins the next jackpot as far as the week’s own money covers it;
+                   the rest stays with the guarantee (all of it, in a topped-up week), whose top-up pays only the fee and
+                   the shares; in the final week, the part the week’s own money covers stays in the jackpot account
+the top-up       = what the guarantee adds so the jackpot is paid in full — only in a week with a winner
+no winner        = the whole week’s sales roll to the next jackpot, and no fee is taken
+TRA and GBT      = 10% and 5% of our fee — never of a player’s share</div>
+
+<div class="box warn">
+<p><span class="pill a">THE ONE SURPRISE</span> <b>A winning ticket can be paid less than it cost.</b> Every winner gets the
+same share, and there is no minimum share: if very many tickets reach 10 of 10, each share is small. On the polls and
+Up &amp; Down a winning bet is never paid less than its stake; on Millionea it can be. Say so plainly when asked.</p>
+</div>
+
+<h2 class="pb">2 · Where it lives, and who may do what</h2>
+
+<p>Millionea has its own section in the console, separate from the polls and Up &amp; Down.</p>
+
+<table>
+  <tr><th style="width:27%">Page</th><th>What it is for</th><th style="width:22%">Who acts there</th></tr>
+  <tr><td><b>Millionea</b><br><code>/admin/maswali</code></td><td>The product’s standing — the rollout, the licence basis, sales running or paused, the guarantee — what needs attention, and every week with where its results stand.</td><td>Trading drafts a week</td></tr>
+  <tr><td><b>Draft a week</b><br><code>/admin/maswali/new</code></td><td>The builder: fifteen questions, each in three languages, with its sources and its time.</td><td>Trading</td></tr>
+  <tr><td><b>The week</b><br><code>/admin/maswali/&lt;week&gt;</code></td><td>A draft’s checklist, the attestation and the open; moving the close while it sells; the seal console once it closes.</td><td>Trading</td></tr>
+  <tr><td><b>Pools</b><br><code>/admin/maswali/pools</code></td><td>The jackpot carried, the guarantee, the payout float; each open week’s prepared settlement and its release; the rollover trail; the Owner’s ceremonies.</td><td>Accounting releases; the Owner</td></tr>
+  <tr><td><b>Integrity</b><br><code>/admin/maswali/integrity</code></td><td>The sales pause; weeks that void whole; held shares; winners to screen; the seal log.</td><td>Compliance</td></tr>
+</table>
+
+<p><b>Trading</b> is the Trading role, <b>Accounting</b> the Finance role, <b>Compliance</b> the Compliance role, and the
+<b>Owner</b> the Owner alone. These are the default grants; the Owner can change who holds each area on
+<code>/admin/roles</code>. A control your role cannot use is shown locked, naming who can — never a button that bounces.
+<i>The officer who drafted a week can never attest its languages: a second reader must.</i></p>
+
+<h3>2.1 · The typed confirmations</h3>
+<p>Every act that moves money, results or the product asks you to type a word before it runs, and the dialog will not run
+until the word is typed exactly. For the guarantee, the final week and a forfeit, the platform checks the word again
+itself.</p>
+<table>
+  <tr><th style="width:36%">Act</th><th style="width:17%">Page</th><th style="width:17%">Who</th><th>Type</th></tr>
+  <tr><td>Seal YES/NO results, several at once</td><td>The week</td><td>Trading</td><td><code>SEAL</code></td></tr>
+  <tr><td>Void one question, with its ground</td><td>The week</td><td>Trading</td><td><code>VOID</code></td></tr>
+  <tr><td>Correct a seal (its own officer, inside the window)</td><td>The week</td><td>Trading</td><td><code>CORRECT</code></td></tr>
+  <tr><td>Release a week’s settlement</td><td>Pools</td><td>Accounting</td><td><code>RELEASE</code></td></tr>
+  <tr><td>Pause or resume sales</td><td>Integrity</td><td>Compliance</td><td><code>PAUSE</code> · <code>RESUME</code></td></tr>
+  <tr><td>Void a week whole</td><td>Integrity</td><td>Compliance</td><td><code>VOID</code></td></tr>
+  <tr><td>Hold a winner’s share</td><td>Integrity</td><td>Compliance</td><td><code>HOLD</code></td></tr>
+  <tr><td>Release or forfeit a held share</td><td>Integrity</td><td>Compliance</td><td><code>RELEASE</code> · <code>FORFEIT SHARE</code></td></tr>
+  <tr><td>Pay into or take back the guarantee</td><td>Pools</td><td>Owner</td><td><code>FUND GUARANTEE</code> · <code>RETURN GUARANTEE</code></td></tr>
+  <tr><td>Record the licence basis</td><td>Pools</td><td>Owner</td><td><code>RECORD</code></td></tr>
+  <tr><td>Move the rollout</td><td>Pools</td><td>Owner</td><td>the state chosen: <code>WITHDRAWN</code>, <code>STAFF_PREVIEW</code> or <code>ACTIVE</code></td></tr>
+  <tr><td>Make a week the final week</td><td>Pools</td><td>Owner</td><td><code>SUNSET MILLIONEA</code></td></tr>
+</table>
+<p><b>Open the week</b> asks for a confirmation without a typed word; the attestation and moving the close are single
+buttons. Each of them is still checked, and refused in words, by the platform.</p>
+
+<h2>3 · The week, step by step</h2>
+
+<p>All times are East Africa Time. Week N and week N+1 overlap: N+1 is drafted while N sells, and opens while N is being
+graded.</p>
+
+<table>
+  <tr><th style="width:20%">When</th><th style="width:21%">Who</th><th>What</th></tr>
+  <tr><td><b>Wednesday</b>, the week before</td><td>Trading officer</td><td>Draft the week (section 4). Check the calendar for holidays — 25 December 2026 and 1 January 2027 are Fridays.</td></tr>
+  <tr><td><b>Thursday to Saturday</b></td><td>A second reader — never the drafter</td><td>Read the three languages side by side and attest that they agree (section 5).</td></tr>
+  <tr><td><b>Sunday</b></td><td>Trading and Accounting</td><td>The week page reads <i>Every check passes</i>. Accounting confirms the payout float covers a floor payout. A week that is not ready does not open — never a short week.</td></tr>
+  <tr><td><b>Monday 00:00</b></td><td>Trading officer</td><td>Press <b>Open the week</b>. Sales start that moment and the question set’s fingerprint is published on <code>/fairness</code>. <i>Nothing opens a week on its own, and the player rules say the week sells from Monday 00:00: open it then — never earlier.</i></td></tr>
+  <tr><td><b>Monday to Friday</b></td><td>Trading officer</td><td>Check the fixtures every day, every hour on Friday. An event moved earlier: section 6, at once.</td></tr>
+  <tr><td><b>Friday 18:00</b></td><td>The platform</td><td>Sales close on their own. The tickets’ root, their count and the close time are stamped once and published on <code>/fairness</code>.</td></tr>
+  <tr><td><b>Friday evening to Monday</b></td><td>One officer, a backup on call</td><td>Seal each question as its result lands, with the evidence (section 7). Alerts fire 2 hours and 12 hours after an event started with its question still unsealed.</td></tr>
+  <tr><td><b>Results final</b></td><td>The platform</td><td>The 24-hour check window opens. It never closes before 12:00 EAT.</td></tr>
+  <tr><td><b>Monday or Tuesday</b></td><td>Accounting officer</td><td>Read the prepared figures on the pools page and release (section 8). The winners are credited, and next week’s jackpot takes the confirmed carry-over.</td></tr>
+</table>
+
+<h2 class="pb">4 · Drafting a week</h2>
+
+<p>On <b>Millionea</b>, press <b>Draft a week</b>. Choose the Monday the week starts (the next one by default) and its
+line: <b>Public</b>, or <b>Drive</b> — a private line for our own test weeks, which never feeds a public jackpot. The
+sales open and close on the rules’ template days.</p>
+
+<p><b>Start from the calendar</b> lists the fixtures from the event calendar and the AI’s draft polls that fall in the
+week’s window. Choosing one fills a slot with its words, its source and its time; nothing is published, and every row
+still has to pass the checks below.</p>
+
+<h3>4.1 · Every field, for each of the fifteen slots (M1–M10, then A1–A5)</h3>
+<table>
+  <tr><th style="width:27%">Field</th><th>What to enter</th></tr>
+  <tr><td>Category · kind of event</td><td>Sport, a price, the weather or an announcement. The kind picks the wording template for the criterion.</td></tr>
+  <tr><td>Question — English, Kiswahili, 中文</td><td>One plain YES/NO question in each language. The counter beside it is a guide for the player’s screen, not a limit.</td></tr>
+  <tr><td>How it resolves — three languages</td><td>The criterion, exactly as the source will settle it. <b>Use the template</b> fills the English; replace every <code>{…}</code> — a criterion still carrying one is not finished.</td></tr>
+  <tr><td>Event date, start time, the source’s zone</td><td>Typed <b>as the source prints it</b>, in its own zone — a Premier League kickoff in London time. The week page shows it in that zone and in EAT. A start inside a clock change’s repeated hour is refused, never guessed.</td></tr>
+  <tr><td>Source · fallback source</td><td>The official result’s address, and a second one for when the first is down. Both must be on the trusted-source list.</td></tr>
+  <tr><td>Estimated chance of YES · where it comes from</td><td>A percentage between 30% and 70%, and its source. Questions that are near-certain do not belong on a ticket.</td></tr>
+  <tr><td>Reading tolerance</td><td>For a price or a reading only: how close counts, for example “two decimals, as published”.</td></tr>
+</table>
+
+<h3>4.2 · The checks before a week can open</h3>
+<p>The week page lists every reason the week cannot open, in words, and the open refuses until the list is empty:</p>
+<ul>
+  <li>exactly fifteen questions — ten mains and five reserves;</li>
+  <li>a second reader has attested that English, Swahili and Chinese agree;</li>
+  <li>the close is in the future, and at least 30 minutes before the earliest of the fifteen events;</li>
+  <li>every question is in a market category, and none is about politics — the licence excludes it;</li>
+  <li>every language has its question and its criterion;</li>
+  <li>each question’s void deadline falls inside the week’s final deadline;</li>
+  <li>each question carries its estimated chance, between 30% and 70%, and its source;</li>
+  <li>at most 4 questions from one competition, and the reserves from at least 3 different sources;</li>
+  <li>every source and fallback is trusted, and no two questions are about the same event;</li>
+  <li>beside the week itself: a licence basis is recorded, and the guarantee covers every unsettled week.</li>
+</ul>
+<p><b>Edit the questions</b> on the week page reopens the builder. Any edit clears the attestation, so the second reader
+reads again.</p>
+
+<h2>5 · Attest and open</h2>
+<ol>
+  <li><b>The second reader</b> — never the officer who drafted the week — reads every question and criterion in all
+      three languages, then presses <b>I read all three languages: they agree</b>.</li>
+  <li><b>Open the week</b> on its Monday at 00:00 EAT. The confirmation says it plainly: the rules, the fifteen questions
+      and their sources freeze now and cannot change. Sales start at once for everyone the rollout admits.</li>
+  <li>If the open refuses, its reason is in words. Fix it and open again.</li>
+</ol>
+<div class="box">
+<p><b>One week sells at a time, and weeks settle strictly in calendar order.</b> A second public week cannot open while
+one is selling, and a week cannot settle before the week before it has settled or voided.</p>
+</div>
+
+<h2>6 · While it sells</h2>
+
+<h3>6.1 · Moving the close</h3>
+<p>On the week page, <b>Move the sales close</b>. The platform refuses a move that breaks a rule, and says which:</p>
+<ul>
+  <li><b>earlier</b> — never sooner than 6 minutes from now, so every ticket keeps its 5-minute free cancellation;</li>
+  <li><b>later</b> — never past 30 minutes before the first event;</li>
+  <li><b>never</b> once the close has passed.</li>
+</ul>
+
+<h3>6.2 · An event moved earlier</h3>
+<div class="box stop">
+<p><span class="pill r">AT ONCE</span> <b>No ticket may ever be graded on a question whose event began before the ticket was
+bought.</b> If a question’s event is brought forward: move the close to at or before the new start while that is still
+in the future. If tickets were already sold after the event actually began, seal that question <b>VOID</b> on the ground
+<i>Settled or begun before the sales close</i> (MR-15’s ground for this case) as soon as the seal console opens at the
+close, with the event’s real start as the evidence — or, if it is already sealed, its sealing officer corrects it to that
+VOID while the check window is open. There is no void control while the week is on sale. Its reserve then applies, and
+the register prints the ground as an event that had begun before the sales close.</p>
+</div>
+
+<h3>6.3 · Pausing sales</h3>
+<p>Compliance can pause sales on the integrity page, with a written reason. No ticket can be bought until sales resume;
+tickets already bought are safe, and settlements, refunds and cancellations go on. A pause is not a void and not a stop.</p>
+
+<h2 class="pb">7 · Sealing the results</h2>
+
+<p>Once a week closes, its page shows the <b>seal console</b>: every slot with its question, its criterion, its source,
+its event time and its void deadline. It shows nothing about the tickets.</p>
+<ol>
+  <li><b>Seal YES or NO.</b> For each result that has landed, choose YES or NO and write what the source says in
+      <b>Evidence</b> — at least ten characters. Press <b>Seal</b>, check the list in the confirmation, type
+      <code>SEAL</code>. Several results can be sealed together.</li>
+  <li><b>Void a question.</b> <b>Void…</b> on its row: choose the ground, write the evidence, type <code>VOID</code>. A
+      voided main is replaced by the next usable reserve; a voided reserve is skipped.</li>
+  <li><b>Correct a seal.</b> <b>Correct…</b> appears while the check window is open, and only the officer who sealed the
+      question may use it: the right result (YES, NO or VOID with its ground), the evidence, <code>CORRECT</code>. The
+      window starts again.</li>
+  <li><b>Confirm as second officer</b> appears on a seal made while the platform-wide two-officer setting was on, until a
+      second officer confirms it — and again after its correction, whatever the setting says by then.</li>
+</ol>
+<p>The AI’s suggestion, where there is one, is shown under the question as <i>AI suggests (never seals)</i>. Read the
+source yourself.</p>
+
+<h3>7.1 · The six grounds for a void</h3>
+<table>
+  <tr><th style="width:37%">Ground, as the console names it</th><th>When it applies</th></tr>
+  <tr><td>Not played by its void deadline</td><td>The event was not played or not finished within 48 hours of its scheduled start (never later than the Monday 23:59 EAT after the close). The deadline is printed on the question.</td></tr>
+  <tr><td>Abandoned, no official result</td><td>The event was abandoned and the source publishes no result.</td></tr>
+  <tr><td>No reading from the sources</td><td>Neither the source nor the named fallback gave a reading by the deadline.</td></tr>
+  <tr><td>Settled or begun before the sales close</td><td>The outcome was publicly known, or the event had already begun, before sales closed — an event brought forward that began while tickets were still sold is this ground (section 6.2). It may be sealed at any time.</td></tr>
+  <tr><td>Criterion wrong, or the texts diverge</td><td>The criterion is materially wrong, or the English and Swahili say different things; found before the close.</td></tr>
+  <tr><td>Criterion wrong, found after the close</td><td>The same, found after the close and before the check window ends — the sealing officer’s own finding, or a player’s report through support. The register says only that it was found after the close. (Players’ formal per-question objections are not built yet.)</td></tr>
+</table>
+
+<h3>7.2 · Where the results stand</h3>
+<p>The week list’s <b>Results</b> column reads <i>N of 15 sealed · needs …</i> while slots are missing,
+<i>Final · window to …</i> once the results are final, or <i>Voids whole</i> when more mains voided than there are usable
+reserves. The week page’s <b>Results</b> tile says the same, slot by slot.</p>
+
+<h2>8 · Paying out</h2>
+
+<p>The <b>pools</b> page is Accounting’s. Its four tiles: <b>Jackpot carried</b> (players’ money, waiting for the next
+winning week), <b>Guarantee</b> (Owner capital, beside what the unsettled weeks need now), <b>Payout float</b> (beside the
+payouts already prepared) and <b>Drive jackpot</b> (the private line’s own). A balance that cannot be read says so; it is
+never shown as zero.</p>
+
+<p>Each open week’s row shows its sales, the carry-over it has claimed, its <b>coverage</b> — how many of the 1,024 ways
+to answer the ten mains some ticket holds — the largest top-up it could need, and, once its window has closed, its
+prepared settlement: the winners, each share, the fee and the top-up, or the amount that rolls.</p>
+
+<ol>
+  <li>Read the prepared figures. A week with a winner shows <i>N winners · each share · fee · top-up</i>; a week without
+      one shows <i>No 10 of 10: the sales roll to the jackpot</i>.</li>
+  <li>Press <b>Release</b>, type <code>RELEASE</code>. The release pays exactly those figures, in one transaction.</li>
+  <li>If the figures changed since they were prepared, the release refuses — read the new figures and release again. If
+      the guarantee cannot cover the top-up, the settlement stops: the Owner pays in, then release again. It never pays
+      less.</li>
+</ol>
+<p>A winner Compliance has flagged is paid and held for Compliance; the row says how many. The <b>rollover trail</b> lists
+every settled week: its sales, the carry-over in, the winners, the fee, the top-up, what was paid and what carried on.</p>
+
+<h2 class="pb">9 · Compliance</h2>
+<table>
+  <tr><th style="width:26%">Card</th><th>What to do</th></tr>
+  <tr><td><b>Sales</b></td><td>Pause or resume, with a written reason (<code>PAUSE</code> · <code>RESUME</code>). A pause stops sales only.</td></tr>
+  <tr><td><b>Answers moving while a week sells</b></td><td>A question whose answers are moving among the latest tickets. Check the event against its source before the close; a pause stops new tickets while you do.</td></tr>
+  <tr><td><b>The seal confirmations</b> (the third card)</td><td>Recent seals to confirm with the officer who made them, the same day.</td></tr>
+  <tr><td><b>Connected accounts</b></td><td>For each recently closed week, groups of accounts to look at before its winners are paid. Decide on the records — never on a group alone.</td></tr>
+  <tr><td><b>Weeks that void whole</b></td><td>A week whose sealed record makes the void certain, with its window closed. The platform voids it on its own; a week still listed can be voided now (<code>VOID</code>): every live ticket is refunded in full, and the carried jackpot is untouched.</td></tr>
+  <tr><td><b>Held shares</b></td><td>A winner whose account changed, or who is found later to be barred. <b>Release…</b> (<code>RELEASE</code>) lets the player keep the share; <b>Forfeit…</b> (<code>FORFEIT SHARE</code>) sends the whole share back to the jackpot, for the next winning week — never to the house.</td></tr>
+  <tr><td><b>Winners</b></td><td>Every paid ticket with its account. Screen each; <b>Hold…</b> (<code>HOLD</code>) with the reason — a reversed deposit that funded it, a bar found later.</td></tr>
+  <tr><td><b>Seal log</b></td><td>Every seal, its officer, its time, the second officer and the evidence — shown only for weeks whose results can no longer change.</td></tr>
+</table>
+
+<h2>10 · The Owner’s ceremonies</h2>
+<p>The <b>Owner</b> card on the pools page holds the four acts only the Owner performs.</p>
+<table>
+  <tr><th style="width:21%">Ceremony</th><th>What it does</th></tr>
+  <tr><td><b>Guarantee</b></td><td><b>Pay in</b> (<code>FUND GUARANTEE</code>) or <b>Take back</b> (<code>RETURN GUARANTEE</code>), with the amount and the bank or rail reference. It is Owner capital, committed — never counted as retained earnings. A return is refused if it would leave the unsettled weeks’ floors unbacked.</td></tr>
+  <tr><td><b>Licence basis</b></td><td>The Owner’s dated ruling, or the Gaming Board’s letter, and where it is kept (<code>RECORD</code>). <i>None</i> withdraws it, and no week can open while none is recorded.</td></tr>
+  <tr><td><b>Rollout</b></td><td><i>Nobody</i> (withdrawn), <i>Staff preview</i> or <i>Everyone</i>, with the reason; type the state chosen. The environment’s own ceiling still applies — the effective state is the lower of the two. A public week sells only while the rollout is <i>Everyone</i>; a drive week sells from <i>Staff preview</i> up. Withdrawing hides the product — every Millionea page and door, except a holder’s own tickets — and it never deletes a ticket, and it never stops a settlement or a refund.</td></tr>
+  <tr><td><b>Stop the product</b></td><td>Choose the final week and the reason (<code>SUNSET MILLIONEA</code>). Three cases, exactly: a drafted week may be made final at least a full week before its sales open, and from then on the hub and the home card name it; the week <b>on sale</b> becomes final at once; while no week is on sale and a week’s results are being decided (its sales closed, not yet settled), that week settles under its own rules — a week without a 10 of 10 rolls over as always — and the next week to open may be made final even at less than a full week’s notice, its buyers told when they buy. A final week never opens before its announced time. A week whose sales have closed never becomes final itself: its results are already being decided. Between weeks — no week on sale or being decided — a stop takes the first path, a full week ahead. The final week runs normally. If no ticket gets 10 of 10, the highest score shares the whole jackpot — the fee applies, with no floor and no top-up. After a final week that ran, no public week opens again.</td></tr>
+</table>
+
+<h2 class="pb">11 · What to say to players</h2>
+
+<p>While the rollout is not <i>Everyone</i>, Millionea is not a product players have: do not discuss it.</p>
+<table>
+  <tr><th style="width:31%">They ask</th><th>You say</th></tr>
+  <tr><td>“How does it work?”</td><td>A ticket is fifteen YES/NO answers at a fixed price. Ten of the questions count; a ticket with all ten right shares the week’s jackpot equally with every other one — except in the final week before Millionea is retired, where, if no ticket has all ten right, the tickets with the highest score share it. The full rules are under Help → the Millionea rules.</td></tr>
+  <tr><td>“Which answers should I pick?”</td><td>We never advise on answers. Each question shows how it will be settled and by which source.</td></tr>
+  <tr><td>“I won, but my share is less than my ticket cost.”</td><td>Every winning ticket gets the same share of the jackpot, and there is no minimum share. When very many tickets reach 10 of 10, each share is smaller. The week’s page shows the jackpot, the fee, the number of winning tickets and the share.</td></tr>
+  <tr><td>“Can I cancel my ticket?”</td><td>Within 5 minutes of buying it, for a full refund — and a ticket bought in the last 5 minutes before the close cannot be cancelled. After the close, nothing can be bought or cancelled.</td></tr>
+  <tr><td>“A question was voided.”</td><td>The first usable reserve, in order, takes its place, and the week’s page shows which. If more questions void than there are reserves, the whole week is refunded in full.</td></tr>
+  <tr><td>“Nobody won. Where did the money go?”</td><td>All of it rolls into the next jackpot. No fee is taken in a week nobody wins. The one exception is the final week before Millionea is retired: there the tickets with the highest score share the jackpot, and the fee is taken.</td></tr>
+  <tr><td>“How do I know it is fair?”</td><td>The questions’ fingerprint is published on <code>/fairness</code> when the week opens, and every ticket’s fingerprint is fixed when sales close. A ticket’s owner can check their own ticket from its page.</td></tr>
+  <tr><td>“When am I paid?”</td><td>Once the results are final and the 24-hour check window has closed — usually Monday or Tuesday. The share goes straight to the wallet. Withdrawing needs a verified identity and a confirmed email, and carries the usual withdrawal fee.</td></tr>
+  <tr><td>“My winnings are on hold.”</td><td>Our compliance team is reviewing the ticket. Hand it to Compliance; do not guess at the reason.</td></tr>
+  <tr><td>“A result is wrong.”</td><td>Note the question and what the player says its source shows, and pass it to the trading officer on duty the same day. Inside the check window the officer who sealed the question can correct it, and the window starts again. Once the window has closed, the result stands.</td></tr>
+</table>
+
+<h2>12 · If something looks wrong</h2>
+<table>
+  <tr><th style="width:30%">What you see</th><th style="width:28%">What it means</th><th>What to do</th></tr>
+  <tr><td><i>sales should have closed … and the close is not stamped</i></td><td>The automatic close did not run.</td><td>Report it to engineering at once. Nothing can be sealed until the close is stamped.</td></tr>
+  <tr><td><i>slot N is unsealed 2 hours (or 12 hours) after its event started</i></td><td>A result is waiting.</td><td>Seal it from its source, or hand over to the backup officer.</td></tr>
+  <tr><td><i>N question(s) passed their void deadline unsealed</i></td><td>An event was not played or had no reading in time.</td><td>Seal each as VOID on the ground that applies (section 7.1).</td></tr>
+  <tr><td><i>slot N is sealed … but its linked Yes/No market resolved …</i></td><td>The same event was settled two ways.</td><td>Check both against the source at once; the officer who sealed the wrong one corrects it inside its window.</td></tr>
+  <tr><td><i>its results are final and its window closed … and it is not settled</i></td><td>The release is waiting.</td><td>Accounting releases it (section 8).</td></tr>
+  <tr><td><i>it voided whole, and its refunds have not landed</i></td><td>The refunds are being retried.</td><td>Report it to engineering; the platform keeps retrying until they land.</td></tr>
+  <tr><td><i>The guarantee holds …; the unsettled weeks need …</i></td><td>The floor is not fully backed.</td><td>The Owner pays in. No week opens until then.</td></tr>
+  <tr><td><i>No licence basis is recorded</i></td><td>No week can open.</td><td>The Owner records it.</td></tr>
+  <tr><td>Prepared payouts above the payout float</td><td>The float may not cover the release.</td><td>Finance tops up the float before the release.</td></tr>
+  <tr><td>A source is down</td><td>No reading yet.</td><td>Use the named fallback. With no reading by the deadline, VOID on <i>No reading from the sources</i>.</td></tr>
+  <tr><td>A question turns out to be wrong before the close</td><td>Its criterion cannot be settled as written.</td><td>VOID it on <i>Criterion wrong, or the texts diverge</i> once the week closes; the reserve applies.</td></tr>
+  <tr><td>The officer on duty is unavailable</td><td>—</td><td>The backup officer seals. Any trading officer can.</td></tr>
+  <tr><td>A control reads as locked</td><td>Your role cannot use it.</td><td>It names who can. Ask them — or the Owner.</td></tr>
+</table>
+
+<h2>13 · Terms</h2>
+<table>
+  <tr><th style="width:23%">Term</th><th>Meaning</th></tr>
+  <tr><td><b>Week</b></td><td>One round of Millionea: fifteen questions, one jackpot. Its code reads like <code>MLN-2026-W44</code>.</td></tr>
+  <tr><td><b>Main · reserve</b></td><td>M1–M10 are graded. A1–A5 (Akiba) stand in, in order, for mains that void.</td></tr>
+  <tr><td><b>Seal</b></td><td>An officer’s recorded result for one question — YES, NO or VOID — with its evidence.</td></tr>
+  <tr><td><b>Check window</b></td><td>24 hours after the results are final, for players’ reports and the sealing officer’s corrections; nothing is paid while it is open. Never closes before 12:00 EAT.</td></tr>
+  <tr><td><b>Jackpot (J)</b></td><td>What a winning week shares: the floor, or the carry-over plus the week’s sales, whichever is larger.</td></tr>
+  <tr><td><b>Carry-over</b></td><td>Money from weeks nobody won, waiting for the next winning week. It is players’ money.</td></tr>
+  <tr><td><b>Floor</b></td><td>The smallest jackpot a winning week pays — TZS 1,000,000 by default, before the fee.</td></tr>
+  <tr><td><b>Guarantee · top-up</b></td><td>The Owner’s capital that backs the floor, and what it adds in a winning week whose own money falls short.</td></tr>
+  <tr><td><b>Share</b></td><td>One winning ticket’s part of the jackpot after the fee. Every winning ticket’s share is the same.</td></tr>
+  <tr><td><b>Rounding carried</b></td><td>The few shillings an equal split leaves over. They join the next jackpot as far as the week’s own money covers them; the rest stays with the guarantee, whose top-up pays only the fee and the shares — so in a week the guarantee tops up, the whole remainder stays with it. In the final week the part the week’s own money covers stays in the jackpot account. The register shows the remainder either way.</td></tr>
+  <tr><td><b>Coverage</b></td><td>How many of the 1,024 ways to answer the ten mains some ticket holds.</td></tr>
+  <tr><td><b>Drive week</b></td><td>A private week on its own line, for our own tests. It never feeds a public jackpot.</td></tr>
+  <tr><td><b>Register</b></td><td>The public record of every final week: its questions, its seals, its voids and its money.</td></tr>
+  <tr><td><b>Fingerprint · root</b></td><td>The question set’s fingerprint, published at the open, and the tickets’ root, stamped at the close — what lets anyone check later that nothing was changed.</td></tr>
+</table>
+
+<div class="box">
+<p><span class="pill">IF IN DOUBT</span> <b>Do not seal.</b> An unsealed question holds the week; it never pays anyone
+wrongly. Ask, then seal with the evidence. If the doubt is about sales, ask Compliance to pause them — a pause stops new
+tickets only, and <code>RESUME</code> lifts it.</p>
+</div>
+
+<footer>50pick · Maswali Millionea Operator Guide · Internal use only. The figures are the rules’ defaults, ruled on
+16 October 2026; each week’s page shows its own.</footer>
+
+</body>
+</html>

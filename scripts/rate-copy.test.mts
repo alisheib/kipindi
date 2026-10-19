@@ -131,7 +131,10 @@ console.log("\n§1b · no string states an hour unit that {hours} already suppli
 {
   // Immediately before or after the placeholder, allowing one space (and the Swahili form,
   // where the unit legitimately PRECEDES the number in the phrase the helper builds).
-  const DOUBLED = /(?:(?:hours?|小时|saa|masaa)\s*\{hours\}|\{hours\}\s*(?:hours?|小时|saa|masaa))/i;
+  // ⭐ 2026-10-18 (MASWALI-BUILD S6 round 5): a HYPHEN glues a unit too — "A {hours}-hour check window" printed
+  // "A 24 hours-hour …" on Millionea's How page (fixed on mln-sf, 35ff078c) and this pattern, which allowed only a
+  // space, passed it. A space or a hyphen, either side, any number of them.
+  const DOUBLED = /(?:(?:hours?|小时|saa|masaa)[\s-]*\{hours\}|\{hours\}[\s-]*(?:hours?|小时|saa|masaa))/i;
   for (const loc of ["en", "sw", "zh"] as const) {
     const bad: string[] = [];
     const walk = (node: unknown, path: string): void => {
@@ -151,6 +154,13 @@ console.log("\n§1b · no string states an hour unit that {hours} already suppli
   ok("1b.control · ★ the scanner catches the string that actually shipped", DOUBLED.test(SHIPPED),
      "if this fails the check above is green because it inspects nothing");
   ok("1b.control · ★ …and accepts the corrected form", !DOUBLED.test("{hours}内的结算修正将被尊重"), "");
+  // ⭐ The three How-page strings that shipped with a doubled unit, each caught — the English one only by the widened
+  // pattern — and mln-sf's fixed strings, each passing (MASWALI-BUILD S6 round 5).
+  const SHIPPED_RULE_CHECK = ["A {hours}-hour check window before payout", "Muda wa ukaguzi wa saa {hours} kabla ya malipo", "支付前有 {hours} 小时复核期"];
+  const FIXED_RULE_CHECK = ["A check window of {hours} before payout", "Muda wa ukaguzi wa {hours} kabla ya malipo", "支付前有{hours}复核期"];
+  ok("1b.control · ★ a unit glued to {hours} by a hyphen or a space, before or after it, is caught in all three languages — the How page's three shipped ruleCheck strings",
+     SHIPPED_RULE_CHECK.every((s) => DOUBLED.test(s)), SHIPPED_RULE_CHECK.filter((s) => !DOUBLED.test(s)).join(" · "));
+  ok("1b.control · ★ …and the fixed ruleCheck strings pass", FIXED_RULE_CHECK.every((s) => !DOUBLED.test(s)), FIXED_RULE_CHECK.filter((s) => DOUBLED.test(s)).join(" · "));
 }
 
 // ── §2 · POSITIVE CONTROL — the scanner can say no ──────────────────────────

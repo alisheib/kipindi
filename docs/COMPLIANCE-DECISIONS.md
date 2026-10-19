@@ -8,6 +8,104 @@
 
 ---
 
+## 2026-10-18 · The Maswali Millionea rules' text hash moved four times inside version 2026-10-18, before anything was published (MASWALI-BUILD S6)
+
+**Authority.** `src/lib/millionea-rules-version.ts`: the binding text cannot move without the version moving with it, *"or,
+for a same-day correction inside a version published that day, record it in COMPLIANCE-DECISIONS.md and move only the
+hash"*. MASWALI-BUILD S6 lane L moved the hash four times on 2026-10-18, under the lead's routing of the adversarial
+reviews of the branch (rounds 2 to 5); this records all four, each with the commit that holds it and what the move
+gained — a gain a later round reworded is marked so, and kept.
+
+**What moved** — `MILLIONEA_RULES_TEXT_SHA` under `MILLIONEA_RULES_VERSION` 2026-10-18:
+
+| Move | What the binding text gained or lost |
+|---|---|
+| 707c9f634d7c (c252ef65, the text as first written) → 2c3c95afeeb9 (7ff0cfde), round 2 | Only what is built: the check window as built (a result raised with support and corrected by its sealing officer; no formal objection); the final week's exception to the 10 of 10 and to the rollover; the remainder of a week topped up to the floor ("there is none" — revised in rounds 3 to 5); the open's default time, by an officer's open; the sunset's three cases, with no regulator refund and no whole-week void for a fault (both OD-26, Gate B; the cases revised in round 3); a week on sale printed from its own times and its questions' void hours (the void hours revised in round 4: S7 re-freezes them at the open); "week id / ticket id"; a forfeited share, and no per-ticket refund; MR-5's case under "materially wrong" (revised in round 3) |
+| 2c3c95afeeb9 → 9f864924a75e (87893ff8), round 3 | The planned final week, named on the hub and the home card and never opened early; the stop while no week is on sale and a week's results are being decided, exactly as `sunsetMaswali` accepts it (mln-s7-fix), and the stop between weeks; what the jackpot account keeps after the last week; the remainder of a week raised to the floor ("none of it carries" — revised in round 4); the floor scoped to a 10 of 10 week; a correction's evidence and its second officer ("needs it again" — revised in round 4); the counted set; MR-5's case under MR-15's ground; today's settings when no week is current, with a drafted week's times and void deadlines kept (revised in round 4: the open re-freezes them) |
+| 9f864924a75e → 0812ab00056f (3e8ba9a6), round 4 | The remainder as the money moves: into the next jackpot as far as the week's own money covers it, the rest with the guarantee (all of it in a topped-up week; the top-up's wording revised in round 5); with no week current, today's settings and a week's own figures fixed at its open (revised in round 5: its close excepted); no public week after the last; the week's own figures named, and the withdrawal fee as the platform's current one; a corrected result confirmed when its original seal needed a second officer |
+| 0812ab00056f → 4ed78ea80417 (4c70541a), round 5 | The guarantee's top-up covers only the fee and the shares; a final week's remainder stays in the jackpot account; a week's own figures fixed when it opens, its close excepted |
+
+(A value `b0bf9a6fa080` named in the module's notes for a while was never held by a commit: it was a working copy
+between 707c9f634d7c and 2c3c95afeeb9.)
+
+**Why the version did not move.** The product is WITHDRAWN: `/legal/rules/millionea` answers as the 404 to every reader
+the rollout does not admit, nobody but staff has read 2026-10-18, and no ticket has been bought under it.
+
+**⛔ At publication the version moves.** The day the rules are first served to anyone who can buy a ticket under them — the
+S8 drive's preview-pass holders, or every player at ACTIVE — `MILLIONEA_RULES_VERSION` takes that date with the hash
+then pinned, in one commit; from then on every change of the binding text moves both, as the module says. The version
+stamped on each ticket (MB-69 / OD-18) is Gate B.
+
+---
+
+## 2026-10-18 · Stopping Maswali Millionea — a stop during a week's sales makes that week final; after its close, the next week to open (the build lead, under the owner's delegation, MR-30 / OD-03)
+
+**Authority.** MR-30 and OD-03 (`MASWALI-PLAN.md` §3, §9), ruled as recommended on 2026-10-16 (§ "2026-10-16 · Maswali
+Millionea — the management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"): a final
+week is announced at least one full week before its sales open, and the Owner may stop the product. The build lead
+decided on 2026-10-18, under the owner's delegation for the build, how a stop is taken once a week is running, because
+the 13% fee applies to a sunset payout and not to a rollover: a stop ordered while a week's results are being decided
+could choose who is paid, with those results in view.
+
+**What it rules.** The Owner's final-week ceremony (`sunsetMaswali`, mln-s7-fix) takes a stop in one of three ways:
+1. **A planned final week** — a week not yet on sale, made final at least one full week before its sales open.
+2. **A stop while a week is on sale** makes THAT week the final week at once (no result is known yet).
+3. **A stop while no week is on sale and a week's results are being decided** (its sales closed, not yet settled)
+   cannot take that week, which settles under its own rules — a week without a 10 of 10 rolls over as always; the
+   refusal names the Owner's next act — make the NEXT week to open (once drafted) the final week, accepted even at less
+   than a full week's notice.
+A stop between weeks, while no week is on sale or being decided, takes the first path. **A final week never opens before
+the time it was announced with** (`openWeek`, mln-sf F2), and once a week is final its page and every slip opened from
+then on say so (a ticket bought before a stop ordered on sale was bought under §11, which says a week on sale may become
+final).
+If no ticket of the final week reaches 10 of 10, its highest-scoring tickets share the jackpot, and the fee applies.
+
+**What does not change.** The regulator-ordered stop (refund the current week) is a separate act, not built yet (OD-26,
+Gate B); the binding rules do not state it until it is.
+
+**Where it is stated.** `/legal/rules/millionea` §11 and How to play's sunset line (`millionea.ruleSunset`), in en, sw
+and zh; RULES.md §2.12's sunset paragraph; the operator guide's Owner row.
+
+---
+
+## 2026-10-18 · S16's "in bounds" amended for Maswali Millionea — its tickets leave the five measures, and harm markers are reported twice (OD-22)
+
+**Authority.** Ali, 2026-10-16: *"Accept all recommendations"* — every owner decision OD-01…OD-30 of
+[`MASWALI-PLAN.md`](MASWALI-PLAN.md) §9 is ruled as recommended there (§ "2026-10-16 · Maswali Millionea — the
+management-reviewed proposal of 2026-10-16 is final; every 2026-08-29 Maswali ruling is void"). OD-22's recommendation,
+so ruled: *"the five measures exclude Millionea. Harm markers are reported for all players and for players without a
+ticket, and judged on the latter. Amend item 8 by a dated ruling."* (MASWALI-PLAN §9 item 28; MR-31). This entry is that
+dated amendment. The build is MASWALI-BUILD S6 lane R, on `mln-s6-reports`.
+
+**What item 8 now says.** § "2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit
+words, S16's "in bounds", S10–S13 accepted" item 8 defines S16's "measures in bounds": seven days after launch, each of
+the five measures at or above its 14-day pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION,
+CHASING_LOSSES daily counts) above its own. Under OD-22:
+1. **A Millionea ticket is never a bet in any of the five measures**: every bet read leaves out positions on a MASWALI
+   market (`journey-measures-dal.ts`).
+2. **Measures 4b and 5 leave out a unit whose player bought a Millionea ticket** — of any week, the private drive's
+   included — **within that unit's own horizon** (5: the first-bet horizon after the sign-up; 4b: the follow-up window
+   after the deposit), in every window before and after the launch alike (lane R round 5, 9246708b): a ticket-only
+   sign-up or deposit cannot move them, and no figure moves once its horizon has passed; the measures view names that
+   population exactly where a unit was left out.
+3. **From the first PUBLIC week's opening (`publicAt`) — never a drive week's — the harm markers are reported twice**:
+   over every player, as before, and over the players who had bought no Millionea ticket by the time that day was counted (any week, the
+   private drive's included; a cancelled ticket counts) — the harm watch's second row, `journey.harm.noTicket.daily`.
+   **S16's bounds are judged on the second.** The first count is unchanged.
+4. **The view marks the day the first public week opened; before it the harm watch keeps one count.**
+
+**What does not change.** The five measures' definitions, their 14-day baselines and the seven-day window; the harm
+detector itself; the count over every player, which is still reported.
+
+**Where it is built and guarded.** Lane R's commits on `mln-s6-reports` (2bd52278, "the S16 measures leave Millionea out
+and report harm twice (OD-22, MB-46)", f1769983 and 9246708b), held by `test:journey-measures` M.12 and M.12b–M.12g,
+`test:harm-watch` H.11–H.11g, `test:journey-measures-view` V.16–V.18 and V.16e–V.20b, and `test:maswali-reporting`
+R7.2/R7.2b, with the dated notes in the S13
+plan. VODACOM-PLAN §0
+hears of it through the Vodacom lane, not from this lane (MASWALI-PLAN Gate B item 7).
+
+---
+
 ## 2026-10-17 · Privacy v2026-10-17 — the Maswali Millionea slip's picks in necessary tab storage (MASWALI-BUILD S5)
 
 **Authority.** [`MASWALI-PLAN.md`](MASWALI-PLAN.md) MB-57 and §7b S5 item 8: the slip is *"kept in session storage keyed

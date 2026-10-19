@@ -3,6 +3,7 @@ import { LegalHeader, LegalSection } from "../_components";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { sideWordIn } from "@/lib/side-label";
 import { getGlobalConfig } from "@/lib/server/market-config";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 import { I } from "@/components/ui/glyphs";
 import { ratesFrom } from "./_shared";
 
@@ -19,6 +20,12 @@ import { ratesFrom } from "./_shared";
  * ⚠️ It also means `/legal/rules` RESOLVES rather than 404s. There is no redirect mechanism in
  * this repo at all — `next.config.ts` declares no `redirects()` and no legacy→new redirect exists
  * anywhere — so a real page is the only clean way to make the parent path work.
+ *
+ * ⭐ THREE PRODUCTS, FOR A READER THE ROLLOUT ADMITS (MASWALI-BUILD S6, MB-69). Millionea's card, the intro that counts three
+ * products and the scoped common section appear only when `resolveMillionea()` — the gate's own per-request answer — lets
+ * this request see Millionea. ⛔ Every other reader is served today's page: each change is an `mln ?` whose other arm is
+ * today's expression, untouched. And once three products are named, "what both products share" would be false of the
+ * third — a ticket has no losing side and its share can fall below its price — so the section names the two it is about.
  */
 export const dynamic = "force-dynamic";
 
@@ -46,6 +53,43 @@ const INTRO: Record<Locale, string> = {
   en: "50pick runs two products, and they settle differently — so each has its own binding rules. Both share the same account, the same wallet and the same commission, and both are settled against named public sources rather than chance.",
   sw: "50pick inaendesha michezo miwili, na hutatuliwa kwa njia tofauti — hivyo kila mmoja una kanuni zake zenye nguvu. Wote wanatumia akaunti moja, pochi moja na kamisheni moja, na wote hutatuliwa kwa vyanzo rasmi vilivyotajwa, si kwa bahati.",
   zh: "50pick 提供两种产品，其结算方式不同——因此各有其具约束力的规则。两者共用同一账户、同一钱包与同一佣金比例，且均依据具名公开来源结算，而非依赖运气。",
+};
+
+/** The intro a reader who may see Millionea reads: three products, and the one money rule they do not share. The two
+ *  products' names read their sides from the product, as `CARDS` below does. */
+const INTRO_THREE = (l: Locale): string => {
+  const yes = sideWordIn(l, "YES", "MARKET");
+  const no = sideWordIn(l, "NO", "MARKET");
+  const up = sideWordIn(l, "YES", "UPDOWN");
+  const down = sideWordIn(l, "NO", "UPDOWN");
+  switch (l) {
+    case "sw":
+      return `50pick inaendesha michezo mitatu, na hutatuliwa kwa njia tofauti — hivyo kila mmoja una kanuni zake zenye nguvu. Yote matatu yanatumia akaunti moja na pochi moja, na yote matatu hutatuliwa kwa vyanzo rasmi vilivyotajwa, si kwa bahati. Masoko ya ${yes}/${no} na ${up} na ${down} yanatumia kamisheni moja; Maswali Millionea badala yake inatoza sehemu ya jackpot yake, na tu katika wiki yenye mshindi.`;
+    case "zh":
+      return `50pick 提供三种产品，其结算方式各不相同——因此各有其具约束力的规则。三者共用同一账户与同一钱包，且均依据具名公开来源结算，而非依赖运气。${yes}/${no}市场与${up}${down}共用同一佣金比例；Maswali Millionea 则收取其大奖的一部分作为费用，且仅在有中奖者的一周收取。`;
+    default:
+      return `50pick runs three products, and they settle differently — so each has its own binding rules. All three share the same account and the same wallet, and all three are settled against named public sources rather than chance. ${yes}/${no} markets and ${up} & ${down} share one commission; Maswali Millionea charges a share of its jackpot instead, and only in a week with a winner.`;
+  }
+};
+
+/** Millionea's door on the chooser, for a reader the rollout admits. */
+const MILLIONEA_CARD: Record<Locale, [string, string]> = {
+  en: ["Maswali Millionea", "Fifteen answers, one ticket, a weekly jackpot shared equally by its winning tickets."],
+  sw: ["Maswali Millionea", "Majibu kumi na tano, tiketi moja, jackpot ya kila wiki inayogawanywa sawa na tiketi zake zinazoshinda."],
+  zh: ["Maswali Millionea", "十五个答案，一张彩票，每周大奖由其中奖彩票平分。"],
+};
+
+/** The common section's title once three products are named: the two it is about, in their own side words. */
+const COMMON_TWO = (l: Locale): string => {
+  const yes = sideWordIn(l, "YES", "MARKET");
+  const no = sideWordIn(l, "NO", "MARKET");
+  const up = sideWordIn(l, "YES", "UPDOWN");
+  const down = sideWordIn(l, "NO", "UPDOWN");
+  switch (l) {
+    case "sw": return `Yanayoshirikiwa na Masoko ya ${yes}/${no} na ${up} na ${down}`;
+    case "zh": return `${yes}/${no}市场与${up}${down}的共同之处`;
+    default: return `What ${yes}/${no} markets and ${up} & ${down} share`;
+  }
 };
 
 /**
@@ -117,6 +161,8 @@ export default async function GameRulesIndexPage() {
      `/legal/terms` does — a rate typed into a binding document goes stale silently. */
   const r = ratesFrom(await getGlobalConfig());
   const c = CARDS(locale);
+  // MASWALI-BUILD S6 · the gate's own per-request answer (never throws; a failure hides). False → today's page, unchanged.
+  const mln = (await resolveMillionea()).visible;
 
   return (
     <>
@@ -128,11 +174,12 @@ export default async function GameRulesIndexPage() {
         glyph="tippingScales"
       />
 
-      <p className="text-body-sm text-text-muted leading-relaxed">{INTRO[locale]}</p>
+      <p className="text-body-sm text-text-muted leading-relaxed">{mln ? INTRO_THREE(locale) : INTRO[locale]}</p>
 
       {/* Two doors. Same recipe as `/help`'s QuickLinkCard — kit classes only, tone never gold
-          (gold is money on this platform, and a rulebook is not money). */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          (gold is money on this platform, and a rulebook is not money). Three for a reader the rollout admits
+          (MASWALI-BUILD S6): the slot holds `ThreeDoors`, and every other reader gets today's two, as they were. */}
+      {mln ? <ThreeDoors locale={locale} c={c} /> : <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <RuleCard
           href="/legal/rules/yes-no"
           icon={<I.listChecks s={20} />}
@@ -147,15 +194,15 @@ export default async function GameRulesIndexPage() {
           sub={c.upDown[1]}
           tone="aqua"
         />
-      </div>
+      </div>}
 
-      <LegalSection n="1" title={c.common}>
+      <LegalSection n="1" title={mln ? COMMON_TWO(locale) : c.common}>
         <ul className="list-disc pl-5 space-y-1">
           {COMMON[locale].map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
-        <p>
+        {mln ? <CommissionOfTwo locale={locale} pct={r.commissionPct} /> : <p>
           {locale === "en" && (
             <>
               Our commission is{" "}
@@ -183,9 +230,71 @@ export default async function GameRulesIndexPage() {
               。
             </>
           )}
-        </p>
+        </p>}
       </LegalSection>
     </>
+  );
+}
+
+/** The three doors, for a reader the rollout admits: today's two, then Millionea's (MASWALI-BUILD S6). */
+function ThreeDoors({ locale, c }: { locale: Locale; c: ReturnType<typeof CARDS> }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <RuleCard href="/legal/rules/yes-no" icon={<I.listChecks s={20} />} title={c.yesNo[0]} sub={c.yesNo[1]} tone="info" />
+      <RuleCard href="/legal/rules/up-down" icon={<I.trendingUp s={20} />} title={c.upDown[0]} sub={c.upDown[1]} tone="aqua" />
+      <RuleCard
+        href="/legal/rules/millionea"
+        icon={<I.millionea s={20} />}
+        title={MILLIONEA_CARD[locale][0]}
+        sub={MILLIONEA_CARD[locale][1]}
+        tone="brand"
+      />
+    </div>
+  );
+}
+
+/**
+ * The commission sentence once three products are named: the two products it is true of, by their own side words, and
+ * what Millionea charges instead — no figure of Millionea's here (its own rules quote the week's), so this page reads
+ * nothing more for it.
+ */
+function CommissionOfTwo({ locale, pct }: { locale: Locale; pct: number }) {
+  const yes = sideWordIn(locale, "YES", "MARKET");
+  const no = sideWordIn(locale, "NO", "MARKET");
+  const up = sideWordIn(locale, "YES", "UPDOWN");
+  const down = sideWordIn(locale, "NO", "UPDOWN");
+  if (locale === "sw") {
+    return (
+      <p>
+        Kamisheni yetu ni{" "}
+        <strong className="text-text">
+          <span className="font-mono tabular-nums">{pct}%</span> ya upande ulioshindwa
+        </strong>{" "}
+        kwa Masoko ya {yes}/{no} na {up} na {down}. Maswali Millionea haichukui kamisheni kutoka upande ulioshindwa: ada yake
+        ni sehemu ya jackpot, inayochukuliwa tu katika wiki yenye mshindi — tazama kanuni zake.
+      </p>
+    );
+  }
+  if (locale === "zh") {
+    return (
+      <p>
+        {yes}/{no}市场与{up}{down}的佣金均为
+        <strong className="text-text">
+          失败方的 <span className="font-mono tabular-nums">{pct}%</span>
+        </strong>
+        。Maswali Millionea 不从失败方收取佣金：其费用为大奖的一部分，且仅在有中奖者的一周收取——详见其规则。
+      </p>
+    );
+  }
+  return (
+    <p>
+      Our commission is{" "}
+      <strong className="text-text">
+        <span className="font-mono tabular-nums">{pct}%</span> of the losing side
+      </strong>{" "}
+      on {yes}/{no} markets and {up} &amp; {down}. Maswali Millionea takes no commission from a losing side: its fee is a
+      share of the jackpot, taken only in a week with a winner — see its rules.
+    </p>
   );
 }
 
@@ -196,9 +305,9 @@ function RuleCard({
   icon: React.ReactNode;
   title: string;
   sub: string;
-  tone: "info" | "aqua";
+  tone: "info" | "aqua" | "brand";
 }) {
-  const tint = tone === "info" ? "bg-info-bg text-info-fg" : "bg-aqua-500/10 text-aqua-300";
+  const tint = tone === "info" ? "bg-info-bg text-info-fg" : tone === "aqua" ? "bg-aqua-500/10 text-aqua-300" : "bg-brand-500/10 text-brand-300";
   return (
     <Link
       href={href as never}
