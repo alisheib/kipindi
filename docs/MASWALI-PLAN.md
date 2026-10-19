@@ -29,6 +29,23 @@
 
 ## §0 · RESUME AT
 
+**State (2026-10-19):** S1–S4 are on `main` dark and their milestone battery is green. S5's
+integration fixes are committed at `431948cc5` on `codex/maswali-coord-20261019`, based on the last
+fetched `main` at `870772af2`. The source and disposable-database battery, every isolated browser
+suite, the ACTIVE player drive, and the WITHDRAWN-route drive are green. The visual lane read its
+full three-language capture; the changed seal line's exact-source re-shoot and tile read are green.
+Classic parity, build and production read-back remain release gates. The rollout is
+`WITHDRAWN`; the public product is not open.
+
+**Next:** Finish S5's classic parity, then build and run local live QA at the exact
+release commit. Recheck current `main` and the shared release lock before any push. Deploy S5 dark,
+then run the three-host, health, chunk, live-QA and browser read-back from AGENTS.md §4. S7 follows
+with a measured 7,000-winner transaction-timeout blocker to repair on its own branch; S6 follows in
+L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
+part of a dark release.
+
+## §0a · Historical handovers (superseded by §0 above)
+
 **⏹ STOPPED (2026-10-19, last updated ~13:45 UTC, OMEGA-COMPILE01 — the lead) — RESUME HERE, from any machine (Claude or
 Codex).** Ali, at the second wrap-up: *"push everything you have now live as it is, and give me a prompt for Codex to
 proceed after you."* This block supersedes the LIVE STATE below wherever they differ. Every branch named here is on origin
@@ -617,15 +634,15 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | S0 | Rulings recorded; plan, board, pointers, guard, R2 commission filed | ✅ | de8a00619 (2026-10-16), merged to `main` the same day on Ali's word |
 | D1 | Design R2: the commission cut live and sent | ✅ | e224aef46 (2026-10-17): sent at stamp 72ca5cff9; its owner-ruling form answered the same day (§0) |
 | S0.5 | Fence the third product line | ✅ | 9834aaf0 (2026-10-17): the fence on both stores, its red twin 17/17, test:all and the money battery green, merged to `main` dark |
-| S1 | Law, config, accounts, schema, rollout switch | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
-| S2 | Week engine (no money, no UI) | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
-| S3 | Money path (local and throwaway PostgreSQL) | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close |
+| S1 | Law, config, accounts, schema, rollout switch | ✅ | on `main` dark at `f312d652` (2026-10-18); milestone close: source/database `test:all` 615/615 and its five server-bound browser suites individually green on S5's integrated tree |
+| S2 | Week engine (no money, no UI) | ✅ | on `main` dark at `f312d652` (2026-10-18); the same milestone battery closes its deferred `test:all` gate |
+| S3 | Money path (local and throwaway PostgreSQL) | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery and disposable PostgreSQL money, fault and card E2E are green |
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
-| S4 | Admin console and operations | 🔨 | on `main` dark at `f312d652` (2026-10-18), with the S3 review's R1–R10: tsc, build, every two-store suite, the money battery and the render check green on the push; ✅ after `test:all` at the milestone close; the console's shots read tile by tile at 360/768/1280/1920 |
+| S4 | Admin console and operations | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery closes its deferred `test:all` gate, and the console's shots were read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
-| S5 | Player surfaces | 🔨 | components, read models, gate and actions on `main` dark at `f312d652`; the pages and every fix on `maswali-s4` `f54d5745`; the tab DONE on `mln-s5-tab` `85e67d9f`; the tile read’s fixes WIP on `mln-s5-vis-p` / `mln-s5-vis-r` (§0 ⏹); the staff preview after its batch |
+| S5 | Player surfaces | 🔨 | integrated at `431948cc5` on its release branch; source, disposable-database and ACTIVE/WITHDRAWN browser checks green; exact-source tile read, parity, build, dark deploy and production read-back remain |
 | S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 in progress on `mln-s6-notices` `d6e4544d` (both BLOCKERs fixed) — §0 ⏹ |
-| S7 | Adversarial hardening | 🔨 | rounds 1–6 merged on `mln-sf` `55a5f6ce` with S7-F7 1–8, its derived list green; the merge with `main`, two long reds and the money battery left; lands after S5 — §0 ⏹ |
+| S7 | Adversarial hardening | 🔨 | F7 integrated on `codex/maswali-s7-integration-20261019` at `5c0cc5e388`; the S16 10,000-ticket load found a 7,000-winner release timeout with a clean rollback, now being repaired before its two-store and load rerun; lands after S5 |
 | S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
 
 **Status values:** ⬜ not started (cites no commit) · 🔨 in progress · ✅ done (cites a commit that exists) · ⛔ blocked
