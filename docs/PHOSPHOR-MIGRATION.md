@@ -11,7 +11,36 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-18):** W0, W1, W2 and W3 are LIVE. W3, the selected states, went live at **`ee62451c`**, pushed at
+**State (2026-10-19):** W0, W1, W2 and W3 are LIVE (W3 at **`ee62451c`**, below). On 2026-10-19 Ali asked for an audit:
+*"validate that all old icons are replaced across the platform … recheck if we missed any especially important glyphs
+for markets and user front … see where we need filled glyphs and icons and where not even we had to replace our existing
+ones"*, then *"nothing should be plain … everything visually perfect, logically perfect, the most small details are the
+most important to me"* and *"push live clean … there is parallel sessions, watch out"*. The audit's findings are §8.
+Its short answer: every glyph `I` draws is Phosphor, but the platform is NOT all Phosphor yet. Still drawn outside it:
+- 14 hand-drawn `<svg>` icons and the empty states' 12 private drawings;
+- typed characters used as icons (the market card's ▲▼, Up & Down's ↑↓ and →, the sort arrows, a "→" in 7 link labels
+  per language, the rules page's ⚠️, the console's ✓ ✗ ⚠ ⛔);
+- meanings on the player front that wear the wrong glyph, or two glyphs for one meaning (§8b lists each).
+Fill is drawn in four places only (§8c holds the law for Fill, Duotone and Line).
+
+⏳ **IN FLIGHT — release 1 (W4 + the audit's player-front findings), OMEGA-COMPILE01, 2026-10-19:**
+- Worktree `C:\50pick-ssd\kipindi-phos-w4` (its own `npm ci`), branch **`phosphor-w4`** off `origin/main` `13299425`.
+  Resume on any machine: `git fetch && git worktree add <dir> origin/phosphor-w4`.
+- Scope, §8d's release 1:
+  - status in Fill through the kit's doors;
+  - outcomes as glyph + ink + word;
+  - the notification kinds, §8b's meanings and every hand-drawn or typed icon on the player front;
+  - the More tab's own key.
+- **Parallel sessions (Ali: "watch out").** The Maswali lead (asheib-bf) works on this PC beside us. The agreements,
+  2026-10-19:
+  - heavy jobs share its three-slot budget (`F:/kipindi-locks/mln-slot-N`, lane `phos`); never the exclusive lock;
+  - in `bottom-nav.tsx` and `nav-more.tsx`, only the glyph lines change (its tab lane edits those files);
+  - whoever lands on `main` second re-runs `npm run glyphs:gen` on the merged `map.ts`, and sets `PREVIOUS_SPRITES` to
+    what production serves;
+  - each side messages the other before opening a release window and when it closes.
+- Proven so far: nothing yet. The audit census is reproducible from §8's commands.
+
+W3, the selected states, went live at **`ee62451c`**, pushed at
 11:22 UTC on Ali's *"push now please then do any chekcs needed"*:
 - **What it does.** Every bar of destinations marks the current one the same way: its glyph in Fill on one opaque
   royal pill with a lit edge (R-INDICATOR 3B). It covers:
@@ -35,16 +64,23 @@
   pairs and two calls: Live's and Up & Down's Fill keep Phosphor's thinner strokes, and More's Fill is a solid tile.
 
 **Next:**
-1. The selected states' follow-ups, blocked by the laptop's memory. The machine guard stopped each dev server at
-   0.77 GB free, with Firefox and VS Code holding about 6.5 GB:
-   - the clean classic-parity compare with `--prove-red`. Its entries are verified against the first compare's
-     capture, and production passed;
-   - `qa:journey-shell`'s focus and tabs sections, and the lit, focus and admin tiles after the last fixes
-     (`scratchpad/phos/w3-drives.sh`);
-   - a stale-anchor note for six other lanes' red harnesses is in §7.
-2. Ali's answers to the review pages' calls: the swap's (https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo) and the
-   selected states'.
-3. W4, outcomes and status (§5 W4): tickets, positions, results, chips, receipts, notifications.
+1. Release 1 on `phosphor-w4` (§8d), in this order:
+   - the map (new keys `more`, `privacyNotice`, `net`, `send`; `agent` joins the app group; the Fills of the status
+     doors) and `glyphs:gen`;
+   - the code;
+   - every guard that reads a changed file, re-pinned openly, and a text-character census in `test:glyph-source`;
+   - typecheck, `next build`, the derived battery, the classic parity entries (measured), local `qa:live`;
+   - before and after tiles, read one by one, and an adversarial review;
+   - Ali's review page; then the push window, agreed with the Maswali lead;
+   - the production read-back.
+2. Release 2 = W5 + W6 (§8d): Duotone plates, categories, the one deposit glyph everywhere, stat tiles, admin cards, and
+   the empty states' one family.
+3. Release 3 = the rest of W7 (the console's typed marks, the PWA shortcuts, the Needle's cursor, the primer and
+   self-care art), then W8 and W9.
+4. Still open from the selected states (on the laptop): the clean classic-parity compare with `--prove-red`, and
+   `qa:journey-shell`'s focus and tabs sections. Ali's two calls (the swap's review page,
+   https://claude.ai/artifact/5v3yaDeeZYn7igGoVJVgEo, and the selected states') — §8c answers More's; Live's and
+   Up & Down's Fills are kept (R-ONE-SOURCE rules out a composite).
 
 ### Where the work happens
 - Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`, now
@@ -76,7 +112,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
-| W4 | Outcomes and status: glyph + ink + word | ⬜ | |
+| W4 | Outcomes and status: glyph + ink + word | 🔨 | branch `phosphor-w4` (OMEGA-COMPILE01, 2026-10-19): release 1 of §8d — W4 with the audit's player-front findings |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
@@ -779,6 +815,116 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
     (`kind: "link"`) would restore that plant;
   - `red:wallet-reach` case 21: the journey bar's hidden-words plant is caught by 8c.2 before 8c.3 (the bar changed in
     W2 `cb1853c6`, S9 `49acd4ed` and S10 `5461c178`/`d562a111`); the harness expects the other check.
+
+---
+
+## §8 · The audit of 2026-10-19 (Ali: "validate that all old icons are replaced across the platform")
+
+**How it was read** (on `origin/main` `13299425`; repeatable):
+- `npm run test:glyph-source`, the census of the three doors: 42 files may draw 77 inline `<svg>`, one SVG data URI, and
+  33 images under `public/`, each named. The census grew from W1's 40 files and 75 drawings by the family's own inline
+  symbols and Millionea's hairline (a rule, not an icon), so no icon came in by those doors.
+- `src/` scanned with comments stripped (`scripts/lib/decomment.mts`) for typed symbols and emoji, in code, CSS and
+  `i18n-dict.ts`. CSS draws no icon: no `content:` icon, and every mask is a fade.
+- Every `<I.key>` call with its size and tier: 932 static calls, 570 on the player front and 362 in the console. Before
+  this release, a Fill is drawn in four places only: the How-to card's play, the LIVE strip's play and pause, and the
+  followed star. The two tab bars also draw Fill, through `NavGlyph`.
+- Every door read against the page it opens: hub rows, the account menu, notifications, page headers.
+- All 184 registry keys are generated, so no `I[...]` lookup can draw blank. Millionea's thirteen keys are among them.
+
+### §8a · Still drawn outside Phosphor
+**Release 1** (the player front; each a family key after it):
+
+| Where | Today | After |
+|---|---|---|
+| Every market card's 24h move | typed ▲ ▼ | `chevronUp` / `chevronDown` in Fill: the solid caret (± stays a sign) |
+| Up & Down history | typed ↑ ↓ for the side; → between open and close, and between stake and return | `arrowUp` / `arrowDown`; `arrowRight` as a mark among words |
+| Up & Down round page | a hand-drawn players icon and outcome arrow; typed ↑ ↓ | `users`; `arrowUp` / `arrowDown` |
+| Up & Down stake panel · card | a hand-drawn → before the projected payout; a typed → before the close price | `arrowRight` among words |
+| The search bar's sort | typed ↑ ↓ | `arrowUp` / `arrowDown` among words |
+| Share | a hand-drawn link mark | `link` |
+| Chat | a hand-drawn send arrow | new `send` (paper-plane-right) |
+| The kit's select, date picker, duration input | hand-drawn carets and ticks | `chevronDown` / `chevronUp`, `check` |
+| The Needle drawer · settings | a hand-drawn chevron, two ticks and two copies of the Needle's mark | `chevronRight`, `check`, `needle` |
+| The classic rail's deposit coin | a hand-drawn "+" | `arrowDownToLine` (R-LEXICON 5.3A, as the headers' deposit) |
+| The leaderboard's tier badge | a typed ★ for Sovereign | `star` in Fill |
+| The Up & Down rules page | ⚠️ in en, sw and zh | `warning` in Fill, in the warning ink |
+| Link labels | a typed "→" closing 7 strings per language (4 rendered: Browse all markets, All results, Browse markets, Browse live markets; 3 unused); "oldest → newest" | the strings lose it; `arrowRight` among words |
+
+**Release 2:** the empty states' 12 private drawings (`ui/empty-state.tsx`, W6) and the notifications panel's empty art; the
+category watermark (drawn at 24 and scaled to 140 by CSS, W5).
+**Release 3:** the first-visit primer's art; the self-care art; the PWA's three shortcut PNGs; the Needle's drag cursor (a
+data URI); the console's typed marks (✓ ✗ ⚠ ⛔ ▲ ▼ ↑ ↓ ● ↗, and a → closing a link; the census finds a symbol in 65
+console files, multiplication signs and arrows inside sentences included).
+**Kept, with their reasons (not icons):** × as the multiplier; • in masks and as separators; a → inside a sentence that
+names a path ("Wallet → Withdraw", the FAQ, the policies); the brand mark (share images, the last-resort error page, the
+offline page); the badge medallions (R-BADGES); the identity crest; charts and instruments; vendor marks; the spinner.
+
+### §8b · One meaning, one glyph — what the doors and the pages disagreed on (player front)
+| Meaning | Before | Release 1 |
+|---|---|---|
+| Deposit (the notification; the activity tile) | a plain ↓ (`arrowDown`) | `arrowDownToLine` (5.3A) |
+| Withdraw (the same two) | a plain ↑ | `arrowUpFromLine` |
+| Proposals (the notification) | a certificate (`fileCheck`) | `idea` (5.6A) |
+| Limits and breaks (the RG notification; the RG policy page) | a heartbeat; the shield | `limits` (5.7A) |
+| The friends programme (the notification; the account menu) | a megaphone (marketing); a gift (bonuses) | `users`, as the hub |
+| A result recorded (an Up & Down round's result) | a pulse (an activity log) | `resolved` (§3) |
+| A loss (the notification) | Up & Down's DOWN | `xCircle`, quiet (W4) |
+| Betting closed (the notification) | `calendarClock` (a date) | `hourglassOff`, as the cards |
+| Identity verification (the account menu, the KYC page, its notification) | `shieldcheck`, which means verified | `idCard`, as the hub; `shieldcheck` keeps "verified" |
+| The agent programme (the hub; the profile) | `shieldcheck` | `agent` (handshake), now a player key |
+| The leaderboard (the account menu) | a crown | `podium`, as the hub |
+| Terms (the hub) | the rules' scales | `scrollText`, as its page |
+| Game rules (the hub) | `info` | `tippingScales`, as its page |
+| The privacy notice (the hub; its page) | a document; a lock, which also means a held wallet, a closed market and a locked round | new `privacyNotice` (file-lock) |
+| Refunds (the activity tile) | `rotateCcw`, a reversed payment | `refund` (Millionea's key, the same meaning) |
+| Net (the activity tile) | a pulse | new `net` (plus-minus) |
+| Up & Down, the product (/live's tag, the home band, the rules card and page) | `trendingUp` | `trade` (5.4A) |
+| Up & Down's sides | trend zigzags on the buttons and the outcome; plain arrows on the home band and the track; typed and hand-drawn arrows | `arrowUp` / `arrowDown` everywhere: the two halves of the product's ⇅, legible at 10px where the zigzag is not, and drawable among words |
+| "Notify me", on | `bellRing` in Line | `bell` in Fill: a toggle on, as the followed star |
+| The inbox (/notifications' head) | `bellRing`, where its doors draw the bell | `bell`; `bellRing` keeps the notification settings |
+| More (the classic rail) | `list`, also the console drawer's ≡; its Fill a solid tile that reads as a card | new `more` (dots-three-outline): hollow dots, solid on the pill |
+| A notification of no known kind | `coins` | `bell` |
+
+Seen in W3 and left for the console (release 3): a player's detail tabs (KYC `shieldcheck`, self-exclusion `shieldOff`,
+limits `lock`, audit `alertCircle`) and the hub's staff-console row (`server`).
+
+### §8c · Fill, Duotone, Line — where each belongs
+To be written into DESIGN_AUTHORITY §K3 with release 1:
+- **Fill means a state:**
+  - a selected destination (W3);
+  - a toggle that is on (the followed star; notify me);
+  - a status in a status container (callout, notice bar, toast, status flag, a receipt's status);
+  - an earned outcome: a win is the seal's Fill in gold (§M3a);
+  - a media control (play and pause);
+  - a direction that is itself the data (the 24h move's carets).
+- **Duotone means identity on a plate** (release 2): hub rows, notification plates, help and trust cells, category sigils,
+  empty states. It gives life without claiming a state.
+- **Line (Bold up to 26px) is everything else:**
+  - what you act on or read past: actions (search, filter, share, copy, edit, close);
+  - chevrons and arrows, and marks among words;
+  - meta beside data (time, players, comments);
+  - inactive destinations and form adornments;
+  - the quiet outcomes: lost, void and pending (§M7: a loss is bookkeeping, never a celebration).
+- **Why not Fill everywhere** ("nothing should be plain"). Fill is how a player sees that something is ON or EARNED. A
+  filled clock beside every timestamp would spend that signal. The life for those goes to Duotone plates (release 2) and
+  to the Fill of real states.
+- **Ali's open calls on the selected states:**
+  - More's Fill: answered by the new `more` key (§8b);
+  - Live's and Up & Down's Fills: kept. They are Phosphor's own, with a solid centre and solid heads; R-ONE-SOURCE rules
+    out a house composite; and the pill carries the selection.
+
+### §8d · The releases
+- **Release 1 (W4 + the audit's player front):** status in Fill through the kit's doors; outcomes as glyph + ink + word
+  (positions and tickets: open `clockPending`, won `resolved` in Fill and gold, lost `xCircle`, void `void`, cashed out
+  `cashOut`); the notification kinds; §8a's release-1 rows; §8b; a text-character census in `test:glyph-source`, so
+  that what is won stays won.
+- **Release 2 (W5 + W6):**
+  - Duotone plates and `IconPlate` roles; categories;
+  - one deposit and one withdraw glyph on every money door; stat tiles; the console's cards;
+  - the empty states' one family.
+- **Release 3 (the rest of W7, then W8 and W9):** the console's typed marks; the PWA shortcuts; the Needle's cursor; the
+  primer and self-care art; motion; the close.
 
 ---
 
