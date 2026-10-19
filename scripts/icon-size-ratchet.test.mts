@@ -53,7 +53,8 @@ import { join } from "node:path";
  * ⛔ Adding a number here is a DESIGN decision and needs a reason in the commit message.
  * Removing one is free, and is what progress looks like.
  */
-const FROZEN = new Set([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 96, 150]);
+// PHOSPHOR-MIGRATION 2c: the classic market watermark was the last 96px glyph; its category plate retires that size.
+const FROZEN = new Set([9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24, 26, 28, 150]);
 
 /** Walk every .tsx under src/ — DISCOVERED, never listed. See the header. */
 function walk(dir: string, out: string[] = []): string[] {

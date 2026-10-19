@@ -122,7 +122,7 @@ export function LowBlock({ t, locale, nowMs, frame, calloutId, railNames, deposi
           : low.depositRefusal === "sof_required" ? { key: "journey.sheetSofRequired" } : low.depositRefusal === "deposit_max" ? { key: "journey.sheetDepositMax", vars: { max: low.depositMaximum ?? "—" } } : { key: "journey.sheetDepositLimit", vars: { amount: low.requestedDeposit ?? "—" } }} /></p>}
         {low?.eyebrow && !cashHidden && <p className="kp-bsheet__eyebrow">{t.journey.lowChoose}</p>}
         {options && selectedDeposit !== undefined && <>
-          <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
+          <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.arrowDownToLine s={20} />} trailing={<I.chevronRight s={20} text="body-600" />}>
             <span className="kp-bsheet__deposit-copy"><span>{fillNodes(t.journey.lowDeposit, { amount: <Cash hidden={cashHidden} className="amount">{formatTzs(selectedDeposit)}</Cash> })}</span>
               <span className="kp-bsheet__rails"><DotSeq text={railNames.join(" · ")} /></span>
             </span>

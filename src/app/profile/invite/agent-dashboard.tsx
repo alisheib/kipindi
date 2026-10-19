@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui/chip";
 import { playerStatusChip } from "@/lib/status-tone";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { Callout } from "@/components/ui/callout";
 import { PageContainer } from "@/components/layout/page-container";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
@@ -147,8 +147,8 @@ export async function AgentDashboard({
       {/* The money — gold, mono, tabular — gold only when there IS commission (R5-C, 2026-10-09): a "0" in gold says money
           was earned when none was (§M3). The rows below already say it per referral (`commissionTzs > 0`). */}
       <div className="grid grid-cols-2 gap-2">
-        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.paidTzs > 0 ? "gold" : "default"} money label={t.agent.dashPaid} value={formatNumber(dash.paidTzs)} hint="TZS" icon={<I.coins s={14} />} iconAlign="end" />
-        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.thisMonthTzs > 0 ? "gold" : "default"} money label={t.agent.dashThisMonth} value={formatNumber(dash.thisMonthTzs)} hint="TZS" icon={<I.percent s={14} />} iconAlign="end" />
+        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.paidTzs > 0 ? "gold" : "default"} money label={t.agent.dashPaid} value={formatNumber(dash.paidTzs)} hint="TZS" icon={<StatIcon glyph="coins" />} iconAlign="end" />
+        <Stat size="3xl" labelStyle="strong" boxed="glass" tone={dash.thisMonthTzs > 0 ? "gold" : "default"} money label={t.agent.dashThisMonth} value={formatNumber(dash.thisMonthTzs)} hint="TZS" icon={<StatIcon glyph="percent" />} iconAlign="end" />
         {dash.pendingTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="gold" money label={t.agent.dashPending} value={formatNumber(dash.pendingTzs)} hint="TZS" />}
         {dash.reversedTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="muted" money label={t.agent.dashReversed} value={formatNumber(dash.reversedTzs)} hint={t.agent.dashReversedHint} />}
       </div>

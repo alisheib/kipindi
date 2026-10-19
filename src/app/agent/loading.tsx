@@ -2,7 +2,7 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { ButtonGhost, ghostShape, GhostText } from "@/components/ui/ghost-text";
 import { commissionWaterfall, type WaterfallStepId } from "@/lib/agent-commission";
@@ -91,15 +91,15 @@ export default function AgentLoading() {
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
           label={<GhostText>{t.agent.statEarn}</GhostText>}
           value={<GhostText>{fill(t.agent.statEarnValue, { pct: PCT })}</GhostText>}
-          hint={<GhostText>{t.agent.statEarnHint}</GhostText>} icon={<I.percent s={14} className="text-transparent" />} iconAlign="end" />
+          hint={<GhostText>{t.agent.statEarnHint}</GhostText>} icon={<StatIcon glyph="percent" ghost />} iconAlign="end" />
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
           label={<GhostText>{t.agent.statCost}</GhostText>}
           value={<GhostText><span className="amount">{FEE}</span></GhostText>}
-          icon={<I.coins s={14} className="text-transparent" />} iconAlign="end" />
+          icon={<StatIcon glyph="coins" ghost />} iconAlign="end" />
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4 kp-shimmer-track"
           label={<GhostText>{t.agent.statTime}</GhostText>}
           value={<GhostText>{fill(t.agent.statTimeValue, { days: DAYS })}</GhostText>}
-          hint={<GhostText>{t.agent.statTimeHint}</GhostText>} icon={<I.clock s={14} className="text-transparent" />} iconAlign="end" />
+          hint={<GhostText>{t.agent.statTimeHint}</GhostText>} icon={<StatIcon glyph="clock" ghost />} iconAlign="end" />
       </div>
 
       {/* The CTA — the eligible player's one 48px button, its words and the page's own glyph, unpainted and pulled onto its

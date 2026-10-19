@@ -3,7 +3,7 @@
 import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { ChipGhost, GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { I } from "@/components/ui/glyphs";
 import { keepLastWords } from "@/components/ui/keep-words";
@@ -80,18 +80,20 @@ export default function ProfileLoading() {
             </div>
           </div>
         </div>
-        {/* The strip — the kit Stat in the page's own props: the balance a row of its own on a phone, three across from sm.
-            Its glyphs are the page's own, unpainted: the slot pulls each onto the column's edge by its own drawing's gap
-            (round 10, R10-A4), so a bare 14px box would set the ghost's labels 1.2–2.4px right of the page's. */}
+        {/* The strip uses the page's Stat props and the same 26px identity plates, hidden while loading.
+            That preserves each label's position and the row height through hydration. */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 border-t border-border" aria-hidden>
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.balance}</GhostText>} value={<GhostText>{AMOUNT_SHAPE}</GhostText>}
-            icon={<I.wallet s={14} className="text-transparent" />}
+            icon={<StatIcon glyph="wallet" ghost />}
+            iconAlign="stack"
             className="col-span-2 min-w-0 whitespace-nowrap border-b border-border px-5 sm:col-span-1 sm:border-b-0 lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.openCount}</GhostText>} value={<GhostText>0</GhostText>}
-            icon={<I.sparkle s={14} className="text-transparent" />}
+            icon={<StatIcon glyph="sparkle" ghost />}
+            iconAlign="stack"
             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.settledCount}</GhostText>} value={<GhostText>0</GhostText>}
-            icon={<I.check s={14} className="text-transparent" />}
+            icon={<StatIcon glyph="resolved" ghost />}
+            iconAlign="stack"
             className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
         </div>
       </section>

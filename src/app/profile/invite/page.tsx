@@ -14,7 +14,7 @@ import { DotSeq } from "@/components/ui/dot-seq";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { ReferralShare } from "./invite-client";
 import { fill, formatCompactNumber, formatTzs } from "@/lib/utils";
 import { Ring } from "@/components/charts/ring";
@@ -464,7 +464,7 @@ export default async function InvitePage({
           label={t.common.invite}
           value={formatNumber(s.recruitCount)}
           hint={s.recruitCount > 0 ? t.common.allTime : "—"}
-          icon={<I.users s={14} />}
+          icon={<StatIcon glyph="users" />}
           iconAlign="end"
         />
         {/* ⛔ `money` is load-bearing here: this is the player's own EARNED referral
@@ -484,7 +484,7 @@ export default async function InvitePage({
           label={t.proposals.earned}
           value={formatNumber(s.earnedTzs)}
           hint="TZS"
-          icon={<I.coins s={14} />}
+          icon={<StatIcon glyph="coins" />}
           iconAlign="end"
         />
       </div>

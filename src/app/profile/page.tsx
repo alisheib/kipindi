@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { Chip } from "@/components/ui/chip";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
@@ -284,7 +284,8 @@ export default async function ProfilePage() {
             font="mono"
             label={t.profile.balance}
             value={wallet ? formatTzs(wallet.balance) : "—"}
-            icon={<I.wallet s={14} />}
+            icon={<StatIcon glyph="wallet" />}
+            iconAlign="stack"
             className="col-span-2 min-w-0 whitespace-nowrap border-b border-border px-5 sm:col-span-1 sm:border-b-0 lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
@@ -295,7 +296,8 @@ export default async function ProfilePage() {
             font="mono"
             label={t.profile.openCount}
             value={formatNumber(positions.filter((p) => p.status === "OPEN").length)}
-            icon={<I.sparkle s={14} />}
+            icon={<StatIcon glyph="sparkle" />}
+            iconAlign="stack"
             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />
@@ -306,7 +308,8 @@ export default async function ProfilePage() {
             font="mono"
             label={t.profile.settledCount}
             value={formatNumber(positions.filter((p) => p.status !== "OPEN").length)}
-            icon={<I.check s={14} />}
+            icon={<StatIcon glyph="resolved" />}
+            iconAlign="stack"
             className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6"
             labelClassName="min-w-0 whitespace-normal break-words"
           />

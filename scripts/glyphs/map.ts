@@ -325,6 +325,9 @@ export const FILL_KEYS: readonly string[] = [
  * `--glyph-tone`. In the order the surfaces draw them.
  */
 export const DUO_KEYS: readonly string[] = [
+  // PHOSPHOR-MIGRATION 2c: every category sigil is an identity mark on a royal plate.
+  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech",
+  "shuffle", "landmark", "assorted",
   // the journey's Akaunti hub, row by row (hub-rows.ts), its live rows (Arifa, Lugha, card size, the Needle) and Toka
   "wallet", "arrowUpFromLine", "resolved", "live", "podium", "attestation", "headset", "search", "limits", "pause",
   "circleStop", "privacyNotice", "shieldcheck", "scrollText", "tippingScales", "users", "idea", "user", "idCard", "agent",
@@ -335,6 +338,8 @@ export const DUO_KEYS: readonly string[] = [
   "percent", "activity", "cashOut", "void", "phone", "mail", "comment", "portfolio",
   // /profile's rows and the settings pages' plates
   "chart", "receipt", "bellRing", "fileSignature", "device", "megaphone", "vibrate", "sparkle", "clock",
+  // W5 boxed stat tiles: the number's subject is an identity, not a status claim.
+  "calendarClock", "trophy", "net",
   "devicePhone", "deviceDesktop", "deviceTablet",
   // W6: the empty-state family uses the same key as its page, on one identity plate.
   "markets", "audit", "sources", "reports", "compass",
@@ -351,7 +356,9 @@ export const DUO_KEYS: readonly string[] = [
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.8fd1796c.svg", "app.7fa80f75.svg", "admin.b27adee4.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = [
+  "app.76a3696e.svg", "admin.75aeb290.svg",
+];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

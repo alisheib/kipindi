@@ -1900,8 +1900,11 @@ function homeChecks(w: World, ok: Ok) {
     j({ missingReads, listCalls: count(home, "listMarkets("), catches: count(home, ".catch("), named: stay.includes(HT_HOME) }));
 
   // 7.chips — WP7 step 2 item 3; Correction 8 (a declared filter surface).
+  // PHOSPHOR-MIGRATION 2c: each chip also draws the one shared category plate; read its text past the SVG.
   const surfaces = (() => { const at = hw.filterLanguage.indexOf("const SURFACES = ["); return at < 0 ? "" : hw.filterLanguage.slice(at, hw.filterLanguage.indexOf("];", at)); })();
   const chipsSrc = chips.includes(`import { FilterPill } from ${HT_QUOTE}@/components/ui/filter-pill${HT_QUOTE};`) && count(chips, "<FilterPill") === 1
+    && chips.includes(`import { CategoryPlate } from ${HT_QUOTE}@/components/ui/category-plate${HT_QUOTE};`)
+    && chips.includes("glyph={<CategoryPlate category={c} />}")
     && jhFlat(chips).includes(`<nav aria-label={t.journey.homeChipsAria} data-filter-rail data-strip-autoscroll className=${HT_QUOTE}kp-thin-scroll kp-strip-fade kp-jhome__chips${HT_QUOTE}>`)
     && ["href={homeHref({ cat: c, q })}", `semantics=${HT_QUOTE}toggle${HT_QUOTE}`, "replace", "scroll={false}", "on={c === selected}"].every((x) => jhFlat(chips).includes(x))
     && !DIRECTIVE.test(chips) && surfaces.includes(`${HT_QUOTE}${JH_CHIPS}${HT_QUOTE}`);
@@ -1909,8 +1912,8 @@ function homeChecks(w: World, ok: Ok) {
     const html = H[n] ?? "", inp = IN[n];
     if (!inp) return true;
     const nav = jhInner(html, "<nav ") ?? "";
-    const pills = [...nav.matchAll(/<a data-chip="([^"]*)"(?: data-on="true")? aria-pressed="(true|false)"[^>]*href="([^"]*)">([^<]*)/g)]
-      .map((m) => [m[1], m[2], decodeHtml(m[3]), m[4]]);
+    const pills = [...nav.matchAll(/<a data-chip="([^"]*)"(?: data-on="true")? aria-pressed="(true|false)"[^>]*href="([^"]*)">([\s\S]*?)<\/a>/g)]
+      .map((m) => [m[1], m[2], decodeHtml(m[3]), textOf(m[4])]);
     const want = inp.chips.map((c) => [`cat:${c ?? "all"}`, String(c === inp.params.cat), jhHref({ cat: c, q: inp.params.q }), c === null ? dict.sw.market.catAll : ""]);
     return pills.length !== want.length || pills.some((p, i) => p[0] !== want[i][0] || p[1] !== want[i][1] || p[2] !== want[i][2] || (i === 0 && p[3] !== want[0][3]))
       || !html.includes(`<nav aria-label="${dict.sw.journey.homeChipsAria}"`);
@@ -2088,6 +2091,8 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => jhWith(w, { productLine: w.home.productLine.split(`"${HT_HOME}",`).join("") }) },
     { name: "the chips rail left undeclared in test:filter-language's SURFACES", expect: /^7[.]chips /,
       plant: (w) => jhWith(w, { filterLanguage: w.home.filterLanguage.split(`"${JH_CHIPS}",`).join("") }) },
+    { name: "the topic chips lose their shared category plates", expect: /^7[.]chips /,
+      plant: (w) => jhWith(w, { chips: htSwap(w.home.chips, "glyph={<CategoryPlate category={c} />}", "") }) },
     { name: "a chip that keeps the page (a category opened on page 3 of another)", expect: /^7[.]chips /,
       plant: (w) => jhDrawn(w, "selected", (html) => htSwap(html, `href="/?cat=sports">`, `href="/?cat=sports&amp;page=2">`)) },
     { name: "the chips speak tab semantics (aria-current, where the canvas says aria-pressed)", expect: /^7[.]chips /,

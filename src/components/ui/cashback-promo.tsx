@@ -90,7 +90,7 @@ export function CashbackPromo({
 
         {cta && !isRequest && (
           <Link href="/wallet/deposit" className="btn btn-primary btn-sm rounded-pill mt-4 inline-flex">
-            <I.coins s={13} edge="start" />
+            <I.arrowDownToLine s={13} edge="start" />
             {t.common.depositNow}
           </Link>
         )}

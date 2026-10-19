@@ -2215,6 +2215,11 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    `idea`, limits `limits`. Up & Down is `trade` (⇅) and its two sides are its two halves, `arrowUp` and `arrowDown`.
    An outcome is glyph + ink + word (`positionStatusGlyph`, `side-label.ts`): open the countdown, won the seal in Fill,
    lost the circled cross, void the prohibit sign, cashed out the hand of coins.
+   **Category and stat plates (W5):** a category on a market card, question page or topic filter uses the same
+   `CategoryPlate`: the family's Duotone sigil at `plateGlyph(26)` on the shared 26px royal identity plate. No faint
+   category watermark sits behind a question or its controls. A boxed stat uses `StatIcon` for the same derived glyph
+   size and identity material; a long translated label can sit below its plate and use the tile's full width.
+   Deposit and withdrawal doors keep their respective arrows above, including a low-balance route to deposit.
    ⚖️ **Ruled 2026-10-17 (Ali): "Switch to Phosphor"** — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) §
    "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)"; the work and
    its rulings (weight, tone, the selected state, the lexicon) are [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md).

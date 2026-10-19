@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { I } from "@/components/ui/glyphs";
+import { CategoryPlate } from "@/components/ui/category-plate";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
 import { BackLink } from "@/components/ui/back-link";
@@ -29,7 +30,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { ResolutionPanel } from "@/components/markets/resolution-panel";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { cashOutValue, freeExitEndsAt, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
 import { shownPredictors } from "@/lib/markets/predictors";
@@ -584,7 +585,10 @@ export default async function MarketDetail({
       {/* ── Page header — title, badges, share ── */}
       <header className="mt-3 mb-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Chip variant="cat" size="lg" metrics="status">{marketCategoryLabel(t, m.category)}</Chip>
+          <span className="inline-flex items-center gap-1.5">
+            <CategoryPlate category={m.category} />
+            <Chip variant="cat" size="lg" metrics="status">{marketCategoryLabel(t, m.category)}</Chip>
+          </span>
           {/* C1a hero state — LIVE only while actually accepting predictions
               (open/closing); waiting & resolved carry their own state chips.
               2026-09-13 — `market.statusLive`, the key the market cards use: zh `common.live`
@@ -667,33 +671,11 @@ export default async function MarketDetail({
             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
             every other page title, which is the opposite of what this page is for.
             2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
-        {/* A7 — the faint category glyph is a watermark BEHIND THE QUESTION, so it is drawn on the question's own box:
-            centred on it, two of its ems tall (56px under its 28px rung, 72px under 36), `isolate` keeping the -z-10
-            mark above the page and under the words.
-            ⭐ 2026-10-09 (the visual pass's round 3, tiles 161, 162, 199): it hung from the whole header's bottom-right
-            at 96px, taller than the question, so it climbed into the row above — the gilt hairline ran through the
-            weather cloud (y356 through its arc at y353–360 at 390; y273 across it at 1280) and the cloud's top sat
-            under SHIRIKI (y217–256). On the question's box, computed from the glyph paths (the 1.9 stroke included) for
-            a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
-            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room.
-            The size is the box's `h-[2em] w-[2em]`; `s` is only the svg's own width/height before the stylesheet, and it
-            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set).
-            ⭐ AND THE QUESTION'S COLUMN ENDS BEFORE IT (2026-10-09, the visual pass's round 4, E49, tile 433 at zh 768): the
-            h1 ran the full width, so a long question set its last glyph over the mark — 赛's ink to x701 across the
-            football at x680–741. The h1 now stops `2em + 12px` short of the right edge: the mark's 2em box, its `right-1`
-            (4px), and 8px of air, in the h1's own em (the mark is sized by the same rung), so at every width the words
-            wrap before the mark and the mark stands beside them. The first-line indent (R4-D) is untouched. */}
-        <div className="relative isolate">
-          {(() => {
-            const Cat = I[categoryGlyph(m.category)];
-            return (
-              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">
-                <Cat s={96} className="h-[2em] w-[2em]" />
-              </span>
-            );
-          })()}
+        {/* PHOSPHOR-MIGRATION 2c: the category's readable plate sits with its label above.
+            With the watermark retired, the whole measure is available to the question. */}
+        <div>
           <h1 data-stem={stemOf(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}
-            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)]"
+            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance"
           >{/* `keepFigures` (round 4, edges 197 199 255): "2026-27" and "dakika 28:00" never break inside. */}{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>
         </div>
       </header>
@@ -997,9 +979,9 @@ export default async function MarketDetail({
                 for the end of picking. The tile now wears the word the proposal page puts before the same date,
                 `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
                 R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(predictors)} icon={<I.users s={14} />} />
-            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<StatIcon glyph="chart" />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(predictors)} icon={<StatIcon glyph="users" />} />
+            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<StatIcon glyph="calendarClock" />} className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}

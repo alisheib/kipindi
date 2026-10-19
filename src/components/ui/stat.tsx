@@ -46,7 +46,8 @@
  */
 
 import { Cash } from "@/components/ui/cash";
-import { edgeGlyph } from "@/components/ui/glyphs";
+import { edgeGlyph, I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { cn } from "@/lib/utils";
 
 export type StatTone = "default" | "gold" | "yes" | "no" | "muted";
@@ -118,7 +119,7 @@ const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: str
  * ink. `micro` (the kit's default) and the wallet's dialect were `--text-faint`; the wallet's key was named `faint` for
  * that ink and is `plain` now (9.5px, regular, 0.10em), so a name never promises an ink the label does not draw. The
  * sizes, weights and tracking are unchanged. test:visual-pass-r8b §3. */
-export type StatLabel = "micro" | "tiny" | "plain" | "quiet" | "caps" | "strong" | "wide" | "widest";
+export type StatLabel = "micro" | "tiny" | "plain" | "quiet" | "caps" | "strong" | "wide" | "widest" | "activity";
 
 const LABEL: Record<StatLabel, string> = {
   micro:  "text-[9.5px] tracking-[0.10em] text-text-subtle",                // the kit's own · F38: --type-label
@@ -128,12 +129,19 @@ const LABEL: Record<StatLabel, string> = {
   caps:   "text-[9.5px] font-semibold tracking-[0.10em] text-text-subtle",  // performance Kpi + Stat
   strong: "text-[9.5px] font-bold tracking-[0.1em] text-text-subtle",       // invite Cap
   wide:   "text-[10px] font-semibold tracking-[0.12em] text-text-subtle",   // activity MoneyTile
+  activity: "text-[10px] font-semibold tracking-[0.04em] text-text-subtle", // W5: long translated money labels beside a plate
   widest: "text-[10px] font-semibold tracking-[0.14em] text-text-subtle",   // profile Stat · markets KPI
 };
 
 /* ── The BOX dictionary ────────────────────────────────────────────────────
  * `false` (default) is no container at all — the kit's original shape. */
 export type StatBox = "inset" | "tile" | "panel" | "card" | "glass" | "pad";
+
+/** Identity mark for boxed stat tiles. Size and tier follow the same plate law as other identity cells. */
+export function StatIcon({ glyph, ghost = false }: { glyph: DuoGlyphKey; ghost?: boolean }) {
+  const Glyph = I[glyph];
+  return <IconPlate size={26} variant="identity" className={ghost ? "opacity-0" : undefined} aria-hidden><Glyph s={plateGlyph(26)} tier="duo" /></IconPlate>;
+}
 
 const BOX: Record<StatBox, string> = {
   inset: "rounded-md border border-border/60 bg-bg-overlay/40 px-3 py-2 backdrop-blur-md",   // wallet SubStat
@@ -208,8 +216,9 @@ export function Stat({
    *  start edge, one at the row's far end (`iconAlign="end"`) onto the end edge (`edgeGlyph`, the way PageHeader's slot
    *  does); anything else is drawn as given. */
   icon?: React.ReactNode;
-  /** `label` (default) puts the icon before the label; `end` pushes it to the far edge. */
-  iconAlign?: "label" | "end";
+  /** `label` (default) puts the icon before the label; `end` pushes it to the far edge;
+   * `stack` lets a long translated label use the tile's full width below the plate. */
+  iconAlign?: "label" | "end" | "stack";
   className?: string;
   /**
    * ⛔ ESCAPE HATCH for a migrating call site whose label matches none of the
@@ -228,7 +237,9 @@ export function Stat({
       // `stat-label` is the hook for one rule in globals.css: in Chinese the label leaves the sub-micro tier for
       // `--type-micro` and drops its tracking (§T3 blesses that tier for UPPERCASE microlabels only; tiles 217, 218).
       className={cn(
-        "stat-label",
+        // PHOSPHOR-MIGRATION 2c: a 26px plate narrows long translated labels in two-column tiles.
+        // The label may wrap inside its own tile; it must never paint over the neighbour.
+        "stat-label min-w-0 break-words",
         "font-mono uppercase",
         LABEL[labelStyle],
         labelClassName,
@@ -245,6 +256,7 @@ export function Stat({
           className={cn(
             "flex items-center gap-1.5",
             iconAlign === "end" && "justify-between",
+            iconAlign === "stack" && "flex-col items-stretch",
             "text-text-subtle",
           )}
         >

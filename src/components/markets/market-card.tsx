@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { TippingBar } from "@/components/brand";
-import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { CategoryPlate } from "@/components/ui/category-plate";
 import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
@@ -250,7 +251,7 @@ function HowItWorks() {
         className="mcardp-info"
         data-open={open || undefined}
       >
-        <I.info s={12} />
+        <I.info s={plateGlyph(44)} />
       </button>
       <Modal
         open={open}
@@ -462,7 +463,6 @@ export function MarketCard({
   // on EVERY card (with or without avatars) so cards stay the same shape in a
   // grid. The count moves out of the meta row and into this row.
   const hasTraders = !fresh && Array.isArray(traders) && traders.length > 0;
-  const CatIco = I[categoryGlyph(category)];
   // Localised category label — a Swahili player must not read "SPORTS" over a
   // "MICHEZO" filter chip (POLISH-BACKLOG §1.1, the most-seen untranslated token
   // in the product). Now the SHARED helper, so the card and the detail page cannot
@@ -487,9 +487,6 @@ export function MarketCard({
   };
   const body = (
     <>
-      {/* Kit signature — large faint category glyph watermark (brightens on hover). */}
-      <span className="mcardp-watermark" aria-hidden><CatIco /></span>
-
       <div className="mcardp-top">
         {/* The featured hero keeps its status chip. A live grid card needs only one
             static mark beside its clock; CLOSED/RESOLVED/VOID each get one chip
@@ -523,7 +520,7 @@ export function MarketCard({
             the category, or the tail takes the next line — "UCHUMI masaa 1 yamebaki" read as one phrase at 9px. */}
         <span className="mcardp-tail">
           <span className="mcardp-catgrp">
-            <span className="mcardp-catico"><CatIco /></span>
+            <span className="mcardp-catico"><CategoryPlate category={category} /></span>
             <span className="mcardp-cat">{catLabel}</span>
           </span>
           {/* Every live card puts its real betting countdown beside its identity.

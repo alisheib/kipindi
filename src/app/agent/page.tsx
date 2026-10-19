@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { noticeBody } from "@/components/ui/empty-state-text";
@@ -239,7 +239,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statEarn}
           value={fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}
-          hint={t.agent.statEarnHint} icon={<I.percent s={14} />} iconAlign="end" />
+          hint={t.agent.statEarnHint} icon={<StatIcon glyph="percent" />} iconAlign="end" />
         {/* ⛔ THE HINT NAMES THE TREATMENT, IT DOES NOT ASSERT ONE. It read "VAT inclusive"
             unconditionally, so management's 2026-09-08 flip to EXCLUSIVE would have left the
             public page stating the opposite of what the applicant is charged. The figure
@@ -247,11 +247,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statCost}
           value={<span className="amount">{formatTzs(fee.totalTzs)}</span>}
-          hint={vatHint} icon={<I.coins s={14} />} iconAlign="end" />
+          hint={vatHint} icon={<StatIcon glyph="coins" />} iconAlign="end" />
         <Stat size="xl" boxed="glass" labelStyle="strong" font="mono" className="p-4"
           label={t.agent.statTime}
           value={fill(t.agent.statTimeValue, { days: String(cfg.reviewSlaDays) })}
-          hint={t.agent.statTimeHint} icon={<I.clock s={14} />} iconAlign="end" />
+          hint={t.agent.statTimeHint} icon={<StatIcon glyph="clock" />} iconAlign="end" />
       </div>
 
       {/* The CTA — one, decided above. */}

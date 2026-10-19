@@ -866,6 +866,13 @@ One deposit glyph, one withdraw glyph. Hub rows: Duotone on plates on the phone 
 royal plate on cards, the discovery chips and the journey home chips (the 0.055-opacity watermark retires). Info buttons
 and stat tiles: the glyph fills its control per `plateGlyph`. Admin stat cards and status chips get icons.
 
+Release 2c candidate: `CategoryPlate` places each category's Duotone sigil on the shared royal identity material in
+market cards, the question header, both discovery topic pickers and the journey home's chips. The faint card and question
+watermarks retire. Deposit and withdrawal arrows now carry those actions in the bet sheet and cashback door too; the
+market-card information control takes the kit glyph size for its 44px target. Boxed player stats use `StatIcon` and
+`plateGlyph(26)`; on the activity page, long translated labels sit below the plate so a 320px screen has room for the
+whole word. Release 2d covers the console's cards and statuses.
+
 ### W6 — Empty states, one family
 `ui/empty-state.tsx`'s private drawings retire; W2 already retired the unused `GL` art. An empty state is a Duotone
 glyph on the shared plate. DA §C7 owns its size and single `--metal-gold` accent (§Q5), never money gold (`test:visual-pass-r5c` §2.9,

@@ -17,7 +17,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Cash } from "@/components/ui/cash";
-import { Stat } from "@/components/ui/stat";
+import { Stat, StatIcon } from "@/components/ui/stat";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { limitUsageFill } from "@/components/rg/limit-usage";
 import { getSession } from "@/lib/server/session";
@@ -168,21 +168,21 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           <section className="rounded-xl glass-panel p-5">
             <p className="gilt-eyebrow mb-1">{t.activity.moneyEyebrow}</p>
             <p className="mb-3 text-body-sm text-text-subtle">{t.activity.forPeriod} {periodLabel[period].toLowerCase()}.</p>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 md:grid-cols-3">
               {/* ⭐ STAGE 9b — was a local `MoneyTile`; now the kit <Stat> at the `lg`
                   rung (17px, mt-1, leading-tight) in the `tile` box (rounded-lg,
-                  border/60, bg-overlay/40, px-3.5 py-3) with the `wide` label (10px
-                  semibold 0.12em). Box, label and icon row are carried across unchanged.
+                  border/60, bg-overlay/40, px-3 py-3). The W5 plate stacks above the
+                  label, and its tighter `activity` style keeps the longest Swahili label whole at 360.
                   ⭐ ONE LABEL INK FOR EVERY TILE (R5-I, 2026-10-09). Won and Net wore the YES green (Net the NO rose
                   below zero, and the green AT zero): the betting pair on the inflow/outflow of a period, on the
                   page that states a player's money honestly — §B2a keeps it for a stake's side, and §C4 asks a
                   loss to be stated as calmly as a win. The figures carry their own sign. `money` keeps the <Cash> mask this tile was
                   the ONE fork that never dropped — and pins the face to mono, which
                   fixes the one thing it got wrong: it painted TZS in Sora (§M4/§T5). */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDownToLine s={14} />} />
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUpFromLine s={14} />} />
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<StatIcon glyph="arrowDownToLine" />} iconAlign="stack" />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<StatIcon glyph="arrowUpFromLine" />} iconAlign="stack" />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<StatIcon glyph="coins" />} iconAlign="stack" />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<StatIcon glyph="trophy" />} iconAlign="stack" />
               {/* ⭐ REFUNDS ARE THEIR OWN TILE SINCE 2026-09-09, and they used to be inside Won.
                   A voided market returns your stake, and counting that as WON overstated both
                   this row and the net beside it — a player who never won anything could read a
@@ -190,11 +190,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                   to tell won from lost from voided-and-refunded, and folding two of those three
                   into one number is this surface answering its own question wrongly.
                   ⚠️ NO `labelTone` — a refund is not a win and must not borrow the yes-green. */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<I.refund s={14} />} />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<StatIcon glyph="refund" />} iconAlign="stack" />
               {/* The signed net keeps its explicit "+" — <Cash> masks from the first
                   DIGIT, so the sign and the TZS prefix survive the blur exactly as they
                   did in the fork. */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.net s={14} />} />
+              <Stat size="lg" labelStyle="activity" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<StatIcon glyph="net" />} iconAlign="stack" />
             </div>
             <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>

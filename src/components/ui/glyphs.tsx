@@ -187,13 +187,13 @@ export function hasWords(content: ReactNode): boolean {
 
 /** Map a market category to its sigil. Falls back to Other's: a category is never drawn as the board (`markets`), the
  *  board tab's glyph, nor as "All" (`layoutGrid`) beside it in a chip row (PHOSPHOR-MIGRATION W2). */
-const CATEGORY_GLYPH: Record<string, GlyphKey> = {
+const CATEGORY_GLYPH: Record<string, DuoGlyphKey> = {
   sports: "football", football: "football",
   politics: "politics", macro: "economy", economy: "economy", forex: "forex",
   weather: "weather", crypto: "crypto",
   culture: "entertainment", entertainment: "entertainment", tech: "tech",
   mixed: "shuffle", other: "assorted", infrastructure: "landmark",
 };
-export function categoryGlyph(category: string): GlyphKey {
+export function categoryGlyph(category: string): DuoGlyphKey {
   return CATEGORY_GLYPH[category?.toLowerCase?.() ?? ""] ?? "assorted";
 }

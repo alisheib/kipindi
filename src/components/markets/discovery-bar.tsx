@@ -27,6 +27,7 @@
  * page this replaces had four independent builders and one of them had drifted.
  */
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { CategoryPlate } from "@/components/ui/category-plate";
 import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
@@ -336,6 +337,7 @@ export function DiscoveryBar({
           >
             {topics.map((tp) => (
               <Chip key={tp.id} href={href({ topic: tp.id })} label={tp.label}
+                glyph={<CategoryPlate category={tp.id === "all" ? null : tp.id} />}
                 count={counts.topic[tp.id] ?? 0} pressed={state.topic === tp.id}
                 testId={`topic:${tp.id}`} className="justify-self-start" />
             ))}
@@ -404,7 +406,10 @@ export function DiscoveryBar({
                 </span>
               }
             >
-              <span className="truncate">{tp.label}</span>
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <CategoryPlate category={tp.id === "all" ? null : tp.id} />
+                <span className="truncate">{tp.label}</span>
+              </span>
             </QueryOption>
           ))}
         </MenuShell>

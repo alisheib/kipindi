@@ -18,6 +18,7 @@
  * `test:journey-home` §7 holds it.
  */
 import { FilterPill } from "@/components/ui/filter-pill";
+import { CategoryPlate } from "@/components/ui/category-plate";
 import { homeHref, type HomeChip } from "@/lib/journey/home-list";
 import { marketCategoryLabel } from "@/lib/localized";
 import type { Dict } from "@/lib/i18n-dict";
@@ -38,6 +39,7 @@ export function HomeChips({ chips, selected, q, t }: {
           key={c ?? "all"}
           href={homeHref({ cat: c, q })}
           label={c === null ? t.market.catAll : marketCategoryLabel(t, c)}
+          glyph={<CategoryPlate category={c} />}
           on={c === selected}
           semantics="toggle"
           replace

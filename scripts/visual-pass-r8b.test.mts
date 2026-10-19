@@ -398,8 +398,9 @@ section("3 · a data label is no role of its own — it wears the one ink, the `
   const STAT = code("src/components/ui/stat.tsx");
   const labelMap = Object.fromEntries([...(/const LABEL: Record<StatLabel, string> = \{([^}]*)\}/.exec(STAT)?.[1] ?? "").matchAll(/(\w+):\s*"([^"]*)"/g)].map((m) => [m[1], m[2]]));
   const statInks = (map: Record<string, string>) => Object.entries(map).filter(([, cls]) => j(inksOf(cls.split(/\s+/))) !== j([ONE_INK])).map(([k]) => k);
+  // PHOSPHOR-MIGRATION 2c: the long translated activity labels add a ninth style; all nine still use the one ink.
   ok(`3.2 · the \`<Stat>\` kit: all ${Object.keys(labelMap).length} label styles wear the one ink (\`micro\`, the default, and the wallet's were faint)`,
-    Object.keys(labelMap).length === 8 && statInks(labelMap).length === 0, j(statInks(labelMap)));
+    Object.keys(labelMap).length === 9 && "activity" in labelMap && statInks(labelMap).length === 0, j(statInks(labelMap)));
   ok("3.2′ PLANT · a style back in faint is reported", statInks({ ...labelMap, micro: "text-[9px] tracking-[0.10em] text-text-faint" }).join() === "micro");
   ok("3.3 · no label style is named for an ink it does not draw: the wallet's `faint` is `plain` (9.5px, regular, 0.10em), and its two callers say so",
     !("faint" in labelMap) && labelMap.plain === "text-[9.5px] tracking-[0.10em] text-text-subtle" && /export type StatLabel = "micro" \| "tiny" \| "plain" \|/.test(STAT)
