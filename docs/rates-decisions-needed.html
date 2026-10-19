@@ -27,6 +27,11 @@
   th { background: #EEE; font-weight: 600; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tr.sum td { font-weight: 700; background: #F5F5F5; }
+  /* A table taller than the rest of its page breaks between rows, never inside one, and repeats its header row:
+     held whole, section 4's rules table jumped to the next page, left the page above it empty and split a row anyway. */
+  table.long { page-break-inside: auto; break-inside: auto; }
+  table.long tr { page-break-inside: avoid; break-inside: avoid; }
+  table.long thead { display: table-header-group; }
 
   .block { page-break-inside: avoid; margin-bottom: 10px; }
   .note { border: 0.75pt solid #999; background: #F5F5F5; padding: 7px 10px; margin: 7px 0 10px; font-size: 10pt; }
@@ -186,8 +191,8 @@ jackpot equally. Decided by the Owner on 16 October 2026 and written into the pl
 recorded the licence basis and funded the guarantee. Every figure below is an administrator setting; each week
 freezes its own at its open, and a change applies from the next week.</p>
 
-<table>
-  <tr><th style="width:25%">Rule</th><th>What it means</th><th style="width:16%">Decided by</th></tr>
+<table class="long">
+  <thead><tr><th style="width:25%">Rule</th><th>What it means</th><th style="width:16%">Decided by</th></tr></thead>
   <tr>
     <td class="decided">A fixed ticket</td>
     <td><strong>TZS 1,000</strong> a ticket, from the real balance only — bonus money never buys one.</td>
