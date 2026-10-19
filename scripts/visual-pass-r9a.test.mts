@@ -563,7 +563,6 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/markets/resolution-panel.tsx', '<I.ext s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
     ['src/components/markets/side-picker.tsx', '<I.chevronLeft s={10} text="mono-400" />', 1, "float-text", "it leads a right-aligned change-side link: no edge to land on, its words' stroke"],
     ['src/components/onboarding/first-visit-primer.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 1, "text", "the primer's Next: a centred control frames its ink (R10-A6)"],
-    ['src/components/proposals/proposals-state-views.tsx', '<I.arrowRight s={15} text="body-600" />', 1, "button", B],
     ['src/components/proposals/proposals-state-views.tsx', '<I.chevronLeft s={15} text="body-600" />', 1, "button", B],
     ['src/components/ui/back-link.tsx', '<I.chevronLeft s={11} edge="start" text="mono-400" />', 1, "text", "the back link's start"],
     ['src/components/ui/date-select.tsx', '<I.chevronLeft s={16} />', 1, "alone", "alone in a control: centred by its box"],

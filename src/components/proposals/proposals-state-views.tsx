@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { ComingSoonBanner, FeatureStateBanner } from "@/components/ui/coming-soon-banner";
 import { noticeBody } from "@/components/ui/empty-state-text";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import type { ProposalsState } from "@/lib/server/proposals-config";
@@ -167,9 +168,11 @@ export function ProposalsUnavailable({
       <p className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</p>
       {/* Centred, so drawn as a centred notice (round 10, R10-B: every notice body holds its phrases). */}
       <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-text-muted">{noticeBody(body, { centred: true })}</p>
-      <Link href={browseHref as never} className="mt-5">
-        <Button variant="primary" size="md" trailing={<I.arrowRight s={15} text="body-600" />}>{browseLabel}</Button>
-      </Link>
+      {/* The empty states' one way onward (PHOSPHOR-MIGRATION W4): a link drawn as the button, its arrow the label's
+          size. It was a <Button> inside a <Link> — a control inside a control — its arrow 15px against 14px words. */}
+      <div className="mt-5">
+        <EmptyStateLink href={browseHref} size="md">{browseLabel}</EmptyStateLink>
+      </div>
     </div>
   );
 }
