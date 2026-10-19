@@ -39,8 +39,11 @@ tip and its focused guard passes in memory and PostgreSQL, but the full combined
 is still owed. The Phosphor merge's glyph, design and changed-source guards pass. Classic
 parity has not completed on current `main`: two attempts stopped when other concurrent
 browser jobs reduced free memory below the parity runner's floor. A focused combined-tree
-browser attempt also stopped before opening Chromium at the same floor. The six cancel-dialog
-captures (three languages at two widths) are source checked but await a real browser run.
+browser attempt also stopped before opening Chromium at the same floor. The machine-wide
+heavy-job lock now names an idle S7 port; its owner must release it before another heavy job.
+The six cancel-dialog captures (three languages at two widths) are source checked but await
+a real browser run. A 320px Swahili How-to tile exposed a clipped example button; its scoped
+kit-button fit and failing mutation guard are committed, but the post-merge browser tile is owed.
 The combined-tree browser drives, final exact-commit build and local `qa:live`, deployment and production
 read-back remain open. The rollout stays `WITHDRAWN`; the public product is not open.
 
