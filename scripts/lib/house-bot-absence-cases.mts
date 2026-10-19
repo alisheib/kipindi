@@ -202,9 +202,12 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
     // stands on main (the commit before this pin).
     const W4B = "2aab5f0ec";
+    // PHOSPHOR-MIGRATION release 2a part 2: these two legal files changed only their icon plates. Pin the exact
+    // committed source while D19a continues to refuse any unreviewed change to their published words.
+    const PHOS_R2A_PART2 = "a843ff73fcaa919298a4f056008c7ee560ca84f7";
     const APPROVED_EXTRA = new Map([
-      ["src/app/legal/_components.tsx", W4B],
-      ["src/app/legal/rules/page.tsx", W4],
+      ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
+      ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
       ["src/lib/i18n-dict.ts", W4],
       ["src/app/legal/privacy/page.tsx", W4],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
