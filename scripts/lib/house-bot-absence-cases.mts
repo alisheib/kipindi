@@ -201,7 +201,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // word for a screen reader in each language ("Warning: ", "Onyo: ", "警告：", sr-only — the ⚠️ it replaced was read
     // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
     // stands on main (the commit before this pin).
-    const W4B = "006685c09";
+    const W4B = "2aab5f0ec";
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", W4B],
       ["src/app/legal/rules/page.tsx", W4],
