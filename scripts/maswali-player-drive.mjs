@@ -41,7 +41,12 @@ const BASE = process.env.BASE || "http://localhost:3410";
 const OUT = ".50pick-shots/maswali-player";
 const OWNER_PHONE = "+255700000091";
 const STRANGER_PHONE = "+255700000092";
+/** The platform's not-found page in English (`NOT_FOUND_WORDS.en`, `src/components/ui/not-found-words.ts`, drawn by
+ *  `not-found-view.tsx`): its h1 is the body line, under the "404 · Page not found" eyebrow. Both are read, so a page that
+ *  merely mentions the words never passes — and the h1 is what the view really draws (a heading NAMED "Page not found"
+ *  exists nowhere, so the first form of this check could never pass). */
 const NOT_FOUND = "Page not found";
+const NOT_FOUND_H1 = "We couldn’t find that page";
 
 let pass = 0, fail = 0;
 const ok = (n, c, e = "") => { if (c) { pass++; console.log(`PASS ${n}`); } else { fail++; console.log(`FAIL ${n}${e ? ` — ${e}` : ""}`); } };
@@ -71,7 +76,9 @@ async function open(page, path) {
   return res;
 }
 const tile = (page, name) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
-const notFoundShown = async (page) => (await page.getByRole("heading", { name: NOT_FOUND }).count()) > 0;
+const notFoundShown = async (page) =>
+  (await page.getByRole("heading", { level: 1, name: NOT_FOUND_H1, exact: true }).count()) > 0
+  && (await page.getByText(`404 · ${NOT_FOUND}`, { exact: true }).count()) > 0;
 const traceOf = (html) => /data-testid="millionea-[a-z-]+"|href="\/millionea(?:[/?#][^"]*)?"/.test(html);
 
 // ── W · PRODUCTION'S CONFIGURATION — the shipped WITHDRAWN ceiling (the S5 review of 24ec0d33, LOW 13) ─────────────────
