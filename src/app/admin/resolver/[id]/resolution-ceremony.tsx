@@ -405,7 +405,11 @@ export function ResolutionCeremony({
 
 function VerdictCards({ value, onChange }: { value: Outcome | null; onChange: (v: Outcome) => void }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
+    /* ⛔ MASWALI-BUILD S7-F7 8 · ONE PER ROW BELOW `sm`, the platform's one answer to this shape (the queue's resolve
+       controls, G-6). Three across at 360 left each card about 85px, and the Swahili sublabel BATILISHA (nine letters
+       at the eyebrow's tracking) ran to the VOID card's edge. Stacked, each card has the full width and a full-width tap
+       target; three across from `sm` up, where every sublabel fits inside its card's own padding. */
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       {VERDICTS.map((v) => {
         const active = value === v.value;
         return (

@@ -37,6 +37,7 @@ import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
 import { BULK_REASON, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
+import { CEREMONY } from "../src/lib/admin-status-lexicon.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -525,9 +526,26 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   const census = read("scripts/ops-verdict-census.mts");
   ok("11.5b the queue, the market page and the ops census read the setting FAIL-CLOSED (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
      [p, marketPage, census].every((s) => /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(s) && !/getRequireTwoOfficerResolution/.test(s)));
-  ok("11.5c …an unknown is drawn as the stricter ceremony and named as unknown on both pages, and the census draws nothing",
-     /const requireTwoOfficer = twoOfficerRead !== false;/.test(p) && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
-       && /const requireTwoOfficer = twoOfficerRead !== false;/.test(marketPage) && /twoOfficerRead === null \? \(/.test(marketPage)
+  // ⛔ MASWALI-BUILD S7-F7 6 · RE-PINNED, AND WHY (the lead's ruling, 2026-10-19). 11.5c used to hold that an unknown setting
+  //    is "drawn as the stricter ceremony and named as unknown": the queue's rows kept their "Two-officer rule" stages and
+  //    the market page its "Two-officer attestation" slots and "Stage-1 attestation" title — words naming a ceremony that
+  //    may not be in force. Ruled: an unknown names NO ceremony. Each page draws the neutral words FIRST
+  //    (CEREMONY.officers, .waitsForSetting, .resolution, with en, sw and zh all present), the header counts nobody as
+  //    awaiting a second officer, and a sealed market's attestation follows its own record; the two-officer and
+  //    single-officer words are reached only on a read that answered. The controls stay withheld (11.5d, 11.5g); the
+  //    census still draws nothing.
+  const neutralWords = [CEREMONY.officers, CEREMONY.resolution, CEREMONY.waitsForSetting];
+  ok("11.5c …an unknown names no ceremony on either page: each draws the neutral words before any two-officer or single-officer word, in en, sw and zh, and the census draws nothing",
+     neutralWords.every((l) => !!l.en && !!l.sw && !!l.zh)
+       && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
+       && /\{twoOfficerRead === null \? \(\s*<div className="px-4 py-3 border-b border-border" data-ceremony="unknown">[\s\S]{0,300}\{CEREMONY\.officers\.en\}[\s\S]{0,200}\{CEREMONY\.waitsForSetting\.en\}[\s\S]{0,200}\) : requireTwoOfficer \? \(/.test(p)
+       && /twoOfficerRead === true && awaitingStage2 > 0/.test(p) && !/requireTwoOfficer && awaitingStage2/.test(p)
+       && /const unknownOpen = twoOfficerRead === null && !settled;/.test(marketPage)
+       && /const attestTwo = twoOfficerRead === null \? !!stage1By && !!stage2By && stage1By !== stage2By : requireTwoOfficer;/.test(marketPage)
+       && /title=\{unknownOpen \? CEREMONY\.officers\.en : attestTwo \? CEREMONY\.twoOfficerAttestation\.en : "Resolving officer"\}/.test(marketPage)
+       && /\{unknownOpen \? \(\s*<p className="[^"]*" data-ceremony="unknown">\{CEREMONY\.waitsForSetting\.en\}<\/p>\s*\) : attestTwo \? \(/.test(marketPage)
+       && /title=\{settled \? "Sealed" : unknownOpen \? CEREMONY\.resolution\.en : requireTwoOfficer \?/.test(marketPage)
+       && /twoOfficerRead === null \? \(/.test(marketPage)
        && /if \(twoOfficerRead === null\) \{[^}]*process\.exit\(2\)/.test(census));
   // ⛔ MASWALI-BUILD S7-F5 · an unknown setting drawn strict removed the seal's confirmation: the controls posted only the
   //    market and the outcome, and the action re-read the setting (OFF once it answered) — a one-click seal with no typed
@@ -614,6 +632,16 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.24 selection is reset when the page changes", /setSelected\(new Set\(\)\)/.test(sel) && /\[key\]/.test(sel));
   ok("11.25 shift-click extends a range", /extendTo/.test(sel));
   ok("11.26 the selection module imports no server action", !/bulk-resolve-action/.test(sel));
+  // ⛔ MASWALI-BUILD S7-F7 8 · the ceremony's verdict cards take the platform's one answer to a three-way choice at a phone's
+  //    width — the queue's resolve controls' (G-6): one per row below `sm`. Three across, BATILISHA ran to its card's edge.
+  ok("11.27 the ceremony's verdict cards go one per row below sm, as the queue's resolve controls do — at 360 no sublabel reaches its card's edge",
+     /function VerdictCards[\s\S]{0,700}<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">/.test(ceremony)
+       && !/<div className="grid grid-cols-3 gap-2">/.test(ceremony) && /grid grid-cols-1 sm:grid-cols-3/.test(controls));
+  // ⛔ MASWALI-BUILD S7-F7 7 · the bar's label block has a sentence's minimum width, so at 360 the wrapping row breaks between
+  //    its groups instead of squeezing the label one word per line beside the buttons.
+  ok("11.28 at 360 the bar's label keeps a sentence's width — the row wraps its buttons below instead of squeezing the words one per line",
+     /<div className="min-w-\[220px\] flex-1">[\s\S]{0,60}<p className="font-mono text-body-sm text-text-muted">\s*\{chosen\.length > 0/.test(bar)
+       && !/<div className="min-w-0 flex-1">[\s\S]{0,60}<p className="font-mono text-body-sm text-text-muted">\s*\{chosen\.length > 0/.test(bar));
 }
 
 // ── 12 · THE PRODUCTION POPULATION, AS FIXTURES ─────────────────────────────

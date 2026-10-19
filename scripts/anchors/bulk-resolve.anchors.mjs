@@ -433,4 +433,45 @@ export const MUTATIONS = [
     from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });`,
     to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });`,
   },
+
+  /* ── MASWALI-BUILD S7-F7 6–8 · the lead's ruling and two 360px fixes, one plant per guard ─────────────────────────
+     6 · while the two-officer setting is UNKNOWN no page names a ceremony that may not be in force (11.5c, re-pinned):
+         each plant lets a strict word draw for an unknown setting again.
+     7 · the bulk bar's label keeps a sentence's width at 360 (11.28).
+     8 · the ceremony's verdict cards go one per row below sm, so BATILISHA never reaches its card's edge (11.27). */
+  {
+    name: "S7-F7 · a queue row draws the two-officer stages for an UNKNOWN setting (the neutral words are skipped)",
+    file: PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `                  {twoOfficerRead === null ? (`,
+    to: `                  {false ? (`,
+  },
+  {
+    name: "S7-F7 · the queue header counts markets 'awaiting 2nd' officer while the setting is UNKNOWN",
+    file: PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `              {twoOfficerRead === true && awaitingStage2 > 0 &&`,
+    to: `              {requireTwoOfficer && awaitingStage2 > 0 &&`,
+  },
+  {
+    name: "S7-F7 · the market page titles an open market's cards 'Two-officer attestation' / 'Stage-1 attestation' while the setting is UNKNOWN",
+    file: MARKET_PAGE,
+    expect: "11.5c …an unknown names no ceremony on either page",
+    from: `  const unknownOpen = twoOfficerRead === null && !settled;`,
+    to: `  const unknownOpen = false && !settled;`,
+  },
+  {
+    name: "S7-F7 · the bulk bar's label may shrink to nothing again, so at 360 it reads one word per line beside the buttons",
+    file: BAR,
+    expect: "11.28 at 360 the bar's label keeps a sentence's width",
+    from: `        <div className="min-w-[220px] flex-1">`,
+    to: `        <div className="min-w-0 flex-1">`,
+  },
+  {
+    name: "S7-F7 · the ceremony's verdict cards sit three across at 360 again, and BATILISHA runs to the VOID card's edge",
+    file: CEREMONY,
+    expect: "11.27 the ceremony's verdict cards go one per row below sm",
+    from: `    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">`,
+    to: `    <div className="grid grid-cols-3 gap-2">`,
+  },
 ];

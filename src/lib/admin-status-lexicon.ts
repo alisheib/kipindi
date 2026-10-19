@@ -18,10 +18,14 @@
  * Every `sw` string is lifted verbatim from an existing, already-shipped source
  * — the admin surfaces themselves (the most complete variant wins) or the blessed
  * player dict (`i18n-dict.ts`). No new translations are invented here.
+ * ⚠️ ONE RULED EXCEPTION (MASWALI-BUILD S7-F7 6, the lead, 2026-10-19): the three
+ * unknown-setting words in CEREMONY (`officers`, `resolution`, `waitsForSetting`) carry
+ * `sw` and `zh` built only from words the dictionary already ships, and are listed for
+ * native review at Gate B with Millionea's copy.
  *
  * SHAPE
  * -----
- * Each entry is `{ en, sw? }`. Surfaces that render one language only (uppercase
+ * Each entry is `{ en, sw?, zh? }` (`zh` only where a ruling asks for all three). Surfaces that render one language only (uppercase
  * chips, toast titles, server-action error messages) use `.en`; surfaces that show
  * both languages use `bi()` for the "English · Kiswahili" join or the `.en`/`.sw`
  * pair directly (e.g. `AdminCard title={x.en} sw={x.sw}`).
@@ -35,7 +39,7 @@
 
 import { PAYMENT_METHODS } from "@/lib/payment-providers";
 
-export type AdminLabel = { en: string; sw?: string };
+export type AdminLabel = { en: string; sw?: string; zh?: string };
 
 /** Bilingual inline join: `"English · Kiswahili"` (falls back to English alone
  *  when the label carries no Swahili). Matches the console's existing " · " form. */
@@ -87,6 +91,18 @@ export const CEREMONY = {
   /** Officer evidence captured at Stage 1. SW = "Ushahidi" (evidence). */
   recordedEvidence:       { en: "Recorded evidence",       sw: "Ushahidi" },
   evidenceExcerpt:        { en: "Evidence excerpt",        sw: "Ushahidi" },
+  /** ⛔ WHILE THE TWO-OFFICER SETTING IS UNKNOWN NO PAGE NAMES A CEREMONY THAT MAY NOT BE IN FORCE (MASWALI-BUILD S7-F7 6,
+   *  the lead's ruling, 2026-10-19). These neutral words stand where "Two-officer rule", "Two-officer attestation",
+   *  "Stage-1 attestation" or the single-officer words would: the resolver queue's rows and the market page's two
+   *  cards. Built from words the dictionary already ships (utatuzi, maafisa, kanuni ya maofisa wawili, mipangilio,
+   *  kusomeka; 结算, 审核员, 双审核员规则, 设置, 读取); sw and zh for native review at Gate B. */
+  officers:               { en: "Officers",                sw: "Maafisa",                  zh: "审核员" },
+  resolution:             { en: "Resolution",              sw: "Utatuzi",                  zh: "结算" },
+  waitsForSetting:        {
+    en: "Resolution waits until the two-officer setting can be read.",
+    sw: "Utatuzi unasubiri hadi mpangilio wa kanuni ya maofisa wawili usomeke.",
+    zh: "须待双审核员规则的设置可读取后方可结算。",
+  },
 } satisfies Record<string, AdminLabel>;
 
 /**

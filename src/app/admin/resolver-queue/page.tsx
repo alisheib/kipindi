@@ -162,8 +162,9 @@ async function ResolverQueueContent({
   // Two-admin authorization: OFF (default) = single admin resolves in one action;
   // ON = two-officer ceremony. This is the ONE place it is controlled.
   // ⛔ MASWALI-BUILD S7-F4 · read FAIL-CLOSED, as the actions read it (S7-F3): null is UNKNOWN, never the code default (one
-  //    officer) while the setting may be ON. An unknown is drawn as the stricter two-officer ceremony and named as unknown;
-  //    every action refuses on its own read.
+  //    officer) while the setting may be ON. Every action refuses on its own read.
+  //    S7-F7 6 (the lead's ruling) · an unknown names NO ceremony: no row draws the two-officer stages or the single-officer
+  //    line, and the header counts nobody as awaiting a second officer — the rows say resolution waits for the setting.
   const twoOfficerRead = await readRequireTwoOfficerResolution().catch(() => null);
   const requireTwoOfficer = twoOfficerRead !== false;
 
@@ -296,7 +297,7 @@ async function ResolverQueueContent({
             <div className="flex items-center gap-2.5 font-mono text-micro tracking-[0.14em] uppercase text-text-subtle">
               <span>{pending.length} pending</span>
               {overdueCount > 0 && <><span className="text-border">·</span><span className="text-claret-300">{overdueCount} overdue</span></>}
-              {requireTwoOfficer && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning">{awaitingStage2} awaiting 2nd</span></>}
+              {twoOfficerRead === true && awaitingStage2 > 0 && <><span className="text-border">·</span><span className="text-warning">{awaitingStage2} awaiting 2nd</span></>}
             </div>
           </div>
         }
@@ -556,8 +557,18 @@ async function ResolverQueueContent({
 
                   {/* The two-officer ceremony status only applies when two-admin
                       authorization is ON. In single-admin mode (the default) one
-                      officer resolves in one action, so there is no stage-1/stage-2. */}
-                  {requireTwoOfficer ? (
+                      officer resolves in one action, so there is no stage-1/stage-2.
+                      S7-F7 6 · and while the setting is UNKNOWN neither applies as far as anyone can say: the row
+                      names no ceremony, only that resolution waits until the setting can be read. */}
+                  {twoOfficerRead === null ? (
+                    <div className="px-4 py-3 border-b border-border" data-ceremony="unknown">
+                      <div className="flex items-center gap-2 mb-1">
+                        <I.users s={14} />
+                        <span className="font-mono text-micro uppercase eyebrow font-semibold text-text-muted">{CEREMONY.officers.en}</span>
+                      </div>
+                      <p className="text-body-sm text-text-muted">{CEREMONY.waitsForSetting.en}</p>
+                    </div>
+                  ) : requireTwoOfficer ? (
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center gap-2 mb-2">
                         <I.users s={14} />

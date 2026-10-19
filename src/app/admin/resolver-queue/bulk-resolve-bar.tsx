@@ -185,7 +185,11 @@ export function BulkResolveBar({
           />
         </div>
 
-        <div className="min-w-0 flex-1">
+        {/* ⛔ MASWALI-BUILD S7-F7 7 · A SENTENCE'S WIDTH, NOT `min-w-0`. With `min-w-0` this block could shrink to nothing,
+            so at 360 the row squeezed it beside the button group and the label read one word per line ("Select / all /
+            on / this / page"). Given a minimum width, the wrapping row breaks BETWEEN the groups instead: the label keeps
+            the first line with its checkbox, the buttons take the next. From 768 up everything still fits on one line. */}
+        <div className="min-w-[220px] flex-1">
           {/* DG-A-14: this line is read, not scanned as a heading — it is either "N selected ·
               TZS X held" or "Select all on this page — N on this page", and the held stake is
               a number an officer acts on. It was wearing a section eyebrow's dress (uppercase
