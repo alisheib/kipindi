@@ -32,7 +32,7 @@ enforces that these numbers agree with §1 and with `NEXT-PLAN.md`.
 
 | | |
 |---|---|
-| **Units** | **12 of 42 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **29 not started** |
+| **Units** | **12 of 43 ✅** (U1 U2 U3 U4 U5 U6 U7 U33 U34 U37 U41 U42) · 1 🔵 shipped-not-closed (U25) · **30 not started** (U43 among them, in flight since 2026-10-19 — see ⏳ below) |
 | **Defects** | **90 filed, 15 ✅** · the rest are 🔵 live-but-unclosed, ◐ half-done, or ⬜ open |
 | **Closure conditions (§1a)** | **9, of which 4 are partly under way and 5 HAVE NOT BEGUN** |
 
@@ -277,6 +277,14 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
      SERVER call, not the client payload — but a vendor-leak guard nobody watches is worth nothing.
    · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
      production, so `test:outcome`'s rule 2 may be governing an unreachable site.
+
+⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, session asheib-54:**
+- Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`claude/updown-visual-10`** off `origin/main`
+  `13299425`. Resume on any machine: `git fetch && git worktree add <dir> origin/claude/updown-visual-10`.
+- Done: the first read (scores and findings in §9 U43); a read-only design panel (three designers, three judges, one
+  synthesis) is running. Next, in order: Round 0 tiles + the 8-lens critics read → the three owner questions → build
+  rounds → verify loop → release (this session pushes; it rebases onto main after PHOSPHOR W4 lands).
+- Nothing built or uncommitted yet beyond this tracker entry.
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
@@ -585,6 +593,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
 | U41 /fairness on a phone (D60 · D61) | General | ✅ | S23 | `c9ba60cc` + guard `qa:fairness-phone` | source links outside the scroller **12 of 12 → 0** at 320/360/412; table off-screen **48.8% / 41.7% / 32.4% → 0%** (client==scroll: 286/286, 326/326, 378/378); rows paint **0 identical titles** | yes (`qa:fairness-phone`, `RED_TABLE=1` serves the five-column table back and reproduces THIS UNIT'S OWN RECORDED NUMBERS: client 326 vs scroll **559**, 49%/42%/32% off-screen at 320/360/412, all 12 source links outside — a green RED run exits 2 as a broken harness) | 2026-09-24 — D60 and D61 both closed. ⚠️ The third assertion (no two rows paint identical title text) is DATA-DEPENDENT and did not fire under RED: today's twelve markets clamp to distinguishable text. It is kept because it is the defect that mattered most — two markets painting the same row is worse than a table that scrolls — but a green run of it is evidence about THIS board, not about the layout. |
 | U42 The sign-up funnel on a phone (D69) | General | ✅ | S23 | `ea023299` + guard `qa:signup-funnel` | 7 `/auth/*` routes × 2 widths: **200, `lang=sw`, 0 able to scroll sideways**; DOB accessible names **`Day/Month/Year` → `Siku/Mwezi/Mwaka`** | yes (`qa:signup-funnel`: `RED_WIDE=1` fails all 14 route×width cells, `RED_ARIA=1` fails both widths — each required to break its OWN section; a green RED run exits 2 as a broken harness) | 2026-09-24 — D69 closed. ⚠️ Signed-out and at-rest only: nothing here says the funnel WORKS, only that it does not overflow and speaks Swahili. A keyboard over every field is U30. |
+| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⬜ | S24 | | | | ⏳ in flight (asheib-54, branch `claude/updown-visual-10`) — the §0 ⏳ block and §9 U43 hold the state; ⬜ until its first release |
 
 | Defect | Status | Owning unit |
 |---|---|---|
@@ -2761,6 +2770,38 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   bado" / "Hakuna bwawa bado"); phone numbers are grouped two ways on consecutive lines; and "Hakuna kete. Imani tu." lands as a statement of
   faith rather than of judgement. The native reader decides each one; none is a find-and-replace.
 
+### Phase H — The owner's 10/10 pass (Ali, 2026-10-19)
+
+**U43 · [General] Up & Down board, round card and market card — every lens 10/10 (Ali, 2026-10-19)**
+- **The ask, in Ali's words:** act as visual engineer, UI/UX engineer, platform animations engineer, palette engineer,
+  clarity engineer, the player himself and an overall visual-appeal professional; rate the Up & Down page and the market
+  cards /10 from every single perspective; *"should we have by default charts? for what? is the filter toggle nice?"*,
+  *"is the card itself good? … size perfect visually and logically? are the details in it all needed?"*; fix until it rates
+  10/10 *"perfectly and logically and visually"*; *"you work and push live cleanly, perfectly"*.
+- **Surfaces:** `/updown` (the board), the Up & Down round card in every state (and the round page's matching words),
+  the `/markets` market card. **Lenses (8):** visual, UI/UX, motion, palette, clarity, the player, overall appeal, logic.
+- **Done means:** all 24 cells score 10 in two consecutive independent, adversarially verified critic reads of fresh tiles
+  at 320/360/390/768/1024/1280/1920 × sw/en/zh × every state, positional claims pixel-measured, zero open findings, every
+  statement consistent across the board, round page, history, /live and the journey cards.
+- **First read (2026-10-19, from the code, today's live page and the September tiles — re-measured in Round 0):** page
+  6/5/6/7/4/4/5/6, round card 5/5/6/6/3/4/5/6, market card 7/7/7/6/6/7/7/6 (visual/UI-UX/motion/palette/clarity/player/
+  appeal/logic). The heaviest findings: the Up/Down buttons sit below the first phone screen; the round card is 468–660px
+  and states one price up to five times (the ±$0.02 target tiles only restate the open since the tick-floor band of
+  2026-08-06); two cards share one title and no round time; the card's price is the last confirmed boundary read under
+  three LIVE labels; loading ghosts are 360px against real cards; the market card states its YES share five ways and
+  paints a void card Void / Voided / Closed.
+- **Owner decisions to ask (with previews, after Round 0):** the chart default (a line of the last hour with the price to
+  beat, against his 2026-09-04 candles-default ruling, DESIGN_AUTHORITY §B12.6 — cost ≤ ~5.8k vendor credits/day and the
+  house desk reads that cache); slimming the card to one statement per fact; the phone filter as visible one-row
+  switches. ✅ Decided: this session pushes its own proven releases (Ali, 2026-10-19).
+- **Method:** Round 0 tiles (production + every state on a local build) scored by an 8-lens critics workflow adapted from
+  `visual-critics-panel` → build rounds (system fixes, card, board, market card, motion/palette/copy) → re-tile, re-score,
+  pixel-probe, loop to 10/10 twice → AGENTS §4 release. Each change carries its own guard and RED mutation proof;
+  `test:journey-updown` §6.1's base is re-pinned in the open; DESIGN_AUTHORITY, component specs and COMPLIANCE-DECISIONS
+  move in the same commits.
+- **Coordination:** PHOSPHOR W4 (asheib-26) owns every glyph choice in these files and lands first; Maswali (asheib-bf)
+  owns `/markets/page.tsx` and `/updown/history`; heavy jobs share the `mln-slot` budget as lane `udv`.
+
 ---
 
 ## §10 — Session order (two units per session)
@@ -2790,6 +2831,7 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 | S20 | U36 + U37 | /live search, detail copy, reading order and hints |
 | S21 | U38 + U39 | one money grammar, close the type ladder |
 | S22 | U40 | copy and terminology (with native readers) |
+| S24 | U43 | Ali's 10/10 request of 2026-10-19 — Up & Down board, round card and market card, every lens |
 | Seal | — | full production re-measure (every width × locale × density × condition in §11), the seven lenses re-scored from those measurements (§1), the full U30 checklist, §1a closure |
 
 **Phase-end gates:**
