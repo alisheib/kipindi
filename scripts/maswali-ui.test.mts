@@ -988,6 +988,18 @@ const shotsScrollDefects = (src: string) => {
   if (!scroll.includes("if (coveredBottom < total - 1) throw new Error(")) d.push("an incomplete page can pass after the tile cap");
   return d;
 };
+const shotsCardCoverageDefects = (src: string) => {
+  const s = squash(code(src));
+  const scrollPages = s.match(/const SCROLL_PAGES = new Set\(\[([^\]]+)\]\);/)?.[1] ?? "";
+  const normal = s.slice(s.indexOf("for (const locale of LOCALES) {"), s.indexOf("const passCookie ="));
+  const journey = s.slice(s.indexOf("for (const locale of passCookie ? LOCALES : []) {"), s.indexOf('ok("no page error on any page"'));
+  const d: string[] = [];
+  if (!scrollPages.includes('"markets-card"')) d.push("the classic board card stops at its lead tile");
+  if (!scrollPages.includes('"journey-home"')) d.push("the journey home card stops at its lead tile");
+  if (!normal.includes("await shootScrolled(page, name, locale, width);")) d.push("the classic board is not sent through the page-end tile helper");
+  if (!journey.includes('await shootScrolled(page, "journey-home", locale, width);')) d.push("the journey home is not sent through the page-end tile helper");
+  return d;
+};
 const shotsLocaleDefects = (src: string) => {
   const s = squash(code(src));
   const helper = s.slice(s.indexOf("async function verifyLocale("), s.indexOf("const owner = await browser.newContext();"));
@@ -1023,6 +1035,12 @@ const shotsLocaleDefects = (src: string) => {
   ok("12.8 · CONTROL · omitting a player page's language read is reported", noPlayerLanguage.includes("a player page can be shot before its language is checked"), noPlayerLanguage.join(" | "));
   const noJourneyLanguage = shotsLocaleDefects(src.replace('await verifyLocale(page, locale, "journey home", width);', "void page;"));
   ok("12.9 · CONTROL · omitting journey home's language read is reported", noJourneyLanguage.includes("the journey home can be shot before its language is checked"), noJourneyLanguage.join(" | "));
+  const cards = shotsCardCoverageDefects(src);
+  ok("12.10 · both card doors tile through the page end", cards.length === 0, cards.join(" | "));
+  const noMarketTiles = shotsCardCoverageDefects(src.replace('"ticket", "markets-card", "journey-home"', '"ticket", "journey-home"'));
+  ok("12.11 · CONTROL · omitting the board's below-fold tiles is reported", noMarketTiles.includes("the classic board card stops at its lead tile"), noMarketTiles.join(" | "));
+  const noJourneyTiles = shotsCardCoverageDefects(src.replace('await shootScrolled(page, "journey-home", locale, width);', "void page;"));
+  ok("12.12 · CONTROL · omitting the journey home's below-fold tiles is reported", noJourneyTiles.includes("the journey home is not sent through the page-end tile helper"), noJourneyTiles.join(" | "));
 }
 
 console.log("\n§13 · the shared receipt row leaves a readable gap beside a long money label");

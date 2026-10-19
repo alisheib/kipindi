@@ -9,7 +9,7 @@
  *    server, or reads the ones a drive already seeded; the demo player cuts one ticket through the slip when it holds none.
  *
  * Every Millionea page (the hub, the slip, How to play, the register and one week of it, Tiketi zangu's list and one
- * ticket) and both card doors (the classic board, and the journey home with a staff pass) at five widths in three
+ * ticket) and both card doors (the classic board, and the journey home with a staff pass) at six widths in three
  * languages — Swahili's are the longest strings — each: answered 200, no horizontal overflow, no page error, and a
  * viewport tile in `.50pick-shots/maswali-player-shots/` (tiles, never full-page captures, read one by one).
  * Rectangles asserted, not eyeballed: at 360 the hub's jackpot figure stands above the fold, and on the slip at 320,
@@ -34,10 +34,11 @@ const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1024, 1280, 1920]);
 /** ⭐ THE WHOLE PAGE, NOT ITS FIRST SCREEN (the lead, 2026-10-19, after the tile read): a page longer than the viewport is
  *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 240px of overlap between steps so fixed top
  *  and bottom bars cannot hide a strip between tiles — viewport tiles, never a full-page capture.
- *  The two card doors (`markets-card`, `journey-home`) are about the card at their head, so they keep one screen.
+ *  The card doors (`markets-card`, `journey-home`) keep their lead tile and cover the rest of the page too, so an
+ *  empty-state message below a fixed phone rail is actually seen in a later tile.
  *  MASWALI_SHOTS_SCROLL=0 turns it off for a quick focused run. */
 const SCROLL = process.env.MASWALI_SHOTS_SCROLL !== "0";
-const SCROLL_PAGES = new Set(["hub", "slip", "how", "register", "register-week", "tickets", "ticket"]);
+const SCROLL_PAGES = new Set(["hub", "slip", "how", "register", "register-week", "tickets", "ticket", "markets-card", "journey-home"]);
 const OVERLAP = 240;
 const MAX_STEPS = 24;
 async function shootScrolled(page, name, locale, width) {
@@ -193,6 +194,7 @@ for (const locale of passCookie ? LOCALES : []) {
     ok(`journey home · ${locale} @${width} · no horizontal overflow`, over <= 1, `overflow=${over}px`);
     await verifyLocale(page, locale, "journey home", width);
     await page.screenshot({ path: `${OUT}/journey-home-${locale}-${width}.png`, fullPage: false });
+    await shootScrolled(page, "journey-home", locale, width);
   }
   await ctx.close();
 }
