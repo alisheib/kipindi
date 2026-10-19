@@ -281,10 +281,11 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
 ⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, session asheib-54:**
 - Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`claude/updown-visual-10`** off `origin/main`
   `13299425`. Resume on any machine: `git fetch && git worktree add <dir> origin/claude/updown-visual-10`.
-- Done: the first read (scores and findings in §9 U43); a read-only design panel (three designers, three judges, one
-  synthesis) is running. Next, in order: Round 0 tiles + the 8-lens critics read → the three owner questions → build
-  rounds → verify loop → release (this session pushes; it rebases onto main after PHOSPHOR W4 lands).
-- Nothing built or uncommitted yet beyond this tracker entry.
+- Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
+  2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
+  `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch. Running: the local
+  every-state capture and a read-only design panel. Next, in order: the build spec (panel + critics) → build rounds →
+  verify loop → release (this session pushes; it rebases onto main after PHOSPHOR W4 lands).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
@@ -2790,10 +2791,19 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   2026-08-06); two cards share one title and no round time; the card's price is the last confirmed boundary read under
   three LIVE labels; loading ghosts are 360px against real cards; the market card states its YES share five ways and
   paints a void card Void / Voided / Closed.
-- **Owner decisions to ask (with previews, after Round 0):** the chart default (a line of the last hour with the price to
-  beat, against his 2026-09-04 candles-default ruling, DESIGN_AUTHORITY §B12.6 — cost ≤ ~5.8k vendor credits/day and the
-  house desk reads that cache); slimming the card to one statement per fact; the phone filter as visible one-row
-  switches. ✅ Decided: this session pushes its own proven releases (Ali, 2026-10-19).
+- **Round 0, measured (2026-10-19, production, 72 pages at 320/360/390/768/1024/1280/1920 × sw/en/zh; tool
+  `scripts/live/updown-visual-capture.mjs`):** the 8-lens critics read (8 critics, 4 adversarial verifiers, 1
+  completeness critic; 119 claims checked on their frames — 90 new, 25 known, 4 refuted; 20 more from the completeness
+  critic) scored page / round card / market card: visual 5 / 4 / 5.5 · UI-UX 3.5 / 4 / 6.5 · motion 6 / 5.5 / 5 ·
+  palette 6 / 5.5 / 5.5 · clarity 5.5 / 3.5 / 5 · the player 4 / 4 / 6.5 · appeal 5 / 4 / 6.5 · logic 5 / 4 / 6.
+  Geometry behind it: the Up/Down buttons sit below the first screen at 320/360/390 (sw, en) and at 1024×768 and
+  1280×800; round cards 445–631px with 9–10 font sizes and six dollar figures (one written three times); the Chart view
+  pushes the first card from 468 to 997px at 360; the chart's last value contradicts the card's confirmed price.
+- **Owner decisions — ✅ all taken 2026-10-19** (COMPLIANCE-DECISIONS § "2026-10-19 · Up & Down and the market cards
+  (MOBILE-VISUAL U43): a live line inside the round card, the slim card, visible filters, no odds on any card choice
+  (owner rulings)"): (1) a live line inside the round card, the big chart one tap away and fixed; (2) the slim card;
+  (3) visible filter chips on the phone; (4) no odds on any card choice, both shells (the /live Up & Down tiles and the
+  journey cards included). And: this session pushes its own proven releases.
 - **Method:** Round 0 tiles (production + every state on a local build) scored by an 8-lens critics workflow adapted from
   `visual-critics-panel` → build rounds (system fixes, card, board, market card, motion/palette/copy) → re-tile, re-score,
   pixel-probe, loop to 10/10 twice → AGENTS §4 release. Each change carries its own guard and RED mutation proof;

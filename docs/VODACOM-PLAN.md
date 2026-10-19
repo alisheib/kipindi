@@ -16,6 +16,16 @@
 
 ## §0 · RESUME AT
 
+**Ruling (2026-10-19, Ali — to the MOBILE-VISUAL U43 session):** *"for market cards we can remove odds please, keep yes
+and no only … let's do it in this and the Vodacom plan perfectly cleanly"*, then "Every card, both shells" (COMPLIANCE-
+DECISIONS § "2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): a live line inside the round card, the slim
+card, visible filters, no odds on any card choice (owner rulings)", item 4). **The journey CARDS stop printing an
+estimate:** "Shinda ≈{mult}× dau" (`journey.cardWin`) and "Faida ndogo · ≈{mult}×" leave every journey card face
+(`src/lib/journey/card-face.ts`); a pick reads the side word, with "Kuwa wa kwanza" / "Upande mmoja tu" kept as facts
+about the pool. The bet sheet keeps its estimate at the stake (DESIGN_AUTHORITY §C3's 2026-09-29 amendment, sheet half).
+U43 builds and releases it (MOBILE-VISUAL-PLAN §9 U43); every "Shinda ≈{mult}× dau" card mention below is the record of
+what S7 built before this ruling.
+
 **State (2026-10-16, evening — Ali's ruling):** Ali ruled, in his words: *"no need for full package check — consider
 done"*; *"any bugs we [fix] later — now put them in a state where it's all live when I click preview in new journey"*;
 *"you wait for our approval, but [if] the company Vodacom [is] all good, I say we make it the real 50pick design"*;

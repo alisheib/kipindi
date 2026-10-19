@@ -8,6 +8,54 @@
 
 ---
 
+## 2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): a live line inside the round card, the slim card, visible filters, no odds on any card choice (owner rulings)
+
+**Authority.** Ali, 2026-10-19, to the U43 session (OMEGA-COMPILE01, asheib-54), after the eight-lens critics read of
+production (the scores are in [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md) §9 U43). First in his own words, on the
+market cards: *"for market cards we can remove odds please, keep yes and no only … let's do it in this and the Vodacom
+plan perfectly cleanly"*. Then his choice of the option offered, for each of four questions:
+
+1. **Charts — "Live line in the card"** (offered beside "No chart by default" and "Big chart by default"). The Up & Down
+   round a player can bet on carries a small line of the price since the round opened, with the round's price to beat as
+   a dashed reference line, drawn from the same market feed the result is read from, every point timed. The board's
+   chart view (DESIGN_AUTHORITY §B12.6's lab) stays one tap away and is fixed so that it never shows a different price
+   from the card. ⭐ This **reverses in part** the closing order of 2026-09-04, *"no need for round chart — remove it for
+   now"*: a round's own line returns, inside its card. The lab's frozen form is unchanged.
+   **Consequences stated in the question and accepted:**
+   - vendor credits of at most about 5,800 a day for two assets, whatever the number of players (one call per asset per
+     30-second cache);
+   - the house desk reads that same cache (`peekVendorBar`, [`HOUSE-BOTS.md`](HOUSE-BOTS.md)), so a warm one-minute cache
+     gives it fresher prices and it stakes on more rounds. Its limits are unchanged.
+2. **The round card — "Slim card"** (offered beside "Keep every detail, polish only"). One line per fact: which round it
+   is (its time window), the price to beat once, the time left beside it, the pool, players and split, then the stake
+   chips and Up/Down.
+   - Removed: the ±$0.02 target tiles, the repeated price, the empty clock boxes and the status said three times.
+   - The source-and-time line stays, merged into one line.
+3. **The phone filter — "Visible chips"** (offered beside "Keep the Filters button"). On a phone the assets and durations
+   are two short rows of chips, one tap to switch, with no sheet. The sheet returns by itself only when the choices stop
+   fitting.
+4. **No odds on any card — "Every card, both shells"** (offered beside "Classic market cards only"). A market card's two
+   choices read the product's side words (YES/NO, Up/Down) and nothing else, on every surface that draws a card:
+   `/markets`, results, the watchlist, the home page, similar markets and `/live` (its polls and its Up & Down tiles).
+   The Vodacom journey cards lose "Shinda ≈{mult}× dau" and "Faida ndogo · ≈{mult}×".
+   **Kept:**
+   - each card's one statement of where the money is: the big percentage and its bar, and Up & Down's split row;
+   - the factual pool lines ("one side only", "be the first");
+   - the estimate where the bet is committed: the market page's confirm, the journey bet sheet, and Up & Down's confirm
+     panel and receipt as ruled on 2026-10-14.
+   ⭐ This **supersedes** two earlier answers:
+   - § "2026-10-14 · The owner's answers to the open points — Up & Down follow-ups, S9's held-deposit words, S16's "in
+     bounds", S10–S13 accepted", item 1, as to `/live`'s "Up @ 75%" (it becomes "Up");
+   - § "2026-09-29 · The Vodacom plan — the sponsor's "Simplified Journey", built in 50pick's design system (owner rulings
+     R1–R6; decisions SJ-1 … SJ-24)" §1, as to the journey CARDS. The bet sheet keeps its estimate.
+   DESIGN_AUTHORITY §C3 (its 2026-09-29 amendment and its 2026-10-14 paragraph) becomes one rule for every card, in the
+   release that carries this.
+
+**In force from the release that carries each part.** U43's releases are recorded in MOBILE-VISUAL-PLAN §9 U43; until
+each lands, the shipped behaviour stands.
+
+---
+
 ## 2026-10-18 · Counts as: a desk account's own stakes placed by hand count too (owner ruling)
 
 **Authority.** Ali, 2026-10-18, in the session, choosing between "count bets placed by hand from a desk account too" and
