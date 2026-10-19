@@ -27,8 +27,11 @@ import {
   parsePerfParams,
   perfCounts,
   perfLensesToRender,
+  perfPopulation,
   type PerfProduct,
 } from "@/lib/positions/performance";
+import { SCORED_LINES } from "@/lib/leaderboard/board";
+import type { ProductLine } from "@/lib/product-line";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -55,11 +58,12 @@ export default async function PerformancePage({
    * market table — which is why every figure below has, until now, summed long-form poll results
    * and five-minute Up & Down rounds into ONE ROI, one win rate and one P&L curve.
    *
-   * ⛔ THE UNFILTERED READ IS KEPT AS THE PARENT, DELIBERATELY. `all` must stay byte-identical to
-   * what this page has always computed — the page's own note is the standard: *"a performance
-   * summary that hid half a player's book would be a lie about their money."* The two extra reads
-   * are indexed joins on the same bounded set and exist only to ATTRIBUTE each position, never to
-   * replace the population.
+   * ⛔ `all` STAYS WHAT THIS PAGE HAS ALWAYS COMPUTED — the page's own note is the standard: *"a
+   * performance summary that hid half a player's book would be a lie about their money."* The line
+   * reads are indexed joins on the same bound. Since MASWALI-BUILD S5 round 3 they ARE the
+   * population — each scored line read directly, so a Millionea ticket never takes a prediction's
+   * place inside the bound — and for a book with no ticket their merge is the unfiltered read
+   * itself, position for position (`perfPopulation`, held by `test:maswali-ui` 9.6).
    *
    * ⚠️ A POSITION IN NEITHER PRODUCT SET IS REAL AND IS NOT DROPPED. Its market row could not be
    * read — deleted, or not yet on a replica — so it lands in the `other` residual arm rather than
@@ -67,19 +71,20 @@ export default async function PerformancePage({
    */
   // B-1 — no swallow: a failed positions read must throw to positions/error.tsx,
   // never render the "no performance yet" empty state to a player with history.
-  const [positionsAll, pollPositions, udPositions, millioneaPositions] = await Promise.all([
-    listPositionsForUser(session.userId, 5_000),
-    listPositionsForUser(session.userId, 5_000, "MARKET"),
-    listPositionsForUser(session.userId, 5_000, "UPDOWN"),
-    listPositionsForUser(session.userId, 5_000, "MASWALI"),
-  ]);
   // ⛔ A Millionea ticket is not a prediction this page scores (MASWALI-PLAN S5 item 9: performance, ROI tiers and
-  // streaks exclude it — a weekly jackpot ticket wins about 1 time in 1,024 by design). Named and removed here, before
-  // the population is counted, so it never lands in the `other` residual arm either (S0.5).
-  const millioneaIds = new Set(millioneaPositions.map((p) => p.id));
-  const positions = positionsAll.filter((p) => !millioneaIds.has(p.id));
-  const pollIds = new Set(pollPositions.map((p) => p.id));
-  const udIds = new Set(udPositions.map((p) => p.id));
+  // streaks exclude it — a weekly jackpot ticket wins about 1 time in 1,024 by design). ⭐ So each SCORED line is read
+  // DIRECTLY (`SCORED_LINES`, the board's own list; S5 re-review 8), never every line less its tickets: that page held
+  // the newest positions of every line, so the more tickets an account bought the fewer of its predictions it kept. The
+  // unfiltered read stays for the residual alone, and the tickets' read names the tickets so none lands there (S0.5).
+  const [positionsAll, millioneaPositions, lineReads] = await Promise.all([
+    listPositionsForUser(session.userId, 5_000),
+    listPositionsForUser(session.userId, 5_000, "MASWALI"),
+    Promise.all(SCORED_LINES.map((line) => listPositionsForUser(session.userId, 5_000, line))),
+  ]);
+  const positions = perfPopulation({ all: positionsAll, lines: lineReads, tickets: millioneaPositions }, 5_000);
+  const lineRead = (line: ProductLine) => lineReads[SCORED_LINES.indexOf(line)] ?? [];
+  const pollIds = new Set(lineRead("MARKET").map((p) => p.id));
+  const udIds = new Set(lineRead("UPDOWN").map((p) => p.id));
   const productOf = (id: string): PerfProduct =>
     pollIds.has(id) ? "poll" : udIds.has(id) ? "updown" : "other";
 

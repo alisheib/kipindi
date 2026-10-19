@@ -1550,7 +1550,8 @@ const JH_GHOST_PARTS = ["howto", "headline", "chips", "card"];
  *  holds it to this one. */
 const JH_PER_PAGE = 12;
 
-type JhCase = { locale: HtLocale; empty?: boolean; cat?: string; q?: string; page?: number; signedIn?: boolean };
+/** `card` (MASWALI-BUILD S5): the home is handed the Millionea card — a stand-in part, as the lazy ones are. */
+type JhCase = { locale: HtLocale; empty?: boolean; cat?: string; q?: string; page?: number; signedIn?: boolean; card?: boolean };
 /** The addresses the home is drawn at: the plain home in the three languages and for a guest, a category, a search,
  *  pages two and three, and each of the three empty states (a category with none — with a search too —, a search that
  *  matched none, and a book with nothing taking bets). */
@@ -1567,6 +1568,7 @@ const JH_CASES = {
   emptyCatQ: { locale: "sw", cat: "crypto", q: "simba" },
   emptyQ: { locale: "sw", q: "zzz" },
   emptyBook: { locale: "sw", empty: true },
+  withCard: { locale: "sw", card: true },
 } satisfies Record<string, JhCase>;
 type JhName = keyof typeof JH_CASES;
 const JH_NAMES = Object.keys(JH_CASES) as JhName[];
@@ -1658,7 +1660,8 @@ function renderHome(): JhDrawn {
       const chips = HL.homeChips(book, params.cat);
       const signedIn = c.signedIn ?? true;
       drawn.input[name] = { locale: c.locale, params, chips, shown: view.shown.map((m) => m.id), more: view.more, page: view.page, empty: view.empty, signedIn };
-      drawn.home[name] = draw(make(JourneyHomeView as never, { t: dict[c.locale], locale: c.locale, nowMs: T0, params, chips, view, signedIn } as never));
+      const millionea = c.card ? make("x-part", { "data-part": "MillioneaCard" }) : undefined;
+      drawn.home[name] = draw(make(JourneyHomeView as never, { t: dict[c.locale], locale: c.locale, nowMs: T0, params, chips, view, signedIn, ...(millionea ? { millionea } : {}) } as never));
     }
     for (const l of HT_LOCALES) drawn.ghost[l] = draw(make(JourneyHomeGhost as never, { t: dict[l] } as never));
   } catch (err) {
@@ -1785,7 +1788,8 @@ function homeChecks(w: World, ok: Ok) {
     asks.page === 1 && asks.body === 1 && asks.meta === 0 && asks.landing === 1 && resolverImport && ownRead.length === 0, j({ asks, resolverImport, ownRead }));
 
   // 6.arm — WP7 step 1; A17 item 2 (the home's ghost in a Suspense boundary of its own; the root loading file as it is).
-  const ARM = "const { journey } = await resolveSimpleJourney(); if (journey) { const { t } = await getServerT(); return ( <Suspense fallback={<JourneyHomeGhost t={t} />}> <JourneyHome searchParams={searchParams} /> </Suspense> ); }";
+  // RE-PINNED (MASWALI-BUILD S5 pages, deliberately): the ghost holds the Millionea card's slot on the doors' one answer.
+  const ARM = "const { journey } = await resolveSimpleJourney(); if (journey) { const { t } = await getServerT(); const millionea = await millioneaCardShown(); return ( <Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}> <JourneyHome searchParams={searchParams} /> </Suspense> ); }";
   const armAt = flatBody.indexOf(ARM), classicAt = flatBody.indexOf(CLASSIC_RETURN);
   const arm = { armAt, classicAt, homes: count(page, "<JourneyHome "), boundaries: count(page, "<Suspense"), ghosts: count(page, "<JourneyHomeGhost"), async: body.startsWith("export default async function LandingPage(") };
   ok("6.arm · the journey arm comes first, exactly: the resolver's answer, then for a journey request the journey home inside a Suspense boundary of its own whose fallback is the home's ghost (A17 item 2: the root loading file stays as it is) — one of each — and the classic return after it",
@@ -1842,6 +1846,14 @@ function homeChecks(w: World, ok: Ok) {
   const ascending = (xs: number[]) => xs.every((x, i) => x >= 0 && (i === 0 || x > xs[i - 1]));
   ok(`7.order · the deck's order, in the markup at every width: the How-to card then the headline (the head), the topic chips, the search line when a search is set, the questions, "Onyesha zaidi" — the refresh and the strip's framing drawing nothing at the end`,
     ascending(queryOrder) && ascending(fullOrder), j({ queryOrder, fullOrder }));
+  // 7.order.millionea — RE-PINNED (MASWALI-BUILD S5 pages, deliberately; O-7, ruled 2026-10-17 and recorded in
+  // COMPLIANCE-DECISIONS as a deviation from the deck): Maswali Millionea's card stands AFTER the head and BEFORE the topic
+  // chips, at every width, once — and a home handed no card draws none (every other address above).
+  const CARD = '<x-part data-part="MillioneaCard"';
+  const cardOrder = orderOf(H.withCard ?? "", ['<div class="kp-jhome__head"><x-part data-part="LazyHowToCard"', "</x-part><h1 ", `</h1></div>${CARD}`, "</x-part><nav ", '<ul role="list" class="kp-jgrid">']);
+  const cardless = JH_NAMES.filter((n) => n !== "withCard" && (H[n] ?? "").includes(CARD));
+  ok("7.order.millionea · the Millionea card, when the home is handed one, stands after the head (the How-to card and the headline) and before the topic chips, once; a home handed none draws none (O-7)",
+    D.error === null && ascending(cardOrder) && count(H.withCard ?? "", CARD) === 1 && cardless.length === 0, j({ cardOrder, cardless }));
 
   // 7.head — A16 items 1-2: the head's row from 1024, the headline drawn first there, the <br> phone-only, the separator.
   // Every declaration of each property, in source order, as [its at-rules, its value]: the phone's column first ("" — no
@@ -2034,7 +2046,7 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
     { name: "the classic return moved above the journey arm (no journey reader ever reaches the home)", expect: /^6[.]arm /,
       plant: (w) => ({ ...w, page: swap(w.page, ARM_OPEN, "  return <LegacyLanding searchParams={searchParams} />;" + LF + ARM_OPEN) }) },
     { name: "the journey home returned bare, its Suspense boundary dropped (no ghost while the list arrives)", expect: /^6[.]arm /,
-      plant: (w) => ({ ...w, page: swap(w.page, "<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<>").replace("</Suspense>", "</>") }) },
+      plant: (w) => ({ ...w, page: swap(w.page, "<Suspense fallback={<JourneyHomeGhost t={t} millionea={millionea} />}>", "<>").replace("</Suspense>", "</>") }) },
     { name: "the classic return changed (searchParams no longer handed on: the board's ?sort= lost)", expect: /^6[.]classic /,
       plant: (w) => ({ ...w, page: swap(w.page, "  return <LegacyLanding searchParams={searchParams} />;", "  return <LegacyLanding searchParams={Promise.resolve({})} />;") }) },
     { name: `generateMetadata branches on the journey ("Maswali" for a journey reader: Open point 25's overrule, unruled)`, expect: /^6[.]meta /,

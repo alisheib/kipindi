@@ -1,5 +1,5 @@
-/** S8's approved additions only (and S12's one round paragraph in §7, below). Old legal clauses and dictionary entries still
- *  compare against origin/main. */
+/** S8's approved additions only (and S12's one round paragraph in §7, and the Millionea slip's paragraph after it, below).
+ *  Old legal clauses and dictionary entries still compare against origin/main. */
 import { createHash } from "node:crypto";
 import ts from "typescript";
 
@@ -37,6 +37,24 @@ const PRIVACY_VERSIONS = ["2026-10-14", "2026-10-15"] as const;
 const ROUND_NOTICE_HASH: Record<string, string> = { en: "5639330640e3", sw: "be2f9c62bec8", zh: "01251647a662" };
 const ROUND_NOTICE = /\n {8}<p data-policy-addition="pending-round">[\s\S]*?\n {8}<\/p>/g;
 const ROUND_VERSION = "2026-10-15.2";
+/**
+ * ⭐ MASWALI-BUILD S5 (MASWALI-PLAN MB-57; COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7 also names the Maswali Millionea
+ * slip's tab key, kp-millionea-slip: — one paragraph per language, after S12's round paragraph, pinned by its own measured
+ * hashes. ⭐ PUBLISHED WITH THE CEILING (the lead's decision of 2026-10-18): each paragraph sits inside a `MillioneaWording`
+ * wrapper (`src/lib/server/legal/millionea-wording.tsx`), printed only while the server's ceiling admits Millionea, and the
+ * version it moves the notice to (2026-10-17) is `POLICY_PAGES.privacy`'s, printed in META's place — META itself stays
+ * S12's 2026-10-15.2, production's. Accepted only as all three paragraphs at these hashes, each the whole of its wrapper and
+ * none outside one, with the wrapper's one import and S12's three present; legacy comparison strips the wrappers and the
+ * import, so production's notice compares as itself.
+ * 2026-10-18 (S5 integration): the Swahili re-measured, 2eb3dfe4da7e → 30403f82c027 — "msimbo wa wiki" and "taarifa
+ * yoyote inayokutambulisha" replace "kitambulisho" (an identity document's word; `test:kyc-copy-truth` §2 rule 1). The
+ * paragraph was never printed: production's ceiling is WITHDRAWN.
+ */
+const SLIP_NOTICE_HASH: Record<string, string> = { en: "d30f80325746", sw: "30403f82c027", zh: "fc15d478bef9" };
+const SLIP_PARAGRAPH = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/;
+const SLIP_PARAGRAPHS = /<p data-policy-addition="millionea-slip">[\s\S]*?<\/p>/g;
+const WORDING_BLOCK = /\n {8}<MillioneaWording>[\s\S]*?\n {8}<\/MillioneaWording>/g;
+const WORDING_IMPORT = 'import { MillioneaWording } from "@/lib/server/legal/millionea-wording";\n';
 
 export type S8Published = { legacy: string; accepted: boolean; hashes: Record<string, string>; count: number };
 export const S8_PUBLICATION_FILES = ["src/app/legal/privacy/page.tsx", "src/lib/i18n-dict.ts"] as const;
@@ -61,13 +79,22 @@ export function s8PublishedWords(rel: string, source: string, requireAdditions =
     const rounds = [...text.matchAll(ROUND_NOTICE)];
     const roundHashes = LOCALES.map((loc, i) => sha((rounds[i]?.[0] ?? "").replace(/\s+/g, " ").trim()) === ROUND_NOTICE_HASH[loc]);
     const versions = (v: string) => (text.match(new RegExp(`(?:en: "Version |sw: "Toleo |zh: "版本 )${v}`, "g")) ?? []).length;
-    const versionOk = rounds.length === 0 ? PRIVACY_VERSIONS.some((v) => versions(v) === 3)
-      : rounds.length === 3 && roundHashes.every(Boolean) && versions(ROUND_VERSION) === 3;
+    const wrapped = [...text.matchAll(WORDING_BLOCK)].map((m) => m[0]);
+    const slips = wrapped.map((w) => w.match(SLIP_PARAGRAPH)?.[0] ?? "");
+    const slipHashes = LOCALES.map((loc, i) => sha((slips[i] ?? "").replace(/\s+/g, " ").trim()) === SLIP_NOTICE_HASH[loc]);
+    // Each wrapper holds its paragraph and nothing else, no paragraph stands outside one, and the one import comes with them.
+    const whole = wrapped.every((w, i) => w.replace(slips[i] ?? "", "").replace("<MillioneaWording>", "").replace("</MillioneaWording>", "").trim() === "");
+    const loose = [...text.replace(WORDING_BLOCK, "").matchAll(SLIP_PARAGRAPHS)].length;
+    const imports = text.split(WORDING_IMPORT).length - 1;
+    const slipOk = loose === 0 && (wrapped.length === 0 ? imports === 0
+      : wrapped.length === 3 && slipHashes.every(Boolean) && whole && imports === 1);
+    const versionOk = rounds.length === 0 ? wrapped.length === 0 && slipOk && PRIVACY_VERSIONS.some((v) => versions(v) === 3)
+      : rounds.length === 3 && roundHashes.every(Boolean) && versions(ROUND_VERSION) === 3 && slipOk;
     const accepted = (!requireAdditions && paragraphs.length === 0) || (paragraphs.length === 3
       && LOCALES.every((loc) => hashes[loc] === NOTICE_HASH[loc])
       && versionOk);
-    const legacy = text.replace(NOTICE, "").replace(ROUND_NOTICE, "")
-      .replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14|15(?:\.2)?)/g, "$1S8-version");
+    const legacy = text.replace(WORDING_IMPORT, "").replace(WORDING_BLOCK, "").replace(NOTICE, "").replace(ROUND_NOTICE, "")
+      .replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14|15(?:\.2)?|17)/g, "$1S8-version");
     return { legacy, accepted, hashes, count: paragraphs.length };
   }
   if (rel !== "src/lib/i18n-dict.ts") return { legacy: text, accepted: true, hashes: {}, count: 0 };

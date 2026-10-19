@@ -174,7 +174,11 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/updown/updown-bet-receipt-modal.tsx": [2, "SIDE — the receipt's strip in the side staked"],
   "src/components/updown/updown-card.tsx": [16, "SIDE — the card's split, each side's target tile, its Up/Down buttons, amounts and outcome"],
   "src/components/updown/updown-stake-controls.tsx": [4, "SIDE — each side's staked chip and the Up/Down buttons"],
-  "src/app/globals.css": [73, "the ramps and their aliases (the bar's fills, glows, labels; the hero's side accents); `.btn-yes/.btn-no`; the board row's YES price and the card's probability; the band's verdict, stems and beads — every one a SIDE · OWNER: the classic bell's rose lift (`.count-badge[data-lift=\"rose\"]`) · DEAD: `--bet-win`, `--bet-hot`, `--glow-win`, `--hero-tag-yes` (no consumer)"],
+  // MASWALI-BUILD S5-TAB (+6, 73 → 79; Ali's ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11: "mixed glowing green red
+  // color and gold like 50pick design"): Maswali Millionea's ink — the green and red ends of its still green → gold → red
+  // label gradient, resting, lit or hovered, and the journey's not-found restore. The platform's money colours as one
+  // label by the Owner's ruling: no side, no betting meaning (`test:maswali-ui` §5b holds the class to those tokens).
+  "src/app/globals.css": [79, "the ramps and their aliases (the bar's fills, glows, labels; the hero's side accents); `.btn-yes/.btn-no`; the board row's YES price and the card's probability; the band's verdict, stems and beads — every one a SIDE · OWNER: the classic bell's rose lift (`.count-badge[data-lift=\"rose\"]`) · OWNER (Ali, 2026-10-19, §M8a item 11): Millionea's ink (`.kp-millionea-ink`), the green and red ends of its label's still gradient — a destination's label, no side · DEAD: `--bet-win`, `--bet-hot`, `--glow-win`, `--hero-tag-yes` (no consumer)"],
   // ── LOSS: the owner's ruling — a lost stake is betting semantics ──────────────────────────────────────────────────────
   "src/app/positions/performance/page.tsx": [2, "LOSS — a negative net and a losing row (money earned is gilt, zero the text's ink)"],
   "src/components/positions/pnl-summary-strip.tsx": [1, "LOSS — a negative settled net"],

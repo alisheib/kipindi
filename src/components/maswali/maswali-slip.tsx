@@ -1,8 +1,8 @@
 "use client";
 
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { CloseX, Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useCountdown } from "@/components/updown/round-countdown";
@@ -11,7 +11,8 @@ import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
 import { MAIN_COUNT, RESERVE_COUNT, SLOT_COUNT, slotOf, type MaswaliPick } from "@/lib/maswali-score";
 import { sideWord } from "@/lib/side-label";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+import { stemOf } from "@/lib/display-stem";
 
 /**
  * THE SLIP — fill a ticket (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.5–§3.6; the v6 delivery's S-purchase frames).
@@ -123,6 +124,26 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
   const { t } = useT();
   const reserve = q.role === "RESERVE";
   const yesLit = pick === "YES", noLit = pick === "NO";
+  const rowId = `q-${labelOf(q)}`;
+  const yesRef = useRef<HTMLButtonElement>(null);
+  const noRef = useRef<HTMLButtonElement>(null);
+  /**
+   * ⭐ ONE RADIO GROUP PER QUESTION (the S5 UI review, MEDIUM 5; the APG radio group): the two answers are radios, named by
+   * the question's number and its words, and the group is ONE Tab stop — the chosen answer holds it, or Ndio before either
+   * is chosen (fifteen stops, never thirty identical "Ndio"/"Hapana" ones). An arrow moves to the other answer AND chooses
+   * it, as a radio group does; Space and Enter choose the focused one (a native button's own click). ⛔ No <label> and no
+   * preventDefault on a click: the pick stays the button's own press (the platform's checkbox-label trap).
+   */
+  const onArrow = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (closed) return;
+    const arrow = e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp";
+    if (!arrow) return;
+    e.preventDefault();
+    // Two answers: every arrow goes to the other one, wrapping at either end.
+    const to: MaswaliPick = document.activeElement === yesRef.current ? "NO" : "YES";
+    onPick(to);
+    (to === "YES" ? yesRef : noRef).current?.focus();
+  };
   const meta = [fill(t.millionea.sourceLine, { source: q.source }), q.eventAt === null ? null : fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })]
     .filter(Boolean).join(" · ");
   return (
@@ -134,10 +155,10 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
       )}
       style={reserve ? { background: "var(--wash-inset)" } : undefined}
     >
-      <span className={cn("font-mono text-body font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>{labelOf(q)}</span>
+      <span id={`${rowId}-n`} className={cn("font-mono text-body font-bold tabular-nums", reserve ? "text-text-subtle" : "text-text-muted")}>{labelOf(q)}</span>
       <div className="flex min-w-0 flex-col gap-1">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{q.category}</span>
-        <p className="text-body text-text text-pretty">{q.text}</p>
+        <p id={`${rowId}-t`} className="text-body text-text text-pretty">{q.text}</p>
         <span className="text-body-sm text-text-subtle">{meta}</span>
         {flagged && (
           <span className="self-start rounded-full border border-dashed border-border-strong px-1.5 py-0.5 font-mono text-caption uppercase eyebrow text-text-subtle">
@@ -145,13 +166,23 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
           </span>
         )}
       </div>
-      {/* One lit control per row: the chosen side in its betting ink with the check, the other a ghost (§B2). */}
-      <div className="col-start-2 grid grid-cols-2 gap-2 md:col-start-3 md:row-start-1" style={closed ? { opacity: "var(--state-disabled-opacity)" } : undefined}>
-        <Button type="button" size="md" variant={yesLit ? "yes" : "ghost"} aria-pressed={yesLit} disabled={closed} onClick={() => onPick("YES")}
+      {/* One lit control per row: the chosen side in its betting ink with the check, the other a ghost (§B2). Closed, the two
+          rest at the disabled control's own opacity — never multiplied by a second one on this wrapper, which left the
+          player's own pick at about a fifth of its ink (the S5 UI review, LOW 8). */}
+      <div
+        role="radiogroup"
+        aria-labelledby={`${rowId}-n ${rowId}-t`}
+        aria-disabled={closed || undefined}
+        onKeyDown={onArrow}
+        className="col-start-2 grid grid-cols-2 gap-2 md:col-start-3 md:row-start-1"
+      >
+        <Button ref={yesRef} type="button" role="radio" aria-checked={yesLit} tabIndex={noLit ? -1 : 0} size="md" variant={yesLit ? "yes" : "ghost"}
+          disabled={closed} onClick={() => onPick("YES")}
           leading={yesLit ? <I.check s={16} /> : undefined} className={yesLit ? "px-1.5" : "border-border-control px-1.5"}>
           {t.common.yes}
         </Button>
-        <Button type="button" size="md" variant={noLit ? "no" : "ghost"} aria-pressed={noLit} disabled={closed} onClick={() => onPick("NO")}
+        <Button ref={noRef} type="button" role="radio" aria-checked={noLit} tabIndex={noLit ? 0 : -1} size="md" variant={noLit ? "no" : "ghost"}
+          disabled={closed} onClick={() => onPick("NO")}
           leading={noLit ? <I.check s={16} /> : undefined} className={noLit ? "px-1.5" : "border-border-control px-1.5"}>
           {t.common.no}
         </Button>
@@ -193,7 +224,12 @@ export function MaswaliSlip({
   const mains = questions.filter((q) => q.role === "MAIN");
   const reserves = questions.filter((q) => q.role === "RESERVE");
   const priceText = formatTzs(price);
+  const title = fill(t.millionea.slipTitle, { week });
   const progressText = `${fill(t.millionea.mainsProgress, { a: progress.mains })} · ${fill(t.millionea.reservesProgress, { b: progress.reserves })}`;
+  const refusalBody = unanswered.length === 0 ? ""
+    : unanswered.length === 1
+      ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
+      : fill(t.millionea.refusalIncompleteBody, { n: formatNumber(unanswered.length), list: joinList(locale, unanswered.map(labelOf)) });
   const groups = [{ steps: MAIN_COUNT, done: progress.mains }, { steps: RESERVE_COUNT, done: progress.reserves }];
   const press = () => (progress.ready ? onContinue() : setRefused(true));
   const row = (q: SlipQuestion) => (
@@ -203,7 +239,7 @@ export function MaswaliSlip({
   const strong = (s: string) => <span className="font-mono text-text">{s}</span>;
   const rules = [
     t.millionea.reserveRule,
-    fill(t.millionea.capRule, { cap, n: ticketNumber }),
+    fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) }),
     t.millionea.mainOnly,
   ];
   return (
@@ -214,10 +250,10 @@ export function MaswaliSlip({
           <span>{fillNodes(t.millionea.salesClosedAt, { when: strong(eatWeekdayClock(t, closesAt)) })}</span>
         </p>
       )}
-      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[640px_400px]">
+      <div className="grid w-full grid-cols-1 items-start gap-7 py-5 xl:grid-cols-[minmax(0,640px)_400px]">
         <div className="flex min-w-0 flex-col gap-4">
           <header className="flex flex-col gap-1.5">
-            <h1 className="font-display text-title-lg font-bold text-text">{fill(t.millionea.slipTitle, { week })}</h1>
+            <h1 data-stem={stemOf(title)} className="font-display text-title-lg font-bold text-text">{title}</h1>
             <div className="flex flex-col gap-0.5 text-body-sm text-text-muted">
               <span>{fillNodes(t.millionea.salesCloseColon, { when: strong(eatWeekdayClock(t, closesAt)) })}</span>
               {firstEventAt !== null && <span>{fillNodes(t.millionea.firstEventAt, { when: strong(eatWeekdayClock(t, firstEventAt)) })}</span>}
@@ -243,16 +279,17 @@ export function MaswaliSlip({
             <ol>{reserves.map(row)}</ol>
             <div aria-hidden className="h-3 rounded-b-card border border-t-0 border-border" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }} />
           </div>
+          {/* ONE POLITE REGION, MOUNTED EMPTY FROM THE FIRST RENDER (the S5 UI review, MEDIUM 6; DESIGN_AUTHORITY §A item 7):
+              a status mounted together with its words is often not read, so the refusal's words arrive in this one. */}
+          <p aria-live="polite" aria-atomic="true" className="sr-only" data-testid="millionea-slip-live">
+            {showRefusal && unanswered.length > 0 ? `${t.millionea.refusalIncomplete}. ${refusalBody}` : ""}
+          </p>
           {showRefusal && unanswered.length > 0 && (
-            <div role="status" className="mat-flat flex gap-2 rounded-control px-3 py-2">
+            <div className="mat-flat flex gap-2 rounded-control px-3 py-2">
               <I.info s={18} className="mt-px shrink-0 text-text-muted" />
               <div className="flex flex-col gap-1">
                 <span className="font-display text-body font-semibold text-text">{t.millionea.refusalIncomplete}</span>
-                <span className="text-body-sm text-text-muted">
-                  {unanswered.length === 1
-                    ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
-                    : fill(t.millionea.refusalIncompleteBody, { n: unanswered.length, list: joinList(locale, unanswered.map(labelOf)) })}
-                </span>
+                <span className="text-body-sm text-text-muted">{refusalBody}</span>
                 <a href={`#q-${labelOf(unanswered[0])}`} className="inline-flex items-center self-start text-body-sm text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
                   {fill(t.millionea.jumpTo, { n: labelOf(unanswered[0]) })}
                 </a>
@@ -270,7 +307,7 @@ export function MaswaliSlip({
             <PicksList questions={questions} picks={picks} />
             <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">
               <div className="flex justify-between gap-2"><span>{t.millionea.price}</span><span className="amount text-text">{priceText}</span></div>
-              <span>{fill(t.millionea.capRule, { cap, n: ticketNumber })}</span>
+              <span>{fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) })}</span>
             </div>
             <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} className="self-start" />
             <div className="flex flex-col gap-2">
@@ -342,19 +379,30 @@ export function MaswaliSlipConfirm({
   const balanceText = formatTzs(balance);
   const lines = [
     fill(t.millionea.fromMain, { price: priceText, balance: balanceText }),
-    fill(t.millionea.ticketNofCap, { n: ticketNumber, cap }),
+    fill(t.millionea.ticketNofCap, { n: formatNumber(ticketNumber), cap: formatNumber(cap) }),
     cancelUntil === null ? null : fill(t.millionea.cancelFreeUntil, { time: eatClock(cancelUntil) }),
     fill(t.millionea.ruleShared, { pct }),
   ].filter((l): l is string => l !== null);
   return (
     // Focus opens on the commit, whose press IS the act (the bet confirm's rule), and the way out is named (`safeFocus`), so
     // an Enter meant for a dialog drawn over this one can at worst close it. Short of money, focus opens on the way out.
-    <Modal open={open} onClose={onClose} sheet maxWidth={480} labelledBy={titleId} ariaBusy={pending} safeFocus={cancelRef}
-      initialFocus={lowBalance ? cancelRef : commitRef} closeOnScrim={!pending} closeOnEsc={!pending}>
+    <Modal open={open} onClose={() => { if (!pending) onClose(); }} sheet maxWidth={480} labelledBy={titleId} ariaBusy={pending}
+      safeFocus={cancelRef} initialFocus={lowBalance ? cancelRef : commitRef} closeOnScrim={!pending} closeOnEsc={!pending}
+      showClose={false}>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
-          <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
+            <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
+          </div>
+          {/* ⭐ THE HEADER ROW'S ✕, as the bet confirm's (the one convention, `CloseX` in modal.tsx; r6c §10 "header-row"):
+              this sheet opens on its eyebrow, so the ✕ comes to the TITLE's first line — under the 16px eyebrow line and
+              2px, its capitals centre 18 + 28/2 − 0.025 × 22 = 31.45px down; the 48px box centres 24px down, so `mt-[7.5px]`
+              lowers it and `-mb-[7.5px]` gives the room back. 16px inside the panel's edge, as Modal pins every ✕ (the
+              panel's `p-5 lg:p-6`, stepped out 8px / 16px). While the cut is in flight it is WITHHELD (the in-flight rule,
+              r5a 8.13): Ghairi is disabled then, and its box stays, so the title never moves. */}
+          <CloseX withheld={pending} onClick={() => { if (!pending) onClose(); }} label={t.common.close}
+            className="mt-[7.5px] -mb-[7.5px] -mr-1.5 lg:-mr-3 shrink-0" />
         </div>
         <PicksList questions={questions} picks={picks} />
         <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">

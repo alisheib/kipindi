@@ -23,6 +23,7 @@ import {
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
 // was a `React.lazy` binding here, which split nothing, so this changes nothing a player gets (12.shell.offline).
 import { OfflineBanner } from "@/components/ui/offline-banner";
+import { resolveMillionea } from "@/lib/server/millionea-preview";
 import { TopAppBar } from "./top-app-bar";
 import { LiveTicker } from "./live-ticker";
 import { BottomNav } from "./bottom-nav";
@@ -378,6 +379,14 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      ⭐ R8-C (2026-10-10, ruling (4)) · AND NOT DURING A BREAK: `promoSuppressed` closes it for every reader on a break, a
      player's "Alika" and an agent's dashboard door alike (the dashboard still opens at its address — the statement stays). */
   const inviteVisible = !promoSuppressed && inviteIsLiveFor(inviteViewer);
+  /* MASWALI-BUILD S5 · MILLIONEA'S CHROME DOORS (MASWALI-PLAN §10 §3.2; DESIGN_AUTHORITY §M8a item 11), resolved here for
+     the reason the invite is: the bars and the rails are client code and may not ask the rollout. The rollout's one
+     per-request answer (React-cached and never rejecting: the same answer every Millionea page asks first) and, as every
+     OFFER, not during a break (`promoSuppressed`).
+     ⭐ S5-TAB (Ali, 2026-10-19): ONE answer for all four navs — Millionea's own tab on the journey's rail and its desktop
+     link (`journeyTabsFor`), the classic bar's core link right after Up & Down, and the classic phone rail's first More
+     row. A reader it is false for is drawn today's chrome in every shell. */
+  const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
      row's WORDS depend on whether the viewer's invite destination pays, and a client component may
      not read the product state to find out.
@@ -486,8 +495,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           Classic visitors are untouched: these two arms are the journey's.
           Round 6 (2026-10-09, reviews C1 and C13): the journey bar's account menu is handed two more door answers, the
           agent's standing (its invite row says the page's own name) and `journeyKycOffered` (its KYC row only where the hub
-          and /profile offer that door); the classic arm's props are today's. */}
-      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+          and /profile offer that door); the classic arm's props are today's.
+          MASWALI-BUILD S5-TAB (2026-10-19): each arm takes `millionea={millioneaRow}`, the one answer above — the journey
+          bar draws Millionea's link from it, the classic bar its core link. */}
+      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} millionea={millioneaRow} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
@@ -609,7 +620,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
           from the one place the wallet's status is resolved (`topUser` above). */}
-      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
+      {/* MASWALI-BUILD S5-TAB: both rails take the one Millionea answer — the journey's draws its fifth tab from it, the
+          classic rail its first More row. */}
+      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} millionea={millioneaRow} />}
       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
           It was the only one of the three that was not, and the omission had no upper bound.

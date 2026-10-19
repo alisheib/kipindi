@@ -2,7 +2,7 @@
  * MASWALI MILLIONEA — HOW FAR THE PRODUCT HAS ROLLED OUT (MASWALI-BUILD S1; MASWALI-PLAN §7b S1 item 5 and the
  * "Corrections of 2026-10-17").
  *
- * THREE positions, the journey's words (`feature-state.ts → RolloutState`), and each is a different thing a person sees:
+ * THREE positions, the journey's words (`rollout-state.ts → RolloutState`), and each is a different thing a person sees:
  *   · WITHDRAWN     — nobody. Every `/millionea` route 404s; no card, no More row, no notice anywhere.
  *   · STAFF_PREVIEW — a signed-in STAFF session (its stored role re-checked), or a browser holding a Millionea preview
  *                     pass a staff member set (`server/millionea-preview.ts`), in EITHER shell, under a "Preview" mark.
@@ -11,8 +11,9 @@
  *     state = lowerRollout(millioneaCeiling(), the Owner's stored switch)        (`server/millionea-switch.ts`)
  *
  * ⛔ ITS OWN MODULE, OUTSIDE `feature-state.ts`, ON PURPOSE: the Vodacom S15 flip edits that file, and two lanes editing
- *    one rollout block is how a merge turns one product on by accident. This file imports the journey's TYPE and its
- *    `lowerRollout` and nothing else from there.
+ *    one rollout block is how a merge turns one product on by accident. It imports the rollout's TYPE, `isRolloutState`
+ *    and `lowerRollout` from the pure `rollout-state.ts` and nothing else (2026-10-18: the privacy page's version reads
+ *    this module from a client bundle, and `feature-state.ts` must never be client-reachable).
  * ⛔ DIFFERENT FROM THE JOURNEY'S AUDIENCE, ON PURPOSE: there a staff role alone sees nothing new (the preview is opt-in,
  *    because the journey REPLACES the shell). Millionea adds a product beside the others in both shells, so a staff
  *    session sees it at STAFF_PREVIEW without a pass, and the pass exists for the non-staff QA players of the S8 drive.
@@ -22,9 +23,9 @@
  * Isomorphic: no Prisma, no `server-only`. On the client `process.env.FEATURE_MILLIONEA` is undefined, so the ceiling
  * reads as the shipped constant — a client never decides visibility; the server resolves it and renders the answer.
  */
-import { isRolloutState, lowerRollout, type RolloutState } from "@/lib/feature-state";
+import { isRolloutState, lowerRollout, type RolloutState } from "@/lib/rollout-state";
 
-export type { RolloutState } from "@/lib/feature-state";
+export type { RolloutState } from "@/lib/rollout-state";
 
 /**
  * ⭐ THE SHIPPED CEILING: WITHDRAWN until Ali decides. M7 raises it to STAFF_PREVIEW on production through the env
@@ -44,6 +45,19 @@ export function millioneaCeiling(): { ceiling: RolloutState; source: "ENV" | "CO
   const raw = typeof process !== "undefined" ? process.env?.[MILLIONEA_ENV] : undefined;
   if (isRolloutState(raw)) return { ceiling: raw, source: "ENV" };
   return { ceiling: MILLIONEA_SHIPPED, source: "CODE" };
+}
+
+/**
+ * ⭐ IS MILLIONEA NAMED IN THE PUBLISHED LEGAL TEXT? (the lead's decisions of 2026-10-18, under Ali's delegation): only at an
+ * ACTIVE ceiling, when the public can open the slip. A STAFF_PREVIEW ceiling keeps production's notice: the public notice
+ * never names a product the public cannot see, and the staff testing the preview are told internally. Privacy §7's slip paragraph, and the version it moves the
+ * notice to, print then and only then (`server/legal/millionea-wording.tsx`, `POLICY_PAGES.privacy`); below it — on
+ * production today — the notice is the one production has always printed, byte for byte. The ceiling, never the Owner's
+ * stored switch: the slip's tab key can exist only where the ceiling has let someone open the slip, and a kill pauses the
+ * product without unwriting what a tab already holds — the notice keeps saying what is true.
+ */
+export function millioneaWordingPublished(): boolean {
+  return millioneaCeiling().ceiling === "ACTIVE";
 }
 
 /**

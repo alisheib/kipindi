@@ -415,6 +415,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     "src/app/legal/privacy/page.tsx": [3, "a path in the privacy policy's sentence (“Profile → Notifications”), in each language — the D19a-pinned legal text, frozen"],
     "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
+    // MASWALI-BUILD S5 (2026-10-18): the worked example's eyebrow, beside its figures in their own mono face.
+    "src/app/millionea/how/page.tsx": [1, "data: the worked example's voided main → its reserve (“4 → A1”, as MASWALI-PLAN §10 §3.4 draws it)"],
   };
   // Read as the player gets it (PHOSPHOR W4's review): a JS escape (`←`, `\u{…}`) or an HTML entity is the character.
   const ENT: Record<string, number> = { larr: 0x2190, uarr: 0x2191, rarr: 0x2192, darr: 0x2193 };

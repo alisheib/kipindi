@@ -17,9 +17,12 @@
  * ⏳ The preview pass (non-staff QA players, S8's drive) has no reader yet — S1 deferred it to the route that writes it,
  *    with its privacy-notice sentence — so STAFF_PREVIEW admits staff sessions only until it lands. `resolveMillioneaFor`
  *    already takes the pass, so no caller of this gate changes when it does.
+ * ⭐ THE TICKETS HAVE A GATE OF THEIR OWN (`millioneaTicketGate`; the lead's decision L5, 2026-10-17): a kill hides the
+ *    PRODUCT, never a player's own tickets.
  */
 import { notFound } from "next/navigation";
 import { getSession } from "./session";
+import { ticketStore } from "./maswali-dal";
 import { resolveMillionea, type MillioneaResolution } from "./millionea-preview";
 
 /** The viewer as the gate admitted them: the rollout's answer and the signed-in account, if any. */
@@ -32,4 +35,53 @@ export async function millioneaGate(): Promise<MillioneaAdmitted> {
   let userId: string | null = null;
   try { userId = (await getSession())?.userId ?? null; } catch { userId = null; }
   return { ...r, visible: true, userId };
+}
+
+/** The viewer as the tickets' gate admitted them: the rollout's answer, the signed-in account, and whether they were let
+ *  in as a HOLDER of their own tickets while the product is hidden from them (`visible` false, `holder` true). */
+export type MillioneaTicketAdmitted = MillioneaResolution & { userId: string | null; holder: boolean };
+
+/**
+ * ⭐ THE TICKETS' GATE (the lead's decision L5, 2026-10-17: a kill — WITHDRAWN — hides the PRODUCT, never a player's own
+ * tickets). `/millionea/tickets` and `/millionea/tickets/[serial]` ask THIS instead of `millioneaGate`:
+ *   · the product visible to this request → admitted, exactly as `millioneaGate` admits;
+ *   · hidden → admitted only for a signed-in account that HOLDS a Millionea ticket (any week, any state): their tickets,
+ *     each one's result, any refund and the free cancel inside its window stay theirs at every rollout state (the cancel
+ *     action answers at every state too, `maswali-player-acts.ts`);
+ *   · everyone else — signed out, holding none, or a read that fails → the identical 404 of a missing page, so the dark
+ *     section of `qa:live` (signed out) and the no-existence-oracle rule (MB-95) both hold. A serial that is not the
+ *     viewer's is the page's own 404, the same one.
+ * The hub, the slip, How to play, the register and every door on another page follow the rollout alone.
+ */
+export async function millioneaTicketGate(): Promise<MillioneaTicketAdmitted> {
+  const r = await resolveMillionea();
+  let userId: string | null = null;
+  try { userId = (await getSession())?.userId ?? null; } catch { userId = null; }
+  const admitted = await millioneaTicketAdmission(r.visible, userId, holdsAMillioneaTicket);
+  if (admitted === "NOT_FOUND") notFound();
+  return { ...r, userId, holder: admitted === "HOLDER" };
+}
+
+/** Does this account hold a Millionea ticket — any week, any state? One indexed read. */
+async function holdsAMillioneaTicket(userId: string): Promise<boolean> {
+  return (await ticketStore.listForUser(userId, { limit: 1 })).length > 0;
+}
+
+/**
+ * The tickets' gate's decision from its three facts — the testable core of `millioneaTicketGate` (L5; `test:maswali-ui`
+ * §3): the product visible → VISIBLE; hidden → HOLDER for a signed-in account that holds a ticket; everyone else, and a
+ * holdings read that fails → NOT_FOUND. Never throws.
+ */
+export async function millioneaTicketAdmission(
+  visible: boolean,
+  userId: string | null,
+  holds: (userId: string) => Promise<boolean>,
+): Promise<"VISIBLE" | "HOLDER" | "NOT_FOUND"> {
+  if (visible) return "VISIBLE";
+  if (!userId) return "NOT_FOUND";
+  try {
+    return (await holds(userId)) ? "HOLDER" : "NOT_FOUND";
+  } catch {
+    return "NOT_FOUND";
+  }
 }

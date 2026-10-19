@@ -136,7 +136,11 @@ console.log("\n§5 · ⛔ the rollout lives outside feature-state.ts");
   ok("5.1 · feature-state.ts never names Millionea (the Vodacom S15 flip edits that file)", !/millionea|maswali/i.test(fs));
   const mod = readFileSync(new URL("../src/lib/millionea-rollout.ts", import.meta.url), "utf8");
   const imports = [...mod.matchAll(/^import\s+[^;]+from\s+"([^"]+)";/gm)].map((m) => m[1]);
-  ok("5.2 · millionea-rollout.ts imports only the journey's rollout primitives", JSON.stringify(imports) === JSON.stringify(["@/lib/feature-state"]), JSON.stringify(imports));
+  // 2026-10-18 (S5 integration): the primitives moved to the pure rollout-state.ts. The privacy page's version reads this
+  // module from a client bundle, and feature-state.ts must never be client-reachable (test:house-bot-disclosure 1.1).
+  ok("5.2 · millionea-rollout.ts imports only the pure rollout primitives", JSON.stringify(imports) === JSON.stringify(["@/lib/rollout-state"]), JSON.stringify(imports));
+  const pure = readFileSync(new URL("../src/lib/rollout-state.ts", import.meta.url), "utf8");
+  ok("5.3 · ⛔ rollout-state.ts imports nothing (an isomorphic reader must not reach a server module through it)", !/^\s*(import|export\s[^;]*\sfrom)\s/m.test(pure));
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI ROLLOUT: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);

@@ -29,7 +29,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * device this product is built for.
  *
  * ── THE NAVIGATION MODEL: THREE TIERS, ONE MEANING EACH (the round's largest correction) ──────
- *   destination      no border, `--r-sm`, 44px           Markets · Up & Down · Live · Results · Top
+ *   destination      no border, `--r-sm`, 44px           Markets · Up & Down · (Millionea) · Live · Results · Top
  *   utility control  BORDERED, `--r-sm`, 44×44           Language
  *   action           `--r-pill`                          Sign in (ghost) · Sign up (filled)
  *
@@ -52,6 +52,8 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
+  /** The words in Millionea's ink (`kp-millionea-ink`), the one class every nav gives it (Ali, 2026-10-19): its core link's. */
+  ink?: boolean;
   /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
      destination that is not part of the product is dropped from the list entirely (see
      MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
@@ -88,7 +90,7 @@ export type TopAppBarUser = {
   walletHeld?: boolean;
 };
 
-export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean }) {
+export function TopAppBar({ user, proposalsState, inviteVisible = false, invitePaid = false, millionea = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean; invitePaid?: boolean; millionea?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
   // ⭐ R1 (landing v3, 2026-09-26) · the bar decides with the LIVE balance, so a deposit landing over
@@ -100,12 +102,30 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   // destination is hidden on tablets/small laptops).
   // Up & Down sits directly after Markets in BOTH navs — it is a peer product line, not
   // a sub-page of Markets, and a player must be able to reach it from any width.
+  /* ⭐ MASWALI-BUILD S5-TAB · MASWALI MILLIONEA'S CORE LINK, RIGHT AFTER UP & DOWN (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a
+     item 11), for a player and a guest alike: a destination like its siblings — a peer product line, as Up & Down is — the
+     same link, with only its words in Millionea's ink (`kp-millionea-ink`): no gilt dot, no mark. It replaces S5's first
+     row of More (D-13 (b)'s "no inline link", struck). ⛔ Drawn only on the shell's own answer (`millionea`: the rollout
+     admits the request and the reader is not on a break), resolved on the server and handed down as `inviteVisible` is;
+     for everybody else the bar is today's, byte for byte.
+     ⚠️ IT PAYS FOR ITS ROOM WITH RESULTS, AT EVERY WIDTH: while the link shows, Results is More's first row instead of a
+     core link (`RESULTS_LINK` empty, `RESULTS_ROW` full) — the classic phone rail's own arrangement (Results has lived in
+     its More since the centre coin). Measured 2026-10-19 (Chromium, the real fonts, signed in at TZS 999,999, the widest
+     capsule): with Results inline beside Millionea the Swahili bar needs 12px more than 1280 and pushes the account menu
+     off the screen — E-190's failure — and this bar never gains room past 1280 (`max-w-board`, `--w-board`), so no
+     width holds the two side by side. At 1024–1279 the band was short before Millionea came (E-190); folding Results pays
+     for the link there too, and one rule at every width keeps More's lit state its own rows' truth (current on /results,
+     at any width, while Results is behind it). */
+  const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];
+  const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];
+  const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
         { href: "/updown",    label: t.market.udTitle, accent: true },
+        ...MILLIONEA_LINK,
         { href: "/live",      label: t.nav.live },
-        { href: "/results",   label: t.common.results },
+        ...RESULTS_LINK,
         { href: "/positions", label: t.common.positions },
         /* ⛔ `/wallet` LEFT THE INLINE NAV ON 2026-08-25 — it is a DUPLICATE now, not a
            loss. The balance capsule in the right cluster is itself a `<Link href="/wallet">`
@@ -121,14 +141,16 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
     : [
         { href: "/markets",     label: t.common.markets },
         { href: "/updown",      label: t.market.udTitle, accent: true },
+        ...MILLIONEA_LINK,
         { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: t.common.results },
+        ...RESULTS_LINK,
         { href: "/leaderboard", label: t.nav.leaderboard },
       ];
   // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
   // the current state flag (gilt coming-soon / amber maintenance / none active).
   const MORE_ITEMS: NavItem[] = user.isAuthed
     ? [
+        ...RESULTS_ROW,
         ...(proposalsState !== "DISABLED"
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
@@ -147,7 +169,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
-    : [];
+    : RESULTS_ROW;
 
   return (
     <header
@@ -497,6 +519,9 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     : it.href === "/results" ? pathname.startsWith("/results")
     : it.href === "/positions" ? pathname.startsWith("/positions")
     : it.href === "/updown" ? pathname.startsWith("/updown")
+    // S5-TAB: Millionea's link is current on the product's every page, as Up & Down's is on its history — its own path or
+    // one below it, never a path that only shares its letters (`/millioneas`).
+    : it.href === "/millionea" ? pathname === "/millionea" || pathname.startsWith("/millionea/")
     : pathname === it.href;
   const accent = it.accent === true;
   return (
@@ -534,7 +559,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
           }}
         />
       )}
-      {it.label}
+      {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
       {it.proposalsBadge && (
         <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
       )}

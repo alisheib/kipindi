@@ -10,7 +10,7 @@
  */
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { LIST_TAG } from "@/lib/rail-list";
-import { fill } from "@/lib/utils";
+import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The ISO weekday (0 = Monday … 6 = Sunday) and the 24-hour EAT clock of an instant. */
@@ -55,6 +55,15 @@ export function reserveLabel(ordinal: number): string {
   return `A${ordinal}`;
 }
 
+/**
+ * The ISO week a week's stamped code names ("MLN-2026-W44" → 44, a drive week's "MLD-…" alike): every "Wiki 44" a player
+ * reads is the engine's own stamp (`eatWeekCode`), never a count of weeks typed or kept here. 0 for a code that is not one.
+ */
+export function weekNumberOf(code: string): number {
+  const m = /-W([0-9]{1,2})$/.exec(code);
+  return m ? Number(m[1]) : 0;
+}
+
 /** "Wiki 42" / "Week 42" / "第42周". */
 export function weekWord(t: Dict, week: number): string {
   return fill(t.millionea.week, { week });
@@ -73,8 +82,7 @@ export function joinList(locale: Locale, items: readonly string[]): string {
 /**
  * A `millionea` word named by a lookup map's key (`WEEK_STATE_KEY`, `TICKET_SHOWN_KEY`, `MASWALI_VOID_REASON_KEY`).
  * ⛔ A key the dictionary lacks shows as itself, as `fill` leaves an unknown placeholder: a typo is seen, never blank.
- * Every key of the three maps resolves in en, sw and zh today; S5's planned maswali-i18n suite (MASWALI-PLAN §7b) is the
- * suite that will hold them there.
+ * Every key of the three maps resolves in en, sw and zh, and `test:maswali-i18n` §2 holds them there (MASWALI-PLAN §7b).
  */
 export function millioneaWord(t: Dict, key: string): string {
   const v = (t.millionea as unknown as Record<string, unknown>)[key];
@@ -83,5 +91,5 @@ export function millioneaWord(t: Dict, key: string): string {
 
 /** The singular or the counted form of a string pair (`…One` when there is exactly one). */
 export function counted(n: number, one: string, many: string, vars: Record<string, string | number> = {}): string {
-  return n === 1 ? fill(one, vars) : fill(many, { ...vars, n });
+  return n === 1 ? fill(one, vars) : fill(many, { ...vars, n: formatNumber(n) });
 }

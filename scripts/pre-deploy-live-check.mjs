@@ -359,7 +359,8 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
  * ceiling and the Owner's switch) is the health contract changing, and it FAILS rather than let this block guess.
  * ⛔ AN UNREAD PAGE IS NOT A CLEAN PAGE (section [A], 2026-09-14): a route that failed, answered non-200 or did not
  * come back as an HTML document FAILS the no-marker check instead of passing it.
- * Under ACTIVE the gate positively reads the journey home, question, account hub and four tabs, with no marker.
+ * Under ACTIVE the gate positively reads the journey home, question, account hub and four tabs, with no marker — five,
+ * Millionea's third, when the same health read says Millionea is ACTIVE (MASWALI-BUILD S5-TAB, `millioneaState`).
  * While the state is UNKNOWN (the contract check failed), the classic absence checks still run: an unknown state
  * must not be mistaken for a successful launch.
  * `journeyRollout` is read ONCE, here, and section [F] asks the same answer for its signed-in player.
@@ -527,11 +528,13 @@ async function activeDocument(ctx, who, route, signedIn = false) {
     const home = journeyHomeIdsIn(d.raw);
     ok(`${who}: / has the journey home and a question card`, read && home.includes("journey-home") && home.includes("journey-card"),
       `(ids ${home.join(", ") || "none"})`);
+    // S5-TAB: Millionea's own tab stands third while the server says Millionea is ACTIVE (journeyRollout.millioneaState).
+    const millioneaTab = journeyRollout.millioneaState === "ACTIVE" ? [{ href: "/millionea", kind: "a" }] : [];
     const expected = signedIn
-      ? [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, { href: "/positions", kind: "a" }, { href: "/account", kind: "a" }]
-      : [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, { href: null, kind: "button", popup: "dialog" }, { href: "/account", kind: "a" }];
-    ok(`${who}: / has all four journey tabs in order, with the ${signedIn ? "ticket link" : "guest ticket sheet"}`,
-      read && v.tabs.length === 4 && expected.every((item, i) => Object.entries(item).every(([key, value]) => v.tabs[i]?.[key] === value)),
+      ? [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, ...millioneaTab, { href: "/positions", kind: "a" }, { href: "/account", kind: "a" }]
+      : [{ href: "/", kind: "a" }, { href: "/updown", kind: "a" }, ...millioneaTab, { href: null, kind: "button", popup: "dialog" }, { href: "/account", kind: "a" }];
+    ok(`${who}: / has all ${expected.length === 5 ? "five" : "four"} journey tabs in order, with the ${signedIn ? "ticket link" : "guest ticket sheet"}${millioneaTab.length ? " and Millionea's tab (Millionea ACTIVE)" : ""}`,
+      read && v.tabs.length === expected.length && expected.every((item, i) => Object.entries(item).every(([key, value]) => v.tabs[i]?.[key] === value)),
       `(tabs ${JSON.stringify(v?.tabs ?? [])})`);
   }
   if (route === "/account") ok(`${who}: /account is the journey account hub`, read && d.traces.includes("testid:journey-account-hub") && v.traces.includes("journey-account-hub"),
@@ -631,7 +634,10 @@ const journeyRollout = await (async () => {
     : !shapeOk ? `(HTTP ${status}; simpleJourney = ${JSON.stringify(sj ?? null)} — the health contract changed: expected exactly { ceiling, state }, each "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE")`
     : !agrees ? `(simpleJourney = ${JSON.stringify(sj)} — state ${state} ranks above its ceiling ${ceiling}, and the state is the LOWER of the ceiling and the Owner's switch)`
     : `(ceiling=${ceiling}, state=${state})`;
-  return { ok: shapeOk && agrees, state: shapeOk && agrees ? state : null, detail };
+  // MASWALI-BUILD S5-TAB (2026-10-19): the server's own Millionea rollout, from the same read — at ACTIVE every reader not
+  // on a break is drawn Millionea's own journey tab (after Juu/Chini), so the ACTIVE journey's tab row below expects five.
+  const millioneaState = body && typeof body === "object" && body.millionea && typeof body.millionea === "object" ? body.millionea.state ?? null : null;
+  return { ok: shapeOk && agrees, state: shapeOk && agrees ? state : null, detail, millioneaState };
 })();
 {
   ok(`/api/health states the new journey's rollout (simpleJourney.ceiling, .state; state never above its ceiling)`, journeyRollout.ok, journeyRollout.detail);

@@ -2646,19 +2646,27 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    - Guards: `test:wallet-reach` §8, `test:journey-shell` §7, and the journey header's RULE probe —
      `qa:journey-header-fit`, proven by `red:journey-header-fit`.
 
-   ### 8b — The four-slot journey rail (SJ-16)
+   ### 8b — The four-slot journey rail (SJ-16), five slots while Millionea shows
 
-   *Maswali Millionea takes no slot on this rail; its doors are placed by §M8a item 11.*
+   *Maswali Millionea takes a fifth tab on this rail, right after Juu/Chini, while it is visible to the viewer (Ali,
+   2026-10-19, §M8a item 11): five equal tracks then, four when it is not. ~~Millionea takes no slot on this rail~~
+   (struck 2026-10-19).*
 
-   `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; its one table is `JOURNEY_TABS` in
-   `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge`.
+   `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; it draws `journeyTabsFor(millionea)` — the four tabs of
+   `JOURNEY_TABS`, or the five with `MILLIONEA_TAB` spliced in after Juu/Chini — and its one table is `TAB_ROUTES`, all in
+   `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey` (and `.kp-rail--journey[data-tabs="5"]` for five),
+   `.kp-jtab__label` and `.kp-rail__badge`.
    - **Four equal tracks** — Maswali, Juu/Chini, Tiketi zangu, Akaunti — on the classic rail's own surface, slot, pip
      and label (`.kp-rail` and `.kp-rail__item`, worn unchanged from 360; below it, the label rule further down).
+     **Five while Millionea shows**, its tab after Juu/Chini, the nav saying so (`data-tabs="5"`, absent for four, so a
+     reader who is not shown Millionea is drawn today's rail, markup and boxes).
      ⛔ **No centre coin, no More, no accent dot:** money-in is the header's "+ Weka pesa", and what More carried is a
      row in Akaunti (8c).
    - **The grid goes on the LIST** (A18): on the nav, the whole list would be one cell.
-   - **Which tab is lit comes from `activeTabFor`**, the table the desktop destinations read too, and
-     `aria-current="page"` is given only on a tab's own page, `"true"` across the rest of its section (A12).
+   - **Which tab is lit comes from `activeTabFor` over the drawn list**, the list and table the desktop destinations
+     read too, and `aria-current="page"` is given only on a tab's own page, `"true"` across the rest of its section
+     (A12). A Millionea page lights Millionea's tab among the five and Maswali among the four (its row's `fallback`);
+     Millionea's tickets light Tiketi zangu.
    - **A tab's visible label is its name** — no aria-label. The Akaunti tab's unread count joins that name in words,
      and its picture is the kit's brand `Dot` on the pip's corner.
    - **A guest's Tiketi zangu is a dialog button that opens the guest sheet (8d)** — ⛔ never a link whose navigation
@@ -2670,11 +2678,17 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
      quarter of a 320 phone), and there the slots stack from the top so no pip is lifted; from 360 the classic
      one-line label and centred slot stand. ⛔ If copy ever lets every label fit at 320, the wrap goes in that same
      commit — `test:journey-shell` 8.label.measure says so.
+   - ⭐ **With five tabs the tickets tab says its short rail label** (`journey.tabTicketsShort`: Swahili "Tiketi",
+     English "Tickets"; Chinese keeps 我的注单, which fits), the lead's rulings of 2026-10-19: a fifth of a 320 phone is
+     64px, and "Tiketi zangu" needs 83.2, "My tickets" 70 — as Juu/Chini's rail label is the short `nav.updown`, its page,
+     its title and the desktop link keep the full words. Every five-tab label of every language then sits on ONE line
+     from 317 (its longest, 63.4px, × 5) — at every width we hold, 320 included — so one rule centres the five slots from
+     317 in all three languages (`test:visual-pass-r9c` §4b, `test:journey-shell` 8.label.measure.five and 8.align.five).
    - The page clears the rail with `--rail-h`, the one name for its reserve (WP11) — ⛔ never a second literal for the
      page's reserve. The chat bubble's 80 and the install card's 148 stay literal because gates pin them
      (`test:stacking`'s chat-fab locator, `test:install-invite` 5.4), each naming `--rail-h` as its source.
-   - Guards: `test:journey-shell` §8, `red:journey-shell`, `qa:journey-header-fit` (the rail's labels below 1024),
-     `qa:footer-reachable` with `--journey`.
+   - Guards: `test:journey-shell` §1 and §8, `red:journey-shell`, `test:visual-pass-r9c` §4 and §4b,
+     `qa:journey-header-fit` (the rail's labels below 1024), `qa:footer-reachable` with `--journey`.
 
    ### 8c — The hub rows (SJ-17)
 
@@ -3010,10 +3024,56 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
    shows a potential payout, and pick aggregates or an "alive" count never show before settlement.
 10. **One seal per player per week (§F9).** A week's wins are announced once, as one seal for the week, through the
     presence classes; a RETURNING player gets the calm bar and the seal on their own tap.
-11. **Placement (O-7, §K8b).** Millionea takes no rail slot. Its doors: one card on the journey home after the head (the
-    How-to card and the headline) and before the topic chips; on classic, one card at the head of `/markets` and the first
-    row of More; and a third switch in Tiketi zangu. Placing the card there deviates from the sponsor deck's home
-    (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
+11. **Placement: Millionea's own tab (Ali, 2026-10-19; it reverses O-7's "no rail slot", §K8b).** *Ali, typed on his
+    phone: "the maswali should have a new tab next to up and down like them but it should have a unique design the same
+    tab but with writing in it kind of colors … in mixed glowing green red color and gold like 50pick design for
+    uniqueness like kalshi how it states some of its tabs … perfect with perfect visual appearance of what we have".*
+    Millionea gets its OWN tab, right after Up & Down / Juu/Chini, in every nav that has tabs, and only while Millionea
+    is visible to the viewer (the shell's own answer; while WITHDRAWN every nav is byte-identical to before): the journey
+    rail's fifth tab (five equal tracks while it shows, four when it does not), the journey's desktop link, and a core
+    link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
+    2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
+    player at TZS 999,999 needs 12px more and loses its account menu, E-190's failure; ~~"inline again from 1280"~~,
+    struck the same day). The classic phone rail keeps its five tracks around the centre coin, so there Millionea stays
+    More's first row, beside Results, which has lived in that More since the coin.
+    `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
+    four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
+    its card. While five tabs show, the journey rail's tickets tab says its short rail label — Swahili "Tiketi", English
+    "Tickets" (the lead's rulings, 2026-10-19: a fifth of a 320 phone holds neither "Tiketi zangu" nor "My tickets" on one
+    line; its page, its title and the desktop link keep the full words; Chinese keeps 我的注单) — so every five-tab label
+    sits on one line at every width we hold (§K 8b). From 1024 to 1279, while five destinations show, the journey bar's
+    nav gives up its own leading 12px (the Swahili row otherwise ran 5.1px into the page's gutter at 1024 for a signed-in
+    player — measured, `qa:journey-header-fit`), and takes it back from 1280.
+    **The look.** The tab is its siblings' own (slot, pip, lit pill, label size, weight and spacing) and ONLY the label's
+    ink differs: one static horizontal gradient of the three money colours across the word, green to gold to red
+    (`--yes-300`, `--gold-300`, `--no-300`: the darkest point, `--no-300`, is 8.98:1 on `--panel`, above the unlit
+    siblings' `--text-subtle` at 6.93), with a faint gold `filter: drop-shadow` halo (never a text-shadow under the
+    transparent fill), and a hover — and a lit tab, link or row (`aria-current`), as its siblings' ink steps up to
+    `--text` — that brightens it one tint (the -200s; on the destination pill 6.85:1, the lead's contrast ruling).
+    ⛔ **It never moves** (the lead's evaluation of the Owner's Kalshi reference, 2026-10-19: Kalshi's "Midterms" tab is a
+    still gradient fill at its siblings' size and weight, and persistent navigation must not animate, WCAG 2.2.2).
+    Forced colours draw plain system text. One class, `.kp-millionea-ink` (`globals.css`, beside the rail rules), worn by
+    every nav that draws Millionea. Its mark, Millionea's own glyph (`millionea`) in gold (a lit tab draws the siblings'
+    Fill on the pill), is drawn only where every sibling carries one: on the journey rail's pip. The classic bar's core
+    link and the classic phone rail's More row are its words in the ink alone, so every row of a More list starts its
+    words at one x (the lead's tile read, 2026-10-19: the row's mark had set its words ~28px right of every other row's).
+    More's two panels are opaque, the kit's elevated surface whole (`bg-bg-elevated`, the language menu's): the bar's
+    was 95% under a backdrop blur, and at 1280 the page's own words read through it. This gold is the Owner's label for
+    a destination, not money: item 7 is untouched.
+    The other doors stand: one card on the journey home after the head (the How-to card and the headline) and before the
+    topic chips; on classic, one card at the head of `/markets`; and a third switch in Tiketi zangu. Placing the card
+    there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
+    ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
+    2026-10-19 by the ruling above.
+    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row; S5-TAB 4, 6, 7 and 9 the rest. The journey's
+    tab and desktop link are one drawn list, `journeyTabsFor(millionea)` (`src/lib/nav/active-tab.ts`), lit from that list
+    (the `/millionea` row's `fallback` lights Maswali where the four are drawn); the rail draws five tracks while five show
+    (§K 8b), the tab's glyph a shell key with its Fill (`scripts/glyphs/map.ts`), so the rail never waits for a sprite
+    file. The classic bar's core link stands after Up & Down, and Results is More's first row at every width while it
+    shows (one More, current on /results). A journey not-found page's first paint puts the lit
+    Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
+    More keeps no slot for a mark and both its panels paint the whole surface (`test:maswali-ui` §5c).
+    One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`
     and coronet are replaced by the Phosphor keys of `docs/MASWALI-PLAN.md` §10c, reached only through `I`. Where the
     delivery's motion notes name `sealCheck` / `sealX` / `sealNil` on a socket, the build shows `checkCircle` / `xCircle`

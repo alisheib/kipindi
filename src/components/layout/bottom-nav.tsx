@@ -62,7 +62,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * no commit ever added it. The rest position is host logic in `needle.tsx` (side rails only, `nearestEdge`;
  * E-413's clear-rest glide), and the rail's centre coin is a `data-needle-keepout` below.
  */
-export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean }) {
+export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = false, walletHeld = false, millionea = false }: { isAuthed?: boolean; proposalsState: ProposalsState; inviteVisible?: boolean; walletHeld?: boolean; millionea?: boolean }) {
   const pathname = usePathname();
   const { t } = useT();
 
@@ -137,8 +137,20 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      only way to /wallet, so it stays. */
   const walletRow: { href: string; label: string }[] =
     walletHeld ? [] : [{ href: "/wallet", label: t.nav.wallet }];
-  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState }[] = isAuthed
+  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b), (d); D-13):
+     this rail keeps its five equal tracks around the centre coin, so Millionea is a row behind More here, never a slot.
+     Drawn only on the shell's own answer (the rollout admits the request, the reader is not on a break), as
+     `inviteVisible` is.
+     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row's words wear the three money colours
+     (`kp-millionea-ink`, globals.css), the one ink every nav gives Millionea — the journey's tab and both desktop links
+     wear the same class — and NO MARK: More's other rows carry none, and a mark before this row's words alone set them
+     ~28px right of every other row's (the lead's tile read, 2026-10-19). Words in the ink, as the classic bar's core link. */
+  const millioneaRow: { href: string; label: string; ink: boolean }[] = millionea
+    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }]
+    : [];
+  const moreItems: { href: string; label: string; proposalsBadge?: ProposalsState; ink?: boolean }[] = isAuthed
     ? [
+        ...millioneaRow,
         { href: "/results",        label: t.common.results },
         { href: "/positions",      label: t.common.positions },
         ...walletRow,
@@ -147,6 +159,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
         ...proposalsRow,
       ]
     : [
+        ...millioneaRow,
         { href: "/results",     label: t.common.results },
         { href: "/leaderboard", label: t.nav.leaderboard },
         { href: "/fairness",    label: t.footer.resolutionAttestation },

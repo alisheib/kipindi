@@ -31,7 +31,13 @@ const CHIP_WIDTHS = ["w-[64px]", "w-[96px]", "w-[112px]", "w-[88px]"];
 /** The first row of cards: one fills a phone's screen, three are the grid's first row from 1024. */
 const CARDS = [0, 1, 2];
 
-export function JourneyHomeGhost({ t }: { t: Dict }) {
+/**
+ * `millionea` — MASWALI-BUILD S5: the route says the Millionea card will be offered (`app/page.tsx`, from the doors' one
+ * answer), so its slot is held between the head and the chips where the card lands (O-7). The root loading's picture of
+ * `/` cannot ask, and draws none (`route-ghost.tsx`). The slot is the card's own box: a raised card, the 48px plate, three
+ * lines — no word, no figure.
+ */
+export function JourneyHomeGhost({ t, millionea = false }: { t: Dict; millionea?: boolean }) {
   return (
     <PageContainer tier="board">
       <div className="kp-jhome kp-jhome-ghost" data-testid="journey-home-ghost">
@@ -45,6 +51,16 @@ export function JourneyHomeGhost({ t }: { t: Dict }) {
           </div>
           <HomeHeadline t={t} ghost />
         </div>
+        {millionea && (
+          <div aria-hidden className="mat-raised flex items-start gap-2 rounded-card p-3" data-ghost-part="millionea">
+            <span className="kp-jhome-ghost__plate kp-shimmer-track" />
+            <span className="flex min-w-0 flex-1 flex-col gap-1.5 pt-1">
+              <span className="kp-jhome-ghost__bar kp-jhome-ghost__bar--where" />
+              <span className="kp-jhome-ghost__line" />
+              <span className="kp-jhome-ghost__bar kp-jhome-ghost__bar--when" />
+            </span>
+          </div>
+        )}
         <div aria-hidden className="kp-strip-fade kp-jhome__chips" data-ghost-part="chips">
           {CHIP_WIDTHS.map((w) => <span key={w} className={`kp-jhome-ghost__chip kp-shimmer-track ${w}`} />)}
         </div>

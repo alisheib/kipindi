@@ -7,7 +7,7 @@ import { SocketGlyph, socketWord, type SocketMark } from "@/components/maswali/m
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, weekWord } from "@/components/maswali/maswali-format";
 import { sideWord } from "@/lib/side-label";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
 
@@ -157,7 +157,7 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         <ReceiptRow className={ROW} label={t.millionea.forYourTicket} value={gilt(L.perTicket, !many)} />
         {many && (
           <>
-            <ReceiptRow className={ROW} label={`× ${L.yours} · ${fill(t.millionea.wonTickets, { n: L.yours })}`} value="" />
+            <ReceiptRow className={ROW} label={`× ${formatNumber(L.yours)} · ${fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })}`} value="" />
             <ReceiptRow className={ROW} label={t.millionea.yourTotal} value={gilt(L.yourTotal, true)} />
           </>
         )}

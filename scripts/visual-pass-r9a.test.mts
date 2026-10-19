@@ -582,6 +582,13 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
     ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle md:mt-0" />', 1, "row", "the Millionea card's end (MASWALI-BUILD S5): a door's end mark on its content edge, as the How-to card's"],
     ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a held Millionea ticket's row end in the hub's buy block (MASWALI-BUILD S5)"],
+    // MASWALI-BUILD S5 pages (2026-10-18): Millionea's text links end on their words' stroke; its two list rows end on their edge.
+    ['src/components/maswali/maswali-ticket.tsx', '<I.chevronRight s={14} edge="end" text="body-400" className="shrink-0" />', 1, "text", "a ticket row's 'view the ticket' link: its end after the 13px body/400 words"],
+    ['src/app/millionea/hub-notices.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "a hub notice's door: a text link's end after its body/400 words"],
+    ['src/app/millionea/millionea-parts.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the reading links' end (how it works, the register, fairness), one mark per link"],
+    ['src/app/millionea/register/[week]/page.tsx', '<I.chevronRight s={14} edge="end" text="body-400" />', 1, "text", "the register's audit-chain link's end"],
+    ['src/app/millionea/register/page.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle" />', 1, "row", "a week's row end in the register's list"],
+    ['src/app/positions/page.tsx', '<I.arrowRight s={14} edge="end" className="shrink-0 text-text-muted" />', 1, "row", "classic /positions' Millionea row: a door's end on its content edge (D-13 (c))"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const marksSeen = (source: (f: string) => string = code) => {

@@ -185,6 +185,9 @@ const REGISTRY: Record<string, [number, string]> = {
   // unearned, §M8a item 7) — the ticket draws its won amount through the win ledger's component.
   "src/components/maswali/maswali-win-ledger.tsx": [3, "earned money only (§M8a items 7–8): `.gilt-ink` on 'Kwa tiketi yako' / 'Jumla yako' and on a won ticket's paid amount; the ticket card's struck payout stat (the platform card's own)"],
   "src/components/maswali/maswali-slip.tsx": [2, "the Millionea money commit (§M3a): the confirm sheet's armed 'Kata tiketi', the kit's gold Button in `.gilt-metal` — the slip's 'Endelea' is brand primary"],
+  // 2026-10-18 (S5 integration): the slip page's door to deposit is a DEPOSIT DOOR (§M3a), as the wallet's and the bet
+  // sheet's are — not Millionea's own gold, which stays the two files above (§M8a item 7 rules on unearned figures).
+  "src/app/millionea/slip/slip-client.tsx": [2, "the deposit door when the balance is short of the ticket (§M3a: deposit doors are gold, `btn-gold` + `.gilt-metal`, as the Wallet's)"],
   "src/lib/notification-appearance.ts": [3, "WIN — 'the only money outcome that is gold'"],
   // R8-A (2026-10-10): −1 — TONE_INK.amber (`text-warning-fg`) is amber, not gold (Ali's ruling (1)).
   "src/lib/status-tone.ts": [2, "the dictionary's struck gilt: RESOLVED, WIN (§B11)"],
@@ -210,7 +213,11 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  "src/app/globals.css": [94, "S8 deposit rails use the dark --gold-fg ink on the whole gilt-metal deposit door (S8 §WP6 and pick-3 canvas row); the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
+  // MASWALI-BUILD S5-TAB (+7, 94 → 101; Ali's ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11): Maswali Millionea's
+  // ink — the gold stop of its still green → gold → red label gradient (resting, lit or hovered, and the journey's
+  // not-found restore), its gold fallback word and faint gold halo, and its mark's resting gold (and that restore). The
+  // Owner's label for a destination, not money (§M8a item 7 untouched); `test:maswali-ui` §5b holds the class to tokens.
+  "src/app/globals.css": [101, "S8 deposit rails use the dark --gold-fg ink on the whole gilt-metal deposit door (S8 §WP6 and pick-3 canvas row); the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); OWNER (Ali, 2026-10-19, §M8a item 11): Millionea's ink (`.kp-millionea-ink`, `.kp-millionea-glyph`) — its gradient's gold stop, gold fallback word, faint halo and resting mark, a destination's label, not money; dead: `.bg-damask`; admin: `poll-flash`"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],

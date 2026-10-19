@@ -23,6 +23,7 @@ import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
+import { millioneaTicketsDoor } from "@/lib/server/millionea-doors";
 import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay, formatEatDateTime } from "@/lib/eat-day";
 import { pickLocalized } from "@/lib/localized";
 import { formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
@@ -90,6 +91,10 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // ⭐ S6 WP9 — the one cached resolver, asked once for this request: a journey reader is on Tiketi zangu's Up & Down
   // kind, and only the header below changes for them.
   const { journey } = await resolveSimpleJourney();
+  // MASWALI-BUILD S5 · the switch's third kind, asked BESIDE this page's own reads (the S5 review of 24ec0d33, LOW 10):
+  // one cached read, which this page awaits before it draws and hands to `TicketsHead` (the journey's Tiketi files read
+  // nothing: `test:journey-tickets` §8).
+  const millioneaKindNow = journey ? millioneaTicketsDoor() : null;
 
   // ── The digest's deep link (`?day=YYYY-MM-DD`), one EAT calendar day ──────
   //
@@ -304,6 +309,8 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // round, so a round settling on page 3 changes the Net return a player is reading on page 1.
   // Polling only while something visible is live would leave those figures stale with no tell.
   const anyLive = viewRounds.some((g) => g.anyOpen);
+  // MASWALI-BUILD S5 · the switch's third kind: the door's answer, started above beside this page's reads.
+  const millionea = (await millioneaKindNow) === true;
 
   return (
     <div className="mx-auto w-full max-w-reading px-3 lg:px-6 py-6">
@@ -317,7 +324,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
           where its element stood, so a reader the journey is not shown to is served today's tree exactly, payload and
           all. The wrapper above with its gutter, the scroll to a linked ticket, the poller, the day filter and everything
           below are everybody's. */}
-      {journey ? <TicketsHead current="updown" t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}
+      {journey ? <TicketsHead current="updown" millionea={millionea} t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}
       {journey ? null : (
         <div className="mt-3">
           <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />

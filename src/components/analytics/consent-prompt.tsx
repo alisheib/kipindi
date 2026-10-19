@@ -12,7 +12,9 @@
  *  · **No close button.** Closing without answering would be a third answer that means nothing; the visitor can
  *    simply ignore the card, and analytics stays off.
  *  · **Only where analytics could run:** the live hosts, not an excluded page (`gaExcluded`), and never over a
- *    money control (`isCommitSurface`, re-evaluated on every route like `InstallInvite`).
+ *    money control (`isCommitSurface`, re-evaluated on every route like `InstallInvite`) — which a not-found page at a
+ *    commit address does not carry, so the card may ask there (MASWALI-BUILD S5; the S5 review of 24ec0d33, LOW 11:
+ *    a dark Millionea slip is a missing page).
  *  · **Automation is not asked** (HeadlessChrome/Playwright) — a bot never consents, so it is never measured —
  *    unless a driver asks with `?consent=1`, so the card can still be photographed (the primer's convention).
  *  · **The bottom invitation slot, priority 0**: it outranks the install invitation (1), because consent is a
@@ -26,6 +28,7 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { isCommitSurface } from "@/lib/surfaces";
+import { useNotFoundShown } from "@/lib/not-found-mark";
 import { useInvitationSlot } from "@/lib/invitation-slot";
 import { GA_HOSTS, gaExcluded } from "@/lib/google-tag";
 import { setConsent, useAnalyticsConsent } from "@/lib/analytics-consent";
@@ -48,6 +51,7 @@ export function ConsentPrompt() {
   const consent = useAnalyticsConsent();
   const [ready, setReady] = useState(false);
   const [askable, setAskable] = useState(false);
+  const notFoundShown = useNotFoundShown();
 
   useEffect(() => {
     const forced = consentForced();
@@ -58,7 +62,8 @@ export function ConsentPrompt() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  const eligible = askable && ready && consent === "unset" && !!pathname && !gaExcluded(pathname) && !isCommitSurface(pathname);
+  const overMoney = isCommitSurface(pathname) && !notFoundShown;
+  const eligible = askable && ready && consent === "unset" && !!pathname && !gaExcluded(pathname) && !overMoney;
   const holdsSlot = useInvitationSlot("analytics-consent", "bottom", 0, eligible);
   if (!holdsSlot) return null;
 

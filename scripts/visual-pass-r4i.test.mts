@@ -724,8 +724,10 @@ section("10 · the journey Wallet says why there is no Deposit; Pumzika states t
   ok("10.2 · the shell hands the end to the JOURNEY bar only, derived from the row it holds; every offer still reads the one boolean",
     /journeyBreak = breakStateFromTimers\(rg\?\.selfExclusionUntil, rg\?\.coolingOffUntil, now\);/.test(SHELL)
       // `user={journeyUser}` since R4-H (the journey header's copy of the user, its phone masked by maskPhone).
+      // ⚠️ RE-PINNED, MASWALI-BUILD S5 (2026-10-17): the classic bar gains `millionea` (Millionea's More row, MASWALI-PLAN
+      // §10 §3.2), never the break's end — still the journey bar's alone.
       && /<LazyJourneyTopBar user=\{journeyUser\} onBreak=\{promoSuppressed\} breakEnd=\{journeyBreak\}/.test(SHELL)
-      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} \/>/.test(SHELL)
+      && /<TopAppBar user=\{topUser\} proposalsState=\{proposalsState\} inviteVisible=\{inviteVisible\} invitePaid=\{invitePaid\} millionea=\{millioneaRow\} \/>/.test(SHELL)
       && /onBreak=\{onBreak\} breakEnd=\{breakEnd\} \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
   // The hub row, rendered.
   const viewer = {

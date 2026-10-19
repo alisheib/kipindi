@@ -5,7 +5,7 @@ import { I, plateGlyph } from "@/components/ui/glyphs";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, eatWeekdayClock, productWeek } from "@/components/maswali/maswali-format";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
-import { cn, fill, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -24,21 +24,30 @@ import type { Dict } from "@/lib/i18n-dict";
 export type HomeCardState =
   /** Before the week opens: the figure is a dash, and the day it opens. */
   | { kind: "presale"; opensOn: string }
-  /** Selling: the close and, for a signed-in player, the tickets they hold; at the cap, when the next week opens. */
-  | { kind: "open"; closesAt: number; held: number | null; capFull?: { nextWeek: number; opensOn: string } }
+  /** Selling: the close and, for a signed-in player, the tickets they hold; at the cap, when the next week opens — or no
+   *  next week at all, in a final week or while Millionea ends (`next` null). */
+  | { kind: "open"; closesAt: number; held: number | null; capFull?: { next: { week: number; opensOn: string } | null } }
   /** Sales closed, results arriving. */
   | { kind: "closed"; resultsIn: number }
   /** Settled with winners, or with no 10/10 and the pool carried. */
   | { kind: "settledWon"; winners: number }
   | { kind: "settledRollover"; carried: number }
   /** Sales paused by an operator (never on a break: that card is not drawn). */
-  | { kind: "paused" };
+  | { kind: "paused" }
+  /** The week's void is already certain (MR-18): no jackpot and no rule — its refunds, if the void stands. */
+  | { kind: "voiding" }
+  /** The last week was voided whole: every refund landed, or they are on their way. */
+  | { kind: "voided"; refundsPending: boolean };
 
-export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, href = "/millionea", className }: {
+export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
   t: Dict;
   week: number;
   /** The headline (the larger of the floor and the carry plus sales), or null before sales and while paused. */
   jackpot: number | null;
+  /** §M8a item 9 · the headline is a true lower bound while the carry waits on an earlier week: "at least", never exact. */
+  atLeast?: boolean;
+  /** …and that week, named: "plus Week 41's carry-over once it is final", as the hub's pool block says it. */
+  pendingWeek?: number | null;
   /** The week's fee rate, as a number of percent. */
   pct: number;
   /** The weekly cap, from the week's snapshot. */
@@ -50,6 +59,15 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
   className?: string;
 }) {
   const figure = jackpot === null ? "—" : formatTzs(jackpot);
+  // The figure as one unbreakable run in the money face; "at least" around it while the carry is pending (§M8a item 9).
+  const amount = (className: string) => {
+    const run = <span className={cn("amount", className)}>{figure}</span>;
+    return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;
+  };
+  const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;
+  // ⛔ A WEEK BEING VOIDED OR VOIDED SHARES NO JACKPOT (the S5 UI review, MEDIUM 7): no figure and no "shared equally by
+  // every 10/10 ticket" rule — the state's own words alone.
+  const voidKind = state.kind === "voiding" || state.kind === "voided";
   const mono = (s: string) => <span className="font-mono">{s}</span>;
   let meta: ReactNode = null;
   switch (state.kind) {
@@ -57,17 +75,21 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
       meta = fill(t.millionea.opensOn, { day: state.opensOn });
       break;
     case "open":
+      // "Tiketi zako wiki hii: 10 kati ya 10" — never "Tiketi zako 10/10" under "kila tiketi ya 10/10", which reads as a
+      // perfect ticket (the S5 UI review, LOW 12).
       meta = state.capFull
-        ? `${fill(t.millionea.yourTicketsShort, { n: cap, cap })} · ${fill(t.millionea.nextWeekOpens, { week: state.capFull.nextWeek, day: state.capFull.opensOn })}`
+        ? [fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(cap), cap: formatNumber(cap) }),
+            state.capFull.next ? fill(t.millionea.nextWeekOpens, { week: state.capFull.next.week, day: state.capFull.next.opensOn }) : null,
+          ].filter(Boolean).join(" · ")
         : (
           <>
             {fillNodes(t.millionea.salesCloseAt, { when: mono(eatWeekdayClock(t, state.closesAt)) })}
-            {state.held !== null && ` · ${fill(t.millionea.yourTicketsShort, { n: state.held, cap })}`}
+            {state.held !== null && ` · ${fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(state.held), cap: formatNumber(cap) })}`}
           </>
         );
       break;
     case "closed":
-      meta = fill(t.millionea.resultsOut, { n: state.resultsIn });
+      meta = fill(t.millionea.resultsOut, { n: formatNumber(state.resultsIn) });
       break;
     case "settledWon":
       meta = counted(state.winners, t.millionea.settledWonOne, t.millionea.settledWon, { week });
@@ -78,11 +100,17 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
     case "paused":
       meta = t.millionea.pausedShort;
       break;
+    case "voiding":
+      meta = t.millionea.weekVoidingShort;
+      break;
+    case "voided":
+      meta = state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort;
+      break;
   }
   return (
     <Link
       href={href as never}
-      className={cn("mat-raised flex items-start gap-2 rounded-card p-3 text-text md:items-center md:gap-3 xl:gap-4 xl:px-4", className)}
+      className={cn("kp-mln-zh mat-raised flex items-start gap-2 rounded-card p-3 text-text md:items-center md:gap-3 xl:gap-4 xl:px-4", className)}
     >
       <IconPlate size={48} bg="var(--bg-overlay)" fg="var(--text-muted)" border="1px solid var(--border)">
         <MillioneaGlyph name="millionea" s={plateGlyph(48)} />
@@ -91,18 +119,21 @@ export function MaswaliHomeCard({ t, week, jackpot, pct, cap, state, finalWeek, 
         <span className="font-display text-body-lg font-semibold text-text xl:shrink-0">{productWeek(t, week)}</span>
         {finalWeek && <span className="text-body-sm text-text">{t.millionea.finalWeek}</span>}
         {/* The headline with its rule — in the column at 360, in the row at 1280; at 768 the figure has its own block. */}
-        <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">
-          {fillNodes(t.millionea.ruleWithFigure, {
-            amount: <span className="amount font-semibold text-text xl:text-body-lg">{figure}</span>,
-            pct,
-          })}
-        </span>
+        {!voidKind && (
+          <span className="text-body-sm text-text-muted text-pretty md:hidden xl:block xl:flex-1">
+            {fillNodes(t.millionea.ruleWithFigure, { amount: amount("font-semibold text-text xl:text-body-lg"), pct })}
+            {pending && <span className="block">{pending}</span>}
+          </span>
+        )}
         <span className="text-body-sm text-text-subtle text-pretty xl:shrink-0 xl:whitespace-nowrap">{meta}</span>
       </span>
-      <span className="hidden max-w-[300px] flex-col items-end gap-0.5 text-right md:flex xl:hidden">
-        <span className="amount text-title-sm font-semibold text-text">{figure}</span>
-        <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.ruleShared, { pct })}</span>
-      </span>
+      {!voidKind && (
+        <span className="hidden max-w-[300px] flex-col items-end gap-0.5 text-right md:flex xl:hidden">
+          <span className="text-title-sm font-semibold text-text">{amount("")}</span>
+          {pending && <span className="text-body-sm text-text-muted text-pretty">{pending}</span>}
+          <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.ruleShared, { pct })}</span>
+        </span>
+      )}
       <I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle md:mt-0" />
     </Link>
   );

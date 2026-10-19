@@ -26,7 +26,8 @@
  *
  * ── WHAT A MACHINE ASSERTS, ONE PASS OR FAIL LINE EACH ───────────────────────────────────────────────────────────
  *   · every page load: it opened (HTTP below 400), in the language asked for, with no Next.js error overlay or page;
- *   · the chrome: for a pass holder the journey header, the shell’s mark, the four tabs below 1024 and the desktop
+ *   · the chrome: for a pass holder the journey header, the shell’s mark, the four tabs below 1024 (five, Millionea’s
+ *     after Juu/Chini, when the drive is started with FEATURE_MILLIONEA=ACTIVE — MILLIONEA_SHOWN below) and the desktop
  *     links from 1024, no classic bar; for a viewer WITHOUT a pass the classic bar, rail and coin and no journey
  *     trace, and /account answering HTTP 200 with the not-found page’s noindex, nofollow and no hub (A2, A3), beside
  *     a control: the same request with the pass is served the hub;
@@ -35,7 +36,8 @@
  *   · no control past the viewport edge (`live/clip.mjs`, CLIP_PROBE) in the journey header, the tabs, the page’s main
  *     landmark and an open sheet, or for the classic chrome anywhere in the body. The document’s own scrollWidth is
  *     only a backstop: html and body clip, so it reads 0 over a severed control;
- *   · at 320, the four tab labels whole and on screen (RAIL_PROBE, the reading A17 left owed to the 320 drive);
+ *   · at 320, the tab labels whole and on screen, four (or five) of them (RAIL_PROBE, the reading A17 left owed to the
+ *     320 drive);
  *   · each header state landed: a guest’s Ingia and Jisajili; the capsule, its figure (TZS 999,999 and the compact
  *     TZS 9.9M among them), its hold, its mask; the gold + Weka pesa only where the wallet is not held and never on
  *     the deposit screen; a held wallet’s Wallet with its frozen notice and no money door;
@@ -330,25 +332,39 @@ const SEEDED_TITLES = [
   { en: 'Bitcoin closes above $100,000 on 1 August', sw: 'Bitcoin yafunga juu ya $100,000 tarehe 1 Agosti', zh: '比特币8月1日收于10万美元以上' },
 ];
 
-/** lib/nav/active-tab.ts, `JOURNEY_TABS`: the four tabs’ own hrefs. */
-const TAB_HREF = { questions: '/', updown: '/updown', tickets: '/positions', account: '/account' };
+/**
+ * ⭐ MASWALI-BUILD S5-TAB (Ali, 2026-10-19): whether the server draws Maswali Millionea’s tab for this drive’s readers —
+ * at ACTIVE, every reader not on a break (STAFF_PREVIEW shows it to staff alone, and no reader here is staff). Start the
+ * drive with the server’s own FEATURE_MILLIONEA: the tabs then number five, Millionea’s right after Juu/Chini, and its
+ * pages light its tab; otherwise they number four and those pages fall back to Maswali (`journeyTabsFor`, the table’s
+ * `fallback`).
+ */
+const MILLIONEA_SHOWN = process.env.FEATURE_MILLIONEA === 'ACTIVE';
+const TAB_COUNT = MILLIONEA_SHOWN ? 5 : 4;
+const TAB_COUNT_WORD = MILLIONEA_SHOWN ? 'five' : 'four';
+/** lib/nav/active-tab.ts, `JOURNEY_TABS` and `MILLIONEA_TAB`: the tabs’ own hrefs. */
+const TAB_HREF = { questions: '/', updown: '/updown', millionea: '/millionea', tickets: '/positions', account: '/account' };
 /**
  * lib/nav/active-tab.ts, `TAB_ROUTES`, row for row, with `routeMatches`: the first row that claims a path wins, and a
- * row claims its own path or one below it. A copy because this drive runs on plain node, as journey-header-fit.mjs
- * keeps its own: when the table moves, the active-tab lines FAIL until this copy follows, loudly.
+ * row claims its own path or one below it; a row’s fourth field is its fallback, the tab it lights where the drawn tabs
+ * lack its own. A copy because this drive runs on plain node, as journey-header-fit.mjs keeps its own: when the table
+ * moves, the active-tab lines FAIL until this copy follows, loudly.
  */
 const TAB_ROUTES = [
-  ['/', 'questions', true], ['/markets', 'questions'], ['/updown/history', 'tickets'], ['/updown', 'updown'],
+  ['/', 'questions', true], ['/markets', 'questions'], ['/millionea/tickets', 'tickets'], ['/millionea', 'millionea', false, 'questions'],
+  ['/updown/history', 'tickets'], ['/updown', 'updown'],
   ['/positions', 'tickets'], ['/account', 'account'], ['/wallet', 'account'], ['/profile', 'account'],
   ['/notifications', 'account'], ['/results', 'account'], ['/live', 'account'], ['/leaderboard', 'account'],
   ['/fairness', 'account'], ['/help', 'account'], ['/legal', 'account'], ['/proposals', 'account'],
   ['/agent', 'account'], ['/watchlist', 'account'], ['/auth', null], ['/s', null], ['/offline', null, true],
 ];
-/** The tab a pathname must light, and its aria-current (`tabAriaCurrent`): page on its own href, else true. */
+/** The tab a pathname must light among the drawn tabs, and its aria-current (`tabAriaCurrent`): page on its own href, else true. */
 function expectedTab(pathname) {
-  for (const [prefix, tab, exact] of TAB_ROUTES) {
+  for (const [prefix, tab, exact, fallback] of TAB_ROUTES) {
     if (pathname === prefix || (!exact && pathname.startsWith(`${prefix}/`))) {
-      return tab === null ? null : { tab, href: TAB_HREF[tab], current: TAB_HREF[tab] === pathname ? 'page' : 'true' };
+      if (tab === null) return null;
+      const lit = tab === 'millionea' && !MILLIONEA_SHOWN ? fallback : tab;
+      return { tab: lit, href: TAB_HREF[lit], current: TAB_HREF[lit] === pathname ? 'page' : 'true' };
     }
   }
   return null;
@@ -1216,7 +1232,7 @@ function headingProblem(found, spec, locale) {
 /** What is wrong with the lit destination, or null. On the tabs the tabs’ own mark (data-on) must agree with aria-current. */
 function judgeTabs(items, want, where, rail) {
   if (!Array.isArray(items)) return `no ${where} on the page`;
-  if (items.length !== 4) return `${where} hold ${items.length} destinations, not 4`;
+  if (items.length !== TAB_COUNT) return `${where} hold ${items.length} destinations, not ${TAB_COUNT}`;
   const lit = items.filter((i) => i.on || i.current !== null);
   if (want === null) return lit.length === 0 ? null : `${where}: ${lit.length} lit on a page no tab owns`;
   if (lit.length !== 1) return `${where}: ${lit.length} lit (${lit.map((i) => i.href ?? i.tag).join(', ')}), not exactly one`;
@@ -1248,7 +1264,7 @@ async function checkShell(page, cell, { journey, dialog = false }) {
     return;
   }
   const below = cell.width < 1024;
-  ok(`${tag} · the journey chrome: its header and the shell’s mark, ${below ? 'the four tabs on screen' : 'the desktop links on screen and the tabs not'}, no classic bar`,
+  ok(`${tag} · the journey chrome: its header and the shell’s mark, ${below ? `the ${TAB_COUNT_WORD} tabs on screen` : 'the desktop links on screen and the tabs not'}, no classic bar`,
     s.journeyHeader === 1 && s.journeyTabs === 1 && s.mark && s.classicHeader === 0 && (below ? s.railShown && !s.linksShown : s.linksShown && !s.railShown), seen);
   const want = expectedTab(cell.pathname);
   const t = await page.evaluate(TAB_PROBE);
@@ -1265,8 +1281,8 @@ async function checkShell(page, cell, { journey, dialog = false }) {
   if (cell.width === 320) {
     const labels = (await page.evaluate(RAIL_PROBE)) ?? [];
     const cut = labels.filter((l) => l.cut || l.offscreen);
-    ok(`${tag} · the four tab labels whole at 320: ${labels.map((l) => `${l.text} (${l.lines} line${l.lines === 1 ? '' : 's'})`).join(', ')}`,
-      labels.length === 4 && cut.length === 0, cut.map((l) => `${l.text}${l.cut ? ' cut' : ''}${l.offscreen ? ' off screen' : ''}`).join(' · '));
+    ok(`${tag} · the ${TAB_COUNT_WORD} tab labels whole at 320: ${labels.map((l) => `${l.text} (${l.lines} line${l.lines === 1 ? '' : 's'})`).join(', ')}`,
+      labels.length === TAB_COUNT && cut.length === 0, cut.map((l) => `${l.text}${l.cut ? ' cut' : ''}${l.offscreen ? ' off screen' : ''}`).join(' · '));
   }
 }
 

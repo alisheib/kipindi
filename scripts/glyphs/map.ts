@@ -260,6 +260,9 @@ export const SHELL_KEYS: readonly string[] = [
   // console's own chrome is release 3's (§8d).
   "markets", "trade", "live", "more", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
   "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
+  // MASWALI-BUILD S5-TAB (Ali, 2026-10-19): Maswali Millionea's own tab on the journey rail draws the product's mark before
+  // any tap while Millionea shows, so its drawing is the chrome's — never a sprite file a slow first visit waits for.
+  "millionea",
 ];
 /**
  * The shell keys whose FILL the chrome itself draws, so it is inlined beside their Bold (W4). The rest of a shell key's
@@ -269,7 +272,7 @@ export const SHELL_KEYS: readonly string[] = [
  * The balance pill's lock and eye, and the header's caret, draw their Fill only in a page's body (a callout, the preview
  * notice, a card's 24h move), so those Fills ride in the app sprite. `test:glyph-map` §9b holds the list to the chrome.
  */
-export const CHROME_FILLS: readonly string[] = ["markets", "trade", "live", "more", "ticket", "user", "bell"];
+export const CHROME_FILLS: readonly string[] = ["markets", "trade", "live", "more", "ticket", "user", "millionea", "bell"];
 export const ADMIN_KEYS: readonly string[] = [
   "upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile",
   // W3 (R-ADMIN, R-INDICATOR 3B): the console's own destinations (NEW_KEYS below), drawn only by its sidebar and drawer.
@@ -300,8 +303,9 @@ export const FILL_KEYS: readonly string[] = [
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
   "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
   // W3 (R-INDICATOR 3B): the two tab bars' destinations — the current one draws its Fill on the pill (NavGlyph). Shell
-  // keys in CHROME_FILLS, so their Fill is inlined beside their Bold. (W4: the classic rail's More is `more`.)
-  "markets", "trade", "live", "more", "ticket", "user",
+  // keys in CHROME_FILLS, so their Fill is inlined beside their Bold. W4 names the classic rail's More `more`;
+  // S5 adds the Millionea tab's current-state Fill.
+  "markets", "trade", "live", "more", "ticket", "user", "millionea",
   // W3 (R-INDICATOR 3B): the admin sidebar's destinations — the current one draws its Fill (NavGlyph).
   // In the sidebar's order (admin-nav-groups.ts NAV_GROUPS); `live`, `markets` and `trade` are listed above. The console's
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
@@ -327,8 +331,10 @@ export const DUO_KEYS: readonly string[] = [];
  * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
+ * MASWALI-BUILD S5 (2026-10-19): the merge base on origin/main da35b826b serves app.7606b117.svg and
+ * admin.b27adee4.svg. Keep both for the release's open pages; recheck the live pair before pushing main.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.9032012a.svg", "admin.86ca5167.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.7606b117.svg", "admin.b27adee4.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

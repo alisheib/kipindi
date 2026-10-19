@@ -71,8 +71,8 @@
  *
  * ⛔ No regex here is typed with a backslash: an editing tool decodes typed escapes (repo memory, 2026-10-02), so the
  * Unicode classes are built from their codes. Pinned client-safe by `test:client-graph-safe`: it imports only
- * `./kept-promises` (nothing), `../contacts/contact-fields`, `../eat-day` (nothing) and `../marketing/sms-settings`
- * (nothing).
+ * `./kept-promises` (nothing), `../contacts/contact-fields`, `../eat-day` (nothing), `../marketing/sms-settings`
+ * (nothing) and `../millionea-rollout` (the rollout's isomorphic ceiling — privacy's version follows it).
  *
  * Guard: `npm run test:policy-lines` (L0–L10, in-process `--prove-red`), with `test:rg-policy` K1/K2 and
  * `test:privacy-notice`.
@@ -81,6 +81,7 @@ import { KEPT_PROMISES, holdsPhrase, namesATime, promiseReading, promisesIn, tim
 import { charCount, holdsPhoneRun } from "../contacts/contact-fields";
 import { eatDayKey } from "../eat-day";
 import { MARKETING_SMS_SETTINGS_DEFAULTS, formatWindow } from "../marketing/sms-settings";
+import { millioneaWordingPublished } from "../millionea-rollout";
 
 /* ══ THE LANGUAGES ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -148,10 +149,18 @@ export type PolicyPageSpec = {
    suffix rule holds for a save made on 2026-10-11 before it deploys.
    Privacy 2026-10-14 (Vodacom S8 owner recovery): §7 distinguishes the 24-hour link selection from account-partitioned unresolved keys and historic quarantine.
    Privacy 2026-10-15 (Vodacom S11 WP4): §7's display-choices sentence names How to Play's seen key, 50pick-howto-seen.
-   Privacy 2026-10-15.2 (Vodacom S12 WP10b): §7 also names the Up & Down round selection in necessary tab storage. */
+   Privacy 2026-10-15.2 (Vodacom S12 WP10b): §7 also names the Up & Down round selection in necessary tab storage.
+   Privacy 2026-10-17 (MASWALI-BUILD S5): §7 names the Maswali Millionea slip's tab key — published WITH THE PRODUCT (the
+   lead's decision of 2026-10-18): the page prints that paragraph, and this version in META's place, only while the
+   server's ceiling admits Millionea (`millioneaWordingPublished`). Below it the code version is the page's own META,
+   production's 2026-10-15.2, so every save stamps, and the console prints, exactly what production prints. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-15.2", versionKey: "version.privacy" },
+  privacy: {
+    path: "/legal/privacy", title: "Privacy Policy",
+    get codeVersion() { return millioneaWordingPublished() ? PRIVACY_VERSION_WITH_MILLIONEA : PRIVACY_VERSION_DARK; },
+    versionKey: "version.privacy",
+  },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);
@@ -597,6 +606,12 @@ export function policyVerdictBlocks(v: PolicyLineVerdict): boolean {
 
 /* ══ THE VERSIONS ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
 
+/** Privacy's version while Millionea is dark: the page's own META, production's notice (`test:policy-lines` L0). */
+export const PRIVACY_VERSION_DARK = "2026-10-15.2";
+/** …and the version §7's Millionea slip paragraph moves the notice to, printed only while the ceiling admits the product
+ *  (`POLICY_PAGES.privacy`; `test:privacy-notice` §1 pins both, each with its English text). */
+export const PRIVACY_VERSION_WITH_MILLIONEA = "2026-10-17";
+
 const VERSION_TOKEN = "[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[.][0-9]{1,4})?";
 const VERSION_WHOLE = new RegExp(`^${VERSION_TOKEN}$`);
 const VERSION_IN_TEXT = new RegExp(VERSION_TOKEN);
@@ -662,6 +677,14 @@ export function nextPolicyVersion(printed: string, nowMs: number): string {
   const today = eatDayKey(Number.isFinite(nowMs) ? nowMs : Date.now());
   const { day } = versionParts(printed);
   return day >= today ? nextSuffix(printed) : today;
+}
+
+/** ⭐ A page's META line printing its page's code version NOW — privacy's follows the Millionea ceiling (`POLICY_PAGES`):
+ *  unchanged, byte for byte, while META already carries it (every page, and privacy below the ceiling). */
+export function metaAtCode(meta: string, code: string): string {
+  const m = VERSION_IN_TEXT.exec(meta);
+  if (!m || m[0] === code || !isPolicyVersion(code)) return meta;
+  return `${meta.slice(0, m.index)}${code}${meta.slice(m.index + m[0].length)}`;
 }
 
 /** ⭐ A page's META line with its version made the one the page prints (`printedPolicyVersion`) — unchanged, byte for

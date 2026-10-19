@@ -701,8 +701,15 @@ function g10Wiring(W: World) {
   // Round 6 (2026-10-09, reviews C1 and C13): …and its account menu's two door answers — the agent's standing (`inviteAgent`,
   // the invite row's one name) and `kycOffered` (its KYC row only where /profile and the hub offer it); the classic arm's
   // props are unchanged, character for character.
-  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
-  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
+  // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5 (2026-10-17; MASWALI-PLAN §10 §3.2 (b)–(d), DESIGN_AUTHORITY §M8a item 11): BOTH
+  // classic arms gain one prop, `millionea={millioneaRow}` — Maswali Millionea as More's first row, recorded as a change to
+  // the accepted classic discovery layer. It is false for every reader the rollout does not show Millionea to (and for a
+  // reader on a break), so while Millionea is WITHDRAWN a classic viewer is still served exactly what they were.
+  // ⚠️ RE-PINNED IN THE OPEN, MASWALI-BUILD S5-TAB (2026-10-19; Ali's ruling, DESIGN_AUTHORITY §M8a item 11): BOTH journey arms
+  // gain the same prop, last as in the classic arms — the journey bar draws Millionea's link and the rail its fifth tab from
+  // that one answer, and while it is false (WITHDRAWN, or a break) they draw today's four destinations.
+  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} millionea={millioneaRow} />}";
+  const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} millionea={millioneaRow} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
   const DYNAMIC_LINES = [
@@ -924,7 +931,7 @@ const PLANTS: Plant[] = [
   { name: "the journey tabs render for everyone (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
     world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs", "{true ? <LazyJourneyTabs") }) },
   { name: "the classic rail is dropped (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
-    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}", " : null}") }) },
+    world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} millionea={millioneaRow} />}", " : null}") }) },
   { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
     world: (w) => ({ ...w, shell: w.shell.replace("supportPhoneTel={SUPPORT_PHONE_TEL()} />}", "supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown />}") }) },
   // ⚠️ RE-ANCHORED 2026-10-12: R9-B (c4f65f6e) gave this link `keep={journeyShown}`, so the old anchor matched nothing and
@@ -936,9 +943,14 @@ const PLANTS: Plant[] = [
   { name: "the journey header renders beside the classic one (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
     world: (w) => ({ ...w, shell: w.shell.replace("<HeaderScrollCast />", "<HeaderScrollCast /><LazyJourneyTopBar user={topUser} onBreak={false} proposalsState={proposalsState} />") }) },
   { name: "the journey header back in a Suspense boundary over the bar's empty box, so a slow first paint shows an empty band (R4-J, E36)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
-    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTopBar user=", '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=').replace("invitePaid={invitePaid} /> : <TopAppBar", "invitePaid={invitePaid} /></Suspense> : <TopAppBar") }) },
+    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTopBar user=", '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=').replace("invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar", "invitePaid={invitePaid} millionea={millioneaRow} /></Suspense> : <TopAppBar") }) },
   { name: "the journey tabs back in a Suspense boundary, so a slow first paint has no rail (R4-J, E36)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
-    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :", "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :") }) },
+    world: (w) => ({ ...w, shell: w.shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :", "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :") }) },
+  // S5-TAB: a journey arm that never hears the Millionea answer draws four destinations for a reader shown Millionea.
+  { name: "the journey rail never handed the Millionea answer (MASWALI-BUILD S5-TAB)", expect: new RegExp("^10[.]shell[.]chrome[.]tabs"),
+    world: (w) => ({ ...w, shell: w.shell.replace("<LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} />", "<LazyJourneyTabs userId={session?.userId ?? null} />") }) },
+  { name: "the journey header never handed the Millionea answer (MASWALI-BUILD S5-TAB)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
+    world: (w) => ({ ...w, shell: w.shell.replace("invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar", "invitePaid={invitePaid} /> : <TopAppBar") }) },
   { name: "AppShell imports the journey header statically, so every visitor downloads it (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]lazy"),
     world: (w) => ({ ...w, shell: w.shell.replace('import { BottomNav } from "./bottom-nav";', 'import { BottomNav } from "./bottom-nav"; import { JourneyTopBar } from "@/components/journey/journey-top-bar";') }) },
   { name: "a classic component imports a journey module (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]only"),

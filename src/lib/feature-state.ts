@@ -60,6 +60,7 @@
  * helper called from server components has taken every page down in this repo before.
  */
 import type { Role } from "@/lib/server/roles";
+import { isRolloutState, lowerRollout, type RolloutState } from "@/lib/rollout-state";
 
 /**
  * ACTIVE = live. WITHDRAWN = not part of the product.
@@ -389,12 +390,11 @@ export function houseBotsLive(): boolean {
  *                     `/admin/journey` or by a preview link the Owner issued) sees it, under a "Preview" marker.
  *   · ACTIVE        — everyone sees it (the S15 flip).
  *
- * ⛔ A SEPARATE TYPE FROM `FeatureState`, ON PURPOSE. That type keeps two members because a third that no
- * consumer distinguished (`COMING_SOON`) was deleted on 2026-09-06 (header above). These three ARE
- * distinguished — `test:simple-journey-flag` drives all three and asserts three different outcomes — and
- * widening `FeatureState` would let `FEATURE_INVITE=STAFF_PREVIEW` mean something nobody built.
+ * ⭐ The type and its two helpers (`isRolloutState`, `lowerRollout`) live in `rollout-state.ts` since 2026-10-18: one
+ * pure module an isomorphic ceiling reads without pulling this file into a client bundle (the warning above). They are
+ * re-exported here for every existing caller; why the type is separate from `FeatureState` is said there.
  */
-export type RolloutState = "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE";
+export { isRolloutState, lowerRollout, type RolloutState };
 
 /**
  * ⭐ THE SHIPPED CEILING. STAFF_PREVIEW until the S15 flip, which is the one-word commit that makes it ACTIVE.
@@ -402,20 +402,6 @@ export type RolloutState = "WITHDRAWN" | "STAFF_PREVIEW" | "ACTIVE";
  * states), and its name says what it is.
  */
 const SIMPLE_JOURNEY_SHIPPED: RolloutState = "STAFF_PREVIEW";
-
-const ROLLOUT_RANK: Record<RolloutState, number> = { WITHDRAWN: 0, STAFF_PREVIEW: 1, ACTIVE: 2 };
-
-/** True for exactly the three words, and for nothing else. */
-export function isRolloutState(v: unknown): v is RolloutState {
-  return v === "WITHDRAWN" || v === "STAFF_PREVIEW" || v === "ACTIVE";
-}
-
-/** The LOWER of two positions. ⛔ Anything that is not one of the three words ranks as WITHDRAWN. */
-export function lowerRollout(a: RolloutState, b: RolloutState): RolloutState {
-  const ra = isRolloutState(a) ? ROLLOUT_RANK[a] : 0;
-  const rb = isRolloutState(b) ? ROLLOUT_RANK[b] : 0;
-  return ra <= rb ? (isRolloutState(a) ? a : "WITHDRAWN") : (isRolloutState(b) ? b : "WITHDRAWN");
-}
 
 /**
  * THE OUTER CEILING over the new journey — what the code and the server's environment allow, before the

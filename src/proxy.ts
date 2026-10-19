@@ -28,6 +28,8 @@ import { NextResponse, type NextRequest } from "next/server";
 // Importing it rather than re-listing the staff roles here keeps ONE source of truth for "who is staff".
 import { isStaffRole } from "@/lib/server/roles";
 import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
+// Pure and isomorphic (the rollout's own pure module and nothing else): Millionea's dark addresses answer a real 404 here.
+import { MILLIONEA_DARK_PATH, millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";
 
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
@@ -271,6 +273,20 @@ export async function proxy(req: NextRequest) {
     "x-kp-document",
     req.headers.get("sec-fetch-mode") === "navigate" && !req.headers.has("next-action") ? "1" : "0",
   );
+  // MASWALI-BUILD S5 · MILLIONEA'S DARK ADDRESSES ANSWER A REAL 404 (`lib/millionea-edge.ts`). The root loading file streams
+  // a page's `notFound()` under a 200, so while the CEILING hides an address from this request it is rewritten here to a
+  // private segment no route answers, under the headers set above: the router's own 404, status and document as any
+  // unknown address gets. The cookie is read only for a Millionea address below ACTIVE; whatever passes still meets the
+  // page's own gate (the stored switch, the stored role, and — on the tickets, L5 — whether this account holds one).
+  if (millioneaEdgeAsks(pathname)) {
+    const session = await readVerifiedSession(cookie);
+    if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role) })) {
+      const url = req.nextUrl.clone();
+      url.pathname = MILLIONEA_DARK_PATH;
+      url.search = "";
+      return withSecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }), secure);
+    }
+  }
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     secure,

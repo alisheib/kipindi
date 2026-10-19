@@ -23,6 +23,7 @@ import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { redirect } from "next/navigation";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { millioneaHomeCard } from "@/components/maswali/maswali-home-card-door";
 import { journeyMarketsTarget } from "@/lib/journey/markets-redirect";
 
 import { EmptyState } from "@/components/ui/empty-state";
@@ -191,6 +192,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   const topicRows = filterRows(board.map((m) => toRow(m, NO_WATCH, undefined)), topicState, nowMs, () => true);
   const openMarkets = topicRows.filter((r) => matchesStatus(r, "open", nowMs));
   const openVolume = openMarkets.reduce((sum, r) => sum + r.pool, 0);
+  // MASWALI-BUILD S5 · the Millionea card at the board's head, above the filters, at every width (§10 §3.2 (a), D-13;
+  // DESIGN_AUTHORITY §M8a item 11): for a reader the rollout admits and who is not on a break; nothing otherwise.
+  const millionea = await millioneaHomeCard(t, nowMs, { className: "mb-3" });
 
   return (
     <PageContainer tier="board">
@@ -232,6 +236,8 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
           )}
         </p>
       </div>
+
+      {millionea}
 
       {/* `kp-markets-search` (round 5): 34px from the box to the bar's pills at every width, as on every other bar. */}
       <SearchBox

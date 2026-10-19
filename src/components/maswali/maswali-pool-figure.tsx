@@ -22,32 +22,37 @@ import type { Dict } from "@/lib/i18n-dict";
 export type PoolCarriedIn = { week: number; /** null while that week has not settled: the figure is then "at least" */ amount: number | null };
 type Sales = { tickets: number; amount: number };
 
+/**
+ * The views. ⛔ `floor` is null whenever the floor may not be printed — while the guarantee does not cover every unsettled
+ * week at its own frozen floor (MB-56, OD-02: never show the floor unless it is funded), or for a closed week whose
+ * read model carries none — and then the ledger has no floor line at all, never a zero.
+ */
 export type PoolView =
-  | { kind: "presale"; carriedIn: PoolCarriedIn | null; floor: number; opensOn: string }
-  | { kind: "selling"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number }
-  | { kind: "won"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number; fee: number; toWinners: number; winningTickets: number; perTicket: number }
-  | { kind: "rollover"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; jackpot: number; carriedOut: { week: number; amount: number } }
-  | { kind: "voiding"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; price: number }
-  | { kind: "voided"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number; price: number; refunded: number; carriedForward: { week: number; amount: number } }
+  | { kind: "presale"; carriedIn: PoolCarriedIn | null; floor: number | null; opensOn: string }
+  | { kind: "selling"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number }
+  | { kind: "won"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number; fee: number; toWinners: number; winningTickets: number; perTicket: number }
+  | { kind: "rollover"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; jackpot: number; carriedOut: { week: number; amount: number } }
+  | { kind: "voiding"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; price: number }
+  | { kind: "voided"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; floor: number | null; price: number; refunded: number; carriedForward: { week: number; amount: number };
+      /** Every ticket's refund has landed (MR-18; the read model's `refundsPending` negated): until then the refund row
+       *  says the money is on its way back, never that it was refunded (the S5 UI review, HIGH 1). */
+      refundLanded: boolean }
   | { kind: "sunset"; carriedIn: PoolCarriedIn | null; sales: Sales; pool: number; fee: number; toWinners: number; winningTickets: number; perTicket: number; top: { score: number; tickets: number } };
 
-type Row = { key: string; label: ReactNode; value: ReactNode; ink?: "text" | "muted" | "subtle"; weight?: "medium" | "semibold" | "bold" };
+/** One ledger row as the block draws it — exported with the builder below, so a suite reads what the block will say. */
+export type PoolLedgerRow = { key: string; label: ReactNode; value: ReactNode; ink?: "text" | "muted" | "subtle"; weight?: "medium" | "semibold" | "bold" };
+type Row = PoolLedgerRow;
 
 const INK = { text: "text-text", muted: "text-text-muted", subtle: "text-text-subtle" } as const;
 const WEIGHT = { medium: "font-medium", semibold: "font-semibold", bold: "font-bold" } as const;
 const DASH = "—";
 
-export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
-  t: Dict;
-  view: PoolView;
-  /** The week's fee rate as a number of percent (`pctNum` of the snapshot's rate). */
-  pct: number;
-  /** M7 — the carried-in figure travels from `from` (last week's figure) once, when `play` (the composer's seen state). */
-  carry?: { from: string; play: boolean };
-  /** A real sale or a settlement moved the larger-of-two figure: it dips and lands once (`.m-tick`). */
-  tick?: boolean;
-  className?: string;
-}) {
+/**
+ * ⭐ THE LEDGER'S ROWS, as the block prints them (pure; `test:maswali-design` reads it). ⛔ A void says what is TRUE at its
+ * moment (the S5 UI review, HIGH 1): while the week is being voided nothing is refunded and an objection can still undo it —
+ * "if the void stands, every ticket is refunded"; once voided, "every ticket refunded" only after every refund landed.
+ */
+export function poolLedgerRows(t: Dict, view: PoolView, pct: number, carry?: { from: string; play: boolean }): PoolLedgerRow[] {
   const v = view;
   const pending = v.carriedIn?.amount === null;
   const money = (n: number) => formatTzs(n);
@@ -71,15 +76,16 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
   if (v.kind === "presale") {
     rows.push({ key: "sales", label: `${t.millionea.salesThisWeek} · ${fill(t.millionea.opensOn, { day: v.opensOn })}`, value: DASH, ink: "muted" });
     rows.push({ key: "pool", label: t.millionea.poolTotal, value: DASH, ink: "muted" });
-    rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor) });
+    if (v.floor !== null) rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor) });
     rows.push({ key: "jackpot", label: t.millionea.jackpot, value: DASH, ink: "muted" });
     rows.push({ key: "fee", label: t.millionea.fee, value: DASH, ink: "muted" });
   } else {
     rows.push({ key: "sales", label: ticketsLabel(v.sales), value: money(v.sales.amount) });
     rows.push({ key: "pool", label: t.millionea.poolTotal, value: money(v.pool), weight: "semibold" });
-    if (v.kind !== "sunset") {
+    const floor = v.kind === "sunset" ? null : v.floor;
+    if (floor !== null) {
       // Above the floor, the floor line drops to the quiet ink and stays visible (§10 §1: "the jackpot line repeats the larger").
-      rows.push({ key: "floor", label: t.millionea.floor, value: money(v.floor), ink: v.pool > v.floor ? "subtle" : "text" });
+      rows.push({ key: "floor", label: t.millionea.floor, value: money(floor), ink: v.pool > floor ? "subtle" : "text" });
     }
     switch (v.kind) {
       case "selling":
@@ -99,10 +105,12 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
         break;
       case "voiding":
         rows.push({ key: "jackpot", label: t.millionea.jackpot, value: DASH, ink: "muted" });
-        rows.push({ key: "refund", label: fill(t.millionea.refundEach, { price: money(v.price) }), value: "" });
+        rows.push({ key: "refund", label: fill(t.millionea.refundEachIfVoid, { price: money(v.price) }), value: DASH, ink: "muted" });
         break;
       case "voided":
-        rows.push({ key: "refund", label: fill(t.millionea.refundEach, { price: money(v.price) }), value: money(v.refunded) });
+        rows.push(v.refundLanded
+          ? { key: "refund", label: fill(t.millionea.refundEach, { price: money(v.price) }), value: money(v.refunded) }
+          : { key: "refund", label: fill(t.millionea.refundEachPending, { price: money(v.price) }), value: DASH, ink: "muted" });
         rows.push({ key: "again", label: `${t.millionea.carriedForwardAgain} · ${fill(t.millionea.week, { week: v.carriedForward.week })}`, value: money(v.carriedForward.amount), weight: "bold" });
         break;
       case "sunset":
@@ -112,6 +120,33 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
         break;
     }
   }
+  return rows;
+}
+
+/** The rule under the headline — and none on a void: a week being voided or voided shares no jackpot (the S5 UI review,
+ *  HIGH 1), so "shared equally by every 10/10 ticket" would be false there. */
+export function poolRule(t: Dict, view: PoolView, pct: number): string | null {
+  if (view.kind === "voiding" || view.kind === "voided") return null;
+  return view.kind === "sunset"
+    ? counted(view.top.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: view.top.score })
+    : fill(t.millionea.ruleShared, { pct });
+}
+
+export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
+  t: Dict;
+  view: PoolView;
+  /** The week's fee rate as a number of percent (`pctNum` of the snapshot's rate). */
+  pct: number;
+  /** M7 — the carried-in figure travels from `from` (last week's figure) once, when `play` (the composer's seen state). */
+  carry?: { from: string; play: boolean };
+  /** A real sale or a settlement moved the larger-of-two figure: it dips and lands once (`.m-tick`). */
+  tick?: boolean;
+  className?: string;
+}) {
+  const v = view;
+  const pending = v.carriedIn?.amount === null;
+  const money = (n: number) => formatTzs(n);
+  const rows = poolLedgerRows(t, view, pct, carry);
 
   // The headline: the larger of the floor and the carry plus sales, from the composer; a dash before sales and on a void.
   // The figure is one unbreakable run; "at least" around it may wrap (a 320px column cannot hold both on one line).
@@ -121,10 +156,7 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
       : v.kind === "sunset" ? whole(v.pool)
         : pending ? fillNodes(t.millionea.atLeast, { amount: whole(v.jackpot) })
           : whole(v.jackpot);
-  const rule =
-    v.kind === "sunset"
-      ? counted(v.top.tickets, t.millionea.sunsetScoreOne, t.millionea.sunsetScore, { score: v.top.score })
-      : fill(t.millionea.ruleShared, { pct });
+  const rule = poolRule(t, view, pct);
 
   return (
     <section className={cn("mat-flat flex flex-col gap-2 rounded-card p-3", className)}>
@@ -134,7 +166,7 @@ export function MaswaliPoolFigure({ t, view, pct, carry, tick, className }: {
         {pending && v.carriedIn && (
           <span className="text-body-sm text-text-muted text-pretty">{fill(t.millionea.pendingCarry, { week: v.carriedIn.week })}</span>
         )}
-        <span className="text-body-sm text-text-muted text-pretty">{rule}</span>
+        {rule && <span className="text-body-sm text-text-muted text-pretty">{rule}</span>}
       </div>
       <dl className="flex flex-col border-t border-border">
         {rows.map((r) => (

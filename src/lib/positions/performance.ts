@@ -24,6 +24,7 @@
 import { oneOf, oneParam } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters } from "@/lib/query/href";
 import { countsFor, filterRows, type Axes } from "@/lib/query/counts";
+import { scoredPositions } from "@/lib/leaderboard/board";
 
 /* ─────────────────────────── the row this module reasons about ────────────────────────── */
 
@@ -111,4 +112,28 @@ export function perfCounts<R extends PerfRow>(rows: readonly R[], state: PerfSta
  */
 export function perfLensesToRender(counts: Record<string, number>): PerfLens[] {
   return PERF_LENSES.filter((l) => l === "all" || (counts[l] ?? 0) > 0);
+}
+
+/* ──────────────────────────────── the population it scores ───────────────────────────────── */
+
+/**
+ * ⭐ THE POSITIONS THIS PAGE SCORES (MASWALI-BUILD S5; MASWALI-PLAN S5 item 9; S5 re-review 8): each scored line's own
+ * newest-first read (`lines`, one per line of `SCORED_LINES`), with the residual no line read can reach — a position in
+ * the unfiltered read (`all`) that is in no line's read and is no ticket (`tickets`): its market row could not be read —
+ * merged newest first and cut to `limit` by the board's own `scoredPositions`.
+ * ⛔ READ DIRECTLY, NEVER BY SUBTRACTION: the unfiltered page holds the newest `limit` positions of EVERY line, so an
+ *    account whose newest positions were tickets kept that many fewer of its predictions once they were taken out — at
+ *    worst none.
+ * For an account with no tickets this is the unfiltered read itself, position for position and in its order (distinct
+ * instants): each of its positions is in a line's read or the residual, and none a line's read adds is newer than the
+ * last it holds. Pure, so `test:maswali-ui` drives it with both shapes of book.
+ */
+export function perfPopulation<P extends { id: string; placedAt: string }>(
+  reads: { all: readonly P[]; lines: ReadonlyArray<readonly P[]>; tickets: readonly { id: string }[] },
+  limit: number,
+): P[] {
+  const lined = new Set(reads.lines.flatMap((r) => r.map((p) => p.id)));
+  const tickets = new Set(reads.tickets.map((p) => p.id));
+  const residual = reads.all.filter((p) => !lined.has(p.id) && !tickets.has(p.id));
+  return scoredPositions([...reads.lines, residual], limit);
 }
