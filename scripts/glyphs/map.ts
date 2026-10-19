@@ -255,8 +255,9 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
  * has to download. `test:glyph-map` §9 holds the chrome to it: every key a chrome file draws before a tap is a shell key.
  */
 export const SHELL_KEYS: readonly string[] = [
-  // W4 (the audit of 2026-10-19, §8b): the classic rail's More draws its own key, `more`. `menu` (≡) is the console
-  // drawer's button, drawn after a tap, so it left the shell.
+  // W4 (the audit of 2026-10-19, §8b): the classic rail's More draws its own key, `more`, and `menu` (≡) left the shell:
+  // no player chrome draws it. The console's phone header does (admin-mobile-nav.tsx), from the app sprite — the
+  // console's own chrome is release 3's (§8d).
   "markets", "trade", "live", "more", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
   "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
 ];

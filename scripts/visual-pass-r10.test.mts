@@ -319,15 +319,15 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/charts/chart-toggle.tsx", '<I.chevronDown s={14} edge="end" className={[ "text-text-muted shrink-0 transition-transform duration-200", open ? "rotate-180" : "", ].join(" ")} />', 1, "edge", "the chart toggle's row end; it turns about its own box"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowDown s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowUp s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
-    ["src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-600" />', 1, "text", "the home band's DOWN pick"],
-    ["src/components/home/updown-band.tsx", '<I.arrowUp s={16} edge="start" text="body-600" />', 1, "text", "the home band's UP pick"],
+    ["src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-700" />', 1, "text", "the home band's DOWN pick"],
+    ["src/components/home/updown-band.tsx", '<I.arrowUp s={16} edge="start" text="body-700" />', 1, "text", "the home band's UP pick"],
     ["src/components/layout/nav-more.tsx", '<I.chevronDown s={12} className={open ? "rotate-180 transition-transform" : "transition-transform"} />', 1, "frozen", "the classic More menu's caret (classic chrome, frozen until the flip) — named for the integrator"],
     ["src/components/layout/wallet-balance-pill.tsx", "<I.chevronDown s={12} />", 1, "frozen", "the classic capsule's caret, typed -ml-1 (r7c §6.2 holds the classic capsule byte for byte) — named for the integrator"],
     ["src/components/markets/filter-sheet.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />', 1, "edge", "the filter trigger's end (§1)"],
     ["src/components/markets/menu-shell.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-menu-caret shrink-0 opacity-70" />', 1, "edge", "the sort/topic menu's end: a centred control (§6)"],
     ["src/components/journey/show-more.tsx", '<I.chevronDown s={18} edge="end" />', 1, "edge", "the journey's one “Onyesha zaidi” (the home's and journey /live's; the Vodacom plan S7, WP7 and WP10's review): the canvas's caret, ending a centred kit control (§6.6), more below"],
-    ["src/components/proposals/vote-control.tsx", "<I.chevronDown s={18} />", 1, "alone", "alone in its 36×34 vote button"],
-    ["src/components/proposals/vote-control.tsx", "<I.chevronUp s={18} />", 1, "alone", "alone in its 36×34 vote button"],
+    ["src/components/proposals/vote-control.tsx", '<I.chevronDown s={18} tier={vote === dir ? "fill" : undefined} />', 1, "alone", "alone in its 36×34 vote button; solid while it is the vote cast (a toggle that is on, §8c)"],
+    ["src/components/proposals/vote-control.tsx", '<I.chevronUp s={18} tier={vote === dir ? "fill" : undefined} />', 1, "alone", "alone in its 36×34 vote button; solid while it is the vote cast"],
     ["src/components/ui/language-menu.tsx", '<I.chevronDown s={12} edge={journey ? "end" : undefined} aria-hidden className="kp-menu-caret hidden opacity-70 sm:inline" />', 1, "journey", "the language menu's end: the journey's header pulls it, the frozen classic header keeps its box"],
     ["src/components/ui/query-bar-ghost.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0" />', 1, "ghost", "FiltersGhost's caret"],
     ["src/components/ui/query-bar-ghost.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="shrink-0" />', 2, "ghost", "SortGhost's and MenuGhost's carets"],
@@ -342,18 +342,18 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/updown/[roundId]/page.tsx", '<I.arrowDown s={12} text="body-700" />', 1, "tag-text", "the round's own bet chip, DOWN (it typed ↓)"],
     ["src/components/charts/outcome-cubes.tsx", "<I.arrowUp s={9} />", 1, "alone", "a past round's UP, alone in its 18px cube (it drew the trend zigzag)"],
     ["src/components/charts/outcome-cubes.tsx", "<I.arrowDown s={9} />", 1, "alone", "a past round's DOWN, alone in its cube"],
-    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's UP pick: an arrow leading a centred .btn's Inter 600 word, as the home band's"],
-    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's DOWN pick"],
+    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's UP pick: an arrow leading a centred .btn-yes's Inter 700 word, as the home band's"],
+    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's DOWN pick"],
     ["src/components/updown/updown-card.tsx", '<I.arrowUp s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, leading its JetBrains Mono 700 figure"],
     ["src/components/updown/updown-card.tsx", '<I.arrowDown s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, DOWN"],
     ["src/components/updown/updown-card.tsx", '<I.arrowUp s={10} edge="start" text="mono-700" />', 1, "text", "the UP target's label start, among its mono 700 word"],
     ["src/components/updown/updown-card.tsx", '<I.arrowDown s={10} edge="end" text="mono-700" />', 1, "text", "the DOWN target's label end, right-aligned"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out UP button's start, among its Inter 600 word"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out DOWN button's start"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out UP button's start, among its Inter 700 word (.btn-yes)"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out DOWN button's start"],
     ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, UP WINS, among its mono 700 words"],
     ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, DOWN WINS"],
-    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's UP button start"],
-    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowDown s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's DOWN button start"],
+    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's UP button start"],
+    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowDown s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's DOWN button start"],
     // W4, the other new sites: the classic coin's verb, the card's 24h move, the sort's arrows and the field carets.
     ["src/components/layout/bottom-nav.tsx", '<I.arrowDownToLine s={24} className="kp-coin__verb" />', 1, "alone", "the classic rail coin's deposit verb, alone on its disc (it was a hand-drawn plus) — a named parity change"],
     ["src/components/markets/market-card.tsx", '<I.chevronUp s={11} tier="fill" />', 1, "alone", "the 24h move's solid caret before its points (it typed ▲ — §3.5): a Fill has no stroke to set at the words' stem, and it keeps its box"],
@@ -416,13 +416,26 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
   };
+  // Read as the player gets it (PHOSPHOR W4's review): a JS escape (`←`, `\u{…}`) or an HTML entity is the character.
+  const ENT: Record<string, number> = { larr: 0x2190, uarr: 0x2191, rarr: 0x2192, darr: 0x2193 };
+  const asRead = (s: string) => s
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_m, d: string) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-z]+);/g, (m: string, n: string) => (n in ENT ? String.fromCodePoint(ENT[n]) : m));
   const charSeen: Record<string, number> = {};
-  for (const f of PLAYER_TSX) { const n = [...code(f).matchAll(ARROWS)].length; if (n) charSeen[f] = n; }
+  for (const f of PLAYER_TSX) { const n = [...asRead(code(f)).matchAll(ARROWS)].length; if (n) charSeen[f] = n; }
   const charBad = Object.entries(charSeen).filter(([f, n]) => CHAR_SITES[f]?.[0] !== n).concat(Object.keys(CHAR_SITES).filter((f) => !(f in charSeen)).map((f) => [f, 0] as [string, number]));
   ok(`3.5 · every arrow character typed on a player surface is classified — ${Object.values(charSeen).reduce((a, b) => a + b, 0)} in ${Object.keys(charSeen).length} files, all data, a sort mark or a path in a sentence; none ends or starts a link's or a button's words`,
     charBad.length === 0, j(charBad));
   ok("3.5′ PLANT · a back link typed as round 9 had it (“← {t.common.back}”) is an unclassified character", (() => {
     const m = [...("<Link>" + String.fromCharCode(0x2190) + " {t.common.back}</Link>").matchAll(ARROWS)].length; return m === 1 && !("src/app/auth/2fa/page.tsx" in charSeen);
+  })());
+  ok("3.5″ PLANT · …and the same arrow written as an escape or an entity (the proposal page's back link wrote “\\u2190”) is read too", (() => {
+    const esc = [...asRead("<Link>{`\\u2190 ${t.common.back}`}</Link>").matchAll(ARROWS)].length;
+    const ent = [...asRead("<a>&larr; back</a>").matchAll(ARROWS)].length;
+    return esc === 1 && ent === 1 && !("src/app/proposals/[id]/page.tsx" in charSeen);
   })());
   // 3.6 · the twin foot rows' links share their row with another link, so they can be squeezed: /auth/otp's
   // "BADILISHA NAMBARI" wraps at sw 320–390 and "CHANGE NUMBER" at en 320 (a 224px row: px-3 gutters, the panel's p-6), beside
@@ -525,8 +538,8 @@ section("6 · A6 one weight for every arrow among words; a centred control frame
     has("src/app/wallet/wallet-client.tsx", '<I.arrowDownToLine s={14} edge="start" text="body-600" />') && has("src/app/wallet/wallet-client.tsx", '<I.arrowUpFromLine s={14} edge="start" text="body-600" />')
       && !has("src/app/wallet/wallet-client.tsx", '<I.arrowDown s={14} edge="start" text="body-600" />') && !has("src/app/wallet/wallet-client.tsx", '<I.arrowUp s={14} edge="start" text="body-600" />')
       && text14 > 1.35 * family14 && near(family14, 1.3125, 1e-9) && near((1.9 * 14) / 24, 1.108, 1e-3));
-  ok("6.1′ · …the home band's Up/Down picks the same, and the stake panel's chip arrows stroke at the chip's Inter 700 (the typed 2.5 is gone)",
-    has("src/components/home/updown-band.tsx", '<I.arrowUp s={16} edge="start" text="body-600" />') && has("src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-600" />')
+  ok("6.1′ · …the home band's Up/Down picks at their words' Inter 700 (.btn-yes/.btn-no set 700 over .btn's 600 — W4's review: the picks drew 600), and the stake panel's chip arrows stroke at the chip's Inter 700 (the typed 2.5 is gone)",
+    has("src/components/home/updown-band.tsx", '<I.arrowUp s={16} edge="start" text="body-700" />') && has("src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-700" />')
       && !code("src/components/updown/round-stake-panel.tsx").includes("strokeWidth={2.5}") && has("src/components/updown/round-stake-panel.tsx", '<I.arrowUp s={12} text="body-700" />'));
   // 6.2 · the verdict's arrow: its box is 0.8em of the verdict, so its pull is written in em in the stylesheet, from the drawing.
   // Since W2 the drawing is Phosphor's centreline (the registry's `m`, read here by this file's reader): the stylesheet's

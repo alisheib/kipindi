@@ -390,7 +390,11 @@ console.log("\n§5 · rendered in en/sw/zh: Up and Down only, the chips in full,
 console.log("\n§6 · the classic files keep every base line, in order, except the named swaps and source footer");
 {
   const SWAPS: Record<string, RegExp[]> = {
-    [BOARD]: [/^\s+walletBalance=\{walletBalance\}$/],
+    [BOARD]: [
+      /^\s+walletBalance=\{walletBalance\}$/,
+      // PHOSPHOR-MIGRATION 1b (W4's review): the rules pill wears the rules' glyph, `scrollText` being the Terms'.
+      /^\s+<I\.scrollText s=\{13\} \/>$/,
+    ],
     [ROUND]: [
       /^\s+searchParams: Promise<\{ side\?: string; from\?: string \}>;$/, /^\s+lockedSide,$/,
       /^\s+walletBalance: detail\.walletBalance,$/, /^\s+\{t\.market\.udPositionsOnRound\} · \{formatNumber\(myPosition\.items\.length\)\}$/,
@@ -411,6 +415,12 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+\{outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" .*<path d=\{outcomeArrow\} \/><\/svg>\}$/,
       // …and the side's word rides for a screen reader beside the hidden arrow (W4's review: "↑" was announced).
       /^import \{ outcomeWord \} from "@\/lib\/side-label";$/,
+      // …and (1b) each position row's outcome is the position card's chip — glyph + ink + word — so the row's map takes a
+      // body, the status-tone import gains `positionStatusChip`, and the faint word leaves.
+      /^import \{ STATUS_TONE, TONE_CHIP \} from "@\/lib\/status-tone";$/,
+      /^ {22}\{myPosition\.items\.map\(\(p\) => \($/,
+      /^ {28}<span className="font-mono text-\[10px\] text-text-faint">\{POSITION_STATUS_LABEL\(t, p\.status\)\}<\/span>$/,
+      /^ {22}\)\)\}$/,
     ],
     [CARD]: [
       /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,
@@ -441,6 +451,8 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+\{\/\* The trend pictogram leads the centred pick, so its ink stands on the start padding \(round 10, R10-A6\)\. \*\/\}$/,
       /^\s+<I\.trending(Up|Down) s=\{14\} edge="start" className=\{GLYPH_NO_SHRINK\} \/> \{t\.market\.ud(Up|Down)\}$/,
       /^\s+\{outcome === "UP" \? <I\.trendingUp s=\{14\} className=\{GLYPH_NO_SHRINK\} \/> : <I\.trendingDown s=\{14\} className=\{GLYPH_NO_SHRINK\} \/>\}$/,
+      // 1b (W4's review): the locked round's chip states its status, so its lock is solid (§8c).
+      /^\s+<Chip variant="pending"><I\.lock s=\{11\} \/> \{t\.market\.udLockedTitle\}<\/Chip>$/,
     ],
     [PANEL]: [
       // PHOSPHOR-MIGRATION W4 (§8a): the projected return's hand-drawn arrow is the family's arrowRight.

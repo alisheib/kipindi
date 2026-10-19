@@ -149,14 +149,14 @@ export function UpdownBand({ t, locale, liveCount, round }: {
             <UpdownMatchScore>
               {/* #stake: a pick lands on the round page's stake panel with the side locked — the bet slip — not
                   two screens above it (frame panel round 2). */}
-              {/* Round 10 (R10-A6): an arrow among words strokes at the label's Inter 600 stem, and leads a centred control,
-                  so its ink stands on the pick's start padding. */}
+              {/* Round 10 (R10-A6): an arrow among words strokes at the label's stem — Inter 700, the weight `.btn-yes` and
+                  `.btn-no` set over `.btn`'s 600 — and leads a centred control, so its ink stands on the pick's start padding. */}
               <Link href={`${roundHref}?side=UP#stake` as never} className="btn btn-yes btn-lg kp-udbug__pick kp-udbug__pick--up">
-                <I.arrowUp s={16} edge="start" text="body-600" />
+                <I.arrowUp s={16} edge="start" text="body-700" />
                 {w.up}
               </Link>
               <Link href={`${roundHref}?side=DOWN#stake` as never} className="btn btn-no btn-lg kp-udbug__pick kp-udbug__pick--down">
-                <I.arrowDown s={16} edge="start" text="body-600" />
+                <I.arrowDown s={16} edge="start" text="body-700" />
                 {w.down}
               </Link>
               {/* The picks' stand-ins at close (their exact box): the lock leads the centred words as the arrow did, so its

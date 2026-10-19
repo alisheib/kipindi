@@ -19,7 +19,7 @@
  * Use `NoticeBar` for a standing condition affecting the whole account or site.
  */
 import { I } from "@/components/ui/glyphs";
-import type { GlyphKey } from "@/components/ui/glyphs";
+import type { FillGlyphKey, GlyphKey } from "@/components/ui/glyphs";
 
 export type NoticeBarTone = "info" | "warning" | "success" | "maintenance";
 
@@ -57,8 +57,8 @@ export function NoticeBar({
   assertive = false,
 }: {
   tone?: NoticeBarTone;
-  /** Leading glyph. Omit for the plain tone dot (the broadcast-bar look). */
-  glyph?: GlyphKey;
+  /** Leading glyph, drawn in Fill (a key that ships one). Omit for the plain tone dot (the broadcast-bar look). */
+  glyph?: FillGlyphKey;
   children: React.ReactNode;
   /** Trailing control — the thing that RESOLVES the condition, if there is one. */
   action?: React.ReactNode;

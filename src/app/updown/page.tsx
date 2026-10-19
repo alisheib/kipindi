@@ -142,7 +142,8 @@ export default async function UpDownPage({
             aria-label={t.common.readFullRules}
             className={HEADER_PILL}
           >
-            <I.scrollText s={13} />
+            {/* The rules' own glyph, as the hub's rules row (PHOSPHOR-MIGRATION §8b): `scrollText` is the Terms'. */}
+            <I.tippingScales s={13} />
             <span className="hidden sm:inline">{t.common.readFullRules}</span>
           </Link>
           {/* This game's own portfolio — separate from the long-form Bets page. */}

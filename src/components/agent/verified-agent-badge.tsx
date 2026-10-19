@@ -12,7 +12,7 @@ import { I } from "@/components/ui/glyphs";
 export function VerifiedAgentBadge({ label, size = "md", className }: { label: string; size?: "sm" | "md"; className?: string }) {
   return (
     <Chip variant="success" className={className}>
-      <I.shieldcheck s={size === "sm" ? 12 : 14} className="shrink-0" />
+      <I.shieldcheck s={size === "sm" ? 12 : 14} tier="fill" className="shrink-0" />
       <span className="truncate">{label}</span>
     </Chip>
   );

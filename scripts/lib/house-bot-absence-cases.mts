@@ -197,13 +197,18 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // pin), whose dictionary also holds MOBILE-VISUAL U43 release A's (9393dcb53, Ali's ruling 4: the card choices'
     // figures and their aria words leave, `udLockedOneSided` joins), which landed under the 1c210f39e pin.
     const W4 = "7a0b819fd";
+    // PHOSPHOR-MIGRATION 1b (W4's review, 2026-10-19), presentation only: the Up & Down rulebook's caution sign gains its
+    // word for a screen reader in each language ("Warning: ", "Onyo: ", "警告：", sr-only — the ⚠️ it replaced was read
+    // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
+    // stands on main (the commit before this pin).
+    const W4B = "006685c09";
     const APPROVED_EXTRA = new Map([
-      ["src/app/legal/_components.tsx", "c3e28b473"],
+      ["src/app/legal/_components.tsx", W4B],
       ["src/app/legal/rules/page.tsx", W4],
       ["src/lib/i18n-dict.ts", W4],
       ["src/app/legal/privacy/page.tsx", W4],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
-      ["src/app/legal/rules/_content-up-down.tsx", W4],
+      ["src/app/legal/rules/_content-up-down.tsx", W4B],
       ["src/app/legal/rules/up-down/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };

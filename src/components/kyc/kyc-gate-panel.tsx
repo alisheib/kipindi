@@ -73,7 +73,7 @@
  * filled when the outcome arrives (§A7).
  */
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, type FillGlyphKey } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { useT } from "@/lib/i18n";
@@ -114,7 +114,8 @@ export type KycGatePanelState = KycPanelState | "photo_upgrade";
 
 const BY_STATE: Record<KycGatePanelState, {
   tone: keyof typeof TONE;
-  glyph: keyof typeof I;
+  /** The plate's status glyph, drawn in Fill — a key that ships one. */
+  glyph: FillGlyphKey;
   /** Where the CTA goes, or `null` for none. ⛔ `null` for PENDING_REVIEW — opening the form shows a
    *  "we're reviewing" panel and nothing to act on, so a CTA there is a button that leads nowhere.
    *  `email` draws its own controls (resend / change, or add) below. */
@@ -282,7 +283,7 @@ export function KycGatePanel({
       {(spec.cta === "verify" || spec.cta === "support") && (
         <div>
           <Link href={href as never} className="btn btn-primary btn-md btn-pill mt-4 inline-flex items-center gap-1.5">
-            {spec.cta === "support" ? <I.mail s={14} edge="start" /> : <I.shieldcheck s={14} edge="start" />}
+            {spec.cta === "support" ? <I.mail s={14} edge="start" /> : <I.idCard s={14} edge="start" />}
             {copy.cta}
           </Link>
         </div>

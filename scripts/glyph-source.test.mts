@@ -29,7 +29,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decomment } from "./lib/decomment.mts";
+import { decomment, decommentCss } from "./lib/decomment.mts";
 import { PHOSPHOR_PACKAGE } from "./glyphs/map.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -97,9 +97,24 @@ const DATA_SVG_RE = new RegExp("data:image[/]svg[+]xml", "g");
  * each named: an arrow that is punctuation, read "to" ("Wallet → Withdraw", open → close), and text that is not an
  * interface (a prompt to the model). The console's typed marks and the server's own text are counted as two totals until
  * release 3 replaces the console's (`×` the multiplier and `•` the mask are not icons, and are not counted).
+ * ⭐ W4's review: a character is read as the player gets it, so an escape (`←`, `\u{1F525}`) or an HTML entity
+ * (`&larr;`, `&#8592;`) is decoded first, and a stylesheet's `content:` value is read too (CSS escapes decoded). The
+ * class holds the single guillemets (‹ ›, a chevron's stand-in), ≡ ⋮ ⋯ (menus), ⇅ (a sort), ◆ ■ □ ✦ ⌄ and the flags.
  */
-const TEXT_ICON_RE = /[▲▼△▽▶◀►◄▸▾▴◂★☆✓✔✗✘✕✖⚠⛔↑↓↗↘↖↙→←●○◉☰ⓘℹ]|\p{Extended_Pictographic}/gu;
+const TEXT_ICON_RE = /[▲▼△▽▶◀►◄▸▾▴◂★☆✓✔✗✘✕✖⚠⛔↑↓↗↘↖↙→←●○◉☰ⓘℹ‹›≡⋮⋯⇅◆■□✦⌄]|\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]/gu;
 const NOT_ICON = new Set(["©", "®", "™"]);
+const ENTITY: Record<string, string> = { larr: "←", rarr: "→", uarr: "↑", darr: "↓", check: "✓", cross: "✗", star: "☆", starf: "★", lsaquo: "‹", rsaquo: "›" };
+/** The text as the player reads it: JS escapes and HTML entities decoded (W4's review). */
+const asRead = (code: string) => code
+  .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/\\u([0-9a-fA-F]{4})/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#x([0-9a-fA-F]+);/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&#(\d+);/g, (_m, d: string) => String.fromCodePoint(Number(d)))
+  .replace(/&([a-zA-Z]+);/g, (m: string, n: string) => ENTITY[n] ?? m);
+/** A stylesheet's `content:` values, CSS escapes decoded (`\2192` → →). */
+const CSS_CONTENT = /content:\s*(["'])((?:\\.|(?!\1).)*)\1/g;
+const contentOf = (css: string) => [...css.matchAll(CSS_CONTENT)]
+  .map((m) => m[2].replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_m, h: string) => String.fromCodePoint(parseInt(h, 16)))).join(" ");
 const TYPOGRAPHY = "a → that reads \"to\": a path in a sentence, or between two values — punctuation, not an icon";
 const TEMPLATE_COMMENT = "inside a CSS comment in a template literal (the comment stripper keeps literals whole) — not text a player reads";
 const CONSOLE_TEXT = "the console's own text (its typed marks go in release 3)";
@@ -117,7 +132,7 @@ const TEXT_ICONS: Record<string, [count: number, why: string]> = {
   "src/lib/house-bot/alert-copy.ts": [1, CONSOLE_TEXT],
   "src/lib/house-bot/pause-reasons.ts": [3, CONSOLE_TEXT],
   "src/lib/house-bot/rules.ts": [7, CONSOLE_TEXT],
-  "src/lib/i18n-dict.ts": [20, `${TYPOGRAPHY}: the FAQ's and the failure messages' paths ("Wallet → Withdraw"), in three languages`],
+  "src/lib/i18n-dict.ts": [29, `${TYPOGRAPHY}: the FAQ's and the failure messages' paths ("Wallet → Withdraw", nine written as an escape), Up & Down's "oldest → newest" and its worked example's figures, in three languages`],
   "src/lib/i18n.tsx": [1, TEMPLATE_COMMENT],
   "src/lib/journey/measures.ts": [10, `${TYPOGRAPHY}: a funnel step's name ("Home → bet sheet"), read on the console`],
   "src/lib/legal/policy-lines.ts": [6, TYPOGRAPHY],
@@ -130,7 +145,7 @@ const TEXT_ICONS: Record<string, [count: number, why: string]> = {
 /** The console's files (`src/app/admin/`, `src/components/admin/`) and the server's (`src/lib/server/`, `src/app/api/`). */
 const CONSOLE_SRC = /^src\/(?:app|components)\/admin\//;
 const SERVER_SRC = /^src\/(?:lib\/server|app\/api)\//;
-const CONSOLE_TEXT_ICONS = 127; // release 3 brings it to the console's punctuation alone
+const CONSOLE_TEXT_ICONS = 128; // release 3 brings it to the console's punctuation alone (W4's review: +1, the affiliate page's "tap the ‹")
 const SERVER_TEXT_ICONS = 140; // log lines, alerts and the console's messages built on the server
 
 /** Every image file under public/ (the family's sprites, public/icons/g/, are test:glyph-sync's) — what each one is. */
@@ -188,7 +203,7 @@ function check(w: World): string[] {
     if (!rel.startsWith("src/")) continue;
     // §7 (counted here, judged below)
     if (!/\.generated\./.test(rel)) {
-      const t = [...code.matchAll(TEXT_ICON_RE)].filter((m) => !NOT_ICON.has(m[0])).length;
+      const t = [...asRead(code).matchAll(TEXT_ICON_RE)].filter((m) => !NOT_ICON.has(m[0])).length;
       if (t && CONSOLE_SRC.test(rel)) consoleTyped += t;
       else if (t && SERVER_SRC.test(rel)) serverTyped += t;
       else if (t) typed.set(rel, t);
@@ -217,6 +232,11 @@ function check(w: World): string[] {
     else if (n < listed[0]) f.push(`§3 ${rel} now draws ${n} inline <svg> — lower its count from ${listed[0]} in SVG_RATCHET so the progress stays won`);
   }
   for (const rel of Object.keys(SVG_RATCHET)) if (!counts.has(rel)) f.push(`§3 ${rel} no longer draws an inline <svg> — remove it from SVG_RATCHET`);
+  // §7 (counted here, judged below) — a stylesheet's `content:` values, read as the player gets them.
+  for (const [rel, css] of w.css) {
+    const t = [...contentOf(decommentCss(css)).matchAll(TEXT_ICON_RE)].filter((m) => !NOT_ICON.has(m[0])).length;
+    if (t) typed.set(rel, (typed.get(rel) ?? 0) + t);
+  }
   // §5 — the data URI door: in src/'s code and its stylesheets.
   const uris = new Map<string, number>();
   for (const [rel, text] of [...w.files].filter(([r]) => r.startsWith("src/")).concat([...w.css])) {
@@ -299,10 +319,19 @@ const plants: [string, RegExp, World][] = [
     edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
   ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
     edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],
-  ["the console gains a typed mark", new RegExp("§7 the console types 128 icon character[(]s[)], more than its 127"),
+  ["the console gains a typed mark", new RegExp("§7 the console types 129 icon character[(]s[)], more than its 128"),
     withFile("src/app/admin/zz/page.tsx", "export default function P() { return <span>✓</span>; }\n")],
   ["the server's text loses its marks and the total is not lowered", new RegExp("§7 the server now types 1[0-3][0-9] icon character"),
     edit("src/lib/server/marketing/owner-save.ts", (t) => t.split("✓").join("ok"))],
+  // W4's review: the census reads what the player gets — an escape, an entity, a stylesheet's content, a wider class.
+  ["a back arrow written as an escape", new RegExp("§7 src/app/zz-esc/page[.]tsx types 1 icon character"),
+    withFile("src/app/zz-esc/page.tsx", "export const B = () => <a>{`\\u2190 back`}</a>;\n")],
+  ["an arrow written as an HTML entity", new RegExp("§7 src/app/zz-ent/page[.]tsx types 1 icon character"),
+    withFile("src/app/zz-ent/page.tsx", 'export const B = () => <a dangerouslySetInnerHTML={{ __html: "&rarr; next" }} />;\n')],
+  ["a stylesheet draws an arrow through content", new RegExp("§7 src/app/zz-new/arrow[.]css types 1 icon character"),
+    { ...world, css: new Map([...world.css, ["src/app/zz-new/arrow.css", '.x::after { content: "\\2192"; }']]) }],
+  ["a single guillemet typed as a chevron", new RegExp("§7 src/app/zz-chev/page[.]tsx types 1 icon character"),
+    withFile("src/app/zz-chev/page.tsx", "export const N = () => <a>Next ›</a>;\n")],
 ];
 const clean = check(world);
 if (clean.length) {

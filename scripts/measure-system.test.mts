@@ -207,7 +207,9 @@ for (const rel of HOUSE_GUTTER_ROUTES) {
 const tierIn = (file: string): string | null => {
   if (!existsSync(file)) return null;
   const s = decomment(readFileSync(file, "utf8"));
-  const m = s.match(/tier=["'](\w+)["']/) ?? s.match(/max-w-(console|board|reading|form|receipt|auth)\b/);
+  // A MEASURE tier only (page-container.tsx's MeasureTier): a glyph's `tier="fill"` (PHOSPHOR-MIGRATION W4) is not a
+  // page's width — /profile's status pills draw their glyph in Fill above its <PageContainer tier="reading">.
+  const m = s.match(/tier=["'](console|board|reading|form|receipt|auth)["']/) ?? s.match(/max-w-(console|board|reading|form|receipt|auth)\b/);
   return m ? m[1] : null;
 };
 /**

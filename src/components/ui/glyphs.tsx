@@ -27,7 +27,16 @@ export type GlyphText = keyof typeof GLYPH_STEM;
 /** How much body a glyph carries: line (the default), fill, duo. */
 export type GlyphTier = "line" | "fill" | "duo";
 export type GlyphKey = RegistryKey;
-type GlyphProps = { s?: number; edge?: GlyphEdge; text?: GlyphText; tier?: GlyphTier } & Omit<SVGProps<SVGSVGElement>, "ref">;
+/**
+ * The keys that ship a Fill (map.ts FILL_KEYS), read from the registry. A Fill a key does not ship falls back to Bold
+ * without a sound, so every door that draws its glyph in Fill — Callout, NoticeBar, StatusFlag, the KYC panel, a
+ * receipt's or a proposal's status, a won ticket, a won notification — takes this type, and tsc refuses a key without one
+ * (PHOSPHOR-MIGRATION W4; `test:glyph-map` §9c holds the literal `tier="fill"` call sites).
+ */
+export type FillGlyphKey = {
+  [K in RegistryKey]: (typeof GLYPH_REGISTRY)[K]["i"] extends { readonly fill: unknown } ? K : never;
+}[RegistryKey];
+type GlyphProps ={ s?: number; edge?: GlyphEdge; text?: GlyphText; tier?: GlyphTier } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
 /* ⭐ DG-A-19 — THE SIZE CONSTANTS DESCRIBE WHAT IS THERE. `s` is the size prop (the lucide-compatible `size` alias is gone
    and a reintroduction is a compile error). These are the pixels the call sites already render; a constant names a

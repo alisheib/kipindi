@@ -31,8 +31,8 @@ const FAQ_ITEMS = [
   { key: "faq4", glyph: "idCard" },           // verify identity
   { key: "faq5", glyph: "pause" },            // gambling problem / take a break
   { key: "faq6", glyph: "cashOut" },          // cash out
-  { key: "faq7", glyph: "alertCircle" },      // voided
-  { key: "faq8", glyph: "shieldcheck" },      // fairness
+  { key: "faq7", glyph: "void" },             // voided, as a void ticket's chip
+  { key: "faq8", glyph: "attestation" },      // fairness, as /fairness and the hub's row
 ] as const;
 
 // zh: the answers that break only at spaces and punctuation (`break-keep`), so a word is never split across two

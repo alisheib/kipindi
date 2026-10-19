@@ -268,7 +268,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
             be an applicant, so the link says which track it wants, and next brings them back here. An identity
             already verified from typed details is asked for the photos by name (review R5.6). */}
         {cta.kind === "kyc" && (
-          <Link href={"/profile/kyc?for=agent&next=/agent" as never}><Button variant="primary" size="lg" leading={<I.shieldcheck s={16} />}>{cta.variant === "photos" ? t.agent.ctaKycPhotos : cta.variant === "view" ? t.agent.ctaKycView : cta.variant === "fix" ? t.agent.ctaKycFix : t.agent.ctaKyc}</Button></Link>
+          <Link href={"/profile/kyc?for=agent&next=/agent" as never}><Button variant="primary" size="lg" leading={<I.idCard s={16} />}>{cta.variant === "photos" ? t.agent.ctaKycPhotos : cta.variant === "view" ? t.agent.ctaKycView : cta.variant === "fix" ? t.agent.ctaKycFix : t.agent.ctaKyc}</Button></Link>
         )}
         {cta.kind === "apply" && (
           <form action={startApplicationAction}>
@@ -282,7 +282,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
           <Link href={"/agent/status" as never}><Button variant="primary" size="lg" leading={<I.clock s={16} />}>{t.agent.ctaStatus}</Button></Link>
         )}
         {cta.kind === "dashboard" && inviteIsLiveFor(viewer) && (
-          <Link href={"/profile/invite" as never}><Button variant="primary" size="lg" leading={<I.shieldcheck s={16} />}>{t.agent.ctaDashboard}</Button></Link>
+          <Link href={"/profile/invite" as never}><Button variant="primary" size="lg" leading={<I.agent s={16} />}>{t.agent.ctaDashboard}</Button></Link>
         )}
         {cta.kind === "dashboard" && !inviteIsLiveFor(viewer) && (
           <Link href={"/profile/invite" as never}><Button variant="secondary" size="lg" leading={<I.clock s={16} />}>{t.agent.ctaDashboardPaused}</Button></Link>

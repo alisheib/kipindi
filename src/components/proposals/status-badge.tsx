@@ -23,7 +23,7 @@
  * is a lifecycle step reached, not a market broadcasting that it is taking money.
  * Recorded at `STATUS_TONE_EXCEPTIONS.LIVE`; never betting green/red on this surface.
  */
-import { I, type GlyphKey } from "@/components/ui/glyphs";
+import { I, type FillGlyphKey } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { useT } from "@/lib/i18n";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
@@ -34,7 +34,7 @@ type Variant = React.ComponentProps<typeof Chip>["variant"];
 export function StatusBadge({ status, isHot }: { status: ProposalStatus; isHot?: boolean }) {
   const { t } = useT();
   let variant: Variant = "neutral";
-  let icon: GlyphKey = "clock";
+  let icon: FillGlyphKey = "clock";
   let label: string = t.common.underReview;
 
   if (isHot && (status === "REVIEW" || status === "CHANGES_REQUESTED")) {

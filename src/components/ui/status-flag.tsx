@@ -1,4 +1,4 @@
-import { I, type GlyphKey } from "@/components/ui/glyphs";
+import { I, type FillGlyphKey } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,8 +44,8 @@ export function StatusFlag({
   style,
 }: {
   label: string;
-  /** Which kit glyph rides in front of the label. */
-  glyph: GlyphKey;
+  /** Which kit glyph rides in front of the label — drawn in Fill, so a key that ships one. */
+  glyph: FillGlyphKey;
   size?: StatusFlagSize;
   /** Skin classes — e.g. `cs-badge` for the gilt sweep. */
   className?: string;

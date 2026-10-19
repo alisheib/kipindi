@@ -878,26 +878,29 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 | Where | Today | After |
 |---|---|---|
 | Every market card's 24h move | typed ▲ ▼ | `chevronUp` / `chevronDown` in Fill: the solid caret (± stays a sign) |
-| Up & Down history | typed ↑ ↓ for the side; → between open and close, and between stake and return | `arrowUp` / `arrowDown`; `arrowRight` as a mark among words |
+| Up & Down history | typed ↑ ↓ for the side; → between open and close, and between stake and return | `arrowUp` / `arrowDown`, the side's word for a screen reader; the → between two figures reads "to" and stays (Kept, below) |
 | Up & Down round page | a hand-drawn players icon and outcome arrow; typed ↑ ↓ | `users`; `arrowUp` / `arrowDown` |
-| Up & Down stake panel · card | a hand-drawn → before the projected payout; a typed → before the close price | `arrowRight` among words |
+| Up & Down stake panel · card | a hand-drawn → before the projected payout; a typed → before the close price | the projected payout's `arrowRight` among words; the card's → joins the open price to the close and stays (Kept) |
 | The search bar's sort | typed ↑ ↓ | `arrowUp` / `arrowDown` among words |
 | Share | a hand-drawn link mark | `link` |
 | Chat | a hand-drawn send arrow | new `send` (paper-plane-right) |
-| The kit's select, date picker, duration input | hand-drawn carets and ticks | `chevronDown` / `chevronUp`, `check` |
-| The Needle drawer · settings | a hand-drawn chevron, two ticks and two copies of the Needle's mark | `chevronRight`, `check`, `needle` |
+| The kit's select and date picker | hand-drawn carets and ticks | `chevronDown` / `chevronUp`, `check` (the duration input is the console's alone: release 3) |
+| The Needle drawer · settings | a hand-drawn chevron, two ticks and two copies of the Needle's mark | `chevronRight`, `check`; the settings row's copy `needle`. The drawer's `NeedleMark` is the mark in its two tones (the menu row, the drawer's head, Manage): `needle` in Duotone, release 2 |
 | The classic rail's deposit coin | a hand-drawn "+" | `arrowDownToLine` (R-LEXICON 5.3A, as the headers' deposit) |
 | The leaderboard's tier badge | a typed ★ for Sovereign | `star` in Fill |
 | The Up & Down rules page | ⚠️ in en, sw and zh | `warning` in Fill, in the warning ink |
-| Link labels | a typed "→" closing 7 strings per language (4 rendered: Browse all markets, All results, Browse markets, Browse live markets; 3 unused); "oldest → newest" | the strings lose it; `arrowRight` among words |
+| Link labels | a typed "→" closing 7 strings per language (4 rendered: Browse all markets, All results, Browse markets, Browse live markets; 3 unused); "oldest → newest" | the strings lose it; `EmptyStateLink`'s `arrowRight` among words, and All results the see-all `chevronRight`, as the home's; "oldest → newest" reads "to" and stays (Kept) |
 
 **Release 2:** the empty states' 12 private drawings (`ui/empty-state.tsx`, W6) and the notifications panel's empty art; the
-category watermark (drawn at 24 and scaled to 140 by CSS, W5).
+category watermark (drawn at 24 and scaled to 140 by CSS, W5); the chat's `HelpMark` (the help button on every page, its
+panel's head and its answers: a two-tone bubble, hand-drawn — the family's chat bubble in Duotone; W4's review) and the
+Needle drawer's `NeedleMark` (`needle` in Duotone).
 **Release 3:** the first-visit primer's art; the self-care art; the PWA's three shortcut PNGs; the Needle's drag cursor (a
 data URI); the console's typed marks (✓ ✗ ⚠ ⛔ ▲ ▼ ↑ ↓ ● ↗, and a → closing a link; the census finds a symbol in 65
 console files, multiplication signs and arrows inside sentences included).
 **Kept, with their reasons (not icons):** × as the multiplier; • in masks and as separators; a → inside a sentence that
-names a path ("Wallet → Withdraw", the FAQ, the policies); the brand mark (share images, the last-resort error page, the
+names a path ("Wallet → Withdraw", the FAQ, the policies), or between two figures or words it joins, read "to" (Up & Down
+history's open → close and stake → return, the card's open → close, the cubes' "oldest → newest"); the brand mark (share images, the last-resort error page, the
 offline page); the badge medallions (R-BADGES); the identity crest; charts and instruments; vendor marks; the spinner.
 
 ### §8b · One meaning, one glyph — what the doors and the pages disagreed on (player front)
@@ -925,6 +928,12 @@ offline page); the badge medallions (R-BADGES); the identity crest; charts and i
 | The inbox (/notifications' head) | `bellRing`, where its doors draw the bell | `bell`; `bellRing` keeps the notification settings |
 | More (the classic rail) | `list`, also the console drawer's ≡; its Fill a solid tile that reads as a card | new `more` (dots-three-outline): hollow dots, solid on the pill |
 | A notification of no known kind | `coins` | `bell` |
+| A verdict recorded, a dispute, a bonus (the notifications; W4's review) | the bell, by default | `resolved` (Line, a result recorded), `flag` (as /fairness's objection), `gift` (as the wallet's bonus); the staff's own notices keep the bell — D19 keeps their kind out of a player's bundle by name |
+| Wins as a total or a record (the activity page's Won tile; the performance page's best win) | `trophy` | `trophy` stays: a record of wins is an achievement; ONE win's outcome is the seal in Fill (a ticket, a position, the win notification) |
+| Ended without success: a lost bet, a cancelled payment, a declined proposal | three glyphs | `xCircle`, the one meaning — Line where it is an outcome (a loss is bookkeeping, §M7), Fill where it is a status |
+| People: the friends programme; a round's players | a megaphone; a hand-drawn figure | `users` — the people you invite, the people in a round |
+| Identity verification's doors (the KYC panel's Verify; the agent page's identity step) · the agent dashboard's door | `shieldcheck` | `idCard` · `agent`, as the pages they open (W4's review) |
+| The rules (the Up & Down board's rules pill) · fairness and a void (/help's topics) · the inbox's empty state | `scrollText` (the Terms') · `shieldcheck`, `alertCircle` · `bellRing` | `tippingScales` · `attestation`, `void` · `bell` (W4's review) |
 
 Seen in W3 and left for the console (release 3): a player's detail tabs (KYC `shieldcheck`, self-exclusion `shieldOff`,
 limits `lock`, audit `alertCircle`) and the hub's staff-console row (`server`).
@@ -934,7 +943,8 @@ To be written into DESIGN_AUTHORITY §K3 with release 1:
 - **Fill means a state:**
   - a selected destination (W3);
   - a toggle that is on (the followed star; notify me);
-  - a status in a status container (callout, notice bar, toast, status flag, a receipt's status);
+  - a status in a status container (callout, notice bar, toast, status flag, a receipt's status, a status chip or
+    pill) — and a caution that heads its own paragraph (the Up & Down rules', `warning` in the warning ink);
   - an earned outcome: a win is the seal's Fill in gold (§M3a);
   - a media control (play and pause);
   - a direction that is itself the data (the 24h move's carets).

@@ -133,10 +133,10 @@ export default async function ProfilePage() {
           : kycLevel === "REJECTED"
             // 2026-09-14 — a FINAL refusal reads "Refused", never the retryable "Rejected" (the roster's own ruling, kyc-stage.ts).
             ? { tone: "danger", label: isFinalRefusal(kyc?.rejectReason) ? t.profile.refusedFinal : t.profile.rejected, glyph: I.alertCircle }
-            : { tone: "neutral", label: t.profile.kycPillStart, glyph: I.shieldQuestion };
+            : { tone: "neutral", label: t.profile.kycPillStart, glyph: I.idCard };
   const kycPillNode = (
     <Pill tone={kycPill.tone as "success" | "danger" | "info" | "warning" | "neutral"}>
-      <kycPill.glyph s={10} className="inline -mt-px" /> {kycPill.label}
+      <kycPill.glyph s={10} tier="fill" className="inline -mt-px" /> {kycPill.label}
     </Pill>
   );
 
@@ -239,10 +239,10 @@ export default async function ProfilePage() {
                   is an ordinary condition, NEUTRAL, never amber, and until it is done the pill is the quiet way in, on
                   the same tap floor. With no address at all it says "Add email" (it said nothing). Confirmed, it states. */}
               {user.emailVerifiedAt && user.email
-                ? <Pill tone="success"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
+                ? <Pill tone="success"><I.checkCircle s={10} tier="fill" className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
                 : (
                   <Link href="/profile/account" data-testid="profile-email-pill" className="no-underline inline-flex items-center py-[11px] -my-[11px]">
-                    <Pill tone="neutral"><I.mail s={10} className="inline -mt-px" /> {user.email ? t.profile.emailUnconfirmed : t.profile.addEmailPill}</Pill>
+                    <Pill tone="neutral"><I.mail s={10} tier="fill" className="inline -mt-px" /> {user.email ? t.profile.emailUnconfirmed : t.profile.addEmailPill}</Pill>
                   </Link>
                 )}
             </div>

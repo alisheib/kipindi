@@ -26,7 +26,7 @@
  * family's royal box: `info`'s paint by construction (so the two cannot drift) with the promise's shield glyph.
  */
 
-import { I, type GlyphKey } from "@/components/ui/glyphs";
+import { I, type FillGlyphKey } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +93,8 @@ type ToneSpec = {
   box: string;
   strongBox: string;
   icon: string;
-  glyph: GlyphKey;
+  /** Drawn in Fill (a status in its status container, PHOSPHOR-MIGRATION §8c), so a key that ships one. */
+  glyph: FillGlyphKey;
   panel: { bg: string; border: string };
   fg: string;
 };
@@ -189,8 +190,8 @@ export function Callout({
   /** Optional bold lead line. */
   title?: React.ReactNode;
   children?: React.ReactNode;
-  /** Override the tone's default glyph. */
-  glyph?: GlyphKey;
+  /** Override the tone's default glyph — drawn in Fill, so a key that ships one. */
+  glyph?: FillGlyphKey;
   className?: string;
   /**
    * `sm` (default) = the inline note. `md` = the standing page-level notice —

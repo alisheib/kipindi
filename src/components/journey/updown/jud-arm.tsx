@@ -196,7 +196,7 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
     data-testid={side === "UP" ? "jud-up" : "jud-down"} aria-describedby={frame.low || frame.pending || frame.lossRoom || frame.block ? `${id}-callout` : frame.lines.length ? `${id}-line` : undefined}
     className={cn(side === "UP" ? "btn btn-yes btn-lg" : "btn btn-no btn-lg", "justify-center", flash && bet.justPlaced?.side === side && "ud-side-flash")}
     aria-label={`${sideWord(t, side, "UPDOWN")} — ${assetName}${ready ? ` · ${formatTzs(bet.stake)}` : ""}`}>
-    {bet.pendingSide === side ? <Spinner size={12} /> : side === "UP" ? <I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> : <I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}
+    {bet.pendingSide === side ? <Spinner size={12} /> : side === "UP" ? <I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> : <I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {sideWord(t, side, "UPDOWN")}
   </button>;
   return <div className="kp-jud" data-jud="two-way" data-size={size}>
     <YoureIn t={t} bet={bet} />

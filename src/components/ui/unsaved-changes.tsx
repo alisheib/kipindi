@@ -494,7 +494,7 @@ export function PendingChangesBar(props: BarProps) {
                   that the one just saved did land. */}
               {savedNow && (
                 <Chip size="sm" variant="success">
-                  <I.check s={10} aria-hidden />
+                  <I.checkCircle s={10} tier="fill" aria-hidden />
                   {savedNow.text}
                 </Chip>
               )}

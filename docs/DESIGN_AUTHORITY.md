@@ -2157,9 +2157,12 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    2026-10-19: "nothing should be plain … everything visually perfect, logically perfect").** A glyph's tier says what it
    is, so the tier is never chosen for looks:
    - **Fill** — a state that is on or earned: the current destination (above); a toggle that is on (a followed market's
-     star, "notify me", the bell while its panel is open); the status a status container states (Callout, NoticeBar,
-     StatusFlag, a toast, a receipt's chip, the KYC panel's plate, a proposal's chip); a win (the seal, solid, in gold —
-     §M3, §M7); a media control (play, pause); a direction that is itself the data (a card's 24h move: the solid caret).
+     star, "notify me", the bell while its panel is open, a vote cast); the status a status container states (Callout,
+     NoticeBar, StatusFlag, a toast, a receipt's chip, the KYC panel's plate, a proposal's chip, a status chip or pill —
+     verified, confirmed, saved, locked), and a caution that heads its own paragraph (the Up & Down rules'); a win (the
+     seal, solid, in gold — §M3, §M7); a media control (play, pause); a direction that is itself the data (a card's 24h
+     move: the solid caret). A door that takes a key and draws it in Fill takes `FillGlyphKey`, so tsc refuses a key
+     that ships none (`test:glyph-map` §9c holds the literal `tier="fill"`).
      A tick or a cross in Fill is always the circled one: Phosphor fills a bare check or ✕ into a square, which reads as a
      checkbox.
    - **Duotone** — identity on a plate (W5 and W6): hub rows, notification plates, help and trust cells, category sigils,

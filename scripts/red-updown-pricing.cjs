@@ -80,14 +80,14 @@ const MUTATIONS = [
     // ⚠️ REPLACES `both buttons share ONE multiplier` (2026-10-14): the buttons hold no multiplier to share.
     name: "⭐ the board card's signed-out Up button prints a multiple again (the owner's ruling of 2026-10-14)",
     file: CARD,
-    find: `<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
-    with: `<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n                  <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
+    with: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n                  <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
   },
   {
     name: "⭐ the shared controls' Up button prints a multiple again (the authed card and the round page's two-way control)",
     file: CONTROLS,
-    find: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
-    with: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {t.market.udUp}\n          <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
+    with: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}\n          <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
   },
   {
     name: "⭐ the confirm panel prints the card's multiple again beside its projection",

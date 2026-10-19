@@ -11,7 +11,6 @@ import { cn, fill, formatNumber, formatReturnRate } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 // The table's heads never end a line on a connective (round 9, R9-B): "Madau ya siku 14" sits in an auto-layout column.
 import { keepConnectives } from "@/components/ui/keep-run";
-import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { listPositionsForUser } from "@/lib/server/market-service";

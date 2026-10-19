@@ -23,6 +23,10 @@
  *      Bold are exactly the ones the chrome draws (map.ts CHROME_FILLS, W4): each a shell key that ships a Fill; every
  *      tab-bar destination among them (else the current tab's Fill would wait for the sprite file); each drawn in Fill by
  *      a chrome file (else every page inlines it for nothing)
+ *  §9c every literal Fill names a key that ships one (W4's review): an `I.<key>` written with a `tier` that can be "fill"
+ *      (`tier="fill"`, or a condition that yields it) — else the engine falls back to Bold in silence. The doors that
+ *      take a key and draw it in Fill (Callout, NoticeBar, StatusFlag, the KYC panel, a receipt's, a proposal's, a
+ *      ticket's and a notification's status) type it `FillGlyphKey` (glyphs.tsx), so tsc refuses a key without one there
  *  §10 the console's own keys stay in the console (W3, when the admin sidebar's destinations joined ADMIN_KEYS): the admin
  *      sprite is the one a player never downloads, so every admin key is drawn by a console file (src/app/admin/,
  *      src/components/admin/) and by no other file, is drawn somewhere (or it ships for nothing), and is not a shell key
@@ -112,6 +116,8 @@ const namedKeys = (text: string, keys: string[]) => {
  * the current one in Fill. A key there that ships no Fill would not fail anywhere else: `variantOf` falls back to Bold,
  * so the current tab would quietly draw Line. (The console's destinations are `test:admin-nav` §8's.)
  */
+/** §9c · a literal glyph element: its key, and its attributes (a braced value may hold one level of braces). */
+const LITERAL_GLYPH = /<I\.([A-Za-z0-9_]+)\b((?:[^<>{}]|\{(?:[^{}]|\{[^{}]*\})*\})*?)\/>/g;
 const NAV_GLYPH_FILES = ["src/components/layout/bottom-nav.tsx", "src/components/layout/nav-more.tsx", "src/lib/nav/active-tab.ts"];
 
 const near = (a: Box, b: Box, tol = 0.05) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
@@ -223,6 +229,16 @@ function check(w: World): string[] {
     const filled = Object.keys(w.chrome).some((rel) => new RegExp(`<I\\.${k}\\b[^>]*\\btier=[^>]*fill`).test(codeOf(w.srcFiles.get(rel) ?? "")));
     if (!tab && !filled) f.push(`§9b CHROME_FILLS names ${k}, which no chrome file draws in Fill — every page inlines it for nothing`);
   }
+  // §9c
+  let fillSites = 0;
+  for (const [rel, text] of w.srcFiles) {
+    for (const m of codeOf(text).matchAll(LITERAL_GLYPH)) {
+      if (!/\btier=(?:"fill"|\{[^}]*"fill")/.test(m[2])) continue;
+      fillSites++;
+      if (!w.fill.includes(m[1])) f.push(`§9c ${rel} draws ${m[1]} in Fill, and ${m[1]} ships no Fill — it would fall back to Bold in silence`);
+    }
+  }
+  if (fillSites < 12) f.push(`§9c the census found ${fillSites} literal Fill site(s) — its reader is broken (the tree holds more than 12)`);
   // §10
   const byConsole = new Set<string>();
   for (const [rel, text] of w.srcFiles) {
@@ -316,6 +332,12 @@ const plants: [string, RegExp, World][] = [
     W({ chromeFills: world.chromeFills.filter((k) => k !== "live") })],
   ["an inlined Fill the chrome never draws", /§9b CHROME_FILLS names lock, which no chrome file draws in Fill/, W({ chromeFills: [...world.chromeFills, "lock"] })],
   ["an inlined Fill that is no shell key", /§9b CHROME_FILLS names coins, which is not a shell key that ships a Fill/, W({ chromeFills: [...world.chromeFills, "coins"] })],
+  ["a literal Fill on a key that ships none", /§9c src\/app\/zz\/page\.tsx draws arrowUp in Fill, and arrowUp ships no Fill/,
+    withSrc("src/app/zz/page.tsx", 'export const P = () => <I.arrowUp s={14} tier="fill" />;')],
+  ["a conditional Fill on a key that ships none", /§9c src\/app\/zz\/page\.tsx draws void in Fill, and void ships no Fill/,
+    withSrc("src/app/zz/page.tsx", 'export const P = ({ on }: { on: boolean }) => <I.void s={12} tier={on ? "fill" : undefined} />;')],
+  ["a status's Fill leaves FILL_KEYS", /§9c src\/components\/updown\/updown-card\.tsx draws lock in Fill, and lock ships no Fill/, W({ fill: world.fill.filter((k) => k !== "lock") })],
+  ["the census reads nothing", /§9c the census found 0 literal Fill site/, W({ srcFiles: new Map() })],
   ["a player page draws an admin key", /§10 src\/app\/zz\/page\.tsx draws the admin key brain/, withSrc("src/app/zz/page.tsx", "export const P = () => <I.brain s={14} />;")],
   ["a player table names an admin key", /§10 src\/lib\/zz\.ts draws the admin key dashboard/, withSrc("src/lib/zz.ts", 'export const ROW = { glyph: "dashboard" };')],
   ["an admin key no console file draws", /§10 admin key wifiOff is drawn by no console file/, W({ admin: [...world.admin, "wifiOff"] })],

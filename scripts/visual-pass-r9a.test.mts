@@ -534,6 +534,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/profile/notifications/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a row cue's end, after its count"],
     ['src/app/profile/page.tsx', '<I.chevronRight s={16} edge="end" />', 2, "row", "the setting rows' and the sign-out row's end"],
     ['src/app/proposals/[id]/page.tsx', '<I.arrowRight s={15} text="body-600" />', 1, "button", B],
+    ['src/app/proposals/[id]/page.tsx', '<I.chevronLeft s={11} edge="start" text="body-400" />', 1, "text", "the back link's start, centred by its ink — PHOSPHOR W4's review: a typed back arrow, written as an escape"],
     ['src/app/proposals/page.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a link cue's end"],
     ['src/app/proposals/page.tsx', '<I.chevronRight s={14} />', 1, "float-row", "it trails a start-aligned meta row: no edge to land on"],
     ['src/app/updown/page.tsx', '<I.chevronRight s={11} edge="end" text="mono-400" />', 1, "text", "the history pill's end"],

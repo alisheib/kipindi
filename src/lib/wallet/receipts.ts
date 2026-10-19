@@ -31,6 +31,7 @@ import { emptyKind, relaxations, type EmptyKind, type ExitCandidate, type Relaxa
 import { paymentMethodName } from "@/lib/payment-providers";
 import { LEDGER_STATES, LENS_TYPES, STATE_STATUSES, type LedgerState, type TxnStatusValue, type TxnTypeValue } from "./ledger";
 import type { Dict } from "@/lib/i18n-dict";
+import type { FillGlyphKey } from "@/components/ui/glyphs";
 import { hasDepositStatusReview } from "./deposit-review";
 export { hasDepositStatusReview } from "./deposit-review";
 
@@ -92,12 +93,20 @@ export function depositResultKind(row: { type: string; status: string; amlReason
  * filters, counts and tones are unchanged), but every surface NAMES it "Held for return" (`txnStatusHeld`, through
  * `receiptStatusWord(…, held)`), never "Reversed" — the title matches the body that says the money is held for return.
  */
+export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null; providerStatus?: string | null }): TxnStatusValue {
+  if (hasDepositStatusReview(row)) return "AML_REVIEW";
+  if (row.type !== "DEPOSIT") return row.status;
+  if (row.status === "AML_REVIEW") return "REVERSED";
+  if (row.status === "FAILED" && (row.amlReason ?? "").startsWith(RG_RETURN_MARK)) return "REVERSED";
+  return row.status;
+}
+
 /**
  * The glyph beside a presented status's word — colour is never the only signal (§A4). ONE map: the list's row and the
  * receipt's own page both read it, and both draw it in Fill — a payment's status, stated by its chip (PHOSPHOR-MIGRATION
  * §8c). Key names of the glyph family `I`.
  */
-export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock" | "alertCircle" | "rotateCcw" | "xCircle"> = {
+export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, FillGlyphKey> = {
   CONFIRMED: "checkCircle",
   PENDING: "clock",
   PROCESSING: "clock",
@@ -106,13 +115,6 @@ export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock
   REVERSED: "rotateCcw",
   CANCELLED: "xCircle",
 };
-export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null; providerStatus?: string | null }): TxnStatusValue {
-  if (hasDepositStatusReview(row)) return "AML_REVIEW";
-  if (row.type !== "DEPOSIT") return row.status;
-  if (row.status === "AML_REVIEW") return "REVERSED";
-  if (row.status === "FAILED" && (row.amlReason ?? "").startsWith(RG_RETURN_MARK)) return "REVERSED";
-  return row.status;
-}
 
 /** One receipt as the list reasons about it. `amount` is the money that moved, unsigned — the receipt's own headline. */
 export type ReceiptRowData = {

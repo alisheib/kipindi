@@ -120,7 +120,8 @@ export function LegalHeader({
   meta?: string;
   /** Localized eyebrow word — "Legal" / "Kisheria" / "法律". */
   eyebrow?: string;
-  /** Per-document sigil key (scrollText / lock / shield / shieldcheck). */
+  /** The document's own sigil key (terms `scrollText`, privacy `privacyNotice`, responsible gambling `limits`, the rules
+   *  `tippingScales` and Up & Down's `trade`, AML `shieldcheck`, …) — the meaning its doors wear (PHOSPHOR-MIGRATION §8b). */
   glyph?: keyof typeof I;
 }) {
   const Glyph = glyph ? I[glyph] : null;

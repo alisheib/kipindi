@@ -1061,11 +1061,11 @@ export function UpDownCard(props: UpDownCardProps) {
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   {/* The side's arrow leads the centred pick, so its ink stands on the start padding (round 10, R10-A6). */}
-                  <I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
+                  <I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
-                  <I.arrowDown s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
+                  <I.arrowDown s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
                 </button>
               </div>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
@@ -1096,7 +1096,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
             {/* V-1 — kit glyph, not the 🔒 emoji: platform rule is no emoji in
                 UI copy, and the OS-rendered glyph broke the card's ink. */}
-            <Chip variant="pending"><I.lock s={11} /> {t.market.udLockedTitle}</Chip>
+            <Chip variant="pending"><I.lock s={11} tier="fill" /> {t.market.udLockedTitle}</Chip>
             <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>

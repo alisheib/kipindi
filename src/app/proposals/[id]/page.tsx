@@ -168,7 +168,12 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         </section>
       )}
 
-      <Link href={"/proposals" as never} className="block text-center text-[12px] text-text-subtle hover:text-text-muted">{`\u2190 ${t.common.backToProposals}`}</Link>
+      <Link href={"/proposals" as never} className="flex items-center justify-center gap-1 text-[12px] text-text-subtle hover:text-text-muted">
+        {/* The family's back mark, as BackLink's (PHOSPHOR-MIGRATION W4's review: a typed back arrow stood here, written as
+            an escape), stroked at the words' Inter 400 and centred by its ink. */}
+        <I.chevronLeft s={11} edge="start" text="body-400" />
+        {t.common.backToProposals}
+      </Link>
     </PageContainer>
   );
 }

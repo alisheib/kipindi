@@ -206,7 +206,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             position was not funded by a bonus.
           </p>
           <p>
-            <I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">On the shortest rounds that condition can never be met.</strong> A round of{" "}
+            <span className="sr-only">Warning: </span><I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">On the shortest rounds that condition can never be met.</strong> A round of{" "}
             <span className="font-mono tabular-nums text-text">{unreachable}</span> minutes is shorter than, or equal
             to, the {r.freeExitMinutes}-minute runway the right requires — so{" "}
             <strong className="text-text">cash-out is not available on those rounds at all</strong>. This is stated
@@ -385,7 +385,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             haikugharamiwa na bonasi.
           </p>
           <p>
-            <I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">Kwenye raundi fupi zaidi sharti hilo haliwezi kutimia kamwe.</strong>{" "}
+            <span className="sr-only">Onyo: </span><I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">Kwenye raundi fupi zaidi sharti hilo haliwezi kutimia kamwe.</strong>{" "}
             Raundi ya dakika <span className="font-mono tabular-nums text-text">{unreachable}</span> ni fupi kuliko, au
             sawa na, dakika {r.freeExitMinutes} zinazohitajika — hivyo{" "}
             <strong className="text-text">kuuza mapema hakupatikani kabisa kwenye raundi hizo</strong>. Tunasema wazi
@@ -547,7 +547,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             分钟内，您可以全额免费卖出——<strong>前提是您下注的当时，该回合仍剩余至少 {r.freeExitMinutes} 分钟的下注时间</strong>，且该仓位并非由奖金资助。
           </p>
           <p>
-            <I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">在最短的回合中，该前提永远无法满足。</strong>{" "}
+            <span className="sr-only">警告：</span><I.warning s={14} tier="fill" className="inline align-[-1.75px] text-warning-fg" aria-hidden /> <strong className="text-text">在最短的回合中，该前提永远无法满足。</strong>{" "}
             <span className="font-mono tabular-nums text-text">{unreachable}</span> 分钟的回合短于或等于所需的{" "}
             {r.freeExitMinutes} 分钟余量，因此
             <strong className="text-text">这些回合完全不提供提前卖出</strong>。我们明确说明而非让您自行发现：无法行使的权利不是权利。

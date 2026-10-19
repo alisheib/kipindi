@@ -46,7 +46,7 @@
  */
 import { dict, type Locale, type Dict } from "@/lib/i18n-dict";
 import { assertNeverLine, storedProductLine, type ProductLine } from "@/lib/product-line";
-import type { GlyphKey } from "@/components/ui/glyphs";
+import type { FillGlyphKey, GlyphKey } from "@/components/ui/glyphs";
 
 /**
  * The product lines, as `PredictionMarket.productLine` stores them. MASWALI (Maswali Millionea) joined at S0.5: its
@@ -227,7 +227,7 @@ export function positionStatusWord(t: Dict, status: PositionStatusValue, product
  * cashed out the hand of coins. The same for every product: Up & Down's words differ, its states do not. (A Millionea
  * ticket draws its own chip, `maswali-ticket.tsx`.)
  */
-export function positionStatusGlyph(status: PositionStatusValue): { key: GlyphKey; tier?: "fill" } {
+export function positionStatusGlyph(status: PositionStatusValue): { key: FillGlyphKey; tier: "fill" } | { key: GlyphKey; tier?: undefined } {
   switch (status) {
     case "OPEN": return { key: "clockPending" };
     case "WIN": return { key: "resolved", tier: "fill" };

@@ -22,7 +22,7 @@ import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { BackLink } from "@/components/ui/back-link";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+import { STATUS_TONE, TONE_CHIP, positionStatusChip } from "@/lib/status-tone";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
 import { getRoundDetail } from "@/lib/server/updown-board";
@@ -35,7 +35,7 @@ import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updo
 import { pickLocalized } from "@/lib/localized";
 import { roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
-import { outcomeWord, sideWord } from "@/lib/side-label";
+import { outcomeWord, positionStatusGlyph, sideWord } from "@/lib/side-label";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
 // R5 · the page's tone is settlement's own target rule — the landing band reads the same function.
@@ -678,7 +678,13 @@ export default async function UpDownRoundPage({
                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
                     </div>
                     <ul className="mt-2 m-0 flex list-none flex-col gap-1.5 p-0">
-                      {myPosition.items.map((p) => (
+                      {myPosition.items.map((p) => {
+                        // An outcome is glyph + ink + word, as the position card's chip (PHOSPHOR-MIGRATION §8d): a win's
+                        // seal in Fill, every other state a quiet Line mark. The side's arrow is hidden, so its word rides
+                        // for a screen reader.
+                        const state = positionStatusGlyph(p.status);
+                        const StateGlyph = I[state.key];
+                        return (
                         <li
                           key={p.id}
                           className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-md border border-border bg-bg-overlay/50 px-2.5 py-1.5"
@@ -687,7 +693,7 @@ export default async function UpDownRoundPage({
                             <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
                               {p.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}<span className="sr-only">{sideWord(t, p.side, "UPDOWN")} </span>{formatTzs(p.stake)}
                             </Chip>
-                            <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
+                            <Chip variant={positionStatusChip(p.status)}><StateGlyph s={12} tier={state.tier} aria-hidden />{POSITION_STATUS_LABEL(t, p.status)}</Chip>
                           </span>
                           {/* DG-A-12 · §M4 + §T1 — a player's own payout. `.amount` replaces
                               `font-mono … tabular-nums`; 12.5 → `text-body-sm` (13), the +0.5
@@ -697,7 +703,8 @@ export default async function UpDownRoundPage({
                             {p.payout == null ? "—" : formatTzs(p.payout)}
                           </span>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   </div>
                 )}

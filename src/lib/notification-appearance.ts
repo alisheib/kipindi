@@ -18,10 +18,13 @@
  * Guarded by `npm run test:notifications-page` §1: both surfaces must import from here, and
  * neither may declare its own map.
  */
-import { I } from "@/components/ui/glyphs";
+import { I, type FillGlyphKey } from "@/components/ui/glyphs";
 import type { StoredNotification } from "@/lib/server/store";
 
 type Kind = StoredNotification["kind"];
+
+/** A win's seal, the one kind drawn in Fill (`tierFor`) — typed, so it can only name a key that ships a Fill. */
+const WIN_SEAL = "resolved" as const satisfies FillGlyphKey;
 
 /**
  * The glyph for a kind — the meaning's own key, the one every other door to it wears (PHOSPHOR-MIGRATION §8b, the audit of
@@ -30,10 +33,13 @@ type Kind = StoredNotification["kind"];
  *
  * ⚠️ Returns the component, not an element, so a caller controls the size: the bell and `/notifications` both render it
  * at 16px inside a 32px plate, and draw it in `tierFor`'s tier.
+ * ⛔ Every kind a player is sent has its case (W4's review found a verdict, a dispute and a bonus falling to the bell).
+ * The bell stays for the kinds a player is never sent — the staff's own notices, which D19 keeps out of a player's
+ * bundle by name (test:house-bot-disclosure 1.1) — and for a value older data may hold.
  */
 export const iconFor = (k: Kind) => {
   switch (k) {
-    case "WIN":          return I.resolved; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
+    case "WIN":          return I[WIN_SEAL]; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
     case "LOSS":         return I.xCircle; // quiet, in Line: a loss is bookkeeping (§M7)
     case "BET_PLACED":   return I.ticket;
     case "SELECTION_CLOSED": return I.hourglassOff; // betting closed, as the cards and the question page draw it
@@ -47,6 +53,9 @@ export const iconFor = (k: Kind) => {
     case "AFFILIATE":    return I.users; // the friends programme, as the hub's Alika row
     case "PROPOSAL":     return I.idea; // R-LEXICON 5.6A
     case "WATCHLIST":    return I.star;
+    case "VERDICT":      return I.resolved; // a verdict recorded, the money not moved yet: a result recorded (§3), in Line
+    case "OBJECTION":    return I.flag; // a dispute, as /fairness's objection sign-off and the resolution panel's dispute
+    case "BONUS":        return I.gift; // a bonus, as the wallet's bonus panel
     default:             return I.bell;
   }
 };

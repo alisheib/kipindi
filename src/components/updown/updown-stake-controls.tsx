@@ -234,7 +234,7 @@ export function UpDownStakeControls({
          
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {t.market.udUp}
+          {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}
         </button>
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
@@ -242,7 +242,7 @@ export function UpDownStakeControls({
          
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
-          {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.arrowDown s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {t.market.udDown}
+          {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.arrowDown s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udDown}
         </button>
       </div>
 

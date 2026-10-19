@@ -117,7 +117,7 @@ export function VoteControl({
             : "transparent",
       }}
     >
-      {dir === "up" ? <I.chevronUp s={18} /> : <I.chevronDown s={18} />}
+      {dir === "up" ? <I.chevronUp s={18} tier={vote === dir ? "fill" : undefined} /> : <I.chevronDown s={18} tier={vote === dir ? "fill" : undefined} />}
     </button>
   );
 
