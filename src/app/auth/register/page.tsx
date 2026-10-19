@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { FiftyMark } from "@/components/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -160,8 +160,8 @@ export default async function RegisterPage({
           {invite && (
             <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
               <div className="flex items-center gap-3 p-3.5">
-                <IconPlate size={40} className="bg-brand-500/15 text-brand-300">
-                  <I.gift s={20} />
+                <IconPlate size={40} variant="identity" aria-hidden>
+                  <I.gift s={plateGlyph(40)} tier="duo" />
                 </IconPlate>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-gold-300">{formatTzs(invite.bonusAmountTzs)}</span></p>

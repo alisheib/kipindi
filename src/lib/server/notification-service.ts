@@ -530,13 +530,10 @@ export function notifyUpDownLoss(userId: string, opts: UpDownResultOpts) {
 /**
  * Up & Down VOID refund — the round could not be settled, so the stake returns in full.
  *
- * ⚠️ `kind: DEPOSIT` is chosen, not copied. `notifyOneSidedRefund` files a refund under
- * `WIN`, which `comms-registry` itself flags as one of the misfilings that make the
- * production "top events" numbers wrong. A refund is money returning to the wallet, so
- * DEPOSIT is the honest kind and it renders with the money-in tint rather than a trophy.
+ * A refund has its own kind: money returned after a void is neither a deposit nor a win.
  */
 export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
-  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+  return notifyUpDownResult(userId, "REFUND", opts, {
     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
@@ -548,7 +545,7 @@ export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
 
 /** Up & Down ONE-SIDED refund — nobody took the other side, so there was nothing to win. */
 export function notifyUpDownOneSidedRefund(userId: string, opts: UpDownResultOpts) {
-  return notifyUpDownResult(userId, "DEPOSIT", opts, {
+  return notifyUpDownResult(userId, "REFUND", opts, {
     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
@@ -731,7 +728,7 @@ export function notifyDeposit(
   if (opts.status === "AML_REVIEW") {
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_REVIEW",
       titleEn: `Deposit under review · ${amt}`,
       titleSw: `Amana inakaguliwa · ${amt}`,
       titleZh: `充值待核查 · ${amt}`,
@@ -762,7 +759,7 @@ export function notifyDeposit(
     // expensive mistake this line exists to prevent.
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_PROCESSING",
       titleEn: `Deposit processing · ${amt}`,
       titleSw: `Amana inashughulikiwa · ${amt}`,
       titleZh: `充值处理中 · ${amt}`,
@@ -778,7 +775,7 @@ export function notifyDeposit(
     // deposit reads as a charge that vanished.
     return notify({
       userId,
-      kind: "DEPOSIT",
+      kind: "DEPOSIT_FAILED",
       titleEn: `Deposit failed · ${amt}`,
       titleSw: `Amana imeshindikana · ${amt}`,
       titleZh: `充值失败 · ${amt}`,
@@ -798,7 +795,7 @@ export function notifyDeposit(
   // been delivered (the 2026-10-07 entry records "returned to the account it came from", sent while still held, as untrue).
   return notify({
     userId,
-    kind: "DEPOSIT",
+    kind: "DEPOSIT_HELD",
     titleEn: `Deposit held for return · ${amt}`,
     titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,
     titleZh: `充值暂扣待退还 · ${amt}`,
@@ -1271,7 +1268,7 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
 export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   return notify({
     userId,
-    kind: "DEPOSIT",
+    kind: "REFUND",
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
@@ -1292,7 +1289,7 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
 export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
   return notify({
     userId,
-    kind: "DEPOSIT", // money returned to the wallet
+    kind: "REFUND", // money returned to the wallet
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
@@ -1359,7 +1356,7 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
   // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
   return notify({
     userId,
-    kind: "WIN",
+    kind: "REFUND",
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,

@@ -234,16 +234,15 @@ export const NO_CTA_TEMPLATES: readonly string[] = [
  * The `kind` written on every inbox row. This is the bell's icon + tint key, and
  * — because `prisma-dal` writes `event: n.kind` — it is also the `event` column.
  *
- * 🔴 `kind` is LOSSY and the production "top events" numbers inherit the loss:
- * `notifyCashout` and `notifyOneSidedRefund` are filed under `WIN`,
- * `notifyRefund` and `notifyMarketCancelled` under `DEPOSIT`, and
- * `notifyAdminMarketResolution` under `PROPOSAL`. So `WIN 164` is not 164 wins.
- * Recorded here rather than silently corrected: renaming a kind reclassifies
- * 1,673 historical rows, which is a data decision, not a code one.
+ * Historic rows retain their written kind. Some old cash-outs and refunds were
+ * filed under WIN or DEPOSIT; new refund rows carry REFUND. The bell's
+ * appearanceKind recognises exact old title prefixes without rewriting history.
+ * Admin market resolutions remain filed under PROPOSAL.
  */
 export const NOTIFICATION_KINDS = [
   "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT",
-  "DEPOSIT", "WITHDRAW", "KYC", "MATCH_START", "RG", "SECURITY",
+  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD",
+  "REFUND", "WITHDRAW", "KYC", "MATCH_START", "RG", "SECURITY",
   "AFFILIATE", "PROPOSAL", "BONUS", "WATCHLIST", "OBJECTION",
   // A verdict is recorded but nothing has been paid — the notice that makes the
   // objection window exercisable (management ruling ①, 2026-09-05).
@@ -261,7 +260,9 @@ export const MONEY_KINDS: readonly NotificationKind[] = [
   // ROUND_RESULT is the Up & Down daily digest, and it is the ONLY message a
   // player receives about a day of real settled rounds — so it accounts for money
   // by definition and its copy is compliance copy.
-  "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT", "DEPOSIT", "WITHDRAW", "BONUS", "AFFILIATE",
+  "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT",
+  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD", "REFUND",
+  "WITHDRAW", "BONUS", "AFFILIATE",
   // VERDICT names the instant a payout becomes due and states when it will be paid.
   // It promises money, so its copy is compliance copy and it belongs in the money lens.
   "VERDICT",
@@ -282,8 +283,8 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyLoss",                  kind: "LOSS",              audience: "player" },
   { fn: "notifySelectionClosed",       kind: "SELECTION_CLOSED",  audience: "player" },
   { fn: "notifyCashout",               kind: "WIN",               audience: "player" },
-  { fn: "notifyOneSidedRefund",        kind: "WIN",               audience: "player" },
-  { fn: "notifyRefund",                kind: "DEPOSIT",           audience: "player" },
+  { fn: "notifyOneSidedRefund",        kind: "REFUND",            audience: "player" },
+  { fn: "notifyRefund",                kind: "REFUND",            audience: "player" },
   // The Up & Down daily digest (E-37). `ROUND_RESULT` was declared here, given a
   // bell icon and a tint, and left with no emitter until this shipped.
   { fn: "notifyUpDownDigest",          kind: "ROUND_RESULT",      audience: "player" },
@@ -293,17 +294,18 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // only outcome a player ever heard about was the one where nothing happened to their
   // money. `test:updown-bell` asserts all four exist and are wired.
   //
-  // ⚠️ The two refunds are filed under DEPOSIT deliberately. `notifyOneSidedRefund`
-  // above files a refund as `WIN`, which is one of the misfilings this file's own header
-  // flags as making the production "top events" numbers wrong. New emitters do not
-  // inherit an old mistake for symmetry's sake — money returning to a wallet is a
-  // deposit-shaped event and renders with the money-in tint rather than a trophy.
+  // Refunds now have a distinct kind. Historic WIN/DEPOSIT rows keep their stored
+  // value and receive the refund appearance through appearanceKind.
   { fn: "notifyUpDownWin",             kind: "WIN",               audience: "player" },
   { fn: "notifyUpDownLoss",            kind: "LOSS",              audience: "player" },
-  { fn: "notifyUpDownRefund",          kind: "DEPOSIT",           audience: "player" },
-  { fn: "notifyUpDownOneSidedRefund",  kind: "DEPOSIT",           audience: "player" },
-  { fn: "notifyMarketCancelled",       kind: "DEPOSIT",           audience: "player" },
+  { fn: "notifyUpDownRefund",          kind: "REFUND",            audience: "player" },
+  { fn: "notifyUpDownOneSidedRefund",  kind: "REFUND",            audience: "player" },
+  { fn: "notifyMarketCancelled",       kind: "REFUND",            audience: "player" },
   { fn: "notifyDeposit",               kind: "DEPOSIT",           audience: "player" },
+  { fn: "notifyDeposit",               kind: "DEPOSIT_PROCESSING", audience: "player" },
+  { fn: "notifyDeposit",               kind: "DEPOSIT_REVIEW",    audience: "player" },
+  { fn: "notifyDeposit",               kind: "DEPOSIT_FAILED",    audience: "player" },
+  { fn: "notifyDeposit",               kind: "DEPOSIT_HELD",      audience: "player" },
   { fn: "notifyWithdraw",              kind: "WITHDRAW",          audience: "player" },
   { fn: "notifyBonusCredited",         kind: "BONUS",             audience: "player" },
   { fn: "notifyBonusFulfilled",        kind: "BONUS",             audience: "player" },
@@ -407,6 +409,11 @@ export const CHANNEL_POLICY: Record<NotificationKind, ChannelRule> = {
   SELECTION_CLOSED: { sms: "never", email: "allowed" },
   ROUND_RESULT: { sms: "never", email: "allowed" },
   DEPOSIT: { sms: "allowed", email: "allowed" },
+  DEPOSIT_PROCESSING: { sms: "allowed", email: "allowed" },
+  DEPOSIT_REVIEW: { sms: "allowed", email: "allowed" },
+  DEPOSIT_FAILED: { sms: "allowed", email: "allowed" },
+  DEPOSIT_HELD: { sms: "allowed", email: "allowed" },
+  REFUND: { sms: "allowed", email: "allowed" },
   WITHDRAW: { sms: "allowed", email: "allowed" },
   KYC: { sms: "never", email: "allowed" },
   MATCH_START: { sms: "never", email: "allowed" },

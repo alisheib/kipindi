@@ -16,7 +16,7 @@ import { useT } from "@/lib/i18n";
 import { useModalLock } from "@/lib/use-modal-lock";
 // ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
-import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
+import { appearanceKind, iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
@@ -626,7 +626,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
             </div>
             <div className="flex-1 overflow-y-auto overscroll-contain bg-transparent" aria-live="polite" aria-relevant="additions">
               {items.map((n) => {
-                const Icon = iconFor(n.kind);
+                const kind = appearanceKind(n);
+                const Icon = iconFor(kind);
                 const isUnread = !n.readAt;
                 return (
                   /* 🔴 THE ROW USED TO BE A `<button>` WITH THE DISMISS `<button>` INSIDE IT.
@@ -667,8 +668,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                           `/notifications` now render one plate, at one size, from one place.
                           ⚠️ The size stays an inline literal inside the atom: `theme.spacing`
                           is overridden, so `h-8` would render 48px, not 32. */}
-                      <IconPlate size={32} variant={tintFor(n.kind)}>
-                        <Icon s={plateGlyph(32)} tier={tierFor(n.kind)} />
+                      <IconPlate size={32} variant={tintFor(kind)}>
+                        <Icon s={plateGlyph(32)} tier={tierFor(kind)} />
                       </IconPlate>
                       <div className="flex-1 min-w-0">
                         {/* ⭐ IN THE JOURNEY A NOTICE READS AS IT DOES ON /notifications (round 6, 2026-10-09, review C10): its

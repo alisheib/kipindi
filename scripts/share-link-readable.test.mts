@@ -36,6 +36,7 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 
 const invite = decomment(readFileSync(join(ROOT, "src/app/profile/invite/invite-client.tsx"), "utf8"));
 const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-button.tsx"), "utf8"));
+const plate = decomment(readFileSync(join(ROOT, "src/components/ui/icon-plate.tsx"), "utf8"));
 
 // ── 1 · The referral link is a control that CAN wrap ─────────────────────────────────
 {
@@ -87,8 +88,10 @@ const share = decomment(readFileSync(join(ROOT, "src/components/markets/share-bu
   ok("3: …it wraps instead", /text-text-subtle break-all/.test(share));
   // ⚠️ The two halves of the flex row, from both directions.
   ok("3: ⚠️ the text column may shrink below its content (min-w-0)", /<span className="min-w-0">/.test(share));
+  // PHOSPHOR-MIGRATION release 2a part 2: the shared atom owns size and shrink-0.
   ok("3: ⚠️ …and the 36px plate beside it may not (shrink-0)",
-     /h-\[36px\] w-\[36px\] shrink-0/.test(share));
+     /<IconPlate size=\{36\} variant="identity"/.test(share)
+       && /grid shrink-0 place-items-center/.test(plate));
   // ⭐ POSITIVE CONTROL: the line must still render the URL.
   // ⭐ Anchored on the WRAPPING span itself, so "the line wraps" and "the line still shows the
   // URL" cannot be satisfied by two different elements.

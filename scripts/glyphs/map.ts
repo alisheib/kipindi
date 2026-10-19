@@ -330,7 +330,7 @@ export const DUO_KEYS: readonly string[] = [
   "circleStop", "privacyNotice", "shieldcheck", "scrollText", "tippingScales", "users", "idea", "user", "idCard", "agent",
   "bell", "globe", "layoutGrid", "needle", "logOut", "staffConsole",
   // the notification plates (notification-appearance.ts iconFor) — a win's seal stays in Fill
-  "xCircle", "ticket", "hourglassOff", "arrowDownToLine", "keyRound", "star", "flag", "gift",
+  "xCircle", "ticket", "hourglassOff", "arrowDownToLine", "keyRound", "star", "flag", "gift", "refund",
   // /help's topics, its contact and quick-link cards, and the home's trust band; the chat's help button (`comment`)
   "percent", "activity", "cashOut", "void", "phone", "mail", "comment", "portfolio",
   // /profile's rows and the settings pages' plates
@@ -349,7 +349,7 @@ export const DUO_KEYS: readonly string[] = [
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.7606b117.svg", "admin.b27adee4.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.8fd1796c.svg", "admin.b27adee4.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

@@ -322,7 +322,8 @@ export const NOT_EYEBROW = new Map([
   ["components/auth/auth-shell.tsx :: <div className=\"relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.auth.licensedByGbt}","OTHER"],
   ["components/auth/auth-shell.tsx :: <p className=\"mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle lg:hidden\"> ↵ {t.auth.licensedByGbt}","OTHER"],
   ["components/auth/resend-otp-button.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors disabled:opacity-60 dis", "CONTROL_LABEL"],
-  ["components/layout/avatar-menu.tsx :: <span className={journey ? \"block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5\" : \"block font-mono text-micro uppercase trackin", "CONTROL_LABEL"],
+  // PHOSPHOR-MIGRATION release 2a part 2: both staff rows now use royal ink; the subtitle remains a control label.
+  ["components/layout/avatar-menu.tsx :: <span className=\"block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5\">Staff · Internal</span> ↵ </span>", "CONTROL_LABEL"],
   ["components/layout/live-ticker.tsx :: <span className=\"font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]\"> ↵ {t.common.live}", "STATUS_CHIP"],
   // Re-keyed (PHOSPHOR-MIGRATION release 2): W4 drew this row's chevron from the family (it was a hand-drawn <svg>), so the
   // element after the state word changed and the signature went stale on main.

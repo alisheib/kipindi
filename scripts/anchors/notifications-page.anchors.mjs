@@ -156,8 +156,24 @@ export const MUTATIONS = [
     // the page stops IMPORTING the shared map and declares its own, which is the real defect.
     // PHOSPHOR-MIGRATION release 2: the page imports the shared plate variant without the retired cn helper. A local
     // variant map must still be rejected, or this page and the bell can disagree on a notice's meaning.
-    from: `import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";`,
-    to: `import { iconFor, tierFor } from "@/lib/notification-appearance";
+    from: `import { appearanceKind, iconFor, tierFor, tintFor } from "@/lib/notification-appearance";`,
+    to: `import { appearanceKind, iconFor, tierFor } from "@/lib/notification-appearance";
 const tintFor = (_k: unknown) => "quiet" as const;`,
+  },
+  {
+    name: "failed-deposit-green-again",
+    why: "a failed payment takes the confirmed deposit's green plate",
+    file: "src/lib/notification-appearance.ts",
+    suite: "notifications-page",
+    from: '    case "DEPOSIT_FAILED": return "danger";',
+    to: '    case "DEPOSIT_FAILED": return "success";',
+  },
+  {
+    name: "refund-disappears-from-money-lens",
+    why: "a returned stake exists but the Money filter omits it",
+    file: "src/lib/server/comms-registry.ts",
+    suite: "notifications-page",
+    from: '  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD", "REFUND",',
+    to: '  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD",',
   },
 ];

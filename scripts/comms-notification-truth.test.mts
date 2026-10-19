@@ -167,6 +167,12 @@ ok("every exported emitter is registered", exportedFns.every((f) => registeredFn
 ok("every registered emitter exists", registeredFns.every((f) => exportedFns.includes(f)),
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
+for (const { fn, row } of EMITTED) {
+  if (!row) continue;
+  ok(`${fn} writes a kind declared for that emitter`,
+    NOTIFICATION_EMITTERS.some((e) => e.fn === fn && e.kind === row.kind),
+    `${fn}: ${row.kind}`);
+}
 // The fan-out emitters return void, so they are exercised in §5 instead.
 const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsSmsCreditLow", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked",
   // N6: a designated-account AML finding is a separate officer fan-out.
@@ -368,9 +374,11 @@ for (const { fn, row } of EMITTED) {
 // Deposit states must each say the true thing about the money.
 {
   const failed = await N.notifyDeposit(U, { status: "FAILED", amount: 50_000, provider: "Selcom", txnId: "txn_f" });
+  ok("a failed deposit is recorded as failed, not confirmed", failed?.kind === "DEPOSIT_FAILED");
   ok("a failed deposit says no money was taken", /No money was taken/i.test(failed?.bodyEn ?? ""));
   ok("…in Chinese too", /未扣除/.test(failed?.bodyZh ?? ""));
   const reversed = await N.notifyDeposit(U, { status: "REVERSED", amount: 50_000, provider: "Selcom", txnId: "txn_r" });
+  ok("a held deposit is recorded as held, not confirmed", reversed?.kind === "DEPOSIT_HELD");
   // ⭐ RE-DERIVED 2026-10-14 (S9 root review H3/M2). This used to require "self-excluded" and "returned" in the body. Both
   // were untrue for some players: the hold also covers a cooling-off break (not a self-exclusion), and the bell went out
   // while the money was still HELD, before anything was sent back — COMPLIANCE-DECISIONS 2026-10-07 records exactly that
@@ -396,9 +404,17 @@ for (const { fn, row } of EMITTED) {
     && !heldTruth({ ...reversed, titleSw: "Amana imerudishwa · TZS 50,000" })
     && !heldTruth({ ...reversed, titleZh: "充值已退回 · TZS 50,000" }));
   const processing = await N.notifyDeposit(U, { status: "PROCESSING", amount: 50_000, provider: "Selcom", txnId: "txn_p" });
+  ok("a processing deposit is recorded as processing", processing?.kind === "DEPOSIT_PROCESSING");
+  const review = await N.notifyDeposit(U, { status: "AML_REVIEW", amount: 50_000, provider: "Selcom", txnId: "txn_review" });
+  ok("an under-review deposit is recorded as under review", review?.kind === "DEPOSIT_REVIEW");
   ok("a processing deposit warns against paying twice", /Don't pay again/i.test(processing?.bodyEn ?? ""));
   ok("…in Swahili", /Usilipe tena/i.test(processing?.bodySw ?? ""));
   ok("…and in Chinese", /请勿重复支付/.test(processing?.bodyZh ?? ""));
+}
+
+for (const fn of ["notifyOneSidedRefund", "notifyRefund", "notifyUpDownRefund", "notifyUpDownOneSidedRefund", "notifyMarketCancelled"]) {
+  const row = EMITTED.find((e) => e.fn === fn)?.row;
+  ok(`${fn} records a refund, never a win or deposit`, row?.kind === "REFUND");
 }
 
 // Refused funds (2026-09-14). A balance held PENDING APPEAL must say how to appeal; a return whose payout

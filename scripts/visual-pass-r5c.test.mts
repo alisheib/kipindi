@@ -341,8 +341,10 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
 
   // 2.5 · fairness: the chain's highlighted step and the list's numerals.
   const FAIR = read("src/app/fairness/page.tsx");
+  // PHOSPHOR-MIGRATION release 2a part 2: the shared identity plate owns the fill, and the current step keeps its ring.
   ok("2.5 · the fairness chain's highlighted node is the brand ring the KYC rail's current step wears — not gilt",
-    /\? "border-2 border-brand-500 bg-brand-500\/10 text-brand-300"/.test(FAIR) && /highlight: true/.test(FAIR) && !/gold|gilt/.test(FAIR));
+    /<IconPlate size=\{44\} variant="identity"[\s\S]*?boxShadow: "inset 0 0 0 2px var\(--brand-500\)"/.test(FAIR)
+      && /<Glyph s=\{plateGlyph\(44\)\} tier="duo"/.test(FAIR) && /highlight: true/.test(FAIR) && !/gold|gilt/.test(FAIR));
   ok("2.5′ · the numerals are the list's own ink — never gold — in R4-E's measured proportional Inter Bold (not tabular, §7 of r4e)",
     !/gold|gilt|color:/.test(rule(CSS, ".fairness-steps > li::before")) && !/tabular-nums|font-mono/.test(rule(CSS, ".fairness-steps > li::before"))
     && !/gilt|gold/.test(rule(CSS, ".kp-step__n")));
@@ -410,7 +412,8 @@ section("3 · the one non-money accent — the brand family, wherever a highligh
     ["the carousels' arrows", "src/app/results/notable-carousel.tsx", /color: "var\(--brand-300\)"/],
     ["the proposal timeline's current step", "src/components/proposals/status-timeline.tsx", /now \? "var\(--brand-300\)"/],
     ["/profile's set-apart row (the agent dashboard)", "src/app/profile/page.tsx", /accent \? "border-brand-600\/60 hover:border-brand-500"/],
-    ["the journey's staff row", "src/components/layout/avatar-menu.tsx", /journey \? "hover:bg-brand-500\/10" : "hover:bg-gold-500\/10"/],
+    // PHOSPHOR-MIGRATION release 2a part 2: Ali ruled the classic row royal as well.
+    ["both shells' staff row", "src/components/layout/avatar-menu.tsx", /hover:bg-brand-500\/10"[\s\S]*?<IconPlate size=\{40\} variant="identity"/],
     ["the journey's current-language tick", "src/components/ui/language-menu.tsx", /const tickInk = journey \? "var\(--brand-300\)"/],
     ["the journey bell's unread dot and wash", "src/components/layout/notifications-panel.tsx", /const unreadDot = journey \? "brand" : "gold";/],
     ["the primer's instruction and its 'share' hinge", "src/components/onboarding/first-visit-primer.tsx", /style=\{\{ color: "var\(--brand-300\)" \}\}>\{dragLabel\}/],
@@ -418,7 +421,7 @@ section("3 · the one non-money accent — the brand family, wherever a highligh
     ["the consent and install cards' glyph", "src/components/analytics/consent-prompt.tsx", /text-brand-300" aria-hidden><I\.chart/],
     ["the KYC upload tile's hover and working state", "src/components/profile/kyc-doc-uploader.tsx", /: working \? "border-brand-400 bg-brand-500\/\[0\.06\] cursor-wait"/],
     ["the avatar camera's hover edge", "src/components/profile/avatar-uploader.tsx", /group-hover:border-brand-400 group-hover:text-text/],
-    ["the invite plate on each promise", "src/app/profile/invite/page.tsx", /className="bg-brand-500\/10 text-brand-300"/],
+    ["the invite plate on each promise", "src/app/profile/invite/page.tsx", /<IconPlate[\s\S]*?size=\{26\}[\s\S]*?variant="identity"[\s\S]*?<PIcon s=\{plateGlyph\(26\)\} tier="duo"/],
     ["the propose promo's plate and hover", "src/components/ui/propose-promo.tsx", /hover:border-brand-400/],
     ["the market page's CLOSED words (the dictionary's royal ink, `TONE_INK.royal`)", "src/app/markets/[id]/page.tsx", /text-brand-300">\s*\{t\.market\.closedAwaitingSettlement\}/],
   ];
@@ -504,7 +507,7 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
   // R8-A (2026-10-10): re-pinned. The premise was "the warning toast IS gold"; Ali's ruling (1) made it AMBER, and the
   // routing stands on F2's table (DESIGN_AUTHORITY F3's note) — feedback-law §2 pins the new premise too.
   ok("5.1″ · CONTROL · the warning toast is the AMBER family, never gold (Ali's ruling (1), 2026-10-10) — and still never a fixable refusal's",
-    /warning: \{\s*bar: "bg-warning",\s*icon: <span className="text-warning-fg">/.test(read("src/components/ui/toast.tsx")) && !/warning: \{\s*bar: "bg-gold/.test(read("src/components/ui/toast.tsx")));
+    /warning: \{\s*bar: "bg-warning",\s*icon: <I\.warning s=\{plateGlyph\(40\)\} tier="fill" \/>,\s*plate: "warning"/.test(read("src/components/ui/toast.tsx")) && !/warning: \{\s*bar: "bg-gold/.test(read("src/components/ui/toast.tsx")));
 
   // 5.2 · §B11 — one word, one tone.
   const WRM = read("src/app/wallet/wallet-result-modal.tsx");
@@ -521,7 +524,7 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
     /: "pending";/.test(read("src/app/profile/source-of-funds/page.tsx")) && /<Chip variant="neutral" size="sm">\{t\.market\.commentHidden\}/.test(read("src/components/markets/comments-thread.tsx"))
       && /playerStatusChip\("DEACTIVATED"\)/.test(read("src/app/profile/invite/agent-dashboard.tsx")) && !/COOLED_OFF" \? "warning"/.test(read("src/app/profile/account/page.tsx")));
   ok("5.2‴ · 'more information needed' and the KYC gate's 'your move' are AMBER — the warning family, never the gold ramp (§B11)",
-    /action:\s*\{ ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" \}/.test(read("src/components/kyc/kyc-gate-panel.tsx"))
+    /action:\s*\{ ring: "border-warning-border", ink: "text-warning-fg", plate: "warning" \}/.test(read("src/components/kyc/kyc-gate-panel.tsx"))
       && /border-warning-border bg-warning-bg p-4 lg:p-5/.test(read("src/app/profile/kyc/page.tsx")));
 
   // 5.3 · a clock's last stretch keeps its ink (§B2a; R4-K moved the market clock's labels).
@@ -560,9 +563,12 @@ section("7 · the owner's items, pinned as they stand — classic chrome (frozen
   ok("7.1 · RULED (Ali, 2026-10-10) · `--warning-fg` is the amber, never `var(--gilt)` — F3's token re-hued, the owner item closed",
     /--warning-fg:\s*oklch\(82% 0\.13 64\);/.test(CSS) && !/--warning-fg:\s*var\(--gilt\)/.test(CSS));
   ok("7.2 · OWNER · the classic '• Juu na Chini' dots are gilt (nav + rail) — the change: `var(--brand-400)` in both", /borderRadius: "var\(--r-pill\)", background: "var\(--gilt\)"/.test(read("src/components/layout/top-app-bar.tsx")) && /background:\s*var\(--gilt\)/.test(rule(CSS, ".kp-rail__dot")));
-  ok("7.3 · OWNER · the classic bell, language tick and staff row keep gold; the journey's are brand (the same component, a `journey` prop)",
+  // PHOSPHOR-MIGRATION release 2a part 2: Ali moved the classic staff row to the same royal identity plate.
+  ok("7.3 · OWNER · the classic bell and language tick keep their chrome; both staff rows use royal identity plates",
     /const unreadWash = journey \? "bg-brand-500\/\[0\.04\]" : "bg-gold-500\/\[0\.04\]";/.test(read("src/components/layout/notifications-panel.tsx"))
-      && /<LanguageMenu journey \/>/.test(read("src/components/journey/journey-top-bar.tsx")) && /<NotificationsPanel journey \/>/.test(read("src/components/journey/journey-top-bar.tsx")));
+      && /<LanguageMenu journey \/>/.test(read("src/components/journey/journey-top-bar.tsx")) && /<NotificationsPanel journey \/>/.test(read("src/components/journey/journey-top-bar.tsx"))
+      && /<IconPlate size=\{40\} variant="identity"[\s\S]*?<I\.staffConsole s=\{plateGlyph\(40\)\} tier="duo"/.test(read("src/components/layout/avatar-menu.tsx"))
+      && !/href="\/admin"[\s\S]{0,180}hover:bg-gold-500\/10/.test(read("src/components/layout/avatar-menu.tsx")));
   ok("7.4 · the session-ended notice is the warning family (the player must sign in again — §B11) — amber, not gilt, since Ali's ruling (1) of 2026-10-10", /tone="warning"\s*glyph="alertCircle"\s*testId="session-ended-notice"/.test(read("src/components/layout/app-shell.tsx")));
   ok("7.5 · OWNER · the legal RG links are gold and HASHED (RG_EN_SHA, TERMS_TEXT_SHA): the recolour ships with a new version",
     /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/responsible-gambling/page.tsx")) && /text-gold-300 hover:text-gold-200/.test(read("src/app/legal/terms/page.tsx")));

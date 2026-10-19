@@ -33,6 +33,12 @@ production home and help pages were inspected at phone and desktop in all three 
 signed-in player pages were inspected in the local browser; production's `mobile01` sign-in was not authorized.
 **Resume:** release 2a part 2, then the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
 
+⏳ **Release 2a, part 2 IN FLIGHT (2026-10-19):** the hand-over's remaining plates are implemented on
+`codex/phosphor-2a-part2`. Ali chose ledger-type glyphs for wallet history, the royal staff plate in both shells, and
+status-specific plates for deposit notices. Refunds now carry their own notification kind; historic rows are recognised
+by their exact stored titles without rewriting production data. The changed guards and their mutation proofs are being
+checked, including both data stores. This part is **not live** until its release gates and production read-back pass.
+
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
 - the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
@@ -247,7 +253,7 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-BADGES | **6A** — the profile badge medallions keep their hand-drawn art: identity art like the brand mark, outside the Phosphor family |
 | R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (Ali, 2026-10-17, during W2) — ONE source: the family `I`. An icon it lacks becomes a key in `scripts/glyphs/map.ts` (or a house extra) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. AGENTS.md §7, DESIGN_AUTHORITY §K3 and the design master brief state it; `test:glyph-source` §3/§5/§6 hold its three doors (inline `<svg>`, SVG data URIs, images under `public/`) |
 | R-WALLET-HISTORY | *"Use type-specific glyphs"* (Ali, 2026-10-19) — each wallet-history row names its stored transaction type with the family's glyph; unresolved types stay neutral |
-| R-STAFF-PLATE | *"Use royal identity plate"* (Ali, 2026-10-19) — the classic staff-menu row joins the journey row; gold stays reserved for earned money and status |
+| R-STAFF-PLATE | *"Use royal identity plate"* (Ali, 2026-10-19) — the classic staff-menu row joins the journey row; gold remains the money accent |
 | R-DEPOSIT-PLATE | *"Use status-specific plates"* (Ali, 2026-10-19) — a failed, held, processing or under-review deposit notification must not wear the successful deposit's green plate; its plate follows its actual stored notice status |
 
 **W0's answers** — Ali, 2026-10-17, after opening the specimen: *"good i saw them proceed oerfcetly syroe anuthgi enede

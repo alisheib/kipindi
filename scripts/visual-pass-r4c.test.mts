@@ -278,9 +278,9 @@ section("3 · notifications: a figure whole and mono, a body's last two words to
   ok("3.6′ PLANT · the bare title put back is reported", /(?<!=)\{pickTitle\(n\)\}/.test(page.replace("<DotSeq text={pickTitle(n)} renderPart={moneyRuns} />", "{pickTitle(n)}")));
   // The action column: the row is items-start; the plate is 32px at mt-0.5; each control is 44px.
   const actions = code("src/app/notifications/row-actions.tsx");
-  // PHOSPHOR-MIGRATION release 2: IconPlate now owns the border and receives the shared notification variant. Measure
-  // the actual 32px plate and its mt-0.5 offset; a missing or moved plate must still fail this centre alignment check.
-  const plateTop = /<IconPlate size=\{32\} variant=\{tintFor\(n\.kind\)\} className="mt-0\.5"/.test(page) ? SCALE["0.5"] : NaN;
+  // PHOSPHOR-MIGRATION release 2a part 2: `kind` is the row's status-aware appearance, shared with the bell. Measure
+  // the actual 32px plate and its mt-0.5 offset; a missing or moved plate still fails this centre alignment check.
+  const plateTop = /<IconPlate size=\{32\} variant=\{tintFor\(kind\)\} className="mt-0\.5"/.test(page) ? SCALE["0.5"] : NaN;
   const plateMid = plateTop + 32 / 2;
   const lift = px(/<span className="([^"]*)"/.exec(actions)?.[1] ?? "", "-mt");
   const restoreLift = px(/className="(-mt-[^"]*min-h-\[44px\] px-2[^"]*)"/.exec(actions)?.[1] ?? "", "-mt");

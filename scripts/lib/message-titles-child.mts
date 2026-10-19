@@ -117,7 +117,7 @@ type Role = (typeof ROLES)[number];
 /** The bell rows and the player letters each role is owed — the census of §C. */
 const ROWS: Record<Role, string[]> = {
   A: ["BET_PLACED", "SELECTION_CLOSED", "VERDICT", "WIN"], B: ["BET_PLACED", "SELECTION_CLOSED", "VERDICT", "LOSS"],
-  C: ["BET_PLACED", "WIN"], W: ["WATCHLIST", "WATCHLIST"], D: ["BET_PLACED", "VERDICT", "WIN"], E: ["BET_PLACED", "VERDICT", "DEPOSIT"], F: ["BET_PLACED", "DEPOSIT"],
+  C: ["BET_PLACED", "WIN"], W: ["WATCHLIST", "WATCHLIST"], D: ["BET_PLACED", "VERDICT", "REFUND"], E: ["BET_PLACED", "VERDICT", "REFUND"], F: ["BET_PLACED", "REFUND"],
 };
 const LETTERS: Record<Role, string[]> = {
   A: ["bet-placed", "selection-closed", "win"], B: ["bet-placed", "selection-closed", "loss"], C: ["bet-placed", "cashout"], W: [],

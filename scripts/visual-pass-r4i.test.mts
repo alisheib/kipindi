@@ -400,7 +400,12 @@ section("4 · every confirm's ✕ on its title's capitals, and the header no tal
   const confirmX = (src: string) => {
     const c = confirmOf(src);
     const cls = /<CloseX withheld=\{loading\} onClick=\{onClose\} label=\{t\.common\.close\} className="([^"]+)" \/>/.exec(c)?.[1];
-    const wired = /showClose=\{false\}/.test(c) && /className="mt-0\.5 shrink-0 inline-flex h-\[36px\] w-\[36px\]/.test(c)
+    // PHOSPHOR-MIGRATION release 2a part 2: IconPlate owns the 36px size and shrink-0;
+    // the confirm's custom material and CloseX geometry stay the same.
+    const wired = /showClose=\{false\}/.test(c) && /<IconPlate size=\{36\} className="mt-0\.5"/.test(c)
+      && /bg=\{`color-mix\(in oklab, \$\{ink\.ring\} 15%, transparent\)`\}/.test(c)
+      && /border=\{`1px solid color-mix\(in oklab, \$\{ink\.ring\} 30%, transparent\)`\}/.test(c)
+      && /grid shrink-0 place-items-center/.test(read("src/components/ui/icon-plate.tsx"))
       && /function CloseX\([\s\S]*?className=\{`\$\{className\} inline-flex h-8 w-8 items-center justify-center rounded-md/.test(src);
     if (!cls || !wired) return null;
     const top = margin(cls, "mt"), bottom = margin(cls, "mb");

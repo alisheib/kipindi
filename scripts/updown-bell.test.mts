@@ -76,8 +76,9 @@ const U = "ud_bell";
 const OUTCOMES = [
   { name: "win",              kind: "WIN",     row: await N.notifyUpDownWin(U,             { ...round("w1"), stake: 5_000, payout: 8_700, positionId: "pos_w1" }) },
   { name: "loss",             kind: "LOSS",    row: await N.notifyUpDownLoss(U,            { ...round("l1"), stake: 5_000, positionId: "pos_l1" }) },
-  { name: "void refund",      kind: "DEPOSIT", row: await N.notifyUpDownRefund(U,          { ...round("v1"), stake: 5_000, positionId: "pos_v1" }) },
-  { name: "one-sided refund", kind: "DEPOSIT", row: await N.notifyUpDownOneSidedRefund(U,  { ...round("o1"), stake: 5_000, positionId: "pos_o1" }) },
+  // PHOSPHOR-MIGRATION release 2a part 2: a returned stake has its own money kind.
+  { name: "void refund",      kind: "REFUND", row: await N.notifyUpDownRefund(U,          { ...round("v1"), stake: 5_000, positionId: "pos_v1" }) },
+  { name: "one-sided refund", kind: "REFUND", row: await N.notifyUpDownOneSidedRefund(U,  { ...round("o1"), stake: 5_000, positionId: "pos_o1" }) },
 ] as const;
 
 for (const o of OUTCOMES) {

@@ -3,6 +3,7 @@
 import { PageContainer } from "@/components/layout/page-container";
 import { BackLinkGhost } from "@/components/ui/back-link";
 import { I } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { ButtonGhost, ChipGhost, GhostText } from "@/components/ui/ghost-text";
 import { fill } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -62,9 +63,7 @@ export default function AgentApplyLoading() {
             {[t.agent.docCv, t.agent.docRequest].map((label, i) => (
               <div key={i} className="relative">
                 <div className="w-full min-h-[96px] overflow-hidden rounded-md border-2 border-dashed border-border bg-bg-overlay/40 p-3 text-center">
-                  <span className="mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full bg-bg-overlay border border-border">
-                    <I.idCard s={14} />
-                  </span>
+                  <IconPlate size={40} variant="identity" className="mx-auto mb-1.5" aria-hidden />
                   <span className="block font-display text-body-sm font-semibold"><GhostText>{label}</GhostText></span>
                   <span className="mt-0.5 block font-mono text-body-sm"><GhostText>{t.agent.slotEmpty}</GhostText></span>
                 </div>

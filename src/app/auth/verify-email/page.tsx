@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -40,9 +41,9 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
           <AuthPanel>
             {/* Royal, not the success or danger family: nothing is confirmed yet, and nothing failed. LITERAL sizes, as
                 below — spacing is overridden (tailwind.config.ts:200-215). */}
-            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill border border-brand-600/60 bg-brand-500/10 text-brand-300">
-              <I.mail s={22} />
-            </span>
+            <IconPlate size={48} variant="identity" aria-hidden>
+              <I.mail s={plateGlyph(48)} tier="duo" />
+            </IconPlate>
 
             <AuthHeader
               eyebrow={t.common.confirmEmailTitle}
@@ -126,24 +127,9 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
     <AuthShell>
 
         <AuthPanel>
-          {/* `/[0.12]` and not `/12`: Tailwind's opacity scale runs in steps of 5, so
-              `/12` was dropped before the mix and BOTH medallions rendered with no fill
-              — confirmed and failed looked identical apart from the glyph tint. Email
-              confirmation gates withdrawal (since 2026-10-07; it gated the first deposit
-              before), so this chip sits on the money ladder and has to read at a glance. */}
-          <span
-            /* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215)
-               and `h-12` rendered a 128px disc on the money ladder described above. */
-            className={`inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill ${
-              /* D2 (2026-08-21): the SEMANTIC families. A confirmed inbox is not a
-                 won bet and an expired link is not a lost one — §B2 keeps `--yes-*`
-                 / `--no-*` for money. The medallion still reads green-vs-rose at a
-                 glance, on the jade green that means "app state" everywhere else. */
-              good ? "bg-success/[0.12] text-success-fg" : "bg-danger-500/[0.12] text-danger-fg"
-            }`}
-          >
-            {good ? <I.mail s={22} /> : <I.alertCircle s={22} />}
-          </span>
+          <IconPlate size={48} variant={good ? "success" : "danger"} aria-hidden>
+            {good ? <I.checkCircle s={plateGlyph(48)} tier="fill" /> : <I.alertCircle s={plateGlyph(48)} tier="fill" />}
+          </IconPlate>
 
           <AuthHeader
             tone={good ? "success" : "danger"}

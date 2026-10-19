@@ -24,8 +24,7 @@ import type { StoredNotification } from "@/lib/server/store";
 
 type Kind = StoredNotification["kind"];
 
-/** A win's seal, the one kind drawn in Fill (`tierFor`) — typed, so it can only name a key that ships a Fill (and the
- *  Duotone every other kind's plate draws, `DuoGlyphKey`). */
+/** A win's seal, drawn in Fill (`tierFor`) — typed for both available tiers. */
 const WIN_SEAL = "resolved" as const satisfies FillGlyphKey & DuoGlyphKey;
 
 /**
@@ -34,19 +33,24 @@ const WIN_SEAL = "resolved" as const satisfies FillGlyphKey & DuoGlyphKey;
  * a loss Up & Down's DOWN, a round's result a pulse, limits a heartbeat, betting closed a date).
  *
  * ⚠️ Returns the component, not an element, so a caller controls the size: the bell and `/notifications` both render it
- * at `plateGlyph(32)` on a 32px plate, and draw it in `tierFor`'s tier. Every key is a `DuoGlyphKey` (`keyFor`), so tsc
- * refuses a kind whose plate would fall back to Bold (PHOSPHOR-MIGRATION release 2).
+ * at `plateGlyph(32)` on a 32px plate, and draw it in `tierFor`'s tier. Status-only keys may be Fill; the other
+ * keys have Duotone. The typed key union prevents an absent sprite tier.
  * ⛔ Every kind a player is sent has its case (W4's review found a verdict, a dispute and a bonus falling to the bell).
  * The bell stays for the kinds a player is never sent — the staff's own notices, which D19 keeps out of a player's
  * bundle by name (test:house-bot-disclosure 1.1) — and for a value older data may hold.
  */
-const keyFor = (k: Kind): DuoGlyphKey => {
+const keyFor = (k: Kind): DuoGlyphKey | FillGlyphKey => {
   switch (k) {
     case "WIN":          return WIN_SEAL; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
     case "LOSS":         return "xCircle"; // on the quiet plate: a loss is bookkeeping (§M7)
     case "BET_PLACED":   return "ticket";
     case "SELECTION_CLOSED": return "hourglassOff"; // betting closed, as the cards and the question page draw it
     case "DEPOSIT":      return "arrowDownToLine"; // R-LEXICON 5.3A
+    case "DEPOSIT_PROCESSING": return "clock";
+    case "DEPOSIT_REVIEW": return "info";
+    case "DEPOSIT_FAILED": return "alertCircle";
+    case "DEPOSIT_HELD": return "lock";
+    case "REFUND": return "refund";
     case "WITHDRAW":     return "arrowUpFromLine"; // R-LEXICON 5.3A
     case "KYC":          return "idCard"; // identity verification, as its hub row; `shieldcheck` means verified
     case "ROUND_RESULT": return "resolved"; // a result recorded (§3), on the quiet plate
@@ -64,9 +68,23 @@ const keyFor = (k: Kind): DuoGlyphKey => {
 };
 export const iconFor = (k: Kind) => I[keyFor(k)];
 
-/** The tier a kind's glyph draws in: a win's seal is solid (Fill: earned, §8c); every other kind is the notice's identity
- *  on its plate, in Duotone (PHOSPHOR-MIGRATION release 2, W5; DESIGN_AUTHORITY §K3 item 3). */
-export const tierFor = (k: Kind): "fill" | "duo" => (k === "WIN" ? "fill" : "duo");
+/** Outcomes and deposit states use Fill; ordinary account notices and refunds use Duotone. */
+export const tierFor = (k: Kind): "fill" | "duo" =>
+  k === "WIN" || k === "DEPOSIT_PROCESSING" || k === "DEPOSIT_REVIEW" || k === "DEPOSIT_FAILED" || k === "DEPOSIT_HELD"
+    ? "fill" : "duo";
+
+/** Old rows retain their original kind. Recognise only the exact English title prefixes the old emitters wrote; all new
+ * notices carry their status or refund kind at write time. The bell and the full inbox call this same function. */
+export const appearanceKind = (n: StoredNotification): Kind => {
+  if (n.kind === "WIN" && n.titleEn.startsWith("Full refund · ")) return "REFUND";
+  if (n.kind !== "DEPOSIT") return n.kind;
+  if (n.titleEn.startsWith("Deposit processing · ")) return "DEPOSIT_PROCESSING";
+  if (n.titleEn.startsWith("Deposit under review · ")) return "DEPOSIT_REVIEW";
+  if (n.titleEn.startsWith("Deposit failed · ")) return "DEPOSIT_FAILED";
+  if (n.titleEn.startsWith("Deposit held for return · ")) return "DEPOSIT_HELD";
+  if (["Refund · ", "Refunded · ", "Market cancelled · "].some((prefix) => n.titleEn.startsWith(prefix))) return "REFUND";
+  return n.kind;
+};
 
 /**
  * The plate per notification kind: an `IconPlate` variant, each one recipe from the tokens (globals.css `.kp-plate--*`,
@@ -91,6 +109,11 @@ export const tintFor = (k: Kind): PlateVariant => {
        the neighbours: every other non-gold tone on this list is its family's plate (`.kp-plate--<family>`,
        which reads the family's border, its wash at 30% and its ink). */
     case "DEPOSIT":      return "success";
+    case "DEPOSIT_PROCESSING": return "info";
+    case "DEPOSIT_REVIEW": return "warning";
+    case "DEPOSIT_FAILED": return "danger";
+    case "DEPOSIT_HELD": return "warning";
+    case "REFUND": return "info";
     /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
        "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
        `--warning-fg` was then `--gilt` (amber since Ali's ruling (1) of 2026-10-10), claimed both alarm and gold. It

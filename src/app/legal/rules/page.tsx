@@ -3,7 +3,8 @@ import { LegalHeader, LegalSection } from "../_components";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { sideWordIn } from "@/lib/side-label";
 import { getGlobalConfig } from "@/lib/server/market-config";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { ratesFrom } from "./_shared";
 
 /**
@@ -135,17 +136,15 @@ export default async function GameRulesIndexPage() {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <RuleCard
           href="/legal/rules/yes-no"
-          icon={<I.listChecks s={20} />}
+          glyph="listChecks"
           title={c.yesNo[0]}
           sub={c.yesNo[1]}
-          tone="info"
         />
         <RuleCard
           href="/legal/rules/up-down"
-          icon={<I.trade s={20} />}
+          glyph="trade"
           title={c.upDown[0]}
           sub={c.upDown[1]}
-          tone="aqua"
         />
       </div>
 
@@ -190,24 +189,22 @@ export default async function GameRulesIndexPage() {
 }
 
 function RuleCard({
-  href, icon, title, sub, tone,
+  href, glyph, title, sub,
 }: {
   href: string;
-  icon: React.ReactNode;
+  glyph: DuoGlyphKey;
   title: string;
   sub: string;
-  tone: "info" | "aqua";
 }) {
-  const tint = tone === "info" ? "bg-info-bg text-info-fg" : "bg-aqua-500/10 text-aqua-300";
+  const Glyph = I[glyph];
   return (
     <Link
       href={href as never}
       className="flex items-start gap-3 rounded-xl glass-panel p-4 hover:border-brand-400 transition-colors"
     >
-      {/* ⚠️ LITERALS, not `h-10 w-10` — the spacing scale is overridden, so `h-10` is 80px. */}
-      <span className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 ${tint}`}>
-        {icon}
-      </span>
+      <IconPlate size={40} variant="identity" aria-hidden>
+        <Glyph s={plateGlyph(40)} tier="duo" />
+      </IconPlate>
       {/* 2026-09-13: balanced so a zh card line never ends on a stranded character. */}
       <div className="flex-1 min-w-0">
         <p className="font-display text-body-sm font-semibold text-text text-balance">{title}</p>

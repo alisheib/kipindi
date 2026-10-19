@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -63,15 +64,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
       <AuthShell>
 
           <AuthPanel>
-            {/* `/[0.12]` and not `/12` — off Tailwind's 5-step opacity ladder, so the
-                invalid/expired medallion had no fill behind its glyph at all. */}
-            {/* ⚠️ LITERALS, not `h-12 w-12` — spacing is overridden (tailwind.config.ts:200-215),
-                so `h-12` renders a 128px disc around a 22px glyph. */}
-            {/* D2 (2026-08-21): `--danger-*`, not `--no-*` — an expired reset link is
-                an app state, and §B2 keeps the betting pair for money. */}
-            <span className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-pill bg-danger-500/[0.12] text-danger-fg">
-              {state === "expired" ? <I.clock s={22} /> : <I.alertCircle s={22} />}
-            </span>
+            <IconPlate size={48} variant="danger" aria-hidden>
+              {state === "expired" ? <I.clock s={plateGlyph(48)} tier="fill" /> : <I.alertCircle s={plateGlyph(48)} tier="fill" />}
+            </IconPlate>
 
             <AuthHeader
               tone="danger"

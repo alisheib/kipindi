@@ -314,8 +314,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/layout/top-app-bar.tsx", "<I.arrowDownToLine s={14} />", 1, "frozen", "the classic header's deposit pill (classic chrome, frozen until the flip; it drew the plus until W2 — a named parity change)"],
     ["src/components/layout/wallet-sheet.tsx", '<I.arrowDownToLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Deposit door (it drew the plus until W2 — §6.6″): pulled in the journey, the classic capsule's sheet keeps its box"],
     ["src/components/layout/wallet-sheet.tsx", '<I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />', 1, "journey", "the wallet sheet's Withdraw door (§6.8)"],
-    ["src/app/wallet/wallet-client.tsx", "<I.arrowDown s={16} />", 1, "alone", "a history row's credit arrow, alone in its 34px plate"],
-    ["src/app/wallet/wallet-client.tsx", "<I.arrowUp s={16} />", 1, "alone", "a history row's debit arrow, alone in its 34px plate"],
+    // PHOSPHOR-MIGRATION release 2a part 2: the wallet row now selects a glyph by stored ledger kind (§3.3).
+    ["src/components/ui/not-found-view.tsx", '<I.arrowLeft s={plateGlyph(40)} />', 1, "alone", "the Home door's back arrow, centred on its identity plate"],
     ["src/components/charts/chart-toggle.tsx", '<I.chevronDown s={14} edge="end" className={[ "text-text-muted shrink-0 transition-transform duration-200", open ? "rotate-180" : "", ].join(" ")} />', 1, "edge", "the chart toggle's row end; it turns about its own box"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowDown s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowUp s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
@@ -389,13 +389,38 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     has("src/components/home/updown-match-words.tsx", '<Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />')
       && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return "arrowDownToLine";') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return "arrowUpFromLine";')
       && has("src/components/wallet/receipt-list-row.tsx", 'const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;')
-      && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} className="bg-brand-500/10 text-brand-300"> <Dir s={20} /> </IconPlate>')
+      && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} variant="identity"> <Dir s={plateGlyph(40)} tier="duo" /> </IconPlate>')
+      && has("src/app/wallet/wallet-client.tsx", 'DEPOSIT: "arrowDownToLine"')
+      && has("src/app/wallet/wallet-client.tsx", 'WITHDRAWAL: "arrowUpFromLine"')
+      && has("src/app/wallet/wallet-client.tsx", '<LedgerGlyph s={plateGlyph(32)} tier={ledgerGlyph ? "duo" : "line"} />')
       && has("src/app/help/page.tsx", '{ key: "faq3", glyph: "arrowUpFromLine" },'));
   // …and no other player file names the two money arrows but those the census and 3.3 read.
   const NAMES_DOOR = new RegExp('(?:I[.]|glyph: ")arrow(?:DownToLine|UpFromLine)(?![A-Za-z])', "g");
   const doorFiles = PLAYER_TSX.filter((f) => [...code(f).matchAll(NAMES_DOOR)].length > [...code(f).matchAll(MARK)].filter((m) => new RegExp("^<I[.]arrow(?:DownToLine|UpFromLine)").test(m[0])).length);
   ok(`3.3′ · every other naming of the two money arrows on a player surface is one of 3.3's — ${doorFiles.join(", ")}`,
     j([...doorFiles].sort()) === j(["src/app/help/page.tsx", "src/components/wallet/receipt-list-row.tsx"]), j(doorFiles));
+  // PHOSPHOR-MIGRATION release 2a part 2: a sign-based arrow mislabels payouts, refunds and fees. Read the actual
+  // typed mapping the row uses, and prove a returned stake mislabeled as a deposit makes this check fail.
+  const ledgerSource = code("src/app/wallet/wallet-client.tsx");
+  const ledgerMapping = (src: string) => {
+    const block = src.match(/const LEDGER_GLYPH: Record<TxnTypeValue, DuoGlyphKey \| null> = \{([\s\S]*?)\};/)?.[1] ?? "";
+    return Object.fromEntries([...block.matchAll(/\b([A-Z_]+):\s*(?:"([a-zA-Z]+)"|(null)),/g)].map((m) => [m[1], m[2] ?? null]));
+  };
+  const expectedLedger = {
+    DEPOSIT: "arrowDownToLine", WITHDRAWAL: "arrowUpFromLine", BET_PLACED: "ticket",
+    BET_PAYOUT: "resolved", BET_REFUND: "refund", BONUS_CREDIT: "gift", CASHOUT: "cashOut",
+    AGENT_COMMISSION: "agent", AGENT_COMMISSION_REVERSAL: "agent", AGENT_REGISTRATION_FEE: "agent",
+    ADJUSTMENT_DEBIT: null, ADJUSTMENT_CREDIT: null, HOUSE_FEE: null,
+  };
+  const sameLedger = (src: string) => j(ledgerMapping(src)) === j(expectedLedger);
+  ok("3.3″ · each stored ledger type has its glyph, internal adjustments stay neutral, and the row reads type rather than amount sign",
+    sameLedger(ledgerSource)
+      && ledgerSource.includes("const ledgerGlyph = LEDGER_GLYPH[tx.type as TxnTypeValue] ?? null;")
+      && ledgerSource.includes("const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;")
+      && ledgerSource.includes('<IconPlate size={32} variant={ledgerGlyph ? "identity" : "quiet"} aria-hidden>'));
+  const mislabelRefund = ledgerSource.replace('BET_REFUND: "refund",', 'BET_REFUND: "arrowDownToLine",');
+  ok("3.3″ PLANT · a returned stake mislabeled as a deposit fails the same ledger check",
+    mislabelRefund !== ledgerSource && !sameLedger(mislabelRefund));
   // ⭐ RE-PINNED IN THE OPEN 2026-10-19 (PHOSPHOR-MIGRATION W4, §8a): the Select's field caret and DateSelect's month title
   // drew their own 12-unit caret, pulled by a derived FIELD_CARET_PULL. They are the family's chevronDown now, at 12px
   // (Phosphor's Bold caret carries the hand-drawn one's weight there; at 10px it read faint), and the edge rule reads its
