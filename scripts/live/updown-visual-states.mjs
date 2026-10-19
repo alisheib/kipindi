@@ -160,6 +160,12 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         return digits.length === 0 || digits.every((t) => !t.includes("--:--"));
       }, null, { timeout: 12000 }).then(() => true).catch(() => false);
       await p.page.waitForTimeout(900);
+      // The urgency pulse, measured BEFORE `STILL` freezes every animation: each `.ud-count-pulse` element, the animation the
+      // cascade actually gave it, and whether one is running (U43: beside `.m-tick` it lost the cascade and never played).
+      const pulses = await p.page.evaluate(() => [...document.querySelectorAll(".ud-count-pulse")].map((el) => ({
+        text: (el.textContent || "").trim(), name: getComputedStyle(el).animationName,
+        running: el.getAnimations().some((x) => x.playState === "running" && x.animationName === "ud-count-pulse"),
+      })));
       await p.page.addStyleTag({ content: STILL });
       const lang = await p.page.evaluate(() => document.documentElement.lang);
       const signedIn = await p.page.evaluate(() => !!document.querySelector('[data-testid="wallet-balance-pill"], .kp-balance-pill, a[href="/wallet"]'));
@@ -176,7 +182,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           cardFiles.push({ file: f, phase: await cards.nth(i).getAttribute("data-phase") });
         }
       });
-      shots.push({ cell: p.id, lang, langOk: lang === p.locale, hydrated, signedIn, signedInOk: (p.who === "player") === signedIn, file, cards: cardFiles });
+      shots.push({ cell: p.id, lang, langOk: lang === p.locale, hydrated, signedIn, signedInOk: (p.who === "player") === signedIn, file, cards: cardFiles, pulses });
     } catch (e) {
       shots.push({ cell: p.id, error: String(e).slice(0, 200) });
     }

@@ -226,6 +226,10 @@ if (!PROVE_RED) {
       expect: /^e\.hidden /, impl: { ...REAL, estimateFor: (i) => real({ ...i, rates: i.rates && { ...i.rates, feeModel: "loser-share" } }) } },
     { name: "the display switch is ignored",
       expect: /^e\.hidden /, impl: { ...REAL, estimateFor: (i) => real({ ...i, rates: i.rates && { ...i.rates, showEstimatedWinnings: true } }) } },
+    // ⭐ ADDED 2026-10-19 (MOBILE-VISUAL U43): the third hidden cause had its only plant in `red:journey-home` (3.legacy),
+    // which left with the card's figure (Ali's ruling: no odds on a card) — a card face no longer shows the difference.
+    { name: "a market with no rates priced at the deck's 13%",
+      expect: /^e\.hidden /, impl: { ...REAL, estimateFor: (i) => real({ ...i, rates: i.rates ?? LS13 }) } },
     { name: "an empty own side prints a figure on the card",
       expect: /^f\.fills /, impl: { ...REAL, estimateFor: (i) => {
         const r = real(i);

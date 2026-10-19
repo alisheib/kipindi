@@ -192,7 +192,10 @@ export function estimateFor(input: EstimateInput): Estimate | null {
   };
 }
 
-/** The card's figure (SJ-1): the zero-stake multiple. `null` for an Up & Down round. */
+/**
+ * The card's estimate (SJ-1): the zero-stake multiple, whose STATE and `emptySide` decide a journey card's words (it
+ * prints no figure since Ali's ruling of 2026-10-19). `null` for an Up & Down round.
+ */
 export function cardEstimate(
   market: { yesPool: number; noPool: number; productLine?: string | null },
   rates: EstimateRates | null | undefined,

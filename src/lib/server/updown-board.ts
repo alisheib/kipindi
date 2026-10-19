@@ -400,6 +400,18 @@ async function heldPayout(
   return projectedPayout(pools, side, myStake);
 }
 
+/**
+ * 🔴 U43 (2026-10-19) · SETTLEMENT'S OWN ONE-SIDED RULE, word for word: money on exactly one side
+ * (`market-service.ts`, settle: `isOneSided`, "oneSided — nobody to lose to: every stake refunded"). A locked round in
+ * this state pays every holder their stake back WHICHEVER way it closes, so its quote is the stake under both outcomes.
+ * ⚠️ Restated, not imported: the settle path keeps it inline, and an edit there moves the house desk's line-pinned money
+ * writes (`test:house-bot-reports`). `test:updown-hedge-quote` §6 ties this quote out against what settlement PAYS, so
+ * the two statements of the rule cannot drift apart unseen.
+ */
+function refundsEveryStake(m: { yesPool: number; noPool: number }): boolean {
+  return (m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0);
+}
+
 async function toBoardRound(
   r: StoredRound,
   chain: StoredChain,
@@ -542,11 +554,11 @@ async function toBoardRound(
     // path never takes (measured on a local round, U43 Round 0). Both figures are now the stake the refund returns.
     myPayoutIfUp:
       state === "locked" && myStake > 0
-        ? (m.yesPool <= 0 || m.noPool <= 0 ? myStake : myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
+        ? (refundsEveryStake(m) ? myStake : myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
         : null,
     myPayoutIfDown:
       state === "locked" && myStake > 0
-        ? (m.yesPool <= 0 || m.noPool <= 0 ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
+        ? (refundsEveryStake(m) ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
     // ⛔ Null when unmeasured — see the field comment. A guessed lag on a money surface is a

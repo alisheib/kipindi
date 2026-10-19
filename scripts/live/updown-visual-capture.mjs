@@ -55,6 +55,12 @@ if (!/HeadlessChrome/.test(UA) || !/HeadlessChrome/.test(UA_DESKTOP)) {
 /** Transitions and animations off for a stable frame; the countdown still ticks (it is text, not an animation). */
 const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}";
 
+/** The visible text and accessible name of every side choice on a page (the YES/NO and Up/Down buttons, the home rows). */
+const CHOICE_TEXTS = () => [...document.querySelectorAll(".btn-yes, .btn-no, .kp-qrow__btn")]
+  .filter((e) => e.getClientRects().length > 0)
+  .slice(0, 24)
+  .map((e) => ({ text: (e.textContent || "").replace(/\s+/g, " ").trim(), aria: e.getAttribute("aria-label") || "" }));
+
 mkdirSync(OUT, { recursive: true });
 const index = { base: BASE, tag: TAG, startedAt: new Date().toISOString(), pages: [] };
 
@@ -240,8 +246,25 @@ async function runCell(browser, locale, width) {
           files.push(`markets__${cell}__card${i}.png`);
         }
       });
-      out.push({ surface: "markets", cell, locale, width, height, files, ...m });
+      const choices = await p4.evaluate(CHOICE_TEXTS);
+      out.push({ surface: "markets", cell, locale, width, height, files, choices, ...m });
       await p4.close();
+    }
+
+    // The other surfaces that draw a card's choices (U43 release A: no figure on any card choice) — the home's question
+    // rows and /live's tiles: a frame, the full page, and the text of every choice on it.
+    for (const [surface, path] of [["home", "/"], ["live", "/live"]]) {
+      if (!SURFACES.includes(surface)) continue;
+      const p5 = await ctx.newPage();
+      await p5.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+      await p5.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await settle(p5, 2500);
+      await p5.addStyleTag({ content: STILL });
+      await p5.waitForTimeout(300);
+      const files = [await shoot(p5, `${surface}__${cell}__s00.png`), await shoot(p5, `${surface}__${cell}__full.png`, { fullPage: true })];
+      const choices = await p5.evaluate(CHOICE_TEXTS);
+      out.push({ surface, cell, locale, width, height, files, choices, lang: await p5.evaluate(() => document.documentElement.lang) });
+      await p5.close();
     }
   } catch (e) {
     out.push({ cell, error: String(e).slice(0, 300) });

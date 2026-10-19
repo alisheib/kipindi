@@ -284,15 +284,30 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
 - Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
   2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
   `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch.
-- ⏳ **Release A — pushed to `main` at Ali's instruction** (2026-10-19: *"push live now everything you have done please
-  and proceed tests, if we find anything after pushing we fix"*), after its guards, red proofs, scoped typecheck and a
-  green `next build` (§9 U43 "Release A"): no figure on any card choice (ruling 4, both shells), the one-sided lock
-  sentence with its stake-back quote, and the last-30-seconds pulse that never played. **Still running on the pushed
-  commit, by that instruction:** `test:all`, the money e2e trio on a scratch Postgres, local and production `qa:live`,
-  the deploy read-back and the tiles; anything they find is fixed in a follow-up release.
-- Next, in order: **Release B** — the slim card, the live line in the card, the visible filter chips, the board order,
-  the market card's cleanup, the system fixes → the verify loop (10/10 twice) → release (this session pushes, rebased
-  onto `main`).
+- ✅ **Release A — LIVE, `9393dcb53`** (pushed at Ali's instruction, 2026-10-19: *"push live now everything you have done
+  please and proceed tests, if we find anything after pushing we fix"*; §9 U43 "Release A"): no figure on any card choice
+  (ruling 4, both shells), the one-sided lock sentence with its stake-back quote, and the last-30-seconds pulse.
+  - Before the push: its guards and red proofs, a scoped typecheck and a green `next build`.
+  - After the push: all three origins served it within ~3 min; `/api/health` OK (database reachable, migrated);
+    `qa:chunks-prod` green on www and apex; production `qa:live` 363/0 ([E3] not measured, by design). Production tiles at
+    360/1280 × sw/en/zh read 252 side choices, none carrying a figure. Local: `qa:live`, `test:revoked-deadend`,
+    `test:admin-section-gate`, `test:needle-rest`, `test:motion`, `test:responsive`, `qa:landing-v3:rows`, `qa:card360`
+    and the every-state capture are all green. The money e2e trio on a scratch Postgres: `e2e:money` 64/0, `e2e:fault`
+    34/0, `e2e:card` 100/0 (on its own database — run after the other two in one database, its platform total counted
+    their bets).
+  - `test:all` 597/613. Its red, every one accounted for:
+    - mine, fixed in A.1 below: `test:outcome` (the one-sided line, now a named rule), `test:orphans` (the two capture
+      tools, now `qa:u43-capture` / `qa:u43-states`), `test:house-bot-disclosure` 5.1 (the dictionary pin; PHOSPHOR W4's
+      re-point to its own commit covers it);
+    - mine, fixed before the push (the run had started on the older tree): `test:betting-ink`, `test:labels`;
+    - needed a live server, green in the local run: `test:revoked-deadend`, `test:admin-section-gate`,
+      `test:needle-rest`;
+    - not mine, and identical on `adb3551e6` (main before the push), all in Maswali files (handed to asheib-bf):
+      `test:guards-exist`, `test:visual-pass-r5a`/`r5j`/`r6c`/`r7c`/`r5h`, `test:rate-copy`, `test:presence-class`.
+- ⏳ **A.1** (the follow-up, rebased onto W4): the fixes above, a fourth hidden-estimate plant in `red:journey-estimate`
+  (no rates), `red:updown-hedge-quote` 13/13, and the capture tools' choice-text and pulse readings.
+- Next: **Release B** — the slim card, the live line in the card, the visible filter chips, the board order, the market
+  card's cleanup, the system fixes → the verify loop (10/10 twice) → release (this session pushes, rebased onto `main`).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.

@@ -126,8 +126,15 @@ const MUTATIONS = [
     name: "one-sided-round-quotes-zero-again",
     why: "🔴 U43's DEFECT, VERBATIM — the refund branch goes, so an Up holder alone on a round reads \"If it closes DOWN · TZS 0\" while settlement refunds them in full: a loss the money path never takes, stated on a money surface",
     file: BOARD,
-    from: `(m.yesPool <= 0 || m.noPool <= 0 ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+    from: `(refundsEveryStake(m) ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
     to: `(myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+  },
+  {
+    name: "one-sided-rule-misread",
+    why: "🔴 the same zero by another road — the board's restatement of settlement's rule drifts (here: 'both pools empty', which a held stake can never be), so the refund branch is dead code and the quote says TZS 0 again",
+    file: BOARD,
+    from: `  return (m.yesPool > 0 && m.noPool === 0) || (m.yesPool === 0 && m.noPool > 0);`,
+    to: `  return m.yesPool === 0 && m.noPool === 0;`,
   },
   {
     name: "card-drops-the-one-sided-sentence",
