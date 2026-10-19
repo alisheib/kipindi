@@ -42,7 +42,7 @@ export function HubPool({ weekId, initial, price, opensAt, voiding = false, carr
   carryFrom?: string;
   carryPlay?: boolean;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [fig, setFig] = useState(initial);
   const [tick, setTick] = useState(0);
   const last = useRef(initial.jackpot);
@@ -68,6 +68,7 @@ export function HubPool({ weekId, initial, price, opensAt, voiding = false, carr
       <MaswaliPoolFigure
         key={tick}
         t={t}
+        locale={locale}
         view={poolViewOf(fig, price, opensAt, voiding)}
         pct={pctNum(fig.feeRate)}
         tick={tick > 0}

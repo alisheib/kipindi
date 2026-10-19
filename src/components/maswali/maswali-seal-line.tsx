@@ -20,10 +20,15 @@ import type { Dict } from "@/lib/i18n-dict";
  *   missed    `xCircle` · muted                           — it did not (never rose: a miss is not a failure, §C4)
  *   void      `void` · muted                              — the question voided; a main's reserve stands in for it
  *   standby   `markPending` at annex size · muted         — a reserve standing by: it counts only if a main voids
- *   unused    `markPending` · muted                       — a reserve the week did not need, or a socket of a voided week
+ *   unused    `markPending` · muted, AT REST              — a reserve the week did not need, a socket of a voided week, or
+ *                                                           any socket of a ticket that counts for nothing (cancelled, or
+ *                                                           refunded with its week): drawn at the disabled opacity
+ *                                                           (`.kp-mln-rest`), so it never reads as "awaiting" (S5 VIS P10)
  * A voided main that a reserve stood in for shows the RESERVE's result in its socket, with `standIn` beside its clause;
  * the reserve's own socket becomes the `standIn` mark beside the main's number (the delivery's typed arrow, drawn by the
- * family instead).
+ * family instead). ⭐ With its numbers drawn (the ticket, How's example), the stood-in main's number is struck and its
+ * reserve's label stands under it ("4" over "A1"): the void is seen on the main's own place, and the check above it is
+ * the reserve's (S5 VIS P6 — the example once drew main 4 exactly like the other nine, against its own caption).
  *
  * ⛔ ONE GRADER (L9). `sealLineOf` reads `maswali-score.ts` and adds no rule of its own: until the record is final it
  * grades nothing ("no running score" — a sealed main shows matched or missed, a reserve stays "standby" whatever its own
@@ -151,7 +156,7 @@ export function SocketGlyph({ mark, s, fluid, className }: { mark: SocketMark; s
     case "void": glyph = <I.void s={s} className={fit} />; break;
     default: glyph = <MillioneaGlyph name="markPending" s={s} className={fit} />;
   }
-  return <GlyphSwap state={mark} className={cn("max-w-full", socketInk(mark), className)}>{glyph}</GlyphSwap>;
+  return <GlyphSwap state={mark} className={cn("max-w-full", socketInk(mark), mark === "unused" && "kp-mln-rest", className)}>{glyph}</GlyphSwap>;
 }
 
 /** The sizes the delivery draws (24 on the ticket, 18 on a held row and a ticket card, 14 in a dense list). */
@@ -160,18 +165,20 @@ const ANNEX: Record<SealLineSize, number> = { 24: 18, 18: 14, 14: 12 };
 
 /**
  * The line itself. Server-safe; its two moving parts are client islands (`GlyphSwap`, `MaswaliCarry`).
- *  · `size` 24 — the ticket: numbered sockets in fluid columns, the annex below, the Unbroken Line through the mains.
- *  · `size` 18 / 14 — a held ticket's row (`annex="beside"`, which wraps under the mains when the row is narrow) or a
- *    ticket card (`annex="below"`).
+ *  · `size` 24 — the ticket: numbered sockets in fluid columns, the Unbroken Line through the mains.
+ *  · `size` 18 / 14 — a held ticket's row on the hub, or a ticket card on Tiketi zangu.
+ *  ⭐ ONE RULE FOR THE ANNEX, AT EVERY SIZE AND WIDTH (S5 VIS P16): the five reserves stand on their own row under the
+ *    ten mains, as the ticket itself draws them. The hub's row once set them beside the mains (wrapping under them only
+ *    where the row ran out), so the same fifteen read as one row on the hub and as two on the card.
  *  · `idBase` names the annex sockets (`${idBase}-a${n}`), the carry's origins; give it when `play.carry` can be asked.
  *  · `play` — the moments, each the composer's call from the seen state: `carry` runs N1 on every stood-in socket
  *    (staggered, capped at four steps), `draw` draws the Unbroken Line on. Omitted, the line is its end frame.
- *  · `inert` — a cancelled ticket's line: every socket rests as an open ring and nothing is compared.
+ *  · `inert` — a ticket that counts for nothing (cancelled, or refunded with its voided week): every socket RESTS
+ *    (`unused`, at the disabled opacity) and nothing is compared — never the open "awaiting" ring of a live ticket (P10).
  */
-export function MaswaliSealLine({ line, size = 24, annex = "below", numbers, idBase, play, inert, className }: {
+export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert, className }: {
   line: SealLine;
   size?: SealLineSize;
-  annex?: "below" | "beside";
   numbers?: boolean;
   idBase?: string;
   play?: { carry?: boolean; draw?: boolean };
@@ -180,7 +187,7 @@ export function MaswaliSealLine({ line, size = 24, annex = "below", numbers, idB
 }) {
   const a = ANNEX[size];
   const fluid = size === 24;
-  const markOf = (m: SocketMark): SocketMark => (inert ? "awaiting" : m);
+  const markOf = (m: SocketMark): SocketMark => (inert ? "unused" : m);
   const carriedOrder = line.mains.filter((m) => m.standIn).map((m) => m.ordinal);
   const mainsRow = (
     <span className={cn("relative grid gap-1", fluid ? "grid-cols-10" : "auto-cols-max grid-flow-col")}>
@@ -207,10 +214,18 @@ export function MaswaliSealLine({ line, size = 24, annex = "below", numbers, idB
       })}
     </span>
   );
+  // A stood-in main's number is struck, its reserve's label under it (P6): the void shows on the main's own place.
   const mainNumbers = numbers ? (
     <span aria-hidden className="grid grid-cols-10 gap-1">
       {line.mains.map((m) => (
-        <span key={m.ordinal} className="text-center font-mono text-micro uppercase eyebrow text-text-subtle tabular-nums">{m.ordinal}</span>
+        <span key={m.ordinal} className="flex flex-col items-center text-center font-mono text-micro uppercase eyebrow text-text-subtle tabular-nums">
+          {m.standIn && !inert ? (
+            <>
+              <s className="decoration-border-strong">{m.ordinal}</s>
+              <span className="text-text-muted">{m.standIn}</span>
+            </>
+          ) : m.ordinal}
+        </span>
       ))}
     </span>
   ) : null;
@@ -232,13 +247,7 @@ export function MaswaliSealLine({ line, size = 24, annex = "below", numbers, idB
     </span>
   );
   return (
-    <div
-      aria-hidden
-      className={cn(
-        annex === "beside" ? "flex flex-wrap items-center gap-x-2 gap-y-1.5" : "flex flex-col gap-1.5",
-        className,
-      )}
-    >
+    <div aria-hidden className={cn("flex flex-col gap-1.5", className)}>
       <span className="flex flex-col gap-0.5">
         {mainsRow}
         {mainNumbers}

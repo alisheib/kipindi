@@ -199,10 +199,15 @@ section("3 · the heading and the hint break whole (E42; tiles 345 354 355 364 3
   ok("3.2 · the hint is balanced, and Chinese breaks only after its marks (keep-all, break-word the floor)",
     /\btext-balance\b/.test(hint) && hint.includes("[word-break:keep-all]") && hint.includes("[overflow-wrap:break-word]"), hint);
   // The Chinese hint, laid out: 13px, every ideograph and full-width mark 1em; "URL" in the repo's Inter.
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (MASWALI-BUILD S5 · VIS-P P14): the hint names no product any more — it said
+  // "市场可能已结算" (the market may have resolved: wrong on a Millionea or an Up & Down page) and carried the English "URL" —
+  // so it is three clauses, none of them Latin: "链接可能已过期，" "或网址输入有误。" "请从下方选择一个页面继续。". Laid out by the same
+  // model: two lines below the 420px column, the two short clauses over the long one (选择 and 继续。 whole), and ONE line in
+  // the 420px column at 1280, where the whole hint (369px with its last mark hung) fits — a balanced one-line hint.
   const PX = 13;
   const url = INTER.layout("URL").advanceWidth / INTER.unitsPerEm;
-  const segs = ["链接可能已失效，", "市场可能已结算，", "或URL输入有误。", "请选择以下目的地继续。"];
-  ok("3.3.locate · the hint is those four clauses, in that order", segs.join("") === NOT_FOUND_WORDS.zh.notFoundHint);
+  const segs = ["链接可能已过期，", "或网址输入有误。", "请从下方选择一个页面继续。"];
+  ok("3.3.locate · the hint is those three clauses, in that order", segs.join("") === NOT_FOUND_WORDS.zh.notFoundHint);
   const em = (s: string) => Array.from(s).reduce((a, c) => a + (/[A-Za-z]/.test(c) ? 0 : 1), 0) + (s.includes("URL") ? url : 0);
   /** A line's width: its clauses at full width, its LAST mark trimmed (the gap after it is gone at the line's end). */
   const lineW = (line: string[]) => (line.reduce((a, s) => a + em(s), 0) - CJK_TRIM_EM.mark) * PX;
@@ -213,15 +218,22 @@ section("3 · the heading and the hint break whole (E42; tiles 345 354 355 364 3
   };
   /** text-wrap: balance — the fewest lines the box allows, at the narrowest width that still gives that many. */
   const balanced = (box: number) => { const n = greedy(box).length; let w = box; while (w > 1 && greedy(w - 1).length === n) w--; return greedy(w); };
-  for (const [vw, box] of [[320, 320 - 2 * tw("3")], [360, 360 - 2 * tw("3")], [390, Math.min(420, 390 - 2 * tw("3"))], [1280, 420]] as const) {
+  for (const [vw, box] of [[320, 320 - 2 * tw("3")], [360, 360 - 2 * tw("3")], [390, Math.min(420, 390 - 2 * tw("3"))]] as const) {
     const lines = balanced(box);
-    ok(`3.3 · zh hint at ${vw} (${box}px): two lines, ‘…已结算，’ / ‘或URL…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark`,
-      lines.length === 2 && lines[0].join("") === segs[0] + segs[1] && lines[1].join("") === segs[2] + segs[3] && lines.every((l) => lineW(l) <= box),
+    ok(`3.3 · zh hint at ${vw} (${box}px): two lines, ‘…已过期，或网址输入有误。’ / ‘请从下方…继续。’ — 选择 whole, 继续。 not alone, each line ending on a hung mark`,
+      lines.length === 2 && lines[0].join("") === segs[0] + segs[1] && lines[1].join("") === segs[2] && lines.every((l) => lineW(l) <= box),
       lines.map((l) => `${l.join("")} (${lineW(l).toFixed(1)}px)`).join(" / "));
   }
-  // CONTROL — the same model without keep-all and balance, in the old 24px gutter, reproduces what the tiles measured: a
-  // character-level greedy fill split 选择 at 390 (342px) and left 继续。 alone at 1280 (420px).
-  const chars = Array.from(NOT_FOUND_WORDS.zh.notFoundHint.replace("URL", "\u0001"));
+  {
+    const lines = balanced(420);
+    ok("3.3 · zh hint at 1280 (420px): one line, the whole hint — nothing left alone, its last mark hung",
+      lines.length === 1 && lines[0].join("") === segs.join("") && lineW(lines[0]) <= 420, lines.map((l) => `${l.join("")} (${lineW(l).toFixed(1)}px)`).join(" / "));
+  }
+  // CONTROL — the same model without keep-all and balance, in the old 24px gutter, reproduces what the tiles measured on the
+  // hint as it then read (kept literally here since P14 reworded it): a character-level greedy fill split 选择 at 390
+  // (342px) and left 继续。 alone at 1280 (420px).
+  const OLD_ZH_HINT = "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。";
+  const chars = Array.from(OLD_ZH_HINT.replace("URL", "\u0001"));
   const fill = (box: number) => { const out: string[] = [""]; let w = 0; for (const c of chars) { const cw = (c === "\u0001" ? url : 1) * PX; if (w + cw > box) { out.push(""); w = 0; } out[out.length - 1] += c === "\u0001" ? "URL" : c; w += cw; } return out; };
   const at390 = fill(390 - 2 * tw("5")), at1280 = fill(420);
   ok("3.3′ CONTROL · the old fill reproduces the tiles: ‘…请选 / 择…’ at 390 and ‘继续。’ alone at 1280",

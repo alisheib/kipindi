@@ -4740,6 +4740,12 @@ html[data-sheet-open] .route-enter { animation: none; }
   .kp-mln-facts--phone > .kp-mln-fact { padding-inline-start: 0; }
   .kp-mln-facts--phone > .kp-mln-fact::before { content: none; }
 }
+/* A stacked list centred (the cut ticket's stamp): a stacked list draws no mark, so its lines may stand in the middle. */
+.kp-mln-facts--center { align-items: center; text-align: center; }
+/* MASWALI-BUILD S5 · VIS-P P10 · A SOCKET AT REST: a reserve the week did not need, a socket of a voided week, every socket
+   of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
+   "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
+.kp-mln-rest { opacity: var(--state-disabled-opacity); }
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
    root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still

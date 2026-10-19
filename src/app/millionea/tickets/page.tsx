@@ -79,9 +79,12 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   });
   // Each week's frozen price — every ticket of a week cost the same (MR-11); a week whose rules cannot be read draws no card.
   const prices = await millioneaWeekPrices(weeks.map((g) => g.week.id));
+  // Newest first, as the list promises: the weeks come newest first, and inside a week its tickets by when they were bought,
+  // the latest first (S5 VIS P11: 000041 stood before 000042), the serial deciding a tie.
+  const newestFirst = (a: MillioneaTicketRow, b: MillioneaTicketRow) => (Date.parse(b.boughtAt) - Date.parse(a.boughtAt)) || b.serial.localeCompare(a.serial);
   const cards = weeks.flatMap((g) => {
     const price = prices.get(g.week.id);
-    return price === undefined ? [] : g.tickets.filter((row) => inLens(lens, row.shown)).map((row) => ({ g, row, price }));
+    return price === undefined ? [] : g.tickets.filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }));
   });
   const anyLive = weeks.some((g) => g.tickets.some((row) => row.shown === "running"));
   // The empty list's one invitation (the T-list frame): the week on sale — read only for a reader who holds no ticket at
@@ -92,9 +95,11 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
   return (
     <PageContainer tier="reading" className="kp-mln-zh space-y-6">
       <RefreshPoller intervalMs={60_000} enabled={anyLive} />
+      {/* The classic head: the product's name over "Your tickets" — one line at 320 in every language (P11: "Your
+          Millionea tickets" left "tickets" alone there, and a balanced wrap cannot do better than that). */}
       {journey
         ? <TicketsHead current="millionea" millionea t={t} />
-        : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.myTicketsTitle} />}
+        : <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />}
       {gate.preview && <MillioneaPreviewMark t={t} />}
       <MillioneaTicketsBar lens={lens} t={t} />
       {total === 0 ? (
@@ -127,6 +132,7 @@ export default async function MillioneaTicketsPage({ searchParams }: { searchPar
                 price={price}
                 payout={payoutOf(row, price)}
                 share={row.share}
+                refundPending={row.refund?.state === "pending"}
                 placedAt={row.boughtAt}
               />
             </li>

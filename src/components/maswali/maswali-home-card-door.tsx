@@ -15,6 +15,7 @@ import type { ReactElement } from "react";
 import { MaswaliHomeCard } from "@/components/maswali/maswali-home-card";
 import { homeCardOf, nextWeekOpen } from "@/components/maswali/maswali-card-model";
 import { configuredFeeRate, millioneaBreakOf, millioneaDoor, millioneaHubNow, millioneaOpenTemplate } from "@/lib/server/millionea-doors";
+import { getServerT } from "@/lib/i18n-server";
 import type { Dict } from "@/lib/i18n-dict";
 
 export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?: boolean; className?: string } = {}): Promise<ReactElement | null> {
@@ -26,9 +27,11 @@ export async function millioneaHomeCard(t: Dict, nowMs: number, opts: { onBreak?
   if (!hub) return null;
   const model = homeCardOf(t, hub, configuredFeeRate(), nowMs, nextWeekOpen(hub, millioneaOpenTemplate(), nowMs));
   if (!model) return null;
+  // The request's language, for the card's fact lines (S5 VIS A1: `keepFact` keeps a phrase whole the reader's way).
+  const { locale } = await getServerT();
   return (
     <div data-testid="millionea-home-card" className={opts.className}>
-      <MaswaliHomeCard t={t} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek}
+      <MaswaliHomeCard t={t} locale={locale} week={model.week} jackpot={model.jackpot} pct={model.pct} cap={model.cap} state={model.state} finalWeek={model.finalWeek}
         atLeast={model.atLeast} pendingWeek={model.pendingWeek} />
     </div>
   );

@@ -7,7 +7,7 @@ import { SocketGlyph, socketWord, type SocketMark } from "@/components/maswali/m
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, weekWord } from "@/components/maswali/maswali-format";
 import { sideWord } from "@/lib/side-label";
-import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
 
@@ -147,7 +147,8 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         {!sunset && <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(L.jackpot)} />}
         {sunset && L.pool === undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.jackpot)} />}
         <div className={ROW}>
-          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={fig(-L.fee)} />
+          {/* A fee taken, and the week's net, are the platform's signed figures ("−TZS 136,500", S5 VIS A4). */}
+          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={<span className="amount">{formatTzsSigned(-L.fee)}</span>} />
           {L.levies && (
             <p className="mt-0.5 text-body-sm text-text-subtle">{fill(t.millionea.levies, { tra: L.levies.tra, gbt: L.levies.gbt })}</p>
           )}
@@ -173,7 +174,7 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         {L.spent && (
           <>
             <ReceiptRow className={ROW} label={counted(L.spent.tickets, t.millionea.spentThisWeekOne, t.millionea.spentThisWeek)} value={quiet(L.spent.amount)} />
-            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={fig(L.spent.net)} />
+            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={<span className="amount">{formatTzsSigned(L.spent.net)}</span>} />
           </>
         )}
       </div>
