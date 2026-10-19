@@ -258,7 +258,8 @@ const ok = (label: string, cond: boolean, extra = "") => {
   const plants: Array<[string, RegExp, GlyphNav]> = [
     ["a destination with no glyph", new RegExp(`^${first.key} wears no glyph`), plant((it) => (it.key === first.key ? { ...it, glyph: undefined } : it))],
     ["a retired key", /wears "sortAsc", which is not a live key/, plant((it) => (it.key === first.key ? { ...it, glyph: "sortAsc" } : it))],
-    ["a glyph that ships no Fill", /wears "bell", which ships no Fill/, plant((it) => (it.key === first.key ? { ...it, glyph: "bell" } : it))],
+    // `globe` ships no Fill (W4 gave `bell` one, for a toggle that is on), and no console destination wears it.
+    ["a glyph that ships no Fill", /wears "globe", which ships no Fill/, plant((it) => (it.key === first.key ? { ...it, glyph: "globe" } : it))],
     ["two destinations of one group, one glyph", new RegExp(`: ${first.key} and ${second.key} both wear`), plant((it) => (it.key === second.key ? { ...it, glyph: first.glyph } : it))],
     ["two destinations across the sidebar, one glyph", new RegExp(`^${first.key} and ${far.key} both wear .*one meaning, one glyph`), plant((it) => (it.key === far.key ? { ...it, glyph: first.glyph } : it))],
   ];
