@@ -231,7 +231,9 @@ async function moveSwitch(to, label) {
   const select = ownerPage.getByRole("combobox", { name: "Rollout" });
   await select.click();
   await ownerPage.getByRole("option", { name: label, exact: true }).click();
-  await ownerPage.getByLabel("Why").fill(`Player drive: ${to} positive control`);
+  // EXACT: the same page draws the Owner's stop with its own "Why Millionea is stopping" field whenever a public week
+  // could be made final (the seeded store has one), and a bare "Why" matches both — the switch's field is "Why" alone.
+  await ownerPage.getByLabel("Why", { exact: true }).fill(`Player drive: ${to} positive control`);
   await ownerPage.getByRole("button", { name: "Move the switch", exact: true }).click();
   const confirm = ownerPage.getByRole("alertdialog").or(ownerPage.getByRole("dialog")).filter({ hasText: `Set Millionea to ${to}?` });
   await confirm.getByPlaceholder(to, { exact: true }).fill(to);
