@@ -138,10 +138,9 @@ export function ResolutionPanel({
     <section className="glass-panel p-5 space-y-4">
       {/* Header — title + outcome chip */}
       <div className="flex items-center justify-between gap-3">
-        {/* ⛔ The SEAL is the chip beside this heading (§M3: "resolved seal"; §B11 RESOLVED = struck gilt) and the winning
-            pool's row below — and only those. The heading's glyph, the evidence label's glyph and the quote's rule were
-            gilt too; a mark is not the seal and not money (Q5). They take the subtle ink of the market page's own section
-            glyphs and the border of its own quoted criterion (R5-C, the second gold audit, 2026-10-09). */}
+        {/* The resolution chip is a terminal status in slate. Ali's U43 gold rule
+            reserves gold for the player's earned WIN; a market verdict does not
+            establish what this particular player won. */}
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">
           <I.shieldcheck s={16} edge="start" className="text-text-subtle" />
           {t.market.resTitle}
@@ -152,7 +151,7 @@ export function ResolutionPanel({
             ⭐ The void arm reads the dictionary (R7-B, round 7, 2026-10-10; round 6's read R8-3): it was a hand-typed royal
             `pending` — a void is the dictionary's slate on every surface (`status-tone.ts` VOID). `metrics="status"` keeps
             the slot one size whichever arm shows: the size no longer follows the colour (chip.tsx, G1). */}
-        <Chip variant={isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : "resolved"} metrics="status">
+        <Chip variant={TONE_CHIP[STATUS_TONE[isVoid ? "VOID" : "RESOLVED"].player]} metrics="status">
           {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcomeWord(t, outcome, "MARKET")}`}
         </Chip>
       </div>

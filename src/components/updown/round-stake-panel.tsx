@@ -6,7 +6,7 @@
  * The pick is LOCKED (chosen on the board, carried here as ?side) and shown as a chip
  * statement — NOT a control: to take the other side you leave the round (no cash-out,
  * no side-switch — Ali, 2026-07-27). What stays interactive is the STAKE, and a single
- * gold Confirm is the one money commit on the page. The commit goes through the SAME
+ * brand Confirm is the one money commit on the page. The commit goes through the SAME
  * `useUpDownQuickBet` → `buyPositionAction` path every other surface uses — this panel
  * only reshapes the presentation, never the money path.
  *
@@ -266,29 +266,30 @@ export function RoundStakePanel(props: {
             value={bet.customValue}
             onChange={(e) => bet.setCustomValue(e.target.value.slice(0, 9))}
             onKeyDown={(e) => { if (e.key === "Escape") bet.exitCustom(); }}
-            aria-label={t.market.udCustomAmount} aria-invalid={customInvalid} error={customInvalid} placeholder="0"
+            aria-label={t.market.udCustomAmount} aria-invalid={customInvalid} attention={customInvalid} placeholder="0"
           />
-          {/* An amount outside its bounds is a form error at the field: the danger ink, never the Down side's rose (§B2a). */}
+          {/* The invalid amount keeps aria-invalid and a strong neutral edge; red names the Down side. */}
           {/* The range is one amount and the sentence before it wraps (round 6, review C7 — `updown-stake-controls.tsx` has
               the measurements): a whole-line `.amount` clipped the maximum exactly when the amount was out of bounds. */}
-          <p className={cn("mt-1 text-micro", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
+          <p className={cn("mt-1 text-micro", customInvalid ? "text-text" : "text-text-subtle")}>
             {customInvalid ? `${t.market.udStakeRange} · ` : ""}<span className="amount">{formatTzs(bet.min)} – {formatTzs(bet.max)}</span>
           </p>
         </div>
       )}
 
-      {/* The one money commit on this page — gold, because this is the commit.
+      {/* The one money commit on this page uses the brand action: placing a stake
+          has not earned money, so won-money gold cannot mark this button (U43).
           Disabled when the known balance cannot cover the stake (UD-1) or the lock has
           passed (UD-2) — a doomed tap is prevented here, never round-tripped.
           ⭐ UD-8 · and it WORKS while it works: the SubmitButton presentation (spinner +
           pending label + aria-busy) on a programmatic action. Under load a bet may
-          legitimately queue up to 15s in admission — 15s of a dead-looking gold button
-          was the defect. Stays gold; a pending commit is still the commit. */}
+          legitimately queue up to 15s in admission — 15s of a dead-looking button
+          was the defect. The pending affordance stays while the colour follows U43. */}
       <button
         type="button" onClick={() => bet.place(lockedSide)}
         disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}
         aria-busy={bet.pending}
-        className="btn btn-gold btn-lg mt-3 w-full justify-center"
+        className="btn btn-primary btn-lg mt-3 w-full justify-center"
         style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         aria-label={`${t.market.udConfirm} ${pickWord} · ${formatTzs(bet.stake)}`}
       >

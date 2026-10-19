@@ -22,6 +22,9 @@
  *
  *   POST { phase: "arm", leadSeconds? }  → open a round almost all of whose window is already
  *                               spent, so it closes `leadSeconds` from now (default 80).
+ *   POST { phase: "arm", alignedBoundary: true } → choose a whole-minute close at least a
+ *                               minute ahead for QA of vendor minute-open bars. The same
+ *                               production service creates its priced round; no price is supplied here.
  *   POST { phase: "settle" }  → settle it AND open its successor, in one advanceChain call.
  *                               The successor's `opensAt` IS the predecessor's close, which by
  *                               then is in the past — the exact production shape.
@@ -42,6 +45,7 @@ import { chainStore, roundStore } from "@/lib/server/updown-dal";
 import { advanceChain } from "@/lib/server/updown-service";
 import { setChainState } from "@/lib/server/updown-config";
 import { roundSpanMinutes } from "@/lib/updown-durations";
+import { qaAlignedOpenAt } from "./aligned-boundary";
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
@@ -79,7 +83,10 @@ export async function POST(req: Request) {
       // what makes the run a real lifecycle instead of a shortcut past `createMarket`'s guard.
       const leadSeconds = Number.isFinite(body?.leadSeconds) ? Math.max(5, Number(body.leadSeconds)) : 80;
       const spanMs = roundSpanMinutes(c.durationMinutes) * 60_000;
-      const openAt = new Date(Date.now() - spanMs + leadSeconds * 1_000).toISOString();
+      const nowMs = Date.now();
+      const openAt = body?.alignedBoundary === true
+        ? qaAlignedOpenAt(nowMs, spanMs)
+        : new Date(nowMs - spanMs + leadSeconds * 1_000).toISOString();
       await chainStore.patch(c.id, { nextBoundaryAt: openAt });
       const r = await advanceChain(c.id, { now: Date.now() });
       const latest = await roundStore.latestForChain(c.id);

@@ -247,7 +247,7 @@ const legalTitle = (file: string): Record<Loc, string> => {
 /** What each page calls itself for a journey reader — its tab, and its h1 — with the source lines that say so. */
 type Page = { title: Words; h1?: Words; proof: Array<[string, string]> };
 const PAGES: Record<string, Page> = {
-  "/updown": { title: "market.udTitle", h1: "market.udTitle", proof: [["src/app/updown/page.tsx", "return { title: t.market.udTitle };"], ["src/app/updown/page.tsx", "eyebrow={t.market.udStreaming} title={t.market.udTitle}"]] },
+  "/updown": { title: "market.udTitle", h1: "market.udTitle", proof: [["src/app/updown/page.tsx", "return { title: t.market.udTitle };"], ["src/app/updown/page.tsx", "<PageHeader className=\"ud-board-header\" title={t.market.udTitle}"]] },
   "/positions": { title: "journey.tabTickets", h1: "journey.tabTickets", proof: [["src/app/positions/page.tsx", "return { title: journey ? t.journey.tabTickets : t.common.positions };"], ["src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />"]] },
   "/updown/history": { title: "journey.tabTickets", h1: "journey.tabTickets", proof: [["src/app/updown/history/page.tsx", "return { title: journey ? t.journey.tabTickets : t.market.udHistoryTitle };"], ["src/app/updown/history/page.tsx", '{journey ? <TicketsHead current="updown" t={t} />']] },
   "/account": { title: "journey.tabAccount", h1: "journey.tabAccount", proof: [["src/app/account/page.tsx", "return { title: t.journey.tabAccount };"]] },
@@ -543,9 +543,9 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
     has(HISTORY, '{journey ? <TicketsHead current="updown" t={t} />') && has("src/components/journey/tickets/ticket-switch.tsx", "<PageHeader title={t.journey.tabTickets} />")
       && word("sw", "market.udHistoryTitle") === "Juu na Chini zako");
   const ud = squash(code("src/app/updown/page.tsx"));
-  ok("3.2 · the Up & Down board's history pill names the page it opens for a journey reader — \"Tiketi zangu\" and the tab's ticket sign — and keeps \"Juu na Chini zako\" and its portfolio sign for everybody else",
+  ok("3.2 · the Up & Down board's history pill keeps the destination's accessible name and correct sign, with the visible My bets label at every width",
     ud.includes("const { journey } = await resolveSimpleJourney(); const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;")
-      && ud.includes('href="/updown/history" aria-label={historyName} className={HEADER_PILL} > {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />} <span className="hidden sm:inline">{historyName}</span>')
+      && ud.includes('href="/updown/history" aria-label={historyName} className={HEADER_PILL} > {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />} <span>{t.common.myBets}</span>')
       && has("src/lib/nav/active-tab.ts", '{ key: "tickets", href: "/positions", glyph: "ticket", label: "journey.tabTickets" }'));
   const prof = code("src/app/profile/page.tsx");
   ok(`3.3 · /profile's help row names the help page as the page does — "${word("en", "common.help")}" / "${word("zh", "common.help")}" (its tab), where it said "${word("en", "profile.helpSupport")}" / "${word("zh", "profile.helpSupport")}"`,

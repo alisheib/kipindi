@@ -457,9 +457,15 @@ console.log("\n── 8 · the surfaces are WIRED to it (asserting the call, nev
     !/"00:00"/.test(pod), "a literal 00:00 is still reachable in round-countdown.tsx");
   ok("8.21 ⭐ nor does the board card", !/"00:00"/.test(card));
 
-  // ⛔ "Closed" is never a result (copy discipline §7).
-  ok("8.22 ⭐ the card's header word comes from the round's state, not from `!bettable`",
-    /state === "resolved" \? t\.market\.statusResolved/.test(card));
+  // ⛔ "Closed" is never a result. U43 removed the old status chip and names
+  // the outcome in the one result row, from settled state and outcome only.
+  const resultWord = (s: string) => /\{settledNow \? \(/.test(s)
+    && /state === "void" \? t\.market\.statusVoid : outcome === "UP"/.test(s)
+    && /outcome === "DOWN"[\s\S]*?: t\.market\.statusResolved/.test(s);
+  ok("8.22 the card's result row comes from the settled state and outcome",
+    resultWord(card));
+  ok("8.22-control a result chosen from bettable state is rejected",
+    !resultWord(card.replace('{settledNow ? (', '{!bettable ? (')));
 }
 
 console.log("\n── 9 · the copy exists in all three languages, and stays on one line ──");

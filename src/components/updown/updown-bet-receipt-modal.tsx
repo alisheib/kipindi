@@ -11,8 +11,9 @@
  *
  * This is the sibling of `updown-bet-blocked-modal.tsx` (the refusal case) on the same
  * primitive, so the two halves of "what happened to my tap" are one dialect:
- *   · refusal → `variant="danger"`, stays until dismissed
- *   · placed  → `variant="success"`, auto-dismisses on the shared 5s default
+ *   · refusal → neutral acknowledgement, stays until dismissed
+ *   · placed  → neutral crest, staked side on the strip and brand Continue;
+ *               auto-dismisses on the shared 5s success timer
  *
  * ⛔ IT DOES NOT GATE REPEAT TAPS. Repeat taps are repeat bets (Ali's standing decision), and
  * the buttons behind the scrim stay live. A burst COALESCES into one modal showing the latest
@@ -20,8 +21,8 @@
  * component on the receipt's nonce, which restarts the auto-dismiss for each new bet.
  *
  * ⛔ THE PROJECTED RETURN IS NEVER GILDED. `stripTone` is the SIDE (`yes`/`no`), which is the
- * modal's own definition of "a side was staked" and buys the `seal-commit` crest plus the
- * side-coloured button. Gold means money that was EARNED (§M3, `test:gold-is-money`); a
+ * modal's own definition of "a side was staked" and buys the `seal-commit` crest. The
+ * Continue action uses brand ink. Gold means money that was EARNED (§M3, `test:gold-is-money`); a
  * projection has not been decided, and `udEstimateNote` — the same qualifier the round page's
  * confirm panel prints under its projection — travels with the figure, so the two commit
  * surfaces cannot drift.
@@ -34,16 +35,18 @@ import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
 import { impliedMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 import { freeExitMinutesFor, type UpDownReceiptInfo } from "@/lib/updown-receipt";
+import { usd } from "@/lib/usd-price";
+import { roundDuration } from "@/lib/updown-round-name";
 // E-53 · the ONE map from market class to the phrase a player is shown — never the vendor.
-import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEATClock } from "@/lib/updown-source-label";
 import type { PlacedReceipt } from "./use-quick-bet";
 
-/** Clock-only, in the viewer's own locale — the receipt states instants, never durations. */
+/** The same EAT minute as the round's source line, with its zone stated on this money receipt. */
 function clockOf(iso: string | null): string | null {
   if (!iso) return null;
   const ms = Date.parse(iso);
-  if (!Number.isFinite(ms)) return null;
-  return new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const clock = fmtEATClock(ms);
+  return clock == null ? null : `${clock} EAT`;
 }
 
 export function UpDownBetReceiptModal({
@@ -97,7 +100,7 @@ export function UpDownBetReceiptModal({
   if (info.openPrice != null) {
     details.push({
       label: t.market.udRcOpenPrice,
-      value: `$${info.openPrice.toFixed(info.decimals)}`,
+      value: usd(info.openPrice, info.decimals),
     });
   }
   if (betsClose) details.push({ label: t.market.udRcBetsClose, value: betsClose });
@@ -114,14 +117,16 @@ export function UpDownBetReceiptModal({
     <OperationResultModal
       open
       variant="success"
+      successCrestTone="neutral"
+      compactOnPhone
       stripTone={placed.side === "UP" ? "yes" : "no"}
       eyebrow={t.market.udBetPlaced}
       title={`${sideWord} · ${assetName}`}
       // ⛔ BUILT FROM THE CARD'S OWN IDIOM, not a new sentence. `udRoundLabel` is the bare
       // word "Round" and carries NO placeholder — `.replace("{mins}", …)` on it would have
       // been a silent no-op, which is the §2.9 defect (a literal `{min}` reaching a money
-      // screen) wearing its opposite face. The card writes `{n} {udMin}`; so does this.
-      subtitle={`${info.durationMinutes} ${t.market.udMin} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}
+      // screen) wearing its opposite face. Use the same locale-aware duration as the card.
+      subtitle={`${roundDuration(t, info.durationMinutes)} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}
       details={details}
       // The projection's qualifier, the sentence the confirm panel prints under its projection.
       // Reused, not restated, so the two commit surfaces can never say different things about it.

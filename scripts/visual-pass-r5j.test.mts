@@ -175,7 +175,8 @@ const LEFT: Record<string, string> = {
   "src/app/results/notable-carousel.tsx :: slot {n} :: String(i + 1)": ORDINAL,
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: String(i + 1)": ORDINAL,
   "src/components/chat/messages/Primitives.tsx :: slot {n} :: String(n)": `${ORDINAL}: a source's number, matching the [n] in the answer`,
-  "src/app/updown/page.tsx :: slot {n} :: String(activeDuration)": "a duration in minutes (3–60), the time grammar's, not a count",
+  // U43 (2026-10-19): the board now uses a truthful empty-state sentence rather
+  // than interpolating a duration into the old promise that a round is being prepared.
   "src/lib/markets/card-close-label.ts :: slot {n} :: String(label.n)": "a duration in days (the time-left grammar), in a module pure by contract (it imports only eat-day.ts; `test:client-graph-safe`) — under 1,000 for any market under 2.7 years (production's furthest: 170)",
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"1\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",
   "src/components/onboarding/first-visit-primer.tsx :: slot {n} :: \"200\"": "the primer's demo dial labels, multipliers (\"1× chini\", \"200× juu\"), not counts",

@@ -51,6 +51,15 @@ export const MUTATIONS = [
     expect: "4: the reach is an OUT-OF-FLOW pseudo-element",
   },
   {
+    name: "compact-share-falls-below-tap-floor",
+    why: "The one-row U43 footer has a 16.5px painted control; restoring the former 14px lower reach leaves only 39.5px of live Share target at 320/360. The browser guard independently hit-tests it.",
+    file: CSS,
+    suite: "card-share",
+    from: `  right: -4px;\n  top: -9px;\n  bottom: -15px;`,
+    to: `  right: -4px;\n  top: -9px;\n  bottom: -14px;`,
+    expect: "4: …reaching above and below the row",
+  },
+  {
     name: "card-swallows-the-share-tap",
     why: "🔴 `stopPropagation` is dropped. The whole CARD is a click target that opens the market, so every share tap navigates away before the dialog can render — the control looks present, is correctly named, and does nothing a player can see",
     file: SHARE,

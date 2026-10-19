@@ -42,6 +42,26 @@ const MUTATIONS = [
     from: `    [upY != null ? parseFloat(upY) - 4 : null, downY != null ? parseFloat(downY) + 11 : null],`,
     to: `    [upY != null ? parseFloat(upY) : null, downY != null ? parseFloat(downY) : null],`,
   },
+  {
+    name: "confirmed price painted as UP",
+    from: `  const priceInk = "var(--text)";`,
+    to: `  const priceInk = "var(--yes-300)";`,
+  },
+  {
+    name: "opening reference painted as winnings",
+    from: `stroke="var(--text-subtle)" strokeWidth="1.25"`,
+    to: `stroke="var(--gilt)" strokeWidth="1.25"`,
+  },
+  {
+    name: "observed-price wash painted as UP",
+    from: `<stop offset="0%" stopColor="var(--text-subtle)" stopOpacity="0.10" />`,
+    to: `<stop offset="0%" stopColor="var(--yes-400)" stopOpacity="0.10" />`,
+  },
+  {
+    name: "UP target loses its side colour",
+    from: `stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5"`,
+    to: `stroke="var(--text-subtle)" strokeWidth="1" strokeDasharray="2 5"`,
+  },
 ];
 
 let caught = 0;

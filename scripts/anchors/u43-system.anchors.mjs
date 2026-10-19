@@ -1,0 +1,14 @@
+/** U43 B5 wording and motion anchors, shared by the red proof and fleet audit. */
+export const MUTATIONS = [
+  { file: "src/lib/updown-round-name.ts", from: 't.market.udMin === "dakika"', to: 't.market.udMin === "minutes"', expect: "Swahili duration places the numeral after dakika" },
+  { file: "src/components/updown/updown-board-tabs.tsx", from: 'const durationText = (minutes: number) => roundDuration({ market: { udMin: minLabel } }, minutes);', to: 'const durationText = (minutes: number) => `${minutes} ${minLabel}`;', expect: "board chip, filter sheet and active summary all use the shared locale-aware duration" },
+  { file: "src/components/updown/updown-bet-receipt-modal.tsx", from: 'subtitle={`${roundDuration(t, info.durationMinutes)} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}', to: 'subtitle={`${info.durationMinutes} ${t.market.udMin} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}', expect: "bet receipt uses that same duration grammar beside the market source" },
+  { file: "src/lib/i18n-dict.ts", from: 'udNextMatchIn: "Raundi ijayo baada ya"', to: 'udNextMatchIn: "Mechi ijayo baada ya"', expect: "one round word in the handover labels" },
+  { file: "src/lib/i18n-dict.ts", from: 'udNobodyBackedEither: "No bets yet. If only one side has bets at close, every stake returns."', to: 'udNobodyBackedEither: "No bets yet. Maybe your stake returns."', expect: "empty-side explanation stays short and truthful in three languages" },
+  { file: "src/lib/i18n-dict.ts", from: 'udLockedOneSided: "Nobody backed {side}. Your full stake returns."', to: 'udLockedOneSided: "Nobody backed {side}, so your stake comes back in full, whichever way it closes."', expect: "locked card explains the wait and guaranteed one-sided refund briefly in every language" },
+  { file: "src/lib/i18n-dict.ts", from: 'udReadUnavailable: "Price read unavailable — retrying"', to: 'udReadUnavailable: "No new price since the open at {time}"', expect: "failed price read differs from a successful read with no newer price" },
+  { file: "src/lib/i18n-dict.ts", from: 'udSourceCrypto: "Crypto market"', to: 'udSourceCrypto: "Live crypto market"', expect: "source names state market kind without a second live label" },
+  { file: "src/lib/i18n-dict.ts", from: 'sortClose: "Close call"', to: 'sortClose: "Closest call"', expect: "market sort and close-call filter use one idea per language" },
+  { file: "src/lib/i18n-dict.ts", from: 'emptyBody: "Follow a market to find it here."', to: 'emptyBody: "Follow a market and we will notify you."', expect: "watchlist empty state does not promise a notice" },
+  { file: "scripts/live/updown-visual-states.mjs", from: 'querySelectorAll(".m-urgent")', to: 'querySelectorAll(".ud-count-pulse")', expect: "urgency uses kit motion and captures the actual animation" },
+].map((mutation, index) => ({ name: `B5-system-${index + 1}: ${mutation.expect}`, ...mutation }));

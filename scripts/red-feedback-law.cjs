@@ -259,10 +259,10 @@ const MUTATIONS = [
           setResultData({`,
   },
   {
-    // Up & Down's shipped shape: every server refusal toasted in the alarm register, a stake under the minimum too.
-    name: "Up & Down toasts every server refusal `danger` again — a slip with an error buzz",
+    // U43's old shape: a refusal wore the alarm register despite naming no betting side.
+    name: "Up & Down toasts a server refusal `danger` again instead of factual ink",
     file: QUICK,
-    find: `            toast({ title: copy.failed, description: fail.description, variant: fail.variant, durationMs: 0 });`,
+    find: `            toast({ title: copy.failed, description: fail.description, variant: "factual", durationMs: 0 });`,
     with: `            toast({ title: copy.failed, description: fail.description, variant: "danger", durationMs: 0 });`,
   },
   {

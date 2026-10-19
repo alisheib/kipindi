@@ -15,14 +15,18 @@
  *   · REJECTED  — rose in KYC/DSAR · slate on the objection queue · claret on /proposals
  *   · OPEN      — info-royal to a player · claret on the objection queue
  *
- * ⭐ ALI'S RULING (2026-08-21), applied at its stated default. The table below IS the
- * shipped state, with exactly three corrections:
+ * ⭐ ALI'S RULING (2026-08-21), applied at its stated default, with the later
+ * U43 gold-only-winnings ruling (2026-10-19):
  *
  *   1. **APPROVED is success-green everywhere.** /proposals loses its gold gradient —
  *      DESIGN_AUTHORITY §M3: struck gold means money that was EARNED, and an approval
  *      is not money. (KYC and the three AI queues were already green.)
  *   2. **PENDING is royal everywhere.** The console loses amber for it.
  *   3. **CLOSED is royal everywhere.** The console loses amber for it.
+ *   4. **RESOLVED is slate everywhere.** A market's resolution is not a
+ *      player's earned payout; only WIN keeps the gold chip.
+ *   5. **LIVE is slate to players.** Its word and motion state liveness;
+ *      red and green are reserved for the two betting sides.
  *
  * ⛔ AND ONE DIVERGENCE IS KEPT ON PURPOSE — see `STATUS_TONE_EXCEPTIONS`. A drift
  * that is written down as a decision stops being a drift; an undocumented one gets
@@ -109,16 +113,17 @@ export const TONE_INK = {
  * error rather than a guess.
  */
 export const STATUS_TONE = {
-  /** ⛔ THE ONE KEPT SPLIT — see `STATUS_TONE_EXCEPTIONS.LIVE`. */
-  LIVE:     { player: "broadcast", admin: "green", proposals: "royal" },
+  /** U43 B5 · neutral to players; console health retains its own state tone. */
+  LIVE:     { player: "slate", admin: "green", proposals: "royal" },
   /** Betting is shut and the market is waiting to be resolved. Nothing is wrong,
    *  so it is royal — the console's amber said otherwise until 2026-08-21. */
   CLOSED:   { player: "royal", admin: "royal" },
   /** Waiting on a queue. Royal for the same reason: waiting is not a warning. */
   PENDING:  { player: "royal", admin: "royal", proposals: "royal" },
-  /** Settled money. The player gets the struck seal (§M3, §M7); the console gets the
-   *  soft gilt, because an operator reading a hundred rows is not being congratulated. */
-  RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
+  /** A resolved market is a terminal fact, not a player's earned payout.
+   *  U43 (2026-10-19): Ali reserved gold for money a player has won; WIN below
+   *  keeps gold, while this status is slate on every surface. */
+  RESOLVED: { player: "slate", admin: "slate", proposals: "slate" },
   /** ⭐ ADDED 2026-08-30 (DG-P-10). The market or round settled to NOTHING and every
    *  stake came back. It was recorded royal as MEASURED (five player surfaces painted it so), and the owner's
    *  2026-09-07 ruling kept the ticket card on that measured royal (PLAYER QUERY §5.3, "the card is the odd one out").
@@ -377,8 +382,8 @@ export const STATUS_TONE_EXCEPTIONS = {
   /**
    * LIVE is the one word that is a different colour on purpose, because it is two
    * different facts wearing one word:
-   *   · to a PLAYER it is a broadcast — "this is open, money is moving, act now" —
-   *     and the red live-pill is the platform's oldest and loudest such signal;
+   *   · to a PLAYER it is a live market, marked by its word and cadence in slate;
+   *     red and green remain available only for the two sides;
    *   · to an OFFICER it is operational health — "this market is up" — sitting in a
    *     column beside DRAFT and VOIDED, where red would read as an incident.
    * Painting both the same would make one of the two lie about what it is for.
@@ -386,7 +391,7 @@ export const STATUS_TONE_EXCEPTIONS = {
    * market broadcast, and was left as shipped — it is the one arm Ali's ruling did
    * not adjudicate.
    */
-  LIVE: "Two facts, one word: player broadcast (red) vs console ops-health (green). /proposals keeps royal as a lifecycle step.",
+  LIVE: "Two facts, one word: player liveness (slate) vs console ops-health (green). /proposals keeps royal as a lifecycle step.",
   /**
    * REJECTED is rose in KYC/DSAR (a person was refused), claret on /proposals (an
    * editorial decline, §B4), and deliberately SLATE on the objection queue — a

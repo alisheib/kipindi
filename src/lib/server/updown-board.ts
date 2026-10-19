@@ -18,6 +18,7 @@ import { getUpDownConfig, stakeBoundsFor } from "./updown-config";
 import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
+import { ROUND_LINE_WINDOW_MS, vendorOpenPoints } from "@/lib/updown-vendor-opens";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
 // What a wallet can stake — the bet path's own figure (`buyPosition`'s refusal states it), for the quick-bet pre-flight.
 import { spendableOf } from "@/lib/spendable";
@@ -36,7 +37,9 @@ import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
 import { QUOTE_GAP_FACTOR, medianCadenceMs, isQuoteStale } from "@/lib/updown-quote-age";
 // The one spelling of "this round is over for good" — the board's selection keeps every started round that is not.
 import { roundIsSettled } from "@/lib/updown-card-phase";
+import { latestNonOverlappingResult } from "@/lib/updown-board-order";
 import { shownPredictors } from "@/lib/markets/predictors";
+import { isMarketOpenAt, nextOpenAfter } from "./market-calendar";
 
 /**
  * ⭐ E-99 · How many seconds after its boundary this asset's reading TYPICALLY arrives — or
@@ -86,6 +89,15 @@ export type BoardRound = {
   closesAt: string;
   openPrice: number | null;
   closePrice: number | null;
+  /** The source's quoted instants for THIS round's pinned opening/closing observations. */
+  openQuotedAt: string | null;
+  closeQuotedAt: string | null;
+  /** The latest confirmed observation strictly inside THIS round, with its own source time.
+   *  These two fields are a pair: never put an asset-latest price beside a round-local time. */
+  readPrice: number | null;
+  readQuotedAt: string | null;
+  /** True if the round-local observation read failed; no read is different from a failed read. */
+  readUnavailable: boolean;
   /** The frozen winning boundaries: base ± margin (null on legacy rounds). The player
    *  must reach one to win; between them the round voids and refunds. */
   upTarget: number | null;
@@ -190,8 +202,12 @@ export type BoardRound = {
     /** Realised, from the settled row. 0 for a loss. */
     payout: number;
   } | null;
+  /** Settled money, aggregated by side and recorded status. A hedged holder has
+   * both sides here; no single side is chosen on their behalf. */
+  myResults: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
   /**
-   * What this viewer takes home if their side wins — EXACT, and only once the round is LOCKED.
+   * What this viewer takes home if their side wins — EXACT, once the pool is frozen
+   * (LOCKED or CONFIRMING).
    *
    * ⛔ Null while the round is open, deliberately: the pool is still moving, so any figure
    * would be a projection dressed as a fact. Once bets close the pool is frozen and this is
@@ -204,7 +220,7 @@ export type BoardRound = {
    * ⭐ UD-20 · WHAT THIS VIEWER RECEIVES UNDER **EACH** OUTCOME — Ali's decision, 2026-08-14:
    * *quote both outcomes.*
    *
-   * Null unless the round is LOCKED and the viewer holds something. Otherwise both are always
+   * Null unless the round is LOCKED or CONFIRMING and the viewer holds something. Otherwise both are always
    * present together, so a surface can render the pair without asking whether the holder is
    * hedged: a one-sided holder's losing outcome is genuinely **0**, and saying so is more
    * honest than leaving it unsaid.
@@ -447,6 +463,11 @@ async function toBoardRound(
     closesAt: r.closesAt,
     openPrice: r.openPrice,
     closePrice: r.closePrice,
+    openQuotedAt: null,
+    closeQuotedAt: null,
+    readPrice: null,
+    readQuotedAt: null,
+    readUnavailable: false,
     upTarget: r.upTarget,
     downTarget: r.downTarget,
     marginBps: r.marginBps,
@@ -503,7 +524,8 @@ async function toBoardRound(
     // ⭐ The viewer's own settled outcome. Null while nothing of theirs has settled — which is
     // also the signed-out case, because `mine` is undefined then.
     myResult: mine?.result ?? null,
-    // Only for a LOCKED round the viewer actually holds — see the field comment. `projectedPayout`
+    myResults: mine?.results ?? [],
+    // Only for a frozen-pool round the viewer actually holds — see the field comment. `projectedPayout`
     // is the money path's own function, so this figure and the settled one cannot disagree.
     //
     // ⛔ UD-20 · NULL FOR A HEDGED HOLDER, and that null is a money-truth fix. This line used
@@ -533,8 +555,10 @@ async function toBoardRound(
     // never learn to answer for a hedge.
     //
     // `myUpStake`/`myDownStake` count OPEN positions only (see the accumulator below).
+    // The market refuses new stakes at selection close (or resolution for legacy rounds), so
+    // the pool remains frozen while the final price is being confirmed, too.
     myExactPayout:
-      state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
+      (state === "locked" || state === "confirming") && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)
         : null,
     // ⭐ UD-20 · BOTH OUTCOMES, PRICED SEPARATELY — the only form that states a two-sided
@@ -553,11 +577,11 @@ async function toBoardRound(
     // projection can say so. It printed "If it closes DOWN · TZS 0" to an Up holder alone on a round — a loss the money
     // path never takes (measured on a local round, U43 Round 0). Both figures are now the stake the refund returns.
     myPayoutIfUp:
-      state === "locked" && myStake > 0
+      (state === "locked" || state === "confirming") && myStake > 0
         ? (refundsEveryStake(m) ? myStake : myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
         : null,
     myPayoutIfDown:
-      state === "locked" && myStake > 0
+      (state === "locked" || state === "confirming") && myStake > 0
         ? (refundsEveryStake(m) ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
@@ -579,9 +603,43 @@ async function toBoardRound(
   };
 }
 
+/** Attach source times to the price of THIS round, after board selection (at most three
+ * cards). The tuple comes from one stored observation; the asset's latest quote may
+ * belong to a successor or to a different duration and must never supply its stamp. */
+async function withRoundQuoteTimes(round: BoardRound, stored: StoredRound): Promise<BoardRound> {
+  const openMs = Date.parse(stored.opensAt);
+  const endMs = Math.min(Date.now(), Date.parse(stored.closesAt));
+  const needsRead = (round.state === "open" || round.state === "locked" || round.state === "closing" || round.state === "confirming")
+    && Number.isFinite(openMs) && Number.isFinite(endMs) && endMs > openMs;
+  const [openObs, closeObs, recent] = await Promise.all([
+    stored.openObservationId ? observationStore.get(stored.openObservationId).catch(() => null) : null,
+    stored.closeObservationId ? observationStore.get(stored.closeObservationId).catch(() => null) : null,
+    needsRead
+      ? observationStore.list({ assetId: round.assetId, state: "CONFIRMED", boundaryFrom: stored.opensAt,
+        boundaryTo: new Date(endMs).toISOString(), limit: 1 }).catch(() => null)
+      : [],
+  ]);
+  const sourceTime = (quotedAt: string | null): string | null =>
+    quotedAt != null && Number.isFinite(Date.parse(quotedAt)) ? quotedAt : null;
+  const newer = recent?.[0];
+  const newerInRound = newer != null && Date.parse(newer.boundaryAt) > openMs
+    && newer.price != null && Number.isFinite(newer.price) && sourceTime(newer.sourceQuotedAt) != null;
+  return {
+    ...round,
+    openQuotedAt: openObs?.state === "CONFIRMED" && openObs.price === stored.openPrice
+      ? sourceTime(openObs.sourceQuotedAt) : null,
+    closeQuotedAt: closeObs?.state === "CONFIRMED" && closeObs.price === stored.closePrice
+      ? sourceTime(closeObs.sourceQuotedAt) : null,
+    readPrice: newerInRound ? newer!.price : null,
+    readQuotedAt: newerInRound ? sourceTime(newer!.sourceQuotedAt) : null,
+    readUnavailable: recent === null,
+  };
+}
+
 /**
  * ⭐ E-166 · Fill in the successor for the rounds that will actually be RENDERED, and only for
- * the settled ones — the only state in which a handover exists.
+ * the non-bettable ones — a locked player also needs to know whether the chain
+ * has a successor. The open round spends its space on the stake controls.
  *
  * ⛔ AFTER the board's selection, never before. `toBoardRound` runs over 24 rows to find the two
  * or three the board shows; resolving a successor inside it would put a market read on every one
@@ -593,7 +651,7 @@ async function withSuccessors(
   siblings: StoredRound[],
 ): Promise<BoardRound[]> {
   return Promise.all(rounds.map(async (b) => {
-    if (b.state !== "resolved" && b.state !== "void") return b;
+    if (b.state === "open") return b;
     const raw = siblings.find((x) => x.id === b.roundId);
     if (!raw) return b;
     return { ...b, successor: await successorFor(raw, chain, siblings) };
@@ -608,6 +666,7 @@ type MyMarketStake = {
   /** The settled outcome for this viewer, or null while nothing has settled. See
    *  `BoardRound.myResult` for why this exists and why `payout` must be the realised figure. */
   result: { status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number } | null;
+  results: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
 };
 
 /** The viewer's OPEN stake per market, split UP(=YES)/DOWN(=NO). Empty when signed
@@ -619,7 +678,7 @@ async function myStakesByMarket(userId: string | undefined): Promise<Map<string,
   // pull the player's long-form-poll positions.
   const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);
   for (const p of positions) {
-    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null };
+    const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null, results: [] };
     // ⭐ E-65 · A SETTLED POSITION WHOSE PAYOUT EQUALS ITS STAKE WAS REFUNDED, and that can
     // happen on a round that DECIDED — when nobody took the other side there is no pool to
     // win from. The card needs this to tell a refund apart from a loss; without it a decided
@@ -632,17 +691,15 @@ async function myStakesByMarket(userId: string | undefined): Promise<Map<string,
       // ⛔ The status is read off the POSITION ROW, never inferred from the round's outcome:
       // a round can resolve DOWN and still hand an UP backer their stake back when nobody
       // took the other side (E-65), so "my side !== the outcome" is NOT a loss.
-      const payout = p.finalPayout ?? 0;
-      const status: "WIN" | "LOSS" | "VOID" =
-        p.status === "WIN" ? "WIN" : p.status === "LOSS" ? "LOSS" : "VOID";
-      // A player may top up the same side; aggregate rather than letting the last row win.
-      const prev = e.result;
-      e.result = {
-        status: prev && prev.status !== status ? prev.status : status,
-        side: p.side === "YES" ? "UP" : "DOWN",
-        stake: (prev?.stake ?? 0) + p.stake,
-        payout: (prev?.payout ?? 0) + payout,
-      };
+      if (p.status === "WIN" || p.status === "LOSS" || p.status === "VOID") {
+        const side = p.side === "YES" ? "UP" : "DOWN";
+        const prev = e.results.find((item) => item.side === side && item.status === p.status);
+        if (prev) { prev.stake += p.stake; prev.payout += p.finalPayout ?? 0; }
+        else e.results.push({ status: p.status, side, stake: p.stake, payout: p.finalPayout ?? 0 });
+        // The legacy single-result field is defined only when it is genuinely one
+        // result. A hedger or mixed-status holder is never represented by the last row.
+        e.result = e.results.length === 1 ? { ...e.results[0] } : null;
+      }
       out.set(p.marketId, e);
       continue; // only live money counts as "you're in"
     }
@@ -697,6 +754,9 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   rounds: BoardRound[];
   recent: Array<"UP" | "DOWN" | "VOID">;
   chainPaused: boolean;
+  /** A calendar opening, only when this asset's market is currently shut. A chain may
+   * still be stopped, so this is never presented as a promised round opening. */
+  nextMarketOpenAtMs: number | null;
   /** Stake bounds for the ACTIVE chain — the quick-bet stake selector's range. */
   stakeBounds: { min: number; max: number };
   /** UD-1 · the viewer's SPENDABLE balance (cash + bonus, `spendableOf`) for the quick-bet
@@ -798,24 +858,28 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     ?? assets.find((a) => runningDurations(a.id).length > 0)
     ?? assets.find((a) => a.durations.length > 0)
     ?? assets[0] ?? null;
-  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, stakeBounds: defaultBounds, walletBalance };
+  if (!activeAsset) return { assets, activeAsset: null, activeDuration: null, rounds: [], recent: [], chainPaused: false, nextMarketOpenAtMs: null, stakeBounds: defaultBounds, walletBalance };
   // The STORED row behind the active card. `BoardAsset` is the mapped, player-safe shape and
   // deliberately carries no `symbol`/`category` — E-53 keeps the vendor's identifiers off the
   // wire — but `publicSourceClassFor` classifies FROM those fields, so the receipt is built
   // from the row rather than by widening what crosses to the browser.
   const activeAssetRow = enabled.find((a) => a.id === activeAsset.id);
-  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
+  if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, nextMarketOpenAtMs: null, stakeBounds: defaultBounds, walletBalance };
+  const calendarNow = new Date();
+  const nextMarketOpenAtMs = isMarketOpenAt(activeAssetRow.category, calendarNow)
+    ? null
+    : Date.parse(nextOpenAfter(activeAssetRow.category, calendarNow));
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)
     ?? runningDurations(activeAsset.id)[0]
     ?? activeAsset.durations[0] ?? null;
   if (activeDuration == null) {
-    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
+    return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, nextMarketOpenAtMs, stakeBounds: defaultBounds, walletBalance };
   }
 
   const chain = allChains.find((c) => c.assetId === activeAsset.id && c.durationMinutes === activeDuration);
-  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, stakeBounds: defaultBounds, walletBalance };
+  if (!chain) return { assets, activeAsset, activeDuration, rounds: [], recent: [], chainPaused: true, nextMarketOpenAtMs, stakeBounds: defaultBounds, walletBalance };
 
   // ONE resolver, shared with the money path (buyPosition → stakeBoundsForUpDownMarket):
   // the product default is the FLOOR — a chain override may raise the min, never drop it
@@ -865,19 +929,33 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // to stake on whichever timer they like. `mapped` is newest-first, so the first
   // started round IS the current one; anything behind it is a round still confirming.
   const current = started[0] ?? null;
-  // At most ONE confirming round — the one that just closed, which the player who bet
-  // on it wants to see resolve. Older confirming rounds are a source outage, not
-  // content: showing a column of them turns an ops problem into a wall of identical
-  // cards and buries the round that is actually playable.
-  const justClosed = started.slice(1).find((r) => r.state === "confirming") ?? null;
-  const lastDone = mapped.find((r) => r.state === "resolved" || r.state === "void");
+  // At most ONE confirming round, and only when it is the current round's immediate
+  // predecessor. A much older round can remain confirming through a source outage:
+  // scanning past an already settled predecessor would put that stale card ahead of
+  // the latest result. The older outage stays on the round page, not the live board.
+  const immediatePrevious = current
+    ? mapped.find((r) => Date.parse(r.opensAt) < Date.parse(current.opensAt)) ?? null
+    : null;
+  const justClosed = current?.state !== "confirming" && immediatePrevious?.state === "confirming"
+    ? immediatePrevious : null;
+  // A malformed or dev-rewound chain can retain a resolved row whose window overlaps the
+  // current one. Both rows are real, but pairing them says one match ended while the same
+  // minutes are still open. Keep the current round and omit that contradictory result.
+  const lastDone = latestNonOverlappingResult(mapped, current);
   // ⭐ E-166 · the settled card must be able to say what comes NEXT, not "Closed". Resolved here
   // — after the selection — so the cost is one lookup for the one card that can use it.
-  const rounds = await withSuccessors(
+  const selected = await withSuccessors(
     [current, justClosed, lastDone].filter(Boolean) as BoardRound[],
     chain,
     raw,
   );
+  // Price provenance is needed only for the cards actually returned, not every
+  // historical row mapped above. Each read is bounded to that round's window.
+  const byId = new Map(raw.map((r) => [r.id, r]));
+  const rounds = await Promise.all(selected.map((r) => {
+    const stored = byId.get(r.roundId);
+    return stored ? withRoundQuoteTimes(r, stored) : r;
+  }));
 
   // The heartbeat strip — oldest → newest, real outcomes only.
   const recent = mapped
@@ -886,7 +964,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     .reverse()
     .map((r) => r.outcome!) as Array<"UP" | "DOWN" | "VOID">;
 
-  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", stakeBounds, walletBalance };
+  return { assets, activeAsset, activeDuration, rounds, recent, chainPaused: chain.state !== "RUNNING", nextMarketOpenAtMs, stakeBounds, walletBalance };
 }
 
 /**
@@ -1028,6 +1106,8 @@ const MIN_EXPLICIT_CANDLES = 3;
 
 export type TerminalFeed = {
   series: TerminalSeries;
+  /** The round line draws only dated vendor minute bars, never sparse fallback reads. */
+  sourceTier: "vendor" | "confirmed";
   livePrice: number | null;
   sourceQuotedAt: string | null;
   /** True when the newest confirmed read is older than QUOTE_GAP_FACTOR × the window's
@@ -1053,9 +1133,12 @@ export async function getAssetTerminalSeries(
   assetKey: string,
   range: TerminalRange,
   style: TerminalStyle = "auto",
+  scope: "chart" | "round" = "chart",
 ): Promise<TerminalFeed | null> {
   const cfg = TERMINAL_WINDOWS[range];
   if (!cfg) return null;
+  if (scope === "round" && (range !== "1H" || style !== "line")) return null;
+  const windowMs = scope === "round" ? ROUND_LINE_WINDOW_MS : cfg.windowMs;
   const assets = await assetStore.list({ enabledOnly: true });
   const asset = assets.find((a) => a.key === assetKey);
   if (!asset) return null;
@@ -1065,7 +1148,7 @@ export async function getAssetTerminalSeries(
   // ── TIER 1 · the vendor's own bars (Ali's full-access grant, 2026-09-04) ──
   // Real market OHLC(+volume) at the range's native resolution, one credit per
   // 30s per (asset, range) across all viewers. The MONEY stays untouched: the
-  // gilt live line and every settlement remain the platform's confirmed reads;
+  // confirmed price and every settlement remain the platform's confirmed reads;
   // these bars are the market context every trading product charts. A vendor
   // miss falls through to the confirmed-reads tier — never a blank pane.
   const vendorBars = await vendorBarsFor(
@@ -1074,10 +1157,10 @@ export async function getAssetTerminalSeries(
     process.env.TWELVEDATA_API_KEY,
   );
   const liveForBase = await latestConfirmed(asset.id);
-  if (vendorBars && vendorBars.length >= 2) {
+  if (vendorBars && vendorBars.length >= 1) {
     const plan = VENDOR_PLAN[range];
-    const inWindow = vendorBars.filter((b) => b.t >= now - cfg.windowMs && b.t <= now);
-    if (inWindow.length >= 2) {
+    const inWindow = vendorBars.filter((b) => b.t >= now - windowMs && b.t <= now);
+    if (inWindow.length >= 1) {
       // ⛔ STALENESS IS A PROPERTY OF THE QUOTE, NOT THE VIEWING WINDOW (re-sign
       // panel, finance lens): keyed to the bar interval, the 7D pill tolerated a
       // dead oracle for 2.5 hours while 15M flagged the SAME quote at 5 minutes —
@@ -1093,6 +1176,7 @@ export async function getAssetTerminalSeries(
         ? isQuoteStale(Date.parse(liveForBase.quotedAt), now, quoteCadence)
         : null;
       const vBase = {
+        sourceTier: "vendor" as const,
         livePrice: liveForBase?.price ?? null,
         sourceQuotedAt: liveForBase?.quotedAt ?? null,
         liveStale: vLiveStale,
@@ -1106,17 +1190,12 @@ export async function getAssetTerminalSeries(
       for (let t = inWindow[0].t + plan.intervalMs; t < inWindow[inWindow.length - 1].t; t += plan.intervalMs) {
         if (!inWindow.some((b) => b.t === t)) gaps.push(t);
       }
-      if (style === "line" || (style === "auto" && !cfg.wantCandles)) {
-        const points: TerminalPoint[] = [];
-        for (let i = 0; i < inWindow.length; i++) {
-          if (i > 0 && inWindow[i].t - inWindow[i - 1].t > plan.intervalMs) {
-            for (let k = inWindow[i - 1].t + plan.intervalMs; k < inWindow[i].t; k += plan.intervalMs) {
-              points.push({ t: k, price: null });
-            }
-          }
-          points.push({ t: inWindow[i].t, price: inWindow[i].c });
-        }
-        return { series: { mode: "line", points }, ...vBase };
+      if (style === "line" || (style === "auto" && !cfg.wantCandles) || inWindow.length < MIN_EXPLICIT_CANDLES) {
+        const points: TerminalPoint[] = vendorOpenPoints(inWindow, plan.intervalMs, asset.decimals);
+        return {
+          series: { mode: "line", points }, ...vBase,
+          ...(style === "candles" ? { candlesUnavailable: true } : {}),
+        };
       }
       const formingT = Math.floor(now / plan.intervalMs) * plan.intervalMs;
       const candles: TerminalCandle[] = inWindow.map((b) => ({
@@ -1128,7 +1207,7 @@ export async function getAssetTerminalSeries(
   }
 
   // ── TIER 2 · the platform's own confirmed reads (the settlement truth) ────
-  const since = new Date(now - cfg.windowMs).toISOString();
+  const since = new Date(now - windowMs).toISOString();
   const rows = await observationStore.list({ assetId: asset.id, state: "CONFIRMED", boundaryFrom: since, limit: 1600 });
   const reads = rows
     .filter((o) => o.price != null && o.boundaryAt != null)
@@ -1153,6 +1232,7 @@ export async function getAssetTerminalSeries(
       : null;
 
   const base = {
+    sourceTier: "confirmed" as const,
     livePrice: live?.price ?? null,
     sourceQuotedAt: live?.quotedAt ?? null,
     liveStale,
@@ -1453,8 +1533,9 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
   // perfectly with the fourth argument missing, so `expectedResultAtMs` would have been null
   // on `/updown/[roundId]` for ever while the board card worked — a feature that is present in
   // the code, passes tsc, and does nothing on half the surfaces it claims to cover.
-  const board = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key));
-  if (!board) return null;
+  const bareBoard = await toBoardRound(r, chain, a, mine, await measuredLagSeconds(a.key));
+  if (!bareBoard) return null;
+  const board = await withRoundQuoteTimes(bareBoard, r);
   // ⭐ E-166 · THE DETAIL PAGE NEEDS THIS TOO, and it is the surface that would have shipped
   // broken without the line. `toBoardRound` type-checks perfectly with an empty successor, so
   // the round page would have rendered a permanent "no next match" while the board worked —

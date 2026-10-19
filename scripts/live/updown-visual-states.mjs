@@ -15,16 +15,17 @@
  * performs every handover itself (the settle fallback below), which is exactly production's shape: one settle closes the
  * round and opens its successor. The healer is off too, or it voids a round the timer was meant to close.
  *
- * ⭐ NOTHING IS A FIXTURE. Rounds are opened, locked, closed and settled by the production service functions: a few
- * pre-roll rounds are armed and settled through /api/dev-test/updown-handover (the board gains history), the round under
+ * ⭐ LOCAL TEST DATA, REAL SERVICE PATHS. The mock-bars feed and planted observations are synthetic and stay inside
+ * this dev-only in-memory store. Rounds are opened, locked, closed and settled by the production service functions: one
+ * prior round is armed and settled through /api/dev-test/updown-handover (the board gains a real result), the round under
  * test is the successor the last settle opened, and this driver settles it through the same endpoint after its close; a
  * moved price is a confirmed read planted through /api/dev-test/updown-observe; the demo player's stake is a real quick
  * bet clicked on the card.
  *
- * The phases, each photographed in every open page at once (the states are minutes long, so the matrix is shot in
- * parallel rather than one cell after another):
+ * The phases, each photographed across every selected page through a bounded worker queue (the states are minutes
+ * long, so the matrix is captured concurrently without overwhelming development chunk compilation):
  *   p1-open          the round under test, signed out and signed in (the stake controls)
- *   p2-receipt       the demo player's quick bet (UP, the first chip) and its receipt
+ *   p2-receipt       one real demo quick bet (UP, the first chip) and receipt per selected player cell
  *   p3-youre-in      the open round after the bet ("You're in")
  *   p4-moved-up / p5-moved-down   a planted confirmed read above / below the open
  *   p6-last30        betting's last 30 seconds
@@ -39,6 +40,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { mapLimited, PHOTOGRAPH_CONCURRENCY, verifiedScreenshot, frameReady, receiptParticipants, receiptReady, RECEIPT_EYEBROWS } from "../lib/u43-state-fanout.mjs";
 
 const REPO = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const PW_ROOT = process.env.PW_ROOT || REPO;
@@ -57,11 +59,11 @@ mkdirSync(OUT, { recursive: true });
 
 const UA = "Mozilla/5.0 (Linux; Android 13; SM-A145F) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Mobile Safari/537.36";
 const UA_DESKTOP = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36";
-const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}";
-const HEIGHT_FOR = { 320: 640, 360: 780, 390: 844, 768: 1024, 1280: 800, 1920: 1080 };
+const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
+const HEIGHT_FOR = { 320: 640, 360: 740, 390: 844, 768: 1024, 1024: 768, 1280: 800, 1920: 1080 };
 
 /** The matrix: every signed-in cell in Swahili across the phone widths, the other languages at a phone and a desktop. */
-const CELLS = [
+const QUICK_CELLS = [
   { who: "guest", locale: "sw", width: 360 }, { who: "guest", locale: "en", width: 360 }, { who: "guest", locale: "zh", width: 360 },
   { who: "guest", locale: "sw", width: 1280 },
   { who: "player", locale: "sw", width: 320 }, { who: "player", locale: "sw", width: 360 }, { who: "player", locale: "sw", width: 390 },
@@ -69,8 +71,29 @@ const CELLS = [
   { who: "player", locale: "en", width: 360 }, { who: "player", locale: "en", width: 1280 },
   { who: "player", locale: "zh", width: 360 }, { who: "player", locale: "zh", width: 1920 },
 ];
+// The final read uses every requested width, language and player state. Run one language per
+// invocation to keep Chromium's memory bounded while each time-sensitive phase is captured.
+const FULL_WIDTHS = (process.env.WIDTHS || "320,360,390,768,1024,1280,1920").split(",").map(Number).filter((w) => w in HEIGHT_FOR);
+const FULL_LOCALES = (process.env.LOCALES || "sw,en,zh").split(",").map((s) => s.trim()).filter((l) => ["sw", "en", "zh"].includes(l));
+// A narrow local browser gate stops after p3: one real phone-width bet, then a
+// measured held action above the fixed rail. It is also the browser red proof.
+const heldClearanceOnly = process.env.HELD_CLEARANCE_ONLY === "1";
+const heldClearanceWidth = Number(process.env.HELD_CLEARANCE_WIDTH || 320);
+if (heldClearanceOnly && ![320, 360, 390].includes(heldClearanceWidth)) {
+  throw new Error("Held clearance probe supports only the three phone widths");
+}
+const CELLS = heldClearanceOnly
+  ? [{ who: "player", locale: "sw", width: heldClearanceWidth }]
+  : process.env.MATRIX === "full"
+  ? FULL_LOCALES.flatMap((locale) => FULL_WIDTHS.flatMap((width) => [
+      { who: "guest", locale, width }, { who: "player", locale, width },
+    ]))
+  : QUICK_CELLS;
+const fullMatrix = process.env.MATRIX === "full" || heldClearanceOnly;
+const inFullMatrix = (quickFilter) => (cell) => fullMatrix || quickFilter(cell);
 
 const die = (why) => { console.error(`\n🔴 PREMISE ABSENT — ${why}\n   Refusing to photograph a page that cannot show the state.`); process.exit(2); };
+if (CELLS.length === 0) die("capture matrix has no supported width or language");
 const post = async (path, body) => {
   const r = await fetch(`${BASE}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
   const text = await r.text();
@@ -91,18 +114,6 @@ if (!seed.ok) die(`updown-seed: ${JSON.stringify(seed).slice(0, 200)}`);
 await post("/api/dev-test/seed-markets");
 await fetch(`${BASE}/api/dev-test/resolve-seed-markets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ markets: 2, bettors: 4, stake: 2000, outcome: "YES", settle: true }) }).catch(() => {});
 await fetch(`${BASE}/api/dev-test/resolve-seed-markets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", settle: true }) }).catch(() => {});
-await post("/api/dev-test/updown-advance");
-
-// A board with history, as production has: a few REAL rounds armed and settled (5 s each), so the last-rounds strip
-// carries outcomes instead of the board falling back to the chart alone.
-const PREROLL = Math.max(1, Number(process.env.PREROLL || 6));
-let lastSettle = null;
-for (let i = 0; i < PREROLL; i++) {
-  await post("/api/dev-test/updown-handover", { phase: "arm", leadSeconds: 5 });
-  await new Promise((r) => setTimeout(r, 6500));
-  lastSettle = await post("/api/dev-test/updown-handover", { phase: "settle" });
-}
-console.log(`  pre-rolled ${PREROLL} settled round(s)`);
 
 // ── Pages ─────────────────────────────────────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
@@ -130,73 +141,306 @@ for (const c of CELLS) {
     storageState: c.who === "player" ? playerState : undefined,
   });
   await ctx.addCookies([{ name: "kp-locale", value: c.locale, domain: host, path: "/" }]);
-  await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); localStorage.setItem("kp-updown-viz", "cubes"); } catch {} });
+  await ctx.addInitScript((desktop) => { try { localStorage.setItem("50pick-primer-seen", "1"); localStorage.setItem("kp-updown-chart-open", desktop ? "open" : "closed"); } catch {} }, c.width >= 1024);
   const page = await ctx.newPage();
   pages.push({ ...c, ctx, page, id: `${c.who}-${c.width}-${c.locale}` });
 }
 const BOARD = `/updown?asset=BTC&d=${DUR}`;
 
+// Compile and hydrate each browser context before the timed round begins. A cold
+// 13-context fanout can otherwise spend the successor's open window loading dev
+// chunks. This empty seeded board is unscored; the real predecessor and successor
+// are still created only by the service endpoint below.
+console.log("=== warm browser contexts");
+const warmed = await mapLimited(pages, PHOTOGRAPH_CONCURRENCY, async (p) => {
+  try {
+    await p.page.goto(`${BASE}${BOARD}`, { waitUntil: "load", timeout: 90000 });
+    await p.page.waitForFunction(() => !!document.querySelector("main") && document.readyState === "complete", null, { timeout: 20000 });
+    const lang = await p.page.evaluate(() => document.documentElement.lang);
+    return { cell: p.id, ok: lang === p.locale, lang };
+  } catch (error) { return { cell: p.id, ok: false, error: String(error).slice(0, 180) }; }
+});
+index.warmup = warmed;
+if (warmed.some((row) => !row.ok)) die(`browser warm-up failed: ${JSON.stringify(warmed.filter((row) => !row.ok)).slice(0, 500)}`);
+
+// Start with a fresh chain and make ONE real predecessor. The old `updown-advance` plus six
+// `arm` calls rewound a chain while its successor was still unresolved: Gold could then show
+// an open card and a settled card covering the same minutes. A five-minute round cannot yield
+// six honest results in 39 seconds. One short lead-in settle opens a full-span successor for
+// the state sweep, with an adjacent settled card for the handover read.
+const armed = await post("/api/dev-test/updown-handover", { phase: "arm", leadSeconds: 5 });
+const armedTest = armed.out?.find((o) => o.durationMinutes === DUR && o.round)?.round;
+if (!armedTest?.id) die(`the fresh ${DUR}-minute chain did not open a lead-in round`);
+await waitUntil(Date.parse(armedTest.closesAt) + 1500, "the real lead-in close");
+const lastSettle = await post("/api/dev-test/updown-handover", { phase: "settle" });
+const testHandover = lastSettle.out?.find((o) => o.durationMinutes === DUR && o.closed?.id === armedTest.id);
+if (!testHandover?.opened?.id || testHandover.opened.opensAt !== testHandover.closed.closesAt) {
+  die(`the lead-in did not hand over to an adjacent ${DUR}-minute round: ${JSON.stringify(testHandover).slice(0, 300)}`);
+}
+for (const row of lastSettle.out ?? []) {
+  if (row.closed && row.opened && row.closed.closesAt !== row.opened.opensAt) {
+    die(`chain ${row.chainId} handed over across overlapping or missing windows`);
+  }
+}
+console.log("  one settled predecessor; successor starts at its exact close");
+
 /** A card's own frame without the chrome floating over it (the twin of updown-visual-capture.mjs's helper). */
 async function withoutChrome(page, fn) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll("body *")) {
-      if (el.closest("article.mcardp")) continue;
-      const p = getComputedStyle(el).position;
-      if (p === "fixed" || (p === "sticky" && el.matches("header, .app-topbar"))) {
-        el.setAttribute("data-u43-hid", el.style.visibility || "");
-        el.style.visibility = "hidden";
-      }
-    }
-  });
+  const style = await page.addStyleTag({ content: ".app-topbar,.kp-rail,.cm-bubble,[data-toaster],nextjs-portal{visibility:hidden!important}" });
   try { return await fn(); }
-  finally {
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll("[data-u43-hid]")) { el.style.visibility = el.getAttribute("data-u43-hid"); el.removeAttribute("data-u43-hid"); }
-    }).catch(() => {});
-  }
+  finally { await style.evaluate((el) => el.remove()).catch(() => {}); }
 }
 
 async function photograph(phase, path = BOARD, filter = () => true) {
-  const shots = [];
-  await Promise.all(pages.filter(filter).map(async (p) => {
+  // Dev bundlers compile route chunks lazily. Unbounded page.goto() caused the 13-cell R8
+  // sweep to reload /updown repeatedly before its clock effects could run. Keep all cells,
+  // but let only a few load/paint at once; the result order stays the matrix's order.
+  const shots = await mapLimited(pages.filter(filter), PHOTOGRAPH_CONCURRENCY, async (p) => {
     try {
+      const detailPage = /^\/updown\/[^/?]+/.test(path);
+      const needsLive = ["p1-open", "p3-youre-in", "p4-moved-up", "p5-moved-down", "p6-last30", "p7-locked", "p10-handover"].includes(phase);
+      const roundPhase = ["p1-open", "p3-youre-in", "p4-moved-up", "p5-moved-down", "p6-last30"].includes(phase) ? "open"
+        : phase === "p7-locked" ? "locked" : null;
+      const requirement = {
+        detailPage, marketPage: path === "/markets", needsLive, roundPhase,
+        roundId: path === BOARD && roundPhase ? round.id : null,
+        last30LockMs: phase === "p6-last30" ? lockMs : null,
+        heldActionClearance: phase === "p3-youre-in" && p.who === "player" && p.width <= 390
+          && (fullMatrix || p.width === 360),
+        heldCaptionHidden: phase === "p3-youre-in" && p.who === "player" && p.width === 320,
+        locale: p.locale, signedIn: p.who === "player",
+      };
+      const proveDelayedLine = heldClearanceOnly && p.width === 360 && phase === "p3-youre-in"
+        && process.env.HELD_LINE_DELAY === "1";
+      let releaseLine;
+      const lineGate = new Promise((resolve) => { releaseLine = resolve; });
+      const roundLineRequest = proveDelayedLine
+        ? p.page.waitForRequest((request) => {
+            const url = new URL(request.url());
+            return url.pathname === "/api/updown/history" && url.searchParams.get("scope") === "round";
+          }, { timeout: 12000 })
+        : null;
+      const roundLineResponse = proveDelayedLine
+        ? p.page.waitForResponse((response) => {
+            const url = new URL(response.url());
+            return url.pathname === "/api/updown/history" && url.searchParams.get("scope") === "round";
+          }, { timeout: 12000 })
+        : null;
+      if (proveDelayedLine) {
+        await p.page.route("**/api/updown/history?*", async (route) => {
+          if (new URL(route.request().url()).searchParams.get("scope") === "round") await lineGate;
+          await route.continue();
+        });
+      }
       await p.page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      // Browser-only red restores the old visible one-side caption without
+      // touching shared CSS or the running server's source tree.
+      if (heldClearanceOnly && process.env.HELD_CAPTION_RED === "1" && phase === "p3-youre-in") {
+        await p.page.addStyleTag({ content: '@media(max-width:359px){.ud-card[data-ud-layout="held"] .ud-oneside-caption{display:flex!important}}' });
+      }
       // Hydrated before the frame: the card clocks paint "--:--" until the client ticks, and the signed-in controls are
       // interactive only after hydration. Wait for a live clock (or give up after 12 s and say so in the index).
-      const hydrated = await p.page.waitForFunction(() => {
-        const digits = [...document.querySelectorAll("article.mcardp .m-tick")].map((e) => e.textContent || "");
-        return digits.length === 0 || digits.every((t) => !t.includes("--:--"));
-      }, null, { timeout: 12000 }).then(() => true).catch(() => false);
+      const hydrated = await p.page.waitForFunction(({ detailPage, needsLive }) => {
+        // A round detail has no board card. Its title and settlement panel are
+        // the premise; the board's ticking-card check cannot apply there.
+        if (detailPage) return !!document.querySelector("main h1") && !!document.querySelector("main section");
+        const cards = document.querySelectorAll("article.mcardp");
+        const running = [...document.querySelectorAll('article.mcardp[data-phase="open"],article.mcardp[data-phase="locked"]')];
+        // Settled cards may truthfully say "awaiting result", and a stopped chain
+        // may show an em dash. Only running clocks have to tick before capture.
+        return cards.length > 0 && (!needsLive || running.length > 0) && running.every((card) => {
+          // The caption also has `m-tick`; read the numeric digit leaf only.
+          const tick = card.querySelector(".ud-clock > .m-tick.tabular-nums")?.textContent || "";
+          return /\d/.test(tick) && !tick.includes("--:--") && !tick.includes("—:—");
+        });
+      }, { detailPage, needsLive }, { timeout: 12000 }).then(() => true).catch(() => false);
+      const marksReady = await p.page.waitForFunction(() => [...document.querySelectorAll("article.mcardp svg")]
+        .filter((el) => el.querySelector("use") && el.getClientRects().length > 0).every((el) => {
+        try { return el.getBBox().width > 0; } catch { return false; }
+      }), null, { timeout: 10000 }).then(() => true).catch(() => false);
+      // On a fresh desktop load the chart is open, but its JS chunk and history
+      // fetch finish after the card clock hydrates. Judge a painted canvas, not
+      // the large temporary "Loading" rectangle beside the round.
+      const chartReady = await p.page.waitForFunction(() =>
+        !document.querySelector('.ud-chart-trigger[aria-expanded="true"]')
+          || !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'),
+      null, { timeout: 15000 }).then(() => true).catch(() => false);
       await p.page.waitForTimeout(900);
-      // The urgency pulse, measured BEFORE `STILL` freezes every animation: each `.ud-count-pulse` element, the animation the
-      // cascade actually gave it, and whether one is running (U43: beside `.m-tick` it lost the cascade and never played).
-      const pulses = await p.page.evaluate(() => [...document.querySelectorAll(".ud-count-pulse")].map((el) => ({
-        text: (el.textContent || "").trim(), name: getComputedStyle(el).animationName,
-        running: el.getAnimations().some((x) => x.playState === "running" && x.animationName === "ud-count-pulse"),
-      })));
-      await p.page.addStyleTag({ content: STILL });
-      const lang = await p.page.evaluate(() => document.documentElement.lang);
-      const signedIn = await p.page.evaluate(() => !!document.querySelector('[data-testid="wallet-balance-pill"], .kp-balance-pill, a[href="/wallet"]'));
+      const sampleFrame = () => p.page.evaluate(({ roundId }) => {
+        const cards = [...document.querySelectorAll("article.mcardp")];
+        const running = cards.filter((card) => ["open", "locked"].includes(card.getAttribute("data-phase")));
+        const selected = roundId ? cards.find((card) => card.querySelector(`a[href="/updown/${roundId}"]`)) : null;
+        const marksReady = [...document.querySelectorAll("article.mcardp svg")]
+          .filter((el) => el.querySelector("use") && el.getClientRects().length > 0).every((el) => {
+            try { return el.getBBox().width > 0; } catch { return false; }
+          });
+        return {
+          now: Date.now(), cards: cards.length, roundPhase: selected?.getAttribute("data-phase") ?? null,
+          runningTicks: running.map((card) => card.querySelector(".ud-clock > .m-tick.tabular-nums")?.textContent || ""),
+          detailReady: !!document.querySelector("main h1") && !!document.querySelector("main section"),
+          marksReady,
+          chartReady: !document.querySelector('.ud-chart-trigger[aria-expanded="true"]')
+            || !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'),
+          lang: document.documentElement.lang,
+          signedIn: !!document.querySelector('[data-testid="wallet-balance-pill"], .kp-balance-pill, a[href="/wallet"]'),
+          roundLinePresent: !!selected?.querySelector('[data-testid="round-live-line"]'),
+          delayedLayoutBlockPresent: !!selected?.querySelector('[data-testid="u43-round-line-layout-block"]'),
+          oneSideCaption: (() => {
+            const caption = selected?.querySelector(".ud-oneside-caption");
+            return { present: !!caption, visible: !!caption && caption.getClientRects().length > 0
+              && getComputedStyle(caption).display !== "none" };
+          })(),
+          heldAction: (() => {
+            if (!roundId) return null;
+            const rail = document.querySelector(".kp-rail");
+            const buttons = [...(selected?.querySelectorAll(".ud-act button.btn-yes, .ud-act button.btn-no") ?? [])]
+              .filter((button) => button.getClientRects().length > 0);
+            if (!rail || buttons.length !== 2) return null;
+            const railTop = rail.getBoundingClientRect().top;
+            const bounds = buttons.map((button) => button.getBoundingClientRect());
+            return { layout: selected?.getAttribute("data-ud-layout"), railPosition: getComputedStyle(rail).position,
+              buttons: bounds.length, minButtonHeight: Math.min(...bounds.map((rect) => rect.height)),
+              clearance: railTop - Math.max(...bounds.map((rect) => rect.bottom)) };
+          })(),
+          // Read motion before STILL freezes it; a retry must report the accepted frame's pulse.
+          pulses: [...document.querySelectorAll(".m-urgent")].map((el) => ({
+            text: (el.textContent || "").trim(), name: getComputedStyle(el).animationName,
+            running: el.getAnimations().some((x) => x.playState === "running" && x.animationName === "m-breathe"),
+          })),
+        };
+      }, { roundId: requirement.roundId });
+      let lineShift = null;
+      if (proveDelayedLine) {
+        try {
+          await roundLineRequest;
+          const before = await sampleFrame();
+          if (before.roundLinePresent || !before.heldAction || before.heldAction.clearance < 24) {
+            throw new Error(`delayed line premise failed before release: ${JSON.stringify({ line: before.roundLinePresent, action: before.heldAction }).slice(0, 220)}`);
+          }
+          releaseLine();
+          const response = await roundLineResponse;
+          if (!response.ok()) throw new Error(`round history returned HTTP ${response.status()}`);
+          const feed = await response.json();
+          if (feed.sourceTier !== "vendor" && feed.sourceTier !== "confirmed") {
+            throw new Error("round history had no truthful source tier");
+          }
+          // A local mock-bars round normally has confirmed reads but no vendor bars.
+          // Do not invent a price to make its line draw: insert an empty, aria-hidden
+          // 72px browser-only layout block (56px SVG + one footer row) after the
+          // genuine delayed response. This probes action stability, not price data.
+          await p.page.evaluate(({ roundId }) => {
+            const card = [...document.querySelectorAll("article.mcardp")]
+              .find((node) => node.querySelector(`a[href="/updown/${roundId}"]`));
+            const action = card?.querySelector(":scope > .ud-act");
+            if (!action) throw new Error("the held action is absent before delayed layout injection");
+            const block = document.createElement("div");
+            block.dataset.testid = "u43-round-line-layout-block";
+            block.setAttribute("aria-hidden", "true");
+            block.style.height = "72px";
+            block.style.pointerEvents = "none";
+            action.after(block);
+          }, { roundId: round.id });
+          if (process.env.HELD_LINE_RED === "1") {
+            // Recreate the old pre-action placement in this browser only.
+            await p.page.evaluate(({ roundId }) => {
+              const card = [...document.querySelectorAll("article.mcardp")]
+                .find((node) => node.querySelector(`a[href="/updown/${roundId}"]`));
+              const action = card?.querySelector(":scope > .ud-act");
+              const block = card?.querySelector(':scope > [data-testid="u43-round-line-layout-block"]');
+              if (!action || !block) throw new Error("the delayed layout block cannot be reversed");
+              action.before(block);
+            }, { roundId: round.id });
+          }
+          await p.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const after = await sampleFrame();
+          if (!after.delayedLayoutBlockPresent || !after.heldAction) throw new Error("the delayed layout block did not paint beside the held action");
+          lineShift = { before: before.heldAction.clearance, after: after.heldAction.clearance,
+            sourceTier: feed.sourceTier, simulation: true, height: 72 };
+          if (after.heldAction.clearance < 24) {
+            throw new Error(`delayed line held action clearance ${after.heldAction.clearance.toFixed(1)}px below 24px`);
+          }
+        } finally {
+          releaseLine();
+          await p.page.unroute("**/api/updown/history?*");
+        }
+      }
+      if (requirement.heldActionClearance) {
+        const measured = await sampleFrame();
+        const action = measured.heldAction;
+        if (!action) throw new Error("held action clearance could not be measured on the tested round");
+        if (action.clearance < 24) throw new Error(`held action clearance ${action.clearance.toFixed(1)}px below 24px`);
+        if (requirement.heldCaptionHidden && (!measured.oneSideCaption.present || measured.oneSideCaption.visible)) {
+          throw new Error("held 320px one-side caption is absent or visible instead of hidden");
+        }
+      }
       const file = `${phase}__${p.id}.png`;
-      await p.page.screenshot({ path: join(OUT, file), fullPage: true });
+      const accepted = await verifiedScreenshot({
+        sample: sampleFrame,
+        capture: async () => {
+          await p.page.addStyleTag({ content: STILL });
+          return p.page.screenshot({ fullPage: true });
+        },
+        valid: (sample) => frameReady(sample, requirement),
+        retry: async () => {
+          await p.page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+          await p.page.waitForTimeout(1500);
+        },
+      });
       const cards = p.page.locator("article.mcardp");
       const n = Math.min(await cards.count(), 4);
       const cardFiles = [];
+      const cardImages = [];
       await withoutChrome(p.page, async () => {
         for (let i = 0; i < n; i++) {
           if (!(await cards.nth(i).isVisible())) continue;
           const f = `${phase}__${p.id}__card${i}.png`;
-          await cards.nth(i).screenshot({ path: join(OUT, f) });
-          cardFiles.push({ file: f, phase: await cards.nth(i).getAttribute("data-phase") });
+          // A locator screenshot scrolls a lower market card into view and may catch the
+          // composited YES/NO label before it paints. Scroll first, then wait for two
+          // browser paint frames; a visible live choice must also have both words.
+          await cards.nth(i).scrollIntoViewIfNeeded();
+          await p.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          if (path === "/markets") {
+            const choices = cards.nth(i).locator("button.btn-yes, button.btn-no");
+            if (await choices.count()) {
+              if (await choices.count() !== 2 || !(await choices.nth(0).isVisible()) || !(await choices.nth(1).isVisible())
+                || !(await choices.nth(0).textContent())?.trim() || !(await choices.nth(1).textContent())?.trim()) {
+                throw new Error(`market card ${i} has an unreadable side choice`);
+              }
+            }
+          }
+          await p.page.waitForTimeout(120);
+          // A board refresh or phase turnover during the crop cannot make a valid state frame.
+          const cropped = await verifiedScreenshot({
+            sample: sampleFrame,
+            capture: () => cards.nth(i).screenshot(),
+            valid: (sample) => frameReady(sample, requirement),
+            retry: async () => {
+              await p.page.waitForTimeout(300);
+              await cards.nth(i).scrollIntoViewIfNeeded();
+              await p.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            },
+          });
+          cardImages.push({ file: f, image: cropped.image });
+          cardFiles.push({ file: f, phase: await cards.nth(i).getAttribute("data-phase"), beforeMs: cropped.before.now, afterMs: cropped.after.now });
         }
       });
-      shots.push({ cell: p.id, lang, langOk: lang === p.locale, hydrated, signedIn, signedInOk: (p.who === "player") === signedIn, file, cards: cardFiles, pulses });
+      // Do not leave a plausible-looking invalid screenshot on disk: every crop must
+      // survive its own before/after check before any file for this cell is written.
+      writeFileSync(join(OUT, file), accepted.image);
+      for (const card of cardImages) writeFileSync(join(OUT, card.file), card.image);
+      const final = accepted.after;
+      return { cell: p.id, lang: final.lang, langOk: final.lang === p.locale,
+        hydrated: hydrated || frameReady(final, requirement), marksReady: final.marksReady, chartReady: final.chartReady,
+        signedIn: final.signedIn, signedInOk: (p.who === "player") === final.signedIn,
+        file, beforeMs: accepted.before.now, afterMs: final.now, attempts: accepted.attempt,
+        cards: cardFiles, heldAction: final.heldAction, oneSideCaption: final.oneSideCaption,
+        lineShift, pulses: accepted.before.pulses };
     } catch (e) {
-      shots.push({ cell: p.id, error: String(e).slice(0, 200) });
+      return { cell: p.id, error: String(e).slice(0, 200) };
     }
-  }));
+  });
   index.phases.push({ phase, path, at: new Date().toISOString(), shots });
-  const bad = shots.filter((s) => s.error || s.langOk === false || s.signedInOk === false || s.hydrated === false).length;
+  const bad = shots.filter((s) => s.error || s.langOk === false || s.signedInOk === false || s.hydrated === false || s.marksReady === false || s.chartReady === false).length;
   console.log(`  ▸ ${phase}: ${shots.length} cell(s)${bad ? ` · ${bad} problem(s)` : ""}`);
 }
 
@@ -216,36 +460,69 @@ console.log(`  round ${round.id} opened ${round.opensAt}; lock ${new Date(lockMs
 
 await photograph("p1-open");
 
-// The demo player's quick bet: the first stake chip, then Up, on the Swahili 360 card.
-const bettor = pages.find((p) => p.id === "player-360-sw");
-try {
-  await bettor.page.goto(`${BASE}${BOARD}`, { waitUntil: "domcontentloaded", timeout: 90000 });
-  await bettor.page.waitForFunction(() => !!document.querySelector('article.mcardp[data-phase="open"] [role="radiogroup"] button'), null, { timeout: 20000 });
-  await bettor.page.waitForTimeout(800);
-  const card = bettor.page.locator('article.mcardp[data-phase="open"]').first();
-  await card.locator('[role="radiogroup"] button').first().click();
-  await card.locator("button.btn-yes").first().click();
-  await bettor.page.waitForTimeout(2500);
-  await bettor.page.screenshot({ path: join(OUT, "p2-receipt__player-360-sw.png") });
-  index.phases.push({ phase: "p2-receipt", shots: [{ cell: "player-360-sw", file: "p2-receipt__player-360-sw.png" }] });
-  console.log("  ▸ p2-receipt: 1 cell");
-  await bettor.page.keyboard.press("Escape").catch(() => {});
-} catch (e) {
-  index.phases.push({ phase: "p2-receipt", error: String(e).slice(0, 200) });
-  console.log(`  ✗ p2-receipt: ${String(e).slice(0, 120)}`);
+// A full matrix makes one actual local bet per player width, sequentially: each
+// receipt then proves its own stake, locale and viewport. The quick sweep keeps
+// one 360px bet. The p1 pages are already hydrated on this board, so no cold
+// reload consumes the five-second success modal or the round's open window.
+const receiptPlayers = receiptParticipants(pages, fullMatrix);
+if (receiptPlayers.length === 0) die("state capture needs a signed-in cell for a real quick bet");
+const bettor = receiptPlayers.find((p) => p.width === 360) ?? receiptPlayers[0];
+const receiptShots = [];
+for (const p of receiptPlayers) {
+  try {
+    const card = p.page.locator(`article.mcardp[data-phase="open"]:has(a[href="/updown/${round.id}"])`).first();
+    await card.locator('[role="radiogroup"] button').first().waitFor({ state: "visible", timeout: 12000 });
+    if (await p.page.evaluate(() => document.documentElement.lang) !== p.locale) throw new Error(`wrong locale before bet: ${p.locale}`);
+    await card.locator('[role="radiogroup"] button').first().click();
+    await card.locator("button.btn-yes").first().click();
+    await p.page.waitForFunction((expected) => [...document.querySelectorAll('[role="dialog"] p.eyebrow')]
+      .some((node) => node.textContent?.trim() === expected), RECEIPT_EYEBROWS[p.locale], { timeout: 8000 });
+    const sampleReceipt = () => p.page.evaluate(({ roundId }) => {
+      const card = [...document.querySelectorAll("article.mcardp")].find((node) => node.querySelector(`a[href="/updown/${roundId}"]`));
+      const dialog = [...document.querySelectorAll('[role="dialog"]')].find((node) => node.querySelector("p.eyebrow"));
+      const box = dialog?.getBoundingClientRect();
+      return {
+        now: Date.now(), lang: document.documentElement.lang,
+        signedIn: !!document.querySelector('[data-testid="wallet-balance-pill"], .kp-balance-pill, a[href="/wallet"]'),
+        roundPhase: card?.getAttribute("data-phase") ?? null,
+        dialogVisible: dialog?.getAttribute("aria-modal") === "true" && !dialog.hasAttribute("inert")
+          && !!box && box.width > 0 && box.height > 0 && getComputedStyle(dialog).visibility !== "hidden",
+        eyebrow: dialog?.querySelector("p.eyebrow")?.textContent?.trim() ?? null,
+        title: dialog?.querySelector("h2")?.textContent?.trim() ?? null,
+        text: dialog?.textContent ?? "",
+      };
+    }, { roundId: round.id });
+    const accepted = await verifiedScreenshot({
+      sample: sampleReceipt,
+      capture: () => p.page.screenshot(),
+      valid: (sample) => receiptReady(sample, { locale: p.locale }),
+      attempts: 1, // A failed frame never repeats a money action.
+    });
+    const file = `p2-receipt__${p.id}.png`;
+    writeFileSync(join(OUT, file), accepted.image);
+    receiptShots.push({ cell: p.id, file, lang: accepted.after.lang, langOk: true, receiptOk: true,
+      beforeMs: accepted.before.now, afterMs: accepted.after.now });
+  } catch (error) {
+    receiptShots.push({ cell: p.id, receiptOk: false, error: String(error).slice(0, 200) });
+  } finally {
+    await p.page.keyboard.press("Escape").catch(() => {});
+  }
 }
+index.phases.push({ phase: "p2-receipt", shots: receiptShots });
+console.log(`  ▸ p2-receipt: ${receiptShots.filter((shot) => shot.receiptOk).length}/${receiptPlayers.length} real local receipts`);
 
 await photograph("p3-youre-in", BOARD, (p) => p.who === "player");
+if (heldClearanceOnly) await finishCapture();
 
 const obsUp = await fetch(`${BASE}/api/dev-test/updown-observe`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ asset: "BTC", roundId: round.id, delta: 41.37 }) }).then((r) => r.json()).catch(() => null);
 index.observeUp = obsUp;
-await photograph("p4-moved-up", BOARD, (p) => p.width === 360 || p.width === 1280);
+await photograph("p4-moved-up", BOARD, inFullMatrix((p) => p.width === 360 || p.width === 1280));
 const obsDown = await fetch(`${BASE}/api/dev-test/updown-observe`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ asset: "BTC", roundId: round.id, delta: -63.12 }) }).then((r) => r.json()).catch(() => null);
 index.observeDown = obsDown;
-await photograph("p5-moved-down", BOARD, (p) => p.width === 360 || p.width === 1280);
+await photograph("p5-moved-down", BOARD, inFullMatrix((p) => p.width === 360 || p.width === 1280));
 
-await waitUntil(lockMs - 22_000, "betting's last 30 seconds");
-await photograph("p6-last30", BOARD, (p) => p.width === 360);
+await waitUntil(lockMs - 30_000, "betting's last 30 seconds");
+await photograph("p6-last30", BOARD, inFullMatrix((p) => p.width === 360));
 
 await waitUntil(lockMs + 2_000, "the lock");
 await photograph("p7-locked");
@@ -261,7 +538,10 @@ console.log("=== settle");
 const settledOnBoard = async () => bettor.page.evaluate((id) => {
   const card = document.querySelector(`article.mcardp:has(a[href="/updown/${id}"])`);
   const ph = card?.getAttribute("data-phase") || "";
-  return /result|spent|settled|idle|^h:/.test(ph);
+  // `spent` means the deadline passed while the close is still being read; it
+  // is not a payout. Only a resolved/void card or the settlement handover can
+  // prove the scheduler actually settled the round.
+  return ph === "resolved" || ph === "void";
 }, round.id).catch(() => false);
 let byScheduler = false;
 for (let t = 0; t < 8; t++) {
@@ -274,25 +554,31 @@ for (let t = 0; t < 8; t++) {
 if (!byScheduler) {
   const settled = await post("/api/dev-test/updown-handover", { phase: "settle" });
   index.settle = settled.out?.find((o) => o.durationMinutes === DUR) ?? null;
+  if (index.settle?.closed?.id !== round.id || !index.settle.closed.resolvedAt) {
+    die(`the handover did not settle the round under test: ${JSON.stringify(index.settle).slice(0, 300)}`);
+  }
 }
 index.settledBy = byScheduler ? "scheduler" : "driver";
 await photograph("p9-settled");
 await new Promise((r) => setTimeout(r, 4000));
 await photograph("p10-handover");
 
-await photograph("p11-round-settled", `/updown/${round.id}`, (p) => p.width === 360 || p.width === 1280);
+await photograph("p11-round-settled", `/updown/${round.id}`, inFullMatrix((p) => p.width === 360 || p.width === 1280));
 const succ = await fetch(`${BASE}/api/dev-test/updown-observe`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ asset: "BTC", dryRun: true }) }).then((r) => r.json()).catch(() => null);
-if (succ?.round?.roundId) await photograph("p11-round-successor", `/updown/${succ.round.roundId}`, (p) => p.width === 360 || p.width === 1280);
+if (succ?.round?.roundId) await photograph("p11-round-successor", `/updown/${succ.round.roundId}`, inFullMatrix((p) => p.width === 360 || p.width === 1280));
 
-await photograph("p12-markets", "/markets", (p) => p.who === "guest" || p.width === 1280);
-await photograph("p13-gold-board", "/updown?asset=XAU", (p) => p.width === 360 && p.locale === "sw");
+await photograph("p12-markets", "/markets", inFullMatrix((p) => p.who === "guest" || p.width === 1280));
+await photograph("p13-gold-board", "/updown?asset=XAU", inFullMatrix((p) => p.width === 360 && p.locale === "sw"));
 
-await browser.close();
-index.finishedAt = new Date().toISOString();
-writeFileSync(join(OUT, "index.json"), JSON.stringify(index, null, 2));
-const problems = index.phases.flatMap((ph) => (ph.shots || []).filter((s) => s.error || s.langOk === false || s.signedInOk === false || s.hydrated === false)
-  .map((s) => `${ph.phase} ${s.cell} ${s.error || (s.langOk === false ? "lang" : s.signedInOk === false ? "sign-in" : "not hydrated")}`));
-if (index.phases.some((ph) => ph.phase === "p2-receipt" && ph.error)) problems.push("p2-receipt: the demo bet did not land");
-console.log(`U43 states → ${OUT} · ${index.phases.length} phases · ${problems.length} problem(s)`);
-for (const p of problems) console.log("  ✗", p);
-process.exit(problems.length ? 1 : 0);
+await finishCapture();
+
+async function finishCapture() {
+  await browser.close();
+  index.finishedAt = new Date().toISOString();
+  writeFileSync(join(OUT, "index.json"), JSON.stringify(index, null, 2));
+  const problems = index.phases.flatMap((ph) => (ph.shots || []).filter((s) => s.error || s.receiptOk === false || s.langOk === false || s.signedInOk === false || s.hydrated === false || s.marksReady === false || s.chartReady === false)
+    .map((s) => `${ph.phase} ${s.cell} ${s.error || (s.receiptOk === false ? "receipt missing" : s.langOk === false ? "lang" : s.signedInOk === false ? "sign-in" : s.hydrated === false ? "not hydrated" : s.marksReady === false ? "asset mark missing" : "chart not painted")}`));
+  console.log(`U43 states → ${OUT} · ${index.phases.length} phases · ${problems.length} problem(s)`);
+  for (const p of problems) console.log("  ✗", p);
+  process.exit(problems.length ? 1 : 0);
+}

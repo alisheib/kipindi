@@ -10,8 +10,8 @@
  * mark on a settled one. The footer is the card's action zone and already holds `Details`.
  *
  * 🔴 THE CONSTRAINT THAT SHAPES EVERYTHING HERE. The footer row **paints 17px and must keep
- * painting 17px**: `MARKET_CARD_H` (349, `card-geometry.ts`) is DERIVED from it and BOTH
- * `/markets` skeletons consume that number, so a control that raises the row re-derives card
+ * painting 17px**: the market card and its skeletons share the `--mcard-h` geometry tokens,
+ * so a control that raises the row changes card
  * geometry on `/markets`, `/live`, `/watchlist` and the landing at once. That is why the
  * trigger is a 13px glyph with no label, and why its 40px tap reach comes from an
  * out-of-flow pseudo-element — grow the TARGET, not the box.
@@ -110,7 +110,7 @@ const css = decomment(readFileSync(join(ROOT, "src/app/globals.css"), "utf8"));
   const after = css.slice(css.indexOf(".mcardp-share::after"), css.indexOf(".mcardp-share::after") + 260);
   ok("4: the reach is an OUT-OF-FLOW pseudo-element — the target grows, the box does not",
      /position:\s*absolute/.test(after), after.slice(0, 120));
-  ok("4: …reaching above and below the row", /top:\s*-9px/.test(after) && /bottom:\s*-14px/.test(after));
+  ok("4: …reaching above and below the row", /top:\s*-9px/.test(after) && /bottom:\s*-15px/.test(after));
   // ⛔ It must NOT span the whole row. `.mcardp-details::after` is `left:0; right:0` of its
   // OWN box; once both are flex children those boxes sit side by side. A full-width overlay
   // here would sit over Details — the exact failure `.mcardp-info` is called out for.

@@ -15,6 +15,7 @@
  *   - The "Share" button on each market detail page
  */
 import { ImageResponse } from "next/og";
+import { markSvg } from "@/lib/brand-mark";
 import { getMarket } from "@/lib/server/market-service";
 // ⭐ The card's price rule (landing v3 WP14b): no price on an empty or one-sided pool, a two-sided one
 // within 1–99. It used to read `impliedYesPct` directly — "YES 100% · 0% NO" on a one-sided market and
@@ -52,6 +53,8 @@ const C = {
   tipLabel: "#c8cbcf",
 };
 
+const MARK_DATA_URL = `data:image/svg+xml;base64,${Buffer.from(markSvg({ variant: "color" })).toString("base64")}`;
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -86,13 +89,7 @@ export async function GET(
         }}>
           {/* Header — brand mark */}
           <div style={{ display: "flex", alignItems: "center" }}>
-            <svg width="48" height="48" viewBox="0 0 100 100" style={{ marginRight: 16 }}>
-              <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362" />
-              <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E" />
-              <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
-              <circle cx="50" cy="50" r="5" fill="#E3BC66" />
-              <circle cx="50" cy="50" r="1.7" fill="#1A2140" />
-            </svg>
+            <img src={MARK_DATA_URL} width="48" height="48" alt="50pick" style={{ marginRight: 16 }} />
             <div style={{ display: "flex", alignItems: "baseline", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
               <span>50pick</span>
               <span style={{ fontSize: 17, marginLeft: 4, opacity: 0.7, fontFamily: "JetBrains Mono, monospace" }}>.tz</span>
@@ -154,16 +151,8 @@ export async function GET(
         {/* Header — brand mark + wordmark + category */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            {/* FiftyMark (mark-a) drawn inline — Satori can't import the React
-                component, so the mark is raw SVG shapes using the delivered
-                brand hex (green/red chord split + gilt needle + gilt/navy hub). */}
-            <svg width="48" height="48" viewBox="0 0 100 100" style={{ marginRight: 16 }}>
-              <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="#1EA362" />
-              <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="#B03A3E" />
-              <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke="#E3BC66" strokeWidth="3.5" strokeLinecap="round" />
-              <circle cx="50" cy="50" r="5" fill="#E3BC66" />
-              <circle cx="50" cy="50" r="1.7" fill="#1A2140" />
-            </svg>
+            {/* Same mark source as the installed icon and the win preview. */}
+            <img src={MARK_DATA_URL} width="48" height="48" alt="50pick" style={{ marginRight: 16 }} />
             <div style={{ display: "flex", alignItems: "baseline", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em" }}>
               <span>50pick</span>
               <span style={{ fontSize: 17, marginLeft: 4, opacity: 0.7, fontFamily: "JetBrains Mono, monospace" }}>.tz</span>

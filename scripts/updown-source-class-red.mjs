@@ -57,8 +57,8 @@ const MUTATIONS = [
     name: "chinese-copy-is-an-english-stub",
     why: "the ZH phrase is left as English — 94% of this platform's templates once shipped with no ZH, and a stub is invisible to anyone who reads English",
     file: DICT,
-    from: '      udSourceCrypto: "加密货币实时行情", udSourceStock: "股票市场实时行情",',
-    to: '      udSourceCrypto: "Live crypto market", udSourceStock: "股票市场实时行情",',
+    from: '      udSourceCrypto: "加密货币行情", udSourceStock: "股票行情",',
+    to: '      udSourceCrypto: "Crypto market", udSourceStock: "股票行情",',
   },
 ];
 

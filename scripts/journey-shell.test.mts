@@ -632,13 +632,13 @@ const DENY: Array<string | null> = [
   "/wallet", "/wallet/withdraw", "/wallet/depositx", "/help", "/account", "/profile", "/profile/kyc",
   "/profile/responsible-gambling", "/positions/performance", "/positions/pos_1", "/auth/login", "/s",
 ];
-/** What the two older predicates answered before S6 — a frozen record, so an edit to either is a decision. */
+/** The current route decision; U43 added a one-click stake to the Up & Down board. */
 const GOLDEN: Array<[string | null, boolean, boolean]> = [
   [null, false, false], ["", false, false], ["/", false, false],
   ["/wallet", true, true], ["/wallet/", true, true], ["/wallet/deposit", true, true], ["/wallet/deposit/return", true, true],
   ["/wallet/withdraw", true, true], ["/walletx", false, false],
   ["/markets", false, false], ["/markets/mkt_abc", false, true], ["/markets/mkt_abc/x", false, true],
-  ["/updown", false, false], ["/updown/udr_1", false, true], ["/updown/history", false, true],
+  ["/updown", false, true], ["/updown/udr_1", false, true], ["/updown/history", false, true],
   ["/proposals", false, false], ["/proposals/new", false, true], ["/proposals/new/x", false, true], ["/proposals/newer", false, false],
   ["/positions", false, false], ["/profile", false, false], ["/help", false, false],
 ];
@@ -648,6 +648,7 @@ const VERBATIM = [
   "export function isMoneySurface(path: string | null): boolean {",
   String.raw`const MONEY_ROUTE = /^\/wallet(\/|$)/;`,
   String.raw`  /^\/markets\/[^/]+/,`,
+  String.raw`  /^\/updown\/?$/,`,
   String.raw`  /^\/updown\/[^/]+/,`,
   String.raw`  /^\/proposals\/new(\/|$)/,`,
 ];
@@ -671,7 +672,7 @@ function g2Surfaces(I: Impl, W: World, ok: Ok) {
   for (const p of ALLOW) ok(`2.allow.${p} · a journey surface`, I.journeySurface(p) === true);
   for (const p of DENY) ok(`2.deny.${pathName(p)} · not a journey surface (named or nothing)`, I.journeySurface(p) === false);
   for (const [p, money, commit] of GOLDEN) {
-    ok(`2.golden.${pathName(p)} · money ${money}, commit ${commit} — as before S6`,
+    ok(`2.golden.${pathName(p)} · money ${money}, commit ${commit} — current route decision`,
       I.moneySurface(p) === money && I.commitSurface(p) === commit, `money ${I.moneySurface(p)}, commit ${I.commitSurface(p)}`);
   }
   for (const [rel, allowed] of MAY_IMPORT) {
@@ -948,8 +949,8 @@ const OVERLAY_TERM = "journeyOn && isJourneySurface(pathname) && !notFoundShown"
  * with the term false, the expression is today's.
  */
 const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; today: string; join: string; end: string }> = [
-  { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle hides where it hid, and for a journey viewer on a journey page",
-    today: "const suppressed = hiddenPref || isMoneySurface(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
+  { id: "needle", file: OVERLAY_NEEDLE, says: "the Needle keeps the U43 stand-down and hides for a journey viewer on a journey page",
+    today: "const suppressed = hiddenPref || isMoneySurface(pathname) || suppressNeedleOnU43(pathname)", join: ` || (${OVERLAY_TERM})`, end: ";" },
   { id: "needle.deps", file: OVERLAY_NEEDLE, says: "its gate runs again when the flag goes up or down",
     today: "}, [hiddenPref, pathname", join: ", journeyOn, notFoundShown", end: "]);" },
   { id: "channels.eligible", file: OVERLAY_CHANNELS, says: "the channels panel is eligible where it was, and never on a journey page for a journey viewer",
@@ -959,8 +960,8 @@ const OVERLAY_JOINS: ReadonlyArray<{ id: string; file: string; says: string; tod
 const OVERLAY_GUARDS: ReadonlyArray<{ id: string; file: string; says: string; pinned: string; guard: string }> = [
   { id: "channels.render", file: OVERLAY_CHANNELS, says: "its render refuses too, straight after the pinned route-and-break guard",
     pinned: "if (promoSuppressed || suppressedRoute(pathname)) return null;", guard: "if (journeyHidden) return null;" },
-  { id: "chat", file: OVERLAY_CHAT, says: "the chat bubble stands down straight after its HIDE_ON guard",
-    pinned: "if (pathname && HIDE_ON.test(pathname)) return null;", guard: `if (${OVERLAY_TERM}) return null;` },
+  { id: "chat", file: OVERLAY_CHAT, says: "the journey stand-down follows the U43 route stand-down",
+    pinned: "if (suppressChatOnU43(pathname)) return null;", guard: `if (${OVERLAY_TERM}) return null;` },
 ];
 /**
  * The HIDE_ON patterns as `test:marketing-optout` and `test:social-panel` read them, each backslash spelled "~": they
@@ -1585,9 +1586,9 @@ function g7Header(W: World, ok: Ok) {
   // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2): the gap is the deposit arrow's — Phosphor's arrow-line-down
   // Bold starts its ink at x28 of 256, 1.53px at 14px (the hand-drawn "+" freed 2.55 of 24, 1.49px) — so the padding is
   // calc(11px + 28 * 14px / 512), half the gap a side.
-  ok("7.pill · ↓ Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
+  ok("7.pill · ↓ Weka pesa is the kit's brand pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the arrow's freed 1.53px shared evenly, named by its words",
     pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 28 * 14px / 512)")
-      && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
+      && bar.includes(`className="btn btn-primary btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
       && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
     show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));
   ok("7.figure · the capsule's figure is 12px below 360 and 14px from 360, and its padding 10px (the capsule's own rules, WP4)",
@@ -2833,6 +2834,7 @@ if (!PROVE_RED) {
     /** A22's defect: /watchlist taken into the journey surfaces, so its Needle, panel and chat bubble stand down. */
     const takesWatchlist = (p: string | null) => p === "/watchlist" || SURF.isJourneySurface(p);
     const dropsHome = (p: string | null) => p !== "/" && SURF.isJourneySurface(p);
+    const forgetsUpdownBoard = (p: string | null) => p !== "/updown" && p !== "/updown/" && SURF.isCommitSurface(p);
     const forgetsRounds = (p: string | null) => SURF.isCommitSurface(p) && !(p ?? "").startsWith("/updown/");
     const pillOnBreak: Impl["header"] = (i) => ({ ...HDR.journeyHeaderState(i), pill: HDR.journeyHeaderState({ ...i, onBreak: false }).pill });
     const pillWhenHeld: Impl["header"] = (i) => ({ ...HDR.journeyHeaderState(i), pill: HDR.journeyHeaderState({ ...i, walletHeld: false }).pill });
@@ -3352,6 +3354,8 @@ ${s}`);
         impl: { journeySurface: takesWatchlist }, landed: takesWatchlist("/watchlist"), landedAs: "the watchlist loses its overlays" },
       { name: "isJourneySurface drops /", expect: at("2.allow./ ·"),
         impl: { journeySurface: dropsHome }, landed: !dropsHome("/"), landedAs: "the home board keeps every overlay for a journey viewer" },
+      { name: "the commit gate forgets the Up & Down board's one-click stake", expect: at("2.golden./updown ·"),
+        impl: { commitSurface: forgetsUpdownBoard }, landed: !forgetsUpdownBoard("/updown"), landedAs: "an invitation may sit on the board's stake buttons" },
       { name: "the commit gate forgets Up & Down rounds", expect: at("2.golden./updown/udr_1 ·"),
         impl: { commitSurface: forgetsRounds }, landed: !forgetsRounds("/updown/udr_1"), landedAs: "an invitation may sit on a round's commit" },
       { name: "surfaces.ts gains an import", expect: at(`2.pure.${SURFACES} ·`),

@@ -36,7 +36,7 @@ const BASE = (process.env.BASE || "https://www.50pick.tz").replace(/\/$/, "");
 const TAG = process.env.TAG || `${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}`;
 const OUT = process.env.OUT || join(REPO, ".qa-shots", "u43", TAG);
 const LOCALES = (process.env.LOCALES || "sw,en,zh").split(",").map((s) => s.trim()).filter(Boolean);
-const HEIGHT_FOR = { 320: 640, 360: 780, 390: 844, 412: 915, 768: 1024, 1024: 768, 1280: 800, 1440: 900, 1920: 1080 };
+const HEIGHT_FOR = { 320: 640, 360: 740, 390: 844, 412: 915, 768: 1024, 1024: 768, 1280: 800, 1440: 900, 1920: 1080 };
 const WIDTHS = (process.env.WIDTHS || "320,360,390,768,1024,1280,1920").split(",").map(Number).filter(Boolean);
 const SURFACES = (process.env.SURFACES || "updown,updown-chart,updown-sheet,markets").split(",").map((s) => s.trim());
 const STORAGE = process.env.STORAGE || undefined;
@@ -53,7 +53,7 @@ if (!/HeadlessChrome/.test(UA) || !/HeadlessChrome/.test(UA_DESKTOP)) {
 }
 
 /** Transitions and animations off for a stable frame; the countdown still ticks (it is text, not an animation). */
-const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}";
+const STILL = "*,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}nextjs-portal{visibility:hidden!important}";
 
 /** The visible text and accessible name of every side choice on a page (the YES/NO and Up/Down buttons, the home rows). */
 const CHOICE_TEXTS = () => [...document.querySelectorAll(".btn-yes, .btn-no, .kp-qrow__btn")]
@@ -131,22 +131,9 @@ function measurePage(kind) {
  * under the header is photographed whole. Page frames keep their chrome — that is what a player sees.
  */
 async function withoutChrome(page, fn) {
-  await page.evaluate(() => {
-    for (const el of document.querySelectorAll("body *")) {
-      if (el.closest("article.mcardp")) continue;
-      const p = getComputedStyle(el).position;
-      if (p === "fixed" || (p === "sticky" && el.matches("header, .app-topbar"))) {
-        el.setAttribute("data-u43-hid", el.style.visibility || "");
-        el.style.visibility = "hidden";
-      }
-    }
-  });
+  const style = await page.addStyleTag({ content: ".app-topbar,.kp-rail,.cm-bubble,[data-toaster],nextjs-portal{visibility:hidden!important}" });
   try { return await fn(); }
-  finally {
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll("[data-u43-hid]")) { el.style.visibility = el.getAttribute("data-u43-hid"); el.removeAttribute("data-u43-hid"); }
-    }).catch(() => {});
-  }
+  finally { await style.evaluate((el) => el.remove()).catch(() => {}); }
 }
 
 async function shoot(page, file, opts = {}) {
@@ -157,6 +144,13 @@ async function shoot(page, file, opts = {}) {
 async function settle(page, ms = 1200) {
   await page.waitForLoadState("load").catch(() => {});
   await page.waitForTimeout(ms);
+}
+
+async function waitForCardGlyphs(page) {
+  await page.waitForFunction(() => [...document.querySelectorAll("article.mcardp svg")]
+    .filter((el) => el.querySelector("use") && el.getClientRects().length > 0).every((el) => {
+    try { return el.getBBox().width > 0; } catch { return false; }
+  }), null, { timeout: 10000 });
 }
 
 async function runCell(browser, locale, width) {
@@ -178,9 +172,10 @@ async function runCell(browser, locale, width) {
 
   try {
     if (SURFACES.includes("updown")) {
-      await page.addInitScript(() => { try { localStorage.setItem("kp-updown-viz", "cubes"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+      await page.addInitScript(() => { try { localStorage.setItem("kp-updown-chart-open", "closed"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
       await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await settle(page, 2500);
+      await waitForCardGlyphs(page);
       await page.addStyleTag({ content: STILL });
       await page.waitForTimeout(300);
       const m = await page.evaluate(measurePage, "updown");
@@ -199,10 +194,11 @@ async function runCell(browser, locale, width) {
 
     if (SURFACES.includes("updown-chart")) {
       const p2 = await ctx.newPage();
-      await p2.addInitScript(() => { try { localStorage.setItem("kp-updown-viz", "chart"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
+      await p2.addInitScript(() => { try { localStorage.setItem("kp-updown-chart-open", "open"); localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
       await p2.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await settle(p2, 2500);
-      await p2.locator("canvas").first().waitFor({ timeout: 12000 }).catch(() => {});
+      await waitForCardGlyphs(p2);
+      await p2.waitForFunction(() => !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'), null, { timeout: 15000 });
       await p2.waitForTimeout(1500);
       await p2.addStyleTag({ content: STILL });
       const m = await p2.evaluate(measurePage, "updown-chart");
@@ -242,6 +238,18 @@ async function runCell(browser, locale, width) {
       await withoutChrome(p4, async () => {
         for (let i = 0; i < n; i++) {
           if (!(await cards.nth(i).isVisible())) continue;
+          // Lower cards may scroll during locator.screenshot before their button ink paints.
+          // Put them on screen first, wait for paint, and refuse an unreadable choice.
+          await cards.nth(i).scrollIntoViewIfNeeded();
+          await p4.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          const sideButtons = cards.nth(i).locator("button.btn-yes, button.btn-no");
+          if (await sideButtons.count()) {
+            if (await sideButtons.count() !== 2 || !(await sideButtons.nth(0).isVisible()) || !(await sideButtons.nth(1).isVisible())
+              || !(await sideButtons.nth(0).textContent())?.trim() || !(await sideButtons.nth(1).textContent())?.trim()) {
+              throw new Error(`market card ${i} has an unreadable side choice`);
+            }
+          }
+          await p4.waitForTimeout(120);
           await cards.nth(i).screenshot({ path: join(OUT, `markets__${cell}__card${i}.png`) });
           files.push(`markets__${cell}__card${i}.png`);
         }

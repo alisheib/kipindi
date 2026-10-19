@@ -244,10 +244,6 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // the plus over the minus, 12 units high) and the chat's send (the paper plane, 12 units right).
     "lock.fill": [0, -12, PHOSPHOR_PLACED], "shieldcheck.fill": [0, 12, PHOSPHOR_PLACED],
     "net.bold": [0, -11.99, PHOSPHOR_PLACED], "send.bold": [12.03, 0.01, PHOSPHOR_PLACED],
-    // PHOSPHOR-MIGRATION release 2 (W5): the Duotone drawings on the plates — the bubble's tail, the bow's loops, the megaphone's
-    // mouth and the shield's point sit where Phosphor placed them, as their Regular, Bold and Fill do.
-    "comment.duo": [0, 16, PHOSPHOR_PLACED], "gift.duo": [0, -12.01, PHOSPHOR_PLACED], "megaphone.duo": [12, -3.98, PHOSPHOR_PLACED],
-    "shieldcheck.duo": [0, 12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
@@ -333,8 +329,7 @@ function doorArrow(pts: Pt[]) {
     !GLYPH_ENTRIES.has("logIn") && GLYPH_ENTRIES.get("logOut")?.stem === "p-sign-out" && glyph.includes('data-g="logOut.bold"') && glyph.includes('#p-sign-out-bold"'), glyph);
   const SIGN_OUTS = ["src/components/journey/account/sign-out-row.tsx", "src/components/layout/avatar-menu.tsx", "src/app/profile/page.tsx", "src/app/profile/sessions/page.tsx"];
   ok("2.3 · every sign-out draws it — the hub's Toka, the account menu (classic and journey), /profile and /profile/sessions — and nothing draws logIn",
-    // PHOSPHOR-MIGRATION release 2: the hub's Toka draws it on the hub plate (`HubPlate glyph="logOut"`, the danger plate).
-    SIGN_OUTS.every((f) => code(f).includes("<I.logOut") || code(f).includes('<HubPlate glyph="logOut"')) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
+    SIGN_OUTS.every((f) => code(f).includes("<I.logOut")) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
 }
 
 /* ══ §3 · A3 · THE TOKA BOX IS A CARD'S HEIGHT ══════════════════════════════════════════════════════════════════════════ */
@@ -542,7 +537,6 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/proposals/[id]/page.tsx', '<I.chevronLeft s={11} edge="start" text="body-400" />', 1, "text", "the back link's start, centred by its ink — PHOSPHOR W4's review: a typed back arrow, written as an escape"],
     ['src/app/proposals/page.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a link cue's end"],
     ['src/app/proposals/page.tsx', '<I.chevronRight s={14} />', 1, "float-row", "it trails a start-aligned meta row: no edge to land on"],
-    ['src/app/updown/page.tsx', '<I.chevronRight s={11} edge="end" text="mono-400" />', 1, "text", "the history pill's end"],
     ['src/app/wallet/deposit/page.tsx', '<I.chevronLeft s={11} edge="start" text="mono-400" />', 1, "text", "the journey deposit page's server-rendered back link uses the same mark and class as BackLink"],
     ['src/app/wallet/receipt/[id]/page.tsx', '<I.arrowRight s={14} edge="start" />', 1, "control", "the receipt's hand-built return control places its leading mark on the start padding"],
     ['src/app/wallet/receipts/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 rounded bg-bg-overlay/60 text-transparent" />', 1, "ghost", "the ghost of the receipt row's end"],
@@ -560,8 +554,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/journey/account/language-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end (and its turn, 4.8)"],
     ['src/components/journey/account/unread-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
     ['src/components/journey/home/howto-card.tsx', '<I.chevronRight s={20} edge="end" className="kp-jhowto__chev" />', 1, "row", "the journey home's How-to card's end: a door's end mark on its content edge (the Vodacom plan S7, WP6)"],
-    // PHOSPHOR-MIGRATION release 2a part 2: Ali ruled both staff rows royal; this mark stays centred in its menu row.
-    ['src/components/layout/avatar-menu.tsx', '<I.arrowRight s={14} className="text-brand-300/70 transition-colors group-hover:text-brand-300" aria-hidden />', 1, "frozen", "the staff row's end in both shells"],
+    ['src/components/layout/avatar-menu.tsx', '<I.arrowRight s={14} className="text-brand-300/70 transition-colors group-hover:text-brand-300" aria-hidden />', 1, "float-row", "the staff link's trailing mark sits in its padded flex row; its box stays in flow, and the link's ink stays brand in both shell modes"],
     ['src/components/layout/needle-drawer.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's Needle row end"],
     ['src/components/layout/needle-drawer.tsx', '<I.chevronRight s={14} edge={overhang ? "end" : undefined} className="text-text-subtle" />', 1, "row", "the account menu's Needle row end (PHOSPHOR W4: it was hand-drawn): on the row's edge in the journey's menu, in its box in the classic menu's padded row (test:visual-pass-r4h 6.4)"],
     ['src/components/layout/notifications-panel.tsx', '<I.chevronRight s={11} />', 1, "frozen", "the bell is frozen (qa:bell-untouched) — named for the integrator"],
@@ -576,6 +569,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/ui/empty-state-link.tsx', '<I.arrowRight s={size === "sm" ? 13 : 14} edge="end" text="body-600" />', 1, "text", "an empty state's way onward (PHOSPHOR W4: three ways before, one typed →): a centred control frames its ink (R10-A6)"],
     ['src/components/ui/date-select.tsx', '<I.chevronRight s={16} />', 1, "alone", "alone in a control: centred by its box"],
     ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a centred link's end (centred by its ink)"],
+    ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />', 1, "alone", "alone on a plate: centred by its box"],
     ['src/components/ui/pagination.tsx', '<I.chevronLeft s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/pagination.tsx', '<I.chevronRight s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/pagination.tsx', '<I.chevronsLeft s={14} />', 1, "alone", "alone in a control"],
@@ -611,6 +605,19 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   const s8ExtraMark = marksSeen(f => f === "src/components/journey/bet-sheet/sheet-parts.tsx" ? `${code(f)}\nexport const extra = <I.chevronRight s={16} edge="end" text="body-400" />;` : code(f));
   ok("4.10″ PLANT · S8's word links losing their stroke and an extra registered-looking mark both fail the same census",
     [...s8WithoutStroke].some(([k]) => !listed.has(k)) && [...listed].some(([k, n]) => s8ExtraMark.get(k) !== n));
+  const staffBrand = '<I.arrowRight s={14} className="text-brand-300/70 transition-colors group-hover:text-brand-300" aria-hidden />';
+  const staffOldSplit = '<I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />';
+  const staffGoldBack = marksSeen(f => f === "src/components/layout/avatar-menu.tsx" ? code(f).replace(staffBrand, staffOldSplit) : code(f));
+  ok("4.10‴ PLANT · restoring the staff arrow's old classic-gold split is an unclassified mark",
+    code("src/components/layout/avatar-menu.tsx").includes(staffBrand)
+      && [...staffGoldBack].some(([k]) => !listed.has(k))
+      && [...listed].some(([k, n]) => staffGoldBack.get(k) !== n));
+  const oldBoardMark = 'src/app/updown/page.tsx <I.chevronRight s={11} edge="end" text="mono-400" />';
+  const boardMarkBack = marksSeen(f => f === "src/app/updown/page.tsx"
+    ? `${code(f)}\nconst oldPill = <I.chevronRight s={11} edge="end" text="mono-400" />;`
+    : code(f));
+  ok("4.10⁗ PLANT · restoring the removed board history-pill chevron is an unclassified mark",
+    !seen.has(oldBoardMark) && boardMarkBack.get(oldBoardMark) === 1 && !listed.has(oldBoardMark));
 
   // 4.12 · eyebrow glyphs: a glyph that leads an eyebrow line stands on the column's edge.
   const EYEBROW_FIRST = new RegExp(`className="[^"]*eyebrow[^"]*"[^>]*>${WS}*<I[.]([A-Za-z]+)((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)/>`, "g");
@@ -765,9 +772,18 @@ section("6 · A6 a dashed track starts and ends on a whole dash at every width �
   const X0 = Number(new RegExp("const X0 = ([0-9.]+)").exec(pnl)?.[1]), X1 = Number(new RegExp("X1 = ([0-9.]+)").exec(pnl)?.[1]);
   const hero = code("src/components/updown/price-hero.tsx");
   const heroLines = [...hero.matchAll(new RegExp('x1="0" y1=[{][A-Za-z]+[}] x2="([0-9.]+)" y2=[{][A-Za-z]+[}][^>]*strokeDasharray="([0-9.]+) ([0-9.]+)"', "g"))];
+  const roundLine = code("src/components/charts/round-live-line.tsx");
+  const roundReference = (s: string) => /<line x1="0" x2="([0-9.]+)" y1=\{y\(openPrice\)\} y2=\{y\(openPrice\)\} stroke="var\(--text-faint\)" strokeWidth="1" strokeDasharray="([0-9.]+) ([0-9.]+)"/.exec(s);
+  const roundDash = roundReference(roundLine);
   const pnlLines = [...pnl.matchAll(new RegExp('strokeDasharray="([0-9.]+) ([0-9.]+)"', "g"))];
-  ok(`6.5 · the P&L chart's three dashed lines (${X1 - X0} units) and the price hero's three (${heroLines.map((m) => m[1]).join(", ")} units) each end on a whole dash`,
-    pnlLines.length === 3 && pnlLines.every((m) => wholeEnd(X1 - X0, Number(m[1]), Number(m[2]))) && heroLines.length === 3 && heroLines.every((m) => wholeEnd(Number(m[1]), Number(m[2]), Number(m[3]))));
+  ok(`6.5 · the P&L and detail chart reference lines, and the round card's ${roundDash?.[1] ?? "missing"}-unit opening reference, each end on a whole dash`,
+    pnlLines.length === 3 && pnlLines.every((m) => wholeEnd(X1 - X0, Number(m[1]), Number(m[2])))
+      && heroLines.length === 3 && heroLines.every((m) => wholeEnd(Number(m[1]), Number(m[2]), Number(m[3])))
+      && !!roundDash && wholeEnd(Number(roundDash[1]), Number(roundDash[2]), Number(roundDash[3])));
+  const roundBadSource = roundLine.replace('strokeDasharray="3 4"', 'strokeDasharray="3 3"');
+  const roundBad = roundReference(roundBadSource);
+  ok("6.5′ PLANT · the round card's opening reference ending on a broken dash is caught",
+    roundBadSource !== roundLine && !!roundBad && !wholeEnd(Number(roundBad[1]), Number(roundBad[2]), Number(roundBad[3])));
   const circlePeriods = (src: string) => [...src.matchAll(new RegExp('<circle[^>]*pathLength=[{"]?([0-9.]+)[}"]?[^>]*strokeDasharray="([0-9.]+) ([0-9.]+)"', "g"))].map((m) => Number(m[1]) / (Number(m[2]) + Number(m[3])));
   const DASH_IN_GLYPHS = new RegExp("strokeDasharray|stroke-dasharray");
   // PHOSPHOR-MIGRATION W2: the hand-drawn clockPending's dashed ring went with its family — Phosphor's clock-countdown is a
@@ -781,6 +797,7 @@ section("6 · A6 a dashed track starts and ends on a whole dash at every width �
   const DASHES = new RegExp("strokeDasharray|stroke-dasharray|repeating-linear-gradient|repeating-radial-gradient", "g");
   const KNOWN: Record<string, string> = {
     "src/components/charts/pnl-chart.tsx": "three fixed lines, 6.5", "src/components/updown/price-hero.tsx": "three fixed lines, 6.5",
+    "src/components/charts/round-live-line.tsx": "the round card's neutral opening-price reference, 6.5",
     "src/components/brand.tsx": "the dial's empty ring by pathLength, 6.6",
     "src/components/badges/Badge.tsx": "a progress arc (dasharray = its circumference), not a pattern", "src/components/charts/ring.tsx": "donut segments, not a pattern",
     "src/components/positions/countdown-ring.tsx": "a progress arc, not a pattern",

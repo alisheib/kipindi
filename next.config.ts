@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 // ⛔ Relative, never "@/…": Next loads this file through its own TypeScript hook, where the app's path aliases do not exist.
 import { staticSecurityHeaders } from "./src/lib/security-headers";
 
-/** The only addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's hashed build
- *  output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
+/** The only production addresses sent a one-year `immutable` cache: public/'s own static folders and files, and Next's
+ *  hashed build output. Exact folders, never a file-name suffix (see `headers()` below; `test:static-cache-scope`). */
 const IMMUTABLE_STATIC_SOURCES = [
   "/icons/:path*",
   "/brand/:path*",
@@ -88,8 +88,10 @@ const config: NextConfig = {
     formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
   },
-  // Long-lived cache for STATIC FILES ONLY: the folders and files under public/, and Next's hashed build output
-  // (vendored content-addressed fonts live under public/fonts). `IMMUTABLE_STATIC_SOURCES` is the list.
+  // Long-lived cache in production for STATIC FILES ONLY: the folders and files under public/, and Next's hashed build
+  // output (vendored content-addressed fonts live under public/fonts). `IMMUTABLE_STATIC_SOURCES` is the list.
+  // In development, Next revalidates its changing chunks itself. A custom immutable header overrides that behaviour
+  // and can leave a browser running stale JavaScript after a rebuild; public assets must revalidate there as well.
   // ⛔ NEVER A SUFFIX MATCH (2026-10-09, hotfix). This was one rule, `/:all*(svg|jpg|jpeg|png|webp|avif|ico|woff|woff2)`,
   // and a path-to-regexp group needs no dot, so it matched PAGES too — `/markets/x.png`, `/markets/mexico`,
   // `/u/federico` — and sent their HTML `public, max-age=31536000, immutable`. Measured on production the same day:
@@ -108,7 +110,7 @@ const config: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: staticSecurityHeaders(process.env.NODE_ENV === "production") },
-      ...IMMUTABLE_STATIC_SOURCES.map((source) => ({
+      ...(process.env.NODE_ENV === "production" ? IMMUTABLE_STATIC_SOURCES : []).map((source) => ({
         source,
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       })),

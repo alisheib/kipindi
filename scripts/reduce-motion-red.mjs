@@ -202,8 +202,8 @@ const MUTATIONS = [
     name: "drop the tier attribute from one entry — the rule fires for everybody",
     check: "2.0",
     file: "src/app/globals.css",
-    from: `[data-motion="reduced"] .ud-count-pulse,`,
-    to: `.ud-count-pulse,`,
+    from: `[data-motion="reduced"] .ud-point,`,
+    to: `.ud-point,`,
   },
   {
     // ⛔ A STALE EXEMPTION. If .m-urgent stops looping, its KEPT entry is a licence

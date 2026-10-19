@@ -17,8 +17,8 @@
  *      as its tone for months and this file had not followed. The kit's `hot` variant is
  *      `no`-rose exactly, so the flame reads as heat rather than as winnings.
  *
- * ⛔ What deliberately did NOT change: RESOLVED keeps the struck gilt (that one IS
- * settled money — §M3/§M7), DECLINED keeps claret (editorial refusal, §B4), and LISTED
+ * U43 (2026-10-19): RESOLVED now reads the shared slate status tone; a resolved
+ * market is not a player's earned win. DECLINED keeps claret (editorial refusal, §B4), and LISTED
  * keeps royal rather than borrowing the player board's red LIVE pill — a listed proposal
  * is a lifecycle step reached, not a market broadcasting that it is taking money.
  * Recorded at `STATUS_TONE_EXCEPTIONS.LIVE`; never betting green/red on this surface.

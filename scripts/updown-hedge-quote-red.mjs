@@ -61,17 +61,17 @@ const MUTATIONS = [
     why: "⚠️ the decision undone — the pair is gated the way the ONE-number field is, so a hedged holder sees nothing at all again. That is the exact state UD-20 was re-opened about",
     file: BOARD,
     from: `    myPayoutIfUp:
-      state === "locked" && myStake > 0`,
+      (state === "locked" || state === "confirming") && myStake > 0`,
     to: `    myPayoutIfUp:
-      state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)`,
+      (state === "locked" || state === "confirming") && myStake > 0 && (myUpStake === 0 || myDownStake === 0)`,
   },
   {
     name: "one-number-learns-to-answer-for-a-hedge",
     why: "⛔ THE OPPOSITE UNDOING — `myExactPayout` loses its one-sided gate, so the single-number half-truth is back beside the honest pair. Suppressing that field for a hedge is not optional",
     file: BOARD,
-    from: `      state === "locked" && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
+    from: `      (state === "locked" || state === "confirming") && myStake > 0 && (myUpStake === 0 || myDownStake === 0)
         ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
-    to: `      state === "locked" && myStake > 0
+    to: `      (state === "locked" || state === "confirming") && myStake > 0
         ? await heldPayout(m, myUpStake > 0 ? "YES" : "NO", myStake)`,
   },
   {
@@ -87,7 +87,7 @@ const MUTATIONS = [
     why: "⛔ the locked gate goes, so an OPEN round quotes an EXACT figure that the next bet will change — an estimate dressed as certainty on a money surface",
     file: BOARD,
     from: `    myPayoutIfUp:
-      state === "locked" && myStake > 0`,
+      (state === "locked" || state === "confirming") && myStake > 0`,
     to: `    myPayoutIfUp:
       myStake > 0`,
   },
@@ -96,9 +96,9 @@ const MUTATIONS = [
     why: "⚠️ the stake gate goes, so a signed-in bystander is quoted a payout on somebody else's round — the same class of leak as showing them a stranger's position",
     file: BOARD,
     from: `    myPayoutIfDown:
-      state === "locked" && myStake > 0`,
+      (state === "locked" || state === "confirming") && myStake > 0`,
     to: `    myPayoutIfDown:
-      state === "locked"`,
+      (state === "locked" || state === "confirming")`,
   },
   {
     // 🔴 THE DEFECT §5 CAUGHT, AND IT HAD BEEN SHIPPING. `projectedPayout` answers "what if I

@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { I, plateGlyph } from "@/components/ui/glyphs";
-import { IconPlate } from "@/components/ui/icon-plate";
+import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { useT } from "@/lib/i18n";
@@ -39,6 +38,7 @@ export function RouteError({
   eyebrow,
   headline,
   logTag,
+  tone = "danger",
 }: {
   error: Error & { digest?: string };
   reset: () => void;
@@ -52,6 +52,8 @@ export function RouteError({
   headline?: string;
   /** Log namespace, e.g. "wallet" → "[50pick/wallet] error boundary fired". */
   logTag?: string;
+  /** U43's player error screens keep red for the two betting sides. */
+  tone?: "danger" | "neutral";
 }) {
   const { t } = useT();
 
@@ -155,11 +157,17 @@ export function RouteError({
       </div>
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
-        <IconPlate size={44} variant="danger" className="mb-3 mt-5" aria-hidden
-          style={{ boxShadow: "inset 0 0 0 1px var(--danger-border), 0 0 0 7px var(--danger-wash)" }}>
-          <I.alertCircle s={plateGlyph(44)} tier="fill" />
-        </IconPlate>
-        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg">
+        <div
+          /* 44px medallion — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
+             (tailwind.config.ts:200-215), so `h-11 w-11` was a 96px disc (110px with
+             the ring) sitting UNDER a size={64} FiftyMark and out-weighing it.
+             ⛔ Never a scale token here. */
+          className={`mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border ${tone === "neutral" ? "border-border-strong bg-bg-overlay text-text-subtle" : "border-danger-border bg-danger-500/10 text-danger-fg"}`}
+          style={{ boxShadow: tone === "neutral" ? "0 0 0 7px var(--bg-overlay)" : "0 0 0 7px var(--danger-wash)" }}
+        >
+          <I.alertCircle s={19} />
+        </div>
+        <p className={`font-mono text-micro font-bold uppercase tracking-[0.20em] ${tone === "neutral" ? "text-text-subtle" : "text-danger-fg"}`}>
           {eyebrow ?? t.error.somethingWentWrong}
         </p>
         <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">

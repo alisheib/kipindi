@@ -5,9 +5,9 @@
  * side a stake is on. The visual pass of 2026-09-14 found two families still borrowing them:
  *   · LIVE — a live card's time-left (`.mcardp-meta .live`, `--yes-300`, directly under the YES/NO buttons), a topic
  *     tile's live count (`.kp-topic__live`, `--yes-400`), and the hero's open-markets figure and pip (`--yes-400`).
- *     The player's LIVE signal is the broadcast red of §B11.
+ *     The player's LIVE signal is neutral under Ali's 2026-10-19 U43 ruling (§B11).
  *   · URGENCY — the Up & Down countdown's final 30 s painted the digits `--no-300`, beside the round's Down side,
- *     where rose reads as "price going down". The pulse (`ud-count-pulse`) carries the urgency.
+ *     where rose reads as "price going down". The kit's `.m-urgent` carries the urgency.
  *   · A PRICE MOVE (§5, 2026-09-27, the landing v3 WP3+WP4 review, R8) — the grid card inked its 24h move
  *     "+5pt" green-up / rose-down while the featured card on the same page printed the same move "▲5 · 24h ago"
  *     in neutral ink. A move of the YES price is not a side, and a green-up move invites chasing.
@@ -45,7 +45,7 @@ const POD = "src/components/updown/round-countdown.tsx";
 const CARD = "src/components/updown/updown-card.tsx";
 
 /* §1 · LIVE ─────────────────────────────────────────────────────────────── */
-console.log("\n§1 · the LIVE signal wears neutral ink and the broadcast red");
+console.log("\n§1 · the LIVE signal wears neutral ink throughout");
 function liveDefects(css: string, hero: string): string[] {
   const d: string[] = [];
   const c = code(css);
@@ -56,7 +56,7 @@ function liveDefects(css: string, hero: string): string[] {
   if (meta && !/color:\s*var\(--text-muted\)/.test(meta)) d.push(".mcardp-meta .live is not the neutral --text-muted");
   if (topic && BETTING.test(topic)) d.push(".kp-topic__live paints the betting pair");
   if (pip && (BETTING.test(pip) || /--bar-glow-yes/.test(pip))) d.push(".kp-proof__pip wears the YES ink or glow");
-  if (pip && !/background:\s*var\(--live-400\)/.test(pip)) d.push(".kp-proof__pip is not the broadcast --live-400");
+  if (pip && !/background:\s*var\(--text-subtle\)/.test(pip)) d.push(".kp-proof__pip is not neutral --text-subtle");
   // landing v3 · WP3/WP4 — the featured card's top-right time and a board row's time left are TIME, not a
   // side: the neutral `--text`, never the betting pair (§B2a, E-405).
   for (const sel of [".mcardp-closes", ".kp-qrow__left"]) {
@@ -86,20 +86,20 @@ function urgencyDefects(pod: string, card: string): string[] {
   for (const [name, src] of [["round-countdown.tsx", p], ["updown-card.tsx", k]] as const) {
     if (/urgent\s*\?\s*"var\(--(?:yes|no)-\d{3}\)"/.test(src)) d.push(`${name}: an urgent branch paints the betting pair`);
   }
-  // The urgency is still carried — by the pulse, on all three readouts.
-  // ⚠️ RE-PINNED 2026-10-19 (MOBILE-VISUAL U43): on the pod and the card the pulse moved onto the digits' OWN span. Beside
-  // `.m-tick` on one element it lost the cascade (both rules set `animation`; motion.css is imported last), so the last
-  // 30 seconds never pulsed at all. The check reads the new home: the urgent arm on the span that holds the digits.
-  if (!/<span className=\{urgent \? "ud-count-pulse" : undefined\}>\{shownDigits\}<\/span>/.test(p)) d.push("the round pod lost its final-30 s pulse");
-  // Re-pinned (round 7, R7-C, 2026-10-10): the digits also take their trailing 0.05em back (`kp-track-end--05`, in both arms),
-  // so they end on the label's edge above them; the pulse rides beside it, in the urgent arm only, as before.
-  if (!/className=\{urgent \? "kp-track-end kp-track-end--05 ud-count-pulse" : "kp-track-end kp-track-end--05"\}/.test(p)) d.push("the board panel lost its final-30 s pulse");
-  if (!/<span className=\{urgent \? "ud-count-pulse" : undefined\}>\{digits \?\? mmss\(left\)\}<\/span>/.test(k)) d.push("the card lost its final-30 s pulse");
+  // The kit loop lives on the digits in each readout; the detail pod and card
+  // also say the final seconds in words for players who reduce motion.
+  if (!/<span className=\{urgent \? "m-urgent" : undefined\}>\{shownDigits\}<\/span>/.test(p)
+    || !/const shownCaption = urgent \? lastSecondsLabel! : handCaption \?\? caption;/.test(p))
+    d.push("the round pod lost its named final-30 s urgency");
+  if (!/className=\{urgent \? "kp-track-end kp-track-end--05 m-urgent" : "kp-track-end kp-track-end--05"\}/.test(p))
+    d.push("the board panel lost its kit final-30 s motion");
+  if (!/<span className=\{urgent \? "m-urgent" : undefined\}>\{digits \?\? mmss\(left\)\}<\/span>/.test(k)
+    || !/urgent \? t\.market\.udLastSeconds/.test(k)) d.push("the card lost its named final-30 s urgency");
   // ⛔ …and it may not ride on the `.m-tick` element again, where the tick's animation silently replaces it.
   for (const [name, src] of [["round-countdown.tsx", p], ["updown-card.tsx", k]] as const) {
-    if (/className=\{[^}]*m-tick[^}]*ud-count-pulse|cn\("m-tick[^)]*"ud-count-pulse"/.test(src)) d.push(`${name}: the pulse shares the .m-tick element again (the tick's animation wins the cascade)`);
+    if (/className=\{[^}]*m-tick[^}]*m-urgent|cn\("m-tick[^)]*"m-urgent"/.test(src)) d.push(`${name}: the urgency loop shares the .m-tick element (the tick's animation wins the cascade)`);
   }
-  if (!/const urgent = !inResult && isOpen && left != null && left > 0 && left <= 30;/.test(p)) d.push("the pod's 30 s threshold moved");
+  if (!/const urgent = !inResult && isOpen && lastSecondsLabel != null && left != null && left > 0 && left <= 30;/.test(p)) d.push("the pod's 30 s threshold moved");
   if (!/color: tone,/.test(k)) d.push("the card's digits do not take the phase tone");
   return d;
 }
@@ -109,8 +109,8 @@ ok("§2a the pod, the board panel and the card pulse in the final 30 s without r
 /* §3 · PLANTED CONTROLS — the shipped defects, re-planted into copies. ────── */
 console.log("\n§3 · planted controls");
 const plantMeta = css.replace(".mcardp-meta .live { color: var(--text-muted);", ".mcardp-meta .live { color: var(--yes-300);");
-const plantPip = css.replace("  background: var(--live-400);\n  flex: none;", "  background: var(--yes-400);\n  box-shadow: var(--bar-glow-yes);\n  flex: none;")
-  .replace("  background: var(--live-400);\r\n  flex: none;", "  background: var(--yes-400);\r\n  box-shadow: var(--bar-glow-yes);\r\n  flex: none;");
+const plantPip = css.replace("  background: var(--text-subtle);\n  flex: none;", "  background: var(--yes-400);\n  box-shadow: var(--bar-glow-yes);\n  flex: none;")
+  .replace("  background: var(--text-subtle);\r\n  flex: none;", "  background: var(--yes-400);\r\n  box-shadow: var(--bar-glow-yes);\r\n  flex: none;");
 const plantHero = hero.replace('<span className="kp-proof__num" style={{ color: "var(--text)" }}>', '<span className="kp-proof__num" style={{ color: "var(--yes-400)" }}>');
 const plantPod = pod.replace('color: urgent ? "var(--text)"', 'color: urgent ? "var(--no-300)"');
 const plantCard = card.replace("color: tone,", 'color: urgent ? "var(--no-300)" : tone,');
@@ -271,30 +271,36 @@ function appStateDefects(orm: string, css: string, bell: string, dial: string, s
   const delta = (c.match(/\.kp-jbal__delta[^{]*\{[^}]*\}/g) ?? []).join("\n");
   if (!delta || sideInk(delta).length) d.push("the journey balance's ±delta is missing or wears a side's ink");
   const b = code(N(bell));
-  if (!/const countTone = journey \? "brand" : "rose";/.test(b) || !/const clearAllHover = journey \? "hover:text-danger-fg" : "hover:text-no-300";/.test(b)) d.push("the journey bell's count or Clear-all borrows the NO rose");
+  if (!/const countTone = "brand";/.test(b) || !/const clearAllHover = "hover:text-text";/.test(b)) d.push("a player bell's unread count or Clear-all borrows the NO rose");
   const k = code(N(dial));
   const chips = k.match(/<span className="mt-1 inline-flex items-center gap-1 rounded-pill border [^"]*">/g) ?? [];
   if (chips.length !== 2 || chips.some((x) => sideInk(x).length)) d.push("the dial's out-of-range chips are missing or wear the NO rose");
   if (/border-no-700|bg-no-500\/10/.test(k)) d.push("the dial's short-balance line is a NO-rose box");
-  if (!/customInvalid \? "text-danger-fg"/.test(code(N(stakeCtl)))) d.push("Up & Down's out-of-range amount is not the field-error ink");
+  const stake = code(N(stakeCtl));
+  if (!/aria-invalid=\{customInvalid\}/.test(stake) || !/attention=\{customInvalid\}/.test(stake)
+    || /error=\{customInvalid\}/.test(stake) || !/customInvalid \? "text-text" : "text-text-subtle"/.test(stake))
+    d.push("Up & Down's out-of-range amount lost its neutral error cue or aria-invalid");
   return d;
 }
 const ORM = read("src/components/markets/operation-result-modal.tsx"), BELL = read("src/components/layout/notifications-panel.tsx");
 const DIAL = read("src/components/markets/conviction-dial.tsx"), STAKE = read("src/components/updown/updown-stake-controls.tsx");
-ok("§7b the result's crests, the placed pulse, the balance's ±delta, the journey bell, the dial's chips, a stake out of range: app-state inks",
+ok("§7b the result's crests, the placed pulse, the balance's ±delta, both player bells, the dial's chips, a stake out of range: app-state inks",
   appStateDefects(ORM, css, BELL, DIAL, STAKE).length === 0, appStateDefects(ORM, css, BELL, DIAL, STAKE).join("; "));
 const plantCrest = N(ORM).replace('...crest("var(--success)", "var(--success-fg)"),', '...crest("var(--yes-400)", "var(--yes-300)"),');
 const plantNoBtn = N(ORM).replace(/(danger: \{\s*\.\.\.crest\("var\(--danger\)", "var\(--danger-fg\)"\),[\s\S]*?)primaryBtn: "btn-primary",/, '$1primaryBtn: "btn-no",');
-const plantPulse = N(css).replace("color-mix(in oklab, var(--success-500) 55%, transparent)", "color-mix(in oklab, var(--yes-500) 55%, transparent)");
+// U43 (Ali, 2026-10-19): the card pulse moved from success green to neutral.
+// Plant against its actual keyframe, or this control can silently miss its target.
+const plantPulse = N(css).replace("0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--text) 40%, transparent); }",
+  "0%   { box-shadow: 0 0 0 0 color-mix(in oklab, var(--yes-500) 55%, transparent); }");
 const plantDelta = N(css).replace(".kp-jbal__delta[data-sign] { color: var(--text); }", '.kp-jbal__delta[data-sign="up"] { color: var(--yes-300); }');
-const plantBell = N(BELL).replace('const countTone = journey ? "brand" : "rose";', 'const countTone = "rose";');
+const plantBell = N(BELL).replace('const countTone = "brand";', 'const countTone = "rose";');
 const plantHover = N(read("src/components/profile/avatar-uploader.tsx")).replace("group-hover:border-danger-border group-hover:text-danger-fg", "group-hover:border-no-700 group-hover:text-no-300");
 ok("§7c control · every planted copy found its target",
   plantCrest !== N(ORM) && plantNoBtn !== N(ORM) && plantPulse !== N(css) && plantDelta !== N(css) && plantBell !== N(BELL) && plantHover !== N(read("src/components/profile/avatar-uploader.tsx")));
 ok("§7d control · a YES-green success crest is reported", appStateDefects(plantCrest, css, BELL, DIAL, STAKE).length > 0);
 ok("§7e control · the NO side's button as a refusal's way out is reported", appStateDefects(plantNoBtn, css, BELL, DIAL, STAKE).length > 0);
 ok("§7f control · a YES-green placed pulse and a YES-green balance move are reported", appStateDefects(ORM, plantPulse, BELL, DIAL, STAKE).length > 0 && appStateDefects(ORM, plantDelta, BELL, DIAL, STAKE).length > 0);
-ok("§7g control · the journey bell's count back in the NO rose is reported", appStateDefects(ORM, css, plantBell, DIAL, STAKE).length > 0);
+ok("§7g control · either player bell's count back in the NO rose is reported", appStateDefects(ORM, css, plantBell, DIAL, STAKE).length > 0);
 ok("§7h control · a destructive hover in the NO rose is reported", sideInk(plantHover).length === 2, "", sideInk(plantHover).join(" "));
 
 /* §8 · AN OFFICER'S VERDICT IS NOT A SIDE (the Vodacom plan S12 WP6, 2026-10-14) ───────────────────────────────────────────

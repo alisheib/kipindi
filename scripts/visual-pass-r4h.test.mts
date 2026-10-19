@@ -336,7 +336,7 @@ section("5 · E30 the card's two-line title slot is the contract (tiles 251 252)
 {
   const q = rule(CSS, ".mcardp-q");
   ok("5.1 · the grid card's question clamps at two lines over a two-line minimum — every card in a row keeps its pick, bar and foot on one line, and --mcard-base (the skeleton's height) is measured with it",
-    /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*216px/.test(CSS), q);
+    /-webkit-line-clamp:\s*2/.test(q) && /min-height:\s*calc\(2 \* 1\.34em\)/.test(q) && /--mcard-base:\s*171\.5px/.test(CSS), q);
   // The title column: card = viewport − 32 gutter; − 2 border − 24 phone / 32 desktop padding;
   // − the price column ("—" in 28px mono) − 12 gap.
   const dash = 0.6 * 28;

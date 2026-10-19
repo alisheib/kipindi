@@ -177,7 +177,7 @@ const ARIA_LABEL_CAMEL_ONLY: Set<string> = (() => {
  *   · it CANNOT fabricate anything — the block is gated on `openStake > 0` and each segment on
  *     its own side being non-zero, so the cold-start rail this rule exists to enforce has no
  *     case to cover here;
- *   · `TippingBar`'s gilt needle MEANS "where the crowd is tipping". Pointing it at one player's
+ *   · `TippingBar`'s neutral needle MEANS "where the crowd is tipping". Pointing it at one player's
  *     own money would be a false metaphor, which is a worse defect than the duplication.
  * It already carries `role="img"` and a localised name.
  *

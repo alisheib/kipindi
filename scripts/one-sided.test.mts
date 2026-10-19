@@ -165,11 +165,13 @@ log("\n── 3 · the card's one-sided state");
     /emptyLabel=\{outcomeLabel \?\? \(oneSided \? t\.market\.oneSideOnly : neverBet \? t\.market\.noBetsYet : t\.market\.noPoolYet\)\}/.test(card)
     && /<span className="mcardp-oneside"[^>]*>\{t\.market\.oneSideOnly\}<\/span>/.test(card));
   // ⛔ THE HEADLINE SLOT (WP6 review): without its own one-sided arm a one-sided card falls through to
-  // the priced arm and prints `{yesPct}%` — 0 there, "YES 0%" on a market whose money is all on YES.
+  // the priced arm and prints a percent on a market with money on only one side.
   const armAt = card.search(/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/);
-  const pricedAt = card.indexOf('<div className="mcardp-pct">{yesPct}');
+  const pricedAt = card.indexOf('<div className="mcardp-pct">{leadingPct}');
   check("3.11 ⛔ the price slot has a one-sided arm (the dash), and it comes before the priced arm",
     armAt > 0 && pricedAt > armAt, `oneSided arm @${armAt}, priced arm @${pricedAt}`);
+  check("3.11-control a fall-through from the one-sided arm is caught",
+    !/\) : oneSided \? \(\s*<div className="mcardp-pct mcardp-pct--empty" aria-hidden>—<\/div>/.test(card.replace(') : oneSided ? (', ') : false ? (')));
   // The label is the only word that explains the dash on a CLOSED or SETTLED one-sided card.
   check("3.12 the 'One side only' row renders on one-sided cards in EVERY phase, not only live ones",
     /\{\(live \|\| oneSided\) && \(\s*<div className="mcardp-moveline">/.test(card));

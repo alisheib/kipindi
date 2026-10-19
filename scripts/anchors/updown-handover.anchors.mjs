@@ -113,20 +113,21 @@ export const MUTATIONS = [
     to: `    : settled ? "00:00"\n    : spent ? "—:—"`,
   },
   {
-    // …and on the board card.
-    name: "board-card-shows-a-dead-00:00-again",
+    // U43 now hides the reserved non-counting clock slot, but a literal zero
+    // must not be supplied to it: the handover guard bans that dead fallback.
+    name: "board-card-supplies-a-dead-00:00-fallback-again",
     file: CARD,
     suite: "updown-handover",
-    from: `            : settledNow ? "—:—"`,
-    to: `            : settledNow ? "00:00"`,
+    from: `            digits={clockWithoutTarget ? "—:—" : null}`,
+    to: `            digits={clockWithoutTarget ? "00:00" : null}`,
   },
   {
     // "Closed" returning to a settled card. Copy discipline §7: closed is not a result.
     name: "settled-card-says-Closed-again",
     file: CARD,
     suite: "updown-handover",
-    from: `              : state === "resolved" ? t.market.statusResolved`,
-    to: `              : state === "resolved" ? t.market.statusClosed`,
+    from: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins}</> : t.market.statusResolved}`,
+    to: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins}</> : t.market.statusClosed}`,
   },
   {
     // `push` builds a back-stack of dead rounds; Back then walks the player backwards one at a time.

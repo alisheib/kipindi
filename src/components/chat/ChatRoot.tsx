@@ -28,6 +28,7 @@ import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-mess
 import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";
 import { useT } from "@/lib/i18n";
 import { isJourneySurface } from "@/lib/surfaces";
+import { suppressChatOnU43 } from "@/lib/u43-overlay-routes";
 import { useJourneyOn } from "@/lib/journey/journey-on";
 import { useNotFoundShown } from "@/lib/not-found-mark";
 import { CHAT_STORAGE_KEY, historyFor, historyRecord } from "@/lib/chat/history";
@@ -248,9 +249,11 @@ export function ChatRoot({ supportEmail, chatOwner }: { supportEmail: string; ch
       setMessages([]);
       setOpen(false);
     }
+    if (suppressChatOnU43(pathname)) setOpen(false);
   }, [pathname]);
 
   if (pathname && HIDE_ON.test(pathname)) return null;
+  if (suppressChatOnU43(pathname)) return null;
   /* ⭐ S6 WP7 · NOT ON THE NEW JOURNEY'S PAGES, FOR A JOURNEY VIEWER — the bubble stands down there and nowhere else.
      Unlike HIDE_ON (left as it is) this neither closes the panel nor clears the history: the conversation is where
      the player left it on the next page that shows the bubble. */

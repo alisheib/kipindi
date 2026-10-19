@@ -283,7 +283,6 @@ export const NOT_EYEBROW = new Map([
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em] kp-track-end kp-track-end--08\" ↵ style={{ color: \"var(--brand-3", "CONTROL_LABEL"],
   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {formatNumber(g.bets.length)} {t.market.udBets}", "OTHER"],
   // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
-  ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
   // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
   // the new rules link — and a second copy of its `tracking-[0.10em]` took the arbitrary-tracking
   // ratchet 236 → 237. Hoisting it to a `HEADER_PILL` const fixed that and moved the uppercase
@@ -298,7 +297,6 @@ export const NOT_EYEBROW = new Map([
   // between, this file becomes the worst-case script in the repo, and `test:decomment` §5.3
   // fails — because a subdirectory file can never be in the top-level set `pii-in-logs` §3
   // scans. Measured, not guessed: 97 → 19,718 the moment a block comment was added here.
-  ["app/updown/page.tsx :: \"inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted h", "CONTROL_LABEL"],
   // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.14em (`kp-track-end`); same role.
   ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}> ↵ {tx.heldForReturn ? t.wallet.txnStatusHeld : statusLa", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle flex items-center gap-1.5\"> ↵ {BONUS_SOURCE_LABEL[g.source] ?? g.source}", "OTHER"],
@@ -322,11 +320,8 @@ export const NOT_EYEBROW = new Map([
   ["components/auth/auth-shell.tsx :: <div className=\"relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.auth.licensedByGbt}","OTHER"],
   ["components/auth/auth-shell.tsx :: <p className=\"mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle lg:hidden\"> ↵ {t.auth.licensedByGbt}","OTHER"],
   ["components/auth/resend-otp-button.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors disabled:opacity-60 dis", "CONTROL_LABEL"],
-  // PHOSPHOR-MIGRATION release 2a part 2: both staff rows now use royal ink; the subtitle remains a control label.
   ["components/layout/avatar-menu.tsx :: <span className=\"block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5\">Staff · Internal</span> ↵ </span>", "CONTROL_LABEL"],
-  ["components/layout/live-ticker.tsx :: <span className=\"font-mono text-micro font-semibold uppercase tracking-[0.1em] text-[var(--live-400)]\"> ↵ {t.common.live}", "STATUS_CHIP"],
-  // Re-keyed (PHOSPHOR-MIGRATION release 2): W4 drew this row's chevron from the family (it was a hand-drawn <svg>), so the
-  // element after the state word changed and the signature went stale on main.
+  ["components/layout/live-ticker.tsx :: <span className=\"font-mono text-micro font-semibold uppercase tracking-[0.1em] text-text-subtle\"> ↵ {t.common.live}", "STATUS_CHIP"],
   ["components/layout/needle-drawer.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\">{shownLabel}</span> ↵ {/* The family's chevron (PHOSPHOR-MIGRATION W4, §8a: it was han", "OTHER"],
   ["components/layout/notifications-panel.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace(\"{n}\", countText(unrea", "STATUS_CHIP"],
   ["components/layout/notifications-panel.tsx :: className={`h-7 px-1.5 rounded-md font-mono text-micro font-bold uppercase tracking-[0.10em] text-text-subtle ${clearAllHover} hover:bg-bg-overlay transition-colors white", "CONTROL_LABEL"], // R5-I (2026-10-09): the journey's "Clear all" hover (danger) — same element, role unchanged
@@ -368,7 +363,7 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {formatNumber((safePage - 1) * perPage + 1)}–{formatNumber(Math.min(safePage * perPage", "OTHER"],
   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],
   ["components/ui/progress-bar.tsx :: <p className=\"font-mono text-micro uppercase tracking-widest text-text-tertiary tabular-nums\"> ↵ {value.toLocaleString()} of {safeMax.toLocaleString()} · {pct.toFixed(0)}", "OTHER"],
-  ["components/ui/route-error.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-danger-fg\"> ↵ {eyebrow ?? t.error.somethingWentWrong}", "CELEBRATION"],
+  ["components/ui/route-error.tsx :: <p className={`font-mono text-micro font-bold uppercase tracking-[0.20em] ${tone === \"neutral\" ? \"text-text-subtle\" : \"text-danger-fg\"}`}> ↵ {eyebrow ?? t.error.something", "CELEBRATION"],
   ["components/ui/stat.tsx :: \"font-mono uppercase\", ↵ LABEL[labelStyle],", "OTHER"],
   ["components/ui/status-flag.tsx :: \"inline-flex items-center rounded-pill font-mono font-bold uppercase whitespace-nowrap leading-none align-middle\", ↵ className,", "STATUS_CHIP"],
   // ⚠️ RE-KEYED 2026-08-31 (DG-S-02). The role is unchanged — DESIGN_AUTHORITY §T3's enclosure
@@ -382,9 +377,6 @@ export const NOT_EYEBROW = new Map([
   ["components/updown/price-hero.tsx :: <span className=\"font-mono font-semibold uppercase tracking-[0.10em]\" style={{ fontSize: 9, color: \"var(--text-faint)\" }}>{copy.awaitingRead}</span> ↵ </>", "STATUS_CHIP"],
   // ⚠️ RE-KEYED 2026-09-27 (landing v3 F1). Same "Awaiting price" status word, same role: it moved out of the card's
   // header into the named confirmed-price row, and its `<div>` became a `<span>` inside the figure's group.
-  ["components/updown/updown-card.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint kp-track-end kp-track-end--10\">{t.market.udAwaitingRead}</span> ↵ </span>", "OTHER"],
-  ["components/updown/updown-card.tsx :: <div className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {/* Stage 9b — kit <Dot pulse>. It IS `", "OTHER"],
-  ["components/updown/updown-card.tsx :: className=\"font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
-  ["components/updown/updown-handover.tsx :: className=\"btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
+  ["components/updown/updown-handover.tsx :: className=\"btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: \"var(--type-small)\",", "CONTROL_LABEL"],
   ["lib/server/email.ts :: <p style=\"margin:0;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${TEXT_SUBTLE}\"> ↵ 50pick.tz <", "CELEBRATION"],
 ]);

@@ -26,7 +26,6 @@ import { readFileSync } from "node:fs";
 /** Files that render IDENTITY. Gold here would mean "status", which is the confusion Q5 ends. */
 const IDENTITY_SURFACES = [
   "src/components/ui/identity-avatar.tsx",
-  "src/components/updown/updown-card.tsx",
   // 2026-10-09 (round 3, tiles 177 178 203): the leaderboard's ribbon struck its top TIER in `text-gold-300` — "Fedha",
   // silver, in the money ink. The ribbon states ranks, counts and rates; its gold accent is gone, and this keeps it gone.
   "src/components/layout/page-ribbon.tsx",
@@ -92,6 +91,20 @@ for (const f of IDENTITY_SURFACES) {
   ok(`1 · ${f} uses no money-ink token`, hits.length === 0, hits.join(", "));
   const classHits = [...code.matchAll(MONEY_CLASS)].map((m) => m[0]);
   ok(`1b · ${f} uses no money-ink Tailwind class`, classHits.length === 0, classHits.join(", "));
+}
+// The Up & Down card contains asset identity and a viewer's settled result in one file.
+// Its sole money ink belongs to an earned WIN payout; its identity and every other
+// status stay neutral. Keep this mixed surface explicit rather than exempting it.
+{
+  const card = strip(read("src/components/updown/updown-card.tsx"));
+  const earnedGold = /myResults\[0\]\.status === "WIN" \? "var\(--gold-300\)" : "var\(--text\)"/;
+  const scoped = card.includes("settledNow && myResults && myResults.length > 0") && earnedGold.test(card);
+  ok("1.card · Up & Down's only gold is the viewer's earned WIN payout",
+    scoped && [...card.matchAll(MONEY_INK)].length === 1 && [...card.matchAll(MONEY_CLASS)].length === 0);
+  const mutant = card.replace('myResults[0].status === "WIN" ? "var(--gold-300)"',
+    'myResults[0].status === "LOSS" ? "var(--gold-300)"');
+  ok("1.card.control · a LOSS painted gold fails the earned-money gate",
+    mutant !== card && !earnedGold.test(mutant));
 }
 // ⭐ CONTROLS for 1b — the class form of the defect, planted, must be caught; neighbouring non-money classes must not be.
 {

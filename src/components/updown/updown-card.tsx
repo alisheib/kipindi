@@ -13,8 +13,8 @@
  * 360px: VOLUME · PLAYERS · AMOUNT · TIMER.
  *
  * ── HONESTY RULES BAKED INTO THIS COMPONENT ─────────────────────────────────
- *  · `livePrice = null` renders an em-dash and "awaiting price". NEVER a zero, never a
- *    stale value dressed as current. (Platform rule A-5 — real data or nothing.)
+ *  · A newer price comes only from this round's confirmed observation. A missing or
+ *    failed read never borrows the asset's latest number. (Platform rule A-5.)
  *  · THE TWO CHOICES SAY "UP" AND "DOWN" AND NOTHING ELSE (Ali's ruling of 2026-10-14 — DESIGN_AUTHORITY §C3,
  *    COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards show Up and Down only"). No multiplier on the buttons and
  *    no note about one: what a stake would return is said at the commit (the round page's confirm panel, the bet
@@ -33,16 +33,16 @@ import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Dot } from "@/components/ui/dot";
 import { DotSeq } from "@/components/ui/dot-seq";
-import { cn, formatNumber, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { priceState } from "@/lib/markets/price-state";
 import { usd } from "@/lib/usd-price";
 import { fillNodes } from "@/lib/fill-nodes";
 // ⭐ R5(c) · F1 — the figure's ink is the round's TARGETS, the rule the round page and the landing band read.
-import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
+import { valueTone } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+import { UpDownSidePair, UpDownStakeControls } from "./updown-stake-controls";
 // S12 WP9 · the journey arm's loader alone: the arm is a chunk of its own, fetched only for a journey request.
 import { LazyJudTwoWay } from "@/components/journey/updown/jud-lazy";
 import type { JudViewer } from "@/lib/journey/updown-arm";
@@ -57,12 +57,15 @@ import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
 // See `use-shared-second.ts` — a board of eight cards used to arm 32 unaligned intervals and
 // re-create every card once a second to re-derive a handful of booleans.
 import { secondsUntil, useServerNowGated } from "@/lib/use-shared-second";
-import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEATClock } from "@/lib/updown-source-label";
+import { RoundLiveLine } from "@/components/charts/round-live-line";
 import { roundPhase, resultClock, handoverClock, type HandoverClock } from "@/lib/updown-card-phase";
+import { cardPriceRead } from "@/lib/updown-card-view";
+import { roundDuration } from "@/lib/updown-round-name";
 import type { RoundSuccessor } from "@/lib/server/updown-board";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
-import { refundReasonFor, viewerRefundCopy } from "@/lib/updown-refund-reason";
+import { refundReasonFor, viewerRefundCopy, VOID_NOTE_KEY } from "@/lib/updown-refund-reason";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 // ⛔ ONE RULE for "which side is empty" (D2) — read from the round's RAW pools and shared with the quick-bet controls
 // and the round page. The card prints no multiplier (the owner's ruling of 2026-10-14) and never re-derives money.
@@ -81,20 +84,25 @@ export type UpDownCardProps = {
   roundId: string;
   assetName: string;
   assetTicker: string;
-  /** Kit icon recipe key. Unknown keys fall back to a neutral ring. */
+  /** Kit icon recipe key. Unknown keys fall back to ticker letters. */
   assetIcon: string;
   durationMinutes: number;
   /** Quote precision — the price is never shown to more digits than the source gives. */
   decimals: number;
-  /** null ⇒ "—" + awaiting price. NEVER render 0 for an unknown price. */
-  livePrice: number | null;
+  /** The latest confirmed observation inside this round, strictly after its open. */
+  readPrice: number | null;
+  /** True only when the server could not read this round's observations. */
+  readUnavailable: boolean;
   openPrice: number | null;
   /** Frozen winning boundaries (base ± margin, the PDF's Up/Down target prices). A side
    *  must REACH its target to win: UP ≥ upTarget, DOWN ≤ downTarget; a smaller move voids
    *  + refunds. Null on legacy rounds or before the open price is confirmed. */
   upTarget?: number | null;
   downTarget?: number | null;
-  movePct: number | null;
+  /** The real round boundary; never derive it from the chosen duration. */
+  opensAtMs: number;
+  /** The feed key for this asset, passed to the round's live line. */
+  assetKey: string;
   /** Absolute instant the round closes; the countdown derives from it client-side so
    *  every card agrees and no server timestamp goes stale in the HTML. */
   closesAtMs: number;
@@ -123,6 +131,8 @@ export type UpDownCardProps = {
   /** UD-20 · what the viewer receives under EACH outcome. Both, or neither. */
   myPayoutIfUp?: number | null;
   myPayoutIfDown?: number | null;
+  /** Settled rows grouped by side on the server; no client inference from a single row. */
+  myResults?: Array<{ status: "WIN" | "LOSS" | "VOID"; side: "UP" | "DOWN"; stake: number; payout: number }>;
   volumeTzs: number;
   players: number;
   /**
@@ -150,8 +160,10 @@ export type UpDownCardProps = {
    * `payoutViewFor` takes an outcome instead of a boolean (E-56).
    */
   sourceClass: PublicSourceClass;
-  /** ISO — the time THE SOURCE quoted, not our boundary. */
-  sourceQuotedAt: string | null;
+  /** Per-round source quote times from the observations tied to the displayed prices. */
+  openQuotedAt: string | null;
+  readQuotedAt: string | null;
+  closeQuotedAt: string | null;
   className?: string;
 
   // ── Quick-bet (fast game — one tap places a bet, no navigation) ────────────
@@ -200,6 +212,11 @@ export type UpDownCardProps = {
    */
   resolvedAtMs?: number | null;
   successor?: RoundSuccessor;
+  /** The board already has this successor card, so a second link is redundant. */
+  successorOnBoard?: boolean;
+  /** Board calendar and chain state, never inferred from duration or a device clock. */
+  nextMarketOpenAtMs?: number | null;
+  chainPaused?: boolean;
   /**
    * ⭐ R6-A (2026-10-09, reviewer A's A2) · the viewer's running break or self-exclusion, as the board page words it (the
    * approved sentence with its end, `breakSentence`), or null. A bettable card then draws the break's notice where its
@@ -295,6 +312,7 @@ type CardClock = {
   inHandover: boolean;
   running: boolean;
   bettable: boolean;
+  urgent: boolean;
   podPhase: string;
 };
 
@@ -354,6 +372,7 @@ function cardClock(p: {
   // pre-hydration tick (`secondsLeft == null`) still has to render the same action row the
   // client will, or the server and client markup disagree.
   const bettable = phaseBettable && running;
+  const urgent = bettable && secondsLeft != null && secondsLeft > 0 && secondsLeft <= 30;
   /**
    * ⭐ E-166 · the pod reads as ONE object changing state. `.m-tick` is the kit's own
    * dip-and-land for a changing value (`--t-base` / `--m-glide`), keyed on the PHASE so the
@@ -369,14 +388,14 @@ function cardClock(p: {
   // per-second value in the gate's comparison and undo the entire point of the gate.
   return {
     locked, settledNow, awaitingResult, resultTarget, resultRunning,
-    countdownTarget, handover, inHandover, running, bettable, podPhase,
+    countdownTarget, handover, inHandover, running, bettable, urgent, podPhase,
   };
 }
 
 /** The card's whole clock-derived output as one string — what the gate compares tick to tick. */
 function cardKey(c: CardClock): string {
   return [
-    c.podPhase, c.locked ? 1 : 0, c.bettable ? 1 : 0, c.running ? 1 : 0,
+    c.podPhase, c.locked ? 1 : 0, c.bettable ? 1 : 0, c.running ? 1 : 0, c.urgent ? 1 : 0,
     c.awaitingResult ? 1 : 0, c.resultRunning ? 1 : 0, c.resultTarget ?? "-", c.countdownTarget,
     c.settledNow ? 1 : 0, c.inHandover ? 1 : 0, c.handover.phase,
     c.handover.counting ? 1 : 0, c.handover.ready ? 1 : 0, c.handover.targetMs ?? "-",
@@ -405,8 +424,10 @@ function CardCountdownDigits({
   const urgent = urgentEligible && left != null && left <= 30;
   return (
     <div
-      className="m-tick font-mono font-bold tabular-nums leading-none"
+      aria-hidden={!counting}
+      className="m-tick shrink-0 whitespace-nowrap font-mono font-bold tabular-nums leading-none"
       style={{
+        visibility: counting ? undefined : "hidden",
         fontSize: 28, letterSpacing: "0.05em",
         // Inks: `tone` (plain while betting · brand = the result is coming · subtle = nothing
         // is counting). Never rose for the wait — `confirming` is CALM by design (see this
@@ -416,7 +437,7 @@ function CardCountdownDigits({
         // hands over exactly like a win does, and the next match is not an alarm.
         // ⛔ AND NOT ROSE IN THE LAST 30 s EITHER (2026-09-14, register E-400 ⓪). The digits sit beside the
         // round's Up and Down sides, and `--no-300` there reads as "price going down" — the betting pair names a
-        // side (DESIGN_AUTHORITY §B2a). The `ud-count-pulse` below carries the urgency; the ink stays the tone.
+        // side (DESIGN_AUTHORITY §B2a). The kit's `m-urgent` carries urgency; the ink stays the tone.
         color: tone,
         // ⛔ The ladder, not a typed number — see the twin of this line in
         // `round-countdown.tsx` for why `--t-base` and not `--t-flick`.
@@ -430,24 +451,23 @@ function CardCountdownDigits({
           🔴 AND THE SETTLED BRANCH USED TO FALL THROUGH TO `mmss(0)` — a dead `00:00`,
           measured on production 2026-08-19 on both this card and the round page. The
           handover branch is what removes it. */}
-      {/* 🔴 U43 (2026-10-19) · THE LAST-30-SECONDS PULSE NEVER PLAYED. It sat on this very element beside `.m-tick`, and both
-          set the `animation` shorthand: motion.css is imported last, so `.m-tick`'s rule won the cascade and the card had
-          no urgency cue at all (the motion critic's Round 0 finding, confirmed in the cascade). The pulse lives on the
-          digits' own span now, so the phase dip and the urgency loop each animate their own element. */}
-      <span className={urgent ? "ud-count-pulse" : undefined}>{digits ?? mmss(left)}</span>
+      {/* The kit's urgency loop lives on the digits span so the phase dip and loop
+          can animate independently. Reduced motion keeps the caption's words. */}
+      <span className={urgent ? "m-urgent" : undefined}>{digits ?? mmss(left)}</span>
     </div>
   );
 }
 
 export function UpDownCard(props: UpDownCardProps) {
   const {
-    roundId, assetName, assetTicker, assetIcon, durationMinutes, decimals,
-    livePrice, openPrice, upTarget, downTarget, movePct, closesAtMs, volumeTzs, players,
+    roundId, assetName, assetTicker, assetIcon, assetKey, durationMinutes, decimals,
+    readPrice, readUnavailable, openPrice, upTarget, downTarget, opensAtMs, closesAtMs, volumeTzs, players,
     pricing, state, outcome, closePrice, voidReason,
-    sourceClass, sourceQuotedAt, className,
-    selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
+    sourceClass, openQuotedAt, readQuotedAt, closeQuotedAt, className,
+    selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myResults, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null, journey = null,
+    expectedResultAtMs = null, resolvedAtMs = null, successor, successorOnBoard = false, nextMarketOpenAtMs = null,
+    chainPaused, receipt, breakBody = null, journey = null,
   } = props;
   const { t, locale } = useT();
   const router = useRouter();
@@ -528,7 +548,10 @@ export function UpDownCard(props: UpDownCardProps) {
   const nowMs = serverNow ?? serverNowMs ?? closesAtMs;
   const c = clockOf(serverNow, nowMs);
   const { locked, awaitingResult, resultRunning, countdownTarget,
-          handover, inHandover, running, bettable, podPhase } = c;
+          handover, inHandover, running, bettable, urgent, podPhase } = c;
+  // A pending result with no measured target has words, but no honest clock.
+  // The clock leaf reserves its slot while hiding the non-counting fallback.
+  const clockWithoutTarget = (awaitingResult && !resultRunning) || !running;
   // ⭐ E-99 · THE THIRD TIMER — Ali, 2026-08-05: *"we agreed that we want a timer called
   // results and put a new timer for results… so users would wait for results."*
   //
@@ -562,17 +585,6 @@ export function UpDownCard(props: UpDownCardProps) {
   //
   // ⚠️ ALL THREE RULES NOW LIVE IN `cardClock` ABOVE — moved verbatim, not rewritten, so the
   // gate and the render cannot hold two opinions about which phase this round is in.
-  const handoverCaption =
-    handover.phase === "counting" ? t.market.udNextMatchIn
-    : handover.phase === "live" ? t.market.udNextMatchLive
-    : handover.phase === "waiting" ? t.market.udNextMatchSoon
-    : handover.phase === "unavailable" ? t.market.udNextMatchNone
-    : null;
-  // ⛔ `—:—`, NEVER A DEAD `0:00`, on every branch that is not counting (E-99 rule 3). The
-  // pre-hydration tick renders `--:--` on both sides, which is the same shape and matches.
-  // ⚠️ `null` NOW MEANS "COUNT IT" — the leaf owns the ticking number, and a string here is a
-  // fixed readout it shows verbatim. The four branches are the same four they always were.
-  const handoverDigits = handover.counting ? null : "—:—";
   // The lock and the source quote on this card use one named EAT clock. A device-local 12-hour
   // time beside a 24-hour EAT quote made one round appear to have two different clocks.
   // `formatClock` retains its finite guard and its one cached formatter.
@@ -590,18 +602,18 @@ export function UpDownCard(props: UpDownCardProps) {
   // entirely — so it would have printed a confident, wrong figure on a money surface, which is
   // strictly worse than the honest estimate it replaced. `myExactPayout` comes from the same
   // `projectedPayout` the money path pays out with. One rule, one answer.
-  const mySide: "UP" | "DOWN" | null = myUpStake > 0 ? "UP" : myDownStake > 0 ? "DOWN" : null;
   const exactWin = locked ? myExactPayout ?? null : null;
   // ⭐ UD-20 (Ali, 2026-08-14) · both outcomes, or neither. Rendering just one would be the
   // single-number half-truth again, wearing a different label.
-  const ifUp = locked ? myPayoutIfUp ?? null : null;
-  const ifDown = locked ? myPayoutIfDown ?? null : null;
+  const quoteVisible = locked || awaitingResult || state === "confirming";
+  const ifUp = quoteVisible ? myPayoutIfUp ?? null : null;
+  const ifDown = quoteVisible ? myPayoutIfDown ?? null : null;
   const holdsBoth = (myUpStake ?? 0) > 0 && (myDownStake ?? 0) > 0;
   // 🔴 U43 (2026-10-19) · A ROUND ONLY ONE SIDE BACKED REFUNDS WHICHEVER WAY IT CLOSES (settlement's `oneSided`: "nobody to
   // lose to"), and the pools are final after the lock — so a holder's locked card says so in ONE sentence instead of the two
   // "If it closes …" rows, which printed TZS 0 on the side they never backed (Round 0, a local round). The side named is the
   // empty one (`emptySideOf`), as the empty-side sentence before the lock names it.
-  const emptyAtLock = locked && ifUp != null && ifDown != null ? emptySideOf(pricing) : null;
+  const emptyAtLock = quoteVisible && ifUp != null && ifDown != null ? emptySideOf(pricing) : null;
   const lockedOneSided: "UP" | "DOWN" | null = emptyAtLock === "UP" || emptyAtLock === "DOWN" ? emptyAtLock : null;
   // ⚠️ `exactWin`/`mySide` stay in the payload and are no longer painted on the locked card —
   // the pair above replaces that line. Kept because other surfaces and suites still read them,
@@ -621,6 +633,15 @@ export function UpDownCard(props: UpDownCardProps) {
   // with nothing returned gets the round's neutral void note, never a claim about money.
   const refundCopy = viewerRefundCopy(refundReason, myRefundedStake ?? 0);
   const refundCopyText = refundCopy ? (t.market as Record<string, string>)[refundCopy.key] : undefined;
+  // The settled result below states the exact returned amount. In that case the card
+  // needs only WHY it came back here, not a second promise that it came back in full.
+  // Reuse the canonical reason-only void notes; unmatched has its own reason because
+  // that round decided normally and must never be described as void.
+  const ownRefundAmountShown = settledNow && !!myResults?.length && myResults.every((r) => r.status === "VOID");
+  const cardRefundCopyText = ownRefundAmountShown && refundCopy?.claimsRefund && refundReason
+    ? refundReason === "unmatched" ? t.market.udRefundUnmatchedReason
+      : (t.market as Record<string, string>)[VOID_NOTE_KEY[refundReason]]
+    : refundCopyText;
   // ⭐ C1 · THE CARD'S PRICE RULE, from the round's RAW pools (`priceState`): a split only where both sides
   // hold money (1–99). A one-sided round draws the dashed rail named "One side only" — it used to print
   // "Up 100% · 0% Down" directly above "Nobody has backed Down yet" on the same card. PV-06 (2026-09-03)
@@ -629,7 +650,7 @@ export function UpDownCard(props: UpDownCardProps) {
   const upPct = price.kind === "priced" ? price.yesPct : null;
   const downPct = upPct === null ? null : 100 - upPct;
   /**
-   * ⭐ R5(c) · F1 (2026-09-27) · THE FIGURE WEARS THE ROUND'S TARGETS — the round page's `tone`, the landing band's lead.
+   * ⭐ R5(c) · F1 (2026-09-27) · The read's direction follows the round's targets, like settlement.
    *
    * 🔴 It wore the SIGN OF THE MOVE FROM THE OPEN. A read one cent above the open painted green with an up-arrow while
    * settlement, which needs the UP target reached, would refund every stake there: the band one screen away said
@@ -637,15 +658,19 @@ export function UpDownCard(props: UpDownCardProps) {
    * ⭐ `valueTone` is `sideByTargets`, pinned equal to `decideOutcomeByTargets` (`test:updown-match` §1 and §11b): UP at or
    * above `upTarget`, DOWN at or below `downTarget`, muted strictly between. The open decides only for a round that has
    * no targets (legacy), exactly the fallback `price-hero.tsx` keeps.
-   * ⛔ The arrow follows the same tone: a level read carries no direction glyph.
+   * ⛔ The arrow follows the same tone: a level read carries no direction glyph. The price and move
+   * remain neutral data; only the UP and DOWN choices or outcome wear side colours (U43 B5).
    */
-  const tone = valueTone(livePrice, openPrice, upTarget, downTarget);
-  const priceColor = tone ? `var(${READ_TONE_TOKEN[tone]})` : "var(--text-muted)";
+  const readKind = cardPriceRead({ opensAtMs, closesAtMs, readQuotedAt, openPrice, readPrice });
+  const hasNewerRead = !settledNow && readKind === "newer";
+  const shownPrice = settledNow ? closePrice ?? null : hasNewerRead ? readPrice : null;
+  const tone = valueTone(shownPrice, openPrice, upTarget, downTarget);
+  const priceColor = "var(--text)";
   // Strictly between the targets the muted figure says WHY, in the band's own words ("Only $0.20 from the open — not
   // enough to decide"; exactly at the open, the band's "Exactly at the opening price"). Present tense, so only while the
   // round is undecided — a settled card states its result below, never a verdict on a price that no longer decides.
-  const levelAmount = !settledNow && tone === "level" && livePrice != null && openPrice != null
-    ? usd(Math.abs(livePrice - openPrice), decimals) : null;
+  const levelAmount = hasNewerRead && tone === "level" && shownPrice != null && openPrice != null
+    ? usd(Math.abs(shownPrice - openPrice), decimals) : null;
   const levelWords = levelAmount == null ? null
     : levelAmount === usd(0, decimals) ? t.home.udMatchLevelExact
     : fillNodes(t.market.udLevelBy, { amount: <span className="amount">{levelAmount}</span> });
@@ -656,28 +681,44 @@ export function UpDownCard(props: UpDownCardProps) {
    * quoted-at stamp move less often than that. They were all being re-derived on every render,
    * and this card rendered every second. One `useMemo` per group is one dependency compare in
    * place of five `Intl` calls, a `Date` parse and the quote stamp's EAT formatting.
-   * ⛔ SAME OUTPUT, SAME RULES. `livePrice == null` is still an em-dash and "awaiting price"
-   * (A-5); nothing here invents a figure for a value the source has not given us.
+   * ⛔ A failed or absent round observation stays absent (A-5); nothing here borrows
+   * an asset-wide quote and calls it this round's latest price.
    */
   const priceText = useMemo(() => ({
-    live: livePrice == null ? null : usd(livePrice, decimals),
+    live: shownPrice == null ? null : usd(shownPrice, decimals),
     open: openPrice == null ? null : usd(openPrice, decimals),
     close: closePrice == null ? null : usd(closePrice, decimals),
     up: upTarget == null ? null : usd(upTarget, decimals),
     down: downTarget == null ? null : usd(downTarget, decimals),
     margin: upTarget == null || openPrice == null ? null : usd(upTarget - openPrice, decimals),
-    // E-264 · U+2212 for negatives, the charts' own sgn glyph — one figure class had two
-    // minus grammars on one board (§M4's one-grammar spirit). Zero stays unsigned: flat
-    // has no direction, the three-state rule this card taught the charts.
-    move: movePct == null ? null : `${movePct > 0 ? "+" : movePct < 0 ? "−" : ""}${Math.abs(movePct).toFixed(2)}%`,
-  }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
+    move: shownPrice == null || openPrice == null ? null
+      : `${shownPrice > openPrice ? "+" : shownPrice < openPrice ? "−" : ""}${usd(Math.abs(shownPrice - openPrice), decimals)}`,
+  }), [shownPrice, openPrice, closePrice, upTarget, downTarget, decimals]);
   const playersText = useMemo(() => formatNumber(players), [players]);
   /* 2026-09-14 — East Africa Time with the zone stated, the same `fmtEAT` the round page and the
      chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
      round read as three hours stale to a player in Tanzania. */
-  const quoted = useMemo(() => fmtEAT(sourceQuotedAt), [sourceQuotedAt]);
+  const displayedQuotedAt = settledNow
+    ? closePrice != null ? closeQuotedAt : openPrice != null ? openQuotedAt : null
+    : hasNewerRead ? readQuotedAt : openPrice != null ? openQuotedAt : null;
+  // U43 B1: the compact card gives the source and the EAT minute on one line.
+  // The exact observation instant survives in <time dateTime>; detail still
+  // prints seconds beside the settlement proof.
+  const quoted = useMemo(() => {
+    const clock = displayedQuotedAt ? fmtEATClock(Date.parse(displayedQuotedAt)) : null;
+    return clock ? `${clock} EAT` : null;
+  }, [displayedQuotedAt]);
   const sourceLabel = t.market[SOURCE_CLASS_KEY[sourceClass]];
-  const quoteLabel = quoted ? `${t.market.udQuoted} ${quoted}` : null;
+  const openClock = fmtEATClock(opensAtMs);
+  const closeClock = fmtEATClock(closesAtMs);
+  const windowLabel = openClock && closeClock ? `${openClock}–${closeClock}` : null;
+  const durationWords = roundDuration(t, durationMinutes);
+  const marketReopenClock = nextMarketOpenAtMs != null && Number.isFinite(nextMarketOpenAtMs)
+    && nextMarketOpenAtMs > nowMs ? fmtEATClock(nextMarketOpenAtMs) : null;
+  const nextRoundWords = marketReopenClock
+    ? t.market.udMarketClosedUntil.replace("{time}", `${marketReopenClock} EAT`)
+    : chainPaused || successor?.chainRunning === false ? t.market.udNextMatchNoneBody
+    : successor?.chainRunning ? t.market.udNextAfterResult : null;
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
   // One-tap bet that keeps the card in place (see useUpDownQuickBet — the SHARED
@@ -694,12 +735,12 @@ export function UpDownCard(props: UpDownCardProps) {
   // NEW bettable card mounts under a pointer that may be mid-tap — a real-money
   // mis-tap vector (the buttons are position-stable within a card; the card under the
   // finger changes identity). A freshly-MOUNTED bettable card therefore ignores
-  // pointer events for ~300ms — invisible in normal use, and precisely scoped: the
+  // pointer events for 340ms — the card entrance's own duration, and precisely scoped: the
   // card that merely moved slots keeps its React identity (keyed by roundId) and gets
   // no guard. Not motion, so no reduced-motion concern.
   const [tapGuard, setTapGuard] = useState(true);
   useEffect(() => {
-    const id = setTimeout(() => setTapGuard(false), 300);
+    const id = setTimeout(() => setTapGuard(false), 340);
     return () => clearTimeout(id);
   }, []);
   const bet = useUpDownQuickBet({
@@ -735,22 +776,22 @@ export function UpDownCard(props: UpDownCardProps) {
 
   // Signed-out / display-only cards keep the old behaviour: open the round detail
   // (where the sign-in gate lives) rather than trying to place from the card.
-  const go = (side: "UP" | "DOWN") => (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
+  const go = (side: "UP" | "DOWN") => {
     window.dispatchEvent(new Event("50pick:navigating"));
     router.push(`/updown/${roundId}?side=${side}`);
   };
 
   return (
     <article
-      className={cn("mcardp group", cardPulse && "ud-place-pulse", className)}
+      className={cn("mcardp ud-card group", cardPulse && "ud-place-pulse", className)}
       /* The round's own phase, on the card. It changes NOTHING a player sees — it is here so a
          measurement can be keyed to the state that produced it. U1 found this card measuring 468
          and then 660px minutes apart on the SAME board, because its height follows the live round;
          a before/after taken without the phase is comparing two different cards. 11 values:
          open · locked · result · spent · settled · idle · h:unavailable · h:waiting · h:counting · h:live. */
       data-phase={podPhase}
-      aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
+      data-ud-layout={isAuthed === true && marketId ? (myUpStake > 0 || myDownStake > 0 ? "held" : "player") : "guest"}
+      aria-label={`${assetName} ${t.market.udTitle} · ${durationWords}${windowLabel ? ` · ${windowLabel}` : ""}`}
       style={{
         cursor: "pointer", display: "flex", flexDirection: "column",
         // UD-17a · the settle window for a card that JUST mounted bettable.
@@ -765,136 +806,94 @@ export function UpDownCard(props: UpDownCardProps) {
       <Link
         href={`/updown/${roundId}` as never}
         className="mcardp-open"
-        aria-label={`${assetName} ${t.market.udTitle} · ${durationMinutes} ${t.market.udMin}`}
+        aria-label={`${assetName} ${t.market.udTitle} · ${durationWords}${windowLabel ? ` · ${windowLabel}` : ""}`}
         onClick={() => window.dispatchEvent(new Event("50pick:navigating"))}
       />
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-start gap-2.5">
-        <AssetMark icon={assetIcon} ticker={assetTicker} />
-        <div className="min-w-0 flex-1">
-          {/* 2-line clamp, not ellipsis: Swahili and Chinese expand ~35% and the card
-              is bottom-pinned, so the extra height keeps grid alignment (Q6). */}
-          <h3 className="font-display text-[14.5px] font-semibold leading-[1.25] text-text"
-              style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {assetName} {t.market.udTitle}
-            <Chip style={{ marginLeft: 6, verticalAlign: "middle" }}>{durationMinutes} {t.market.udMin}</Chip>
-          </h3>
-          <div className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
-            {/* Stage 9b — kit <Dot pulse>. It IS `.live-dot`: same 6px box, same
-                `--live-400`, same 2600ms breathe, same gating at all three
-                reduced-motion tiers. Nothing about this pip renders differently. */}
-            {bettable && <Dot tone="live" size={6} pulse />}
-            {/* 🔴 E-166 · THIS SAID "CLOSED" FOR EVERY NON-BETTABLE STATE, and it was wrong about
-                three of them. Measured on production 2026-08-19: a settled card read
-                **"Closed · BTC"** beside its own "Up wins" result — *closed is not a result* —
-                and a LOCKED round, which is still running and still being watched, read "Closed"
-                too. Copy discipline §7: say what is true. The word now comes from the round's
-                own state, and it is the SAME ladder `/updown/[roundId]` already renders, so the
-                two surfaces cannot describe one round differently. */}
-            {bettable ? t.market.udStreaming
-              : state === "resolved" ? t.market.statusResolved
-              : state === "void" ? t.market.statusVoid
-              : state === "confirming" ? t.market.udSettlingTitle
-              : locked ? t.market.udLockedTitle
-              : t.market.statusClosed} · {assetTicker}
-          </div>
-        </div>
+      {/* Identity names the asset and the real EAT round window once. */}
+      <div className="ud-identity">
+        <AssetMark icon={assetIcon} ticker={assetTicker} size={32} />
+        <h3 className="ud-title">{assetName}</h3>
+        {windowLabel && <span className="ud-window font-mono tabular-nums">{windowLabel}</span>}
       </div>
 
-      {/* ── The confirmed price (R5(c) · F1, 2026-09-27) ─────────────────────
-          ⭐ NAMED, as the round page and the landing band name it: "Confirmed price" while the round runs (the read is a
-          dated confirmed quote, never a live tick — the footer carries its time), "Close" once the figure IS the close.
-          ⛔ IT LEFT THE HEADER TO GET A NAME. Beside the title there was no room for one: the Swahili label alone is
-          wider than the figure, and a squeezed title clamps the game's own name. On its own row the label sits left,
-          the figure and its move right, held together; when the two do not fit one line the figure wraps under the
-          label and stays right-aligned (`ml-auto`), never split and never clipped (M4a). `data-tone` names the ink for
-          the frame drive. */}
-      <div className="ud-read" data-tone={tone ?? "none"}>
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
-            {settledNow ? t.market.udClosePrice : t.market.udConfirmedPrice}
-          </span>
-          {livePrice == null ? (
-            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap">
-              <span className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</span>
-              {/* Ends on the card's edge, its trailing 0.10em taken back (round 7, R7-C, 2026-10-10). */}
-              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint kp-track-end kp-track-end--10">{t.market.udAwaitingRead}</span>
-            </span>
-          ) : (
-            <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
-              <span className="inline-flex items-center gap-1 font-mono text-[15.5px] font-bold tabular-nums">
-                {tone === "up" && <I.arrowUp s={11} edge="start" text="mono-700" />}
-                {tone === "down" && <I.arrowDown s={11} edge="start" text="mono-700" />}
-                {priceText.live}
-              </span>
-              {priceText.move != null && (
-                <span className="font-mono text-[11px] font-semibold tabular-nums">{priceText.move}</span>
-              )}
-            </span>
-          )}
-        </div>
-        {levelWords && <p className="mt-1 mb-0 text-body-sm leading-[1.45] text-text-muted">{levelWords}</p>}
-      </div>
-
-      {/* ── Countdown (mandatory: TIMER) ───────────────────────────────── */}
-      <div className="ud-pod rounded-xl px-3 py-2.5"
-           style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
-        {/* ⛔ THE CAPTION IS THE FIX, NOT THE DIGITS. Same `0:36` means two different things
-            either side of the lock, so the label must say which — "Betting closes in" before,
-            "Result in" after. Without it the player reads a live-looking clock over dead
-            buttons and concludes the app cheated them. */}
-        <div key={`c-${podPhase}`}
-             className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"
-             style={{
-               // ⛔ ONE LINE, ALWAYS, IN EVERY LOCALE. The handover caption replaces the
-               // countdown caption inside a pod whose height must not change (no layout shift),
-               // and SW/ZH run ~35% longer than EN. A wrapped caption grows the pod by a whole
-               // line and shunts every card below it — so the caption is clipped to one line
-               // rather than allowed to reflow the board.
-               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-             }}>
-          {/* ⭐ E-166 · past the hold, a SETTLED round stops describing itself and names what
-              comes next. "Round settled" is the hold; after it the pod is the handover. */}
-          {inHandover ? handoverCaption
-            : settledNow ? t.market.udRoundSettled
-            // ⭐ E-99 · past the close the caption is about the RESULT, never "Selections
-            // closed" — the player already knows selections closed, they are waiting to find
-            // out what happened. Once the estimate is spent we say we are waiting instead of
-            // counting, because a clock that has run out is not information.
+      {/* One clock row: a named deadline beside its digits, or the actual result. */}
+      <div className="ud-clock">
+        <div key={`c-${podPhase}-${urgent ? "final" : "normal"}`}
+             className="ud-clock-caption m-tick text-body-sm text-text-subtle"
+             aria-live="polite">
+          {bettable && <Dot tone="neutral" size={6} pulse />}
+          {settledNow ? t.market.udResultLabel
             : awaitingResult ? (resultRunning ? t.market.udResultIn : t.market.udAwaitingResult)
-            : locked ? t.market.udResultIn
+            : locked ? t.market.udClosesIn
+            : urgent ? t.market.udLastSeconds
             : running ? t.market.udBetsCloseIn : t.market.udSelectionsClosed}
         </div>
-        {/* ⛔ THE PHASE KEY STAYS ON THE ELEMENT THAT WEARS `.m-tick` — the leaf IS that
-            element, so the kit's dip-and-land is unchanged. `seedNowMs` is what makes the
-            remount safe: without it the first paint of a new phase would be `--:--` for a
-            frame, in the middle of the very animation the key exists to trigger.
-            ⛔ THE FOUR BRANCHES ARE THE SAME FOUR — "is anything being counted, and to what". */}
-        <CardCountdownDigits
-          key={`d-${podPhase}`}
-          digits={inHandover ? handoverDigits
-            : settledNow ? "—:—"
-            : awaitingResult && !resultRunning ? "—:—"
-            : null}
-          targetMs={inHandover ? (handover.targetMs ?? closesAtMs) : countdownTarget}
-          serverNowMs={serverNowMs}
-          seedNowMs={serverNow}
-          urgentEligible={bettable}
-          tone={inHandover ? (handover.counting ? "var(--brand-300)" : "var(--text-subtle)")
-            : resultRunning ? "var(--brand-300)"
-            : running ? "var(--text)" : "var(--text-subtle)"}
-        />
+        {settledNow ? (
+          <span className="ud-card-result m-tick inline-flex items-center gap-1.5 font-semibold"
+                style={{ color: state === "void" ? "var(--text-muted)" : outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
+            {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins}</>
+              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins}</> : t.market.statusResolved}
+          </span>
+        ) : (
+          <CardCountdownDigits
+            key={`d-${podPhase}`}
+            digits={clockWithoutTarget ? "—:—" : null}
+            targetMs={countdownTarget}
+            serverNowMs={serverNowMs}
+            seedNowMs={serverNow}
+            urgentEligible={bettable}
+            tone={running ? "var(--text)" : "var(--text-subtle)"}
+          />
+        )}
       </div>
 
+      {/* The open is the price to beat, stated once. The exact boundaries remain on the round page. */}
+      <div className="ud-beat flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="text-body-sm text-text-subtle">
+          {settledNow ? t.market.udOpenPrice : t.market.udWinTarget}
+        </span>
+        <span className="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">
+          {priceText.open ?? "—"}
+        </span>
+        {!settledNow && priceText.margin && (
+          <span className="font-mono text-micro tabular-nums text-text-faint"
+                aria-label={t.home.udMatchRefund.replace("{margin}", priceText.margin)}>±{priceText.margin}</span>
+        )}
+        {openPrice == null && <span className="text-body-sm text-text-faint">{t.market.udAwaitingRead}</span>}
+      </div>
+
+      {openPrice != null && (
+        <div className="ud-now" data-tone={tone ?? "none"}>
+          {shownPrice == null ? (
+            <span className="text-body-sm text-text-subtle">
+              {readUnavailable ? t.market.udReadUnavailable
+                : openClock
+                ? t.home.udMatchNoNewPrice.replace("{time}", openClock)
+                : t.market.udAwaitingRead}
+            </span>
+          ) : (
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+              <span className="text-body-sm text-text-subtle">
+                {settledNow ? t.market.udClosePrice : t.market.udConfirmedPrice}
+              </span>
+              <span className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap" style={{ color: priceColor }}>
+                {tone === "up" && <I.arrowUp s={12} edge="start" text="mono-700" />}
+                {tone === "down" && <I.arrowDown s={12} edge="start" text="mono-700" />}
+                <span className="ud-figure font-mono font-semibold tabular-nums">{priceText.live}</span>
+                {priceText.move && <span className="ud-now-delta font-mono text-micro tabular-nums">{priceText.move}</span>}
+              </span>
+            </div>
+          )}
+          {levelWords && <p className="m-0 text-body-sm text-text-muted">{levelWords}</p>}
+        </div>
+      )}
+
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
-      <div className="ud-stats flex items-center justify-between gap-2">
-        <span className="font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <span className="text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume} </span>
-          {formatTzs(volumeTzs)}
-        </span>
-        <span className="inline-flex items-center gap-1 font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <I.users s={11} />{playersText}
-        </span>
+      <div className="ud-stats flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-body-sm">
+        <span className="text-text-subtle">{t.market.udPool}</span>
+        <span className="amount font-semibold text-text">{formatTzs(volumeTzs)}</span>
+        <span aria-hidden className="text-text-faint">·</span>
+        <span className="text-text-subtle">{playersText} {players === 1 ? t.market.udPlayersOne : t.market.udPlayers}</span>
       </div>
 
       {/* ── Pool split — words AND colour, never colour alone (a11y) ──────
@@ -916,25 +915,27 @@ export function UpDownCard(props: UpDownCardProps) {
           idea drawn two ways on one board. */}
       <div className="ud-split">
         {upPct !== null && downPct !== null ? (
-          <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
+          <div className="flex items-center justify-between font-mono text-micro font-semibold">
             <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
             {/* On the bar's end, its trailing 0.06em taken back (round 7, R7-C) — the round page's bar does the same. */}
             <span className="kp-track-end kp-track-end--06" style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
           </div>
         ) : price.kind === "oneSided" ? (
-          <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
+          <div className="ud-oneside-caption flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
         ) : null}
         {/* ⛔ TWO CALLS, NO `?? 50`. A single call would need a numeric fallback for `yesPct`
             on the empty branch, and writing `upPct ?? 50` here — three lines under a prop doc
             that forbids exactly that — is how the fabricated 50 walks back in the moment
             someone deletes the `empty` prop. The branch makes the contract unforgeable. */}
         {upPct === null ? (
-          <TippingBar className="mt-1" height={7} showLabels={false} recastOnHover={false}
+          <TippingBar className="mt-0.5" height={7} showLabels={false} recastOnHover={false}
             empty emptyLabel={price.kind === "oneSided" ? t.market.oneSideOnly : players === 0 ? t.market.noBetsYet : t.market.noPoolYet} />
         ) : (
-          <TippingBar className="mt-1" yesPct={upPct} height={7} showLabels={false}
+          <TippingBar className="mt-0.5" yesPct={upPct} height={7} showLabels={false}
             recastOnHover={false} resolved={state === "resolved"}
-            probabilityLabel={t.market.probBarAria.replace("{side}", t.market.udUp)} />
+            probabilityLabel={fill(t.market.barReading, {
+              yesPct: upPct, yesWord: t.market.udUp, noPct: 100 - upPct, noWord: t.market.udDown,
+            })} />
         )}
         {/* ⛔ NO `mcardp-nobets` CAPTION HERE, and that is a difference from `.mcardp` ON PURPOSE
             — caught by LOOKING at the render, not by any count. `.mcardp` needs the caption
@@ -946,65 +947,10 @@ export function UpDownCard(props: UpDownCardProps) {
             ⭐ Consistency is one idea stated one way — not the same words pasted twice. */}
       </div>
 
-      {/* ── The winning prices ────────────────────────────────────────────
-          ⛔ RE-WORDED FOR THE TICK-FLOOR MARGIN (Ali's decision, 2026-08-04). This block
-          used to be headed "Target to win" and framed the game as REACHING a boundary — a
-          band of ±0.02% around the open, which a 5-minute round often failed to cross (36.6%
-          of BTC rounds refunded at that setting).
-
-          At the tick floor the band is the asset's smallest meaningful move, so the two tiles
-          sit essentially AT the open price and the game is plainly **higher or lower**.
-          Keeping the old wording would describe a game the platform no longer runs — E-39's
-          exact shape, where a settlement rule was printed underneath a band it did not match.
-
-          Frozen at open; hidden once the round settles (it shows its outcome instead) or
-          before a price is confirmed (we never invent a boundary). */}
-      {upTarget != null && downTarget != null && state !== "resolved" && state !== "void" && (
-        <div className="ud-prices">
-          {/* "Higher or lower than $63,572.10" — the OPEN price is the thing being compared
-              against, so it is what the heading names. The ± figure stays because it is the
-              honest size of the band, and at the tick floor it is reassuringly tiny. */}
-          {/* 🔴 F1 (2026-09-27, the band's frame panel) · THIS HEADING TRUNCATED A MONEY FIGURE. It was one `truncate`
-              run, so at 360 in Swahili "JUU AU CHINI YA $63,572.10" could end "$63,57…" — a clipped number is a wrong
-              number (M4a). Now the words wrap between themselves, the open price is held whole, and the margin keeps
-              the right edge on whichever line it lands. */}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
-            <span className="min-w-0">
-              {t.market.udWinTarget}
-              {openPrice != null && <>{" "}<span className="whitespace-nowrap tabular-nums">{priceText.open}</span></>}
-            </span>
-            {/* The band's ± ends on the card's edge, its trailing 0.14em taken back (round 7, R7-C, 2026-10-10). */}
-            {openPrice != null && <span className="ml-auto whitespace-nowrap tabular-nums kp-track-end">± {priceText.margin}</span>}
-          </div>
-          {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
-              KEPT. They are label-over-value pairs, but not one of them lands on a rung:
-              the label is 9px BOLD at 0.10em (the dictionary has 9px/regular and
-              9.5px/bold, not this), the value is 12.5px (nearest rung is 13.5), and the
-              box is a per-side `color-mix` wash with a matching border that no entry in
-              the BOX dictionary describes. The right-hand tile is additionally
-              right-ALIGNED, which <Stat> has no prop for. Folding them would restyle the
-              two figures that tell a player what price wins — reported instead. */}
-          <div className="mt-1 grid grid-cols-2 gap-2">
-            <div className="min-w-0 rounded-lg px-2.5 py-1.5"
-                 style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
-              <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--yes-300)" }}>
-                <I.arrowUp s={10} edge="start" text="mono-700" />{t.market.udUp}
-              </div>
-              <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
-                ≥ {priceText.up}
-              </div>
-            </div>
-            <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
-                 style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
-              <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--no-300)" }}>
-                {t.market.udDown}<I.arrowDown s={10} edge="end" text="mono-700" />
-              </div>
-              <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
-                ≤ {priceText.down}
-              </div>
-            </div>
-          </div>
-        </div>
+      {bettable && outEmptyCopy && (
+        <p className="ud-refund-brief m-0 text-body-sm text-text-subtle">
+          {t.market.udOneSideRefundBrief}
+        </p>
       )}
 
       {/* ── The one action / status block. Exactly one renders. ────────── */}
@@ -1051,23 +997,10 @@ export function UpDownCard(props: UpDownCardProps) {
             // Signed-out / display-only → the buttons route to the round detail, where
             // the sign-in gate lives. No stake control, no money path from here.
             <>
-              {/* ⛔ E-196 · these two buttons are a SECOND COPY of the pair in `updown-stake-controls.tsx` — same
-                  classes, same content shape, different file — because the signed-out card navigates instead of
-                  betting. That duplication is why a clipped figure once reached signed-out visitors only, and why the
-                  first repair missed it: it went into the authed copy. ⭐ Since the owner's ruling of 2026-10-14 both
-                  copies hold the same two things and nothing else — the side's arrow and its word (DESIGN_AUTHORITY
-                  §C3). No `× N` on either, and no note about one. */}
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
-                        aria-label={`${t.market.udUp} — ${assetName}`}>
-                  {/* The side's arrow leads the centred pick, so its ink stands on the start padding (round 10, R10-A6). */}
-                  <I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
-                </button>
-                <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
-                        aria-label={`${t.market.udDown} — ${assetName}`}>
-                  <I.arrowDown s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
-                </button>
-              </div>
+              <UpDownSidePair assetName={assetName} onPick={go} />
+              <p className="mt-1 mb-0 text-body-sm text-text-faint">
+                {t.market.udSignInToBet} · {t.market.udFromStake} <span className="amount">{formatTzs(minStake ?? PLATFORM_MIN_STAKE)}</span>
+              </p>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
                   because a visitor deciding whether to sign up deserves the same fact. Faint
                   informational ink + the `info` glyph: not gold, not an alarm (G5). */}
@@ -1075,7 +1008,7 @@ export function UpDownCard(props: UpDownCardProps) {
                   floor. It takes the kit's 13px, the size the round page already prints it at, and the authed card's copy
                   moved with it (`updown-stake-controls.tsx`). */}
               {outEmptyCopy && (
-                <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
+                <p className="mt-1 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
                   <I.info s={11} className="mt-[2px] shrink-0" />
                   {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
                   <span>{noticeBody(outEmptyCopy)}</span>
@@ -1083,73 +1016,28 @@ export function UpDownCard(props: UpDownCardProps) {
               )}
             </>
           )
-        ) : locked ? (
-          // ── 🔒 LOCKED — watching, not betting ─────────────────────────────
-          //
-          // ⛔ THE MESSAGE CARRIES ITS REASON, and this is the most load-bearing sentence in
-          // the feature. "Closed" reads as *the app was too slow and cheated me*. "Bets closed
-          // at 07:21:24 — the result is locked so nobody can bet on an outcome they can already
-          // see" reads as fair. Identical event, opposite feeling.
-          //
-          // Deliberately NOT an alarm tone: the round is running normally and the player has
-          // done nothing wrong. Same calm chrome as `confirming`.
-          <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            {/* V-1 — kit glyph, not the 🔒 emoji: platform rule is no emoji in
-                UI copy, and the OS-rendered glyph broke the card's ink. */}
-            <Chip variant="pending"><I.lock s={11} tier="fill" /> {t.market.udLockedTitle}</Chip>
-            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
-              {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
+        ) : quoteVisible ? (
+          <div className="ud-card-wait text-body-sm text-text-muted">
+            <p className="m-0">
+              {locked ? t.market.udLockedWhy.replace("{time}", lockClock ?? "—") : t.market.udConfirmingBody}
             </p>
-            {/* ⭐ The pool is frozen here, so these are the real figures — the only payout figures this card ever states
-                (before the lock it quotes none: the owner's ruling of 2026-10-14).
-                ⭐ UD-20 (Ali, 2026-08-14) · BOTH OUTCOMES. A hedged holder saw nothing at all
-                here: `myExactPayout` is null for them, because one number cannot state a
-                two-sided position and pricing `up + down` as if it all sat on UP printed a
-                confident wrong figure on a money surface (A-5). Two numbers can. ⚠️ A one-sided
-                holder gets the same two rows and their losing row reads 0 — simply true, and
-                better than leaving it unsaid. */}
-            {/* U43 · …unless the ROUND is one-sided: nothing can be lost, and one sentence says so. */}
             {lockedOneSided && (
-              <p className="mt-2 mb-0 text-body-sm leading-[1.5] text-text-muted">
-                {noticeBody(t.market.udLockedOneSided.replace("{side}", sideWord(t, lockedOneSided, "UPDOWN")))}
-              </p>
+              <p className="m-0">{noticeBody(t.market.udLockedOneSided.replace("{side}", sideWord(t, lockedOneSided, "UPDOWN")))}</p>
             )}
             {ifUp != null && ifDown != null && !lockedOneSided && (
-              <div className="mt-2">
-                {holdsBoth && (
-                  // DG-A-14 · §T3 + §T4 — "You hold both sides" is a sentence about the player's
-                  // own position, not an identifier, so the eyebrow dressing is wrong for it:
-                  // uppercase and tracking dropped, 10px lifted to `text-body-sm` (13). This is
-                  // the card twin of the same line in `round-action-panel.tsx`, and the two
-                  // surfaces stay on the same rung.
-                  <p className="m-0 font-mono text-body-sm font-bold text-text-subtle">
-                    {t.market.udBothSidesHeld}
-                  </p>
-                )}
-                {/* DG-A-12 · §M4 + §T1 — the card's two "if it closes" payouts. `.amount`
-                    replaces `font-mono … tabular-nums`; 12.5 → `text-body-sm` (13). ⭐ This is
-                    the card twin of `round-action-panel.tsx` L129/135; the two surfaces state
-                    the same fact and now land on the same rung. */}
-                <p className="mt-1 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
+              <div className="ud-card-payouts">
+                {holdsBoth && <p className="m-0 text-text-subtle">{t.market.udBothSidesHeld}</p>}
+                <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-2">
                   <span>{t.market.udIfClosesUp}</span>
-                  <span className="amount text-body-sm font-bold" style={{ color: "var(--yes-300)" }}>
-                    {formatTzs(ifUp)}
-                  </span>
+                  <span className="amount font-semibold" style={{ color: "var(--yes-300)" }}>{formatTzs(ifUp)}</span>
                 </p>
-                <p className="mt-0.5 m-0 flex items-baseline justify-between gap-2 text-body-sm text-text-muted">
+                <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-2">
                   <span>{t.market.udIfClosesDown}</span>
-                  <span className="amount text-body-sm font-bold" style={{ color: "var(--no-300)" }}>
-                    {formatTzs(ifDown)}
-                  </span>
+                  <span className="amount font-semibold" style={{ color: "var(--no-300)" }}>{formatTzs(ifDown)}</span>
                 </p>
               </div>
             )}
-          </div>
-        ) : state === "confirming" ? (
-          // CALM. No red, no spinner, and above all no number we do not have.
-          <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <Chip variant="pending">{t.market.udSettlingTitle}</Chip>
-            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{t.market.udConfirmingBody}</p>
+            {nextRoundWords && <p className="ud-card-next m-0 text-text-subtle">{nextRoundWords}</p>}
           </div>
         ) : refundReason ? (
           // ── A REFUND, WITH ITS REAL REASON (E-65 / E-39) ──────────────────
@@ -1163,48 +1051,45 @@ export function UpDownCard(props: UpDownCardProps) {
           // Now the branch is driven by whether THIS VIEWER was refunded, and the sentence
           // comes from `refundReasonFor` — one rule shared with the round page, the settlement
           // proof, the push and the inbox. NEUTRAL chrome throughout: a refund is not a failure.
-          <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            {refundCopy?.claimsRefund ? (
-              <Chip>{t.market.udRefundTitle}</Chip>
-            ) : (
+          <div className="ud-card-refund text-body-sm text-text-muted">
+            {!refundCopy?.claimsRefund && (
               // 2026-09-13 · nothing of THIS viewer's came back, so no "Stake returned" pill: the
               // round's own VOID word in the player VOID tone the round page already uses.
               <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>
             )}
-            {refundCopyText && (
-              <p className="mt-2 text-body-sm leading-[1.5] text-text-muted text-balance">{refundCopyText}</p>
+            {cardRefundCopyText && (
+              <p className="mt-0 text-body-sm leading-[1.5] text-text-muted text-balance">{cardRefundCopyText}</p>
             )}
           </div>
-        ) : state === "resolved" ? (
-          // The market outcome, NOT the player's payout — no gold here.
-          <div className="flex items-center justify-between gap-2 rounded-xl px-3.5 py-3" style={{ background: "var(--bg-inset)" }}>
-            <span className="inline-flex items-center gap-1.5 font-mono text-[14px] font-bold tracking-[0.04em]"
-                  style={{ color: outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-              {outcome === "UP" ? <I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} /> : <I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />}
-              {outcome === "UP" ? t.market.udUpWins : t.market.udDownWins}
-            </span>
-            {openPrice != null && closePrice != null && (
-              /* 🔴 D52 · THE ARROW USED TO END A LINE. This was one loose text run, so at 360 SW a
-                 seven-figure pair broke wherever it ran out of room — "$75,819.68 →" on one line
-                 and "$75,824.01" on the next, with the connector stranded at the end of the first.
-                 A trailing arrow reads as a number that lost its other half.
-                 ⭐ THE ARROW IS BOUND TO THE PRICE IT POINTS AT, so the only break the browser can
-                 take is BEFORE it: the pair either sits on one line or stacks as
-                 "$75,819.68" / "→ $75,824.01", where the arrow leads as a connector. `text-right`
-                 keeps the stack aligned to the same edge.
-                 ⛔ And each figure is nowrap in its own right — a price may never break mid-digits.
-                 ⛔ Plain `whitespace-nowrap` is correct HERE and would NOT be on the history strip's
-                 sub-line: that one carries `.amount`, whose `.amount.amount` selector sets nowrap at
-                 doubled specificity and beats any utility (D37). Nothing on this span competes. */
-              <span className="text-right font-mono text-[10.5px] tabular-nums text-text-muted">
-                <span className="whitespace-nowrap">{priceText.open}</span>{" "}
-                <span className="whitespace-nowrap">→ {priceText.close}</span>
-              </span>
+        ) : state === "resolved" ? null : (
+          <p className="m-0 text-body-sm text-text-muted">{t.market.udAwaitingResult}</p>
+        )}
+
+        {settledNow && myResults && myResults.length > 0 && (
+          <div className="ud-card-own-result text-body-sm text-text-muted">
+            {myResults.length === 1 ? (
+              <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
+                <span>{t.market.udYourResult}:</span>
+                <span>{myResults[0].status === "WIN" ? t.market.udWon
+                  : myResults[0].status === "LOSS" ? t.market.udLost : t.market.udRefundTitle}</span>
+                <span aria-hidden>·</span>
+                {myResults[0].status !== "VOID" && (
+                  <span>{myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake}</span>
+                )}
+                <span className="amount font-semibold"
+                      style={{ color: myResults[0].status === "WIN" ? "var(--gold-300)" : "var(--text)" }}>
+                  {formatTzs(myResults[0].status === "LOSS" ? myResults[0].stake : myResults[0].payout)}
+                </span>
+              </p>
+            ) : (
+              <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
+                <span>{t.market.udBothSidesHeld}</span><span aria-hidden>·</span>
+                <span>{myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut}</span>
+                <span className="amount font-semibold text-text">
+                  {formatTzs(myResults.reduce((sum, result) => sum + result.payout, 0))}
+                </span>
+              </p>
             )}
-          </div>
-        ) : (
-          <div className="btn btn-ghost btn-lg pointer-events-none w-full justify-center opacity-85">
-            {t.market.udAwaitingResult}
           </div>
         )}
 
@@ -1224,7 +1109,7 @@ export function UpDownCard(props: UpDownCardProps) {
             {/* ⛔ ONLY WHEN THERE IS SOMEWHERE TO GO. `ready` is true solely when a successor ROW
                 is open, so this link can never point at a round that does not exist — the whole
                 reason `ready` is not "the open instant has passed". */}
-            {handover.ready && successor?.roundId && (
+            {handover.ready && successor?.roundId && !successorOnBoard && (
               /* ⛔ THE KIT PRIMITIVE, AND IT TOOK TWO TRIES. The first draft was a `<button>`
                  painted only with ink, which `test:ui-consistency`'s `bare-text-button` caught
                  — a control whose entire appearance is type reads as a label, and this one sits
@@ -1238,8 +1123,8 @@ export function UpDownCard(props: UpDownCardProps) {
                 variant="ghost"
                 size="sm"
                 trailing={<I.chevronRight s={10} text="mono-600" />}
-                className="font-mono uppercase tracking-[0.08em]"
-                style={{ color: "var(--brand-300)", fontSize: 10.5 }}
+                className="ud-card-next-button text-body-sm"
+                style={{ color: "var(--brand-300)" }}
                 onClick={(e) => {
                   e.preventDefault(); e.stopPropagation();
                   window.dispatchEvent(new Event("50pick:navigating"));
@@ -1253,37 +1138,24 @@ export function UpDownCard(props: UpDownCardProps) {
         )}
       </div>
 
-      {/* ── Footer: the trust line. Never dropped, even at 360px. ────────
-          🔴 AND IT WAS BEING DROPPED — `truncate` painted "Live metals market · quoted 17:5…"
-          on production, measured 2026-08-14 on the first gold round after the chain stall was
-          fixed: content 205px in a 191px box at **1024**, and 205 in 196 at **360**. This line
-          exists to say WHICH source priced the round and WHEN it quoted — an integrity signal —
-          so an ellipsis eating the timestamp removes the only thing it is for. `truncate` sets
-          `white-space: nowrap`, so the text could not wrap even when there was a second line to
-          be had.
-          ⛔ Do not "fix" this by dropping the seconds. E-47b's whole finding was a source that
-          had quoted 14 minutes before we read it; second-level precision is the evidence.
-          ⚠️ Found by LOOKING, at a width a suite had no reason to visit — `document.scrollWidth`
-          cannot see clipping INSIDE a card, which is why `qa:asset-board` measures elements.
-          🔴 F1 (2026-09-27, the band's frame panel) · AND IT WAS A SENTENCE AT 9.5px — "Soko la metali · imenukuliwa
-          17:52:03 EAT", 3px under §T4's reading floor, on the one line that says where the price came from and when.
-          It takes the kit's 13px. The words set in the body face, the figures in mono (§T5); "· imenukuliwa 17:52:03 EAT"
-          and "Ufunguzi $63,572.10" are each held whole, so the line wraps BETWEEN them — never inside a time or a
-          price. S12 F25b: DotSeq hides the separator when the stamp starts a new line;
-          the old leading-dot span drew "· imenukuliwa" at the line start. The seconds stay (E-47b). */}
-      <div className="ud-foot flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-body-sm text-text-faint"
+      {/* Keep the money buttons at a steady screen position while the vendor's
+          minute bars arrive. The line may grow from no drawing to a plot, but
+          it cannot push an in-progress tap under the phone navigation. */}
+      <RoundLiveLine assetKey={assetKey} opensAtMs={opensAtMs} closesAtMs={closesAtMs}
+        openPrice={openPrice} closePrice={closePrice} readPrice={readPrice} readQuotedAt={readQuotedAt}
+        decimals={decimals} locale={locale} state={state} serverNowMs={serverNowMs} />
+
+      {/* The one source line. A stamp appears only when it belongs to this round's displayed read. */}
+      <div className="ud-foot flex flex-wrap items-baseline gap-x-3 gap-y-1 text-body-sm text-text-faint"
            style={{ borderTop: "1px solid color-mix(in oklab, var(--border) 55%, transparent)" }}>
         <span className="min-w-0">
           <DotSeq
-            text={quoteLabel ? `${sourceLabel} · ${quoteLabel}` : sourceLabel}
-            renderPart={(part) => part === quoteLabel
-              ? <span className="whitespace-nowrap">{t.market.udQuoted}{" "}<span className="font-mono tabular-nums">{quoted}</span></span>
+            text={quoted ? `${sourceLabel} · ${quoted}` : sourceLabel}
+            renderPart={(part) => part === quoted
+              ? <time className="whitespace-nowrap font-mono tabular-nums" dateTime={displayedQuotedAt ?? undefined}>{quoted}</time>
               : part}
           />
         </span>
-        {openPrice != null && (
-          <span className="ml-auto whitespace-nowrap">{t.market.udOpenPrice}{" "}<span className="font-mono tabular-nums">{priceText.open}</span></span>
-        )}
       </div>
     </article>
   );

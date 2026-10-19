@@ -12,8 +12,8 @@
  * check the outcome rather than take it on faith. It renders only once the round is
  * decided; a half-filled receipt mid-round would imply a result that does not exist yet.
  *
- * Gold appears at most twice and both are earned/committed money: the Confirm button and
- * a winning payout. Everything else is neutral or YES/NO — never gold for decoration.
+ * Gold marks a winning payout after settlement. The Confirm button is a brand action;
+ * the other facts are neutral or UP/DOWN side ink.
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -33,7 +33,7 @@ import { getServerT } from "@/lib/i18n-server";
 // five chances to disagree about someone money.
 import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
-import { roundName } from "@/lib/updown-round-name";
+import { roundDuration, roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord, positionStatusGlyph, sideWord } from "@/lib/side-label";
 import { formatNumber, formatTzs } from "@/lib/utils";
@@ -191,14 +191,9 @@ export default async function UpDownRoundPage({
   const locked = round.state === "locked";
   const decided = roundIsSettled(round.state);
 
-  /* Hero price: the current live read while open, the round's own close once decided.
-     ⭐ D36 · THIS RULE NOW LIVES IN `heroPrice`, and `/updown` CALLS THE SAME FUNCTION. It was
-     written here and only here, so the board — which never had it — showed a settled card
-     ticking today's quote while this page showed the same round's close. A rule that exists on
-     one of two surfaces is not a rule; it is a coincidence that held until someone built the
-     second surface. Sharing the function is what makes "the two cannot disagree" structural
-     rather than something a comment asserts. */
-  const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: asset.livePrice });
+  /* The hero uses this round's confirmed read and frozen close. An asset-wide latest
+     quote may belong to another round, so it cannot date or colour this round. */
+  const heroLive = heroPrice({ state: round.state, closePrice: round.closePrice, livePrice: round.readPrice });
   const move = heroLive != null && round.openPrice != null ? heroLive - round.openPrice : null;
   /* ⭐ R5 (2026-09-27, spec updown-band-v2 §12) · THIS PAGE AGREES WITH THE LANDING BAND.
      The band says "Juu iliongoza saa 14:26" from settlement's own target rule; a player who taps
@@ -217,7 +212,10 @@ export default async function UpDownRoundPage({
   // "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end: one nowrap run. Round 5 (2026-10-09, review 3
   // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
   // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
-  const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
+  const shownQuotedAt = decided
+    ? round.closePrice != null ? round.closeQuotedAt : round.openQuotedAt
+    : heroLive != null ? round.readQuotedAt : round.openQuotedAt;
+  const quotedAt = fmtEAT(shownQuotedAt);
   const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;
   const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">${Math.abs(move).toFixed(dec)}</span>;
   const moveText = move == null || move === 0 ? null
@@ -225,12 +223,12 @@ export default async function UpDownRoundPage({
       : <>{move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy}{" "}{deltaFigure}</>;
   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
-  const source = decided
+  const source = decided || heroLive == null
     ? <>{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}{stamp && <>{" · "}{stamp}</>}</>
     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
   // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
   // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
-  const aboveBelow = decided ? moveText
+  const aboveBelow = decided || heroLive == null ? moveText
     : moveText && stamp
       ? <><span className="ud-hero-chunk">{moveText}</span><span className="ud-hero-sep">{" · "}</span><span className="ud-hero-chunk">{stamp}</span></>
       : (moveText ?? stamp);
@@ -268,7 +266,7 @@ export default async function UpDownRoundPage({
   const awaitingResult = round.state === "confirming";
   const resultTarget = awaitingResult ? round.expectedResultAtMs ?? null : null;
   const countLabel = isOpen ? t.market.udBetsCloseIn
-    : locked ? t.market.udResultIn
+    : locked ? t.market.udClosesIn
     : awaitingResult ? (resultTarget != null ? t.market.udResultIn : t.market.udAwaitingResult)
     : t.market.udRoundSettled;
 
@@ -333,8 +331,12 @@ export default async function UpDownRoundPage({
     : result === "LOSS" ? "no" as const
     : refundReason === "unmatched" ? "neutral" as const
     : TONE_CHIP[STATUS_TONE.VOID.player];
-  // DA-7 · the "Paid out" figure. A WIN is money the player EARNED, so M3 puts it in struck
-  // type rather than gold colour; everything else keeps plain text ink. The class carries its
+  // Name the amount by its money meaning: earned payout, lost stake, or returned stake.
+  // Only a WIN is money the player earned, so M3 puts it in struck type.
+  const resultAmountLabel = result === "WIN" ? t.market.udPaidOut
+    : result === "LOSS" ? t.market.udStake : t.market.udRefundTitle;
+  const resultAmount = result === "LOSS" ? myPosition?.stake ?? 0 : myPosition?.payout ?? 0;
+  // The class carries its
   // own gradient, mono family and tabular-nums, so no `color` may be set alongside it — a flat
   // colour under a transparent fill is two sources of truth for one figure.
   const payoutStruck = result === "WIN";
@@ -472,7 +474,7 @@ export default async function UpDownRoundPage({
                   {name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>
                 </span>
                 {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`. */}
-                <Chip>{round.durationMinutes} {t.market.udMin}</Chip>
+                <Chip>{roundDuration(t, round.durationMinutes)}</Chip>
               </h1>
               <p className="mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle">
                 {isOpen && <span className="live-dot" />}
@@ -494,6 +496,7 @@ export default async function UpDownRoundPage({
             isOpen={isOpen || locked || resultTarget != null}
             serverNowMs={round.serverNowMs}
             label={countLabel}
+            lastSecondsLabel={isOpen ? t.market.udLastSeconds : undefined}
             resultMode={resultTarget != null}
             /* ⭐ E-104 · THE INSTANTS, so the pod enters the result phase BY ITSELF.
                🔴 Watched on production 2026-08-05 (`udr_8bd25a9f786ea498f132`): at the close
@@ -513,8 +516,8 @@ export default async function UpDownRoundPage({
               settled: t.market.udRoundSettled,
             }}
             /* ⭐ E-166 · past the hold this pod stops reading `Round settled 00:00` — the dead
-               clock measured on production 2026-08-19 — and becomes the handover ticker. Same
-               box, same 28px digits; only the caption and the digits change. */
+               clock measured on production 2026-08-19 — and becomes the handover ticker.
+               Phases without a target show one compact, truthful label. */
             handover={{
               roundId,
               settledAtMs: round.resolvedAtMs,
@@ -531,10 +534,9 @@ export default async function UpDownRoundPage({
           />
         </header>
 
-        {/* ⭐ E-166 · THE HANDOVER BAR. It renders nothing until the hold has passed, then states
-            what comes next and — when auto-advance is deferred by an open overlay, an in-flight
-            bet, or a player who deliberately opened an already-settled round — offers the way
-            out. It also OWNS the auto-advance itself; the gates are in its own header. */}
+        {/* ⭐ E-166 · THE HANDOVER. The pod above states the visible next-round phase; this
+            component announces the fuller phase once to screen readers and offers a link when
+            a real successor is open. It also owns auto-advance and its deferral gates. */}
         <UpDownHandover
           roundId={roundId}
           settled={decided}
@@ -581,7 +583,7 @@ export default async function UpDownRoundPage({
               openLabel: t.market.udOpenPrice,
               upLabel: t.market.udUp,
               downLabel: t.market.udDown,
-              awaitingRead: t.market.udAwaitingRead,
+              awaitingRead: round.readUnavailable ? t.market.udReadUnavailable : t.market.udAwaitingRead,
               aboveBelow,
               source,
               chartAlt: `${name} ${t.market.udTitle}`,
@@ -597,7 +599,7 @@ export default async function UpDownRoundPage({
                 zero refetch, exactly as the board card does. `isOpen`/`locked` here
                 only pick which branch the SERVER renders first; the panel keeps itself
                 honest between polls. */}
-            {isOpen || locked ? (
+            {isOpen || locked || awaitingResult ? (
               <RoundActionPanel
                 state={round.state}
                 selectionClosedAt={round.selectionClosedAt}
@@ -606,6 +608,7 @@ export default async function UpDownRoundPage({
                 myExactPayout={round.myExactPayout}
                 myPayoutIfUp={round.myPayoutIfUp}
                 myPayoutIfDown={round.myPayoutIfDown}
+                nextRoundWords={round.successor.chainRunning ? t.market.udNextAfterResult : t.market.udNextMatchNoneBody}
                 ariaStake={t.market.udStake}
                 stakePanel={{
                   marketId: round.marketId,
@@ -644,12 +647,12 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPaidOut}</p>
-                    <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{resultAmountLabel}</p>
+                    <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(resultAmount)}</p>
                   </div>
                   <div className="text-right">
                     {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick} · {t.market.udStake}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick}{result === "WIN" ? ` · ${t.market.udStake}` : ""}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -657,7 +660,7 @@ export default async function UpDownRoundPage({
                     <p className="mt-1 m-0 text-label amount text-text-muted">
                       {myPosition.hedged
                         ? t.market.udBothSides
-                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown} · {formatTzs(myPosition.stake)}
+                        : myPosition.side === "UP" ? t.market.udUp : t.market.udDown}{result === "WIN" ? ` · ${formatTzs(myPosition.stake)}` : ""}
                     </p>
                   </div>
                 </div>
@@ -744,11 +747,6 @@ export default async function UpDownRoundPage({
                     2026-10-09, review C14). Everybody else reads today's words. */}
                 <Link href={positionListHref("UPDOWN", myPosition.ids[0] ?? "")} className="btn btn-ghost btn-sm mt-3.5 w-full justify-center">{journey ? t.journey.tabTickets : t.market.udOpenInPositions}</Link>
               </section>
-            ) : round.state === "confirming" ? (
-              <section style={{ ...inset, padding: 16 }}>
-                <Chip variant={TONE_CHIP[STATUS_TONE.PENDING.player]}>{t.market.udSettlingTitle}</Chip>
-                <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">{t.market.udConfirmingBody}</p>
-              </section>
             ) : refundReason ? (
               // ── A REFUND, WITH ITS REAL REASON (E-65) ────────────────────
               // ⛔ Driven by `refundReasonFor`, the SAME rule the card uses — so the board and
@@ -776,7 +774,6 @@ export default async function UpDownRoundPage({
                 on #stake at the bottom of the view, and with the pool between them the round's countdown fell off
                 the top. Countdown → confirmed price → the slip now fit one phone screen; the pool follows. */}
             <section aria-label={t.market.udPool} style={{ ...card, padding: "14px 16px 16px" }}>
-              <p className={eyebrow}>{t.market.udPool}</p>
               <div className="mt-2.5 flex items-baseline justify-between gap-3">
                 <div>
                   {/* ⭐ DG-A-12 · §M4 + §T1 — THE POOL FIGURE AND THE COUNT BESIDE IT MOVE TOGETHER.
@@ -790,7 +787,7 @@ export default async function UpDownRoundPage({
                       take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
                       the rung would otherwise impose 24px and open the pair up. */}
                   <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPool}</p>
                 </div>
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">

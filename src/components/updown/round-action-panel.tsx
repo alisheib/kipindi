@@ -5,7 +5,7 @@
  *
  * 🔴 WHAT THIS REPLACES. The page rendered `RoundStakePanel` iff `round.state ===
  * "open"` — a prop rendered ONCE on the server. A player sitting on the round page
- * when the lock passed kept a fully live stake panel (chips, custom field, the gold
+ * when the lock passed kept a fully live stake panel (chips, custom field, the
  * Confirm) for up to the 20s poll interval, while the pod above it already said
  * "Result in" (E-104 fixed the pod; the panel was the branch it missed). Tapping
  * Confirm in that window produced exactly the reported sequence: optimistic "You're
@@ -73,10 +73,12 @@ export function RoundActionPanel(props: {
   /** UD-20 · what the viewer receives under EACH outcome. Both, or neither. */
   myPayoutIfUp?: number | null;
   myPayoutIfDown?: number | null;
+  /** Server-grounded next-round status, already translated for this player. */
+  nextRoundWords?: string | null;
   ariaStake: string;
 }) {
   const { t } = useT();
-  const { state, selectionClosedAt, closesAt, serverNowMs, stakePanel, myExactPayout, myPayoutIfUp, myPayoutIfDown } = props;
+  const { state, selectionClosedAt, closesAt, serverNowMs, stakePanel, myExactPayout, myPayoutIfUp, myPayoutIfDown, nextRoundWords } = props;
   const selectionClosesAtMs = selectionClosedAt ? Date.parse(selectionClosedAt) : null;
 
   const now = useServerNow(serverNowMs);
@@ -84,6 +86,8 @@ export function RoundActionPanel(props: {
   // server and client markup agree — the same contract useCountdown keeps.
   const nowMs = now ?? serverNowMs;
   const { bettable, locked } = roundPhase({ state, selectionClosesAtMs, closesAtMs: Date.parse(closesAt), nowMs });
+  const confirming = state === "confirming" || (!bettable && !locked && nowMs >= Date.parse(closesAt)
+    && state !== "resolved" && state !== "void");
 
   // A pick from the landing band links here with #stake: the player lands ON the stake panel — the bet slip, the side
   // locked — not two screens above it. The App Router does not scroll to a hash whose element renders after the
@@ -137,7 +141,7 @@ export function RoundActionPanel(props: {
     );
   }
 
-  if (locked) {
+  if (locked || confirming) {
     // The SAME locked presentation the server renders for a locked arrival — chip,
     // reason naming the instant, and the frozen exact payout when the viewer holds a
     // side. Copy and shape mirror the page's own locked branch so the two cannot read
@@ -155,10 +159,10 @@ export function RoundActionPanel(props: {
     const emptyAtLock = payoutIfUp != null && payoutIfDown != null ? emptySideOf(stakePanel.pricing) : null;
     const lockedOneSided: "UP" | "DOWN" | null = emptyAtLock === "UP" || emptyAtLock === "DOWN" ? emptyAtLock : null;
     return (
-      <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
-        <Chip variant="pending">{t.market.udLockedTitle}</Chip>
+      <section aria-label={confirming ? t.market.udSettlingTitle : t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
+        {!confirming && <Chip variant="pending">{t.market.udLockedTitle}</Chip>}
         <p className="mt-[10px] m-0 text-body-sm leading-[1.55] text-text-muted">
-          {t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
+          {confirming ? t.market.udConfirmingBody : t.market.udLockedWhy.replace("{time}", lockClock ?? "—")}
         </p>
         {/* ⭐ UD-20 · BOTH OUTCOMES, QUOTED — Ali's decision, 2026-08-14.
             A hedged holder used to see NOTHING here: `myExactPayout` is null for them, because
@@ -207,6 +211,7 @@ export function RoundActionPanel(props: {
             </p>
           </div>
         )}
+        {nextRoundWords && <p className="mt-3 mb-0 text-body-sm text-text-subtle">{nextRoundWords}</p>}
       </section>
     );
   }

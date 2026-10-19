@@ -67,24 +67,12 @@ function pickBody(n: StoredNotification, locale: string): string {
   return readableNotificationBody(n.bodyEn);
 }
 
-/**
- * ⭐ `journey` (R5-C, the second gold audit, 2026-10-09). The journey's header (from 1024) mounts this same bell, and
- * there its unread signs take the journey's own unread ink — the brand family of the rail's dot and the Arifa count
- * (DESIGN_AUTHORITY §8b, §8c) — not gold, which is money (Q5). The CLASSIC bell is frozen chrome (S6/S7,
- * `qa:classic-shell-parity`), so it keeps its gold row wash and dots until the owner rules: the change for it is these
- * same two tones with the prop dropped (named in the visual pass's owner items). Absent, the panel is byte-for-byte what
- * the classic bar has always mounted.
- */
+/** Both player shells use brand for unread chrome; gold belongs to won money. */
 export function NotificationsPanel({ journey = false }: { journey?: boolean } = {}) {
-  const unreadDot = journey ? "brand" : "gold";
-  const unreadWash = journey ? "bg-brand-500/[0.04]" : "bg-gold-500/[0.04]";
-  // ⭐ R5-I (the visual pass's round 5, 2026-10-09; DESIGN_AUTHORITY §B2a) — the betting pair is not the bell's. In the
-  // journey the count badge is the brand pip the Arifa row already counts the same unread in (`unread-row.tsx`,
-  // `CountBadge tone="brand"`), and "Clear all" answers a hover in the danger ink every destructive control wears (a
-  // comment's Delete, the menu's Sign out) — both were the NO side's rose. The classic bell keeps its rose badge and hover
-  // until the owner rules (frozen chrome): the change for it is these two values with the prop dropped.
-  const countTone = journey ? "brand" : "rose";
-  const clearAllHover = journey ? "hover:text-danger-fg" : "hover:text-no-300";
+  const unreadDot = "brand";
+  const unreadWash = "bg-brand-500/[0.04]";
+  const countTone = "brand";
+  const clearAllHover = "hover:text-text";
   // ⭐ R5-J (the visual pass's round 5, 2026-10-09) — the journey bell says its unread count as every count reads, grouped
   // (`formatNumber`: "1,247 unread", as the Arifa page and its row say it). The classic bell keeps its bare count until the
   // owner rules (frozen chrome): the change for it is this value with the prop dropped. Below 1,000 the two are the same.
@@ -518,7 +506,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
           <I.bell s={20} tier={open ? "fill" : undefined} />
         </span>
         {/* ⭐ STAGE 9b — the kit <CountBadge>. `md` is this pip's own box (min-width 18,
-            height 18, 0 4px, 10px/700) and `rose`/`ring`/`glow` are its own gradient,
+            height 18, 0 4px, 10px/700) and `brand`/`ring`/`glow` are its own gradient,
             2px cut-out and halo, carried across unchanged. Only the POSITION stays
             inline, because where a pip hangs is a fact about the bell, not about pips.
 
@@ -533,7 +521,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
           tone={countTone}
           size="md"
           ring="var(--bg-base)"
-          // DS-24's halo now lives on the `rose` tone inside the primitive, not here — a
+          // DS-24's halo now lives on the badge tone inside the primitive, not here — a
           // caller can no longer pass a shadow at all, so the raw `oklch()` this line used
           // to carry cannot come back.
           lift
@@ -680,8 +668,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                             its first line (`items-start`; the dot's 4px is that line's centre). Classic chrome is frozen: its
                             bell keeps today's one-line title and plain body. */}
                         <div className={journey ? "flex items-start justify-between gap-2" : "flex items-center justify-between gap-2"}>
-                          {/* §A4 — colour is never the only signal. Unread was a gold wash plus
-                              the gold dot below, and the dot is (correctly) `aria-hidden`, so a
+                          {/* §A4 — colour is never the only signal. Unread has a brand wash plus
+                              the brand dot below, and the dot is (correctly) `aria-hidden`, so a
                               screen-reader user could not tell a settled-money notification they
                               had opened from one they had not. Announced BEFORE the title so the
                               state arrives with the headline, not after it. `sr-only` is
@@ -739,7 +727,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                   >
                     <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
                     <path d="M22 44 a6 6 0 0 0 12 0" />
-                    <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
+                    <circle cx="42" cy="14" r="4" fill="var(--brand-400)" stroke="none" />
                   </svg>
                   <p className="font-display text-body font-semibold text-text">
                     {t.notif.noNotifications}

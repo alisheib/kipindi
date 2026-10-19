@@ -317,6 +317,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     // PHOSPHOR-MIGRATION release 2a part 2: the wallet row now selects a glyph by stored ledger kind (§3.3).
     ["src/components/ui/not-found-view.tsx", '<I.arrowLeft s={plateGlyph(40)} />', 1, "alone", "the Home door's back arrow, centred on its identity plate"],
     ["src/components/charts/chart-toggle.tsx", '<I.chevronDown s={14} edge="end" className={[ "text-text-muted shrink-0 transition-transform duration-200", open ? "rotate-180" : "", ].join(" ")} />', 1, "edge", "the chart toggle's row end; it turns about its own box"],
+    ["src/components/charts/board-viz.tsx", '<I.chevronDown s={14} edge="end" />', 1, "edge", "U43's board chart control ends with the family caret"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowDown s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/charts/updown-match-track.tsx", "<I.arrowUp s={12} />", 1, "alone", "the track's gutter marks, each alone on its lane"],
     ["src/components/home/updown-band.tsx", '<I.arrowDown s={16} edge="start" text="body-700" />', 1, "text", "the home band's DOWN pick"],
@@ -344,14 +345,10 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/charts/outcome-cubes.tsx", "<I.arrowDown s={9} />", 1, "alone", "a past round's DOWN, alone in its cube"],
     ["src/components/journey/updown/jud-arm.tsx", '<I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's UP pick: an arrow leading a centred .btn-yes's Inter 700 word, as the home band's"],
     ["src/components/journey/updown/jud-arm.tsx", '<I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's DOWN pick"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, leading its JetBrains Mono 700 figure"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, DOWN"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={10} edge="start" text="mono-700" />', 1, "text", "the UP target's label start, among its mono 700 word"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={10} edge="end" text="mono-700" />', 1, "text", "the DOWN target's label end, right-aligned"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out UP button's start, among its Inter 700 word (.btn-yes)"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out DOWN button's start"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, UP WINS, among its mono 700 words"],
-    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, DOWN WINS"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={12} edge="start" text="mono-700" />', 1, "text", "the confirmed price's side, leading its JetBrains Mono figure"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={12} edge="start" text="mono-700" />', 1, "text", "the confirmed price's side, DOWN"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-700" />', 1, "text", "the settled round's verdict, UP WINS, among its Inter words"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-700" />', 1, "text", "the settled round's verdict, DOWN WINS"],
     ["src/components/updown/updown-stake-controls.tsx", '<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's UP button start"],
     ["src/components/updown/updown-stake-controls.tsx", '<I.arrowDown s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's DOWN button start"],
     // W4, the other new sites: the classic coin's verb, the card's 24h move, the sort's arrows and the field carets.
@@ -448,7 +445,6 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     // ↑/↓ and the 24h move's ▲/▼. What is left reads "to": a figure joined to a figure, and a path in a sentence.
     "src/app/updown/history/page.tsx": [3, "data: a staked → returned pair (twice) and an open → close price pair — the figures' own face"],
     "src/app/legal/privacy/page.tsx": [3, "a path in the privacy policy's sentence (“Profile → Notifications”), in each language — the D19a-pinned legal text, frozen"],
-    "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
   };
   // Read as the player gets it (PHOSPHOR W4's review): a JS escape (`←`, `\u{…}`) or an HTML entity is the character.
@@ -1207,7 +1203,9 @@ section("12 · R10-C /updown's chart is drawn again after its rebuild — the bo
   // The rule as a predicate over a source, so a planted regression is judged by the very check.
   const drawsEveryBuild = (src: string) => {
     const s = squash(decomment(src));
-    const keyed = s.includes("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);");
+    // U43 B2, 2026-10-19: the frozen price-to-beat reference is a fourth
+    // legitimate redraw cause. The generation still proves every chart rebuild.
+    const keyed = s.includes("useEffect(() => { if (guardedFeed && engineGen > 0) draw(guardedFeed); }, [guardedFeed, engineGen, draw, priceToBeat]);");
     const counts = s.includes("setEngineGen((g) => g + 1);");
     const noReset = !/setEngineGen\(\s*0\s*\)|setEngineReady\(\s*false\s*\)/.test(s);
     const rebuildsOnHeight = /\}, \[height\]\);/.test(s);
@@ -1215,7 +1213,7 @@ section("12 · R10-C /updown's chart is drawn again after its rebuild — the bo
   };
   const src = raw(TC);
   ok("12.1 · the draw effect keys on the chart's BUILD GENERATION and every build counts it up — a rebuild (300 → 380 when the board widens) is always drawn, never batched to \"unchanged\"", drawsEveryBuild(src));
-  const flag = src.replace("const [engineGen, setEngineGen] = useState(0);", "const [engineReady, setEngineReady] = useState(false);").replace("setEngineGen((g) => g + 1);", "setEngineReady(true);").replace("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);", "useEffect(() => { if (feed && engineReady) draw(feed); }, [feed, engineReady, draw]);");
+  const flag = src.replace("const [engineGen, setEngineGen] = useState(0);", "const [engineReady, setEngineReady] = useState(false);").replace("setEngineGen((g) => g + 1);", "setEngineReady(true);").replace("useEffect(() => { if (guardedFeed && engineGen > 0) draw(guardedFeed); }, [guardedFeed, engineGen, draw, priceToBeat]);", "useEffect(() => { if (guardedFeed && engineReady) draw(guardedFeed); }, [guardedFeed, engineReady, draw, priceToBeat]);");
   ok("12.1′ PLANT · the old true/false flag (cleared by the cleanup, set by the build, batched to unchanged) is reported by 12.1", flag !== src && !drawsEveryBuild(flag));
 }
 

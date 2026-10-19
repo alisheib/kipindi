@@ -161,7 +161,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   /**
    * 🔴 THE HEADER COUNTS THE SET IT NAMES, AND NOTHING WIDER.
    *
-   * The word here is "live", so it counts markets a player can act on — the SAME predicate the
+   * The word here is "open", so it counts markets a player can act on — the SAME predicate the
    * `Open` segment uses, read from the same place. It deliberately does NOT count the whole
    * board: the board now spans LIVE ∪ CLOSED (because `All` is the unsettled book), and a
    * header reading "49 live" over a book containing three settled-and-waiting markets would be
@@ -183,7 +183,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   // claimed." Measured on production 2026-09-24 at 360 sw.
   // ⛔ THE TOPIC AXIS ONLY, DELIBERATELY. The header is a statement about the BOOK a reader has
   // narrowed to, not about a transient search string or an odds band, and widening it to every
-  // axis would make "0 live" appear the moment someone selected a settled-only view. `filterRows`
+  // axis would make "0 open" appear the moment someone selected a settled-only view. `filterRows`
   // is reused rather than a topic predicate written here, so there is still one definition of
   // what a topic contains; the text matcher is the constant-true function because no text axis is
   // being applied.
@@ -208,7 +208,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         <p className="ml-auto flex max-w-full items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
           <SignalPip size={7} className="mr-0.5" />
           <span className="font-semibold text-text">{formatNumber(openMarkets.length)}</span>
-          <span className="text-text-subtle">{t.market.liveCount}</span>
+          <span className="text-text-subtle">{t.market.statusOpen}</span>
           {/* 🔴 A ZERO POOL IS NOT STATED, FOR THE SAME REASON THE TOPIC TILES STOPPED STATING IT.
               Making this header honour the topic filter was right, and it reintroduced the exact
               dead string the tiles had just been cleared of: /markets?topic=tech, ?topic=weather and
@@ -474,6 +474,8 @@ lastLabel={t.common.lastPage}
                 timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`}
                 status="RESOLVED"
                 resolvedOutcome={m.resolvedOutcome}
+                settledAt={m.settledAt}
+                nowMs={nowMs}
                 sourceUrl={m.sourceUrl}
                 spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
                 comments={commentCounts.get(m.id) ?? 0}

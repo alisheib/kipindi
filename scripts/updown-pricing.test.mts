@@ -316,24 +316,28 @@ function sideButtonBodies(code: string): Array<{ side: "yes" | "no"; body: strin
   }
   return out;
 }
-// The side's arrow is the family's arrowUp/arrowDown (PHOSPHOR-MIGRATION W4, §8b; the trend zigzags before).
-const GLYPH_OR_SPINNER = /\{bet\.pendingSide === "(?:UP|DOWN)" \? <Spinner size=\{12\} \/> : <I\.arrow(?:Up|Down) [^}]*\}[^}]*\} \/>\}|<I\.arrow(?:Up|Down) [^>]*\/>/g;
-// `{ }` is what a stripped JSX comment (`{/* … */}`) leaves behind; `{" "}` is an explicit space.
-const wordOnly = (b: { side: "yes" | "no"; body: string }) =>
-  b.body.replace(GLYPH_OR_SPINNER, "").replace(/\{\s*\}/g, "").replace(/\{"\s*"\}/g, "").replace(/\s+/g, "") ===
-  (b.side === "yes" ? "{t.market.udUp}" : "{t.market.udDown}");
+// U43 B1 renders both signed-in and signed-out choices from one mapped pair.
+// §8 below also reads its actual HTML in all three languages and four pool states.
+const pairWordOnly = (b: { side: "yes" | "no"; body: string }) =>
+  /\{sideWord\(t, side, "UPDOWN"\)\}/.test(b.body)
+  && /<I\.arrowUp/.test(b.body) && /<I\.arrowDown/.test(b.body)
+  && !/formatTzs|impliedMultiplier|×|<span[^>]*>[^<]*\d+(?:\.\d+)?[×%]/.test(b.body);
 {
   const cardButtons = sideButtonBodies(cardCode);
   const controlButtons = sideButtonBodies(controlsCode);
-  ok("5.7 the card's two signed-out buttons hold the glyph and the side's word and NOTHING else",
-     cardButtons.length === 2 && cardButtons.every(wordOnly), JSON.stringify(cardButtons.map((b) => b.body.trim().slice(0, 140))));
-  ok("5.7b …and so do the two buttons of the shared controls",
-     controlButtons.length === 2 && controlButtons.every(wordOnly), JSON.stringify(controlButtons.map((b) => b.body.trim().slice(0, 160))));
-  // ⛔ The population: 2 + 2 or the checks above pass over nothing.
-  ok("5.7c CONTROL · the reader finds exactly the four side buttons (2 on the card, 2 in the controls)",
-     cardButtons.length === 2 && controlButtons.length === 2, `${cardButtons.length} + ${controlButtons.length}`);
-  ok("5.7d CONTROL · a button carrying a multiple is NOT word-only (the reader can fail)",
-     !wordOnly({ side: "yes", body: ` <I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n<span className="font-mono text-[12.5px]">× 1.26</span>` }));
+  ok("5.7 the signed-out card uses the same Up/Down pair as the stake controls",
+     cardButtons.length === 0 && cardCode.includes('<UpDownSidePair assetName={assetName} onPick={go} />')
+     && controlsCode.includes('<UpDownSidePair assetName={assetName} onPick={bet.place}'),
+     `${cardButtons.length} private card buttons`);
+  ok("5.7b the shared pair's visible button holds arrows and the side word, with no figure",
+     controlButtons.length === 1 && controlButtons.every(pairWordOnly),
+     JSON.stringify(controlButtons.map((b) => b.body.trim().slice(0, 180))));
+  ok("5.7c CONTROL · one declaration maps both sides, rather than dropping a choice",
+     cardButtons.length === 0 && controlButtons.length === 1
+     && controlsCode.includes('(["UP", "DOWN"] as const).map((side) => ('),
+     `${cardButtons.length} + ${controlButtons.length} declarations`);
+  ok("5.7d CONTROL · a multiple planted inside the pair is rejected",
+     controlButtons.length === 1 && !pairWordOnly({ ...controlButtons[0], body: `${controlButtons[0].body}<span>× 1.26</span>` }));
 }
 ok("5.8 the round page's confirm panel projects the return from the POOL, not a rate",
    /projectedReturn\(/.test(panelCode) && !/bet\.stake\s*\*\s*est/.test(panelCode));

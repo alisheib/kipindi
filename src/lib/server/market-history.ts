@@ -34,6 +34,7 @@
  */
 import { prisma, hasDatabase } from "./prisma";
 import { priceState } from "@/lib/markets/price-state";
+import { MARKET_SPARK_WINDOW_MS, sampleMarketSpark } from "@/lib/markets/market-spark";
 
 /** Prisma Decimal | number → number. Chart values are display-only. */
 function num(d: unknown): number {
@@ -304,7 +305,7 @@ export async function getCardChart(marketId: string): Promise<CardChart> {
   return cardChartFrom(await getHistory(marketId));
 }
 
-type CardChart = { spark: number[]; move24h?: number };
+type CardChart = { spark: (number | null)[]; move24h?: number };
 const EMPTY_CARD: CardChart = { spark: [] };
 
 /** Shared by the single and batched readers so a card can never disagree with
@@ -314,9 +315,8 @@ function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool
   const last = points.at(-1);
   if (!last || priceState(last.yesPool, last.noPool).kind !== "priced") return EMPTY_CARD;
   const priced = pricedPoints(points);
-  if (priced.length < 2) return EMPTY_CARD;
-  const spark = compress(priced, 16).map((x) => x.pct);
   const now = Date.now();
+  const spark = sampleMarketSpark(points, now);
   // 🔴 THE FALLBACK MADE "24h MOVE" A LIE ON EVERY QUIET MARKET.
   //
   // Points arrive oldest-first from both readers, so `.find` correctly returns the
@@ -349,7 +349,7 @@ function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool
 /** A card only ever needs enough history to draw 16 points and a 24h delta, so
  *  the batched read is bounded by TIME rather than by count. Wider than 24h so a
  *  quiet market still shows shape rather than flattening to nothing. */
-const CARD_WINDOW_MS = 7 * 24 * 3600_000;
+const CARD_WINDOW_MS = MARKET_SPARK_WINDOW_MS;
 
 /**
  * Card charts for a whole board in ONE query.

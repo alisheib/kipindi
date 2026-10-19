@@ -34,6 +34,7 @@ import type { TerminalRange } from "./updown-board";
 // settlement reader carries (re-sign panel: a doc that names a check the code
 // does not perform is the checks-that-lie class; now the code performs it).
 import { hostMatchesDomain } from "./updown-feed";
+import { ROUND_LINE_OUTPUT_BARS } from "@/lib/updown-vendor-opens";
 
 export type VendorBar = { t: number; o: number; h: number; l: number; c: number; v: number | null };
 
@@ -41,7 +42,7 @@ export type VendorBar = { t: number; o: number; h: number; l: number; c: number;
 export const VENDOR_PLAN: Record<TerminalRange, { interval: string; outputsize: number; intervalMs: number }> = {
   "15M": { interval: "1min", outputsize: 16, intervalMs: 60_000 },
   "30M": { interval: "1min", outputsize: 31, intervalMs: 60_000 },
-  "1H": { interval: "1min", outputsize: 61, intervalMs: 60_000 },
+  "1H": { interval: "1min", outputsize: ROUND_LINE_OUTPUT_BARS, intervalMs: 60_000 },
   "6H": { interval: "5min", outputsize: 73, intervalMs: 5 * 60_000 },
   "12H": { interval: "5min", outputsize: 145, intervalMs: 5 * 60_000 },
   "24H": { interval: "15min", outputsize: 97, intervalMs: 15 * 60_000 },
@@ -54,6 +55,8 @@ const CACHE_TTL_MS = 30_000;
  *  they multiply under the multi-container programme. */
 const FAIL_TTL_MS = 15_000;
 const cache = new Map<string, { at: number; bars: VendorBar[] | null }>();
+/** A cold cache is one vendor call even when many card viewers arrive together. */
+const inFlight = new Map<string, Promise<VendorBar[] | null>>();
 
 /** Provider rows are "YYYY-MM-DD HH:MM:SS" in the REQUESTED zone (UTC, pinned). */
 function parseUtc(dt: string): number {
@@ -84,6 +87,8 @@ export async function vendorBarsFor(
   // bound must hold (one billable failure per TTL, everyone else falls to the
   // confirmed-reads tier instantly, no 8s timeout queue).
   if (hit && Date.now() - hit.at < (hit.bars ? CACHE_TTL_MS : FAIL_TTL_MS)) return hit.bars;
+  const pending = inFlight.get(key);
+  if (pending) return pending;
 
   let url: URL;
   try {
@@ -100,29 +105,35 @@ export async function vendorBarsFor(
   url.searchParams.set("apikey", apiKey);
 
   const fail = (): null => { cache.set(key, { at: Date.now(), bars: null }); return null; };
-  try {
-    const res = await fetchImpl(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return fail();
-    const body = (await res.json()) as { values?: Array<{ datetime: string; open: string; high: string; low: string; close: string; volume?: string }> };
-    if (!Array.isArray(body.values) || body.values.length === 0) return fail();
-    const bars: VendorBar[] = [];
-    for (const v of body.values) {
-      const t = parseUtc(v.datetime);
-      const o = Number(v.open), h = Number(v.high), l = Number(v.low), c = Number(v.close);
-      // Row-level refusal: a provider fault (decimal shift, zero, swapped
-      // fields) must never reach a money surface as a candle.
-      if (![t, o, h, l, c].every(Number.isFinite)) continue;
-      if (h < Math.max(o, c) || l > Math.min(o, c)) continue;
-      const vol = v.volume != null ? Number(v.volume) : NaN;
-      bars.push({ t, o, h, l, c, v: Number.isFinite(vol) && vol >= 0 ? vol : null });
+  const load = async (): Promise<VendorBar[] | null> => {
+    try {
+      const res = await fetchImpl(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return fail();
+      const body = (await res.json()) as { values?: Array<{ datetime: string; open: string; high: string; low: string; close: string; volume?: string }> };
+      if (!Array.isArray(body.values) || body.values.length === 0) return fail();
+      const bars: VendorBar[] = [];
+      for (const v of body.values) {
+        const t = parseUtc(v.datetime);
+        const o = Number(v.open), h = Number(v.high), l = Number(v.low), c = Number(v.close);
+        // Row-level refusal: a provider fault (decimal shift, zero, swapped
+        // fields) must never reach a money surface as a candle.
+        if (![t, o, h, l, c].every(Number.isFinite)) continue;
+        if (h < Math.max(o, c) || l > Math.min(o, c)) continue;
+        const vol = v.volume != null ? Number(v.volume) : NaN;
+        bars.push({ t, o, h, l, c, v: Number.isFinite(vol) && vol >= 0 ? vol : null });
+      }
+      if (bars.length === 0) return fail();
+      bars.sort((a, b) => a.t - b.t);
+      cache.set(key, { at: Date.now(), bars });
+      return bars;
+    } catch {
+      return fail();
     }
-    if (bars.length === 0) return fail();
-    bars.sort((a, b) => a.t - b.t);
-    cache.set(key, { at: Date.now(), bars });
-    return bars;
-  } catch {
-    return fail();
-  }
+  };
+  const next = load();
+  inFlight.set(key, next);
+  try { return await next; }
+  finally { inFlight.delete(key); }
 }
 
 /** The 1-minute ranges: their last bar is the freshest price the cache can hold. */
@@ -186,5 +197,6 @@ export function peekVendorBar(assetId: string): VendorBar | null {
 /** Test hook — the suite clears the cache between fixtures. */
 export function __clearVendorCacheForTests(): void {
   cache.clear();
+  inFlight.clear();
   oracleBars.clear();
 }

@@ -64,21 +64,21 @@
   --ndl-face-a-hi: #1C9264;  --ndl-face-a-lo: #146F4C;   /* left face  */
   --ndl-face-b-hi: #A83A43;  --ndl-face-b-lo: #822A33;   /* right face */
   --ndl-inlay-a:   #54EDA6;  --ndl-inlay-b:   #FF7B82;   /* seam hairlines */
-  --ndl-seam:        #FFE7B0;                            /* the needle itself */
-  --ndl-seam-glow:   rgba(255, 214, 120, 0.9);
+  --ndl-seam:        #F7F8FC;                            /* neutral needle */
+  --ndl-seam-glow:   rgba(228, 232, 245, 0.62);
   --ndl-seam-shadow: #070A1E;
-  --ndl-hub-0: #FFF3D4; --ndl-hub-1: #EFCC7C;
-  --ndl-hub-2: #D8AE55; --ndl-hub-3: #A87D33;
-  --ndl-hub-ring: #7C5A22; --ndl-hub-spec: #FFF8E6; --ndl-pivot: #141A38;
-  --ndl-rim-warm: #E3BC66;                               /* rim gradient's warm end */
+  --ndl-hub-0: #F7F8FC; --ndl-hub-1: #D8DAE4;
+  --ndl-hub-2: #A8AAB8; --ndl-hub-3: #6E7080;
+  --ndl-hub-ring: #51515D; --ndl-hub-spec: #FFFFFF; --ndl-pivot: #141A38;
+  --ndl-rim-warm: #D5D5EB;                               /* rim gradient's cool end */
   --ndl-ring:     #080B22;                               /* the dark outer ring */
-  --ndl-smear:    #F0D08A;                               /* spin smear strokes */
+  --ndl-smear:    #D5D5EB;                               /* spin smear strokes */
   /* The spin blur disc. Defaults are byte-identical to the face lowlights it used to
      read directly, so the house disc cannot move; a theme can now tune the blur
      WITHOUT dragging its faces with it. */
   --ndl-blend-a: #146F4C;  --ndl-blend-b: #822A33;
-  --ndl-aura:   var(--gilt);                             /* trail · glow · ring · whole */
-  --ndl-aura-2: var(--gold-300);
+  --ndl-aura:   #DCDCF2;                                 /* trail · glow · ring · whole */
+  --ndl-aura-2: #8D8AC7;
 }
 
 /* ── THEME: PEPSI ──────────────────────────────────────────────────────────────

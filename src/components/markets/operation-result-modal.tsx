@@ -75,6 +75,8 @@ type Props = {
   subtitle?: ReactNode;
   /** Optional summary rows shown in a kit-styled grid. */
   details?: OperationDetail[];
+  /** Keep all receipt facts but fit both actions in a short phone viewport. */
+  compactOnPhone?: boolean;
   /** Optional micro-copy at the bottom (e.g. "We notified you in the bell"). */
   footnote?: string;
   /** Primary action — defaults to "Done · Sawa". */
@@ -86,19 +88,22 @@ type Props = {
   onClose: () => void;
   /**
    * Override the success auto-close timer. Default 5000 ms.
-   * The gold progress strip animates over the SAME value — both are
+   * The progress strip animates over the SAME value — both are
    * driven from a single RAF loop sharing the same start timestamp,
    * so the bar reaching empty and the modal closing happen on the
    * exact same frame. No drift between visual countdown and timer.
    */
   autoCloseMs?: number;
   /** Controls the auto-close progress strip gradient on success variants.
-   *  - "gold"  — earned money moments (payout, win, position sold)
+   *  - "gold"  — earned money moments (payout, win)
    *  - "brand" — administrative success (deposit, KYC, password, etc.)
    *  - "yes"   — YES-side bet placed
    *  - "no"    — NO-side bet placed
    *  Defaults to "brand". Ignored for non-success variants. */
   stripTone?: "gold" | "brand" | "yes" | "no";
+  /** A placed Up & Down bet keeps the success timer and side strip while its
+   *  crest reports a neutral commit rather than a won result. */
+  successCrestTone?: "neutral";
   /** MASWALI-BUILD S5 (MASWALI-PLAN §10 §3.7, M1): a success that issued a document — a Millionea ticket cut — lands its
    *  crest as the micro-seal (`.seal-commit`, `seal-place`), as a staked side's does, on the brand strip. Omitted, only a
    *  yes/no strip takes the seal, exactly as before. Ignored for non-success variants. */
@@ -120,7 +125,7 @@ type Props = {
  * the betting pair is never borrowed for them. The crests were still the YES green and the NO rose — the toast they sit
  * beside moved to `--success` / `--danger` on 2026-08-30 (toast.tsx, D2) and this file kept the betting ramps, so a
  * deposit's tick wore the colour of a YES stake and a refused NO bet's ✗ the colour of its own side. A bet's SIDE stays
- * where it is the side: the strip and the primary button of a placed bet (`stripTone` yes/no).
+ * where it is the side: the strip of a placed bet (`stripTone` yes/no).
  */
 const crest = (ramp: string, fg: string) => ({
   fg,
@@ -198,9 +203,9 @@ const STRIP_GRADIENTS: Record<string, string> = {
  * the caller's, character for character; a subtitle handed in as nodes (a kept sentence, `keepText`) is drawn as given.
  */
 export function OperationResultModal({
-  open, variant, eyebrow, title, subtitle, details, footnote,
+  open, variant, eyebrow, title, subtitle, details, footnote, compactOnPhone = false,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", stamp,
+  autoCloseMs, stripTone = "brand", successCrestTone, stamp,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -403,13 +408,11 @@ export function OperationResultModal({
     };
   }, [open, variant, closeMs]);
 
-  const tone = TONE[variant];
-  // For success, override the primary button and crest tones based on stripTone.
-  // Gold = earned money (btn-gold), side = bet placed (btn-yes/btn-no),
-  // brand = administrative (btn-primary). Non-success variants keep their
-  // semantic defaults.
+  const tone = variant === "success" && successCrestTone === "neutral" ? TONE.neutral : TONE[variant];
+  // A placed bet keeps the success timer and side strip while its navigation
+  // action, crest and eyebrow use neutral or brand ink. Gold is earned money.
   const effectiveBtn = variant === "success"
-    ? (stripTone === "gold" ? "btn-gold" : stripTone === "yes" ? "btn-yes" : stripTone === "no" ? "btn-no" : "btn-primary")
+    ? (stripTone === "gold" ? "btn-gold" : "btn-primary")
     : tone.primaryBtn;
   // The crest that lands as the micro-seal: a staked side (`stripTone` yes/no) or an issued document (`stamp`).
   const sealed = variant === "success" && (stamp === true || stripTone === "yes" || stripTone === "no");
@@ -459,7 +462,7 @@ export function OperationResultModal({
           where the eyebrow stood, the crest's 20px (`mt-4`) under it rather than the heading's own 4px — the heading
           follows the crest directly only then. Its own class stays one literal string, which the dialog models read. */}
       <div
-        className="p-6 lg:p-7 text-center [&>div+h2]:mt-4"
+        className={`p-6 lg:p-7 text-center [&>div+h2]:mt-4${compactOnPhone ? " orm-phone-compact" : ""}`}
         onPointerMove={onPointerMoveHold}
         onPointerLeave={onPointerLeaveHold}
         onFocusCapture={onFocusIn}
@@ -472,7 +475,7 @@ export function OperationResultModal({
             already means it, not a new one. A Millionea ticket cut asks for it by
             name (`stamp`, M1). Everything else keeps `orm-pop`. */}
         <div
-          className={`mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full${
+          className={`orm-crest mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full${
             sealed ? " seal-commit" : ""
           }`}
           style={{
@@ -498,7 +501,7 @@ export function OperationResultModal({
 
         {eyebrow && (
           <p
-            className="mt-4 font-mono text-micro uppercase eyebrow font-bold"
+            className="orm-eyebrow mt-4 font-mono text-micro uppercase eyebrow font-bold"
             style={{ color: tone.fg }}
           >
             {eyebrow}
@@ -514,7 +517,7 @@ export function OperationResultModal({
         )}
 
         {details && details.length > 0 && (
-          <div className="mt-4 grid grid-cols-1 gap-2 text-left">
+          <div className="orm-details mt-4 grid grid-cols-1 gap-2 text-left">
             {details.map((d, i) => (
               /* The value must FIT, wrapping to a second row if it has to.
                  A reference here is a 25-character cuid with no spaces in it
@@ -530,7 +533,7 @@ export function OperationResultModal({
                  value drop onto its own full-width row and stay right-aligned. */
               <div
                 key={i}
-                className="rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+                className="orm-detail rounded-md border border-border bg-bg-overlay/60 px-3 py-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
               >
                 <div className="min-w-0">
                   <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
@@ -556,7 +559,7 @@ export function OperationResultModal({
           </div>
         )}
 
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="orm-actions mt-5 flex flex-col gap-2">
           <button
             ref={primaryRef}
             type="button"

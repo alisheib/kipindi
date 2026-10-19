@@ -13,10 +13,13 @@ import { keepFigures, splitLeadConnective } from "@/components/ui/keep-words";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
+import { marketCategoryLabel } from "@/lib/localized";
+import { marketDisplayTitle } from "@/lib/updown-round-name";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { MicroSpark } from "@/components/charts/micro-spark";
 import { dayAgoYesPct, isTipping, priceState } from "@/lib/markets/price-state";
+import { hasDrawableMarketSpark } from "@/lib/markets/market-spark";
+import { marketCardSettledDate } from "@/lib/markets/market-card-date";
 import { closesWithinTheHour } from "@/lib/markets/time-left";
 import { FEATURED_PREDICTOR_FLOOR, featuredShowsPredictors } from "@/lib/markets/featured";
 import { playPressPop } from "@/lib/press-feedback";
@@ -54,6 +57,10 @@ type Props = {
    *  rendered the OPPOSITE of the truth, so the board and the detail page
    *  contradicted each other on real money. Never infer this. */
   resolvedOutcome?: "YES" | "NO" | "VOID" | null;
+  /** Recorded money-movement time; absent while a verdict still awaits settlement. */
+  settledAt?: string | null;
+  /** The server read clock, held through hydration for stable EAT date words. */
+  nowMs?: number;
   /** Which product owns this card — `PredictionMarket.productLine`.
    *
    *  ⛔ REQUIRED, AND DELIBERATELY WITHOUT A DEFAULT. `side-label.ts` states the law this
@@ -84,8 +91,8 @@ type Props = {
   /** Milliseconds of betting left when `timeLeft` was computed — the same deadline, the same clock. It
    *  drives SOON in every locale (INHERIT-MANIFEST L17); absent → no SOON. */
   msLeft?: number;
-  /** Recent YES% series for the sparkline (optional). */
-  spark?: number[];
+  /** Seven-day YES% series in fixed time slots; null means no known price. */
+  spark?: (number | null)[];
   /** 24h move in probability points (optional). */
   move24h?: number;
   /** A few trader seeds (user ids) for the live crest-stack (optional). */
@@ -148,10 +155,10 @@ function getSignalBadge(
   if (!live) return null;
   // A brand-new market is NEW, never "tipping" — it isn't balanced, it's empty.
   if (fresh) return { kind: "new", label: labels.new };
-  if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
   // ⭐ L17 · SOON asks the MILLISECONDS, never the label. The label is in the reader's language, and the old
   // test of the English one never fired in Swahili or Chinese. One rule: `closesWithinTheHour` (time-left.ts).
   if (closesWithinTheHour(msLeft)) return { kind: "soon", label: labels.soon };
+  if (volume >= 30_000 || predictors >= 40) return { kind: "hot", label: labels.hot };
   // "Tipping" REQUIRES A REAL POOL — an empty 50/50 is not a contest.
   // ⛔ The test used to be `volume > 0 || predictors > 0`, and the OR is the defect:
   // "tipping" is a claim about money sitting on both sides, and `predictors` is not
@@ -196,10 +203,10 @@ function DayAgoMove({ move, label, keyed }: { move: number; label: string; keyed
   );
 }
 
-/* The card's 24h YES% sparkline is the kit `MicroSpark` (aqua = live heartbeat,
+/* The card's seven-day YES% sparkline is the kit `MicroSpark` (aqua = live heartbeat,
  * never gold — the micro/full colour law lives at that component). The caller
- * hides it when the series has <4 real points — only ever the true YES%
- * history, never a synthetic walk (honesty rule A-5). Draws in on mount via
+ * hides it when the series has <4 real events or no adjacent priced slots —
+ * only ever the true YES% history (honesty rule A-5). Draws in on mount via
  * the `.mcardp-spark-line` class this file's CSS family owns. */
 
 /** Deterministic 2-char face for an anonymous trader crest (no name is leaked —
@@ -272,14 +279,15 @@ function HowItWorks() {
 }
 
 export function MarketCard({
-  id, titleEn, titleSw, titleZh, category, yesPool, noPool, predictors, timeLeft, status, resolvedOutcome, productLine, sourceName, closesOn, msLeft, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
+  id, titleEn, titleSw, titleZh, category, yesPool, noPool, predictors, timeLeft, status, resolvedOutcome, settledAt, nowMs, productLine, sourceName, closesOn, msLeft, spark, move24h, traders, selectionClosed, comments, isNew, featured, className,
 }: Props) {
   const router = useRouter();
   const { t, locale } = useT();
-  const title = pickLocalized(locale, titleEn, titleSw, titleZh);
+  const title = marketDisplayTitle(t, locale, { productLine, titleEn, titleSw, titleZh: titleZh ?? null });
   const live = status === "LIVE" && !selectionClosed;
   const isResolved = status === "RESOLVED";
   const volume = yesPool + noPool;
+  const settledDate = marketCardSettledDate(settledAt, nowMs, t.common.monthsShort, locale);
   /* ⭐ WP6 · WHAT THE CARD MAY SAY ABOUT A PRICE, decided once from the pools (`price-state.ts`).
      `oneSided`: money on one side only — no price (ruling 13), the dashed rail, buttons without a
      figure, and the refund rule. `yesPct`: the two-sided price within 1–99 (L14); it is only ever
@@ -288,6 +296,10 @@ export function MarketCard({
   const oneSided = price.kind === "oneSided";
   const emptySide = price.kind === "oneSided" ? price.emptySide : null;
   const yesPct = price.kind === "priced" ? price.yesPct : 0;
+  // The large figure names the side holding the larger funded pool. The bar
+  // still reads both sides, and no figure is asserted on an unpriced pool.
+  const leadingSide = noPool > yesPool ? "NO" : "YES";
+  const leadingPct = leadingSide === "YES" ? yesPct : 100 - yesPct;
   /* ⭐ §B11 (D4, 2026-08-21) — ONE WORD, AND ITS TONE COMES FROM THE DICTIONARY.
    *
    * 🔴 THE WORD AND THE COLOUR USED TO BE DECIDED BY TWO INDEPENDENT LADDERS. A ternary
@@ -301,10 +313,10 @@ export function MarketCard({
    * The five words are the dictionary's own keys, so the tone is a lookup and the variant
    * is no longer expressible here — which is what §B11 means by "every render site
    * consumes it". */
-  const statusWord = selectionClosed ? "CLOSED"
-    : live ? "LIVE"
+  const statusWord = status === "VOIDED" || resolvedOutcome === "VOID" ? "VOID"
     : isResolved ? "RESOLVED"
-    : status === "VOIDED" ? "VOID"
+    : selectionClosed || status === "CLOSED" ? "CLOSED"
+    : live ? "LIVE"
     : "PENDING";
   const statusLabel = {
     CLOSED: t.market.statusClosed,
@@ -381,11 +393,11 @@ export function MarketCard({
      the slot's own. The stored outcome is the key, so UP and DOWN follow YES and NO (the lexicon's one
      mapping, `toStoredSide`). ⛔ Never keyed on the pools: a result is the verdict, not the crowd. */
   const resultInk = resolvedOutcome === "NO" ? "mcardp-pct--no" : resolvedOutcome === "VOID" ? "mcardp-pct--void" : null;
-  // Real YES% history only, ≥4 points (else hide — A-5 no-fabrication rule).
+  // Real YES% history only, ≥4 source events and at least one drawable segment.
   // A fresh market has no history, so never draw the spark on one.
   // ⛔ Nor on a one-sided one (WP6): its history is a line pinned at 100 or 0, which draws the very
   // certainty the card has just stopped printing.
-  const showSpark = !fresh && !oneSided && Array.isArray(spark) && spark.length >= 4;
+  const showSpark = !fresh && !oneSided && hasDrawableMarketSpark(spark);
   /* ⭐ WP3 · THE 24h MARK — featured only, only where a price exists NOW and a move was measured between two
      prices (`cardChartFrom`, C1; `dayAgoYesPct`). One-sided, empty or fresh: no mark and no delta (WP6). The
      mark and the "▲n" read ONE number: the delta is `yesPct − dayAgo`, never a comparison. */
@@ -473,32 +485,23 @@ export function MarketCard({
       <span className="mcardp-watermark" aria-hidden><CatIco /></span>
 
       <div className="mcardp-top">
-        {/* `size="xs"` IS `.mcardp .chip`, promoted to a prop — same 9px type, 0 6px
-            padding, 3px gap, 0.02em tracking and 5px live-dot, in the same 21/23px box.
-            The one property it does not port is `white-space: nowrap`, which is the live
-            G-7 defect; every word this chip can hold is a single short one in all three
-            locales, so nothing wraps today and a longer one would now wrap instead of
-            drawing outside the column. */}
-        <Chip size="xs" metrics="status" variant={TONE_CHIP[STATUS_TONE[statusWord].player]} dot={live}>
-          {statusLabel}
-        </Chip>
-        {/* PV-13c (2026-09-03) — was a raw `<span className="chip chip-strong chip-*">`. The
-            kit's own `fontWeight: 700` already matches `.chip-strong`'s only rule, so it needs
-            no equivalent; the four signal tones map straight across (`chip-signal` is the one
-            NON-status tone here — no height override in the raw CSS either, so both land on
-            the same 21px base box). */}
-        {/* ⭐ ONE PILL SIZE IN THE ROW (round 6, 2026-10-09, review C16 — G1's rule: a row whose pills must match states
-            it). The status pill beside it is `xs` (9px type, 0 6px, the 23px status box) and this one took the default `md`:
-            11px type in 23px for MOTO/HOT, KARIBU/SOON and MPYA/NEW, 10.5px in 21px for INASOGEA/TIPPING — two type sizes in one row,
-            and a height that followed the signal's colour. Both now say the row's size and box (`xs`, `metrics="status"`):
-            9px type, 23px, whatever the colour. Every board surface draws this card (/markets, /live, /watchlist, home,
-            similar questions), in both shells. */}
+        {/* The featured hero keeps its status chip. A live grid card needs only one
+            static mark beside its clock; CLOSED/RESOLVED/VOID each get one chip
+            in the status tone owned by the shared dictionary. Live and HOT are
+            neutral here: red and green belong only to the two betting sides. */}
+        {featured || !live ? (
+          <Chip size={featured ? "xs" : "md"} metrics="status" variant={TONE_CHIP[STATUS_TONE[statusWord].player]}>
+            {statusLabel}
+          </Chip>
+        ) : null}
+        {/* One signal chip. The urgent SOON test runs before HOT, while NEW
+            continues to describe a genuinely empty, still-open market. */}
         {signal && (
           <Chip
-            size="xs"
+            size={featured ? "xs" : "md"}
             metrics="status"
             aria-label={signal.label}
-            variant={signal.kind === "hot" ? "hot" : signal.kind === "soon" ? "pending" : signal.kind === "tipping" ? "signal" : "new"}
+            variant={signal.kind === "hot" ? "neutral" : signal.kind === "soon" ? "pending" : signal.kind === "tipping" ? "signal" : "new"}
           >
             {signal.label}
           </Chip>
@@ -517,10 +520,9 @@ export function MarketCard({
             <span className="mcardp-catico"><CatIco /></span>
             <span className="mcardp-cat">{catLabel}</span>
           </span>
-          {/* ⭐ WP3 · the featured card's time left, top-right (the delivery's placement), in the neutral ink:
-              time is not a side (§B2a, `test:betting-ink`). It keeps to the right of its line (D65 — chips
-              wrap, never cut), and it never stands alone on one: it moves with the category beside it. */}
-          {featured && <span className="mcardp-closes" data-market-part="time">{timeLeft}</span>}
+          {/* Every live card puts its real betting countdown beside its identity.
+              The featured hero keeps the same position it already had. */}
+          {live && <span className="mcardp-closes inline-flex items-center gap-1" data-market-part="time">{!featured && <span className="mcardp-live-mark"><span className="mcardp-live-dot" aria-hidden /><span className="sr-only">{statusLabel}</span></span>}{timeLeft}</span>}
         </span>
       </div>
 
@@ -568,8 +570,8 @@ export function MarketCard({
             <div className="mcardp-pct mcardp-pct--empty" aria-hidden>—</div>
           ) : (
             <>
-              <div className="mcardp-pctcap">{sideWord(t, "YES", productLine)}</div>
-              <div className="mcardp-pct">{yesPct}<span className="u">%</span></div>
+              <div className={cn("mcardp-pctcap", leadingSide === "NO" && "mcardp-pctcap--no")}>{sideWord(t, leadingSide, productLine)}</div>
+              <div className="mcardp-pct">{leadingPct}<span className="u">%</span></div>
             </>
           )}
         </div>
@@ -619,7 +621,9 @@ export function MarketCard({
           (the result slot, and the rail named by the outcome); the detail page and the share image agree.
           ⚠️ The `!settled` gate is C1's and the `data-market-part` is V18's — the merge keeps BOTH, and
           `outcome-display.test.mts` D29 is amended to require both rather than either. */}
-      {noPrice && neverBet && !settled && <div className="mcardp-nobets" data-market-part="state">{t.market.noBetsYet}</div>}
+      {/* A fresh card has one invitation below the honest dashed rail. The rail
+          itself names the absence to a screen reader, so a second caption adds
+          no fact. */}
       {/* ⭐ V18 · A LIVE MARKET WHOSE ONLY BETTOR CASHED OUT showed the em-dash, a rail whose "No pool yet" was
           only its accessible name, and "TZS 0" — no visible word for why there is no price. The same line a
           never-bet card has, in the rail's own words (D29: never "No bets yet" — somebody did bet). */}
@@ -630,8 +634,11 @@ export function MarketCard({
       {oneSidedNote && <p className="mcardp-onesided-note">{oneSidedNote}</p>}
 
       {showSpark && (
-        <MicroSpark data={spark!} width={300} height={28} padX={0} padY={4} smooth area stretch
-                    className="mcardp-spark" lineClassName="mcardp-spark-line" />
+        <div className="mcardp-spark-row">
+          <span className="mcardp-spark-label">{t.market.spark7d}</span>
+          <MicroSpark data={spark!} width={300} height={28} padX={0} padY={4} area areaOpacity={0.1} pip stretch minSpan={10}
+                      className="mcardp-spark" lineClassName="mcardp-spark-line" />
+        </div>
       )}
 
       {/* Trader row — rendered on every card (min-height fixed) so the grid stays
@@ -655,7 +662,10 @@ export function MarketCard({
             {/* Round 5 (F12): grouped by `formatNumber`, the platform's one count grouping (the board's rows and the /results
                 spotlight write the same line) — `toLocaleString()` grouped by whatever locale the runtime held, so the
                 server's HTML and a browser set to another locale could print one count two ways. */}
-            <span className="t-txt" data-market-part="predictors"><b>{formatNumber(predictors)}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+            <span className="t-txt" data-market-part="predictors">
+              {locale === "sw" ? <>{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}{" "}<b>{formatNumber(predictors)}</b></>
+                : <><b>{formatNumber(predictors)}</b>{" "}{predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</>}
+            </span>
           </>
         )}
       </div>
@@ -685,30 +695,26 @@ export function MarketCard({
           </button>
         </div>
       ) : (
-        // Single-column actions wrapper so the resolved status pill occupies the
-        // exact same vertical rhythm as the live YES/NO row (card-height parity).
         <div className="mcardp-actions mcardp-actions--single">
-          {/* The status stands where the pair stood, centred as a button is: its glyph's ink on the start padding (round 10,
-              R10-A6: a centred control frames its ink — `resolved`'s rays reach 0.25 units past its box, so its margin is +0.16px,
-              set in rather than pulled out, measured from the drawing like every other). */}
-          <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
-            <I.resolved s={15} edge="start" /> {isResolved ? [t.market.statusResolved, outcomeLabel].filter(Boolean).join(" ") : t.market.statusClosed}
-          </div>
+          <p className="mcardp-fact gap-1" data-market-part="state">
+            {statusWord === "VOID" ? t.market.resVoidRefund
+              : isResolved ? <>{t.market.resFinalPool}<span className="amount">{formatTzs(volume)}</span></>
+              : t.market.waitingForResults}
+          </p>
         </div>
       )}
 
       <div className="mcardp-meta">
-        {/* `mcardp-nopool`: the words, not a figure — read at 13px on the featured card (globals.css, round 3).
-            `mcardp-pool` (round 4, G7): once there is a pool the featured card NAMES it, in the board row's own words
-            ("Bwawa TZS 10,800", `common.pool`), the figure set as money (`.amount`) at the same 13px. A grid card's row
-            also carries its countdown, so its figure keeps the row's 11px and no word (its one-line row, D35, is full at 360). */}
-        {/* Round 5 (the check on the /markets grid, 2026-10-09): a grid card's figure names itself to a screen reader in the
-            featured card's own word ("Bwawa TZS 10,800"). On screen it keeps no word: the 320px row's worst case — a
-            7-digit pool, "dakika 59 zimebaki" and the info button — used 257.6 of its then-258px content box. V2a
-            gives the phone card a 12px inline inset to keep that row on one line after the kit spacing change. */}
-        <span data-market-part="pool" className={fresh ? "mcardp-nopool" : featured ? "mcardp-pool" : undefined}>
-          {fresh ? t.market.noPoolYet : featured ? <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></> : <><span className="sr-only">{t.common.pool}{" "}</span>{formatTzs(volume)}</>}
-        </span>
+        {/* The final pool is already stated in the fact line. Once money moves,
+            the meta row names the recorded settlement day instead. No recorded
+            instant means no date is shown. Open cards name their live pool. */}
+        {statusWord === "RESOLVED" || statusWord === "VOID" ? (
+          settledDate && settledAt && <time data-market-part="settled-date" className="mcardp-pool" dateTime={settledAt} aria-label={fill(t.home.settledOn, { date: settledDate })}>{settledDate}</time>
+        ) : (
+          <span data-market-part="pool" className={featured && fresh ? "mcardp-nopool" : "mcardp-pool"}>
+            {featured && fresh ? t.market.noPoolYet : <>{t.common.pool}{" "}<span className="amount">{formatTzs(volume)}</span></>}
+          </span>
+        )}
         {comments != null && comments > 0 && (
           <>
             <span className="dot" />
@@ -716,29 +722,21 @@ export function MarketCard({
           </>
         )}
         <span className="mcardp-meta-right">
-          {/* The featured card states its time top-right (WP3); its info button stays here. */}
-          <span className={cn("mcardp-timeleft", live && "live")} data-market-part={featured ? undefined : "time"}>
-            {!featured && timeLeft}
-            {live && <HowItWorks />}
-          </span>
+          <span className="mcardp-timeleft"><HowItWorks /></span>
         </span>
-      </div>
-      {/* Footer row on every card (card-height parity live vs resolved). Every phase is an <article>
-          with a stretched link since WP14b, so Details is a real link on every card. */}
+      {/* U43 B4: pool, help, share and Details are one footer. The action pair stays a
+          group so its two 40px hit areas remain separate when a narrow card wraps it. */}
       {/* ⭐ SHARE SITS BESIDE DETAILS — Ali, 2026-08-25, and this is the footer rather than
           the card's top-right because the top-right is already occupied by the conviction
-          readout (`YES 0%` / the resolved mark). The footer is the card's action zone.
-          ⛔ THE ROW STILL PAINTS 17px. `MARKET_CARD_H` is derived from it and both /markets
-          skeletons consume that number, so this wrapper adds no height: a 13px glyph and an
-          11.5px label both sit inside the existing line box. Both controls reach 40px through
-          their own out-of-flow pseudo-element (see `.mcardp-share` in globals.css).
+          readout (`YES 0%` / the resolved mark). U43 B4 places both controls after the pool
+          and info trigger in this same flex row, while each keeps its own 40px reach through
+          its out-of-flow pseudo-element (see `.mcardp-share` in globals.css).
           ⚠️ `stopPropagation` on the share trigger is load-bearing: the whole card is a click
           target that opens the market, so without it every share tap would navigate away
           before the dialog could open. */}
-      {/* `mcardp-foot` is a stacking hook, not styling: the share and Details controls must sit
-          ABOVE the stretched link, and a z-index on THEM would be spent inside this row's own
-          stacking context and never reach the card — the exact trap D30 was. The row is raised, so
-          everything in it is. ⛔ The three class tokens after it are matched verbatim by
+      {/* `mcardp-meta` raises the whole footer above the stretched link. A z-index on Share
+          alone would be spent inside this row's stacking context and never reach the card.
+          ⛔ The three class tokens after it are matched verbatim by
           `test:card-share`; they stay adjacent and in order. */}
       <div className="mcardp-foot flex items-center justify-end gap-2">
         <ShareButton compact marketId={id} title={title} />
@@ -753,6 +751,7 @@ export function MarketCard({
               3.7px short), stroked at "Maelezo"'s own Sora 600 stem — the family's 0.87px read a third of the word. */}
           <I.chevronRight s={11} edge="end" text="display-600" />
         </Link>
+      </div>
       </div>
     </>
   );

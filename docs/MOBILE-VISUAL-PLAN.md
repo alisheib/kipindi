@@ -363,13 +363,23 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   and its red reversal failed. Reopened full frames closed the receipt colour/fit, closed-clock and returned-stake
   label findings. The 320px ready helper still meets the navigation, the desktop sparse-chart footer remains too
   dense, a vendor line arriving after load can move live bet buttons, and the settled detail leaves a large empty
-  outlined pod around “NEXT ROUND LIVE.” Those presentation fixes are in progress;
-  **no after score has been awarded**. The final state matrix now captures a real local bet receipt at every signed-in
+  outlined pod around “NEXT ROUND LIVE.” R13 then photographed all 14 phases with **0 capture errors**: a real bet,
+  receipt, lock, one-sided refund, successor and market cards. A separate real-browser probe measured two 48px bet
+  buttons 47px / 61.5px / 165.5px above the fixed navigation at 320 / 360 / 390; its red reversals caught a duplicate
+  held caption and a 72px late line before the actions. Independent reviewers reopened the cited full frames and crops.
+  They found the refund condition below the first fold on narrow phones, unused space in the equal-height locked card,
+  a still-dense desktop chart footer and a sparse settled-detail handover bar. These are being fixed with guards and
+  red proofs before another capture. R13's local history is confirmed-only, so its honest missing-line state does not
+  prove the live vendor line visually. **No after score has been awarded.** The final state matrix captures a real local
+  bet receipt at every signed-in
   width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
   not a production-data change in this release. `/updown/history` remains Maswali-owned and still orders Swahili
   durations as `5 dakika`; U43 board/detail/receipt use `dakika 5`, so cross-surface wording is not yet 10/10.
-  Next: retest these remaining findings in browser frames, then run the
-  seven-width, three-language matrix twice, build and release. Release B is not on production.
+  The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
+  `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
+  plan §0 already records those inherited reds; U43 does not edit that lane. Next: retest the R13 findings in browser
+  frames, run the seven-width, three-language matrix twice, complete the release gates and release. Release B is not on
+  production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

@@ -338,24 +338,12 @@ ok("5.6 · the receipt takes the SIDE tone, never gold (a projection is not earn
   /stripTone=\{placed\.side === "UP" \? "yes" : "no"\}/.test(RECEIPT) && !/stripTone=\{?"gold"/.test(RECEIPT));
 ok("5.7 · success auto-dismisses on the SHARED default (no bespoke timer)",
   !/autoCloseMs/.test(RECEIPT), "an autoCloseMs here would be a second definition of the 5s");
-// 🔴 RE-AIMED 2026-09-05 — THE PROXY WENT STALE, THE LAW DID NOT.
-// This read `/variant="danger"/` in the blocked modal's source, as a stand-in for "does not
-// auto-dismiss". That held while the refusal had exactly one tone. The 2026-09-05 bet identity
-// gate brought `kyc_pending_review` to this modal — our own review queue, which must not arrive
-// as a red crest with an ✗ and `role="alertdialog"` — so the variant became dynamic
-// (`MODAL_TONE_BY_REASON`) and the literal vanished, reddening a check about auto-dismissal on a
-// change that never touched timers.
-// ⚠️ 2026-09-13: that bet gate is DELETED (identity is asked before a withdrawal only), so no stake
-// carries a `kyc_*` reason and `MODAL_TONE_BY_REASON` is empty. The variant stays dynamic and this
-// assertion is unchanged, because what it pins was never the identity rows: it is that no refusal
-// tone is ever `success`.
-//
-// ⛔ THE ACTUAL RULE IS IN `OperationResultModal`: auto-close is armed ONLY for
-// `variant === "success"`. So the law to pin is that a refusal is NEVER `success` — which is
-// stricter than the old proxy, since it now covers all four tones instead of asserting one.
-ok("5.8 · the refusal does NOT auto-dismiss (LCCP informed consent) — it is never `success`",
-  !/variant=\{?["']?success/.test(BLOCKED) && /variant=\{blocked\?\.variant \?\? "danger"\}/.test(BLOCKED),
-  "the blocked modal must take its tone from the refusal and may never be the auto-closing success variant");
+// U43's refusal is a neutral acknowledgement. The actual reason remains in its
+// localized title and body. Neutral also keeps the shared modal's timer off.
+ok("5.8 · the refusal stays until acknowledged and uses neutral ink",
+  /<OperationResultModal[\s\S]*?variant="neutral"[\s\S]*?title=\{blocked\?\.title \?\? ""\}[\s\S]*?subtitle=\{blocked\?\.body\}/.test(BLOCKED)
+    && !/autoCloseMs/.test(BLOCKED),
+  "the blocked modal must render its localized reason in a neutral, non-closing result");
 // ⛔ AND THE ONLY PLACE AUTO-CLOSE IS ARMED IS STILL `success` — the premise the line above
 // rests on. If that ever widens, 5.8 becomes a proxy again without anybody noticing.
 ok("5.8b · …and the shared modal still arms its timer ONLY for success",
@@ -737,8 +725,8 @@ console.log("\n§11 · A refusal the player can fix is never a popup, and never 
     ud("INVALID", { reason: "stake_below_min", detail: { min: 1000 } }) === "factual" && ud("BUSY") === "factual" && ud("RATE_LIMITED") === "factual" && ud("SELECTION_CLOSED") === "factual");
   ok("11.2b · …a fault or an unranked refusal → `danger`; the RG loss cap stays the acknowledge dialog",
     ud("BUSY", { reason: "system_error" }) === "danger" && ud("INVALID") === "danger" && ud(undefined) === "danger" && ud("INVALID", { reason: "loss_limit_daily" }) === "modal:danger");
-  ok("11.2c · …and the hook toasts it at that rank, still sticky (a money refusal stays until read)",
-    /toast\(\{ title: copy\.failed, description: fail\.description, variant: fail\.variant, durationMs: 0 \}\);/.test(read("src/components/updown/use-quick-bet.ts")));
+  ok("11.2c · …and U43 shows every refused bet as a sticky factual toast",
+    /toast\(\{ title: copy\.failed, description: fail\.description, variant: "factual", durationMs: 0 \}\);/.test(read("src/components/updown/use-quick-bet.ts")));
 
   // Every other refusal toast on a player's surface: a slip of the player's own is `factual`.
   const SLIP = /t\.toast\.(?:notAnImage|imageTooLarge|couldntReadImage|nameEmpty|couldntCopy)\b/;
