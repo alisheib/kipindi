@@ -38,6 +38,8 @@ Fill is drawn in four places only (§8c holds the law for Fill, Duotone and Line
   - whoever lands on `main` second re-runs `npm run glyphs:gen` on the merged `map.ts`, and sets `PREVIOUS_SPRITES` to
     what production serves;
   - each side messages the other before opening a release window and when it closes.
+  - MOBILE-VISUAL U43 (asheib-54, branch `claude/updown-visual-10`): W4 owns every glyph choice in the Up & Down and
+    market-card files and lands first; U43 rebases onto `main` after it (its tracker, 0eaedf2c).
 - **Built** (the branch's second commit):
   - the map: new keys `more`, `privacyNotice`, `net`, `send`, `staffConsole`; `vibrate` revived; `trendingUp` and
     `trendingDown` retired; `agent` an app key; the W4 Fills;
@@ -45,10 +47,20 @@ Fill is drawn in four places only (§8c holds the law for Fill, Duotone and Line
   - every §8a release-1 row and every §8b meaning; status in Fill through the kit's doors; the position and ticket chips'
     glyph + ink + word (`positionStatusGlyph`); `EmptyStateLink`;
   - §8c written into DESIGN_AUTHORITY §K3 item 3; the typed-character census as `test:glyph-source` §7.
-- **Proven so far:** `test:glyph-map` 0 failures, its red twin 35/35; `test:glyph-sync` 0, red 13/13; `test:glyph-source` 0,
-  red 19/19; `test:chart-one-home` 30/30; all 158 red-harness anchors in changed files still match (3 re-anchored).
-  Typecheck found 3 errors (the hub's `HubGlyph` list), fixed; its re-run, the derived battery (319 suites), the build,
-  the parity entries, `qa:live`, the tiles and the review are next.
+- **Proven so far** (branch head `0b6d673c`, pushed):
+  - `test:glyph-map`, `test:glyph-sync`, `test:glyph-source` 0 failures, their red twins 35/35, 13/13, 19/19;
+  - typecheck 0; local `qa:live` 386/386 on a fresh in-memory server of the branch;
+  - the battery (five light streams and two red streams), three rounds: every failure read. 19 guards re-pinned to
+    what the release draws (e74a77c6, ada2d3a7, 21146b54, 172f0bd8, 0b6d673c), each with its intent kept. Main's own
+    failures are the same, line for line, on `13299425`: `test:presence-class`, `test:rate-copy` (and their reds),
+    `test:visual-pass-r5a` 8.13, `r5h` 3.5, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1 and 3.9, and
+    `red:results-filter`'s stale anchor;
+  - every red-harness anchor in the 84 changed files matches (160).
+- **Left, in order:** the red twins of the re-pinned guards and the two long in-process reds (`red:deposit-recheck`,
+  `red:campaign-visuals`: 900 s was too short); the before/after tiles and their readers; the classic parity, calibrated
+  (a baseline on a fresh server of `13299425`, its null compare, the branch's `--prove-red`), then the branch's compare
+  and W4's generated entries; the adversarial review's findings; `next build`; Ali's review page; then the release
+  (AGENTS.md §4): message asheib-bf and asheib-54, rebase onto `main`, push, read production back.
 
 W3, the selected states, went live at **`ee62451c`**, pushed at
 11:22 UTC on Ali's *"push now please then do any chekcs needed"*:
