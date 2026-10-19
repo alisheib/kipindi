@@ -180,7 +180,8 @@ await assetStore.upsert({
 const previousFetch = globalThis.fetch;
 const previousKey = process.env.TWELVEDATA_API_KEY;
 let fixtureBars = bars;
-globalThis.fetch = (async () => new Response(JSON.stringify({ values: fixtureBars.map((bar) => ({
+let fixtureRows: Array<{ datetime: string; open: string; high: string; low: string; close: string }> | null = null;
+globalThis.fetch = (async () => new Response(JSON.stringify({ values: fixtureRows ?? fixtureBars.map((bar) => ({
   datetime: new Date(bar.t).toISOString().slice(0, 19).replace("T", " "),
   open: String(bar.o), high: "111", low: "90", close: String(bar.c),
 })) }), { status: 200 })) as typeof fetch;
@@ -203,6 +204,30 @@ try {
   ok("the large chart still shows only its labelled one hour",
     chartHistory?.sourceTier === "vendor" && !chartServed.some((point) => point.t === longOpen)
     && chartServed.some((point) => point.t === longClose));
+  // A vendor can return a syntactically valid zero or negative OHLC row. It is
+  // not a price a player may see: both served views must leave a gap instead.
+  const stamp = (t: number) => new Date(t).toISOString().slice(0, 19).replace("T", " ");
+  fixtureRows = [
+    { datetime: stamp(open), open: "100.12", high: "101", low: "99", close: "100.4" },
+    { datetime: stamp(open + minute), open: "0", high: "1", low: "0", close: "0.5" },
+    { datetime: stamp(open + 2 * minute), open: "-1", high: "1", low: "-2", close: "0.5" },
+    { datetime: stamp(close), open: "99.95", high: "101", low: "99", close: "100" },
+    { datetime: stamp(close + minute), open: "100", high: "99", low: "101", close: "100.5" },
+  ];
+  __clearVendorCacheForTests();
+  const safeRoundFeed = await getAssetTerminalSeries("u43b2", "1H", "line", "round");
+  const safeChartFeed = await getAssetTerminalSeries("u43b2", "1H", "line", "chart");
+  const roundServed = safeRoundFeed?.series.mode === "line" ? safeRoundFeed.series.points : [];
+  const chartSafe = safeChartFeed?.series.mode === "line" ? safeChartFeed.series.points : [];
+  const onlyPositiveOrGap = (points: typeof roundServed) => points.every((point) => point.price == null || point.price > 0);
+  const roundDrawing = roundOpenPoints(roundServed, open, close, close, 100.12, 2, 99.95);
+  ok("nonpositive vendor OHLC cannot reach the served chart or round line",
+    safeRoundFeed?.sourceTier === "vendor" && safeChartFeed?.sourceTier === "vendor"
+    && onlyPositiveOrGap(roundServed) && onlyPositiveOrGap(chartSafe)
+    && roundServed.some((point) => point.t === open + minute && point.price === null)
+    && roundServed.some((point) => point.t === open + 2 * minute && point.price === null)
+    && roundDrawing?.[0]?.price === 100.12 && roundDrawing.at(-1)?.price === 99.95
+    && !chartSafe.some((point) => point.t === close + minute && point.price != null));
 } finally {
   globalThis.fetch = previousFetch;
   if (previousKey === undefined) delete process.env.TWELVEDATA_API_KEY;

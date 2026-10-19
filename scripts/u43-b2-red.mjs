@@ -8,7 +8,12 @@ import { MUTATIONS as mutations } from "./anchors/u43-b2.anchors.mjs";
 const cwd = fileURLToPath(new URL("..", import.meta.url));
 
 let caught = 0;
-for (const mutation of mutations) {
+const only = process.argv.find((arg) => arg.startsWith("--only="))?.slice("--only=".length);
+const selected = only
+  ? mutations.filter((mutation) => mutation.name === only)
+  : mutations;
+if (selected.length === 0) throw new Error(`Unknown B2 mutation: ${only}`);
+for (const mutation of selected) {
   const file = new URL(`../${mutation.file}`, import.meta.url);
   const original = readFileSync(file, "utf8");
   const changed = injectDefect(original, mutation.from, mutation.to);
@@ -31,4 +36,4 @@ for (const mutation of mutations) {
     writeFileSync(file, original);
   }
 }
-console.log(`RED PROOF ${caught}/${mutations.length}`);
+console.log(`RED PROOF ${caught}/${selected.length}`);

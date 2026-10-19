@@ -116,9 +116,9 @@ export async function vendorBarsFor(
         const t = parseUtc(v.datetime);
         const o = Number(v.open), h = Number(v.high), l = Number(v.low), c = Number(v.close);
         // Row-level refusal: a provider fault (decimal shift, zero, swapped
-        // fields) must never reach a money surface as a candle.
-        if (![t, o, h, l, c].every(Number.isFinite)) continue;
-        if (h < Math.max(o, c) || l > Math.min(o, c)) continue;
+        // fields) must never reach a money surface as a candle or a minute line.
+        if (![t, o, h, l, c].every(Number.isFinite) || [o, h, l, c].some((value) => value <= 0)) continue;
+        if (h < Math.max(o, c) || l > Math.min(o, c) || l > h) continue;
         const vol = v.volume != null ? Number(v.volume) : NaN;
         bars.push({ t, o, h, l, c, v: Number.isFinite(vol) && vol >= 0 ? vol : null });
       }
