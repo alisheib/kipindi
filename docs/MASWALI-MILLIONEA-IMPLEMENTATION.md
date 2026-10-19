@@ -1490,7 +1490,7 @@ locked state on all three routes.
     **the same `PageContainer` tier** as its page (Law 13); sitemap entries for settled cycles.
 
 **Tests:**
-- `test:maswali-i18n` — **key-set equality across all three locales** for `maswali.*`, and every
+- The maswali-i18n suite (S5's; on `main` with S5) — **key-set equality across all three locales** for `maswali.*`, and every
   lookup map's values resolved through the dictionary (§14). ⛔ Not a `t("literal")` scan — this
   feature is mostly lookup maps and a literal-scanner is blind to every one of them.
 - `test:maswali-ui` — the ticker's displayed value equals the derived value for a seeded pool;

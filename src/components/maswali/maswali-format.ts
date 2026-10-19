@@ -73,7 +73,7 @@ export function joinList(locale: Locale, items: readonly string[]): string {
 /**
  * A `millionea` word named by a lookup map's key (`WEEK_STATE_KEY`, `TICKET_SHOWN_KEY`, `MASWALI_VOID_REASON_KEY`).
  * ⛔ A key the dictionary lacks shows as itself, as `fill` leaves an unknown placeholder: a typo is seen, never blank.
- * Every key of the three maps resolves in en, sw and zh today; S5's planned `test:maswali-i18n` (MASWALI-PLAN §7b) is the
+ * Every key of the three maps resolves in en, sw and zh today; S5's planned maswali-i18n suite (MASWALI-PLAN §7b) is the
  * suite that will hold them there.
  */
 export function millioneaWord(t: Dict, key: string): string {

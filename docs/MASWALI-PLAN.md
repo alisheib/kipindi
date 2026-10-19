@@ -129,7 +129,7 @@ The State paragraph below is the last push's.)**
      two-officer setting; the close retry is measured from the refusal; `/pools` shows unreadable figures as unknown;
      the holiday-save plant. ✅ **On the merged tree (`1b8744e8`, 18:24 UTC) the twelve derived checks that need no
      Postgres are green:** `test:house-bot-disclosure` (the D19a re-pin), `test:failure-reasons`, `test:i18n`,
-     `test:maswali-i18n`, `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
+     the maswali-i18n suite (S5's, its npm entry lands with S5), `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
      `test:maswali-design`, `test:maswali-ui`, `test:two-admin`, `test:bulk-resolve`.
      **Still owed on the merged tree:** `tsc`; the derived suites that need Postgres or a server — `test:maswali-purchase`
      (103/106), `test:maswali-player` (182/182), `test:maswali-adversarial` (185/193), `-config`, `-engine`, `-void`,
@@ -171,7 +171,7 @@ The State paragraph below is the last push's.)**
      `test:maswali-void`, `test:maswali-engine`, `test:maswali-player`, `test:house-bot-reports`,
      `red:maswali-money-path`, `test:failure-reasons`, `test:predictor-shown`, `test:bulk-resolve`, `test:one-sided`,
      `test:unsaved-changes`, `test:house-bot-console` (each with its red twin where one exists), `test:control-gates`,
-     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, `test:maswali-i18n`,
+     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, the maswali-i18n suite (lands with S5),
      `test:criterion-i18n`, `test:red-anchors`, `test:eyebrow-roles`, `test:maswali-settle`, `test:betting-ink`,
      `test:admin-action-gate`, `test:two-admin`, `tsc`, and a render of `/admin/resolver-queue` and `/admin/resolver/[id]`
      (the setting unknown and known) and `/admin/maswali/pools`. Then merge it into `mln-sf` (D19a re-pinned at the merge).
@@ -2184,7 +2184,7 @@ ready.
 10. **Closure:** the account-closure screen lists open tickets.
 
 **Suites:**
-- `test:maswali-i18n`: key-set equality, and every lookup map resolved.
+- The maswali-i18n suite (S5's; its npm entry lands on `main` with S5): key-set equality, and every lookup map resolved.
 - `test:maswali-ui`.
 - `test:maswali-design`:
   - no gold on unearned surfaces;

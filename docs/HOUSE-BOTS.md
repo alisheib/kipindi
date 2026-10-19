@@ -2907,7 +2907,7 @@ report, admin page and audit row (D20a/D20d). D19.
 - `typecheck` 0 errors · `next build` complete (76/76 static pages, route table, `BUILD_ID`) · `verify:house-bot-bundle`
   ALL PASS (402 client files, prerendered documents, `public/`) · `verify:backup-schema` 13/13.
 - `test:all` (every `test:*`, DB suites included, `--jobs 2`): **600/614**. The 14: eight red on `origin/main` `0e2beeca`
-  with the same failure counts (`guards-exist` — the `test:maswali-i18n` citation; `visual-pass-r5a/r5j/r6c/r7c/r5h`,
+  with the same failure counts (`guards-exist` — the maswali-i18n citation, a suite S5 brings; `visual-pass-r5a/r5j/r6c/r7c/r5h`,
   `presence-class`, `rate-copy` — the Millionea lane's); five that need a dev server (`responsive`, `motion`,
   `revoked-deadend`, `admin-section-gate`, `needle-rest`, none of them reading a changed file); and ONE of this change:
   `test:house-bot-migrations` a2.1 — the catch-up named `HouseBot` on a database migrated WITHOUT the house folders. It
