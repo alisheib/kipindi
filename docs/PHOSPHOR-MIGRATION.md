@@ -11,56 +11,74 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-19):** W0, W1, W2 and W3 are LIVE (W3 at **`ee62451c`**, below). On 2026-10-19 Ali asked for an audit:
-*"validate that all old icons are replaced across the platform … recheck if we missed any especially important glyphs
-for markets and user front … see where we need filled glyphs and icons and where not even we had to replace our existing
-ones"*, then *"nothing should be plain … everything visually perfect, logically perfect, the most small details are the
-most important to me"* and *"push live clean … there is parallel sessions, watch out"*. The audit's findings are §8.
-Its short answer: every glyph `I` draws is Phosphor, but the platform is NOT all Phosphor yet. Still drawn outside it:
-- 14 hand-drawn `<svg>` icons and the empty states' 12 private drawings;
-- typed characters used as icons (the market card's ▲▼, Up & Down's ↑↓ and →, the sort arrows, a "→" in 7 link labels
-  per language, the rules page's ⚠️, the console's ✓ ✗ ⚠ ⛔);
-- meanings on the player front that wear the wrong glyph, or two glyphs for one meaning (§8b lists each).
-Fill is drawn in four places only (§8c holds the law for Fill, Duotone and Line).
+**State (2026-10-19):** W0–W4 are LIVE (W4 at **`70c069cb`**, below; W3 at `ee62451c`). W4 is release 1 of the audit
+Ali asked for that day (*"validate that all old icons are replaced across the platform … see where we need filled glyphs
+and icons and where not"*, then *"nothing should be plain … the most small details are the most important to me"*);
+the audit is §8. What release 1 did not reach — the adversarial review's leftovers and the checks Ali stopped — is
+listed below, and is where the next session starts.
 
-⏳ **IN FLIGHT — release 1 (W4 + the audit's player-front findings), OMEGA-COMPILE01, 2026-10-19:**
-- Worktree `C:\50pick-ssd\kipindi-phos-w4` (its own `npm ci`), branch **`phosphor-w4`** off `origin/main` `13299425`.
-  Resume on any machine: `git fetch && git worktree add <dir> origin/phosphor-w4`.
-- Scope, §8d's release 1:
-  - status in Fill through the kit's doors;
-  - outcomes as glyph + ink + word;
-  - the notification kinds, §8b's meanings and every hand-drawn or typed icon on the player front;
-  - the More tab's own key.
-- **Parallel sessions (Ali: "watch out").** The Maswali lead (asheib-bf) works on this PC beside us. The agreements,
-  2026-10-19:
-  - heavy jobs share its three-slot budget (`F:/kipindi-locks/mln-slot-N`, lane `phos`); never the exclusive lock;
-  - in `bottom-nav.tsx` and `nav-more.tsx`, only the glyph lines change (its tab lane edits those files);
-  - whoever lands on `main` second re-runs `npm run glyphs:gen` on the merged `map.ts`, and sets `PREVIOUS_SPRITES` to
-    what production serves;
-  - each side messages the other before opening a release window and when it closes.
-  - MOBILE-VISUAL U43 (asheib-54, branch `claude/updown-visual-10`): W4 owns every glyph choice in the Up & Down and
-    market-card files and lands first; U43 rebases onto `main` after it (its tracker, 0eaedf2c).
-- **Built** (the branch's second commit):
-  - the map: new keys `more`, `privacyNotice`, `net`, `send`, `staffConsole`; `vibrate` revived; `trendingUp` and
-    `trendingDown` retired; `agent` an app key; the W4 Fills;
-  - `CHROME_FILLS`: a chrome key's Fill is inlined only where the chrome draws it (the registry's `fa`);
-  - every §8a release-1 row and every §8b meaning; status in Fill through the kit's doors; the position and ticket chips'
-    glyph + ink + word (`positionStatusGlyph`); `EmptyStateLink`;
-  - §8c written into DESIGN_AUTHORITY §K3 item 3; the typed-character census as `test:glyph-source` §7.
-- **Proven so far** (branch head `0b6d673c`, pushed):
-  - `test:glyph-map`, `test:glyph-sync`, `test:glyph-source` 0 failures, their red twins 35/35, 13/13, 19/19;
-  - typecheck 0; local `qa:live` 386/386 on a fresh in-memory server of the branch;
-  - the battery (five light streams and two red streams), three rounds: every failure read. 19 guards re-pinned to
-    what the release draws (e74a77c6, ada2d3a7, 21146b54, 172f0bd8, 0b6d673c), each with its intent kept. Main's own
-    failures are the same, line for line, on `13299425`: `test:presence-class`, `test:rate-copy` (and their reds),
-    `test:visual-pass-r5a` 8.13, `r5h` 3.5, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1 and 3.9, and
-    `red:results-filter`'s stale anchor;
-  - every red-harness anchor in the 84 changed files matches (160).
-- **Left, in order:** the red twins of the re-pinned guards and the two long in-process reds (`red:deposit-recheck`,
-  `red:campaign-visuals`: 900 s was too short); the before/after tiles and their readers; the classic parity, calibrated
-  (a baseline on a fresh server of `13299425`, its null compare, the branch's `--prove-red`), then the branch's compare
-  and W4's generated entries; the adversarial review's findings; `next build`; Ali's review page; then the release
-  (AGENTS.md §4): message asheib-bf and asheib-54, rebase onto `main`, push, read production back.
+✅ **W4 — release 1 — LIVE at `70c069cb`**, pushed 11:51 UTC on Ali's *"push live everything u have and stop running new
+tests, we proceed later with whatever left from the phosphor migration plan"*, then *"proceed"* (2026-10-19):
+- **What it does.**
+  - Status in Fill through the kit's doors (Callout, NoticeBar, StatusFlag, toast, a receipt's status, the KYC panel,
+    a proposal's status).
+  - Outcomes as glyph + ink + word on positions and tickets: open `clockPending`, won the seal in Fill and gold, lost
+    `xCircle`, void `void`, cashed out `cashOut`.
+  - Every notification kind its meaning's glyph, and §8b's one meaning, one glyph: identity `idCard`, leaderboard
+    `podium`, terms `scrollText`, rules `tippingScales`, privacy `privacyNotice`, friends `users`, agent `agent`, deposit
+    and withdraw `arrowDownToLine`/`arrowUpFromLine`, Up & Down `trade`, its sides `arrowUp`/`arrowDown`.
+  - Every hand-drawn or typed icon on the player front in §8a's release-1 rows (bar the leftovers below); the More tab's
+    own key; `EmptyStateLink`; the typed-character census (`test:glyph-source` §7); `CHROME_FILLS` (the chrome's
+    Fills inline, the rest in the app sprite).
+- **The proof before the push:**
+  - three battery rounds on the branch, every failure read: 19 guards re-pinned with their intent kept; main's own
+    failures identical, line for line, on `13299425` (`test:presence-class`, `test:rate-copy` and their reds,
+    `test:visual-pass-r5a` 8.13, `r5h` 3.5, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1 and 3.9,
+    `red:house-bot-chatbot`, `red:results-filter`'s stale anchor);
+  - an adversarial review of the diff (18 findings). Fixed in the release: the HIGH one (Up & Down's chips name their
+    side to a screen reader again), `red:updown-pricing`'s stale anchors, and the D19a pin re-pointed to the release's
+    own commit (it also records U43 release A's dictionary, which had landed under the old pin);
+  - after the rebase onto U43 release A (`9393dcb5`), the suites where the two meet green (card-choices, one-sided,
+    updown-hedge-quote, betting-ink, journey-home, journey-updown, house-bot-disclosure, …); all 164 red anchors in the
+    changed files match;
+  - typecheck 0; `next build` at `70c069cb`; local `qa:live` 386/386.
+- **Production, read back (11:55 UTC):** www, apex and the Railway host served `70c069cb` about 200 s after the push;
+  health reachable and migrated; the new sprites (`app.7606b117`, `admin.b27adee4`) and both kept ones answer 200 and
+  immutable on both origins; `qa:chunks-prod` passes on both origins (6/6 routes, 152 GETs); production `qa:live`
+  363/363; five changed pages looked at in a phone browser (the market cards' carets, the bottom bar, Up & Down, the
+  privacy notice, the Up & Down rules' caution), no page error. Maswali's platform fix (`c129888f`) landed on top.
+- **Not run — Ali stopped the tests; owed at the next session's close (AGENTS.md §4):** the before/after tiles and their
+  readers; the classic parity (a calibrated baseline at live `main`, then every difference named — the generated
+  entries file still holds W3's); the server-bound reds (`red:bar-geometry`, `red:count-truth`,
+  `red:journey-header-fit`); `red:deposit-recheck`, `red:campaign-visuals` and `red:deposit-status-read` at the
+  release commit (each outran 900 s); `qa:landing-ten` and `qa:journey-header-fit`.
+- **The review's leftovers.** On branch **`phosphor-w4-review`** (pushed; built, NOT yet verified — rebase it onto
+  `main` first; journey-updown §6.1 then needs a named swap for the round page's status line):
+  - #2 the side arrows on `.btn-yes`/`.btn-no` stroke at Inter 700, as those buttons' words do (they draw 600);
+  - #4 VERDICT, OBJECTION, BONUS and HOUSE_BOT notifications draw their meaning (they fall back to the bell), and the
+    kind switch is exhaustive;
+  - #9 `FillGlyphKey`: tsc refuses a Fill a key does not ship, with `test:glyph-map` §9c the literal census; seven more
+    statuses in Fill (the profile's KYC and email pills, the verified-agent chip, the locked-round chip, Saved);
+  - #12 the proposal vote toggle in Fill when on; #16 the round page's outcome chips; #18 receipts.ts's doc block.
+- **Not started:**
+  - #5 three doors still wear `shieldcheck` (the KYC panel's Verify CTA → `idCard`; the agent page's two CTAs →
+    `idCard` and `agent`);
+  - #6 the Up & Down board's rules pill wears Terms' `scrollText` (→ `tippingScales`);
+  - #7 the proposal page's back link is a typed `\u2190`, and §7's census and r10 miss escapes, entities and CSS
+    `content`;
+  - #8 HelpMark, the chat bubble on every page, is hand-drawn: release 2 (Duotone), or a "Kept" row with its reason;
+  - #10 §8a rows still typed (Up & Down history's →, the card's close-price →, "oldest → newest") or built otherwise
+    (All results draws `chevronRight`); the duration input's caret (§8a says release 1, the ratchet says 3);
+  - #13 /notifications' empty state still draws `bellRing`;
+  - #14 meanings that share or split a glyph — a win's seal against the stat tiles' trophy, `xCircle` (a lost bet, a
+    cancelled payment, a declined proposal), `users` (friends, a round's players) — to settle in §8b;
+  - #15 the rules caution's warning and the sort options' direction are silent to a screen reader;
+  - #17 /help's FAQ topics (voided `alertCircle` → `void`; fairness `shieldcheck` → `attestation`);
+  - #18 the leaderboard's unused `Link`, map.ts's `menu` note, legal `_components.tsx`'s sigil note.
+- **Parallel sessions, 2026-10-19 (kept for the next release):** heavy jobs take the `phos` slots 9–12
+  (`F:/kipindi-locks/mln-slot-N`, never the exclusive lock); whoever lands on `main` second re-runs `npm run glyphs:gen`
+  on the merged `map.ts` and sets `PREVIOUS_SPRITES` to what production serves; each side messages the other before a
+  release window and when it closes (Maswali: asheib-bf; MOBILE-VISUAL U43: asheib-54, whose release B rebases onto W4).
 
 W3, the selected states, went live at **`ee62451c`**, pushed at
 11:22 UTC on Ali's *"push now please then do any chekcs needed"*:
@@ -86,15 +104,13 @@ W3, the selected states, went live at **`ee62451c`**, pushed at
   pairs and two calls: Live's and Up & Down's Fill keep Phosphor's thinner strokes, and More's Fill is a solid tile.
 
 **Next:**
-1. Release 1 on `phosphor-w4` (§8d), in this order:
-   - the map (new keys `more`, `privacyNotice`, `net`, `send`; `agent` joins the app group; the Fills of the status
-     doors) and `glyphs:gen`;
-   - the code;
-   - every guard that reads a changed file, re-pinned openly, and a text-character census in `test:glyph-source`;
-   - typecheck, `next build`, the derived battery, the classic parity entries (measured), local `qa:live`;
-   - before and after tiles, read one by one, and an adversarial review;
-   - Ali's review page; then the push window, agreed with the Maswali lead;
-   - the production read-back.
+1. Release 1's remainder (both lists are in the W4 block above), in this order:
+   - rebase `phosphor-w4-review` onto `main`; finish its unverified fixes and the not-started findings;
+   - every guard that reads a changed file; the battery, with the long in-process reds given an hour each;
+   - the checks Ali stopped: before and after tiles (2x phones, the "Follow 50pick" panel suppressed) read one by
+     one; the calibrated classic parity and its measured entries; the server-bound reds; `qa:landing-ten`;
+   - typecheck, `next build`, local `qa:live`; Ali's review page; the push window, agreed with the parallel sessions;
+     the production read-back.
 2. Release 2 = W5 + W6 (§8d): Duotone plates, categories, the one deposit glyph everywhere, stat tiles, admin cards, and
    the empty states' one family.
 3. Release 3 = the rest of W7 (the console's typed marks, the PWA shortcuts, the Needle's cursor, the primer and
@@ -105,17 +121,19 @@ W3, the selected states, went live at **`ee62451c`**, pushed at
    Up & Down's Fills are kept (R-ONE-SOURCE rules out a composite).
 
 ### Where the work happens
-- Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`, now
-  **`phosphor-w3`**. On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own real `node_modules`
-  (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
+- Each wave is built on its own branch cut from `origin/main`: `phosphor-migration` (W0–W1), `phosphor-w2`,
+  `phosphor-w3`, `phosphor-w4` (all merged); release 1's remainder starts from **`phosphor-w4-review`**. On
+  OMEGA-COMPILE01 the W4 worktree was removed at the close: cut a fresh one with its own `npm ci` (a junctioned
+  `node_modules` cannot run Turbopack). On Ali-Blade15 the worktree is `C:\kipindi-phosphor`, with its own real
+  `node_modules` (installed 2026-10-17; the earlier junction was unlinked first, never deleted through).
 - **Who pushes `main` for this programme.** The board's release owner is the OMEGA-COMPILE01 session (Ali, 2026-10-16).
   Asked whether this session should take the Phosphor migration to production itself, Ali answered *"until live"*
   (2026-10-17, to the Ali-Blade15 session) — so this programme's releases are pushed to `main` by the session working it,
   recorded in the board's header. Every release: rebase on `origin/main` immediately before the push, the release
   checklist of AGENTS.md §4 (typecheck, `next build`, local `qa:live`, then the production read-back), and never a push
   while another lane's release is mid-flight (`git log origin/main` first). Between releases, the branch is pushed at
-  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-w3` (the
-  current wave's branch).
+  every step, so a session on another machine resumes with `git fetch && git worktree add <dir> origin/phosphor-w4-review`
+  (the current work's branch).
 - Every step, in ONE commit: the work, this §0 rewritten, §1 ticked, the board row's count updated. Then push the
   branch. `npm run test:phosphor-plan` asserts the tracker and the board agree.
 
@@ -134,7 +152,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
-| W4 | Outcomes and status: glyph + ink + word | 🔨 | branch `phosphor-w4` (OMEGA-COMPILE01, 2026-10-19): release 1 of §8d — W4 with the audit's player-front findings |
+| W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; the review's leftovers and the stopped checks are §0's |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
