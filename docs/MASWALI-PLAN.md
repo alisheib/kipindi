@@ -34,11 +34,15 @@ integration fixes are committed at `431948cc5` on `codex/maswali-coord-20261019`
 fetched `main` at `870772af2`. The source and disposable-database battery, every isolated browser
 suite, the ACTIVE player drive, and the WITHDRAWN-route drive are green. The visual lane read its
 full three-language capture; the changed seal line's exact-source re-shoot and tile read are green.
-Classic parity, build and production read-back remain release gates. The rollout is
+Typecheck, the exact-commit production build, bundle verification and full local `qa:live`
+(385/0) passed. Its staff-preview control was first skipped with admin two-step enforced; a
+focused run with the local test setting had one cold-server click timeout, then passed 112/0
+on retry after an independent browser reproduction completed the preview door. Classic parity
+and production read-back remain release gates. The rollout is
 `WITHDRAWN`; the public product is not open.
 
-**Next:** Finish S5's classic parity, then build and run local live QA at the exact
-release commit. Recheck current `main` and the shared release lock before any push. Deploy S5 dark,
+**Next:** Finish S5's classic parity. Rebuild and run local live QA at the exact
+release commit if the branch changes. Recheck current `main` and the shared release lock before any push. Deploy S5 dark,
 then run the three-host, health, chunk, live-QA and browser read-back from AGENTS.md §4. S7 follows
 with a measured 7,000-winner transaction-timeout blocker to repair on its own branch; S6 follows in
 L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
