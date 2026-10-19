@@ -71,7 +71,10 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   const before = Number((await w.bal(player))?.balance ?? NaN);
   const buy: Any = await svc.buyPosition(player, { marketId: wk.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
   const after = Number((await w.bal(player))?.balance ?? NaN);
-  ok("2.1 · buyPosition refuses a week as a closed market, and no shilling moves", !buy.ok && buy.code === "INVALID" && after === before
+  // The refusal must come from the ticket door, not a later generic poll guard. A synthetic week has no frozen
+  // ticket price, so the poll path also refuses it at stake bounds; checking only money and code missed that bypass.
+  ok("2.1 · buyPosition refuses a week as a closed market, and no shilling moves", !buy.ok && buy.code === "INVALID"
+    && buy.error === "Market is not accepting predictions." && after === before
     && (await w.positionsOf(wk.id)).length === 0, `${show(buy)} · balance ${before} → ${after}`);
   const ctl: Any = await svc.buyPosition(player, { marketId: poll.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
   ok("2.1c · CONTROL: the same door sells a poll ticket", ctl.ok === true, show(ctl));
