@@ -563,8 +563,11 @@ log("\n── 13 · Up & Down reads the pools (C1)");
     && round.includes("emptyLabel={price.kind === \"oneSided\" ? t.market.oneSideOnly : round.players === 0 ? t.market.noBetsYet : t.market.noPoolYet}"));
   const roundSplitAt = round.indexOf("{upPct !== null && downPct !== null ? (");
   const roundSplit = roundSplitAt > 0 ? round.slice(roundSplitAt, roundSplitAt + 1_500) : "";
+  // U43, 2026-10-19: the slim board card gives the one-sided caption a named
+  // alignment class; the detail page retains its plain flex row. Both still
+  // put the same labelled state in the split's one-sided arm.
   check("13.4 a one-sided round carries the 'One side only' label where the split would be (card and round page)",
-    /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(split)
+    /\) : price\.kind === "oneSided" \? \(\s*<div className="ud-oneside-caption flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(split)
     && /\) : price\.kind === "oneSided" \? \(\s*<div className="flex"><span className="mcardp-oneside">\{t\.market\.oneSideOnly\}<\/span><\/div>/.test(roundSplit));
   const board = decomment(read("src/lib/server/updown-board.ts"));
   const udPage = decomment(read("src/app/updown/page.tsx"));

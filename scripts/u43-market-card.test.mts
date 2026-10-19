@@ -58,6 +58,13 @@ const footerStart = cardFunction.indexOf('className="mcardp-meta"');
 const footerEnd = cardFunction.indexOf('className="mcardp-foot flex items-center justify-end gap-2"', footerStart);
 const footerLead = footerStart >= 0 && footerEnd > footerStart ? cardFunction.slice(footerStart, footerEnd) : "";
 const badge = card.slice(card.indexOf("function getSignalBadge("), card.indexOf("function DayAgoMove("));
+const dayMove = card.slice(card.indexOf("function DayAgoMove("), card.indexOf("/* The card's seven-day YES% sparkline"));
+check("3.0 flat 24h move prints zero without a text icon",
+  dayMove.includes('{dir !== "flat" && <span aria-hidden')
+  && dayMove.includes('{dir !== "flat" && <span className="sr-only">')
+  && dayMove.includes('dir === "up" ? <I.chevronUp s={11} tier="fill" /> : <I.chevronDown s={11} tier="fill" />')
+  && dayMove.includes('{Math.abs(move)}')
+  && !dayMove.includes('"±"'));
 check("3.1 the batch and single readers use the same time sampler", /const spark = sampleMarketSpark\(points, now\);/.test(history) && !/compress\(priced, 16\)/.test(history));
 check("3.2 closing SOON beats HOT", badge.indexOf('if (closesWithinTheHour(msLeft)) return { kind: "soon"') >= 0 && badge.indexOf("if (closesWithinTheHour(msLeft))") < badge.indexOf("if (volume >= 30_000"));
 check("3.3 live grid cards use one static mark directly before the top-right clock", cardFunction.includes("featured || !live")

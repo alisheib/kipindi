@@ -7,7 +7,8 @@
  *
  * ⭐ THE ONES THAT MATTER MOST:
  *  · `flat-constant-returns` restores D2's first defect: one number for both sides, whatever the
- *    pool holds — on the projection the confirm panel and the receipt still state.
+ *    pool holds — on the confirm panel's pre-commit projection. The receipt reads the
+ *    money action's committed projection, which can differ after another bet moves the pool.
  *  · the three `prints a multiple again` mutations restore what Ali's ruling of 2026-10-14 removed
  *    — a `× N` on the board card's Up button, on the shared controls' Up button, and beside the
  *    confirm panel's projection. If any is MISSED this guard has stopped guarding the ruling.

@@ -1056,6 +1056,8 @@
     "test:updown-movement": "tsx scripts/updown-movement.test.mts",
     "red:updown-movement": "node scripts/red-updown-movement.cjs",
     "test:updown-positions-visible": "tsx scripts/updown-positions-visible.test.mts",
+    "test:updown-position-read-fail": "tsx scripts/updown-position-read-fail.test.mts",
+    "test:updown-position-read-fail-db": "tsx scripts/db-scratch.mts --run npx tsx scripts/updown-position-read-fail.test.mts",
     "red:updown-positions-visible": "node scripts/updown-positions-visible-red.mjs",
     "test:crest-legibility": "tsx scripts/crest-legibility.test.mts",
     "test:motion-ladder": "tsx scripts/motion-ladder.test.mts",

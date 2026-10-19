@@ -1,5 +1,7 @@
 /** U43 B4 market-card anchors, shared by the red proof and fleet audit. */
 export const MUTATIONS = [
+  { name: "flat 24h move regains a text icon", file: "src/components/markets/market-card.tsx", from: '{dir !== "flat" && <span aria-hidden', to: '{true && <span aria-hidden', expected: "3.0" },
+  { name: "flat 24h move announces a false sign", file: "src/components/markets/market-card.tsx", from: '{dir !== "flat" && <span className="sr-only">', to: '{true && <span className="sr-only">', expected: "3.0" },
   { name: "event-index history", file: "src/lib/server/market-history.ts", from: "const spark = sampleMarketSpark(points, now);", to: "const spark = compress(priced, 16).map((x) => x.pct);", expected: "3.1" },
   { name: "invented 50 after a one-sided snapshot", file: "src/lib/markets/market-spark.ts", from: 'held = price.kind === "priced" ? price.yesPct : null;', to: 'held = price.kind === "priced" ? price.yesPct : 50;', expected: "1.1" },
   { name: "label over separated points with no drawable line", file: "src/lib/markets/market-spark.ts", from: 'if (Number.isFinite(data[i - 1]) && Number.isFinite(data[i])) return true;', to: 'if (Number.isFinite(data[i - 1]) || Number.isFinite(data[i])) return true;', expected: "1.6" },

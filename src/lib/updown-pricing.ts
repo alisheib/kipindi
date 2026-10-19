@@ -7,8 +7,9 @@
  * Down only"). No Up & Down surface prints the multiple any more: the board card's buttons, the
  * one-tap stake control and the round page's two-way control say Up and Down and nothing else.
  * What this file still prices is the projected RETURN, in shillings, at the moment of commitment —
- * the round page's confirm panel (`projectedReturn`) and the bet receipt (`impliedMultiplier` at
- * the amount staked) — and `emptySideOf` / `refundWarningFor` still name the empty side before
+ * the round page's confirm panel (`projectedReturn`). The placed-bet receipt reads the money
+ * action's committed `payoutIfWin`, so a stale board snapshot cannot reprice it. `emptySideOf`
+ * and `refundWarningFor` still name the empty side before
  * any stake, because that is a fact about the pools, not an estimate. The history below is why
  * the figure is the pool's own wherever it IS shown.
  *
@@ -179,9 +180,9 @@ export function refundWarningFor(
  * What a specific stake would return, in whole shillings — the figure the round page's confirm
  * panel shows beside the amount, at the moment of commitment.
  *
- * Same call, same rates, same rounding as the receipt's projected return (`impliedMultiplier` at
- * the amount staked), so the panel and the receipt can never disagree. Null when there is
- * nothing honest to show.
+ * The placed-bet receipt reads the server's committed projection. Later bets can change the
+ * pool between this pre-commit quote and the actual write. Null when there is nothing honest
+ * to show.
  */
 export function projectedReturn(
   pricing: UpDownPricing | null | undefined,

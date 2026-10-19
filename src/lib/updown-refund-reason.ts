@@ -65,6 +65,13 @@ export const REFUND_REASON_KEY: Record<RefundReason, string> = {
   unexplained: "udRefundUnexplained",
 };
 
+/** The settlement row, not an equal aggregate payout, proves a refund. A
+ * winning position can happen to return exactly its stake after rounding, and
+ * mixed wins/losses can break even without returning either stake. */
+export function isRefundedPosition(status: string, stake: number, payout: number | null): boolean {
+  return status === "VOID" && Number.isFinite(stake) && stake > 0 && payout === stake;
+}
+
 /**
  * The one decision.
  *

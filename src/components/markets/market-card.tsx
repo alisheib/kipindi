@@ -191,13 +191,12 @@ function DayAgoMove({ move, label, keyed }: { move: number; label: string; keyed
   return (
     <span className="mcardp-h24">
       {keyed && <span className="mcardp-h24-key" aria-hidden />}
-      {/* The direction is the caret's Fill — the solid triangle the typed ▲▼ were (PHOSPHOR-MIGRATION §8a): a direction
-          that is itself the data is a state (§8c). At the line's own 11px; flat stays the ± sign. `inline-flex`, so the
-          glyph sits on the row's centre with no line box under it. */}
-      <span aria-hidden className={cn("inline-flex", nudge)}>
-        {dir === "up" ? <I.chevronUp s={11} tier="fill" /> : dir === "down" ? <I.chevronDown s={11} tier="fill" /> : "±"}
-      </span>
-      <span className="sr-only">{dir === "up" ? "+" : dir === "down" ? "−" : "±"}</span>
+      {/* A moving reading uses the family's filled caret. A flat reading is simply
+          zero points, with no text character standing in for an icon. */}
+      {dir !== "flat" && <span aria-hidden className={cn("inline-flex", nudge)}>
+        {dir === "up" ? <I.chevronUp s={11} tier="fill" /> : <I.chevronDown s={11} tier="fill" />}
+      </span>}
+      {dir !== "flat" && <span className="sr-only">{dir === "up" ? "+" : "−"}</span>}
       {Math.abs(move)}{" · "}{label}
     </span>
   );

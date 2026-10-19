@@ -7,7 +7,8 @@
  *   · NO MULTIPLE ON ANY UP & DOWN CHOICE. The board card's two buttons (signed in and out), the one-tap stake control
  *     and the round page's two-way control say the side's word and nothing else (§3, §5, §8 — rendered, en/sw/zh).
  *   · THE MONEY AT THE COMMIT STAYS, AND IT IS STILL THE POOL'S. The round page's confirm panel states the projected
- *     return in shillings and the receipt repeats it — computed by `payoutFor`, the function settlement pays with
+ *     return in shillings and the receipt repeats the money action's committed `payoutIfWin` — computed server-side
+ *     by `payoutFor`, the function settlement pays with
  *     (§1, §5.8, §5.14, §8.4). Informed consent at the money commit is a UX commitment (CLAUDE.md).
  *   · THE EMPTY SIDE IS STILL SAID BEFORE ANY STAKE, AND ITS TRUTH IS THE POOL'S. With no multiple on the card the
  *     standards' old signature for an empty counterparty (a side quoted at exactly 1.00×) has nothing to read; the
@@ -48,6 +49,7 @@ const CARD = "src/components/updown/updown-card.tsx";
 const CONTROLS = "src/components/updown/updown-stake-controls.tsx";
 const PANEL = "src/components/updown/round-stake-panel.tsx";
 const RECEIPT = "src/components/updown/updown-bet-receipt-modal.tsx";
+const QUICK_BET = "src/components/updown/use-quick-bet.ts";
 // ⚠️ 2026-08-07 · `updown-bet-box.tsx` is GONE (deleted with Session B Stage 1 — zero
 // call sites; RoundStakePanel is the round page's one bet surface). The BOX slice went
 // with it; three surfaces remain.
@@ -176,7 +178,7 @@ ok("1.6 an untouched round is 1.00× on BOTH sides — the honest 'your stake co
      mismatches === 0, `${mismatches} disagreed`);
   ok("1.8 …and not one of them quotes a winner below their own stake", floorBreaches === 0,
      `${floorBreaches} below 1.00×`);
-  ok("1.9 …and `projectedReturn` is the same call, so the confirm panel and the receipt cannot differ",
+  ok("1.9 `projectedReturn` uses the pool function for the pre-commit confirm quote",
      projectedReturn(P(90_000, 10_000), "DOWN", 2_000) ===
        Math.round(2_000 * (impliedMultiplier(P(90_000, 10_000), "DOWN", 2_000) as number)));
 }
@@ -363,8 +365,10 @@ ok("5.12 both pages hand the surfaces the server's pricing object",
 ok("5.13 no surface re-implements the fee — they all call the shared module",
    !/payoutFor\(|poolFee\(/.test(cardCode + controlsCode + panelCode + receiptCode));
 // ⭐ What the ruling deliberately KEEPS: the money at the commit (CLAUDE.md "UX commitments").
-ok("5.14 the bet receipt keeps its projected return — the shared function at the amount actually staked, labelled, qualified",
-   /impliedMultiplier\(pricing, placed\.side, placed\.amount\)/.test(receiptCode)
+ok("5.14 the bet receipt keeps the money action's committed return, labelled and qualified",
+   /payoutIfWin: placed\.payoutIfWin,/.test(read(QUICK_BET))
+   && /receiptProjectedPayout\(pricing\.show, placed\)/.test(receiptCode)
+   && !/impliedMultiplier\(pricing, placed\.side, placed\.amount\)/.test(receiptCode)
    && /label: t\.market\.udRcProjected/.test(receiptCode)
    && /footnote=\{projected != null \? t\.market\.udEstimateNote : undefined\}/.test(receiptCode));
 

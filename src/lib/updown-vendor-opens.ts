@@ -15,6 +15,24 @@ export const ROUND_LINE_RANGE = "1H" as const;
 export const ROUND_LINE_WINDOW_MS = Math.max(...ALLOWED_DURATIONS.map(roundSpanMinutes)) * MINUTE_MS + 4 * MINUTE_MS;
 export const ROUND_LINE_OUTPUT_BARS = ROUND_LINE_WINDOW_MS / MINUTE_MS + 1;
 
+/** A live line belongs to a bettable or locked round. Once decided, its
+ * historical line may remain briefly; waiting for a source has no live line. */
+export function shouldDisplayRoundLine(
+  state: "open" | "locked" | "closing" | "confirming" | "resolved" | "void",
+  opensAtMs: number,
+  closesAtMs: number,
+  nowMs: number,
+  openPrice: number | null,
+): boolean {
+  if (openPrice == null || !Number.isFinite(openPrice) || openPrice <= 0
+    || ![opensAtMs, closesAtMs, nowMs].every(Number.isFinite)
+    || closesAtMs <= opensAtMs || nowMs < opensAtMs) return false;
+  const active = state === "open" || state === "locked";
+  const settled = state === "resolved" || state === "void";
+  return (active && nowMs <= closesAtMs)
+    || (settled && nowMs - opensAtMs <= ROUND_LINE_WINDOW_MS);
+}
+
 export function roundLineHistoryUrl(assetKey: string): string {
   return `/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${ROUND_LINE_RANGE}&style=line&scope=round`;
 }

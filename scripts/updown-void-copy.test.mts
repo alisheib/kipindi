@@ -27,7 +27,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  refundReasonFor, displayDirection, REFUND_REASON_KEY, type RefundReason,
+  refundReasonFor, isRefundedPosition, displayDirection, REFUND_REASON_KEY, type RefundReason,
 } from "../src/lib/updown-refund-reason.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 
@@ -73,6 +73,34 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
      refundReasonFor({ outcome: "VOID", voidReason: "something-new" }) === "unexplained");
   ok("1.11 · …and so does a void with NO reason recorded",
      refundReasonFor({ outcome: "VOID", voidReason: null }) === "unexplained");
+}
+
+// U43 · A payout equal to stake is not evidence of a refund. Only a VOID
+// position whose full stake came back may carry the refund explanation.
+{
+  const refunded = (items: { status: string; stake: number; payout: number | null }[]) =>
+    items.reduce((sum, item) => sum + (isRefundedPosition(item.status, item.stake, item.payout) ? item.stake : 0), 0);
+  const hedgedBreakEven = [
+    { status: "WIN", stake: 500, payout: 1000 },
+    { status: "LOSS", stake: 500, payout: 0 },
+  ];
+  ok("U43.1 · a mixed win and loss that breaks even is not a refund",
+    refunded(hedgedBreakEven) === 0
+    && refundReasonFor({ outcome: "UP", voidReason: null, refundedStake: refunded(hedgedBreakEven) }) === null);
+  ok("U43.2 · a rounded winner returning exactly stake is still a win",
+    !isRefundedPosition("WIN", 500, 500));
+  ok("U43.3 · an actual one-sided VOID position is a refund on a decided round",
+    refunded([{ status: "VOID", stake: 500, payout: 500 }]) === 500
+    && refundReasonFor({ outcome: "UP", voidReason: null, refundedStake: 500 }) === "unmatched");
+  ok("U43.4 · a void with missing or partial payout is not claimed as money returned",
+    !isRefundedPosition("VOID", 500, null) && !isRefundedPosition("VOID", 500, 499));
+  const board = code("src/lib/server/updown-board.ts");
+  const page = code("src/app/updown/[roundId]/page.tsx");
+  ok("U43.5 · the board gets refund money from position status and actual payout",
+    board.includes("isRefundedPosition(p.status, p.stake, p.finalPayout)"));
+  ok("U43.6 · the detail page sums itemised refunds instead of comparing aggregate money",
+    page.includes("myPosition?.items.reduce((sum, item) =>")
+    && page.includes("isRefundedPosition(item.status, item.stake, item.payout)"));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -165,10 +193,11 @@ const ALL: RefundReason[] = ["no-move", "source-failed", "source-mismatch", "ope
   // `myRefundedStake` in the board — which survives happily even if the value is never
   // computed, so gutting the calculation left the guard green and the decided-but-refunded
   // case invisible. A field that is always 0 is not a field; the property is that a SETTLED
-  // position whose payout equals its stake is counted as refunded.
+  // VOID position whose full stake came back is counted as refunded. A WIN
+  // can pay exactly stake without being a refund.
   const board = code("src/lib/server/updown-board.ts");
-  ok("4.8 · ⭐ and the board actually COMPUTES it — a settled position paid exactly its stake",
-     /p\.finalPayout != null && p\.finalPayout === p\.stake\) e\.refunded \+= p\.stake/.test(board) &&
+  ok("4.8 · ⭐ the board computes refunds from a VOID position, not equal money",
+     /isRefundedPosition\(p\.status, p\.stake, p\.finalPayout\)\) e\.refunded \+= p\.stake/.test(board) &&
      /myRefundedStake: mine\?\.refunded/.test(board));
 }
 

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { vendorOpenPoints, roundOpenPoints, maskConflictingVendorOpens, roundLineHistoryUrl, ROUND_LINE_WINDOW_MS, ROUND_LINE_OUTPUT_BARS } from "../src/lib/updown-vendor-opens";
+import { vendorOpenPoints, roundOpenPoints, maskConflictingVendorOpens, roundLineHistoryUrl, shouldDisplayRoundLine, ROUND_LINE_WINDOW_MS, ROUND_LINE_OUTPUT_BARS } from "../src/lib/updown-vendor-opens";
 import { vendorBarsFor, VENDOR_PLAN, __clearVendorCacheForTests } from "../src/lib/server/updown-terminal-vendor";
 import { ALLOWED_DURATIONS, roundSpanMinutes } from "../src/lib/updown-durations";
 import { assetStore } from "../src/lib/server/updown-dal";
@@ -18,6 +18,20 @@ function ok(name: string, passed: boolean) {
 const minute = 60_000;
 const open = Math.floor(Date.now() / minute) * minute - 4 * minute;
 const close = open + 3 * minute;
+ok("the live line belongs to open and locked rounds, then only a briefly frozen result",
+  shouldDisplayRoundLine("open", open, close, open, 100.12)
+  && shouldDisplayRoundLine("locked", open, close, close - 1, 100.12)
+  && !shouldDisplayRoundLine("closing", open, close, close, 100.12)
+  && !shouldDisplayRoundLine("confirming", open, close, close + minute, 100.12)
+  && shouldDisplayRoundLine("resolved", open, close, close + minute, 100.12)
+  && shouldDisplayRoundLine("void", open, close, close + minute, 100.12)
+  && !shouldDisplayRoundLine("resolved", open, close, open + ROUND_LINE_WINDOW_MS + 1, 100.12)
+  && !shouldDisplayRoundLine("open", open, close, open - 1, 100.12)
+  && !shouldDisplayRoundLine("locked", open, close, close + 1, 100.12)
+  && !shouldDisplayRoundLine("open", open, close, Number.NaN, 100.12)
+  && !shouldDisplayRoundLine("open", Number.NaN, close, close - 1, 100.12)
+  && !shouldDisplayRoundLine("resolved", open, Number.NaN, close - 1, 100.12)
+  && !shouldDisplayRoundLine("open", open, close, open, 0));
 const bars = [
   { t: open, o: 100.124, c: 105 },
   { t: open + minute, o: 100.254, c: 90 },
@@ -79,6 +93,9 @@ ok("the 72-minute card includes its genuine opening and deciding-minute OPENs",
 
 const board = readFileSync(new URL("../src/lib/server/updown-board.ts", import.meta.url), "utf8");
 const card = readFileSync(new URL("../src/components/charts/round-live-line.tsx", import.meta.url), "utf8");
+ok("the rendered round line applies the tested phase rule",
+  card.includes('const visible = typeof assetKey === "string" && assetKey.length > 0')
+  && card.includes("&& shouldDisplayRoundLine(state, opensAtMs, closesAtMs, nowMs, openPrice);"));
 ok("the real history path uses the tested OPEN mapper", board.includes("vendorOpenPoints(inWindow, plan.intervalMs, asset.decimals)"));
 ok("the round component uses the shared range, not a duration-specific request", card.includes("fetch(roundLineHistoryUrl(assetKey)"));
 const roundCard = readFileSync(new URL("../src/components/updown/updown-card.tsx", import.meta.url), "utf8");
@@ -115,6 +132,11 @@ const pendingMarkup = renderToStaticMarkup(createElement(RoundLiveLine, {
   closePrice: null, decimals: 2, locale: "sw", state: "open", serverNowMs: open + minute,
 }));
 ok("an unanswered vendor read paints no invented line and no endless loading label", pendingMarkup === "");
+ok("a card missing an asset key never crashes or invents a vendor line",
+  renderToStaticMarkup(createElement(RoundLiveLine, {
+    assetKey: undefined as unknown as string, opensAtMs: open, closesAtMs: close, openPrice: 100.12,
+    decimals: 2, locale: "sw", state: "open", serverNowMs: open + minute,
+  })) === "");
 ok("a backgrounded first request has a bounded timeout and a truthful unavailable state",
   card.includes('if (alive) setStatus((previous) => previous === "loading" ? "error" : previous);')
   && card.includes("clearTimeout(watchdog)")

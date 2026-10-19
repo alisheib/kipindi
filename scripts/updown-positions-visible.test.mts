@@ -156,6 +156,18 @@ ok("4.4 it returns the itemised list",
   /items:\s*MyRoundPosition\[\]/.test(board) && /export type MyRoundPosition/.test(board),
   "items is not part of the contract");
 
+// A read error is not a player with no positions. All three routes have retry
+// boundaries, so signed-in reads must throw while guests keep their early return.
+ok("4.5 the board keeps the guest shortcut and propagates a signed-in read failure",
+  /if \(!userId\) return out;[\s\S]{0,240}const positions = await listPositionsForUser\(userId, 500, "UPDOWN"\);/.test(board),
+  "the board may silently erase a signed-in player's stake");
+ok("4.6 the history read propagates failure instead of claiming no bets",
+  /export async function getMyUpDownHistory\([\s\S]{0,150}const positions = await listPositionsForUser\(userId, limit, "UPDOWN"\);/.test(board),
+  "the history may show an empty book after a failed read");
+ok("4.7 the round detail keeps the guest shortcut and propagates a signed-in read failure",
+  /if \(!userId\) return null;\s*const positions = \(await listPositionsForMarket\(marketId\)\)\.filter\(\(p\) => p\.userId === userId\);/.test(board),
+  "the round may hide a player's result after a failed read");
+
 console.log("\n── 5 · the copy exists in all three languages ─────────────────────\n");
 
 for (const key of ["udPositionsOnRound", "udBothSides", "udHistoryCapped", "udPosWon", "udPosLost", "udPosRefunded", "udPosOpen", "udPosCashedOut"]) {

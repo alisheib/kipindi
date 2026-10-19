@@ -375,7 +375,7 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
   not a production-data change in this release. `/updown/history` remains Maswali-owned and still orders Swahili
   durations as `5 dakika`; U43 board/detail/receipt use `dakika 5`, so cross-surface wording is not yet 10/10.
-  The B1–B5 source and its guards are pushed on the U43 work branch through `cb4f88301`; this is not a live release.
+  The B1–B5 source and its guards are pushed on the U43 work branch through `be08de2cb`; this is not a live release.
   A follow-up data audit found that malformed vendor rows with zero or negative OHLC could draw a false price.
   The parser now discards those rows and leaves a gap; the served-history B2 guard passed 34/34 and its targeted
   reversal was caught 1/1. The stale-confirming selection guard now runs the real non-overlapping selector with
@@ -388,6 +388,35 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   tier, and [Twelve Data's published terms](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)
   say individual tiers exclude commercial display to third parties. No separate display agreement is recorded
   in this repository. Ali has been asked whether one exists; release B cannot claim this gate closed yet.
+  A B2 phase audit found that the line's visibility predicate also admitted closing and confirming rounds, despite
+  the brief limiting live refreshes to open/locked rounds and a short frozen view after a result. The predicate now
+  excludes both waiting phases and an old locked round past its close; invalid timestamps hide the line too. The focused
+  guard passes 37/37, with named reversals added to the B2 red fleet.
+  Its full red run and post-fix browser read remain due.
+  The price line also refuses a missing asset key, so an incomplete card cannot crash server rendering or request
+  a fictitious feed (`test:updown-pricing` now passes 93/93). An adversarial money-copy read found two further
+  false claims: equal total payout had been called a refund even when a hedged player broke even, and the quick-bet
+  receipt recalculated its projection from a possibly stale board pool. Refund copy now requires a VOID position
+  with its stake actually returned; the receipt uses the projection saved by the accepted bet. Their focused
+  guards pass, with the receipt's ten in-memory reversals caught; the disk refund red fleet is queued.
+  The market card's flat 24-hour move now prints plain zero instead of a text-character icon; the B4 guard and
+  full red fleet pass, with every file restored after mutation. Fresh browser frames remain due for all of these.
+  A player-data audit then found three signed-in reads that hid position-store failures as empty board stakes,
+  round details or history. The read errors now reach each page's retry state; guests still see anonymous empty
+  states. A focused fault fixture passed in memory and on disposable PostgreSQL with the current migration set;
+  the existing visibility guard passed 32/32 and its red fleet caught and restored 7/7 reversals, including all
+  three false-empty fallbacks. No production data was touched. The post-fix focused batch is green for B1/B3/B4/B5,
+  receipt, void copy (55/0), pricing (93/0), positions (32/0) and the one-sided rules; B2 is 37/0.
+  The full B2 red run caught its first 15 reversals, then found a weak invalid-clock test: `NaN` as the current time
+  was already rejected by the active interval check, even without the new finite guard. Its files were restored;
+  the test now also injects invalid opening and closing times so that reversal must fail. The full red rerun is due.
+  That rerun caught the invalid-clock plant, then exposed an obsolete null-feed plant: the earlier asset-key guard
+  already returns before the feed lookup. The redundant lookup edit and its ineffective plant were removed;
+  the missing-key render assertion and the asset-key guard's own reversal remain. The final full B2 red fleet caught
+  **30/30** reversals and restored all eight target files byte-for-byte.
+  The itemized refund-copy red fleet then caught **14/14** reversals and restored all six target files byte-for-byte.
+  The one-sided rule's red fleet caught **31/31** reversals and restored all 17 target files byte-for-byte;
+  `test:red-anchors` passed 6,594/0. The U43 mutation slot is released.
   The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
   `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
   plan §0 already records those inherited reds; U43 does not edit that lane. Next: retest the R13 findings in browser
@@ -710,7 +739,7 @@ refuses a 🔵 without one), and the defect only reaches ✅ when its unit does 
 | U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
 | U41 /fairness on a phone (D60 · D61) | General | ✅ | S23 | `c9ba60cc` + guard `qa:fairness-phone` | source links outside the scroller **12 of 12 → 0** at 320/360/412; table off-screen **48.8% / 41.7% / 32.4% → 0%** (client==scroll: 286/286, 326/326, 378/378); rows paint **0 identical titles** | yes (`qa:fairness-phone`, `RED_TABLE=1` serves the five-column table back and reproduces THIS UNIT'S OWN RECORDED NUMBERS: client 326 vs scroll **559**, 49%/42%/32% off-screen at 320/360/412, all 12 source links outside — a green RED run exits 2 as a broken harness) | 2026-09-24 — D60 and D61 both closed. ⚠️ The third assertion (no two rows paint identical title text) is DATA-DEPENDENT and did not fire under RED: today's twelve markets clamp to distinguishable text. It is kept because it is the defect that mattered most — two markets painting the same row is worse than a table that scrolls — but a green run of it is evidence about THIS board, not about the layout. |
 | U42 The sign-up funnel on a phone (D69) | General | ✅ | S23 | `ea023299` + guard `qa:signup-funnel` | 7 `/auth/*` routes × 2 widths: **200, `lang=sw`, 0 able to scroll sideways**; DOB accessible names **`Day/Month/Year` → `Siku/Mwezi/Mwaka`** | yes (`qa:signup-funnel`: `RED_WIDE=1` fails all 14 route×width cells, `RED_ARIA=1` fails both widths — each required to break its OWN section; a green RED run exits 2 as a broken harness) | 2026-09-24 — D69 closed. ⚠️ Signed-out and at-rest only: nothing here says the funnel WORKS, only that it does not overflow and speaks Swahili. A keyboard over every field is U30. |
-| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⬜ | S24 | | | | ⏳ in flight (asheib-54, branch `claude/updown-visual-10`) — the §0 ⏳ block and §9 U43 hold the state; ⬜ until its first release |
+| U43 Up & Down board, round card and market card — every lens 10/10 (Ali's request) | General | ⬜ | S24 | | | | ⏳ in flight (`codex/u43-release-b`) — Release A is live; Release B is on the work branch. The §0 ⏳ block and §9 U43 hold the state; ⬜ until the full score and release gates pass |
 
 | Defect | Status | Owning unit |
 |---|---|---|

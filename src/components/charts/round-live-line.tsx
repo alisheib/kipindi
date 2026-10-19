@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fmtEATClock } from "@/lib/updown-source-label";
-import { ROUND_LINE_WINDOW_MS, roundLineHistoryUrl, roundOpenPoints, type OpenPoint } from "@/lib/updown-vendor-opens";
+import { roundLineHistoryUrl, roundOpenPoints, shouldDisplayRoundLine, type OpenPoint } from "@/lib/updown-vendor-opens";
 import { usd } from "@/lib/usd-price";
 
 type State = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
@@ -41,11 +41,10 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
     return () => clearInterval(timer);
   }, [serverNowMs]);
 
-  const settled = state === "resolved" || state === "void";
   const active = state === "open" || state === "locked";
-  const visible = openPrice != null && Number.isFinite(openPrice) && openPrice > 0
-    && closesAtMs > opensAtMs && nowMs >= opensAtMs
-    && (!settled || nowMs - opensAtMs <= ROUND_LINE_WINDOW_MS);
+  const settled = state === "resolved" || state === "void";
+  const visible = typeof assetKey === "string" && assetKey.length > 0
+    && shouldDisplayRoundLine(state, opensAtMs, closesAtMs, nowMs, openPrice);
 
   useEffect(() => {
     if (!visible) return;

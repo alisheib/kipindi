@@ -38,6 +38,7 @@ import { QUOTE_GAP_FACTOR, medianCadenceMs, isQuoteStale } from "@/lib/updown-qu
 // The one spelling of "this round is over for good" — the board's selection keeps every started round that is not.
 import { roundIsSettled } from "@/lib/updown-card-phase";
 import { latestNonOverlappingResult } from "@/lib/updown-board-order";
+import { isRefundedPosition } from "@/lib/updown-refund-reason";
 import { shownPredictors } from "@/lib/markets/predictors";
 import { isMarketOpenAt, nextOpenAfter } from "./market-calendar";
 
@@ -676,16 +677,15 @@ async function myStakesByMarket(userId: string | undefined): Promise<Map<string,
   if (!userId) return out;
   // UPDOWN only — this map powers the card's "you're in" indicator, so it must not
   // pull the player's long-form-poll positions.
-  const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);
+  // A failed money-row read is not an empty account. Let the route show its retry state.
+  const positions = await listPositionsForUser(userId, 500, "UPDOWN");
   for (const p of positions) {
     const e = out.get(p.marketId) ?? { up: 0, down: 0, refunded: 0, result: null, results: [] };
-    // ⭐ E-65 · A SETTLED POSITION WHOSE PAYOUT EQUALS ITS STAKE WAS REFUNDED, and that can
-    // happen on a round that DECIDED — when nobody took the other side there is no pool to
-    // win from. The card needs this to tell a refund apart from a loss; without it a decided
-    // round rendered "the price did not move enough" over a stake that came back for the
-    // opposite reason.
+    // ⭐ E-65 · A VOID position with its full stake returned was refunded, even
+    // when the round itself decided one-sided. Equal money alone is not proof:
+    // a winning position may return exactly stake, and a hedged player may break even.
     if (p.status !== "OPEN") {
-      if (p.finalPayout != null && p.finalPayout === p.stake) e.refunded += p.stake;
+      if (isRefundedPosition(p.status, p.stake, p.finalPayout)) e.refunded += p.stake;
       // ⭐ THE VIEWER'S OWN OUTCOME — see `BoardRound.myResult`. Until this line the board
       // sent a winner and a loser byte-identical props, so no surface could tell them apart.
       // ⛔ The status is read off the POSITION ROW, never inferred from the round's outcome:
@@ -996,7 +996,8 @@ export type MyRoundRow = {
 };
 
 export async function getMyUpDownHistory(userId: string, limit = 200): Promise<MyRoundRow[]> {
-  const positions = await listPositionsForUser(userId, limit, "UPDOWN").catch(() => []);
+  // The history page has a retry boundary; a failed read must never claim no bets.
+  const positions = await listPositionsForUser(userId, limit, "UPDOWN");
   if (positions.length === 0) return [];
   // Resolve each position's round + asset. Bounded by the page limit; distinct markets
   // are cached so multiple positions on one round cost one lookup.
@@ -1443,7 +1444,8 @@ async function myPositionFor(
   hedged: boolean;
 } | null> {
   if (!userId) return null;
-  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);
+  // A failed read must reach the round page's retry boundary, not erase a holder's result.
+  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);
   if (positions.length === 0) return null;
   let up = 0, down = 0, stake = 0, payout = 0, anyPayout = false, anyWin = false, anyVoid = false, allSettled = true;
   for (const p of positions) {

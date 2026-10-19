@@ -33,8 +33,8 @@
 import { OperationResultModal, type OperationDetail } from "@/components/markets/operation-result-modal";
 import { useT } from "@/lib/i18n";
 import { formatTzs } from "@/lib/utils";
-import { impliedMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
-import { freeExitMinutesFor, type UpDownReceiptInfo } from "@/lib/updown-receipt";
+import type { UpDownPricing } from "@/lib/updown-pricing";
+import { freeExitMinutesFor, receiptProjectedPayout, type UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { usd } from "@/lib/usd-price";
 import { roundDuration } from "@/lib/updown-round-name";
 // E-53 · the ONE map from market class to the phrase a player is shown — never the vendor.
@@ -75,10 +75,9 @@ export function UpDownBetReceiptModal({
   const { t } = useT();
   if (!placed) return null;
 
-  // ⛔ ONE RULE for "what would I be paid" (D2) — the same function the round page's confirm
-  // panel and `myExactPayout` use, asked at the amount actually staked. Never a second formula.
-  const mult = impliedMultiplier(pricing, placed.side, placed.amount);
-  const projected = mult != null ? Math.round(placed.amount * mult) : null;
+  // The server's committed projection already reflects the pool this bet entered.
+  // The board's pricing may be older than another player's bet, so never reprice this receipt.
+  const projected = receiptProjectedPayout(pricing.show, placed);
 
   // ⛔ COMPUTED PER BET, NEVER STATED AS A CONSTANT. On a 3-minute round the free exit does
   // not exist at all, and on a 5-minute one it exists only at the open — see

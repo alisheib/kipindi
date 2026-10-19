@@ -31,7 +31,7 @@ import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the card — five copies would be
 // five chances to disagree about someone money.
-import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
+import { isRefundedPosition, refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
 import { roundDuration, roundName } from "@/lib/updown-round-name";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
@@ -274,7 +274,8 @@ export default async function UpDownRoundPage({
   // ⭐ E-65 · WHY THIS VIEWER GOT THEIR STAKE BACK, from the rule the card shares. Fires on a
   // VOIDED round AND on a DECIDED one that refunded this player for want of a counterparty —
   // two opposite events that used to print the same sentence.
-  const myRefundedStake = myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0;
+  const myRefundedStake = myPosition?.items.reduce((sum, item) =>
+    sum + (isRefundedPosition(item.status, item.stake, item.payout) ? item.stake : 0), 0) ?? 0;
   const refundReason = refundReasonFor({
     outcome: round.state === "void" ? "VOID" : (round.outcome ?? null),
     voidReason: round.voidReason,

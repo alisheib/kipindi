@@ -55,12 +55,16 @@ function mutate(file, rawFrom, rawTo, label) {
   writeFileSync(file, before.replace(from, to), "utf8");
 }
 
-function guardIsRed() {
+function guardIsRed(suite = "visible", expected = "") {
+  const command = suite === "fault"
+    ? "npx tsx scripts/updown-position-read-fail.test.mts"
+    : "npx tsx scripts/updown-positions-visible.test.mts";
   try {
-    execSync("npx tsx scripts/updown-positions-visible.test.mts", { stdio: "pipe" });
+    execSync(command, { stdio: "pipe" });
     return false; // exited 0 — the guard did NOT catch it
-  } catch {
-    return true;
+  } catch (error) {
+    const output = `${error.stdout ?? ""}\n${error.stderr ?? ""}`;
+    return !expected || output.includes(expected);
   }
 }
 
@@ -111,10 +115,37 @@ const cases = [
     name: "D4 · myPositionFor caps across ALL rounds, then filters to this one",
     apply: () => {
       mutate(BOARD,
-        "  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);",
+        "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
         "  const positions = (await listPositionsForUser(userId, 500, \"UPDOWN\").catch(() => [])).filter((p) => p.marketId === marketId);",
         "restore the global-cap-then-filter read");
     },
+  },
+  {
+    name: "D5 · a failed board position read claims the player has no stake",
+    suite: "fault",
+    expected: "board must not turn failed position read into no stake",
+    apply: () => mutate(BOARD,
+      '  const positions = await listPositionsForUser(userId, 500, "UPDOWN");',
+      '  const positions = await listPositionsForUser(userId, 500, "UPDOWN").catch(() => []);',
+      "restore the board's silent-empty fallback"),
+  },
+  {
+    name: "D6 · a failed history position read claims the player has no bets",
+    suite: "fault",
+    expected: "history must not turn failed position read into no bets",
+    apply: () => mutate(BOARD,
+      '  const positions = await listPositionsForUser(userId, limit, "UPDOWN");',
+      '  const positions = await listPositionsForUser(userId, limit, "UPDOWN").catch(() => []);',
+      "restore the history's silent-empty fallback"),
+  },
+  {
+    name: "D7 · a failed round position read claims the player never bet",
+    suite: "fault",
+    expected: "detail must not turn a failed market-position read into no bet",
+    apply: () => mutate(BOARD,
+      "  const positions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);",
+      "  const positions = (await listPositionsForMarket(marketId).catch(() => [])).filter((p) => p.userId === userId);",
+      "restore the round's silent-empty fallback"),
   },
 ];
 
@@ -128,12 +159,18 @@ if (guardIsRed()) {
   process.exit(2);
 }
 console.log("  ok   baseline · the guard is green on the current tree\n");
+if (guardIsRed("fault")) {
+  restore();
+  console.error("✗ the position-read fault guard is ALREADY red on the unmodified tree");
+  process.exit(2);
+}
+console.log("  ok   baseline · the real position-read fault guard is green\n");
 
 let caught = 0;
 for (const c of cases) {
   restore();
   c.apply();
-  const red = guardIsRed();
+  const red = guardIsRed(c.suite, c.expected);
   console.log(`  ${red ? "ok  " : "FAIL"} ${c.name} → guard ${red ? "went RED" : "STAYED GREEN"}`);
   if (red) caught++;
 }

@@ -40,6 +40,8 @@ export type PlacedSignal = { side: "UP" | "DOWN"; amount: number; nonce: number 
 export type PlacedReceipt = {
   side: "UP" | "DOWN";
   amount: number;
+  /** The projection saved by the money path for this bet, after the pool was read at commit. */
+  payoutIfWin: number;
   placedAt: string;
   bonusStakeTzs: number;
   nonce: number;
@@ -375,6 +377,7 @@ export function useUpDownQuickBet(opts: {
           if (placed) {
             setPlacedReceipt({
               side, amount, nonce: nonce.current,
+              payoutIfWin: placed.payoutIfWin,
               placedAt: placed.placedAt,
               bonusStakeTzs: placed.bonusStakeTzs,
             });

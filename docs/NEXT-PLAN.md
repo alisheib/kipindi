@@ -14,8 +14,9 @@
 > the Phosphor migration pushes its own verified releases to `main` — rebased on `origin/main` immediately before, with
 > the AGENTS.md §4 release checklist — per [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md) §0. **Exception for
 > `MOBILE-VISUAL` U43 (Ali, 2026-10-19, to the OMEGA session asheib-54 working his 10/10 request on Up & Down and the
-> market cards):** *"they are working and pushing live; you work and push live cleanly, perfectly"*. That session pushes
-> its own verified U43 releases to `main` the same way — rebased immediately before, AGENTS.md §4 in full, staged by name —
+> market cards):** *"they are working and pushing live; you work and push live cleanly, perfectly"*. Ali handed U43 to
+> the Codex task on `codex/u43-release-b` on 2026-10-20. It pushes its verified U43 releases to `main` the same way —
+> rebased immediately before, AGENTS.md §4 in full, staged by name —
 > per [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md) §0 and §9 U43.
 
 > ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**

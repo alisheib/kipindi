@@ -104,8 +104,26 @@ const MUTATIONS = [
     // The board stops reporting the refund, so the card can never reach the unmatched branch.
     name: "board-stops-reporting-the-refund — the decided-but-refunded case becomes invisible",
     file: BOARD,
-    from: `      if (p.finalPayout != null && p.finalPayout === p.stake) e.refunded += p.stake;`,
+    from: `      if (isRefundedPosition(p.status, p.stake, p.finalPayout)) e.refunded += p.stake;`,
     to: `      if (false) e.refunded += p.stake;`,
+  },
+  {
+    name: "equal winning payout is mistaken for a refund",
+    file: RULE,
+    from: `return status === "VOID" && Number.isFinite(stake) && stake > 0 && payout === stake;`,
+    to: `return Number.isFinite(stake) && stake > 0 && payout === stake;`,
+  },
+  {
+    name: "the board forgets position status and labels a winning payout a refund",
+    file: BOARD,
+    from: `isRefundedPosition(p.status, p.stake, p.finalPayout)`,
+    to: `p.finalPayout === p.stake`,
+  },
+  {
+    name: "the detail page infers a refund from equal aggregate money again",
+    file: PAGE,
+    from: `isRefundedPosition(item.status, item.stake, item.payout)`,
+    to: `item.payout === item.stake`,
   },
 ];
 
