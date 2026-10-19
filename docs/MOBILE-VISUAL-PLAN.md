@@ -278,9 +278,10 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
    · **`results/page.tsx:481`** has a `<MarketCard>` call site that rendered zero cards on
      production, so `test:outcome`'s rule 2 may be governing an unreachable site.
 
-⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, session asheib-54:**
-- Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`claude/updown-visual-10`** off `origin/main`
-  `13299425`. Resume on any machine: `git fetch && git worktree add <dir> origin/claude/updown-visual-10`.
+⏳ **IN FLIGHT — U43, Ali's 10/10 request (2026-10-19), OMEGA-COMPILE01, Codex Release B:**
+- Worktree `C:\50pick-ssd\kipindi-udv` (its own `npm ci`), branch **`codex/u43-release-b`** from `origin/main`.
+  The three lanes share `globals.css`, `i18n-dict.ts`, `updown-card.tsx` and `market-card.tsx`; U43 edits only its
+  scoped parts and rebases immediately before its locked main push.
 - Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
   2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
   `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch.
@@ -310,7 +311,9 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
   `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
   `qa:live` 363/0.
-- ⏳ **Release B — NOT STARTED IN CODE; HANDED OVER (Ali, 2026-10-19: the three lanes move to Codex).** ▶ **START HERE:**
+- ⏳ **Release B — IN CODE, not released.** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
+  board order, B4 market card, B5 system and copy are being implemented in this branch. The B3 filter guard and all
+  18 mutations are green. Visual scores and production release remain unverified. ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
   system, motion, palette and copy), the guards, the tools, the release steps, and the three lanes' push lock
@@ -318,8 +321,7 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   `PANEL-SYNTHESIS.md` (the panel's proposal; the rulings win). ⚠️ Found while specifying: the big chart's line plots each
   minute bar's CLOSE at its label time while settlement reads the OPEN of the bar labelled T (`updown-feed.ts`) — $0.29–$0.87
   apart on gold — which is why Round 0 saw the chart and the card disagree; release B's line and the fixed chart plot opens.
-- Worktree on OMEGA: `C:\50pick-ssd\kipindi-udv` (own `node_modules`), branch `claude/updown-visual-10` = `main` at the
-  handover. Start release B on a fresh branch from `origin/main`.
+- The old `claude/updown-visual-10` branch remains a handover record. This work uses `codex/u43-release-b`.
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
