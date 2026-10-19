@@ -713,22 +713,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
               })}
               {items.length === 0 && (
                 <div className="px-4 py-12 text-center">
-                  <svg
-                    aria-hidden
-                    width="48"
-                    height="48"
-                    viewBox="0 0 56 56"
-                    className="mx-auto mb-3 text-brand-300"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M14 38 V24 a14 14 0 0 1 28 0 V38 l4 4 H10 Z" />
-                    <path d="M22 44 a6 6 0 0 0 12 0" />
-                    <circle cx="42" cy="14" r="4" fill="var(--gold-400)" stroke="none" />
-                  </svg>
+                  <IconPlate size={56} variant="empty" className="mx-auto mb-3" aria-hidden>
+                    <I.bell s={plateGlyph(56)} tier="duo" />
+                  </IconPlate>
                   <p className="font-display text-body font-semibold text-text">
                     {t.notif.noNotifications}
                   </p>

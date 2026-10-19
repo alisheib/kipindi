@@ -76,11 +76,11 @@ export const RULES = [
   // the "+" is a flex item of the pill (a .btn), so it blockifies too: shown, it computes "flex"
   { id: "plus", sel: ".kp-jhdr__plus", props: ["display"], want: (w) => (w < 360 ? "none" : "flex"), when: "pill" },
   // Round 10 (R10-A6, a centred control frames its ink): from 360 the "+" stands on the pill's padding and gives back its
-  // 2.55-unit box gap (1.49px at 14px), so A5's 12/10 becomes the same 23.49px of padding shared evenly — the pill's width
-  // is unchanged — `calc(11px + 2.55 * 14px / 48)` = 11.74375px a side. A computed calc length serialises rounded, so
-  // these two compare as numbers (`tol`).
-  { id: "pill-left", sel: ".kp-jhdr__pill", props: ["padding-left"], want: (w) => (w < 360 ? "12px" : "11.74375px"), tol: 0.01, when: "pill" },
-  { id: "pill-right", sel: ".kp-jhdr__pill", props: ["padding-right"], want: (w) => (w < 360 ? "12px" : "11.74375px"), tol: 0.01, when: "pill" },
+  // PHOSPHOR-MIGRATION W2 changed the deposit arrow to Phosphor's 256-grid drawing. Its ink starts 28 units into
+  // the box, so the live CSS returns `28 * 14 / 256` px of bearing, shared between the two sides:
+  // `calc(11px + 28 * 14px / 512)` = 11.765625px per side. Compare the browser's rounded length with `tol`.
+  { id: "pill-left", sel: ".kp-jhdr__pill", props: ["padding-left"], want: (w) => (w < 360 ? "12px" : "11.765625px"), tol: 0.01, when: "pill" },
+  { id: "pill-right", sel: ".kp-jhdr__pill", props: ["padding-right"], want: (w) => (w < 360 ? "12px" : "11.765625px"), tol: 0.01, when: "pill" },
   { id: "figure", sel: ".kp-jbal__fig", props: ["font-size"], want: (w) => (w < 360 ? "12px" : "14px"), when: "capsule" },
   { id: "auth-pad", sel: ".kp-jhdr__auth", props: ["padding-left", "padding-right"], want: () => "14px", when: "guest" },
   { id: "auth-type", sel: ".kp-jhdr__auth", props: ["font-size"], want: () => "13px", when: "guest" },

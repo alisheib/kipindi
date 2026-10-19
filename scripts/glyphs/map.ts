@@ -201,7 +201,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   deviceTablet: { ph: "device-tablet" },
 
   // ── help & support ──
-  compass: { retire: UNUSED },
+  compass: { ph: "compass" }, // W6: the generic empty state's wayfinding mark
   idCard: { ph: "identification-card" },
   headset: { ph: "headset" },
   questionCircle: { retire: "its one use, the journey's board tab, draws `markets` (R-LEXICON 5.1A); Help draws `headset`" },
@@ -336,6 +336,8 @@ export const DUO_KEYS: readonly string[] = [
   // /profile's rows and the settings pages' plates
   "chart", "receipt", "bellRing", "fileSignature", "device", "megaphone", "vibrate", "sparkle", "clock",
   "devicePhone", "deviceDesktop", "deviceTablet",
+  // W6: the empty-state family uses the same key as its page, on one identity plate.
+  "markets", "audit", "sources", "reports", "compass",
   // the legal header and the rules' cards; /fairness' steps
   "trade", "listChecks", "coins",
   // the KYC page's document plates, the 404's doors
@@ -349,7 +351,7 @@ export const DUO_KEYS: readonly string[] = [
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.8fd1796c.svg", "admin.b27adee4.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.8fd1796c.svg", "app.7fa80f75.svg", "admin.b27adee4.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

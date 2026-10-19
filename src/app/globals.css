@@ -5472,6 +5472,8 @@ html[data-sheet-open] .route-enter { animation: none; }
    · gold     — a win, and nothing else (§Q5: gold is money earned).
    The edge is an inset ring, never a border, so a plate's variant never moves its glyph. */
 .kp-plate--identity { background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--empty::after { content: ""; position: absolute; top: 7px; right: 7px; width: 4px; height: 4px; border-radius: 50%; background: var(--metal-gold); }
 .kp-plate--quiet { background: var(--bg-overlay); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-muted); }
 .kp-plate--info { background: color-mix(in oklab, var(--info-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--info-border); color: var(--info-fg); }
 .kp-plate--success { background: color-mix(in oklab, var(--success-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--success-border); color: var(--success-fg); }

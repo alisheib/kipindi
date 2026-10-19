@@ -1688,12 +1688,11 @@ The platform's hardest-won rules. Most were bought with an incident.
 6. ⛔ **NO EMOJI IN UI COPY. ANYWHERE.** Glyphs are SVG from the kit (the family `I`, drawn by
    Phosphor — §K3), or typographic marks. Reasons, in order: tone on a licensed money product; rendering on cheap Android;
    and localisation, because an emoji is not translatable.
-7. **Illustration idiom: gilt line-art / etched SVG, a single gold accent.** ⚠️ **2026-10-17
-   (PHOSPHOR-MIGRATION W2):** this said "1.9 stroke, from `glyphs.tsx`'s `GL` 64-grid wrapper" —
-   but no page ever drew a `GL` line-art (the inspection found all 8 unused), and they went with
-   the hand-drawn family. The empty states draw `ui/empty-state.tsx`'s own set (a 56 grid at
-   1.5) until the migration's W6 makes an empty state one Duotone glyph on a plate, its single
-   accent `--metal-gold` (§Q5), never money gold.
+7. **Illustration idiom: one Duotone family glyph on a royal plate, with a single metal accent.**
+   `EmptyState` maps each kind to its page's Phosphor glyph and draws it at 28px on the shared 56px
+   plate; the notification panel uses the same plate. Its one 4px accent is `--metal-gold` (§Q5),
+   never money gold. The retired `GL` 64-grid art and the empty states' private drawings are no
+   longer a second icon source (PHOSPHOR-MIGRATION W6).
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
 8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
    cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,

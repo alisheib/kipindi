@@ -374,6 +374,13 @@ const MUTATIONS = [
     from: `.kp-bsheet .btn-gold:disabled {\n  opacity: 1;\n`,
     to: `.kp-bsheet .btn-gold:disabled {\n`,
   },
+  {
+    name: "W6 · darken the empty plate's glyph until it disappears into the plate",
+    kind: "fail",
+    expectName: "R2 · the empty plate's glyph",
+    from: `.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }`,
+    to: `.kp-plate--empty { position: relative; background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--bg); }`,
+  },
 ];
 
 // ⛔ Normalise line endings before matching — a tracked CRLF file makes a
@@ -487,7 +494,7 @@ for (const m of MUTATIONS) {
   const ok =
     exitCode !== 0 &&
     readTheCopy &&
-    (m.kind === "fail" ? Boolean(named) : Boolean(threw) && !named);
+    (m.kind === "fail" ? Boolean(named) && (!m.expectName || named[1].includes(m.expectName)) : Boolean(threw) && !named);
 
   if (ok) {
     caught++;

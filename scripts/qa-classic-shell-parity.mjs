@@ -1532,9 +1532,57 @@ function applyGlyphSwap(field, text, glyphs) {
   }
   return text;
 }
+/**
+ * PHOSPHOR-MIGRATION owed classic calibration: the book masks a card's live date as `~date` in
+ * markup, but the unmasked date still changes the right-aligned time label's x/width by 2–3px
+ * between fresh servers of this SAME commit. Derive only those two element paths from the
+ * captured markup; retain their y, height and every computed style except the resulting auto
+ * margin. A changed card structure, colour, font, line height or neighbouring box still differs.
+ */
+function timeLeftPaths(html) {
+  const paths = new Map(), stack = [];
+  const voids = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+  for (const token of String(html ?? "").matchAll(/<\/?([A-Za-z][\w:-]*)\b([^>]*?)>/g)) {
+    const [whole, rawTag, attrs] = token, tag = rawTag.toLowerCase();
+    if (whole.startsWith("</")) {
+      while (stack.length && stack.pop().tag !== tag) { /* malformed ancestors close here too */ }
+      continue;
+    }
+    const parent = stack.at(-1);
+    const path = parent ? `${parent.path}>${tag}${parent.next++}` : tag;
+    const isMeta = /\bclass="[^"]*\bmcardp-meta-right\b/.test(attrs);
+    const isTime = /\bclass="[^"]*\bmcardp-timeleft\b/.test(attrs);
+    if (isTime && parent?.isMeta) { paths.set(parent.path, "parent"); paths.set(path, "child"); }
+    if (!whole.endsWith("/>") && !voids.has(tag)) stack.push({ tag, path, next: 0, isMeta });
+  }
+  return paths;
+}
+
+function steadyTimeLeftLayout(layout, html, store) {
+  const paths = timeLeftPaths(html);
+  if (!paths.size) return layout;
+  return String(layout).split(NL).map((line) => {
+    const match = /^(\S+) (\S+) ([0-9a-f]{12})$/.exec(line);
+    if (!match || !paths.has(match[1])) return line;
+    const [, path, geo, id] = match;
+    const stableGeo = geo.replace(/^-?[\d.]+,(-?[\d.]+),-?[\d.]+x(-?[\d.]+)$/, "~,$1,~x$2");
+    const sig = store[id];
+    if (!sig || stableGeo === geo) return line;
+    // The computed auto margin is a consequence of this label's varying width, never a style rule.
+    const stableSig = paths.get(path) === "child" ? sig : sig.replace(/^margin-left:-?[\d.]+px$/m, "margin-left:~");
+    const stableId = createHash("sha1").update(stableSig).digest("hex").slice(0, 12);
+    store[stableId] = stableSig;
+    return `${path} ${stableGeo} ${stableId}`;
+  }).join(NL);
+}
+
 /** Every field that differs, split into the named EXPECTED differences and everything else. */
 function diffCells(route, base, cur, baseStore, curStore, list = EXPECTED_DIFFS) {
   const a = fieldsOf(base, baseStore), b = fieldsOf(cur, curStore);
+  if (list === BOOK_EXPECTED_DIFFS && a["regions.main.layout"] && b["regions.main.layout"]) {
+    a["regions.main.layout"] = steadyTimeLeftLayout(a["regions.main.layout"], a["regions.main.html"], baseStore);
+    b["regions.main.layout"] = steadyTimeLeftLayout(b["regions.main.layout"], b["regions.main.html"], curStore);
+  }
   const unexpected = [], expected = [];
   for (const field of [...new Set([...Object.keys(a), ...Object.keys(b)])].sort()) {
     const was = a[field] ?? "(absent)", now = b[field] ?? "(absent)";
@@ -2513,6 +2561,10 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const target = route === BOOK.similar ? `/markets/${similarId}` : route;
     const { status, body: sent, needle } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    // PHOSPHOR-MIGRATION owed parity: the null compare of this exact tree moved four
+    // /watchlist number boxes by 5.5px with identical HTML and CSS. Wait for the
+    // actual font before recording book geometry, as the Sell capture already does.
+    await page.evaluate(() => document.fonts.ready.then(() => true));
     const args = bookArgsOf(route);
     const regions = Object.values(args.book.regions);
     let lazy = null;
@@ -3076,6 +3128,23 @@ async function proveRed() {
   const run = (route, a, c, list = EXPECTED_DIFFS) => diffCells(route, a, c, store, store, list);
   const same = run("/", cell(200, "f1"), cell(200, "f1"));
   ok("P.1 identical cells differ in nothing", same.unexpected.length === 0 && same.expected.length === 0);
+  // The new owed-check calibration is narrow: only a masked date's x/width and its resulting auto margin disappear.
+  {
+    const html = '<main><article><span class="mcardp-meta-right"><span class="mcardp-timeleft">~date</span></span></article></main>';
+    const parent = "main>article0>span0", child = `${parent}>span0`;
+    const sample = (x, width, margin, y = 30, colour = "rgb(1, 2, 3)", path = parent) => {
+      const own = {};
+      const sig = `display:flex${NL}margin-left:${margin}px${NL}color:${colour}`;
+      const inner = `display:inline${NL}margin-left:0px${NL}color:rgb(1, 2, 3)`;
+      const id = (s) => { const key = createHash("sha1").update(s).digest("hex").slice(0, 12); own[key] = s; return key; };
+      const layout = `${path} ${x},${y},${width}x17 ${id(sig)}${NL}${child} ${x},${y},${width}x17 ${id(inner)}`;
+      return steadyTimeLeftLayout(layout, html, own);
+    };
+    const was = sample(20, 70, 12), moved = sample(18, 72, 14);
+    ok("P.1c the same masked live date has one geometry across fresh servers, while a vertical move, colour or path change remains visible",
+      timeLeftPaths(html).size === 2 && was === moved && was !== sample(18, 72, 14, 31)
+      && was !== sample(18, 72, 14, 30, "rgb(9, 2, 3)") && was !== sample(18, 72, 14, 30, "rgb(1, 2, 3)", "main>article0>span9"));
+  }
   // PHOSPHOR-MIGRATION W2 · the sprite name's hash is read as ~, and nothing else in a glyph is: another symbol, another
   // group or another file still differs.
   const glyphAt = (href) => norm(`<svg viewBox="0 0 256 256" width="14" height="14" aria-hidden="true" data-g="clock.bold"><use href="${href}"></use></svg>`);

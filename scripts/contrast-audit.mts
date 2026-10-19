@@ -829,7 +829,9 @@ const PLATE_SURFACES = (): Array<[string, Oklch]> => [
 /** One row per variant: its ink on its own fill, over the surface that reads worst under that ink. Non-text (WCAG 1.4.11):
  *  a plate's glyph names the row or the notice beside its words — 3.0. */
 function plateChecks(): Check[] {
-  return ["identity", "quiet", "info", "success", "warning", "danger", "gold"].map((variant) => {
+  // W6's empty state is the shared identity plate with one decorative metal dot;
+  // keep its Duotone ink in the same rendered plate contrast census.
+  return ["identity", "empty", "quiet", "info", "success", "warning", "danger", "gold"].map((variant) => {
     const { tint, alpha } = plateFill(variant);
     const ink = ruleValue(`.kp-plate--${variant}`, "color");
     const fills = PLATE_SURFACES().map(([name, surface]) => ({ name, fill: mixOklab(surface, tint, alpha) }));

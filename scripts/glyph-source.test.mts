@@ -60,7 +60,6 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   // PHOSPHOR-MIGRATION release 2: 2 → 1 — the two-tone `NeedleMark` is the family's `needle` in Duotone (§8a).
   "src/components/layout/needle-drawer.tsx": [1, "the Needle's theme swatches' disc (brand object, round 4 of 2026-10-09)"],
   "src/components/layout/needle.tsx": [1, "the Needle (brand object)"],
-  "src/components/layout/notifications-panel.tsx": [1, "W6 (release 2): empty-state art outside the family"],
   "src/components/maswali/maswali-unbroken-line.tsx": [1, "Millionea's hairline (MASWALI-BUILD S5): M5's Unbroken Line and M6's closing rule, drawn on by `.m-draw` — a rule, not an icon"],
   "src/components/markets/conviction-dial.tsx": [1, "the conviction dial (an instrument)"],
   "src/components/onboarding/first-visit-primer.tsx": [1, "W7 (release 3): primer art outside the family"],
@@ -69,7 +68,6 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/rg/self-care-art.tsx": [1, "W7 (release 3): responsible-gambling art outside the family"],
   "src/components/ui/button.tsx": [1, "the button's pending spinner"],
   "src/components/ui/duration-input.tsx": [1, "W7 (release 3): a hand-drawn chevron, on one console page only"],
-  "src/components/ui/empty-state.tsx": [13, "W6 (release 2): the private empty-state drawings, retired for Duotone glyphs on plates"],
   "src/components/ui/glyph-shell-sprite.tsx": [1, "the glyph family's inline chrome symbols"],
   "src/components/ui/glyphs.tsx": [2, "the glyph family itself"],
   "src/components/ui/identity-avatar.tsx": [4, "the player's heraldic crest (a second system, DESIGN_AUTHORITY B1a)"],

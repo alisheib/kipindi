@@ -180,7 +180,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   // glow mixed off `--brand-500` now (§E4) — the file holds no design value of its own.
   ["src/components/ui/toggle.tsx", 2],
   ["src/components/ui/checkbox.tsx", 1],
-  ["src/components/ui/empty-state.tsx", 1],
+  // PHOSPHOR-MIGRATION release 2b: W6 retired the private drawings and their hard-coded gold accent.
   // `tabs.tsx` LEFT THIS LIST on 2026-08-31 (DG-S-02, DESIGN-GATE-2026-08-28 step 5, 43 files /
   // 160 → 159 values). Its one budgeted literal was the `segmented` variant's inline
   // `oklch(40% 0.08 264 / 0.55)` — the FOURTH home of `--pill-active`, and a different chroma,

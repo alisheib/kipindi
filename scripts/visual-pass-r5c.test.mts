@@ -390,23 +390,20 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
   ok("2.8 · the bar's reading needle restores gilt while keeping the brand instrument's geometry (§B1a)",
     /--bar-needle:\s*var\(--gilt\);/.test(CSS) && /background:\s*var\(--bar-needle\)/.test(rule(CSS, ".tipbar-needle")));
 
-  // 2.9 · the empty-state art: §C7 "a single gold accent" per illustration — exactly one, never two.
+  // PHOSPHOR-MIGRATION release 2b: the private scenes retired. One identity-metal
+  // accent belongs to the shared empty plate, never to a money-gold glyph or its copy.
   const EMPTY = read("src/components/ui/empty-state.tsx");
-  /** Each scene of the illustration switch — every `case "…":` and the `default:` — inside the function only. */
-  const scenesOf = (src: string) => {
-    const at = src.indexOf("function DefaultIllustration");
-    // To the next TOP-LEVEL declaration — not "\n}\n", which the comment stripper leaves inside JSX (`{/* … */}` → `{\n\n}`).
-    const next = /\n(?:export )?(?:async )?(?:function|const|let|type|interface) /g;
-    next.lastIndex = at + 10;
-    const end = next.exec(src)?.index ?? src.length;
-    return src.slice(at, end).split(/\n\s*(?:case "[^"]+"|default):/).slice(1);
-  };
-  const scenes = scenesOf(EMPTY);
-  const accents = scenes.map((s) => (s.match(/\{g\}/g) ?? []).length);
-  ok("2.9 · every illustration carries exactly ONE gold accent (§C7) — the compass needle, the briefcase clasp…",
-    scenes.length >= 8 && accents.every((c) => c === 1), accents.join(","));
-  const twice = EMPTY.replace('fill={g} stroke="none" />', 'fill={g} stroke={g} />');
-  ok("2.9′ PLANT · a second gold accent in one scene is reported", scenesOf(twice).some((s) => (s.match(/\{g\}/g) ?? []).length !== 1));
+  const emptyPlate = rule(CSS, ".kp-plate--empty");
+  const accent = rule(CSS, ".kp-plate--empty::after");
+  const isOneMetalAccent = (body: string) => (body.match(/var\(--metal-gold\)/g) ?? []).length === 1
+    && !/var\(--(?:gold-\d+|gilt|gold-fg)\)/.test(body);
+  ok("2.9 · each empty state uses the one Duotone plate with a single --metal-gold accent (§C7)",
+    /<IconPlate size=\{56\} variant="empty">/.test(EMPTY)
+      && /<Glyph s=\{plateGlyph\(56\)\} tier="duo" \/>/.test(EMPTY)
+      && /var\(--plate-identity\)/.test(emptyPlate) && isOneMetalAccent(accent)
+      && !/<svg/.test(EMPTY));
+  const moneyPlant = accent.replace("var(--metal-gold)", "var(--gold-400)");
+  ok("2.9′ PLANT · a money-gold accent on empty art fails the same rule", !isOneMetalAccent(moneyPlant));
 
   // 2.10 · the WIN pills: M3, a resolved win is money earned — allowed.
   const notificationTone = read("src/lib/notification-appearance.ts");

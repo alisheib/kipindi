@@ -44,8 +44,11 @@ player routes' responsive checks (1,620 passing assertions). The www, apex and R
 health reported the database reachable and migrated, both public chunk checks passed (6/6 routes, 152 GETs each),
 production `qa:live` passed 362/362, and 36 production tiles across three languages and two widths were captured.
 Production player sign-in was not authorized; signed-in states were inspected on a seeded local server.
-**Resume:** ship the test-fixture follow-up, complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the
-hand-over). W5 is partly landed; its remaining sites belong to release 2c.
+**Release 2a fixture follow-up LIVE at `a504ad280` (2026-10-19):** the stale paid-cashout expectation is corrected;
+its message-title tests and red proof pass in both stores. The exact commit passed typecheck, build and local `qa:live`;
+www, apex and Railway served its SHA, health was reachable and migrated, both public chunk checks passed, and production
+`qa:live` passed. **Resume:** complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
+W5 is partly landed; its remaining sites belong to release 2c.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
@@ -845,9 +848,15 @@ royal plate on cards, the discovery chips and the journey home chips (the 0.055-
 and stat tiles: the glyph fills its control per `plateGlyph`. Admin stat cards and status chips get icons.
 
 ### W6 — Empty states, one family
-`ui/empty-state.tsx`'s private set (48 sites) and the 8 unused `GL` arts retire: an empty state is a large Duotone glyph
-on a plate. DA §C7's single accent stays as `--metal-gold` (§Q5), never money gold (`test:visual-pass-r5c` §2.9,
+`ui/empty-state.tsx`'s private drawings retire; W2 already retired the unused `GL` art. An empty state is a Duotone
+glyph on the shared plate. DA §C7 owns its size and single `--metal-gold` accent (§Q5), never money gold (`test:visual-pass-r5c` §2.9,
 `test:gold-is-money`). Badge medallions per Ali's W0 answer.
+
+The shared `EmptyState` now maps each kind to one family key and renders that key in Duotone on the
+empty plate. The bell panel uses that same plate. `ErrorState` uses the family's filled circled cross on a danger
+plate. `test:visual-pass-r3c` renders every kind and plants a Line-tier defect; `test:visual-pass-r5c` plants a money-gold
+accent. The screenshot proof pairs the old and new empty positions, empty notifications and open bell panel at phone and
+desktop widths in all three languages.
 
 ### W7 — Consolidation
 The 63 inline `<svg>` → family glyphs, or kept with a recorded reason (charts, brand, spinner). Text-character icons

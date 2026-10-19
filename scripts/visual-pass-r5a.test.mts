@@ -560,7 +560,7 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/admin/admin-mobile-nav.tsx": [C("hand ✕", "the admin drawer's close — admin chrome, a 44px box")],
     "src/app/notifications/row-actions.tsx": [C("row ✕", "a notification row's delete")],
     // Round 6 (review C2): seen once the census read the ✕ in any spelling — two <line>s inside a circle.
-    "src/components/ui/empty-state.tsx": [C("glyph", "`ErrorMark`, an error state's circled ✕ illustration — it closes nothing")],
+    // PHOSPHOR-MIGRATION release 2b: ErrorState draws I.xCircle in Fill; its private ErrorMark retired.
     "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
     "src/components/ui/query-bar.tsx": [C("row ✕", "a link that clears the query, worded beside its ✕")],
     // The Vodacom plan S7 (WP7, 2026-10-12): the journey home's "Futa utafutaji", the query bar's clear in the home's words.

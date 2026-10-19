@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.7fa80f75.svg", admin: "/icons/g/admin.b27adee4.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.76a3696e.svg", admin: "/icons/g/admin.75aeb290.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -30,7 +30,7 @@ export const GLYPH_REGISTRY = {
   "arrowUpFromLine": { s: "p-arrow-line-up", g: "app", i: { bold: [28, 228], duo: [32, 224] }, m: { d: "M128 224V72M56 144L128 72L200 144M40 40H216", x: [40, 216] } },
   "assorted": { s: "p-shapes", g: "app", i: { regular: [16, 232], bold: [11.98, 236] } },
   "attestation": { s: "p-stamp", g: "app", i: { bold: [28, 228], duo: [32, 224] } },
-  "audit": { s: "p-clock-counter-clockwise", g: "admin", i: { bold: [20, 228], fill: [24, 224] } },
+  "audit": { s: "p-clock-counter-clockwise", g: "admin", i: { bold: [20, 228], fill: [24, 224], duo: [24, 223.94] } },
   "bank": { s: "p-bank", g: "app", i: { bold: [4, 252] } },
   "bell": { s: "p-bell", g: "shell", i: { bold: [28.01, 227.99], fill: [32.01, 223.98], duo: [32.01, 223.98] } },
   "bellOff": { s: "p-bell-slash", g: "app", i: { bold: [28.02, 219.9], fill: [32, 224.01] } },
@@ -61,6 +61,7 @@ export const GLYPH_REGISTRY = {
   "coins": { s: "p-coins", g: "app", i: { regular: [8, 248], bold: [4, 252], duo: [8, 248] } },
   "comment": { s: "p-chat-text", g: "app", i: { bold: [20, 236], fill: [24, 232], duo: [24, 232] } },
   "commitment": { s: "p-fingerprint", g: "app", i: { bold: [10.22, 240] } },
+  "compass": { s: "p-compass", g: "app", i: { bold: [20, 236], duo: [24, 232] } },
   "contacts": { s: "p-address-book", g: "admin", i: { bold: [20, 228], fill: [24, 224] } },
   "copy": { s: "p-copy", g: "app", i: { bold: [28, 228] } },
   "crown": { s: "p-crown", g: "app", i: { bold: [3.98, 252] } },
@@ -145,7 +146,7 @@ export const GLYPH_REGISTRY = {
   "reconcile": { s: "p-equals", g: "admin", i: { bold: [28, 228] } },
   "refund": { s: "p-arrow-u-down-left", g: "app", i: { bold: [19.99, 236], duo: [23.99, 232] } },
   "register": { s: "p-notebook", g: "app", i: { bold: [28, 228] } },
-  "reports": { s: "p-clipboard-text", g: "admin", i: { bold: [36, 220], fill: [40, 216] } },
+  "reports": { s: "p-clipboard-text", g: "admin", i: { bold: [36, 220], fill: [40, 216], duo: [40, 216] } },
   "reserve": { s: "p-lifebuoy", g: "app", i: { bold: [20, 236] } },
   "resolved": { s: "p-seal-check", g: "app", i: { regular: [16, 240], bold: [12, 244], fill: [16, 240], duo: [16, 240] } },
   "roles": { s: "p-lock-key", g: "admin", i: { bold: [28, 228], fill: [32, 224] } },
@@ -174,7 +175,7 @@ export const GLYPH_REGISTRY = {
   "sofInvestment": { s: "p-chart-pie-slice", g: "app", i: { bold: [20, 235.99] } },
   "sofSalary": { s: "p-briefcase", g: "app", i: { bold: [20, 236] } },
   "sofSavings": { s: "p-piggy-bank", g: "app", i: { bold: [0, 256] } },
-  "sources": { s: "p-newspaper", g: "admin", i: { bold: [4, 236], fill: [8, 232] } },
+  "sources": { s: "p-newspaper", g: "admin", i: { bold: [4, 236], fill: [8, 232], duo: [8, 232] } },
   "sparkle": { s: "p-sparkle", g: "app", i: { bold: [11.97, 252], fill: [15.96, 248], duo: [15.96, 248] } },
   "staff": { s: "p-user-circle-gear", g: "admin", i: { bold: [20, 236], fill: [24.16, 232.25] } },
   "staffConsole": { s: "p-identification-badge", g: "app", i: { bold: [36, 220], duo: [40, 216] } },
