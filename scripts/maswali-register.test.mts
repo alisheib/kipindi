@@ -25,6 +25,8 @@
  *   §11 §D · the decided words on the register's keys, in Swahili and Chinese
  *   §12 the loading drawings open on the bands the pages open on: the chip under the head, cards below 1024 and the
  *      table from 1024, the index rows' chip
+ *   §13 A2 · no Chinese run in the register's body text is longer than its narrowest column holds without a phrase break
+ *      (U+200B), so keep-all never has to split a word (the zh 320 tile split 备选/题)
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary
  *    value or a helper — and requires the check it targets to fail; a plant whose text is not in its file exactly once is
@@ -329,6 +331,22 @@ check("9.5", "A1 · every ledger label that carries a week, an amount or a % is 
   return [missing.length === 0 && outs === 2, j({ missing, outs })];
 });
 
+check("9.6", "A1 · the reserve rule's range keeps its two ends together — \"A1 to A5\", \"A1 hadi A5\", \"A1 至 A5\" — one run in every language", (w) => {
+  const s = code(w, "week");
+  const drawn = s.includes("{kept(t.millionea.regSubRule, t.millionea.regSubRule.match(/A1\\s\\S+\\sA5/) ?? [])}");
+  const ranges = LOCALES.map((l) => mln(w, l).regSubRule.match(/A1\s\S+\sA5/)?.[0] ?? null);
+  return [drawn && j(ranges) === j(["A1 to A5", "A1 hadi A5", "A1 至 A5"]), j({ drawn, ranges })];
+});
+
+check("9.7", "the reserve map's log is in time order with an untimed entry AFTER every timed one, and the week's void closes it untimed (no instant is stored for it) — never sorted first, never a \"—\" in a time's place (the zh 1024 tile opened on \"— 整周作废\")", (w) => {
+  const s = code(w, "week");
+  const order = s.includes("const order = (iso: string | null) => msOf(iso) ?? Number.MAX_SAFE_INTEGER;") && s.includes("].sort((a, b) => order(a.at) - order(b.at));");
+  const last = s.includes("w.state === \"VOIDED\" ? [...timed, { at: null, text: t.millionea.logWeekVoid }] : timed;");
+  const untimed = s.includes('{l.at !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{when(t, locale, l.at, nowMs)}</span>}');
+  const old = s.includes("(msOf(a.at) ?? 0)") || s.includes("at: w.settledAt, text: t.millionea.logWeekVoid");
+  return [order && last && untimed && !old, j({ order, last, untimed, old })];
+});
+
 // ── §10 · A3 · Millionea's Chinese labels ───────────────────────────────────────────────────────────────────────────
 check("10.1", "A3 · ONE rule sets every Millionea eyebrow in Chinese at no tracking and at 12px — right under the keep-all rule, which stays byte-identical", (w) => {
   const css = decommentCss(w.src.css);
@@ -351,6 +369,15 @@ check("11.1", "§D · the register's decided words: sw floor / voidAbandoned / U
   const off = DECIDED.filter(([l, k, v]) => mln(w, l)[k] !== v).map(([l, k]) => `${l}.${k}=${j(mln(w, l)[k])}`);
   const main = mln(w, "zh").regSubRule.includes("作废正选题") && !mln(w, "zh").regSubRule.includes("作废主题");
   return [off.length === 0 && main, j({ off, main })];
+});
+
+// ── §13 · A2 · a Chinese word is never split ────────────────────────────────────────────────────────────────────────
+/** The register's Chinese body text drawn in a narrow column: the reserve rule, and every void reason (the table's reason
+ *  column has a 160px floor; a card's value column at 320 is about as wide). */
+const ZH_BODY = ["regSubRule", "voidNotPlayed", "voidAbandoned", "voidNoSource", "voidSettledBeforeClose", "voidCriterionWrong", "voidCriterionObjection"];
+check("13.1", "A2 · no Chinese run in the register's body text is longer than 12 ideographs without a break — keep-all would otherwise split a word (\"备选/题\") at the 160px reason column or a 320 card; U+200B marks the phrase breaks", (w) => {
+  const long = ZH_BODY.flatMap((k) => mln(w, "zh")[k].split(/[\s​，。：；、（）()]+/).filter((r) => [...r].length > 12).map((r) => `${k}: ${r}`));
+  return [long.length === 0, j(long)];
 });
 
 // ── §12 · the loading drawings ──────────────────────────────────────────────────────────────────────────────────────
@@ -382,7 +409,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 34;
+  const MIN_ASSERTIONS = 37;
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -452,6 +479,12 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
   ["A1 undone — the refund's price free to break", "9.5", plantSrc("week", "label={kept(fill(t.millionea.refundEach, { price }), [price])}", "label={fill(t.millionea.refundEach, { price })}")],
+  ["A1 undone — the reserve rule's range free to part", "9.6", plantSrc("week", "{kept(t.millionea.regSubRule, t.millionea.regSubRule.match(/A1\\s\\S+\\sA5/) ?? [])}", "{t.millionea.regSubRule}")],
+  ["the log's old order — an untimed entry read as the earliest", "9.7", plantSrc("week", "].sort((a, b) => order(a.at) - order(b.at));", "].sort((a, b) => (msOf(a.at) ?? 0) - (msOf(b.at) ?? 0));")],
+  ["the log printing a \"—\" where the week's void has no time", "9.7", plantSrc("week", '{l.at !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{when(t, locale, l.at, nowMs)}</span>}', '<span className="whitespace-nowrap font-mono text-text-subtle">{when(t, locale, l.at, nowMs)}</span>')],
+  // §13
+  ["A2 undone — the reserve rule's Chinese without its phrase breaks", "13.1", plantWord("zh", "regSubRule", "备选规则：编号最小的作废正选题取第一道未使用的有效备选题，按 A1 至 A5 的顺序。")],
+  ["A2 undone — a void reason's Chinese without its phrase breaks", "13.1", plantWord("zh", "voidNoSource", "截止时间前，其来源及指定备用来源均无读数")],
   // §10
   ["A3 undone — the Chinese labels' rule gone", "10.1", plantSrc("css", ".kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }\n", "")],
   ["A3 — the rule moved away from the keep-all rule", "10.1", (() => {

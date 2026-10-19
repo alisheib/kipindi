@@ -194,21 +194,28 @@ function Questions({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: Millio
 function Substitutions({ t, locale, w, nowMs }: { t: Dict; locale: Locale; w: MillioneaRegisterWeek; nowMs: number }) {
   const voidedMains = w.questions.filter((q) => q.role === "MAIN" && q.outcome === "VOID");
   const replaced = new Set(w.substitutions.map((s) => s.main));
-  const log = [
+  // In time order, an entry without an instant after every timed one (it was read as the earliest and opened the log).
+  const order = (iso: string | null) => msOf(iso) ?? Number.MAX_SAFE_INTEGER;
+  const timed = [
     ...w.substitutions.map((s) => ({ at: s.voidedAt, text: fill(t.millionea.logCarry, { n: s.main, r: reserveLabel(s.reserve - MAIN_COUNT) }) })),
     ...voidedMains.filter((q) => !replaced.has(q.slot)).map((q) => ({ at: q.sealedAt, text: fill(t.millionea.logVoid, { n: q.slot }) })),
-    ...(w.state === "VOIDED" ? [{ at: w.settledAt, text: t.millionea.logWeekVoid }] : []),
-  ].sort((a, b) => (msOf(a.at) ?? 0) - (msOf(b.at) ?? 0));
+  ].sort((a, b) => order(a.at) - order(b.at));
+  // The week's own void closes the log, UNTIMED: its stamp writes the state alone (`stampVoid`), so no instant is stored to
+  // print — never a made-up one (AGENTS.md §6), as the v6 delivery's log also leaves it.
+  const log: Array<{ at: string | null; text: string }> = w.state === "VOIDED" ? [...timed, { at: null, text: t.millionea.logWeekVoid }] : timed;
   return (
     <section aria-labelledby="mln-reg-map" className="flex flex-col gap-2">
       <h2 id="mln-reg-map" className="font-display text-title-sm font-bold text-text">{t.millionea.regMap}</h2>
-      <p className="text-body-sm text-text-muted text-pretty">{t.millionea.regSubRule}</p>
+      {/* The range's two ends stay together — "A1 to A5", "A1 hadi A5", "A1 至 A5" (A1) — as one run. */}
+      <p className="text-body-sm text-text-muted text-pretty">{kept(t.millionea.regSubRule, t.millionea.regSubRule.match(/A1\s\S+\sA5/) ?? [])}</p>
       {log.length > 0 && (
         <ol className="flex flex-col" aria-label={t.millionea.regLog}>
           {log.map((l, i) => (
-            <li key={i} className="flex flex-wrap items-baseline gap-x-3 border-b border-border py-2 text-body-sm">
-              <span className="whitespace-nowrap font-mono text-text-subtle">{when(t, locale, l.at, nowMs)}</span>
+            // What happened, then when — the ledger's own reading order (label left, figure right); an untimed entry is
+            // the words alone, never a "—" standing in a time's place.
+            <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-border py-2 text-body-sm">
               <span className="text-text">{l.text}</span>
+              {l.at !== null && <span className="whitespace-nowrap font-mono text-text-subtle">{when(t, locale, l.at, nowMs)}</span>}
             </li>
           ))}
         </ol>
