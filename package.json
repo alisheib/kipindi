@@ -710,6 +710,7 @@
     "qa:bell-untouched": "node scripts/bell-untouched.mjs",
     "qa:classic-shell-parity": "node scripts/qa-classic-shell-parity.mjs",
     "test:question-time-mask": "node scripts/question-time-mask.test.mjs",
+    "test:parity-browser-cycle": "node scripts/parity-browser-cycle.test.mjs",
     "qa:served-skeleton": "node scripts/qa-served-skeleton.mjs",
     "qa:first-load": "node scripts/qa-first-load.mjs",
     "qa:chunks-prod": "node scripts/qa-chunks-prod.mjs",

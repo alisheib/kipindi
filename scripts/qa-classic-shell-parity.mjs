@@ -170,6 +170,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE, BOOK_WATCHLIST_DATE } from "./lib/question-time-mask.mjs";
+import { recycleParityBrowser } from "./lib/parity-browser-cycle.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -2117,11 +2118,17 @@ if (COMPARE) {
   if (baseline.base?.dirty?.length) console.log(`  ⚠ the baseline was captured over ${baseline.base.dirty.length} uncommitted change(s): ${baseline.base.dirty.slice(0, 4).join(" · ")}`);
 }
 
-const b = await chromium.launch({ headless: true });
+let b = await chromium.launch({ headless: true });
 const BROWSER = b.version();
 const t0 = Date.now();
 console.log(`  Chromium ${BROWSER}`);
 if (baseline && baseline.server?.browser !== BROWSER) console.log(`  ⚠ the baseline was captured with Chromium ${baseline.server?.browser}; this run uses ${BROWSER} — geometry may move for reasons outside S6.`);
+
+/** A completed group has no open contexts. Keep this run's seeded server/store and all capture maps; reclaim Chromium. */
+async function recycleBrowser(label) {
+  b = await recycleParityBrowser(b, () => chromium.launch({ headless: true }), BROWSER, label);
+  console.log(`  browser recycled after ${label} · Chromium ${BROWSER} · the seeded server and capture maps remain`);
+}
 
 /** React has hydrated the shell: its host nodes carry a fiber. The 3 s overlay clock starts here, not at first paint. */
 const hydrated = (page) => page.waitForFunction(() => {
@@ -2616,6 +2623,7 @@ async function captureBook(still) {
       }
       console.log(`  book-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
       still(`by the end of book-${v} · ${l}`);
+      if (v !== BOOK.viewers.at(-1) || l !== BOOK.locales.at(-1)) await recycleBrowser(`book-${v} · ${l}`);
     }
   }
 }
@@ -2864,6 +2872,7 @@ async function captureQuestions(still) {
       }
       console.log(`  question-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
       still(`by the end of question-${v} · ${l}`);
+      if (v !== QUESTION.viewers.at(-1) || l !== QUESTION.locales.at(-1)) await recycleBrowser(`question-${v} · ${l}`);
     }
   };
   await run("guest", []);
@@ -2951,14 +2960,18 @@ async function captureMatrix() {
       }
       console.log(`  ${v.id} · ${l} · ${WIDTHS.length * ROUTES.length} cells · ${secs(Date.now() - t)}`);
       still(`by the end of ${v.id} · ${l}`);
+      if (v !== VIEWERS.at(-1) || l !== LOCALES.at(-1)) await recycleBrowser(`matrix-${v.id} · ${l}`);
     }
     if (BASELINE && v.id === "player") report320 = await header320(jar);
   }
   // WP10 · the Sell capture comes after the matrix: it gives the demo player a portfolio, and every cell above read it empty.
+  await recycleBrowser("matrix before Sell seed");
   await captureSell();
   // S7 WP1 · then the book (A8): it seeds through the same player, after the Sell capture's { markets: 5 }.
+  await recycleBrowser("Sell before book seed");
   await captureBook(still);
   // S8 WP1 · and the question page last: it reads the book's world, and its reader on a break ends the session for good.
+  await recycleBrowser("book before question seed");
   await captureQuestions(still);
   still("by the end of the capture");
 }
@@ -3987,6 +4000,7 @@ async function proveRed() {
   }
 
   // ③ The browser: the instrument agrees with itself, and sees each plant in its own field and nowhere else.
+  await recycleBrowser("rendered synthetic controls before served plants");
   const PLANTS = [
     { id: "height", css: "header.app-topbar { height: 64px !important; }", what: "the canvas's 64px bar in place of the kit's 56", need: "regions.header.layout", within: ["regions.header."] },
     { id: "paint", css: "header.app-topbar a { color: rgb(255, 0, 0) !important; }", what: "a paint-only change (the header's links turn red)", need: "regions.header.layout", within: ["regions.header."] },
@@ -4030,6 +4044,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served matrix plants before Sell seed");
   // ④ WP10 · the Sell capture in the browser, after every cell above (they read the demo portfolio empty): the player is
   // given an open ticket; at BOTH places a classic holder is sold to, two clean captures of a Sell cell agree inside its
   // free window (in the holder block, with the classic confirm captured inside its quote hold); and a planted change to
@@ -4094,6 +4109,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served Sell plants before book seed");
   // ⑤ S7 WP1 · the book in the browser, after the Sell capture (its { markets: 5 } came first, as in a capture): the demo
   // player's book is seeded through the existing doors and probed (A8 items 1 and 2); the LIVE strip is waited for; then
   // two clean captures of each BOOK_PROVE cell agree — the strip read still — and each plant is reported in its own field
@@ -4218,6 +4234,7 @@ async function proveRed() {
     }
   }
 
+  await recycleBrowser("served book plants before question seed");
   // ⑥ S8 WP1 · the question phase in the browser, after the book (it reads the book's world, as a capture does): the
   // questions are found and made through the existing doors and judged; then two clean captures of each QUESTION_PROVE
   // cell agree — the clocks masked, the chart's time axis read whole — and each plant is reported in its own field and
