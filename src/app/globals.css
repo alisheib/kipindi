@@ -4711,6 +4711,13 @@ html[data-sheet-open] .route-enter { animation: none; }
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still
    breaks rather than overflow. Both properties inherit, so the root sets every run under it; other languages are untouched. */
 .kp-mln-zh:lang(zh) { word-break: keep-all; overflow-wrap: anywhere; }
+/* MASWALI-BUILD S5 VIS (A3, 2026-10-19) · MILLIONEA'S CHINESE LABELS: the tracked mono microlabel is a Latin device — in
+   Chinese its letter-spacing pulls the ideographs apart and its 10–11px leave them hard to read (the zh reader's tiles). So
+   under every Millionea root an eyebrow — a category, a field's label, the table's head, the outcome stamp, the page's own
+   eyebrow — sets Chinese at no tracking and at the label rung, 12px, at least. One rule for every Millionea surface (the
+   lead's ruling); other languages are untouched, and the platform-wide eyebrow is a separate, later platform question. */
+.kp-mln-zh:lang(zh) .eyebrow { letter-spacing: 0; }
+.kp-mln-zh:lang(zh) .eyebrow:is(.text-micro, .text-caption) { font-size: 12px; line-height: 16px; }
 .kp-hero__trust-glyph { display: flex; justify-content: center; color: var(--text-subtle); }
 /* The wallet names are the row's emphasis — brand spellings from the payment catalogue, in the
    reader's own list form (`rail-list.ts`); the joiners and the sentence stay muted. */

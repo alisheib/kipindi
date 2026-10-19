@@ -6,9 +6,11 @@
 import type { ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
 import { keepConnectives, runAndDashRanges } from "@/components/ui/keep-run";
-import { millioneaWord } from "@/components/maswali/maswali-format";
+import { counted, millioneaWord } from "@/components/maswali/maswali-format";
 import { WEEK_STATE_KEY } from "@/lib/maswali-week-label";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+import { fill, formatTzs } from "@/lib/utils";
+import type { MillioneaWeekSummary } from "@/lib/server/maswali-player";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -31,4 +33,22 @@ export function WeekStateChip({ t, state }: { t: Dict; state: "SETTLED" | "VOIDE
  */
 export function kept(text: string, runs: readonly string[]): ReactNode {
   return keepConnectives(text, runAndDashRanges(text, runs));
+}
+
+/**
+ * A FINAL WEEK'S FACTS, AFTER ITS STATE (R9: "Week 48 · Voided" and "Week 45: 1 ticket won" were two grammars for one kind
+ * of row) — a voided week's refunds ("every ticket refunded" only once every refund landed: the read model's
+ * `refundsPending`, MR-18, never a refund stated before it happened), a won week's winners and jackpot, or a rolled week's
+ * carry at fee 0 (the strata line, D-38). Every amount is the read model's; each one is a single unbroken run.
+ */
+export function weekFacts(t: Dict, w: MillioneaWeekSummary): ReactNode[] {
+  if (w.state === "VOIDED") return [w.refundsPending ? t.millionea.regRefundsPending : t.millionea.regRefunded];
+  const k = w.winners ?? 0;
+  if (k > 0) {
+    const facts: ReactNode[] = [counted(k, t.millionea.regWonOne, t.millionea.regWon)];
+    if (w.jackpot !== null) facts.push(<>{`${t.millionea.jackpot} `}<span className="amount">{formatTzs(w.jackpot)}</span></>);
+    return facts;
+  }
+  const amount = formatTzs(w.carriedForward ?? 0);
+  return [kept(fill(t.millionea.regCarried, { amount }), [amount]), t.millionea.feeZero];
 }

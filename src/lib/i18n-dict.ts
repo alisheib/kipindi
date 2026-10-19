@@ -3560,7 +3560,6 @@ export const dict = {
       regNoResults: "No results yet — sales are open",
       regTicketsSold: "{n} tickets × {price}",
       regStanding: "Tickets without a miss after each result",
-      regStrataRow: "Week {week} · {amount} carried forward · fee 0",
       // The levies' shares of the fee, one row each under it; a week's row on the index, its facts after its state.
       regLevyTra: "TRA {pct}% of the fee",
       regLevyGbt: "GBT {pct}% of the fee",
@@ -6365,7 +6364,6 @@ export const dict = {
       regNoResults: "Matokeo bado — mauzo yako wazi",
       regTicketsSold: "Tiketi {n} × {price}",
       regStanding: "Tiketi zisizo na kosa baada ya kila tokeo",
-      regStrataRow: "Wiki {week} · {amount} imeletwa mbele · ada 0",
       regLevyTra: "TRA {pct}% ya ada",
       regLevyGbt: "GBT {pct}% ya ada",
       regWonOne: "Tiketi 1 ilishinda",
@@ -9142,7 +9140,6 @@ export const dict = {
       regNoResults: "尚无结果 — 销售开放中",
       regTicketsSold: "{n} 张 × {price}",
       regStanding: "每个结果公布后仍无失误的彩票",
-      regStrataRow: "第{week}周 · {amount} 滚存 · 费用 0",
       regLevyTra: "费用中的 TRA {pct}%",
       regLevyGbt: "费用中的 GBT {pct}%",
       regWonOne: "1 张彩票中奖",

@@ -6,7 +6,8 @@ import { useT } from "@/lib/i18n";
 
 /**
  * /millionea/register loading skeleton — the index's own bands (`page.tsx`): its head and the week rows, each the row's
- * own height. Wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why).
+ * own shape (S5 VIS R9): the code, the week with its state chip, and its facts — beside the week from 768, under it below.
+ * Wordless but for the screen reader's "loading" (`maswali-ghost.tsx` says why).
  */
 export function MillioneaRegisterGhost() {
   const { t } = useT();
@@ -18,7 +19,13 @@ export function MillioneaRegisterGhost() {
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="flex flex-col justify-center gap-1.5 border-b border-border py-3" style={{ minHeight: "var(--h-control-lg)" }}>
               <GhostBar className="h-3 w-[120px]" />
-              <GhostBar className="h-4 w-[60%]" />
+              <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-6">
+                <div className="flex items-center gap-2 md:w-[200px] md:shrink-0">
+                  <GhostBar className="h-4 w-[72px]" />
+                  <GhostBar className="h-[23px] w-[88px] rounded-pill" />
+                </div>
+                <GhostBar className="h-3 w-[60%] md:w-[280px]" />
+              </div>
             </div>
           ))}
         </div>
