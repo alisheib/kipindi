@@ -103,16 +103,24 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => {
     if (pathname !== key) {
       const doc = document as Document & {
-        startViewTransition?: (cb: () => void) => { finished: Promise<void> };
+        startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void>; updateCallbackDone: Promise<void> };
       };
 
       if (doc.startViewTransition && !motionOff() && !journeyFlagSnapshot()) {
         // Use the View Transitions API — the browser handles the cross-fade, and
         // it is then the ONLY entrance this arrival gets.
         viaViewTransitionRef.current = true;
-        doc.startViewTransition(() => {
+        const transition = doc.startViewTransition(() => {
           setKey(pathname);
         });
+        // ⭐ AN ABORTED CROSS-FADE IS NOT AN ERROR (found by MASWALI-BUILD S5's player drive, 2026-10-19). The browser
+        // drops a View Transition whose page changes size while it runs (a phone turned, a window resized), goes hidden,
+        // or is overtaken by a newer one, and then REJECTS its promises ("InvalidStateError: Transition was aborted because
+        // of invalid state"). Unobserved, that rejection was an uncaught page error on every such move. The route update
+        // (`setKey`) runs either way — only the animation is dropped — so the rejections are observed here and nothing else.
+        transition.ready.catch(() => {});
+        transition.finished.catch(() => {});
+        transition.updateCallbackDone.catch(() => {});
       } else {
         viaViewTransitionRef.current = false;
         setKey(pathname);

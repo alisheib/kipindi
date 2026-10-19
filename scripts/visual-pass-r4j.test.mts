@@ -203,6 +203,12 @@ section("2 · E37 E41 · no cross-fade of the chrome, one current destination an
     && /import \{ journeyFlagSnapshot \} from "@\/lib\/journey\/journey-on";/.test(s) && hasDirective(s, "use client");
   ok("2.1 · a journey reader's route change never starts a document View Transition (the root cross-fade took the header, the strip and the rail, 4px apart and dimmed); everybody else keeps it", vt(rt));
   ok("2.1′ PLANT · the journey term dropped is reported", !vt(rt.replace(" && !journeyFlagSnapshot()", "")));
+  // ⭐ An aborted cross-fade (a resize, a hidden tab, a newer move) rejects the transition's promises; each is observed, so
+  // a dropped animation is never an uncaught page error (found by MASWALI-BUILD S5's player drive, 2026-10-19).
+  const observed = (s: string) => /const transition = doc\.startViewTransition\(\(\) => \{\s*setKey\(pathname\);\s*\}\);/.test(s)
+    && ["ready", "finished", "updateCallbackDone"].every((p) => s.includes(`transition.${p}.catch(() => {});`));
+  ok("2.1b · the View Transition's promises are kept and observed — an aborted cross-fade is never an uncaught page error", observed(rt));
+  ok("2.1b′ PLANT · the `ready` rejection left unobserved is reported", !observed(rt.replace("transition.ready.catch(() => {});", "")));
   // The native cross-fade itself is untouched: a classic reader is served it.
   ok("2.2 · the native cross-fade's rules are unchanged for everybody else (vt-fade-out −4px / vt-fade-in +4px, --t-quick)",
     /@keyframes vt-fade-out \{\s*from \{ opacity: 1; transform: none; \}\s*to\s+\{ opacity: 0; transform: translateY\(-4px\); \}\s*\}/.test(CSS)
