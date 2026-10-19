@@ -205,10 +205,12 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // PHOSPHOR-MIGRATION release 2a part 2: these two legal files changed only their icon plates. Pin the exact
     // committed source while D19a continues to refuse any unreviewed change to their published words.
     const PHOS_R2A_PART2 = "a843ff73fcaa919298a4f056008c7ee560ca84f7";
+    // U43's reviewed player copy is pinned to the rebased commit that last changed the dictionary.
+    const U43_B = "7e3a06ea0f916de4a21e3f1eec545cf97998d2dc";
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      ["src/lib/i18n-dict.ts", W4],
+      ["src/lib/i18n-dict.ts", U43_B],
       ["src/app/legal/privacy/page.tsx", W4],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       ["src/app/legal/rules/_content-up-down.tsx", W4B],

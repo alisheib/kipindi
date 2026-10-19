@@ -453,8 +453,9 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   The focused B3/B4 guards and the inherited betting-ink and featured-card readers passed. Their red fleets caught
   **19/19** and **32/32** reversals respectively and restored every mutated source byte-for-byte. The older B4 footer
   plant had been invalid JSX, so it failed before §3.15 could inspect the layout; a valid CSS reversal now moves
-  the enclosing footer off its flex row and §3.15 catches it. `test:house-bot-disclosure` §5.1 needs its exact
-  post-commit dictionary re-pin for the move words; that publication guard is not waived.
+  the enclosing footer off its flex row and §3.15 catches it. `test:house-bot-disclosure` §5.1 now pins the exact
+  committed U43 dictionary bytes at `ad2c9f25c`, including the move words; its publication and mutation
+  controls passed 122/122 after the re-pin.
   The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
   `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
   plan §0 already records those inherited reds; U43 does not edit that lane. Next: run the final seven-width,
@@ -502,7 +503,10 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   disposable PostgreSQL; the two precommit reversals failed on PostgreSQL rollback and restored the source byte for
   byte. No production data was changed. The
   production price-feed rights blocker remains: official terms were checked, and no commercial agreement has been
-  recorded. No U43 closure or live Release B is claimed.
+  recorded. The public history API exposes exact vendor bars, and the
+  [vendor's public-display attribution guide](https://support.twelvedata.com/en/articles/12647398-attribution-guidelines-for-using-twelve-data)
+  also requires visible attribution unless a contract waives it; no such waiver is recorded. No U43 closure or
+  live Release B is claimed.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
