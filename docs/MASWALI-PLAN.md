@@ -111,6 +111,17 @@ lanes' scripts — is on branch **`maswali-handover-20261019`**, `handover/maswa
 - **Other sessions on OMEGA today:** PHOSPHOR (W4 live `70c069cb`, release 1b) and the Up & Down visual pass (U43 A live,
   A.1 `ee76c948`, release B next). They push `main` too: fetch and rebase immediately before any push, and message them
   before a release window. Agreed: whoever lands second re-runs `glyphs:gen` and re-points D19a's dictionary pin.
+- **⛔ PUSHING `main` — the shared lock (agreed by the three lanes, 2026-10-19, for Codex sessions that cannot message each
+  other):** before any push to `main`, `mkdir F:/kipindi-locks/main-push.lock` (on OMEGA-COMPILE01) and write
+  `<LANE> <UTC time> <sha>` to `F:/kipindi-locks/main-push.lock/owner`; push; run the production read-back (`?dpl=` on the
+  three hosts, `/api/health`, `qa:chunks-prod` on both origins, production `qa:live`); then delete your owner file and
+  `rmdir` the lock. If it is held, keep working and retry later — never delete another lane’s lock. Before a release,
+  §0 names what is about to be pushed and the shared files it touches. **Maswali’s shared files:** `src/lib/i18n-dict.ts`
+  (the `millionea` namespace), `src/app/globals.css` (the `kp-millionea-*` / `kp-mln-*` blocks), the navs (`bottom-nav`,
+  `nav-more`, `top-app-bar`, `app-shell`, `journey-tabs`, `journey-top-bar`, `lib/nav/active-tab`), `scripts/glyphs/map.ts`
+  and the generated sprites, `scripts/lib/house-bot-absence-cases.mts` (D19a), `market-service.ts` (S7),
+  `operation-result-modal.tsx`, `stepped-progress.tsx`, `not-found-words.ts`, `journey-home.tsx`. The other lanes’ handovers:
+  U43 `docs/design-brief/u43-2026-10/BRIEF.md`; PHOSPHOR `docs/PHOSPHOR-MIGRATION.md` §0.
 - **OMEGA worktrees kept for the resume** (each with its own npm ci, all clean): `C:\50pick-ssd\kipindi-mln-{s4,tab,vp,vr,f4,
   rep,not,int,redfix}`. Another machine needs none of them.
 
