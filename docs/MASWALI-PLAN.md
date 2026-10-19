@@ -29,24 +29,29 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-19):** S1–S4 are on `main` dark and their milestone battery is green. S5's
-integration fixes are committed at `431948cc5` on `codex/maswali-coord-20261019`, based on the last
-fetched `main` at `870772af2`. The source and disposable-database battery, every isolated browser
-suite, the ACTIVE player drive, and the WITHDRAWN-route drive are green. The visual lane read its
-full three-language capture; the changed seal line's exact-source re-shoot and tile read are green.
-Typecheck, the exact-commit production build, bundle verification and full local `qa:live`
-(385/0) passed. Its staff-preview control was first skipped with admin two-step enforced; a
-focused run with the local test setting had one cold-server click timeout, then passed 112/0
-on retry after an independent browser reproduction completed the preview door. Classic parity
-and production read-back remain release gates. The rollout is
-`WITHDRAWN`; the public product is not open.
+**State (2026-10-20):** S1–S4 are on `main` dark. S5's integration branch
+`codex/maswali-coord-20261019` has merged the last fetched `main` at `a504ad280`.
+The prior source and disposable-database battery, ACTIVE player drive,
+WITHDRAWN-route drive, and full three-language tile read passed before that merge. On the
+combined tree, `test:all` passed 614 of 615 members; its only failure was an R8D test spy
+counting an unrelated pending notification read. The test-only fix is committed at the source
+tip and its focused guard passes in memory and PostgreSQL, but the full combined-tree rerun
+is still owed. The Phosphor merge's glyph, design and changed-source guards pass. Classic
+parity has not completed on current `main`: two attempts stopped when other concurrent
+browser jobs reduced free memory below the parity runner's floor. A focused combined-tree
+browser attempt also stopped before opening Chromium at the same floor. The six cancel-dialog
+captures (three languages at two widths) are source checked but await a real browser run.
+The combined-tree browser drives, final exact-commit build and local `qa:live`, deployment and production
+read-back remain open. The rollout stays `WITHDRAWN`; the public product is not open.
 
-**Next:** Finish S5's classic parity. Rebuild and run local live QA at the exact
-release commit if the branch changes. Recheck current `main` and the shared release lock before any push. Deploy S5 dark,
-then run the three-host, health, chunk, live-QA and browser read-back from AGENTS.md §4. S7 follows
-with a measured 7,000-winner transaction-timeout blocker to repair on its own branch; S6 follows in
-L → D → R → N order. S8 remains at its owner and regulatory gates in §6. Do not flip the rollout as
-part of a dark release.
+**Next:** Complete current-`main` classic parity and the combined-tree visual drives and tile
+read, then run the remaining changed-file guards, full two-store `test:all`, money end-to-end
+battery, typecheck, exact-commit production build, bundle verification and local live QA.
+Recheck current `main` and the shared release lock before any push. Deploy S5 dark only after
+all release gates pass, then run the three-host, health, chunk, live-QA and browser read-back
+from AGENTS.md §4. S7 follows with its wide-winner transaction-timeout repair on its own
+branch; S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in
+§6. Do not flip the rollout as part of a dark release.
 
 ## §0a · Historical handovers (superseded by §0 above)
 

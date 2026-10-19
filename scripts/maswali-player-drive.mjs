@@ -66,10 +66,10 @@ mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
 const errs = [];
-/** A context on BASE carrying the given cookies (session, pass) and English. */
-async function contextWith(cookies, viewport = { width: 360, height: 780 }) {
+/** A context on BASE carrying the given cookies (session, pass) and language. */
+async function contextWith(cookies, viewport = { width: 360, height: 780 }, locale = "en") {
   const ctx = await browser.newContext({ viewport });
-  await ctx.addCookies([{ name: LOCALE_COOKIE, value: "en", url: BASE }, ...cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined }))]);
+  await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...cookies.map((c) => ({ ...c, url: BASE, domain: undefined, path: undefined }))]);
   return ctx;
 }
 async function open(page, path) {
@@ -237,6 +237,45 @@ async function buyOne(label) {
   return decodeURIComponent(p.url().split("/").pop() ?? "");
 }
 const first = await buyOne("3a");
+// The platform's ConfirmModal gained an IconPlate in the incoming Phosphor release. Shoot the actual free-cancel
+// confirmation in each player language at phone and desktop width, reusing this ticket's session without cancelling it.
+// The one-pixel control exercises the same rectangle predicate used on the rendered plate.
+const cancelPlateIs36 = (box) => !!box && Math.abs(box.width - 36) < 0.2 && Math.abs(box.height - 36) < 0.2;
+ok("3b.0 control · a 37×36 plate is rejected", !cancelPlateIs36({ width: 37, height: 36 }));
+for (const locale of ["en", "sw", "zh"]) {
+  for (const width of [360, 1280]) {
+    const ctx = await contextWith([playerSession], { width, height: 780 }, locale);
+    try {
+      const shot = await ctx.newPage();
+      shot.on("pageerror", (e) => errs.push(`${locale} cancel confirm: ${e}`));
+      const res = await open(shot, `/millionea/tickets/${encodeURIComponent(first)}`);
+      ok(`3b.0 ${locale} @${width} · the ticket answers 200`, res?.status() === 200, `${res?.status()}`);
+      ok(`3b.0 ${locale} @${width} · html language matches its cookie`,
+        (await shot.locator("html").getAttribute("lang")) === locale);
+      const door = shot.getByTestId("millionea-ticket").getByRole("button");
+      ok(`3b.0 ${locale} @${width} · the running ticket has one cancel button`, (await door.count()) === 1);
+      await door.click();
+      const confirm = shot.getByRole("alertdialog");
+      await confirm.waitFor({ state: "visible", timeout: 60_000 });
+      ok(`3b.0 ${locale} @${width} · the confirm names this ticket`,
+        (await confirm.count()) === 1 && ((await confirm.locator("h2").first().textContent()) ?? "").includes(first));
+      await tile(shot, `3b-cancel-confirm-${locale}-${width}`);
+      const plate = confirm.locator("div.mb-3 > span[aria-hidden]").first();
+      const box = (await plate.count()) === 1 ? await plate.boundingBox() : null;
+      const glyph = plate.locator('svg[data-g="warning.fill"] use');
+      const href = (await glyph.count()) === 1 ? await glyph.getAttribute("href") : null;
+      ok(`3b.0 ${locale} @${width} · the 36×36 plate draws the Phosphor warning glyph`,
+        cancelPlateIs36(box) && /^\/icons\/g\/app\.[0-9a-f]{8}\.svg#p-warning-fill$/.test(href ?? ""),
+        JSON.stringify({ box, href }));
+      const frame = await confirm.boundingBox();
+      ok(`3b.0 ${locale} @${width} · the dialog fits the viewport`,
+        !!frame && frame.x >= -0.5 && frame.y >= -0.5 && frame.x + frame.width <= width + 0.5 && frame.y + frame.height <= 780.5,
+        JSON.stringify(frame));
+    } finally {
+      await ctx.close();
+    }
+  }
+}
 const cancel = p.getByRole("button", { name: /^Free cancel until/ });
 ok("3b.1 the free cancel stands under the ticket inside its window", (await cancel.count()) === 1);
 await cancel.click();
