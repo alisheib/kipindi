@@ -375,11 +375,19 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
   not a production-data change in this release. `/updown/history` remains Maswali-owned and still orders Swahili
   durations as `5 dakika`; U43 board/detail/receipt use `dakika 5`, so cross-surface wording is not yet 10/10.
-  The B1–B5 source and its guards are pushed on the U43 work branch at `56dc3b89d`; this is not a live release.
+  The B1–B5 source and its guards are pushed on the U43 work branch through `cb4f88301`; this is not a live release.
   A follow-up data audit found that malformed vendor rows with zero or negative OHLC could draw a false price.
   The parser now discards those rows and leaves a gap; the served-history B2 guard passed 34/34 and its targeted
   reversal was caught 1/1. The stale-confirming selection guard now runs the real non-overlapping selector with
   closing times; its five reversals passed. Final post-fix browser frames and full release gates are still owed.
+  R14's local quick capture stopped before any scored frame: the 13 browser contexts timed out during warm-up
+  while shared-machine free memory fell near 1 GB. The dev server was stopped; the retry uses narrower width
+  groups before the full matrix. The `test:updown-match` chart reader was repinned to the separate confirmed-price
+  label while keeping its frozen opening-price check; 122/122 passed with two red reversals caught.
+  A release-rights question is open: the production Twelve Data key's read-only `/api_usage` reports the Grow
+  tier, and [Twelve Data's published terms](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)
+  say individual tiers exclude commercial display to third parties. No separate display agreement is recorded
+  in this repository. Ali has been asked whether one exists; release B cannot claim this gate closed yet.
   The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
   `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
   plan §0 already records those inherited reds; U43 does not edit that lane. Next: retest the R13 findings in browser

@@ -427,19 +427,26 @@ console.log("\n§11b · F1 — the card's direction follows settlement's side wh
     + '{dir === "up" && <I.trendingUp s={11} />}{dir === "down" && <I.trendingDown s={11} />}';
   proves("11b.7 the card's direction follows `valueTone` while its price stays neutral", cardWiring(cardSrc), cardWiring(PRE_F1_CARD));
   // U43 B2 (2026-10-19): the large chart's dashed line is the FROZEN opening
-  // price, while the live confirmed quote is named separately below it. A
+  // price, which the card and axis state. A live confirmed vendor quote is
+  // named separately below the plot when it can differ from the bar's open. A
   // later quote as the reference would disagree with settlement and the card.
   const termWiring = (s: string): string[] => {
     const d: string[] = [];
     if (!s.includes("price: priceToBeatRef.current,")) d.push("the dashed reference does not use the frozen opening price");
     if (!s.includes('color: ink("--text-subtle"),')) d.push("the reference wears a side or winnings colour");
     if (s.includes("price: data.livePrice,") || s.includes("liveLineToken(data.livePrice")) d.push("a later quote replaced the opening reference");
-    if (!s.includes("{words.beat}") || !s.includes("{labels.confirmedPrice}")) d.push("the opening reference and current quote are not named separately");
+    if (!s.includes('const showConfirmedAside = showLine && (guardedFeed?.sourceTier === "vendor" || lastChartPoint?.price !== guardedFeed?.livePrice);')
+        || !s.includes('{showConfirmedAside && (')
+        || !s.includes('{labels.confirmedPrice}{" "}<span className="tabular-nums">{usd(guardedFeed.livePrice, guardedFeed.decimals)}</span>')) {
+      d.push("a vendor quote that differs from the frozen opening reference is not separately named");
+    }
     return d;
   };
   const termSrc = src("src/components/charts/terminal-chart.tsx");
-  proves("11b.8 the terminal's named dashed line uses the frozen opening price",
+  proves("11b.8 the terminal's dashed line uses the frozen opening price, while a vendor quote has its own label",
     termWiring(termSrc), termWiring(termSrc.replace("price: priceToBeatRef.current,", "price: data.livePrice,")));
+  proves("11b.8′ the separately named vendor quote remains visible beside the chart",
+    termWiring(termSrc), termWiring(termSrc.replace('{showConfirmedAside && (', '{false && (')));
   const pageSrc = src("src/app/updown/page.tsx"), labSrc = src("src/components/charts/updown-chart-lab.tsx");
   ok("11b.9 the board hands the terminal its IN-PLAY round's opening price and a separate quote label",
     pageSrc.includes("const inPlay = rounds.find((r) => !roundIsSettled(r.state) && r.openPrice != null) ?? null;")
