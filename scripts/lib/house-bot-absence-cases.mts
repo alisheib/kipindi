@@ -189,10 +189,20 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // (the server lane, review L6), each locale's sw and zh for native review at Gate B, pinned at 1c210f39e, the S5 server
     // merge, whose blob is the dictionary as it stands. Every key is in a block of its own, and no versioned policy
     // string moves.
+    // PHOSPHOR-MIGRATION W4 (2026-10-19, the audit's release 1, docs/PHOSPHOR-MIGRATION.md §8) changes presentation only:
+    // the legal pages' header glyphs (privacy → privacyNotice, responsible gambling → limits, the Up & Down rules → trade,
+    // the rules page's Up & Down card → trade) and the Up & Down rulebook's ⚠️ in three locales → the family's warning
+    // glyph; and the dictionary's seven link labels per locale lose their typed "→" (the component draws the family's
+    // arrow). No word of a policy moves. Pinned at the W4 commit that holds them (re-pointed at the release's own rebase).
+    const W4 = "ada2d3a7e";
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
-      ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "1c210f39e"],
+      ["src/app/legal/rules/page.tsx", W4],
+      ["src/lib/i18n-dict.ts", W4],
+      ["src/app/legal/privacy/page.tsx", W4],
+      ["src/app/legal/responsible-gambling/page.tsx", W4],
+      ["src/app/legal/rules/_content-up-down.tsx", W4],
+      ["src/app/legal/rules/up-down/page.tsx", W4],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
