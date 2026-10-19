@@ -209,7 +209,7 @@ export function JudTwoWay({ bet, round, viewer, assetName, receipt, onWatchRound
     <Lines t={t} locale={locale} nowMs={nowMs} frame={frame} id={id} />
     {prompt && <p className="kp-jud__prompt">{prompt}</p>}
     <div className="kp-jud__sides">{sideButton("UP")}{sideButton("DOWN")}</div>
-    <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />
+    {size === "detail" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />}
     <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
     <UpDownBetBlockedModal blocked={bet.blocked} onClose={bet.clearBlocked} />
     {receipt && <UpDownBetReceiptModal key={bet.placedReceipt?.nonce ?? 0} placed={bet.placedReceipt} info={receipt} pricing={round.pricing}

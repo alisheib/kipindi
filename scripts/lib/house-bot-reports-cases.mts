@@ -4413,12 +4413,13 @@ await guard("11.247", async () => {
    * `plans/house-bots/DEFERRED-TESTS.md` §1j.
    */
   const anchor = await w.mdal.marketStore.get(m.id);
+  const anchor2 = await w.mdal.marketStore.get(m2.id);
   const PUBLIC_READERS: Array<[string, () => Promise<unknown>]> = [
     ["getMarket", () => SVC.getMarket(m.id)],
     ["getMarket(voided)", () => SVC.getMarket(m2.id)],
     ["listMarkets", () => SVC.listMarkets()],
     ["getSimilarMarkets", () => SVC.getSimilarMarkets(anchor, 6)],
-    ["getCardCharts", () => HIST.getCardCharts([m.id, m2.id])],
+    ["getCardCharts", () => HIST.getCardCharts([anchor, anchor2])],
     ["countCommentsByMarkets", () => COMMENTS.countCommentsByMarkets([m.id, m2.id])],
     ["leaderboard", () => w.mdal.positionStore.leaderboard(50)],
     ["leaderboardPlayerCounts", () => w.mdal.positionStore.leaderboardPlayerCounts()],

@@ -33,7 +33,7 @@ export const MUTATIONS = [
   {
     name: "one reading inside the window is measured against itself again (a false ±0)",
     file: "src/lib/server/market-history.ts",
-    from: `  if (!dayAgo || dayAgo === points[points.length - 1]) return { spark };`,
+    from: `  if (!dayAgo || dayAgo === last) return { spark };`,
     to: `  if (!dayAgo) return { spark };`,
     expect: "1.28",
   },

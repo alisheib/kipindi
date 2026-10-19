@@ -2,6 +2,9 @@
 import { readFileSync } from "node:fs";
 import { bettableFirst, type BoardOrderRound } from "../src/lib/updown-board-order";
 import { suppressChatOnU43, suppressNeedleOnU43 } from "../src/lib/u43-overlay-routes";
+import { cardRefundBrief } from "../src/lib/updown-card-refund";
+import { sameCardFootprint } from "./lib/u43-card-height.mjs";
+import { dict } from "../src/lib/i18n-dict";
 import { decomment } from "./lib/decomment.mts";
 
 let failures = 0;
@@ -15,9 +18,14 @@ const viz = read("src/components/charts/board-viz.tsx");
 const ghost = read("src/app/updown/updown-ghost.tsx");
 const capture = read("scripts/live/updown-visual-capture.mjs");
 const states = read("scripts/live/updown-visual-states.mjs");
-const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const locked320 = [...css.matchAll(/@media \(max-width: 359px\) \{([\s\S]*?)\n\}/g)]
+  .map((match) => match[1]).find((body) => body.includes('data-phase="locked"')) ?? "";
+const locked360 = [...css.matchAll(/@media \(min-width: 360px\) \{([\s\S]*?)\n\}/g)]
+  .map((match) => match[1]).find((body) => body.includes('data-phase="locked"')) ?? "";
 const card = read("src/components/updown/updown-card.tsx");
 const controls = read("src/components/updown/updown-stake-controls.tsx");
+const journeyArm = read("src/components/journey/updown/jud-arm.tsx");
 const dictionary = read("src/lib/i18n-dict.ts");
 const chat = read("src/components/chat/ChatRoot.tsx");
 const needle = read("src/components/layout/needle.tsx");
@@ -60,46 +68,79 @@ ok("320 first card clears the fixed rail without removing either chip row",
 ok("320 held stake choices clear the rail without shrinking controls or hiding the confirmed quote",
   dictionary.includes('udBetsCloseIn: "Dau linafungwa"')
   && !dictionary.includes('udBetsCloseIn: "Dau linafungwa baada ya"')
-  && card.includes('className="ud-now-delta font-mono text-micro tabular-nums"')
-  && css.includes('.ud-card .ud-now-delta { display: none; }')
+  && !card.includes('ud-now-delta')
+  && !css.includes('.ud-card .ud-now-delta')
   && card.includes('className="ud-oneside-caption flex"')
   && css.includes('.ud-card .ud-oneside-caption { display: none; }')
   && card.includes('className="ud-figure font-mono font-semibold tabular-nums">{priceText.live}</span>'));
+ok("320 held card keeps a measured action reserve above the fixed rail",
+  css.includes('.ud-card[data-ud-layout="held"][data-phase="open"] { gap: 3px; }')
+  && states.includes('if (action.clearance < 24) throw new Error(`held action clearance ${action.clearance.toFixed(1)}px below 24px`);')
+  && states.includes('process.env.HELD_CAPTION_RED === "1"'));
 ok("320 and 360 keep ready actions clear and remove only the duplicate prompt",
   css.includes('@media (max-width: 390px) {')
   && css.includes('.ud-board-page .ud-board-header > p:last-child { display: none; }')
   && css.includes('.ud-card .ud-stake-ready-helper { display: none; }')
   && controls.includes('compact && bet.stakeReady && !bet.pending && !bet.locallyLocked && "ud-stake-ready-helper"')
   && controls.includes('{bet.pending') && controls.includes('{t.market.udInsufficientBalance}'));
-ok("narrow cards put the truthful one-sided refund condition before money choices",
-  card.includes('bettable && outEmptyCopy && (')
+ok("every card gives one short refund condition before the choices",
+  card.includes('const refundBrief = cardRefundBrief(t, emptySideOf(pricing));')
+  && card.includes('bettable && refundBrief && (')
   && card.indexOf('className="ud-refund-brief') > card.indexOf('className="ud-split"')
   && card.indexOf('className="ud-refund-brief') < card.indexOf('className="ud-act"')
-  && card.includes('{t.market.udOneSideRefundBrief}')
-  && css.includes('.ud-refund-brief { display: none; }')
-  && css.includes('.ud-card .ud-refund-brief { display: block; }')
+  && card.includes('{refundBrief}')
+  && !card.includes('outEmptyCopy')
+  && controls.includes('!compact && emptyCopy && (')
+  && journeyArm.includes('{size === "detail" && <EmptySideNote t={t} side={judEmptySide(round.pricing, null)} />}')
+  && css.includes('.ud-refund-brief { display: block; }')
   && css.includes('.ud-card .ud-oneside-caption { display: none; }')
-  && dictionary.includes('udOneSideRefundBrief: "One side at close: stakes return."')
-  && dictionary.includes('udOneSideRefundBrief: "Upande mmoja hadi mwisho: dau hurudi."')
-  && dictionary.includes('udOneSideRefundBrief: "截止时仅一方投注：本金退还。"'));
-ok("locked card reserves the preceding live action footprint",
+  && !css.includes('.ud-card .ud-refund-brief { display: none; }'));
+ok("refund condition names the actually empty side in all three languages",
+  cardRefundBrief(dict.en, "UP") === "If Up stays empty, stakes return."
+  && cardRefundBrief(dict.sw, "DOWN") === "Chini ikibaki tupu, dau hurudi."
+  && cardRefundBrief(dict.zh, "DOWN") === "若跌方仍无人投注，本金退还。"
+  && cardRefundBrief(dict.en, "BOTH") === "One side at close: stakes return."
+  && cardRefundBrief(dict.sw, "BOTH") === "Upande mmoja hadi mwisho: dau hurudi."
+  && cardRefundBrief(dict.zh, "BOTH") === "截止时仅一方投注：本金退还。"
+  && cardRefundBrief(dict.en, null) === null);
+ok("320 locked card follows its content instead of reserving empty live space",
   card.includes('data-ud-layout={isAuthed === true && marketId ? (myUpStake > 0 || myDownStake > 0 ? "held" : "player") : "guest"}')
-  && css.includes('.ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 337px; }')
-  && css.includes('.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 411px; }')
-  && css.includes('.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 457px; }')
-  && css.includes('.ud-card[data-phase="locked"] .ud-act { flex: 1 0 auto; margin-top: 0; }'));
-ok("locked card spreads spare room at 360 and wider without moving 320 next step",
-  css.includes('@media (min-width: 360px) {')
-  && css.includes('.ud-card[data-phase="locked"] { justify-content: space-between; }')
-  && css.includes('.ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; }'));
+  && css.includes('.ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; margin-top: 0; }')
+  && locked320.includes('.ud-card[data-phase="locked"][data-ud-layout="guest"],')
+  && locked320.includes('.ud-card[data-phase="locked"][data-ud-layout="player"],')
+  && locked320.includes('.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 0; }')
+  && states.includes('if (gap > 24) throw new Error(`320px locked card leaves'));
+ok("360 locked card retains the open card footprint",
+  css.includes('.ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 329px; }')
+  && css.includes('.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 381px; }')
+  && locked360.includes('.ud-card[data-phase="open"][data-ud-layout="guest"] { min-height: 329px; }')
+  && locked360.includes('.ud-card[data-phase="open"][data-ud-layout="held"] { min-height: 381px; }')
+  && locked360.includes('.ud-card[data-phase="locked"] { justify-content: space-between; }')
+  && states.includes('const lockHeightOnly = process.env.LOCK_HEIGHT_ONLY === "1";')
+  && states.includes('index.lockedParity = pairs.map(')
+  && states.includes('if (!sameCardFootprint(pair.openHeight, pair.lockedHeight))')
+  && sameCardFootprint(329, 329) && sameCardFootprint(381, 381)
+  && !sameCardFootprint(322, 329) && !sameCardFootprint(372, 381)
+  && !sameCardFootprint(372, 411) && !sameCardFootprint(322, NaN));
+ok("360 signed-in no-stake card holds a 381px footprint with clear choices",
+  css.includes('.ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 381px; }')
+  && locked360.includes('.ud-card[data-phase="open"][data-ud-layout="player"] { min-height: 381px; }')
+  && states.includes('const noBetParityOnly = process.env.NO_BET_PARITY_ONLY === "1";')
+  && states.includes('["sw", "en", "zh"].map((locale) => ({ who: "player", locale, width: 360 }))')
+  && states.includes('if (Math.abs(open.cardGeometry.height - 381) > 1)')
+  && states.includes('open.heldAction.minButtonHeight < 40 || open.heldAction.clearance < 24')
+  && states.includes('!sameCardFootprint(open.cardGeometry.height, locked.cardGeometry.height)')
+  && sameCardFootprint(381, 381) && !sameCardFootprint(347, 381));
 ok("Needle stands down on the board and round but not Up & Down history",
   suppressNeedleOnU43("/updown") && suppressNeedleOnU43("/updown/round_1")
   && !suppressNeedleOnU43("/updown/history") && !suppressNeedleOnU43("/updown/history/x")
-  && !suppressNeedleOnU43("/markets") && !suppressNeedleOnU43("/updownx"));
+  && !suppressNeedleOnU43("/updownx"));
+ok("Needle stands down over every actionable classic market card surface",
+  ["/", "/markets", "/markets/round_1", "/watchlist", "/results"].every(suppressNeedleOnU43)
+  && ["/live", "/marketplace", "/watchlisting", "/resultset", null].every((path) => !suppressNeedleOnU43(path)));
 ok("chat stands down over market choices and U43 money controls",
-  suppressChatOnU43("/markets") && suppressChatOnU43("/updown")
-  && suppressChatOnU43("/updown/round_1") && !suppressChatOnU43("/updown/history")
-  && !suppressChatOnU43("/markets/round_1"));
+  ["/", "/markets", "/markets/round_1", "/watchlist", "/results", "/updown", "/updown/round_1"].every(suppressChatOnU43)
+  && ["/live", "/updown/history"].every((path) => !suppressChatOnU43(path)));
 ok("floating helpers apply the route gate before paint and close an open chat panel",
   needle.includes('suppressNeedleOnU43(pathname)') && needle.includes('hidden={suppressNeedleOnU43(pathname)}')
   && chat.includes('if (suppressChatOnU43(pathname)) setOpen(false);')

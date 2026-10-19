@@ -61,6 +61,7 @@ import { SOURCE_CLASS_KEY, fmtEATClock } from "@/lib/updown-source-label";
 import { RoundLiveLine } from "@/components/charts/round-live-line";
 import { roundPhase, resultClock, handoverClock, type HandoverClock } from "@/lib/updown-card-phase";
 import { cardPriceRead } from "@/lib/updown-card-view";
+import { cardRefundBrief } from "@/lib/updown-card-refund";
 import { roundDuration } from "@/lib/updown-round-name";
 import type { RoundSuccessor } from "@/lib/server/updown-board";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
@@ -225,7 +226,7 @@ export type UpDownCardProps = {
   breakBody?: KeptBody | null;
   /**
    * S12 WP9–WP10 · a journey reader's own facts (`judViewerFor`, read by the board page for a journey request with a
-   * session), or absent. Present, the signed-in control is Juu/Chini's journey arm; absent, it is the classic control.
+   * session), or absent. Present, the signed-in control is Juu na Chini's journey arm; absent, it is the classic control.
    */
   journey?: JudViewer | null;
 };
@@ -690,9 +691,6 @@ export function UpDownCard(props: UpDownCardProps) {
     close: closePrice == null ? null : usd(closePrice, decimals),
     up: upTarget == null ? null : usd(upTarget, decimals),
     down: downTarget == null ? null : usd(downTarget, decimals),
-    margin: upTarget == null || openPrice == null ? null : usd(upTarget - openPrice, decimals),
-    move: shownPrice == null || openPrice == null ? null
-      : `${shownPrice > openPrice ? "+" : shownPrice < openPrice ? "−" : ""}${usd(Math.abs(shownPrice - openPrice), decimals)}`,
   }), [shownPrice, openPrice, closePrice, upTarget, downTarget, decimals]);
   const playersText = useMemo(() => formatNumber(players), [players]);
   /* 2026-09-14 — East Africa Time with the zone stated, the same `fmtEAT` the round page and the
@@ -762,17 +760,9 @@ export function UpDownCard(props: UpDownCardProps) {
 
   // ── D2 · THE EMPTY SIDE, ON THE DISPLAY-ONLY CARD ─────────────────────────
   //
-  // A SIGNED-OUT card has no stake control, so it says the one fact about the pools a visitor
-  // needs before deciding to sign up: which side nobody has backed. It is read from the RAW
-  // pools (`emptySideOf`), the rule the authed control and the round page use — never from a
-  // printed multiple. ⛔ The buttons quote no multiplier (the owner's ruling of 2026-10-14);
-  // until then they printed `× N` here, priced at the default preset.
-  const outEmpty = emptySideOf(pricing);
-  const outEmptyCopy =
-    outEmpty === "BOTH" ? t.market.udNobodyBackedEither
-    : outEmpty === "UP" ? t.market.udNobodyBacked.replace("{side}", t.market.udUp)
-    : outEmpty === "DOWN" ? t.market.udNobodyBacked.replace("{side}", t.market.udDown)
-    : null;
+  // Every visitor reads the same brief refund condition before the two choices. The empty side
+  // comes from the raw pools, and the detail page keeps its fuller side-aware explanation.
+  const refundBrief = cardRefundBrief(t, emptySideOf(pricing));
 
   // Signed-out / display-only cards keep the old behaviour: open the round detail
   // (where the sign-in gate lives) rather than trying to place from the card.
@@ -855,10 +845,6 @@ export function UpDownCard(props: UpDownCardProps) {
         <span className="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">
           {priceText.open ?? "—"}
         </span>
-        {!settledNow && priceText.margin && (
-          <span className="font-mono text-micro tabular-nums text-text-faint"
-                aria-label={t.home.udMatchRefund.replace("{margin}", priceText.margin)}>±{priceText.margin}</span>
-        )}
         {openPrice == null && <span className="text-body-sm text-text-faint">{t.market.udAwaitingRead}</span>}
       </div>
 
@@ -880,7 +866,6 @@ export function UpDownCard(props: UpDownCardProps) {
                 {tone === "up" && <I.arrowUp s={12} edge="start" text="mono-700" />}
                 {tone === "down" && <I.arrowDown s={12} edge="start" text="mono-700" />}
                 <span className="ud-figure font-mono font-semibold tabular-nums">{priceText.live}</span>
-                {priceText.move && <span className="ud-now-delta font-mono text-micro tabular-nums">{priceText.move}</span>}
               </span>
             </div>
           )}
@@ -940,16 +925,15 @@ export function UpDownCard(props: UpDownCardProps) {
         {/* ⛔ NO `mcardp-nobets` CAPTION HERE, and that is a difference from `.mcardp` ON PURPOSE
             — caught by LOOKING at the render, not by any count. `.mcardp` needs the caption
             because the dashed rail is the only thing on that card saying the pool is empty.
-            This card already says it, ten lines lower and better: "No bets yet — if only one
-            side is backed when betting closes, every stake comes back." Adding the caption put
-            the SAME four words twice inside 200px. The rail still carries `noBetsYet` as its
+            This card already says it in the short conditional refund sentence just below.
+            Adding the caption put the SAME idea twice inside 200px. The rail still carries `noBetsYet` as its
             accessible name, so a screen reader is told once, exactly like a sighted reader.
             ⭐ Consistency is one idea stated one way — not the same words pasted twice. */}
       </div>
 
-      {bettable && outEmptyCopy && (
+      {bettable && refundBrief && (
         <p className="ud-refund-brief m-0 text-body-sm text-text-subtle">
-          {t.market.udOneSideRefundBrief}
+          {refundBrief}
         </p>
       )}
 
@@ -982,7 +966,7 @@ export function UpDownCard(props: UpDownCardProps) {
             >
               {/* UD-22 · the receipt's ghost CTA goes to the round. From the BOARD that is a
                   real destination, so it is offered here; the round page omits it. */}
-              {/* S12 WP9 · a journey reader's control is Juu/Chini's journey arm, on this very hook; the else arm is the classic control. */}
+              {/* S12 WP9 · a journey reader's control is Juu na Chini's journey arm, on this very hook; the else arm is the classic control. */}
               {journey && marketId && serverNowMs != null ? <LazyJudTwoWay bet={bet} viewer={journey} assetName={assetName} receipt={receipt} size="card"
                 onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
                 round={{ marketId, roundId, pricing, min: minStake ?? PLATFORM_MIN_STAKE, max: maxStake ?? PLATFORM_MAX_STAKE, selectionClosesAtMs: selectionClosesAtMs ?? null, open: bettable, serverNowMs, myUpStake, myDownStake }} /> : (
@@ -1001,19 +985,6 @@ export function UpDownCard(props: UpDownCardProps) {
               <p className="mt-1 mb-0 text-body-sm text-text-faint">
                 {t.market.udSignInToBet} · {t.market.udFromStake} <span className="amount">{formatTzs(minStake ?? PLATFORM_MIN_STAKE)}</span>
               </p>
-              {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
-                  because a visitor deciding whether to sign up deserves the same fact. Faint
-                  informational ink + the `info` glyph: not gold, not an alarm (G5). */}
-              {/* F1 (2026-09-27) · it is a SENTENCE — a refund promise — and it sat at 10px, under §T4's 12.5px reading
-                  floor. It takes the kit's 13px, the size the round page already prints it at, and the authed card's copy
-                  moved with it (`updown-stake-controls.tsx`). */}
-              {outEmptyCopy && (
-                <p className="mt-1 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
-                  <I.info s={11} className="mt-[2px] shrink-0" />
-                  {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
-                  <span>{noticeBody(outEmptyCopy)}</span>
-                </p>
-              )}
             </>
           )
         ) : quoteVisible ? (

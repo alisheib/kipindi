@@ -99,20 +99,20 @@ const MUTATIONS = [
   {
     name: "⭐ sentence-on-a-two-sided-round — the card says a side is empty when both hold money (a lie)",
     file: CARD,
-    find: `  const outEmpty = emptySideOf(pricing);`,
-    with: `  const outEmpty = emptySideOf(pricing) ?? "BOTH";`,
+    find: `  const refundBrief = cardRefundBrief(t, emptySideOf(pricing));`,
+    with: `  const refundBrief = cardRefundBrief(t, emptySideOf(pricing) ?? "BOTH");`,
   },
   {
     name: "⭐ card-drops-the-sentence — a one-sided round refunds a visitor who was never told",
     file: CARD,
-    find: `              {outEmptyCopy && (`,
-    with: `              {false && outEmptyCopy && (`,
+    find: `      {bettable && refundBrief && (`,
+    with: `      {false && refundBrief && (`,
   },
   {
     name: "the estimate note comes back under the card's buttons (it explained the removed multiple)",
     file: CARD,
-    find: `                  <span>{noticeBody(outEmptyCopy)}</span>\n                </p>\n              )}\n            </>`,
-    with: `                  <span>{noticeBody(outEmptyCopy)}</span>\n                </p>\n              )}\n              <p className="mt-1 text-body-sm text-text-faint">{t.market.udEstimateNote}</p>\n            </>`,
+    find: `<UpDownSidePair assetName={assetName} onPick={go} />`,
+    with: `<UpDownSidePair assetName={assetName} onPick={go} />\n              <p className="mt-1 text-body-sm text-text-faint">{t.market.udEstimateNote}</p>`,
   },
   {
     name: "the round panel projects from a rate again instead of the pool",

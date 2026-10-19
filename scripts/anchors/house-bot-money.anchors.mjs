@@ -137,8 +137,8 @@ export const MUTATIONS = [
   {
     name: "H5 · the position loses its house marker",
     file: SVC,
-    from: `      // SEAM:marker\n      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
-    to: `      // SEAM:marker\n      ...(ctx.kind === "house" ? {} : {}),`,
+    from: `        // SEAM:marker\n        ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
+    to: `        // SEAM:marker\n        ...(ctx.kind === "house" ? {} : {}),`,
     expect: "1.2 · the position carries the house marker",
     suite: "money-mem",
   },

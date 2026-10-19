@@ -9,12 +9,20 @@ const ok = (name: string, value: boolean) => {
   if (!value) failures++;
 };
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-const css = read("src/app/globals.css");
+const css = read("src/app/globals.css").replace(/\r\n/g, "\n");
 const states = read("scripts/live/updown-visual-states.mjs");
 const tabs = read("src/components/updown/updown-board-tabs.tsx");
 const receipt = read("src/components/updown/updown-bet-receipt-modal.tsx");
 
 ok("Swahili duration places the numeral after dakika", roundDuration(dict.sw, 5) === "dakika 5" && roundName(dict.sw, "Bitcoin", 5) === "Bitcoin Juu na Chini · dakika 5");
+const classicRail = '.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin)';
+const updownRailLabel = '.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item[href="/updown"] .kp-rail__label';
+ok("the game has one full name and a two-line 64px Swahili rail slot",
+  [dict.en, dict.sw, dict.zh].every((d) => d.nav.updown === d.market.udTitle)
+  && dict.sw.nav.updown === "Juu na Chini"
+  && css.includes(`${classicRail} {\n  justify-content: flex-start;\n  padding-block: 3px;`)
+  && css.includes(`${classicRail} .kp-rail__label {\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  min-height: 22px;`)
+  && css.includes(`${updownRailLabel} {\n  white-space: normal;\n  text-overflow: clip;\n  text-align: center;`));
 ok("English and Chinese duration keep their own order", roundDuration(dict.en, 5) === "5 min" && roundDuration(dict.zh, 5) === "5 分钟");
 ok("board chip, filter sheet and active summary all use the shared locale-aware duration",
   tabs.includes('const durationText = (minutes: number) => roundDuration({ market: { udMin: minLabel } }, minutes);')

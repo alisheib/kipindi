@@ -41,6 +41,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { mapLimited, PHOTOGRAPH_CONCURRENCY, verifiedScreenshot, frameReady, receiptParticipants, receiptReady, RECEIPT_EYEBROWS } from "../lib/u43-state-fanout.mjs";
+import { sameCardFootprint } from "../lib/u43-card-height.mjs";
 
 const REPO = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const PW_ROOT = process.env.PW_ROOT || REPO;
@@ -78,11 +79,17 @@ const FULL_LOCALES = (process.env.LOCALES || "sw,en,zh").split(",").map((s) => s
 // A narrow local browser gate stops after p3: one real phone-width bet, then a
 // measured held action above the fixed rail. It is also the browser red proof.
 const heldClearanceOnly = process.env.HELD_CLEARANCE_ONLY === "1";
+const lockHeightOnly = process.env.LOCK_HEIGHT_ONLY === "1";
+// Keep this player out of the betting path: the open and locked no-stake cards
+// must share the same signed-in footprint and leave visible choices above the rail.
+const noBetParityOnly = process.env.NO_BET_PARITY_ONLY === "1";
 const heldClearanceWidth = Number(process.env.HELD_CLEARANCE_WIDTH || 320);
 if (heldClearanceOnly && ![320, 360, 390].includes(heldClearanceWidth)) {
   throw new Error("Held clearance probe supports only the three phone widths");
 }
-const CELLS = heldClearanceOnly
+const CELLS = noBetParityOnly
+  ? ["sw", "en", "zh"].map((locale) => ({ who: "player", locale, width: 360 }))
+  : heldClearanceOnly
   ? [{ who: "player", locale: "sw", width: heldClearanceWidth }]
   : process.env.MATRIX === "full"
   ? FULL_LOCALES.flatMap((locale) => FULL_WIDTHS.flatMap((width) => [
@@ -232,7 +239,14 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           await route.continue();
         });
       }
+      const injectNoBetHeightRed = async () => {
+        if (noBetParityOnly && process.env.NO_BET_HEIGHT_RED === "1" && phase === "p1-open") {
+          // Browser-only reversal of the old 347px no-stake open floor.
+          await p.page.addStyleTag({ content: '@media(min-width:360px){.ud-card[data-phase="open"][data-ud-layout="player"]{min-height:347px!important}}' });
+        }
+      };
       await p.page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      await injectNoBetHeightRed();
       // Browser-only red restores the old visible one-side caption without
       // touching shared CSS or the running server's source tree.
       if (heldClearanceOnly && process.env.HELD_CAPTION_RED === "1" && phase === "p3-youre-in") {
@@ -289,6 +303,17 @@ async function photograph(phase, path = BOARD, filter = () => true) {
             const caption = selected?.querySelector(".ud-oneside-caption");
             return { present: !!caption, visible: !!caption && caption.getClientRects().length > 0
               && getComputedStyle(caption).display !== "none" };
+          })(),
+          cardGeometry: (() => {
+            if (!selected) return null;
+            const action = selected.querySelector(":scope > .ud-act");
+            const line = selected.querySelector(':scope > [data-testid="round-live-line"]');
+            return {
+              height: selected.getBoundingClientRect().height,
+              layout: selected.getAttribute("data-ud-layout"),
+              actionToLine: action && line
+                ? line.getBoundingClientRect().top - action.getBoundingClientRect().bottom : null,
+            };
           })(),
           heldAction: (() => {
             if (!roundId) return null;
@@ -373,6 +398,11 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           throw new Error("held 320px one-side caption is absent or visible instead of hidden");
         }
       }
+      if (phase === "p7-locked" && p.width === 320 && path === BOARD) {
+        const gap = (await sampleFrame()).cardGeometry?.actionToLine;
+        if (!Number.isFinite(gap)) throw new Error("320px locked card/action-to-line gap could not be measured");
+        if (gap > 24) throw new Error(`320px locked card leaves ${gap.toFixed(1)}px of blank space before its price line`);
+      }
       const file = `${phase}__${p.id}.png`;
       const accepted = await verifiedScreenshot({
         sample: sampleFrame,
@@ -383,6 +413,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         valid: (sample) => frameReady(sample, requirement),
         retry: async () => {
           await p.page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+          await injectNoBetHeightRed();
           await p.page.waitForTimeout(1500);
         },
       });
@@ -434,6 +465,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         signedIn: final.signedIn, signedInOk: (p.who === "player") === final.signedIn,
         file, beforeMs: accepted.before.now, afterMs: final.now, attempts: accepted.attempt,
         cards: cardFiles, heldAction: final.heldAction, oneSideCaption: final.oneSideCaption,
+        cardGeometry: final.cardGeometry,
         lineShift, pulses: accepted.before.pulses };
     } catch (e) {
       return { cell: p.id, error: String(e).slice(0, 200) };
@@ -459,6 +491,39 @@ index.round = { ...round, lockAt: new Date(lockMs).toISOString() };
 console.log(`  round ${round.id} opened ${round.opensAt}; lock ${new Date(lockMs).toISOString()}; closes ${round.closesAt}`);
 
 await photograph("p1-open");
+if (noBetParityOnly) {
+  const openShots = new Map();
+  for (const cell of pages) {
+    const open = index.phases.find((entry) => entry.phase === "p1-open")?.shots.find((entry) => entry.cell === cell.id);
+    if (!open || open.error || open.cardGeometry?.layout !== "player" || open.heldAction?.layout !== "player") {
+      throw new Error(`360px no-stake open-card premise missing for ${cell.id}: ${JSON.stringify(open).slice(0, 220)}`);
+    }
+    if (Math.abs(open.cardGeometry.height - 381) > 1) {
+      throw new Error(`360px no-stake open card must be 381px for ${cell.id}, measured ${open.cardGeometry.height.toFixed(1)}px`);
+    }
+    if (open.heldAction.buttons !== 2 || open.heldAction.minButtonHeight < 40 || open.heldAction.clearance < 24) {
+      throw new Error(`360px no-stake choices are clipped or too small for ${cell.id}: ${JSON.stringify(open.heldAction)}`);
+    }
+    openShots.set(cell.id, open);
+  }
+  await waitUntil(lockMs + 2_000, "the no-stake lock");
+  await photograph("p7-locked");
+  index.noBetParity = [];
+  for (const cell of pages) {
+    const open = openShots.get(cell.id);
+    const locked = index.phases.find((entry) => entry.phase === "p7-locked")?.shots.find((entry) => entry.cell === cell.id);
+    if (!locked || locked.error || locked.cardGeometry?.layout !== "player"
+      || !sameCardFootprint(open.cardGeometry.height, locked.cardGeometry.height)) {
+      throw new Error(`360px no-stake open/locked card mismatch for ${cell.id}: ${JSON.stringify({ open: open.cardGeometry, locked: locked?.cardGeometry }).slice(0, 220)}`);
+    }
+    const result = { cell: cell.id, openHeight: open.cardGeometry.height, lockedHeight: locked.cardGeometry.height,
+      delta: locked.cardGeometry.height - open.cardGeometry.height, choiceClearance: open.heldAction.clearance,
+      minChoiceHeight: open.heldAction.minButtonHeight };
+    index.noBetParity.push(result);
+    console.log(`  ▸ ${cell.id}: open ${result.openHeight.toFixed(1)}px · locked ${result.lockedHeight.toFixed(1)}px · choice clearance ${result.choiceClearance.toFixed(1)}px`);
+  }
+  await finishCapture();
+}
 
 // A full matrix makes one actual local bet per player width, sequentially: each
 // receipt then proves its own stake, locale and viewport. The quick sweep keeps
@@ -526,6 +591,26 @@ await photograph("p6-last30", BOARD, inFullMatrix((p) => p.width === 360));
 
 await waitUntil(lockMs + 2_000, "the lock");
 await photograph("p7-locked");
+if (pages.some((page) => page.width === 360 && page.who === "guest")) {
+  const shot = (phase, cell) => index.phases.find((entry) => entry.phase === phase)?.shots.find((entry) => entry.cell === cell);
+  const pairs = [...new Set(pages.filter((page) => page.width === 360 && page.who === "guest").map((page) => page.locale))]
+    .flatMap((locale) => [[`guest-360-${locale}`, "p1-open"], [`player-360-${locale}`, "p3-youre-in"]]);
+  index.lockedParity = pairs.map(([cell, openPhase]) => {
+    const openHeight = shot(openPhase, cell)?.cardGeometry?.height;
+    const lockedHeight = shot("p7-locked", cell)?.cardGeometry?.height;
+    if (!Number.isFinite(openHeight) || !Number.isFinite(lockedHeight)) {
+      throw new Error(`360px card-height premise missing for ${cell}`);
+    }
+    return { cell, openPhase, openHeight, lockedHeight, delta: lockedHeight - openHeight };
+  });
+  for (const pair of index.lockedParity) console.log(`  ▸ ${pair.cell}: open ${pair.openHeight.toFixed(1)}px · locked ${pair.lockedHeight.toFixed(1)}px · delta ${pair.delta.toFixed(1)}px`);
+  for (const pair of index.lockedParity) {
+    if (!sameCardFootprint(pair.openHeight, pair.lockedHeight)) {
+      throw new Error(`360px open/locked card-height mismatch for ${pair.cell}: ${pair.delta.toFixed(1)}px`);
+    }
+  }
+}
+if (lockHeightOnly) await finishCapture();
 
 await waitUntil(closeMs + 3_000, "the close");
 await photograph("p8-closed");

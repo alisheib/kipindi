@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { fmtEATClock } from "@/lib/updown-source-label";
-import { roundLineHistoryUrl, roundOpenPoints, shouldDisplayRoundLine, type OpenPoint } from "@/lib/updown-vendor-opens";
+import { hasLaterConfirmedRead, roundLineHistoryUrl, roundOpenPoints, shouldDisplayRoundLine, type OpenPoint } from "@/lib/updown-vendor-opens";
 import { usd } from "@/lib/usd-price";
 
 type State = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 type Feed = { sourceTier: "vendor" | "confirmed"; series: { mode: "line"; points: OpenPoint[] } | { mode: "candles" } };
 
 const WORDS = {
-  en: { beat: "Price to beat", unavailable: "Round line unavailable", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
-  sw: { beat: "Bei ya kushinda", unavailable: "Mstari wa raundi haupatikani", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
-  zh: { beat: "目标价格", unavailable: "本回合走势暂不可用", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
+  en: { beat: "Price to beat", minuteOpen: "Minute open", unavailable: "Round line unavailable", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
+  sw: { beat: "Bei ya kushinda", minuteOpen: "Ufunguzi wa dakika", unavailable: "Mstari wa raundi haupatikani", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
+  zh: { beat: "目标价格", minuteOpen: "分钟开盘价", unavailable: "本回合走势暂不可用", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
 } as const;
 
 /** One cached minute-bar request covers the longest round and also serves the large chart. No per-duration call. */
@@ -76,7 +76,7 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
           // repaint from a later vendor correction. A tab mounted while hidden
           // may still make its first request on reveal.
           if (!active && openPrice != null && roundOpenPoints(next.series.points,
-            opensAtMs, closesAtMs, Date.now(), openPrice, decimals, closePrice,
+            opensAtMs, closesAtMs, closesAtMs, openPrice, decimals, closePrice,
             { price: readPrice ?? null, quotedAt: readQuotedAt ?? null })) frozen = true;
         } else {
           setFetched(null);
@@ -121,6 +121,12 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
     return <span className="sr-only" role="status" data-testid="round-live-line-empty">{words.unavailable}</span>;
   }
 
+  // The card's confirmed read can be newer than the only vendor bar on this line.
+  // Hide that one-point drawing instead of falsely saying no newer price exists.
+  if (real.length === 1 && hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)) {
+    return <p className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable">{words.unavailable}</p>;
+  }
+
   const prices = real.map((point) => point.price).concat(openPrice);
   let min = Math.min(...prices), max = Math.max(...prices);
   const minimumSpan = Math.max(openPrice * 0.002, 6 / 10 ** decimals);
@@ -152,7 +158,9 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
         <circle cx={x(last.t)} cy={y(last.price)} r="2.5" fill="var(--aqua-300)" />
       </svg>
       <div className="flex items-baseline justify-between gap-2 font-mono text-micro text-text-subtle">
-        <span>{stale ? words.delayed : real.length === 1 ? `${words.noNewer} ${openClock}` : words.beat}</span>
+        {/* The value beside this caption is the latest vendor bar's OPEN, not
+            the frozen opening target above. Name the same measure as the large chart. */}
+        <span>{stale ? words.delayed : real.length === 1 ? `${words.noNewer} ${openClock}` : words.minuteOpen}</span>
         <span className="whitespace-nowrap tabular-nums">{lastClock} · {usd(last.price, decimals)}</span>
       </div>
     </div>

@@ -8,6 +8,9 @@ import { MicroSpark } from "../src/components/charts/micro-spark.tsx";
 import { Chip } from "../src/components/ui/chip.tsx";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
+import { DayAgoMove } from "../src/components/markets/market-card.tsx";
+import { sideWord } from "../src/lib/side-label.ts";
+import { getCardChart, getCardCharts, recordSnapshot, type MarketSnapshot } from "../src/lib/server/market-history.ts";
 import { decomment } from "./lib/decomment.mts";
 
 let failed = 0;
@@ -59,12 +62,88 @@ const footerEnd = cardFunction.indexOf('className="mcardp-foot flex items-center
 const footerLead = footerStart >= 0 && footerEnd > footerStart ? cardFunction.slice(footerStart, footerEnd) : "";
 const badge = card.slice(card.indexOf("function getSignalBadge("), card.indexOf("function DayAgoMove("));
 const dayMove = card.slice(card.indexOf("function DayAgoMove("), card.indexOf("/* The card's seven-day YES% sparkline"));
-check("3.0 flat 24h move prints zero without a text icon",
+check("3.0 flat measured move has words without a direction icon",
   dayMove.includes('{dir !== "flat" && <span aria-hidden')
   && dayMove.includes('{dir !== "flat" && <span className="sr-only">')
   && dayMove.includes('dir === "up" ? <I.chevronUp s={11} tier="fill" /> : <I.chevronDown s={11} tier="fill" />')
-  && dayMove.includes('{Math.abs(move)}')
+  && dayMove.includes('const words = fill(dir === "flat" ? labels.flat')
   && !dayMove.includes('"±"'));
+const moveHtml = (locale: "en" | "sw" | "zh", move: number, productLine: "MARKET" | "UPDOWN" = "MARKET") => renderToStaticMarkup(createElement(DayAgoMove, {
+  move,
+  keyed: false,
+  side: sideWord(dict[locale], "YES", productLine),
+  labels: {
+    one: dict[locale].market.h24MoveOne,
+    many: dict[locale].market.h24MoveMany,
+    flat: dict[locale].market.h24MoveFlat,
+  },
+}));
+const textOnly = (html: string) => html.replace(/<[^>]+>/g, "");
+check("3.0a English measured move names percentage points since the available baseline, including singular and zero",
+  textOnly(moveHtml("en", 3)).includes("YES: 3 percentage points since first available reading (within 24h)")
+  && textOnly(moveHtml("en", -1)).includes("YES: 1 percentage point since first available reading (within 24h)")
+  && textOnly(moveHtml("en", 0)).includes("YES: same as first available reading (within 24h)")
+  && !textOnly(moveHtml("en", 3)).includes("24h ago"));
+check("3.0b Swahili and Chinese put the point count in their own word order",
+  textOnly(moveHtml("sw", 3)).includes("NDIO: pointi 3 tangu usomaji wa kwanza uliopo (ndani ya saa 24)")
+  && textOnly(moveHtml("zh", -3)).includes("是：较近24小时内首个可用读数变动3个百分点")
+  && textOnly(moveHtml("sw", 0)).includes("NDIO: sawa na usomaji wa kwanza uliopo")
+  && textOnly(moveHtml("zh", 0)).includes("是：与近24小时内首个可用读数相同"));
+check("3.0d every measured move names the actual YES or UP side even when NO leads, including flat",
+  ["en", "sw", "zh"].every((locale) => [3, -3, 0].every((move) =>
+    textOnly(moveHtml(locale as "en" | "sw" | "zh", move)).includes(sideWord(dict[locale as "en" | "sw" | "zh"], "YES", "MARKET"))))
+  && ["en", "sw", "zh"].every((locale) => textOnly(moveHtml(locale as "en" | "sw" | "zh", 0, "UPDOWN")).includes(sideWord(dict[locale as "en" | "sw" | "zh"], "YES", "UPDOWN")))
+  && cardFunction.includes('<DayAgoMove move={yesPct - dayAgo} side={sideWord(t, "YES", productLine)}')
+  && cardFunction.includes('<DayAgoMove move={move24h} side={sideWord(t, "YES", productLine)}'));
+const minuteFlatId = `u43_minute_flat_${Date.now()}`;
+await recordSnapshot(minuteFlatId, 500, 500);
+const minuteStore = (globalThis as { __50PICK_MARKET_HISTORY?: Map<string, MarketSnapshot[]> }).__50PICK_MARKET_HISTORY;
+if (minuteStore instanceof Map) {
+  const minuteRow = (agoMs: number): MarketSnapshot => ({
+    t: new Date(Date.now() - agoMs).toISOString(), yes: 0.5, yesPool: 500, noPool: 500, volume: 1000,
+  });
+  minuteStore.set(minuteFlatId, [minuteRow(4 * 60_000), minuteRow(0)]);
+}
+const minuteFlatMove = (await getCardChart({ id: minuteFlatId, yesPool: 500, noPool: 500 })).move24h;
+check("3.0c a four-minute flat baseline names only available readings, not the full 24 hours",
+  minuteStore instanceof Map && minuteFlatMove === 0
+  && /const dayAgo = points\.find\(\(s\) => \{/.test(history)
+  && /age >= 0 && age <= 24 \* 3600_000/.test(history)
+  && ["en", "sw", "zh"].every((locale) => /available reading|usomaji wa kwanza uliopo|可用读数/.test(textOnly(moveHtml(locale as "en" | "sw" | "zh", minuteFlatMove))))
+  && ["en", "sw", "zh"].every((locale) => !/No change in the last 24h|Hakuna mabadiliko ndani ya saa 24 zilizopita|最近24小时内无变化/.test(textOnly(moveHtml(locale as "en" | "sw" | "zh", minuteFlatMove)))));
+const joinedId = `u43_joined_${Date.now()}`;
+await recordSnapshot(joinedId, 500, 500);
+await recordSnapshot(joinedId, 700, 300);
+const joinedMarket = { id: joinedId, yesPool: 700, noPool: 300 };
+const staleMarket = { id: joinedId, yesPool: 800, noPool: 200 };
+const joined = await getCardChart(joinedMarket);
+const stale = await getCardChart(staleMarket);
+const batchedJoined = await getCardCharts([joinedMarket]);
+const batchedStale = await getCardCharts([staleMarket]);
+check("3.0e current card pools join the latest real snapshot; a lagged write withholds both move and mini chart",
+  joined.move24h === 20 && joined.spark.length === 0
+  && stale.move24h === undefined && stale.spark.length === 0
+  && batchedJoined.get(joinedId)?.move24h === 20
+  && batchedStale.get(joinedId)?.move24h === undefined
+  && /last\.yesPool !== current\.yesPool \|\| last\.noPool !== current\.noPool/.test(history)
+  && /move24h: currentPrice\.yesPct - base\.yesPct/.test(history));
+const sourceMarkets = read("src/app/markets/page.tsx");
+const sourceHome = read("src/components/home/legacy-landing.tsx");
+const sourceResults = read("src/app/results/page.tsx");
+check("3.0f home, board sort, visible board, and results pass current market rows to the joined batch reader",
+  sourceMarkets.includes("getCardCharts(board)") && sourceMarkets.includes("getCardCharts(drawMarkets)")
+  && sourceHome.includes("getCardCharts(heroRows.filter((r) => drawnIds.includes(r.id)))")
+  && sourceResults.includes("getCardCharts(paged)"));
+check("3.0g Biggest move cards reuse the same batch that ranked them; the separate result strip has its own joined read",
+  sourceMarkets.includes('const resolvedCharts = state.sort === "move" ? await getCardCharts(resolved)')
+  && sourceMarkets.includes('const cardCharts = state.sort === "move"')
+  && sourceMarkets.includes('new Map([...moveMap, ...resolvedCharts])')
+  && sourceMarkets.includes('moveMap.get(m.id)?.move24h')
+  && sourceMarkets.includes('cardCharts.get(m.id)'));
+check("3.0h single and batch chart readers share the selected store and the same time window",
+  history.includes('return (await getCardCharts([market])).get(market.id) ?? EMPTY_CARD;')
+  && history.includes('if (!USE_PRISMA) {')
+  && history.includes('for (const market of markets) out.set(market.id, cardChartFrom(await getHistory(market.id), market));'));
 check("3.1 the batch and single readers use the same time sampler", /const spark = sampleMarketSpark\(points, now\);/.test(history) && !/compress\(priced, 16\)/.test(history));
 check("3.2 closing SOON beats HOT", badge.indexOf('if (closesWithinTheHour(msLeft)) return { kind: "soon"') >= 0 && badge.indexOf("if (closesWithinTheHour(msLeft))") < badge.indexOf("if (volume >= 30_000"));
 check("3.3 live grid cards use one static mark directly before the top-right clock", cardFunction.includes("featured || !live")
@@ -117,13 +196,29 @@ check("3.15 pool, info, Share and Details share one footer row",
   && footerLead.includes("<HowItWorks />")
   && !footerLead.includes("</div>")
   && cardFunction.slice(footerEnd).includes("<ShareButton compact marketId={id} title={title} />")
-  && cardFunction.slice(footerEnd).includes("className=\"mcardp-details\""));
+  && cardFunction.slice(footerEnd).includes("className=\"mcardp-details\"")
+  && /\.mcardp-meta \{ flex-wrap: wrap; \}/.test(readFileSync("src/app/globals.css", "utf8")));
 check("3.15b footer actions retain their slot after the pool at narrow widths",
   /\.mcardp-meta > \.mcardp-foot \{[^}]*margin-left: auto;[^}]*flex-shrink: 0;/.test(readFileSync("src/app/globals.css", "utf8")));
 check("3.16 the market board count uses its Open tab's word in all three languages",
   read("src/app/markets/page.tsx").includes('<span className="text-text-subtle">{t.market.statusOpen}</span>')
   && ["en", "sw", "zh"].every((locale) => !!dict[locale].market.statusOpen)
   && dict.zh.market.statusOpen === "开放");
+const marketCss = readFileSync("src/app/globals.css", "utf8");
+check("3.17 a live choice shows the entire question above the two buttons",
+  cardFunction.includes('data-market-choices={live ? "open" : "closed"}')
+  && cardFunction.indexOf('className="mcardp-q"') < cardFunction.indexOf('className="mcardp-actions"')
+  && /\.mcardp\[data-market-choices="open"\] \.mcardp-q,\s*\.mcardp\[data-market-result="final"\] \.mcardp-q \{[^}]*display: block;[^}]*-webkit-line-clamp: unset;[^}]*overflow: visible;/.test(marketCss));
+check("3.17b a final result also shows its whole question",
+  cardFunction.includes('data-market-result={settled ? "final" : undefined}')
+  && /\.mcardp\[data-market-result="final"\] \.mcardp-q \{[^}]*display: block;[^}]*-webkit-line-clamp: unset;[^}]*overflow: visible;/.test(marketCss));
+check("3.18 a truthful measured-move sentence wraps at the reading floor",
+  /\.mcardp-moveline \{[^}]*min-width:0;/.test(marketCss)
+  && /\.mcardp-h24 \{[^}]*max-width: 100%;[^}]*font-size: var\(--type-small\);[^}]*line-height: 1\.3;[^}]*white-space: normal;/.test(marketCss));
+const moveFixture = read("scripts/live/u43-market-move-layout.mts");
+check("3.18b local browser fixture measures negative, flat, singular and large moves without claiming observed history",
+  moveFixture.includes('[-3, -1, 0, 1, 3, 20]')
+  && moveFixture.includes('LOCAL LAYOUT FIXTURE · NO OBSERVED PRICE HISTORY'));
 
 console.log(`U43 market card: ${failed ? `${failed} failed` : "all checks passed"}`);
 process.exit(failed ? 1 : 0);

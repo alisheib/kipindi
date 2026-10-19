@@ -280,7 +280,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
    */
   const moveMap =
     state.sort === "move"
-      ? await getCardCharts(board.map((m) => m.id)).catch(() => new Map())
+      ? await getCardCharts(board).catch(() => new Map())
       : new Map();
 
   const rows = board.map((m) => toRow(m, watched, moveMap.get(m.id)?.move24h));
@@ -333,7 +333,15 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
   const drawIds = [...paged.map((r) => r.id), ...resolved.map((m) => m.id)];
   // B-1 — deliberate degrade: these are garnish on the cards, never the board itself.
   const traderMap = await traderSeedsByMarket(drawIds).catch(() => new Map());
-  const cardCharts = await getCardCharts(drawIds).catch(() => new Map());
+  const drawMarkets = [...paged.map((r) => byId.get(r.id)!).filter(Boolean), ...resolved];
+  // A move sort already measured every board row. Reuse those exact chart values
+  // on its cards: a second history read could see an intervening bet and print a
+  // different move from the one that ordered the board. The resolved strip is
+  // outside that board and gets its own batch.
+  const resolvedCharts = state.sort === "move" ? await getCardCharts(resolved).catch(() => new Map()) : new Map();
+  const cardCharts = state.sort === "move"
+    ? new Map([...moveMap, ...resolvedCharts])
+    : await getCardCharts(drawMarkets).catch(() => new Map());
   const commentCounts = await countCommentsByMarkets(drawIds).catch(() => new Map<string, number>());
 
   const cause = emptyCause(state, matched.length, board.length);

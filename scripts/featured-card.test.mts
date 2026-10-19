@@ -105,7 +105,8 @@ log("\n── §1b · the 24h move is measured between two PRICES and two READIN
   const move = async (steps: [number, number][]) => {
     const m = id("seq");
     for (const [y, n] of steps) await recordSnapshot(m, y, n);
-    return (await getCardChart(m)).move24h;
+    const [yesPool, noPool] = steps[steps.length - 1];
+    return (await getCardChart({ id: m, yesPool, noPool })).move24h;
   };
   check("1.24 two priced readings give a real move (500/500 → 700/300 = +20)", (await move([[500, 500], [700, 300]])) === 20);
   check("1.25 ⛔ no move from an empty baseline (0/0 → 700/300)", (await move([[0, 0], [700, 300]])) === undefined);
@@ -124,12 +125,12 @@ log("\n── §1b · the 24h move is measured between two PRICES and two READIN
   if (store instanceof Map) {
     const one = id("one");
     store.set(one, [snap(30 * H, 500, 500), snap(0, 700, 300)]);
-    const oneChart = await getCardChart(one);
+    const oneChart = await getCardChart({ id: one, yesPool: 700, noPool: 300 });
     check("1.28 ⛔ one reading inside the window is not a move (it printed ±0 while the price had moved)",
       oneChart.move24h === undefined, JSON.stringify(oneChart));
     const two = id("two");
     store.set(two, [snap(30 * H, 600, 400), snap(2 * H, 500, 500), snap(0, 700, 300)]);
-    const twoChart = await getCardChart(two);
+    const twoChart = await getCardChart({ id: two, yesPool: 700, noPool: 300 });
     check("1.28-control two readings inside the window DO give a move (+20 from the first of them)", twoChart.move24h === 20, JSON.stringify(twoChart));
   }
 }
@@ -148,7 +149,7 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   check("2.3 the 24h mark is featured, live and priced only", DAYAGO.test(card));
   check("2.3-control a mark on every card IS detected", !DAYAGO.test("const dayAgo = dayAgoYesPct(yesPool, noPool, move24h);"));
   check("2.4 the delta prints the mark's own number (`yesPct - dayAgo`), and the bar draws that mark",
-    /<DayAgoMove move=\{yesPct - dayAgo\} label=\{t\.market\.h24Ago\} keyed \/>/.test(card) && /mark=\{dayAgo\}/.test(card));
+    card.includes('<DayAgoMove move={yesPct - dayAgo} side={sideWord(t, "YES", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed />') && /mark=\{dayAgo\}/.test(card));
   check("2.5 the featured bar is an IMAGE of the split, named by the whole reading",
     /as=\{featured \? "img" : undefined\}/.test(card) && /probabilityLabel=\{barReading \?\? /.test(card)
     && /const barReading = featured && showPrice\s*\?/.test(card));
@@ -333,10 +334,11 @@ log("\n── §5 · the dictionary");
   const L = ["en", "sw", "zh"] as const;
   for (const l of L) {
     const m = (dict[l] as { market: Record<string, string> }).market;
-    check(`5.${l} closesOn · settlesOn · h24Ago · barReading exist, placeholders intact`,
-      /\{date\}/.test(m.closesOn ?? "") && /\{source\}/.test(m.settlesOn ?? "") && !!m.h24Ago
+    check(`5.${l} closesOn · settlesOn · the three measured-move labels · barReading exist, placeholders intact`,
+      /\{date\}/.test(m.closesOn ?? "") && /\{source\}/.test(m.settlesOn ?? "")
+      && /\{n\}/.test(m.h24MoveOne ?? "") && /\{n\}/.test(m.h24MoveMany ?? "") && !!m.h24MoveFlat
       && ["{yesPct}", "{noPct}", "{yesWord}", "{noWord}"].every((k) => (m.barReading ?? "").includes(k)),
-      JSON.stringify({ c: m.closesOn, s: m.settlesOn, h: m.h24Ago, b: m.barReading }));
+      JSON.stringify({ c: m.closesOn, s: m.settlesOn, one: m.h24MoveOne, many: m.h24MoveMany, flat: m.h24MoveFlat, b: m.barReading }));
   }
   const sw = (dict.sw as { market: Record<string, string> }).market;
   check("5.sw-review the meta line agrees with its subject (soko, li-) in both halves", /^Litafungwa /.test(sw.closesOn) && /^Linatatuliwa kwa /.test(sw.settlesOn));

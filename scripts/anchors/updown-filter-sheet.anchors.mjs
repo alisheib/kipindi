@@ -27,11 +27,21 @@
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string, why: string, expect: string }} RedMutation */
 
 const TABS = "src/components/updown/updown-board-tabs.tsx";
+const PENDING = "src/lib/updown-filter-pending.ts";
 const PAGE = "src/app/updown/page.tsx";
 const CSS = "src/app/globals.css";
 
 /** @type {RedMutation[]} */
 export const MUTATIONS = [
+  {
+    name: "asset-only switch selects an impossible asset-duration pair",
+    why: "BTC 3 minutes to Gold omits d because Gold has no 3-minute chain. The pending Gold pill must not be selected beside Bitcoin's still-selected 3-minute pill.",
+    file: PENDING,
+    suite: "updown-filter-sheet",
+    from: "  if (pendingDuration === null) return false;",
+    to: "  if (pendingDuration === null) return true;",
+    expect: "9: pending asset-only URL keeps the old asset and duration together",
+  },
   {
     // ⭐ THE POSITIVE CONTROL.
     name: "trigger-says-filters",

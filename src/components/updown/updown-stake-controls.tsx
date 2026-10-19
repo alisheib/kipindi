@@ -305,7 +305,7 @@ export function UpDownStakeControls({
           ⚠️ RG (G5): faint informational ink and the `info` glyph — the same "state a fact"
           register the `factual` toast variant was added for. Not gold (gold is earned money on
           this platform), not an alarm (a refund is not a failure). */}
-      {emptyCopy && (
+      {!compact && emptyCopy && (
         <p className={cn("flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "mt-1" : "mt-1.5")}>
           <I.info s={11} className="mt-[2px] shrink-0" />
           {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}

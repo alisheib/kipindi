@@ -536,8 +536,10 @@ log("\n── 11 · a chart point needs a price (C1; behaviour in test:history �
   const cardAt = hist.indexOf("function cardChartFrom(");
   const prob = probAt > 0 ? hist.slice(probAt, hist.indexOf("export async function getCardChart(", probAt)) : "";
   const cardFn = cardAt > 0 ? hist.slice(cardAt, hist.indexOf("const CARD_WINDOW_MS", cardAt)) : "";
-  check("11.2 the detail chart AND the card sparkline both read it (slice control: both bodies found and bounded)",
-    /pricedPoints\(/.test(prob) && /pricedPoints\(/.test(cardFn) && prob.length > 100 && prob.length < 3_000 && cardFn.length > 100 && cardFn.length < 4_000,
+  check("11.2 detail history drops unpriced points; card history requires priced current pools joined to its latest point",
+    /pricedPoints\(/.test(prob) && /currentPrice\.kind !== "priced"/.test(cardFn)
+    && /last\.yesPool !== current\.yesPool \|\| last\.noPool !== current\.noPool/.test(cardFn)
+    && prob.length > 100 && prob.length < 3_000 && cardFn.length > 100 && cardFn.length < 4_000,
     `prob ${prob.length} · card ${cardFn.length}`);
   check("11.3 the batched board read carries the pools the rule needs", /select: \{ marketId: true, t: true, yes: true, yesPool: true, noPool: true \}/.test(hist));
   check("11.4 ⛔ no chart value is the raw stored share any more", !/Math\.round\(\s*\w+\.yes \* 100\)/.test(hist));

@@ -1,8 +1,8 @@
 /**
  * Market history — implied-YES-probability + volume snapshots over time.
  *
- * A snapshot is recorded on every price-moving event (a buyPosition or a
- * resolveMarket). The PriceChart on /markets/[id] reads this series.
+ * A snapshot is requested after price-moving events. The PriceChart on
+ * /markets/[id] reads the recorded series.
  *
  * Capped per-market at MAX_POINTS. Older points get evicted FIFO.
  *
@@ -26,11 +26,12 @@
  * invents points.
  *
  * ── Invariant: the write path must never reject ────────────────────────────
- * recordSnapshot is called fire-and-forget (no await, no .catch) from six
- * places in market-service.ts, on the bet and settlement paths. An unhandled
- * rejection takes the Node process down, so every store WRITE swallows and
- * logs its own errors. A lost chart point is a cosmetic loss; a crashed
- * container mid-bet is not. Reads may throw — every caller already guards.
+ * Bet paths request their snapshots fire-and-forget. Settlement and emergency
+ * void paths under a money transaction queue their request with afterCommit,
+ * so a rollback cannot leave a phantom chart point. An unhandled rejection
+ * takes the Node process down, so every store WRITE swallows and logs its own
+ * errors. A lost chart point is cosmetic; a crashed container mid-bet is not.
+ * Reads may throw — every caller already guards.
  */
 import { prisma, hasDatabase } from "./prisma";
 import { priceState } from "@/lib/markets/price-state";
@@ -299,10 +300,17 @@ export async function getProbabilityChart(marketId: string): Promise<{
   return { series, ranges };
 }
 
+/** Current pools must travel with the card's chart request. Snapshot writes are
+ * fire-and-forget, so history alone cannot prove the price printed on the card. */
+type CardMarket = { id: string; yesPool: number; noPool: number };
+
 /** Lightweight card data: a short yes% sparkline series + the 24h move (points).
- *  move24h is undefined when there isn't enough history to compute it. */
-export async function getCardChart(marketId: string): Promise<CardChart> {
-  return cardChartFrom(await getHistory(marketId));
+ *  move24h is undefined when there isn't enough joined history to compute it. */
+export async function getCardChart(market: CardMarket): Promise<CardChart> {
+  // The single-card reader must use the batch reader's exact window and store.
+  // On Postgres getHistory caps at 800 points, but the board reads its full
+  // seven-day window; using both policies could give one market two baselines.
+  return (await getCardCharts([market])).get(market.id) ?? EMPTY_CARD;
 }
 
 type CardChart = { spark: (number | null)[]; move24h?: number };
@@ -310,11 +318,14 @@ const EMPTY_CARD: CardChart = { spark: [] };
 
 /** Shared by the single and batched readers so a card can never disagree with
  *  itself depending on which path rendered it. */
-function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool: number }[]): CardChart {
-  // ⭐ C1 · no price NOW means no line and no move: the card states no price on an empty or one-sided pool.
+function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool: number }[], current: CardMarket): CardChart {
+  // Snapshot writes may lag a committed bet. If the latest recorded pools do not
+  // match the market row used by the card, neither a move nor a spark can be
+  // joined to its visible price. An absent chart is better than a false claim.
   const last = points.at(-1);
-  if (!last || priceState(last.yesPool, last.noPool).kind !== "priced") return EMPTY_CARD;
-  const priced = pricedPoints(points);
+  const currentPrice = priceState(current.yesPool, current.noPool);
+  if (!last || currentPrice.kind !== "priced"
+    || last.yesPool !== current.yesPool || last.noPool !== current.noPool) return EMPTY_CARD;
   const now = Date.now();
   const spark = sampleMarketSpark(points, now);
   // 🔴 THE FALLBACK MADE "24h MOVE" A LIE ON EVERY QUIET MARKET.
@@ -333,17 +344,20 @@ function cardChartFrom(points: { t: string; yes: number; yesPool: number; noPool
   // already optional and the card renders the row empty when it is undefined, so the
   // honest answer costs nothing. The remaining window can only ever be SHORTER than
   // 24h (a market younger than a day measures its whole life), never longer.
-  const dayAgo = points.find((s) => now - Date.parse(s.t) <= 24 * 3600_000);
+  const dayAgo = points.find((s) => {
+    const age = now - Date.parse(s.t);
+    return age >= 0 && age <= 24 * 3600_000;
+  });
   // ⭐ WP3 · AND A MOVE NEEDS TWO READINGS. When the only reading inside the window is the current one, the
   // price moved from a reading OLDER than the window to this one — measuring it against itself printed a
   // "±0" (and the featured card would have drawn its 24h mark under the needle) where the real move is
   // unknown here. Absent, not invented.
-  if (!dayAgo || dayAgo === points[points.length - 1]) return { spark };
+  if (!dayAgo || dayAgo === last) return { spark };
   // ⭐ C1 · AND NO MOVE FROM A BASELINE THAT HAD NO PRICE. A one-sided baseline read 100 (or 0), so a market
   // whose second side arrived today printed a "−38" 24h move measured from a certainty nobody's money stated.
   const base = priceState(dayAgo.yesPool, dayAgo.noPool);
   if (base.kind !== "priced") return { spark };
-  return { spark, move24h: priced[priced.length - 1].pct - base.yesPct };
+  return { spark, move24h: currentPrice.yesPct - base.yesPct };
 }
 
 /** A card only ever needs enough history to draw 16 points and a 24h delta, so
@@ -360,18 +374,19 @@ const CARD_WINDOW_MS = MARKET_SPARK_WINDOW_MS;
  * the hottest routes in the product. Always prefer this over mapping
  * `getCardChart` across a list.
  */
-export async function getCardCharts(marketIds: string[]): Promise<Map<string, CardChart>> {
+export async function getCardCharts(markets: CardMarket[]): Promise<Map<string, CardChart>> {
   const out = new Map<string, CardChart>();
-  if (marketIds.length === 0) return out;
+  if (markets.length === 0) return out;
+  const marketIds = markets.map((market) => market.id);
 
-  const db = prisma();
-  if (!db) {
-    // No database (tests, local no-DB runs) — the memory Map has no per-query
-    // cost, so the simple path is correct here.
-    for (const id of marketIds) out.set(id, cardChartFrom(await getHistory(id)));
+  if (!USE_PRISMA) {
+    // The store flag, not merely DATABASE_URL, decides where history was written.
+    // A mixed-config test can have a database URL but deliberately use memory.
+    for (const market of markets) out.set(market.id, cardChartFrom(await getHistory(market.id), market));
     return out;
   }
 
+  const db = prisma()!;
   try {
     const rows = await db.marketSnapshot.findMany({
       where: { marketId: { in: marketIds }, t: { gte: new Date(Date.now() - CARD_WINDOW_MS) } },
@@ -385,7 +400,7 @@ export async function getCardCharts(marketIds: string[]): Promise<Map<string, Ca
       if (arr) arr.push(pt);
       else grouped.set(r.marketId, [pt]);
     }
-    for (const id of marketIds) out.set(id, cardChartFrom(grouped.get(id) ?? []));
+    for (const market of markets) out.set(market.id, cardChartFrom(grouped.get(market.id) ?? [], market));
   } catch (err) {
     // A board must still render without its sparklines.
     console.error("[market-history] batched card charts failed", err);

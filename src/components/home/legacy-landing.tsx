@@ -208,7 +208,7 @@ export async function LegacyLanding({ searchParams }: {
   const [traderMap, cardCharts, udDetail] = await Promise.all([
     traderSeedsByMarket(drawnIds).catch(() => new Map() as Awaited<ReturnType<typeof traderSeedsByMarket>>),
     // One query for the whole board — never map getCardChart across a list.
-    getCardCharts(drawnIds).catch(() => new Map()),
+    getCardCharts(heroRows.filter((r) => drawnIds.includes(r.id))).catch(() => new Map()),
     readUdRound().catch(() => null),
   ]);
   const udRound = udDetail ? toUpdownBandRound(udDetail, locale) : null;

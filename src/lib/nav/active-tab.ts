@@ -2,7 +2,7 @@
  * THE JOURNEY'S FOUR TABS, AND WHICH ONE A PAGE BELONGS TO — one definition (the Vodacom plan S6, SJ-16;
  * `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md` WP2, amendments A12 and A18).
  *
- * Maswali · Juu/Chini · Tiketi zangu · Akaunti. The phone rail and the desktop links (S6 WP6a) both read `JOURNEY_TABS`
+ * Maswali · Juu na Chini · Tiketi zangu · Akaunti. The phone rail and the desktop links (S6 WP6a) both read `JOURNEY_TABS`
  * and ask `activeTabFor` which one is current, so the two can never disagree about where the reader is.
  *
  * ⭐ ONE ORDERED TABLE, FIRST MATCH WINS — the shape of `activeKeyFromPath` (`admin-nav-groups.ts`), which exists because
@@ -35,8 +35,8 @@ export type TabLabelKey = "journey.tabQuestions" | "nav.updown" | "journey.tabTi
 export type JourneyTabDef = { key: JourneyTab; href: string; glyph: TabGlyph; label: TabLabelKey };
 
 /**
- * The tabs, in the deck's order. ⚠️ Juu/Chini reuses `nav.updown`, the rail's own short label (a fifth of a 360 phone
- * cannot hold the product title); the three new words are `journey.*` keys until the S15 flip.
+ * The tabs, in the deck's order. Juu na Chini reuses the product's full `nav.updown` name;
+ * the three new words are `journey.*` keys until the S15 flip.
  */
 export const JOURNEY_TABS: readonly JourneyTabDef[] = [
   // The board: the classic rail's "Masoko" and this "Maswali" are one meaning, so one glyph (PHOSPHOR-MIGRATION R-LEXICON 5.1A).

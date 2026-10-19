@@ -9,7 +9,7 @@
  *   · URGENCY — the Up & Down countdown's final 30 s painted the digits `--no-300`, beside the round's Down side,
  *     where rose reads as "price going down". The kit's `.m-urgent` carries the urgency.
  *   · A PRICE MOVE (§5, 2026-09-27, the landing v3 WP3+WP4 review, R8) — the grid card inked its 24h move
- *     "+5pt" green-up / rose-down while the featured card on the same page printed the same move "▲5 · 24h ago"
+ *     "+5pt" green-up / rose-down while the featured card on the same page printed the same move in neutral ink
  *     in neutral ink. A move of the YES price is not a side, and a green-up move invites chasing.
  *   · A FORM ERROR (§6, 2026-09-30, the Vodacom plan S2 design panel) — the market wizard's and the AI poll form's
  *     validation lines wore `text-no-300` / `border-no-700` while the counter above them wore `text-danger-fg`: two
@@ -162,9 +162,9 @@ ok("§4d control · rose digits inline in the leaf are reported", matchTimeDefec
 
 /* §5 · A PRICE MOVE IS NOT A SIDE (landing v3 WP3+WP4 review, R8, 2026-09-27) ───────────────────────────────
    DESIGN_AUTHORITY §B2 / §B2a keep the YES/NO pair for the sides. The 24h move of the YES price is ONE reading
-   on every card — "▲5 · 24h ago", neutral ink, the featured card's since WP3 — drawn by ONE component
+   on every card — a measured change since its first available reading within 24h, neutral ink — drawn by ONE component
    (`DayAgoMove`); the grid card's own renderer, which inked "+5pt" in the betting pair, is gone. The
-   component is the only surface that prints a 24h move (`t.market.h24Ago` is read by the card alone). */
+   component is the only surface that prints a 24h move (`t.market.h24MoveOne` is read by the card alone). */
 console.log("\n§5 · the 24h move wears neutral ink, one reading on every card");
 const MCARD = "src/components/markets/market-card.tsx";
 const DICT = "src/lib/i18n-dict.ts";
@@ -180,8 +180,8 @@ function moveDefects(sheet: string, cardSrc: string): string[] {
     if (!/className="mcardp-h24"/.test(fn)) d.push("the move component does not wear .mcardp-h24");
   }
   if (/\bMoveText\b|"mcardp-move"/.test(k)) d.push("a second move renderer is back in market-card.tsx");
-  if (!/<DayAgoMove move=\{yesPct - dayAgo\} label=\{t\.market\.h24Ago\} keyed \/>/.test(k)) d.push("the featured card does not print its move through the one component");
-  if (!/<DayAgoMove move=\{move24h\} label=\{t\.market\.h24Ago\} keyed=\{false\} \/>/.test(k)) d.push("the grid card does not print its move through the one component");
+  if (!k.includes('<DayAgoMove move={yesPct - dayAgo} side={sideWord(t, "YES", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed />')) d.push("the featured card does not print its move through the one component");
+  if (!k.includes('<DayAgoMove move={move24h} side={sideWord(t, "YES", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed={false} />')) d.push("the grid card does not print its move through the one component");
   const r = code(sheet).match(/\.mcardp-h24\s*\{([^}]*)\}/)?.[1];
   if (r === undefined) d.push(".mcardp-h24 is missing from globals.css");
   else if (BETTING.test(r)) d.push(".mcardp-h24 paints the betting pair");
@@ -198,7 +198,7 @@ const moveReaders: string[] = [];
   for (const e of readdirSync(join(ROOT, dir))) {
     const p = `${dir}/${e}`;
     if (statSync(join(ROOT, p)).isDirectory()) scan(p);
-    else if (/\.tsx?$/.test(e) && p !== DICT && /\bh24Ago\b/.test(code(read(p)))) moveReaders.push(p);
+    else if (/\.tsx?$/.test(e) && p !== DICT && /\bh24MoveOne\b/.test(code(read(p)))) moveReaders.push(p);
   }
 })("src");
 ok("§5b the card is the only surface that prints a 24h move, and the retired `twentyFourHourMove` is gone",
@@ -206,7 +206,7 @@ ok("§5b the card is the only surface that prints a 24h move, and the retired `t
   moveReaders.join(", "));
 const plantMoveInline = mcard.replace('<span className="mcardp-h24">', '<span className="mcardp-h24" style={{ color: move > 0 ? "var(--yes-400)" : "var(--no-400)" }}>');
 const plantMoveSheet = css.replace(/(\.mcardp-h24 \{[^}]*?)color: var\(--text-subtle\);/, "$1color: var(--yes-400);");
-const plantMoveGrid = mcard.replace("<DayAgoMove move={move24h} label={t.market.h24Ago} keyed={false} />", "<MoveText move={move24h} label={t.market.h24Ago} />");
+const plantMoveGrid = mcard.replace("<DayAgoMove move={move24h} side={sideWord(t, \"YES\", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed={false} />", "<MoveText move={move24h} labels={t.market.h24MoveMany} />");
 ok("§5c control · every planted copy found its target", plantMoveInline !== mcard && plantMoveSheet !== css && plantMoveGrid !== mcard);
 ok("§5d control · a YES/NO-inked move (inline, the retired grid spelling) is reported", moveDefects(css, plantMoveInline).length > 0, "", moveDefects(css, plantMoveInline).join("; "));
 ok("§5e control · a YES-green move in the stylesheet is reported", moveDefects(plantMoveSheet, mcard).length > 0, "", moveDefects(plantMoveSheet, mcard).join("; "));

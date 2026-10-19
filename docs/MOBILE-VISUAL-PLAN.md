@@ -417,11 +417,92 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   The itemized refund-copy red fleet then caught **14/14** reversals and restored all six target files byte-for-byte.
   The one-sided rule's red fleet caught **31/31** reversals and restored all 17 target files byte-for-byte;
   `test:red-anchors` passed 6,594/0. The U43 mutation slot is released.
+  A second read-only audit then found remaining board/history metadata reads that still turn store errors into
+  empty round or “Unknown” player views. Board catalog, round and successor errors now reach retry states for all
+  viewers, and signed-in history metadata errors do too. The extended fault guard passed in memory and disposable
+  PostgreSQL with the current migrations; its red fleet caught **14/14** reversals and restored the board source
+  byte-for-byte. The first player-position fix alone was not enough to call this path closed.
+  It also found two B2 truth edges: a handset clock could decide whether a settled vendor line freezes, and a
+  one-bar vendor line could falsely say no newer price despite a later confirmed card read. The freeze now uses the
+  round's close boundary; a one-bar line with a later confirmed read hides behind the translated unavailable line.
+  The next full B2 red run caught **33/33** reversals. A third truth edge appeared in the card's line footer:
+  after two unequal minute bars, it named the later bar's OPEN “Price to beat”, despite the frozen target above.
+  That footer now calls the later figure “Minute open” in English, Swahili and Chinese, using the large chart's
+  existing words. A two-bar, unequal-price guard passed, and the full B2 fleet caught **34/34** reversals,
+  including the old false-target label. The browser read remains due.
+  The bet receipt's saved estimate was computed from a pre-lock pool snapshot; an intervening bet could stale it.
+  The money path now computes the projection from the market row under its lock, before the write, and persists and
+  returns that same figure. A deterministic competing-bet fixture passed in memory and on a disposable PostgreSQL
+  database migrated from the current set, including idempotent replay. Its red reversal caught the stale quote and
+  restored the source. The remaining money suites and browser receipt read are still due.
+  The browser-only synthetic-line probe now also requires the 320px Swahili cell and measures both live button heights
+  and their gap above the fixed navigation after the 56px line arrives. Its focused guard and 21/21 in-memory red
+  reversals passed. A production-like aligned local round is needed for the actual browser measurement; synthetic
+  interior points are visibly marked as layout evidence, never presented as vendor history.
+  A settlement-evidence audit found a target-based void that could falsely claim the close stayed inside its band
+  when the actual reason was a source mismatch. The stored evidence now names the source mismatch first and claims
+  an in-band close only for a true no-move result. Four real close/refund scenarios passed in memory and on disposable
+  PostgreSQL with the current migrations (13 checks in each store); the old false-band reversal failed and the source
+  was restored. Existing Up & Down source, margin, engine, healer and void-copy guards passed.
+  A B3/B4 source read found two further player-view defects. During a BTC 3-minute → Gold switch, the pending
+  asset pill briefly selected Gold beside the still-selected Bitcoin-only 3-minute pill; the board now keeps the
+  old asset and duration together until the new duration arrives, while a shared duration still responds at once.
+  The market-card move said “24h ago” even when its first available baseline was minutes old, and showed a bare
+  figure without percentage-point units. Its three-language line now measures explicitly since the first
+  available reading within 24h; a four-minute flat baseline says only that its two available readings agree.
+  The focused B3/B4 guards and the inherited betting-ink and featured-card readers passed. Their red fleets caught
+  **19/19** and **32/32** reversals respectively and restored every mutated source byte-for-byte. The older B4 footer
+  plant had been invalid JSX, so it failed before §3.15 could inspect the layout; a valid CSS reversal now moves
+  the enclosing footer off its flex row and §3.15 catches it. `test:house-bot-disclosure` §5.1 needs its exact
+  post-commit dictionary re-pin for the move words; that publication guard is not waived.
   The U43 source guards are green, but latest clean `origin/main` itself still fails two Maswali-owned visual readers:
   `test:visual-pass-r5a` (pending slip close glyph) and `test:visual-pass-r5j` (six unformatted counts). The Maswali
-  plan §0 already records those inherited reds; U43 does not edit that lane. Next: retest the R13 findings in browser
-  frames, run the seven-width, three-language matrix twice, complete the release gates and release. Release B is not on
-  production.
+  plan §0 already records those inherited reds; U43 does not edit that lane. Next: run the final seven-width,
+  three-language state matrix and adversarial frame review twice, then the exact-commit release checks; the
+  production price-feed rights question below still needs a recorded answer. Release B is not on production.
+  R15's 320px Swahili player frames reopened seven concrete visual findings: the card showed an unexplained `±$0.02`
+  beside the price to beat; the classic rail shortened the board's full `Juu na Chini` name; the one-sided refund
+  condition appeared again after the buttons; the held card's buttons cleared the rail by only 23px; the locked
+  holder card had roughly 140px of blank space after its next-round sentence; an active market card clipped the
+  question before the decisive words `kijani kesho?`; and the signed-in Needle could cover market choices. The B1/B5
+  changes remove the unexplained figure, put one side-specific refund condition before the choices, use the full
+  two-line rail name, and let only the 320px locked card follow its content. A local held-state browser check measured
+  the button clearance at **32px**, while its browser reversal restored **20.5px** and failed. The full 320px Swahili
+  guest/player run then captured **14 phases with 0 capture problems**; its locked holder crop shows the next-round
+  sentence, unavailable line and footer flowing together. A focused real-browser 360px comparison measured the guest
+  card **322px open / 329px locked** (7px difference) and held player card **372px open / 381px locked** (9px
+  difference), across seven captured phases with zero capture problems. A second independent critic applied BRIEF B1's
+  literal same-height target and marked both deltas open. CSS now gives each 360px open state the same floor as
+  its locked state; the numeric browser guard requires a difference of at most 1px. The fresh real-browser run passed:
+  **329px open / 329px locked** for a guest, **381px / 381px** for a player holding a stake, across seven phases with
+  zero capture problems. The 48px held buttons remain **38px above** the fixed rail.
+  A separate 360px no-stake player read found **347px** open and locked, short of BRIEF B1's 381px signed-in target.
+  Its open and locked floors now both measure **381px / 381px** in a fresh Swahili, English and Chinese real-browser
+  open→lock run: two phases, six cells, zero capture problems. The choice buttons measure **48px** high and clear the
+  fixed rail by **38px / 89px / 89px** respectively. Reopened locked card crops are legible in all three languages.
+  A browser-only reversal of the old 347px open floor failed at the measured **347px**, and the separate source
+  guard rejects open and locked floor reversals. Evidence: `.qa-shots/u43/r15-no-bet381-trilingual/index.json`.
+  The unlabeled change figure beside
+  the card's confirmed price was also removed, leaving the labelled read
+  and direction arrow. This is not a final visual score. The B4 market-card fix exposes full active and settled
+  questions; its signed-in title/result probe passed **9 width×language cells** (12 active and 3 final cards per cell).
+  A separate **54/54 local layout fixture** checked negative, flat, singular ±1 and large +20 moves in three widths
+  and languages; its visible label marks synthetic geometry, not observed price history. A six-route 320px Swahili browser pass found no Needle over
+  home, the market board, a locally followed watchlist card, market detail or settled `/results`; no choice was
+  covered there. Browser red controls caught the
+  live/result title clamps and a restored nowrap move line (11 measured overflow failures). The evidence is under `.qa-shots/u43/market-choice-clarity`,
+  `.qa-shots/u43/market-move-layout` and `.qa-shots/u43/market-card-routes`. The B4 data guard now withholds the
+  move and mini chart when the latest real snapshot pools differ from the card's current market row; the
+  `Biggest move` sort reuses its board batch, and single-card reads use the same store/window as batch reads.
+  The focused proof passed 12/12 in memory, 12/12 with a database URL and memory selected, and 13/13 on
+  disposable PostgreSQL (including an 801-snapshot baseline case); `red:u43-market-card` caught 47/47 mutations.
+  The
+  settlement and emergency-void history audit found two chart snapshots scheduled before their market transactions
+  committed. Both now wait for commit. A focused rollback/success check passed **16/16** in memory and **16/16** on
+  disposable PostgreSQL; the two precommit reversals failed on PostgreSQL rollback and restored the source byte for
+  byte. No production data was changed. The
+  production price-feed rights blocker remains: official terms were checked, and no commercial agreement has been
+  recorded. No U43 closure or live Release B is claimed.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

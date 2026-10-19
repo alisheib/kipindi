@@ -332,7 +332,9 @@ async function successorFor(
   const empty: RoundSuccessor = { roundId: null, opensAtMs: null, chainRunning };
   if (!chainRunning) return empty;
 
-  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 }).catch(() => []);
+  // A failed successor read is not proof that there is no next round. The detail
+  // page has a retry boundary; the board already passes its loaded sibling rows.
+  const pool = siblings ?? await roundStore.list({ chainId: chain.id, limit: 4 });
   const next = pool.find((x) => x.id !== r.id && x.opensAt === r.closesAt) ?? null;
 
   if (!next) {
@@ -767,8 +769,10 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const cfg = await getUpDownConfig();
   const defaultBounds = { min: cfg.defaultMinStake, max: cfg.defaultMaxStake };
   const [enabled, allChains, mineByMarket, walletBalance] = await Promise.all([
-    assetStore.list({ enabledOnly: true }).catch(() => [] as StoredAsset[]),
-    chainStore.list().catch(() => [] as StoredChain[]),
+    // A failed catalog read is not an empty market. Let the page's retry boundary
+    // show the fault for guests and players alike.
+    assetStore.list({ enabledOnly: true }),
+    chainStore.list(),
     myStakesByMarket(opts?.userId),
     walletBalanceOf(opts?.userId),
   ]);
@@ -895,7 +899,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const lagSeconds = await measuredLagSeconds(activeAsset.key);
 
   // Newest first, bounded — never an unbounded scan of a table that grows every minute.
-  const raw = await roundStore.list({ chainId: chain.id, limit: 24 }).catch(() => []);
+  const raw = await roundStore.list({ chainId: chain.id, limit: 24 });
   const mapped = (await Promise.all(
     raw.map((r) => toBoardRound(r, chain, activeAssetRow, mineByMarket.get(r.marketId), lagSeconds)),
   )).filter(Boolean) as BoardRound[];
@@ -1007,11 +1011,11 @@ export async function getMyUpDownHistory(userId: string, limit = 200): Promise<M
   const rows: MyRoundRow[] = [];
   for (const p of positions) {
     let round = roundCache.get(p.marketId);
-    if (round === undefined) { round = await roundStore.getByMarketId(p.marketId).catch(() => null); roundCache.set(p.marketId, round); }
+    if (round === undefined) { round = await roundStore.getByMarketId(p.marketId); roundCache.set(p.marketId, round); }
     let chain = round ? chainCache.get(round.chainId) : null;
-    if (round && chain === undefined) { chain = await chainStore.get(round.chainId).catch(() => null); chainCache.set(round.chainId, chain); }
+    if (round && chain === undefined) { chain = await chainStore.get(round.chainId); chainCache.set(round.chainId, chain); }
     let asset = chain ? assetCache.get(chain.assetId) : null;
-    if (chain && asset === undefined) { asset = await assetStore.get(chain.assetId).catch(() => null); assetCache.set(chain.assetId, asset); }
+    if (chain && asset === undefined) { asset = await assetStore.get(chain.assetId); assetCache.set(chain.assetId, asset); }
     rows.push({
       positionId: p.id,
       roundId: round?.id ?? null,

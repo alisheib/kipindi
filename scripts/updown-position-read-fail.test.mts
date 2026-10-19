@@ -84,6 +84,45 @@ assert.equal(detail?.myPosition?.stake, 2_000, "detail fixture must show this st
 const history = await getMyUpDownHistory(userId);
 assert.equal(history.some((p) => p.positionId === bet.data.positionId), true, "history fixture must show this position");
 
+// A failed catalog or round read is not an empty market. The same board retry
+// boundary serves guests and players; both must receive the real read error.
+async function expectReadFault(
+  target: object,
+  method: string,
+  action: () => Promise<unknown>,
+  message: string,
+): Promise<void> {
+  const methods = target as Record<string, unknown>;
+  const original = methods[method];
+  const fault = new Error(`fixture ${method} read failure`);
+  methods[method] = async () => { throw fault; };
+  try {
+    await assert.rejects(action, (e) => e === fault, message);
+  } finally { methods[method] = original; }
+}
+
+for (const [store, method, label] of [
+  [UD.assetStore, "list", "asset catalog"],
+  [UD.chainStore, "list", "chain catalog"],
+  [UD.roundStore, "list", "round list"],
+] as const) {
+  await expectReadFault(store, method, () => getBoard({ assetKey: tag, durationMinutes: 5, userId }),
+    `player board must not turn failed ${label} read into an empty market`);
+  await expectReadFault(store, method, () => getBoard({ assetKey: tag, durationMinutes: 5 }),
+    `guest board must not turn failed ${label} read into an empty market`);
+}
+
+// A player's bet has a real round, chain and asset. If one lookup fails, the
+// history page must retry instead of inventing an unknown asset or round.
+for (const [store, method, label] of [
+  [UD.roundStore, "getByMarketId", "round"],
+  [UD.chainStore, "get", "chain"],
+  [UD.assetStore, "get", "asset"],
+] as const) {
+  await expectReadFault(store, method, () => getMyUpDownHistory(userId),
+    `history must not turn failed ${label} lookup into Unknown`);
+}
+
 const userRead = positionStore.listForUser;
 const userFault = new Error("fixture position-by-user read failure");
 positionStore.listForUser = async () => { throw userFault; };
@@ -110,6 +149,14 @@ try {
   const guestDetail = await getRoundDetail(round.data.id);
   assert.equal(guestDetail?.myPosition, null, "guest detail must skip the market-position read");
 } finally { positionStore.listForMarket = marketRead; }
+
+// A settled round uses the detail-only successor lookup. If that read fails,
+// the detail page must retry instead of announcing no next round.
+await UD.roundStore.patch(round.data.id, { outcome: "UP", resolvedAt: new Date().toISOString() });
+const settledDetail = await getRoundDetail(round.data.id, userId);
+assert.equal(settledDetail?.round.state, "resolved", "successor fixture must use the settled detail path");
+await expectReadFault(UD.roundStore, "list", () => getRoundDetail(round.data.id, userId),
+  "detail must not turn failed successor lookup into no next round");
 
 console.log(`Up & Down position-read fault guard: ${onPostgres ? "PostgreSQL" : "memory"} passed`);
 } finally {

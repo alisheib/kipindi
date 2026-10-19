@@ -126,7 +126,7 @@ type Props = {
    *   · a meta line — "Closes 27 Sep · Settles on {source}" — under the question from 640, and under the
    *     YES/NO row below it (the V15 budget), after the pick ON SCREEN only: in the reading order it stays
    *     before the pick (K36);
-   *   · the 24h mark on the bar, only between two prices, and the mark's key before the "▲n · 24h ago" every
+   *   · the 24h mark on the bar, only between two prices, and the mark's key before the measured change every
    *     priced card prints (the line is the mark's legend here; a grid card's bar draws no mark, so no key);
    *   · the bar is an IMAGE named by the whole split ("62% YES, 38% NO");
    *   · below `FEATURED_PREDICTOR_FLOOR` predictors it withholds the count and the crest row (R7).
@@ -174,7 +174,7 @@ function getSignalBadge(
   return null;
 }
 
-/** THE 24h MOVE — ONE reading on every card ("▲5 · 24h ago"), since the WP3 review (R8, 2026-09-27).
+/** THE 24h MOVE — one measured change in percentage points within the last 24h.
  *  Neutral ink: a move of the YES price is not a side (§B2 / §B2a keep the YES/NO pair for the sides), and a
  *  green-up / rose-down move invites chasing. The grid card's inked "+5pt" said the same number in the
  *  betting pair on the same page and was retired; `test:betting-ink` §5 pins both call sites.
@@ -182,8 +182,15 @@ function getSignalBadge(
  *  mark's own shape — so on the featured card the line is the legend of the mark on its bar; a grid card's
  *  bar draws no mark, so it draws no key. Printed only where a price exists NOW (a move of no price is no
  *  reading — WP6). M5: the triangle nudges on a data CHANGE of direction only, never on mount. */
-function DayAgoMove({ move, label, keyed }: { move: number; label: string; keyed: boolean }) {
+export function DayAgoMove({ move, labels, keyed, side }: {
+  move: number;
+  labels: { one: string; many: string; flat: string };
+  keyed: boolean;
+  side: string;
+}) {
   const dir = move > 0 ? "up" : move < 0 ? "down" : "flat";
+  const words = fill(dir === "flat" ? labels.flat : Math.abs(move) === 1 ? labels.one : labels.many,
+    { n: Math.abs(move), side });
   const prevDirRef = useRef(dir);
   const dirChangedRef = useRef(false);
   if (dir !== prevDirRef.current) { dirChangedRef.current = true; prevDirRef.current = dir; }
@@ -197,7 +204,7 @@ function DayAgoMove({ move, label, keyed }: { move: number; label: string; keyed
         {dir === "up" ? <I.chevronUp s={11} tier="fill" /> : <I.chevronDown s={11} tier="fill" />}
       </span>}
       {dir !== "flat" && <span className="sr-only">{dir === "up" ? "+" : "−"}</span>}
-      {Math.abs(move)}{" · "}{label}
+      {words}
     </span>
   );
 }
@@ -594,9 +601,9 @@ export function MarketCard({
           {oneSided ? (
             <span className="mcardp-oneside" data-market-part="state">{t.market.oneSideOnly}</span>
           ) : dayAgo !== null ? (
-            <DayAgoMove move={yesPct - dayAgo} label={t.market.h24Ago} keyed />
+            <DayAgoMove move={yesPct - dayAgo} side={sideWord(t, "YES", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed />
           ) : (
-            !featured && showPrice && move24h !== undefined && <DayAgoMove move={move24h} label={t.market.h24Ago} keyed={false} />
+            !featured && showPrice && move24h !== undefined && <DayAgoMove move={move24h} side={sideWord(t, "YES", productLine)} labels={{ one: t.market.h24MoveOne, many: t.market.h24MoveMany, flat: t.market.h24MoveFlat }} keyed={false} />
           )}
         </div>
       )}
@@ -774,6 +781,9 @@ export function MarketCard({
       /* The gate's V18 surface (the featured card or a grid card) — inert everywhere else. A featured card
          that withholds its count (R7) states the count and the floor, so the gate can check the rule. */
       data-market-surface={featured ? "featured" : "card"}
+      /* A live choice and a final result both need the whole proposition. */
+      data-market-choices={live ? "open" : "closed"}
+      data-market-result={settled ? "final" : undefined}
       {...(showDepth ? {} : { "data-market-predictors": predictors, "data-market-depth-floor": FEATURED_PREDICTOR_FLOOR })}
       className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}

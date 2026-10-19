@@ -23,6 +23,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import { roundDuration } from "@/lib/updown-round-name";
+import { pendingAssetHasDuration } from "@/lib/updown-filter-pending";
 
 export type BoardTab = { key: string; href: string; label: string };
 
@@ -148,8 +149,12 @@ export function UpDownBoardTabs({
      the one the board is still on — the best available knowledge, and true a moment later in
      the overwhelming majority of cases. Never "none", which is true in none of them. */
   const pending = isPending && pendingHref != null ? new URLSearchParams(pendingHref.split("?")[1] ?? "") : null;
+  // An asset-only URL is the server choosing a new duration. Keep the old
+  // asset selected alongside its old duration until that board arrives; Gold
+  // cannot momentarily claim Bitcoin's 3-minute round.
+  const pendingAssetReady = pendingAssetHasDuration(pending?.get("asset") ?? null, pending?.get("d") ?? null, activeAssetKey);
   const assetOn = (tab: BoardTab) =>
-    pending != null ? pending.get("asset") === tab.key : tab.key === activeAssetKey;
+    pending != null && pendingAssetReady ? pending.get("asset") === tab.key : tab.key === activeAssetKey;
   const durationOn = (t: { d: number; href: string }) =>
     pending != null && pending.has("d") ? Number(pending.get("d")) === t.d : t.d === activeDuration;
 

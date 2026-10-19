@@ -601,7 +601,7 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
     ],
     {
       en: { nav: { updown: "Up & Down" }, journey: { tabTickets: "My tickets", tabAccount: "Account" } },
-      sw: { nav: { updown: "Juu/Chini" }, journey: { tabAccount: "Akaunti" } },
+      sw: { nav: { updown: "Juu na Chini" }, journey: { tabAccount: "Akaunti" } },
     },
   );
   const flagged = (s: string) => ctl.some((p) => p.includes(s));

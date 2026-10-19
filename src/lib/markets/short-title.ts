@@ -25,7 +25,8 @@
  *     refused (`strict`) — except where the language has no full title of its own and the English one stands in.
  *
  * ⛔ NULL MEANS "NO SHORT TITLE" — never a copy of the full title. The card then shows the reader's OWN full title
- * (`cardTitle`), clamped to two lines by its CSS. ⛔ `pickLocalized` is the wrong helper for short titles: it falls
+ * (`cardTitle`). A live market choice shows the whole question; a browse-only card may clamp it.
+ * ⛔ `pickLocalized` is the wrong helper for short titles: it falls
  * back to ENGLISH, and a Swahili reader must never be shown the English short question.
  *
  * Pure: its imports are pure modules too (`localized.ts` is type-only plus one function; `sms-compose.ts` is

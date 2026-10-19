@@ -827,13 +827,15 @@ export const dict = {
       // V-7 — carousel SR labels, previously hardcoded English.
       showMarketN: "Show market {n}", prevMarket: "Previous market", nextMarket: "Next market", showResultN: "Show notable result {n}",
       similarMarkets: "Similar markets", similarMarketsBody: "Live now — place another prediction without going back.",
-      // landing v3 · WP3/WP4 — a market's meta line and the 24h move ("▲5 · 24h ago": every priced card since the
+      // landing v3 · WP3/WP4 — a market's meta line and measured move from its first available reading within 24h (every priced card since the
       // WP3 review, R8 2026-09-27 — the featured card keys it to the mark on its bar). The source NAME is a
       // proper name (a registry label, else a host) and is never translated. `barReading` is the featured
       // bar's accessible name: the whole split, in the same side words as the buttons.
       closesOn: "Closes {date}",
       settlesOn: "Settles on {source}",
-      h24Ago: "24h ago",
+      h24MoveOne: "{side}: {n} percentage point since first available reading (within 24h)",
+      h24MoveMany: "{side}: {n} percentage points since first available reading (within 24h)",
+      h24MoveFlat: "{side}: same as first available reading (within 24h)",
       barReading: "{yesPct}% {yesWord}, {noPct}% {noWord}",
       noLiveMatch: "No live markets match",
       // Market detail page
@@ -1069,6 +1071,7 @@ export const dict = {
       udNobodyBacked: "Nobody has backed {side} yet — if that does not change, your stake comes back.",
       udNobodyBackedEither: "No bets yet. If only one side has bets at close, every stake returns.",
       udOneSideRefundBrief: "One side at close: stakes return.",
+      udEmptySideRefundBrief: "If {side} stays empty, stakes return.",
       // U43 (2026-10-19) · after the lock, on a round only one side backed: the pools are final, so the refund is no longer
       // conditional — it replaces the two "If it closes …" rows, which read TZS 0 on the side the holder never backed.
       udLockedOneSided: "Nobody backed {side}. Your full stake returns.",
@@ -3091,7 +3094,7 @@ export const dict = {
       balanceCaption: "Balance",
       depositAction: "Deposit",
       withdrawAction: "Withdraw",
-      /** The four destinations (SJ-16). The second one is `nav.updown`, unchanged. */
+      /** The four destinations (SJ-16). The second uses `nav.updown`, the game's full name. */
       tabQuestions: "Questions",
       tabTickets: "My tickets",
       tabAccount: "Account",
@@ -3989,8 +3992,8 @@ export const dict = {
       home: "Mwanzo", live: "Mubashara", bets: "Madau",
       wallet: "Pochi", leaderboard: "Jedwali la Washindi", primary: "Kuu",
       currentSection: "sehemu ya sasa",
-      // 2026-09-14 · the phone rail's SHORT tab name only ("Juu na Chini" cannot fit a fifth of a 360 screen); the product name everywhere else stays "Juu na Chini".
-      updown: "Juu/Chini",
+      // U43: the game has one name. The phone rail wraps it on two lines where needed.
+      updown: "Juu na Chini",
       // 2026-09-22 · U2. "Nafasi ndogo / kubwa" — small / large spacing; the values agree with "nafasi" (N-class).
       // Not "finyu": it reads as cramped, i.e. it would describe the default as a complaint. Native reader: plan §0 item 3.
       cardSpacing: "Ukubwa wa kadi", densityCompact: "Ndogo", densityComfortable: "Kubwa",
@@ -4247,11 +4250,13 @@ export const dict = {
       // landing v3 · WP3/WP4 — R8 native review (Tanzanian usage, the dictionary's own words): the subject is
       // "soko" (li-), so both halves of one meta line agree — "Litafungwa 27 Sep · Linatatuliwa kwa …".
       // "Litafungwa" is the notice form for a scheduled close (future); "linatatuliwa kwa" is the settling
-      // phrase `howStep2B` / `twoOfficerBody` already use; "saa 24" as in `time24`. "saa 24 zilizopita" (the past 24 hours)
-      // reads right both as the mark's legend and as a grid card's move ("▲5 · saa 24 zilizopita").
+      // phrase `howStep2B` / `twoOfficerBody` already use; "saa 24" as in `time24`. The move words limit the
+      // comparison to available readings within that window, even when the baseline is minutes old.
       closesOn: "Litafungwa {date}",
       settlesOn: "Linatatuliwa kwa {source}",
-      h24Ago: "saa 24 zilizopita",
+      h24MoveOne: "{side}: pointi {n} tangu usomaji wa kwanza uliopo (ndani ya saa 24)",
+      h24MoveMany: "{side}: pointi {n} tangu usomaji wa kwanza uliopo (ndani ya saa 24)",
+      h24MoveFlat: "{side}: sawa na usomaji wa kwanza uliopo (ndani ya saa 24)",
       barReading: "{yesWord} {yesPct}%, {noWord} {noPct}%",
       noLiveMatch: "Hakuna soko mubashara linalolingana",
       closedAwaitingSettlement: "Imefungwa · Inasubiri utatuzi",
@@ -4419,6 +4424,7 @@ export const dict = {
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
       udNobodyBackedEither: "Hakuna dau bado. Madau yakifungwa na upande mmoja tu, kila dau litarudi.",
       udOneSideRefundBrief: "Upande mmoja hadi mwisho: dau hurudi.",
+      udEmptySideRefundBrief: "{side} ikibaki tupu, dau hurudi.",
       udLockedOneSided: "Hakuna dau {side}. Dau lako lote litarudi.",
       udSource: "Chanzo", udQuoted: "imenukuliwa",
       // E-53 · aina ya soko, si muuzaji wa data.
@@ -7013,7 +7019,9 @@ export const dict = {
       // the side words in 「」 as in `probBarAria`; "{date} 截止" follows `home.settledOn`'s "{date} 结算".
       closesOn: "{date} 截止",
       settlesOn: "结算来源：{source}",
-      h24Ago: "24小时前",
+      h24MoveOne: "{side}：较近24小时内首个可用读数变动{n}个百分点",
+      h24MoveMany: "{side}：较近24小时内首个可用读数变动{n}个百分点",
+      h24MoveFlat: "{side}：与近24小时内首个可用读数相同",
       barReading: "「{yesWord}」{yesPct}%，「{noWord}」{noPct}%",
       noLiveMatch: "没有匹配的直播市场",
       closedAwaitingSettlement: "已关闭 · 等待结算",
@@ -7177,6 +7185,7 @@ export const dict = {
       udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",
       udNobodyBackedEither: "暂无投注。投注截止时若只有一方有投注，所有本金退回。",
       udOneSideRefundBrief: "截止时仅一方投注：本金退还。",
+      udEmptySideRefundBrief: "若{side}方仍无人投注，本金退还。",
       udLockedOneSided: "无人投注{side}。您的本金将全额退回。",
       udSource: "来源", udQuoted: "报价时间",
       // E-53 · 只说市场类别，不透露数据供应商。

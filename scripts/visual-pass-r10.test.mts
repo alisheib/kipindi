@@ -1180,21 +1180,23 @@ section("11 · composition only: the dictionary is the commit's, byte for byte")
   ok("11.1 · src/lib/i18n-dict.ts is the commit's own", head === raw("src/lib/i18n-dict.ts"));
 }
 
-section("9b · R10-B the Up & Down empty-side note holds \"dau lako\" / \"your stake\" (round 10's read, tile 166) — all three panels");
+section("9b · R10-B the full Up & Down empty-side note holds \"dau lako\" / \"your stake\" on detail panels; the board has one brief before its choices");
 {
   const SITES: Array<[string, string]> = [
     ["src/components/updown/updown-stake-controls.tsx", "<span>{noticeBody(emptyCopy)}</span>"],
     ["src/components/updown/round-stake-panel.tsx", "<span>{noticeBody(warnCopy)}</span>"],
-    ["src/components/updown/updown-card.tsx", "<span>{noticeBody(outEmptyCopy)}</span>"],
   ];
   const raw9b = SITES.filter(([f, s]) => !has(f, s));
-  ok("9b.1 · the note is drawn through noticeBody in the stake controls, the round panel and the board card — never raw", raw9b.length === 0, raw9b.map(([f]) => f).join(" | "));
+  const boardBrief = (source: string) => source.includes("const refundBrief = cardRefundBrief(t, emptySideOf(pricing));")
+    && source.includes("bettable && refundBrief && (") && source.includes("{refundBrief}")
+    && !source.includes("outEmptyCopy");
+  ok("9b.1 · full detail notes use noticeBody; the board has only its pool-derived brief before choices", raw9b.length === 0 && boardBrief(raw("src/components/updown/updown-card.tsx")), raw9b.map(([f]) => f).join(" | "));
   const mk = (l: Loc) => String(((DICT[l] as Record<string, Record<string, string>>).market.udNobodyBacked) ?? "").replace("{side}", String((DICT[l] as Record<string, Record<string, string>>).market.udDown));
   const sw = render(h("p", null, est.noticeBody(mk("sw")) as never));
   const en = render(h("p", null, est.noticeBody(mk("en")) as never));
   ok("9b.2 · rendered, sw holds \"dau lako\" (with its last-words tail: \"dau lako litarudi.\") and en \"your stake\" inside one unbreakable run each", /<span class="whitespace-nowrap">[^<]*dau lako[^<]*<\/span>/.test(sw) && /<span class="whitespace-nowrap">[^<]*your stake[^<]*<\/span>/.test(en), JSON.stringify([sw.slice(0, 260), en.slice(0, 200)]));
-  const plant = raw("src/components/updown/updown-card.tsx").replace("<span>{noticeBody(outEmptyCopy)}</span>", "<span>{outEmptyCopy}</span>");
-  ok("9b.1′ PLANT · the board card drawing its note raw is reported by 9b.1", !squash(decomment(plant)).includes(squash("<span>{noticeBody(outEmptyCopy)}</span>")));
+  const plant = raw("src/components/updown/updown-card.tsx").replace("{refundBrief}", "{t.market.udNobodyBackedEither}");
+  ok("9b.1′ PLANT · the board card replacing its specific brief with generic copy is reported by 9b.1", plant !== raw("src/components/updown/updown-card.tsx") && !boardBrief(plant));
 }
 
 section("12 · R10-C /updown's chart is drawn again after its rebuild — the board widened past 1024px (tiles 164)");

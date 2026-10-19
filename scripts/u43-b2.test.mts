@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { vendorOpenPoints, roundOpenPoints, maskConflictingVendorOpens, roundLineHistoryUrl, shouldDisplayRoundLine, ROUND_LINE_WINDOW_MS, ROUND_LINE_OUTPUT_BARS } from "../src/lib/updown-vendor-opens";
+import { vendorOpenPoints, roundOpenPoints, maskConflictingVendorOpens, roundLineHistoryUrl, shouldDisplayRoundLine, hasLaterConfirmedRead, ROUND_LINE_WINDOW_MS, ROUND_LINE_OUTPUT_BARS } from "../src/lib/updown-vendor-opens";
 import { vendorBarsFor, VENDOR_PLAN, __clearVendorCacheForTests } from "../src/lib/server/updown-terminal-vendor";
 import { ALLOWED_DURATIONS, roundSpanMinutes } from "../src/lib/updown-durations";
 import { assetStore } from "../src/lib/server/updown-dal";
@@ -74,6 +74,12 @@ ok("matching confirmed reads retain every original vendor OPEN and genuine gap",
   matching.mode === "line" && matching.points.every((point, index) => point.price === points[index].price));
 ok("a live card cannot show a bar from the future or the close early",
   roundOpenPoints(points, open, close, open + minute, 100.12, 2)?.length === 2);
+ok("one vendor opening bar cannot deny a later confirmed price on the card",
+  roundOpenPoints(points.slice(0, 1), open, close, open + minute, 100.12, 2, null, midRead)?.length === 1
+  && hasLaterConfirmedRead(open, midRead.price, midRead.quotedAt)
+  && !hasLaterConfirmedRead(open, 100.12, new Date(open).toISOString())
+  && !hasLaterConfirmedRead(open, null, midRead.quotedAt)
+  && !hasLaterConfirmedRead(open, 100.25, "bad-time"));
 ok("the card requests the one shared 1H vendor window, independent of duration",
   roundLineHistoryUrl("btc") === "/api/updown/history?asset=btc&range=1H&style=line&scope=round"
   && roundLineHistoryUrl("xau") === "/api/updown/history?asset=xau&range=1H&style=line&scope=round");
@@ -96,6 +102,9 @@ const card = readFileSync(new URL("../src/components/charts/round-live-line.tsx"
 ok("the rendered round line applies the tested phase rule",
   card.includes('const visible = typeof assetKey === "string" && assetKey.length > 0')
   && card.includes("&& shouldDisplayRoundLine(state, opensAtMs, closesAtMs, nowMs, openPrice);"));
+ok("the sparse vendor line hides rather than contradicts a newer confirmed card read",
+  card.includes("real.length === 1 && hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)")
+  && card.includes('data-testid="round-live-line-unavailable">{words.unavailable}</p>'));
 ok("the real history path uses the tested OPEN mapper", board.includes("vendorOpenPoints(inWindow, plan.intervalMs, asset.decimals)"));
 ok("the round component uses the shared range, not a duration-specific request", card.includes("fetch(roundLineHistoryUrl(assetKey)"));
 const roundCard = readFileSync(new URL("../src/components/updown/updown-card.tsx", import.meta.url), "utf8");
@@ -105,6 +114,17 @@ const boardPage = readFileSync(new URL("../src/app/updown/page.tsx", import.meta
 const chartLab = readFileSync(new URL("../src/components/charts/updown-chart-lab.tsx", import.meta.url), "utf8");
 const terminal = readFileSync(new URL("../src/components/charts/terminal-chart.tsx", import.meta.url), "utf8");
 const dictionary = readFileSync(new URL("../src/lib/i18n-dict.ts", import.meta.url), "utf8");
+const distinctBars = roundOpenPoints(points, open, close, open + minute, 100.12, 2);
+ok("a later unequal minute OPEN is named as a minute OPEN, not the frozen target, in every language",
+  distinctBars?.length === 2 && distinctBars[0]?.price === 100.12
+  && distinctBars.at(-1)?.price === 100.25 && distinctBars.at(-1)?.price !== distinctBars[0]?.price
+  && card.includes('real.length === 1 ? `${words.noNewer} ${openClock}` : words.minuteOpen')
+  && card.includes('en: { beat: "Price to beat", minuteOpen: "Minute open"')
+  && card.includes('sw: { beat: "Bei ya kushinda", minuteOpen: "Ufunguzi wa dakika"')
+  && card.includes('zh: { beat: "目标价格", minuteOpen: "分钟开盘价"')
+  && terminal.includes('minuteOpen: "Minute open"')
+  && terminal.includes('minuteOpen: "Ufunguzi wa dakika"')
+  && terminal.includes('minuteOpen: "分钟开盘价"'));
 ok("a late minute line cannot move the live money controls",
   roundCard.indexOf('<div className="ud-act">') > 0
   && roundCard.indexOf('<RoundLiveLine assetKey={assetKey}') > roundCard.indexOf('<div className="ud-act">')
@@ -126,6 +146,9 @@ ok("only open or locked cards poll every 30 seconds; decided cards freeze",
 ok("a decided card can load once after a hidden mount but cannot repaint on later tab reveals",
   card.includes('if (document.visibilityState === "visible" && (active || !frozen)) void load();')
   && card.includes('if (!active && openPrice != null && roundOpenPoints(next.series.points,')
+  && card.includes('opensAtMs, closesAtMs, closesAtMs, openPrice, decimals, closePrice,')
+  && roundOpenPoints(points, open, close, close, 100.12, 2, 99.95)?.at(-1)?.price === 99.95
+  && roundOpenPoints(points, open, close, open - minute, 100.12, 2, 99.95) === null
   && card.includes('if (active) document.addEventListener') === false);
 const pendingMarkup = renderToStaticMarkup(createElement(RoundLiveLine, {
   assetKey: "u43b2", opensAtMs: open, closesAtMs: close, openPrice: 100.12,
@@ -146,9 +169,9 @@ ok("a missing vendor line is explained beside a confirmed read in all three lang
   card.includes('if (active && readPrice != null && Number.isFinite(readPrice))')
   && card.includes('className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable"')
   && card.includes('className="sr-only" role="status" data-testid="round-live-line-empty"')
-  && card.includes('en: { beat: "Price to beat", unavailable: "Round line unavailable"')
-  && card.includes('sw: { beat: "Bei ya kushinda", unavailable: "Mstari wa raundi haupatikani"')
-  && card.includes('zh: { beat: "目标价格", unavailable: "本回合走势暂不可用"'));
+  && card.includes('minuteOpen: "Minute open", unavailable: "Round line unavailable"')
+  && card.includes('minuteOpen: "Ufunguzi wa dakika", unavailable: "Mstari wa raundi haupatikani"')
+  && card.includes('minuteOpen: "分钟开盘价", unavailable: "本回合走势暂不可用"'));
 ok("the chart names the plotted point's own time and distinguishes vendor OPEN from a confirmed-read fallback",
   terminal.includes('guardedFeed?.series.mode === "line"')
   && terminal.includes('const chartPointWord = guardedFeed?.sourceTier === "vendor"')

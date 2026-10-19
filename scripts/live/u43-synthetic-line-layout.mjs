@@ -71,6 +71,15 @@ export function selectedCells(raw) {
   return cells;
 }
 
+export function assertMobileActionClearance(geometry) {
+  if (geometry?.railPosition !== "fixed" || geometry.buttons !== 2
+    || !Number.isFinite(geometry.minButtonHeight) || geometry.minButtonHeight < 40
+    || !Number.isFinite(geometry.clearance) || geometry.clearance < 24) {
+    throw new Error(`320 Swahili line arrival leaves choices too close to the fixed rail: ${JSON.stringify(geometry)}`);
+  }
+  return geometry.clearance;
+}
+
 async function run() {
   const base = (process.env.BASE || "http://localhost:3417").replace(/\/$/, "");
   if (!localOrigin(base)) throw new Error(`REFUSING non-local BASE ${base}`);
@@ -83,6 +92,9 @@ async function run() {
   const { chromium } = await import(pathToFileURL(join(pwRoot, "node_modules/playwright/index.mjs")).href);
   const out = process.env.OUT || join(repo, ".qa-shots", "u43", "synthetic-line-layout");
   const cells = selectedCells(process.env.CELLS);
+  if (!cells.some(({ width, locale }) => width === 320 && locale === "sw")) {
+    throw new Error("320-sw is required to prove the post-line button gap above the fixed navigation");
+  }
   const browser = await chromium.launch({ headless: true });
   const evidence = { kind: "synthetic-layout-only", banner: QA_BANNER, base, createdAt: new Date().toISOString(), cells: [] };
   try {
@@ -147,6 +159,17 @@ async function run() {
         }
         const afterAction = await sameCard.locator(".ud-act").evaluate((el) => el.getBoundingClientRect().bottom);
         if (Math.abs(afterAction - beforeAction) > 2) throw new Error("line arrival moved the choice area");
+        const railGeometry = width === 320 && locale === "sw" ? await sameCard.evaluate((el) => {
+          const rail = document.querySelector(".kp-rail");
+          const buttons = [...el.querySelectorAll(".ud-act button.btn-yes, .ud-act button.btn-no")]
+            .filter((button) => button.getClientRects().length > 0);
+          const buttonRects = buttons.map((button) => button.getBoundingClientRect());
+          return { railPosition: rail ? getComputedStyle(rail).position : "missing", buttons: buttons.length,
+            minButtonHeight: buttonRects.length ? Math.min(...buttonRects.map((rect) => rect.height)) : null,
+            clearance: rail && buttonRects.length
+              ? rail.getBoundingClientRect().top - Math.max(...buttonRects.map((rect) => rect.bottom)) : null };
+        }) : null;
+        if (width === 320 && locale === "sw") assertMobileActionClearance(railGeometry);
         await page.evaluate(({ banner, roundId }) => {
           const label = document.createElement("div");
           label.textContent = banner;
@@ -178,7 +201,9 @@ async function run() {
         await sameCard.screenshot({ path: join(out, `${stem}__card.png`) });
         evidence.cells.push({ width, locale, roundId, actualEndpoints: { open: round.openPrice, current: currentPrice,
           at: built.endpointTimes }, syntheticInteriorTimes: built.syntheticTimes, shape,
-          actionBottomShiftPx: Number((afterAction - beforeAction).toFixed(2)), files: [`${stem}.png`, `${stem}__card.png`] });
+          actionBottomShiftPx: Number((afterAction - beforeAction).toFixed(2)),
+          postLineButtonNavClearancePx: railGeometry ? Number(railGeometry.clearance.toFixed(2)) : null,
+          files: [`${stem}.png`, `${stem}__card.png`] });
         console.log(`PASS ${width}-${locale}: visible line, ${built.syntheticTimes.length} labelled synthetic interior point(s), stable actions`);
       } finally { await context.close(); }
     }

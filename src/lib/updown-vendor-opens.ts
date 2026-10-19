@@ -37,6 +37,16 @@ export function roundLineHistoryUrl(assetKey: string): string {
   return `/api/updown/history?asset=${encodeURIComponent(assetKey)}&range=${ROUND_LINE_RANGE}&style=line&scope=round`;
 }
 
+/** A card can have a later confirmed read even when the vendor history still has
+ * only its opening bar. In that case, "no newer price" would contradict the card. */
+export function hasLaterConfirmedRead(
+  opensAtMs: number, readPrice: number | null, readQuotedAt: string | null,
+): boolean {
+  const quotedAtMs = readQuotedAt ? Date.parse(readQuotedAt) : Number.NaN;
+  return readPrice != null && Number.isFinite(readPrice) && readPrice > 0
+    && Number.isFinite(quotedAtMs) && quotedAtMs > opensAtMs;
+}
+
 export function vendorOpenPoints(
   bars: readonly { t: number; o: number }[],
   intervalMs: number,

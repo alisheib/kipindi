@@ -323,7 +323,7 @@ async function ResultsContent({
   // One query for the whole board — never map getCardChart across a list.
   // B-1 — deliberate degrade: sparks are garnish; a card without one renders no
   // chart (A-5), which is distinguishable from a real flat series.
-  const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
+  const cardCharts = await getCardCharts(paged).catch(() => new Map());
 
   // Helpers
   /**

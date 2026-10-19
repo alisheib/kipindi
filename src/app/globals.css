@@ -5480,7 +5480,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-traders .t-txt b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); font-weight:600; }
 /* A1 · the move-line row, right-aligned just above the bar: the 24h move (`.mcardp-h24`, every priced card)
    or "One side only". */
-.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-height:var(--sp-3); margin:calc(-1 * var(--sp-1)) 0; }
+.mcardp-moveline { display:flex; justify-content:flex-end; align-items:center; min-width:0; min-height:var(--sp-3); margin:calc(-1 * var(--sp-1)) 0; }
 /* A1 · 24h YES% sparkline directly under the bar; draws in on mount.
    pathLength=1 normalizes the dash regardless of the rendered card width. */
 .mcardp-spark-row { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
@@ -5732,9 +5732,9 @@ html[data-sheet-open] .route-enter { animation: none; }
    no phone-only query, so the Compact fence (`test:density-contract` §2) has nothing to police. None of
    these selectors is one a guard reads by first match. */
 /* The question. Whole from 640 — h4, then h3 from 1024 (the concept's 21–26px mapped onto the locked
-   ladder). Below 640 it keeps the card's 15px and clamps at THREE lines in every language: at 360 the
-   hero's first screen has ~65px left for everything WP3 adds (hero v3 §7), and the clamp paints an
-   ellipsis while the h2 keeps the whole question for a screen reader and the card's link names it.
+   ladder). Below 640 a featured card without active choices keeps the historical three-line
+   browse clamp. A live featured card releases it in the U43 choice rule below: a player sees
+   the whole proposition before choosing, rather than relying on the link or screen reader.
    ⭐ ITS LINES ARE BALANCED, LIKE EVERY OTHER MARKET TITLE (round 5, 2026-10-09, F1 F4: tiles 029 059 074 084 097 109
    and 023 026). It wore `text-wrap: pretty`, which Chromium (score_line_breaker.cc, `ShouldOptimize`) applies only
    when the greedy last line is under a third of the line AND has no break opportunity inside, and then re-breaks the
@@ -5753,6 +5753,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 @media (min-width: 1024px) {
   .mcardp--featured .mcardp-q { font-size: var(--type-h3); line-height: 1.25; }
 }
+/* U43 B4: live choices and final results show the whole proposition. A card
+   grows by its real question's lines; only a waiting browse preview can clamp. */
+.mcardp[data-market-choices="open"] .mcardp-q,
+.mcardp[data-market-result="final"] .mcardp-q { display: block; -webkit-line-clamp: unset; overflow: visible; }
 /* The time left, top-right: the meta row's rung, in `--text` (the tracker's ink; a countdown never takes
    the betting pair, `test:betting-ink`). `margin-left: auto` keeps it right-aligned on whichever line it
    lands when the chip row wraps (D65: chips wrap, never cut) — inside `.mcardp-tail` since 2026-10-08, so
@@ -5819,21 +5823,23 @@ html[data-sheet-open] .route-enter { animation: none; }
   .mcardp-src--featured { order: 0; max-inline-size: 60ch; }
   .mcardp--featured > .mcardp-meta { order: 0; }
 }
-/* The 24h move — ONE reading on every priced card ("▲5 · 24h ago"): the meta row's rung, neutral ink (a move
-   of the YES price is not a side, §B2a; `test:betting-ink` §5). The featured card keys it to the mark on its
-   bar. It rides the move-line row the card always had, so it costs no height. */
+/* The measured move names its side and the first available baseline within 24h.
+   This is a sentence, so it wraps at the reading floor when a 320px card needs it.
+   Its neutral ink is separate from the betting pair (`test:betting-ink` §5). */
 .mcardp-h24 {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-1);
+  min-width: 0;
+  max-width: 100%;
   font-family: var(--font-mono);
-  font-size: var(--type-micro);
-  line-height: 1;
+  font-size: var(--type-small);
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  white-space: normal; text-align: right;
   color: var(--text-subtle);
 }
-/* The legend key: the mark's own shape and ink, so "▲5 · 24h ago" names the hairline on the bar. */
+/* The legend key matches the neutral baseline mark on the featured bar. */
 .mcardp-h24-key { width: 2px; height: 10px; border-radius: var(--r-pill); background: var(--text); }
 @media (hover: hover) {
   .mcardp-details:hover { text-decoration: underline; }
@@ -7454,6 +7460,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   padding-inline: 2px;
 }
 .kp-rail__item[data-on] .kp-rail__label { font-weight: 700; }
+/* The full Swahili game name takes two lines in a fifth of a phone rail. Give each
+   classic non-coin slot the same 64px grid: 3 + 32 + 4 + 22 + 3. The other labels
+   sit in the centre of the 22px label row, so their baseline and the pips agree. */
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin) {
+  justify-content: flex-start;
+  padding-block: 3px;
+}
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin) .kp-rail__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+}
+.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item[href="/updown"] .kp-rail__label {
+  white-space: normal;
+  text-overflow: clip;
+  text-align: center;
+}
 /* The product-line dot — the same 5px brand mark the desktop nav carries, on the pip's corner.
    ⭐ W3: it keeps its place beside the glyph — 2px right of the glyph's box and 2px above it, as on the 44×26 pip — so
    on the 56×32 pip around a 24px glyph it stands 9px from the right and 2px from the top, inside the lit pill's curve. */
@@ -8418,18 +8442,29 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* U43: one card rhythm in every state. Let an outcome card keep its own content
    height beside a live round; the shared market card otherwise fills the grid row. */
 .ud-card { height: auto; gap: var(--ud-gap); padding: var(--ud-pad); }
-/* U43 B1: the locked explanation stays in the same card footprint as the
-   preceding live price + action view. The action block takes the spare room,
-   so its words stay near the price instead of dropping below the phone rail. */
-.ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 337px; }
-.ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 389px; }
-.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 411px; }
-.ud-card[data-phase="locked"] .ud-act { flex: 1 0 auto; margin-top: 0; }
+/* Match the live card footprint from 360px upward, where there is room to
+   distribute the locked explanation. The 320px card follows its content. */
+.ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 329px; }
+.ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 381px; }
+.ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 381px; }
+.ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; margin-top: 0; }
 @media (min-width: 360px) {
-  /* Keep the live footprint while distributing the locked explanation's spare
-     room among its rows. The 320 layout stays top-loaded above the phone rail. */
+  .ud-card[data-phase="open"][data-ud-layout="guest"] { min-height: 329px; }
+  .ud-card[data-phase="open"][data-ud-layout="player"] { min-height: 381px; }
+  .ud-card[data-phase="open"][data-ud-layout="held"] { min-height: 381px; }
   .ud-card[data-phase="locked"] { justify-content: space-between; }
-  .ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; }
+}
+@media (max-width: 359px) {
+  /* The 320px holder previously had roughly 140px of blank card below its
+     next-round sentence; that also placed its source footer under the rail. */
+  .ud-card[data-phase="locked"][data-ud-layout="guest"],
+  .ud-card[data-phase="locked"][data-ud-layout="player"],
+  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 0; }
+}
+@media (min-width: 1024px) {
+  .ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 345px; }
+  .ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 394px; }
+  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 419px; }
 }
 /* The Up & Down bet receipt keeps every disclosure but compacts its shared
    modal's phone rhythm so both follow-up actions fit a 740px viewport. */
@@ -8440,15 +8475,6 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .orm-phone-compact .orm-details { margin-top: var(--sp-2); gap: var(--sp-1); }
   .orm-phone-compact .orm-detail { padding: var(--sp-1) var(--sp-3); }
   .orm-phone-compact .orm-actions { margin-top: var(--sp-3); }
-}
-@media (max-width: 359px) {
-  .ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 435px; }
-  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 457px; }
-}
-@media (min-width: 1024px) {
-  .ud-card[data-phase="locked"][data-ud-layout="guest"] { min-height: 345px; }
-  .ud-card[data-phase="locked"][data-ud-layout="player"] { min-height: 394px; }
-  .ud-card[data-phase="locked"][data-ud-layout="held"] { min-height: 419px; }
 }
 .ud-identity { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: var(--sp-8); }
 .ud-title { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 15px; font-weight: 600; }
@@ -8464,7 +8490,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .ud-card-wait, .ud-card-payouts, .ud-card-own-result, .ud-card-refund { display: flex; flex-direction: column; gap: var(--sp-2); }
 .ud-card-next { margin-top: var(--sp-2); font-size: var(--type-small); }
 .ud-card-next-button { min-height: var(--h-control-md); }
-.ud-refund-brief { display: none; }
+.ud-refund-brief { display: block; }
 .ud-stake-rail { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .ud-stake-rail::-webkit-scrollbar { display: none; }
 .ud-stake-chip[aria-checked="true"] { background: var(--pill-active); color: var(--text); outline: 1px solid var(--brand-400); outline-offset: -1px; }
@@ -8475,17 +8501,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   /* The selected stake and labelled side buttons already say how to place a
      ready bet. Keep pending, low-balance and refusal feedback visible. */
   .ud-card .ud-stake-ready-helper { display: none; }
-  /* Put the one-sided refund condition before a narrow phone's money buttons;
-     the full current-pool explanation remains beneath them. */
-  .ud-card .ud-refund-brief { display: block; }
+  /* The brief condition above the choices is the card's only refund sentence. */
   .ud-card .ud-oneside-caption { display: none; }
 }
 @media (max-width: 359px) {
+  /* A held player's extra status line previously left the choices 23px above
+     the fixed rail. One pixel from each non-money row gap restores clearance. */
+  .ud-card[data-ud-layout="held"][data-phase="open"] { gap: 3px; }
   /* density: general — the smallest width needs the plus glyph to keep all five stakes on one row in either density. */
   .ud-custom-word { display: none; }
-  /* The target and confirmed quote remain. Their derived delta would wrap the
-     confirmed row and bury a held player's Up/Down choices under the phone rail. */
-  .ud-card .ud-now-delta { display: none; }
 }
 /* U43 B3: each filter axis remains a single visible row. A genuine overflow also
    reveals the kit sheet; the strip itself stays operable for touch and keyboard. */

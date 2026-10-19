@@ -41,6 +41,7 @@ import {
 } from "../src/lib/updown-pricing.ts";
 import { payoutFor } from "../src/lib/payout.ts";
 import { dict as DICTS } from "../src/lib/i18n-dict.ts";
+import { cardRefundBrief } from "../src/lib/updown-card-refund.ts";
 import { formatTzs } from "../src/lib/utils.ts";
 
 const PRICING = "src/lib/updown-pricing.ts";
@@ -494,11 +495,13 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
       : null;
   };
   const allSentences = (loc: Loc) => [expectedSentence(loc, "BOTH"), expectedSentence(loc, "UP"), expectedSentence(loc, "DOWN")] as string[];
+  const allCardSentences = (loc: Loc) => ["BOTH", "UP", "DOWN"].map((side) => cardRefundBrief(DICTS[loc], side as "BOTH" | "UP" | "DOWN")) as string[];
+  const allChoiceSentences = (loc: Loc) => [...allSentences(loc), ...allCardSentences(loc)];
   // The old note's core, in each language — present in the old sentence and in the new one, so a card carrying EITHER fails.
   const NOTE_CORE: Record<Loc, string> = { en: "moves with every bet", sw: "hubadilika kwa kila dau jipya", zh: "随每一笔新投注变动" };
 
   /** Every defect of one rendered CHOICE surface (a card or the two-way control) against the rule. */
-  function choiceDefects(loc: Loc, html: string, pricing: UpDownPricing, isCard: boolean): string[] {
+  function choiceDefects(loc: Loc, html: string, pricing: UpDownPricing, mode: "card" | "detail" | "compact"): string[] {
     const d: string[] = [];
     const t = DICTS[loc].market;
     const all = text(html);
@@ -510,14 +513,20 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
     }
     if (/×/.test(all)) d.push(`a "×" is printed: …${(all.match(/.{0,30}×.{0,20}/) ?? [""])[0]}…`);
     if (all.includes(NOTE_CORE[loc]) || all.includes(t.udEstimateNote)) d.push("the estimate note is on a choice surface");
-    const want = expectedSentence(loc, emptySideOf(pricing));
+    const want = mode === "card" ? cardRefundBrief(DICTS[loc], emptySideOf(pricing))
+      : mode === "detail" ? expectedSentence(loc, emptySideOf(pricing)) : null;
     if (want != null && !all.includes(want)) d.push(`the empty-side sentence is missing: "${want}"`);
-    for (const s of allSentences(loc)) if (s !== want && all.includes(s)) d.push(`a false empty-side sentence is shown: "${s}"`);
-    if (isCard) {
+    if (want != null && all.split(want).length !== 2) d.push(`the empty-side sentence appears more than once: "${want}"`);
+    for (const s of allChoiceSentences(loc)) if (s !== want && all.includes(s)) d.push(`a false empty-side sentence is shown: "${s}"`);
+    if (mode === "card") {
+      const brief = html.match(/<p class="ud-refund-brief[^\"]*"[^>]*>([\s\S]*?)<\/p>/);
+      if (want != null && (!brief || text(brief[1]) !== want || (brief.index ?? -1) >= html.indexOf('class="ud-act'))) {
+        d.push("the empty-side sentence is not the exact brief before the choices");
+      }
       // The card's own split row must agree: a two-sided price iff no side is empty.
-      const split = html.slice(html.indexOf('<div class="ud-split">'), html.indexOf('<div class="ud-prices">'));
+      const split = html.slice(html.indexOf('<div class="ud-split">'), html.indexOf('class="ud-act'));
       const twoSidedPrice = /\d%/.test(text(split));
-      const sentenceShown = allSentences(loc).some((s) => all.includes(s));
+      const sentenceShown = allChoiceSentences(loc).some((s) => all.includes(s));
       if (twoSidedPrice === sentenceShown) d.push(`the split row (${twoSidedPrice ? "a two-sided price" : "no price"}) and the empty-side sentence (${sentenceShown ? "shown" : "absent"}) disagree`);
     }
     return d;
@@ -570,18 +579,18 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
      renderError === "" && renders.length === LOCALES.length * POOLS.length * 2 * 5, renderError || `${renders.length}`);
 
   const defectsOf = (r: (typeof renders)[number], html = r.html) =>
-    r.kind === "panel" ? panelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.kind === "card");
+    r.kind === "panel" ? panelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.kind === "card" ? "card" : "detail");
   const bad = renders.flatMap((r) => defectsOf(r).map((x) => `${r.what}: ${x}`));
   const choices = renders.filter((r) => r.kind !== "panel");
   const panels = renders.filter((r) => r.kind === "panel");
   ok(`8.1 every choice surface reads "${DICTS.en.market.udUp}"/"${DICTS.en.market.udDown}" (and "${DICTS.sw.market.udUp}"/"${DICTS.sw.market.udDown}", "${DICTS.zh.market.udUp}"/"${DICTS.zh.market.udDown}") and nothing else — no "×", no estimate note (${choices.length} renders)`,
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /button|×|estimate note|side buttons/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /button|×|estimate note|side buttons/.test(x))),
      bad.filter((x) => /button|×|estimate note|side buttons/.test(x)).slice(0, 4).join(" · "));
   ok("8.2 the empty-side sentence appears iff the pools leave a side empty — and names that side — on every card and control",
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /empty-side sentence/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /empty-side sentence/.test(x))),
      bad.filter((x) => /empty-side sentence/.test(x)).slice(0, 4).join(" · "));
   ok("8.3 …and on the card it agrees with the split row: a two-sided price iff no sentence",
-     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card").some((x) => /split row/.test(x))),
+     choices.every((r) => !choiceDefects(r.loc, r.html, r.pricing, r.kind === "card" ? "card" : "detail").some((x) => /split row/.test(x))),
      bad.filter((x) => /split row/.test(x)).slice(0, 4).join(" · "));
   ok(`8.4 the confirm panel states the pool's projected return in shillings, qualified, with no multiple, side-aware (${panels.length} renders)`,
      panels.every((r) => defectsOf(r).length === 0),
@@ -590,8 +599,8 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
   const shownOnce = (pred: (r: (typeof renders)[number]) => boolean) => renders.filter(pred).length;
   ok("8.5 CONTROL · the renders cover a sentence shown (one-sided, empty) AND withheld (two-sided), in every language",
      LOCALES.every((loc) =>
-       shownOnce((r) => r.loc === loc && r.kind === "card" && allSentences(loc).some((s) => text(r.html).includes(s))) >= 6
-       && shownOnce((r) => r.loc === loc && r.kind === "card" && !allSentences(loc).some((s) => text(r.html).includes(s))) >= 2));
+       shownOnce((r) => r.loc === loc && r.kind === "card" && allCardSentences(loc).some((s) => text(r.html).includes(s))) >= 6
+       && shownOnce((r) => r.loc === loc && r.kind === "card" && !allCardSentences(loc).some((s) => text(r.html).includes(s))) >= 2));
 
   // ⭐ PLANTED DEFECTS — each must be REPORTED by the same reader, or 8.1–8.4 cannot fail.
   const pick = (what: string) => renders.find((r) => r.what === what)!;
@@ -605,11 +614,11 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
   const plantNote = twoOut.html.replace("</article>", `${oldNote}</article>`);
   ok("8.1″ PLANT · the old estimate note under the buttons is reported", defectsOf(twoOut, plantNote).some((x) => /estimate note|×/.test(x)));
   const sw = DICTS.sw.market;
-  const swDownEmpty = sw.udNobodyBacked.replace("{side}", sw.udDown);
+  const swDownEmpty = cardRefundBrief(DICTS.sw, "DOWN")!;
   const plantDropped = dropParagraphsWith(oneIn.html, swDownEmpty);
   ok("8.2′ PLANT · the sentence dropped from a one-sided card is reported",
      plantDropped !== oneIn.html && defectsOf(oneIn, plantDropped).some((x) => /missing/.test(x)), defectsOf(oneIn, plantDropped).join(" · "));
-  const plantFalse = twoOut.html.replace("</article>", `<p>${DICTS.en.market.udNobodyBacked.replace("{side}", DICTS.en.market.udDown)}</p></article>`);
+  const plantFalse = twoOut.html.replace("</article>", `<p>${cardRefundBrief(DICTS.en, "DOWN")}</p></article>`);
   ok("8.2″ PLANT · the sentence shown on a two-sided card is reported (the lie a presence check never sees)",
      defectsOf(twoOut, plantFalse).some((x) => /false empty-side sentence|disagree/.test(x)), defectsOf(twoOut, plantFalse).join(" · "));
   const plantPanelMult = panelUp.html.replace(/(<span class="amount text-body-sm font-semibold text-text-muted">[^<]+<\/span>)/, `$1<span class="font-mono text-[11px] tabular-nums text-text-faint">× 1.26</span>`);
@@ -666,7 +675,7 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
     return d;
   }
   const journeyDefectsOf = (r: (typeof journey)[number], html = r.html) =>
-    r.kind === "panel" ? journeyPanelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, false);
+    r.kind === "panel" ? journeyPanelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, r.what.startsWith("journey card") ? "compact" : "detail");
   const journeyBad = journey.flatMap((r) => journeyDefectsOf(r).map((x) => `${r.what}: ${x}`));
   ok(`8.6 the journey arm (S12): the card control, the two-way control and the ?side= panel say Up and Down only — no "×", no estimate note on a choice, the panel's projection the pool's with its qualifier, the empty side iff true (${journey.length} renders)`,
      journeyError === "" && journey.length === LOCALES.length * POOLS.length * 2 * 4 && journeyBad.length === 0,

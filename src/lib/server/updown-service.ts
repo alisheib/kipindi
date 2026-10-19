@@ -929,10 +929,10 @@ export async function closeRound(
       resolutionStage2By: "system_updown", resolutionStage2At: nowIso,
       resolutionEvidence:
         side === "VOID"
-          ? useTargets
-            ? `Round voided (${finalVoidReason}): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
-            : sourceMismatch
-              ? `Round voided (source-mismatch): ${sourceMismatch}. Every stake is refunded in full.`
+          ? sourceMismatch
+            ? `Round voided (source-mismatch): ${sourceMismatch}. Every stake is refunded in full.`
+            : finalVoidReason === "no-move" && useTargets && decided.voidReason === "no-move"
+              ? `Round voided (no-move): close ${closePrice} stayed inside the band [${round.downTarget}, ${round.upTarget}] (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%). Every stake is refunded in full.`
               : `Round voided (${finalVoidReason}). Every stake is refunded in full.`
           : useTargets
             ? `Close ${closePrice} ${outcome === "UP" ? `≥ up target ${round.upTarget}` : `≤ down target ${round.downTarget}`} (open ${round.openPrice} ± ${((round.marginBps ?? 0) / 100).toFixed(2)}%, ${asset.symbol}, ${evidenceDomain}).`

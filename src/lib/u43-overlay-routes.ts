@@ -1,11 +1,12 @@
-/** U43's one-click board and round detail keep floating helpers off money controls. */
+/** U43's live choice cards keep floating helpers off money controls. */
 const UPDOWN_MONEY_PAGE = /^\/updown(?:\/(?!history(?:\/|$))[^/]+)?\/?$/;
+const MARKET_CARD_PAGE = /^\/(?:markets(?:\/[^/]+)?|watchlist|results)\/?$/;
 
 export function suppressNeedleOnU43(path: string | null): boolean {
-  return !!path && UPDOWN_MONEY_PAGE.test(path);
+  return !!path && (path === "/" || MARKET_CARD_PAGE.test(path) || UPDOWN_MONEY_PAGE.test(path));
 }
 
-/** The markets board also has live choice cards that the chat bubble can cover. */
+/** The chat bubble uses the same keepout on U43's live choice cards. */
 export function suppressChatOnU43(path: string | null): boolean {
-  return path === "/markets" || suppressNeedleOnU43(path);
+  return suppressNeedleOnU43(path);
 }

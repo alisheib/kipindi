@@ -19,7 +19,7 @@ import { audit } from "./audit";
 import { db } from "./store";
 import { isDepositReturnBet } from "@/lib/journey/deposit-state";
 import { randomId } from "./crypto";
-import { withLock, runOutsideLock } from "./locks";
+import { withLock, runOutsideLock, afterCommit } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
@@ -1698,7 +1698,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       };
     }
 
-    const payoutIfWin = await projectedPayout(market, opts.side, opts.stake);
+    // The receipt must quote the pool THIS bet actually joins. Another wallet can
+    // change the market while this bet waits for its market lock, so the projection
+    // is calculated from the locked `fresh` row below, before any money write.
+    let payoutIfWin: number | undefined;
     const positionId = `pos_${randomId(10)}`;
     const betTxnId = `txn_${randomId(12)}`;
     const placedAt = new Date().toISOString();
@@ -1707,25 +1710,6 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     const depositReturn = isDepositReturnBet(userId, returnRow, {
       marketId: opts.marketId, side: opts.side, stake: opts.stake, houseBotId: houseIntent?.houseBotId ?? null,
     }, Date.parse(placedAt));
-    const position: StoredPosition = {
-      id: positionId,
-      userId,
-      marketId: opts.marketId,
-      side: opts.side,
-      stake: opts.stake,
-      bonusStakeTzs: bonusPart,
-      potentialPayout: payoutIfWin,
-      status: "OPEN",
-      finalPayout: null,
-      placedAt,
-      settledAt: null,
-      idempotencyKey: opts.idempotencyKey ?? null,
-      ...(depositReturn ? { origin: "deposit_return" } : {}),
-      // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
-      // SEAM:marker
-      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
-    };
-
     // Pool mutation must be serialized PER-MARKET, not per-wallet: two
     // different users betting the same market hold different `wallet:` locks,
     // so without this they read-modify-write the same pool concurrently and
@@ -1774,6 +1758,26 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
         housePool = h3.pool;
         houseTwoSidedDesk = h3.twoSidedDesk;
       }
+      const payoutIfWinAtCommit = await projectedPayout(fresh, opts.side, opts.stake);
+      payoutIfWin = payoutIfWinAtCommit;
+      const position: StoredPosition = {
+        id: positionId,
+        userId,
+        marketId: opts.marketId,
+        side: opts.side,
+        stake: opts.stake,
+        bonusStakeTzs: bonusPart,
+        potentialPayout: payoutIfWinAtCommit,
+        status: "OPEN",
+        finalPayout: null,
+        placedAt,
+        settledAt: null,
+        idempotencyKey: opts.idempotencyKey ?? null,
+        ...(depositReturn ? { origin: "deposit_return" } : {}),
+        // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
+        // SEAM:marker
+        ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
+      };
       const writeMoney = async (counterparties: Counterparty[] | null) => {
         await withMoneyTx(async (tx) => {
           usedTx = tx !== null;
@@ -1922,7 +1926,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
       // deferred to `committed` and fired after withLock resolves.
       committed = {
         positionId, placedAt, yesPool: fresh.yesPool, noPool: fresh.noPool,
-        payoutIfWin, bonusPart, walletId: wallet.id, bonusAllocations, usedTx,
+        payoutIfWin: payoutIfWinAtCommit, bonusPart, walletId: wallet.id, bonusAllocations, usedTx,
       };
       return "OK";
     });
@@ -1943,6 +1947,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, 
     }
     // A house gate refused inside the market or control lock — before any money write (H3/H4).
     if (typeof outcome === "object") return outcome;
+    if (payoutIfWin === undefined) throw new Error("Committed bet has no payout projection.");
     // The bet's audit trail, inbox receipt and email all moved BELOW the lock.
     // They are fire-and-forget and need no lock, but the market advisory lock is
     // now held until the outer transaction ends (it rides the same tx), so any
@@ -4039,7 +4044,9 @@ export async function settleMarket(
   // ⛔ Never call `marketStore.set` inside this scope without `lockTx`.
   const persistResolution = async () => {
     await marketStore.set(m, lockTx ?? undefined);
-    recordSnapshot(m.id, m.yesPool, m.noPool);
+    // The chart may only describe a settlement every reader can see. A failed
+    // lock transaction rolls its stamp and payouts back, so it drops this too.
+    afterCommit(lockTx, () => { void recordSnapshot(m.id, m.yesPool, m.noPool); });
   };
 
   // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
@@ -5074,7 +5081,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     m.resolutionEvidence = reason ? String(reason).trim().slice(0, 2000) || null : null;
     m.updatedAt = now;
     await marketStore.set(m, lockTx ?? undefined);
-    recordSnapshot(m.id, 0, 0);
+    afterCommit(lockTx, () => { void recordSnapshot(m.id, 0, 0); });
 
     audit({
       category: "COMPLIANCE",

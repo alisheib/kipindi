@@ -1,6 +1,8 @@
 /** U43 B5 wording and motion anchors, shared by the red proof and fleet audit. */
 export const MUTATIONS = [
   { file: "src/lib/updown-round-name.ts", from: 't.market.udMin === "dakika"', to: 't.market.udMin === "minutes"', expect: "Swahili duration places the numeral after dakika" },
+  { file: "src/lib/i18n-dict.ts", from: 'updown: "Juu na Chini",', to: 'updown: "Juu/Chini",', expect: "the game has one full name and a two-line 64px Swahili rail slot" },
+  { file: "src/app/globals.css", from: '.kp-rail__item[href="/updown"] .kp-rail__label {', to: '.kp-rail__item[href="/markets"] .kp-rail__label {', expect: "the game has one full name and a two-line 64px Swahili rail slot" },
   { file: "src/components/updown/updown-board-tabs.tsx", from: 'const durationText = (minutes: number) => roundDuration({ market: { udMin: minLabel } }, minutes);', to: 'const durationText = (minutes: number) => `${minutes} ${minLabel}`;', expect: "board chip, filter sheet and active summary all use the shared locale-aware duration" },
   { file: "src/components/updown/updown-bet-receipt-modal.tsx", from: 'subtitle={`${roundDuration(t, info.durationMinutes)} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}', to: 'subtitle={`${info.durationMinutes} ${t.market.udMin} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}', expect: "bet receipt uses that same duration grammar beside the market source" },
   { file: "src/lib/i18n-dict.ts", from: 'udNextMatchIn: "Raundi ijayo baada ya"', to: 'udNextMatchIn: "Mechi ijayo baada ya"', expect: "one round word in the handover labels" },

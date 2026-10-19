@@ -270,12 +270,21 @@ chunk and broke the build. Keep any server-only runtime out of `lock-key.ts`.
   `getEffectiveConfig()`, which reads LIVE config and is for stamping a NEW market and for the admin UI. A snapshot is
   never rewritten, backfilled or migrated. The rates themselves are `docs/RULES.md`'s; the arithmetic is
   `src/lib/payout.ts`.
-- **A price-history write never rejects.** `recordSnapshot` (`market-history.ts`, table `MarketSnapshot`) is called
-  fire-and-forget from the bet and settlement paths, and an unhandled rejection kills the container mid-bet — so every
-  history WRITE swallows and logs its own error (reads may throw; their callers guard). A market with no bets has an
-  empty chart: ⛔ never a fallback that invents points (`npm run test:history`).
-- **A board batches its charts.** `/`, `/markets` and `/results` call `getCardCharts(ids)` — one query for the whole
-  board. ⛔ Never map `getCardChart` across a list.
+- **A price-history write never rejects and never describes rolled-back money.** `recordSnapshot`
+  (`market-history.ts`, table `MarketSnapshot`) is fire-and-forget, and every history WRITE swallows and logs its own
+  error (reads may throw; their callers guard). Settlement and emergency void queue their point with
+  `afterCommit(lockTx, …)`: the outer lock publishes it only after the money and market stamp commit, and discards it
+  on rollback. The memory store has no transaction, so its point follows its already-written market row immediately.
+  `test:u43-snapshot-commit` proves both stores; `red:u43-snapshot-commit` restores each premature write. A market
+  with no bets has an empty chart: ⛔ never a fallback that invents points (`npm run test:history`).
+- **A board batches its charts.** `/`, `/markets` and `/results` call `getCardCharts(markets)` with each card's
+  current pool pair — one query for the whole board. A fire-and-forget snapshot may lag the market row: the reader
+  withholds both the move and mini chart until the latest recorded pools match that row. ⛔ Never map `getCardChart`
+  across a list or compute a movement from a history row that disagrees with the card's current price. The
+  `Biggest move` sort reuses its board-wide chart batch for its visible cards so a second read cannot change a
+  displayed movement after the ordering decision; only the separate resolved strip needs another batch. The
+  single-card reader delegates to that same batch policy, including the selected memory/PostgreSQL store and its
+  time window, so a busy market cannot acquire a second baseline at the detail reader's point cap.
 - **A deposit that lands during a break is held, not credited.** `settleDepositConfirmed` books it to
   `HOUSE:RG_SUSPENSE` (status `AML_REVIEW`, audit `deposit.rg_refund_due`) until an officer returns it. ⛔ Never credit
   `PLAYER:<id>` for it: `PLAYER` is trial-balanced against the wallet, so crediting money that was never added to the

@@ -70,9 +70,8 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  the middle track. The grid below is still five equal tracks. */
   const items = [
     { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
-    /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
-       cannot fit a fifth of a 360 phone and read "Juu na Ch…" on every Swahili page. The accessible
-       name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
+    /* The full product name wraps in the Swahili phone rail. The accessible name stays
+       the visible label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
     // One meaning, one glyph (PHOSPHOR-MIGRATION R-LEXICON): Up & Down is `trade` in both shells; Live is `live`.
     { href: "/updown",  glyph: "trade" as const,      label: t.nav.updown, accent: true },
     { href: "/live",    glyph: "live" as const,       label: t.nav.live },

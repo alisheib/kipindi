@@ -29,6 +29,7 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { pendingAssetHasDuration } from "../src/lib/updown-filter-pending.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
@@ -245,6 +246,18 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
   // active duration, never to "none" — which is the exact shape of the defect.
   ok("9: ⛔ …and a pending href with no `d` falls through to the real active duration",
      /pending != null && pending\.has\("d"\)/.test(tabs) && /: t\.d === activeDuration/.test(tabs));
+  // U43 2026-10-20: BTC 3 minutes -> Gold has no 3-minute chain. The old
+  // duration remains selected while the new board streams, so the old asset
+  // must remain selected with it instead of announcing Gold + 3 minutes.
+  ok("9: pending asset-only URL keeps the old asset and duration together",
+      !pendingAssetHasDuration("XAU", null, "BTC")
+      && /pending != null && pendingAssetReady \? pending\.get\("asset"\) === tab\.key : tab\.key === activeAssetKey/.test(tabs)
+      && /pendingAssetHasDuration\(pending\?\.get\("asset"\) \?\? null, pending\?\.get\("d"\) \?\? null, activeAssetKey\)/.test(tabs));
+  ok("9: a shared duration still gives immediate asset feedback",
+      pendingAssetHasDuration("XAU", "15", "BTC")
+      && pendingAssetHasDuration("BTC", null, "BTC")
+      && !pendingAssetHasDuration("XAU", "oops", "BTC")
+      && !pendingAssetHasDuration(null, null, "BTC"));
 }
 
 // ── 10 · 🔴 THE SHEET MUST LEAVE, NOT VANISH ──

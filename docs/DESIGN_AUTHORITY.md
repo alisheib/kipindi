@@ -293,9 +293,13 @@ returned amount once; it does not repeat the return promise above that amount or
 
 ⛔ **Nor to express a price MOVE** (2026-09-27, the landing v3 WP3+WP4 review, R8). A market card's 24h move
 of the YES price is not a side, and a green-up / rose-down move invites chasing. The grid card printed "+5pt" in
-`--yes-400` / `--no-400` while the featured card on the same page printed the same move "▲5 · 24h ago" in neutral
+`--yes-400` / `--no-400` while the featured card printed the same move in neutral
 ink: ONE reading on every card now — `DayAgoMove` in `market-card.tsx`, `.mcardp-h24`, `--text-subtle`, the family's
-filled direction caret for a move, and plain `0` for a flat reading — printed only where a price exists now.
+filled direction caret for a move, and plain words for a flat reading — printed only where a price exists now.
+The line names the measured YES side (Up for an Up & Down card) even when NO leads the pool, and says the baseline
+is the first available reading within the past 24 hours. The full line wraps at the reading floor on a narrow card.
+The move and mini chart appear only when the latest recorded snapshot's pools equal the current market row's pools;
+otherwise a delayed history write could put a stale price beside the card's current figure, so both stay absent.
 `test:betting-ink` §5 pins its neutral ink, with planted inked moves.
 
 ⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
@@ -2682,7 +2686,7 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
 
    `JourneyTabs` in `src/components/journey/journey-tabs.tsx`; its one table is `JOURNEY_TABS` in
    `src/lib/nav/active-tab.ts`; its own rules are `.kp-rail--journey`, `.kp-jtab__label` and `.kp-rail__badge`.
-   - **Four equal tracks** — Maswali, Juu/Chini, Tiketi zangu, Akaunti — on the classic rail's own surface, slot, pip
+   - **Four equal tracks** — Maswali, Juu na Chini, Tiketi zangu, Akaunti — on the classic rail's own surface, slot, pip
      and label (`.kp-rail` and `.kp-rail__item`, worn unchanged from 360; below it, the label rule further down).
      ⛔ **No centre coin, no More, no accent dot:** money-in is the header's "+ Weka pesa", and what More carried is a
      row in Akaunti (8c).
@@ -3121,13 +3125,15 @@ the thing a session is told to trust. Found by auditing the close-out, not by re
 
 ### ✅ Closed here, 2026-08-10 (session 38) — these were never Ali's to decide
 
-- **The 360px card title (Q6) — ANSWERED BY IMPLEMENTATION.** The 2-line clamp shipped on
-  both card families, and one of them cites Q6 by name: `updown-card.tsx:399-402`
-  (`WebkitLineClamp: 2`) and `globals.css:2782` (`.mcardp-q`). Both took the recommended
-  answer and agree with each other. ⚠️ It is *asserted, not proven* — `innerText` returns
-  the full string either way and a WRAP satisfies `scrollWidth === clientWidth` exactly as
-  a fit does, so the honest check is rendered: computed `-webkit-line-clamp` plus height at
-  360 × sw/zh. That belongs to the exit sweeps.
+- **The 360px card title (Q6) — REVISED FOR CHOICES AND RESULTS, U43.** The two-line clamp remains
+  a waiting browse-preview treatment only. A market card offering YES/NO buttons shows its **whole
+  proposition above those buttons**: the 320px Swahili Bitcoin card hid the deciding
+  “kijani kesho?” behind an ellipsis while both choices remained active. A final result also
+  shows the whole proposition so the verdict has an unambiguous subject. The title keeps
+  the two-line minimum for row rhythm and grows by the actual question's remaining lines.
+  The Up & Down round card now names the asset and time window, not a clamped question.
+  Measure the visible title against an unclamped copy in the browser; `innerText` returns
+  hidden lines too and cannot prove that a player sees the complete question.
 - **The crest chief band opacity — DECLARED AT THE RENDERED VALUE, `0.16`.** Three
   documents held three answers (provenance `0.26`, this file "open", the render `0.16`)
   for one thing that has exactly one observable truth: `identity-avatar.tsx:123` paints

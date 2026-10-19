@@ -17,6 +17,10 @@ const handover = source("src/components/updown/updown-handover.tsx");
 const dictionary = source("src/lib/i18n-dict.ts");
 const css = source("src/app/globals.css");
 const helper = source("src/lib/updown-card-view.ts");
+const unlabeledMove = card
+  .replace('    down: downTarget == null ? null : usd(downTarget, decimals),',
+    '    down: downTarget == null ? null : usd(downTarget, decimals),\n    move: shownPrice == null || openPrice == null ? null : usd(shownPrice - openPrice, decimals),')
+  .replace('{priceText.live}</span>', '{priceText.live}</span><span className="ud-now-delta font-mono text-micro tabular-nums">{priceText.move}</span>');
 
 const checks = [
   ["live line removed", card.replace("<RoundLiveLine assetKey={assetKey}", "<MissingLiveLine assetKey={assetKey}")],
@@ -37,6 +41,8 @@ const checks = [
   ["price painted as winnings", card.replace('const priceColor = "var(--text)";', 'const priceColor = "var(--gilt)";')],
   ["price row bypasses neutral ink", card.replace('style={{ color: priceColor }}', 'style={{ color: "var(--no-300)" }}')],
   ["target tiles returned", card.replace("{/* The open is the price to beat, stated once.", '<div className="ud-prices" />\n      {/* The open is the price to beat, stated once.')],
+  ["unexplained margin beside price to beat", card.replace('{priceText.open ?? "—"}', '{priceText.open ?? "—"}±')],
+  ["unlabeled moved-price difference beside confirmed price", unlabeledMove],
   ["card Swahili grammar reverted", card.replace('const durationWords = roundDuration(t, durationMinutes);', 'const durationWords = `${durationMinutes} ${t.market.udMin}`;')],
 ];
 for (const [name, mutant] of checks) {

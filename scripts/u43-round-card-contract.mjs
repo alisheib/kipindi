@@ -23,6 +23,11 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     "urgent digits use the kit motion tier");
   need(card.includes('className="ud-beat') && (card.match(/t\.market\.udWinTarget/g) ?? []).length === 1,
     "price to beat once");
+  const beat = card.slice(card.indexOf('className="ud-beat'), card.indexOf('{openPrice == null', card.indexOf('className="ud-beat')));
+  need(beat.length > 0 && !beat.includes("±") && !card.includes("priceText.margin"),
+    "price to beat has no unexplained margin");
+  need(!nowSource.includes('ud-now-delta') && !card.includes('move: shownPrice'),
+    "confirmed price has no second unlabeled difference");
   need(!card.includes('className="ud-prices"') && !card.includes('>≥ {priceText.up}')
     && !card.includes('>≤ {priceText.down}'), "no target tiles");
   need(card.includes('const readKind = cardPriceRead({ opensAtMs, closesAtMs, readQuotedAt, openPrice, readPrice });')
@@ -37,7 +42,7 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
   need(card.includes('const priceColor = "var(--text)";')
     && nowSource.includes('style={{ color: priceColor }}')
     && !/var\(--(?:yes-300|no-300|gilt)\)/.test(nowSource),
-    "price, move and arrow wear neutral ink; side colours belong to choices and outcomes");
+    "confirmed price and arrow wear neutral ink; side colours belong to choices and outcomes");
   need(card.includes('<RoundLiveLine assetKey={assetKey} opensAtMs={opensAtMs}'), "live-line slot");
   need(card.includes('const quoteVisible = locked || awaitingResult || state === "confirming"'),
     "frozen payout rows survive confirming");
