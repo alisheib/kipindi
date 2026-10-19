@@ -18,6 +18,8 @@
  *   §8 its own controls: each source check below is seen to fail on a planted copy
  *   §9 round 3: Tiketi zangu and the register page on the platform's link pager; the hub and the ticket page read the
  *      week they name; the free cancel says whose page it was; /positions/performance reads each scored line directly
+ *   §10 the root 404 hint is the owner's exact, product-neutral wording in all three languages and its dictionary twin
+ *   §11 the player drive waits for fonts, finite motion and two frames before each tile, and lifts the pointer after pick 15
  *
  * Pure: it reads source files and runs the pure decision helpers. No server, no database, no network, no file written.
  */
@@ -29,6 +31,8 @@ import { isCommitSurface, isJourneySurface, isMoneySurface, isSlipSurface } from
 import { millioneaTicketHref } from "../src/lib/position-permalink.ts";
 import { MILLIONEA_ROUTES } from "./live/millionea-dark.mjs";
 import { decomment } from "./lib/decomment.mts";
+import { NOT_FOUND_WORDS } from "../src/components/ui/not-found-words.ts";
+import { dict, type Locale } from "../src/lib/i18n-dict.ts";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n") : "");
@@ -728,9 +732,107 @@ const perfDefects = (readAt: (rel: string) => string) => {
   ok("9.13 · CONTROL · the old subtraction put back is reported", subtract.some((x) => x.includes("less its tickets")) && subtract.some((x) => x.includes("own merge")));
 }
 
+// ── §10 · P14: the root 404 hint belongs to every product ──────────────────────────────────────────────────────────
+console.log("\n§10 · the owner-approved 404 hint in every language, with its dictionary twin");
+const HINT_LOCALES = ["en", "sw", "zh"] as const satisfies readonly Locale[];
+type Hints = Record<Locale, string>;
+const EXPECTED_HINT: Hints = {
+  en: "The link may be out of date, or the address was typed slightly off. Pick a destination below to keep going.",
+  sw: "Kiungo kinaweza kuwa kimepitwa na wakati, au anwani imeandikwa vibaya kidogo. Chagua mahali pa kwenda hapa chini.",
+  zh: "链接可能已过期，或网址输入有误。请从下方选择一个页面继续。",
+};
+const PRODUCT_IN_HINT = /\b(?:markets?|resolved|soko|masoko|limetatuliwa|millionea|50pick|url)\b|市场|赛事|Up\s*(?:&|and)\s*Down/i;
+const hintDefects = (shown: Hints, twin: Hints) => HINT_LOCALES.flatMap((locale) => {
+  const d: string[] = [];
+  if (shown[locale] !== EXPECTED_HINT[locale]) d.push(`${locale}: the root hint differs from the owner's words`);
+  if (twin[locale] !== EXPECTED_HINT[locale]) d.push(`${locale}: the dictionary hint differs from the owner's words`);
+  if (shown[locale] !== twin[locale]) d.push(`${locale}: the root and dictionary hints differ`);
+  if (PRODUCT_IN_HINT.test(shown[locale]) || PRODUCT_IN_HINT.test(twin[locale])) d.push(`${locale}: the hint names a product or the old URL wording`);
+  return d;
+});
+{
+  const shown = Object.fromEntries(HINT_LOCALES.map((locale) => [locale, NOT_FOUND_WORDS[locale].notFoundHint])) as Hints;
+  const twin = Object.fromEntries(HINT_LOCALES.map((locale) => [locale, dict[locale].error.notFoundHint])) as Hints;
+  const d = hintDefects(shown, twin);
+  ok("10.1 · P14: root and dictionary hints use the exact approved, product-neutral words in en/sw/zh", d.length === 0, d.join(" | "));
+  const old: Hints = {
+    en: "The market may have resolved, or the URL was typed in slightly off.",
+    sw: "Soko huenda limetatuliwa, au URL iliandikwa vibaya kidogo.",
+    zh: "市场可能已结束，或URL输入有误。",
+  };
+  for (const locale of HINT_LOCALES) {
+    // Move both copies together: mere parity between them must not bless the old product-specific wording.
+    const planted = hintDefects({ ...shown, [locale]: old[locale] }, { ...twin, [locale]: old[locale] });
+    ok(`10.2 · CONTROL · the old ${locale} hint is rejected even when both copies agree`,
+      planted.some((x) => x.startsWith(`${locale}: the root hint differs`))
+      && planted.some((x) => x.startsWith(`${locale}: the hint names a product`)), planted.join(" | "));
+  }
+  const reworded = "The link may be stale, or the address was typed incorrectly. Choose a destination below.";
+  const exact = hintDefects({ ...shown, en: reworded }, { ...twin, en: reworded });
+  ok("10.3 · CONTROL · a product-neutral paraphrase still fails the owner's exact-word pin",
+    exact.some((x) => x.startsWith("en: the root hint differs"))
+    && !exact.some((x) => x.startsWith("en: the hint names a product")), exact.join(" | "));
+}
+
+// ── §11 · the player-drive tile must show its settled state ─────────────────────────────────────────────────────────
+console.log("\n§11 · the player drive settles each tile and lifts the pointer after the fifteenth pick");
+const DRIVE = "scripts/maswali-player-drive.mjs";
+const driveDefects = (src: string) => {
+  const d: string[] = [];
+  const whole = squash(code(src));
+  const tileStart = whole.indexOf("const tile = async (page, name) => {");
+  const tileEnd = whole.indexOf("const notFoundShown", tileStart);
+  const tile = tileStart < 0 || tileEnd < 0 ? "" : whole.slice(tileStart, tileEnd);
+  const steps = [
+    ["evaluates the page before capture", "await page.evaluate(async () => {"],
+    ["waits for fonts", "await document.fonts.ready;"],
+    ["keeps only finite animations", "document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity)"],
+    ["awaits their finished promises", "await Promise.all(oneShot.map((a) => a.finished.catch(() => {})))"],
+    ["waits for two animation frames", "await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))"],
+    ["takes the screenshot after settling", "return page.screenshot("],
+  ] as const;
+  let last = -1;
+  for (const [label, needle] of steps) {
+    const at = tile.indexOf(needle, last + 1);
+    if (at < 0) d.push(`tile ${label}`);
+    else last = at;
+  }
+  if (/\}\)\.catch\s*\(/.test(tile)) d.push("tile swallows a settle error before screenshot");
+  const pickStart = whole.indexOf("async function buyOne(label) {");
+  const pickEnd = whole.indexOf("const first = await buyOne", pickStart);
+  const pick = pickStart < 0 || pickEnd < 0 ? "" : whole.slice(pickStart, pickEnd);
+  const click = pick.indexOf('for (let i = 0; i < 15; i++) await groups.nth(i).getByRole("radio").first().click();');
+  const lift = pick.indexOf("await p.mouse.move(2, 400);", click + 1);
+  const answeredTile = pick.indexOf('await tile(p, `${label}-slip-answered-360`);', lift + 1);
+  if (!(click >= 0 && lift > click && answeredTile > lift)) d.push("the pointer does not leave the fifteenth pick before the answered-slip tile");
+  return d;
+};
+const plantDrive = (from: string, to: string) => {
+  const src = read(DRIVE);
+  if (count(src, from) !== 1) throw new Error(`drive plant premise absent or ambiguous: ${from}`);
+  return src.replace(from, to);
+};
+{
+  const d = driveDefects(read(DRIVE));
+  ok("11.1 · every tile waits for fonts, finite animations, their completion and two frames before capture; pick 15 loses hover", d.length === 0, d.join(" | "));
+  const noFonts = driveDefects(plantDrive("    await document.fonts.ready;", "    void document.fonts.ready;"));
+  ok("11.2 · CONTROL · a tile that does not await fonts is reported", noFonts.includes("tile waits for fonts"), noFonts.join(" | "));
+  const looping = driveDefects(plantDrive("document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity)", "document.getAnimations()"));
+  ok("11.3 · CONTROL · waiting on ambient infinite animations is reported", looping.includes("tile keeps only finite animations"), looping.join(" | "));
+  const unfinished = driveDefects(plantDrive("await Promise.all(oneShot.map((a) => a.finished.catch(() => {})))", "void Promise.all(oneShot.map((a) => a.finished.catch(() => {})))"));
+  ok("11.4 · CONTROL · not awaiting finite animation completion is reported", unfinished.includes("tile awaits their finished promises"), unfinished.join(" | "));
+  const oneFrame = driveDefects(plantDrive("requestAnimationFrame(() => requestAnimationFrame(() => done(true)))", "requestAnimationFrame(() => done(true))"));
+  ok("11.5 · CONTROL · a single frame before capture is reported", oneFrame.includes("tile waits for two animation frames"), oneFrame.join(" | "));
+  const hover = driveDefects(plantDrive("  await p.mouse.move(2, 400);\n  await tile(p, `${label}-slip-answered-360`);", "  await tile(p, `${label}-slip-answered-360`);\n  await p.mouse.move(2, 400);"));
+  ok("11.6 · CONTROL · lifting the pointer after the answered-slip tile is reported",
+    hover.includes("the pointer does not leave the fifteenth pick before the answered-slip tile"), hover.join(" | "));
+  const swallowed = driveDefects(plantDrive("  });\n  return page.screenshot", "  }).catch(() => {});\n  return page.screenshot"));
+  ok("11.7 · CONTROL · swallowing a failed tile settle before screenshot is reported",
+    swallowed.includes("tile swallows a settle error before screenshot"), swallowed.join(" | "));
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
- *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 67 call sites, two of them in loops that run 6 (§3.1) and 9 (§4.3). */
-const MIN_ASSERTIONS = 100; // 80 + S5-TAB's seven (§5b, 2026-10-19) + S5-TAB A and B's seven (5b.7′, 5b.8–5b.10, 8.5′–8.5‴) + §5c's six (the lead's tile read): 100 printed
+/** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
+const MIN_ASSERTIONS = 112; // 2026-10-19 green run: 100 through §9, five in §10, seven in §11
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

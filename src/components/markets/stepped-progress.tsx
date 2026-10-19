@@ -32,13 +32,21 @@ export function SteppedProgress(props: (Stepped | Grouped) & { className?: strin
   );
 }
 
+/**
+ * ⭐ THE TRACK IS SEEN (MASWALI-BUILD S5 · VIS-P P7, measured WCAG 2.x on the tokens, oklch → sRGB): an empty segment is
+ * `--border-strong` — 2.32:1 on the Millionea rail's `--panel`, where the `--bg-inset` it was measured 1.08:1 (near
+ * invisible at every width) — and the done `--royal-400` stands 1.97:1 brighter than it (4.56:1 on the panel), so "not yet"
+ * and "done" stay two things. (`--border-control` would read 3.31:1 on the panel but only 1.38:1 from done.) The count
+ * beside the meter says the numbers in words; the meter is their picture. Only this branch: the `groups` meter is
+ * Millionea's alone (its one caller, `maswali-slip.tsx`), the stepped one above draws what it always drew.
+ */
 function GroupedProgress({ groups, className }: { groups: ReadonlyArray<{ steps: number; done: number }>; className?: string }) {
   return (
     <div aria-hidden className={cn("flex gap-2", className)}>
       {groups.map((g, gi) => (
         <span key={gi} className="flex gap-0.5" style={{ flexGrow: g.steps, flexBasis: 0 }}>
           {Array.from({ length: g.steps }).map((_, i) => (
-            <span key={i} className="h-1 flex-1 rounded-pill" style={{ background: i < g.done ? "var(--royal-400)" : "var(--bg-inset)" }} />
+            <span key={i} className="h-1 flex-1 rounded-pill" style={{ background: i < g.done ? "var(--royal-400)" : "var(--border-strong)" }} />
           ))}
         </span>
       ))}

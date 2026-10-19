@@ -12,13 +12,17 @@ import type { Locale } from "@/lib/i18n-dict";
  * and on the server a "use client" module's exports are references: a component can be rendered, but
  * `NOT_FOUND_WORDS[locale]` would throw ("cannot dot into a client module") and `notFoundTitle()` could not be called.
  * `test:visual-pass-r5d` §4 walks the server graph and holds every import of a client module to its components.
+ * ⭐ THE HINT NAMES NO PRODUCT (MASWALI-BUILD S5 · VIS-P P14, 2026-10-19): it said "the market may have resolved" — wrong on a
+ * Millionea or an Up & Down page, and its Swahili "limetatuliwa" means "solved", its Chinese carried the English "URL". It
+ * says what is true of every missing page — an old link or a mistyped address — so it stays true while Millionea is dark.
+ * The dictionary's twin (`error.notFoundHint`) says the same words (`test:visual-pass-r4k` 1.6 holds the two equal).
  */
 export const NOT_FOUND_WORDS = {
   en: {
     notFoundCode: "404",
     notFound: "Page not found",
     notFoundBody: "We couldn’t find that page",
-    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
+    notFoundHint: "The link may be out of date, or the address was typed slightly off. Pick a destination below to keep going.",
     home: "Home",
     markets: "Markets",
     help: "Help",
@@ -28,7 +32,7 @@ export const NOT_FOUND_WORDS = {
     notFoundCode: "404",
     notFound: "Hakuna ukurasa",
     notFoundBody: "Hatukupata ukurasa huo",
-    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
+    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, au anwani imeandikwa vibaya kidogo. Chagua mahali pa kwenda hapa chini.",
     home: "Mwanzo",
     markets: "Masoko",
     help: "Msaada",
@@ -38,7 +42,7 @@ export const NOT_FOUND_WORDS = {
     notFoundCode: "404",
     notFound: "页面未找到",
     notFoundBody: "我们找不到该页面",
-    notFoundHint: "链接可能已失效，市场可能已结算，或URL输入有误。请选择以下目的地继续。",
+    notFoundHint: "链接可能已过期，或网址输入有误。请从下方选择一个页面继续。",
     home: "首页",
     markets: "市场",
     help: "帮助",

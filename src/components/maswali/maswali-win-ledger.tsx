@@ -6,8 +6,9 @@ import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp"
 import { SocketGlyph, socketWord, type SocketMark } from "@/components/maswali/maswali-seal-line";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { counted, weekWord } from "@/components/maswali/maswali-format";
+import { MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { sideWord } from "@/lib/side-label";
-import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
+import { cn, fill, formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
 
@@ -60,7 +61,7 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
       <header className="flex flex-col gap-1">
         <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
         <Heading className="font-display text-title-md font-bold text-text">{heading}</Heading>
-        <span className="font-mono text-body-sm text-text-muted break-all">{serials.join(" · ")}</span>
+        <span className="font-mono text-body-sm text-text-muted break-all"><MaswaliFacts facts={serials} /></span>
       </header>
       {children}
       <footer className="flex flex-col gap-1.5">
@@ -147,7 +148,8 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         {!sunset && <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(L.jackpot)} />}
         {sunset && L.pool === undefined && <ReceiptRow className={ROW} label={t.millionea.poolTotal} value={fig(L.jackpot)} />}
         <div className={ROW}>
-          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={fig(-L.fee)} />
+          {/* A fee taken, and the week's net, are the platform's signed figures ("−TZS 136,500", S5 VIS A4). */}
+          <ReceiptRow tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct: L.pct })} value={<span className="amount">{formatTzsSigned(-L.fee)}</span>} />
           {L.levies && (
             <p className="mt-0.5 text-body-sm text-text-subtle">{fill(t.millionea.levies, { tra: L.levies.tra, gbt: L.levies.gbt })}</p>
           )}
@@ -173,7 +175,7 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         {L.spent && (
           <>
             <ReceiptRow className={ROW} label={counted(L.spent.tickets, t.millionea.spentThisWeekOne, t.millionea.spentThisWeek)} value={quiet(L.spent.amount)} />
-            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={fig(L.spent.net)} />
+            <ReceiptRow className={ROW} emphasis="total" label={t.millionea.yourNet} value={<span className="amount">{formatTzsSigned(L.spent.net)}</span>} />
           </>
         )}
       </div>

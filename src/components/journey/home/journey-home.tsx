@@ -172,7 +172,9 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
         ) : view.empty === "q" ? (
           <LazyEmptyState fill kind="markets" title={fill(t.journey.homeQueryNone, { q })} action={clearSearch} />
         ) : (
-          <LazyEmptyState fill kind="markets" title={t.journey.homeEmptyTitle} body={t.journey.homeEmptyBody} />
+          // MASWALI-BUILD S5 · VIS-P P13: under the Millionea card the board says "no OTHER open questions" — never a plain
+          // "no open questions" right under an open Millionea week (sw read "Hakuna maswali wazi" under "Maswali Millionea").
+          <LazyEmptyState fill kind="markets" title={millionea ? t.millionea.homeEmptyOther : t.journey.homeEmptyTitle} body={t.journey.homeEmptyBody} />
         )}
         <LazyStripAutoScroll />
         <LazyRefreshPoller intervalMs={REFRESH_MS} />

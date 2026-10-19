@@ -77,7 +77,19 @@ async function open(page, path) {
   await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
   return res;
 }
-const tile = (page, name) => page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
+/** A tile of the page AT REST (S5 VIS, the lead's ruling of 2026-10-19): the webfonts, every running animation and
+ *  transition finished (a sheet's rise, a dialog's fade, a pick's fill), and two frames — the first OMEGA read shot the
+ *  confirm sheet mid-rise and the last pick mid-transition, and read both as defects (P8, P9: measured, they were not). */
+const tile = async (page, name) => {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    // An ambient loop (an infinite iteration count) never finishes: only the one-shot motions are waited for.
+    const oneShot = document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity);
+    await Promise.all(oneShot.map((a) => a.finished.catch(() => {})));
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))));
+  });
+  return page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
+};
 const notFoundShown = async (page) =>
   (await page.getByRole("heading", { level: 1, name: NOT_FOUND_H1, exact: true }).count()) > 0
   && (await page.getByText(`404 · ${NOT_FOUND}`, { exact: true }).count()) > 0;
@@ -200,6 +212,8 @@ async function buyOne(label) {
   await groups.first().waitFor({ timeout: 60_000 }).catch(() => {});
   ok(`${label}.2 the slip asks fifteen questions, each one radio group`, (await groups.count()) === 15, `${await groups.count()}`);
   for (let i = 0; i < 15; i++) await groups.nth(i).getByRole("radio").first().click();
+  // The pointer leaves the last pick, as a finger lifts: the tile reads the selected state, not a hover on it (P8).
+  await p.mouse.move(2, 400);
   await tile(p, `${label}-slip-answered-360`);
   const proceed = p.locator("button:visible", { hasText: "Continue" }).first();
   ok(`${label}.3 fifteen answers arm "Continue"`, (await proceed.count()) === 1);

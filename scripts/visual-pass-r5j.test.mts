@@ -27,6 +27,7 @@
  * ⛔ It READS, parses and renders in memory; it writes nothing. The on-disk mutation proof is S/r5j/mutation-r5j.mjs.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { posix } from "node:path";
 import { createRequire } from "node:module";
 import NodeModule from "node:module";
@@ -355,6 +356,80 @@ const oldAmounts = (s: string) => s.split(OLD_FIGURE).filter((_, i) => i % 2 ===
   const dial = code("src/components/markets/conviction-dial.tsx");
   ok("3.6 · the bet receipt's title is the one the reader now dresses: the dial still hands \"NDIO · TZS 1,000\" as words",
     dial.includes('title={resultData.variant === "success" ? `${sideWord(t, resultData.side, "MARKET")} · ${formatTzs(resultData.stake)}`'));
+
+  // P2 adds an opt-in mono title and an opt-in panel class for Millionea. Every other result must render the same
+  // bytes as the component before P2, not merely keep a familiar heading class. e984abbe5 is VIS-P's parent; the
+  // blob pin refuses a moving or missing baseline. Both modules use the Modal stand-in installed above and the same
+  // current dependencies, so this comparison isolates OperationResultModal's own rendered markup.
+  const resultPath = "src/components/markets/operation-result-modal.tsx";
+  const beforeRef = `e984abbe5:${resultPath}`;
+  const beforeBlob = execFileSync("git", ["rev-parse", beforeRef], { encoding: "utf8" }).trim();
+  const beforeSource = execFileSync("git", ["show", beforeRef], { encoding: "utf8" }).replace(/\r\n/g, "\n");
+  ok("3.7.0 · P2's before-source is VIS-P parent e984abbe5, at the exact approved component blob",
+    beforeBlob === "de69d620de263fb372d92933d773407a60bc05f7" && beforeSource.includes("export function OperationResultModal(")
+      && !beforeSource.includes("function PanelClass("), beforeBlob);
+  const resultModulePath = req.resolve(`../${resultPath}`);
+  const liveModule = (req.cache as Record<string, NodeModule>)[resultModulePath];
+  const fromSource = (source: string) => {
+    const compiled = ts.transpileModule(source, {
+      fileName: resultModulePath,
+      compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const loaded = new NodeModule(resultModulePath);
+    loaded.filename = resultModulePath;
+    loaded.paths = liveModule.paths;
+    (loaded as NodeModule & { _compile(source: string, filename: string): void })._compile(compiled, resultModulePath);
+    return (loaded.exports as { OperationResultModal: (p: Record<string, unknown>) => unknown }).OperationResultModal;
+  };
+  const beforeResult = fromSource(beforeSource);
+  const currentResult = OperationResultModal;
+  const resultMarkup = (component: typeof currentResult, locale: Locale, props: Record<string, unknown>) =>
+    inApp(locale, h(component as never, { open: true, variant: "success", title: "Done", onClose() {}, ...props } as never));
+  const resultCases: Array<[string, string, Record<string, unknown>]> = [
+    ["poll bet", "src/components/markets/conviction-dial.tsx", { variant: "success", stripTone: "yes", eyebrow: "Bet placed", title: "YES · TZS 1,000", subtitle: "Your pick is in", primaryLabel: "Keep predicting", secondaryLabel: "View positions" }],
+    ["Up & Down receipt", "src/components/updown/updown-bet-receipt-modal.tsx", { variant: "success", stripTone: "no", title: "CHINI · TZS 1,000", subtitle: keepText("Stake TZS 1,000 committed"), details: [{ label: "Stake", value: "TZS 1,000" }] }],
+    ["Up & Down refusal", "src/components/updown/updown-bet-blocked-modal.tsx", { variant: "danger", eyebrow: "Could not place", title: "Balance too low", subtitle: "Add TZS 500 to continue", primaryLabel: "Close" }],
+    ["sell result", "src/components/markets/sell-result.tsx", { variant: "success", stripTone: "gold", title: "TZS 9,000 returned", details: [{ label: "Ticket", value: "pos_1" }, { label: "Fee", value: "TZS 100", tone: "bad" }], footnote: "Receipt in history" }],
+    ["wallet result", "src/app/wallet/wallet-result-modal.tsx", { variant: "neutral", title: "Deposit reversed", details: [{ label: "Reference", value: "txn_123456789" }], footnote: "See wallet history" }],
+    ["proposal result", "src/app/proposals/new/create-form.tsx", { variant: "success", title: "Proposal submitted", subtitle: "We will review it", primaryLabel: "Done", secondaryLabel: "View proposals" }],
+    ["admin success", "src/components/admin/action-overlay.tsx", { variant: "success", eyebrow: "Done", title: "Saved", autoCloseMs: 2_000 }],
+    ["admin error", "src/components/admin/action-overlay.tsx", { variant: "danger", eyebrow: "Failed", title: "Limit reached", subtitle: "Ask the Owner", details: [{ label: "Limit", value: "TZS 50,000" }] }],
+    ["agent invite", "src/app/agent/invite/[token]/invite-client.tsx", { variant: "info", stripTone: "brand", title: "Invitation received", subtitle: "Continue your application" }],
+    ["agent application", "src/app/agent/apply/apply-client.tsx", { variant: "warning", title: "More information needed", subtitle: "Check the document", primaryLabel: "Review" }],
+    ["resolver result", "src/app/admin/resolver-queue/resolve-controls.tsx", { variant: "success", title: "Resolution recorded", subtitle: "The decision is saved" }],
+    ["emergency void", "src/app/admin/markets/emergency-void-control.tsx", { variant: "danger", title: "Market voided", subtitle: "Stakes returned", details: [{ label: "Returned", value: "TZS 10,000", tone: "good" }] }],
+  ];
+  // The twelve JSX uses outside Millionea are the population this matrix represents. A new caller, or one opting into
+  // P2's props, needs an explicit parity case instead of silently passing a stale sample.
+  const callSites: Array<[string, string[]]> = [];
+  for (const file of walk("src").filter((f) => f.endsWith(".tsx") && !f.startsWith("src/app/millionea/"))) {
+    const sf = ts.createSourceFile(file, raw(file), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const visit = (node: ts.Node) => {
+      if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(sf) === "OperationResultModal") {
+        callSites.push([file, node.attributes.properties.filter(ts.isJsxAttribute).map((a) => a.name.text)]);
+      }
+      node.forEachChild(visit);
+    };
+    sf.forEachChild(visit);
+  }
+  ok("3.7.1 · all twelve non-Millionea result call sites still omit P2's opt-in props; each has a parity case",
+    j(callSites.map(([file]) => file).sort()) === j(resultCases.map(([, file]) => file).sort())
+      && callSites.every(([, props]) => !props.includes("titleFace") && !props.includes("className")),
+    j(callSites));
+  const parityDiffs = LOCALES.flatMap((locale) => resultCases.flatMap(([name, , props]) => {
+    const oldMarkup = resultMarkup(beforeResult, locale, props);
+    const newMarkup = resultMarkup(currentResult, locale, props);
+    return oldMarkup === newMarkup ? [] : [`${locale}/${name}: first differing byte ${[...oldMarkup].findIndex((ch, i) => ch !== newMarkup[i])}`];
+  }));
+  ok("3.7.2 · the twelve non-Millionea prop cases render byte-identically before and after P2 in en, sw and zh",
+    parityDiffs.length === 0, j(parityDiffs));
+  const currentSource = raw(resultPath);
+  const wrapperBranch = "return className ? <div className={className}>{children}</div> : <>{children}</>;";
+  const plantedSource = currentSource.replace(wrapperBranch, "return <div className={className}>{children}</div>;");
+  const plantedResult = fromSource(plantedSource);
+  ok("3.7.2′ PLANT · an unconditional panel wrapper changes the same non-Millionea bytes and fails parity",
+    currentSource.split(wrapperBranch).length === 2 && resultCases.every(([, , props]) =>
+      resultMarkup(beforeResult, "en", props) !== resultMarkup(plantedResult, "en", props)));
 }
 
 /* ══ §4 · G-6 · PRIVATE FIGURE READERS ══════════════════════════════════════════════════════════════════════════════════ */

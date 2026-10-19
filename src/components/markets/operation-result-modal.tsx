@@ -103,7 +103,20 @@ type Props = {
    *  crest as the micro-seal (`.seal-commit`, `seal-place`), as a staked side's does, on the brand strip. Omitted, only a
    *  yes/no strip takes the seal, exactly as before. Ignored for non-success variants. */
   stamp?: boolean;
+  /** MASWALI-BUILD S5 · VIS-P (P2): `"mono"` sets the title in the mono face at the size that holds a ticket's serial
+   *  ("MLN-2026-W49-000041", 19 characters) on ONE line — the panel's text column is 224px at 320 and 264px at 360, so
+   *  18px below 360 (198px) and 22px from 360 (240px) — as the ticket page's head sets the same serial; the 22px display
+   *  title wrapped it "MLN-2026-W49-" / "000041". Omitted: the display title, exactly as before. */
+  titleFace?: "mono";
+  /** Classes for everything inside the panel (a wrapper drawn only when given): Millionea's `.kp-mln-zh`, since the dialog
+   *  is portalled out of the page's root (S5 VIS A2/A3). Omitted: the panel's children exactly as before. */
+  className?: string;
 };
+
+/** The panel's children inside a `className` wrapper when one is given — and exactly as given (a fragment) otherwise. */
+function PanelClass({ className, children }: { className?: string; children: ReactNode }) {
+  return className ? <div className={className}>{children}</div> : <>{children}</>;
+}
 /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
    zero call sites ever passed them, and the win moment they anticipated is the
    struck seal in `win-celebration.tsx` now (M7 — the celebration vocabulary is
@@ -200,7 +213,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", stamp,
+  autoCloseMs, stripTone = "brand", stamp, titleFace, className,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -433,6 +446,7 @@ export function OperationResultModal({
       initialFocus={primaryRef}
       panelClassName="overflow-hidden !p-0"
     >
+      <PanelClass className={className}>
       {/* Auto-close progress strip — success only. Driven by the same RAF tick
           that schedules the close, so the bar and the dismiss land on the same
           frame. The panel's `overflow-hidden` clips it to the rounded corners. */}
@@ -504,9 +518,16 @@ export function OperationResultModal({
             {eyebrow}
           </p>
         )}
-        <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
-          {moneyRuns(title)}
-        </h2>
+        {titleFace !== "mono" ? (
+          <h2 className="mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]">
+            {moneyRuns(title)}
+          </h2>
+        ) : (
+          /* A serial in the mono face, sized to hold its line (`titleFace`); `break-all` only as the floor below 320. */
+          <h2 className="mt-1 font-mono text-title-sm font-bold text-text leading-tight break-all xs:text-title-md">
+            {moneyRuns(title)}
+          </h2>
+        )}
         {subtitle && (
           <p id={subtitleId} className="mt-1.5 text-[13px] text-text-muted leading-snug">
             {typeof subtitle === "string" ? moneyRuns(subtitle) : subtitle}
@@ -598,6 +619,7 @@ export function OperationResultModal({
       <style>{`
         @keyframes orm-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
       `}</style>
+      </PanelClass>
     </Modal>
   );
 }

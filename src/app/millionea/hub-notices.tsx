@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
-import { moneyRuns } from "@/lib/fill-nodes";
+import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
+import { useT } from "@/lib/i18n";
 import { markMillioneaNoticeSeenAction } from "./actions";
 
 /** One notice as the hub hands it over: its words already said in the reader's language, and where its door goes. */
@@ -35,6 +36,7 @@ export function HubNotices({ notices, renderedAt }: {
   /** The hub view's `asOf`: the instant these notices were derived and rendered (L7). */
   renderedAt: string;
 }) {
+  const { locale } = useT();
   const [shown] = useState(notices);
   const marked = useRef(new Set<string>());
   useEffect(() => {
@@ -51,7 +53,8 @@ export function HubNotices({ notices, renderedAt }: {
       {shown.map((n) => (
         <Callout key={`${n.weekId}|${n.notice}`} tone={n.notice === "RESULT" ? "info" : "neutral"} glyph="info" role="status">
           <span className="flex flex-col gap-1">
-            <span>{moneyRuns(n.text)}</span>
+            {/* A "·"-joined notice is a fact line (S5 VIS A1); its figures stay whole in the money face. */}
+            <span><MaswaliFacts facts={factsOf(n.text).map((f) => keepFact(locale, f))} /></span>
             {n.door && (
               <Link href={n.door.href as never} className="inline-flex items-center gap-1 self-start text-text-link hover:text-text-linkHover" style={{ minHeight: "var(--h-control-md)" }}>
                 {n.door.label}

@@ -6,8 +6,9 @@
  * strip; the pool block (the figure, its rule, its public ledger); the buy block (the door to the slip, the close always
  * printed, the closing pill in the last hour only, the reader's tickets of the cap, a row per held ticket with its Seal
  * Line); the fifteen public questions with each attested result's stamp; last week as one closed row; How to play and
- * the register. From 1280 two columns: the strip, the questions and last week on the left (640), the pool block, the
- * buy block and the tickets on the right (400), sticky (D-16). Below 1280 one column (L8).
+ * the register. From 1280 the strip across the measure (S5 VIS P4: each phase's range then stands whole), then two
+ * columns: the questions and last week on the left (640), the pool block, the buy block and the tickets on the right
+ * (400), sticky (D-16). Below 1280 one column (L8). Every "·"-joined line is a fact line (`maswali-facts.tsx`, A1).
  *
  * ⛔ THE GATE FIRST (`millioneaGate`): a hidden product is a missing page, here and in the metadata (MR-2).
  * ⛔ AN UNEARNED SURFACE: no gold in this file (§M8a item 7; `test:gold-is-money` 1d). The door to the slip is the
@@ -26,6 +27,7 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
+import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { MaswaliLastWeek } from "@/components/maswali/maswali-pool-figure";
 import { MaswaliHeldTicketRow } from "@/components/maswali/maswali-ticket";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
@@ -143,7 +145,8 @@ function QuestionRow({ t, locale, q }: { t: Dict; locale: Locale; q: MillioneaHu
       </span>
       <span className="col-start-2 text-body-sm text-text text-pretty xl:col-start-auto">{textIn(locale, q.text)}</span>
       <span className="col-start-2 flex flex-wrap items-center gap-2 xl:col-start-auto xl:justify-end">
-        {at !== null && <span className="font-mono text-body-sm text-text-subtle">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, at) })}</span>}
+        {/* "Event Saturday 09:00" is one run: a day never parts from its time (S5 VIS A1). */}
+        {at !== null && <span className="whitespace-nowrap font-mono text-body-sm text-text-subtle">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, at) })}</span>}
         {q.outcome !== null && <MaswaliOutcomeStamp t={t} outcome={q.outcome} />}
       </span>
     </li>
@@ -158,8 +161,8 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
       <h2 id="mln-questions-h" className="pb-2 font-display text-title-sm font-bold text-text">{t.millionea.weekQuestions}</h2>
       <ol>{qs.filter((q) => q.role === "MAIN").map((q) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} />)}</ol>
       <div className="flex flex-col gap-0.5 border-t border-border px-1 pb-1.5 pt-2" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}>
-        <span className="font-mono text-caption uppercase eyebrow text-text-subtle">{t.millionea.reservesHead}</span>
-        <span className="text-body-sm text-text-muted text-pretty">{t.millionea.reserveRule}</span>
+        <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
+        <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
       </div>
       <ol>{qs.filter((q) => q.role === "RESERVE").map((q) => <QuestionRow key={q.slot} t={t} locale={locale} q={q} />)}</ol>
     </section>
@@ -167,17 +170,17 @@ function WeekQuestions({ t, locale, w }: { t: Dict; locale: Locale; w: Millionea
 }
 
 /** Last week as one closed row (§10 §3.3 item 6): its carry, its winners, or its void — a door to its register page. */
-function LastWeekRow({ t, hub }: { t: Dict; hub: MillioneaHub }) {
+function LastWeekRow({ t, locale, hub }: { t: Dict; locale: Locale; hub: MillioneaHub }) {
   const last = hub.lastWeek;
   if (!last) return null;
   const week = weekNumberOf(last.code);
   const row = last.state === "SETTLED" && (last.winners ?? 0) === 0
-    ? <MaswaliLastWeek t={t} week={week} carried={last.carriedForward ?? 0} id={CARRIED_FIGURE_ID} />
+    ? <MaswaliLastWeek t={t} locale={locale} week={week} carried={last.carriedForward ?? 0} id={CARRIED_FIGURE_ID} />
     : (
       <p className="mat-inset rounded-control px-3 py-2 text-body-sm text-text-muted">
         {last.state === "VOIDED"
-          ? `${weekWord(t, week)} · ${t.millionea.weekStatusVoided}`
-          : counted(last.winners ?? 0, t.millionea.settledWonOne, t.millionea.settledWon, { week })}
+          ? <MaswaliFacts facts={[keepFact(locale, weekWord(t, week)), t.millionea.weekStatusVoided]} />
+          : keepFact(locale, counted(last.winners ?? 0, t.millionea.settledWonOne, t.millionea.settledWon, { week }))}
       </p>
     );
   return (
@@ -189,12 +192,12 @@ function LastWeekRow({ t, hub }: { t: Dict; hub: MillioneaHub }) {
 }
 
 /** The reader's tickets in a week: "Tiketi zako wiki hii: 2 kati ya 10", then a row per held ticket (D-18). */
-function MineBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
+function MineBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   if (!w.mine) return null;
   const held = w.mine.tickets.filter((x) => x.shown !== "cancelled");
   return (
     <div className="flex flex-col gap-2" data-testid="millionea-hub-mine">
-      <p className="text-body-sm text-text-muted">{fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) })}</p>
+      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.yourTicketsThisWeek, { n: formatNumber(w.mine.held), cap: formatNumber(w.mine.cap) }))}</p>
       {held.map((row) => (
         <MaswaliHeldTicketRow key={row.serial} href={ticketPageHref(row.serial)} serial={row.serial} line={lineOf(w.questions, row.slots, w.state)} />
       ))}
@@ -205,8 +208,8 @@ function MineBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
 /** The buy block (§10 §3.3 item 4): the door, the printed close, the pill in the last hour, the reader's tickets.
  *  `nextOpen` is when the next week opens on the template (`nextWeekOpen`) — null in a final week or while Millionea ends,
  *  and the cap line then promises no next week (the S5 review of 24ec0d33, MEDIUM 5). */
-function BuyBlock({ t, w, signedIn, nowMs, nextOpen, breakBody }: {
-  t: Dict; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
+function BuyBlock({ t, locale, w, signedIn, nowMs, nextOpen, breakBody }: {
+  t: Dict; locale: Locale; w: MillioneaHubWeek; signedIn: boolean; nowMs: number; nextOpen: number | null;
   breakBody: { text: string; keep: readonly string[] } | null;
 }) {
   const closesMs = msOf(w.closesAt) ?? 0;
@@ -235,8 +238,9 @@ function BuyBlock({ t, w, signedIn, nowMs, nextOpen, breakBody }: {
   } else if (w.state !== "OPEN") {
     door = <a href="#mln-questions" className="btn btn-ghost btn-lg w-full border-border-control" data-testid="millionea-hub-follow">{t.millionea.followResults}</a>;
   }
+  // The results so far and the reserves left: a fact line (S5 VIS A1) — no separator at a line's start or end.
   const live = w.state !== "OPEN"
-    ? [fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }), reservesLeftLine(t, w)].join(" · ")
+    ? [keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })), keepFact(locale, reservesLeftLine(t, w))]
     : null;
   return (
     <div className="flex flex-col gap-3" data-testid="millionea-hub-buy">
@@ -244,23 +248,23 @@ function BuyBlock({ t, w, signedIn, nowMs, nextOpen, breakBody }: {
       {open && (
         <p className="flex items-center gap-1.5 text-body-sm text-text-muted">
           <I.hourglassHalf s={14} className="shrink-0" />
-          <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="font-mono text-text">{eatWeekdayClock(t, closesMs)}</span> })}</span>
+          <span>{fillNodes(t.millionea.salesCloseAt, { when: <span className="whitespace-nowrap font-mono text-text">{eatWeekdayClock(t, closesMs)}</span> })}</span>
         </p>
       )}
       {open && !breakBody && <MaswaliClosingPill closesAt={closesMs} serverNow={nowMs} className="self-start" />}
-      {live && <p className="text-body-sm text-text-muted">{live}</p>}
-      <MineBlock t={t} w={w} />
+      {live && <p className="text-body-sm text-text-muted"><MaswaliFacts facts={live} /></p>}
+      <MineBlock t={t} locale={locale} w={w} />
     </div>
   );
 }
 
 /** A second week still being graded while this one sells (MR-3): its line, and the reader's tickets in it. */
-function GradingBlock({ t, w }: { t: Dict; w: MillioneaHubWeek }) {
+function GradingBlock({ t, locale, w }: { t: Dict; locale: Locale; w: MillioneaHubWeek }) {
   return (
     <section aria-label={weekEyebrow(t, w)} className="mat-flat flex flex-col gap-2 rounded-card p-3">
-      <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{weekEyebrow(t, w)}</span>
-      <p className="text-body-sm text-text-muted">{fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) })}</p>
-      <MineBlock t={t} w={w} />
+      <span className="font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(weekEyebrow(t, w))} /></span>
+      <p className="text-body-sm text-text-muted">{keepFact(locale, fill(t.millionea.resultsOut, { n: formatNumber(w.resultsOut) }))}</p>
+      <MineBlock t={t} locale={locale} w={w} />
     </section>
   );
 }
@@ -295,12 +299,14 @@ export default async function MillioneaHubPage() {
 
         {w ? (
           <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,640px)_400px] xl:gap-8">
+            {/* From 1280 the strip spans both columns (S5 VIS P4): each of its three ranges then has a third of the reading
+                measure, and stands whole on its line in every language. */}
             {phases && (
-              <div className="xl:col-start-1">
+              <div className="xl:col-span-2">
                 <MaswaliWeekStrip t={t} phases={phases} current={phaseNow(w, phases, nowMs)} />
               </div>
             )}
-            <aside className="flex flex-col gap-4 xl:sticky xl:top-5 xl:col-start-2 xl:row-span-3 xl:row-start-1">
+            <aside className={cn("flex flex-col gap-4 xl:sticky xl:top-5 xl:col-start-2 xl:row-span-2", phases ? "xl:row-start-2" : "xl:row-start-1")}>
               {w.pool ? (
                 <HubPool
                   weekId={w.id}
@@ -312,14 +318,14 @@ export default async function MillioneaHubPage() {
                   carryPlay={rolloverUnseen}
                 />
               ) : null}
-              <BuyBlock t={t} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)} breakBody={breakBody} />
-              {hub.grading && <GradingBlock t={t} w={hub.grading} />}
+              <BuyBlock t={t} locale={locale} w={w} signedIn={!!gate.userId} nowMs={nowMs} nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)} breakBody={breakBody} />
+              {hub.grading && <GradingBlock t={t} locale={locale} w={hub.grading} />}
             </aside>
-            <div className="xl:col-start-1">
+            <div className={cn("xl:col-start-1", phases ? "xl:row-start-2" : "xl:row-start-1")}>
               <WeekQuestions t={t} locale={locale} w={w} />
             </div>
-            <div className="flex flex-col gap-4 xl:col-start-1">
-              <LastWeekRow t={t} hub={hub} />
+            <div className={cn("flex flex-col gap-4 xl:col-start-1", phases ? "xl:row-start-3" : "xl:row-start-2")}>
+              <LastWeekRow t={t} locale={locale} hub={hub} />
               <MillioneaReadingLinks t={t} />
             </div>
           </div>
@@ -334,7 +340,7 @@ export default async function MillioneaHubPage() {
                 <span className="text-text-muted">{t.millionea.questionsAtOpen}</span>
               </span>
             </Callout>
-            <LastWeekRow t={t} hub={hub} />
+            <LastWeekRow t={t} locale={locale} hub={hub} />
             <MillioneaReadingLinks t={t} />
           </div>
         )}

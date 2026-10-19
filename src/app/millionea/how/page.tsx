@@ -21,6 +21,7 @@ import { Chip } from "@/components/ui/chip";
 import { ReceiptRow } from "@/components/ui/receipt-row";
 import { MaswaliWeekStrip } from "@/components/maswali/maswali-week-strip";
 import { sealLineOf } from "@/components/maswali/maswali-seal-line";
+import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { joinList, reserveLabel } from "@/components/maswali/maswali-format";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTo, type MillioneaExample, type MillioneaHowTo } from "@/lib/server/maswali-player";
@@ -29,9 +30,9 @@ import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { marketCategoryLabel } from "@/lib/localized";
 import { eatWeekAt, eatWeekStartMs } from "@/lib/eat-day";
 import { MAIN_COUNT, RESERVE_COUNT, type GradableQuestion, type MaswaliPick } from "@/lib/maswali-score";
-import { fill, formatNumber, formatTzs, pctNum } from "@/lib/utils";
+import { fill, formatNumber, formatTzs, formatTzsSigned, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
-import type { Dict } from "@/lib/i18n-dict";
+import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { WeekPhases } from "@/components/maswali/maswali-week-strip";
 import { MillioneaPreviewMark, MillioneaReadingLinks } from "../millionea-parts";
 import { HowExample } from "./how-example";
@@ -80,19 +81,21 @@ function timelineOf(h: MillioneaHowTo, nowMs: number): WeekPhases | null {
   }
 }
 
-/** One worked ledger ("Mfano"), each line the win ledger's own receipt row (D-43): the fee row in its amber. */
-function WorkedLedger({ t, label, ex, pct }: { t: Dict; label: string; ex: MillioneaExample; pct: number }) {
+/** One worked ledger ("Mfano"), each line the win ledger's own receipt row (D-43): the fee row in its amber. ⭐ Its label
+ *  says which week it works through ("Example · a week with winners", S5 VIS P6 — it read "EXAMPLE · 1"), and the fee
+ *  taken is the platform's signed figure ("−TZS 136,500", A4 — it read "TZS -136,500"). */
+function WorkedLedger({ t, locale, label, ex, pct }: { t: Dict; locale: Locale; label: string; ex: MillioneaExample; pct: number }) {
   const f = ex.figures;
   const fig = (n: number) => <span className="amount">{formatTzs(n)}</span>;
   const ROW = "border-b border-border py-1.5";
   return (
     <section aria-label={label} className="mat-flat flex flex-col rounded-card p-3">
-      <span className="pb-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>
+      <span className="pb-1.5 font-mono text-micro uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(label).map((x) => keepFact(locale, x))} /></span>
       <div className="flex flex-col border-t border-border">
         <ReceiptRow className={ROW} label={fill(t.millionea.regTicketsSold, { n: formatNumber(ex.tickets), price: formatTzs(ex.sales / Math.max(1, ex.tickets)) })} value={fig(ex.sales)} />
-        {f.U > 0 && <ReceiptRow className={ROW} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={fig(f.U)} />}
+        {f.U > 0 && <ReceiptRow className={ROW} label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} />} value={fig(f.U)} />}
         <ReceiptRow className={ROW} label={t.millionea.jackpot} value={fig(f.J)} />
-        <ReceiptRow className={ROW} tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct })} value={fig(-f.F)} />
+        <ReceiptRow className={ROW} tone="warning" emphasis="fee" label={fill(t.millionea.feeLine, { pct })} value={<span className="amount">{formatTzsSigned(-f.F)}</span>} />
         <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(f.J - f.F)} />
         <ReceiptRow className={ROW} label={ex.winners === 1 ? t.millionea.perTicketOne : fill(t.millionea.perTicket, { n: formatNumber(ex.winners) })} value={fig(f.share)} />
       </div>
@@ -130,20 +133,23 @@ export default async function MillioneaHowPage() {
       <div className="flex flex-col gap-6" data-testid="millionea-how">
         <PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.howToPlay} />
         {gate.preview && <MillioneaPreviewMark t={t} />}
+        {/* Each step keeps its phrases whole (S5 VIS P6, A1): "5 reserve", "A1 to A5", "13% fee" never torn at a line's end. */}
         <ol className="flex flex-col gap-3">
           {sentences.map((s, i) => (
             <li key={i} className="grid grid-cols-[24px_1fr] gap-2 text-body text-text">
               <span className="font-mono font-bold text-text-subtle tabular-nums">{i + 1}</span>
-              <span className="text-pretty">{s}</span>
+              <span className="text-pretty">{keepFact(locale, s)}</span>
             </li>
           ))}
         </ol>
         <section aria-label={t.millionea.exampleLabel} className="mat-raised flex flex-col gap-3 rounded-card p-3">
-          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{`${t.millionea.exampleLabel} · ${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}`}</span>
-          <HowExample line={line} caption={caption} />
+          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">
+            <MaswaliFacts facts={[t.millionea.exampleLabel, <span key="carry" className="whitespace-nowrap">{`${EXAMPLE_VOIDED_MAIN} → ${reserveLabel(1)}`}</span>]} />
+          </span>
+          <HowExample line={line} caption={caption} voided={EXAMPLE_VOIDED_MAIN} standIn={reserveLabel(1)} />
         </section>
-        {h.examples.shared && <WorkedLedger t={t} label={`${t.millionea.exampleLabel} · 1`} ex={h.examples.shared} pct={pct} />}
-        {h.examples.floorWeek && <WorkedLedger t={t} label={`${t.millionea.exampleLabel} · 2 · ${t.millionea.floor}`} ex={h.examples.floorWeek} pct={pct} />}
+        {h.examples.shared && <WorkedLedger t={t} locale={locale} label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`} ex={h.examples.shared} pct={pct} />}
+        {h.examples.floorWeek && <WorkedLedger t={t} locale={locale} label={`${t.millionea.exampleLabel} · ${t.millionea.exampleFloorWeek}`} ex={h.examples.floorWeek} pct={pct} />}
         {phases && (
           <section className="flex flex-col gap-2">
             <h2 className={H2}>{t.millionea.timelineTitle}</h2>
@@ -159,7 +165,7 @@ export default async function MillioneaHowPage() {
         <section className="flex flex-col gap-2">
           <h2 className={H2}>{t.millionea.rulesTitle}</h2>
           <ul className="flex flex-col">
-            {rules.map((r) => <li key={r} className="border-b border-border py-2 text-body-sm text-text text-pretty">{r}</li>)}
+            {rules.map((r) => <li key={r} className="border-b border-border py-2 text-body-sm text-text text-pretty">{keepFact(locale, r)}</li>)}
           </ul>
         </section>
         <MillioneaReadingLinks t={t} how={false} />

@@ -33,7 +33,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Callout } from "@/components/ui/callout";
 import { MaswaliTicket, type TicketMoments } from "@/components/maswali/maswali-ticket";
 import { MaswaliLossReceipt, MaswaliWinLedger } from "@/components/maswali/maswali-win-ledger";
-import { counted, weekNumberOf } from "@/components/maswali/maswali-format";
+import { counted, joinList, weekNumberOf } from "@/components/maswali/maswali-format";
+import { keepFact } from "@/components/maswali/maswali-facts";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { millioneaTicketGate } from "@/lib/server/millionea-gate";
 import { millioneaHowTo, millioneaMyTicketsWeek, millioneaTicket, type MillioneaFact, type MillioneaTicketView } from "@/lib/server/maswali-player";
@@ -129,7 +130,17 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
       })
     : null;
   const share = shareLine(t, view);
-  const notice = voidLine ?? share ?? undefined;
+  // ⭐ S5 VIS P10 · money that came back says where it went, on the first screen: a cancel, and a voided week's refund once
+  // it landed — "TZS 1,000 returned to main balance" (the cancel's own result words; the stub keeps its stamp line too).
+  const backTo = view.shown === "cancelled" || view.shown === "refunded"
+    ? fill(t.millionea.cancelModalBody, { price: formatTzs(view.refund?.state === "landed" ? view.refund.amount : view.stub.price) })
+    : null;
+  const lines = [voidLine ?? share, backTo].filter((l): l is string => l !== null);
+  const notice = lines.length === 0 ? undefined : (
+    <span className="flex flex-col gap-0.5">
+      {lines.map((l) => <span key={l}>{keepFact(locale, l)}</span>)}
+    </span>
+  );
 
   // A won week where this player was paid on more than one ticket: the seal and the ledger name every paid serial (D-45),
   // read by THIS ticket's week (`millioneaMyTicketsWeek`, round 3) — never looked for on a page of the list.
@@ -170,7 +181,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
             nextEventAt: msOf(view.nextResultAt) ?? undefined,
           } : undefined}
           cannotWin={running && view.cannotWinSoFar}
-          seal={paid && view.win && view.win.yourTotal > 0 ? <SealDoor amount={view.win.yourTotal} label={paidSerials.join(" · ")} /> : undefined}
+          seal={paid && view.win && view.win.yourTotal > 0 ? <SealDoor amount={view.win.yourTotal} label={joinList(locale, paidSerials)} /> : undefined}
           cancel={cancellable && cancelUntil !== null
             ? <TicketCancel serial={view.serial} ownerId={gate.userId} until={cancelUntil} serverNow={nowMs} price={view.stub.price} cap={cap} />
             : undefined}

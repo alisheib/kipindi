@@ -6,6 +6,7 @@ import { CloseX, Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { SteppedProgress } from "@/components/markets/stepped-progress";
 import { useCountdown } from "@/components/updown/round-countdown";
+import { MaswaliFacts, factsOf, keepFact } from "@/components/maswali/maswali-facts";
 import { eatClock, eatWeekdayClock, joinList, reserveLabel, weekWord } from "@/components/maswali/maswali-format";
 import { useT } from "@/lib/i18n";
 import { fillNodes, moneyRuns } from "@/lib/fill-nodes";
@@ -121,7 +122,7 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
   flagged: boolean;
   onPick: (pick: MaswaliPick) => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const reserve = q.role === "RESERVE";
   const yesLit = pick === "YES", noLit = pick === "NO";
   const rowId = `q-${labelOf(q)}`;
@@ -144,8 +145,11 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
     onPick(to);
     (to === "YES" ? yesRef : noRef).current?.focus();
   };
-  const meta = [fill(t.millionea.sourceLine, { source: q.source }), q.eventAt === null ? null : fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })]
-    .filter(Boolean).join(" · ");
+  // The source and the event: a fact line (S5 VIS P7, A1) — "Event Saturday 09:00" one run, never "…Saturday" / "09:00".
+  const meta = [
+    keepFact(locale, fill(t.millionea.sourceLine, { source: q.source })),
+    q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>,
+  ];
   return (
     <li
       id={`q-${labelOf(q)}`}
@@ -159,7 +163,7 @@ function SlipRow({ q, pick, closed, flagged, onPick }: {
       <div className="flex min-w-0 flex-col gap-1">
         <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{q.category}</span>
         <p id={`${rowId}-t`} className="text-body text-text text-pretty">{q.text}</p>
-        <span className="text-body-sm text-text-subtle">{meta}</span>
+        <span className="text-body-sm text-text-subtle"><MaswaliFacts facts={meta} /></span>
         {flagged && (
           <span className="self-start rounded-full border border-dashed border-border-strong px-1.5 py-0.5 font-mono text-caption uppercase eyebrow text-text-subtle">
             {t.millionea.unanswered}
@@ -225,7 +229,12 @@ export function MaswaliSlip({
   const reserves = questions.filter((q) => q.role === "RESERVE");
   const priceText = formatTzs(price);
   const title = fill(t.millionea.slipTitle, { week });
-  const progressText = `${fill(t.millionea.mainsProgress, { a: progress.mains })} · ${fill(t.millionea.reservesProgress, { b: progress.reserves })}`;
+  // "Main 0/10 · Reserve 0/5": two whole counts — side by side where they fit, stacked without the "·" where they do not
+  // (S5 VIS P7: the rail read "Main 0/10 ·" / "Reserve 0/5" at 320, "Akiba" / "0/5" at sw 360).
+  const progressFacts = [
+    <span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains })}</span>,
+    <span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves })}</span>,
+  ];
   const refusalBody = unanswered.length === 0 ? ""
     : unanswered.length === 1
       ? fill(t.millionea.refusalIncompleteOne, { list: labelOf(unanswered[0]) })
@@ -236,11 +245,14 @@ export function MaswaliSlip({
     <SlipRow key={`${q.role}-${q.ordinal}`} q={q} pick={picks[slotOfQ(q) - 1] ?? null} closed={!!closed}
       flagged={showRefusal && !picks[slotOfQ(q) - 1]} onPick={(p) => onPick(slotOfQ(q), p)} />
   );
-  const strong = (s: string) => <span className="font-mono text-text">{s}</span>;
-  const rules = [
-    t.millionea.reserveRule,
-    fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) }),
-    t.millionea.mainOnly,
+  // A day and its time are one run ("Friday 18:00", A1).
+  const strong = (s: string) => <span className="whitespace-nowrap font-mono text-text">{s}</span>;
+  const capLine = <MaswaliFacts facts={factsOf(fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) })).map((f) => keepFact(locale, f))} />;
+  // The rules box. ⭐ From 1280 the cap is the summary panel's alone (P7): it once stood twice, here and there.
+  const rules: ReadonlyArray<{ key: string; node: ReactNode; className?: string }> = [
+    { key: "reserve", node: keepFact(locale, t.millionea.reserveRule) },
+    { key: "cap", node: capLine, className: "xl:hidden" },
+    { key: "main", node: t.millionea.mainOnly },
   ];
   return (
     <div className={cn("flex flex-col", className)}>
@@ -261,9 +273,9 @@ export function MaswaliSlip({
           </header>
           <ul className="mat-inset flex flex-col gap-1.5 rounded-control px-3 py-2">
             {rules.map((r) => (
-              <li key={r} className="grid grid-cols-[8px_1fr] gap-1.5 text-body-sm text-text-muted">
+              <li key={r.key} className={cn("grid grid-cols-[8px_1fr] gap-1.5 text-body-sm text-text-muted", r.className)}>
                 <span aria-hidden className="text-text-subtle">·</span>
-                <span>{r}</span>
+                <span className="min-w-0">{r.node}</span>
               </li>
             ))}
           </ul>
@@ -273,8 +285,8 @@ export function MaswaliSlip({
               className="mt-3 flex flex-col gap-0.5 rounded-t-card border border-b-0 border-border px-3 pt-2"
               style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }}
             >
-              <span className="font-mono text-caption uppercase eyebrow text-text-subtle">{t.millionea.reservesHead}</span>
-              <span className="text-body-sm text-text-muted text-pretty">{t.millionea.reserveRule}</span>
+              <span className="font-mono text-caption uppercase eyebrow text-text-subtle"><MaswaliFacts facts={factsOf(t.millionea.reservesHead)} /></span>
+              <span className="text-body-sm text-text-muted text-pretty">{keepFact(locale, t.millionea.reserveRule)}</span>
             </div>
             <ol>{reserves.map(row)}</ol>
             <div aria-hidden className="h-3 rounded-b-card border border-t-0 border-border" style={{ background: "var(--wash-inset)", boxShadow: "var(--edge-shade)" }} />
@@ -302,12 +314,12 @@ export function MaswaliSlip({
           <aside className="mat-raised sticky top-5 hidden flex-col gap-3 rounded-card p-4 xl:flex">
             <div className="flex flex-col gap-1.5">
               <SteppedProgress groups={groups} />
-              <span className="font-mono text-body-sm text-text-muted">{progressText}</span>
+              <span className="font-mono text-body-sm text-text-muted"><MaswaliFacts facts={progressFacts} /></span>
             </div>
             <PicksList questions={questions} picks={picks} />
             <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">
               <div className="flex justify-between gap-2"><span>{t.millionea.price}</span><span className="amount text-text">{priceText}</span></div>
-              <span>{fill(t.millionea.capRule, { cap: formatNumber(cap), n: formatNumber(ticketNumber) })}</span>
+              <span>{capLine}</span>
             </div>
             <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} className="self-start" />
             <div className="flex flex-col gap-2">
@@ -321,21 +333,22 @@ export function MaswaliSlip({
         )}
       </div>
       {/* Below 1280: the rail, docked on the tab bar (its 64px row and 1px edge, `.kp-rail`) below 1024 and on the floor
-          above it, casting upward. */}
+          above it, casting upward. ⭐ The meter has the rail's full width on its own row (P7: beside the button it shrank to
+          a 100px run of dots at 320), then the counts and the pill beside the pay control. */}
       {!closed && (
-        <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex items-center gap-2 border-t border-border-strong px-3 py-2 shadow-overlay-up lg:bottom-0 xl:hidden" style={{ background: "var(--panel)" }}>
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <SteppedProgress groups={groups} />
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-mono text-body-sm text-text-muted">{progressText}</span>
+        <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2 border-t border-border-strong px-3 py-2 shadow-overlay-up lg:bottom-0 xl:hidden" style={{ background: "var(--panel)" }}>
+          <SteppedProgress groups={groups} />
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="min-w-0 font-mono text-body-sm text-text-muted"><MaswaliFacts facts={progressFacts} /></span>
               <MaswaliClosingPill closesAt={closesAt} serverNow={serverNow} compact />
             </div>
+            {progress.ready ? (
+              <Button type="button" variant="primary" size="md" onClick={press} className="shrink-0">{moneyRuns(fill(t.millionea.continueAt, { price: priceText }))}</Button>
+            ) : (
+              <Button type="button" variant="ghost" size="md" onClick={press} className="shrink-0 border-border-control">{t.millionea.answerAll}</Button>
+            )}
           </div>
-          {progress.ready ? (
-            <Button type="button" variant="primary" size="md" onClick={press} className="shrink-0">{moneyRuns(fill(t.millionea.continueAt, { price: priceText }))}</Button>
-          ) : (
-            <Button type="button" variant="ghost" size="md" onClick={press} className="shrink-0 border-border-control">{t.millionea.answerAll}</Button>
-          )}
         </div>
       )}
     </div>
@@ -371,7 +384,7 @@ export function MaswaliSlipConfirm({
   pending?: boolean;
   onCommit: () => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const titleId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const commitRef = useRef<HTMLButtonElement>(null);
@@ -386,13 +399,15 @@ export function MaswaliSlipConfirm({
   return (
     // Focus opens on the commit, whose press IS the act (the bet confirm's rule), and the way out is named (`safeFocus`), so
     // an Enter meant for a dialog drawn over this one can at worst close it. Short of money, focus opens on the way out.
+    // `kp-mln-zh` on the panel: the sheet is portalled out of the page's root, so it carries Millionea's Chinese rule itself
+    // (S5 VIS A2/A3 — keep-all, and the one label rule keyed on the class).
     <Modal open={open} onClose={() => { if (!pending) onClose(); }} sheet maxWidth={480} labelledBy={titleId} ariaBusy={pending}
       safeFocus={cancelRef} initialFocus={lowBalance ? cancelRef : commitRef} closeOnScrim={!pending} closeOnEsc={!pending}
-      showClose={false}>
+      showClose={false} panelClassName="kp-mln-zh">
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
+            <span className="font-mono text-label uppercase eyebrow text-text-subtle"><MaswaliFacts facts={[t.millionea.productTitle, keepFact(locale, weekWord(t, week))]} /></span>
             <h2 id={titleId} className="font-display text-title-md font-semibold text-text">{t.millionea.confirmTitle}</h2>
           </div>
           {/* ⭐ THE HEADER ROW'S ✕, as the bet confirm's (the one convention, `CloseX` in modal.tsx; r6c §10 "header-row"):
@@ -406,7 +421,8 @@ export function MaswaliSlipConfirm({
         </div>
         <PicksList questions={questions} picks={picks} />
         <div className="flex flex-col gap-1 border-t border-border pt-2 text-body-sm text-text-muted">
-          {lines.map((l) => <p key={l} className="text-pretty">{moneyRuns(l)}</p>)}
+          {/* Each line a fact line (A1): "TZS 1,000 · from main balance (…)", "Shared equally… · 13% fee at payout". */}
+          {lines.map((l) => <p key={l}><MaswaliFacts facts={factsOf(l).map((f) => keepFact(locale, f))} /></p>)}
         </div>
         {lowBalance && (
           <>

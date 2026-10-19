@@ -28,8 +28,10 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import NodeModule from "node:module";
 import { dict } from "../src/lib/i18n-dict.ts";
-import { fill, formatTzs } from "../src/lib/utils.ts";
+import { fill, formatTzs, formatTzsSigned } from "../src/lib/utils.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
 import { sealLineOf } from "../src/components/maswali/maswali-seal-line.tsx";
 import { poolLedgerRows, poolRule, type PoolView } from "../src/components/maswali/maswali-pool-figure.tsx";
@@ -234,8 +236,10 @@ const PICKS = Array.from({ length: 15 }, () => "YES" as const);
     typeof family.void === "function" && registry?.void?.s === "p-prohibit" && fromRegistry && !legacyVoid,
     j({ registryVoid: registry?.void?.s ?? null, fromRegistry, legacyVoid }));
   const ticket = squash(code(read(TICKET)));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P16, P10): the line has one annex rule now (no `annex` prop: under the mains
+  // everywhere), and it rests for every ticket that counts for nothing (`ticketRests`: cancelled AND refunded) — §4 holds both.
   ok("2.M4d · the ticket card's one link carries a visible name in words, its accessible name starting with it",
-    ticket.includes("aria-label={`${t.millionea.viewTicket} · ${serial}`}") && /<MaswaliSealLine line=\{line\} size=\{18\} annex="below" inert=\{shown === "cancelled"\} \/> <span[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
+    ticket.includes("aria-label={`${t.millionea.viewTicket} · ${serial}`}") && /<MaswaliSealLine line=\{line\} size=\{18\} inert=\{ticketRests\(shown\)\} \/> <span[^>]*>\s?\{t\.millionea\.viewTicket\}/.test(ticket));
 }
 
 // M5 · one radio group per question; M6 · polite regions mounted from the first render
@@ -292,8 +296,10 @@ const liveDefects = (slipSrc: string, ticketSrc: string) => {
   const voided = homeCardOf(en, hubOf(null, lastVoided) as never, 0.13, NOW);
   ok("2.M7c · a voided last week is \"voided\" on the card, its refunds still on their way", voided?.state.kind === "voided" && (voided.state as { refundsPending?: boolean }).refundsPending === true && voided.jackpot === null, j(voided));
   const card = squash(code(read(CARD)));
-  ok("2.M7d · the card draws neither the figure's rule nor the 768 figure block on a void, and says the void's own words",
-    count(card, "{!voidKind && (") === 2 && card.includes("meta = t.millionea.weekVoidingShort;") && card.includes("meta = state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort;"));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P3): the card has ONE headline block at every width — the 768 figure block is
+  // gone — so one `{!voidKind && (` guards the figure's rule; the void's words are a fact line (A1, `factsIn`).
+  ok("2.M7d · the card draws no figure's rule on a void (one headline block, at every width), and says the void's own words",
+    count(card, "{!voidKind && (") === 1 && card.includes("meta = factsIn(t.millionea.weekVoidingShort);") && card.includes("meta = factsIn(state.refundsPending ? t.millionea.weekVoidedShortPending : t.millionea.weekVoidedShort);"));
 }
 
 // L8 L10 L11 L12 L13
@@ -442,10 +448,12 @@ const heldGuardDefects = (hubSrc: string) => {
     pending?.atLeast === true && pending.pendingWeek === 41 && atCap?.atLeast === false && atCap.pendingWeek === null, j({ pending, atCap }));
   const card = squash(code(read(CARD)));
   const door = squash(code(read("src/components/maswali/maswali-home-card-door.tsx")));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-19 (S5 VIS P3): the waiting week's line is drawn ONCE, after the R-HEADLINE, at every
+  // width (it was drawn twice: in the phone column and again in the 768 block, in another order).
   ok("2.R4e · the card draws that bound as the hub does — \"at least\" around the figure and the waiting week's line — and the door hands it the model's bound and the template's next week",
     card.includes("return jackpot !== null && atLeast ? fillNodes(t.millionea.atLeast, { amount: run }) : run;")
       && card.includes("const pending = jackpot !== null && pendingWeek !== null ? fill(t.millionea.pendingCarry, { week: pendingWeek }) : null;")
-      && count(card, "{pending && <span") === 2
+      && count(card, "{pending && <span") === 1
       && door.includes("homeCardOf(t, hub, configuredFeeRate(), nowMs, nextWeekOpen(hub, millioneaOpenTemplate(), nowMs))")
       && door.includes("atLeast={model.atLeast} pendingWeek={model.pendingWeek}"));
   const hubSrc = squash(code(read(HUB)));
@@ -503,9 +511,473 @@ console.log("\n§3 · controls — each source check fails on a planted copy");
   ok("3.5 · a hub that writes a line for a week still on hold is reported", spent.some((x) => x.includes("still held")));
 }
 
+// ── §4 · the S5 tile read — VIS-P (S5-VIS-FINDINGS §A, §C and §D, 2026-10-19) ──────────────────────────────────────────
+console.log("\n§4 · the S5 tile read (VIS-P): each fix a case the old drawing fails, with its plant");
+const req = createRequire(import.meta.url);
+const React = req("react") as typeof import("react");
+const h = React.createElement;
+const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
+{
+  // A dialog's chrome is a portal, which the server renderer cannot draw: a stand-in draws the panel in place and the rest of
+  // the module is its own (`test:visual-pass-r5j`'s harness), so a dialog's markup renders as the browser receives it.
+  const at = req.resolve("../src/components/ui/modal.tsx");
+  const real = req(at) as Record<string, unknown>;
+  const stub = new NodeModule(at);
+  stub.filename = at; stub.loaded = true;
+  const Inline = (p: { open: boolean; children?: unknown; panelClassName?: string }) =>
+    p.open ? h("div", { "data-panel": p.panelClassName ?? "" }, p.children as never) : null;
+  stub.exports = { ...real, Modal: Inline };
+  (req.cache as Record<string, unknown>)[at] = stub;
+}
+type L3 = (typeof LOCALES)[number];
+const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: L3; children: unknown }) => unknown };
+const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
+const { PathnameContext } = req("next/dist/shared/lib/hooks-client-context.shared-runtime") as { PathnameContext: import("react").Context<string | null> };
+const ROUTER = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {}, hmrRefresh() {} };
+const inApp = (l: L3, el: unknown) =>
+  renderToStaticMarkup(h(AppRouterContext.Provider, { value: ROUTER }, h(PathnameContext.Provider, { value: "/" }, h(I18nProvider as never, { initial: l } as never, el as never))));
+const textOf = (m: string) => m.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+/** The text of every `white-space: nowrap` run of a rendering, in order (a run may hold an `.amount` span inside it). */
+const keptRuns = (m: string): string[] => {
+  const out: string[] = [];
+  for (const open of m.matchAll(/<span class="whitespace-nowrap[^"]*">/g)) {
+    let depth = 0, i = open.index ?? 0;
+    for (; i < m.length; i++) {
+      if (m.startsWith("<span", i)) depth++;
+      else if (m.startsWith("</span>", i) && --depth === 0) break;
+    }
+    out.push(textOf(m.slice(open.index ?? 0, i)));
+  }
+  return out;
+};
+const plantIn = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
+const FACTS = req("../src/components/maswali/maswali-facts.tsx") as typeof import("../src/components/maswali/maswali-facts.tsx");
+const twCfg = ((m: { default?: unknown }) => (m.default ?? m) as { theme: { extend: { spacing: Record<string, string>; fontSize: Record<string, [string, { letterSpacing: string }]> } } })(req("../tailwind.config.ts"));
+const sp = (k: string) => parseFloat(twCfg.theme.extend.spacing[k] ?? "NaN");
+const rungOf = (k: string) => { const [size, o] = twCfg.theme.extend.fontSize[k] ?? ["NaN", { letterSpacing: "NaN" }]; return { px: parseFloat(size), track: parseFloat(o.letterSpacing) }; };
+const fontkit = req("fontkit") as { openSync: (p: string) => { unitsPerEm: number; layout: (s: string) => { advanceWidth: number } } };
+const FONT = (f: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", f));
+/** A run's width in a face at a size, with the rung's own letter-spacing per character. */
+const widthIn = (face: ReturnType<typeof FONT>, s: string, px: number, trackPx: number) => (face.layout(s).advanceWidth / face.unitsPerEm) * px + trackPx * Array.from(s).length;
+
+// A1 · the fact line, built once
+const factLineDefects = (m: string, n: number, joined: string) => {
+  const d: string[] = [];
+  const items = (m.match(/class="kp-mln-fact"/g) ?? []).length;
+  if (!m.includes('class="kp-mln-facts')) d.push("no fact list");
+  if (items !== n) d.push(`${items} fact items, ${n} wanted`);
+  if ((m.match(/<span class="sr-only"> · <\/span>/g) ?? []).length !== n - 1) d.push("the separators are not the screen reader's alone");
+  if (textOf(m) !== joined) d.push(`the text reads "${textOf(m)}"`);
+  return d;
+};
+{
+  const list = (facts: unknown[], layout?: string) => renderToStaticMarkup(h(FACTS.MaswaliFacts as never, { facts, layout } as never));
+  const d = factLineDefects(list(["Alpha", "Beta", null, "Gamma"]), 3, "Alpha · Beta · Gamma");
+  ok("4.A1a · a fact line: each fact its own item (an empty one dropped), the separator drawn by the stylesheet and said to a screen reader as the DOM's own \" · \" — a copy and a reader get the old joined line word for word; `stack` and `phone` are its other layouts",
+    d.length === 0 && list(["a", "b"], "stack").includes("kp-mln-facts--stack") && list(["a", "b"], "phone").includes("kp-mln-facts--phone"), d.join(" | "));
+  ok("4.A1a′ PLANT · a line drawn as one joined run (how every \"·\" line was drawn) is reported",
+    factLineDefects(renderToStaticMarkup(h("span", null, "Alpha · Beta · Gamma")), 3, "Alpha · Beta · Gamma").length > 0);
+  const css = squash(read("src/app/globals.css"));
+  const cssDefects = (s: string) => {
+    const d2: string[] = [];
+    if (!s.includes(".kp-mln-facts { --mln-sep: 0.9em; display: flex; flex-wrap: wrap; align-items: baseline; margin-inline-start: calc(-1 * var(--mln-sep)); clip-path: inset(-1em -100vw -1em var(--mln-sep)); }")) d2.push("the list is not pulled back and clipped at its start");
+    if (!s.includes(".kp-mln-fact { min-width: 0; padding-inline-start: var(--mln-sep); }")) d2.push("a fact cannot wrap inside itself, or has no gap for its mark");
+    if (!s.includes('.kp-mln-fact::before { content: "·"; content: "·" / ""; display: inline-block; width: var(--mln-sep); margin-inline-start: calc(-1 * var(--mln-sep)); text-align: center; }')) d2.push("the mark is not each fact's leading mark, drawn in its gap");
+    if (!s.includes(".kp-mln-facts--stack > .kp-mln-fact::before { content: none; }")) d2.push("a stacked list draws marks");
+    if (!/@media \(max-width: 767\.98px\) \{ \.kp-mln-facts--phone \{ flex-direction: column;[^}]*\} \.kp-mln-facts--phone > \.kp-mln-fact \{ padding-inline-start: 0; \} \.kp-mln-facts--phone > \.kp-mln-fact::before \{ content: none; \} \}/.test(s)) d2.push("below 768 the phone layout is not one fact per line without marks");
+    return d2;
+  };
+  const c = cssDefects(css);
+  ok("4.A1b · the stylesheet: the list pulled back by the mark's gap and clipped there (so the mark of a line's first fact is cut away), each fact's mark LEADING it in that gap (so none ends a line), a fact free to wrap inside itself (no overflow at 320), and the stacked and phone layouts drawing no mark",
+    c.length === 0, c.join(" | "));
+  ok("4.A1b′ PLANT · a list that is not clipped at its start (a line could open on \"·\") is reported",
+    cssDefects(css.replace("clip-path: inset(-1em -100vw -1em var(--mln-sep)); ", "")).some((x) => x.includes("clipped")));
+  // Each phrase A1 names, from the dictionary as drawn: one unbreakable run in the reader's language.
+  const runsOf = (l: L3, text: string) => keptRuns(renderToStaticMarkup(h("p", null, FACTS.keepFact(l, text) as never)));
+  const CASES: Array<[L3, string, string]> = [
+    ["en", fill(en.millionea.pendingCarry, { week: 47 }), "Week 47's"],
+    ["en", FACTS.factsOf(fill(en.millionea.ruleShared, { pct: 13 }))[1] ?? "", "13% fee"],
+    ["sw", FACTS.factsOf(fill(sw.millionea.ruleShared, { pct: 13 }))[1] ?? "", "ada 13%"],
+    ["zh", FACTS.factsOf(fill(zh.millionea.ruleShared, { pct: 13 }))[1] ?? "", "13% 费用"],
+    ["en", en.millionea.reserveRule, "A1–A5"],
+    ["sw", sw.millionea.howTwo, "A1 hadi A5"],
+    ["zh", zh.millionea.howTwo, "A1 至 A5"],
+    ["en", fill(en.millionea.yourTicketsThisWeek, { n: 1, cap: 10 }), "1 of 10"],
+    ["sw", fill(sw.millionea.yourTicketsThisWeek, { n: 1, cap: 10 }), "1 kati ya 10"],
+    ["en", fill(en.millionea.howOne, { price: formatTzs(1_000) }), "5 reserve"],
+    ["en", fill(en.millionea.howOne, { price: formatTzs(1_000) }), "TZS 1,000"],
+    ["zh", fill(zh.millionea.howThree, { pct: 13 }), "13% 费用"],
+    ["en", fill(en.millionea.salesCloseAt, { when: "Friday 18:00" }), "Friday 18:00"],
+    ["zh", fill(zh.millionea.eventAt, { when: "周六 09:00" }), "周六 09:00"],
+    ["en", fill(en.millionea.lockedAt, { when: "Friday 18:00" }), "Friday 18:00 EAT"],
+  ];
+  const torn = CASES.filter(([l, text, phrase]) => !runsOf(l, text).some((r) => r.includes(phrase))).map(([l, text, phrase]) => `${l} "${phrase}" in "${text}": ${j(runsOf(l, text))}`);
+  ok(`4.A1c · every phrase A1 names stays one unbreakable run as the dictionary draws it — "Week 47's", "13% fee" / "ada 13%" / "13% 费用", "A1–A5", "A1 hadi A5", "A1 至 A5", "1 of 10", "5 reserve", "TZS 1,000", "Friday 18:00 EAT", "周六 09:00" (${CASES.length} cases)`,
+    torn.length === 0, torn.join(" | "));
+  const keepRun = req("../src/components/ui/keep-run.tsx") as typeof import("../src/components/ui/keep-run.tsx");
+  const platformOnly = (text: string) => keptRuns(renderToStaticMarkup(h("p", null, keepRun.keepRanges(text, keepRun.keptRanges(text)) as never)));
+  ok("4.A1c′ PLANT · the platform's kept runs alone (no Millionea runs) leave \"13% fee\" and \"A1 hadi A5\" free to tear",
+    !platformOnly(FACTS.factsOf(fill(en.millionea.ruleShared, { pct: 13 }))[1] ?? "").some((r) => r.includes("13% fee"))
+      && !platformOnly(sw.millionea.howTwo).some((r) => r.includes("A1 hadi A5")));
+  const joinDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => code(readAt(f)).includes('.join(" · ")'));
+  const joins = joinDefects(read);
+  ok("4.A1d · no Millionea drawing joins visible facts into one string with \" · \" any more — every such line is a fact line", joins.length === 0, joins.join(" | "));
+  ok("4.A1d′ PLANT · the card's old joined meta put back is reported",
+    joinDefects(plantIn(CARD, "let meta: ReactNode[] = [];", 'let meta: ReactNode[] = []; const old = ["a", "b"].join(" · ");')).includes(CARD));
+}
+
+// P1 · the cut: the sheet leaves first, then the stamp
+const cutDefects = (src: string) => {
+  const s = squash(code(src));
+  const d: string[] = [];
+  const okAt = s.indexOf("if (r.ok && r.data) {"), refusal = s.indexOf("const failure = r as ReasonedFailure;");
+  const branch = okAt >= 0 && refusal > okAt ? s.slice(okAt, refusal) : "";
+  if (!branch.includes("setLanding({") || !branch.includes("setConfirmOpen(false);")) d.push("the landed cut does not close the sheet and wait for it");
+  if (/setCut\(|setPicks\(/.test(branch)) d.push("the landed cut opens the stamp or clears the slip while the sheet is still on screen");
+  const at = s.indexOf("useEffect(() => { if (landing === null || confirmOpen) return;");
+  const effect = at < 0 ? "" : s.slice(at, s.indexOf("}, [landing, confirmOpen]);", at));
+  if (!effect) d.push("no effect waits for the sheet to have closed");
+  if (!effect.includes('exitBeatMs("--t-quick")') || !effect.includes("setPicks(landing.cleared);") || !effect.includes("setCut(landing.cut);")) d.push("the stamp and the cleared slip do not wait for the sheet's exit beat");
+  return d;
+};
+{
+  const d = cutDefects(read(SLIP_CLIENT));
+  ok("4.P1 · a landed cut closes the confirm sheet FIRST; only once its exit beat is over (`exitBeatMs(\"--t-quick\")`, nothing under reduced motion) does the slip clear and the stamp open — the stamp never stands over a leaving sheet whose answers already read \"—\"",
+    d.length === 0, d.join(" | "));
+  const old = read(SLIP_CLIENT).replace("        requestId.current = null;\n        const first = r.data.tickets[0];", "        setPicks(emptyPicks(hiddenSlots));\n        requestId.current = null;\n        const first = r.data.tickets[0];");
+  ok("4.P1′ PLANT · the old order (the slip cleared inside the landed branch, beside the closing sheet) is reported",
+    old !== read(SLIP_CLIENT) && cutDefects(old).some((x) => x.includes("while the sheet is still on screen")));
+}
+
+// P2 · the stamp's serial on one line, its facts stacked
+{
+  const sc = squash(code(read(SLIP_CLIENT)));
+  ok("4.P2a · the cut's stamp asks for the mono serial and carries Millionea's Chinese rule (`titleFace=\"mono\"`, `className=\"kp-mln-zh\"`), and its facts stand one per line, centred, with no separator to end a line",
+    sc.includes('titleFace="mono" className="kp-mln-zh"') && sc.includes('<MaswaliFacts layout="stack" className="kp-mln-facts--center"'));
+  const { OperationResultModal } = req("../src/components/markets/operation-result-modal.tsx") as { OperationResultModal: (p: Record<string, unknown>) => unknown };
+  const result = (p: Record<string, unknown>) => inApp("en", h(OperationResultModal as never, { open: true, variant: "success", onClose() {}, title: "MLN-2026-W49-000041", ...p } as never));
+  const h2Of = (m: string) => /<h2 class="([^"]+)"/.exec(m)?.[1] ?? "";
+  const mono = result({ stamp: true, titleFace: "mono", className: "kp-mln-zh" }), plain = result({});
+  const monoCls = h2Of(mono).split(" ");
+  ok("4.P2b · the result's `titleFace=\"mono\"` sets its title in the mono face on the 18px rung, the 22px one from 360 (`xs`), never the display face; without it the title is the display title exactly as before, and the panel's children gain a wrapper only when a class is asked for",
+    monoCls.includes("font-mono") && monoCls.includes("text-title-sm") && monoCls.includes("xs:text-title-md") && !monoCls.includes("font-display")
+      && h2Of(plain) === "mt-1 font-display text-[22px] font-bold text-text leading-tight tracking-[-0.018em]"
+      && mono.includes('<div class="kp-mln-zh">') && !plain.includes("kp-mln-zh"), j({ mono: h2Of(mono), plain: h2Of(plain) }));
+  // The text column: the Modal's px-3 each side, the result's own p-6 each side. The serial, in the repo's own faces.
+  const SERIAL = "MLN-2026-W49-000041";
+  const column = (vw: number) => vw - 2 * sp("3") - 2 * sp("6");
+  const sm = rungOf("title-sm"), md = rungOf("title-md");
+  const JBM_BOLD = FONT("JetBrainsMono-Bold.ttf"), SORA_BOLD = FONT("Sora-Bold.ttf");
+  const at320 = widthIn(JBM_BOLD, SERIAL, sm.px, sm.track), at360 = widthIn(JBM_BOLD, SERIAL, md.px, md.track);
+  const display = widthIn(SORA_BOLD, SERIAL, 22, -0.018 * 22);
+  ok(`4.P2c · the serial holds ONE line: at 320 the 18px mono run is ${at320.toFixed(1)}px in its ${column(320)}px column, from 360 the 22px one ${at360.toFixed(1)}px in ${column(360)}px — the 22px display title, ${display.toFixed(1)}px, wrapped "MLN-2026-W49-" / "000041" there`,
+    at320 <= column(320) && at360 <= column(360) && display > column(360), j({ at320, at360, display }));
+  ok(`4.P2c′ PLANT · the 22px mono serial at 320 (${widthIn(JBM_BOLD, SERIAL, md.px, md.track).toFixed(1)}px) would not hold its ${column(320)}px column — the 18px rung there is the fit, not a choice`,
+    widthIn(JBM_BOLD, SERIAL, md.px, md.track) > column(320));
+}
+
+// P3 · one order on the card at every width, and on the hub
+const cardBlockDefects = (src: string) => {
+  const s = code(src);
+  const d: string[] = [];
+  if (/\bmd:hidden\b|md:flex xl:hidden/.test(s)) d.push("the card still draws a 768-only block");
+  if (count(squash(s), '<MaswaliFacts layout="phone" facts={') !== 2) d.push("the headline and the state are not phone-stacked fact lines");
+  return d;
+};
+{
+  const { MaswaliHomeCard } = req("../src/components/maswali/maswali-home-card.tsx") as { MaswaliHomeCard: (p: Record<string, unknown>) => unknown };
+  const cardOf = (l: L3) => textOf(inApp(l, h(MaswaliHomeCard as never, {
+    t: dict[l], locale: l, week: 49, jackpot: 1_000_000, atLeast: true, pendingWeek: 47, pct: 13, cap: 10,
+    state: { kind: "open", closesAt: Date.parse("2026-12-04T15:00:00.000Z"), held: 1 },
+  } as never)));
+  const disorder = LOCALES.flatMap((l) => {
+    const d = dict[l].millionea;
+    const head = FACTS.factsOf(d.ruleWithFigure);
+    const marks = [d.productLabel, (head[0] ?? "").replace("{amount}", "").trim(), fill(head[1] ?? "", { pct: 13 }), fill(head[2] ?? "", { pct: 13 }),
+      fill(d.pendingCarry, { week: 47 }), d.salesCloseAt.replace("{when}", "").trim(), fill(d.yourTicketsThisWeek, { n: 1, cap: 10 })];
+    const text = cardOf(l);
+    const at = marks.map((m) => text.indexOf(m));
+    return at.some((x, i) => x < 0 || (i > 0 && x <= at[i - 1])) ? [`${l}: ${j(at)} in "${text}"`] : [];
+  });
+  ok("4.P3a · the card says ONE order in every language — its title, the R-HEADLINE (\"Jackpot\" with its figure, the 10/10 share, the fee at payout), the carry's line, then the close and the reader's tickets — from one markup at every width",
+    disorder.length === 0, disorder.join(" | "));
+  const b = cardBlockDefects(read(CARD));
+  ok("4.P3b · no width draws the card otherwise: no 768-only block (it dropped \"Jackpot\" and set its lines in another order), the headline and the state one fact per line below 768", b.length === 0, b.join(" | "));
+  const old768 = read(CARD).replace("      <I.chevronRight s={18}", '      <span className="hidden md:flex xl:hidden" />\n      <I.chevronRight s={18}');
+  ok("4.P3b′ PLANT · a 768-only block put back on the card is reported", old768 !== read(CARD) && cardBlockDefects(old768).some((x) => x.includes("768")));
+  const { MaswaliPoolFigure } = req("../src/components/maswali/maswali-pool-figure.tsx") as { MaswaliPoolFigure: (p: Record<string, unknown>) => unknown };
+  const hubOrder = LOCALES.filter((l) => {
+    const d = dict[l].millionea;
+    const text = textOf(inApp(l, h(MaswaliPoolFigure as never, { t: dict[l], locale: l, pct: 13,
+      view: { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 } } as never)));
+    const rule = text.indexOf(fill(FACTS.factsOf(d.ruleShared)[0] ?? "", { pct: 13 })), carry = text.indexOf(fill(d.pendingCarry, { week: 47 }));
+    return !(rule >= 0 && carry > rule);
+  });
+  ok("4.P3c · the hub's pool block says the same order: the figure, the R-HEADLINE's rule, then the carry's line (it said the carry first)", hubOrder.length === 0, j(hubOrder));
+}
+
+// P4 · the strip: a label, then its whole range
+{
+  const { MaswaliWeekStrip } = req("../src/components/maswali/maswali-week-strip.tsx") as { MaswaliWeekStrip: (p: Record<string, unknown>) => unknown };
+  const phases = {
+    salesFrom: Date.parse("2026-11-30T00:01:00+03:00"), salesTo: Date.parse("2026-12-04T18:00:00+03:00"),
+    eventsFrom: Date.parse("2026-12-05T09:00:00+03:00"), eventsTo: Date.parse("2026-12-06T23:00:00+03:00"),
+    resultsFrom: Date.parse("2026-12-06T23:00:00+03:00"), resultsTo: Date.parse("2026-12-07T12:00:00+03:00"),
+  };
+  const WANT: Record<L3, string[]> = {
+    en: ["Monday 00:01 –", "Friday 18:00 EAT", "Saturday 09:00 –", "Sunday", "Sunday –", "Monday"],
+    sw: ["Jumatatu 00:01 –", "Ijumaa 18:00 EAT", "Jumamosi 09:00 –", "Jumapili", "Jumapili –", "Jumatatu"],
+    zh: ["周一 00:01 –", "周五 18:00 EAT", "周六 09:00 –", "周日", "周日 –", "周一"],
+  };
+  const stripDefects = (l: L3, m: string) => {
+    const d: string[] = [];
+    if (j(keptRuns(m)) !== j(WANT[l])) d.push(`${l}: kept ${j(keptRuns(m))}`);
+    if (count(m, "kp-mln-facts--stack") !== 3) d.push(`${l}: the phases are not label-then-range lines`);
+    return d;
+  };
+  const d = LOCALES.flatMap((l) => stripDefects(l, inApp(l, h(MaswaliWeekStrip as never, { t: dict[l], phases, current: 0 } as never))));
+  ok("4.P4a · each phase of the strip is its label, then its range, in every language — and the range is kept whole: its start with the dash and its end with \"EAT\" one run each (\"Monday 00:01 –\" · \"Friday 18:00 EAT\"), so it never reads \"Friday 18:00\" / \"EAT\" or \"Sunday\" / \"– Monday\"",
+    d.length === 0, d.join(" | "));
+  ok("4.P4a′ PLANT · the strip's old line per phase (\"Sales · Monday 00:01 – Friday 18:00 EAT\", nothing kept) is reported",
+    stripDefects("en", renderToStaticMarkup(h("ol", null, h("li", null, "Sales · Monday 00:01 – Friday 18:00 EAT")))).length > 0);
+  const gridDefects = (src: string) => {
+    const s = squash(code(src));
+    const d2: string[] = [];
+    if (!s.includes('<div className="xl:col-span-2"> <MaswaliWeekStrip')) d2.push("the strip does not span the measure from 1280");
+    if (!s.includes('phases ? "xl:row-start-2" : "xl:row-start-1"')) d2.push("the aside does not start under the strip");
+    return d2;
+  };
+  ok("4.P4b · from 1280 the hub's strip spans both columns (each range then has a third of the measure), and the aside, the questions and last week start under it",
+    gridDefects(read(HUB)).length === 0, gridDefects(read(HUB)).join(" | "));
+  ok("4.P4b′ PLANT · the strip back in the left column is reported",
+    gridDefects(read(HUB).replace('<div className="xl:col-span-2">\n                <MaswaliWeekStrip', '<div className="xl:col-start-1">\n                <MaswaliWeekStrip')).length > 0);
+}
+
+// P5 · the carry's row and the fee row say what is true
+{
+  const selling = (l: L3) => poolLedgerRows(dict[l], { kind: "selling", carriedIn: { week: 47, amount: null }, sales: { tickets: 41, amount: 41_000 }, pool: 41_000, floor: 1_000_000, jackpot: 1_000_000 }, 13);
+  const WORDS: Record<L3, [string, string, string]> = {
+    en: ["Carried in from Week 47", "Not yet settled", "13% at payout"],
+    sw: ["Kiasi kutoka Wiki 47", "Bado haijakamilika", "13% wakati wa malipo"],
+    zh: ["滚存（第47周）", "尚未结算", "派奖时扣除 13%"],
+  };
+  const wrong = LOCALES.flatMap((l) => {
+    const rows = selling(l), inRow = rows.find((r) => r.key === "in"), fee = rows.find((r) => r.key === "fee");
+    const [label, value, feeValue] = WORDS[l];
+    const once = String(inRow?.label ?? "").split("47").length - 1 === 1;
+    return inRow?.label === label && inRow.value === value && inRow.words === true && once && fee?.value === feeValue && fee.words === true ? [] : [`${l}: ${j({ inRow, fee })}`];
+  });
+  const presale = poolLedgerRows(en, { kind: "presale", carriedIn: null, floor: 1_000_000, opensOn: "Monday" }, 13).find((r) => r.key === "fee");
+  const won = poolLedgerRows(en, { kind: "won", carriedIn: null, sales: { tickets: 1050, amount: 1_050_000 }, pool: 1_050_000, floor: null, jackpot: 1_050_000, fee: 136_500, toWinners: 913_500, winningTickets: 3, perTicket: 304_500 }, 13).find((r) => r.key === "fee");
+  ok("4.P5 · the carry's row names its week ONCE and says an unsettled week in words (\"Carried in from Week 47\" · \"Not yet settled\", §D sw and zh), the fee row before a payout says the rate and when (\"13% at payout\", never \"—\"), and a fee taken is the signed figure (\"−TZS 136,500\")",
+    wrong.length === 0 && presale?.value === "13% at payout" && won?.value === formatTzsSigned(-136_500) && formatTzsSigned(-136_500) === "−TZS 136,500", wrong.join(" | "));
+  const oldLabel = `${fill("Carried in (Week {week})", { week: 47 })} · ${fill("Week {week} not yet settled", { week: 47 })}`;
+  ok("4.P5′ PLANT · the old row (\"Carried in (Week 47) · Week 47 not yet settled\" over a dash) says Week 47 twice", oldLabel.split("47").length - 1 === 2);
+}
+
+// P6 · the example draws what a real ticket draws, and says what it is
+const exampleDefects = (seal: string, how: string, example: string) => {
+  const d: string[] = [];
+  const s = squash(code(seal));
+  if (!s.includes('{m.standIn && !inert ? ( <> <s className="decoration-border-strong">{m.ordinal}</s> <span className="text-text-muted">{m.standIn}</span> </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
+  const hw = squash(code(how));
+  if (!hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}") || !hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleFloorWeek}`}") || /exampleLabel\} · [12]\b/.test(hw)) d.push("a worked ledger's label has no noun");
+  if (!squash(code(example)).includes("fill(t.millionea.seeExample, { r: standIn, n: formatNumber(voided) })")) d.push("the button does not say what it plays with a formatted question number");
+  return d;
+};
+{
+  const HOW = "src/app/millionea/how/page.tsx", EXAMPLE = "src/app/millionea/how/how-example.tsx", SEAL = "src/components/maswali/maswali-seal-line.tsx";
+  const { MaswaliSealLine } = req("../src/components/maswali/maswali-seal-line.tsx") as { MaswaliSealLine: (p: Record<string, unknown>) => unknown };
+  const example = sealLineOf(week(["YES", "YES", "YES", "VOID", "YES", "YES", "YES", "YES", "YES", "YES"], ["YES", "YES", "YES", "YES", "YES"]), PICKS, { final: true });
+  const m = renderToStaticMarkup(h(MaswaliSealLine as never, { line: example, size: 24, numbers: true } as never));
+  const d = exampleDefects(read(SEAL), read(HOW), read(EXAMPLE));
+  const templated = LOCALES.filter((l) => !dict[l].millionea.seeExample.includes("{r}") || !dict[l].millionea.seeExample.includes("{n}"));
+  ok("4.P6a · How's example draws what a real ticket draws: main 4's number struck with \"A1\" under it (the void seen on its own place, the check above it A1's) — the same Seal Line every ticket draws",
+    m.includes('<s class="decoration-border-strong">4</s><span class="text-text-muted">A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
+  ok("4.P6b · each worked ledger says which week it works through (\"Example · a week with winners\", never \"EXAMPLE · 1\"), and the button says what it plays (\"Show A1 replacing question 4\", in all three languages)",
+    d.length === 0 && templated.length === 0 && fill(en.millionea.seeExample, { r: "A1", n: 4 }) === "Show A1 replacing question 4", j({ d, templated }));
+  ok("4.P6′ PLANT · a stood-in number drawn plain, and the old \"Example · 1\" label, are reported",
+    exampleDefects(read(SEAL).replace("{m.standIn && !inert ? (", "{false ? ("), read(HOW), read(EXAMPLE)).some((x) => x.includes("struck"))
+      && exampleDefects(read(SEAL), read(HOW).replace("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}", "label={`${t.millionea.exampleLabel} · 1`}"), read(EXAMPLE)).some((x) => x.includes("noun")));
+  ok("4.P6″ PLANT · an unformatted example question number is reported",
+    exampleDefects(read(SEAL), read(HOW), read(EXAMPLE).replace("n: formatNumber(voided)", "n: voided")).some((x) => x.includes("formatted question number")));
+}
+
+// P7 · the slip's rail, its meter and its words
+/** WCAG 2.x relative luminance of an `oklch(L% C H)` token, through OKLab → linear sRGB (gamut-clipped). */
+const lumOf = (token: string) => {
+  const m = new RegExp(`${token.replace(/[-]/g, "\\-")}:\\s*oklch\\(([0-9.]+)% ([0-9.]+) ([0-9.]+)\\)`).exec(read("src/app/globals.css"));
+  if (!m) return Number.NaN;
+  const [L, C, H] = [Number(m[1]) / 100, Number(m[2]), (Number(m[3]) * Math.PI) / 180];
+  const a = C * Math.cos(H), b = C * Math.sin(H);
+  const l_ = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m_ = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s_ = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  const rgb = [4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_, -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_, -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_]
+    .map((v) => Math.min(1, Math.max(0, v)));
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+};
+const contrast = (a: string, b: string) => { const [x, y] = [lumOf(a), lumOf(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const STEPPED = "src/components/markets/stepped-progress.tsx";
+const meterDefects = (src: string) => {
+  const s = squash(code(src));
+  const grouped = s.slice(s.indexOf("function GroupedProgress"));
+  const empty = /background: i < g\.done \? "var\(--royal-400\)" : "var\((--[a-z-]+)\)"/.exec(grouped)?.[1] ?? "";
+  const d: string[] = [];
+  if (!empty) d.push("the grouped meter's fills are not the done royal and one empty token");
+  else if (contrast(empty, "--panel") < 2.3 || contrast("--royal-400", empty) < 1.9) d.push(`the empty track ${empty} reads ${contrast(empty, "--panel").toFixed(2)}:1 on the rail, ${contrast("--royal-400", empty).toFixed(2)}:1 from done`);
+  return d;
+};
+const railDefects = (src: string) => {
+  const s = squash(code(src));
+  const rail = s.slice(s.indexOf("{!closed && ( <div className=\"sticky bottom-"));
+  const d: string[] = [];
+  if (!rail.startsWith('{!closed && ( <div className="sticky bottom-[calc(65px+env(safe-area-inset-bottom,0px))] z-30 flex flex-col gap-2')) d.push("the rail is not a column");
+  if (!rail.includes('style={{ background: "var(--panel)" }}> <SteppedProgress groups={groups} /> <div className="flex items-center gap-2">')) d.push("the meter has not the rail's full width on its own row");
+  if (!s.includes('<span key="mains" className="whitespace-nowrap">{fill(t.millionea.mainsProgress, { a: progress.mains })}</span>') || !s.includes('<span key="reserves" className="whitespace-nowrap">{fill(t.millionea.reservesProgress, { b: progress.reserves })}</span>')) d.push("the two counts are not whole facts");
+  if (!s.includes('{ key: "cap", node: capLine, className: "xl:hidden" }') || !s.includes("<span>{capLine}</span>")) d.push("the cap stands twice from 1280");
+  if (!s.includes('q.eventAt === null ? null : <span key="event" className="whitespace-nowrap">{fill(t.millionea.eventAt, { when: eatWeekdayClock(t, q.eventAt) })}</span>')) d.push("the event's day and time are not one run");
+  return d;
+};
+{
+  const r = railDefects(read(SLIP));
+  ok("4.P7a · the slip's rail: the 15-step meter on its own full-width row, then the two counts as whole facts (\"Main 0/10\" · \"Reserve 0/5\", stacked without the \"·\" where they do not fit) beside the pay control; \"Event Saturday 09:00\" one run; from 1280 the cap said once, in the summary panel",
+    r.length === 0, r.join(" | "));
+  const m = meterDefects(read(STEPPED));
+  ok(`4.P7b · the meter's empty segments are seen: --border-strong reads ${contrast("--border-strong", "--panel").toFixed(2)}:1 on the rail's --panel (the old --bg-inset ${contrast("--bg-inset", "--panel").toFixed(2)}:1), and the done --royal-400 stands ${contrast("--royal-400", "--border-strong").toFixed(2)}:1 apart from it`,
+    m.length === 0 && contrast("--bg-inset", "--panel") < 1.1, m.join(" | "));
+  ok("4.P7′ PLANT · the old near-invisible track, and the meter back beside the button, are reported",
+    meterDefects(read(STEPPED).replace(': "var(--border-strong)" }} />', ': "var(--bg-inset)" }} />')).length > 0
+      && railDefects(read(SLIP).replace('style={{ background: "var(--panel)" }}>\n          <SteppedProgress groups={groups} />\n          <div className="flex items-center gap-2">', 'style={{ background: "var(--panel)" }}>\n          <div className="flex items-center gap-2">\n          <SteppedProgress groups={groups} />')).some((x) => x.includes("full width")));
+}
+
+// P10 · money that came back says so; a ticket that counts for nothing rests
+const restDefects = (seal: string, ticketSrc: string, page: string) => {
+  const d: string[] = [];
+  if (!squash(code(seal)).includes('const markOf = (m: SocketMark): SocketMark => (inert ? "unused" : m);')) d.push("an inert line draws live sockets");
+  if (!squash(code(seal)).includes('mark === "unused" && "kp-mln-rest"')) d.push("an unused socket is not at rest");
+  const t2 = squash(code(ticketSrc));
+  if (!t2.includes("const inert = ticketRests(shown);")) d.push("the ticket does not rest for every state that counts for nothing");
+  if (!squash(code(page)).includes('fill(t.millionea.cancelModalBody, { price: formatTzs(view.refund?.state === "landed" ? view.refund.amount : view.stub.price) })')) d.push("the ticket page does not say where the money went");
+  return d;
+};
+{
+  const T = req("../src/components/maswali/maswali-ticket.tsx") as { ticketRests: (s: string) => boolean; MaswaliTicketCard: (p: Record<string, unknown>) => unknown };
+  const rests = ["cancelled", "refunded"].every((s) => T.ticketRests(s)) && !["running", "won", "lost", "forfeited"].some((s) => T.ticketRests(s));
+  const pendingLine = sealLineOf(week(Array(10).fill(null), Array(5).fill(null)), PICKS);
+  const cardOf = (l: L3, shown: string, more: Record<string, unknown> = {}) => textOf(inApp(l, h(T.MaswaliTicketCard as never, {
+    t: dict[l], locale: l, serverNow: Date.parse("2026-12-01T09:00:00Z"), href: "/millionea/tickets/X", serial: "MLN-2026-W49-000041", week: 49,
+    shown, line: pendingLine, price: 1_000, payout: shown === "running" ? null : 1_000, placedAt: "2026-12-01T08:13:00Z", ...more,
+  } as never)));
+  const words = LOCALES.filter((l) => {
+    const d = dict[l].millionea;
+    const cancelled = cardOf(l, "cancelled"), refunded = cardOf(l, "refunded"), onItsWay = cardOf(l, "running", { refundPending: true }), live = cardOf(l, "running");
+    return !(cancelled.includes(d.statRefunded) && cancelled.includes("TZS 1,000") && !cancelled.includes(dict[l].journey.ticketFinalPayout)
+      && refunded.includes(d.statRefunded) && onItsWay.includes(d.statRefund) && onItsWay.includes(d.refundOnItsWay) && !onItsWay.includes(dict[l].journey.ticketPayoutAtResult)
+      && live.includes(dict[l].journey.ticketPayoutAtResult));
+  });
+  ok("4.P10a · money that came back says so on the card, in every language: a cancelled ticket and a refunded one read \"Refunded TZS 1,000\" (never \"Final payout\"), a voided week's ticket whose refund is on its way \"Refund · On its way back\" (never \"When the result is in\")",
+    rests && words.length === 0, j({ rests, words }));
+  const { MaswaliSealLine } = req("../src/components/maswali/maswali-seal-line.tsx") as { MaswaliSealLine: (p: Record<string, unknown>) => unknown };
+  const inert = renderToStaticMarkup(h(MaswaliSealLine as never, { line: pendingLine, size: 18, inert: true } as never));
+  const live = renderToStaticMarkup(h(MaswaliSealLine as never, { line: pendingLine, size: 18 } as never));
+  const d = restDefects(read("src/components/maswali/maswali-seal-line.tsx"), read(TICKET), read(TICKET_PAGE));
+  ok("4.P10b · a ticket that counts for nothing (cancelled, refunded) rests: all fifteen sockets at rest (`.kp-mln-rest`), never the live \"awaiting\" ring a pending ticket wears (0 at rest there); its page says where the money went (\"TZS 1,000 returned to main balance\")",
+    count(inert, "kp-mln-rest") === 15 && count(live, "kp-mln-rest") === 0 && d.length === 0, d.join(" | "));
+  ok("4.P10′ PLANT · an inert line drawing the awaiting ring again is reported",
+    restDefects(read("src/components/maswali/maswali-seal-line.tsx").replace('(inert ? "unused" : m)', '(inert ? "awaiting" : m)'), read(TICKET), read(TICKET_PAGE)).some((x) => x.includes("live sockets")));
+}
+
+// P11 · the tickets list
+const listDefects = (page: string, ticketSrc: string, bar: string) => {
+  const d: string[] = [];
+  const p = squash(code(page));
+  if (!p.includes("const newestFirst = (a: MillioneaTicketRow, b: MillioneaTicketRow) => (Date.parse(b.boughtAt) - Date.parse(a.boughtAt)) || b.serial.localeCompare(a.serial);")
+    || !p.includes(".filter((row) => inLens(lens, row.shown)).sort(newestFirst).map((row) => ({ g, row, price }))")) d.push("a week's tickets are not newest first");
+  if (!p.includes("<PageHeader eyebrow={t.millionea.productTitle} title={t.millionea.ticketsTitle} />")) d.push("the classic title is not the one-line one");
+  const t2 = squash(code(ticketSrc));
+  if (t2.includes("text-body-sm leading-snug") || count(t2, "valueClassName={WORDS}") !== 3) d.push("a value in words has another line box than the money beside it");
+  const b = code(bar);
+  if (/QueryStrip/.test(b) || !squash(b).includes('<nav aria-label={t.journey.ticketsFilterAria} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1.5">')) d.push("the four lenses scroll under a fade");
+  if (!squash(b).includes('case "won": return t.millionea.lensWon;')) d.push("the lenses are not Millionea's words");
+  return d;
+};
+{
+  const LIST_SRC = LIST_PAGE, BAR = "src/app/millionea/tickets/tickets-bar.tsx";
+  const d = listDefects(read(LIST_SRC), read(TICKET), read(BAR));
+  const SORA_BOLD = FONT("Sora-Bold.ttf"), lg = rungOf("title-lg");
+  const column = 320 - 2 * sp("3");
+  const titleW = widthIn(SORA_BOLD, en.millionea.ticketsTitle, lg.px, lg.track), oldW = widthIn(SORA_BOLD, en.millionea.myTicketsTitle, lg.px, lg.track);
+  const lens = sw.millionea.lensOpen === "Zinazoendelea" && sw.millionea.lensSettled === "Zilizokamilika" && sw.millionea.lensWon === "Ulizoshinda" && zh.millionea.lensWon === "已中奖";
+  ok(`4.P11 · Tiketi zangu's list: each week's tickets newest first (000042 before 000041), the title one line at 320 ("${en.millionea.ticketsTitle}" ${titleW.toFixed(0)}px in ${column}px, where "${en.millionea.myTicketsTitle}" ${oldW.toFixed(0)}px left "tickets" alone), words on the money rung's line box (the two cards' rows level), four lenses that wrap whole in Millionea's own words (§D)`,
+    d.length === 0 && titleW <= column && oldW > column && lens, j({ d, titleW, oldW, lens }));
+  ok("4.P11′ PLANT · the list unsorted, and the lenses back in a scrolling strip, are reported",
+    listDefects(read(LIST_SRC).replace(".sort(newestFirst)", ""), read(TICKET), read(BAR)).some((x) => x.includes("newest"))
+      && listDefects(read(LIST_SRC), read(TICKET), read(BAR).replace('<nav aria-label={t.journey.ticketsFilterAria}', "<QueryStrip ariaLabel={t.journey.ticketsFilterAria}><nav")).some((x) => x.includes("scroll")));
+}
+
+// P12 · the free cancel on the first screen; P16 · one annex rule; P13 · the empty board's words; A2, A4, §D
+{
+  const placeDefects = (src: string) => {
+    const s = squash(code(src));
+    const cancelAt = s.indexOf("{cancel && ( <div className=\"flex flex-col gap-1.5\"> {cancel}"), firstClause = s.indexOf("<Clause ");
+    return cancelAt > 0 && cancelAt < firstClause && cancelAt > s.indexOf("<MaswaliSealLine line={line} size={24}") ? [] : ["the free cancel waits under the fifteen clauses"];
+  };
+  ok("4.P12 · a pending ticket's free cancel stands in its head, under the Seal Line — on the first screen (the stamp promised \"Free cancel until 11:18\")", placeDefects(read(TICKET)).length === 0);
+  const below = read(TICKET).replace(/\n          \{cancel && \(\n[\s\S]*?\n          \)\}\n        <\/div>\n        <ol>/, "\n        </div>\n        <ol>").replace("      </article>\n", "      </article>\n      {cancel && (\n        <div className=\"flex flex-col gap-1.5\">\n          {cancel}\n        </div>\n      )}\n");
+  ok("4.P12′ PLANT · the cancel moved back under the ticket is reported", below !== read(TICKET) && placeDefects(below).length > 0);
+  const SEAL = "src/components/maswali/maswali-seal-line.tsx";
+  const annexDefects = (src: string) => {
+    const s = code(src);
+    return /\bannex\?: |"beside"|annex ===/.test(s) || !squash(s).includes('<div aria-hidden className={cn("flex flex-col gap-1.5", className)}>') ? ["the annex has two rules"] : [];
+  };
+  const usedBeside = MLN_FILES.filter((f) => /annex="(?:below|beside)"/.test(code(read(f))));
+  ok("4.P16 · one rule for the annex at every size and width — the five reserves on their own row under the ten mains (the hub's row set them beside the mains, the card under them)",
+    annexDefects(read(SEAL)).length === 0 && usedBeside.length === 0, j(usedBeside));
+  ok("4.P16′ PLANT · the beside mode put back is reported",
+    annexDefects(read(SEAL).replace("  numbers?: boolean;\n  idBase", '  annex?: "below" | "beside";\n  numbers?: boolean;\n  idBase')).length > 0);
+  const JH = "src/components/journey/home/journey-home.tsx";
+  const emptyDefects = (src: string) => squash(code(src)).includes("title={millionea ? t.millionea.homeEmptyOther : t.journey.homeEmptyTitle}") ? [] : ["the empty board under the card says there are no open questions at all"];
+  const other = LOCALES.filter((l) => !/\bother\b|mengine|其他/.test(dict[l].millionea.homeEmptyOther));
+  ok("4.P13 · under the Millionea card the journey home's empty board says \"No other open questions right now\" (sw \"mengine\", zh \"其他\") — and only there", emptyDefects(read(JH)).length === 0 && other.length === 0, j(other));
+  ok("4.P13′ PLANT · the plain empty title under the card is reported",
+    emptyDefects(read(JH).replace("title={millionea ? t.millionea.homeEmptyOther : t.journey.homeEmptyTitle}", "title={t.journey.homeEmptyTitle}")).length > 0);
+  const zhDefects2 = (slip: string, client: string) => {
+    const d: string[] = [];
+    if (!squash(code(slip)).includes('showClose={false} panelClassName="kp-mln-zh">')) d.push("the confirm sheet is portalled without Millionea's Chinese rule");
+    if (!squash(code(client)).includes('className="kp-mln-zh"')) d.push("the stamp is portalled without it");
+    return d;
+  };
+  ok("4.A2 · the two dialogs portalled out of the page's root carry `.kp-mln-zh` themselves — the confirm sheet's panel and the cut's stamp — so their Chinese keeps a word whole (and the one label rule reaches them)",
+    zhDefects2(read(SLIP), read(SLIP_CLIENT)).length === 0, zhDefects2(read(SLIP), read(SLIP_CLIENT)).join(" | "));
+  ok("4.A2′ PLANT · a confirm sheet without the class is reported", zhDefects2(read(SLIP).replace(' panelClassName="kp-mln-zh">', ">"), read(SLIP_CLIENT)).length > 0);
+  const signDefects = (readAt: (rel: string) => string) => MLN_FILES.filter((f) => /formatTzs\(-|money\(-|fig\(-|`−\$\{formatTzs/.test(code(readAt(f))));
+  const signed = ["src/components/maswali/maswali-pool-figure.tsx", "src/app/millionea/how/page.tsx", LEDGER].map((f) => count(code(read(f)), "formatTzsSigned("));
+  ok("4.A4 · every negative figure on Millionea is the platform's signed money (\"−TZS 136,500\"): no hand-built sign, no `formatTzs` of a negative — the pool's two fee rows, How's fee row, the win ledger's fee and net",
+    signDefects(read).length === 0 && j(signed) === j([2, 1, 2]), j({ hand: signDefects(read), signed }));
+  ok("4.A4′ PLANT · How's old fee row (`fig(-f.F)`, \"TZS -136,500\") is reported",
+    signDefects(plantIn("src/app/millionea/how/page.tsx", "value={<span className=\"amount\">{formatTzsSigned(-f.F)}</span>}", "value={fig(-f.F)}")).includes("src/app/millionea/how/page.tsx"));
+  // §D · the decided words, applied on these pages (en binding; sw and zh for Gate B's native review).
+  const D: Array<[L3, string, string]> = [
+    ["sw", "pendingCarry", "pamoja na kiasi kinachohamishwa kutoka Wiki {week} itakapokamilika"],
+    ["sw", "howFour", "Hakuna 10/10? Bwawa lote linahamishiwa wiki inayofuata, bila ada."],
+    ["sw", "mainsProgress", "Makuu {a}/10"],
+    ["sw", "carriedIn", "Kiasi kutoka Wiki {week}"], ["sw", "carriedInPending", "Bado haijakamilika"],
+    ["zh", "ruleShared", "由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
+    ["zh", "ruleWithFigure", "大奖 {amount} · 由所有 10/10 彩票平分 · 派奖时扣除 {pct}% 费用"],
+    ["zh", "stripResults", "结果与派奖 · {range}"], ["zh", "stripEvents", "事件 · {range}"],
+    ["zh", "mains", "正选题"], ["zh", "mainsProgress", "正选 {a}/10"], ["zh", "eventAt", "事件 {when}"], ["zh", "firstEventAt", "首个事件：{when}"],
+    ["zh", "ticketRunning", "待结算"], ["zh", "howThree", "所有 10/10 彩票平分大奖；{pct}% 费用仅在派奖时扣除。"], ["zh", "carriedInPending", "尚未结算"],
+    ["zh", "jumpTo", "前往第{n}题"], ["zh", "capRule", "上限：每周 {cap} 张 · 这是第{n}张"],
+    ["en", "carriedIn", "Carried in from Week {week}"], ["en", "carriedInPending", "Not yet settled"], ["en", "statRefunded", "Refunded"],
+  ];
+  const off = D.filter(([l, k, v]) => (dict[l].millionea as Record<string, unknown>)[k] !== v).map(([l, k]) => `${l}.${k}`);
+  const listZh = counted(1, "", "", {}) === "" ? (req("../src/components/maswali/maswali-format.ts") as { joinList: (l: L3, xs: string[]) => string }).joinList("zh", ["A2", "A3", "A4", "A5"]) : "";
+  ok(`4.D · §D's words on these pages, as decided (${D.length} keys): sw "itakapokamilika", "linahamishiwa", "Makuu", "Kiasi kutoka Wiki"; zh 派奖, 正选题, 事件, 待结算, 由所有, unspaced ordinals (the lead's ruling) and a Chinese list spaced from its Latin ("A2、A3、A4 和 A5")`,
+    off.length === 0 && listZh === "A2、A3、A4 和 A5" && !LOCALES.some((l) => /主题|赛事|支付时/.test(JSON.stringify(dict[l].millionea)) && l === "zh"), j({ off, listZh }));
+  ok("4.D′ PLANT · the old Chinese rule (\"由每张 … 支付时收取\") is reported", ("由每张 10/10 彩票平分 · 支付时收取 {pct}% 费用" as string) !== zh.millionea.ruleShared);
+}
+
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
- *  run (on a tree with W2) prints it (the S5 review of 24ec0d33, MEDIUM 8): 62 call sites, none in a loop. */
-const MIN_ASSERTIONS = 62;
+/** The floor is the count a green run prints; VIS-P's fact, example and word plants bring it to 110. */
+const MIN_ASSERTIONS = 110;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

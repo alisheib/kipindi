@@ -64,19 +64,21 @@ export function weekNumberOf(code: string): number {
   return m ? Number(m[1]) : 0;
 }
 
-/** "Wiki 42" / "Week 42" / "第42周". */
+/** "Wiki 42" / "Week 42" / "第42周". (The card's "Millionea · Wiki 42" is a fact line of the two since S5 VIS A1.) */
 export function weekWord(t: Dict, week: number): string {
   return fill(t.millionea.week, { week });
 }
 
-/** "Millionea · Wiki 42" — the product's short name over its week. */
-export function productWeek(t: Dict, week: number): string {
-  return `${t.millionea.productLabel} · ${weekWord(t, week)}`;
-}
-
-/** "7, 9 na A5" — a list joined the way the reader's language joins one (`Intl.ListFormat`, no conjunction typed here). */
+/**
+ * "7, 9 na A5" — a list joined the way the reader's language joins one (`Intl.ListFormat`, no conjunction typed here).
+ * ⭐ In Chinese, a space stands where a Latin letter or a digit meets an ideograph — Millionea's own Chinese convention
+ * ("备选题 {r} 替补", "{n} 张", "A1 至 A5"; S5 VIS §D) — so the engine's "A4和A5" reads "A4 和 A5"; "、" stays unspaced.
+ */
+const LATIN_THEN_HAN = /([A-Za-z0-9])([㐀-䶿一-鿿豈-﫿])/g;
+const HAN_THEN_LATIN = /([㐀-䶿一-鿿豈-﫿])([A-Za-z0-9])/g;
 export function joinList(locale: Locale, items: readonly string[]): string {
-  return new Intl.ListFormat(LIST_TAG[locale], { type: "conjunction" }).format([...items]);
+  const joined = new Intl.ListFormat(LIST_TAG[locale], { type: "conjunction" }).format([...items]);
+  return locale === "zh" ? joined.replace(LATIN_THEN_HAN, "$1 $2").replace(HAN_THEN_LATIN, "$1 $2") : joined;
 }
 
 /**
