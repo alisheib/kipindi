@@ -61,8 +61,10 @@ the half-step trap).
 3. Vendor bars: `src/lib/server/updown-terminal-vendor.ts` `vendorBarsFor(asset, range)` — 15M/30M/1H at 1-minute,
    6H/12H at 5-minute, 24H at 15-minute, 7D hourly; one credit per call; a 30-second per-process cache (15 s on failure);
    public through `/api/updown/history?asset=&range=&style=` (10 s CDN cache, ETag). **Budget:** one range per asset for the
-   card line (`1H` covers every round length on offer) keeps the line inside the ruling's ~5,800/day for two assets; say
-   what the chart lab's other ranges add.
+   card line keeps the line inside the ruling's ~5,800/day for two assets; say what the chart lab's other ranges add.
+   **U43 correction, 2026-10-19:** a 60-minute choice spans 72 minutes with its result phase, so `1H` does not cover
+   that round. Release B asks for 77 one-minute bars through the shared per-asset vendor call and cache; the round
+   response can show up to 76 minutes, while the ordinary `1H` chart still displays 60 minutes.
 4. Round timing (`src/lib/updown-durations.ts`): span = duration + `resultPhaseMinutes`; bets close
    `selectionCloseLeadSeconds` before the close; one settle closes a round and opens its successor at that boundary.
 5. The board shows at most three cards: current (the newest by `boundaryAt` among started unsettled rounds), just closed,

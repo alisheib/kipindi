@@ -312,12 +312,13 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
   `qa:live` 363/0.
 - ⏳ **Release B — IN CODE, not released.** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
-  board order, B4 market card, B5 system and copy are being implemented in this branch. The B3 filter guard and all
-  18 mutations are green. B2's open-price mapping and red controls, B3's board-order and capture controls, B4's card
-  guards and 15 red controls, and B5's duration/word/motion guard are green locally. A first local state run reached all
-  phases but failed its capture premise in 18 cells: the tool touched React nodes before hydration, photographed asset
-  glyphs before their sprite painted, and lost cards during a refresh. Those capture defects are being fixed and the
-  state matrix must be rerun before a visual score is valid. Visual scores and production release remain unverified.
+  board order, B4 market card, B5 system and copy are in this branch. Focused B1–B5 guards and mutation proofs are
+  green; B2 now covers the 72-minute span of a 60-minute choice through one shared vendor read (brief §4 correction).
+  The first local state run exposed 18 capture-premise failures. The second reached all 14 phases and exposed one more
+  capture premise: it demanded numeric clocks on settled cards that correctly say "waiting" or show an em dash. The
+  driver now waits for numeric clocks on running cards only, and has a full width × language × guest/player mode. These
+  changes require a clean rerun. The production before-frame matrix is being captured. The last price-consistency and
+  one-game-name audits are in progress; visual scores and production release remain unverified.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
