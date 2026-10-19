@@ -311,14 +311,16 @@ section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158
   const ordinaryClass = ordinaryMatch?.[1] ?? "";
   const parts = (s: string) => ({
     row: /className="kp-hub__row"/.test(s) || /className="kp-hub__row">/.test(s),
-    glyph: /className="kp-hub__glyph" aria-hidden><[A-Za-z.]+ (?:s|size)=\{20\}/.test(s),
+    // Re-pinned (PHOSPHOR-MIGRATION release 2, W5): every hub row leads with the one hub plate (`HubPlate`, hub-plate.tsx:
+    // the identity plate, its glyph in Duotone) — the Needle's row and the ordinary row still wear the one same slot.
+    glyph: /<HubPlate glyph=(?:"[A-Za-z]+"|\{row\.glyph\}) \/>/.test(s),
     label: /className="kp-hub__label"/.test(s),
     // Re-pinned (round 9, R9-A4, 2026-10-11): every hub row's chevron ends its ink on the row's edge (`edge="end"`) —
     // the Needle's row and the ordinary row still wear the one same chevron, which is this check's point.
     chev: s.includes('<I.chevronRight s={18} edge="end" className="kp-hub__chev"'),
   });
   const a = parts(branch), b = parts(`className="kp-hub__row">${ordinary}`);
-  ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev
+  ok("5.2 · its row, its glyph slot (the hub plate), its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev
     && /\? "kp-hub__row kp-hub__row--proposals" : "kp-hub__row"/.test(ordinaryClass)
     && b.glyph && b.chev && /const label = <span className="kp-hub__label">/.test(hub) && /\) : label\}/.test(ordinary),
     JSON.stringify({ needle: a, ordinary: b, ordinaryClass }));

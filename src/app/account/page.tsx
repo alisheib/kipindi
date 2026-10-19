@@ -23,6 +23,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { HubRowItem } from "@/components/journey/account/hub-row";
 import { hubColumnCut, hubRowsFor, hubWord, wideRowCount, type HubGroup } from "@/components/journey/account/hub-rows";
 import { SignOutRow } from "@/components/journey/account/sign-out-row";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { currentSession } from "@/lib/server/auth-service";
 import { loadHubViewer } from "@/lib/server/hub-viewer";
@@ -90,7 +91,7 @@ export default async function AccountHubPage() {
               <ul className="kp-hub__card kp-hub__card--staff" aria-label={t.journey.hubGroupStaff}>
                 <li>
                   <a href="/admin" className="kp-hub__row">
-                    <span className="kp-hub__glyph" aria-hidden><I.staffConsole s={20} /></span>
+                    <HubPlate glyph="staffConsole" />
                     <span className="kp-hub__text">
                       <span className="kp-hub__label">{keepConnectives(t.common.staffConsole)}</span>
                       <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>

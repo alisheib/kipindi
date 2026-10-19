@@ -14,7 +14,8 @@
  * none of those: it is OFF, with a one-line next step (`test:feedback-law` 3.13).
  */
 import { useEffect, useState, useTransition } from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -125,12 +126,12 @@ export function PushSettings() {
       <p className="mb-4 text-body-sm text-text-subtle">{t.push.sectionHint}</p>
       <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
         <div className="flex items-start gap-3 min-w-0">
-          {/* ⛔ LITERALS, NOT `h-10 w-10` — the spacing scale is overridden
-              (tailwind.config.ts:200-215) and that pair is 80×80px beside a 14px title.
-              40px = --tap-min, the kit's glyph-tile size. */}
-          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
-            <I.bellRing s={17} />
-          </span>
+          {/* The channel's identity plate (PHOSPHOR-MIGRATION release 2), its glyph in Duotone: 40px = --tap-min, the kit's
+              glyph-tile size, set by the atom as a number (the spacing scale is overridden, so `h-10 w-10` would be 80px).
+              The brand tint and the 8px corner typed here are the variant's now; the switch says the state. */}
+          <IconPlate size={40} variant="identity" aria-hidden>
+            <I.bellRing s={plateGlyph(40)} tier="duo" />
+          </IconPlate>
           <div className="min-w-0">
             {/* text-balance, like the SMS card below it: a two-line title never leaves one word alone at 360. */}
             <p className="font-display text-[14px] font-semibold text-text leading-tight text-balance">{t.push.title}</p>

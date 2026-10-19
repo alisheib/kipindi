@@ -282,7 +282,8 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
   const DESTRUCTIVE: Array<[string, string, RegExp]> = [
     ["the avatar's clear button", "src/components/profile/avatar-uploader.tsx", /group-hover:border-danger-border group-hover:text-danger-fg/],
     ["a notification's dismiss ✕ on /notifications", "src/app/notifications/row-actions.tsx", /hover:text-danger-fg hover:bg-bg-overlay/],
-    ["/profile's Sign out row and plate", "src/app/profile/page.tsx", /hover:border-danger-border transition-colors[\s\S]{0,700}bg-danger-500\/10 text-danger-fg group-hover:bg-danger-500\/20/],
+    // PHOSPHOR-MIGRATION release 2: the plate is the atom's danger variant (`.kp-plate--danger`: the danger ring, wash and ink).
+    ["/profile's Sign out row and plate", "src/app/profile/page.tsx", /hover:border-danger-border transition-colors[\s\S]{0,900}<IconPlate size=\{36\} variant="danger" aria-hidden>\s*<I\.logOut s=\{plateGlyph\(36\)\} tier="duo" \/>/],
     ["the sessions page's Sign out", "src/app/profile/sessions/page.tsx", /style=\{\{ color: "var\(--danger-fg\)" \}\}/],
     ["CONTROL · the avatar menu's Sign out (the convention)", "src/components/layout/avatar-menu.tsx", /text-danger-fg hover:bg-danger-500\/10/],
     // 2026-10-10 (round 6's read): the journey hub's Sign out row, missed by the first sweep — the menu's inks.
@@ -309,7 +310,8 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
 
   // 2.5 · an app state that went well is the success family.
   const SUCCESS_MARKS: Array<[string, string, RegExp]> = [
-    ["2FA on: the shield plate", "src/app/profile/security/security-client.tsx", /enabled \? "bg-success-500\/10 text-success-fg"/],
+    // PHOSPHOR-MIGRATION release 2: the plate is the atom's success variant when on (its shield in Fill: a state), quiet off.
+    ["2FA on: the shield plate", "src/app/profile/security/security-client.tsx", /variant=\{enabled \? "success" : "quiet"\}/],
     ["the resolution's attestation seals and the paid-out tick", "src/components/markets/resolution-panel.tsx", /(?:text-success-fg[\s\S]*){3}/],
     ["the sale's free window (box and \"No fee\")", "src/components/markets/sell-confirm-modal.tsx", /isFree \? "color-mix\(in oklab, var\(--success-500\) 62%, transparent\)"[\s\S]*isFree \? "color-mix\(in oklab, var\(--success-500\) 18%, transparent\)"[\s\S]*isFree \? "var\(--success-fg\)"/],
     ["an agent's uploaded document slot (the KYC uploader's done tile)", "src/app/agent/apply/apply-client.tsx", /done \? "border-success-border bg-success-500\/\[0\.07\] cursor-pointer hover:border-success-500"[\s\S]*done \? "text-success-fg"/],

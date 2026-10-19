@@ -7,9 +7,8 @@
  * Each chip sends the same text the player would have typed, which routes
  * through the regular send action so the experience is uniform.
  *
- * Hero displays the chat-companion <HelpMark /> at hero scale (no
- * plate wrapper) so the player sees the brand-mark concierge identity
- * as the first thing inside the panel.
+ * Hero displays the brand's coin (`FiftyMark`) at hero scale (no plate wrapper) so the player sees the brand-mark
+ * concierge identity as the first thing inside the panel.
  */
 
 import { FiftyMark } from "@/components/brand";

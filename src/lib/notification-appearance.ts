@@ -18,13 +18,15 @@
  * Guarded by `npm run test:notifications-page` §1: both surfaces must import from here, and
  * neither may declare its own map.
  */
-import { I, type FillGlyphKey } from "@/components/ui/glyphs";
+import { I, type DuoGlyphKey, type FillGlyphKey } from "@/components/ui/glyphs";
+import type { PlateVariant } from "@/components/ui/icon-plate";
 import type { StoredNotification } from "@/lib/server/store";
 
 type Kind = StoredNotification["kind"];
 
-/** A win's seal, the one kind drawn in Fill (`tierFor`) — typed, so it can only name a key that ships a Fill. */
-const WIN_SEAL = "resolved" as const satisfies FillGlyphKey;
+/** A win's seal, the one kind drawn in Fill (`tierFor`) — typed, so it can only name a key that ships a Fill (and the
+ *  Duotone every other kind's plate draws, `DuoGlyphKey`). */
+const WIN_SEAL = "resolved" as const satisfies FillGlyphKey & DuoGlyphKey;
 
 /**
  * The glyph for a kind — the meaning's own key, the one every other door to it wears (PHOSPHOR-MIGRATION §8b, the audit of
@@ -32,78 +34,90 @@ const WIN_SEAL = "resolved" as const satisfies FillGlyphKey;
  * a loss Up & Down's DOWN, a round's result a pulse, limits a heartbeat, betting closed a date).
  *
  * ⚠️ Returns the component, not an element, so a caller controls the size: the bell and `/notifications` both render it
- * at 16px inside a 32px plate, and draw it in `tierFor`'s tier.
+ * at `plateGlyph(32)` on a 32px plate, and draw it in `tierFor`'s tier. Every key is a `DuoGlyphKey` (`keyFor`), so tsc
+ * refuses a kind whose plate would fall back to Bold (PHOSPHOR-MIGRATION release 2).
  * ⛔ Every kind a player is sent has its case (W4's review found a verdict, a dispute and a bonus falling to the bell).
  * The bell stays for the kinds a player is never sent — the staff's own notices, which D19 keeps out of a player's
  * bundle by name (test:house-bot-disclosure 1.1) — and for a value older data may hold.
  */
-export const iconFor = (k: Kind) => {
+const keyFor = (k: Kind): DuoGlyphKey => {
   switch (k) {
-    case "WIN":          return I[WIN_SEAL]; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
-    case "LOSS":         return I.xCircle; // quiet, in Line: a loss is bookkeeping (§M7)
-    case "BET_PLACED":   return I.ticket;
-    case "SELECTION_CLOSED": return I.hourglassOff; // betting closed, as the cards and the question page draw it
-    case "DEPOSIT":      return I.arrowDownToLine; // R-LEXICON 5.3A
-    case "WITHDRAW":     return I.arrowUpFromLine; // R-LEXICON 5.3A
-    case "KYC":          return I.idCard; // identity verification, as its hub row; `shieldcheck` means verified
-    case "ROUND_RESULT": return I.resolved; // a result recorded (§3), in Line
-    case "MATCH_START":  return I.live; // nothing writes this kind today; a start is the Live mark
-    case "RG":           return I.limits; // R-LEXICON 5.7A
-    case "SECURITY":     return I.keyRound;
-    case "AFFILIATE":    return I.users; // the friends programme, as the hub's Alika row
-    case "PROPOSAL":     return I.idea; // R-LEXICON 5.6A
-    case "WATCHLIST":    return I.star;
-    case "VERDICT":      return I.resolved; // a verdict recorded, the money not moved yet: a result recorded (§3), in Line
-    case "OBJECTION":    return I.flag; // a dispute, as /fairness's objection sign-off and the resolution panel's dispute
-    case "BONUS":        return I.gift; // a bonus, as the wallet's bonus panel
-    default:             return I.bell;
+    case "WIN":          return WIN_SEAL; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
+    case "LOSS":         return "xCircle"; // on the quiet plate: a loss is bookkeeping (§M7)
+    case "BET_PLACED":   return "ticket";
+    case "SELECTION_CLOSED": return "hourglassOff"; // betting closed, as the cards and the question page draw it
+    case "DEPOSIT":      return "arrowDownToLine"; // R-LEXICON 5.3A
+    case "WITHDRAW":     return "arrowUpFromLine"; // R-LEXICON 5.3A
+    case "KYC":          return "idCard"; // identity verification, as its hub row; `shieldcheck` means verified
+    case "ROUND_RESULT": return "resolved"; // a result recorded (§3), on the quiet plate
+    case "MATCH_START":  return "live"; // nothing writes this kind today; a start is the Live mark
+    case "RG":           return "limits"; // R-LEXICON 5.7A
+    case "SECURITY":     return "keyRound";
+    case "AFFILIATE":    return "users"; // the friends programme, as the hub's Alika row
+    case "PROPOSAL":     return "idea"; // R-LEXICON 5.6A
+    case "WATCHLIST":    return "star";
+    case "VERDICT":      return "resolved"; // a verdict recorded, the money not moved yet: a result recorded (§3), quiet
+    case "OBJECTION":    return "flag"; // a dispute, as /fairness's objection sign-off and the resolution panel's dispute
+    case "BONUS":        return "gift"; // a bonus, as the wallet's bonus panel
+    default:             return "bell";
   }
 };
+export const iconFor = (k: Kind) => I[keyFor(k)];
 
-/** The tier a kind's glyph draws in: a win's seal is solid, everything else is Line (PHOSPHOR-MIGRATION §8c). */
-export const tierFor = (k: Kind): "fill" | undefined => (k === "WIN" ? "fill" : undefined);
+/** The tier a kind's glyph draws in: a win's seal is solid (Fill: earned, §8c); every other kind is the notice's identity
+ *  on its plate, in Duotone (PHOSPHOR-MIGRATION release 2, W5; DESIGN_AUTHORITY §K3 item 3). */
+export const tierFor = (k: Kind): "fill" | "duo" => (k === "WIN" ? "fill" : "duo");
 
 /**
- * Kit-tinted swatch per notification kind (OKLCH-tuned for dark + light).
+ * The plate per notification kind: an `IconPlate` variant, each one recipe from the tokens (globals.css `.kp-plate--*`,
+ * PHOSPHOR-MIGRATION release 2). The recipes are the ones these plates wore as classes: a family's edge over a 30% veil of
+ * its wash, in its ink; the quiet plate the sunken surface; the win's gold.
  *
  * ⛔ A WIN IS THE ONLY MONEY OUTCOME THAT IS GOLD. A loss is deliberately neutral — not red,
  * which reads as *something went wrong*, and never gold, which is the celebration ink. That
  * asymmetry is LCCP harm-prevention, not taste: the product must not be visually happier when
  * it takes money than when it returns it.
  */
-export const tintFor = (k: Kind) => {
+export const tintFor = (k: Kind): PlateVariant => {
   switch (k) {
-    case "WIN":          return "border-gold-700 bg-gold-500/10 text-gold-300";
-    case "LOSS":         return "border-border bg-bg-overlay text-text-muted";
-    case "BET_PLACED":   return "border-info-border bg-info-bg/30 text-info-fg";
-    case "SELECTION_CLOSED": return "border-info-border bg-info-bg/30 text-info-fg";
-    case "ROUND_RESULT": return "border-border bg-bg-overlay text-text-muted";
+    case "WIN":          return "gold";
+    case "LOSS":         return "quiet";
+    case "BET_PLACED":   return "info";
+    case "SELECTION_CLOSED": return "info";
+    case "ROUND_RESULT": return "quiet";
     /* 🔴 §B2a (D2, 2026-08-21) — A DEPOSIT IS MONEY ARRIVING, NOT A BET WON. This wore
        `--yes-*`, the ink that means *your money is on this side of a market*, on a notification
        about a bank transfer. The app-state family is `success`, and the SPELLING is decided by
-       the neighbours: every other non-gold tone on this list reads
-       `border-<family>-border bg-<family>-bg/30 text-<family>-fg`. */
-    case "DEPOSIT":      return "border-success-border bg-success-bg/30 text-success-fg";
+       the neighbours: every other non-gold tone on this list is its family's plate (`.kp-plate--<family>`,
+       which reads the family's border, its wash at 30% and its ink). */
+    case "DEPOSIT":      return "success";
     /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
        "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
        `--warning-fg` was then `--gilt` (amber since Ali's ruling (1) of 2026-10-10), claimed both alarm and gold. It
        reads the informational tone its account-side
        neighbours read (KYC, RG); the payment's own status keeps the §B11 words on the row it opens. */
-    case "WITHDRAW":     return "border-info-border bg-info-bg/30 text-info-fg";
-    case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";
-    case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
+    case "WITHDRAW":     return "info";
+    case "KYC":          return "info";
+    case "RG":           return "info";
     /* 🔴 §B2a — and a SECURITY notice is not a lost bet. `--no-*` is the ink that means *your
        money is gone*; a new-sign-in alert borrowing it spends the money vocabulary on chrome.
        `danger` is the app-state family for "something needs your attention now", same recipe. */
-    case "SECURITY":     return "border-danger-border bg-danger-bg/30 text-danger-fg";
-    case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
+    case "SECURITY":     return "danger";
+    case "MATCH_START":  return "quiet";
     /* ⛔ The header above says it: "A WIN IS THE ONLY MONEY OUTCOME THAT IS GOLD". An affiliate notice (a friend joined,
        a code shared) and a proposal notice (reviewed, approved, listed) are KINDS, mostly not money — and an approval
        is permission, not money (§B11). They were the gold plate; they read the informational tone (R5-C, 2026-10-09). */
-    case "AFFILIATE":    return "border-info-border bg-info-bg/30 text-info-fg";
-    case "PROPOSAL":     return "border-info-border bg-info-bg/30 text-info-fg";
+    case "AFFILIATE":    return "info";
+    case "PROPOSAL":     return "info";
     // Informational, never a "bet now" nudge → royal/info, never gold.
-    case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
-    default:             return "border-border bg-bg-overlay text-text-muted";
+    case "WATCHLIST":    return "info";
+    /* Release 2 (W4's review found these three falling to the default): a verdict recorded is a result recorded, quiet as
+       ROUND_RESULT — nobody has been paid, and both sides get it; a dispute ruled and a bonus (queued, credited, unlocked,
+       expired) are notices about the player's own account, the informational tone of their neighbours. A bonus is never
+       gold: gold is money EARNED, and a bonus is given (§Q5). */
+    case "VERDICT":      return "quiet";
+    case "OBJECTION":    return "info";
+    case "BONUS":        return "info";
+    default:             return "quiet";
   }
 };

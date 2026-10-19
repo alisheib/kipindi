@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { FiftyMark } from "@/components/brand";
@@ -433,11 +434,12 @@ export default async function ProfilePage() {
           className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-danger-border transition-colors"
         >
           <span className="inline-flex items-center gap-3">
-            {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215)
-                and `h-9` renders 64px, setting the whole sign-out row's height. */}
-            <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-danger-500/10 text-danger-fg group-hover:bg-danger-500/20 transition-colors">
-              <I.logOut s={16} />
-            </span>
+            {/* The danger plate (PHOSPHOR-MIGRATION release 2), as the hub's Toka draws it (`HubPlate`, hub-plate.tsx): the
+                danger family's recipe, its glyph in Duotone. The 10% wash, its 20% hover and the 8px corner typed here are
+                the variant's now; the row's danger edge stays its hover. */}
+            <IconPlate size={36} variant="danger" aria-hidden>
+              <I.logOut s={plateGlyph(36)} tier="duo" />
+            </IconPlate>
             <span className="text-left">
               <p className={PROFILE_SIGN_OUT_TITLE}>{t.common.signOut}</p>
               <p className="mt-0.5 text-body-sm text-text-subtle">{t.profile.seeYouSoon}</p>
@@ -483,14 +485,20 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
       {accent && (
         <span aria-hidden className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ background: "linear-gradient(180deg, var(--brand-400), var(--brand-600))" }} />
       )}
-      <span
-        /* ⚠️ LITERALS, not `h-10 w-10` — the overridden scale (tailwind.config.ts:200-215)
-           makes `h-10` 80px, which is what set every profile menu row's height. */
-        className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 transition-colors ${accent ? "" : "bg-brand-500/10 text-brand-300 group-hover:bg-brand-500/15"}`}
-        style={accent ? { background: "linear-gradient(180deg, var(--brand-400), var(--brand-600))", color: "var(--text-on-brand)" } : undefined}
+      {/* The door's identity plate (PHOSPHOR-MIGRATION release 2), as the Akaunti hub's rows draw the same doors
+          (hub-plate.tsx): its glyph in Duotone; the brand tint, its hover step and the 8px corner typed here are the
+          variant's now. ⭐ The ACCENT row keeps its own material — the brand gradient under the on-brand ink (the note
+          above) — through the atom's `bg`/`fg`, so it takes no variant; its glyph is Duotone too: still the door's
+          identity, set apart, never a state. */}
+      <IconPlate
+        size={40}
+        variant={accent ? undefined : "identity"}
+        bg={accent ? "linear-gradient(180deg, var(--brand-400), var(--brand-600))" : undefined}
+        fg={accent ? "var(--text-on-brand)" : undefined}
+        aria-hidden
       >
-        <Icon s={17} />
-      </span>
+        <Icon s={plateGlyph(40)} tier="duo" />
+      </IconPlate>
       <div className="flex-1 min-w-0">
         <p className={PROFILE_ROW_TITLE}>
           {/* ⛔ ONE flex item (2026-10-10, the v4 screenshot pass): the title row is a flex row (`gap-2`, for the badge), and

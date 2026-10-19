@@ -18,6 +18,17 @@ should be plain … the most small details are the most important to me"*); it i
 stopped twice to ship (⏳ Owed, below), then release 2 (**Next**). A Codex session may take this over (Ali, 2026-10-19):
 everything it needs is this file, AGENTS.md and DESIGN_AUTHORITY §K3.
 
+⏳ **In flight — release 2a, part 1 (`phosphor-2a`; not yet live):** one shared `IconPlate` variant and Duotone identity
+plates on the account hub, notification rows, help, the landing trust band, the chat button, the Needle mark and profile
+settings. The local build and `qa:live` passed. The full database battery found the known main failures and two stale
+notification guard anchors, now repaired and green. Its three serverless browser failures pass on the fresh local server.
+Classic trust-band and overlay before/after tiles have been read at phone and desktop sizes in all three languages.
+The re-pinned guards' red mutations passed one at a time in a separate clean worktree. The changed player pages passed
+1,230 responsive assertions at 320, 360, 768, 1280 and 1920 in all three languages; the overlay sweep passed 21/21.
+The only responsive warnings are the existing 44×26 shared Toggle controls on the responsible-gambling page.
+Before this release: squash the release, then perform AGENTS.md §4's exact-commit pre-push and production checks. Part 2 and
+the rest of W5–W9 remain in §8d and the release-2a hand-over.
+
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
 - the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
@@ -200,7 +211,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
-| W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
+| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a part 1 in flight on `phosphor-2a`; the remaining sites and later W5 releases are in the hand-over and §8d |
 | W6 | Empty states: one family | ⬜ | |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
 | W8 | Motion on the existing primitives | ⬜ | |
@@ -231,6 +242,9 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-LEXICON | **5.1A–5.7A** — the board `squares-four` (both the classic "Masoko" and the journey "Maswali" tab) · Live `broadcast` · deposit / withdraw `arrow-line-down` / `arrow-line-up` · Up & Down `arrows-down-up` · results `seal-check` · proposals `lightbulb` · limits and breaks `hand-palm`. §3 and §4 carry them |
 | R-BADGES | **6A** — the profile badge medallions keep their hand-drawn art: identity art like the brand mark, outside the Phosphor family |
 | R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (Ali, 2026-10-17, during W2) — ONE source: the family `I`. An icon it lacks becomes a key in `scripts/glyphs/map.ts` (or a house extra) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. AGENTS.md §7, DESIGN_AUTHORITY §K3 and the design master brief state it; `test:glyph-source` §3/§5/§6 hold its three doors (inline `<svg>`, SVG data URIs, images under `public/`) |
+| R-WALLET-HISTORY | *"Use type-specific glyphs"* (Ali, 2026-10-19) — each wallet-history row names its stored transaction type with the family's glyph; unresolved types stay neutral |
+| R-STAFF-PLATE | *"Use royal identity plate"* (Ali, 2026-10-19) — the classic staff-menu row joins the journey row; gold stays reserved for earned money and status |
+| R-DEPOSIT-PLATE | *"Use status-specific plates"* (Ali, 2026-10-19) — a failed, held, processing or under-review deposit notification must not wear the successful deposit's green plate; its plate follows its actual stored notice status |
 
 **W0's answers** — Ali, 2026-10-17, after opening the specimen: *"good i saw them proceed oerfcetly syroe anuthgi enede
 int h erpeo and keep going"*, then *"until live"*. The specimen's pre-selected line `1B 2B 3B 4B 5.1A 5.2A 5.3A 5.4A 5.5A

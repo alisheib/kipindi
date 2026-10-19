@@ -775,6 +775,13 @@
   /* The primary material's lit edge (S7-PLAN A14): `.btn-primary`'s even 1px ring at the delivery's 32% tinted-edge
      strength, byte for byte — its first shadow, read by the button and the How-to card's royal plate. */
   --edge-primary:    inset 0 0 0 1px oklch(74% 0.16 268 / 0.32);
+  /* ⭐ THE GLYPH'S TONE AND THE PLATE IT STANDS ON (PHOSPHOR-MIGRATION release 2, W5; R-TONE 2B, Ali 2026-10-17). A Duotone
+     glyph (`tier="duo"`, glyphs.tsx) paints Phosphor's Regular outline over a tone layer of its own ink; the codegen writes
+     that layer's opacity as `var(--glyph-tone, 0.2)`, so this is its one definition. The identity plate is the specimen's
+     (docs/design-brief/phosphor-2026-10/phosphor-specimen-w0.html, choice 2B, the account hub on a phone): the soft royal
+     surface at 60% under the lit edge, its glyph in the muted ink. `IconPlate`'s variants read it (`.kp-plate--*`). */
+  --glyph-tone: 0.2;
+  --plate-identity: color-mix(in oklab, var(--bg-royal-soft) 60%, transparent);
 
   /* The wash each rung catches. The lightness spread is deliberately small —
      this is material, not decoration. Rung 4 carries +0.015 chroma against mud
@@ -5461,6 +5468,21 @@ html[data-sheet-open] .route-enter { animation: none; }
    the family's 1.9-unit stroke. */
 .kp-gtext { stroke-width: var(--g-stem); }
 .kp-gtext * { vector-effect: non-scaling-stroke; }
+/* ⭐ ONE PLATE, ITS ROLES FROM THE TOKENS (PHOSPHOR-MIGRATION release 2, W5: "one plate everywhere"). `IconPlate` is the only
+   plate (`test:icon-sizes` §3); its `variant` names what the plate says, and each is one recipe here:
+   · identity — what a row, a door or a cell IS: its glyph in Duotone (DESIGN_AUTHORITY §K3 item 3: identity on a plate).
+   · quiet    — the quiet outcomes and the neutral notices: a loss, a result recorded (§M7: a loss is bookkeeping).
+   · info · success · warning · danger — a status's own family: the family's edge at full strength over a 30% veil of its
+     wash, the glyph in the family's ink (the notification plates' recipe since §B2a, now one definition).
+   · gold     — a win, and nothing else (§Q5: gold is money earned).
+   The edge is an inset ring, never a border, so a plate's variant never moves its glyph. */
+.kp-plate--identity { background: var(--plate-identity); box-shadow: var(--edge-lit); color: var(--text-muted); }
+.kp-plate--quiet { background: var(--bg-overlay); box-shadow: inset 0 0 0 1px var(--border); color: var(--text-muted); }
+.kp-plate--info { background: color-mix(in oklab, var(--info-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--info-border); color: var(--info-fg); }
+.kp-plate--success { background: color-mix(in oklab, var(--success-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--success-border); color: var(--success-fg); }
+.kp-plate--warning { background: color-mix(in oklab, var(--warning-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--warning-border); color: var(--warning-fg); }
+.kp-plate--danger { background: color-mix(in oklab, var(--danger-bg) 30%, transparent); box-shadow: inset 0 0 0 1px var(--danger-border); color: var(--danger-fg); }
+.kp-plate--gold { background: color-mix(in oklab, var(--gold-500) 10%, transparent); box-shadow: inset 0 0 0 1px var(--gold-700); color: var(--gold-300); }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:var(--sp-2); }
 .av-stack { display:flex; }
@@ -6934,7 +6956,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    radius, so the end rows take the card's inner curve and the ring stays whole. */
 .kp-hub__card > li:first-child .kp-hub__row { border-top-left-radius: calc(var(--r-lg) - 1px); border-top-right-radius: calc(var(--r-lg) - 1px); }
 .kp-hub__card > li:last-child .kp-hub__row { border-bottom-left-radius: calc(var(--r-lg) - 1px); border-bottom-right-radius: calc(var(--r-lg) - 1px); }
-.kp-hub__glyph { flex-shrink: 0; display: inline-flex; color: var(--text-muted); }
+/* A row's glyph stands on its identity plate (`HubPlate`, hub-plate.tsx: PHOSPHOR-MIGRATION release 2) — the plate brings its
+   own box, tint and ink (`IconPlate`, `.kp-plate--identity`); it was a bare 20px glyph in the muted ink. */
+.kp-hub__glyph { flex-shrink: 0; }
 .kp-hub__text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
 .kp-hub__label { font-size: var(--type-body); font-weight: 500; line-height: 1.3; overflow-wrap: anywhere; }
 .kp-hub__sub { font-size: var(--type-small); line-height: 1.35; color: var(--text-subtle); }
@@ -7126,9 +7150,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-trust > * { padding-right: var(--sp-6); }
   .kp-trust > * + * { border-left: 1px solid var(--border); padding-left: var(--sp-6); }
 }
-/* Each fact's glyph is an ACCENT, and the product's one non-money accent is the brand family (R5-C, the second gold audit,
-   2026-10-09; Q5 "gold is money, and nothing else"): it was `--gilt` on three claims about how a result is checked. */
-.kp-trust__glyph { display: flex; color: var(--brand-300); }
+/* Each fact's glyph is never gold (R5-C, the second gold audit, 2026-10-09; Q5 "gold is money, and nothing else"): it was
+   `--gilt` on three claims about how a result is checked, then the brand ink. Since PHOSPHOR-MIGRATION release 2 it stands on
+   the identity plate (`IconPlate`, trust-band.tsx), whose surface, edge and ink are the plate's own (`.kp-plate--identity`),
+   so this rule keeps only its place in the cell. */
+.kp-trust__glyph { flex-shrink: 0; }
 .kp-trust__h {
   font-family: var(--font-display);
   font-weight: 600;

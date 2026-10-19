@@ -396,7 +396,8 @@ const RULES: Rule[] = [
         // control the design deliberately keeps quiet.
         const body = b.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 600);
         const end = body.indexOf("</button>");
-        if (/<(?:I\.|svg\b|Glyph)/.test(end >= 0 ? body.slice(0, end) : body)) continue;
+        // PHOSPHOR-MIGRATION release 2: a glyph on its plate (`IconPlate`, `HubPlate`) is the same paint.
+        if (/<(?:I\.|svg\b|Glyph|IconPlate\b|HubPlate\b)/.test(end >= 0 ? body.slice(0, end) : body)) continue;
         out.push({ index: m.index ?? 0, snippet: m[0].slice(0, 90) });
       }
       return out;

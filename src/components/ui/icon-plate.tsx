@@ -46,9 +46,20 @@ import { cn } from "@/lib/utils";
  * an escape hatch on the atom built to END four arbitrary radii is a second definition
  * site with a comment apologising for itself. No call site ever passed it. B10.2 says
  * each family has ONE radius; this family's is `--r-md`.
+ *
+ * ⭐ ONE PLATE EVERYWHERE, ITS LOOK NAMED BY WHAT IT SAYS (PHOSPHOR-MIGRATION release 2, W5: the plate's "roles"). A
+ * plate takes a `variant` — never `role`, which is ARIA's — and each is one recipe in globals.css (`.kp-plate--*`, from the tokens): `identity` — what a row, a door or a
+ * cell is, its glyph in Duotone (`tier="duo"`) at `plateGlyph(size)`; `quiet` — the quiet outcomes; `info` · `success` ·
+ * `warning` · `danger` — a status in its family's ink, its glyph in Fill; `gold` — a win. The hand-made plates the
+ * survey of 2026-10-19 found (about forty on the player front) became this atom with a variant, so a plate's tint is never
+ * typed at its call site again. `bg` / `fg` / `border` stay for a plate that is its own material (the How-to card's
+ * royal play plate, `.kp-jhowto__plate`, which is the primary button's).
  */
+export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";
+
 export function IconPlate({
   size = 40,
+  variant,
   bg,
   fg,
   border,
@@ -57,8 +68,10 @@ export function IconPlate({
   children,
   ...rest
 }: Omit<React.HTMLAttributes<HTMLSpanElement>, "color"> & {
-  /** Plate edge in px. The glyph inside is the caller's — it is NOT scaled here. */
+  /** Plate edge in px. The glyph inside is the caller's — it is NOT scaled here: size it with `plateGlyph(size)`. */
   size?: number;
+  /** What the plate says: its tint, edge and ink, one recipe per variant (globals.css `.kp-plate--*`). */
+  variant?: PlateVariant;
   /** Plate fill. Any CSS background — token, `color-mix`, or a gradient. */
   bg?: string;
   /** Glyph colour. Applied as `color`, so the glyph's `currentColor` picks it up. */
@@ -74,6 +87,7 @@ export function IconPlate({
         // is OVERRIDDEN (tailwind.config.ts:200-215), so `h-9` renders 64px, not 36.
         // Every one of the eight originals carries this same warning in a comment.
         "grid shrink-0 place-items-center rounded-control",
+        variant && `kp-plate--${variant}`,
         className,
       )}
       style={{

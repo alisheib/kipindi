@@ -783,7 +783,8 @@ function g9Search(I: Impl, W: World, ok: Ok) {
     const word = wordAt(W.dicts[l], "common.search");
     const summary = between(html, "<summary", "</summary>");
     const rowOk = html.startsWith('<li><details class="kp-hub__find"><summary class="kp-hub__row">') && count(html, "<summary") === 1
-      && count(summary, '<span class="kp-hub__glyph" aria-hidden="true"><svg') === 1
+      // PHOSPHOR-MIGRATION release 2: the row's glyph stands on the hub's identity plate (`HubPlate`, 36px), as every row's.
+      && count(summary, '<span aria-hidden="true" class="grid shrink-0 place-items-center rounded-control kp-plate--identity kp-hub__glyph" style="width:36px;height:36px"><svg') === 1
       && summary.includes(`<span class="kp-hub__label">${word}</span>`)
       && tagsOf(summary, "svg").filter((t) => attrOf(t, "class") === "kp-hub__chev").length === 1
       && ["a", "button", "input", "form", "select", "textarea"].every((t) => tagsOf(summary, t).length === 0);
@@ -962,8 +963,11 @@ const zhMissing: World = { ...WORLD, dicts: { ...WORLD.dicts, zh: patchWord(WORL
 const zhDirect: World = { ...WORLD, dicts: { ...WORLD.dicts, zh: patchWord(WORLD.dicts.zh, "profile", "signOutConfirmYes", "") } };
 const scanBlind = withText("cardSize", (s) => s.split("t.nav.").join("words.nav."));
 const wordGone = (w: World, locale: string, path: string) => wordAt(WORLD.dicts[locale], path) !== "" && wordAt(w.dicts[locale], path) !== wordAt(WORLD.dicts[locale], path);
-const numberTyped = withText("hubRow", (s) => s.replace("const Glyph = I[row.glyph];", 'const typed = "0800 11 0011";\n  const Glyph = I[row.glyph];'));
-const helplineBack = withText("hubRow", (s) => s.replace("const Glyph = I[row.glyph];", 'if (row.id === "help") return <li><a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a></li>;\n  const Glyph = I[row.glyph];'));
+// PHOSPHOR-MIGRATION release 2: HubPlate now draws the row's glyph, so plant these defects at the live label site.
+// The guard must still catch a typed phone number and an unapproved helpline row in the hub.
+const hubLabelAnchor = '  const label = <span className="kp-hub__label">';
+const numberTyped = withText("hubRow", (s) => s.replace(hubLabelAnchor, '  const typed = "0800 11 0011";\n' + hubLabelAnchor));
+const helplineBack = withText("hubRow", (s) => s.replace(hubLabelAnchor, '  if (row.id === "help") return <li><a href={`tel:${HELPLINE_TEL()}`}>{HELPLINE()}</a></li>;\n' + hubLabelAnchor));
 // §5 — the console
 const consoleInRows = withText("rows", (s) => s + LF + 'const desk = "/admin";');
 const consoleForAll = withText("page", (s) => s.replace("viewer.doors.staffConsole && (", "("));

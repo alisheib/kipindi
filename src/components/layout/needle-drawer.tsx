@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Toggle } from "@/components/ui/toggle";
 import { I } from "@/components/ui/glyphs";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { CloseX, useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -59,20 +60,11 @@ function DiscSwatch({ theme, size = 34 }: { theme: NeedleTheme; size?: number })
   );
 }
 
-/**
- * The 50pick mark in miniature — a disc with the needle on its pivot. Two tones: the disc at half ink, the needle at
- * full, so the needle reads first, as on the real disc. That is right where it stands as the MARK (the account menu's
- * row, the drawer's header and its "Manage" button); in a list of row glyphs it is not one of them, and the hub's row
- * draws `I.needle` instead (round 4, 2026-10-09).
- */
-function NeedleMark({ size = 16, className }: { size?: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" className={className}>
-      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.5" />
-      <line x1="38" y1="8" x2="62" y2="92" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-    </svg>
-  );
-}
+/* ⭐ THE MARK IS THE FAMILY'S NEEDLE IN DUOTONE (PHOSPHOR-MIGRATION release 2, §8a). Where the Needle stands as the MARK
+   (the account menu's two rows, the settings page's "Manage" button, the drawer's header) it kept its two tones in a
+   hand-drawn `NeedleMark` here: the disc at half ink, the needle at full, so the needle reads first. Phosphor's Duotone is
+   those two tones on the family's grid — the disc in the tone (`--glyph-tone`), the ring and the needle in the full ink —
+   so the four sites draw `I.needle` with `tier="duo"`, at their sizes and in their spans' inks, and the copy is gone. */
 
 export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu-row" | "menu-item" | "hub-row" | "settings" }) {
   const { locale } = useT();
@@ -143,7 +135,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
            two scales and forbids it. Every move here is +2px, on the scale. */
         className="w-full flex items-center gap-2 rounded-lg px-2 py-2 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
       >
-        <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark /></span>
+        <span className={hidden ? "text-text-subtle" : "text-brand-300"}><I.needle s={16} tier="duo" /></span>
         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
         {menuTail(false)}
       </button>
@@ -164,7 +156,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
         aria-haspopup="dialog"
         className="w-full flex items-center gap-[10px] px-3 py-2 font-display text-body-sm font-medium text-text transition-colors hover:bg-bg-overlay text-left"
       >
-        <span className={hidden ? "text-text-subtle" : "text-brand-300"}><NeedleMark size={15} /></span>
+        <span className={hidden ? "text-text-subtle" : "text-brand-300"}><I.needle s={15} tier="duo" /></span>
         <span className="flex-1">{t("The Needle", "Sindano", "指针玩具")}</span>
         {menuTail(true)}
       </button>
@@ -176,12 +168,12 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
          body label, the value in the value's type, the hub's 18px chevron. Its state is the value's word, as the language
          row's is. `.kp-hub__*` are the hub's classes (globals.css), and this branch is the only place outside the hub's own
          files that wears them.
-         ⭐ ITS GLYPH IS THE ROW FAMILY'S (round 4, 2026-10-09, tiles 122–130): `NeedleMark` paints its disc at half ink and
-         rings it at r42 of 100 — 18.4px at 20 against the family's 16.6 — so beside globe, check-circle and search it read
+         ⭐ ITS GLYPH IS THE ROW FAMILY'S (round 4, 2026-10-09, tiles 122–130): `NeedleMark` (retired in release 2, above)
+         painted its disc at half ink and ringed it at r42 of 100 — 18.4px at 20 against the family's 16.6 — so beside globe, check-circle and search it read
          at half their ink (ring peak 102,107,163 against 198,209,236) and 2px wider. `I.needle` is the mark's geometry on
          the family's grid, ink and stroke. */
       <button type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" className="kp-hub__row">
-        <span className="kp-hub__glyph" aria-hidden><I.needle s={20} /></span>
+        <HubPlate glyph="needle" />
         <span className="kp-hub__text"><span className="kp-hub__label">{t("The Needle", "Sindano", "指针玩具")}</span></span>
         <span className="kp-hub__value">{shownLabel}</span>
         <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
@@ -193,7 +185,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
         aria-haspopup="dialog"
         className="inline-flex items-center gap-2 rounded-lg border border-border bg-bg-overlay px-3 py-2 font-display text-[12.5px] font-semibold text-text transition-colors hover:bg-brand-500/10"
       >
-        <span className="text-brand-300"><NeedleMark size={15} /></span>
+        <span className="text-brand-300"><I.needle s={15} tier="duo" /></span>
         {t("Manage the Needle", "Dhibiti Sindano", "管理指针玩具")}
       </button>
     );
@@ -242,7 +234,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
 
             {/* header */}
             <div className="flex items-start gap-2 mb-4">
-              <span className="mt-0.5 text-brand-300"><NeedleMark size={20} /></span>
+              <span className="mt-0.5 text-brand-300"><I.needle s={20} tier="duo" /></span>
               <div className="min-w-0 flex-1">
                 <p className="font-display text-[15px] font-bold text-text leading-tight">{t("The Needle", "Sindano", "指针玩具")}</p>
                 <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">
