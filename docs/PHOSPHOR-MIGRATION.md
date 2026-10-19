@@ -18,7 +18,7 @@ should be plain … the most small details are the most important to me"*); it i
 stopped twice to ship (⏳ Owed, below), then release 2 (**Next**). A Codex session may take this over (Ali, 2026-10-19):
 everything it needs is this file, AGENTS.md and DESIGN_AUTHORITY §K3.
 
-⏳ **In flight — release 2a, part 1 (`phosphor-2a`; not yet live):** one shared `IconPlate` variant and Duotone identity
+✅ **Release 2a, part 1 LIVE at `e4b148a05`:** one shared `IconPlate` variant and Duotone identity
 plates on the account hub, notification rows, help, the landing trust band, the chat button, the Needle mark and profile
 settings. The local build and `qa:live` passed. The full database battery found the known main failures and two stale
 notification guard anchors, now repaired and green. Its three serverless browser failures pass on the fresh local server.
@@ -26,8 +26,12 @@ Classic trust-band and overlay before/after tiles have been read at phone and de
 The re-pinned guards' red mutations passed one at a time in a separate clean worktree. The changed player pages passed
 1,230 responsive assertions at 320, 360, 768, 1280 and 1920 in all three languages; the overlay sweep passed 21/21.
 The only responsive warnings are the existing 44×26 shared Toggle controls on the responsible-gambling page.
-Before this release: squash the release, then perform AGENTS.md §4's exact-commit pre-push and production checks. Part 2 and
-the rest of W5–W9 remain in §8d and the release-2a hand-over.
+At the exact commit, typecheck, `next build` and local `qa:live` (386/386) passed. The push was read back on www, apex and
+Railway (`?dpl=e4b148a05`, new sprite 200 on all three); `/api/health` reports the database reachable and migrated;
+`qa:chunks-prod` passed 6/6 on both public origins (152 GETs each); production `qa:live` passed 363/363. Signed-out
+production home and help pages were inspected at phone and desktop in all three languages, with no overflow. The
+signed-in player pages were inspected in the local browser; production's `mobile01` sign-in was not authorized.
+**Resume:** release 2a part 2, then the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
@@ -211,7 +215,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
-| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a part 1 in flight on `phosphor-2a`; the remaining sites and later W5 releases are in the hand-over and §8d |
+| W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a part 1 live at `e4b148a05`; part 2 and later W5 releases are in the hand-over and §8d |
 | W6 | Empty states: one family | ⬜ | |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
 | W8 | Motion on the existing primitives | ⬜ | |
