@@ -70,8 +70,12 @@ const read = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
  * proved it on this very suite — removing the payload bound outright left the check that
  * guards it passing. So presence is asserted before order.
  */
-const before = (hay: string, x: string, y: string) => {
-  const i = hay.indexOf(x), j = hay.indexOf(y);
+const indexIn = (hay: string, n: string | RegExp) => (typeof n === "string" ? hay.indexOf(n) : hay.search(n));
+/** ⚠️ A RegExp needle (MASWALI-BUILD S7-F7 1) is for a JSX tag that is the prefix of another name: `"<ResolutionCeremony"`
+ *  also matches `<ResolutionCeremonyContent` (the page's gate wrapper, above everything), so only `/<ResolutionCeremony\b/`
+ *  finds the ceremony itself. */
+const before = (hay: string, x: string | RegExp, y: string | RegExp) => {
+  const i = indexIn(hay, x), j = indexIn(hay, y);
   return i >= 0 && j >= 0 && i < j;
 };
 
@@ -531,8 +535,13 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   const controls = read("src/app/admin/resolver-queue/resolve-controls.tsx");
   const ceremony = read("src/app/admin/resolver/[id]/resolution-ceremony.tsx");
   const actions = read("src/app/markets/actions.ts");
+  // ⛔ S7-F7 1 · EACH PAGE'S OWN BRANCH. The queue's first `twoOfficerRead === null ? (` is the BULK area's (S7-F6), so a
+  //    first-occurrence order passed with the row's branch deleted: the row is asserted as one span — the unknown branch,
+  //    its words, then the controls it replaces. The market page's `"<ResolutionCeremony"` first matched
+  //    `<ResolutionCeremonyContent` (its gate wrapper, line 33), so the case was red on the code it was written for.
   ok("11.5d while the setting is unknown neither page offers a resolve control: the queue and the market page say it is unreadable instead",
-     before(p, "twoOfficerRead === null ? (", "<ResolveControls") && before(marketPage, "canResolve && twoOfficerRead === null ? (", "<ResolutionCeremony"));
+     /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<ResolveControls\b/.test(p)
+       && before(marketPage, "canResolve && twoOfficerRead === null ? (", /<ResolutionCeremony\b/));
   ok("11.5e both controls post the ceremony they drew, and the action refuses an unread, missing or changed setting BEFORE resolveMarket",
      [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
        && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")

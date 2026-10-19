@@ -34,6 +34,11 @@ const PAGE = "src/app/admin/resolver-queue/page.tsx";
 const ROW = "src/app/admin/resolver-queue/row-select.tsx";
 const COPY = "src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 const SUITE = "scripts/bulk-resolve.test.mts";
+const MARKET_PAGE = "src/app/admin/resolver/[id]/page.tsx";
+const TOGGLE = "src/app/admin/resolver-queue/two-admin-toggle.tsx";
+const CONTROLS = "src/app/admin/resolver-queue/resolve-controls.tsx";
+const CEREMONY = "src/app/admin/resolver/[id]/resolution-ceremony.tsx";
+const ACTIONS = "src/app/markets/actions.ts";
 
 export const MUTATIONS = [
   {
@@ -350,5 +355,82 @@ export const MUTATIONS = [
     expect: "11.5h the bar posts the batch it drew",
     from: `    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {`,
     to: `    if (false) {`,
+  },
+
+  /* ── MASWALI-BUILD S7-F7 1 · the unknown two-officer setting, one plant per guard ──────────
+     Rounds 5 and 6 (S7-F5, S7-F6) drew no control while the setting is unknown and made each action run only the
+     ceremony its page drew; their guards (11.5d–11.5i) had no plant, and 11.5d was red on the code it was written for
+     (its needle matched the page's gate wrapper). Each defect below undoes one of those changes alone. */
+  {
+    name: "S7-F7 · a queue row offers Resolve YES / NO / Void while the two-officer setting is unknown",
+    file: PAGE,
+    expect: "11.5d while the setting is unknown neither page offers a resolve control",
+    from: `                      twoOfficerRead === null ? (`,
+    to: `                      false ? (`,
+  },
+  {
+    name: "S7-F7 · the market page draws the ceremony while the two-officer setting is unknown",
+    file: MARKET_PAGE,
+    expect: "11.5d while the setting is unknown neither page offers a resolve control",
+    from: `              ) : canResolve && twoOfficerRead === null ? (`,
+    to: `              ) : false ? (`,
+  },
+  {
+    name: "S7-F7 · the bulk bar is drawn while the two-officer setting is unknown",
+    file: PAGE,
+    expect: "11.5g while the setting is unknown the queue draws no bulk bar",
+    from: `            {canBulk ? (
+              twoOfficerRead === null ? (`,
+    to: `            {canBulk ? (
+              false ? (`,
+  },
+  {
+    name: "S7-F7 · the two-admin switch is drawn while the setting is unknown (its press flips a value nobody read)",
+    file: TOGGLE,
+    expect: "11.5f the two-admin switch names an unread setting as unknown",
+    from: `  if (enabled === null) {`,
+    to: `  if (false) {`,
+  },
+  {
+    name: "S7-F7 · the single resolve action runs whatever ceremony the setting reads now, never the one the page drew",
+    file: ACTIONS,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `  if (drawn !== (twoOfficerNow ? "1" : "0")) {`,
+    to: `  if (false) {`,
+  },
+  {
+    name: "S7-F7 · the queue's resolve control posts no ceremony, so the action cannot tell what the officer confirmed",
+    file: CONTROLS,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `      fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");`,
+    to: `      void twoAdmin;`,
+  },
+  {
+    name: "S7-F7 · the market page's ceremony posts no ceremony, so the action cannot tell what the officer confirmed",
+    file: CEREMONY,
+    expect: "11.5e both controls post the ceremony they drew",
+    from: `      fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");`,
+    to: `      void twoAdmin;`,
+  },
+  {
+    name: "S7-F7 · the bulk bar posts no batch, so the bulk action cannot tell what the officer confirmed",
+    file: BAR,
+    expect: "11.5h the bar posts the batch it drew",
+    from: `      fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");`,
+    to: `      void requireTwoOfficer;`,
+  },
+  {
+    name: "S7-F7 · the single action lets resolveMarket read the setting again, after it checked the drawn ceremony",
+    file: ACTIONS,
+    expect: "11.5i one read decides the ceremony",
+    from: `  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence, twoOfficerNow: async () => twoOfficerNow });`,
+    to: `  const r = await resolveMarket({ marketId, outcome, officerId: session.userId, evidence });`,
+  },
+  {
+    name: "S7-F7 · the bulk action lets resolveMarket read the setting again for each market, after the batch's own read",
+    file: ACTION,
+    expect: "11.5i one read decides the ceremony",
+    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });`,
+    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });`,
   },
 ];
