@@ -801,7 +801,7 @@ const cardBlockDefects = (src: string) => {
 const exampleDefects = (seal: string, how: string, example: string) => {
   const d: string[] = [];
   const s = squash(code(seal));
-  if (!s.includes('{m.standIn && !inert ? ( <> <s className="decoration-border-strong">{m.ordinal}</s> <span className="text-text-muted">{m.standIn}</span> </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
+  if (!s.includes('{m.standIn && !inert ? ( <> <s className="decoration-border-strong">{m.ordinal}</s> <span>{m.standIn}</span> </> ) : m.ordinal}')) d.push("a stood-in main's number is not struck with its reserve under it");
   const hw = squash(code(how));
   if (!hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}") || !hw.includes("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleFloorWeek}`}") || /exampleLabel\} · [12]\b/.test(hw)) d.push("a worked ledger's label has no noun");
   if (!squash(code(example)).includes("fill(t.millionea.seeExample, { r: standIn, n: formatNumber(voided) })")) d.push("the button does not say what it plays with a formatted question number");
@@ -815,7 +815,7 @@ const exampleDefects = (seal: string, how: string, example: string) => {
   const d = exampleDefects(read(SEAL), read(HOW), read(EXAMPLE));
   const templated = LOCALES.filter((l) => !dict[l].millionea.seeExample.includes("{r}") || !dict[l].millionea.seeExample.includes("{n}"));
   ok("4.P6a · How's example draws what a real ticket draws: main 4's number struck with \"A1\" under it (the void seen on its own place, the check above it A1's) — the same Seal Line every ticket draws",
-    m.includes('<s class="decoration-border-strong">4</s><span class="text-text-muted">A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
+    m.includes('<s class="decoration-border-strong">4</s><span>A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
   ok("4.P6b · each worked ledger says which week it works through (\"Example · a week with winners\", never \"EXAMPLE · 1\"), and the button says what it plays (\"Show A1 replacing question 4\", in all three languages)",
     d.length === 0 && templated.length === 0 && fill(en.millionea.seeExample, { r: "A1", n: 4 }) === "Show A1 replacing question 4", j({ d, templated }));
   ok("4.P6′ PLANT · a stood-in number drawn plain, and the old \"Example · 1\" label, are reported",

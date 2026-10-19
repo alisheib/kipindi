@@ -113,14 +113,16 @@ await wait(1500);
 const livePage = await readPage(a);
 ok("baseline · /wallet renders while the session is the active one", livePage.path === "/wallet" && livePage.textLen > 100,
   `(path=${livePage.path} text=${livePage.textLen})`);
+// Save A's cookie while it is still active. The session-status poller can clear it as soon as B signs in;
+// the test must re-present the displaced cookie to prove the server's revoked path.
+const deadCookie = await sessionCookie(A);
+ok("precondition · device A received the active session cookie", !!deadCookie);
 
 const B = await browser.newContext();
 const b = await B.newPage();
 await b.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
 await wait(1200);
 await b.close();
-const deadCookie = await sessionCookie(A);
-ok("precondition · device A holds the displaced cookie", !!deadCookie);
 
 for (const target of ["/wallet", "/positions", "/markets", "/legal/rules"]) {
   errs.length = 0;

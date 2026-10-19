@@ -1,7 +1,8 @@
 /**
  * SSE EDGE PROBE — does the live-price stream survive whatever sits in front of the origin?
  *
- *   npm run qa:sse-edge                                   # www, 45s
+ *   LIVE_BASE=http://localhost:3000 SSE_WHO=demo npm run qa:sse-edge  # local dev, synthetic player
+ *   LIVE_BASE=https://www.50pick.tz npm run qa:sse-edge   # www, authorised QA persona
  *   LIVE_BASE=https://50pick.tz npm run qa:sse-edge       # the apex
  *   SSE_RESOLVE=104.21.48.11 npm run qa:sse-edge          # force the edge IP (see below)
  *   SSE_WATCH_MS=90000 npm run qa:sse-edge
@@ -45,6 +46,7 @@
  * Exit codes are distinct on purpose, so a runbook can branch on them:
  *   0 PASS · 1 the stream is broken · 2 the endpoint refused the session · 3 cannot conclude
  */
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { BASE, browser, loginOnce } from "./harness.mjs";
 
@@ -53,6 +55,11 @@ const GAP_LIMIT_MS = Number(process.env.SSE_GAP_LIMIT_MS ?? 25_000);
 const WHO = process.env.SSE_WHO ?? "alpha";
 const MIN_BEATS = Number(process.env.SSE_MIN_BEATS ?? 2);
 const RESOLVE = process.env.SSE_RESOLVE ?? "";
+const target = new URL(BASE);
+const demo = WHO === "demo";
+if (demo && !(target.protocol === "http:" && ["localhost", "127.0.0.1"].includes(target.hostname))) {
+  throw new Error("SSE_WHO=demo is restricted to a local HTTP development server.");
+}
 
 const t0 = Date.now();
 const at = () => `${((Date.now() - t0) / 1000).toFixed(1).padStart(6, " ")}s`;
@@ -86,9 +93,17 @@ console.log("");
 // ── 1 · a real session ────────────────────────────────────────────────────────
 let cookie = "";
 {
-  const { b } = await browser();
+  const { b, ctx } = await browser();
   try {
-    const state = await loginOnce(b, WHO);
+    let state;
+    if (demo) {
+      const page = await ctx.newPage();
+      const response = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
+      if (!response || response.status() >= 400) throw new Error("The local demo player was not issued a session.");
+      state = await ctx.storageState();
+    } else {
+      state = await loginOnce(b, WHO);
+    }
     cookie = cookieHeader(state, BASE);
   } catch (e) {
     await b.close();
@@ -106,12 +121,12 @@ if (!cookie) {
 say(`signed in as ${WHO} · ${cookie.split(";").length} cookie(s) for ${new URL(BASE).hostname}`);
 
 // ── 2 · open the real stream ──────────────────────────────────────────────────
-// `node:https` rather than fetch(), for the `lookup` hook — see SSE_RESOLVE above. The URL
+// Node's request API rather than fetch(), for the `lookup` hook — see SSE_RESOLVE above. The URL
 // keeps the real hostname, so SNI, the Host header and certificate validation are all
 // unchanged; only the address the socket dials is forced.
 const url = new URL("/api/events", BASE);
 const res = await new Promise((resolve, reject) => {
-  const req = httpsRequest(
+  const req = (url.protocol === "http:" ? httpRequest : httpsRequest)(
     url,
     {
       method: "GET",

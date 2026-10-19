@@ -222,7 +222,7 @@ export function MaswaliSealLine({ line, size = 24, numbers, idBase, play, inert,
           {m.standIn && !inert ? (
             <>
               <s className="decoration-border-strong">{m.ordinal}</s>
-              <span className="text-text-muted">{m.standIn}</span>
+              <span>{m.standIn}</span>
             </>
           ) : m.ordinal}
         </span>

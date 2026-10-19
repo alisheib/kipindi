@@ -707,6 +707,7 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
     "src/lib/admin-status-lexicon.ts": "the operator console (admin)", "src/lib/marketing/sms-settings.ts": "the operator console (admin)",
     "src/lib/marketing/campaign-confirm.ts": "the operator console (admin)", "src/lib/marketing/campaign-estimate.ts": "the operator console (admin)",
     "src/lib/server/marketing/campaign-confirm-service.ts": "the operator console (admin)", "src/lib/server/marketing/owner-save.ts": "the operator console (admin)",
+    "src/app/millionea/register/register-parts.tsx": "removes an incoming U+200B phrase break from the translated sales label; inserts none",
   };
   const walkAll = (dir: string, out: string[] = []): string[] => { for (const n of readdirSync(dir)) { const p = join(dir, n).replace(/\\/g, "/"); if (statSync(p).isDirectory()) walkAll(p, out); else if (/\.(tsx?|css)$/.test(n)) out.push(p); } return out; };
   const scan = (f: string) => (f.endsWith(".css") ? decommentCss(read(f)) : decomment(read(f)));
