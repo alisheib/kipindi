@@ -1161,6 +1161,8 @@
     "red:landing-contract": "node scripts/landing-contract-red.mjs",
     "test:one-sided": "tsx scripts/one-sided.test.mts",
     "red:one-sided": "node scripts/one-sided-red.mjs",
+    "test:card-choices": "tsx scripts/card-choices.test.mts",
+    "red:card-choices": "node scripts/card-choices-red.mjs",
     "test:featured-card": "tsx scripts/featured-card.test.mts",
     "red:featured-card": "node scripts/featured-card-red.mjs",
     "test:share-preview": "tsx scripts/share-preview.test.mts",

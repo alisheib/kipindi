@@ -383,7 +383,7 @@ export function RoundCountdownPod({
             style={{ whiteSpace: "nowrap" }}>{shownCaption}</span>
       <span
         key={`d-${podPhase}`}
-        className={urgent ? "m-tick ud-count-pulse" : "m-tick"}
+        className="m-tick"
         style={{
           fontFamily: "var(--font-mono)", fontSize: "var(--type-h2)", fontWeight: 700,
           fontVariantNumeric: "tabular-nums", lineHeight: 1,
@@ -407,7 +407,10 @@ export function RoundCountdownPod({
           transition: "color var(--t-base) var(--m-glide)",
         }}
       >
-        {shownDigits}
+        {/* 🔴 U43 (2026-10-19) · the urgency loop on its OWN span: beside `.m-tick` on one element it lost the cascade
+            (motion.css is imported last, and both rules set `animation`), so the last 30 seconds never pulsed — the card's
+            twin of this fix is `updown-card.tsx`'s `CardCountdownDigits`. */}
+        <span className={urgent ? "ud-count-pulse" : undefined}>{shownDigits}</span>
       </span>
     </div>
   );

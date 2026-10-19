@@ -27,13 +27,10 @@
  *     and balanced, like every market title. Only the full-title fallback is held to two lines: a short title is never
  *     clamped (`short-title.ts`: a longer one takes another line rather than losing its end).
  *   · THE PICKS: two links in the side buttons' ink and tracking, with no button height and no nowrap, which a two-line
- *     pick cannot use. The side word on the h4 rung (A15) over the face's words — "Shinda ≈2.8× dau", the figure a mono
- *     unit joined to the words after it by no-break spaces, so a break reads "Shinda / ≈2.8× dau", never "…≈2.8× / dau"
- *     (§0g item 11) — up to four characters: a five-character figure, "≈100.0×", too wide to hold a 320 pick's line
- *     with its words, breaks before them; "Kuwa wa kwanza" (Open point 8); "Upande mmoja tu"; over the cap "Upande
- *     mdogo, ona makadirio", with no number and its two clauses each whole (Open point 6); a thin side "Faida ndogo ·
- *     ≈1.0×", one part a line (`DotSeq`'s centred form — a recorded deviation from the over-cap board, which draws one
- *     line); and nothing under a hidden figure or an Up & Down side, which centres its side word.
+ *     pick cannot use. The side word on the h4 rung (A15), and under it only a fact about the pool — "Kuwa wa kwanza"
+ *     (Open point 8) or "Upande mmoja tu"; otherwise nothing, and the side word centres alone. ⛔ No figure on a pick:
+ *     S7's "Shinda ≈2.8× dau", the thin side's "≈1.0×" and the over-the-cap words left the card by Ali's ruling of
+ *     2026-10-19 (no odds on any card, both shells — COMPLIANCE-DECISIONS item 4); the estimate is the bet sheet's.
  *   · OR THE CLOSED ROW, a lock and "Imefungwa", not a control; OR THE RESULT ROW: "Matokeo", the settled instant and
  *     the outcome chip in its own ink — the YES ink, the NO ink, a void's neutral one (one-sided 8.10's rule).
  *   · UNDER THEM, ON AN UNSETTLED ONE-SIDED POOL: the refund sentence naming the empty side, in the closed phase too
@@ -89,75 +86,14 @@ export type JourneyCardMarket = Pick<
   | "settledAt"
 >;
 
-/** The no-break space that joins a figure to the words after it. Built, never pasted: an invisible character is
- *  invisible in review too (the `short-title.ts` rule). */
-const NBSP = String.fromCharCode(0xa0);
-
 /**
- * The longest figure that stays joined to its words: four characters ("99.9"). Kept whole, "≈99.9× your bet" is 102.0px
- * against the 105px line of a 320 phone's pick; "≈100.0× your bet" — the engine prints 100.0 itself, since only a figure
- * ABOVE its cap is withheld (`estimate.ts`) — would be 109.8px, running into the pick's padding. So a five-character
- * figure keeps the dictionary's ordinary spaces and its words wrap under it, as any second line does.
- * `test:journey-home` §4 (4.picks.fit) measures every unit a pick prints against the line with the repo's own fonts.
+ * A pick's second line — a fact about the pool ("Kuwa wa kwanza", "Upande mmoja tu"), or nothing: the side word alone.
+ * ⛔ Never a figure. The win line ("Shinda ≈{mult}× dau"), the thin side's "≈1.0×" and the over-the-cap words left the
+ * card by Ali's ruling of 2026-10-19 (no odds on any card, both shells — `card-face.ts`'s header); the estimate is the bet
+ * sheet's, where a stake is chosen.
  */
-const KEPT_FIGURE_MAX = 4;
-
-/**
- * "Shinda ≈{mult}× dau" with its figure: the space-delimited token holding `{mult}` (its "≈" and "×" with it) is one
- * mono unit, and while the figure is short enough to hold the line with its words, every space after it becomes a
- * no-break space, so the figure never leaves the word that follows it — "≈2.8× dau", "≈2.8× your bet", "≈2.8× 投注"; a
- * Latin line then breaks only before the figure. Chinese can still break between the characters after it ("≈2.8× 投" /
- * "注"): a no-break space holds the figure to the first character only, and no keep-all is set.
- */
-function winWords(template: string, mult: string): ReactNode {
-  const at = template.indexOf("{mult}");
-  if (at < 0) return template;
-  const from = template.lastIndexOf(" ", at) + 1;
-  const space = template.indexOf(" ", at);
-  const to = space < 0 ? template.length : space;
-  const after = template.slice(to);
-  return (
-    <>
-      {template.slice(0, from)}
-      <span className="kp-jcard__mult">{template.slice(from, to).replace("{mult}", mult)}</span>
-      {mult.length > KEPT_FIGURE_MAX ? after : after.split(" ").join(NBSP)}
-    </>
-  );
-}
-
-/**
- * Over the cap — "Upande mdogo, ona makadirio": each clause kept whole, so it breaks only after the comma, as the
- * over-cap board draws it. The space between the clauses is a text node of its own, where every engine offers the
- * break (`keep-words.tsx`, R6-1). A language whose comma takes no space (Chinese "，") breaks between its characters
- * and is left as written.
- */
-function overCapWords(text: string): ReactNode {
-  const at = text.indexOf(", ");
-  if (at < 0) return text;
-  return (
-    <>
-      <span className="kp-jcard__run">{text.slice(0, at + 1)}</span>
-      {" "}
-      <span className="kp-jcard__run">{text.slice(at + 2)}</span>
-    </>
-  );
-}
-
-/** A thin side's figure ("≈1.0×"): the mono unit, as the win line sets it. */
-const thinPart = (mult: string) => (part: string): ReactNode =>
-  part.includes(mult) ? <span className="kp-jcard__mult">{part}</span> : part;
-
-/** A pick's second line — the face's words, or nothing for a hidden figure or an Up & Down side. */
 function pickWords(face: PickFace, t: Dict): ReactNode {
   switch (face.kind) {
-    case "win":
-      return winWords(t.journey.cardWin, face.mult);
-    case "thin":
-      // "Faida ndogo · ≈1.0×" is two parts on a centred line, so each opens its own line and no dot is shown at a
-      // line's end (`DotSeq` stack: a centred line cannot hide a dot at its edge).
-      return <DotSeq text={t.journey.cardThin.replace("{mult}", face.mult)} stack renderPart={thinPart(face.mult)} />;
-    case "overCap":
-      return overCapWords(t.journey.cardOverCap);
     case "beFirst":
       return t.journey.cardBeFirst;
     case "oneSide":

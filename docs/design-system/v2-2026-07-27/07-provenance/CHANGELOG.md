@@ -1,5 +1,30 @@
 # Changelog (reconstructed)
 
+## 2026-10-19 (design-system · MOBILE-VISUAL U43, release A) — no figure on any card choice; a one-sided lock in one sentence; the last 30 seconds pulse
+
+Ali's ruling of the day (COMPLIANCE-DECISIONS § "2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): …",
+item 4), written as DESIGN_AUTHORITY §C3's paragraph "No figure on ANY card choice", and two defects U43's Round 0 measured.
+- **The choices read the side word alone, on every card.** The market card's two buttons, the home's question rows and
+  `/live`'s tiles (its polls and its Up & Down tiles) drop "@ N%"; every one is named "Back {side}"
+  (`market.backSideAriaNoPrice`; the "@ {pct}%" name, `market.backSideAria`, is retired). The journey card's picks drop
+  their multiple — the win line, the thin side's "≈1.0×" and the over-cap words — with their keys (`journey.cardWin`,
+  `cardThin`, `cardOverCap`) and rules (`.kp-jcard__mult`, `.kp-jcard__run`); the home rows' `.kp-qrow__at` goes too.
+  Kept: the card's one statement of where the money is (the big percentage and its bar; a round's split row) and the pool
+  facts in words ("Kuwa wa kwanza", "Upande mmoja tu", the refund sentence). The estimate stays where the bet is
+  committed. The market-card spec's journey picks are rewritten to match.
+- **A round only one side backed, at the lock, says one sentence** (`market.udLockedOneSided`, en/sw/zh: nobody backed
+  {side}, so the stake comes back in full whichever way it closes) on the card and on the round page, in place of the two
+  "If it closes …" rows, which read "TZS 0" for the empty side's outcome while settlement refunds the stake. The data
+  (`updown-board.ts`) now quotes the stake under both outcomes. The sentence takes the rows' own muted ink and the
+  `body-sm` rung; no new token.
+- **The last 30 seconds pulse again.** `ud-count-pulse` shared one element with `.m-tick`, and both rules set
+  `animation`; `motion.css` is imported last, so the tick won and the urgency loop never played, on the card or in the
+  round page's countdown pod. It moves to the digits' own span — the same keyframes behind the same reduced-motion gates.
+- **Guards:** `test:card-choices` and `red:card-choices` (new); `test:one-sided` 3.3, 3.4 and 4.8 with `red:one-sided`
+  (two plants re-aimed); `test:journey-home` §4 (`4.picks.nofigure`) with `red:journey-home`; `test:updown-hedge-quote` §6
+  with `red:updown-hedge-quote` (four new plants, three re-aimed); `test:journey-updown` §6.1 (six named swaps);
+  `red:contrast-callsite` (the market card's plant re-aimed to the side word).
+
 ## 2026-10-13 (design-system · simplified journey) — the bet sheet, effective at the S15 flip
 
 S8 WP6 adds the journey state of the stake surface; its spec is `02-components/bet-sheet/spec.md`. It draws the deck's

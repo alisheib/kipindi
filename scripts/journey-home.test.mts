@@ -31,10 +31,10 @@
  *        · homeHref: only what is set, always cat, q, page, every value encoded — a search cut at the cap written without
  *          a throw (encodeURIComponent throws on half an emoji).
  *   §3 THE CARD'S FACE (S7 WP3 step 2, amendment A12), `src/lib/journey/card-face.ts` over `cardEstimate`'s real figures:
- *      the S3 golden pools (Dodoma ≈2.8× / ≈1.4×, Yanga ≈2.9× / ≈1.4×); the canvas states (an empty pool, one side, over
- *      the cap with its thin side at ≈1.0×, a hidden figure for each of its three causes, closed); settled YES, NO and
- *      VOID with their inks; an Up & Down row, live and settled; the one-sided note; and A12's label and ink for every
- *      state.
+ *      the S3 golden pools (Dodoma, Yanga) and over the cap with its thin side, each pick its side word alone — no figure
+ *      on a card since Ali's ruling of 2026-10-19 (MOBILE-VISUAL U43: "remove odds … keep yes and no only"); the canvas
+ *      states (an empty pool, one side, a hidden figure for each of its three causes, closed); settled YES, NO and VOID
+ *      with their inks; an Up & Down row, live and settled; the one-sided note; and A12's label and ink for every state.
  *      ⭐ Every §2 and §3 plant must fail ITS check and nothing else: the red run reports a plant that also turns another
  *      check red as not proved, so no check stays green only because a neighbour happens to catch its defect.
  *   §4 THE JOURNEY CARD (S7 WP5, amendments A12, A15, A16 and A24), `src/components/journey/cards/journey-card.tsx`:
@@ -47,12 +47,13 @@
  *      links (one stretched card link named by the full title, and a card's only controls its links: three while it
  *      takes bets, one after; the picks' hrefs, `from=home` on the home only, never prefetched); the heading (its rung,
  *      `keepFigures`, balance by the last word of every rule that styles it, the clamp and its box on the fallback
- *      alone); the meta label's words, glyph and ink (A12); category · competition; each face's words and the figure's
- *      unit; THE WIDTH PROOF — every unit a pick prints, measured with the repo's own fonts against a 320 phone's pick
- *      line ("≈99.9×" kept whole with its words, "≈100.0×" breaking before them); the closed row; the settled row's
- *      instant and outcome chip; the refund sentence; the local stacking plane; the picks' press and lift and their edge
- *      in forced colours; the action block on the card's floor, and THE JOURNEY CARD GRID whose cards share their rows
- *      (VODACOM-PLAN §0h point 73, subgrid); and only the kit's tokens (A15's side word).
+ *      alone); the meta label's words, glyph and ink (A12); category · competition; each pick's words — its side word,
+ *      and under it only a fact about the pool — and NO FIGURE ON A PICK in sw, en or zh, none kept behind in globals.css
+ *      or the dictionary (Ali's ruling of 2026-10-19, which retired the figure's unit and THE WIDTH PROOF that measured
+ *      it); the closed row; the settled row's instant and outcome chip; the refund sentence; the local stacking plane;
+ *      the picks' press and lift and their edge in forced colours; the action block on the card's floor, and THE JOURNEY
+ *      CARD GRID whose cards share their rows (VODACOM-PLAN §0h point 73, subgrid); and only the kit's tokens (A15's side
+ *      word).
  *      ⭐ Every §4 plant must fail its own check ALONE too.
  *      ⚠️ The rules are read as the cascade reads them: a selector's value is the LAST one any rule gives it (a list of
  *      one or of several, under any at-rule), so a later rule cannot re-set the card behind a check's back.
@@ -116,8 +117,8 @@
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
  * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §4's
- * edit a copy of the card's source, of globals.css or of one rendered card (the world is rendered once, from the real
- * component); §5's edit a copy of the How-to card's, the sheet's or the lazy module's source, of globals.css, of
+ * edit a copy of the card's source, of globals.css, of the dictionary or of one rendered card (the world is rendered once,
+ * from the real component); §5's edit a copy of the How-to card's, the sheet's or the lazy module's source, of globals.css, of
  * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world); §6's and §7's edit a copy
  * of the route file, of the home's, the chips', the headline's or the ghost's source, of globals.css, of a suite's record, of
  * a census or of one drawn address or ghost (drawn once, in their own test world); §9’s edit a copy of one of the four
@@ -197,7 +198,8 @@ type Rules = {
   view: typeof HL.homeView;
   href: typeof HL.homeHref;
   face: typeof CF.cardFace;
-  /** The figure each pick reads (`cardEstimate`, what `cardFigures` calls), so a plant can break the hidden causes. */
+  /** The figure each pick reads (`cardEstimate`, what `cardFigures` calls). ⚠️ No plant breaks its hidden causes since
+   *  Ali's ruling of 2026-10-19: a priced pick and a hidden one are the same face now (§3's plants say why). */
   estimate: typeof cardEstimate;
 };
 const RULES: Rules = {
@@ -217,21 +219,12 @@ type World = {
   css: string;                   // §4: src/app/globals.css, where the card's rules and tokens live
   cardNaming: Map<string, string>; // §4: every OTHER file under src/ whose text names journey-card: the importer census
   renders: Renders;              // §4: the card's test world, each case rendered once from the real component
-  gutter: number | null;         // §4: a phone page's side gutter — PageContainer's house padding (px-3) on the house scale
+  dict: typeof dict;             // §4: the dictionary the card speaks from — no locale keeps a figure's key (Ali, 2026-10-19)
   howto: HowToWorld;             // §5 (S7 WP6): the How-to card, the sheet, the home's lazy module — and what they render
   home: JhWorld;                 // §6-§7 (S7 WP7): the journey home and its ghost — their sources, and what they render
   strip: StripWorld;             // §8 (S7 WP8): AppShell and LiveTicker as written — the strip's slot and its client's default
   pages: PagesWorld;             // §9 (S7 WP10): the four pages that draw the journey card, its census, the journey files
 };
-
-/** §4's frame: the house padding every page container lays (`px-3` below lg), and the house scale's step 3. */
-const CONTAINER = "src/components/layout/page-container.tsx";
-const TAILWIND = "tailwind.config.ts";
-function pageGutter(): number | null {
-  if (!decomment(read(CONTAINER)).includes('pad === "page" && "px-3 lg:px-6 py-6"')) return null;
-  const step = /"3":[ ]*"([0-9]+)px"/.exec(decomment(read(TAILWIND)));
-  return step ? Number(step[1]) : null;
-}
 
 function load(): World {
   const all = srcFiles();
@@ -245,7 +238,7 @@ function load(): World {
   }
   return {
     page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
-    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(), howto: loadHowTo(all),
+    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), dict, howto: loadHowTo(all),
     home: loadHome(all),
     strip: loadStrip(),
     pages: loadPages(all),
@@ -407,18 +400,22 @@ function faceInput(estimate: typeof cardEstimate, yes: number, no: number, o: Fa
 function cardFaceChecks(r: Rules, ok: Ok) {
   const F = (yes: number, no: number, o: FaceOpts = {}) => r.face(faceInput(r.estimate, yes, no, o));
   const open = (yes: CF.PickFace, no: CF.PickFace) => j({ kind: "open", YES: yes, NO: no });
-  const win = (mult: string): CF.PickFace => ({ kind: "win", mult });
   const dodoma = F(24_825, 50_462).picks, yanga = F(20_000, 43_700).picks;
-  ok("3.golden · the S3 golden pools: Dodoma reads ≈2.8× / ≈1.4× and Yanga ≈2.9× / ≈1.4×, each pick a win line",
-    j(dodoma) === open(win("2.8"), win("1.4")) && j(yanga) === open(win("2.9"), win("1.4")), j({ dodoma, yanga }));
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling: "for market cards we can remove odds please, keep yes and no
+  //    only"): the golden pools' picks were win lines (Dodoma ≈2.8× / ≈1.4×, Yanga ≈2.9× / ≈1.4×); a card prints no figure
+  //    now, so each pick is its side word alone — the multiple is the bet sheet's, at the stake. The id is kept.
+  ok("3.golden · the S3 golden pools (Dodoma, Yanga): each pick the side word alone — no figure on a card (Ali 2026-10-19)",
+    j(dodoma) === open({ kind: "word" }, { kind: "word" }) && j(yanga) === open({ kind: "word" }, { kind: "word" }), j({ dodoma, yanga }));
   const empty = F(0, 0).picks;
   ok("3.empty · an empty pool: both picks say Kuwa wa kwanza, never a figure", j(empty) === open({ kind: "beFirst" }, { kind: "beFirst" }), j(empty));
   const oneYes = F(5_000, 0).picks, oneNo = F(0, 7_000).picks;
   ok("3.oneside · money on one side only: that side says Upande mmoja tu, and the empty side Kuwa wa kwanza",
     j(oneYes) === open({ kind: "oneSide" }, { kind: "beFirst" }) && j(oneNo) === open({ kind: "beFirst" }, { kind: "oneSide" }), j({ oneYes, oneNo }));
   const over = F(1_000, 200_000).picks;
-  ok("3.overcap · over the cap: the small side says Upande mdogo with NO number, and its thin other side Faida ndogo ≈1.0×",
-    j(over) === open({ kind: "overCap" }, { kind: "thin", mult: "1.0" }), j(over));
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): over the cap the small side said "Upande mdogo, ona makadirio"
+  //    and its thin other side "Faida ndogo · ≈1.0×"; both faces are gone, and each pick is its side word alone. The id is kept.
+  ok("3.overcap · over the cap and a thin side: the side words alone, never a number (Ali 2026-10-19)",
+    j(over) === open({ kind: "word" }, { kind: "word" }), j(over));
   const legacy = F(24_825, 50_462, { rates: CAPPED }).picks;
   const switchedOff = F(24_825, 50_462, { rates: { ...LS13, showEstimatedWinnings: false } }).picks;
   const noRates = F(24_825, 50_462, { rates: null }).picks;
@@ -465,8 +462,6 @@ function cardFaceChecks(r: Rules, ok: Ok) {
 }
 
 /* ── §4 · the journey card (S7 WP5, A12, A15, A16, A24) ───────────────────────────────────────────────────────── */
-/** The no-break space the card joins a figure to its unit with (built from its code point, as the card builds it). */
-const NBSP = String.fromCharCode(160);
 const DAY_H = 24;
 /** The deck's rates, frozen onto a market as `createMarket` freezes them: 13% loser-share. */
 const LS13_SNAP = snapshotFromConfig({ ...DEFAULT_GLOBAL_CONFIG, feeModel: "loser-share", platformFeeRate: 0.03, operatorFeeRate: 0.10 });
@@ -505,15 +500,8 @@ const CARD_WORLD = {
   short: { m: cardRow("mkt_jcShort", { shortTitleSw: "Je, Dodoma itanyesha kesho?" }), heading: "h3" },
   competition: { m: cardRow("mkt_jcComp", { category: "sports", competition: "ligi-kuu" }) },
   oddCompetition: { m: cardRow("mkt_jcOdd", { category: "sports", competition: "ligi-ya-mwezini" }) },
-  /* The widest figures a pick prints (4.picks.fit): at 13% a YES pool of 1,000 against 113,700 reads ≈99.9× (the longest
-     four-character figure) and against 113,800 ≈100.0× — which the engine still prints, withholding only a figure ABOVE
-     its cap (`estimate.ts`). */
-  cap999: { m: cardRow("mkt_jcW999", { yesPool: 1_000, noPool: 113_700 }) },
-  cap999En: { m: cardRow("mkt_jcW999En", { yesPool: 1_000, noPool: 113_700 }), locale: "en" },
-  cap999Zh: { m: cardRow("mkt_jcW999Zh", { yesPool: 1_000, noPool: 113_700 }), locale: "zh" },
-  cap100: { m: cardRow("mkt_jcW100", { yesPool: 1_000, noPool: 113_800 }) },
-  cap100En: { m: cardRow("mkt_jcW100En", { yesPool: 1_000, noPool: 113_800 }), locale: "en" },
-  cap100Zh: { m: cardRow("mkt_jcW100Zh", { yesPool: 1_000, noPool: 113_800 }), locale: "zh" },
+  /* ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): the six cards that drew the widest figures a pick printed —
+     ≈99.9× and ≈100.0×, in sw, en and zh, for 4.picks.fit — left with the figures and that check. */
 } satisfies Record<string, CardCase>;
 type CardName = keyof typeof CARD_WORLD;
 type Renders = Record<CardName, string>;
@@ -521,8 +509,7 @@ const CARD_NAMES = Object.keys(CARD_WORLD) as CardName[];
 const caseOf = (n: CardName): CardCase => CARD_WORLD[n];
 /** The cards that take bets now (two picks), and the ones that do not (a closed or a result row). */
 const OPEN_CARDS: CardName[] = ["priced", "home", "pricedEn", "pricedZh", "today", "oneSided", "empty", "overCap", "overCapEn",
-  "overCapZh", "legacy", "updownLive", "updownNoRound", "updownElsewhere", "short", "competition", "oddCompetition",
-  "cap999", "cap999En", "cap999Zh", "cap100", "cap100En", "cap100Zh"];
+  "overCapZh", "legacy", "updownLive", "updownNoRound", "updownElsewhere", "short", "competition", "oddCompetition"];
 const CLOSED_CARDS: CardName[] = ["closed", "oneSidedClosed"];
 const SETTLED_CARDS: CardName[] = ["settledYes", "settledNo", "lastYear", "void", "unrecorded", "updownSettled"];
 
@@ -571,17 +558,6 @@ function elementsOf(html: string, cls: string): Array<{ tag: string; attrs: stri
 const anchorsOf = (html: string) => [...html.matchAll(/<a(?= )([^>]*)>/g)].map((m) => m[1]);
 /** A kit glyph as the card draws it. */
 const glyph = (g: unknown, s: number) => renderToStaticMarkup(h(g as never, { s } as never));
-/** A figure joined to the words after it: "Shinda ≈2.8×" then every space after it a no-break one (the card's rule, said
- *  again here from the dictionary's own words). */
-const winText = (l: Locale, mult: string) => {
-  const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), to = tpl.indexOf(" ", at);
-  return tpl.slice(0, to).replace("{mult}", mult) + tpl.slice(to).split(" ").join(NBSP);
-};
-const winInner = (l: Locale, mult: string) => {
-  const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), from = tpl.lastIndexOf(" ", at) + 1, to = tpl.indexOf(" ", at);
-  return `${tpl.slice(0, from)}<span class="kp-jcard__mult">${tpl.slice(from, to).replace("{mult}", mult)}</span>${tpl.slice(to).split(" ").join(NBSP)}`;
-};
-const plain = (s: string) => s.split(NBSP).join(" ");
 
 /** White space of every kind, read as one space (a selector list or an at-rule's prelude may span lines). */
 const WS = new RegExp(`[ ${LF}${CR}${String.fromCharCode(9)}]+`, "g");
@@ -651,78 +627,6 @@ const cardChildren = (html: string) => {
   const close = html.lastIndexOf("</article>");
   return open && close > 0 ? childrenOf(html.slice(open[0].length, close)) : { kids: [], text: html };
 };
-
-/**
- * ⭐ THE WIDTH MODEL (4.picks.fit), as `test:visual-pass-r9a` §5.3 measures the classic card's labels: each character
- * at its face's own advance from the repo's font files — the words Inter Medium (the line's weight, 500), the figure
- * JetBrains Mono Bold (700) — at the line's size, its tracking added after every character; Chinese at one em (the
- * system CJK face's full width); kerning ignored, which only tightens a run, so every width is an upper bound.
- */
-const req = createRequire(import.meta.url);
-type Face = { unitsPerEm: number; glyphForCodePoint: (c: number) => { id: number; advanceWidth: number } };
-const FACES = (() => {
-  const fontkit = req("fontkit") as { openSync: (p: string) => Face };
-  const open = (n: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", `${n}.ttf`));
-  return { words: open("Inter-Medium"), figure: open("JetBrainsMono-Bold") };
-})();
-/** A wide East Asian character or mark (ideographs, CJK punctuation, full-width forms): one em, and a break beside it. */
-const isWide = (ch: string) => { const p = ch.codePointAt(0) ?? 0; return (p >= 0x3000 && p <= 0x303f) || (p >= 0x3400 && p <= 0x9fff) || (p >= 0xf900 && p <= 0xfaff) || (p >= 0xff00 && p <= 0xffef); };
-/** Chinese closing marks: no line opens with one (UAX #14: no break before a closing mark). */
-const CLOSING = "，。、：；！？）」』";
-/** One character of a pick's line as a browser lays it: its face, whether a nowrap span holds it, and which stacked
- *  part (`DotSeq`'s centred form: each part a line of its own) it sits in. A dot hidden in the gap is not on the line. */
-type Glyph = { ch: string; mono: boolean; kept: boolean; part: number };
-function lineGlyphs(inner: string): Glyph[] {
-  const out: Glyph[] = [];
-  const stack: Array<{ mono: boolean; kept: boolean; hidden: boolean }> = [];
-  let part = 0;
-  for (const m of inner.matchAll(/<([/]?)([a-z][a-z0-9]*)((?:[^>"]|"[^"]*")*)>|([^<]+)/g)) {
-    const top = stack.length > 0 ? stack[stack.length - 1] : { mono: false, kept: false, hidden: false };
-    if (m[4] !== undefined) {
-      if (!top.hidden) for (const ch of decodeHtml(m[4])) out.push({ ch, mono: top.mono, kept: top.kept, part });
-      continue;
-    }
-    if (m[1]) { stack.pop(); continue; }
-    const cls = classesOf(m[3]);
-    if (cls.includes("kp-seq__item")) part++;
-    stack.push({
-      mono: top.mono || cls.includes("kp-jcard__mult"),
-      kept: top.kept || cls.includes("kp-jcard__mult") || cls.includes("kp-jcard__run"),
-      hidden: top.hidden || cls.includes("kp-seq__dot"),
-    });
-  }
-  return out;
-}
-/** The line's unbreakable runs: it breaks at an ordinary space outside a nowrap span (the space hangs), between stacked
- *  parts, and beside a wide character — except across a no-break space or before a closing mark. */
-function lineRuns(gs: Glyph[]): Glyph[][] {
-  const runs: Glyph[][] = [];
-  let cur: Glyph[] = [];
-  const flush = () => { if (cur.length > 0) runs.push(cur); cur = []; };
-  gs.forEach((g, i) => {
-    const prev = i > 0 ? gs[i - 1] : null;
-    if (prev && prev.part !== g.part) flush();
-    if (g.ch === " " && !g.kept) { flush(); return; }
-    if (prev && !g.kept && !prev.kept && (isWide(g.ch) || isWide(prev.ch)) && g.ch !== NBSP && prev.ch !== NBSP && !CLOSING.includes(g.ch)) flush();
-    cur.push(g);
-  });
-  flush();
-  return runs;
-}
-/** A run's width at the line's size and tracking, or null when a face lacks one of its characters (a run the model
- *  cannot measure is never passed as fitting). */
-function runWidth(run: Glyph[], size: number, tracking: number): number | null {
-  let w = 0;
-  for (const g of run) {
-    if (isWide(g.ch)) { w += size + tracking; continue; }
-    const face = g.mono ? FACES.figure : FACES.words;
-    const glyph = face.glyphForCodePoint(g.ch.codePointAt(0) ?? 0);
-    if (!glyph || glyph.id === 0) return null;
-    w += (glyph.advanceWidth / face.unitsPerEm) * size + tracking;
-  }
-  return w;
-}
-const runText = (run: Glyph[]) => run.map((g) => g.ch).join("");
 
 function journeyCardChecks(w: World, ok: Ok) {
   const src = decomment(w.card);
@@ -848,20 +752,26 @@ function journeyCardChecks(w: World, ok: Ok) {
   const picks = (n: CardName) => elementsOf(R[n], "kp-jcard__pick").map((p) => ({
     cls: classesOf(p.attrs), side: textOf(elementsOf(p.inner, "kp-jcard__side")[0]?.inner ?? ""), line: elementsOf(p.inner, "kp-jcard__line")[0] ?? null,
   }));
-  const said = (n: CardName) => picks(n).map((p) => [p.side, p.line === null ? null : plain(textOf(p.line.inner))]);
-  const thinLine = picks("overCap")[1]?.line;
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling: "for market cards we can remove odds please, keep yes and no
+  //    only"): a priced pick — over the cap and a thin side included — draws its side word alone, as a hidden figure's and
+  //    an Up & Down side's always have, so only a fact about the pool (Kuwa wa kwanza, Upande mmoja tu) still stands under a
+  //    side word. The win line, the over-cap words and the thin side's stack left the want with their faces; the id is kept.
+  const said = (n: CardName) => picks(n).map((p) => [p.side, p.line === null ? null : textOf(p.line.inner)]);
   const WORDS_WANT: Array<[CardName, unknown]> = [
-    ["priced", [[sw.common.yes, plain(winText("sw", "2.8"))], [sw.common.no, plain(winText("sw", "1.4"))]]],
+    ["priced", [[sw.common.yes, null], [sw.common.no, null]]],
     ["empty", [[sw.common.yes, sw.journey.cardBeFirst], [sw.common.no, sw.journey.cardBeFirst]]],
     ["oneSided", [[sw.common.yes, sw.market.oneSideOnly], [sw.common.no, sw.journey.cardBeFirst]]],
-    ["overCap", [[sw.common.yes, sw.journey.cardOverCap], [sw.common.no, sw.journey.cardThin.replace("{mult}", "1.0")]]],
+    ["overCap", [[sw.common.yes, null], [sw.common.no, null]]],
     ["legacy", [[sw.common.yes, null], [sw.common.no, null]]],
     ["updownLive", [[sw.market.udUp, null], [sw.market.udDown, null]]],
   ];
   const badWords = WORDS_WANT.filter(([n, want]) => j(said(n)) !== j(want)).map(([n]) => [n, said(n)]);
-  const wordOnly = (["legacy", "updownLive"] as CardName[]).every((n) => picks(n).length === 2 && picks(n).every((p) => p.cls.includes("kp-jcard__pick--word")))
-    && OPEN_CARDS.filter((n) => n !== "legacy" && !n.startsWith("updown")).every((n) => picks(n).every((p) => !p.cls.includes("kp-jcard__pick--word")));
-  const thinStacked = !!thinLine && thinLine.inner.includes('class="kp-seq kp-seq--stack"') && thinLine.inner.includes('<span class="kp-jcard__mult">≈1.0×</span>');
+  /** The open cards whose picks carry a fact about the pool; every other open card's two picks are the side word alone. */
+  const FACT_CARDS: CardName[] = ["empty", "oneSided"];
+  const wordOnly = OPEN_CARDS.every((n) => {
+    const fact = FACT_CARDS.includes(n), p = picks(n);
+    return p.length === 2 && p.every((x) => x.cls.includes("kp-jcard__pick--word") === !fact && (x.line !== null) === fact);
+  });
   const inked = OPEN_CARDS.every((n) => {
     const p = picks(n);
     return p.length === 2 && p[0].cls.includes("btn-yes") && !p[0].cls.includes("btn-no") && p[1].cls.includes("btn-no") && !p[1].cls.includes("btn-yes")
@@ -873,88 +783,25 @@ function journeyCardChecks(w: World, ok: Ok) {
   const CUTS = (p: string, v: string) => /^(?:height|max-height|block-size|max-block-size|line-clamp|-webkit-line-clamp|text-overflow)$/.test(p)
     || (p === "white-space" && v !== "normal") || (/^text-wrap(?:-mode)?$/.test(p) && v.includes("nowrap"));
   const pickCuts = sheet.filter((r) => r.sels.some(stylesPick)).flatMap((r) => r.decls.filter(([p, v]) => CUTS(p, v)).map(([p, v]) => `${r.sels.join(", ")} ${p}: ${v}`));
-  ok("4.picks.words · each pick: the side word in the reader's and the product's words over its face's — win, be first, one side only, over the cap with no number, a thin side stacked; nothing under a hidden figure or an Up & Down side (centred); the YES ink on YES and the NO ink on NO, with no button height or nowrap — on the markup, or in any rule that styles a pick",
-    badWords.length === 0 && wordOnly && thinStacked && inked && pickCuts.length === 0, j({ badWords, wordOnly, thinStacked, inked, pickCuts }));
-  const lineOf = (n: CardName, i: number) => picks(n)[i]?.line?.inner ?? null;
-  const UNIT_WANT: Array<[CardName, number, string]> = [
-    ["priced", 0, winInner("sw", "2.8")], ["priced", 1, winInner("sw", "1.4")], ["pricedEn", 0, winInner("en", "2.8")], ["pricedZh", 0, winInner("zh", "2.8")],
-    ["overCap", 0, '<span class="kp-jcard__run">Upande mdogo,</span> <span class="kp-jcard__run">ona makadirio</span>'],
-    ["overCapEn", 0, '<span class="kp-jcard__run">Small side,</span> <span class="kp-jcard__run">see the estimate</span>'],
-    ["overCapZh", 0, zh.journey.cardOverCap],
-  ];
-  const badUnit = UNIT_WANT.filter(([n, i, want]) => lineOf(n, i) !== want).map(([n, i]) => [n, i, lineOf(n, i)]);
-  const nowrap = (["kp-jcard__mult", "kp-jcard__run"] as const).every((c) => declOf(sheet, `.${c}`, "white-space") === "nowrap")
-    && declOf(sheet, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
-  const capWords = sw.journey.cardOverCap === "Upande mdogo, ona makadirio" && en.journey.cardOverCap === "Small side, see the estimate";
-  ok("4.picks.unit · the figure is one mono unit, never broken, joined to the words after it by no-break spaces (“≈2.8× dau”, “≈2.8× your bet”, “≈2.8× 投注”), so a Latin line breaks only before it (a figure of five characters is 4.picks.fit's); over the cap each clause is kept whole where a space follows its comma (sw, en), and Chinese is left as written",
-    capWords && badUnit.length === 0 && nowrap, j({ capWords, badUnit, nowrap }));
+  ok("4.picks.words · each pick: the side word in the reader's and the product's words, and under it only a fact about the pool — be first, one side only; a priced pool (over the cap and a thin side included), a hidden figure and an Up & Down side draw the side word alone, centred (Ali 2026-10-19: no figure on a card); the YES ink on YES and the NO ink on NO, with no button height or nowrap — on the markup, or in any rule that styles a pick",
+    badWords.length === 0 && wordOnly && inked && pickCuts.length === 0, j({ badWords, wordOnly, inked, pickCuts }));
 
-  /* ⭐ the width proof (the WP5 review's item 1): every unit a pick prints holds a 320 phone's pick line */
-  const px = (v: string | null): number | null => {
-    if (v === null) return null;
-    const ref = /^var[(](--[a-z0-9-]+)[)]$/.exec(v.trim());
-    if (ref) { const d = rootDecl(ref[1]); return d.length === 1 ? px(d[0]) : null; }
-    const n = /^([0-9]+(?:[.][0-9]+)?)px$/.exec(v.trim());
-    return n ? Number(n[1]) : v.trim() === "0" ? 0 : null;
-  };
-  /** A box shorthand's two inline sides (one value, two, three or four). */
-  const inline = (v: string | null): [number | null, number | null] => {
-    const p = (v ?? "").split(" ").filter(Boolean);
-    return p.length === 0 ? [null, null] : p.length === 1 ? [px(p[0]), px(p[0])] : p.length < 4 ? [px(p[1]), px(p[1])] : [px(p[1]), px(p[3])];
-  };
-  const firstPx = (v: string | null) => px((v ?? "").split(" ")[0] || null);
-  const forcedBorder = sheet.filter((r) => r.at.includes("@media (forced-colors: active)") && r.sels.includes(".kp-jcard__pick"))
-    .flatMap((r) => r.decls.filter(([p]) => p === "border").map(([, v]) => v));
-  const frame = {
-    view: 320, gutter: w.gutter, cardEdge: firstPx(declOf(sheet, ".kp-jcard", "border")), cardPad: inline(declOf(sheet, ".kp-jcard", "padding")),
-    pairGap: px(declOf(sheet, ".kp-jcard__picks", "column-gap") ?? declOf(sheet, ".kp-jcard__picks", "gap")),
-    pickPad: inline(declOf(sheet, ".kp-jcard__pick", "padding")),
-    forcedEdge: forcedBorder.length === 0 ? 0 : firstPx(forcedBorder[forcedBorder.length - 1]),
-  };
-  const sizes = [frame.gutter, frame.cardEdge, ...frame.cardPad, frame.pairGap, ...frame.pickPad, frame.forcedEdge];
-  const framed = sizes.every((x) => typeof x === "number");
-  const num = (x: number | null) => x ?? Number.NaN;
-  const LINE = (frame.view - 2 * num(frame.gutter) - 2 * num(frame.cardEdge) - num(frame.cardPad[0]) - num(frame.cardPad[1]) - num(frame.pairGap)) / 2
-    - num(frame.pickPad[0]) - num(frame.pickPad[1]);
-  const FORCED = LINE - 2 * num(frame.forcedEdge);
-  const fontSize = px(declOf(sheet, ".kp-jcard__line", "font-size"));
-  const track = declOf(sheet, ".kp-jcard__line", "letter-spacing");
-  const trackEm = /^(-?[0-9]+(?:[.][0-9]+)?)em$/.exec(track ?? "");
-  const tracking = track === null ? null : track === "0" ? 0 : trackEm ? (fontSize === null ? null : Number(trackEm[1]) * fontSize) : px(track);
-  const faces = declOf(sheet, ".kp-jcard__line", "font-weight") === "500" && declOf(sheet, ".kp-jcard__mult", "font-weight") === "700"
-    && declOf(sheet, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
-  const measured = OPEN_CARDS.flatMap((n) => [0, 1].flatMap((i) => {
-    const inner = lineOf(n, i);
-    return inner === null ? [] : lineRuns(lineGlyphs(inner)).map((run) => ({
-      n, text: runText(run), width: fontSize === null || tracking === null ? null : runWidth(run, fontSize, tracking),
-    }));
-  }));
-  const unmeasured = measured.filter((u) => u.width === null).map((u) => `${u.n}: ${u.text}`);
-  const widest = measured.reduce<{ n: string; text: string; width: number | null } | null>((a, b) => (a === null || num(b.width) > num(a.width) ? b : a), null);
-  const overLine = measured.filter((u) => !(num(u.width) <= FORCED)).map((u) => `${u.n} “${u.text}” ${num(u.width).toFixed(1)}px`);
-  /* ≈99.9× kept whole, ≈100.0× broken before its words, in the three languages — as served */
-  const capLine = (l: Locale, mult: string, kept: boolean) => {
-    const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), from = tpl.lastIndexOf(" ", at) + 1, to = tpl.indexOf(" ", at);
-    return `${tpl.slice(0, from)}<span class="kp-jcard__mult">${tpl.slice(from, to).replace("{mult}", mult)}</span>${kept ? tpl.slice(to).split(" ").join(NBSP) : tpl.slice(to)}`;
-  };
-  const CAPS: Array<[CardName, Locale, string, boolean]> = [
-    ["cap999", "sw", "99.9", true], ["cap999En", "en", "99.9", true], ["cap999Zh", "zh", "99.9", true],
-    ["cap100", "sw", "100.0", false], ["cap100En", "en", "100.0", false], ["cap100Zh", "zh", "100.0", false],
-  ];
-  const badCaps = CAPS.filter(([n, l, mult, kept]) => lineOf(n, 0) !== capLine(l, mult, kept)).map(([n]) => [n, lineOf(n, 0)]);
-  const unitWidth = (inner: string, figure: string) => {
-    const run = lineRuns(lineGlyphs(inner)).find((r) => runText(r).includes(figure));
-    return run && fontSize !== null && tracking !== null ? runWidth(run, fontSize, tracking) : null;
-  };
-  const kept999 = (["sw", "en", "zh"] as const).map((l) => num(unitWidth(capLine(l, "99.9", true), "≈99.9×")));
-  /* CONTROL — the ruling's reason: ≈100.0× held to its words would run past the line (en: “≈100.0× your bet”) */
-  const kept100 = Math.max(...(["sw", "en", "zh"] as const).map((l) => num(unitWidth(capLine(l, "100.0", true), "≈100.0×"))));
-  const fmt = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : "?");
-  const widestSaid = widest === null ? "none measured" : `“${widest.text}” (${widest.n}) at ${fmt(num(widest.width))}px`;
-  ok(`4.picks.fit · the width proof (the repo's Inter Medium and JetBrains Mono Bold by their own advances, kerning ignored, so an upper bound): at 320 a pick's line is ${fmt(LINE)}px — ${fmt(FORCED)}px in forced colours, inside its edge — and every unit a pick prints in sw, en and zh holds it, the widest ${widestSaid}; “≈99.9×” stays joined to its words (sw ${fmt(kept999[0])}, en ${fmt(kept999[1])}, zh ${fmt(kept999[2])}px), and “≈100.0×” breaks before them — held to them, it would run ${fmt(kept100)}px`,
-    w.gutter !== null && framed && fontSize !== null && tracking !== null && faces && measured.length > 0 && unmeasured.length === 0
-      && overLine.length === 0 && badCaps.length === 0 && kept100 > LINE,
-    j({ frame, LINE, FORCED, fontSize, track, faces, unmeasured, overLine, badCaps, kept999, kept100 }));
+  /* ⭐ no figure on a pick (Ali's ruling of 2026-10-19) */
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): 4.picks.unit and 4.picks.fit are RETIRED — their subject left the
+  //    card with the figures: the mono unit joined to its words by no-break spaces, the over-cap clauses kept whole, and the
+  //    width proof of every unit a pick printed ("≈99.9×" held to its words at 320, "≈100.0×" breaking before them), with
+  //    the six cards, the page frame and the font model that measured it. A pick now prints its side word and at most a
+  //    short fact that wraps at its spaces. 4.picks.nofigure holds the ruling in their place, on every card drawn and
+  //    behind them.
+  /** A figure as a pick printed one: any digit, the approximation sign, the multiplication sign or a percent sign. */
+  const FIGURE = /[0-9≈×%]/;
+  const figured = OPEN_CARDS.flatMap((n) => elementsOf(R[n], "kp-jcard__pick").map((p) => textOf(p.inner)).filter((s) => FIGURE.test(s)).map((s) => `${n}: ${s}`));
+  const keptRules = sheet.filter((r) => r.sels.some((s) => classesIn(s).some((c) => c === ".kp-jcard__mult" || c === ".kp-jcard__run"))).map((r) => r.sels.join(", "));
+  const GONE_KEYS = ["cardWin", "cardThin", "cardOverCap"];
+  const keptKeys = (["sw", "en", "zh"] as const).flatMap((l) => Object.entries(w.dict[l]).flatMap(([ns, words]) =>
+    typeof words === "object" && words !== null ? Object.keys(words).filter((k) => GONE_KEYS.includes(k)).map((k) => `${l}.${ns}.${k}`) : []));
+  ok("4.picks.nofigure · no figure on a pick (Ali's ruling of 2026-10-19: no odds on any card, both shells — the estimate is the bet sheet's, at the stake): no open card, in sw, en or zh, prints a digit, an ≈, a × or a % on either pick; and none is kept behind — no rule in globals.css names .kp-jcard__mult or .kp-jcard__run, and no locale's dictionary keeps cardWin, cardThin or cardOverCap",
+    figured.length === 0 && keptRules.length === 0 && keptKeys.length === 0, j({ figured, keptRules, keptKeys }));
 
   /* the closed and the result rows */
   const closedRow = (n: CardName) => elementsOf(R[n], "kp-jcard__closed");
@@ -2908,22 +2755,28 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       } }) },
 
     /* §3 · the card's face */
-    { name: "a priced pick printed as the bare side word (the figure lost)", expect: /^3[.]golden /, alone: true,
-      plant: (w) => rule(w, { face: remap((f) => (f.kind === "win" ? { kind: "word" } : f)) }) },
+    // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling: "for market cards we can remove odds please, keep yes and no
+    //    only"): the win, thin and over-cap faces left PickFace, so where a plant took a figure away it now puts one back —
+    //    cast, since the type has no room for it any more — which is the regression the ruling forbids.
+    { name: "a priced pick printed with its figure again (“Shinda ≈2.8× dau”: the odds the ruling took off every card)", expect: /^3[.]golden /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "priced" && !e.overCap && e.lean !== "thin" ? ({ kind: "win", mult: e.multText ?? "" } as unknown as CF.PickFace) : f)) }) },
     { name: "an empty pool printed as the bare side word, not Kuwa wa kwanza", expect: /^3[.]empty /, alone: true,
       plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "emptyPool" ? { kind: "word" } : f)) }) },
     { name: "the side holding all the money told to be the first", expect: /^3[.]oneside /, alone: true,
       plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "oneSidedRefund" ? { kind: "beFirst" } : f)) }) },
     { name: "over the cap, the cap printed as a figure", expect: /^3[.]overcap /, alone: true,
-      plant: (w) => rule(w, { face: remap((f, e) => (e?.overCap ? { kind: "win", mult: e.multText ?? "100" } : f)) }) },
-    { name: "a thin side printed as an ordinary win (Faida ndogo lost)", expect: /^3[.]overcap /, alone: true,
-      plant: (w) => rule(w, { face: remap((f) => (f.kind === "thin" ? { kind: "win", mult: f.mult } : f)) }) },
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.overCap ? ({ kind: "win", mult: e.multText ?? "100" } as unknown as CF.PickFace) : f)) }) },
+    { name: "a thin side printed with its figure again (“Faida ndogo · ≈1.0×”)", expect: /^3[.]overcap /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "priced" && e.lean === "thin" ? ({ kind: "thin", mult: e.multText ?? "" } as unknown as CF.PickFace) : f)) }) },
+    { name: "over the cap, the small side's words back (“Upande mdogo, ona makadirio”: a pointer to an estimate the card no longer shows)", expect: /^3[.]overcap /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.overCap ? ({ kind: "overCap" } as unknown as CF.PickFace) : f)) }) },
     { name: "a legacy (hidden) market's pick told to be the first", expect: /^3[.]legacy /, alone: true,
       plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "hidden" ? { kind: "beFirst" } : f)) }) },
-    { name: "the display switch ignored (a market whose figures are switched off prints one anyway)", expect: /^3[.]legacy /, alone: true,
-      plant: (w) => rule(w, { estimate: (m, rates, side, bettable) => R.estimate(m, rates && { ...rates, showEstimatedWinnings: true }, side, bettable) }) },
-    { name: "a market with no rates priced at the deck's 13% instead of showing its side word", expect: /^3[.]legacy /, alone: true,
-      plant: (w) => rule(w, { estimate: (m, rates, side, bettable) => R.estimate(m, rates ?? pickEstimateRates(LS13 as never), side, bettable) }) },
+    // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): the two plants that broke a hidden figure's causes through
+    //    `estimate` — the display switch ignored, and a market with no rates priced at the deck's 13% — are retired: a priced
+    //    pick is its side word alone now, the face a hidden figure always had, so neither defect changes a word on a card.
+    //    Those causes are the bet sheet's alone now: test:journey-estimate's e.hidden holds all three (its plants break the
+    //    fee model and the display switch).
     { name: "a market that takes no bets keeps its two picks", expect: /^3[.]closed /, alone: true,
       plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "closed" && !i.onBreak ? { ...f, picks: { kind: "open", YES: { kind: "word" }, NO: { kind: "word" } } } : f; } }) },
     { name: "every result in the YES ink (one-sided 8.10's defect: the slot's ink inherited)", expect: /^3[.]settled /, alone: true,
@@ -2947,9 +2800,10 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
 }
 
 /**
- * §4's plants: each puts ONE defect into a copy of the card's source, of globals.css or of one drawn card, and must turn
- * its own check red and no other (`alone`). A drawn-card plant edits the markup the real component served, so it proves
- * the check reads what a reader is served; a source plant proves the check reads how the card computes it.
+ * §4's plants: each puts ONE defect into a copy of the card's source, of globals.css, of the dictionary or of one drawn
+ * card, and must turn its own check red and no other (`alone`). A drawn-card plant edits the markup the real component
+ * served, so it proves the check reads what a reader is served; a source plant proves the check reads how the card
+ * computes it.
  */
 function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone: true }> {
   const drawn = (w: World, n: CardName, from: string, to: string): World => ({ ...w, renders: { ...w.renders, [n]: swap(w.renders[n], from, to) } });
@@ -2959,11 +2813,15 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
   const note = sw.market.oneSidedNote.replace("{side}", sw.common.no);
   const old = caseOf("lastYear").m.settledAt ?? "";
   const yes = caseOf("settledYes").m;
+  /** The pick line's rule as globals.css writes it: where the figure's old rule stood, right after it. */
+  const LINE_RULE = ".kp-jcard__line { font-size: var(--type-small); font-weight: 500; line-height: 1.3; letter-spacing: 0; text-wrap: balance; }";
   return [
     { name: "the card marked use client (its markup would hydrate, and the close label could run on the phone's clock)", expect: /^4[.]directive /, alone: true,
       plant: (w) => ({ ...w, card: '"use client";' + LF + LF + w.card }) },
+    // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): winWords left the card with the win line; pickWords is the
+    //    pick's helper now, and the one this plant exports.
     { name: "a helper exported beside the card (a second entry a client module could reach for)", expect: /^4[.]directive /, alone: true,
-      plant: (w) => sourced(w, "function winWords(", "export function winWords(") },
+      plant: (w) => sourced(w, "function pickWords(", "export function pickWords(") },
     { name: "a client module imports the card", expect: /^4[.]importers /, alone: true,
       plant: (w) => ({ ...w, cardNaming: new Map(w.cardNaming).set("src/components/journey/home/home-island.tsx",
         '"use client";' + LF + 'import { JourneyCard } from "@/components/journey/cards/journey-card";' + LF) }) },
@@ -3030,22 +2888,30 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       } },
     { name: "a hidden figure's pick told to be the first", expect: /^4[.]picks[.]words /, alone: true,
       plant: (w) => drawn(w, "legacy", `<span class="kp-jcard__side">${sw.common.yes}</span></a>`, `<span class="kp-jcard__side">${sw.common.yes}</span> <span class="kp-jcard__line">${sw.journey.cardBeFirst}</span></a>`) },
+    // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): these two draw on the empty pool's card now — a priced card's
+    //    picks wear the side-word-alone modifier since the ruling, so the bare class list they anchor on is the empty card's
+    //    (its picks still carry a second line, the two-line pick the second one cuts).
     { name: "the NO pick in the YES ink", expect: /^4[.]picks[.]words /, alone: true,
-      plant: (w) => drawn(w, "priced", 'class="btn-no kp-jcard__pick"', 'class="btn-yes kp-jcard__pick"') },
+      plant: (w) => drawn(w, "empty", 'class="btn-no kp-jcard__pick"', 'class="btn-yes kp-jcard__pick"') },
     { name: "a pick given a button's height and nowrap (a two-line pick cut)", expect: /^4[.]picks[.]words /, alone: true,
-      plant: (w) => drawn(w, "priced", 'class="btn-yes kp-jcard__pick"', 'class="btn btn-yes btn-md kp-jcard__pick"') },
+      plant: (w) => drawn(w, "empty", 'class="btn-yes kp-jcard__pick"', 'class="btn btn-yes btn-md kp-jcard__pick"') },
     { name: "the pick's rule given a fixed height (its second line cut)", expect: /^4[.]picks[.]words /, alone: true,
       plant: (w) => styled(w, ".kp-jcard__pick { display: flex;", ".kp-jcard__pick { height: 44px; display: flex;") },
     { name: "the pick's rule held to one line (white-space: nowrap)", expect: /^4[.]picks[.]words /, alone: true,
       plant: (w) => styled(w, ".kp-jcard__pick { display: flex;", ".kp-jcard__pick { white-space: nowrap; display: flex;") },
-    { name: "≈100.0× held to its words by no-break spaces (en: “≈100.0× your bet” runs past a 320 pick's line)", expect: /^4[.]picks[.]fit /, alone: true,
-      plant: (w) => drawn(w, "cap100En", "≈100.0×</span> your bet", `≈100.0×</span>${NBSP}your${NBSP}bet`) },
-    { name: "≈99.9× parted from its words (a break could read “≈99.9× / your bet”)", expect: /^4[.]picks[.]fit /, alone: true,
-      plant: (w) => drawn(w, "cap999En", `≈99.9×</span>${NBSP}your`, "≈99.9×</span> your") },
-    { name: "the figure parted from its unit (a break could read “≈2.8× / dau”)", expect: /^4[.]picks[.]unit /, alone: true,
-      plant: (w) => drawn(w, "priced", `≈2.8×</span>${NBSP}dau`, "≈2.8×</span> dau") },
-    { name: "the English unit split (“≈2.8× your / bet”)", expect: /^4[.]picks[.]unit /, alone: true,
-      plant: (w) => drawn(w, "pricedEn", `≈2.8×</span>${NBSP}your${NBSP}bet`, `≈2.8×</span>${NBSP}your bet`) },
+    { name: "the over-cap words back under a priced pick (“Upande mdogo, ona makadirio”: a pointer to an estimate the card no longer shows)", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => drawn(w, "overCap", `<span class="kp-jcard__side">${sw.common.yes}</span></a>`, `<span class="kp-jcard__side">${sw.common.yes}</span> <span class="kp-jcard__line">Upande mdogo, ona makadirio</span></a>`) },
+    // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling): the four plants of 4.picks.unit and 4.picks.fit (the figure
+    //    parted from its unit, the English unit split, ≈99.9× parted from its words, ≈100.0× held to them) left with their
+    //    checks; each plant below puts a figure back, drawn or kept behind, and 4.picks.nofigure alone must catch it.
+    { name: "a priced pick prints its figure again (“NDIO Shinda ≈2.8× dau”: the odds Ali's ruling took off every card)", expect: /^4[.]picks[.]nofigure /, alone: true,
+      plant: (w) => drawn(w, "priced", `<span class="kp-jcard__side">${sw.common.yes}</span></a>`, `<span class="kp-jcard__side">${sw.common.yes}</span> Shinda ≈2.8× dau</a>`) },
+    { name: "over the cap, the cap's number back on the small side, in Chinese (“是 ≈100×”)", expect: /^4[.]picks[.]nofigure /, alone: true,
+      plant: (w) => drawn(w, "overCapZh", `<span class="kp-jcard__side">${dict.zh.common.yes}</span></a>`, `<span class="kp-jcard__side">${dict.zh.common.yes}</span> ≈100×</a>`) },
+    { name: "the figure's rule back in globals.css (.kp-jcard__mult: a mono, unbroken style for odds no card prints)", expect: /^4[.]picks[.]nofigure /, alone: true,
+      plant: (w) => styled(w, LINE_RULE, `${LINE_RULE}${LF}.kp-jcard__mult { font-family: var(--font-mono); font-weight: 700; white-space: nowrap; }`) },
+    { name: "the win line's key back in the dictionary (sw journey.cardWin: words for odds no card prints)", expect: /^4[.]picks[.]nofigure /, alone: true,
+      plant: (w) => ({ ...w, dict: { ...w.dict, sw: { ...w.dict.sw, journey: { ...w.dict.sw.journey, cardWin: "Shinda ≈{mult}× dau" } as typeof dict.sw.journey } } }) },
     { name: "the closed row without its lock", expect: /^4[.]closed /, alone: true,
       plant: (w) => drawn(w, "closed", `<p class="kp-jcard__closed">${glyph(I.lock, 16)}`, '<p class="kp-jcard__closed">') },
     { name: "the result's <time> names the resolution, not the settlement", expect: /^4[.]settled[.]date /, alone: true,

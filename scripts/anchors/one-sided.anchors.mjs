@@ -25,10 +25,13 @@ export const MUTATIONS = [
     expect: "1.2",
   },
   {
-    name: "the card's YES button prints '@ 100%' on a one-sided market again",
+    // ⚠️ RE-AIMED 2026-10-19 (MOBILE-VISUAL U43). This restored an UNGATED "@ n%" (printed on a one-sided market); Ali's
+    // ruling of that day took the suffix off every card choice in every state ("keep yes and no only"), so its anchor was
+    // gone. The defect it proves is the same family: a figure back on the YES button — gated by a price, as it shipped.
+    name: "the card's YES button prints '@ n%' again (the suffix Ali's 2026-10-19 ruling removed)",
     file: "src/components/markets/market-card.tsx",
-    from: `{showPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}`,
-    to: `{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}`,
+    from: `            {sideWord(t, "YES", productLine)}\n          </button>`,
+    to: `            {sideWord(t, "YES", productLine)}{showPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}\n          </button>`,
     expect: "3.3",
   },
   {
@@ -66,10 +69,12 @@ export const MUTATIONS = [
     expect: "4.6",
   },
   {
-    name: "WP4 · the board row's YES link prints '@ n%' on a one-sided or empty row",
+    // ⚠️ RE-AIMED 2026-10-19 (U43): the row's "@ n%" suffix is gone in every state by Ali's ruling, so this plants it back
+    // on the YES link — the figure the row may no longer carry, priced or not.
+    name: "WP4 · the board row's YES link prints '@ n%' again (removed in every state, Ali 2026-10-19)",
     file: "src/components/home/landing-hero.tsx",
-    from: `{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}`,
-    to: `{true && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}`,
+    from: `          {yesWord}\n        </Link>`,
+    to: `          {yesWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}\n        </Link>`,
     expect: "4.8",
   },
   {

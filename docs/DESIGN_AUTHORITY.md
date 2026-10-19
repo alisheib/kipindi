@@ -1596,7 +1596,8 @@ The platform's hardest-won rules. Most were bought with an incident.
    ⚠️ **Amended 2026-09-29, effective at the Vodacom plan's S15 flip (owner ruling R1; SJ-1, SJ-4;
    `docs/VODACOM-PLAN.md`, COMPLIANCE-DECISIONS § "2026-09-29 · The Vodacom plan …"):** on the journey
    surfaces only, a PRE-BET estimate may be shown:
-   - **Cards:** "Shinda ≈{mult}× dau" per side. Here "≈" is the qualifier, and cards carry no qualifier line.
+   - ~~**Cards:** "Shinda ≈{mult}× dau" per side.~~ ⛔ **Withdrawn by Ali's ruling of 2026-10-19** (the paragraph
+     "No figure on ANY card choice", below): a journey card prints no figure.
    - **The bet sheet:** "Ukishinda, unapata takriban TZS {x}" + "≈{mult}× dau lako" at the entered stake, always with
      the line "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa."
 
@@ -1623,6 +1624,24 @@ The platform's hardest-won rules. Most were bought with an incident.
      multiple.
 
    Guards: `test:updown-pricing` §3, §5, §6, §8 and `red:updown-pricing`; on a served board, `qa:card360`.
+
+   ⭐ **No figure on ANY card choice — Ali's ruling of 2026-10-19:** *"for market cards we can remove odds please, keep
+   yes and no only … let's do it in this and the Vodacom plan perfectly cleanly"*, and his answer of the same day,
+   "Every card, both shells" (COMPLIANCE-DECISIONS § "2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43):
+   …", item 4). The paragraph above, on Up & Down's choices, is this rule's first case.
+   - **The choices:** a card's two choices read the product's side word (YES/NO, Up/Down) and nothing else — no
+     "@ N%", no "≈N×", and no words standing in for a figure — on the market card wherever it is drawn (`/markets`,
+     results, the watchlist, similar markets), the home page's question rows, `/live` (its polls and its Up & Down
+     tiles: the 2026-10-14 entry's "Up @ 75%" there is superseded) and the journey cards on every surface. Their
+     accessible names say the same: "Back {side}" (`backSideAriaNoPrice`).
+   - **What a card still says, none of it an estimate:** its ONE statement of where the money is (a market card's big
+     percentage and its bar; a round's split row), and the pool facts in words ("Kuwa wa kwanza", "Upande mmoja tu",
+     the refund sentence).
+   - **The estimate is said where the bet is committed**, from `payoutFor` and labelled: the market page's confirm,
+     the journey bet sheet (the 2026-09-29 amendment's sheet half, unchanged), and Up & Down's confirm and receipt.
+
+   Guards: `test:card-choices` and `red:card-choices`; `test:one-sided` 3.3, 3.4, 4.8 and `red:one-sided`;
+   `test:journey-home` §3 and `red:journey-home`.
 4. **Losses are stated with dignity: calm, factual, final.** No punishment styling, no
    alarm panels. The closing line is *"Every figure here is final — nothing further is
    owed."* **VOID / refunded is NEUTRAL — never an error treatment**; the money came back.

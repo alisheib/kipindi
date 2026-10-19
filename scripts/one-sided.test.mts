@@ -152,10 +152,13 @@ log("\n── 3 · the card's one-sided state");
   check("3.1 the card decides from the pools, once", /const price = priceState\(yesPool, noPool\);/.test(card));
   check("3.2 a price is shown only where both pools hold money",
     /const showPrice = !noPrice && price\.kind === "priced";/.test(card));
-  const suffixes = card.match(/\{showPrice && <span className="font-mono text-\[11\.5px\]"> @ \{(?:yesPct|100 - yesPct)\}%<\/span>\}/g) ?? [];
-  check("3.3 ⛔ neither YES nor NO button carries '@ n%' without a price (both suffixes gated)", suffixes.length === 2, `${suffixes.length} gated suffixes`);
-  const arias = card.match(/aria-label=\{\(showPrice \? t\.market\.backSideAria\.replace\("\{pct\}"/g) ?? [];
-  check("3.4 ⛔ nor does either button's accessible name", arias.length === 2, `${arias.length} gated names`);
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43, Ali's ruling: "remove odds … keep yes and no only"): the buttons carry no
+  //    figure in ANY state now, priced included — so the old "both suffixes gated" count is replaced by "no suffix at all",
+  //    and the accessible name is the side word alone on both buttons (one-sided and empty pools included, as before).
+  const ODDS_ON_A_CHOICE = /@ \{(?:yesPct|100 - yesPct)\}%|" @ "|backSideAria\.replace\("\{pct\}"/;
+  check("3.3 ⛔ neither YES nor NO button carries '@ n%', priced or not (Ali 2026-10-19)", !ODDS_ON_A_CHOICE.test(card));
+  const arias = card.match(/aria-label=\{t\.market\.backSideAriaNoPrice\.replace\("\{side\}", sideWord\(t, "(?:YES|NO)", productLine\)\)\}/g) ?? [];
+  check("3.4 ⛔ nor does either button's accessible name: both are the side word alone", arias.length === 2, `${arias.length} side-word names`);
   check("3.5 the one-sided rail is the dashed empty rail, never a full pill",
     /empty=\{noPrice \|\| oneSided\}/.test(card));
   check("3.6 the rail and the label say 'One side only', never 'No bets yet' (money IS on it)",
@@ -185,9 +188,9 @@ log("\n── 3 · the card's one-sided state");
   check("3.10 the TIPPING badge is never computed from a one-sided or empty pool",
     /getSignalBadge\(live, showPrice \? yesPct : null,/.test(card));
   // ⭐ CONTROLS — against the pre-fix spellings.
-  check("3.3-control an ungated suffix IS detected",
-    !/\{showPrice && <span className="font-mono text-\[11\.5px\]"> @ \{yesPct\}%<\/span>\}/
-      .test('{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}'));
+  check("3.3-control the pre-ruling suffix IS detected (gated or not)",
+    ODDS_ON_A_CHOICE.test('{showPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}')
+      && ODDS_ON_A_CHOICE.test('{!noPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}'));
   check("3.5-control the pre-fix rail IS detected", !/empty=\{noPrice \|\| oneSided\}/.test("empty={noPrice}"));
   check("3.12-control a live-only gate IS detected",
     !/\{\(live \|\| oneSided\) && \(\s*<div className="mcardp-moveline">/.test('{live && (\n        <div className="mcardp-moveline">'));
@@ -220,8 +223,10 @@ log("\n── 4 · the hero board row and the landing tiers");
     /<TippingBar empty emptyLabel=\{emptyLabel\}/.test(qrow) && /<TippingBar yesPct=\{price\.yesPct\}/.test(qrow));
   check("4.7 the refund rule is the card's one conditional sentence, in the row's own side words",
     /price\.kind === "oneSided" \? t\.market\.oneSidedNote\.replace\("\{side\}", sideWord\(t, price\.emptySide, "MARKET"\)\) : null/.test(qrow));
-  const atSuffixes = qrow.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? [];
-  check("4.8 ⛔ neither side link carries '@ n%' without a price (both suffixes gated)", atSuffixes.length === 2, `${atSuffixes.length} gated suffixes`);
+  // ⚠️ AMENDED 2026-10-19 (U43, Ali's ruling): no figure on either side link in ANY state — the row states its share once,
+  //    in its headline and bar. The aria names are the side words alone too.
+  const ROW_ODDS = /kp-qrow__at|" @ "|@ \{price\.|backSideAria\.replace\("\{pct\}"/;
+  check("4.8 ⛔ neither side link carries '@ n%', priced or not (Ali 2026-10-19)", !ROW_ODDS.test(qrow));
   check("4.9 the row is an <li> of sibling zones, never one <Link className=\"kp-qrow\">",
     /<li className="kp-qrow"/.test(qrow) && !/<Link[^>]*className="kp-qrow"/.test(qrow));
   // ⭐ CONTROLS — each matcher shown refusing the pre-WP4 spelling.
@@ -231,8 +236,9 @@ log("\n── 4 · the hero board row and the landing tiers");
     !ROW_LABEL.test('const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.home.heroNoPrice : t.market.noPoolYet;'));
   check("4.6-control a 50/50 rail on an unpriced row IS detected",
     !/<TippingBar empty emptyLabel=\{emptyLabel\}/.test('<TippingBar yesPct={50} height={6} />'));
-  check("4.8-control an ungated suffix IS counted out",
-    ('{true && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}'.match(/\{price\.kind === "priced" && <span className="kp-qrow__at">/g) ?? []).length === 0);
+  check("4.8-control the pre-ruling suffix IS detected (gated or not)",
+    ROW_ODDS.test('{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}')
+      && ROW_ODDS.test('{yesWord}{" @ "}{price.yesPct}%'));
   check("4.9-control the pre-WP4 row (one link) IS detected",
     /<Link[^>]*className="kp-qrow"/.test('<Link href={`/markets/${row.id}` as never} className="kp-qrow">'));
   check("4.2-control the slice is the real row (it renders .kp-qrow)", /className="kp-qrow"/.test(qrow));

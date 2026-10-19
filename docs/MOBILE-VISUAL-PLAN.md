@@ -283,9 +283,16 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   `13299425`. Resume on any machine: `git fetch && git worktree add <dir> origin/claude/updown-visual-10`.
 - Done: Round 0 measured on production (§9 U43 holds the scores) and Ali's four rulings taken (COMPLIANCE-DECISIONS,
   2026-10-19); the capture tools `scripts/live/updown-visual-capture.mjs` (any BASE, read-only) and
-  `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch. Running: the local
-  every-state capture and a read-only design panel. Next, in order: the build spec (panel + critics) → build rounds →
-  verify loop → release (this session pushes; it rebases onto main after PHOSPHOR W4 lands).
+  `scripts/live/updown-visual-states.mjs` (local dev only, every card state) are on the branch.
+- ⏳ **Release A — pushed to `main` at Ali's instruction** (2026-10-19: *"push live now everything you have done please
+  and proceed tests, if we find anything after pushing we fix"*), after its guards, red proofs, scoped typecheck and a
+  green `next build` (§9 U43 "Release A"): no figure on any card choice (ruling 4, both shells), the one-sided lock
+  sentence with its stake-back quote, and the last-30-seconds pulse that never played. **Still running on the pushed
+  commit, by that instruction:** `test:all`, the money e2e trio on a scratch Postgres, local and production `qa:live`,
+  the deploy read-back and the tiles; anything they find is fixed in a follow-up release.
+- Next, in order: **Release B** — the slim card, the live line in the card, the visible filter chips, the board order,
+  the market card's cleanup, the system fixes → the verify loop (10/10 twice) → release (this session pushes, rebased
+  onto `main`).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
@@ -2809,6 +2816,17 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
   pixel-probe, loop to 10/10 twice → AGENTS §4 release. Each change carries its own guard and RED mutation proof;
   `test:journey-updown` §6.1's base is re-pinned in the open; DESIGN_AUTHORITY, component specs and COMPLIANCE-DECISIONS
   move in the same commits.
+- **Release A (2026-10-19) — ruling 4 and two measured defects:**
+  - **No figure on any card choice.** The market card's buttons, the home's question rows and `/live`'s tiles read the
+    side word alone, named "Back {side}"; the journey card's picks lose "Shinda ≈{mult}× dau", "Faida ndogo · ≈{mult}×"
+    and the over-cap words, with their keys and rules. DESIGN_AUTHORITY §C3 says it once for every card. Guards:
+    `test:card-choices` + `red:card-choices` (new), `test:one-sided` 3.3/3.4/4.8, `test:journey-home`
+    `4.picks.nofigure`.
+  - **A one-sided round at the lock** read "If it closes DOWN · TZS 0" to an Up holder alone on it, while settlement
+    refunds the stake: the quote is now the stake under both outcomes, and the card and the round page say one sentence
+    (`udLockedOneSided`) instead of the two rows. Guard: `test:updown-hedge-quote` §6 (driven to settlement), 12/12 RED.
+  - **The last 30 seconds never pulsed** — `ud-count-pulse` lost the cascade to `.m-tick` on the same element; it moves to
+    the digits' own span. Guard: `test:journey-updown` §6.1's named swaps; the tiles of the last-30 state.
 - **Coordination:** PHOSPHOR W4 (asheib-26) owns every glyph choice in these files and lands first; Maswali (asheib-bf)
   owns `/markets/page.tsx` and `/updown/history`; heavy jobs share the `mln-slot` budget as lane `udv`.
 

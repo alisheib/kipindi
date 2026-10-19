@@ -73,13 +73,14 @@ const PROBE = (plant) => {
     } else {
       if (!(band(h, r) && band(r, a) && h.right <= r.left + 1 && r.right <= a.left + 1)) bad.push("desktop: head, reading and pick are not one line, left to right");
     }
-    const at = row.querySelectorAll(".kp-qrow__at").length;
+    // A choice says its side and nothing else on EVERY row, priced or not (Ali's ruling of 2026-10-19, DESIGN_AUTHORITY
+    // §C3): the pick's text is exactly the two side words, so an "@ n%" — under any class — reads as a failure here.
+    const at = [yes, no].filter((b) => b && /@\s*\d|\d\s*%/.test(b.innerText || "")).length;
     const note = row.querySelector(".kp-qrow__note");
+    if (at !== 0) bad.push(`${kind}: ${at} side link(s) carry a figure ("@ n%")`);
     if (kind === "priced") {
-      if (at !== 2) bad.push(`priced: ${at} "@ n%" suffixes`);
       if (!row.querySelector(".tipbar-rail")) bad.push("priced: no priced rail");
     } else {
-      if (at !== 0) bad.push(`${kind}: ${at} "@ n%" suffixes on a row with no price`);
       if (!row.querySelector(".tipbar-empty")) bad.push(`${kind}: no dashed rail`);
       if (kind === "oneSided" && !(note && vis(note))) bad.push("oneSided: no refund note");
       if (kind === "none" && note) bad.push("none: a refund note on an empty pool");

@@ -1060,6 +1060,9 @@ export const dict = {
       // was the refund notice, after the round. `{side}` is the side nobody has backed.
       udNobodyBacked: "Nobody has backed {side} yet — if that does not change, your stake comes back.",
       udNobodyBackedEither: "No bets yet — if only one side is backed when betting closes, every stake comes back.",
+      // U43 (2026-10-19) · after the lock, on a round only one side backed: the pools are final, so the refund is no longer
+      // conditional — it replaces the two "If it closes …" rows, which read TZS 0 on the side the holder never backed.
+      udLockedOneSided: "Nobody backed {side}, so your stake comes back in full, whichever way it closes.",
       udSource: "Source", udQuoted: "quoted",
       // E-53 · the KIND of market a price is read from. Never the data vendor.
       udSourceCrypto: "Live crypto market", udSourceStock: "Live stock market",
@@ -1246,7 +1249,7 @@ export const dict = {
        *  user heard a different vocabulary than the eye read — in all three locales.
        *  `{side}` is filled from the SAME lexicon call that renders the label, so the two
        *  channels cannot drift apart again. */
-      backSideAria: "Back {side} at {pct}%", backSideAriaNoPrice: "Back {side}",
+      backSideAriaNoPrice: "Back {side}",
       notifUnsupported: "Browser notifications not supported here. Add this market to your home screen for the best alerts.",
       watchingTitle: "Watching this market",
       notifBlocked: "Notifications blocked. Enable them in your browser settings to get a ping when this market resolves.",
@@ -3156,7 +3159,8 @@ export const dict = {
        * resolvedOutcome, common.voided, cardClosesToday and cardDaysLeft(One) above, the comp* labels, rg.setLimits,
        * common.close, common.clearSearch and common.search.
        * ⛔ No helpline key: no player surface shows the helpline (Ali's ruling of 2026-10-06, COMPLIANCE-DECISIONS;
-       * S7-PLAN A6). ⛔ No cardWinOver: the panel's over-cap rule replaced it on cards (S7-PLAN Correction 9).
+       * S7-PLAN A6). ⛔ No figure on a card at all since Ali's ruling of 2026-10-19 (COMPLIANCE-DECISIONS item 4): the
+       * card's win, thin and over-cap lines (cardWin, cardThin, cardOverCap) are gone with their faces (`card-face.ts`).
        */
       /** The How-to card on the home and the static sheet it opens (§3.8). {steps} and {minutes} are numbers. */
       howToCardTitle: "How to play",
@@ -3186,11 +3190,8 @@ export const dict = {
       homeEmptyBody: "New questions appear here when they are published.",
       homeEmptyAll: "Show all questions",
       showMore: "Show more",
-      /** The journey card's pick lines (`cardFace`, WP3) and its settled row. A figure is always {mult}, never a literal. */
-      cardWin: "Win ≈{mult}× your bet",
+      /** The journey card's pick line (`cardFace`, WP3 — a fact about the pool, never a figure) and its settled row. */
       cardBeFirst: "Be the first",
-      cardOverCap: "Small side, see the estimate",
-      cardThin: "Small gain · ≈{mult}×",
       cardResultLabel: "Result",
       /** The question page's similar rail, in the journey's words. */
       similarTitle: "Similar questions",
@@ -4400,6 +4401,7 @@ export const dict = {
       udFilterAria: "Vichujio — inaonyesha {asset}, {duration}",
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
       udNobodyBackedEither: "Hakuna dau bado — kama upande mmoja tu utawekewa dau wakati madau yanafungwa, kila dau litarudi.",
+      udLockedOneSided: "Hakuna aliyeweka dau {side}, kwa hiyo dau lako litarudi kamili kwa vyovyote vile.",
       udSource: "Chanzo", udQuoted: "imenukuliwa",
       // E-53 · aina ya soko, si muuzaji wa data.
       udSourceCrypto: "Soko la sarafu-fiche la moja kwa moja", udSourceStock: "Soko la hisa la moja kwa moja",
@@ -4526,7 +4528,7 @@ export const dict = {
       insufficientDetail: "Unahitaji TZS {need} lakini una TZS {have}. Weka pesa ili kuendelea.",
       backYesAria: "Unga mkono NDIO kwa {pct}%", backNoAria: "Unga mkono HAPANA kwa {pct}%",
       backYesAriaNoPrice: "Unga mkono NDIO", backNoAriaNoPrice: "Unga mkono HAPANA",
-      backSideAria: "Unga mkono {side} kwa {pct}%", backSideAriaNoPrice: "Unga mkono {side}",
+      backSideAriaNoPrice: "Unga mkono {side}",
       notifUnsupported: "Arifa za kivinjari hazitumiki hapa. Ongeza soko hili kwenye skrini yako ya mwanzo kwa arifa bora.",
       watchingTitle: "Unafuatilia soko hili",
       notifBlocked: "Arifa zimezuiwa. Ziwashe katika mipangilio ya kivinjari chako upate arifa soko hili litakapotatuliwa.",
@@ -6020,10 +6022,7 @@ export const dict = {
       homeEmptyBody: "Maswali mapya yataonekana hapa yakichapishwa.",
       homeEmptyAll: "Onyesha maswali yote",
       showMore: "Onyesha zaidi",
-      cardWin: "Shinda ≈{mult}× dau",
       cardBeFirst: "Kuwa wa kwanza",
-      cardOverCap: "Upande mdogo, ona makadirio",
-      cardThin: "Faida ndogo · ≈{mult}×",
       cardResultLabel: "Matokeo",
       similarTitle: "Maswali yanayofanana",
       hubSearchPlaceholder: "Tafuta swali",
@@ -7151,6 +7150,7 @@ export const dict = {
       udFilterAria: "筛选——正在显示 {asset}、{duration}",
       udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",
       udNobodyBackedEither: "目前尚无投注——若投注截止时只有一方有人下注，所有投注都将全额退回。",
+      udLockedOneSided: "无人投注{side}，因此无论收盘涨跌，您的投注都将全额退回。",
       udSource: "来源", udQuoted: "报价时间",
       // E-53 · 只说市场类别，不透露数据供应商。
       udSourceCrypto: "加密货币实时行情", udSourceStock: "股票市场实时行情",
@@ -7282,7 +7282,7 @@ export const dict = {
       backYesAriaNoPrice: "押注「是」", backNoAriaNoPrice: "押注「否」",
       /** 「 」 sits in the TEMPLATE, not in the word — §L4: the bracket belongs to the
        *  sentence, so `sideWord()` keeps returning the bare 是 / 否 / 涨 / 跌. */
-      backSideAria: "以 {pct}% 押注「{side}」", backSideAriaNoPrice: "押注「{side}」",
+      backSideAriaNoPrice: "押注「{side}」",
       notifUnsupported: "此处不支持浏览器通知。将此市场添加到主屏幕以获得最佳提醒。",
       watchingTitle: "正在关注此市场",
       notifBlocked: "通知已被阻止。请在浏览器设置中开启，以便此市场结算时收到提醒。",
@@ -8764,10 +8764,7 @@ export const dict = {
       homeEmptyBody: "新问题发布后会显示在这里。",
       homeEmptyAll: "显示全部问题",
       showMore: "显示更多",
-      cardWin: "赢 ≈{mult}× 投注",
       cardBeFirst: "抢先下注",
-      cardOverCap: "冷门一方，请查看预估",
-      cardThin: "收益很小 · ≈{mult}×",
       cardResultLabel: "结果",
       similarTitle: "相似问题",
       hubSearchPlaceholder: "搜索问题",

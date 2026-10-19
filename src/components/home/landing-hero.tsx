@@ -191,9 +191,10 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   const [settlesLead, settlesConn] = splitLeadConnective(settlesPre);
   const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;
   const oneSidedNote = price.kind === "oneSided" ? t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, "MARKET")) : null;
-  // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
-  const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
-  const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
+  // The card's own names for the pair, so one control has one vocabulary: the side word and nothing else — no figure on a
+  // choice, priced or not (Ali's ruling of 2026-10-19, COMPLIANCE-DECISIONS item 4; the market card's buttons say the same).
+  const yesAria = t.market.backSideAriaNoPrice.replace("{side}", yesWord);
+  const noAria = t.market.backSideAriaNoPrice.replace("{side}", noWord);
   /* ⭐ THE META LINE BREAKS ONLY BETWEEN ITS FACTS (round 4 of the visual pass, 2026-10-09, edges tiles 248 249 257 258 266
      267): "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" was one sentence of text, so at 360 its first
      line ended on the dot ("…Linatatuliwa kwa bot.go.tz ·" / "Bwawa TZS 0 · 0 watabiri"). It is `DotSeq` now, the one
@@ -262,13 +263,14 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
       </div>
       {/* Two real links until D3 (WP5's slip). `prefetch={false}`: four rows × two query variants would
           otherwise prefetch eight detail pages. A one-sided or empty row keeps both — taking the empty
-          side is exactly what gives it a price — but neither carries a figure. */}
+          side is exactly what gives it a price. Neither carries a figure, priced or not: a choice says its side
+          (Ali's ruling of 2026-10-19 — the row's share is stated once, in its headline and bar). */}
       <div className="kp-qrow__act" data-market-part="pick">
         <Link href={`/markets/${row.id}?side=YES&from=home` as never} prefetch={false} className="btn btn-yes btn-md kp-qrow__btn" aria-label={yesAria}>
-          {yesWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{price.yesPct}%</span>}
+          {yesWord}
         </Link>
         <Link href={`/markets/${row.id}?side=NO&from=home` as never} prefetch={false} className="btn btn-no btn-md kp-qrow__btn" aria-label={noAria}>
-          {noWord}{price.kind === "priced" && <span className="kp-qrow__at">{" @ "}{100 - price.yesPct}%</span>}
+          {noWord}
         </Link>
       </div>
       {/* The refund rule (L22), the card's one conditional sentence, at the reading floor. */}

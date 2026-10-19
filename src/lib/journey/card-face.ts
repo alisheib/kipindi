@@ -4,14 +4,18 @@
  * `cardFace` returns and decides nothing itself, so a card on the home, `/live`, `/watchlist`, `/results` or the
  * similar rail cannot say two different things about one market.
  *
- * ── THE PICKS read `cardEstimate`'s states and nothing else (`estimate.ts`; the figures come from `cardFigures`) ──
- *   · priced                   → `win`: "Shinda ≈{mult}× dau";
- *   · over the cap             → `overCap`: "Upande mdogo, ona makadirio", with NO number (SJ-1 as the panel amended it);
- *   · a thin side              → `thin`: "Faida ndogo · ≈{mult}×" (`lean === "thin"`, below 1.05×; Open point 6);
+ * ── THE PICKS read `cardEstimate`'s states and nothing else (`estimate.ts`; the states come from `cardFigures`) ──
+ *   · priced (over the cap and a thin side included) → `word`: the side word alone;
  *   · an empty pool, or this side empty → `beFirst`: "Kuwa wa kwanza";
  *   · the other side empty     → `oneSide`: "Upande mmoja tu";
  *   · hidden (a legacy capped fee, the display switch off, no rates) → `word`: the side word alone;
  *   · an Up & Down round (no estimate) → `word`: the product's side word alone.
+ * ⭐ NO FIGURE ON A PICK — Ali's ruling of 2026-10-19 (COMPLIANCE-DECISIONS § "2026-10-19 · Up & Down and the market cards
+ *   (MOBILE-VISUAL U43): …", item 4: "for market cards we can remove odds please, keep yes and no only … in this and the
+ *   Vodacom plan"). A card's two choices read the side words on every surface and in both shells; the three faces that
+ *   printed a multiple — `win` "Shinda ≈{mult}× dau", `thin` "Faida ndogo · ≈{mult}×" and `overCap` "Upande mdogo, ona
+ *   makadirio" — are gone, with their dictionary keys. The estimate is said where a stake is chosen: the bet sheet
+ *   (DESIGN_AUTHORITY §C3, the 2026-09-29 amendment's sheet half). The two pool facts stay — they are not estimates.
  * A market that is not settled and takes no bets now is `closed`: one row, no control. RESOLVED or VOIDED is `settled`,
  * carrying the outcome and its ink: the YES ink, the NO ink, a void neutral (one-sided 8.10's rule). The outcome is the
  * platform's one reading, the recorded verdict else a void for a VOIDED market; a verdict that was never recorded carries
@@ -36,11 +40,8 @@ import type { CardCloseLabel } from "@/lib/markets/card-close-label";
 import type { Estimate } from "@/lib/markets/estimate";
 import { storedProductLine } from "@/lib/product-line";
 
-/** One pick's second line. `mult` is the estimate's own text ("2.8"); the card adds "≈", "×" and the words. */
+/** One pick's second line: a fact about the pool, or nothing (the side word alone). Never a figure (Ali, 2026-10-19). */
 export type PickFace =
-  | { kind: "win"; mult: string }
-  | { kind: "thin"; mult: string }
-  | { kind: "overCap" }
   | { kind: "beFirst" }
   | { kind: "oneSide" }
   | { kind: "word" };
@@ -84,13 +85,10 @@ export type CardFaceInput = {
 function pickFace(e: Estimate | null, updown: boolean): PickFace {
   if (updown || !e) return { kind: "word" };
   switch (e.state) {
-    case "priced": {
-      if (e.overCap) return { kind: "overCap" };
-      // Below the cap a priced estimate always carries its figure as text: `estimateFor` writes `text(tenths)` on every
-      // priced return (estimate.ts), so the face never holds a null figure.
-      const mult = e.multText!;
-      return e.lean === "thin" ? { kind: "thin", mult } : { kind: "win", mult };
-    }
+    case "priced":
+      // A priced pool's pick is its side word alone, however the estimate reads — over the cap or thin included (Ali,
+      // 2026-10-19: no odds on a card). The figure belongs to the bet sheet, where a stake is chosen.
+      return { kind: "word" };
     case "emptyPool":
     case "fillsEmptySide":
       return { kind: "beFirst" };
@@ -122,7 +120,7 @@ export function cardFace(input: CardFaceInput): CardFace {
       oneSidedNote: null,
     };
   }
-  // Only a poll's card shows estimates and the one-sided note (S0.5): a round shows words, and a Millionea week is
+  // Only a poll's card shows the pool facts and the one-sided note (S0.5): a round shows words, and a Millionea week is
   // never a question card at all — if one ever reached here it reads as words, never a figure it might win.
   const wordsOnly = storedProductLine(input.productLine) !== "MARKET";
   const empty = input.estimates?.YES?.emptySide ?? input.estimates?.NO?.emptySide ?? null;

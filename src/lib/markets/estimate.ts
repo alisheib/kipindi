@@ -1,15 +1,17 @@
 /**
- * THE JOURNEY'S ESTIMATE — the "Shinda ≈{mult}× dau" a card and the bet sheet print (the Vodacom plan S3,
+ * THE JOURNEY'S ESTIMATE — the "≈{mult}× dau lako" the bet sheet prints, and the states a card's words come from (the Vodacom plan S3,
  * `docs/VODACOM-PLAN.md` §3.1; rulings SJ-1, SJ-2, SJ-3 in the v5 INHERIT-MANIFEST).
  *
  * ── WHAT EACH SURFACE SHOWS ──────────────────────────────────────────────────────────────────────────────────────
  *  · THE CARD (stake 0, SJ-1): the ZERO-STAKE pool multiple, 1 + (1 − loser-share)·opposite/own — what TZS 1 on this
  *    side returns if it wins and nobody else bets — rounded HALF-UP to tenths in EXACT integer arithmetic. The deck:
  *    Dodoma YES 24,825 / NO 50,462 at 13% reads ≈2.8× on the YES button and ≈1.4× on the NO one.
+ *    ⚠️ PRINTED NOWHERE SINCE ALI'S RULING OF 2026-10-19 (COMPLIANCE-DECISIONS, MOBILE-VISUAL U43: no odds on any card
+ *    choice). A card reads only this estimate's `state` and `emptySide` (`card-face.ts`) and says words.
  *  · THE SHEET (the entered stake, SJ-2): the whole-TZS figure is `payoutFor()` at that stake — the SAME call
  *    `projectedPayout` makes on the server and settlement pays with, so it equals the stored `potentialPayout` — and
  *    "≈N.N×" is derived from THAT figure, half-up. Dodoma at TZS 1,000 → TZS 2,700 ≈2.7×; at 5,000 → TZS 12,360 ≈2.5×.
- *    The card's ≈2.8× and the sheet's ≈2.7× differ on purpose: the player's own stake dilutes their side.
+ *    The stake-0 ≈2.8× and the sheet's ≈2.7× differ on purpose: the player's own stake dilutes their side.
  *
  * ⛔ HALF-UP IS A SCOPED EXCEPTION (SJ-2). The platform's rule for a payout estimate is to FLOOR (never nudge a
  * figure upwards — the rule Up & Down's printed `× N` followed until Ali's ruling of 2026-10-14 took every multiple
@@ -32,7 +34,8 @@
  *
  * ⚠️ ABOVE `ESTIMATE_DISPLAY_CAP` (100) the multiple is not printed: `overCap` is set, and {cap} is read from here — never
  * typed into the dictionary (`test:rate-copy`). What each surface prints over the cap (S8-PLAN Correction 20):
- *   · THE CARD prints no number at all — `journey.cardOverCap`;
+ *   · THE CARD prints no number at all — its side word alone (its over-cap words, `journey.cardOverCap`, left with every
+ *     card figure on 2026-10-19);
  *   · THE SHEET prints the whole-TZS `payout` (still `payoutFor`'s figure) and `journey.estimatePillOver`
  *     ("≈ zaidi ya {cap}× dau lako") in place of the multiple's pill.
  *

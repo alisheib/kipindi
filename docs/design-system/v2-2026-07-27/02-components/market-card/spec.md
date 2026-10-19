@@ -14,7 +14,8 @@ Redlines:
 - status + category chips top-left; title --font-display 17px/600 lh 1.3 ls -0.01em; optional Swahili subtitle 13px italic --text-subtle
 - ProbabilityBar micro + price row mono 11px: YES n¢ in --yes-300 / lean word 9px italic uppercase --text-subtle ("tipping" within ±4 pts) / n¢ NO in --no-300
 - meta row mono 12px --text-muted: vol · predictors · timeLeft (right)
-- actions: 2-col grid gap 8, .btn-yes/.btn-no .btn-md, labels "YES @ n%" / "NO @ n%"
+- actions: 2-col grid gap 8, .btn-yes/.btn-no .btn-md, labels "YES @ n%" / "NO @ n%" — ⚠️ since Ali's ruling of
+  2026-10-19 (DESIGN_AUTHORITY §C3, no figure on any card choice) the side word alone, "YES" / "NO", named "Back {side}"
 
 RULE (Up & Down brief §7): do NOT restyle this card. UpDownCard is a sibling; both must sit on /live together as one product.
 
@@ -98,13 +99,11 @@ Redlines (the live values are `.kp-jcard*` and the `--jcard-*` tokens in `src/ap
   growing together when a second line wraps, and moving as the side buttons move (the `--m-lift` hover where a pointer
   hovers, the `--m-press` scale when pressed). In forced colours a pick keeps a 1px border in the system's ink: its
   ring is the fill's inset shadow, which a forced palette strips with the fill (E-129). The side word Sora on
-  `--type-h4` (17, A15); under it, at `--type-small` 500 and balanced: "Shinda ≈2.8× dau" (the figure a JetBrains Mono
-  700 unit joined to its words by no-break spaces — up to four characters: "≈100.0×", which the engine still prints at
-  its cap, breaks before its words, since "≈100.0× your bet" kept whole runs 109.8px against a 320 phone's 105px pick
-  line, where "≈99.9× your bet" holds it at 102.0), "Kuwa wa kwanza", "Upande mmoja tu", "Upande mdogo, ona makadirio"
-  (no number over the 100× cap; each clause whole), "Faida ndogo · ≈1.0×" (stacked, one part a line, since a centred
-  line cannot hide a dot at its edge — a recorded deviation from the canvas: s4-3-card-over-cap draws it on one line).
-  A hidden figure or an Up & Down side shows its side word alone, centred.
+  `--type-h4` (17, A15); under it, at `--type-small` 500 and balanced, a pool fact in words: "Kuwa wa kwanza" or
+  "Upande mmoja tu". Every other pick — a priced pool, a hidden figure, an Up & Down side — shows its side word alone,
+  centred. ⚠️ The win line "Shinda ≈2.8× dau", the thin side's "Faida ndogo · ≈1.0×" and the over-cap "Upande mdogo,
+  ona makadirio" left the card by Ali's ruling of 2026-10-19 (DESIGN_AUTHORITY §C3: no figure on any card choice); the
+  estimate is the bet sheet's.
 - closed row (selection closed, not a control) and result row (settled): the picks' height, an inset well
   (`--bg-inset`, 1px `--border`, `--r-md`). Closed: a lock and "Imefungwa", `--type-body` 600 `--text-subtle`.
   Result: "Matokeo" (14px, the `body` rung, 500, `--text-muted`) over the settled instant (`settledAt`, else

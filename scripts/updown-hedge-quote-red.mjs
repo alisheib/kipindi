@@ -13,6 +13,11 @@
  * answer for a hedge again (the defect that suppression fixed). A suite that pinned only one
  * direction would be green on the other.
  *
+ * 🔴 THE LAST FOUR ARE U43's (2026-10-19): a round only one side backed refunds every stake whichever way it closes,
+ * so its quote is the stake under BOTH outcomes and the surfaces say one sentence instead of the pair. Undoing the data
+ * fix brings back the "If it closes DOWN · TZS 0" Round 0 measured; dropping either sentence leaves the player with no
+ * figure at all; painting the pair under the sentence says one fact twice.
+ *
  * ⛔ Positive control first: the unmutated suite must be green, or every red below is noise.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -20,9 +25,11 @@ import { execSync } from "node:child_process";
 
 const BOARD = new URL("../src/lib/server/updown-board.ts", import.meta.url);
 const PANEL = new URL("../src/components/updown/round-action-panel.tsx", import.meta.url);
+const CARD = new URL("../src/components/updown/updown-card.tsx", import.meta.url);
 const originals = new Map([
   [BOARD, readFileSync(BOARD, "utf8")],
   [PANEL, readFileSync(PANEL, "utf8")],
+  [CARD, readFileSync(CARD, "utf8")],
 ]);
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
@@ -44,8 +51,10 @@ const MUTATIONS = [
     name: "pair-priced-from-the-sum",
     why: "🔴 THE ORIGINAL DEFECT — the whole two-sided position priced as if it all sat on UP. On this fixture that quotes 15,536 to a player whose UP leg is worth 11,487",
     file: BOARD,
-    from: `        ? (myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)`,
-    to: `        ? (myUpStake > 0 ? await heldPayout(m, "YES", myStake) : 0)`,
+    // ⚠️ RE-AIMED 2026-10-19 (U43): the line now opens with the one-sided refund branch, so the anchor is the two-sided
+    // tail of it — still exactly once in the file (the one-number field prices `myStake` through a different call).
+    from: `myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)`,
+    to: `myUpStake > 0 ? await heldPayout(m, "YES", myStake) : 0)`,
   },
   {
     name: "pair-suppressed-for-a-hedge",
@@ -69,8 +78,9 @@ const MUTATIONS = [
     name: "losing-side-nulled-instead-of-zero",
     why: "⚠️ the empty side returns null rather than 0, so the surface — which renders the pair only when BOTH are present — silently stops quoting a one-sided holder at all",
     file: BOARD,
-    from: `        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
-    to: `        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : null)`,
+    // ⚠️ RE-AIMED 2026-10-19 (U43), as the first one was: the two-sided tail of the line.
+    from: `myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+    to: `myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : null)`,
   },
   {
     name: "quoted-while-the-pool-can-still-move",
@@ -108,8 +118,37 @@ const MUTATIONS = [
     name: "the-panel-stops-rendering-the-pair",
     why: "⚠️ the DATA is right and the SCREEN drops it — the surface renders only the UP row, so a hedged holder is told half of their position. §4 reads the component, because a payload nobody paints is not a fix",
     file: PANEL,
-    from: `        {payoutIfUp != null && payoutIfDown != null && (`,
-    to: `        {false && payoutIfUp != null && payoutIfDown != null && (`,
+    // ⚠️ RE-AIMED 2026-10-19 (U43): the gate gained `!lockedOneSided`.
+    from: `        {payoutIfUp != null && payoutIfDown != null && !lockedOneSided && (`,
+    to: `        {false && payoutIfUp != null && payoutIfDown != null && !lockedOneSided && (`,
+  },
+  {
+    name: "one-sided-round-quotes-zero-again",
+    why: "🔴 U43's DEFECT, VERBATIM — the refund branch goes, so an Up holder alone on a round reads \"If it closes DOWN · TZS 0\" while settlement refunds them in full: a loss the money path never takes, stated on a money surface",
+    file: BOARD,
+    from: `(m.yesPool <= 0 || m.noPool <= 0 ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+    to: `(myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)`,
+  },
+  {
+    name: "card-drops-the-one-sided-sentence",
+    why: "⚠️ the pair is gated off for a one-sided lock and the sentence that replaces it is gone, so the card states nothing at all about the player's money",
+    file: CARD,
+    from: `            {lockedOneSided && (`,
+    to: `            {false && lockedOneSided && (`,
+  },
+  {
+    name: "panel-drops-the-one-sided-sentence",
+    why: "⚠️ the same hole on the round page — the place a player goes to read the full story of their bet",
+    file: PANEL,
+    from: `        {lockedOneSided && (`,
+    to: `        {false && lockedOneSided && (`,
+  },
+  {
+    name: "card-paints-the-pair-under-the-sentence",
+    why: "⚠️ the sentence AND two equal rows — one fact said twice in a card the owner asked to say each fact once (U43, the slim card)",
+    file: CARD,
+    from: `            {ifUp != null && ifDown != null && !lockedOneSided && (`,
+    to: `            {ifUp != null && ifDown != null && (`,
   },
 ];
 

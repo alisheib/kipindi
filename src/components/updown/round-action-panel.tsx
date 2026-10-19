@@ -26,9 +26,10 @@ import { roundPhase, type RoundPhaseState } from "@/lib/updown-card-phase";
 import { RoundStakePanel } from "./round-stake-panel";
 import { formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-import type { UpDownPricing } from "@/lib/updown-pricing";
+import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
+import { sideWord } from "@/lib/side-label";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
-import type { KeptBody } from "@/components/ui/empty-state-text";
+import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import { fmtEAT } from "@/lib/updown-source-label";
 import type { JudViewer } from "@/lib/journey/updown-arm";
@@ -149,6 +150,10 @@ export function RoundActionPanel(props: {
     const payoutIfUp = myPayoutIfUp ?? null;
     const payoutIfDown = myPayoutIfDown ?? null;
     void mySide; void myExactPayout;
+    // 🔴 U43 (2026-10-19) · the card's twin: a round only one side backed refunds whichever way it closes (settlement's
+    // `oneSided`), so the holder reads one sentence instead of two "If it closes …" rows (one of them "you get TZS 0").
+    const emptyAtLock = payoutIfUp != null && payoutIfDown != null ? emptySideOf(stakePanel.pricing) : null;
+    const lockedOneSided: "UP" | "DOWN" | null = emptyAtLock === "UP" || emptyAtLock === "DOWN" ? emptyAtLock : null;
     return (
       <section aria-label={t.market.udLockedTitle} style={{ ...insetStyle, padding: 16 }}>
         <Chip variant="pending">{t.market.udLockedTitle}</Chip>
@@ -165,7 +170,13 @@ export function RoundActionPanel(props: {
             priced by the server's own `projectedPayout`.
             ⚠️ A one-sided holder gets the same two rows, and their losing outcome reads 0 —
             genuinely true, and more honest than leaving it unsaid. */}
-        {payoutIfUp != null && payoutIfDown != null && (
+        {/* U43 · …unless the ROUND is one-sided: nothing can be lost, and one sentence says so. */}
+        {lockedOneSided && (
+          <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
+            {noticeBody(t.market.udLockedOneSided.replace("{side}", sideWord(t, lockedOneSided, "UPDOWN")))}
+          </p>
+        )}
+        {payoutIfUp != null && payoutIfDown != null && !lockedOneSided && (
           <div className="mt-3">
             {bothSides && (
               // DG-A-14 · §T3 + §T4 — "You hold both sides" is a full sentence stating the

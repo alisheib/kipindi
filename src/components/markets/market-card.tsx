@@ -664,22 +664,19 @@ export function MarketCard({
               screen reader heard "Back YES", in all three locales. That is §L4 reaching the
               ARIA channel: one control, two vocabularies. Interpolating the lexicon's own
               word makes the two channels a single source, so they cannot drift again. */}
-          {/* PV-10 (2026-09-03) — the `@pct%` suffix WAS `opacity-85`, which composites the
-              label's own pearl-on-fill ink down to ~3.5:1 on production (region pixel read;
-              measured, not composited — canvas cannot parse this ramp's oklch). Under the
-              AA 4.5 floor for text, on the two most-tapped money controls in the product.
-              Dropped, never re-hued (§B2: the green/no are untouchable) — the suffix now
-              takes the label's full ink like every other word in the button. Guarded by
-              `test:contrast` §P-u2 (the family's own ink/fill pair, at the call site's own
-              opacity — 0 today because there is none left). */}
-          {/* ⭐ WP6 · ONE PAIR, THE FIGURE SWITCHED BY `showPrice`. A one-sided market keeps both
-              buttons — taking the empty side is exactly what gives it a price — but neither carries
-              "@ 100%" / "@ 0%", on the screen or in the accessible name. */}
-          <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
-            {sideWord(t, "YES", productLine)}{showPrice && <span className="font-mono text-[11.5px]"> @ {yesPct}%</span>}
+          {/* ⭐ THE TWO CHOICES SAY THE SIDE AND NOTHING ELSE — Ali's ruling of 2026-10-19 (COMPLIANCE-DECISIONS
+              § "2026-10-19 · Up & Down and the market cards (MOBILE-VISUAL U43): …", item 4; DESIGN_AUTHORITY §C3):
+              "for market cards we can remove odds please, keep yes and no only". The buttons printed "YES @ 37%" /
+              "NO @ 63%" — the share this card already states once, big, beside its bar — and the "@" read as fixed
+              odds on a pool game. One wording on every card that draws a choice (this card on every surface, the
+              home rows, /live), and in the accessible name too: "Back YES", never "… at 37%". The share stays where it
+              is said once (`mcardp-prob` + the bar); the estimate stays where a stake is committed (the market page).
+              A one-sided or empty pool reads the same two words — taking the empty side is what gives it a price. */}
+          <button type="button" aria-label={t.market.backSideAriaNoPrice.replace("{side}", sideWord(t, "YES", productLine))} onClick={go("YES")} className="btn btn-yes btn-md">
+            {sideWord(t, "YES", productLine)}
           </button>
-          <button type="button" aria-label={(showPrice ? t.market.backSideAria.replace("{pct}", String(100 - yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
-            {sideWord(t, "NO", productLine)}{showPrice && <span className="font-mono text-[11.5px]"> @ {100 - yesPct}%</span>}
+          <button type="button" aria-label={t.market.backSideAriaNoPrice.replace("{side}", sideWord(t, "NO", productLine))} onClick={go("NO")} className="btn btn-no btn-md">
+            {sideWord(t, "NO", productLine)}
           </button>
         </div>
       ) : (

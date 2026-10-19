@@ -419,6 +419,12 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+\/\/ ⚠️ `formatClock` reuses ONE `Intl.DateTimeFormat`/,
       /^\s+\/\/ render, and this card used to render every second\.$/,
       /^\s+<span className="inline-flex items-center gap-1 self-center font-mono text-\[15\.5px\]/,
+      // U43 (MOBILE-VISUAL, 2026-10-19): the last-30-seconds pulse moves onto the digits' own span — beside `.m-tick` it lost
+      // the cascade and never played — and a round only one side backed shows its refund sentence instead of the two
+      // "If it closes …" rows (classic-identical otherwise: the journey arm draws neither).
+      /^\s+className=\{cn\("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse"\)\}$/,
+      /^\s+\{digits \?\? mmss\(left\)\}$/,
+      /^\s+\{ifUp != null && ifDown != null && \($/,
     ],
     [PANEL]: [],
     [ACTION]: [
@@ -426,6 +432,11 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+const lockClock = selectionClosesAtMs != null$/,
       /^\s+\? new Date\(selectionClosesAtMs\)\.toLocaleTimeString\(undefined/,
       /^\s+: null;$/,
+      // U43 (MOBILE-VISUAL, 2026-10-19): the card's twin — one refund sentence on a one-sided locked round (two imports gain
+      // `emptySideOf` and `noticeBody`, the rows' condition gains `!lockedOneSided`).
+      /^import type \{ UpDownPricing \} from "@\/lib\/updown-pricing";$/,
+      /^import type \{ KeptBody \} from "@\/components\/ui\/empty-state-text";$/,
+      /^\s+\{payoutIfUp != null && payoutIfDown != null && \($/,
     ],
   };
   const results = Object.entries(SWAPS).map(([file, swaps]) => {

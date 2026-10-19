@@ -533,15 +533,20 @@ async function toBoardRound(
     // ⛔ THE SAME `projectedPayout` THE MONEY PATH SETTLES WITH, twice — never `up + down`
     // priced as if it all sat on one side, which is exactly the half-truth UD-20 filed. And
     // never re-derived on the client from percentages, which ignores the frozen fee snapshot.
-    // ⚠️ A one-sided holder is not a special case: their losing outcome is genuinely 0, and
+    // ⚠️ A holder on ONE side of a TWO-sided pool is not a special case: their losing outcome is genuinely 0, and
     // saying so is more honest than leaving it unsaid.
+    // 🔴 U43 (2026-10-19) · BUT A ONE-SIDED POOL REFUNDS WHICHEVER WAY IT CLOSES, AND THIS SAID "TZS 0". Settlement's own
+    // rule (`market-service.ts`: "oneSided — nobody to lose to: every stake refunded") pays the holder their stake back
+    // under BOTH outcomes when the other pool is empty at the lock; the pools are final once the round is locked, so the
+    // projection can say so. It printed "If it closes DOWN · TZS 0" to an Up holder alone on a round — a loss the money
+    // path never takes (measured on a local round, U43 Round 0). Both figures are now the stake the refund returns.
     myPayoutIfUp:
       state === "locked" && myStake > 0
-        ? (myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
+        ? (m.yesPool <= 0 || m.noPool <= 0 ? myStake : myUpStake > 0 ? await heldPayout(m, "YES", myUpStake) : 0)
         : null,
     myPayoutIfDown:
       state === "locked" && myStake > 0
-        ? (myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
+        ? (m.yesPool <= 0 || m.noPool <= 0 ? myStake : myDownStake > 0 ? await heldPayout(m, "NO", myDownStake) : 0)
         : null,
     // ⭐ E-99 · the instant the result is genuinely expected, from THIS asset's own record.
     // ⛔ Null when unmeasured — see the field comment. A guessed lag on a money surface is a

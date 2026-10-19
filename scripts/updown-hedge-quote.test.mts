@@ -228,11 +228,13 @@ ok("0.4 · fixture · the round is LOCKED", row.state === "locked", row.state);
   // the condition with `false &&` — so the mutation that stops the surface painting anything
   // scored as a MISS. Anchoring on `{<condition> && (` is what makes the assertion about the
   // rendered branch rather than about a phrase that happens to appear in it.
+  // ⚠️ AMENDED 2026-10-19 (MOBILE-VISUAL U43): the gate gains `!lockedOneSided` — a round only one side backed shows one
+  // refund sentence instead of the pair (§6) — so the anchor includes it, from the opening brace as before.
   ok("4.1 · the round page renders BOTH rows, gated on BOTH figures being present",
-     /\{payoutIfUp != null && payoutIfDown != null && \(/.test(panel) &&
+     /\{payoutIfUp != null && payoutIfDown != null && !lockedOneSided && \(/.test(panel) &&
      /udIfClosesUp/.test(panel) && /udIfClosesDown/.test(panel));
   ok("4.2 · the card renders BOTH rows too",
-     /\{ifUp != null && ifDown != null && \(/.test(card) &&
+     /\{ifUp != null && ifDown != null && !lockedOneSided && \(/.test(card) &&
      /udIfClosesUp/.test(card) && /udIfClosesDown/.test(card));
   // ⛔ AND NEITHER SURFACE PAINTS THE RETIRED SINGLE-NUMBER LINE. `udYouWin … udIfUp` is the
   // form that told a hedger "You win X if UP" with an X computed from their DOWN money.
@@ -312,6 +314,58 @@ console.log("\n§5 · the quoted figure is what the player is actually paid");
      (downLeg?.finalPayout ?? -1) === 0, `down leg paid ${downLeg?.finalPayout}`);
   ok("5.5 · …and the winning leg alone carried the whole payout",
      (upLeg?.finalPayout ?? 0) === hedgerPaid, `up leg ${upLeg?.finalPayout} of ${hedgerPaid}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6 · U43 · A ROUND ONLY ONE SIDE BACKED QUOTES THE REFUND IT PAYS — under BOTH outcomes
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 FOUND 2026-10-19 (MOBILE-VISUAL U43, Round 0, a local round): an Up holder ALONE on a round read "If it closes
+// DOWN · TZS 0". Settlement's own rule (`market-service.ts`: "oneSided — nobody to lose to: every stake refunded")
+// pays them their stake back whichever way it closes, so the zero was a loss the money path never takes. §2's "losing
+// outcome is exactly 0" is right for a holder on one side of a TWO-sided pool, and stays so; this is the other pool.
+// ⛔ Driven, like §5: the quote is tied out against what settlement actually PAYS on the DOWN close.
+console.log("\n§6 · a one-sided round quotes the refund it pays (U43)");
+{
+  const loner = await funded("hq_loner", 100_000);
+  const ch = await createChain({ assetId: asset.data.id, durationMinutes: 15 }, "off");
+  if (!ch.ok) throw new Error(ch.error);
+  await setChainState(ch.data.id, "RUNNING", "off");
+  const chain15 = (await chainStore.get(ch.data.id))!;
+  const open2 = new Date(Date.now() - 3 * 60_000).toISOString();
+  const o2 = await observationStore.ensure(asset.data.id, open2);
+  await observationStore.confirm(o2.id, { price: 2400, sourceUrl: asset.data.priceSourceUrl, sourceQuotedAt: open2, evidence: "q", confidence: 95, model: "t", rawHash: "h6o" });
+  const r2 = await openRound(chain15, open2, o2.id, 2400);
+  if (!r2.ok) throw new Error(r2.error);
+  const lonerBet = await buyPosition(loner, { marketId: r2.data.marketId, side: "YES", stake: 4_000, idempotencyKey: "hq-loner-yes-4000" });
+  if (!lonerBet.ok) throw new Error(`fixture bet failed: ${(lonerBet as { error: string }).error}`);
+  await marketStore.stamp(r2.data.marketId, { selectionClosedAt: new Date(Date.now() - 1_000).toISOString() });
+
+  const q = (await getRoundDetail(r2.data.id, loner))!.round;
+  ok("6.0 · fixture · the round is LOCKED and only UP holds money",
+     q.state === "locked" && q.pricing.upPool === 4_000 && q.pricing.downPool === 0,
+     `${q.state} · up ${q.pricing.upPool} · down ${q.pricing.downPool}`);
+  ok("6.1 · ★ the UP outcome quotes the stake back", q.myPayoutIfUp === 4_000, String(q.myPayoutIfUp));
+  ok("6.2 · 🔴 the DOWN outcome quotes the stake back too — never TZS 0", q.myPayoutIfDown === 4_000, String(q.myPayoutIfDown));
+  ok("6.3 · …and the one-number field agrees", q.myExactPayout === 4_000, String(q.myExactPayout));
+
+  const co2 = await observationStore.ensure(asset.data.id, r2.data.closesAt);
+  await observationStore.confirm(co2.id, { price: 2200, sourceUrl: asset.data.priceSourceUrl, sourceQuotedAt: r2.data.closesAt, evidence: "close", confidence: 95, model: "t", rawHash: "h6c" });
+  const closed2 = await closeRound(r2.data.id, co2.id, 2200);
+  ok("6.4 · fixture · the round closed DOWN", closed2.ok && closed2.data.outcome === "DOWN",
+     closed2.ok ? String(closed2.data.outcome) : (closed2 as { error: string }).error);
+  const lonerPaid = (await listPositionsForMarket(r2.data.marketId)).filter((p) => p.userId === loner).reduce((n, p) => n + (p.finalPayout ?? 0), 0);
+  ok("6.5 · ★ the DOWN quote is what settlement PAID — the stake, refunded", lonerPaid === q.myPayoutIfDown,
+     `quoted ${q.myPayoutIfDown}, paid ${lonerPaid}`);
+
+  const panel6 = readFileSync("src/components/updown/round-action-panel.tsx", "utf8");
+  const card6 = readFileSync("src/components/updown/updown-card.tsx", "utf8");
+  ok("6.6 · the card says ONE sentence on a one-sided lock, in place of the pair",
+     /\{lockedOneSided && \(/.test(card6) && /t\.market\.udLockedOneSided\.replace\("\{side\}"/.test(card6));
+  ok("6.7 · …and so does the round page", /\{lockedOneSided && \(/.test(panel6) && /t\.market\.udLockedOneSided\.replace\("\{side\}"/.test(panel6));
+  for (const loc of ["en", "sw", "zh"] as const) {
+    const m = DICT[loc].market as unknown as Record<string, string>;
+    ok(`6.8.${loc} · the one-sided lock sentence exists and names the empty side`, !!m.udLockedOneSided && m.udLockedOneSided.includes("{side}"), m.udLockedOneSided);
+  }
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

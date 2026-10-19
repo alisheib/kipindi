@@ -11,8 +11,9 @@
  *     own B2 rule), every fact `shortfallPlan` asks (`viewerFacts`), and — asked with a bet's key — whether that key
  *     placed a position. Never cached. (The Vodacom plan S8 WP3.)
  *   · `sheetSeedFor` — the public half a journey card hands the sheet, so the sheet draws on the tap frame (S8 WP3 step 4).
- *   · `cardFigures` — what a journey card prints for a market (S7 WP3 step 5): whether it takes a bet now, its frozen
- *     rates and the figure for each side. `sheetPublic` serves exactly these, so the card and the sheet cannot disagree
+ *   · `cardFigures` — what a journey card reads for a market (S7 WP3 step 5): whether it takes a bet now, its frozen
+ *     rates and each side's estimate, whose state — never its figure, since Ali's ruling of 2026-10-19 — decides the
+ *     card's words. `sheetPublic` serves exactly these, so the card and the sheet cannot disagree
  *     about a market. `bettableAt` is the bet path's own test, which the journey home (WP7) hands to `homeBook`.
  *
  * ⛔ AN UP & DOWN ROUND, OR A MARKET THAT IS NOT LIVE, IS NOT A SHEET: `sheetPublic` returns null and the route

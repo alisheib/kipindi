@@ -67,6 +67,7 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 // ⛔ ONE RULE for "which side is empty" (D2) — read from the round's RAW pools and shared with the quick-bet controls
 // and the round page. The card prints no multiplier (the owner's ruling of 2026-10-14) and never re-derives money.
 import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
+import { sideWord } from "@/lib/side-label";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
@@ -404,7 +405,7 @@ function CardCountdownDigits({
   const urgent = urgentEligible && left != null && left <= 30;
   return (
     <div
-      className={cn("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
+      className="m-tick font-mono font-bold tabular-nums leading-none"
       style={{
         fontSize: 28, letterSpacing: "0.05em",
         // Inks: `tone` (plain while betting · brand = the result is coming · subtle = nothing
@@ -429,7 +430,11 @@ function CardCountdownDigits({
           🔴 AND THE SETTLED BRANCH USED TO FALL THROUGH TO `mmss(0)` — a dead `00:00`,
           measured on production 2026-08-19 on both this card and the round page. The
           handover branch is what removes it. */}
-      {digits ?? mmss(left)}
+      {/* 🔴 U43 (2026-10-19) · THE LAST-30-SECONDS PULSE NEVER PLAYED. It sat on this very element beside `.m-tick`, and both
+          set the `animation` shorthand: motion.css is imported last, so `.m-tick`'s rule won the cascade and the card had
+          no urgency cue at all (the motion critic's Round 0 finding, confirmed in the cascade). The pulse lives on the
+          digits' own span now, so the phase dip and the urgency loop each animate their own element. */}
+      <span className={urgent ? "ud-count-pulse" : undefined}>{digits ?? mmss(left)}</span>
     </div>
   );
 }
@@ -592,6 +597,12 @@ export function UpDownCard(props: UpDownCardProps) {
   const ifUp = locked ? myPayoutIfUp ?? null : null;
   const ifDown = locked ? myPayoutIfDown ?? null : null;
   const holdsBoth = (myUpStake ?? 0) > 0 && (myDownStake ?? 0) > 0;
+  // 🔴 U43 (2026-10-19) · A ROUND ONLY ONE SIDE BACKED REFUNDS WHICHEVER WAY IT CLOSES (settlement's `oneSided`: "nobody to
+  // lose to"), and the pools are final after the lock — so a holder's locked card says so in ONE sentence instead of the two
+  // "If it closes …" rows, which printed TZS 0 on the side they never backed (Round 0, a local round). The side named is the
+  // empty one (`emptySideOf`), as the empty-side sentence before the lock names it.
+  const emptyAtLock = locked && ifUp != null && ifDown != null ? emptySideOf(pricing) : null;
+  const lockedOneSided: "UP" | "DOWN" | null = emptyAtLock === "UP" || emptyAtLock === "DOWN" ? emptyAtLock : null;
   // ⚠️ `exactWin`/`mySide` stay in the payload and are no longer painted on the locked card —
   // the pair above replaces that line. Kept because other surfaces and suites still read them,
   // and because `myExactPayout` must remain the ONE-SIDED-ONLY field it was fixed to be.
@@ -1097,7 +1108,13 @@ export function UpDownCard(props: UpDownCardProps) {
                 confident wrong figure on a money surface (A-5). Two numbers can. ⚠️ A one-sided
                 holder gets the same two rows and their losing row reads 0 — simply true, and
                 better than leaving it unsaid. */}
-            {ifUp != null && ifDown != null && (
+            {/* U43 · …unless the ROUND is one-sided: nothing can be lost, and one sentence says so. */}
+            {lockedOneSided && (
+              <p className="mt-2 mb-0 text-body-sm leading-[1.5] text-text-muted">
+                {noticeBody(t.market.udLockedOneSided.replace("{side}", sideWord(t, lockedOneSided, "UPDOWN")))}
+              </p>
+            )}
+            {ifUp != null && ifDown != null && !lockedOneSided && (
               <div className="mt-2">
                 {holdsBoth && (
                   // DG-A-14 · §T3 + §T4 — "You hold both sides" is a sentence about the player's

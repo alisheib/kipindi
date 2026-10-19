@@ -87,11 +87,18 @@ function urgencyDefects(pod: string, card: string): string[] {
     if (/urgent\s*\?\s*"var\(--(?:yes|no)-\d{3}\)"/.test(src)) d.push(`${name}: an urgent branch paints the betting pair`);
   }
   // The urgency is still carried — by the pulse, on all three readouts.
-  if (!/className=\{urgent \? "m-tick ud-count-pulse" : "m-tick"\}/.test(p)) d.push("the round pod lost its final-30 s pulse");
+  // ⚠️ RE-PINNED 2026-10-19 (MOBILE-VISUAL U43): on the pod and the card the pulse moved onto the digits' OWN span. Beside
+  // `.m-tick` on one element it lost the cascade (both rules set `animation`; motion.css is imported last), so the last
+  // 30 seconds never pulsed at all. The check reads the new home: the urgent arm on the span that holds the digits.
+  if (!/<span className=\{urgent \? "ud-count-pulse" : undefined\}>\{shownDigits\}<\/span>/.test(p)) d.push("the round pod lost its final-30 s pulse");
   // Re-pinned (round 7, R7-C, 2026-10-10): the digits also take their trailing 0.05em back (`kp-track-end--05`, in both arms),
   // so they end on the label's edge above them; the pulse rides beside it, in the urgent arm only, as before.
   if (!/className=\{urgent \? "kp-track-end kp-track-end--05 ud-count-pulse" : "kp-track-end kp-track-end--05"\}/.test(p)) d.push("the board panel lost its final-30 s pulse");
-  if (!/urgent && "ud-count-pulse"/.test(k)) d.push("the card lost its final-30 s pulse");
+  if (!/<span className=\{urgent \? "ud-count-pulse" : undefined\}>\{digits \?\? mmss\(left\)\}<\/span>/.test(k)) d.push("the card lost its final-30 s pulse");
+  // ⛔ …and it may not ride on the `.m-tick` element again, where the tick's animation silently replaces it.
+  for (const [name, src] of [["round-countdown.tsx", p], ["updown-card.tsx", k]] as const) {
+    if (/className=\{[^}]*m-tick[^}]*ud-count-pulse|cn\("m-tick[^)]*"ud-count-pulse"/.test(src)) d.push(`${name}: the pulse shares the .m-tick element again (the tick's animation wins the cascade)`);
+  }
   if (!/const urgent = !inResult && isOpen && left != null && left > 0 && left <= 30;/.test(p)) d.push("the pod's 30 s threshold moved");
   if (!/color: tone,/.test(k)) d.push("the card's digits do not take the phase tone");
   return d;

@@ -220,8 +220,9 @@ const TAG_BOX_Y = "py-0.5 border-y";
 /**
  * C1e — the DENSE TippingBar-wall card that gives /live its own identity (so it
  * stops being /markets with a different URL): category + time · title · the bar ·
- * the @ prices. No spark / trader crest / KPI strip / big buttons — the point is
- * a fast, scannable wall of live odds. Uniform height via the 2-line title clamp.
+ * its two side words (no "@ N%" since Ali's ruling of 2026-10-19). No spark / trader
+ * crest / KPI strip / big buttons — the point is a fast, scannable wall of live
+ * markets. Uniform height via the 2-line title clamp.
  * Entrance is the pure-CSS staggered rise (.kp-rise) — always ends at opacity 1.
  */
 function PulseCard({ market, index }: { market: Market; index: number }) {
@@ -307,9 +308,12 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
         {price.kind !== "priced" ? (
           <div className="text-center font-mono text-[12px] text-text-subtle">{noPriceWord}</div>
         ) : (
-          <div className="flex items-center justify-between font-mono text-[12px] tabular-nums">
-            <span className="font-bold text-yes-300">{sideWord(t, "YES", productLine)} <span className="opacity-75">@ {price.yesPct}%</span></span>
-            <span className="font-bold text-no-300">{sideWord(t, "NO", productLine)} <span className="opacity-75">@ {100 - price.yesPct}%</span></span>
+          /* The bar's two ends named by their side words and nothing else — no "@ N%" (Ali's ruling of 2026-10-19,
+             COMPLIANCE-DECISIONS item 4: every card, both shells; /live's Up & Down tiles read "Up" / "Down" too). The bar
+             is this card's one statement of where the money is. */
+          <div className="flex items-center justify-between font-mono text-[12px]">
+            <span className="font-bold text-yes-300">{sideWord(t, "YES", productLine)}</span>
+            <span className="font-bold text-no-300">{sideWord(t, "NO", productLine)}</span>
           </div>
         )}
       </div>
