@@ -16,13 +16,14 @@ import type { MaswaliOutcome } from "@/lib/maswali-score";
  * 1.02 / 0.98, staggered `index` steps, capped at four); without it the stamp is its end frame. The composer decides
  * from the seen state: a data change while the player is looking, or up to four unseen results on opening (§10 §2).
  */
-export function outcomeStampText(t: Dict, outcome: MaswaliOutcome): string {
+export function outcomeStampText(t: Dict, outcome: MaswaliOutcome, label = true): string {
   // The platform's own word for a settled outcome (`outcomeWord`): a void reads as every void on 50pick does — one
   // definition site (§L2; the S5 UI review, LOW 13: this stamp once kept a VOID word of its own).
-  return `${t.millionea.stampResult} · ${outcomeWord(t, outcome, "MASWALI")}`;
+  const word = outcomeWord(t, outcome, "MASWALI");
+  return label ? `${t.millionea.stampResult} · ${word}` : word;
 }
 
-export function MaswaliOutcomeStamp({ t, outcome, press, index = 0, size = "caption", className }: {
+export function MaswaliOutcomeStamp({ t, outcome, press, index = 0, size = "caption", label = true, className }: {
   t: Dict;
   outcome: MaswaliOutcome;
   /** Land it now (N2). */
@@ -31,9 +32,12 @@ export function MaswaliOutcomeStamp({ t, outcome, press, index = 0, size = "capt
   index?: number;
   /** `micro` on the loss receipt's dense rows, `caption` on a ticket's clauses. */
   size?: "micro" | "caption";
+  /** "Result ·" before the outcome (the default). `false` where a column head or a field label already names it — the
+   *  register's "Outcome" (S5 VIS R3): the stamp then says the outcome alone, so "result" is never said twice. */
+  label?: boolean;
   className?: string;
 }) {
-  const stampText = outcomeStampText(t, outcome);
+  const stampText = outcomeStampText(t, outcome, label);
   return (
     <span
       className={cn(

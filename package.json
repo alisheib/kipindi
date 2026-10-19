@@ -694,6 +694,8 @@
     "test:maswali-i18n": "tsx scripts/maswali-i18n.test.mts",
     "test:maswali-design": "tsx scripts/maswali-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
+    "test:maswali-register": "tsx scripts/maswali-register.test.mts",
+    "red:maswali-register": "tsx scripts/maswali-register.test.mts --prove-red",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
