@@ -519,6 +519,10 @@ if (STORE === "memory") {
     ok("L.4b · CONTROLS · a one-word change moves the hash; a whitespace-only reformat does not",
       hashOf(pinned.replace("Introduction and scope", "Introduction and range")) !== hashOf(pinned) && hashOf(pinned.split(NL).join(`${NL}  `)) === hashOf(pinned));
   }
+  // The binding text at L.5's driven figures, rendered once in the next block and read by L.16 too, whose block is its own:
+  // L.16 read `text` out of its scope from round 3 on, a ReferenceError that ended the memory run there (fixed at the
+  // integration, 2026-10-19, the suite's first run).
+  let bindingText: Record<string, string> = {};
   {
     const rates = { traRate: 0.1, gbtRate: 0.05 };
     const examples = PLAYER.millioneaExamplesFor({ ticketPrice: 2500, floor: 3_000_000, feeRate: 0.11, ...rates });
@@ -530,6 +534,7 @@ if (STORE === "memory") {
     };
     const docs = millioneaContent(FIG);
     const text = Object.fromEntries(LOCS.map((l) => [l, plain(docs[l])])) as Record<string, string>;
+    bindingText = text;
     const sf = examples.shared?.figures;
     const want: Record<string, string[]> = {
       en: ["A ticket costs TZS 2,500", "at most 7 tickets in one week", "Tuesday 06:00 EAT", "Thursday 20:30 EAT", "at least 40 minutes before the earliest",
@@ -635,6 +640,7 @@ if (STORE === "memory") {
       [...off, ...settingsOff.map((l) => `${l}: today's settings`)].join(" · "));
   }
   {
+    const text = bindingText;
     const VOID: any = await import("../../src/lib/maswali-void-reason.ts");
     const { settleArithmetic }: any = await import("../../src/lib/maswali-money.ts");
     const words = (k: string) => LOCS.map((l) => dict[l].millionea[VOID.MASWALI_VOID_REASON_KEY[k]] as string);
@@ -767,9 +773,23 @@ if (STORE === "memory") {
       (page.match(/const gate = await millionea(?:Ticket)?Gate\(\);/g) ?? []).length === 1 && !!metaGate && metaGate.index < metaFn.indexOf("getServerT()")
         && at("if (!gate.userId) redirect(") > 0 && at("if (!gate.userId) redirect(") < at("await millioneaTicketProof(gate.userId, serial)")
         && page.includes("if (!p) notFound();") && page.includes("return { title: `${t.millioneaFairness.proofTitle} · ${t.millionea.productLabel}` };"));
-    const quiet = ["loading.tsx", "error.tsx"].map((f) => decomment(read(`${dir}/${f}`)));
-    ok("H.7 · ⛔ its loading and error states print no word of the product (they render before, or beside, the gate's answer)",
-      quiet.every((s) => !/\bt\.millionea/.test(s) && !/["'`][^"'`]*Millionea[^"'`]*["'`]/.test(s)) && /^"use client";/.test(read(`${dir}/loading.tsx`).trim()));
+    // ⛔ Read as what each file PRINTS — its string literals, template parts and JSX text, the platform's one print measure
+    // (`player-surface-text.mts`) — never the span between two literals: a quote-to-quote pattern ran from the last import's
+    // closing quote across the component's own name (`MillioneaProofLoading`) to the next literal, and failed both files at
+    // the suite's first run (the integration, 2026-10-19). The controls plant a product word as JSX text, as a literal and as
+    // a dictionary read (each caught), and hold that each component's name, an identifier, is in the code and not caught.
+    const { printedTexts } = await import("./player-surface-text.mts");
+    const printsProduct = (file: string, code: string) => /\bt\.millionea/.test(code) || /Millionea/.test(printedTexts(file, code));
+    const quiet = ["loading.tsx", "error.tsx"].map((f) => ({ file: `${dir}/${f}`, code: decomment(read(`${dir}/${f}`)) }));
+    const plants = [
+      [quiet[0], "title={<GhostText>{t.footer.fairness}</GhostText>}", "title={<GhostText>Millionea</GhostText>}"],
+      [quiet[1], 'logTag="millionea-proof"', 'logTag="Millionea proof"'],
+      [quiet[0], "eyebrow={t.footer.fairness}", "eyebrow={t.millionea.productLabel}"],
+    ] as const;
+    const caught = plants.map(([q, from, to]) => { const planted = q.code.replace(from, to); return planted !== q.code && printsProduct(q.file, planted); });
+    ok("H.7 · ⛔ its loading and error states print no word of the product (they render before, or beside, the gate's answer) — what each file prints, never the span between two literals; a product word planted as JSX text, as a literal or as a dictionary read is caught, and each component's own name is not",
+      quiet.every((q) => !printsProduct(q.file, q.code) && /Millionea/.test(q.code)) && caught.every(Boolean) && /^"use client";/.test(read(`${dir}/loading.tsx`).trim()),
+      J({ printing: quiet.filter((q) => printsProduct(q.file, q.code)).map((q) => q.file), caught }));
     const proof = await FAIR.millioneaTicketProof(P1, t1[0].serial);
     const html = proof?.proof ? renderToStaticMarkup(createElement(ProofCheck, {
       weekId: proof.week.id, ticketId: proof.ticket.id, salt: proof.ticket.salt, picks: proof.ticket.picks, proof: proof.proof,
