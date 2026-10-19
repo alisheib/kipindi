@@ -685,7 +685,7 @@ export default async function UpDownRoundPage({
                         >
                           <span className="flex min-w-0 items-center gap-1.5">
                             <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
-                              {p.side === "UP" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}{formatTzs(p.stake)}
+                              {p.side === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}{formatTzs(p.stake)}
                             </Chip>
                             <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
                           </span>
@@ -866,7 +866,7 @@ export default async function UpDownRoundPage({
               <div style={{ ...inset, padding: "12px 14px 13px" }}>
                 <p className={eyebrow}>{t.market.udOutcome}</p>
                 <p className="mt-[7px] m-0 flex items-center gap-1.5 font-mono text-[19px] font-bold leading-none" style={{ letterSpacing: "0.04em", color: outcomeInk }}>
-                  {OutcomeGlyph && <OutcomeGlyph s={16} />}
+                  {OutcomeGlyph && <OutcomeGlyph s={16} edge="start" text="mono-700" />}
                   {outcomeLabel}
                 </p>
                 <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">

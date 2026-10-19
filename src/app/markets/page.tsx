@@ -447,7 +447,7 @@ lastLabel={t.common.lastPage}
                 It keeps the link-blue hover step used by the home see-all links (§B4c). The row can wrap at 320px. */}
             <Link
               href={"/results" as never}
-              className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap font-mono text-body-sm font-semibold text-brand-300 transition-colors hover:text-brand-200"
+              className="inline-flex min-h-[var(--tap-min)] items-center gap-1.5 whitespace-nowrap font-mono text-body-sm font-semibold text-brand-300 transition-colors hover:text-brand-200"
             >
               {t.market.allResults}
               {/* The see-all mark, as the home's see-all links end (§B4c) — the family's chevron among words, where the

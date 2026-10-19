@@ -823,8 +823,8 @@ export function UpDownCard(props: UpDownCardProps) {
           ) : (
             <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
               <span className="inline-flex items-center gap-1 font-mono text-[15.5px] font-bold tabular-nums">
-                {tone === "up" && <I.arrowUp s={11} />}
-                {tone === "down" && <I.arrowDown s={11} />}
+                {tone === "up" && <I.arrowUp s={11} edge="start" text="mono-700" />}
+                {tone === "down" && <I.arrowDown s={11} edge="start" text="mono-700" />}
                 {priceText.live}
               </span>
               {priceText.move != null && (
@@ -988,7 +988,7 @@ export function UpDownCard(props: UpDownCardProps) {
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
               <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--yes-300)" }}>
-                <I.arrowUp s={10} edge="start" />{t.market.udUp}
+                <I.arrowUp s={10} edge="start" text="mono-700" />{t.market.udUp}
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
                 ≥ {priceText.up}
@@ -997,7 +997,7 @@ export function UpDownCard(props: UpDownCardProps) {
             <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
                  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
               <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--no-300)" }}>
-                {t.market.udDown}<I.arrowDown s={10} edge="end" />
+                {t.market.udDown}<I.arrowDown s={10} edge="end" text="mono-700" />
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
                 ≤ {priceText.down}
@@ -1061,11 +1061,11 @@ export function UpDownCard(props: UpDownCardProps) {
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   {/* The side's arrow leads the centred pick, so its ink stands on the start padding (round 10, R10-A6). */}
-                  <I.arrowUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
+                  <I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
-                  <I.arrowDown s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
+                  <I.arrowDown s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
                 </button>
               </div>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
@@ -1180,7 +1180,7 @@ export function UpDownCard(props: UpDownCardProps) {
           <div className="flex items-center justify-between gap-2 rounded-xl px-3.5 py-3" style={{ background: "var(--bg-inset)" }}>
             <span className="inline-flex items-center gap-1.5 font-mono text-[14px] font-bold tracking-[0.04em]"
                   style={{ color: outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-              {outcome === "UP" ? <I.arrowUp s={14} className={GLYPH_NO_SHRINK} /> : <I.arrowDown s={14} className={GLYPH_NO_SHRINK} />}
+              {outcome === "UP" ? <I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} /> : <I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />}
               {outcome === "UP" ? t.market.udUpWins : t.market.udDownWins}
             </span>
             {openPrice != null && closePrice != null && (

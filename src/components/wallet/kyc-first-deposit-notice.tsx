@@ -60,10 +60,12 @@ import { KYC_NOTICE_COOKIE, KYC_NOTICE_MAX_AGE_S, type FirstDepositNotice } from
  * page, where the address is added or its link re-sent. ⛔ The email wording says "before you withdraw", never "first":
  * the step returns whenever the address changes. "Confirm", never "verify", beside the email.
  */
-const VARIANT: Record<FirstDepositNotice, { glyph: "shieldcheck" | "mail"; href: string }> = {
-  identity: { glyph: "shieldcheck", href: "/profile/kyc" },
-  email:    { glyph: "mail",        href: "/profile/account" },
-  both:     { glyph: "shieldcheck", href: "/profile/kyc" },
+// Identity verification's own key (PHOSPHOR-MIGRATION §8b): the notice asks for a check not yet done, and `shieldcheck`
+// means verified.
+const VARIANT: Record<FirstDepositNotice, { glyph: "idCard" | "mail"; href: string }> = {
+  identity: { glyph: "idCard", href: "/profile/kyc" },
+  email:    { glyph: "mail",   href: "/profile/account" },
+  both:     { glyph: "idCard", href: "/profile/kyc" },
 };
 
 const DismissValue = createContext<string | null>(null);

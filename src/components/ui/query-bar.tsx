@@ -416,7 +416,7 @@ export function QuerySort({
             on={o.on}
             trailing={
               <span aria-hidden className="inline-flex text-text-faint">
-                {o.naturalDir === "asc" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}
+                {o.naturalDir === "asc" ? <I.arrowUp s={12} edge="end" /> : <I.arrowDown s={12} edge="end" />}
               </span>
             }
           >

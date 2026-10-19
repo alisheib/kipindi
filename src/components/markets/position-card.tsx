@@ -68,7 +68,7 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
   const statusLabel = positionStatusWord(t, status, productLine);
   // Its glyph beside the word and the ink (PHOSPHOR-MIGRATION W4): one rule, the journey's ticket card's too.
   const state = positionStatusGlyph(status);
-  const StateGlyph = I[state.key];
+  const ChipGlyph = I[state.key];
   return (
     <Link
       /**
@@ -127,7 +127,7 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
             * 18px side pill, so its card's content sat 2px below a settled neighbour's. Every state now
             * takes the side pill's size; the colour rule above is untouched.
             */}
-          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}><StateGlyph s={12} tier={state.tier} aria-hidden />{statusLabel}</Chip>
+          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}><ChipGlyph s={12} tier={state.tier} aria-hidden />{statusLabel}</Chip>
         </div>
         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
           <Cash>{formatTzs(stake)}</Cash>

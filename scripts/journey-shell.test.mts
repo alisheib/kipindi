@@ -1656,7 +1656,8 @@ function g7Header(W: World, ok: Ok) {
       && pip.includes("box-shadow: none;") && !/box-shadow:[^;]*8px/.test(pip),
     controls: tokenValue(css, "h-control-sm") === "40px" && tokenValue(css, "h-control-md") === "44px",
     classic: classicBell.includes(`"relative inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors"`)
-      && classicBell.includes("<I.bell s={20} />") && classicBell.includes(`size="md"`)
+      // PHOSPHOR-MIGRATION W4 (§8c): the bell draws its Fill while its panel is open — the same 20px glyph.
+      && classicBell.includes(`<I.bell s={20} tier={open ? "fill" : undefined} />`) && classicBell.includes(`size="md"`)
       && classicBell.includes("top: 3,") && classicBell.includes("right: 1,"),
     pipBox: text(W, "src/components/ui/count-badge.tsx").includes(`md: { box: { minWidth: 18, height: 18, padding: "0 4px" }, font: 10 },`),
   };

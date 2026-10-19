@@ -298,8 +298,8 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/auth/2fa/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the back link's start — it typed ← (the mono face's arrow, a weight under its words); on its first line (3.6)"],
     ["src/app/auth/otp/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the change-number link's start — it typed ←; on its first line where its words wrap (3.6)"],
     ["src/app/help/page.tsx", '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />', 1, "edge", "each FAQ row's end (§2)"],
-    ["src/app/profile/activity/page.tsx", "<I.arrowDown s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4); a deposit pictogram keeps the family's stroke"],
-    ["src/app/profile/activity/page.tsx", "<I.arrowUp s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4)"],
+    ["src/app/profile/activity/page.tsx", "<I.arrowDownToLine s={14} />", 1, "slot", "the Deposits tile's pictogram: the slot pulls it (§4) — the one deposit arrow since PHOSPHOR-MIGRATION W4 (§8b; it drew the plain ↓)"],
+    ["src/app/profile/activity/page.tsx", "<I.arrowUpFromLine s={14} />", 1, "slot", "the Withdrawals tile's pictogram: the slot pulls it (§4) — the one withdraw arrow since W4 (it drew the plain ↑)"],
     ["src/app/profile/kyc/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" />', 1, "text", "the footer's back link's start — it typed ←"],
     ["src/app/wallet/wallet-client.tsx", '<I.arrowDownToLine s={14} edge="start" text="body-600" />', 1, "text", "“↓ Weka pesa”: an arrow among words leading a centred control (§6) — now the one deposit arrow (R-LEXICON 5.4A)"],
     ["src/app/wallet/wallet-client.tsx", '<I.arrowUpFromLine s={14} edge="start" text="body-600" />', 1, "text", "“↑ Toa pesa” — now the one withdraw arrow (R-LEXICON 5.4A)"],
@@ -333,6 +333,36 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/ui/query-bar-ghost.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="shrink-0" />', 2, "ghost", "SortGhost's and MenuGhost's carets"],
     ["src/components/updown/round-stake-panel.tsx", '<I.arrowDown s={12} text="body-700" />', 2, "tag-text", "the stake panel chip's side arrow, among its Inter 700 word: the words' stroke (it was a typed 2.5); a chip is a tag and keeps its box"],
     ["src/components/updown/round-stake-panel.tsx", '<I.arrowUp s={12} text="body-700" />', 2, "tag-text", "the stake panel chip's side arrow"],
+    // ⭐ PHOSPHOR-MIGRATION W4 (2026-10-19, the audit's §8a/§8b, Ali: "nothing should be plain … the most small details"):
+    // Up & Down's sides are the two halves of its ⇅ everywhere, so the trend zigzags and the typed ↑↓ became these marks,
+    // each set by its role as round 10 sets an arrow: among words at the words' stroke, in a chip at the chip word's.
+    ["src/app/updown/history/page.tsx", '<I.arrowUp s={12} text="body-700" />', 1, "tag-text", "a bet chip's UP side before its figure (it typed ↑ — §3.5): the chip word's Inter 700 stroke, as the stake panel's chip"],
+    ["src/app/updown/history/page.tsx", '<I.arrowDown s={12} text="body-700" />', 1, "tag-text", "a bet chip's DOWN side (it typed ↓)"],
+    ["src/app/updown/[roundId]/page.tsx", '<I.arrowUp s={12} text="body-700" />', 1, "tag-text", "the round's own bet chip, UP (it typed ↑)"],
+    ["src/app/updown/[roundId]/page.tsx", '<I.arrowDown s={12} text="body-700" />', 1, "tag-text", "the round's own bet chip, DOWN (it typed ↓)"],
+    ["src/components/charts/outcome-cubes.tsx", "<I.arrowUp s={9} />", 1, "alone", "a past round's UP, alone in its 18px cube (it drew the trend zigzag)"],
+    ["src/components/charts/outcome-cubes.tsx", "<I.arrowDown s={9} />", 1, "alone", "a past round's DOWN, alone in its cube"],
+    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowUp s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's UP pick: an arrow leading a centred .btn's Inter 600 word, as the home band's"],
+    ["src/components/journey/updown/jud-arm.tsx", '<I.arrowDown s={size === "card" ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the journey arm's DOWN pick"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, leading its JetBrains Mono 700 figure"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={11} edge="start" text="mono-700" />', 1, "text", "the live price's side, DOWN"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={10} edge="start" text="mono-700" />', 1, "text", "the UP target's label start, among its mono 700 word"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={10} edge="end" text="mono-700" />', 1, "text", "the DOWN target's label end, right-aligned"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out UP button's start, among its Inter 600 word"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the signed-out DOWN button's start"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowUp s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, UP WINS, among its mono 700 words"],
+    ["src/components/updown/updown-card.tsx", '<I.arrowDown s={14} edge="start" text="mono-700" className={GLYPH_NO_SHRINK} />', 1, "text", "the settled round's verdict, DOWN WINS"],
+    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's UP button start"],
+    ["src/components/updown/updown-stake-controls.tsx", '<I.arrowDown s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />', 1, "text", "the quick bet's DOWN button start"],
+    // W4, the other new sites: the classic coin's verb, the card's 24h move, the sort's arrows and the field carets.
+    ["src/components/layout/bottom-nav.tsx", '<I.arrowDownToLine s={24} className="kp-coin__verb" />', 1, "alone", "the classic rail coin's deposit verb, alone on its disc (it was a hand-drawn plus) — a named parity change"],
+    ["src/components/markets/market-card.tsx", '<I.chevronUp s={11} tier="fill" />', 1, "alone", "the 24h move's solid caret before its points (it typed ▲ — §3.5): a Fill has no stroke to set at the words' stem, and it keeps its box"],
+    ["src/components/markets/market-card.tsx", '<I.chevronDown s={11} tier="fill" />', 1, "alone", "the 24h move's solid caret, down (it typed ▼)"],
+    ["src/components/ui/query-bar.tsx", '<I.arrowUp s={12} edge="end" />', 1, "edge", "a sort option's natural-direction hint, ending its row (it typed ↑ — §3.5)"],
+    ["src/components/ui/query-bar.tsx", '<I.arrowDown s={12} edge="end" />', 1, "edge", "a sort option's natural-direction hint, ending its row (it typed ↓)"],
+    ["src/components/ui/query-bar.tsx", "<I.arrowUp s={14} />", 1, "alone", "the direction button's arrow, alone in its 44px button; .kp-sortdir turns it for a descending sort (it typed ↑)"],
+    ["src/components/ui/select.tsx", '<I.chevronDown s={12} edge="end" className="shrink-0 text-text-subtle" aria-hidden />', 1, "edge", "the Select's field caret, ending the field (it was the field's own hand-drawn caret — §3.4)"],
+    ["src/components/ui/date-select.tsx", '<I.chevronDown s={12} edge="end" className="ml-1.5" aria-hidden />', 1, "edge", "DateSelect's month-title caret, ending its centred control (it was the Select's hand-drawn caret — §3.4)"],
   ];
   const MARK = new RegExp("<I[.](?:chevronDown|chevronUp|arrowUp|arrowDown|arrowLeft|chevronsUp|chevronsDown|arrowDownToLine|arrowUpFromLine)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
   const seen = new Map<string, number>();
@@ -357,7 +387,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
   // the two money arrows' — the receipts' plates and /help's FAQ column.
   ok("3.3 · the arrows named through a variable are classified too: the Up & Down verdict's (`Arrow`, words' stroke, its pull in em — §6) and the notification plates' (`notification-appearance.ts`, alone in their plates); the receipts' `Dir` (arrowDownToLine / arrowUpFromLine, alone in its 40px plate) and /help's withdraw FAQ (faq3's arrowUpFromLine, the FAQ's centred icon column — 2.3)",
     has("src/components/home/updown-match-words.tsx", '<Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />')
-      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDown;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUp;')
+      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDownToLine;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUpFromLine;')
       && has("src/components/wallet/receipt-list-row.tsx", 'const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;')
       && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} className="bg-brand-500/10 text-brand-300"> <Dir s={20} /> </IconPlate>')
       && has("src/app/help/page.tsx", '{ key: "faq3", glyph: "arrowUpFromLine" },'));
@@ -366,25 +396,24 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
   const doorFiles = PLAYER_TSX.filter((f) => [...code(f).matchAll(NAMES_DOOR)].length > [...code(f).matchAll(MARK)].filter((m) => new RegExp("^<I[.]arrow(?:DownToLine|UpFromLine)").test(m[0])).length);
   ok(`3.3′ · every other naming of the two money arrows on a player surface is one of 3.3's — ${doorFiles.join(", ")}`,
     j([...doorFiles].sort()) === j(["src/app/help/page.tsx", "src/components/wallet/receipt-list-row.tsx"]), j(doorFiles));
-  // The two hand-drawn carets (not the family's): the Select's field caret and DateSelect's month title. One pull, derived.
-  const CARET = '<path d="M3 4.5l3 3 3-3"', CARET_SVG = '<svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"';
-  const caretFiles = PLAYER_TSX.filter((f) => code(f).includes(CARET));
-  const sel = req("../src/components/ui/select.tsx") as { FIELD_CARET_PULL: string };
-  const ink = partsOfMarkup('<path d="M3 4.5l3 3 3-3" />', 2);
-  const caretGap = (Math.min(...ink.map((q) => q.x0 - q.w / 2)) / 12) * 10;
-  ok(`3.4 · the two hand-drawn carets end their controls with their ink on the edge: the drawing inks x2–10 of 12, so at 10px it stands ${caretGap.toFixed(3)}px in each side — FIELD_CARET_PULL "${sel.FIELD_CARET_PULL}", on both`,
-    j(caretFiles) === j(["src/components/ui/date-select.tsx", "src/components/ui/select.tsx"]) && sel.FIELD_CARET_PULL === `${-r3(caretGap)}px`
-      && caretFiles.every((f) => squash(code(f)).includes("style={{ marginInlineEnd: FIELD_CARET_PULL }}") && code(f).includes(CARET_SVG)));
+  // ⭐ RE-PINNED IN THE OPEN 2026-10-19 (PHOSPHOR-MIGRATION W4, §8a): the Select's field caret and DateSelect's month title
+  // drew their own 12-unit caret, pulled by a derived FIELD_CARET_PULL. They are the family's chevronDown now, at 12px
+  // (Phosphor's Bold caret carries the hand-drawn one's weight there; at 10px it read faint), and the edge rule reads its
+  // pull from the ink table — so the hand-drawn drawing and its constant are gone, and both carets are edge marks above.
+  const CARET = '<path d="M3 4.5l3 3 3-3"';
+  const caretFiles = PLAYER_TSX.filter((f) => code(f).includes(CARET) || code(f).includes("FIELD_CARET_PULL"));
+  const familyCaret = (f: string) => code(f).includes('<I.chevronDown s={12} edge="end"');
+  ok("3.4 · the field carets are the family's: no player file draws the hand-drawn caret or reads its pull, and the Select and DateSelect each end on the family's chevronDown at 12px by the edge rule",
+    caretFiles.length === 0 && familyCaret("src/components/ui/select.tsx") && familyCaret("src/components/ui/date-select.tsx"), j({ caretFiles }));
   // Every arrow CHARACTER typed on a player surface (JSX text or a string in it), classified: none ends or starts a run of
   // words in a link or a button any more; those left are data — figures joined or marked — and one path in a sentence.
   const ARROWS = new RegExp(`[${String.fromCharCode(0x2190)}-${String.fromCharCode(0x2193)}${String.fromCharCode(0x2197)}${String.fromCharCode(0x25b2)}${String.fromCharCode(0x25bc)}]`, "g");
   const CHAR_SITES: Record<string, [number, string]> = {
-    "src/app/updown/history/page.tsx": [5, "data: a staked → returned pair (twice), an open → close price pair, and each bet chip's ↑/↓ side marker before its figure — the figures' own face"],
+    // PHOSPHOR-MIGRATION W4 (2026-10-19) drew the icons among these from the family (§3.1): the bet chips' ↑/↓, the sort's
+    // ↑/↓ and the 24h move's ▲/▼. What is left reads "to": a figure joined to a figure, and a path in a sentence.
+    "src/app/updown/history/page.tsx": [3, "data: a staked → returned pair (twice) and an open → close price pair — the figures' own face"],
     "src/app/legal/privacy/page.tsx": [3, "a path in the privacy policy's sentence (“Profile → Notifications”), in each language — the D19a-pinned legal text, frozen"],
-    "src/app/updown/[roundId]/page.tsx": [2, "data: each bet chip's ↑/↓ side marker before its figure"],
-    "src/components/ui/query-bar.tsx": [3, "the sort direction: each option's ↑/↓ hint and the direction button's ↑, alone in its 44px button (it turns by data-dir)"],
     "src/components/updown/updown-card.tsx": [1, "data: the open → close price pair (D52 holds the arrow to its figure)"],
-    "src/components/markets/market-card.tsx": [2, "data: the day-ago move's ▲/▼ before its points"],
     "src/app/s/optout-refusal.tsx": [1, "a path in a sentence (“Wasifu → Arifa”): the words' own face — S12 with the dictionary's arrows"],
   };
   const charSeen: Record<string, number> = {};
