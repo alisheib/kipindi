@@ -349,12 +349,15 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   measured settled card is now 133px slimmer. R9 review found another B2 gap: when vendor history is unavailable, the
   round card needs a visible translated explanation; that line now exists and passed its guards and red proofs. R10's
   warmed quick drive photographed all 14 phases with zero readiness problems through p12; p13's two failures came from
-  a guard incorrectly demanding a live Gold card when the true Gold board was closed. The guard is being corrected.
+  a guard incorrectly demanding a live Gold card when the true Gold board was closed. That guard now accepts a
+  real resolved Gold card without inventing a running clock; its focused test and red mutation passed.
   Exact R10 frame review found two product blockers: a held bet at 320px pushes the side buttons under the fixed nav,
   and a one-sided refunded result still says “Up wins.” The round-line fallback also needs to distinguish its interval
   from the big historical chart. Those fixes are in progress, with guards and red plants. Placed-bet receipts, blocked
   attempts and returned-stake panels are being made neutral; only earned wins retain gold. No after score has been
-  awarded. Next: repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and
+  awarded. The final matrix is being widened to capture a real local bet receipt at every signed-in width; the
+  stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct, not a data
+  change in this release. Next: repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and
   release. Release B is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work

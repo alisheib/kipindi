@@ -65,6 +65,12 @@ the half-step trap).
    **U43 correction, 2026-10-19:** a 60-minute choice spans 72 minutes with its result phase, so `1H` does not cover
    that round. Release B asks for 77 one-minute bars through the shared per-asset vendor call and cache; the round
    response can show up to 76 minutes, while the ordinary `1H` chart still displays 60 minutes.
+   **Credit bound for the built request pattern:** the card uses only `1H`, so with one production process and a
+   continuously viewed card on each of two assets, the 30-second cache permits at most 2 × 2,880 = 5,760
+   `/time_series` calls in 24 hours. The chart lab can request six *other* ranges per asset; if every range on both
+   assets is viewed continuously, those ranges add at most 6 × 2 × 2,880 = 34,560 calls in 24 hours. A chart range
+   shares its cache across viewers, and the card and chart share `1H`; viewing a different range can still spend an
+   extra credit. This is a bound from the cache and range count, not a claim about measured production usage.
 4. Round timing (`src/lib/updown-durations.ts`): span = duration + `resultPhaseMinutes`; bets close
    `selectionCloseLeadSeconds` before the close; one settle closes a round and opens its successor at that boundary.
 5. The board shows at most three cards: current (the newest by `boundaryAt` among started unsettled rounds), just closed,
