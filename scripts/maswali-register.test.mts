@@ -7,6 +7,9 @@
  *
  *   §1 R3 · the outcome stamp says "Result ·" once: its default text is unchanged wherever it is drawn, `label={false}`
  *      says the outcome alone, and the component passes the choice through
+ *   §2 R11 · the officer beside an attested time: every real seal is a staff officer's (`requireStaff` on `trading`), so
+ *      the dev seed seals as a real staff account — a MODERATOR, created before the first seal — and the register reads
+ *      its role ("Results officer"), never "—"
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary
  *    value or a helper — and requires the check it targets to fail; a plant whose text is not in its file exactly once is
@@ -19,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
+import { DEFAULT_GRANTS } from "../src/lib/server/roles.ts";
 import { decomment } from "./lib/decomment.mts";
 
 process.exitCode = 1;
@@ -33,6 +37,9 @@ const OUTCOMES = ["YES", "NO", "VOID"] as const;
 /** The files the checks read, as written (comments are stripped per check, through the one shared scanner). */
 const FILES = {
   stamp: "src/components/maswali/maswali-outcome-stamp.tsx",
+  seed: "src/app/api/dev-test/seed-maswali/route.ts",
+  gates: "src/lib/server/control-gates.ts",
+  week: "src/app/millionea/register/[week]/page.tsx",
 } as const;
 type FileKey = keyof typeof FILES;
 
@@ -71,6 +78,27 @@ check("1.3", "the component defaults to the label and hands its `label` prop to 
   return [sig && pass, j({ sig, pass })];
 });
 
+// ── §2 · R11 · the officer beside an attested time ──────────────────────────────────────────────────────────────────
+check("2.1", "a seal needs the `trading` act grant, and a MODERATOR holds it by default (the seed's sealer is a role the product lets seal)", (w) => {
+  const domain = /sealMaswaliQuestion:\s*"(\w+)"/.exec(decomment(w.src.gates))?.[1];
+  const grant = (DEFAULT_GRANTS as Record<string, Record<string, { canAct: boolean } | undefined>>).MODERATOR?.[domain ?? ""];
+  return [domain === "trading" && grant?.canAct === true, j({ domain, grant })];
+});
+check("2.2", "the dev seed creates its sealer as a MODERATOR account (role written to the user row) BEFORE the first seal, and every seal is made by that account", (w) => {
+  const s = code(w, "seed");
+  const id = s.includes('const SEALER = "usr_dev_sealer";');
+  const roleWritten = s.includes('async function player(balance: number, role: "PLAYER" | "MODERATOR" = "PLAYER", id = `usr_${randomId(12)}`): Promise<string> {')
+    && s.includes("failedLoginCount: 0, lockedUntil: null, role, status:");
+  const made = s.indexOf('await player(0, "MODERATOR", SEALER);');
+  const firstSeal = s.indexOf("await closeAndSeal(");
+  const sealsBy = s.includes("officerId: SEALER,") && !s.includes('officerId: "usr_dev_sealer"');
+  return [id && roleWritten && made > 0 && firstSeal > made && sealsBy, j({ id, roleWritten, made, firstSeal, sealsBy })];
+});
+check("2.3", "the register prints the officer's ROLE for every sealed question whose sealer has one — never a name, \"—\" only when no role can be read", (w) => {
+  const s = code(w, "week");
+  return [s.includes('const role = (q: Q) => (q.sealerRole ? t.millionea.officerRole : "—");'), "the role line"];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -88,7 +116,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 3;
+  const MIN_ASSERTIONS = 6;
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -109,6 +137,14 @@ const PLANTS: Array<[string, string, World | null]> = [
   ["the label dropped by default — every existing stamp loses \"Result ·\"", "1.1", { ...REAL, stampText: (t, o, label = false) => oldStampText(t, o).slice(label ? 0 : `${t.millionea.stampResult} · `.length) }],
   ["the component no longer hands its prop to the text", "1.3", plantSrc("stamp", "const stampText = outcomeStampText(t, outcome, label);", "const stampText = outcomeStampText(t, outcome);")],
   ["the component's default flipped to no label", "1.3", plantSrc("stamp", 'size = "caption", label = true, className }', 'size = "caption", label = false, className }')],
+  ["the seed before R11 — it seals as an id with no account behind it", "2.2", plantSrc("seed", '    await player(0, "MODERATOR", SEALER);\n', "")],
+  ["the sealer made after the weeks were sealed", "2.2", (() => {
+    const w = plantSrc("seed", '    await player(0, "MODERATOR", SEALER);\n', "");
+    return w && { ...w, src: { ...w.src, seed: w.src.seed.replace("    const w4 = await draft(", '    await player(0, "MODERATOR", SEALER);\n    const w4 = await draft(') } };
+  })()],
+  ["the sealer created as a player (the role never written)", "2.2", plantSrc("seed", "failedLoginCount: 0, lockedUntil: null, role, status:", 'failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status:')],
+  ["a seal that no longer needs the trading grant", "2.1", plantSrc("gates", 'sealMaswaliQuestion: "trading"', 'sealMaswaliQuestion: "compliance"')],
+  ["the register naming every sealer \"—\"", "2.3", plantSrc("week", '(q.sealerRole ? t.millionea.officerRole : "—")', '(q.sealerRole ? "—" : "—")')],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
