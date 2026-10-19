@@ -137,6 +137,10 @@ export const RATE_RULES: Record<string, RateRule> = {
   // what stops a script.
   "contacts.write":  { capacity: 60, refillPerMin: 20 },
   "contacts.lookup": { capacity: 60, refillPerMin: 30 },
+  // MASWALI-BUILD S6 review R2-4 · the support desk's Millionea ticket lookup (`maswali-support.ts`), keyed on the OFFICER
+  // — the `desk.picker` convention. A lookup takes a serial and its holder's number; the burst covers a desk's real work
+  // and the steady rate is what stops a script walking either. A refused lookup reads nothing and records nothing.
+  "maswali.lookup":  { capacity: 30, refillPerMin: 10 },
   // S15 · the contacts importer (`admin/contacts/import/import-actions.ts`), each keyed on the OFFICER — the `desk.picker`
   // convention. ⭐ FOUR BUCKETS, SO A RUN IS NEVER THROTTLED MID-WAY: `contacts.import.step` pays for the batches a file
   // is staged in and the steps it is committed in — a 200,000-row file is ~100 staging batches and ~400 commit steps, and

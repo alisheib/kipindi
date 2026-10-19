@@ -4,6 +4,10 @@ import { AdminBody } from "@/components/admin/admin-body";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ScrollX } from "@/components/ui/scroll-x";
+import { consoleShareNoteOf } from "@/lib/maswali-share-note";
+import Link from "next/link";
+import { parsePage } from "@/components/admin/admin-pagination";
+import type { ClusterReport } from "@/lib/server/maswali-integrity";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseConsoleAudience } from "@/lib/server/house-console-read";
@@ -11,7 +15,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
 import { CONSOLE_PER_PAGE, SEAL_WEEKS_PER_PAGE, consoleStanding, integrityView } from "@/lib/server/maswali-console";
 import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-void-reason";
-import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
+import { CLUSTER_LINE_PREVIEW, clusterReport, clusterRows, crowdedLineHolders, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
 import { formatTzs } from "@/lib/utils";
@@ -100,23 +104,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Connected accounts" sw="Akaunti zinazohusiana" padding="p-0">
           {clusters.length === 0 ? <EmptyState title="No closed week yet" body="Each week's report appears once its sales close and its ticket set is fixed." /> : (
-            <div className="divide-y divide-border-subtle">
-              {clusters.map((c, i) => c === null ? <p key={i} className="p-4 text-body-sm text-danger-fg">A week's report could not be read.</p> : (
-                <section key={c.weekId} className="p-4 space-y-2">
-                  <h3 className="font-semibold text-body tabular">{c.code} · {c.holders.toLocaleString("en")} holders{c.readable ? "" : " · the records could not all be read"}</h3>
-                  {c.groups.length === 0 ? <p className="text-body-sm text-text-secondary">No group to look at.</p> : (
-                    <ul className="space-y-2 text-body-sm">
-                      {c.groups.map((g, j) => (
-                        <li key={j}>
-                          <span className={g.basis === "records" ? "text-warning" : "text-text-secondary"}>{g.detail}</span>
-                          <span className="block text-body-sm text-text-tertiary">{g.accounts.map((a) => `${a.holder} (${a.tickets})`).join(" · ")}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              ))}
-            </div>
+            <ConnectedAccounts clusters={clusters} query={sp} />
           )}
         </AdminCard>
 
@@ -142,7 +130,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                   {v.held.map((h) => (
                     <tr key={h.ticketId}>
                       <td className="text-left tabular">{h.serial}</td><td className="text-left">{h.holder}</td>
-                      <td className="text-right tabular">{formatTzs(h.payout)}</td><td className="text-left max-w-[280px]">{h.reason}</td>
+                      <td className="text-right tabular">{formatTzs(h.payout)}</td><td className="text-left max-w-[280px]">{consoleShareNoteOf(h.reason)}</td>
                       <td className="text-left">{h.forfeited ? <Chip variant="danger" size="sm">Forfeited</Chip>
                         : <HeldShareControls ticketId={h.ticketId} serial={h.serial} canRelease={canRelease} canForfeit={canForfeit}
                             releaseNeed={CONTROL_DOMAIN.releaseMaswaliShare} forfeitNeed={CONTROL_DOMAIN.forfeitMaswaliShare} />}</td>
@@ -165,7 +153,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
                       <td className="text-left tabular">{w.weekCode}</td><td className="text-left tabular">{w.serial}</td><td className="text-left">{w.holder}</td>
                       <td className="text-left">{w.role} · {w.status}</td><td className="text-right tabular">{w.accountAgeDays} d</td>
                       <td className="text-right tabular">{formatTzs(w.payout)}</td>
-                      <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{w.frozenReason}</span>
+                      <td className="text-left">{w.frozenReason ? <span className="text-body-sm">{consoleShareNoteOf(w.frozenReason)}</span>
                         : canHold ? <HoldShareControl ticketId={w.ticketId} serial={w.serial} />
                         : <ControlLocked what="Hold the share" need={CONTROL_DOMAIN.holdMaswaliShare} />}</td>
                     </tr>
@@ -209,5 +197,105 @@ async function Content({ searchParams }: IntegrityPageProps) {
         </AdminCard>
       </AdminBody>
     </>
+  );
+}
+
+/** How many of a line's holders its row names before it links to the whole list: the ones the report carries for a
+ *  crowded line (R4). */
+const HOLDERS_SHOWN = CLUSTER_LINE_PREVIEW;
+
+/**
+ * S6 review R2-18 · THE CLUSTER REPORT, A PAGE AT A TIME (`test:grid-paging`). Each report's line says what it read — its
+ * holders, how much of the board the week's tickets cover (MB-35) and the window of records, which ends at the week's
+ * close (R2-3). Its lines, groups and crowded places alike, come through the console's own pager in the report's one
+ * order (R4), each keyed by its stable id (R3), and a line's accounts open whole, a page at a time, from its row — a
+ * crowded place's read as its line is opened: never a list cut at N.
+ */
+async function ConnectedAccounts({ clusters, query }: { clusters: Array<ClusterReport | null>; query: Readonly<Record<string, string | undefined>> }) {
+  // R6–R8 · the weeks not yet decided first — still to pay, then settled holding a share — then the decided ones, and
+  // within each the report's one order (`clusterRows`, the lead's rulings), so the pager's first page holds what to look
+  // at before a week pays. Each line keyed by its stable id, so "all N" opens the line clicked (R3).
+  const rows = clusterRows(clusters).map(({ report: c, line: g }) => ({ c, g, key: `${c.weekId}.${g.id}` }));
+  const cpage = parsePage(query.cpage, rows.length, CONSOLE_PER_PAGE);
+  const shown = rows.slice((cpage - 1) * CONSOLE_PER_PAGE, cpage * CONSOLE_PER_PAGE);
+  const open = rows.find((r) => r.key === query.cgroup) ?? null;
+  const hpage = open ? parsePage(query.hpage, open.g.accountCount, CONSOLE_PER_PAGE) : 1;
+  // R4 · a group's accounts are in its report; a crowded place's are read when its line is opened, one page at a time.
+  const placePage = open?.g.basis === "crowded"
+    ? await crowdedLineHolders(open.c.weekId, open.g.id, hpage, CONSOLE_PER_PAGE).catch(() => null)
+    : null;
+  const openAccounts = !open ? [] : open.g.basis === "crowded"
+    ? placePage?.accounts ?? []
+    : open.g.accounts.slice((hpage - 1) * CONSOLE_PER_PAGE, hpage * CONSOLE_PER_PAGE);
+  const hrefWithout = (pageParam: string) => buildBaseHref("/admin/maswali/integrity", { ...query }, pageParam);
+  const groupHref = (key: string) => buildBaseHref("/admin/maswali/integrity", { ...query, cgroup: key }, "hpage");
+  return (
+    <div className="divide-y divide-border-subtle">
+      {clusters.map((c, i) => c === null ? <p key={i} className="p-4 text-body-sm text-danger-fg">A week&apos;s report could not be read.</p> : (
+        <p key={c.weekId} className="px-4 py-3 text-body-sm text-text-secondary">
+          <span className="font-semibold text-text tabular">{c.code}</span>
+          {` · ${c.holders.toLocaleString("en")} holders · their tickets answer the ten mains ${c.combos.toLocaleString("en")} ways (${(c.coverage * 100).toFixed(1)}% of the board) · records read from ${fmtEat(c.window.from)} to the close, ${fmtEat(c.window.to)} EAT${c.readable ? "" : " · the records could not all be read"}`}
+        </p>
+      ))}
+      {rows.length === 0 ? <p className="p-4 text-body-sm text-text-secondary">No group to look at.</p> : (
+        <ScrollX label="Millionea connected accounts">
+          <table className="admin-tbl min-w-[1080px]">
+            <thead><tr><th className="text-left">Week</th><th className="text-left">What ties them</th><th className="text-right">Accounts</th><th className="text-right">Tickets</th><th className="text-right">Ways covered</th><th className="text-left">Winning tickets</th><th className="text-left">Holders</th></tr></thead>
+            <tbody>
+              {shown.map(({ c, g, key }) => (
+                <tr key={key}>
+                  <td className="text-left tabular">{c.code}</td>
+                  <td className={g.basis === "answers" ? "text-left text-text-secondary" : "text-left text-warning"}>
+                    {g.basis === "records" ? "The platform's records" : g.basis === "answers" ? "The same fifteen answers" : "One crowded place"}
+                  </td>
+                  <td className="text-right tabular">{g.accountCount.toLocaleString("en")}</td>
+                  <td className="text-right tabular">{g.tickets.toLocaleString("en")}</td>
+                  <td className="text-right tabular">{g.combos.toLocaleString("en")}</td>
+                  <td className="text-left">{g.winners === null ? <span className="text-text-tertiary">Not final yet</span> : g.winners.toLocaleString("en")}</td>
+                  <td className="text-left text-body-sm">
+                    {g.accounts.slice(0, HOLDERS_SHOWN).map((a) => `${a.holder} (${a.tickets})`).join(" · ")}
+                    {g.accountCount > HOLDERS_SHOWN
+                      ? <>{" · "}<Link href={groupHref(key)} className="text-royal-300 hover:underline">{`all ${g.accountCount.toLocaleString("en")}`}</Link></>
+                      : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollX>
+      )}
+      {rows.length > CONSOLE_PER_PAGE && (
+        <div className="px-4 py-2">
+          <AdminPagination page={cpage} total={rows.length} perPage={CONSOLE_PER_PAGE} baseHref={hrefWithout("cpage")} param="cpage" />
+        </div>
+      )}
+      {open && (
+        <section className="p-4 space-y-2">
+          {/* R4 · a crowded line is a place its holders share, never a group of them. */}
+          <h3 className="font-semibold text-body tabular">{open.g.basis === "crowded"
+            ? `${open.c.code} · the ${open.g.accountCount.toLocaleString("en")} holders on one crowded place`
+            : `${open.c.code} · one group's ${open.g.accountCount.toLocaleString("en")} accounts`}</h3>
+          {open.g.basis === "crowded" && placePage === null ? <p className="text-body-sm text-danger-fg">This place&apos;s holders could not be read.</p> : (
+            <ScrollX label={open.g.basis === "crowded" ? "One crowded place's holders" : "One group's accounts"}>
+              <table className="admin-tbl min-w-[640px]">
+                <thead><tr><th className="text-left">Holder</th><th className="text-left">Account</th><th className="text-right">Tickets</th></tr></thead>
+                <tbody>
+                  {openAccounts.map((a) => (
+                    <tr key={a.userId}>
+                      <td className="text-left">{a.holder}</td>
+                      <td className="text-left font-mono break-all">{a.userId}</td>
+                      <td className="text-right tabular">{a.tickets.toLocaleString("en")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          )}
+          {open.g.accountCount > CONSOLE_PER_PAGE && (
+            <AdminPagination page={hpage} total={open.g.accountCount} perPage={CONSOLE_PER_PAGE} baseHref={hrefWithout("hpage")} param="hpage" />
+          )}
+        </section>
+      )}
+    </div>
   );
 }

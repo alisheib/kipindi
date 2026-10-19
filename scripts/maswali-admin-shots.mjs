@@ -46,6 +46,9 @@ const PAGES = [
   ["edit", `/admin/maswali/${w.draft}/edit`, /Edit MLN-/],
   ["pools", "/admin/maswali/pools", /Millionea · Pools/],
   ["integrity", "/admin/maswali/integrity", /Millionea · Integrity/],
+  // MASWALI-BUILD S6 · the evidence pack (MB-92) and the support desk's lookup (MB-64).
+  ["evidence", "/admin/maswali/evidence", /Millionea · Evidence/],
+  ["lookup", "/admin/maswali/lookup", /Millionea · Ticket lookup/],
 ];
 
 for (const [name, path, heading] of PAGES) {

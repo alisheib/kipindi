@@ -163,8 +163,8 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
   let data: Awaited<ReturnType<typeof exportUserData>> = { user, transactions: [] } as never;
   let txnsFailed = false;
   // U16a · the money rows only: this page shows no marketing, so it asks for none — the campaign read never runs here,
-  // and a failure in it cannot turn these money figures into "unavailable".
-  try { data = await exportUserData(id, { marketing: false }); } catch { txnsFailed = true; }
+  // and a failure in it cannot turn these money figures into "unavailable". MASWALI-BUILD S6 · nor Millionea tickets.
+  try { data = await exportUserData(id, { marketing: false, millionea: false }); } catch { txnsFailed = true; }
   const txns = data.transactions as StoredTxn[];
   // Merge the player's OWN actions with admin actions taken AGAINST them, so an
   // officer can see who suspended / reset / emailed / approved this account.

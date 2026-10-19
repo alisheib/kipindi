@@ -34,6 +34,9 @@ export const RULES_FIELDS = [
   { key: "probabilityMax", label: "Each question's probability, at most (%)", kind: "percent", group: "questions" },
   { key: "maxPerCompetition", label: "Questions from one competition, at most", kind: "whole", group: "questions" },
   { key: "minReserveSources", label: "Distinct sources among the reserves, at least", kind: "whole", group: "questions" },
+  // MASWALI-BUILD S6 (MB-91): the desk's complaint answer target — a support promise, not a week's rule: no week freezes it,
+  // so a change applies at once (the card says so), and the desk's scripts quote it live.
+  { key: "complaintAnswerDays", label: "Complaint answer target (working days)", kind: "whole", group: "desk" },
 ] as const satisfies ReadonlyArray<{ key: string; label: string; kind: RulesFieldKind; group: string }>;
 
 export type RulesFieldKey = (typeof RULES_FIELDS)[number]["key"];
@@ -46,6 +49,7 @@ export const RULES_GROUPS = [
   { id: "week", title: "The week" },
   { id: "results", title: "Results" },
   { id: "questions", title: "The questions" },
+  { id: "desk", title: "The support desk" },
 ] as const;
 
 /** ISO weekdays (1 = Monday … 7 = Sunday), as `eat-day.ts` counts the week. */
@@ -87,10 +91,14 @@ export function rulesFormValues(c: MaswaliConfig): RulesFormValues {
     releaseAlertHours: String(c.releaseAlertHours),
     probabilityMin: asPercent(c.questionCaps.probabilityMin), probabilityMax: asPercent(c.questionCaps.probabilityMax),
     maxPerCompetition: String(c.questionCaps.maxPerCompetition), minReserveSources: String(c.questionCaps.minReserveSources),
+    complaintAnswerDays: String(c.complaintAnswerDays),
   };
 }
 
-/** Everything the form saves: the whole config but the paid-exit window, which no save may set (`saveMaswaliConfig`). */
+/**
+ * Everything the form saves: the whole config but the paid-exit window, which no save may set (`saveMaswaliConfig`) — the
+ * desk's complaint answer target included (MASWALI-BUILD S6, MB-91), the one field no week freezes: it applies at once.
+ */
 export type MaswaliRulesUpdate = Omit<MaswaliConfig, "paidExitWindowMinutes">;
 
 /**
@@ -118,6 +126,7 @@ export function parseRulesForm(read: (key: string) => string | null): { ok: true
         probabilityMin: asRate(text("probabilityMin")), probabilityMax: asRate(text("probabilityMax")),
         maxPerCompetition: asWhole(text("maxPerCompetition")), minReserveSources: asWhole(text("minReserveSources")),
       },
+      complaintAnswerDays: asWhole(text("complaintAnswerDays")),
     },
   };
 }

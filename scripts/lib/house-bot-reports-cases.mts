@@ -545,6 +545,8 @@ export const VOCABULARY_CONSUMERS = [
 export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: number]> = [
   ["scripts/lib/house-bot-money-cases.mts", 2],
   ["scripts/house-bot-seam.test.mts", 2],
+  // 2026-10-18 · Maswali S6 review round 3: the evidence suite's §4 — the settlement's own words for a desk account's hold.
+  ["scripts/lib/maswali-evidence-child.mts", 1],
 ];
 
 /* ═══ §0 · ruling 235 / 149 · F6's helper has a caller, and its docstring no longer promises a surface ═══ */
@@ -2356,6 +2358,10 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      lane's SMS credit alarm added the reader and 0.260.1 went red on `marketing-s7` at once — the guard doing its job. */
   "src/lib/server/sms.ts": "the SMS credit alarm's own low episode: the newest SYSTEM sms.balance_low / sms.balance_recovered row (limit 1), read by action after a restart and reduced to one yes/no — alarm, or close the episode; both functions return nothing, so no row is handed on",
   "src/lib/server/user-service.ts": "a player's own export and feed: house actions excluded in the read and house keys stripped (rulings 154, 170)",
+  /* Classified 2026-10-18 (MASWALI-BUILD S6, MB-92), read from the source (`maswaliEvidencePack`): the per-week evidence
+     pack added the reader. Its rows are handed on whole (no IP, no device), so its page decides its audience first (0.434).
+     A desk account never seals, never decides a share and never drafts a week, so no row it hands on is a house row. */
+  "src/lib/server/maswali-evidence.ts": "Millionea's per-week evidence pack: ONE final week's own lifecycle rows (target MaswaliCycle), its fifteen questions' seal, confirmation, correction and proposed-void rows (target MaswaliQuestion), its winners' share decisions (target MaswaliTicket) and the platform's sales pause and resume rows that fall inside its sale window (S6 review R2-10), read by action and handed on whole, without IP or device, to the evidence download — which decides its audience on the stored role, by the evidence page's own domain, with the second factor — and /admin/maswali/evidence, which decides its audience on the stored role first (0.434)",
 };
 /**
  * ⛔ WHAT EACH CLASSIFIED READER'S ROWS DO — the half the table above never carried, and the half ruling 434 turned on.
@@ -2392,6 +2398,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/reports/catalogue.ts": "gated",
   "src/lib/server/sms.ts": "folded",
   "src/lib/server/user-service.ts": "stripped",
+  "src/lib/server/maswali-evidence.ts": "handedOn",
 };
 
 /**

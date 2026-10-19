@@ -1519,6 +1519,8 @@ function toStoredObjection(o: any): StoredObjection {
     reviewNote: o.reviewNote ?? null,
     remedy: (o.remedy ?? null) as StoredObjection["remedy"],
     outcomeAtFiling: o.outcomeAtFiling ?? null,
+    // S6 review R2-11 · the Millionea question objected to (1..15); null on every other product.
+    questionOrdinal: o.questionOrdinal ?? null,
   };
 }
 
@@ -3720,6 +3722,7 @@ export const prismaDb = {
           reviewNote: o.reviewNote,
           remedy: o.remedy,
           outcomeAtFiling: o.outcomeAtFiling,
+          questionOrdinal: o.questionOrdinal ?? null,
         },
       });
       return toStoredObjection(row);

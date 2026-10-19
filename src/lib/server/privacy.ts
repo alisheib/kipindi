@@ -29,6 +29,9 @@ export { listHeldIdentities, type HeldIdentity } from "./erasure";
 // address that does not resolve is a compliance failure, not a typo.
 import { SUPPORT_EMAIL } from "./support-config";
 import { marketingDsarView } from "./marketing/dsar";
+import { noticeStore, ticketStore, weekStore, type SeenNotice, type StoredTicket } from "./maswali-dal";
+import { SLOT_COUNT, slotLabel } from "@/lib/maswali-score";
+import { shareStateOf } from "@/lib/maswali-share-note";
 
 const DSAR_QUEUE_KEY = "privacy.dsar_queue";
 
@@ -418,6 +421,80 @@ export function dsarKycView(k: StoredKyc | null | undefined) {
   };
 }
 
+/** Which releasable door a Millionea section is built for: the holder's own download, or the bundle an officer builds. */
+export type MillioneaDoor = "owner" | "officer";
+
+/**
+ * ⭐ ONE MILLIONEA TICKET PROJECTION FOR BOTH RELEASABLE DOORS (MASWALI-BUILD S6, MB-67) — the player's own download
+ * (`exportUserData`) and the officer's DSAR bundle (below), as `dsarKycView` and `dsarTxnView` already are.
+ *
+ * 🔴 THE GAP IT CLOSES. A ticket's fifteen answers were in neither door: a holder's file carried the stake and the payout
+ * (the transactions) and not what the money was staked on.
+ *
+ * ⛔ AN ALLOWLIST, for `dsarUserView`'s reason: a column added to `MaswaliTicket` tomorrow must not reach a subject's file
+ * by default. What the holder is entitled to: the serial and the week, the fifteen answers under the labels the ticket
+ * prints (M1…M10, A1…A5), when it was bought and cancelled, the close it was bought under, the rules version, the grade,
+ * the share as the ticket page names it (paid, held for review, forfeited), the commitment leaf, and when they last
+ * opened it.
+ * ⛔ THE SALT REACHES THE OWNER'S OWN DOWNLOAD ONLY (MB-32). It is what lets a holder recompute their leaf, and it is
+ *    shown to its owner alone — so the bundle an officer builds and hands over carries the leaf without it, as the
+ *    bundle already leaves out every other piece of crypto material (the header of `buildDsarBundle`).
+ * ⛔ LEFT OUT ON PURPOSE: `picksKey` (an unsalted hash of the answers, server-only — 2^15 inputs) and `frozenReason` (the
+ *    officer's reason for holding a share: the holder reads THAT a share is held, never why, as `dsarKycView` leaves out
+ *    `autoFlags`).
+ * ⚠️ VALUES ARE COPIED VERBATIM (the `dsarTxnView` rule), so the file says what the row says.
+ */
+export function dsarMaswaliTicketView(t: StoredTicket, weekCode: string | null, door: MillioneaDoor) {
+  // The share's state through the one reading of its mark (`maswali-share-note.ts`); the mark itself never leaves.
+  const share = t.status !== "SETTLED" || t.won !== true ? null : shareStateOf(t.frozenReason);
+  return {
+    serial: t.serial,
+    week: weekCode,
+    ticketId: t.id,
+    weekId: t.cycleId,
+    // The bet's own row in the same file: the transactions above carry this id on the stake and the payout.
+    positionId: t.positionId,
+    status: t.status,
+    boughtAt: t.createdAt,
+    cancelledAt: t.cancelledAt,
+    closeAtPurchase: t.closeAtPurchase,
+    rulesVersion: t.rulesVersion,
+    picks: Object.fromEntries(t.selections.map((p, i) => [i < SLOT_COUNT ? slotLabel(i + 1) : String(i + 1), p])),
+    score: t.score,
+    won: t.won,
+    payout: t.payout,
+    share,
+    selectionsHash: t.selectionsHash,
+    ...(door === "owner" ? { salt: t.salt } : {}),
+    lastViewedAt: t.lastViewedAt,
+  };
+}
+
+/**
+ * The Millionea section of a releasable door, or null for a person with no Millionea row at all — and then the door
+ * leaves the section out entirely, so a Yes/No or Up & Down player's file is byte for byte what it was before Millionea.
+ * Every ticket the person bought (never a page of the newest: at most a cap a week), and every hub notice they have seen
+ * (`MaswaliNoticeSeen`: one row per week and notice, and the instant) — in ANY week, not only the weeks they bought
+ * into: the rollover notice is shown to every hub viewer, ticket or not (S6 review, 2026-10-18), and its seen mark is
+ * that person's data all the same. Oldest first, so the same person's file reads the same on both stores.
+ * ⛔ A read that fails THROWS, as every other read of these two doors does: a file that silently lacks its tickets reads
+ * as a file of a person who never bought one.
+ */
+export async function maswaliDsarSection(userId: string, door: MillioneaDoor) {
+  const tickets = await ticketStore.listForUser(userId);
+  // Every week there is — a line of weekly rows, so one read; the seen marks are then asked for across all of them.
+  const weeks = await weekStore.list();
+  const seen: SeenNotice[] = weeks.length > 0 ? await noticeStore.seenFor(userId, weeks.map((w) => w.id)) : [];
+  if (tickets.length === 0 && seen.length === 0) return null;
+  const codes = new Map<string, string | null>(weeks.map((w) => [w.id, w.code] as const));
+  return {
+    tickets: tickets.map((t) => dsarMaswaliTicketView(t, codes.get(t.cycleId) ?? null, door)),
+    noticesSeen: [...seen]
+      .sort((a, b) => a.seenAt.localeCompare(b.seenAt) || a.cycleId.localeCompare(b.cycleId) || a.notice.localeCompare(b.notice))
+      .map((s) => ({ week: codes.get(s.cycleId) ?? null, notice: s.notice, seenAt: s.seenAt })),
+  };
+}
+
 /**
  * Build a full DSAR access bundle for a user. Returns a serialisable object
  * containing every piece of data the platform holds about that user. The
@@ -435,6 +512,7 @@ export async function buildDsarBundle(userId: string) {
   const kyc = await db.kyc.findByUserId(userId);
   const responsible = await db.responsible.get(userId);
   const notifications = await db.notification.findByUser(userId, 1000);
+  const millionea = await maswaliDsarSection(userId, "officer");
 
   return {
     generatedAt: new Date().toISOString(),
@@ -443,6 +521,10 @@ export async function buildDsarBundle(userId: string) {
     wallet,
     // ⛔ D19, ruling 169: through the one allowlist, never the raw rows (which carry `houseBotId` on Postgres).
     transactions: txns.map(dsarTxnView),
+    // MASWALI-BUILD S6 · MB-67 · a holder's tickets through the ONE ticket allowlist both doors share — without the salt,
+    // which is its owner's alone — and the hub notices the person saw. Absent for a person with no Millionea row at all
+    // (no ticket, no seen mark), so their bundle is what it always was.
+    ...(millionea ? { millionea } : {}),
     // ⛔ 2026-10-10: through the one KYC allowlist both doors share, never the raw row (it carries `autoFlags`).
     kyc: dsarKycView(kyc),
     responsibleGambling: responsible,

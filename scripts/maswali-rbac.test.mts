@@ -15,6 +15,18 @@
  *   §5 the nav: one Millionea group, each item in its page's own domain.
  *   §6 S7-F2 · the Owner's two forms on the trading page (the rules of the next week, the holiday list): each rendered
  *      behind its own flag, with a locked alternative naming its own control — and the values read by every viewer.
+ *   §7 (S6, MB-92) the Auditor READS every Millionea record outside the trading console and acts on none; the sealing
+ *      officer never opens the evidence; and the evidence module, its page and its download write nothing but the
+ *      download's own record.
+ *   §8 (S6, MB-64) the support desk's lookup: the support domain's page, never the sealer's; a read in no control table;
+ *      its module, page, form and scripts write nothing; its action asks the page's own domain; it records itself
+ *      before it answers and answers nothing when the record failed; and a ticket's answers only once its week is final.
+ *   §9 (S6 review round 2) the integrity page prints a share's mark only through the one projection (R2-1), and pages
+ *      the cluster report's groups and a group's accounts (R2-18). Round 3: the page's projection is the console's —
+ *      an allowlisted hold word as it is — while the regulator's CSV keeps the neutral one and the access exports read
+ *      neither; and each cluster line is keyed by its stable id. Round 4: the allowlist is typed by the settlement's own
+ *      hold reasons; the table lists every line in the report's one order (R5's rule, across the weeks shown); and an
+ *      opened crowded line is named as a place and read a page at a time.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -36,6 +48,10 @@ const ROUTES = {
   weekPage: { path: "/admin/maswali/mlw_example", domain: "trading", file: "src/app/admin/maswali/actions.ts" },
   pools: { path: "/admin/maswali/pools", domain: "accounting", file: "src/app/admin/maswali/pools/actions.ts" },
   integrity: { path: "/admin/maswali/integrity", domain: "compliance", file: "src/app/admin/maswali/integrity/actions.ts" },
+  // S6 · MB-92 · no control lives here: the page only reads, and its download only records itself.
+  evidence: { path: "/admin/maswali/evidence", domain: "compliance", file: "src/app/api/admin/maswali/evidence/[weekId]/route.ts" },
+  // S6 · MB-64 · no control lives here either: the desk's lookup is a read.
+  lookup: { path: "/admin/maswali/lookup", domain: "support", file: "src/app/admin/maswali/lookup/actions.ts" },
 } as const;
 
 /** Each Millionea control, its domain as written in the plan's §7b S4 table, and the route that hosts it. */
@@ -94,7 +110,9 @@ for (const c of CONTROLS) {
   for (const item of g?.items ?? []) {
     ok(`5 · nav ${item.href} is in its page's domain (${domainForPath(item.href)})`, item.domain === domainForPath(item.href), `nav says ${item.domain}`);
   }
-  ok("5 · the group holds the three pages", (g?.items ?? []).map((i) => i.href).join(",") === "/admin/maswali,/admin/maswali/pools,/admin/maswali/integrity");
+  // 2026-10-18 · MASWALI-BUILD S6 re-pins "the three pages" to five: the evidence page (MB-92) and the support desk's
+  // lookup (MB-64) join the group.
+  ok("5 · the group holds the five pages", (g?.items ?? []).map((i) => i.href).join(",") === "/admin/maswali,/admin/maswali/pools,/admin/maswali/integrity,/admin/maswali/evidence,/admin/maswali/lookup");
 }
 
 // ── §6 · S7-F2 · the Owner's forms: behind their own flags, locked and read-only for every other role ─────────────
@@ -111,6 +129,136 @@ for (const c of CONTROLS) {
   ok("6 · the rules card says a change applies from the next week to open, never to a running one (MB-75)",
     page.includes("A change applies from the next week to open, never to a running one"));
   ok("6 · ⛔ the licence basis is not on this form: no licence control on the trading page", !page.includes("setMaswaliLicenceBasis") && !page.includes("LicenceCeremony"));
+}
+
+// Nothing writes (§7, §8): a module, page or download holds no write, no lock, no money and no control. Comments are
+// stripped first (a sentence naming a verb is not one), and a digest's `createHash(…).update(…)` is folded away: it feeds
+// a hash, it writes no row.
+const code = (rel: string) => read(rel).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1")
+  .replace(/createHash\([^)]*\)\.update\(/g, "createHash(");
+const WRITES = /\.(create|createMany|createManyAndReturn|update|updateMany|upsert|delete|deleteMany|markSeen|patch)\(|\b(withLock|withMoneyTx|postMaswaliLines|postLedgerEntries|requireStaff|softRequireStaff|addWalletFreeze)\(|\$executeRaw|"use server"/;
+
+// ── §7 · S6 · the Auditor reads, nothing writes (MB-92) ─────────────────────
+{
+  // Written out, never derived from the grant table under test: who may open each Millionea page, by default.
+  const OPENS: Record<string, Role[]> = {
+    "/admin/maswali": ["ADMIN", "MODERATOR"],
+    "/admin/maswali/mlw_example": ["ADMIN", "MODERATOR"],
+    "/admin/maswali/pools": ["ADMIN", "COMPLIANCE", "FINANCE", "AUDITOR"],
+    "/admin/maswali/integrity": ["ADMIN", "COMPLIANCE", "AUDITOR"],
+    "/admin/maswali/evidence": ["ADMIN", "COMPLIANCE", "AUDITOR"],
+    // S6 · MB-64 · the support domain: the desk, Compliance (view) and the Owner.
+    "/admin/maswali/lookup": ["ADMIN", "COMPLIANCE", "SUPPORT"],
+  };
+  const STAFF: Role[] = ["ADMIN", "MODERATOR", "COMPLIANCE", "FINANCE", "GROWTH", "SUPPORT", "AUDITOR"] as Role[];
+  for (const [path, who] of Object.entries(OPENS)) {
+    for (const role of STAFF) {
+      const want = who.includes(role);
+      const got = role === "ADMIN" ? true : await canView(role, domainForPath(path));
+      ok(`7 · ${role} ${want ? "opens" : "does not open"} ${path}`, got === want, got === want ? "" : `got ${got}`);
+    }
+  }
+  ok("7 · ⭐ the Auditor reads the pools, the integrity page and the evidence — every Millionea record outside the trading console",
+    (await Promise.all(["/admin/maswali/pools", "/admin/maswali/integrity", "/admin/maswali/evidence"].map((p) => canView("AUDITOR" as Role, domainForPath(p))))).every(Boolean));
+  ok(`7 · ⛔ …and acts on NONE of the ${CONTROLS.length} Millionea controls`,
+    (await Promise.all(CONTROLS.map((c) => canUseControl("AUDITOR" as Role, c.id)))).every((x) => x === false));
+  ok("7 · ⛔ MB-34 · the trading officer who seals cannot open the evidence (it carries every ticket's answers)",
+    (await canView("MODERATOR" as Role, domainForPath("/admin/maswali/evidence"))) === false);
+
+  // Nothing writes: the module, the page, the download's door and its route — the download's one side effect is its own
+  // audit record.
+  for (const rel of ["src/lib/server/maswali-evidence.ts", "src/lib/server/maswali-evidence-door.ts", "src/app/admin/maswali/evidence/page.tsx",
+    "src/app/api/admin/maswali/evidence/[weekId]/route.ts"]) {
+    const src = code(rel);
+    ok(`7 · ⛔ ${rel} writes nothing`, src.length > 500 && !WRITES.test(src), (src.match(WRITES) ?? [""])[0]);
+  }
+  ok("7 · CONTROL · the same pattern FINDS a write where one lives, so the silences above are measurements",
+    WRITES.test(code("src/app/admin/maswali/integrity/actions.ts")) && WRITES.test(code("src/lib/server/maswali-dal.ts")));
+  const door = code("src/lib/server/maswali-evidence-door.ts");
+  const route = code("src/app/api/admin/maswali/evidence/[weekId]/route.ts");
+  ok("7 · the download's door asks the evidence PAGE's own domain, so the page and the file can never disagree about who may read",
+    /const EVIDENCE_PAGE = "\/admin\/maswali\/evidence";/.test(door) && /canView\(u\.role, domainForPath\(EVIDENCE_PAGE\)\)/.test(door)
+      && /checkAdminTotp\(/.test(door) && /exportRequestAllowed\(/.test(door) && /await deps\.record\(\{/.test(door));
+  ok("7 · R2-5 · the route is thin: it hands the door the production object and decides nothing of its own",
+    /maswaliEvidenceDoor\([\s\S]*?MASWALI_EVIDENCE_DOOR_DEPS\)/.test(route) && !/\b(?:currentSession|canView|checkAdminTotp|audit|db)\b/.test(route),
+    (route.match(/\b(?:currentSession|canView|checkAdminTotp|audit|db)\b/) ?? [""])[0]);
+}
+
+// ── §8 · S6 · the support desk's lookup of one ticket (MB-64) ──────────────
+{
+  const LOOKUP = "/admin/maswali/lookup";
+  ok("8 · ⛔ MB-34 · the trading officer who seals cannot open the desk's lookup",
+    (await canView("MODERATOR" as Role, domainForPath(LOOKUP))) === false);
+  ok("8 · the desk opens it, and Compliance reads it — the support domain's own grant",
+    (await canView("SUPPORT" as Role, domainForPath(LOOKUP))) && (await canView("COMPLIANCE" as Role, domainForPath(LOOKUP))));
+  ok("8 · the lookup is a read: no control id names it, so no role gains an act through it",
+    !Object.keys(CONTROL_DOMAIN).some((id) => /lookup/i.test(id)));
+  for (const rel of ["src/lib/server/maswali-support.ts", "src/lib/maswali-support-scripts.ts", "src/app/admin/maswali/lookup/page.tsx",
+    "src/app/admin/maswali/lookup/lookup-form.tsx", "src/app/admin/maswali/lookup/script-block.tsx"]) {
+    const src = code(rel);
+    ok(`8 · ⛔ ${rel} writes nothing`, src.length > 500 && !WRITES.test(src), (src.match(WRITES) ?? [""])[0]);
+  }
+  // The action is a server action, so its directive is set aside before the same pattern reads it.
+  const act = code("src/app/admin/maswali/lookup/actions.ts").replace(/^"use server";/m, "");
+  ok("8 · ⛔ the lookup's action writes nothing either — behind the console guard, its one call is the lookup",
+    act.length > 500 && !WRITES.test(act) && /softRequireConsole\(/.test(act) && /lookupMaswaliTicketForDesk\(/.test(act), (act.match(WRITES) ?? [""])[0]);
+  ok("8 · the lookup asks the lookup PAGE's own domain, so the page and the read can never disagree about who may look",
+    /const LOOKUP_PAGE = "\/admin\/maswali\/lookup";/.test(act) && /canView\(guard\.role, domainForPath\(LOOKUP_PAGE\)\)/.test(act));
+  const sup = code("src/lib/server/maswali-support.ts");
+  const recordAt = sup.indexOf("const record = await deps.record({");
+  const refusedAt = sup.indexOf("if (!record.recorded) return { ok: false, error: DESK_UNRECORDED };");
+  const notFoundAt = sup.indexOf("if (!view || !stored) return { ok: false, error: DESK_NOT_FOUND };");
+  ok("8 · ⭐ the lookup records itself before it answers, found or not — and answers nothing when that record failed",
+    recordAt > 0 && refusedAt > recordAt && notFoundAt > refusedAt && sup.indexOf("ok: true,") > notFoundAt, JSON.stringify([recordAt, refusedAt, notFoundAt]));
+  ok("8 · ⛔ MB-34 · a ticket's answers are read only once its week is final, and the salt never (MB-32)",
+    /const final = view\.week\.state === "SETTLED" \|\| view\.week\.state === "VOIDED";/.test(sup) && /answers: final \? view\.slots\.map\(/.test(sup)
+      && !/\bsalt\b/.test(sup));
+  // R2-4 · the budget is spent before the first read; R2-12 · every lookup reads the ticket by its serial AND the account
+  // by the number typed — never the owner only when the serial exists — so an unknown serial costs what a known one does.
+  const budgetAt = sup.indexOf("await deps.budget(input.officerId)"), firstReadAt = sup.indexOf("await ticketStore.getBySerial(serial)");
+  ok("8 · ⛔ R2-4 · the officer's lookup budget is spent before anything is read, and the production budget is the `maswali.lookup` bucket",
+    budgetAt > 0 && firstReadAt > budgetAt && /budget: \(officerId: string\) => rateCheckAsync\(officerId, "maswali\.lookup"\)/.test(sup), JSON.stringify([budgetAt, firstReadAt]));
+  ok("8 · ⛔ R2-12 · an unknown serial costs the same reads as a known one: the account is read by the number typed, unconditionally",
+    /const caller = await db\.user\.findByPhone\(/.test(sup) && !/stored \? await db\.user\.findById/.test(sup));
+}
+
+// ── §9 · S6 review round 2 · what the integrity page prints (R2-1, R2-18) ───
+{
+  const page = code("src/app/admin/maswali/integrity/page.tsx");
+  // R3 · the deciding officer's projection: an allowlisted hold word as it is, every other mark as the neutral one reads it.
+  ok("9.1 · ⛔ R2-1 · D19 · the integrity page prints a share's mark only through the console's projection — no raw reason in any cell, and both cells read it",
+    !/\{\s*(?:h\.reason|w\.frozenReason)\s*\}/.test(page) && (page.match(/consoleShareNoteOf\(/g) ?? []).length >= 2,
+    (page.match(/\{\s*(?:h\.reason|w\.frozenReason)\s*\}/) ?? [""])[0]);
+  ok("9.2 · R2-18 · the cluster report's groups, and one group's accounts, come a page at a time through the console's pager",
+    /param="cpage"/.test(page) && /param="hpage"/.test(page) && /parsePage\(query\.cpage, rows\.length, CONSOLE_PER_PAGE\)/.test(page));
+  // R2-7 · the complaint path names the Terms section by the title the Terms print, so a renumbering cannot make it stale;
+  // and the answer target is the setting's, never a constant.
+  const scripts = read("src/lib/maswali-support-scripts.ts"), terms = read("src/app/legal/terms/page.tsx"), sup = code("src/lib/server/maswali-support.ts");
+  ok("9.3 · R2-7 · the complaint path names the Terms section by the TITLE the Terms print, in each language — never by its number",
+    /title="Voids and disputes"/.test(terms) && /title="Kufuta dau na migogoro"/.test(terms)
+      && scripts.includes("“Voids and disputes”") && scripts.includes("“Kufuta dau na migogoro”") && !/section 6|kifungu cha 6/.test(scripts));
+  ok("9.4 · R2-7 · the desk quotes the complaint answer target from `maswali.config`, live — no constant holds it",
+    /answerDays: live\.complaintAnswerDays/.test(sup) && !/COMPLAINT_ANSWER_DAYS/.test(scripts + sup));
+  // R3 · the console's allowlist stays on the console: the file that leaves it reads the neutral projection only.
+  const evidence = code("src/lib/server/maswali-evidence.ts"), privacy = code("src/lib/server/privacy.ts");
+  ok("9.5 · ⛔ R3 · the regulator's CSV reads a share's note only through the neutral projection — never the console's allowlist — and the access exports read neither",
+    evidence.includes("won ? shareNoteOf(t.frozenReason) : null") && !(evidence + privacy).includes("consoleShareNoteOf")
+      && !(evidence + privacy).includes("MILLIONEA_CONSOLE_HOLD_REASONS") && !privacy.includes("shareNoteOf("));
+  ok("9.6 · R3 · the cluster table keys each line by its stable id, never by its place in the list — so a line's link opens that line",
+    page.includes("key: `${c.weekId}.${g.id}`") && !page.includes(".map((g, j) =>"));
+  // R4 · the allowlist's words are the settlement's own type, so a renamed reason fails the build instead of going neutral.
+  const share = code("src/lib/maswali-share-note.ts");
+  ok("9.7 · R4 · the console's allowlist takes its words from the settlement's `HoldReason` — a renamed reason fails the build, never turns neutral in silence",
+    share.includes('import type { HoldReason } from "@/lib/server/maswali-settlement"') && share.includes("] as const satisfies readonly HoldReason[]);"));
+  // R4 · one order for every line, a winner's first; and a crowded line opened as the place it is, a page at a time.
+  // R6 · the order lives in the report's module: the report sorts its lines, and the page's helper sorts the weeks'.
+  const integritySrc = code("src/lib/server/maswali-integrity.ts");
+  ok("9.8 · ⭐ R4 · the cluster table lists the lines as the report's helper orders them — three tiers (R6–R8: not yet settled, settled holding a share, decided), each in the report's one order (R5); never the groups and then the places",
+    page.includes("clusterRows(clusters)") && !page.includes("...c.crowded]") && !page.includes(".sort(")
+      && integritySrc.includes(".sort((a, b) => paidOut(a.report) - paidOut(b.report) || clusterLineOrder(a.line, b.line));")
+      && integritySrc.includes(".values()].sort(clusterLineOrder);"));
+  ok("9.9 · R4 · an opened crowded line is named as a place its holders share — never one group's accounts — and its holders are read a page at a time",
+    page.includes("holders on one crowded place") && page.includes("crowdedLineHolders(open.c.weekId, open.g.id, hpage, CONSOLE_PER_PAGE)"));
 }
 
 console.log(`\nmaswali-rbac: ${pass} passed, ${fail} failed`);

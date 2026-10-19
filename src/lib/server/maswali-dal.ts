@@ -319,6 +319,12 @@ export interface NoticeStore {
   seenFor(userId: string, cycleIds: readonly string[]): Promise<SeenNotice[]>;
   /** Record one seen. True when THIS call recorded it; false when it was already seen (the first stamp stays). */
   markSeen(userId: string, cycleId: string, notice: MaswaliNotice, seenAt: string): Promise<boolean>;
+  /**
+   * ⛔ ERASURE'S ONLY (MASWALI-BUILD S6 review R2-6, MB-67): every seen mark of one account, deleted; returns how many. A
+   * seen mark is a display flag, not the betting record, so an erased account keeps none. The DAL's one delete member,
+   * and it reaches no week, question or ticket — those have none.
+   */
+  eraseForUser(userId: string): Promise<number>;
 }
 
 // ── IN MEMORY ───────────────────────────────────────────────────────────────────────────────────────
@@ -564,6 +570,11 @@ const memoryNotices: NoticeStore = {
     if (memNotices.has(k)) return false;
     memNotices.set(k, { userId, cycleId, notice, seenAt });
     return true;
+  },
+  async eraseForUser(userId) {
+    let n = 0;
+    for (const [k, v] of memNotices) if (v.userId === userId) { memNotices.delete(k); n++; }
+    return n;
   },
 };
 
@@ -858,6 +869,10 @@ const prismaNotices: NoticeStore = {
     // ON CONFLICT DO NOTHING on the (player, week, notice) key: the first stamp stays, and a second view writes nothing.
     const r = await pc().maswaliNoticeSeen.createMany({ data: [{ userId, cycleId, notice, seenAt: new Date(seenAt) }], skipDuplicates: true });
     return r.count === 1;
+  },
+  async eraseForUser(userId) {
+    const r = await pc().maswaliNoticeSeen.deleteMany({ where: { userId } });
+    return r.count;
   },
 };
 

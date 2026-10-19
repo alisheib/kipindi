@@ -290,6 +290,12 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   // because the matcher's first match wins.
   ["/admin/maswali/pools", "accounting"],
   ["/admin/maswali/integrity", "compliance"],
+  // MASWALI-BUILD S6 · MB-92 · the per-week evidence pack is compliance's, so the Auditor reads it — read-only, as the
+  // Auditor reads everything — and the trading officer who seals does not. ABOVE the bare prefix, like the two before it.
+  ["/admin/maswali/evidence", "compliance"],
+  // MASWALI-BUILD S6 · MB-64 · the support desk's per-ticket lookup is support's: the desk, Compliance (view) and the
+  // Owner open it, and the trading officer who seals does not. ABOVE the bare prefix, like the three before it.
+  ["/admin/maswali/lookup", "support"],
   ["/admin/maswali", "trading"],
   ["/admin/moderation", "trading"],
   // compliance

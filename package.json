@@ -692,6 +692,7 @@
     "test:maswali-rbac": "tsx scripts/maswali-rbac.test.mts",
     "test:maswali-shared-paths": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-shared-paths.test.mts",
     "test:maswali-integrity": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-integrity.test.mts",
+    "test:maswali-evidence": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-evidence.test.mts",
     "test:maswali-close-race": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-close-race.test.mts",
     "test:maswali-player": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-player.test.mts",
     "test:maswali-i18n": "tsx scripts/maswali-i18n.test.mts",

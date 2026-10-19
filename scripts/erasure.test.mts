@@ -89,6 +89,8 @@ import type { StoredContactImportRow, StoredMarketingContact } from "../src/lib/
 import {
   houseBotStore, houseBotEventStore, houseBotIntentStore, pressStore, targetStore, newHouseId,
 } from "../src/lib/server/house-bot-dal.ts";
+// MASWALI-BUILD S6 · MB-67 · Millionea's record, which erasure must leave whole (the memory halves: no DATABASE_URL here).
+import { noticeStore, questionStore, ticketStore, weekStore } from "../src/lib/server/maswali-dal.ts";
 
 /** Captured before any section silences the service's console chatter. */
 const LOG = console.log.bind(console);
@@ -198,6 +200,55 @@ await positionStore.set({
   potentialPayout: 9_000, status: "WIN", finalPayout: 9_000,
   placedAt: iso(NOW - 100 * DAY), settledAt: iso(NOW - 99 * DAY),
 } as never);
+
+/* ── MASWALI-BUILD S6 · MB-67 · A MILLIONEA HOLDER'S RECORD ─────────────────────────────────────────────────────────
+ * A settled week, one of its questions, two of the subject's tickets (a settled win and a free cancel) and a hub notice
+ * seen — written through the Millionea DAL, which both access doors and every reader use. The picks behind a bet are the
+ * betting record (POCA Cap 423 §16, 7 years): erasure must leave the week, its question and the tickets byte for byte
+ * (§4.3b, §9.6), and none of them may carry an identifier erasure removes (§8's sweep reads them). ⭐ S6 review R2-6 · the
+ * seen mark is a display flag, not the betting record: erasure DELETES the subject's, and only the subject's (§4.3c). */
+const MLN_WEEK = "mlw_erase_week";
+await weekStore.create({
+  id: MLN_WEEK, marketId: "mkt_erase_mln", code: "MLN-2026-W30", seq: 3030, visibility: "PUBLIC", state: "SETTLED",
+  opensAt: iso(NOW - 60 * DAY), closesAt: iso(NOW - 56 * DAY), finalDeadlineAt: iso(NOW - 52 * DAY), closedAt: iso(NOW - 56 * DAY),
+  rulesSnapshot: { v: 1 }, questionSetHash: "d".repeat(64), ticketMerkleRoot: "e".repeat(64), ticketCount: 1, salesAtClose: 1_000,
+  gradedSetFinalAt: iso(NOW - 54 * DAY), objectionsCloseAt: iso(NOW - 53 * DAY), objectionRestarted: false,
+  rolloverIn: 0, jackpot: 1_000_000, fee: 130_000, traLevy: 13_000, gbtLevy: 6_500, topUp: 999_000, winningTickets: 1,
+  sharePerTicket: 870_000, paidTotal: 870_000, carryOut: 0, dustCarried: 0, settlementGroupId: `maswali_settle_${MLN_WEEK}`,
+  settledAt: iso(NOW - 52 * DAY), releasedBy: "usr_accounting", isFinal: false, parityAttestedBy: "usr_reader",
+  parityAttestedAt: iso(NOW - 61 * DAY), createdBy: "usr_drafter", createdAt: iso(NOW - 62 * DAY), updatedAt: iso(NOW - 52 * DAY),
+});
+await questionStore.createMany(MLN_WEEK, [{
+  id: "mlq_erase_1", role: "MAIN", ordinal: 1, slot: 1, category: "sports",
+  textEn: "Will the home side win?", textSw: "Je, timu ya nyumbani itashinda?", textZh: "主队会赢吗？",
+  criterionEn: "YES if the home side wins in regulation time.", criterionSw: "NDIO ikiwa timu ya nyumbani itashinda.", criterionZh: "主队获胜则为是。",
+  sourceUrl: "https://www.tff.or.tz/fixtures", sourceDomain: "tff.or.tz", fallbackSourceUrl: null, fallbackSourceDomain: null,
+  readingTolerance: null, eventKind: "SPORT", eventStartsAt: iso(NOW - 55 * DAY), eventZone: "Africa/Dar_es_Salaam",
+  voidDeadlineAt: iso(NOW - 53 * DAY), probabilityEstimate: 0.5, probabilitySource: "officer estimate", linkedMarketId: null,
+}]);
+for (const [id, serial, status, extra] of [
+  ["mlt_erase_won", "MLN-2026-W30-000001", "SETTLED", { score: 10, won: true, payout: 870_000 }],
+  ["mlt_erase_cancel", "MLN-2026-W30-000002", "CANCELLED", { cancelledAt: iso(NOW - 58 * DAY) }],
+] as const) {
+  await ticketStore.create({
+    id, positionId: `pos_${id}`, cycleId: MLN_WEEK, userId: SUBJECT, serial, selections: Array.from({ length: 15 }, () => "YES"),
+    salt: "f".repeat(32), selectionsHash: "a".repeat(64), picksKey: "b".repeat(64), status, cancelledAt: null,
+    closeAtPurchase: iso(NOW - 56 * DAY), rulesVersion: "millionea-2026-10-17", score: null, won: null, payout: null,
+    frozenReason: null, lastViewedAt: iso(NOW - 51 * DAY), createdAt: iso(NOW - 59 * DAY), ...extra,
+  });
+}
+await noticeStore.markSeen(SUBJECT, MLN_WEEK, "RESULT", iso(NOW - 51 * DAY));
+// R2-6 · another account's seen mark on the same week — erasure deletes the subject's marks, never anyone else's.
+const MLN_OTHER = "usr_erase_mln_other";
+await noticeStore.markSeen(MLN_OTHER, MLN_WEEK, "ROLLOVER", iso(NOW - 50 * DAY));
+const millioneaRecord = async () => ({
+  week: await weekStore.get(MLN_WEEK),
+  questions: await questionStore.listForWeek(MLN_WEEK),
+  tickets: await ticketStore.listForUser(SUBJECT),
+});
+const millioneaBefore = JSON.stringify(await millioneaRecord());
+const seenOf = (userId: string) => noticeStore.seenFor(userId, [MLN_WEEK]);
+const seenBefore = { subject: (await seenOf(SUBJECT)).length, other: JSON.stringify(await seenOf(MLN_OTHER)) };
 
 // A MODERATOR, because `listComments` hides `deleted` rows from everyone else — and
 // erasure soft-deletes. Reading the thread as a player would make §6 pass on an EMPTY
@@ -569,6 +620,16 @@ section("4 · money, positions and the audit chain are untouched");
     JSON.stringify(await db.txn.findByUser(SUBJECT, 50)) === txnBefore);
   ok("4.3 🔴 the settled position is BYTE-IDENTICAL",
     JSON.stringify(await positionStore.get("pos_erase")) === positionBefore);
+  ok("4.3a CONTROL · the Millionea fixture really is there — the week, its question, both tickets, the subject's seen mark and another account's",
+    (() => { const r = JSON.parse(millioneaBefore); return !!r.week && r.questions.length === 1 && r.tickets.length === 2 && seenBefore.subject === 1 && seenBefore.other.length > 2; })(),
+    millioneaBefore.slice(0, 160));
+  ok("4.3b 🔴 MASWALI-BUILD S6 · MB-67 · the Millionea record — the week, its question, both tickets with their fifteen answers and salt — is BYTE-IDENTICAL after erasure",
+    JSON.stringify(await millioneaRecord()) === millioneaBefore,
+    "The answers behind a bet are the betting record (POCA Cap 423 §16, 7 years); erasure names no week, question or ticket store.");
+  const seenAfter = await seenOf(SUBJECT);
+  ok("4.3c ⭐ S6 review R2-6 · MB-67 · the subject's seen mark — a display flag, not the betting record — is DELETED and counted, and another account's mark on the same week is untouched",
+    seenAfter.length === 0 && result.ok === true && result.counts.millioneaSeenMarks === 1 && JSON.stringify(await seenOf(MLN_OTHER)) === seenBefore.other,
+    JSON.stringify({ left: seenAfter.length, counted: result.ok ? result.counts.millioneaSeenMarks : null }));
   // ⚠️ `trialBalance()` gathers from Postgres and cannot run here. Its PURE CORE can, and
   // it is the half erasure could break: the wallet↔ledger reconciliation over the balance
   // this routine had the opportunity to touch.
@@ -1236,6 +1297,8 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     marketingLedgerKeys: ledgerRows.map((r) => r.identifier),
     // ── U29b · an import mid-staging: the subject's two rows must be gone, the strangers' two must remain ─────────────
     contactImportRows: await db.contactImportRow.after({ importId: STAGED_RUN, afterOrdinal: 0, limit: 100 }),
+    // ── MASWALI-BUILD S6 · MB-67 · the Millionea record: KEPT whole (7 years), and holding no identifier erasure removes ──
+    millionea: await millioneaRecord(),
   };
   ok("8.0 CONTROL · the sweep really read something", Object.keys(buckets).length >= 20,
     `${Object.keys(buckets).length} buckets`);
@@ -1251,7 +1314,7 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     "comments", "sourceOfFunds", "positions", "audit",
     "notificationsAdmin", "houseBots", "houseBotEvents", "houseBotIntents", "houseBotPresses",
     "houseBotTargets", "marketingContacts", "marketingContactKeys", "consentLedger", "marketingLedgerKeys",
-    "contactImportRows"] as const;
+    "contactImportRows", "millionea"] as const;
   /**
    * ⛔ AND A PAGE-SHAPED BUCKET NEEDS ITS OWN COUNT. `{"rows":[],"nextCursor":null}` is 30
    * characters, so the length test above passes an EMPTY keyset page — which is exactly the
@@ -1326,6 +1389,11 @@ section("9 · idempotent — running it again changes nothing");
     JSON.stringify(await db.user.findById(SUBJECT)) === snapshot);
   ok("9.5 the tombstone is recognised as one", isErasedPhone(erasedPhoneTombstone(SUBJECT))
     && !isErasedPhone(PHONE));
+  ok("9.6 🔴 MASWALI-BUILD S6 · MB-67 · after the 7-year release and two re-runs the Millionea record is STILL byte-identical — the release ends the identity hold, never the betting record",
+    JSON.stringify(await millioneaRecord()) === millioneaBefore);
+  ok("9.6b R2-6 · the re-runs find no seen mark left to delete (they count 0), and another account's mark is still its own",
+    (await seenOf(SUBJECT)).length === 0 && second.ok === true && second.counts.millioneaSeenMarks === 0 && JSON.stringify(await seenOf(MLN_OTHER)) === seenBefore.other,
+    second.ok ? String(second.counts.millioneaSeenMarks) : "-");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1535,6 +1603,65 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
     !/db\.(txn|wallet)\.|positionStore|postLedgerEntries|LedgerEntry/.test(era),
     "Money is kept 7 years (POCA Cap 423 §16). The guarantee is structural, not a promise.");
   ok("11.13 CONTROL · …and the file really is the erasure module", era.includes("anonymizeClosedAccount"));
+
+  /* ⭐ MASWALI-BUILD S6 · MB-67 · …AND NO MILLIONEA RECORD EITHER. The answers behind a bet are the betting record, kept 7
+     years like the bet. S6 review R2-6 · erasure names exactly ONE Millionea member — the seen marks' eraser, a display flag
+     — through exactly one import, and no week, question or ticket store, table or other Millionea module. Account closure
+     legitimately reads the `MILLIONEA_SHARE` hold (a share under review blocks closure), so it is held to the stores and
+     tables themselves. Each pattern is shown FINDING its target where it lives, so a silence is a measurement. */
+  const MILLIONEA_WORD = /maswali|millionea/i;
+  const MILLIONEA_STORES = /\b(ticketStore|weekStore|questionStore|noticeStore)\b|maswali-dal|\bmaswali(Ticket|Cycle|Question|NoticeSeen)\b/i;
+  const RECORD_STORES = /\b(ticketStore|weekStore|questionStore)\b|\bmaswali(Ticket|Cycle|Question)\b/i;
+  const millioneaImports = [...era.matchAll(/from\s+"([^"]*(?:maswali|millionea)[^"]*)"/gi)].map((m) => m[1]);
+  ok("11.12b ⛔ erasure names ONE Millionea member — the seen marks' eraser, once, through one import of the DAL — and no week, question or ticket store, table or other Millionea module",
+    (era.match(/\bnoticeStore\.eraseForUser\(userId\)/g) ?? []).length === 1 && (era.match(/\bnoticeStore\.\w+/g) ?? []).length === 1
+      && JSON.stringify(millioneaImports) === JSON.stringify(["./maswali-dal"]) && /import \{ noticeStore \} from "\.\/maswali-dal"/.test(era) && !RECORD_STORES.test(era),
+    JSON.stringify({ imports: millioneaImports, record: (era.match(RECORD_STORES) ?? [""])[0] }));
+  const dalCode = stripTs(readFileSync("src/lib/server/maswali-dal.ts", "utf8"));
+  ok("11.12c CONTROL · …and the patterns FIND them where they live, so 11.12b and 11.12d are measurements",
+    MILLIONEA_WORD.test(dalCode) && MILLIONEA_STORES.test(dalCode) && RECORD_STORES.test(dalCode));
+  const users = stripTs(readFileSync("src/lib/server/user-service.ts", "utf8"));
+  const closeAt = users.indexOf("export async function closeAccount");
+  const closure = closeAt < 0 ? "" : users.slice(closeAt, users.indexOf("\nexport ", closeAt + 10) < 0 ? undefined : users.indexOf("\nexport ", closeAt + 10));
+  ok("11.12d ⛔ account closure names no Millionea store or table — a closed account's tickets stay to settle, as every bet does",
+    closure.length > 400 && /MILLIONEA_SHARE/.test(closure) && !MILLIONEA_STORES.test(closure),
+    `${closure.length} chars of closeAccount read`);
+
+  /* ⭐ NO CASCADE CAN REACH THE BETTING RECORD — read from the SQL, the database's own law (MB-67: "cascade deletes could
+     destroy the 7-year betting record"). Every foreign key a Millionea table declares is ON DELETE RESTRICT, none is ever
+     dropped, and none anywhere points INTO a Millionea table with CASCADE, SET NULL or SET DEFAULT. So the market's own
+     cascade to its positions — the 2026-08-28 teardown's shape — cannot start for a week's market, which its week holds by
+     RESTRICT, and a ticket holds its position the same way. */
+  const sqlAll = readdirSync("prisma/migrations")
+    .filter((d) => statSync(`prisma/migrations/${d}`).isDirectory())
+    .map((d) => { try { return stripSql(readFileSync(`prisma/migrations/${d}/migration.sql`, "utf8")); } catch { return ""; } })
+    .join("\n");
+  const fks = [...sqlAll.matchAll(/CONSTRAINT\s+"([^"]+)"\s+FOREIGN KEY\s*\([^)]*\)\s*REFERENCES\s+"([^"]+)"\s*\([^)]*\)(?:\s+ON DELETE\s+(RESTRICT|CASCADE|SET NULL|SET DEFAULT|NO ACTION))?/gi)]
+    .map((m) => ({ name: m[1], target: m[2], onDelete: (m[3] ?? "NO ACTION").toUpperCase() }));
+  /* ⭐ S6 review R2-14c · THE RELATIONS ARE READ FROM THE SCHEMA, MODEL BY MODEL — never picked out by a constraint's NAME,
+     which a rename would move out from under a name filter while the cascade stayed. Every relation field a model owns
+     (`@relation(fields: …)`), with its declared `onDelete`; Prisma's own default for a field with none is not RESTRICT for
+     an optional relation, so a Millionea relation must say RESTRICT itself. */
+  const schemaRels = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)].flatMap((m) =>
+    m[2].split(/\r?\n/).map((line) => line.replace(/\/\/.*$/, "").trim()).filter((l) => /@relation\(/.test(l) && /\bfields:\s*\[/.test(l)).map((l) => {
+      const [field, type] = l.split(/\s+/);
+      return { model: m[1], field, type: (type ?? "").replace(/[?[\]]/g, ""), onDelete: (l.match(/\bonDelete:\s*(\w+)/) ?? [])[1] ?? null };
+    }));
+  const ownRels = schemaRels.filter((r) => r.model.startsWith("Maswali"));
+  const EXPECTED_RELS = ["MaswaliCycle.market", "MaswaliNoticeSeen.cycle", "MaswaliQuestion.cycle", "MaswaliTicket.cycle", "MaswaliTicket.position"];
+  ok("11.20 ⛔ every relation a Millionea model owns says onDelete: Restrict, read from the schema model by model — the five that hold the record together are all there",
+    EXPECTED_RELS.every((n) => ownRels.some((r) => `${r.model}.${r.field}` === n)) && ownRels.length >= EXPECTED_RELS.length && ownRels.every((r) => r.onDelete === "Restrict"),
+    JSON.stringify(ownRels));
+  const intoRels = schemaRels.filter((r) => r.type.startsWith("Maswali") && r.onDelete !== "Restrict");
+  const into = fks.filter((f) => f.target.startsWith("Maswali") && ["CASCADE", "SET NULL", "SET DEFAULT"].includes(f.onDelete));
+  ok("11.21 ⛔ …and no relation anywhere points INTO a Millionea model without onDelete: Restrict — in the schema — and no foreign key in the SQL with CASCADE, SET NULL or SET DEFAULT",
+    intoRels.length === 0 && into.length === 0, JSON.stringify({ schema: intoRels, sql: into }));
+  ok("11.22 ⛔ …and no migration DROPS one of them",
+    !/DROP\s+CONSTRAINT\s+(IF\s+EXISTS\s+)?"Maswali[A-Za-z]*_[A-Za-z]+_fkey"/i.test(sqlAll));
+  ok("11.23 CONTROL · the same readings FIND the cascade they guard against — a position still goes with its market, in the SQL and in the schema — so 11.20 and 11.21 read the real law",
+    fks.some((f) => f.name === "Position_marketId_fkey" && f.onDelete === "CASCADE") && fks.length > 40
+      && schemaRels.some((r) => r.model === "Position" && r.field === "market" && r.onDelete === "Cascade") && schemaRels.length > 40,
+    `${fks.length} foreign keys and ${schemaRels.length} schema relations read`);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
