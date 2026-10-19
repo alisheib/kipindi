@@ -266,6 +266,8 @@ now **step 4 of the migration protocol**:
 | **Control B** — takes the real artifact, deletes the statement creating one unique index (preferring a **bare lowercase** name), and requires the product's own matcher to report exactly that one missing | ⛔ **control A certifies the wrong refusal.** The three nights were the unique-index check, not sequences; a control aimed at a different mechanism buys reassurance that is real and coverage that is imaginary. B mutates the one thing the guard reads — the bytes — so it cannot pass by moving both sides of the comparison together |
 | **Executable-schema control** — removes the trigger section from a copy of the artifact, restores that copy, and requires the verifier's catalog comparison to fail | Prisma's schema diff omits functions and triggers, but `_prisma_migrations` is restored with the data. Without this check, a recovered database could record the Millionea product-line fence as applied while lacking the fence itself. The backup exports public user functions and triggers after the data; the manifest fingerprints source definitions and enabled state, and the verifier compares the restored catalog independently. |
 
+An older artifact remains readable. If its migration table records the Millionea product-line fence but its manifest lacks the executable-schema fingerprint, verification fails: recovery cannot call that trigger present without evidence.
+
 ⛔ **It is `verify:`, not `test:`, and that is deliberate — do not rename it back.**
 `scripts/test-all.mjs` auto-discovers **every** `test:*` key in `package.json`, and this gate
 needs `embedded-postgres` (deliberately *not* a dependency — 107 MB into every Railway build)

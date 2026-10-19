@@ -32,9 +32,9 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync }
 
 /* ── Manifest ────────────────────────────────────────────────────────────── */
 
-/** 2 adds `undeclaredTables` (2026-07-30). Nothing rejects an older manifest — the
- *  field is read defensively — but the artifact header should say which shape it is. */
-export const MANIFEST_VERSION = 2;
+/** 2 adds `undeclaredTables`; 3 adds executable-schema integrity. Older artifacts
+ *  remain readable, but only version 3 can certify restored functions and triggers. */
+export const MANIFEST_VERSION = 3;
 /** The line prefix the manifest is written under, inside the SQL header. */
 export const MANIFEST_MARKER = "-- @manifest ";
 
