@@ -1686,6 +1686,7 @@ export type StoredNotification = {
     | "DEPOSIT_FAILED"
     | "DEPOSIT_HELD"
     | "REFUND"
+    | "CASHOUT"
     | "WITHDRAW"
     | "KYC"
     | "MATCH_START"

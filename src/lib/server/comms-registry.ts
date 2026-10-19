@@ -235,14 +235,14 @@ export const NO_CTA_TEMPLATES: readonly string[] = [
  * — because `prisma-dal` writes `event: n.kind` — it is also the `event` column.
  *
  * Historic rows retain their written kind. Some old cash-outs and refunds were
- * filed under WIN or DEPOSIT; new refund rows carry REFUND. The bell's
+ * filed under WIN or DEPOSIT; new free exits carry REFUND and paid exits CASHOUT. The bell's
  * appearanceKind recognises exact old title prefixes without rewriting history.
  * Admin market resolutions remain filed under PROPOSAL.
  */
 export const NOTIFICATION_KINDS = [
   "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT",
   "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD",
-  "REFUND", "WITHDRAW", "KYC", "MATCH_START", "RG", "SECURITY",
+  "REFUND", "CASHOUT", "WITHDRAW", "KYC", "MATCH_START", "RG", "SECURITY",
   "AFFILIATE", "PROPOSAL", "BONUS", "WATCHLIST", "OBJECTION",
   // A verdict is recorded but nothing has been paid — the notice that makes the
   // objection window exercisable (management ruling ①, 2026-09-05).
@@ -261,7 +261,7 @@ export const MONEY_KINDS: readonly NotificationKind[] = [
   // player receives about a day of real settled rounds — so it accounts for money
   // by definition and its copy is compliance copy.
   "WIN", "LOSS", "BET_PLACED", "SELECTION_CLOSED", "ROUND_RESULT",
-  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD", "REFUND",
+  "DEPOSIT", "DEPOSIT_PROCESSING", "DEPOSIT_REVIEW", "DEPOSIT_FAILED", "DEPOSIT_HELD", "REFUND", "CASHOUT",
   "WITHDRAW", "BONUS", "AFFILIATE",
   // VERDICT names the instant a payout becomes due and states when it will be paid.
   // It promises money, so its copy is compliance copy and it belongs in the money lens.
@@ -282,7 +282,8 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyWin",                   kind: "WIN",               audience: "player" },
   { fn: "notifyLoss",                  kind: "LOSS",              audience: "player" },
   { fn: "notifySelectionClosed",       kind: "SELECTION_CLOSED",  audience: "player" },
-  { fn: "notifyCashout",               kind: "WIN",               audience: "player" },
+  { fn: "notifyCashout",               kind: "REFUND",            audience: "player" },
+  { fn: "notifyCashout",               kind: "CASHOUT",           audience: "player" },
   { fn: "notifyOneSidedRefund",        kind: "REFUND",            audience: "player" },
   { fn: "notifyRefund",                kind: "REFUND",            audience: "player" },
   // The Up & Down daily digest (E-37). `ROUND_RESULT` was declared here, given a
@@ -414,6 +415,7 @@ export const CHANNEL_POLICY: Record<NotificationKind, ChannelRule> = {
   DEPOSIT_FAILED: { sms: "allowed", email: "allowed" },
   DEPOSIT_HELD: { sms: "allowed", email: "allowed" },
   REFUND: { sms: "allowed", email: "allowed" },
+  CASHOUT: { sms: "allowed", email: "allowed" },
   WITHDRAW: { sms: "allowed", email: "allowed" },
   KYC: { sms: "never", email: "allowed" },
   MATCH_START: { sms: "never", email: "allowed" },

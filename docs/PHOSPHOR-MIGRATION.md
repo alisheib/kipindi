@@ -36,7 +36,9 @@ signed-in player pages were inspected in the local browser; production's `mobile
 ⏳ **Release 2a, part 2 IN FLIGHT (2026-10-19):** the hand-over's remaining plates are implemented on
 `codex/phosphor-2a-part2`. Ali chose ledger-type glyphs for wallet history, the royal staff plate in both shells, and
 status-specific plates for deposit notices. Refunds now carry their own notification kind; historic rows are recognised
-by their exact stored titles without rewriting production data. The changed guards and their mutation proofs are being
+by their exact stored titles without rewriting production data. Filled local rows exposed a second old WIN mislabel:
+free exits (returned stake) and paid early exits. New free exits carry REFUND, paid exits carry CASHOUT, and old WIN
+rows render by their exact title; the returned stake no longer wears a gold win plate. The changed guards and their mutation proofs are being
 checked, including both data stores. This part is **not live** until its release gates and production read-back pass.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**

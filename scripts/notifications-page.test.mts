@@ -321,6 +321,7 @@ section("9 · deposit status and refund appearance, including historic rows");
     ["DEPOSIT_FAILED", "danger", "fill", I.alertCircle],
     ["DEPOSIT_HELD", "warning", "fill", I.lock],
     ["REFUND", "info", "duo", I.refund],
+    ["CASHOUT", "identity", "duo", I.cashOut],
   ] as const;
   for (const [kind, tint, tier, icon] of statusCases) {
     ok(`§9 ${kind} has its own plate and glyph`,
@@ -335,6 +336,8 @@ section("9 · deposit status and refund appearance, including historic rows");
     ["DEPOSIT", "Refunded · TZS 50,000", "REFUND"],
     ["DEPOSIT", "Market cancelled · TZS 50,000", "REFUND"],
     ["WIN", "Full refund · TZS 50,000", "REFUND"],
+    ["WIN", "Free exit · TZS 50,000", "REFUND"],
+    ["WIN", "Cashed out · TZS 50,000", "CASHOUT"],
   ] as const;
   for (const [kind, titleEn, expected] of oldCases) {
     ok(`§9 old ${kind}: ${titleEn} resolves without rewriting the row`,

@@ -1334,7 +1334,7 @@ export function notifyCashout(userId: string, opts: {
   const mins = opts.freeExitGraceMinutes;
   return notify({
     userId,
-    kind: "WIN",
+    kind: opts.inGracePeriod ? "REFUND" : "CASHOUT",
     titleEn: `${opts.inGracePeriod ? "Free exit" : "Cashed out"} · ${formatTzs(opts.amount)}`,
     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,

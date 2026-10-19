@@ -362,6 +362,9 @@ for (const euph of ["better luck", "unlucky", "so close", "next time"]) {
     !!g && g.bodyEn.includes("3-min") && !g.bodyEn.includes("5-min"), g?.bodyEn);
   ok("…in Swahili too", !!g && g.bodySw.includes("dakika 3"), g?.bodySw);
   ok("…and in Chinese", !!g && g.bodyZh!.includes("3 分钟"), g?.bodyZh ?? "");
+  ok("free exit is money returned, not a win", g?.kind === "REFUND", g?.kind);
+  const paid = await N.notifyCashout(U, { amount: 9_000, marketTitle: { en: "Poll", sw: "Swali", zh: "问题" }, marketId: "mkt_g", inGracePeriod: false, positionId: "pos_paid", freeExitGraceMinutes: 3 });
+  ok("paid early exit is a cash-out, not a win", paid?.kind === "CASHOUT", paid?.kind);
 }
 
 // Money kinds must always carry an amount a player can check.

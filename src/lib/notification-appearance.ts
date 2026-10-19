@@ -51,6 +51,7 @@ const keyFor = (k: Kind): DuoGlyphKey | FillGlyphKey => {
     case "DEPOSIT_FAILED": return "alertCircle";
     case "DEPOSIT_HELD": return "lock";
     case "REFUND": return "refund";
+    case "CASHOUT": return "cashOut";
     case "WITHDRAW":     return "arrowUpFromLine"; // R-LEXICON 5.3A
     case "KYC":          return "idCard"; // identity verification, as its hub row; `shieldcheck` means verified
     case "ROUND_RESULT": return "resolved"; // a result recorded (§3), on the quiet plate
@@ -76,7 +77,10 @@ export const tierFor = (k: Kind): "fill" | "duo" =>
 /** Old rows retain their original kind. Recognise only the exact English title prefixes the old emitters wrote; all new
  * notices carry their status or refund kind at write time. The bell and the full inbox call this same function. */
 export const appearanceKind = (n: StoredNotification): Kind => {
-  if (n.kind === "WIN" && n.titleEn.startsWith("Full refund · ")) return "REFUND";
+  if (n.kind === "WIN") {
+    if (["Full refund · ", "Free exit · "].some((prefix) => n.titleEn.startsWith(prefix))) return "REFUND";
+    if (n.titleEn.startsWith("Cashed out · ")) return "CASHOUT";
+  }
   if (n.kind !== "DEPOSIT") return n.kind;
   if (n.titleEn.startsWith("Deposit processing · ")) return "DEPOSIT_PROCESSING";
   if (n.titleEn.startsWith("Deposit under review · ")) return "DEPOSIT_REVIEW";
@@ -114,6 +118,7 @@ export const tintFor = (k: Kind): PlateVariant => {
     case "DEPOSIT_FAILED": return "danger";
     case "DEPOSIT_HELD": return "warning";
     case "REFUND": return "info";
+    case "CASHOUT": return "identity";
     /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
        "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
        `--warning-fg` was then `--gilt` (amber since Ali's ruling (1) of 2026-10-10), claimed both alarm and gold. It
