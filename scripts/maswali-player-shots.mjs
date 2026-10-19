@@ -69,7 +69,11 @@ const session = await demoSession(browser, BASE, { query: "?deposit=0", balance:
 const setup = await contextWith([session], "en");
 const sp = await setup.newPage();
 await open(sp, "/millionea/tickets");
-let serial = ((await sp.locator('[data-testid="millionea-tickets"] li').first().textContent().catch(() => "")) ?? "").match(/MLN-[A-Z0-9-]+|[0-9]{3,}/)?.[0] ?? null;
+// The serial from the first card's own link — the address the card opens — never from its text: the card reads its stake
+// ("TZS 1,000") before its serial, so a digit-run match took "000" and every ticket tile shot a 404 (the first OMEGA read,
+// 2026-10-19). The ticket tile below also asserts its page draws the ticket, so a wrong address can never pass again.
+const firstHref = await sp.locator('[data-testid="millionea-tickets"] li a[href^="/millionea/tickets/"]').first().getAttribute("href").catch(() => null);
+let serial = firstHref ? decodeURIComponent(firstHref.split("/").pop() ?? "") || null : null;
 if (!serial) {
   await open(sp, "/millionea/slip");
   const groups = sp.getByRole("radiogroup");
@@ -120,6 +124,10 @@ for (const locale of LOCALES) {
         ok(`slip · ${locale} @${width} · the pay control is on screen without a scroll`, !!box && box.y >= 0 && box.y + box.height <= HEIGHT, JSON.stringify(box));
       }
       if (name === "markets-card") ok(`markets · ${locale} @${width} · the card stands at the board's head`, (await page.getByTestId("millionea-home-card").count()) === 1);
+      // Every page is itself, never the not-found page (its eyebrow reads "404 · …" in every language), and the ticket
+      // page draws the ticket — a tile of the wrong page must fail here, not reach the reader.
+      ok(`${name} · ${locale} @${width} · not the not-found page`, (await page.getByText(/^404 · /).count()) === 0);
+      if (name === "ticket") ok(`ticket · ${locale} @${width} · the page draws the ticket`, (await page.getByTestId("millionea-ticket").count()) === 1);
       await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}.png`, fullPage: false });
     }
   }
