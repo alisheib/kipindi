@@ -11,11 +11,77 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-19):** W0–W4 are LIVE (W4 at **`70c069cb`**, below; W3 at `ee62451c`). W4 is release 1 of the audit
-Ali asked for that day (*"validate that all old icons are replaced across the platform … see where we need filled glyphs
-and icons and where not"*, then *"nothing should be plain … the most small details are the most important to me"*);
-the audit is §8. What release 1 did not reach — the adversarial review's leftovers and the checks Ali stopped — is
-listed below, and is where the next session starts.
+**State (2026-10-19):** release 1 of the audit is LIVE and complete — W4 at `70c069cb`, its remainder (release 1b) at
+**`d6f0b3ec`**, both below; W0–W3 before them (W3 at `ee62451c`). Ali asked for the audit that day (*"validate that all old
+icons are replaced across the platform … see where we need filled glyphs and icons and where not"*, then *"nothing
+should be plain … the most small details are the most important to me"*); it is §8. **Start here:** the checks Ali
+stopped twice to ship (⏳ Owed, below), then release 2 (**Next**). A Codex session may take this over (Ali, 2026-10-19):
+everything it needs is this file, AGENTS.md and DESIGN_AUTHORITY §K3.
+
+⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
+- before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
+- the classic parity, calibrated: a baseline on a fresh in-memory server of `main`, its null compare (exit 0),
+  `--prove-red`, then W4's and 1b's differences named (`npm run glyphs:parity-entries -- <baseline> <current>
+  --measured <regions> --wave <label>`; the generated entries file still holds W3's);
+- the red twins at the release commit not yet run: of 1b's 43, the 23 left when the runs stopped — the three long
+  in-process ones among them (`red:deposit-recheck`, `red:deposit-status-read`, `red:campaign-visuals`, about an hour
+  each) — and `red:measure` again (its run held the `tier="fill"` misread that 1b fixes; 8/8 on the code before W4);
+- the server-bound ones: `red:bar-geometry` and `red:count-truth` (the server's URL as an argument),
+  `red:journey-header-fit` (alone, under the exclusive lock), `qa:landing-ten`, `qa:journey-header-fit`, and
+  `test:motion` (it needs a server on :3000).
+- Main's own failures, the same lines with or without this programme — do not chase them here:
+  `test:visual-pass-r5a` 8.13, `r5h` 3.5, `r5j` 1.1, `r6c` 10.1 and 11.2, `r7c` 2.1 and 3.9, `test:presence-class`,
+  `test:rate-copy` (and their reds), `red:house-bot-chatbot`, `red:results-filter`'s stale anchor.
+
+✅ **Release 1b (W4's remainder) — LIVE at `d6f0b3ec`**, pushed 12:43 UTC on Ali's *"proceed until fully done and pushed
+live"*, then *"push everything you have now live as it is"* (2026-10-19):
+- **What it does** — the adversarial review's 17 other findings, each fixed or decided:
+  - #2 the side arrows on `.btn-yes`/`.btn-no` stroke at those buttons' Inter 700 (they drew 600), the home band's
+    picks with them;
+  - #4 a verdict, a dispute and a bonus notification draw their meaning (`resolved`, `flag`, `gift`); the staff's own
+    notices keep the bell, because D19 keeps their kind out of a player's bundle by name (the review's `bot` would have
+    broken `test:house-bot-disclosure` 1.1);
+  - #5 #6 #13 #17 doors that wore another meaning: the KYC panel's Verify and the agent page's identity step `idCard`,
+    its dashboard `agent`; the Up & Down board's rules pill `tippingScales`; the inbox's empty state `bell`; /help's
+    voided `void` and fairness `attestation`;
+  - #7 the proposal page's back link draws the family's chevron (a typed back arrow, written as an escape); the
+    typed-character census (`test:glyph-source` §7, `test:visual-pass-r10` 3.5″) reads escapes, HTML entities and
+    stylesheets' `content:`, and its class holds ‹ › ≡ ⋮ ⋯ ⇅ ◆ ■ □ ✦ ⌄ and the flags;
+  - #9 `FillGlyphKey`: a door that draws its glyph in Fill takes only a key that ships one (tsc), and
+    `test:glyph-map` §9c holds every literal `tier="fill"`; seven more statuses in Fill (the profile's ID and email
+    pills, the verified-agent chip, the locked round's chip, Saved) and #12 the vote cast;
+  - #15 the Up & Down rules' caution sign has its word for a screen reader ("Warning: ", "Onyo: ", "警告："); the sort
+    options' arrows stay hidden — each option's label states its order;
+  - #16 the round page's position rows show the outcome chip (glyph + ink + word), as the position card's;
+  - #8 #10 #14 #18 recorded: HelpMark and the drawer's NeedleMark go to release 2 (Duotone); §8a says what was built and
+    what stays as punctuation; §8b holds the meanings that share or split a glyph; the small cleanups;
+  - `test:measure` reads a page's measure tier, not a glyph's `tier="fill"`.
+- **The proof before the push:** typecheck 0; the 112 suites that read a changed file, all green but main's own five
+  and `test:motion` (a server on :3000); 20 of 43 red twins proved their mutations before Ali's word to ship
+  (`red:measure`'s one miss explained above); `test:house-bot-disclosure` 122/122 at the release; `next build` and
+  local `qa:live` 386/386 (the build green) at the pushed commit.
+- **Production, read back:** www, apex and the Railway host served `d6f0b3ec` about 200 s after the push (12:47 UTC);
+  health reachable and migrated; the four sprites answer 200 and immutable on both origins; `qa:chunks-prod` passes on
+  both origins (6/6 routes, 152 GETs); production `qa:live` 363/363.
+- **For MOBILE-VISUAL U43 release B** (it rebuilds the Up & Down card, the board and the market card on top of 1b, and
+  keeps these): the sides are `arrowUp`/`arrowDown`, the product `trade`; a mark among words strokes at its words' own
+  face and weight (`text=`), and leads or ends a run with `edge`:
+  - `updown-card.tsx` — the price's tone arrow `s={11} edge="start" text="mono-700"`; the UP/DOWN target labels
+    `s={10} text="mono-700"`, UP `edge="start"`, DOWN `edge="end"`; the signed-out buttons
+    `s={14} edge="start" text="body-700"` (`.btn-yes`/`.btn-no` set 700); the verdict `s={14} edge="start"
+    text="mono-700"`; the locked chip's `lock` in Fill (`tier="fill"`); the players' count `users`;
+  - `updown-stake-controls.tsx` and `journey/updown/jud-arm.tsx` — the side arrows `edge="start" text="body-700"`;
+    `home/updown-band.tsx` — the picks `s={16} edge="start" text="body-700"`;
+  - the board (`app/updown/page.tsx`) — the rules pill `tippingScales`;
+  - the round page — the outcome `s={16} edge="start" text="mono-700"`; the bet chips' arrows `s={12} text="body-700"`
+    with the side's word for a screen reader (`sideWord`, sr-only); each position row's outcome chip
+    (`positionStatusGlyph` + `positionStatusChip`); `round-stake-panel.tsx`'s projected return
+    `arrowRight s={11} text="mono-600"` at the figure's 13px;
+  - `charts/outcome-cubes.tsx` — `arrowUp`/`arrowDown`, a voided round `void`, `s={9}` alone in the cube;
+  - `markets/market-card.tsx` — the 24h move `chevronUp`/`chevronDown` `s={11}` in Fill (the direction is the data);
+    "Maelezo ›" `chevronRight s={11} edge="end" text="display-600"`; the rules link `chevronRight s={12} edge="end"
+    text="body-400"`;
+  - an arrow that reads "to" between two figures (open → close, stake → return) stays typed.
 
 ✅ **W4 — release 1 — LIVE at `70c069cb`**, pushed 11:51 UTC on Ali's *"push live everything u have and stop running new
 tests, we proceed later with whatever left from the phosphor migration plan"*, then *"proceed"* (2026-10-19):
@@ -47,38 +113,23 @@ tests, we proceed later with whatever left from the phosphor migration plan"*, t
   immutable on both origins; `qa:chunks-prod` passes on both origins (6/6 routes, 152 GETs); production `qa:live`
   363/363; five changed pages looked at in a phone browser (the market cards' carets, the bottom bar, Up & Down, the
   privacy notice, the Up & Down rules' caution), no page error. Maswali's platform fix (`c129888f`) landed on top.
-- **Not run — Ali stopped the tests; owed at the next session's close (AGENTS.md §4):** the before/after tiles and their
-  readers; the classic parity (a calibrated baseline at live `main`, then every difference named — the generated
-  entries file still holds W3's); the server-bound reds (`red:bar-geometry`, `red:count-truth`,
-  `red:journey-header-fit`); `red:deposit-recheck`, `red:campaign-visuals` and `red:deposit-status-read` at the
-  release commit (each outran 900 s); `qa:landing-ten` and `qa:journey-header-fit`.
-- **The review's leftovers.** On branch **`phosphor-w4-review`** (pushed; built, NOT yet verified — rebase it onto
-  `main` first; journey-updown §6.1 then needs a named swap for the round page's status line):
-  - #2 the side arrows on `.btn-yes`/`.btn-no` stroke at Inter 700, as those buttons' words do (they draw 600);
-  - #4 VERDICT, OBJECTION, BONUS and HOUSE_BOT notifications draw their meaning (they fall back to the bell), and the
-    kind switch is exhaustive;
-  - #9 `FillGlyphKey`: tsc refuses a Fill a key does not ship, with `test:glyph-map` §9c the literal census; seven more
-    statuses in Fill (the profile's KYC and email pills, the verified-agent chip, the locked-round chip, Saved);
-  - #12 the proposal vote toggle in Fill when on; #16 the round page's outcome chips; #18 receipts.ts's doc block.
-- **Not started:**
-  - #5 three doors still wear `shieldcheck` (the KYC panel's Verify CTA → `idCard`; the agent page's two CTAs →
-    `idCard` and `agent`);
-  - #6 the Up & Down board's rules pill wears Terms' `scrollText` (→ `tippingScales`);
-  - #7 the proposal page's back link is a typed `\u2190`, and §7's census and r10 miss escapes, entities and CSS
-    `content`;
-  - #8 HelpMark, the chat bubble on every page, is hand-drawn: release 2 (Duotone), or a "Kept" row with its reason;
-  - #10 §8a rows still typed (Up & Down history's →, the card's close-price →, "oldest → newest") or built otherwise
-    (All results draws `chevronRight`); the duration input's caret (§8a says release 1, the ratchet says 3);
-  - #13 /notifications' empty state still draws `bellRing`;
-  - #14 meanings that share or split a glyph — a win's seal against the stat tiles' trophy, `xCircle` (a lost bet, a
-    cancelled payment, a declined proposal), `users` (friends, a round's players) — to settle in §8b;
-  - #15 the rules caution's warning and the sort options' direction are silent to a screen reader;
-  - #17 /help's FAQ topics (voided `alertCircle` → `void`; fairness `shieldcheck` → `attestation`);
-  - #18 the leaderboard's unused `Link`, map.ts's `menu` note, legal `_components.tsx`'s sigil note.
-- **Parallel sessions, 2026-10-19 (kept for the next release):** heavy jobs take the `phos` slots 9–12
+- **Its checks Ali stopped, and the review's other 17 findings:** the checks are ⏳ Owed above; the findings were all
+  closed by release 1b, above.
+- **Parallel sessions (kept for the next release):** on OMEGA-COMPILE01 heavy jobs take the `phos` slots 9–12
   (`F:/kipindi-locks/mln-slot-N`, never the exclusive lock); whoever lands on `main` second re-runs `npm run glyphs:gen`
   on the merged `map.ts` and sets `PREVIOUS_SPRITES` to what production serves; each side messages the other before a
-  release window and when it closes (Maswali: asheib-bf; MOBILE-VISUAL U43: asheib-54, whose release B rebases onto W4).
+  release window and when it closes (Maswali: asheib-bf; MOBILE-VISUAL U43: asheib-54 — its release B rebuilds the Up &
+  Down card, the board and the market card on top of 1b and keeps 1b's glyph and weight choices). From 2026-10-19 the
+  Maswali and U43 lanes run in Codex, this programme in Claude (Ali).
+- **⛔ Pushing `main` — the shared lock (agreed by the three lanes, 2026-10-19, for sessions that cannot message each
+  other):** before any push to `main`, `mkdir F:/kipindi-locks/main-push.lock` (OMEGA-COMPILE01) and write
+  `<LANE> <UTC time> <sha>` to its `owner` file; push; run the production read-back; then delete the owner file and
+  `rmdir` the lock. Held: keep working and retry — never delete another lane's lock. Before a release, §0 names what is
+  about to be pushed and the shared files it touches. **This programme's shared files:** `scripts/glyphs/map.ts`, the
+  generated registry and sprites (`npm run glyphs:gen`), `src/components/ui/glyphs.tsx`, the kit's doors (Callout,
+  NoticeBar, StatusFlag, toast, chip), `src/lib/i18n-dict.ts` (link labels), the legal pages and
+  `scripts/lib/house-bot-absence-cases.mts` (D19a), and the guards that census glyphs (`test:glyph-*`,
+  `test:visual-pass-r9a`/`r10`).
 
 W3, the selected states, went live at **`ee62451c`**, pushed at
 11:22 UTC on Ali's *"push now please then do any chekcs needed"*:
@@ -104,15 +155,11 @@ W3, the selected states, went live at **`ee62451c`**, pushed at
   pairs and two calls: Live's and Up & Down's Fill keep Phosphor's thinner strokes, and More's Fill is a solid tile.
 
 **Next:**
-1. Release 1's remainder (both lists are in the W4 block above), in this order:
-   - rebase `phosphor-w4-review` onto `main`; finish its unverified fixes and the not-started findings;
-   - every guard that reads a changed file; the battery, with the long in-process reds given an hour each;
-   - the checks Ali stopped: before and after tiles (2x phones, the "Follow 50pick" panel suppressed) read one by
-     one; the calibrated classic parity and its measured entries; the server-bound reds; `qa:landing-ten`;
-   - typecheck, `next build`, local `qa:live`; Ali's review page; the push window, agreed with the parallel sessions;
-     the production read-back.
+1. ⏳ Owed (above): the stopped checks on live `main`; fix what they find as its own release. The tiles: phones at 2x,
+   the "Follow 50pick" panel suppressed (`localStorage["50pick-channels-done"] = "1"`), an idle wait of a few seconds
+   (live pages poll and never go idle); Ali's review page from them.
 2. Release 2 = W5 + W6 (§8d): Duotone plates, categories, the one deposit glyph everywhere, stat tiles, admin cards, and
-   the empty states' one family.
+   the empty states' one family; HelpMark and the Needle drawer's NeedleMark into the family's Duotone (§8a).
 3. Release 3 = the rest of W7 (the console's typed marks, the PWA shortcuts, the Needle's cursor, the primer and
    self-care art), then W8 and W9.
 4. Still open from the selected states (on the laptop): the clean classic-parity compare with `--prove-red`, and
@@ -152,7 +199,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W1 | Codegen + engine + guards, zero visual change | ✅ | cf3202ab — live at 9b604d8e (2026-10-17): the codegen, the generated glyph files, test:glyph-source in predeploy (R-ONE-SOURCE); production read back |
 | W2 | The swap: the whole platform on Phosphor in one commit | ✅ | 732efbc5 — live 2026-10-17 23:10 UTC: every icon drawn by Phosphor (twelve chrome glyphs inline, the rest one immutable sprite), 6.4 KB gzip lighter per route; production read back |
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
-| W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; the review's leftovers and the stopped checks are §0's |
+| W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
 | W5 | Plates, money, hub, categories, stats, admin cards | ⬜ | |
 | W6 | Empty states: one family | ⬜ | |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
