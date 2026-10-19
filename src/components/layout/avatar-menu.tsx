@@ -6,7 +6,8 @@ import { useExitPhase } from "@/components/ui/modal";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { useT, type Locale } from "@/lib/i18n";
@@ -306,9 +307,8 @@ export function AvatarMenu({
                 />
               ))}
             </ul>
-            {/* Staff console jump — admin-tier only. Gilt/gold treatment mirrors
-                the admin confidential band so it reads unmistakably as "staff",
-                clearly set apart from the player menu items above.
+            {/* Staff console jump — admin-tier only. The royal identity plate
+                marks the staff destination in both shells.
 
                 ⛔ E-70 · A PLAIN <a>, ON PURPOSE — the mirror of the "Back to app" control in
                 `admin-shell.tsx`, and it fixes the half nobody had explained. `AppShell` (the
@@ -318,26 +318,22 @@ export function AvatarMenu({
                 exactly session 21's unexplained observation, "/admin/updown served the
                 signed-out player shell to a freshly signed-in ADMIN". Same root cause as Ali's
                 missing navbar, mirrored. 🔒 `npm run test:shell-boundary`. */}
-            {/* ⭐ THE JOURNEY'S STAFF ROW IS THE BRAND FAMILY, NOT GOLD (R5-C, the second gold audit, 2026-10-09): "set apart
-                as staff" is a highlight, and the product's one non-money accent is brand (DESIGN_AUTHORITY Q5 "gold is
-                money, and nothing else"). The classic bar's row is frozen chrome and keeps its gold until the owner rules
-                — the change for it is the brand ink below with the `journey` arm dropped. */}
+            {/* PHOSPHOR-MIGRATION release 2a part 2: Ali chose the royal identity plate for both shells' staff row;
+                gold remains reserved for money (DESIGN_AUTHORITY Q5). */}
             {isAdmin && (
               <div className="border-t border-border px-2 py-2">
                 <a
                   href="/admin"
                   role="menuitem"
-                  className={cn("group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors", journey ? "hover:bg-brand-500/10" : "hover:bg-gold-500/10")}
-                  style={journey
-                    ? { border: "1px solid color-mix(in oklab, var(--brand-400) 22%, transparent)", background: "color-mix(in oklab, var(--brand-500) 6%, transparent)" }
-                    : { border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
+                  className="group flex items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors hover:bg-brand-500/10"
+                  style={{ border: "1px solid color-mix(in oklab, var(--brand-400) 22%, transparent)", background: "color-mix(in oklab, var(--brand-500) 6%, transparent)" }}
                 >
-                  <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md", journey ? "text-brand-300" : "text-gold-300")} style={{ background: journey ? "color-mix(in oklab, var(--brand-500) 12%, transparent)" : "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
-                    <I.staffConsole s={15} aria-hidden />
-                  </span>
+                  <IconPlate size={40} variant="identity" aria-hidden>
+                    <I.staffConsole s={plateGlyph(40)} tier="duo" />
+                  </IconPlate>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
-                    <span className={journey ? "block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5" : "block font-mono text-micro uppercase tracking-[0.14em] text-gold-300/80 leading-tight mt-0.5"}>Staff · Internal</span>
+                    <span className="block font-mono text-micro uppercase tracking-[0.14em] text-brand-300/80 leading-tight mt-0.5">Staff · Internal</span>
                   </span>
                   {/* ⛔ §M5 — "icons respond, they do not perform". This arrow carried
                       `transition-transform group-hover:translate-x-0.5`, i.e. a glyph moving
@@ -345,7 +341,7 @@ export function AvatarMenu({
                       (mount, data change and state change are the three that are allowed).
                       The COLOUR response stays: hover is still answered, on the channel §M5
                       leaves open. */}
-                  <I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />
+                  <I.arrowRight s={14} className="text-brand-300/70 transition-colors group-hover:text-brand-300" aria-hidden />
                 </a>
               </div>
             )}

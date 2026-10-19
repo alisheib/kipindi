@@ -100,13 +100,14 @@ export const MUTATIONS = [
   {
     name: "plate-yields-instead",
     why: "`shrink-0` is dropped from the 36px plate, so the icon squashes instead of the text column wrapping. The link fits, the guard about the link passes, and the control beside it is silently deformed",
-    file: SHARE,
     suite: "share-link-readable",
     // ⚠️ IT DELETES `shrink-0`. A first version APPENDED a class instead and the gate stayed
     // green — correctly, because the declaration it asserts was still there. §5 trap: a
     // mutation must remove what it claims to remove, or it proves nothing and says so.
-    from: `h-[36px] w-[36px] shrink-0 items-center justify-center rounded-md bg-bg-overlay`,
-    to: `h-[36px] w-[36px] items-center justify-center rounded-md bg-bg-overlay`,
+    // PHOSPHOR-MIGRATION release 2a part 2: remove the property at its new shared owner.
+    file: "src/components/ui/icon-plate.tsx",
+    from: `grid shrink-0 place-items-center rounded-control`,
+    to: `grid place-items-center rounded-control`,
     expect: "3: ⚠️ …and the 36px plate beside it may not (shrink-0)",
   },
   {

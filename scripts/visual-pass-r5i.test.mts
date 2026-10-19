@@ -376,13 +376,16 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
     (UDH.match(/net > 0 \? "var\(--gilt\)" : net < 0 \? "var\(--no-300\)" : "var\(--text\)"/g) ?? []).length === 2 && !/var\(--yes-300\)/.test(UDH)
       && /netPnl > 0 \? "text-\[var\(--gilt\)\]" : netPnl < 0 \? "text-no-300" : "text-text"/.test(read("src/app/positions/performance/page.tsx")));
 
-  // 2.12 · /wallet's history row is the Receipts row's: one brand plate for money that moved, neutral amounts.
+  // PHOSPHOR-MIGRATION release 2a part 2: Ali chose a glyph for each stored ledger type;
+  // the plate says identity, while the amount's settled/unsigned rule stays independent.
   const W = read("src/app/wallet/wallet-client.tsx");
   const txn = W.includes("function TxnRow") ? W.slice(W.indexOf("function TxnRow")) : ""; // the file's last function
-  ok("2.12 · /wallet's history row: the Receipts row's brand plate where money moved, the muted one where nothing landed; the amount neutral",
-    /settledCredit \|\| !\(isCredit \|\| movedNothing\) \? "bg-brand-500\/10 text-brand-300"\s*: "bg-bg-overlay text-text-subtle";/.test(txn)
+  ok("2.12 · /wallet's history row: a ledger-type identity glyph or neutral fallback, with an independent neutral amount",
+    /const ledgerGlyph = tx\.storedType \? LEDGER_GLYPH\[tx\.storedType\] : null;/.test(txn)
+      && /<IconPlate size=\{32\} variant=\{ledgerGlyph \? "identity" : "quiet"\}/.test(txn)
+      && /<LedgerGlyph s=\{plateGlyph\(32\)\} tier=\{ledgerGlyph \? "duo" : "line"\}/.test(txn)
       && /\$\{movedNothing \? "text-text-muted" : "text-text"\}/.test(txn) && !/yes-|no-\d/.test(txn), txn.slice(0, 80));
-  ok("2.12′ CONTROL · the Receipts row (the decided target) draws one brand plate, neutral amount", /<IconPlate size=\{40\} className="bg-brand-500\/10 text-brand-300">/.test(read("src/components/wallet/receipt-list-row.tsx")));
+  ok("2.12′ CONTROL · the Receipts row draws an identity plate and neutral amount", /<IconPlate size=\{40\} variant="identity">\s*<Dir s=\{plateGlyph\(40\)\} tier="duo"/.test(read("src/components/wallet/receipt-list-row.tsx")));
   ok("2.12″ · the self-exclusion doors hover on the strong border, as \"Set personal limits\" beside them", /text-text-muted hover:text-text hover:border-border-strong transition-colors/.test(W) && !/hover:border-no-700/.test(W));
 
   // 2.13 · the leaderboard: a rate in the text's ink (identity page — no gold either).

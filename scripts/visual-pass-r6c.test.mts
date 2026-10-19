@@ -601,8 +601,11 @@ section("11 · C3 the warning census counts the family in every spelling, and ev
   // word, the result crest's glyph) = 63. Typed-only identity (2026-10-10) took one more: the KYC page's extra-document
   // card and its amber disc (a `bg-warning-bg` wash) went with player uploads = 62. MASWALI-BUILD S5 (2026-10-18) adds two:
   // the Millionea confirm's short-balance box, its frame and wash (`border-warning-border bg-warning-bg`; its glyph is the
-  // ink, `text-warning-fg`) — ruled in r8a §3 = 64. Phosphor's warning plate adds its wash and border = 66.
-  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity, 64 with Millionea's confirm, 66 with the warning plate`, old.length === 66, String(old.length));
+  // ink, `text-warning-fg`) — ruled in r8a §3 = 64. S5 measured 66 with the shared warning plate. Phosphor 2a
+  // centralised five caller paints on that plate: agent apply's rejected disc wash and ink (−2), the KYC page's
+  // correction disc wash (−1), and the KYC gate's action and held washes (−2) = 61. R8-A pins each file's exact
+  // count; this plant proves the old `--warning-fg`-only net still misses the family.
+  ok(`11.2 PLANT · the \`--warning-fg\`-only census misses ${old.length} warning paints after the shared plate replaces five caller paints`, old.length === 61, String(old.length));
   const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
   // R8-A (2026-10-10): the fourth, the maintenance flag, paints no spelling of its own any more — its label took the
   // family's ink through the Callout's `MAINTENANCE_AMBER` (as its wash and edge already did), counted where that lives.

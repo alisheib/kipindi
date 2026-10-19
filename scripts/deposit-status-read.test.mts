@@ -825,7 +825,7 @@ async function run(src = sources): Promise<Check[]> {
   const notifierJs = ts.transpileModule(fn(src[files[7]], "notifyDeposit"), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const notify = new Function("formatTzs", "notify", `${notifierJs}\nreturn notifyDeposit;`)(formatTzs, (row: any) => row);
   const reviewNotice = notify(me, { status: "AML_REVIEW", amount: 5000, provider: "M-Pesa", txnId: own.id });
-  ok("review.bell-copy", reviewNotice.kind === "DEPOSIT" && reviewNotice.href === `/wallet/receipt/${own.id}`
+  ok("review.bell-copy", reviewNotice.kind === "DEPOSIT_REVIEW" && reviewNotice.href === `/wallet/receipt/${own.id}`
     && reviewNotice.bodyEn.includes("Don't pay again") && reviewNotice.bodySw.includes("Usilipe tena") && reviewNotice.bodyZh.includes("请勿重复支付")
     && !JSON.stringify(reviewNotice).includes(Review.DEPOSIT_STATUS_REVIEW_MARK));
   // The LABEL of a held deposit MATCHES ITS BODY — held for return, in all three languages, never "Reversed" (Ali,

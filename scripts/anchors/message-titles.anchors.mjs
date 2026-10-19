@@ -19,6 +19,13 @@ const PAGE = "src/app/markets/[id]/page.tsx";
 
 export const MUTATIONS = [
   {
+    name: "a paid early exit is filed as a win again",
+    file: "src/lib/server/notification-service.ts",
+    from: '    kind: opts.inGracePeriod ? "REFUND" : "CASHOUT",',
+    to: '    kind: opts.inGracePeriod ? "REFUND" : "WIN",',
+    expect: "C.STAFF_PREVIEW.census",
+  },
+  {
     name: "the switch forced on now — a preview reads as the flip (the ceiling ignored, anything but WITHDRAWN says yes)",
     file: SWITCH,
     from: `    if (simpleJourneyCeiling().ceiling !== "ACTIVE") return false;\n    return (await simpleJourneyStateNow()) === "ACTIVE";`,

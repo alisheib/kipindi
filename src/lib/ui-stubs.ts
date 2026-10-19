@@ -5,6 +5,8 @@
  * and the wallet/Prisma layer — nothing here is shown to an authenticated user.
  */
 
+import type { TxnTypeValue } from "@/lib/wallet/ledger";
+
 /** Wallet transaction row shape used by the wallet UI. */
 /** The player-facing transaction states.
  *
@@ -26,6 +28,8 @@ export type TxnStatus =
 export type Transaction = {
   id: string;
   type: string;
+  /** The stored ledger enum; `type` above is only the display fold used by amount copy. */
+  storedType?: TxnTypeValue;
   amount: number;
   status: TxnStatus;
   createdAt: string;

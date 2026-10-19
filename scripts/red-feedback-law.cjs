@@ -130,8 +130,10 @@ const MUTATIONS = [
   {
     name: "`factual` grows a TICK — a confirmation glyph over news that is not good",
     file: TOAST,
-    find: `    icon: <span className="text-text-secondary"><I.info s={18} /></span>,`,
-    with: `    icon: <span className="text-text-secondary"><I.checkCircle s={18} /></span>,`,
+    // PHOSPHOR-MIGRATION release 2a part 2: the shared plate replaced the old inline icon wrapper.
+    // Keep the plant on the glyph actually drawn by the factual toast.
+    find: `    icon: <I.info s={plateGlyph(40)} />,`,
+    with: `    icon: <I.checkCircle s={plateGlyph(40)} />,`,
   },
   {
     name: "⭐ the Up & Down bet loses its receipt again — money moves, no dialog",

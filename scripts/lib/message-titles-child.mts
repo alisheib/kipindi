@@ -110,14 +110,15 @@ const KINDS: Kind[] = ["S", "P", "N"];
 const SHORTS: Record<Kind, Partial<Record<L, string>>> = { S: SHORT, P: { en: SHORT.en }, N: {} };
 const ROUND_FULL: Record<L, string> = { en: "Bitcoin Up or Down · 15 min", sw: "Bitcoin Juu au Chini · dakika 15", zh: "比特币涨跌 · 15 分钟" };
 const ROUND_FORCED: Record<L, string> = { en: "Bitcoin goes up?", sw: "Je, Bitcoin itapanda?", zh: "比特币会涨吗？" };
-/** Every player role in a kind's markets: A backs YES and wins, B backs NO and loses, C sells in the free window, W
+/** Every player role in a kind's markets: A backs YES and wins, B backs NO and loses, C sells in the paid window, W
  *  watches, D is alone on a one-sided market, E holds a voided one, F a cancelled one. */
 const ROLES = ["A", "B", "C", "W", "D", "E", "F"] as const;
 type Role = (typeof ROLES)[number];
 /** The bell rows and the player letters each role is owed — the census of §C. */
 const ROWS: Record<Role, string[]> = {
   A: ["BET_PLACED", "SELECTION_CLOSED", "VERDICT", "WIN"], B: ["BET_PLACED", "SELECTION_CLOSED", "VERDICT", "LOSS"],
-  C: ["BET_PLACED", "WIN"], W: ["WATCHLIST", "WATCHLIST"], D: ["BET_PLACED", "VERDICT", "WIN"], E: ["BET_PLACED", "VERDICT", "DEPOSIT"], F: ["BET_PLACED", "DEPOSIT"],
+  // PHOSPHOR-MIGRATION release 2a: a paid early exit carries CASHOUT, never the earned-money WIN kind.
+  C: ["BET_PLACED", "CASHOUT"], W: ["WATCHLIST", "WATCHLIST"], D: ["BET_PLACED", "VERDICT", "REFUND"], E: ["BET_PLACED", "VERDICT", "REFUND"], F: ["BET_PLACED", "REFUND"],
 };
 const LETTERS: Record<Role, string[]> = {
   A: ["bet-placed", "selection-closed", "win"], B: ["bet-placed", "selection-closed", "loss"], C: ["bet-placed", "cashout"], W: [],

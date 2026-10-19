@@ -149,9 +149,11 @@ if (ok("2.0 · the toast variant table is readable", !!warnStyle && !!factualSty
   // Assert the VALUE at each slot, which is the §5b rule the looser form was breaking.
   ok("2.1a · `warning`'s BAR is the AMBER warning family, never gold (Ali's ruling (1), 2026-10-10)",
     /bar:\s*"bg-warning"/.test(warnStyle!) && !/gold|gilt/.test(warnStyle!), "warning is not the amber family — §F's channel rule needs re-deciding");
-  ok("2.1b · …and so is its RAIL, and its glyph the amber ink",
-    // PHOSPHOR-MIGRATION W4 (§8c): a toast states its status, so its glyph is the Fill — the ink is still the amber.
-    /rail:\s*"bg-warning"/.test(warnStyle!) && /<span className="text-warning-fg"><I\.warning s=\{18\} tier="fill" \/><\/span>/.test(warnStyle!),
+  ok("2.1b · …and so is its RAIL, with the warning plate and Fill glyph",
+    // PHOSPHOR-MIGRATION release 2a part 2: IconPlate's warning variant owns the amber ink.
+    /rail:\s*"bg-warning"/.test(warnStyle!) && /plate:\s*"warning"/.test(warnStyle!)
+      && /<I\.warning s=\{plateGlyph\(40\)\} tier="fill" \/>/.test(warnStyle!)
+      && /<IconPlate size=\{40\} variant=\{v\.plate\}/.test(TOAST),
     "warning is not the amber family — §F's channel rule needs re-deciding");
   ok("2.2 · `factual` carries NO tint — the plain rung is the distinction",
     /surface:\s*""/.test(factualStyle!));

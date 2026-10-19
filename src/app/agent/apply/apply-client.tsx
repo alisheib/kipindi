@@ -26,7 +26,8 @@ import { Chip } from "@/components/ui/chip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Callout } from "@/components/ui/callout";
 import { Spinner } from "@/components/ui/spinner";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { useToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
@@ -567,11 +568,9 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview} alt={label} className={`mx-auto mb-1.5 h-[64px] w-auto rounded object-contain transition-opacity ${working ? "opacity-40" : ""}`} />
         ) : (
-          <span className={`mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full ${
-            rejected ? "bg-warning/15 text-warning" : done ? "bg-success/15 text-success" : "bg-bg-overlay text-text-subtle border border-border"
-          }`}>
-            {working ? <Spinner size={14} /> : rejected ? <I.warning s={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.idCard s={14} />}
-          </span>
+          <IconPlate size={40} variant={rejected ? "warning" : done ? "success" : "identity"} className="mx-auto mb-1.5" aria-hidden>
+            {working ? <Spinner size={14} /> : rejected ? <I.warning s={plateGlyph(40)} tier="fill" /> : done ? <I.checkCircle s={plateGlyph(40)} tier="fill" className="g-settle" /> : <I.idCard s={plateGlyph(40)} tier="duo" />}
+          </IconPlate>
         )}
         <span className="block font-display text-body-sm font-semibold text-text">{label}</span>
         {/* The word in its family's INK, as `done`'s is (`text-success-fg`): `text-warning-500` was the amber stop, worn

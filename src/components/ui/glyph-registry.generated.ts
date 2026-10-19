@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.f091570d.svg", admin: "/icons/g/admin.b27adee4.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.90cbb7e8.svg", admin: "/icons/g/admin.b27adee4.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -143,7 +143,7 @@ export const GLYPH_REGISTRY = {
   "qr": { s: "p-qr-code", g: "app", i: { bold: [36, 220] } },
   "receipt": { s: "p-receipt", g: "app", i: { bold: [20, 236], fill: [24, 232], duo: [24, 232] } },
   "reconcile": { s: "p-equals", g: "admin", i: { bold: [28, 228] } },
-  "refund": { s: "p-arrow-u-down-left", g: "app", i: { bold: [19.99, 236] } },
+  "refund": { s: "p-arrow-u-down-left", g: "app", i: { bold: [19.99, 236], duo: [23.99, 232] } },
   "register": { s: "p-notebook", g: "app", i: { bold: [28, 228] } },
   "reports": { s: "p-clipboard-text", g: "admin", i: { bold: [36, 220], fill: [40, 216] } },
   "reserve": { s: "p-lifebuoy", g: "app", i: { bold: [20, 236] } },

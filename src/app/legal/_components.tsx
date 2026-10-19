@@ -7,7 +7,8 @@
  * file with 50pick tokens.
  */
 import { Children, cloneElement, isValidElement, type ReactNode } from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
 import { DotSeq } from "@/components/ui/dot-seq";
@@ -122,7 +123,7 @@ export function LegalHeader({
   eyebrow?: string;
   /** The document's own sigil key (terms `scrollText`, privacy `privacyNotice`, responsible gambling `limits`, the rules
    *  `tippingScales` and Up & Down's `trade`, AML `shieldcheck`, …) — the meaning its doors wear (PHOSPHOR-MIGRATION §8b). */
-  glyph?: keyof typeof I;
+  glyph?: DuoGlyphKey;
 }) {
   const Glyph = glyph ? I[glyph] : null;
   return (
@@ -135,11 +136,9 @@ export function LegalHeader({
       <GiltCorner size={54} rotate={180} ink="var(--claret-400)" className="absolute right-1 bottom-1" />
       <div className="relative z-10 flex items-start gap-3.5">
         {Glyph && (
-          /* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
-             so `h-10` was 80px and out-sized the size={54} GiltCorner it sits under. */
-          <span className="mt-0.5 grid h-[40px] w-[40px] shrink-0 place-items-center rounded-lg border border-border bg-bg-overlay text-text-muted">
-            <Glyph s={20} />
-          </span>
+          <IconPlate size={40} variant="identity" className="mt-0.5" aria-hidden>
+            <Glyph s={plateGlyph(40)} tier="duo" />
+          </IconPlate>
         )}
         {/* ⭐ DG-P-03 (2026-08-30) — THE LEGAL HEADER JOINS `PageHeader`, AND IT WAS THE BIGGEST
             h1 IN THE ROW THAT NOBODY HAD COUNTED. The handover listed four page-level h1s; its

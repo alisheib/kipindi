@@ -93,11 +93,11 @@ export const MUTATIONS = [
   },
   {
     name: "refund-is-filed-as-a-win",
-    why: "a refund is filed under WIN, the misfiling comms-registry already flags as making the production event numbers wrong",
+    why: "a refund is filed under WIN instead of its own money kind",
     file: NS,
     suite: "updown-bell",
     from: `export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
-  return notifyUpDownResult(userId, "DEPOSIT", opts, {`,
+  return notifyUpDownResult(userId, "REFUND", opts, {`,
     to: `export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
   return notifyUpDownResult(userId, "WIN", opts, {`,
   },

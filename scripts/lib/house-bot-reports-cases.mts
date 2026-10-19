@@ -2159,7 +2159,10 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // title, byte for byte, until then and on any failure (`test:message-titles` §C). No house reader, no house word, not a
   // word of any notice moved today; the same measure reproduces 70065688… on the function before the change.
   //   was · notifyVerdictRecordedForMarket 70065688…
-  notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
+  // PHOSPHOR-MIGRATION release 2a part 2: the cancelled-market notice's stored kind changes from DEPOSIT to REFUND;
+  // its three titles, three bodies, and ticket link are unchanged. Re-measured with this exact declaration, so the
+  // no-house-reader and no-house-word controls below still pin its complete body.
+  notifyMarketCancelled: "6c966707df773a2ee236adb8a7847195eea3046f23b1527680e05aec8bd12b3a",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",

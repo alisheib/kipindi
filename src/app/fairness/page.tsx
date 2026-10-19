@@ -7,7 +7,8 @@
  * resolution against its public source.
  */
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph, type DuoGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
@@ -66,7 +67,7 @@ export const dynamic = "force-dynamic";
 // joined by a short vertical rule), so a phone shows every step whole: the fixed-width row
 // cut the third step to "OF" at 360 with no sign it scrolled. From sm up it is the row.
 // The overflow-x-auto wrapper stays only as a safety net.
-function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; highlight?: boolean }[] }) {
+function FairnessChain({ steps }: { steps: { glyph: DuoGlyphKey; label: string; highlight?: boolean }[] }) {
   return (
     <div
       className="overflow-x-auto -mx-1 px-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]"
@@ -77,17 +78,13 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
       <ol className="flex flex-col sm:flex-row sm:items-start sm:min-w-[540px]">
         {steps.map((s, i) => {
           const Glyph = I[s.glyph];
-          const circleCls = s.highlight
-            ? "border-2 border-brand-500 bg-brand-500/10 text-brand-300"
-            : "border border-brand-600 bg-brand-500/10 text-brand-300";
           return (
             <li key={i} className="contents">
               <div className="flex items-center gap-3 text-left sm:w-[104px] sm:shrink-0 sm:flex-col sm:gap-0 sm:text-center">
-                {/* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
-                    so `h-11` was 96px inside this w-[104px] column: 4px of gutter each side. */}
-                <span className={`inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full ${circleCls}`}>
-                  <Glyph s={19} />
-                </span>
+                <IconPlate size={44} variant="identity" aria-hidden
+                  style={s.highlight ? { boxShadow: "inset 0 0 0 2px var(--brand-500)" } : undefined}>
+                  <Glyph s={plateGlyph(44)} tier="duo" />
+                </IconPlate>
                 {/* text-balance: "OFFICER SIGN-OFF" broke at its hyphen, leaving "OFF" alone in the 104px column. */}
                 <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.highlight ? "text-brand-300" : "text-text-subtle"}`}>
                   {keepConnectives(s.label)}

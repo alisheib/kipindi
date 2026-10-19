@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { WhatsAppMark } from "@/components/ui/social-marks";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -131,9 +132,9 @@ export function ShareButton({
                       plates behind a 16px glyph — the whole row is the tap target —
                       so 36px is right and no tap floor applies to the tile itself.
                       ⛔ Never scale tokens here. */}
-                  <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-brand-500/15 text-brand-300">
-                    <I.share s={16} />
-                  </span>
+                  <IconPlate size={36} variant="identity" aria-hidden>
+                    <I.share s={plateGlyph(36)} />
+                  </IconPlate>
                   <span>
                     <span className="block text-[14px] font-semibold text-text">{t.dialog.systemShare}</span>
                     <span className="block text-[12px] text-text-muted">{t.dialog.pickAnyApp}</span>
@@ -152,9 +153,9 @@ export function ShareButton({
                     BETTING pair, which §B2a forbids for a non-money meaning, and green means
                     *won* on this platform. The vendor's own `#25D366` lives in the mark now, so
                     the plate has nothing left to tint. */}
-                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-bg-overlay">
+                <IconPlate size={36} variant="identity" aria-hidden>
                   <WhatsAppMark s={18} />
-                </span>
+                </IconPlate>
                 <span>
                   <span className="block text-[14px] font-semibold text-text">WhatsApp</span>
                   <span className="block text-[12px] text-text-muted">{t.dialog.sendToChat}</span>
@@ -165,9 +166,9 @@ export function ShareButton({
                 onClick={onCopy}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
-                <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-md bg-bg-overlay text-text-muted">
-                  {copied ? <I.check s={16} /> : <I.link s={16} />}
-                </span>
+                <IconPlate size={36} variant="identity" aria-hidden>
+                  {copied ? <I.checkCircle s={plateGlyph(36)} tier="fill" /> : <I.link s={plateGlyph(36)} />}
+                </IconPlate>
                 {/* ⚠️ `min-w-0` — a flex child defaults to `min-width: auto`, so an unbreakable
                     URL sets the FLOOR for this column and pushes the tile wider than the
                     dialog. The plate beside it is `shrink-0` for the same reason, from the

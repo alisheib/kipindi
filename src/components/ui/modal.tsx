@@ -31,7 +31,8 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Spinner } from "@/components/ui/spinner";
 import { haptics } from "@/lib/haptics";
 import { useModalLock } from "@/lib/use-modal-lock";
@@ -882,20 +883,12 @@ export function ConfirmModal({
       showClose={false}
     >
       <div className="mb-3 flex items-start gap-3">
-        {/* 36px tone medallion — ARBITRARY LITERAL. The spacing scale is OVERRIDDEN
-            (tailwind.config.ts:200-215), so `h-9 w-9` was a 64px disc beside a 15px
-            headline. ⛔ Never a scale token here. (Distinct from the 48px close ✕
-            below, which is deliberately 48 and must not be shrunk to match this.) */}
-        <span
-          className="mt-0.5 shrink-0 inline-flex h-[36px] w-[36px] items-center justify-center rounded-full"
-          style={{
-            background: `color-mix(in oklab, ${ink.ring} 15%, transparent)`,
-            color: ink.ink,
-            border: `1px solid color-mix(in oklab, ${ink.ring} 30%, transparent)`,
-          }}
-        >
-          {icon ?? <I.warning s={18} />}
-        </span>
+        <IconPlate size={36} className="mt-0.5" aria-hidden
+          bg={`color-mix(in oklab, ${ink.ring} 15%, transparent)`}
+          fg={ink.ink}
+          border={`1px solid color-mix(in oklab, ${ink.ring} 30%, transparent)`}>
+          {icon ?? <I.warning s={plateGlyph(36)} tier="fill" />}
+        </IconPlate>
         <div className="min-w-0 flex-1">
           <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
             {effectiveEyebrow}

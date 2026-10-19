@@ -31,7 +31,21 @@ Railway (`?dpl=e4b148a05`, new sprite 200 on all three); `/api/health` reports t
 `qa:chunks-prod` passed 6/6 on both public origins (152 GETs each); production `qa:live` passed 363/363. Signed-out
 production home and help pages were inspected at phone and desktop in all three languages, with no overflow. The
 signed-in player pages were inspected in the local browser; production's `mobile01` sign-in was not authorized.
-**Resume:** release 2a part 2, then the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
+**Release 2a, part 2 LIVE at `e30d599cb` (2026-10-19):** the hand-over's remaining plates are in place. Ali chose
+ledger-type glyphs for wallet history, the royal staff plate in both shells, and status-specific plates for deposit
+notices. Refunds now carry their own notification kind; historic rows are recognised by their exact stored titles
+without rewriting production data. Filled local rows exposed a second old WIN mislabel: free exits (returned stake)
+and paid early exits. New free exits carry REFUND, paid exits carry CASHOUT, and old WIN rows render by their exact title;
+the returned stake no longer wears a gold win plate. The full `test:all` battery at that commit passed 606/614; seven
+failures are the named main failures below, and one was a stale test fixture expecting a paid cashout to be a WIN. The
+fixture correction's `red:message-titles` caught 12/12 plants; `test:message-titles` passed 67/67 in each store, and
+`test:red-anchors` passed. The exact release passed typecheck, `next build`, local `qa:live` (386/386), and the changed
+player routes' responsive checks (1,620 passing assertions). The www, apex and Railway hosts served the release SHA,
+health reported the database reachable and migrated, both public chunk checks passed (6/6 routes, 152 GETs each),
+production `qa:live` passed 362/362, and 36 production tiles across three languages and two widths were captured.
+Production player sign-in was not authorized; signed-in states were inspected on a seeded local server.
+**Resume:** ship the test-fixture follow-up, complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the
+hand-over). W5 is partly landed; its remaining sites belong to release 2c.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
@@ -247,7 +261,7 @@ keeping the house family and adding Duotone/Fill tiers; **Ali chose Phosphor**).
 | R-BADGES | **6A** — the profile badge medallions keep their hand-drawn art: identity art like the brand mark, outside the Phosphor family |
 | R-ONE-SOURCE | *"we need to have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"* (Ali, 2026-10-17, during W2) — ONE source: the family `I`. An icon it lacks becomes a key in `scripts/glyphs/map.ts` (or a house extra) before any page draws it; a design delivered for a page is built from the keys, never from its own drawings. AGENTS.md §7, DESIGN_AUTHORITY §K3 and the design master brief state it; `test:glyph-source` §3/§5/§6 hold its three doors (inline `<svg>`, SVG data URIs, images under `public/`) |
 | R-WALLET-HISTORY | *"Use type-specific glyphs"* (Ali, 2026-10-19) — each wallet-history row names its stored transaction type with the family's glyph; unresolved types stay neutral |
-| R-STAFF-PLATE | *"Use royal identity plate"* (Ali, 2026-10-19) — the classic staff-menu row joins the journey row; gold stays reserved for earned money and status |
+| R-STAFF-PLATE | *"Use royal identity plate"* (Ali, 2026-10-19) — the classic staff-menu row joins the journey row; gold remains the money accent |
 | R-DEPOSIT-PLATE | *"Use status-specific plates"* (Ali, 2026-10-19) — a failed, held, processing or under-review deposit notification must not wear the successful deposit's green plate; its plate follows its actual stored notice status |
 
 **W0's answers** — Ali, 2026-10-17, after opening the specimen: *"good i saw them proceed oerfcetly syroe anuthgi enede

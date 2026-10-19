@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { hangCjkMarks } from "@/lib/cjk-marks";
@@ -42,9 +43,6 @@ import { NotFoundMark } from "@/components/ui/not-found-mark";
  */
 
 const CARD = "group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]";
-/* ⚠️ LITERALS, not `h-7 w-7` — the spacing scale is overridden (tailwind.config.ts), so `h-7` IS 40px; written as what
-   it renders, so nothing moves and `test:ui-consistency`'s numeric-size rule has nothing to baseline. */
-const PLATE = "mb-2 inline-flex h-[40px] w-[40px] items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors";
 const LABEL = "font-display text-[13px] font-semibold text-text";
 
 export function NotFoundView({
@@ -75,14 +73,10 @@ export function NotFoundView({
       </div>
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
-        <div
-          /* ⚠️ LITERALS, not `h-11 w-11` — `h-11` renders 96px on the overridden scale, a medallion that rivalled the
-             size={64} mark above it. */
-          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
-          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
-        >
-          <I.search s={19} />
-        </div>
+        <IconPlate size={44} variant="identity" className="mb-3 mt-5" aria-hidden
+          style={{ boxShadow: "var(--edge-lit), 0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}>
+          <I.search s={plateGlyph(44)} tier="duo" />
+        </IconPlate>
         <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
           {words.notFoundCode} · {words.notFound}
         </p>
@@ -97,21 +91,21 @@ export function NotFoundView({
             word each, so three across at 320 gives each ~90px of an ~48px word and turns 304px into one row. */}
         <nav aria-label={recoveryLabel} className="mt-6 grid w-full max-w-[420px] grid-cols-3 gap-2.5">
           <Link href="/" className={CARD}>
-            <span className={PLATE}>
-              <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
-            </span>
+            <IconPlate size={40} variant="identity" className="mb-2 transition-colors group-hover:text-brand-300" aria-hidden>
+              <I.arrowLeft s={plateGlyph(40)} />
+            </IconPlate>
             <p className={LABEL}>{words.home}</p>
           </Link>
           <Link href="/markets" className={CARD}>
-            <span className={PLATE}>
-              <I.markets s={13} />
-            </span>
+            <IconPlate size={40} variant="identity" className="mb-2 transition-colors group-hover:text-brand-300" aria-hidden>
+              <I.markets s={plateGlyph(40)} tier="duo" />
+            </IconPlate>
             <p className={LABEL}>{words.markets}</p>
           </Link>
           <Link href="/help" className={CARD}>
-            <span className={PLATE}>
-              <I.info s={13} />
-            </span>
+            <IconPlate size={40} variant="identity" className="mb-2 transition-colors group-hover:text-brand-300" aria-hidden>
+              <I.headset s={plateGlyph(40)} tier="duo" />
+            </IconPlate>
             <p className={LABEL}>{words.help}</p>
           </Link>
         </nav>

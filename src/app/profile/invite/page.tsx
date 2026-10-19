@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
@@ -391,9 +391,10 @@ export default async function InvitePage({
                         the propose promo carry. */}
                     <IconPlate
                       size={26}
-                      className="bg-brand-500/10 text-brand-300"
+                      variant="identity"
+                      aria-hidden
                     >
-                      <PIcon s={14} />
+                      <PIcon s={plateGlyph(26)} tier="duo" />
                     </IconPlate>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium leading-snug">{locale === "sw" ? p.sw : p.en}</p>

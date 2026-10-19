@@ -17,7 +17,8 @@
  * - Stack of up to 4 visible at once (oldest dropped on overflow, timer cleared)
  */
 import * as React from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate, type PlateVariant } from "@/components/ui/icon-plate";
 import { cn } from "@/lib/utils";
 import { moneyRuns } from "@/lib/fill-nodes";
 import { haptics } from "@/lib/haptics";
@@ -493,10 +494,11 @@ export function useDeferredToast(pending: boolean) {
  * literals, no `bg-bg-elevated` (which was dead anyway: an inline
  * `--bg-elevated2` override painted over it), no rung-1 `--shadow-card`.
  */
-const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
+const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; plate: PlateVariant; surface: string; rail: string }> = {
   default: {
     bar: "bg-brand-300",
-    icon: <span className="text-brand-300"><I.checkCircle s={18} tier="fill" /></span>,
+    icon: <I.checkCircle s={plateGlyph(40)} tier="fill" />,
+    plate: "info",
     surface: "mat-tint-brand",
     rail: "bg-brand-300",
   },
@@ -521,7 +523,8 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
    */
   success: {
     bar: "bg-success",
-    icon: <span className="text-success-fg"><I.checkCircle s={18} tier="fill" /></span>,
+    icon: <I.checkCircle s={plateGlyph(40)} tier="fill" />,
+    plate: "success",
     surface: "mat-tint-success",
     rail: "bg-success",
   },
@@ -532,7 +535,8 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
      variant: a slip the player can fix is the `factual` toast (DESIGN_AUTHORITY F2, F3). */
   warning: {
     bar: "bg-warning",
-    icon: <span className="text-warning-fg"><I.warning s={18} tier="fill" /></span>,
+    icon: <I.warning s={plateGlyph(40)} tier="fill" />,
+    plate: "warning",
     surface: "mat-tint-warn",
     rail: "bg-warning",
   },
@@ -542,14 +546,16 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
      lost bet, so a retune of the betting ramp repainted every error in the product. */
   danger: {
     bar: "bg-danger",
-    icon: <span className="text-danger-fg"><I.alertCircle s={18} tier="fill" /></span>,
+    icon: <I.alertCircle s={plateGlyph(40)} tier="fill" />,
+    plate: "danger",
     surface: "mat-tint-danger",
     rail: "bg-danger",
   },
   gold: {
     bar: "bg-gold-500",
     // A money moment: the won seal, solid, as a won ticket and a WIN notification draw it (PHOSPHOR-MIGRATION §8c).
-    icon: <span className="text-gold-300"><I.resolved s={18} tier="fill" /></span>,
+    icon: <I.resolved s={plateGlyph(40)} tier="fill" />,
+    plate: "gold",
     surface: "mat-tint-gilt",
     rail: "bg-gold-500",
   },
@@ -572,7 +578,8 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
     bar: "bg-text-muted",
     // ⛔ LINE, NOT FILL: every other toast states its status in Fill (PHOSPHOR-MIGRATION §8c), and this one carries a
     // settled loss — quiet, as a loss is bookkeeping (§M7).
-    icon: <span className="text-text-secondary"><I.info s={18} /></span>,
+    icon: <I.info s={plateGlyph(40)} />,
+    plate: "quiet",
     // Deliberately NO tint — the plain rung IS the material distinction between
     // "here is information" and a coloured state (M7: losses get the receipt).
     surface: "",
@@ -747,10 +754,9 @@ function ToastItem({ toast, exiting, onDismiss, onPause, onResume }: { toast: To
       <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", v.rail)} aria-hidden />
 
       <div className="flex items-start gap-3 py-3 pl-4 pr-8">
-        <div className="mt-0.5 shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border/40"
-             style={{ background: "var(--bg-inset)" }}>
+        <IconPlate size={40} variant={v.plate} className="mt-0.5" aria-hidden>
           {v.icon}
-        </div>
+        </IconPlate>
         <div className="min-w-0 flex-1">
           {/* Kit toast-title 13px / 600 / -2px margin.
               ⭐ EVERY AMOUNT A TOAST STATES IS AN `.amount` (DESIGN_AUTHORITY §M4: mono, untracked, never reflowed),

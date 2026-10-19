@@ -73,7 +73,8 @@
  * filled when the outcome arrives (§A7).
  */
 import Link from "next/link";
-import { I, type FillGlyphKey } from "@/components/ui/glyphs";
+import { I, plateGlyph, type FillGlyphKey } from "@/components/ui/glyphs";
+import { IconPlate, type PlateVariant } from "@/components/ui/icon-plate";
 import { Button } from "@/components/ui/button";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { useT } from "@/lib/i18n";
@@ -86,23 +87,23 @@ import { useRefreshOnReturn, useResendEmailLink } from "@/lib/use-email-confirm"
 
 const TONE = {
   /** Nothing has gone wrong; there is simply a step to take. Brand blue, not red. */
-  neutral: { ring: "border-brand-600/60", ink: "text-brand-300", wash: "bg-brand-500/10" },
+  neutral: { ring: "border-brand-600/60", ink: "text-brand-300", plate: "info" },
   /** We are the ones they are waiting on. Calm, informational, explicitly reassuring. */
-  waiting: { ring: "border-royal-600/60", ink: "text-royal-300", wash: "bg-royal-500/10" },
+  waiting: { ring: "border-royal-600/60", ink: "text-royal-300", plate: "info" },
   /** Their move, and a specific one. Amber says "your turn" without claiming a fault.
    *  ⛔ AMBER IS THE WARNING FAMILY, NOT THE MONEY RAMP (R5-C, the second gold audit, 2026-10-09): this read `--gold-700`
    *  / `--gold-300` / `--gold-500`, the tokens money owns (Q5). It is `held`'s family below and the Callout's warning —
    *  §B11's amber, "somebody must act". (Its `--warning-fg` was `--gilt` until the owner re-hued the family on
    *  2026-10-10 — Ali's ruling (1): warnings are amber, not gold.) */
-  action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
+  action:  { ring: "border-warning-border", ink: "text-warning-fg", plate: "warning" },
   /** A decision went against them. Honest in red — the CTA names the next step.
    *  ⛔ The APP-STATE danger family (the kit Callout's danger tone, verbatim), never the betting NO
    *  red — DESIGN_AUTHORITY §B2a keeps that ink for the NO side of a stake (2026-09-13). */
-  refused: { ring: "border-danger-500/50", ink: "text-danger-fg", wash: "bg-danger-500/10" },
+  refused: { ring: "border-danger-500/50", ink: "text-danger-fg", plate: "danger" },
   /** Money is held on this account (2026-09-14). The kit Callout's warning tone, verbatim — amber
    *  app-state ink, the same family the page's own hold line uses; never the betting pair. */
-  held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
-} as const;
+  held:    { ring: "border-warning-border", ink: "text-warning-fg", plate: "warning" },
+} as const satisfies Record<string, { ring: string; ink: string; plate: PlateVariant }>;
 
 /**
  * Every state this panel draws: the shared ones (`KycPanelState` — the six identity states, `frozen`, `email`), plus
@@ -251,15 +252,10 @@ export function KycGatePanel({
       data-kyc-email={emailOnly || emailStep ? "owed" : undefined}
       className={`rounded-xl border ${tone.ring} bg-bg-elevated text-center p-6`}
     >
-      <span
-        aria-hidden
-        /* ⛔ LITERALS, NOT SCALE TOKENS — `theme.extend.spacing` is overridden
-           (tailwind.config.ts), so `h-10 w-10` renders 80×80px. 40px = --tap-min. */
-        className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full ${tone.wash} ${tone.ink}`}
-      >
+      <IconPlate size={40} variant={tone.plate} className="mx-auto" aria-hidden>
         {/* The plate states where the check stands, so its glyph is the Fill (PHOSPHOR-MIGRATION §8c). */}
-        <Glyph s={18} tier="fill" />
-      </span>
+        <Glyph s={plateGlyph(40)} tier="fill" />
+      </IconPlate>
       <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${copy.stateWord ? tone.ink : "text-text-subtle"}`}>{copy.eyebrow}</p>
       {/* 2026-09-14 — the title is balanced like the lines under it: "We're checking your / documents" left one word
           alone at 360. In zh the body and caption break only at punctuation (keep-all), because a balanced 42ch
