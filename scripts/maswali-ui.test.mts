@@ -894,6 +894,12 @@ const DRIVE = "scripts/maswali-player-drive.mjs";
 const driveDefects = (src: string) => {
   const d: string[] = [];
   const whole = squash(code(src));
+  const openStart = whole.indexOf("async function open(page, path) {");
+  const openEnd = whole.indexOf("const tile =", openStart);
+  const open = openStart < 0 || openEnd < 0 ? "" : whole.slice(openStart, openEnd);
+  if (!open.includes('await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});')) {
+    d.push("open has no bounded quiet attempt before state reads");
+  }
   const tileStart = whole.indexOf("const tile = async (page, name) => {");
   const tileEnd = whole.indexOf("const notFoundShown", tileStart);
   const tile = tileStart < 0 || tileEnd < 0 ? "" : whole.slice(tileStart, tileEnd);
@@ -929,6 +935,8 @@ const plantDrive = (from: string, to: string) => {
 {
   const d = driveDefects(read(DRIVE));
   ok("11.1 · every tile waits for fonts, finite animations, their completion and two frames before capture; pick 15 loses hover", d.length === 0, d.join(" | "));
+  const slowOpen = driveDefects(plantDrive('await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});', 'await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});'));
+  ok("11.1a · CONTROL · a minute-long quiet wait before each state read is reported", slowOpen.includes("open has no bounded quiet attempt before state reads"), slowOpen.join(" | "));
   const noFonts = driveDefects(plantDrive("    await document.fonts.ready;", "    void document.fonts.ready;"));
   ok("11.2 · CONTROL · a tile that does not await fonts is reported", noFonts.includes("tile waits for fonts"), noFonts.join(" | "));
   const looping = driveDefects(plantDrive("document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity)", "document.getAnimations()"));
@@ -947,6 +955,6 @@ const plantDrive = (from: string, to: string) => {
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. §3.1 and §4.3 each run a small case table. */
-const MIN_ASSERTIONS = 112; // 2026-10-19 green run: 100 through §9, five in §10, seven in §11
+const MIN_ASSERTIONS = 113; // 2026-10-19 green run: 100 through §9, five in §10, eight in §11
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

@@ -74,7 +74,9 @@ async function contextWith(cookies, viewport = { width: 360, height: 780 }) {
 }
 async function open(page, path) {
   const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-  await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
+  // The signed-in shell's long poll can hold a request open for a minute. The drive reads page state and settles each
+  // screenshot explicitly below; an eight-second quiet attempt catches ordinary loading without stalling every step.
+  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
   return res;
 }
 /** A tile of the page AT REST (S5 VIS, the lead's ruling of 2026-10-19): the webfonts, every running animation and
