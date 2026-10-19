@@ -285,15 +285,26 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   const act = await import("../../src/lib/server/activity-summary.ts");
   const { auditFlush, getAuditForTarget } = await import("../../src/lib/server/audit.ts");
   const desks = W.w.dal.houseBotStore;
-  const realLookup = desks.findLiveByUserId;
-  /** R10b's fault, declared: the desk lookup throws — for every account, or only for `only`. `realDesk` puts it back. */
+  const realSingleLookup = desks.findLiveByUserId;
+  const realBatchLookup = desks.findLiveByUserIds;
+  /** R10b's fault reaches the purchase's single lookup and settlement's batched lookup. */
   const blindDesk = (only?: string) => {
     desks.findLiveByUserId = async (id: string, tx?: unknown) => {
       if (!only || id === only) throw new Error("injected: the desk lookup could not be read");
-      return realLookup.call(desks, id, tx);
+      return realSingleLookup.call(desks, id, tx);
     };
+    desks.findLiveByUserIds = async (ids: readonly string[], tx?: unknown) =>
+      (await realBatchLookup.call(desks, ids, tx)).map((r: { userId: string; outcome: string }) =>
+        !only || r.userId === only ? { ...r, outcome: "unreadable" as const } : r);
   };
-  const realDesk = () => { desks.findLiveByUserId = realLookup; };
+  const missingDesk = (only: string) => {
+    desks.findLiveByUserIds = async (ids: readonly string[], tx?: unknown) =>
+      (await realBatchLookup.call(desks, ids, tx)).filter((r: { userId: string }) => r.userId !== only);
+  };
+  const failedBatch = () => {
+    desks.findLiveByUserIds = async () => { throw new Error("injected: batched desk checks unavailable"); };
+  };
+  const realDesk = () => { desks.findLiveByUserId = realSingleLookup; desks.findLiveByUserIds = realBatchLookup; };
   const setRollout = (state: string) => { process.env.FEATURE_MILLIONEA = state; };
   /**
    * ⚠️ A FIXTURE OF TIME, declared (the world's `backdate`, widened): a ticket bought `byMs` ago — its ticket row, its
@@ -438,6 +449,16 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   const clean = await W.settle.previewMaswaliSettlement(D.id, atD);
   ok("R10b.4 · with every desk check readable, the preview holds no winner (control)", clean.ok && clean.preview.winners === 2 && clean.preview.held === 0,
     clean.ok ? J({ winners: clean.preview.winners, held: clean.preview.held }) : clean.error);
+  let missing: any;
+  try { missingDesk(uHold); missing = await W.settle.previewMaswaliSettlement(D.id, atD); } finally { realDesk(); }
+  ok("R10b.4b · an omitted per-user desk outcome holds exactly one winner (fail closed)",
+    missing.ok && missing.preview.winners === 2 && missing.preview.held === 1,
+    missing.ok ? J({ winners: missing.preview.winners, held: missing.preview.held }) : missing.error);
+  let failed: any;
+  try { failedBatch(); failed = await W.settle.previewMaswaliSettlement(D.id, atD); } finally { realDesk(); }
+  ok("R10b.4c · a failed batched desk check holds both winners (fail closed)",
+    failed.ok && failed.preview.winners === 2 && failed.preview.held === 2,
+    failed.ok ? J({ winners: failed.preview.winners, held: failed.preview.held }) : failed.error);
   const holdBefore = (await W.bal(uHold)).balance;
   let rel: any;
   try { blindDesk(uHold); rel = await W.release(D.id, atD); } finally { realDesk(); }

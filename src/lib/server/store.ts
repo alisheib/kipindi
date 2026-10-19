@@ -2837,6 +2837,16 @@ const memoryDb = {
       const id = store.walletsByUser.get(userId);
       return id ? store.wallets.get(id) ?? null : null;
     },
+    /** Read a set of payees before any settlement write; missing wallets are omitted for the caller to refuse. */
+    findByUserIds: (userIds: readonly string[], _tx?: unknown): StoredWallet[] => {
+      const out: StoredWallet[] = [];
+      for (const userId of new Set(userIds)) {
+        const id = store.walletsByUser.get(userId);
+        const wallet = id ? store.wallets.get(id) : null;
+        if (wallet) out.push(wallet);
+      }
+      return out;
+    },
     /** All wallets — analytics only (wallet liability total). */
     listAll: (): StoredWallet[] => Array.from(store.wallets.values()),
     create: (w: StoredWallet) => { store.wallets.set(w.id, w); store.walletsByUser.set(w.userId, w.id); return w; },

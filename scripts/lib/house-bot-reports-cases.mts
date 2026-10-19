@@ -1002,8 +1002,10 @@ if (STORE === "memory") {
     // 2026-10-18 · MASWALI-BUILD S7-F4 asks the stale slip again inside the purchase's market lock (six lines above the buy
     // write): maswali-money-service.ts's two sites move 449→455 and 574→580, each nine-line write SHA-256-identical to
     // 1b8744e8's (CR stripped). No other site moves.
+    // 2026-10-19 · S7's 7,000-winner repair changes the settlement payout to `txn.createMany` with the marker copied
+    // from the same position in its row literal. Its site is now 399; the unchanged forfeit site moves to 694.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:382", "maswali-settlement.ts:679", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:399", "maswali-settlement.ts:694", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2

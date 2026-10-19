@@ -2346,6 +2346,16 @@ export const prismaDb = {
       const w = await (tx ?? pc()).wallet.findUnique({ where: { userId } });
       return w ? toStoredWallet(w) : null;
     },
+    /** Bounded payee pre-read for a whole Millionea release, on the joined money transaction. */
+    findByUserIds: async (userIds: readonly string[], tx?: Prisma.TransactionClient | null): Promise<StoredWallet[]> => {
+      const unique = [...new Set(userIds)];
+      const out: StoredWallet[] = [];
+      for (let i = 0; i < unique.length; i += 5_000) {
+        const rows = await (tx ?? pc()).wallet.findMany({ where: { userId: { in: unique.slice(i, i + 5_000) } } });
+        for (const row of rows) out.push(toStoredWallet(row));
+      }
+      return out;
+    },
     listAll: async (): Promise<StoredWallet[]> => {
       const rows = await pc().wallet.findMany();
       return rows.map(toStoredWallet);

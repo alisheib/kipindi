@@ -152,6 +152,43 @@ console.log("\n§4 · (c) 1,500 tickets with 7 winners");
     && ((await W.w.svc.listPositionsForMarket(week.marketId)) as any[]).filter((x) => x.status === "LOSS").length === 1_493);
 }
 
+// ── §4b · the batched payee pre-read refuses before the memory store's first write ──────────────
+console.log("\n§4b · a missing winner wallet aborts the whole release before its carry claim");
+{
+  const { week, start } = await W.openWeek({ weeksAhead: ahead++ });
+  const winners = await sellWeek(week.id, 24, 2);
+  const before = await Promise.all(winners.map(bal));
+  const poolBefore = await W.balanceOf(acct.pool(week.marketId));
+  const jackpotBefore = await jackpot(), guaranteeBefore = await guarantee();
+  const at = await W.closeAndSeal(week, start);
+  const preview = await settle.previewMaswaliSettlement(week.id, at);
+  const realFind = W.db.wallet.findByUserIds;
+  W.db.wallet.findByUserIds = async (...args: any[]) =>
+    (await realFind.apply(W.db.wallet, args)).filter((wallet: any) => wallet.userId !== winners[1]);
+  let refused: any;
+  try {
+    refused = preview.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: preview.preview.digest, now: at }) : preview;
+  } finally {
+    W.db.wallet.findByUserIds = realFind;
+  }
+  const still = await dal.weekStore.get(week.id);
+  const positions = await W.w.svc.listPositionsForMarket(week.marketId);
+  const tickets = await dal.ticketStore.listForWeek(week.id);
+  ok("4b.1 · ⛔ a missing payee is refused before the carry or any winner mark is written",
+    !refused.ok && /MISSING:/.test(errOf(refused)) && still.state === "RESOLVING" && still.rolloverIn === null
+      && positions.every((p: any) => p.status === "OPEN") && tickets.every((t: any) => t.status === "LIVE"),
+    J({ refusal: errOf(refused), state: still.state, rolloverIn: still.rolloverIn }));
+  ok("4b.2 · ⛔ the refused release leaves both wallets, the pool, jackpot and guarantee unchanged",
+    (await Promise.all(winners.map(bal))).every((v, i) => v === before[i])
+      && (await W.balanceOf(acct.pool(week.marketId))) === poolBefore
+      && (await jackpot()) === jackpotBefore && (await guarantee()) === guaranteeBefore);
+  const recovered = await W.release(week.id, at);
+  const share = recovered.ok && recovered.preview.arithmetic.kind === "PAYOUT" ? recovered.preview.arithmetic.share : 0;
+  ok("4b.3 · the same week then releases once, with one payout and the full share per winner",
+    recovered.ok && recovered.week.state === "SETTLED" && share > 0
+      && (await Promise.all(winners.map(bal))).every((v, i) => v - before[i] === share), errOf(recovered));
+}
+
 // ── §5 · (d) a void leaves R untouched; the chain waits for it ──────────────
 console.log("\n§5 · (d) a void refunds and leaves the carry where it is");
 {
@@ -678,25 +715,36 @@ console.log("\n§11 · the sunset (MR-30, OD-03)");
   const before = await Promise.all(top.map(bal));
   const at = await W.closeAndSeal(week, start);
   const p = await settle.previewMaswaliSettlement(week.id, at);
-  // ⭐ R9 · THE BULK SHAPE, counted on the store's own calls: ONE settleMaswaliWinners call moves all 300 positions, no
-  //    position is written one by one, and the wallets are credited once per winning PLAYER (30), never once per ticket.
+  // ⭐ R9 · THE BULK SHAPE, counted on the store's own calls: one position update, one credit of 30 players, one
+  //    insert of 300 ticket payout rows, and no direct per-player wallet adjustment from settlement. The memory DAL's
+  //    implementation of creditMany may call adjust internally; that is one store call, not 30 settlement calls.
   const ps = W.w.mdal.positionStore, wal = W.db.wallet;
-  const calls = { winners: 0, winnerIds: 0, sets: 0, adjusts: 0 };
+  const calls = { winners: 0, winnerIds: 0, sets: 0, adjusts: 0, credits: 0, creditUsers: 0, inserts: 0, payoutRows: 0 };
+  let insideCreditMany = false; // the memory DAL implements its one bulk call using adjust internally
   const realWinners = ps.settleMaswaliWinners, realSet = ps.set, realAdjust = wal.adjust;
+  const realCredit = wal.creditMany, realTxnMany = W.db.txn.createMany;
   ps.settleMaswaliWinners = (...args: any[]) => { calls.winners++; calls.winnerIds += args[1].length; return realWinners.apply(ps, args); };
   ps.set = (...args: any[]) => { calls.sets++; return realSet.apply(ps, args); };
-  wal.adjust = (...args: any[]) => { calls.adjusts++; return realAdjust.apply(wal, args); };
+  wal.adjust = (...args: any[]) => { if (!insideCreditMany) calls.adjusts++; return realAdjust.apply(wal, args); };
+  wal.creditMany = async (...args: any[]) => {
+    calls.credits++; calls.creditUsers += args[0].length;
+    insideCreditMany = true;
+    try { return await realCredit.apply(wal, args); }
+    finally { insideCreditMany = false; }
+  };
+  W.db.txn.createMany = (...args: any[]) => { calls.inserts++; calls.payoutRows += args[0].length; return realTxnMany.apply(W.db.txn, args); };
   const t0 = Date.now();
   let r: any;
   try {
     r = p.ok ? await settle.settleMaswaliWeek({ weekId: week.id, releasedBy: RELEASER, digest: p.preview.digest, now: at }) : p;
   } finally {
-    ps.settleMaswaliWinners = realWinners; ps.set = realSet; wal.adjust = realAdjust;
+    ps.settleMaswaliWinners = realWinners; ps.set = realSet; wal.adjust = realAdjust; wal.creditMany = realCredit; W.db.txn.createMany = realTxnMany;
   }
   const ms = Date.now() - t0;
   console.log(`      R9 · the release of ${TOP} winners took ${ms} ms on ${STORE}`);
-  ok("R9.6 · ⭐ the bulk shape, counted: ONE settleMaswaliWinners call moves all 300 positions, none is written one by one, 30 credits pay 30 players",
-    r.ok && calls.winners === 1 && calls.winnerIds === TOP && calls.sets === 0 && calls.adjusts === TOP / EACH, J(calls));
+  ok("R9.6 · ⭐ the bulk shape, counted: one position update, one 30-player credit, one 300-row payout insert, no direct per-player adjusts",
+    r.ok && calls.winners === 1 && calls.winnerIds === TOP && calls.sets === 0 && calls.adjusts === 0
+      && calls.credits === 1 && calls.creditUsers === TOP / EACH && calls.inserts === 1 && calls.payoutRows === TOP, J(calls));
   const a = p.ok ? p.preview.arithmetic : null;
   const J0 = R + (TOP + LOW) * 1_000;
   const F = Math.round(0.13 * J0);

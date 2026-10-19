@@ -41,7 +41,7 @@ import { snapshotOrLegacy } from "./market-config";
 import { houseBotStore } from "./house-bot-dal";
 import { isStaffRole } from "./roles";
 import { randomId } from "./crypto";
-import { db } from "./store";
+import { db, type StoredTxn, type StoredUser } from "./store";
 import { prisma, hasDatabase } from "./prisma";
 import { currentFreezeReasons } from "@/lib/wallet-freeze-reasons";
 import { addWalletFreeze, removeWalletFreeze } from "./wallet-freeze";
@@ -54,6 +54,8 @@ import { formatTzs } from "@/lib/utils";
 type Refused = { ok: false; error: string };
 const refuse = (error: string): Refused => ({ ok: false, error });
 const SYSTEM = "system_maswali";
+/** Ledger entries are emitted as balanced pairs; keep each insert bounded inside the one money transaction. */
+const LINES_PER_POST = 2_000;
 
 /** Why a winning share is held for Compliance (MB-43), or null when it is paid free. */
 export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed" | "deposit under review" | "deposit check unreadable";
@@ -92,18 +94,13 @@ export type MaswaliSettlementPreview = {
 };
 
 /** A hold an account carries at settlement, re-checked from the stored rows (MB-43). */
-async function holdFor(userId: string): Promise<HoldReason | null> {
-  const user = await db.user.findById(userId);
+function holdFor(user: StoredUser | null, desk: "designated" | "clear" | "unreadable" | undefined): HoldReason | null {
   if (!user) return "account closed";
   if (isStaffRole(user.role)) return "staff account";
   // R10b · fail CLOSED: a desk check that cannot be read holds the share (Compliance releases it), never pays it free
   // because the lookup failed — and says so in its own words, never as a desk designation the account may not have.
-  const desk = await houseBotStore.findLiveByUserId(userId).catch((err: unknown) => {
-    console.error("[maswali-settlement] a winner's desk check could not be read, so the share is held:", (err as Error)?.message ?? err);
-    return "unreadable" as const;
-  });
-  if (desk === "unreadable") return "desk check unreadable";
-  if (desk) return "house desk account";
+  if (desk === "unreadable" || desk === undefined) return "desk check unreadable";
+  if (desk === "designated") return "house desk account";
   if (user.status === "SUSPENDED") return "account suspended";
   if (user.status === "CLOSED") return "account closed";
   return null;
@@ -200,8 +197,19 @@ async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: t
   const guaranteeHeld = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (guaranteeHeld === null) return refuse("The guarantee balance could not be read, so the settlement could not be prepared.");
 
-  const winners: Winner[] = [], disputed = await depositHolds(winnersGraded.map((g) => g.ticket.userId));
-  for (const g of winnersGraded) winners.push({ ...g, hold: (await holdFor(g.ticket.userId)) ?? disputed(g.ticket.userId) });
+  const winnerIds = [...new Set(winnersGraded.map((g) => g.ticket.userId))];
+  const users: StoredUser[] = [];
+  for (let i = 0; i < winnerIds.length; i += 5_000) users.push(...await db.user.findByIds(winnerIds.slice(i, i + 5_000)));
+  const userOf = new Map(users.map((user) => [user.id, user]));
+  const deskOutcomes = await houseBotStore.findLiveByUserIds(winnerIds).catch((err: unknown) => {
+    console.error("[maswali-settlement] winner desk checks could not be read, so their shares are held:", (err as Error)?.message ?? err);
+    return winnerIds.map((userId) => ({ userId, outcome: "unreadable" as const }));
+  });
+  const deskOf = new Map(deskOutcomes.map((r) => [r.userId, r.outcome]));
+  const disputed = await depositHolds(winnerIds);
+  const winners: Winner[] = winnersGraded.map((g) => ({
+    ...g, hold: holdFor(userOf.get(g.ticket.userId) ?? null, deskOf.get(g.ticket.userId)) ?? disputed(g.ticket.userId),
+  }));
 
   const figures = {
     weekId: week.id, sales: byTickets, liveTickets: live.length, rolloverIn, basis, winningScore, arithmetic,
@@ -339,11 +347,10 @@ export async function settleMaswaliWeek(input: {
               if (!positions.has(w.ticket.positionId)) throw new SettleAbort(`MISSING:${w.ticket.serial}`);
               shares.set(w.ticket.userId, (shares.get(w.ticket.userId) ?? 0) + 1);
             }
-            for (const userId of shares.keys()) {
-              const wallet = await db.wallet.findByUserId(userId, mtx);
-              if (!wallet) throw new SettleAbort(`MISSING:${userId}`);
-              payees.set(userId, { id: wallet.id, balance: wallet.balance });
-            }
+            const wallets = await db.wallet.findByUserIds([...shares.keys()], mtx);
+            for (const wallet of wallets) payees.set(wallet.userId, { id: wallet.id, balance: wallet.balance });
+            for (const userId of shares.keys()) if (!payees.has(userId)) throw new SettleAbort(`MISSING:${userId}`);
+            if (payees.size !== shares.size) throw new SettleAbort(`WALLETS:${payees.size}:${shares.size}`);
           }
           // ⭐ R3 · MR-21's CLAIM JOINS THE MONEY: written right after the last refusal (the guarantee's, next) and inside this
           //    transaction, so it commits with the payout or not at all — a claim can never stand for a week that did not
@@ -365,33 +372,40 @@ export async function settleMaswaliWeek(input: {
             //    its own position, the literal Ruling 232 reads. Each row tells the balance after its own share.
             const won = await positionStore.settleMaswaliWinners(marketId, winners.map((w) => w.ticket.positionId), a.share, settledAt, mtx);
             if (won !== winners.length) throw new SettleAbort(`WINNERS:${won}:${winners.length}`);
-            for (const [userId, n] of shares) {
-              const wallet = payees.get(userId);
-              const updated = wallet && a.share > 0 ? await db.wallet.adjust(wallet.id, { balance: n * a.share }, undefined, mtx) : null;
-              if (!wallet || (a.share > 0 && !updated)) throw new SettleAbort(`WALLET:${userId}`);
-              // The balance before this week's shares, read back from the credit itself (the row is locked by now).
-              if (updated) wallet.balance = updated.balance - n * a.share;
+            if (a.share > 0) {
+              const credited = await db.wallet.creditMany([...shares].map(([userId, n]) => ({ userId, amount: n * a.share })), mtx);
+              const creditedOf = new Map((credited ?? []).map((wallet) => [wallet.userId, wallet]));
+              if (!credited || credited.length !== shares.size || creditedOf.size !== shares.size) throw new SettleAbort("WALLETS:CREDIT");
+              for (const [userId, n] of shares) {
+                const wallet = creditedOf.get(userId);
+                if (!wallet || !payees.has(userId)) throw new SettleAbort(`WALLET:${userId}`);
+                // `creditMany` returns the locked post-credit balance. Walk the tickets below from its pre-credit value.
+                payees.set(userId, { id: wallet.id, balance: wallet.balance - n * a.share });
+              }
             }
             const paid: Array<{ userId: string; txnId: string; share: number }> = [];
+            const payouts: Array<{ w: Winner; p: StoredPosition; walletId: string; txnId: string; balanceAfter: number }> = [];
             for (const w of winners) {
               const p = positions.get(w.ticket.positionId);
               const wallet = payees.get(w.ticket.userId);
               if (!p || !wallet) throw new SettleAbort(`MISSING:${w.ticket.serial}`);
               wallet.balance += a.share;
               const txnId = `txn_${randomId(12)}`;
-              await db.txn.create({
-                id: txnId, walletId: wallet.id, userId: p.userId, type: "BET_PAYOUT", status: "CONFIRMED",
-                amount: a.share, fee: 0, taxWithheld: 0, balanceAfter: wallet.balance, currency: "TZS",
+              payouts.push({ w, p, walletId: wallet.id, txnId, balanceAfter: wallet.balance });
+              paid.push({ userId: p.userId, txnId, share: a.share });
+              ticketRows.push({ id: w.ticket.id, score: w.score, won: true, payout: a.share, frozenReason: w.hold });
+            }
+            const written = await db.txn.createMany(payouts.map(({ w, p, walletId, txnId, balanceAfter }): StoredTxn => ({
+                id: txnId, walletId, userId: p.userId, type: "BET_PAYOUT", status: "CONFIRMED",
+                amount: a.share, fee: 0, taxWithheld: 0, balanceAfter, currency: "TZS",
                 provider: "INTERNAL", providerRef: null, msisdn: null,
                 description: `Millionea ${week.code} · ${w.ticket.serial} · ${f.basis === "TOP_SCORE" ? `top score ${w.score} of ${MAIN_COUNT}` : `${MAIN_COUNT} of ${MAIN_COUNT}`}${w.hold ? " · held for review" : ""}`,
                 positionId: p.id,
                 // SEAM:markerMaswaliWin — a desk account's share is held above, never marked as the house's stake.
                 ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
                 amlReason: null, createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
-              }, mtx);
-              paid.push({ userId: p.userId, txnId, share: a.share });
-              ticketRows.push({ id: w.ticket.id, score: w.score, won: true, payout: a.share, frozenReason: w.hold });
-            }
+              })), mtx);
+            if (written !== payouts.length) throw new SettleAbort(`TXNS:${written}:${payouts.length}`);
             if (f.basis === "TOP_SCORE") {
               // MR-30 · the sunset: the whole jackpot into the final week's pool, then a settlement with nothing to claim.
               lines.push(...maswaliSunsetEntries({ marketId, amount: f.rolloverIn }));
@@ -408,7 +422,7 @@ export async function settleMaswaliWeek(input: {
           if (lost !== losers.length) throw new SettleAbort(`LOSERS:${lost}:${losers.length}`);
           const graded = await ticketStore.settleWeekTickets(week.id, ticketRows, mtx ?? undefined);
           if (graded !== ticketRows.length) throw new SettleAbort(`TICKETS:${graded}:${ticketRows.length}`);
-          await postMaswaliLines(groupId, lines, mtx);
+          for (let i = 0; i < lines.length; i += LINES_PER_POST) await postMaswaliLines(groupId, lines.slice(i, i + LINES_PER_POST), mtx);
           const stamped = await weekStore.stampSettlement(week.id, stamp, mtx ?? undefined);
           if (!stamped) throw new SettleAbort("STAMP");
           // ⛔ The market write takes the market lock's OWN transaction — the one `afterCommit` waits for (results-freshness C.4).
