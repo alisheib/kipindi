@@ -124,19 +124,38 @@ try {
     }
     /**
      * ⛔ A SCRATCH REPOSITORY, SO 6.6 IS MEASURED AND NOT MERELY BLIND. `git diff --quiet <ref> -- <path>`
-     * against a path that does not exist on the ref exits 0 — clean, and completely uninformative — which
-     * is why 6.6 refuses to report clean unless the ref resolves AND the path is a real blob on it. A shadow
-     * with no repository would make every case's 6.6 say NOT MEASURED, and the chat.ts cases would then be
-     * "red" for the wrong reason. `origin/main` here is the PRISTINE copy, so a mutated chat.ts differs from
-     * it for exactly the reason the real assertion names.
+     * against a path that does not exist on the ref exits 0 — clean, and completely uninformative. The
+     * approved checkpoint ref must contain its real chat blob; origin/main must contain the pristine copy
+     * for the other diff controls. A shadow with no refs would make 6.6 say NOT MEASURED, and chat.ts
+     * mutations would then appear red for the wrong reason.
      */
+    // §6.6 measures chat.ts against the approved S11 checkpoint, not origin/main.
+    // Give the shadow that real checkpoint's chat blob before committing its live
+    // files. Otherwise the pristine positive control is red on a missing ref and
+    // every chat mutation appears caught for the wrong reason.
+    const chatPath = join(template, "src/app/_actions/chat.ts");
+    const liveChat = readFileSync(chatPath);
+    const approvedChat = execFileSync("git", ["-C", ROOT, "show", "8ce376ca0:src/app/_actions/chat.ts"]);
     git(template, ["init", "-q"]);
+    writeFileSync(chatPath, approvedChat);
     git(template, ["add", "-A", "-f"]);
-    git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "pristine"]);
+    git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "approved chat checkpoint"]);
+    git(template, ["update-ref", "refs/heads/8ce376ca0", "HEAD"]);
+    writeFileSync(chatPath, liveChat);
+    git(template, ["add", "-A", "-f"]);
+    git(template, ["-c", "user.email=red@local", "-c", "user.name=red", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-q", "-m", "pristine"]);
     git(template, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
     ok("0.1 · the shadow carries every file §6 reads, committed as its own origin/main",
        SHADOW_READS.every((rel) => existsSync(join(template, rel))) && git(template, ["rev-parse", "--short", "origin/main"]).trim().length >= 7,
        `${SHADOW_READS.length} file(s) · scratch origin/main ${git(template, ["rev-parse", "--short", "origin/main"]).trim()} · ${parent}`);
+    ok("0.2 · the shadow carries the real S11 chat checkpoint for §6.6",
+       execFileSync("git", ["-C", template, "show", "8ce376ca0:src/app/_actions/chat.ts"]).equals(approvedChat),
+       "the checkpoint ref resolves and contains the approved chat blob");
+    ok("0.3 · the pristine shadow's chat.ts is byte-identical to the live source before any mutation",
+       readFileSync(chatPath).equals(liveChat) &&
+       git(template, ["rev-parse", "origin/main:src/app/_actions/chat.ts"]) ===
+         git(ROOT, ["hash-object", "src/app/_actions/chat.ts"]),
+       "the worktree bytes and Git-normalised pristine blob both match the live source");
   }
 
   // ── §1 · ⭐ THE POSITIVE CONTROL FOR THE WHOLE HARNESS ────────────────────────────────────────────
