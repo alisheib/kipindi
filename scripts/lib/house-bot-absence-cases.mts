@@ -203,6 +203,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // Re-pinned at 7bee08feb (S7 rounds 4–6's merge, 2026-10-19): that refusal says the final week's rule now applies, never
     // that its rules changed (frozen rules never change, MR-13) — the same three lines, sw and zh for native review at Gate
     // B; nothing else in the dictionary moves.
+    // Re-pinned at 902afae56 (the S6 legal lane's squash-merge onto the integration, 2026-10-19), whose blob is the
+    // dictionary as it stands: the lane's `millioneaFairness` namespace (/fairness, the proof route, /help) and How to play's
+    // sunset line as built — the three ways a final week is named, with S7 round 3's stale-form clause added at the merge —
+    // sw and zh for native review at Gate B; the stale-slip refusal keeps round 4's words; no versioned policy string moves.
     // MASWALI-BUILD S5 pages (2026-10-17) publishes Privacy v2026-10-17 (COMPLIANCE-DECISIONS "Privacy v2026-10-17"): §7's
     // Millionea slip paragraph in three languages — and, by the lead's decision of 2026-10-18, WITH THE CEILING: each paragraph
     // inside its MillioneaWording wrapper and META back at production's 2026-10-15.2, the 2026-10-17 version printed in its
@@ -211,28 +215,25 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // MASWALI-BUILD S5 integration (2026-10-18): the Swahili slip paragraph's two "kitambulisho" become "msimbo wa wiki"
     // and "taarifa yoyote inayokutambulisha" (test:kyc-copy-truth §2 rule 1 read an identity document beside "kuweka pesa");
     // nothing else on the page moves — pinned at f8828dcb7, whose blob is the page as it stands.
+    // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
+    // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`), its route (gated: a
+    // hidden product's address answers as the 404) and the chooser's third door (each change a slot whose else arm is
+    // today's expression, `test:maswali-fairness` L.10–L.11). The lane pinned the three files beside this Map at its own
+    // commits (rounds 2 to 5); at its squash-merge onto the integration (2026-10-19) they are rows here at 902afae56, the
+    // squash commit, whose blobs are the three files as they stand — a lane commit leaves with its branch.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
-      ["src/app/legal/rules/page.tsx", "c3e28b473"],
-      ["src/lib/i18n-dict.ts", "7bee08feb"],
+      ["src/app/legal/rules/page.tsx", "902afae56"],
+      ["src/lib/i18n-dict.ts", "902afae56"],
       ["src/app/legal/privacy/page.tsx", "f8828dcb7"],
+      ["src/app/legal/rules/_content-millionea.tsx", "902afae56"],
+      ["src/app/legal/rules/millionea/page.tsx", "902afae56"],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
     const goldenOf = (rel: string) => APPROVED_EXTRA.has(rel) ? extraBlob(rel) : APPROVED_TEXT.has(rel) ? approvedBlob(rel) : blobOf(rel);
     const approvedEqual = (rel: string, source: string) => goldenOf(rel) !== null && lf(source) === goldenOf(rel);
     const isApprovedPublication = (rel: string) => (APPROVED_TEXT.has(rel) || APPROVED_EXTRA.has(rel)) && approvedEqual(rel, read(rel));
-    // MASWALI-BUILD S6 lane L (2026-10-18) publishes the Maswali Millionea rules: the binding text in three languages
-    // (`_content-millionea.tsx`, its hash pinned with its version in `millionea-rules-version.ts`), its route (gated: a
-    // hidden product's address answers as the 404) and the chooser's third door (each change a slot whose else arm is
-    // today's expression, `test:maswali-fairness` L.10–L.11) — pinned at 4c70541af, whose blobs are the three files as they
-    // stand (round 2: the binding text states only what is built; re-pinned 2026-10-18 from 7ff0cfde3 for round 3, from
-    // 87893ff8d for round 4 and from 3e8ba9a6e for round 5: the top-up's fee and shares, a final week's remainder, a
-    // week's close). Set beside the Map, not in it, so the integration's own pins merge untouched. ⛔ The dictionary's pin
-    // is the lead's, at the merge.
-    for (const rel of ["src/app/legal/rules/page.tsx", "src/app/legal/rules/_content-millionea.tsx", "src/app/legal/rules/millionea/page.tsx"]) {
-      APPROVED_EXTRA.set(rel, "4c70541af");
-    }
     const compare = (paths: string[]) => {
       const missing: string[] = [], differs: string[] = [];
       let compared = 0;

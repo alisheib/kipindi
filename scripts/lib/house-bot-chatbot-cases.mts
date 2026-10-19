@@ -555,8 +555,10 @@ export async function runChatbotCases(ok: Ok, section: Section, ROOT: string): P
  * import failing to no facts (#10). With no facts the prompt is origin/main's, byte for byte (`test:maswali-fairness` C.1).
  * 2026-10-18 · 7ff0cfde3 → 4c70541af (MASWALI-BUILD S6 round 5): Millionea's floor clause is a 10 of 10 week's — a final week's
  * top-score payout has no floor — and nothing else in the action moved (`test:maswali-fairness` C.12).
+ * 2026-10-19 · 4c70541af → 902afae56 (the S6 legal lane's squash-merge onto the integration): the same bytes (blob e04f339b3),
+ * pinned on the integration branch — a lane commit leaves with its branch, and a fresh clone could not resolve it.
  */
-export const CHAT_PROMPT_PIN = "4c70541af";
+export const CHAT_PROMPT_PIN = "902afae56";
 
 function trunkDiff(ROOT: string, paths: string[], ref = "origin/main"): { measured: boolean; clean: boolean; files: number; sha: string; why: string } {
   const git = (args: string[]) => execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8" }).trim();
