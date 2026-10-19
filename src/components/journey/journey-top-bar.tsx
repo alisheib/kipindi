@@ -10,7 +10,8 @@
  *   on a phone    the 26px mark in its 44px home link · 18+ · the captioned balance ("Salio" over the figure) ·
  *                 the gilt "+ Weka pesa"
  *   to a guest    the mark · 18+ · Ingia and Jisajili, at every width (E-276)
- *   from 1024     the four destinations as the kit's underline section links, then language, the bell, the account
+ *   from 1024     the four destinations — five while Maswali Millionea shows, its link right after Juu/Chini — as the
+ *                 platform's destination links, then language, the bell, the account
  * WHAT shows is decided once, by `journeyHeaderState` (a guest, a balance not read, a held wallet, a break, the
  * deposit screen and its return); this file renders the answer and decides nothing about money itself.
  *
@@ -45,6 +46,11 @@
  * destination's own page and on every page of its section, and A12 tells the two apart for a screen reader
  * ("page" against "true", from `tabAriaCurrent`). A guest's Tiketi zangu is a button that opens the guest sheet,
  * never a link whose navigation is cancelled: the progress bar listens in the capture phase.
+ * ⭐ MASWALI-BUILD S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11): the links are `journeyTabsFor(millionea)`, the
+ * rail's own list, lit from that same list — so Millionea's link stands right after Juu/Chini while it shows, the
+ * siblings' own link with only its words in Millionea's ink (`kp-millionea-ink`), and the two can never disagree. The nav
+ * says how many it draws (`data-tabs`, absent for four): with five it gives up its own leading 12px from 1024 to 1279,
+ * where the Swahili row otherwise ran 5.1px into the page's gutter (globals.css, the destinations' rules).
  */
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
@@ -59,7 +65,7 @@ import type { TopAppBarUser } from "@/components/layout/top-app-bar";
 import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
-import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
+import { activeTabFor, journeyTabsFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
 import { journeyHeaderState } from "@/lib/journey/header-state";
 import { authDoorHrefs } from "@/lib/auth-landing";
 import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
@@ -128,6 +134,7 @@ export function JourneyTopBar({
   invitePaid = false,
   inviteAgent = false,
   kycOffered = false,
+  millionea = false,
 }: {
   /** The classic bar's own viewer shape, built once by AppShell for whichever bar it renders. */
   user: TopAppBarUser;
@@ -143,6 +150,8 @@ export function JourneyTopBar({
   /** Round 6 (reviews C1, C13): the account menu's two door answers (`avatar-menu.tsx` says what each decides), the shell's. */
   inviteAgent?: boolean;
   kycOffered?: boolean;
+  /** S5-TAB: Maswali Millionea is visible to this reader (AppShell's one answer, the rail's too), so its link is drawn. */
+  millionea?: boolean;
 }) {
   const route = usePathname();
   const { t } = useT();
@@ -163,7 +172,8 @@ export function JourneyTopBar({
     onBreak,
     pathname,
   });
-  const active = activeTabFor(pathname);
+  const tabs = journeyTabsFor(millionea);
+  const active = activeTabFor(pathname, tabs);
 
   return (
     <header className="sticky top-0 z-30 app-topbar kp-jhdr" data-testid="journey-top-bar">
@@ -176,8 +186,8 @@ export function JourneyTopBar({
         {/* No aria-label: the text is the name, and ARIA allows none on a plain span. */}
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
 
-        <nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary}>
-          {JOURNEY_TABS.map((d) =>
+        <nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary} data-tabs={tabs.length === 4 ? undefined : tabs.length}>
+          {tabs.map((d) =>
             d.key === "tickets" && !user.isAuthed ? (
               <button
                 key={d.key}
@@ -194,10 +204,10 @@ export function JourneyTopBar({
               <Link
                 key={d.key}
                 href={d.href as never}
-                aria-current={tabAriaCurrent(pathname, d.key)}
+                aria-current={tabAriaCurrent(pathname, d.key, tabs)}
                 className={JNAV}
               >
-                {tabLabel(t, d.label)}
+                {d.key === "millionea" ? <span className="kp-millionea-ink">{tabLabel(t, d.label)}</span> : tabLabel(t, d.label)}
               </Link>
             ),
           )}

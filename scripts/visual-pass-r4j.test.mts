@@ -107,8 +107,9 @@ function bareChrome(shell: string): { ok: boolean; why: string } {
   const headerBoxed = shell.replace(/\{journeyShown \? <LazyJourneyTopBar ([^\n]*?) \/> : <TopAppBar/,
     '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar $1 /></Suspense> : <TopAppBar');
   ok("1.1′ PLANT · the header back in its boundary over the bar's empty box is reported", headerBoxed !== shell && !bareChrome(headerBoxed).ok);
-  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :",
-    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :");
+  // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the rail's arm takes `millionea={millioneaRow}` (its fifth tab).
+  const tabsBoxed = shell.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
+    "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :");
   ok("1.1″ PLANT · the tabs back in theirs is reported", tabsBoxed !== shell && !bareChrome(tabsBoxed).ok);
 }
 
@@ -505,9 +506,10 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
 }
 {
   // The journey's chrome: no path on a not-found page (no tab lit), no unread poll there.
+  // RE-PINNED, MASWALI-BUILD S5-TAB (2026-10-19): the resolver and aria-current read the drawn list (`tabs`) too.
   const chrome = (s: string) => s.includes("const route = usePathname();") && s.includes("const notFoundShown = useNotFoundShown();")
     && s.includes("const pathname = notFoundShown ? null : route;") && s.includes("useEffect(() => { setSheetOpen(false); }, [route]);")
-    && s.includes("const active = activeTabFor(pathname);") && s.includes("aria-current={tabAriaCurrent(pathname, d.key)}");
+    && s.includes("const active = activeTabFor(pathname, tabs);") && s.includes("aria-current={tabAriaCurrent(pathname, d.key, tabs)}");
   const bar = read(JHDR), tabs = read(JTABS);
   ok("5.6 · the header and the rail read no path on a not-found page — no destination and no tab lit (the market not-found lit Maswali) — and close a sheet on every move", chrome(bar) && chrome(tabs));
   ok("5.6′ PLANT · the rail lighting its tab from the address again is reported", !chrome(tabs.replace("const pathname = notFoundShown ? null : route;", "const pathname = route;")));
@@ -531,11 +533,16 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
     // ⭐ PHOSPHOR-MIGRATION W3: the desktop link's lit values are the destination pill's background and edge (the underline,
     // `after`, is gone), and the lit tab's glyph is its Fill — put back to Line by showing the Line drawing NavGlyph carries
     // hidden beside it (`restsUnlit`), the drawing an unlit slot shows.
+    // ⭐ MASWALI-BUILD S5-TAB (2026-10-19): Millionea's lit tab and link carry two more lit values — the word on the ink's
+    // -200s (`[aria-current]`) and the rail's glyph in the siblings' ink — each put back to its resting value: the ink's own
+    // -300 fill (behind its @supports) and the glyph's gold.
+    const inkFill = /@supports \(\(-webkit-background-clip: text\) or \(background-clip: text\)\) \{\s*\.kp-millionea-ink \{([^}]*)\}/.exec(css)?.[1] ?? "";
     const base = { item: decl(rule(css, ".kp-rail__item"), "color"), label: decl(rule(css, ".kp-rail__label"), "font-weight"),
       link: decl(rule(css, ".kp-jnav__link"), "color"), linkBg: decl(rule(css, ".kp-jnav__link"), "background"),
       linkShadow: decl(rule(css, ".kp-jnav__link"), "box-shadow") ?? "none",
       pipBg: decl(rule(css, ".kp-rail__pip"), "background") ?? "none", pipShadow: decl(rule(css, ".kp-rail__pip"), "box-shadow") ?? "none",
-      fill: "none", line: "block" };
+      fill: "none", line: "block",
+      millioneaInk: decl(inkFill, "background-image"), millioneaGlyph: decl(rule(css, ".kp-millionea-glyph"), "color") };
     const got = { item: decl(at(".kp-rail--journey .kp-rail__item[data-on]"), "color"),
       pipBg: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "background"),
       pipShadow: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip"), "box-shadow"),
@@ -544,8 +551,10 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
       linkBg: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "background"),
       linkShadow: decl(at(".kp-jnav__link:is([aria-current], [data-on])"), "box-shadow"),
       fill: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__fill"), "display"),
-      line: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__line"), "display") };
-    const keys = ["item", "pipBg", "pipShadow", "label", "link", "linkBg", "linkShadow", "fill", "line"] as const;
+      line: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__line"), "display"),
+      millioneaInk: decl(at(":is(.kp-rail--journey, .kp-jnav) [aria-current] .kp-millionea-ink"), "background-image"),
+      millioneaGlyph: decl(at(".kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph"), "color") };
+    const keys = ["item", "pipBg", "pipShadow", "label", "link", "linkBg", "linkShadow", "fill", "line", "millioneaInk", "millioneaGlyph"] as const;
     return { ok: keys.every((k) => got[k] !== undefined && got[k] === base[k]) && base.linkBg === "transparent"
       && decl(rule(css, ".kp-navglyph__line"), "display") === "none", base, got };
   };
@@ -560,6 +569,10 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.12⁗ PLANT · the current desktop link's pill left on a not-found page's first paint (W3) is reported",
     !unlit(CSS.replace(`${FLAGGED} .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); background: transparent; box-shadow: none; }`,
       `${FLAGGED} .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }`)).ok);
+  const inkKept = CSS.replace(`${FLAGGED} :is(.kp-rail--journey, .kp-jnav) [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-300), var(--gold-300), var(--no-300)); }`, "");
+  ok("5.12⁵ PLANT · Millionea's lit word left on its -200s on a not-found page's first paint (S5-TAB) is reported", inkKept !== CSS && !unlit(inkKept).ok);
+  const glyphKept = CSS.replace(`${FLAGGED} .kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph { color: var(--gold-300); }`, "");
+  ok("5.12⁶ PLANT · Millionea's lit glyph left in the siblings' ink on a not-found page's first paint (S5-TAB) is reported", glyphKept !== CSS && !unlit(glyphKept).ok);
 }
 {
   // ⭐ ROUND 5 (review F5) · WHAT THE SERVER'S HTML OF A MISSING RECORD CARRIES, on React's own server renderer — Next's

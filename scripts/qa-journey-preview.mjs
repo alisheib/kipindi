@@ -158,8 +158,11 @@ ok("2.5b at 1280 the pass holder is drawn the journey header, and no classic bar
 await tile(sp, "2-home-with-marker-1280");
 await sp.setViewportSize(PHONE); await sp.waitForTimeout(500);
 const phone = await chrome(sp);
-ok("2.5d at 390 the pass holder is drawn the journey header and its rail of four tabs, and no classic bar or coin",
-  phone.journeyHeader === 1 && phone.railShown && phone.tabs === 4 && phone.classicHeader === 0 && phone.classicCoin === 0, JSON.stringify(phone));
+// MASWALI-BUILD S5-TAB (2026-10-19): five tabs while Maswali Millionea shows (its own tab after Juu/Chini) — at ACTIVE, for
+// this pass holder; start the drive with the server's FEATURE_MILLIONEA so it knows which rail to expect.
+const RAIL_TABS = process.env.FEATURE_MILLIONEA === "ACTIVE" ? 5 : 4;
+ok(`2.5d at 390 the pass holder is drawn the journey header and its rail of ${RAIL_TABS === 5 ? "five" : "four"} tabs, and no classic bar or coin`,
+  phone.journeyHeader === 1 && phone.railShown && phone.tabs === RAIL_TABS && phone.classicHeader === 0 && phone.classicCoin === 0, JSON.stringify(phone));
 await tile(sp, "2-home-with-marker-390");
 await sp.setViewportSize(DESK);
 {

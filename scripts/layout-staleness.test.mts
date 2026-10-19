@@ -251,8 +251,10 @@ const CLIENT_DERIVERS = [
   ["src/components/admin/admin-crumbs.tsx", "the admin breadcrumb trail", /crumbsFromPath\(pathname\)/],
   ["src/components/admin/admin-mobile-nav.tsx", "the admin mobile drawer", /activeKeyFromPath\(pathname\)/],
   // S6 WP6a · the journey's chrome lights a tab and a destination from the path, in the browser, like the rows above.
-  ["src/components/journey/journey-tabs.tsx", "the journey tab rail", /activeTabFor[(]pathname[)]/],
-  ["src/components/journey/journey-top-bar.tsx", "the journey header's destinations", /activeTabFor[(]pathname[)]/],
+  // MASWALI-BUILD S5-TAB (2026-10-19): …among the tabs it draws (`journeyTabsFor`), the list it hands the resolver beside
+  // the path — the path still decides.
+  ["src/components/journey/journey-tabs.tsx", "the journey tab rail", /activeTabFor[(]pathname, tabs[)]/],
+  ["src/components/journey/journey-top-bar.tsx", "the journey header's destinations", /activeTabFor[(]pathname, tabs[)]/],
 ] as const;
 for (const [f, what, consumes] of CLIENT_DERIVERS) {
   const src = read(f);

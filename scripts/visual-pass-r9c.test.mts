@@ -13,6 +13,8 @@
  *   §3  C3 · R5-F4  the invite dial's caption in the one section ink — and the WRAPPER CENSUS R8-B could not see into: every
  *               component that renders an `.eyebrow` with a class its caller passes, every call site, every inked child
  *   §4  C4 · R3-D1 / R6-D1  the journey rail stacks from the top only where a label wraps: each language's width, derived
+ *       §4b · MASWALI-BUILD S5-TAB (2026-10-19): the same widths derived for the FIVE-tab rail while Millionea shows (the
+ *               tickets tab's short rail label), held to the five-tab nav's own rules
  *   §5  C5 · R7-F2 / R8-F3  the stacked INAKUJA flag lands on a whole pixel, so its caps sit as the beside-its-label flag's
  *   §6  C6 · R4-F2  the guest Tiketi sheet's Ingia is the ghost secondary, `btn-outline` retired
  *   §7  C7 · R4-D8  the wallet's Bonus lens offered only to an account that has a bonus row (or while it is on)
@@ -803,7 +805,10 @@ function wrapperCensus(over: Record<string, string> = {}): { wrappers: Wrapper[]
 /* ══ §4 · C4 · THE JOURNEY RAIL ════════════════════════════════════════════════════════════════════════════════════════ */
 section("4 · C4 the journey rail stacks from the top only where a label wraps — each language's width, derived from its words");
 {
-  const TAB = req("../src/lib/nav/active-tab.ts") as { JOURNEY_TABS: ReadonlyArray<{ key: string; label: string }>; tabLabel: (t: unknown, k: string) => string };
+  const TAB = req("../src/lib/nav/active-tab.ts") as {
+    JOURNEY_TABS: ReadonlyArray<{ key: string; label: string }>; tabLabel: (t: unknown, k: string) => string;
+    journeyTabsFor: (millionea: boolean) => ReadonlyArray<{ key: string; label: string; railLabel?: string }>;
+  };
   const micro = token("--type-micro");
   const labelPad = 2 * Number(/\.kp-rail__label \{[^}]*padding-inline: ([0-9.]+)px/.exec(CSS)?.[1] ?? NaN);
   // `test:journey-shell` §8's measure: the rail's 11px mono at 0.6em a letter, a Chinese character 1em, plus the label's padding.
@@ -844,6 +849,43 @@ section("4 · C4 the journey rail stacks from the top only where a label wraps �
   ok("4.2′ PLANT · Swahili keyed at 360 is reported", stale !== CSS && !railRules(stale).holds);
   const allLangs = CSS.replace(/@media \(min-width: (?:192|280|332\.8)px\) \{ \.kp-rail--journey:lang\(\w+\) \.kp-rail__item \{ justify-content: center; \} \}\n/g, "");
   ok("4.2″ PLANT · the round-8 rule (every language stacked below 360) is reported", allLangs !== CSS && !railRules(allLangs).holds);
+
+  // ⭐ §4b · MASWALI-BUILD S5-TAB (Ali, 2026-10-19; the lead's width rulings the same day): THE SAME DERIVATION WITH FIVE
+  // TABS. While Millionea shows the rail draws five (`journeyTabsFor(true)`), so a slot is a fifth of the phone, and the
+  // words are the rail's own — the tickets tab's short rail label (`journey.tabTicketsShort`: sw "Tiketi", en "Tickets"; zh
+  // keeps 我的注单). Every language's longest rail word is then 9 letters, so the five slots centre from the same width in
+  // sw, en and zh — under 320 — and ONE rule on the five-tab nav (`data-tabs="5"`) says so; the four-tab rules above are
+  // untouched (4.2 still holds them).
+  const FIVE_TABS = TAB.journeyTabsFor(true);
+  const railWord = (l: Loc) => FIVE_TABS.map((d) => TAB.tabLabel(dict[l], d.railLabel ?? d.label));
+  const fitsFrom5 = (l: Loc, labels = railWord(l)) => Number((5 * Math.max(...labels.map((s) => mono(s) + labelPad))).toFixed(1));
+  const W5 = Object.fromEntries(LOCALES.map((l) => [l, fitsFrom5(l)])) as Record<Loc, number>;
+  const from5 = Math.max(W5.sw, W5.en, W5.zh);
+  ok(`4b.1 · with five tabs every language's longest rail word fits its fifth of the phone from the same width — sw ${W5.sw}px, en ${W5.en}px, zh ${W5.zh}px (the tickets tab says "${railWord("sw")[3]}", "${railWord("en")[3]}", "${railWord("zh")[3]}") — under 320, so no label wraps at any width we hold`,
+    FIVE_TABS.length === 5 && FIVE_TABS[2]?.key === "millionea" && W5.sw === 317 && W5.en === 317 && W5.zh === 317 && from5 <= 320, j(W5));
+  const FIVE = `.kp-rail--journey[data-tabs="5"]`;
+  /** The five-tab rail's rules as one predicate over a stylesheet: five tracks, the slots stacking from the top below the
+   *  width, ONE rule centring them from it in every language (no per-language split while every language agrees). */
+  const railRules5 = (css: string, from: number = from5) => {
+    const rule = (px: number, sel: string) => { const head = `@media (min-width: ${px}px) { ${sel} {`; const at = css.indexOf(head); return at < 0 ? "" : css.slice(at + head.length, css.indexOf("}", at + head.length)); };
+    const own = (sel: string) => { const at = css.indexOf(`\n${sel} {`); return at < 0 ? "" : css.slice(at + sel.length + 3, css.indexOf("}", at)); };
+    const grid = own(`${FIVE} > ul`), base = own(`${FIVE} .kp-rail__item`), one = rule(from, `${FIVE} .kp-rail__item`);
+    const perLang = LOCALES.filter((l) => css.includes(`${FIVE}:lang(${l})`));
+    const holds = /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/.test(grid) && /justify-content: flex-start/.test(base)
+      && /justify-content: center/.test(one) && perLang.length === 0;
+    return { holds, grid, base, one, perLang };
+  };
+  const R5 = railRules5(CSS);
+  ok(`4b.2 · the stylesheet holds that width for the five-tab rail: five tracks on the list, the slots stacking from the top below ${from5}px, and one rule centring them from ${from5}px in every language — mobile-first, after the four-tab rules`, R5.holds, j(R5));
+  const longer5 = fitsFrom5("en", railWord("en").map((s) => (s === "Tickets" ? "My open tickets" : s)));
+  ok(`4b.1′ PLANT · English's rail word grown to "My open tickets" moves the five-tab width to ${longer5}px: the very check fails on today's stylesheet`,
+    longer5 > from5 && !railRules5(CSS, Math.max(longer5, from5)).holds);
+  const longSw = fitsFrom5("sw", FIVE_TABS.map((d) => TAB.tabLabel(dict.sw, d.label)));
+  const longEn = fitsFrom5("en", FIVE_TABS.map((d) => TAB.tabLabel(dict.en, d.label)));
+  ok(`4b.1″ PLANT · without the short rail label the five-tab widths would be sw ${longSw}px and en ${longEn}px — past 320, so "Tiketi zangu" and "My tickets" could not sit on one line in a fifth of a 320 phone`,
+    longSw > 320 && longEn > 320 && longSw > from5 && longEn > from5);
+  const stale5 = CSS.replace(`@media (min-width: 317px) { ${FIVE} .kp-rail__item {`, `@media (min-width: 350px) { ${FIVE} .kp-rail__item {`);
+  ok("4b.2′ PLANT · the five-tab centring keyed at the old English width, 350, is reported", stale5 !== CSS && !railRules5(stale5).holds);
 }
 
 /* ══ §5 · C5 · THE STACKED FLAG ON A WHOLE PIXEL ═══════════════════════════════════════════════════════════════════════ */

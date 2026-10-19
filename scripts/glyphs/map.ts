@@ -255,6 +255,9 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
 export const SHELL_KEYS: readonly string[] = [
   "markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
   "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
+  // MASWALI-BUILD S5-TAB (Ali, 2026-10-19): Maswali Millionea's own tab on the journey rail draws the product's mark before
+  // any tap while Millionea shows, so its drawing is the chrome's — never a sprite file a slow first visit waits for.
+  "millionea",
 ];
 export const ADMIN_KEYS: readonly string[] = [
   "upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile",
@@ -285,8 +288,8 @@ export const FILL_KEYS: readonly string[] = [
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
   "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
   // W3 (R-INDICATOR 3B): the two tab bars' destinations — the current one draws its Fill on the pill (NavGlyph). Shell
-  // keys, so their Fill is inlined beside their Bold.
-  "markets", "trade", "live", "menu", "ticket", "user",
+  // keys, so their Fill is inlined beside their Bold. S5-TAB: Millionea's tab, when it is the current one.
+  "markets", "trade", "live", "menu", "ticket", "user", "millionea",
   // W3 (R-INDICATOR 3B): the admin sidebar's destinations — the current one draws its Fill (NavGlyph).
   // In the sidebar's order (admin-nav-groups.ts NAV_GROUPS); `live`, `markets` and `trade` are listed above. The console's
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
@@ -304,8 +307,11 @@ export const DUO_KEYS: readonly string[] = [];
  * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
+ * MASWALI-BUILD S5-TAB (2026-10-19): `millionea` moved into the shell, so the app sprite changed; production (`main`
+ * 13299425d) serves app.9032012a.svg, kept here for its release. The admin sprite did not change: nothing previous to keep.
+ * ⚠️ If `main` serves another app sprite by the time this ships, the merge names that one instead (and re-runs glyphs:gen).
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.a7babf1a.svg", "admin.d4427285.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.9032012a.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

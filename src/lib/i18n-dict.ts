@@ -3313,6 +3313,15 @@ export const dict = {
       udNextRoundGo: "Go to the next round",
       udUseInstead: "Use {amount} instead",
       udQuickStakes: "Quick amounts",
+      /**
+       * MASWALI-BUILD S5-TAB (the lead's rulings, 2026-10-19): the phone rail's words for Tiketi zangu while five tabs
+       * share it (Millionea's tab shows; `journeyTabsFor` in lib/nav/active-tab.ts). A fifth of a 320 phone holds 64px:
+       * the Swahili "Tiketi zangu" needs 83.2 and the English "My tickets" 70, so the rail says "Tiketi" and "Tickets"
+       * there (50.2px at most), as the rail's Juu/Chini is the short `nav.updown` — and every five-tab label of every
+       * language sits on one line from 317. The page, its title and the desktop link keep `tabTickets`. zh keeps 我的注单
+       * (48px), which fits.
+       */
+      tabTicketsShort: "Tickets",
     },
     /**
      * MASWALI MILLIONEA (MASWALI-BUILD S5; MASWALI-PLAN §7b "S5 · Player surfaces", the v6 delivery's i18n draft as
@@ -6136,6 +6145,8 @@ export const dict = {
       udNextRoundGo: "Nenda kwenye raundi inayofuata",
       udUseInstead: "Tumia {amount} badala yake",
       udQuickStakes: "Kiasi cha haraka",
+      /** S5-TAB (2026-10-19): the rail's words for Tiketi zangu while five tabs show (the note at en). */
+      tabTicketsShort: "Tiketi",
     },
     /** MASWALI MILLIONEA (S5) — kwa ukaguzi wa mzawa; Kiingereza ndicho kinachofunga. Maelezo kamili yako kwa `en`. */
     millionea: {
@@ -8908,6 +8919,8 @@ export const dict = {
       udNextRoundGo: "前往下一轮",
       udUseInstead: "改用 {amount}",
       udQuickStakes: "快捷金额",
+      /** S5-TAB (2026-10-19): the rail's words for 我的注单 while five tabs show (the note at en) — they fit, so unchanged. */
+      tabTicketsShort: "我的注单",
     },
     /** MASWALI MILLIONEA (S5) — pending native review (Gate B); English is binding. The full note is at `en`. */
     millionea: {

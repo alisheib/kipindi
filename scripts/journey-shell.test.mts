@@ -13,7 +13,10 @@
  *      WP6a's §8 holds the markup to calling it); look-alike paths are claimed by no row (A18: `/settings` is not `/s`);
  *      the table has no shadowed row, no tab nothing reaches and no label missing in en/sw/zh, and the exported guard,
  *      `assertTabKeysResolve`, agrees and is shown to read the dictionaries; every glyph is real; and ONE file defines
- *      the tabs and the resolver.
+ *      the tabs and the resolver. ⭐ MASWALI-BUILD S5-TAB (Ali, 2026-10-19): every check that depends on the drawn list runs
+ *      for BOTH lists `journeyTabsFor` draws — the four, and the five while Millionea shows (`1.five.*`): Millionea's pages
+ *      light its tab among the five and fall back to Maswali among the four, its tickets stay Tiketi zangu's; and the shell
+ *      drive's plain-node copy of the table is the table, row for row (`1.copy`).
  *   §2 THE JOURNEY SURFACES — `isJourneySurface` is an exact allowlist (the boards, the hub and the profile pages are
  *      denied); `isMoneySurface` and `isCommitSurface` answer a golden table exactly as before S6, and the
  *      `red:install-invite` anchor is verbatim. Every WP2 decision module imports only what it is listed with (the
@@ -45,10 +48,11 @@
  *      `journeyHeaderState`'s answers with no inline style; the destinations from 1024 take aria-current from
  *      `tabAriaCurrent` and speak the kit's underline language; and test:stacking's journey rows hold, judged by the
  *      contract's own predicates (A13).
- *   §8 THE TABS (WP6a) — exactly the four tabs on the classic rail's own classes, the grid on the list (A18), aria-current
- *      from the table (A12), no aria-label on a link, a guest's Tiketi zangu a dialog button; the rail label measured in
- *      sw/en/zh at 320 and 360 (A17), and below 360 the slots stacked from the top so a two-line label cannot lift its
- *      pip; ONE unread poller per width — the bell mounted only from 1024, the dot's counter only below it, neither
+ *   §8 THE TABS (WP6a) — exactly the drawn tabs (four; five while Millionea shows, S5-TAB) on the classic rail's own
+ *      classes, the grid on the list (A18) — five tracks while five show, the nav saying so — aria-current from the table
+ *      over the drawn list (A12), no aria-label on a link, a guest's Tiketi zangu a dialog button; the rail label measured
+ *      in sw/en/zh at 320 and 360 for four tabs and for five (A17; the tickets tab's short rail label among five), and
+ *      where a label wraps the slots stacked from the top so a two-line label cannot lift its pip; ONE unread poller per width — the bell mounted only from 1024, the dot's counter only below it, neither
  *      while the width is unknown, and only client code loading the width hook; the guest sheet on the kit Modal,
  *      portalled and on test:popup-fit's record (A13); and the chrome mounted by AppShell alone, lazily (WP6b), through
  *      the shell's one lazy module (WP6c).
@@ -197,6 +201,8 @@ type World = {
    */
   extra: ReadonlyMap<string, string>;
 };
+/** §1 (S5-TAB): the shell drive, whose plain-node copy of the table `1.copy` holds to the table. */
+const QA_DRIVE = "scripts/qa-journey-shell.mjs";
 /** §10: the header-fit gate's own files (A6), read into the world so the red twin can plant edits in them. */
 const RED_TWIN = "scripts/journey-header-fit-red.mjs";
 const RED_ALL = "scripts/red-all.mjs";
@@ -222,6 +228,7 @@ const WORLD: World = {
   extra: new Map([
     ["public/sw.js", decomment(read("public/sw.js"))],
     [RED_TWIN, decomment(read(RED_TWIN))],
+    [QA_DRIVE, decomment(read(QA_DRIVE))],
     [RED_ALL, decomment(read(RED_ALL))],
     [PACKAGE, read(PACKAGE)],
   ]),
@@ -429,11 +436,12 @@ type Flag = {
   raise: typeof FLAG.raiseJourneyFlag;
 };
 type Impl = {
-  tabs: readonly JourneyTabDef[];
+  /** The drawn list (`journeyTabsFor`): the four tabs, or the five while Millionea shows. */
+  tabsFor: (millionea: boolean) => readonly JourneyTabDef[];
   routes: readonly TabRoute[];
   routeFor: (p: string | null) => TabRoute | null;
-  activeTab: (p: string | null) => JourneyTab | null;
-  ariaCurrent: (p: string | null, tab: JourneyTab) => "page" | "true" | undefined;
+  activeTab: (p: string | null, tabs: readonly JourneyTabDef[]) => JourneyTab | null;
+  ariaCurrent: (p: string | null, tab: JourneyTab, tabs: readonly JourneyTabDef[]) => "page" | "true" | undefined;
   tabKeys: typeof TAB.assertTabKeysResolve;
   journeySurface: (p: string | null) => boolean;
   moneySurface: (p: string | null) => boolean;
@@ -447,7 +455,7 @@ type Impl = {
   flag: Flag;
 };
 const REAL: Impl = {
-  tabs: TAB.JOURNEY_TABS,
+  tabsFor: TAB.journeyTabsFor,
   routes: TAB.TAB_ROUTES,
   routeFor: TAB.tabRouteFor,
   activeTab: TAB.activeTabFor,
@@ -478,6 +486,8 @@ const Q: Expect = { tab: "questions" };
 const U: Expect = { tab: "updown" };
 const T: Expect = { tab: "tickets" };
 const A: Expect = { tab: "account" };
+/** S5-TAB: Millionea's own tab, drawn only while Millionea shows (EXPECTED_FIVE). */
+const M: Expect = { tab: "millionea" };
 const AUTH: Expect = { tab: null, why: "a sign-in in progress; the header carries Ingia and Jisajili" };
 const OPT_OUT: Expect = { tab: null, why: "the marketing opt-out, which has its own minimal shell and no tabs (D6)" };
 /**
@@ -503,13 +513,21 @@ const EXPECTED: Record<string, Expect> = {
   "/auth/2fa": AUTH, "/auth/admin": AUTH, "/auth/forgot-password": AUTH, "/auth/login": AUTH, "/auth/otp": AUTH,
   "/auth/register": AUTH, "/auth/reset-password": AUTH, "/auth/verify-email": AUTH,
   "/s": OPT_OUT, "/s/[token]": OPT_OUT,
-  // MASWALI-BUILD S5 (decided with the pages, as 1.census asks): Millionea takes no tab (§M8a item 11, D-15) — its tickets
-  // light Tiketi zangu, every other Millionea page Maswali, the tab whose home carries its card.
+  // MASWALI-BUILD S5 (decided with the pages, as 1.census asks), re-decided by S5-TAB (Ali, 2026-10-19, §M8a item 11): its
+  // tickets light Tiketi zangu; every other Millionea page lights Millionea's own tab where it is drawn (EXPECTED_FIVE) and,
+  // for a reader drawn the four tabs, Maswali — the `/millionea` row's fallback, the tab whose home carries its card.
   "/millionea": Q, "/millionea/slip": Q, "/millionea/how": Q, "/millionea/register": Q, "/millionea/register/[week]": Q,
   "/millionea/tickets": T, "/millionea/tickets/[serial]": T,
   // `/offline` LEFT THE CENSUS ON 2026-10-09 (R4-G): it is a route handler now (`src/app/offline/route.ts`), a
   // self-contained document with no shell and no tabs, not a page — so it is on no reader's tab bar to decide.
   // `lib/nav/active-tab.ts` keeps its no-tab row: the path still lights nothing, whatever answers it.
+};
+/**
+ * ⭐ S5-TAB · what changes for a reader drawn the FIVE tabs (Millionea shows): Millionea's pages light its own tab. Every
+ * other route lights what EXPECTED says — its tickets included — so the five-tab answer is EXPECTED with these over it.
+ */
+const EXPECTED_FIVE: Record<string, Expect> = {
+  "/millionea": M, "/millionea/slip": M, "/millionea/how": M, "/millionea/register": M, "/millionea/register/[week]": M,
 };
 /**
  * Decided before its page exists. ⛔ An entry here EXPIRES: `1.census.ahead` fails once the page is on disk, so the
@@ -540,7 +558,21 @@ const ARIA: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
   ["/s/x1", "questions", undefined],
   // MASWALI-BUILD S5 · Tiketi zangu's third kind is in the tickets section, never the page of the tab's own href.
   ["/millionea/tickets", "tickets", "true"],
+  // S5-TAB · among the four tabs, Millionea's hub is in Maswali's section (the row's fallback) — never its page.
   ["/millionea", "questions", "true"],
+];
+/** S5-TAB · A12 among the FIVE tabs: Millionea's hub is its tab's own page and the product's other pages its section; its
+ *  tickets stay Tiketi zangu's; Maswali no longer answers for any of them. */
+const ARIA_FIVE: Array<[string, JourneyTab, "page" | "true" | undefined]> = [
+  ["/millionea", "millionea", "page"],
+  ["/millionea/slip", "millionea", "true"],
+  ["/millionea/register/x1", "millionea", "true"],
+  ["/millionea", "questions", undefined],
+  ["/millionea/tickets", "tickets", "true"],
+  ["/millionea/tickets", "millionea", undefined],
+  ["/", "questions", "page"],
+  ["/updown/history", "tickets", "true"],
+  ["/results", "account", "true"],
 ];
 // ⭐ RE-PINNED IN THE OPEN 2026-10-17 (PHOSPHOR-MIGRATION W2; Ali's R-LEXICON 5.1A, one meaning one glyph): Maswali is the
 // board, so it draws the board's glyph `markets` (Phosphor's squares-four) — the classic rail's Masoko draws the same. Its
@@ -551,6 +583,24 @@ const DECK = [
   "tickets /positions ticket journey.tabTickets",
   "account /account user journey.tabAccount",
 ];
+/** S5-TAB (Ali, 2026-10-19; §M8a item 11): the five tabs while Millionea shows — its tab right after Juu/Chini (the
+ *  product's mark, the product's name), and the tickets tab's short rail label (the lead's ruling); the rest as DECK. */
+const DECK_FIVE = [
+  "questions / markets journey.tabQuestions",
+  "updown /updown trade nav.updown",
+  "millionea /millionea millionea millionea.productLabel",
+  "tickets /positions ticket journey.tabTickets rail:journey.tabTicketsShort",
+  "account /account user journey.tabAccount",
+];
+/** A tab as §1 reads its shape: key, href, glyph, label, and the rail's own label where it has one. */
+const shapeOf = (d: JourneyTabDef) => `${d.key} ${d.href} ${d.glyph} ${d.label}${d.railLabel === undefined ? "" : ` rail:${d.railLabel}`}`;
+/** The two lists §1 holds: the four tabs (its long-standing labels) and the five (each label `1.five.`). */
+const DRAWN: ReadonlyArray<{ millionea: boolean; at: string; expected: Record<string, Expect>; aria: typeof ARIA; deck: readonly string[] }> = [
+  { millionea: false, at: "1.", expected: EXPECTED, aria: ARIA, deck: DECK },
+  { millionea: true, at: "1.five.", expected: { ...EXPECTED, ...EXPECTED_FIVE }, aria: ARIA_FIVE, deck: DECK_FIVE },
+];
+/** How many labels the guard reads in one dictionary: each drawn tab's label, and its rail label where it has one. */
+const labelsRead = (tabs: readonly JourneyTabDef[]) => tabs.reduce((n, d) => n + (d.railLabel === undefined ? 1 : 2), 0);
 const DEFINES = /\b(?:function\s+activeTabFor\b|(?:const|let|var)\s+(?:activeTabFor|TAB_ROUTES|JOURNEY_TABS)\b)/;
 
 function g1Tabs(I: Impl, W: World, ok: Ok) {
@@ -569,61 +619,94 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
     `${W.routes.length} routes`);
 
   const population = [...new Set([...W.routes, ...ahead])].sort();
-  for (const route of population) {
-    const exp = EXPECTED[route];
-    if (!exp) continue;
-    const got = I.activeTab(probe(route));
-    ok(`1.route.${route} · ${exp.tab === null ? `no tab — ${exp.why}` : exp.tab}`, got === exp.tab, `got ${show(got)}`);
+  // ⭐ S5-TAB · every check below that depends on the drawn list runs for both lists `journeyTabsFor` draws: the four tabs
+  // under their long-standing labels, and the five (Millionea shows) under `1.five.*`.
+  for (const drawn of DRAWN) {
+    const tabs = I.tabsFor(drawn.millionea);
+    const L = drawn.at;
+    for (const route of population) {
+      const exp = drawn.expected[route];
+      if (!exp) continue;
+      const got = I.activeTab(probe(route), tabs);
+      ok(`${L}route.${route} · ${exp.tab === null ? `no tab — ${exp.why}` : exp.tab}`, got === exp.tab, `got ${show(got)}`);
+    }
+    const disagree = [...population.map(probe), ...LOOKALIKES].filter((p) => I.activeTab(p, tabs) !== TAB.rowTabIn(TAB.tabRouteIn(I.routes, p), tabs));
+    ok(`${L}one.table · the resolver answers from the table's first claiming row — its tab among the drawn ones, or its fallback where they lack it — and nothing else`,
+      disagree.length === 0, disagree.join(", "));
+    if (!drawn.millionea) {
+      for (const p of LOOKALIKES) {
+        const row = I.routeFor(p);
+        ok(`1.segment.${p} · claimed by no row — a row owns its path and the paths below it, never its letters`,
+          row === null && I.activeTab(p, tabs) === null, `claimed by ${show(row)}`);
+      }
+    }
+    for (const d of tabs) {
+      ok(`${L}roundtrip.${d.key} · its own href ${d.href} lights it, with aria-current="page"`,
+        I.activeTab(d.href, tabs) === d.key && I.ariaCurrent(d.href, d.key, tabs) === "page",
+        `tab ${show(I.activeTab(d.href, tabs))} · aria-current ${show(I.ariaCurrent(d.href, d.key, tabs))}`);
+    }
+    for (const [p, tab, want] of drawn.aria) {
+      const got = I.ariaCurrent(p, tab, tabs);
+      ok(`${L}aria.${p}.${tab} · ${want === undefined ? "no aria-current" : `aria-current="${want}"`}`, got === want, `got ${show(got)}`);
+    }
+    const shape = tabs.map(shapeOf);
+    ok(drawn.millionea
+      ? "1.five.tabs · five tabs while Millionea shows — Maswali /, Juu/Chini /updown, Millionea /millionea (its mark, its name), Tiketi zangu /positions with its short rail label, Akaunti /account"
+      : "1.tabs · four tabs in the deck's order — Maswali /, Juu/Chini /updown, Tiketi zangu /positions, Akaunti /account",
+    show(shape) === show(drawn.deck), show(shape));
+    const noGlyph = tabs.filter((d) => !W.glyphs.includes(`\n  "${d.glyph}": { s: "`)).map((d) => d.glyph);
+    ok(`${L}glyphs · every tab's glyph is one the glyph set defines`, tabs.length > 0 && noGlyph.length === 0, noGlyph.join(", "));
+    const problems = TAB.tabTableProblems(I.routes, tabs, dict);
+    ok(`${L}table · the table is sound — every row's tab is a tab (or falls back to one), every tab is reached, no row is shadowed, each href lights its own tab, every label exists in en/sw/zh`,
+      problems.length === 0, problems.slice(0, 4).join(" | "));
   }
-  const disagree = [...population.map(probe), ...LOOKALIKES].filter((p) => I.activeTab(p) !== (TAB.tabRouteIn(I.routes, p)?.tab ?? null));
-  ok("1.one.table · the resolver answers from the table's first claiming row and nothing else", disagree.length === 0, disagree.join(", "));
-  for (const p of LOOKALIKES) {
-    const row = I.routeFor(p);
-    ok(`1.segment.${p} · claimed by no row — a row owns its path and the paths below it, never its letters`,
-      row === null && I.activeTab(p) === null, `claimed by ${show(row)}`);
-  }
-  for (const d of I.tabs) {
-    ok(`1.roundtrip.${d.key} · its own href ${d.href} lights it, with aria-current="page"`,
-      I.activeTab(d.href) === d.key && I.ariaCurrent(d.href, d.key) === "page",
-      `tab ${show(I.activeTab(d.href))} · aria-current ${show(I.ariaCurrent(d.href, d.key))}`);
-  }
-  for (const [p, tab, want] of ARIA) {
-    const got = I.ariaCurrent(p, tab);
-    ok(`1.aria.${p}.${tab} · ${want === undefined ? "no aria-current" : `aria-current="${want}"`}`, got === want, `got ${show(got)}`);
-  }
-  const shape = I.tabs.map((d) => `${d.key} ${d.href} ${d.glyph} ${d.label}`);
-  ok("1.tabs · four tabs in the deck's order — Maswali /, Juu/Chini /updown, Tiketi zangu /positions, Akaunti /account",
-    show(shape) === show(DECK), show(shape));
-  const noGlyph = I.tabs.filter((d) => !W.glyphs.includes(`\n  "${d.glyph}": { s: "`)).map((d) => d.glyph);
-  ok("1.glyphs · every tab's glyph is one the glyph set defines", I.tabs.length > 0 && noGlyph.length === 0, noGlyph.join(", "));
-  const problems = TAB.tabTableProblems(I.routes, I.tabs, dict);
-  ok("1.table · the table is sound — every row's tab is a tab, every tab is reached, no row is shadowed, each href lights its own tab, every label exists in en/sw/zh",
-    problems.length === 0, problems.slice(0, 4).join(" | "));
   const ctl = TAB.tabTableProblems(
-    [{ prefix: "/updown", tab: "updown" }, { prefix: "/updown/history", tab: "tickets" }],
+    [{ prefix: "/updown", tab: "updown" }, { prefix: "/updown/history", tab: "tickets" }, { prefix: "/millionea", tab: "millionea", fallback: "questions" }],
     [
       { key: "updown", href: "/updown", glyph: "trade", label: "nav.updown" },
-      { key: "tickets", href: "/updown/history", glyph: "ticket", label: "journey.tabTickets" },
+      { key: "tickets", href: "/updown/history", glyph: "ticket", label: "journey.tabTickets", railLabel: "journey.tabTicketsShort" },
       { key: "account", href: "/account", glyph: "user", label: "journey.tabAccount" },
     ],
     {
-      en: { nav: { updown: "Up & Down" }, journey: { tabTickets: "My tickets", tabAccount: "Account" } },
-      sw: { nav: { updown: "Juu/Chini" }, journey: { tabAccount: "Akaunti" } },
+      en: { nav: { updown: "Up & Down" }, journey: { tabTickets: "My tickets", tabTicketsShort: "My tickets", tabAccount: "Account" } },
+      sw: { nav: { updown: "Juu/Chini" }, journey: { tabTickets: "Tiketi zangu", tabAccount: "Akaunti" } },
     },
   );
   const flagged = (s: string) => ctl.some((p) => p.includes(s));
-  ok("1.table.c · CONTROL · the detector flags a shadowed row, a tab no row reaches and a label missing in one language",
-    flagged('row "/updown/history" is unreachable') && flagged('tab "account" is reached by no row') && flagged('label "journey.tabTickets" is missing in sw'),
+  ok("1.table.c · CONTROL · the detector flags a shadowed row, a tab no row reaches, a label missing in one language, a rail label missing in one language and a row whose tab and fallback no drawn tab owns",
+    flagged('row "/updown/history" is unreachable') && flagged('tab "account" is reached by no row') && flagged('label "journey.tabTicketsShort" is missing in sw')
+      && !flagged('label "journey.tabTicketsShort" is missing in en') && flagged('row "/millionea" names "millionea", which no tab owns, nor its fallback "questions"'),
     ctl.join(" | "));
+  const ctlLabel = TAB.tabTableProblems([], [{ key: "tickets", href: "/positions", glyph: "ticket", label: "journey.tabTickets" }],
+    { sw: { journey: { tabAccount: "Akaunti" } } });
+  ok("1.table.c′ · CONTROL · …and a tab's own label missing in one language",
+    ctlLabel.some((p) => p.includes('label "journey.tabTickets" is missing in sw')), ctlLabel.join(" | "));
   const guard = I.tabKeys(dict);
-  ok("1.guard · assertTabKeysResolve(dict), the exported guard, finds the shipped table sound in en, sw and zh",
+  ok("1.guard · assertTabKeysResolve(dict), the exported guard, finds the shipped table sound in en, sw and zh — for the four tabs and for the five",
     guard.length === 0, guard.slice(0, 4).join(" | "));
   const blank = I.tabKeys({ xx: {} }).filter((p) => p.includes("is missing in xx"));
-  ok("1.guard.c · CONTROL · the guard reads the dictionaries it is handed: one with no tab words is flagged once per tab",
-    blank.length === TAB.JOURNEY_TABS.length, `${blank.length} flagged`);
+  const reads = labelsRead(TAB.journeyTabsFor(false)) + labelsRead(TAB.journeyTabsFor(true));
+  ok(`1.guard.c · CONTROL · the guard reads the dictionaries it is handed: one with no tab words is flagged once per label each list reads (${reads}: four labels, and five with the tickets tab's rail label)`,
+    blank.length === reads, `${blank.length} flagged`);
   const definers = [...W.files].filter(([, s]) => DEFINES.test(s)).map(([p]) => p);
   ok("1.one.definer · the tabs, their table and the resolver are defined in ONE file (active-tab.ts)",
     definers.length === 1 && definers[0] === HOME, show(definers));
+  // ⭐ S5-TAB (2026-10-19) · THE SHELL DRIVE'S COPY OF THE TABLE IS THE TABLE. `qa-journey-shell.mjs` runs on plain node, so it
+  // keeps its own copy of `TAB_ROUTES` (fallback included) and of the tabs' hrefs, and said it would fail only at drive time
+  // when the table moved — and S5's two Millionea rows went missing from it unseen. Held here, row for row, so a moved table
+  // fails in predeploy instead.
+  const drive = W.extra.get(QA_DRIVE) ?? "";
+  const routesAt = drive.indexOf("const TAB_ROUTES = [");
+  const routesSrc = routesAt < 0 ? "" : drive.slice(routesAt, drive.indexOf("];", routesAt));
+  const copied = [...routesSrc.matchAll(/\[\s*'([^']+)',\s*(null|'[a-z]+')(?:,\s*(true|false))?(?:,\s*'([a-z]+)')?\s*\]/g)]
+    .map((m) => `${m[1]} ${m[2] === "null" ? "null" : m[2].slice(1, -1)} ${m[3] === "true" ? "exact" : "-"} ${m[4] ?? "-"}`);
+  const shipped = I.routes.map((r) => `${r.prefix} ${r.tab ?? "null"} ${r.exact ? "exact" : "-"} ${r.fallback ?? "-"}`);
+  const hrefAt = drive.indexOf("const TAB_HREF = {");
+  const hrefs = hrefAt < 0 ? {} : Object.fromEntries([...drive.slice(hrefAt, drive.indexOf("};", hrefAt)).matchAll(/(\w+): '([^']*)'/g)].map((m) => [m[1], m[2]]));
+  const ownHrefs = Object.fromEntries(I.tabsFor(true).map((d) => [d.key, d.href]));
+  ok("1.copy · the shell drive's plain-node copy of the table is the table, row for row (prefix, tab, exact, fallback), and its hrefs are the five tabs' own",
+    copied.length > 20 && show(copied) === show(shipped) && canon(hrefs) === canon(ownHrefs),
+    show({ onlyInDrive: copied.filter((r) => !shipped.includes(r)), onlyInTable: shipped.filter((r) => !copied.includes(r)), hrefs }));
 }
 
 /* ══ §2 · THE JOURNEY SURFACES ═══════════════════════════════════════════════════════════════════════════════ */
@@ -1617,11 +1700,22 @@ function g7Header(W: World, ok: Ok) {
   ok("7.state · the bar asks journeyHeaderState once and renders its three answers: the capsule, the pill and the guest pills",
     count(bar, "journeyHeaderState({") === 1 && bar.includes(`{state.capsule !== "none" && (`) && bar.includes("{state.pill && (")
       && bar.includes("{state.authPills && (") && bar.includes("const liveBalance = useLiveBalance(user.balance ?? 0);"));
-  ok(`7.desktop · from 1024 the four destinations, each lit by the one table (A12: aria-current from tabAriaCurrent, never a "page" literal), a guest's Tiketi zangu a dialog button — and no NavMore`,
-    bar.includes(`<nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary}>`) && count(bar, "JOURNEY_TABS.map(") === 1
-      && count(bar, "aria-current={tabAriaCurrent(pathname, d.key)}") === 1 && !bar.includes(`? "page"`)
-      && bar.includes("const active = activeTabFor(pathname);") && bar.includes(`type="button"`) && bar.includes(`aria-haspopup="dialog"`)
+  // ⭐ RE-PINNED OPENLY, MASWALI-BUILD S5-TAB (2026-10-19): the destinations are the drawn list, `journeyTabsFor(millionea)`
+  // (five while Millionea shows), and both the lit link and aria-current are asked of that same list — the rail's own.
+  ok(`7.desktop · from 1024 the drawn destinations (four; five while Millionea shows), each lit by the one table over that same list (A12: aria-current from tabAriaCurrent, never a "page" literal), a guest's Tiketi zangu a dialog button — and no NavMore`,
+    bar.includes(`<nav className="hidden lg:flex kp-jnav" aria-label={t.nav.primary} data-tabs={tabs.length === 4 ? undefined : tabs.length}>`) && count(bar, "tabs.map(") === 1
+      && bar.includes("const tabs = journeyTabsFor(millionea);") && !bar.includes("JOURNEY_TABS")
+      && count(bar, "aria-current={tabAriaCurrent(pathname, d.key, tabs)}") === 1 && !bar.includes(`? "page"`)
+      && bar.includes("const active = activeTabFor(pathname, tabs);") && bar.includes(`type="button"`) && bar.includes(`aria-haspopup="dialog"`)
       && count(bar, "className={JNAV}") === 2 && bar.includes(`const JNAV = "kp-jnav__link";`) && !bar.includes("<NavMore") && !bar.includes("kp-navlink"));
+  // ⭐ S5-TAB (2026-10-19) · five destinations at 1024 ran the row 5.1px into the page's gutter in Swahili (qa:journey-header-
+  // fit's least slack, −5.1px, a signed-in player at TZS 999,999 or with hidden balances). The nav, saying how many it
+  // draws, drops its own leading 12px from 1024 to 1279 and takes it back from 1280; the links' padding is untouched.
+  ok("7.desktop.five · while five destinations show the nav says so (data-tabs) and drops its own leading 12px from 1024 to 1279, taking it back from 1280 — the links' own padding untouched, and four destinations keep today's margin",
+    baseRule(css, `.kp-jnav[data-tabs="5"]`).includes("margin-inline-start: 0") && minWidthRule(css, 1280, `.kp-jnav[data-tabs="5"]`).includes("margin-inline-start: var(--sp-3)")
+      && baseRule(css, ".kp-jnav").includes("margin-inline-start: var(--sp-3)") && baseRule(css, ".kp-jnav__link").includes("padding: 0 var(--sp-3)")
+      && bar.includes("data-tabs={tabs.length === 4 ? undefined : tabs.length}"),
+    show({ five: baseRule(css, `.kp-jnav[data-tabs="5"]`), from1280: minWidthRule(css, 1280, `.kp-jnav[data-tabs="5"]`) }));
   const jnav = css.split(LF).filter((l) => l.includes(".kp-jnav"));
   // ⭐ RE-PINNED OPENLY, PHOSPHOR-MIGRATION W3 (2026-10-18). This was 7.underline: "the destinations speak the kit's
   // SECTION language: an underline that scales in, brand when current — never the filter pill's fill (§0h point 7)".
@@ -1739,18 +1833,26 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     isClient(rail) && rail.includes(`className="lg:hidden fixed inset-x-0 bottom-0 z-40 kp-rail kp-rail--journey"`)
       && rail.includes(`data-needle-keepout=""`) && rail.includes(`data-testid="journey-tabs"`) && rail.includes("aria-label={t.nav.primary}"),
     rail.length === 0 ? "file missing" : "");
-  ok("8.tabs · exactly the four JOURNEY_TABS — every href comes from the table; no centre coin, no More, no accent dot (SJ-16)",
-    count(rail, "JOURNEY_TABS.map(") === 1 && count(rail, "href=") === 1 && rail.includes("href={d.href as never}")
+  // ⭐ RE-PINNED OPENLY, MASWALI-BUILD S5-TAB (2026-10-19): the rail draws `journeyTabsFor(millionea)` — the four
+  // JOURNEY_TABS, or five with Millionea right after Juu/Chini while it shows — and lights a tab of that same list.
+  ok("8.tabs · exactly the drawn tabs — the four JOURNEY_TABS, five while Millionea shows (journeyTabsFor) — every href from the table; no centre coin, no More, no accent dot (SJ-16)",
+    count(rail, "tabs.map(") === 1 && rail.includes("const tabs = journeyTabsFor(millionea);") && !rail.includes("JOURNEY_TABS")
+      && count(rail, "href=") === 1 && rail.includes("href={d.href as never}")
       && !rail.includes("<NavMore") && !rail.includes("kp-coin") && !rail.includes("deposit-rail") && !rail.includes("kp-rail__dot")
-      && TAB.JOURNEY_TABS.length === 4);
+      && TAB.journeyTabsFor(false) === TAB.JOURNEY_TABS && TAB.JOURNEY_TABS.length === 4 && TAB.journeyTabsFor(true).length === 5);
   const grid = baseRule(css, ".kp-rail--journey > ul");
   ok("8.grid · four equal tracks on the LIST (A18) — on the nav the whole list would be one cell",
     grid.includes("display: grid") && grid.includes("grid-template-columns: repeat(4, minmax(0, 1fr))")
       && baseRule(css, ".kp-rail--journey") === "",
     grid);
-  ok(`8.aria · aria-current comes from tabAriaCurrent (A12: "page" on a tab's own href, "true" on its section) and the lit pip from activeTabFor — never a "page" literal`,
-    count(rail, "aria-current={tabAriaCurrent(pathname, d.key)}") === 1 && !rail.includes(`"page"`)
-      && rail.includes("const active = activeTabFor(pathname);") && rail.includes("const on = active === d.key;")
+  const grid5 = baseRule(css, `.kp-rail--journey[data-tabs="5"] > ul`);
+  ok(`8.grid.five · five equal tracks on the list while five tabs show, the nav saying so (data-tabs, absent for four, so the four-tab rail is today's) — the four-track rule unedited`,
+    grid5.includes("grid-template-columns: repeat(5, minmax(0, 1fr))") && grid.includes("repeat(4, minmax(0, 1fr))")
+      && rail.includes("data-tabs={tabs.length === 4 ? undefined : tabs.length}"),
+    show({ grid5 }));
+  ok(`8.aria · aria-current comes from tabAriaCurrent over the drawn list (A12: "page" on a tab's own href, "true" on its section) and the lit pip from activeTabFor over that same list — never a "page" literal`,
+    count(rail, "aria-current={tabAriaCurrent(pathname, d.key, tabs)}") === 1 && !rail.includes(`"page"`)
+      && rail.includes("const active = activeTabFor(pathname, tabs);") && rail.includes("const on = active === d.key;")
       && count(rail, `data-on={on ? "1" : undefined}`) === 2);
   ok("8.name · a tab link carries no aria-label, so its visible label is its name and the Akaunti tab's unread words join it",
     count(rail, "aria-label=") === 1 && rail.includes("aria-label={t.nav.primary}"));
@@ -1789,7 +1891,10 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
   const padAt = padRule.indexOf("padding-inline:");
   const pad = 2 * parseFloat(padAt < 0 ? "NaN" : padRule.slice(padAt + "padding-inline:".length));
   const oneLine = (s: string) => monoWidth(s, micro) + pad;
-  const labels = (["en", "sw", "zh"] as const).flatMap((loc) => TAB.JOURNEY_TABS.map((d) => ({ loc, key: d.key, s: TAB.tabLabel(dict[loc], d.label) })));
+  /** The words the rail says for each drawn tab, in each language: its rail label where it has one (S5-TAB). */
+  const railWords = (tabs: readonly JourneyTabDef[]) =>
+    (["en", "sw", "zh"] as const).flatMap((loc) => tabs.map((d) => ({ loc, key: d.key, s: TAB.tabLabel(dict[loc], d.railLabel ?? d.label) })));
+  const labels = railWords(I.tabsFor(false));
   const linesIn = (s: string, track: number) => {
     let lines = 1;
     let cur = "";
@@ -1812,6 +1917,16 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && minWidthRule(css, 360, ".kp-jtab__label").includes("white-space: nowrap")
       && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
     baseRule(css, ".kp-jtab__label"));
+  // ⭐ S5-TAB (the lead's rulings, 2026-10-19) · THE SAME MEASURE WITH FIVE TABS, in the words the rail says (the tickets
+  // tab's short rail label: sw "Tiketi", en "Tickets", zh 我的注单): every label of every language fits ONE line in its fifth
+  // of a 320 phone — 320 is one of the five widths we hold — so no five-tab label needs the wrap.
+  const five = railWords(I.tabsFor(true));
+  const over320f = five.filter((l) => oneLine(l.s) > 320 / 5);
+  ok("8.label.measure.five · with five tabs, measured: every label in sw, en and zh — the tickets tab's short rail label among them — fits one line in its fifth of a 320 phone, so none needs the wrap",
+    Number.isFinite(micro) && Number.isFinite(pad) && five.length === 15 && over320f.length === 0,
+    show({ over320: over320f.map((l) => `${l.loc} ${l.s} ${oneLine(l.s).toFixed(1)} > ${320 / 5}`) }));
+  ok("8.label.five · the rail says each tab's rail label where it has one (the tickets tab's short words among five); the desktop link keeps the label, which its page is titled by",
+    rail.includes("const label = tabLabel(t, d.railLabel ?? d.label);") && !bar.includes("railLabel") && count(bar, "tabLabel(t, d.label)") === 3);
   // The grid stretches every slot to the tallest, and the classic slot centres: a two-line label would lift its pip.
   // ⭐ RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R3-D1 and R6-D1): below 360 EVERY language stacked from the
   // top, though only Swahili wraps — 6px over and 15 under the items in English and Chinese at 320. The top-stacking now
@@ -1825,6 +1940,18 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
     !wraps || (align.below.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")
       && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320),
     show(align));
+  // ⭐ S5-TAB · R9-C's rule with FIVE tabs: the slots centre from five times the longest rail word — the same 317 in every
+  // language ("Juu/Chini", "Millionea", "Questions", "Up & Down", each 63.4px) — so ONE rule on the five-tab nav centres them
+  // from 317, every width we hold; below it (no width we hold) they would stack from the top, as R9-C's rule says.
+  const FIVE = `.kp-rail--journey[data-tabs="5"]`;
+  const fitsFrom5 = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((5 * Math.max(...five.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
+  const from5 = Math.max(...Object.values(fitsFrom5));
+  const align5 = { below: baseRule(css, `${FIVE} .kp-rail__item`), from: minWidthRule(css, from5, `${FIVE} .kp-rail__item`), fitsFrom: fitsFrom5,
+    perLang: (["en", "sw", "zh"] as const).filter((loc) => css.includes(`${FIVE}:lang(${loc})`)) };
+  ok("8.align.five · with five tabs every language's longest rail word fits its fifth from the same width, 317, so one rule centres the slots from there (they stack from the top only below it) — centred at every width we hold",
+    !wraps || (align5.below.includes("justify-content: flex-start") && align5.from.includes("justify-content: center") && align5.perLang.length === 0
+      && from5 <= 320 && Object.values(fitsFrom5).every((w) => w === from5)),
+    show({ ...align5, from5 }));
 
   // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
   const both = ([null, true, false] as const).filter((w) => I.pollers(w).bell && I.pollers(w).dot);
@@ -1921,7 +2048,8 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
 /*
  * S6's done-when, "every route keeps an entrance", as a REACHABILITY GRAPH (A9): never a list of hrefs that merely sit
  * in some file.
- *   ROOTS: what a journey PHONE shows. The four tabs (a guest's Tiketi zangu opens the guest sheet), the header's own
+ *   ROOTS: what a journey PHONE shows. The tabs — the five, Millionea's among them, since every kind the census walks is
+ *   shown Millionea (`MILLIONEA_SHOWN`); a guest's Tiketi zangu opens the guest sheet — the header's own
  *   links as `journeyHeaderState` decides them, the Wallet the capsule opens and the footer; and on `/account`, which
  *   only the Akaunti tab reaches, `hubRowsFor(viewer)` — each row's href, and since S7 WP9 Tafuta's form target, the
  *   journey home (A20 item 4: the hub's root moved there from `/markets`, 9.hub.search). The language menu, the bell and
@@ -2006,9 +2134,11 @@ const INVITE_DOOR: Gate = (_k, d) => d.inviteVisible;
 const PROPOSALS_DOOR: Gate = (_k, d) => d.proposalsVisible;
 const MEMBER_PROPOSALS: Gate = (k, d) => k.signedIn && d.proposalsVisible;
 const AGENT_DOOR: Gate = (_k, d) => d.agentDoorVisible;
-/** MASWALI-BUILD S5 (2026-10-17) · Maswali Millionea's More row (MASWALI-PLAN §10 §3.2 (b)–(c)), for a player and a guest
- *  alike: drawn on the rollout's answer and not during a break, neither of which a census kind varies — every kind it walks
- *  is shown an ACTIVE product and is on no break. A hidden product draws no row, and its pages answer the identical 404. */
+/** MASWALI-BUILD S5 (2026-10-17) · Maswali Millionea's classic doors — since S5-TAB (2026-10-19) the bar's core link after
+ *  Up & Down and the phone rail's first More row (MASWALI-PLAN §10 §3.2 (b)–(c)) — for a player and a guest alike: drawn
+ *  on the rollout's answer and not during a break, neither of which a census kind varies — every kind it walks is shown an
+ *  ACTIVE product and is on no break. So the journey's roots are the FIVE tabs (`journeyRootsFor`), Millionea's among
+ *  them. A hidden product draws no door in either shell, and its pages answer the identical 404. */
 const MILLIONEA_SHOWN: Gate = () => true;
 type ChromeDoor = { href: string; file: string; gate: Gate };
 
@@ -2233,10 +2363,11 @@ function hubViewerFor(k: CensusKind, d: DO): HUB.HubViewer {
 function hubDoorsFor(I: Impl, k: CensusKind, d: DO): string[] {
   return I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.flatMap((r) => (r.kind === "link" || r.kind === "unread" ? [r.href] : r.kind === "search" ? [r.action] : [])));
 }
-/** The journey's phone chrome for a reader: the tabs, the header's own links, the sheets they open, the footer. */
+/** The journey's phone chrome for a reader: the tabs, the header's own links, the sheets they open, the footer. The tabs
+ *  are the five: every kind the census walks is shown Millionea (`MILLIONEA_SHOWN`), as its classic doors are counted. */
 function journeyRootsFor(I: Impl, k: CensusKind, d: DO): string[] {
   const out: string[] = [];
-  for (const tab of I.tabs) {
+  for (const tab of I.tabsFor(true)) {
     if (tab.key === "tickets" && !k.signedIn) out.push(...GUEST_SHEET_DOORS);
     else out.push(tab.href);
   }
@@ -2825,8 +2956,12 @@ if (!PROVE_RED) {
     const fromRows = (rows: readonly TabRoute[]): Partial<Impl> => ({
       routes: rows,
       routeFor: (p) => TAB.tabRouteIn(rows, p),
-      activeTab: (p) => TAB.tabRouteIn(rows, p)?.tab ?? null,
+      activeTab: (p, tabs) => TAB.rowTabIn(TAB.tabRouteIn(rows, p), tabs),
+      ariaCurrent: (p, tab, tabs) => (TAB.rowTabIn(TAB.tabRouteIn(rows, p), tabs) !== tab ? undefined : tabs.some((d) => d.key === tab && d.href === p) ? "page" : "true"),
     });
+    /** S5-TAB · a defective drawn list for one of the two readers, the other reader's list the real one. */
+    const withList = (millionea: boolean, list: readonly JourneyTabDef[]): Partial<Impl> =>
+      ({ tabsFor: (m) => (m === millionea ? list : REAL.tabsFor(m)) });
 
     /** `/updown/history` moved BELOW `/updown`, where the game's row claims it first. */
     const historyBelow: TabRoute[] = (() => {
@@ -2835,15 +2970,37 @@ if (!PROVE_RED) {
       return [...rows.slice(0, i + 1), { prefix: "/updown/history", tab: "tickets" }, ...rows.slice(i + 1)];
     })();
     const noAccount = TAB.TAB_ROUTES.filter((r) => r.prefix !== "/account");
-    const hubNull = (p: string | null) => (p === "/results" || (p ?? "").startsWith("/results/") ? null : TAB.activeTabFor(p));
+    const hubNull = (p: string | null, tabs: readonly JourneyTabDef[]) => (p === "/results" || (p ?? "").startsWith("/results/") ? null : TAB.activeTabFor(p, tabs));
     /** A18's defect: the opt-out row matched as a bare prefix, so it claims every path that starts with an s. */
     const sRow: TabRoute = TAB.TAB_ROUTES.find((r) => r.prefix === "/s") ?? { prefix: "/s", tab: null };
     const bareS = (p: string | null) => (p && p.startsWith("/s") ? sRow : TAB.tabRouteFor(p));
     /** A12's defect: "page" for every page of the section. */
-    const pageForSection = (p: string | null, tab: JourneyTab) => (TAB.activeTabFor(p) === tab ? ("page" as const) : undefined);
+    const pageForSection = (p: string | null, tab: JourneyTab, tabs: readonly JourneyTabDef[]) => (TAB.activeTabFor(p, tabs) === tab ? ("page" as const) : undefined);
     const outOfOrder = [TAB.JOURNEY_TABS[0], TAB.JOURNEY_TABS[2], TAB.JOURNEY_TABS[1], TAB.JOURNEY_TABS[3]];
     const ghostGlyph = TAB.JOURNEY_TABS.map((d): JourneyTabDef => (d.key === "tickets" ? { ...d, glyph: "tickets" as string as TAB.TabGlyph } : d));
     const guardIgnoresDicts: Impl["tabKeys"] = () => TAB.tabTableProblems(TAB.TAB_ROUTES, TAB.JOURNEY_TABS);
+    // ── S5-TAB's own defects (Ali, 2026-10-19; §M8a item 11): the drawn list, the fallback, the table's order ──
+    const FIVE_REAL = TAB.journeyTabsFor(true);
+    /** Millionea's tab spliced in after Tiketi zangu, not right after Juu/Chini. */
+    const millioneaLate = (() => {
+      const rest = FIVE_REAL.filter((d) => d.key !== "millionea");
+      const at = rest.findIndex((d) => d.key === "tickets") + 1;
+      return [...rest.slice(0, at), TAB.MILLIONEA_TAB, ...rest.slice(at)];
+    })();
+    /** The five tabs without the tickets tab's short rail label: "Tiketi zangu" in a fifth of the phone. */
+    const fiveLongWords = FIVE_REAL.map((d): JourneyTabDef => ({ ...d, railLabel: undefined }));
+    /** The `/millionea` row without its fallback: a reader drawn the four tabs lights nothing on Millionea's pages. */
+    const noFallback = TAB.TAB_ROUTES.map((r): TabRoute => (r.prefix === "/millionea" ? { prefix: r.prefix, tab: r.tab } : r));
+    /** `/millionea/tickets` moved below `/millionea`, whose row then claims Millionea's tickets for its own tab. */
+    const ticketsBelow: TabRoute[] = (() => {
+      const rows = TAB.TAB_ROUTES.filter((r) => r.prefix !== "/millionea/tickets");
+      const i = rows.findIndex((r) => r.prefix === "/millionea");
+      return [...rows.slice(0, i + 1), { prefix: "/millionea/tickets", tab: "tickets" }, ...rows.slice(i + 1)];
+    })();
+    /** A resolver that reads the table but not the drawn list: Millionea's pages "belong" to a tab a reader is not drawn. */
+    const listBlind: Impl["activeTab"] = (p) => TAB.tabRouteFor(p)?.tab ?? null;
+    /** aria-current asked of the five whatever the rail draws: on the four, Millionea's hub is in nobody's section. */
+    const ariaOfFive: Impl["ariaCurrent"] = (p, tab) => TAB.tabAriaCurrent(p, tab, FIVE_REAL);
     const prefixMarkets = (p: string | null) => !!p && (p.startsWith("/markets") || SURF.isJourneySurface(p));
     /** A22's defect: /watchlist taken into the journey surfaces, so its Needle, panel and chat bubble stand down. */
     const takesWatchlist = (p: string | null) => p === "/watchlist" || SURF.isJourneySurface(p);
@@ -3135,7 +3292,11 @@ ${s}`);
     const badgeBare = withCss(inRule(".kp-rail__badge", "box-shadow: 0 0 0 2px var(--panel)", "box-shadow: none"));
     const lockupAtLg = withFile(WORLD, JHDR, (s) => s.replace("mark-flip-i inline-flex xl:hidden", "mark-flip-i inline-flex lg:hidden"));
     const headerNotSticky = withFile(WORLD, JHDR, (s) => s.replace("sticky top-0 z-30 app-topbar kp-jhdr", "top-0 z-30 app-topbar kp-jhdr"));
-    const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={active === d.key ? "page" : undefined}`));
+    const sectionSaysPage = withFile(WORLD, JHDR, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key, tabs)}", `aria-current={active === d.key ? "page" : undefined}`));
+    // S5-TAB: the desktop links drawing the four tabs whatever the shell answers, while the rail draws five; and the five
+    // destinations keeping the nav's leading 12px at 1024 (the row 5.1px into the gutter in Swahili).
+    const linksFour = withFile(WORLD, JHDR, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
+    const fiveKeepMargin = withCss((s) => s.replace(`${LF}.kp-jnav[data-tabs="5"] { margin-inline-start: 0; }`, ""));
     const languageOnPhones = withFile(WORLD, JHDR, (s) => s.replace(`<span className="hidden lg:inline-flex"><LanguageMenu journey /></span>`, "<LanguageMenu journey />"));
     const headerForgetsCodes = withFile(WORLD, JHDR, (s) => s.replace(
       `authDoorHrefs(pathname ?? "/", new URLSearchParams(search?.toString() ?? ""))`,
@@ -3156,7 +3317,14 @@ ${s}`);
     const classicPipMoves = withFile(WORLD, BELL, (s) => s.replace("top: 3,", "top: 1,"));
     const tabsAt30 = withFile(WORLD, JTABS, (s) => s.replace("bottom-0 z-40 kp-rail kp-rail--journey", "bottom-0 z-30 kp-rail kp-rail--journey"));
     const moreReturns = withFile(WORLD, JTABS, (s) => s.replace("</ul>", `</ul><NavMore items={[]} label="" variant="rail" />`));
-    const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key)}", `aria-current={on ? "page" : undefined}`));
+    const railSaysPage = withFile(WORLD, JTABS, (s) => s.replace("aria-current={tabAriaCurrent(pathname, d.key, tabs)}", `aria-current={on ? "page" : undefined}`));
+    // S5-TAB's rail plants: four tabs whatever the shell answers; the tickets tab's long words among five; the five-track
+    // grid gone; Swahili's five-tab centring keyed at the four's width; the five-tab slots centred where English wraps.
+    const railFour = withFile(WORLD, JTABS, (s) => s.replace("const tabs = journeyTabsFor(millionea);", "const tabs = journeyTabsFor(false);"));
+    const railLongWords = withFile(WORLD, JTABS, (s) => s.replace("const label = tabLabel(t, d.railLabel ?? d.label);", "const label = tabLabel(t, d.label);"));
+    const fiveInFour = withCss((s) => s.replace(`${LF}.kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }`, ""));
+    const fiveAt350 = withCss((s) => s.replace(`@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`, `@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item {`));
+    const fiveCentredBelow = withCss(inRule(`.kp-rail--journey[data-tabs="5"] .kp-rail__item`, "justify-content: flex-start", "justify-content: center"));
     const accountNamed = withFile(WORLD, JTABS, (s) => s.replace("<Link", "<Link aria-label={tabLabel(t, d.label)}"));
     const guestCancelled = withFile(WORLD, JTABS, (s) => s.replace("<button", `<Link href="/positions" onClick={(e) => e.preventDefault()}`).replace("</button>", "</Link>"));
     const dotOnDesktop = withFile(WORLD, JTABS, (s) => s.replace(" && pollers.dot", ""));
@@ -3198,7 +3366,7 @@ ${s}`);
     const TICKETS_VIEW = "src/components/journey/tickets/tickets-view.tsx";
     const switchUnpinned = withFile(WORLD, TICKET_SWITCH, (s) => s.split(`"/updown/history"`).join(`"/updown"`));
     const utendajiUnpinned = withFile(WORLD, TICKETS_VIEW, (s) => s.split(`"/positions/performance"`).join(`"/positions"`));
-    const noAkaunti = TAB.JOURNEY_TABS.filter((t) => t.key !== "account");
+    const noAkaunti = TAB.journeyTabsFor(true).filter((t) => t.key !== "account");
     // Round 6 (2026-10-09, the review's back-link finding): the pages the hub opens fall back to it in the journey
     // ("‹ AKAUNTI" → /account with no history) — real doors the census counts — so the hub is orphaned only when those go too.
     const HUB_BACKS = ["src/app/notifications/page.tsx", "src/app/profile/invite/page.tsx", "src/app/profile/invite/agent-dashboard.tsx",
@@ -3262,9 +3430,9 @@ ${s}`);
     // whichever value it is handed.)
     const headerBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTopBar user=",
       `{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user=`)
-      .replace("invitePaid={invitePaid} /> : <TopAppBar", "invitePaid={invitePaid} /></Suspense> : <TopAppBar"));
-    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> :",
-      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> :"));
+      .replace("invitePaid={invitePaid} millionea={millioneaRow} /> : <TopAppBar", "invitePaid={invitePaid} millionea={millioneaRow} /></Suspense> : <TopAppBar"));
+    const tabsBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /> :",
+      "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} millionea={millioneaRow} /></Suspense> :"));
     const offlineDeferred = withFile(
       withFile(WORLD, SHELL_LAZY, (s) => `${s}${LF}export const LazyOfflineBanner = dynamic(() => `
         + `import("@/components/ui/offline-banner").then((m) => m.OfflineBanner).catch(nothingIfLost));${LF}`),
@@ -3308,6 +3476,8 @@ ${s}`);
     const withExtra = (rel: string, edit: (s: string) => string): World =>
       ({ ...WORLD, extra: new Map<string, string>([...WORLD.extra, [rel, edit(WORLD.extra.get(rel) ?? "")] as [string, string]]) });
     const extraChanged = (w: World, rel: string) => w.extra.get(rel) !== WORLD.extra.get(rel);
+    // §1 · S5-TAB: the shell drive's copy of the table without Millionea's two rows — S5's own drift, put back.
+    const driveStale = withExtra(QA_DRIVE, (s) => s.replace(" ['/millionea/tickets', 'tickets'], ['/millionea', 'millionea', false, 'questions'],", ""));
     const twinUnleashed = withExtra(RED_TWIN, (s) => s.replace(ALONE_REFUSAL, "if (false) die("));
     const scriptSaysAlone = withExtra(PACKAGE, (s) => s.replace(`"node ${RED_TWIN}"`, `"node ${RED_TWIN} --alone"`));
     const redAllUnmarked = withExtra(RED_ALL, (s) => s.replace(RED_ALL_MARK, 'KP_RED_ALL_OFF: "1"'));
@@ -3339,13 +3509,33 @@ ${s}`);
       { name: "/account is left unmapped", expect: at("1.roundtrip.account ·"),
         impl: fromRows(noAccount), landed: TAB.tabRouteIn(noAccount, "/account") === null, landedAs: "the hub's own href lights nothing" },
       { name: "a hub route returns null", expect: at("1.route./results ·"),
-        impl: { activeTab: hubNull }, landed: hubNull("/results") === null, landedAs: "Matokeo lights no tab" },
+        impl: { activeTab: hubNull }, landed: hubNull("/results", TAB.JOURNEY_TABS) === null, landedAs: "Matokeo lights no tab" },
       { name: "the opt-out row matched as a bare prefix (A18: /settings is claimed)", expect: at("1.segment./settings ·"),
-        impl: { routeFor: bareS, activeTab: (p) => bareS(p)?.tab ?? null }, landed: bareS("/settings") === sRow,
+        impl: { routeFor: bareS, activeTab: (p, tabs) => TAB.rowTabIn(bareS(p), tabs) }, landed: bareS("/settings") === sRow,
         landedAs: "a future /settings would belong to the opt-out row" },
       { name: "aria-current page for section membership (A12)", expect: at("1.aria."),
-        impl: { ariaCurrent: pageForSection }, landed: pageForSection("/markets", "questions") === "page",
+        impl: { ariaCurrent: pageForSection }, landed: pageForSection("/markets", "questions", TAB.JOURNEY_TABS) === "page",
         landedAs: "the board announces Maswali as the current page" },
+      // §1 · S5-TAB (Ali, 2026-10-19; §M8a item 11) — the drawn list, the fallback and the table's order
+      { name: "the /millionea row loses its fallback (S5-TAB)", expect: at("1.route./millionea ·"),
+        impl: fromRows(noFallback), landed: TAB.rowTabIn(TAB.tabRouteIn(noFallback, "/millionea"), TAB.JOURNEY_TABS) === null,
+        landedAs: "a reader drawn the four tabs sees nothing lit on Millionea's pages" },
+      { name: "Millionea's tickets row moved below /millionea (S5-TAB)", expect: at("1.five.route./millionea/tickets ·"),
+        impl: fromRows(ticketsBelow), landed: TAB.tabRouteIn(ticketsBelow, "/millionea/tickets")?.prefix === "/millionea",
+        landedAs: "Millionea's tickets light Millionea's tab, not Tiketi zangu" },
+      { name: "the resolver reads the table but not the drawn list (S5-TAB)", expect: at("1.route./millionea ·"),
+        impl: { activeTab: listBlind }, landed: listBlind("/millionea", TAB.JOURNEY_TABS) === "millionea",
+        landedAs: "a reader drawn the four tabs is told the page belongs to a tab that is not on screen" },
+      { name: "aria-current asked of the five tabs whatever the rail draws (S5-TAB)", expect: at("1.aria./millionea.questions ·"),
+        impl: { ariaCurrent: ariaOfFive }, landed: ariaOfFive("/millionea", "questions", TAB.JOURNEY_TABS) === undefined,
+        landedAs: "on the four tabs Millionea's hub belongs to no tab a screen reader can hear" },
+      { name: "Millionea's tab spliced in after Tiketi zangu (S5-TAB)", expect: at("1.five.tabs ·"),
+        impl: withList(true, millioneaLate), landed: millioneaLate[3].key === "millionea", landedAs: "Millionea's tab two slots from Up & Down" },
+      { name: "the five tabs lose the tickets tab's short rail label (S5-TAB)", expect: at("8.label.measure.five ·"),
+        impl: withList(true, fiveLongWords), landed: fiveLongWords.every((d) => d.railLabel === undefined),
+        landedAs: "\"Tiketi zangu\", 83.2px, in a 72px fifth of a 360 phone" },
+      { name: "the shell drive's copy of the table loses Millionea's rows (S5-TAB)", expect: at("1.copy ·"),
+        world: driveStale, landed: extraChanged(driveStale, QA_DRIVE), landedAs: "the drive expects Maswali lit on Millionea's tickets, and fails only at drive time" },
       { name: "a second resolver, written beside the classic rail", expect: at("1.one.definer ·"),
         world: secondResolver, landed: changed(secondResolver, BOTTOM_NAV), landedAs: "bottom-nav.tsx defines activeTabFor" },
       { name: "a new route ships with no tab decision", expect: at("1.census ·"),
@@ -3354,9 +3544,9 @@ ${s}`);
         world: accountLands, landed: WORLD.routes.includes("/account") && !AHEAD_OF_DISK.has("/account"),
         landedAs: "an exemption outlives the reason for it" },
       { name: "the tabs leave the deck's order", expect: at("1.tabs ·"),
-        impl: { tabs: outOfOrder }, landed: outOfOrder[1].key === "tickets", landedAs: "Tiketi zangu sits second on the rail" },
+        impl: withList(false, outOfOrder), landed: outOfOrder[1].key === "tickets", landedAs: "Tiketi zangu sits second on the rail" },
       { name: "a tab names a glyph the set does not define", expect: at("1.glyphs ·"),
-        impl: { tabs: ghostGlyph }, landed: !WORLD.glyphs.includes('\n  "tickets": { s: "'), landedAs: "the rail draws an empty icon" },
+        impl: withList(false, ghostGlyph), landed: !WORLD.glyphs.includes('\n  "tickets": { s: "'), landedAs: "the rail draws an empty icon" },
       { name: "the exported guard ignores the dictionaries", expect: at("1.guard.c ·"),
         impl: { tabKeys: guardIgnoresDicts }, landed: guardIgnoresDicts({ xx: {} }).length === 0,
         landedAs: "a label missing in a language passes the guard" },
@@ -3581,6 +3771,10 @@ ${s}`);
         world: headerNotSticky, landed: changed(headerNotSticky, JHDR), landedAs: "the header scrolls away, and the language menu is sealed in nothing" },
       { name: "a desktop destination says page for its whole section (A12)", expect: at("7.desktop ·"),
         world: sectionSaysPage, landed: changed(sectionSaysPage, JHDR), landedAs: "Matokeo announced as the Akaunti page" },
+      { name: "the desktop links draw the four tabs whatever the shell answers (S5-TAB)", expect: at("7.desktop ·"),
+        world: linksFour, landed: changed(linksFour, JHDR), landedAs: "Millionea's tab on the phone and no link to it from 1024" },
+      { name: "five destinations keep the nav's leading 12px at 1024 (S5-TAB)", expect: at("7.desktop.five ·"),
+        world: fiveKeepMargin, landed: cssChanged(fiveKeepMargin), landedAs: "the Swahili row 5.1px into the page's gutter at 1024 for a signed-in player" },
       { name: "the language menu shows on a phone", expect: at("7.cluster ·"),
         world: languageOnPhones, landed: changed(languageOnPhones, JHDR), landedAs: "a 44px control the 320 row has no room for" },
       { name: "a phone-only max-width rule in the shell", expect: at("7.first ·"),
@@ -3620,6 +3814,16 @@ ${s}`);
         world: moreReturns, landed: changed(moreReturns, JTABS), landedAs: "a fifth slot SJ-16 removed" },
       { name: "the grid goes on the nav, not the list (A18)", expect: at("8.grid ·"),
         world: gridOnNav, landed: cssChanged(gridOnNav), landedAs: "four tabs in one grid cell" },
+      { name: "the five-track grid dropped (S5-TAB)", expect: at("8.grid.five ·"),
+        world: fiveInFour, landed: cssChanged(fiveInFour), landedAs: "five tabs packed into four tracks, the fifth on a second row" },
+      { name: "the rail draws the four tabs whatever the shell answers (S5-TAB)", expect: at("8.tabs ·"),
+        world: railFour, landed: changed(railFour, JTABS), landedAs: "Millionea's link from 1024 and no tab on the phone" },
+      { name: "the rail's tickets tab says its long words among five (S5-TAB)", expect: at("8.label.five ·"),
+        world: railLongWords, landed: changed(railLongWords, JTABS), landedAs: "\"Tiketi zangu\" in a 72px fifth of a 360 phone" },
+      { name: "the five tabs' centring keyed at the old English width, 350 (S5-TAB)", expect: at("8.align.five ·"),
+        world: fiveAt350, landed: cssChanged(fiveAt350), landedAs: "on a 320 phone the five slots stack from the top, though every label fits one line from 317" },
+      { name: "the five-tab slots centred below their width (S5-TAB)", expect: at("8.align.five ·"),
+        world: fiveCentredBelow, landed: cssChanged(fiveCentredBelow), landedAs: "below 317 a slot whose label no longer fits would lift its pip above the others" },
       { name: "a tab says page for its whole section (A12)", expect: at("8.aria ·"),
         world: railSaysPage, landed: changed(railSaysPage, JTABS), landedAs: "the board announces Maswali as the current page" },
       { name: "a tab link gets an aria-label", expect: at("8.name ·"),
@@ -3681,8 +3885,8 @@ ${s}`);
       { name: "a page joins the population that nothing links", expect: at("9.entrance./zz-lonely ·"),
         world: lonely, landed: lonely.routes.includes("/zz-lonely"), landedAs: "a route with no entrance" },
       { name: "the Akaunti tab is removed, and the journey back links' way to the hub with it", expect: at("9.entrance./account ·"),
-        impl: { tabs: noAkaunti }, world: hubBacksGone,
-        landed: noAkaunti.length === TAB.JOURNEY_TABS.length - 1 && HUB_BACKS.every((f) => changed(hubBacksGone, f)),
+        impl: withList(true, noAkaunti), world: hubBacksGone,
+        landed: noAkaunti.length === TAB.journeyTabsFor(true).length - 1 && HUB_BACKS.every((f) => changed(hubBacksGone, f)),
         landedAs: "the hub, and every door only it holds, out of reach on a phone" },
       { name: "the hub loses its Arifa row", expect: at("9.subset.player ·"),
         impl: { hubRows: noArifa }, landed: hasRow(HUB.hubRowsFor(playerHub), "notifications") && !hasRow(noArifa(playerHub), "notifications"),

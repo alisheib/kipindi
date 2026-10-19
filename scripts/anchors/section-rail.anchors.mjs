@@ -54,9 +54,10 @@ export const MUTATIONS = [
     expect: "every rail of destinations names the one in force",
     /* S6 WP6a — the journey's rail (SJ-16) takes aria-current from `tabAriaCurrent` (A12): "page" on a tab's own page,
        "true" on the rest of its section. AppShell mounts it for a journey request (WP6b); the gate reads source, so the
-       control held from the commit that added it, before the mount. */
-    from: `                    aria-current={tabAriaCurrent(pathname, d.key)}`,
-    to: `                    data-was-current={tabAriaCurrent(pathname, d.key)}`,
+       control held from the commit that added it, before the mount.
+       RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): `tabAriaCurrent` also takes the drawn list (`tabs`). */
+    from: `                    aria-current={tabAriaCurrent(pathname, d.key, tabs)}`,
+    to: `                    data-was-current={tabAriaCurrent(pathname, d.key, tabs)}`,
   },
 ];
 
