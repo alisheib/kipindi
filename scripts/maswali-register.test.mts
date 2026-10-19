@@ -307,7 +307,8 @@ check("9.1", "A1 · no register file joins two facts into one string with \" · 
 });
 check("9.2", "A1 · the ledger's two notes stand on their own line (`noted`), and each levy is its own row — never one \"TRA … · GBT …\" row", (w) => {
   const s = code(w, "week");
-  const notes = s.includes("label={noted(t.millionea.topUp, t.millionea.topUpNote)}") && s.includes("label={noted(t.millionea.remainder, t.millionea.remainderNote)}");
+  const notes = s.includes("label={noted(t.millionea.topUp, t.millionea.topUpNote)}")
+    && s.includes("label={noted(t.millionea.remainder, remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal))}");
   const levies = s.includes("fill(t.millionea.regLevyTra, { pct: tra })") && s.includes("fill(t.millionea.regLevyGbt, { pct: gbt })") && !s.includes("t.millionea.levies");
   return [notes && levies, j({ notes, levies })];
 });
@@ -324,7 +325,7 @@ check("9.4", "A1 · `kept` draws each run it is given as ONE nowrap span, the wo
   const runs = nowrapRuns(a).some((r) => r.includes("TZS 1,000")) && nowrapRuns(b).some((r) => r.includes("Week 49")) && nowrapRuns(c).some((r) => r.includes("TRA 12%"));
   return [whole && runs, j({ a: nowrapRuns(a), b: nowrapRuns(b), c: nowrapRuns(c) })];
 });
-check("9.5", "A1 · every ledger label that carries a week, an amount or a % is drawn through `kept` with that run", (w) => {
+check("9.5", "A1 · every ledger label that carries a week, an amount or a % is drawn through `kept`; a final week names the jackpot account", (w) => {
   const s = code(w, "week");
   const want = [
     "label={kept(fill(t.millionea.carriedIn, { week: prev }), [weekWord(t, prev)])}",
@@ -335,7 +336,7 @@ check("9.5", "A1 · every ledger label that carries a week, an amount or a % is 
     "label={kept(perTicket, perTicket.match(/^÷ \\S+/) ?? [])}",
   ];
   const missing = want.filter((x) => !s.includes(x));
-  const outs = count(s, "label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])}");
+  const outs = count(s, "label={w.isFinal ? t.millionea.keptInJackpot : kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])}");
   return [missing.length === 0 && outs === 2, j({ missing, outs })];
 });
 check("9.5s", "R2 · a sold ticket's count and translated unit-price phrase are two separate kept runs at phone width", (w) => {
@@ -501,6 +502,7 @@ const PLANTS: Array<[string, string, World | null]> = [
   // §9
   ["A1 undone — a ledger note after a \"·\"", "9.1", plantSrc("week", "label={noted(t.millionea.topUp, t.millionea.topUpNote)}", "label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}")],
   ["A1 undone — the levies in one \"·\"-joined row", "9.2", plantSrc("week", "fill(t.millionea.regLevyGbt, { pct: gbt })", "fill(t.millionea.levies, { tra, gbt })")],
+  ["S7 remainder note fixed to the generic next-jackpot line", "9.2", plantSrc("week", "remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal)", "t.millionea.remainderNote")],
   ["A1 undone — the standing's count ungrouped", "9.3", plantSrc("week", "{formatNumber(s.ticketsWithoutAMiss)}", "{s.ticketsWithoutAMiss}")],
   ["a `kept` that keeps nothing", "9.4", { ...REAL, kept: (text) => text }],
   ["A1 undone — the refund's price free to break", "9.5", plantSrc("week", "label={kept(fill(t.millionea.refundEach, { price }), [price])}", "label={fill(t.millionea.refundEach, { price })}")],

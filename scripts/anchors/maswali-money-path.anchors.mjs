@@ -5,6 +5,8 @@
  *   · settle   — `test:maswali-settle`   (`scripts/lib/maswali-settle-child.mts`)
  *   · closerace — `test:maswali-close-race` (`scripts/lib/maswali-close-race-child.mts`; R2 of the review, 2026-10-17)
  *   · void     — `test:maswali-void`     (`scripts/lib/maswali-void-child.mts`, MASWALI-BUILD R1)
+ *   · adversarial — `test:maswali-adversarial` (`scripts/lib/maswali-adversarial-child.mts`, MASWALI-BUILD S7), named
+ *     `adversarial:<ids>` so the drive runs only the plant's own sections (`--only <ids>`)
  * DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the harness.
  *
  * `expect` is the start of (or a phrase in) the case's own label: any other red is WRONG-ASSERTION.
@@ -14,6 +16,8 @@ const MONEY = "src/lib/server/maswali-money-service.ts";
 const SETTLE = "src/lib/server/maswali-settlement.ts";
 const SVC = "src/lib/server/maswali-service.ts";
 const VOID = "src/lib/server/maswali-void.ts";
+/** A line break, built from its code point: an anchor spanning two lines joins them with it (the resolver matches either ending). */
+const LF = String.fromCharCode(10);
 /** The week void's one post-commit line (R10d's push), which (6), (6b) and (14) each rewrite. */
 const VOID_PUSH = "  if (out.ok && !out.already) await emitWalletBalances(credited.map((c) => c.userId));";
 
@@ -268,5 +272,316 @@ export const MUTATIONS = [
     to: "",
     expect: "R6.8 · ⭐",
     suite: "settle",
+  },
+  /* ── MASWALI-BUILD S7 · the adversarial suite's fixes, one plant each, every one caught by `test:maswali-adversarial`'s
+     memory child run on the plant's own section alone (`adversarial:<ids>` passes `--only <ids>`, so a plant costs seconds,
+     and §1's minute on the real clock is spent once). ── */
+  {
+    name: "(S7-move-clock) a move of the close reads the container's clock alone: a slow container moves a close the database passed",
+    file: SVC,
+    from: "    const atMs = Math.max(nowMs, await dbNowMs(lockTx));",
+    to: "    const atMs = nowMs;",
+    expect: "CS.3 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(S7-move-names) a close moved past the first event is refused without naming the question (MR-4)",
+    file: SVC,
+    from: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);",
+    to: "      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);",
+    expect: "HF.4",
+    suite: "adversarial:HF",
+  },
+  {
+    name: "(S7-correct-ground) a correction voids on 'not played' before the void deadline a seal refuses (MR-15)",
+    file: SVC,
+    from: [
+      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "    if (input.outcome === \"VOID\" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {",
+    ].join(LF),
+    to: [
+      "    if (q.sealedBy !== input.officerId) return refuse(\"Only the officer who sealed a question may correct it; anyone else files an objection.\");",
+      "    if (false) {",
+    ].join(LF),
+    expect: "CV.1",
+    suite: "adversarial:RP",
+  },
+  {
+    name: "(S7-correct-evidence) a correction lands with no evidence (MR-14)",
+    file: SVC,
+    from: "  if (evidence.length < 10) return refuse(\"A correction records its evidence (at least 10 characters).\");",
+    to: "",
+    expect: "CV.2",
+    suite: "adversarial:RP",
+  },
+  {
+    name: "(S7-confirm-holder) an officer holding a ticket in the week gives a seal its second signature (MR-14)",
+    file: SVC,
+    from: "    if (holds) return refuse(\"An officer who holds a ticket in this week cannot confirm its seals.\");",
+    to: "",
+    expect: "IN.6 · ⭐",
+    suite: "adversarial:IN",
+  },
+  {
+    name: "(S7-week-line) a week whose market is no longer MASWALI is sold as a one-sided Yes/No stake on its pool (MB-01)",
+    file: SVC,
+    from: "  if (!isFencedMaswali(market)) {",
+    to: "  if (false) {",
+    expect: "PL.4",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-deposit-hold) a winner whose credited deposit the provider reversed is paid free (MB-74)",
+    file: SETTLE,
+    from: "  const winners: Winner[] = [], disputed = await depositHolds(winnersGraded.map((g) => g.ticket.userId));",
+    to: "  const winners: Winner[] = [], disputed = (_userId: string): HoldReason | null => null;",
+    expect: "RD.1",
+    suite: "adversarial:RD",
+  },
+  {
+    name: "(S7-memory-set) the memory market store reclassifies a Millionea week on a full-row write from a copy",
+    file: "src/lib/server/market-dal.ts",
+    from: "    if (cur && cur !== m && (m.productLine ?? \"MARKET\") !== (cur.productLine ?? \"MARKET\") && (m.productLine === \"MASWALI\" || cur.productLine === \"MASWALI\")) return memoryMarkets.set({ ...m, productLine: cur.productLine }, _tx);",
+    to: "",
+    expect: "PL.2",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-memory-stamp) the memory market store stamps a product line the Postgres twin refuses",
+    file: "src/lib/server/market-dal.ts",
+    from: "    if (\"productLine\" in fields) throw new Error(\"marketStore.stamp: 'productLine' is not a stampable column (pool/title fields must not be written this way)\");",
+    to: "",
+    expect: "PL.1",
+    suite: "adversarial:PL",
+  },
+  {
+    name: "(S7-promotion) the Owner's staff role change no longer asks OD-12's question before it writes the role",
+    file: "src/lib/server/staff-role-change.ts",
+    from: "      const held = await millioneaPromotionBlock(target.id);",
+    to: "      const held = null as string | null;",
+    expect: "IN.1b",
+    suite: "adversarial:IN",
+  },
+  /* ── MASWALI-BUILD S7-F · the follow-ups to A7's KNOWN-RED, one plant each, caught on the plant's own section. PL.3 (the
+     database's product-line trigger, `20261018130000_maswali_product_line_fence`) is POSTGRES-ONLY, as R4a/R4b and R8 are:
+     no memory child can show a trigger red, so its red twin is the Postgres half of test:maswali-adversarial — KNOWN-RED
+     before the migration, PL.3 and PL.3c green after it. ── */
+  {
+    name: "(S7-close-db-clock) a close that is not early is stamped on the container's clock: a fast container closes the sales early (MB-84)",
+    file: SVC,
+    from: "    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
+    to: "    if (!input.early && Date.parse(week.closesAt) > nowMs) return { ...refuse(\"The close has not arrived on the database's clock (MB-84).\"), dbShortMs: Date.parse(week.closesAt) - atMs };",
+    expect: "CS.4 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(S7-float-alert) a short payout float reaches the audit trail only, never the console (MB-63)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  out.push(...await floatShortAlerts(deps.readFloat));",
+    to: "  void floatShortAlerts;",
+    expect: "FL.4 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(S7-designate-ticket) a desk designation meets no Millionea row: an account holding a live ticket is designated (OD-12)",
+    file: "src/lib/server/house-bot/eligibility.ts",
+    from: "      if (held) blocking.push(row(\"MILLIONEA_TICKET\", \"Holds a Millionea ticket\", held));",
+    to: "      void held;",
+    expect: "IN.9 · ⭐",
+    suite: "adversarial:IN",
+  },
+  {
+    name: "(S7-holiday-review) the pre-open checklist never reads the Owner's holiday list (MB-85)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    const holiday = holidayOn(Date.parse(week.closesAt));",
+    to: "    const holiday = null as string | null;",
+    expect: "HF.2 · ⭐",
+    suite: "adversarial:HF",
+  },
+  {
+    name: "(S7-sunset-closed) a week whose sales have closed is made final mid-results (MR-30, the lead's decision of 2026-10-18)",
+    file: SVC,
+    from: "    if (salesClosed(week, clockMs)) {",
+    to: "    if (false) {",
+    expect: "SU.2 · ⭐",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(S7-sunset-next-only) any draft, not only the next week to open, is made final at short notice after a close (OD-03)",
+    file: SVC,
+    from: "        if (onSale || !deciding || next?.id !== week.id) {",
+    to: "        if (onSale || !deciding) {",
+    expect: "SU.4 · ⛔",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(SF-final-early-open) a final week opens before the time it was announced with (MR-30, OD-03; the S6 legal review)",
+    file: SVC,
+    from: "    if (week.isFinal && nowMs < Date.parse(week.opensAt)) {",
+    to: "    if (false && week.isFinal && nowMs < Date.parse(week.opensAt)) {",
+    expect: "SU.5c · ⛔",
+    suite: "adversarial:SU",
+  },
+  {
+    name: "(SF-objection-on-sale) a question voids on 'objection upheld' while its week is still on sale (MR-15, MR-16)",
+    file: SVC,
+    from: "    if (input.outcome === \"VOID\" && input.voidReason === \"criterion_objection\" && week.state === \"OPEN\") {",
+    to: "    if (false && input.outcome === \"VOID\" && input.voidReason === \"criterion_objection\" && week.state === \"OPEN\") {",
+    expect: "VG.1 · ⛔",
+    suite: "adversarial:RP",
+  },
+  {
+    name: "(S7-deadlines-refrozen) the open keeps the deadlines the draft computed: a week runs on figures its frozen rules do not state",
+    file: SVC,
+    from: "    const { week: due, questions } = deadlinesUnderRules(week, drafted, rules);",
+    to: "    const { week: due, questions } = { week, questions: drafted };",
+    expect: "DL.1 · ⭐",
+    suite: "adversarial:DL",
+  },
+  /* ── MASWALI-BUILD S7-F2 · the second review's follow-ups (L1, L5, L6 and the sunset's next act), one plant each, caught on
+     the plant's own section. ── */
+  {
+    name: "(F2-market-read) a purchase whose market read fails throws at the buyer instead of refusing (L6)",
+    file: SVC,
+    from: "  try { market = await marketStore.get(week.marketId); } catch (err) { return busy(`week ${week.code}'s market`, err); }",
+    to: "  market = await marketStore.get(week.marketId);",
+    expect: "FR.1 · ⭐",
+    suite: "adversarial:FR",
+  },
+  {
+    name: "(F2-week-read) a purchase whose week read fails throws at the buyer instead of refusing (L6)",
+    file: SVC,
+    from: "  try { week = await weekStore.get(input.weekId); } catch (err) { return busy(`week ${input.weekId}`, err); }",
+    to: "  week = await weekStore.get(input.weekId);",
+    expect: "FR.2 · ⭐",
+    suite: "adversarial:FR",
+  },
+  {
+    name: "(F2-close-retry) a close the database's clock refused is left to the 5-minute reconcile: the tick records no retry (L1)",
+    file: "src/lib/server/maswali-scheduler.ts",
+    from: '          if (!r.ok && "dbShortMs" in r) closeRetry.set(w.id, nowMs + (Date.now() - startedMs) + r.dbShortMs + CLOSE_RETRY_MARGIN_MS);',
+    to: "",
+    expect: "CS.8 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(F3-close-retry-passed) a refused close's retry that the rest of the tick ran past is dropped: the week waits for the 5-minute reconcile",
+    file: "src/lib/server/maswali-scheduler.ts",
+    from: "      if (retry !== undefined && Date.parse(w.closesAt) <= nowMs) take(Math.max(retry, nowMs + PAST_GRACE_MS));",
+    to: "      if (retry !== undefined) take(retry);",
+    expect: "CS.10 · ⭐",
+    suite: "adversarial:CS",
+  },
+  {
+    name: "(F2-float-covered) a short-float finding outlives the top-up that covered it: the float as it stands is never asked (MB-11)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    if (short <= 0) continue;",
+    to: "    if (Number.isNaN(short)) continue;",
+    expect: "FL.4b · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F4-shares-withdrawn) the winners' own withdrawals are never counted: once covered, their withdrawals bring the alert back (MB-11)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    left += Math.max(0, share - withdrawn);",
+    to: "    left += share;",
+    expect: "FL.4g · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F4-float-drained-by-others) a payout its winners have partly withdrawn is never judged again: other withdrawals draining the shared float leave silence (MB-11)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "    if (left > 0) owed.push({ w, left });",
+    to: "    if (left > 0 && left >= (w.paidTotal ?? 0)) owed.push({ w, left });",
+    expect: "FL.4i · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F2-float-unread) a payout whose float could not be read leaves no finding: the console stays silent (MB-11, fail closed)",
+    file: SETTLE,
+    from: "    const action = !float ? \"maswali.settlement.float_unread\" : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? \"maswali.settlement.float_low\" : null;",
+    to: "    const action = !float ? null : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? \"maswali.settlement.float_low\" : null;",
+    expect: "FL.0 · ⭐",
+    suite: "adversarial:GU",
+  },
+  {
+    name: "(F2-floors-zero) a week whose frozen rules cannot be read counts as a floor of 0: every reader of OD-02's requirement understates it",
+    file: "src/lib/server/maswali-config.ts",
+    from: "    else unreadable.push({ id: w.id, code: w.code });",
+    to: "    else counted.push({ floor: 0, confirmedCarryIn: w.rolloverIn });",
+    expect: "GR.1 · ⭐",
+    suite: "adversarial:GR",
+  },
+  {
+    name: "(F2-requirement-alert) the console says nothing when a week's frozen rules cannot be read: the guarantee alert stays silent (OD-02)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  for (const w of floors.ok ? [] : floors.unreadable) {",
+    to: "  for (const w of [] as Array<{ id: string; code: string }>) {",
+    expect: "GR.2 · ⭐",
+    suite: "adversarial:GR",
+  },
+  {
+    name: "(F2-seal-two-officer) a seal whose two-officer read fails seals anyway, single-officer by the code default (MR-14, MB-82)",
+    file: SVC,
+    from: "  if (twoOfficer === null) return refuse(\"The two-officer setting could not be read, so nothing was sealed. Try again in a moment.\");",
+    to: "",
+    expect: "TO.1 · ⭐",
+    suite: "adversarial:TO",
+  },
+  {
+    name: "(F2-rules-percent) the rules form stores a percentage as typed: a fee of 13 becomes a rate of 13 (the form no longer reads back the stored rules)",
+    file: "src/app/admin/maswali/rules-form.ts",
+    from: "const asRate = (text: string) => Math.round(Number(text) * 100) / 10_000;",
+    to: "const asRate = (text: string) => Number(text);",
+    expect: "RF.1 · ⭐",
+    suite: "adversarial:RF",
+  },
+  {
+    name: "(F2-holiday-open) the holiday review ends at the open, though the close it asks to move moves only once the week is open (MB-85)",
+    file: "src/lib/server/maswali-console.ts",
+    from: "  if (week.state === \"DRAFT\" || (week.state === \"OPEN\" && Date.parse(week.closesAt) > now.getTime())) {",
+    to: "  if (week.state === \"DRAFT\") {",
+    expect: "HF.2e · ⭐",
+    suite: "adversarial:HF",
+  },
+  {
+    name: "(F2-stop-next-act) a stop refused at short notice names no next act once no week is on sale or being decided (MR-30, OD-03)",
+    file: SVC,
+    from: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);",
+    to: "          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03).`);",
+    expect: "SN.1 · ⭐",
+    suite: "adversarial:SN",
+  },
+  {
+    name: "(F2-stop-final-first) a stop while a final week stands is answered by a rule it no longer concerns (MR-30)",
+    file: SVC,
+    from: "  if (life.kind === \"ENDING\") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;",
+    to: "",
+    expect: "SN.3 · ⭐",
+    suite: "adversarial:SN",
+  },
+  {
+    name: "(F4-stale-in-lock) the stale-slip check is not asked again inside the market lock: a stop landing mid-purchase still sells (MR-30)",
+    file: MONEY,
+    from: "        if (fresh.isFinal && buy.shownFinal === false) {",
+    to: "        if (false) {",
+    expect: "SF.6a · ⛔ S7-F4",
+    suite: "purchase",
+  },
+  {
+    name: "(F4-stop-market-lock) the stop marks an OPEN week final outside its market's lock: it never waits for a purchase in flight (MR-30)",
+    file: SVC,
+    from: "    if (week.state === \"OPEN\" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);",
+    to: "    if (week.state === \"OPEN\" && week.marketId) await markFinal();",
+    expect: "SF.2a · ⛔ S7-F4",
+    suite: "purchase",
+  },
+  {
+    name: "(F4-stale-open-only) the stale-slip refusal answers a CLOSED final week too, in place of the closed week's own answer (MR-30)",
+    file: SVC,
+    from: "  if (week.isFinal && input.shownFinal === false && week.state === \"OPEN\") {",
+    to: "  if (week.isFinal && input.shownFinal === false) {",
+    expect: "SF.7 · ⛔",
+    suite: "purchase",
   },
 ];

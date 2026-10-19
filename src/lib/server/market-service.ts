@@ -51,7 +51,7 @@ import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type Ho
 import { houseShownExtra } from "./house-bot/shown-count";
 import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
 import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT, HOUSE_BOT_ENGINE_ENV } from "@/lib/house-bot/constants";
-import { getRequireTwoOfficerResolution } from "./resolution-policy";
+import { readRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
 import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, notifyAdminMarketResolution, notifyMarketCancelled, notifyAdminMarketCancelled, notifyOneSidedRefund, notifySelectionClosed, pushOnly,
@@ -3752,20 +3752,20 @@ function recordRefusedSale(
   });
 }
 
-export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
+export async function resolveMarket(opts: { marketId: string; outcome: Side | "VOID"; officerId: string; evidence?: string; /** The setting's read: the action passes its own, so one read decides the ceremony (S7-F6; tests hand theirs). */ twoOfficerNow?: () => Promise<boolean | null> }): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> {
   // ADM2 ceremony — the officer's declared evidence excerpt (the source quote
   // that justifies the verdict). Recorded into the immutable audit payload at
   // each attestation so the fairness story is provable; capped defensively.
   const evidence = (opts.evidence ?? "").trim().slice(0, 2000) || null;
-  // TWO-ADMIN AUTHORIZATION (default OFF) — the single flag governing resolution:
-  //   OFF (default): a SINGLE admin resolves the market in ONE action, even one who
-  //     holds a position in it. The officer-conflict block is GONE.
-  //   ON: the classic two-officer ceremony — stage-1 by A, stage-2 by a DIFFERENT B.
-  // Owner decision 2026-07-24 (docs/COMPLIANCE-DECISIONS.md), all money modes, no
-  // hard-lock. Toggled ONLY from the resolver-queue header (resolution-policy.ts).
-  // NOTE: AI auto-resolve (resolutionMode:auto) is a SEPARATE, orthogonal axis — it
-  // governs the AI path (resolveDueMarket), not this human path.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution();
+  // TWO-ADMIN AUTHORIZATION (default OFF), the single flag governing resolution: OFF, a SINGLE admin resolves the market
+  //   in ONE action, even one who holds a position in it (the officer-conflict block is GONE); ON, the classic two-officer
+  //   ceremony, stage-1 by A and stage-2 by a DIFFERENT B. Owner decision 2026-07-24 (docs/COMPLIANCE-DECISIONS.md), all
+  //   money modes, no hard-lock; toggled ONLY from the resolver-queue header (resolution-policy.ts). AI auto-resolve
+  //   (resolutionMode:auto) is a SEPARATE axis: it governs the AI path (resolveDueMarket), not this human path.
+  // ⛔ MASWALI-BUILD S7-F3 · READ, OR NOTHING IS RESOLVED (as the Millionea seal): the plain getter answered one officer while
+  //   its read failed, so a resolution then was single-officer with the setting ON. Refused before the lock and any write.
+  const requireTwoOfficer = await (opts.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);
+  if (requireTwoOfficer === null) return { ok: false, error: "The two-officer setting could not be read, so nothing was resolved. Try again in a moment." };
 
   // No money moves in this function — the refund/wagering bookkeeping lives in settleMarket().
   const result = await withLock(`market:${opts.marketId}`, async (): Promise<ServiceResult<{ stage: "stage1" | "complete"; settlesAt?: string | null }>> => {

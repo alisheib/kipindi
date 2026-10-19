@@ -5,12 +5,13 @@ import { MaswaliClosingRule } from "@/components/maswali/maswali-unbroken-line";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
 import { SocketGlyph, socketWord, type SocketMark } from "@/components/maswali/maswali-seal-line";
 import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
-import { counted, weekWord } from "@/components/maswali/maswali-format";
+import { counted, remainderNoteOf, weekWord } from "@/components/maswali/maswali-format";
 import { MaswaliFacts } from "@/components/maswali/maswali-facts";
 import { sideWord } from "@/lib/side-label";
 import { cn, fill, formatNumber, formatTzs, formatTzsSigned } from "@/lib/utils";
 import type { Dict } from "@/lib/i18n-dict";
 import type { MaswaliOutcome, MaswaliPick } from "@/lib/maswali-score";
+import type { RemainderFate } from "@/lib/maswali-money";
 
 /**
  * THE WIN LEDGER — and the one file where Millionea's money is gold (MASWALI-BUILD S5; MASWALI-PLAN §10 §3.13–§3.14;
@@ -59,7 +60,7 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
   return (
     <article className={cn("mat-raised flex flex-col gap-3 rounded-card px-3 py-4", className)}>
       <header className="flex flex-col gap-1">
-        <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
+        <span className="font-mono text-label uppercase eyebrow text-text-subtle"><MaswaliFacts facts={[t.millionea.productTitle, weekWord(t, week)]} /></span>
         <Heading className="font-display text-title-md font-bold text-text">{heading}</Heading>
         <span className="font-mono text-body-sm text-text-muted break-all"><MaswaliFacts facts={serials} /></span>
       </header>
@@ -68,10 +69,10 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
         <p className="text-body-sm text-text-muted">{t.millionea.finality}</p>
         {legal && (
           <p className="text-body-sm text-text-subtle text-pretty">
-            {legal.twoOfficer ? t.market.resTwoOfficer : t.market.resSingleOfficer}
-            {" · "}
-            {t.common.resolutionAttestation}{" "}
-            <span className="font-mono break-all">{legal.hash}</span>
+            <MaswaliFacts facts={[
+              legal.twoOfficer ? t.market.resTwoOfficer : t.market.resSingleOfficer,
+              <>{t.common.resolutionAttestation}{" "}<span className="font-mono break-all">{legal.hash}</span></>,
+            ]} />
           </p>
         )}
         <MaswaliClosingRule draw={play?.draw} />
@@ -102,8 +103,12 @@ export type WinLines = {
   yourTotal: number;
   /** The floor's top-up: printed, never carried. */
   topUp?: number;
-  /** The rounding remainder left by an equal share (carried as real money, never paid from house money). */
+  /** The rounding remainder left by an equal share, and where it went (`remainderFate`: the next jackpot, as far as the
+   *  week's own money covered it, and the guarantee for the rest). */
   remainder?: number;
+  remainderFate?: RemainderFate;
+  /** The week was Millionea's final one (MR-30): what it carried stays in the jackpot account. */
+  finalWeek?: boolean;
   /** When the week's spend exceeds the win, the spend and the net (U+2212 below zero). */
   spent?: { tickets: number; amount: number; net: number };
   /** The sunset week: no floor top-up and no 10/10 (Timeline E). */
@@ -159,15 +164,15 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         <ReceiptRow className={ROW} label={t.millionea.forYourTicket} value={gilt(L.perTicket, !many)} />
         {many && (
           <>
-            <ReceiptRow className={ROW} label={`× ${formatNumber(L.yours)} · ${fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })}`} value="" />
+            <ReceiptRow className={ROW} label={<MaswaliFacts facts={[`× ${formatNumber(L.yours)}`, fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })]} layout="phone" />} value="" />
             <ReceiptRow className={ROW} label={t.millionea.yourTotal} value={gilt(L.yourTotal, true)} />
           </>
         )}
         {L.topUp !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={quiet(L.topUp)} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />} value={quiet(L.topUp)} />
         )}
         {L.remainder !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${t.millionea.remainderNote}`} value={quiet(L.remainder)} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.remainder, remainderNoteOf(t, L.remainderFate ?? "carried", L.finalWeek === true)]} layout="phone" />} value={quiet(L.remainder)} />
         )}
         {L.sunsetNoTopUp && (
           <ReceiptRow className={ROW} label={t.millionea.noTopUp} value={<span className="text-text-muted">—</span>} />

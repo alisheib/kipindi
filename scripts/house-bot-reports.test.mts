@@ -71,7 +71,9 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 252, postgres: 81 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 253, postgres: 81 }, dbPrefix: "hb_reports" });
+// 2026-10-19 MASWALI-BUILD S7 · 252 → 253 MEMORY, the count the run PRINTED on mln-sf at 510aa2368 (S7 rounds 4–6 merged,
+// D19a re-pinned): 253/0 memory and 81/0 Postgres. Postgres unchanged.
 // 2026-10-15 integrated AML gate repair: this run printed 252/0 memory and
 // 81/0 Postgres after 4.260.aml proved denial before designation lookup.
 // ⭐ 249 → 251 MEMORY (2026-09-26, house-bots build step 4), the count that run PRINTED: c6c637c1 (the finance lane)

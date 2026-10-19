@@ -193,7 +193,7 @@ export default async function MillioneaTicketPage({ params }: { params: Promise<
           t={t}
           week={weekNumber}
           serials={paidSerials}
-          lines={winLinesOf(view.win)}
+          lines={winLinesOf(view.win, view.week.isFinal)}
           sunset={view.win.basis === "TOP_SCORE" ? { score: view.win.winningScore, tickets: view.win.winners } : undefined}
           legal={null}
           play={{ draw: closingRule }}

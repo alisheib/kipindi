@@ -999,8 +999,11 @@ if (STORE === "memory") {
     // are line-for-line (9/9 and 2/2 against b3fe55dd), and it does not touch maswali-settlement.ts.
     // 2026-10-17 · the open's checklist fix gives maswali-settlement.ts one import line (`formatTzs`): its two sites move
     // 381→382 and 678→679, each nine-line write SHA-256-identical to 1c210f39's (CR stripped). No other site moves.
+    // 2026-10-18 · MASWALI-BUILD S7-F4 asks the stale slip again inside the purchase's market lock (six lines above the buy
+    // write): maswali-money-service.ts's two sites move 449→455 and 574→580, each nine-line write SHA-256-identical to
+    // 1b8744e8's (CR stripped). No other site moves.
     ok("0.232.2 · …and the seven marked sites are exactly the seven line numbers this pin was written against — a site that MOVES is reported here (the pin is line-pinned on purpose; the money anchors match by text and cannot rot from a line move)",
-      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:449", "maswali-money-service.ts:574", "maswali-settlement.ts:382", "maswali-settlement.ts:679", "maswali-void.ts:140"]), j(marked));
+      j(marked) === j(["market-service.ts:1863", "market-service.ts:3151", "market-service.ts:3628", "market-service.ts:4114", "market-service.ts:4249", "market-service.ts:4397", "market-service.ts:5007", "maswali-money-service.ts:455", "maswali-money-service.ts:580", "maswali-settlement.ts:382", "maswali-settlement.ts:679", "maswali-void.ts:140"]), j(marked));
 
     /**
      * ⛔ **THE ANCHORS FILE IS OPENED, BECAUSE THE LABEL SAID IT WAS AND IT WAS NOT** (C5-7's review, low). 0.232.2
@@ -2324,6 +2327,14 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
   "src/lib/server/marketing/rg.ts": "the marketing RG standing: one player's two self-exclusion actions (rg.self_exclusion.activated / reopened), read by action and reduced to two instants; no row is handed on",
+  /* Classified 2026-10-18 (MASWALI-BUILD S7-F2), read from the source (`floatShortAlerts`): S7-F's short-float alert added
+     the reader without its entry, and S7-F2 rewrote it. It asks only WHETHER a float finding stands on each line's newest
+     paying week; the alert's figures are the week's own paid total and the float read now — no row's payload is read. */
+  /* S7-F3 (2026-10-18): the read takes the console's own latch too (float_covered, written once a reading covers the
+     payout and its headroom), and still reduces to one yes/no per week. */
+  /* S7-F4 (2026-10-18): the latch is gone — a finding is judged on each read against the week's shares not yet withdrawn —
+     so the read is the settlement's two rows again, still reduced to one yes/no per week. */
+  "src/lib/server/maswali-console.ts": "Millionea's console alerts: the settlement's own float-check rows (maswali.settlement.float_low / float_unread) of each line's newest paying week, read by action and reduced to whether a finding stands — never a row or its payload handed on",
   /* Classified 2026-10-17 (MASWALI-BUILD S4; 0.260.1 went red on the release gate's test:all, the guard doing its job).
      Three reads: the cluster report folds AuditLog rows into sets of linked account ids; `noteSealDevice` folds an
      officer's own rows into one yes/no; `recentNewDeviceSeals` hands its own `maswali.seal.new_device` rows (officer,
@@ -2373,6 +2384,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/marketing/campaign-live.ts": "handedOn",
   "src/lib/server/marketing/referee-exclusion.ts": "folded",
   "src/lib/server/marketing/rg.ts": "folded",
+  "src/lib/server/maswali-console.ts": "folded",
   "src/lib/server/maswali-integrity.ts": "handedOn",
   "src/lib/server/notification-service.ts": "folded",
   "src/lib/server/refused-funds.ts": "handedOn",

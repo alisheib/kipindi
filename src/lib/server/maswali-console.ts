@@ -14,12 +14,16 @@
  * ⛔ A BALANCE THAT COULD NOT BE READ IS `null`, NEVER 0: the page says it could not be read.
  */
 import { questionStore, ticketStore, weekStore, type StoredQuestion, type StoredTicket, type StoredWeek } from "./maswali-dal";
-import { frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, sunsetState } from "./maswali-service";
+import {
+  calendarStartMs, deadlinesUnderRules, frozenRules, gradable, guaranteeProblem, NO_LICENCE_BASIS, openProblems, proposeVoidsAtDeadline, stopNextActNow, sunsetState,
+} from "./maswali-service";
 import { guaranteeReader, maswaliAccountBalance } from "./maswali-money-service";
-import { previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
+import { FLOAT_ALERT_BUFFER_TZS, previewMaswaliSettlement, type MaswaliSettlementPreview } from "./maswali-settlement";
 import { unrefundedVoids } from "./maswali-void";
-import { getMaswaliConfig, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
+import { getMaswaliConfig, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { getLicenceBasis, licenceBasisAllowsOpen, type LicenceBasis } from "./maswali-licence";
+import { holidayOn } from "./maswali-holidays";
+import { getAuditForTargetsDurable } from "./audit";
 import { getSalesPause, type SalesPause } from "./maswali-pause";
 import { millioneaStateNow } from "./millionea-switch";
 import { acct, maswaliJackpotOf } from "./ledger";
@@ -89,6 +93,11 @@ export type ConsoleWeekDetail = {
   rules: MaswaliRulesSnapshot | null;
   /** DRAFT only: every reason the open would refuse, in words; empty when it would open. */
   problems: string[] | null;
+  /**
+   * What the officer reviews while they can still act on it — a DRAFT, and an OPEN week whose close is still ahead —
+   * never a refusal (MB-85: a public holiday the close falls on). Null once the close has passed.
+   */
+  warnings: string[] | null;
   /** Slots whose void deadline passed unsealed: the system proposes a void, an officer seals it (MR-15). */
   proposedVoids: number[];
 };
@@ -99,25 +108,43 @@ export async function consoleWeekDetail(weekId: string, now: Date = new Date()):
   const questions = await questionStore.listForWeek(week.id);
   let rules = frozenRules(week);
   let problems: string[] | null = null;
+  let warnings: string[] | null = null;
   if (week.state === "DRAFT") {
     try { rules = snapshotMaswaliRules(getMaswaliConfig(), now); } catch { rules = null; }
-    if (!rules) problems = ["The Millionea rules do not validate; fix them on the rules page first."];
+    if (!rules) problems = ["The Millionea rules do not validate; the Owner fixes them under Rules for the next week, on the Millionea page, first."];
     else {
       // The week's own checks, then the two the open asks beside them, in its own words: without these the checklist said
-      // every check passes while the open refused for want of a licence basis or the guarantee.
-      problems = await openProblems(week, questions, rules, now.getTime());
+      // every check passes while the open refused for want of a licence basis or the guarantee. ⭐ S7 · on the deadlines
+      // the open would re-freeze (`deadlinesUnderRules`), never the draft's own, so the two can never disagree.
+      const due = deadlinesUnderRules(week, questions, rules);
+      problems = await openProblems(due.week, due.questions, rules, now.getTime());
       if (!licenceBasisAllowsOpen(getLicenceBasis())) problems.unshift(NO_LICENCE_BASIS);
       const short = await guaranteeProblem(week, rules, guaranteeReader);
       if (short) problems.push(short);
     }
   }
-  return { week, row: await rowOf(week), questions, rules, problems, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
+  // ⭐ S7 · THE HOLIDAY REVIEW (MB-85, OD-27): the Owner's list of public holidays, read against the day the sales close —
+  //    WHEREVER AN OFFICER CAN STILL ACT ON IT: a draft (it opens, and the close is brought forward, or the week is
+  //    skipped with notice) and an open week whose close is still ahead (brought forward, R-WEEK, MB-28). It used to end
+  //    at the open, though the act it asks for, moving the close, is done only once the week is open. Once the close has
+  //    passed nothing can move it (MR-13), so the review is silent there. A warning, never a refusal.
+  if (week.state === "DRAFT" || (week.state === "OPEN" && Date.parse(week.closesAt) > now.getTime())) {
+    warnings = [];
+    const holiday = holidayOn(Date.parse(week.closesAt));
+    if (holiday) {
+      warnings.push(week.state === "DRAFT"
+        ? `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). The week may still open: bring the close forward once it is open (R-WEEK), or skip the week with notice (OD-27).`
+        : `The sales close falls on ${holiday}, a public holiday on the Owner's list (the holiday review, MB-85). Bring the close forward while it is still ahead (R-WEEK, MB-28).`);
+    }
+  }
+  return { week, row: await rowOf(week), questions, rules, problems, warnings, proposedVoids: await proposeVoidsAtDeadline(week.id, now) };
 }
 
 /** An operator alert (MASWALI-PLAN §7b S4 item 5). Never a guess: each names the week and the fact behind it. */
 export type ConsoleAlert = { level: "critical" | "warning"; text: string; weekId?: string };
 
-export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAlert[]> {
+/** `deps.readFloat` reads the payout float (the payments provider's by default; a suite hands its own). */
+export async function consoleAlerts(now: Date = new Date(), deps: { readFloat?: FloatReader } = {}): Promise<ConsoleAlert[]> {
   const nowMs = now.getTime();
   const out: ConsoleAlert[] = [];
   const cfg = getMaswaliConfig();
@@ -160,10 +187,17 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
       }
     }
   }
+  out.push(...await floatShortAlerts(deps.readFloat));
   const held = await maswaliAccountBalance(acct.maswaliGuarantee);
-  const need = requirementOf(weeks.filter(unsettled));
+  // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so the guarantee cannot be shown
+  //    to cover the unsettled weeks and the alert fires, naming the week. Counted as 0, its floor kept this alert silent.
+  const floors = unsettledFloors(weeks.filter(unsettled));
+  for (const w of floors.ok ? [] : floors.unreadable) {
+    out.push({ level: "critical", weekId: w.id, text: `${w.code}: its frozen rules cannot be read, so its floor is unknown and the guarantee cannot be shown to cover the unsettled weeks (OD-02).` });
+  }
+  const need = floors.ok ? guaranteeRequirement(floors.weeks) : null;
   if (held === null) out.push({ level: "critical", text: "The guarantee balance could not be read." });
-  else if (held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
+  else if (need !== null && held < need) out.push({ level: "critical", text: `The guarantee holds ${formatTzs(held)}; the unsettled weeks need ${formatTzs(need)} (OD-02).` });
   // The product's own standing speaks only once Millionea has a week — any week, settled ones included (`maxSeq` is 0
   // only before the first draft): before it, a missing licence basis is the plan's Gate A, not an alert for every officer.
   if ((await weekStore.maxSeq()) > 0) {
@@ -174,17 +208,109 @@ export async function consoleAlerts(now: Date = new Date()): Promise<ConsoleAler
   return out;
 }
 
-/** OD-02 over a set of unsettled weeks, each at its own frozen floor. */
-function requirementOf(weeks: StoredWeek[]): number {
-  return guaranteeRequirement(weeks.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? 0, confirmedCarryIn: w.rolloverIn })));
+/** The settlement's float check's own rows (`floatCheck`, maswali-settlement.ts): what it found, at the payout. */
+const FLOAT_LOW_ACTION = "maswali.settlement.float_low";
+const FLOAT_UNREAD_ACTION = "maswali.settlement.float_unread";
+
+/**
+ * S7-F4 · what a paying week's winners have not yet withdrawn of it: each winner's share (a held share is paid and counts,
+ * MB-11) less the withdrawals that winner COMPLETED since the payout, drawn on the share first, never below 0. A
+ * withdrawal still in flight has not yet drawn on the float, so it is not counted; a sum that cannot be read counts the
+ * whole share (fail closed).
+ */
+async function sharesNotWithdrawn(week: StoredWeek): Promise<number> {
+  const shares = new Map<string, number>();
+  for (const t of await ticketStore.listForWeek(week.id, { won: true })) {
+    if ((t.payout ?? 0) > 0) shares.set(t.userId, (shares.get(t.userId) ?? 0) + (t.payout ?? 0));
+  }
+  const sinceMs = Date.parse(week.settledAt ?? "");
+  let left = 0;
+  for (const [userId, share] of shares) {
+    let withdrawn = 0;
+    if (Number.isFinite(sinceMs)) {
+      try {
+        const sum = Math.abs(Number(await db.txn.sumUserByTypesSince(userId, sinceMs, ["WITHDRAWAL"])));
+        withdrawn = Number.isFinite(sum) ? sum : 0;
+      } catch { withdrawn = 0; }
+    }
+    left += Math.max(0, share - withdrawn);
+  }
+  return left;
 }
 
-/** The product's switches at a glance — the head of every Millionea page. */
-export type ConsoleStanding = { rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>> };
+/** The disbursement float as it stands, or null when it cannot be read (the payments console says why). */
+export type FloatReader = () => Promise<{ balance: number } | null>;
 
-export async function consoleStanding(): Promise<ConsoleStanding> {
+/**
+ * ⭐ S7 · A SHORT PAYOUT FLOAT, ON THE CONSOLE (MB-11, MB-63; FL.4). The settlement's float check is a read after the
+ * commit, never a block: it records what it found when a week's paid total leaves the disbursement float short of the
+ * payout and its headroom — or, S7-F2, when it could not read the float at all. Each line's newest week that PAID is the
+ * payout its winners are withdrawing, so a finding on it stands here, beside it, until the next week of that line pays
+ * and its own check speaks.
+ * ⭐ S7-F2 · JUDGED ON THE FLOAT AS IT STANDS, read once, only when a finding stands (the S7 review, round 2): it clears
+ * once the float covers that payout and its headroom — it used to outlive Finance's top-up — and shows what is still
+ * short while it does not, critical below the payout itself. ⛔ A float that cannot be read is its own critical alert,
+ * fail closed: the finding used to vanish when the next paying week's check could not read the float, leaving silence.
+ * ⭐ S7-F4 · JUDGED AGAINST THE WEEK'S SHARES NOT YET WITHDRAWN (the review of S7-F3, LOW), never latched. The float is
+ * every platform withdrawal's, so S7-F3's latch — one covering reading, written only by a console render, ending the
+ * alert for good — went quiet when OTHER withdrawals drained the float before the winners had theirs. A finding is judged
+ * on each read against what the winners can still withdraw of the payout (`sharesNotWithdrawn`) plus its headroom: their
+ * own withdrawals lower it with the float, so it never returns over money already withdrawn (S7-F3's concern), while
+ * anything else that drains the float brings it back. A week whose shares are all withdrawn is ended. Nothing is
+ * written: the read is the whole judgement.
+ */
+async function floatShortAlerts(readFloat?: FloatReader): Promise<ConsoleAlert[]> {
+  const settled = await weekStore.list({ states: ["SETTLED"] });
+  const payouts = (["PUBLIC", "DRIVE"] as const)
+    .map((line) => settled.filter((w) => w.visibility === line && (w.paidTotal ?? 0) > 0).sort((a, b) => calendarStartMs(b) - calendarStartMs(a))[0])
+    .filter((w): w is StoredWeek => !!w);
+  if (payouts.length === 0) return [];
+  const rows = await getAuditForTargetsDurable({ targetType: "MaswaliCycle", targetIds: payouts.map((w) => w.id),
+    actions: [FLOAT_LOW_ACTION, FLOAT_UNREAD_ACTION], sinceIso: new Date(0).toISOString(), limit: 50 });
+  const owed: Array<{ w: StoredWeek; left: number }> = [];
+  for (const w of payouts.filter((x) => rows.entries.some((e) => e.targetId === x.id))) {
+    const left = await sharesNotWithdrawn(w);
+    if (left > 0) owed.push({ w, left });
+  }
+  if (owed.length === 0) return [];
+  const read: FloatReader = readFloat ?? (async () => (await import("./payments")).getFloatBalance());
+  const float = await read().then((f) => (f && Number.isFinite(f.balance) ? f.balance : null)).catch(() => null);
+  const out: ConsoleAlert[] = [];
+  for (const { w, left } of owed) {
+    if (float === null) {
+      out.push({ level: "critical", weekId: w.id, text: `${w.code}: its winners can still withdraw ${formatTzs(left)} of what it paid, and the payout float cannot be read now. Finance checks the float before the winners withdraw (MB-11).` });
+      continue;
+    }
+    const short = left + FLOAT_ALERT_BUFFER_TZS - float;
+    if (short <= 0) continue;
+    out.push({ level: float < left ? "critical" : "warning", weekId: w.id,
+      text: `${w.code}: the payout float holds ${formatTzs(float)} against the ${formatTzs(left)} of this week's payout its winners can still withdraw — ${formatTzs(short)} short of the payout and its headroom. Finance tops the float up before the winners withdraw (MB-11).` });
+  }
+  return out;
+}
+
+/**
+ * OD-02 over a set of unsettled weeks, each at its own frozen floor — or null, unknown, when a week's frozen rules cannot
+ * be read (S7-F2, fail closed: such a floor was counted as 0, and "Needed now" understated the requirement).
+ */
+function requirementOf(weeks: StoredWeek[]): number | null {
+  const floors = unsettledFloors(weeks);
+  return floors.ok ? guaranteeRequirement(floors.weeks) : null;
+}
+
+/**
+ * The product's switches at a glance — the head of every Millionea page. `stopNextAct` is the Owner's next act to stop
+ * Millionea, as a stop reads the line (`stopNextActNow`; S7-F4): the stop control names it when it offers no week. Null
+ * when it cannot be read — shown as unknown, never as a control that names no act.
+ */
+export type ConsoleStanding = {
+  rollout: RolloutState | null; licence: LicenceBasis; pause: SalesPause; sunset: Awaited<ReturnType<typeof sunsetState>>; stopNextAct: string | null;
+};
+
+export async function consoleStanding(now?: Date): Promise<ConsoleStanding> {
   const rollout = await millioneaStateNow().catch(() => null);
-  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState() };
+  const stopNextAct = await stopNextActNow(now).catch(() => null);
+  return { rollout, licence: getLicenceBasis(), pause: getSalesPause(), sunset: await sunsetState(), stopNextAct };
 }
 
 // ── DRAFTING HELP (MASWALI-PLAN §7b S4 item 7) ──────────────────────────────────────────────────────
@@ -228,13 +354,15 @@ export async function draftSuggestions(fromMs: number, toMs: number, limit = 40)
 
 export type PoolsWeek = {
   row: ConsoleWeekRow;
-  sales: number;
+  /** Null when the week's frozen rules cannot be read: unknown, never 0 (S7-F3). */
+  sales: number | null;
   rolloverIn: number | null;
   /** MB-36 · the share of the 1,024 ways to answer the ten mains that some live ticket holds, 0…1. */
   coverage: number;
   distinctCombos: number;
-  /** The most this week could still draw from the guarantee: a single winner at the floor. */
-  worstTopUp: number;
+  /** The most this week could still draw from the guarantee: a single winner at the floor. Null when its rules or the
+   *  jackpot cannot be read (S7-F3). */
+  worstTopUp: number | null;
   /** A settlement ready to release (results final, window closed): its prepared figures, or why not. */
   preview: MaswaliSettlementPreview | null;
   previewRefusal: string | null;
@@ -248,7 +376,8 @@ export type PoolsTrailRow = {
 };
 
 export type PoolsView = {
-  jackpotPublic: number | null; jackpotDrive: number | null; guarantee: number | null; requirement: number;
+  /** `requirement` is null when a week's frozen rules cannot be read: unknown, never 0 (S7-F2). */
+  jackpotPublic: number | null; jackpotDrive: number | null; guarantee: number | null; requirement: number | null;
   float: number | null; pendingPayout: number;
   weeks: PoolsWeek[];
   trail: PoolsTrailRow[];
@@ -267,9 +396,11 @@ export async function poolsView(now: Date = new Date()): Promise<PoolsView> {
     const rules = frozenRules(w);
     const live = await ticketStore.listForWeek(w.id, { status: "LIVE" });
     const combos = new Set(live.map((t) => t.selections.slice(0, MAIN_COUNT).join("")));
-    const sales = live.length * (rules?.ticketPriceTzs ?? 0);
-    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic) ?? 0;
-    const worstTopUp = Math.max(0, (rules?.floorTzs ?? 0) - jackpot - sales);
+    // ⛔ S7-F3 · AN UNREADABLE WEEK'S FIGURES ARE UNKNOWN — null, never 0 (S7-F2's rule for the requirement): its price and
+    //    floor are its frozen rules', and a jackpot that cannot be read leaves the worst top-up unknown as well.
+    const sales = rules ? live.length * rules.ticketPriceTzs : null;
+    const jackpot = w.rolloverIn ?? (w.visibility === "DRIVE" ? jackpotDrive : jackpotPublic);
+    const worstTopUp = rules && sales !== null && jackpot !== null ? Math.max(0, rules.floorTzs - jackpot - sales) : null;
     let preview: MaswaliSettlementPreview | null = null, previewRefusal: string | null = null;
     if (w.state === "RESOLVING" && w.objectionsCloseAt && Date.parse(w.objectionsCloseAt) <= now.getTime()) {
       const p = await previewMaswaliSettlement(w.id, now);

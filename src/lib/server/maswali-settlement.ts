@@ -56,7 +56,7 @@ const refuse = (error: string): Refused => ({ ok: false, error });
 const SYSTEM = "system_maswali";
 
 /** Why a winning share is held for Compliance (MB-43), or null when it is paid free. */
-export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed";
+export type HoldReason = "staff account" | "house desk account" | "desk check unreadable" | "account suspended" | "account closed" | "deposit under review" | "deposit check unreadable";
 
 /** One graded winning ticket, as the release pays it. */
 type Winner = { ticket: StoredTicket; score: number; hold: HoldReason | null };
@@ -200,8 +200,8 @@ async function computeSettlement(weekId: string, nowMs: number): Promise<{ ok: t
   const guaranteeHeld = await maswaliAccountBalance(acct.maswaliGuarantee);
   if (guaranteeHeld === null) return refuse("The guarantee balance could not be read, so the settlement could not be prepared.");
 
-  const winners: Winner[] = [];
-  for (const g of winnersGraded) winners.push({ ...g, hold: await holdFor(g.ticket.userId) });
+  const winners: Winner[] = [], disputed = await depositHolds(winnersGraded.map((g) => g.ticket.userId));
+  for (const g of winnersGraded) winners.push({ ...g, hold: (await holdFor(g.ticket.userId)) ?? disputed(g.ticket.userId) });
 
   const figures = {
     weekId: week.id, sales: byTickets, liveTickets: live.length, rolloverIn, basis, winningScore, arithmetic,
@@ -483,24 +483,24 @@ export async function settleMaswaliWeek(input: {
 }
 
 /** The headroom the payout float keeps after a week's shares, below which accounting is told before players withdraw. */
-const FLOAT_ALERT_BUFFER_TZS = 500_000;
+export const FLOAT_ALERT_BUFFER_TZS = 500_000;
 
 /**
  * MB-11 · after a payout, is the disbursement float deep enough for the winners to withdraw? A read, never a block (the
  * shares are credited; the float is topped up by Finance). Records an alert when Σ shares exceeds the float minus the
- * buffer; silent when the float cannot be read (the payments console already shows that). ⭐ R4c · `paid` is the total
- * the settlement committed, handed over after the commit — never a week row read inside the lock.
+ * buffer, and ⭐ S7-F2 its own when the float cannot be read (fail closed: never silence; the console raises both).
+ * ⭐ R4c · `paid` is the total the settlement committed, handed over after the commit — never a row read in the lock.
  */
 async function floatCheck(week: { weekId: string; code: string; paid: number }, readFloat?: () => Promise<{ balance: number } | null>): Promise<void> {
   try {
     const paid = week.paid;
     if (paid <= 0) return;
-    const float = readFloat ? await readFloat() : await (await import("./payments")).getFloatBalance();
-    if (!float) return;
-    if (paid > float.balance - FLOAT_ALERT_BUFFER_TZS) {
-      console.error(`[maswali-settlement] week ${week.code} paid ${paid}; the payout float holds ${float.balance}.`);
-      audit({ category: "COMPLIANCE", action: "maswali.settlement.float_low", actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.weekId,
-        payload: { code: week.code, paid, float: float.balance, buffer: FLOAT_ALERT_BUFFER_TZS } });
+    const float = await (readFloat ?? (async () => (await import("./payments")).getFloatBalance()))().catch(() => null);
+    const action = !float ? "maswali.settlement.float_unread" : paid > float.balance - FLOAT_ALERT_BUFFER_TZS ? "maswali.settlement.float_low" : null;
+    if (action) {
+      console.error(`[maswali-settlement] week ${week.code} paid ${paid}; the payout float ${float ? `holds ${float.balance}` : "could not be read"}.`);
+      audit({ category: "COMPLIANCE", action, actorId: SYSTEM, targetType: "MaswaliCycle", targetId: week.weekId,
+        payload: { code: week.code, paid, float: float?.balance ?? null, buffer: FLOAT_ALERT_BUFFER_TZS } });
     }
   } catch { /* a read about money already paid never surfaces as the payment failing */ }
 }
@@ -705,4 +705,43 @@ export async function forfeitMaswaliShare(input: { ticketId: string; officerId: 
   await seams.beforeLift?.();
   await liftHoldIfClear(userId, input.officerId, `Millionea ${first.week.code} · ${first.ticket.serial} forfeited`);
   return { ok: true };
+}
+
+// ── MB-74 · A WINNER WHOSE DEPOSIT THE PROVIDER CONTRADICTED ────────────────────────────────────────
+
+/**
+ * ⭐ MB-74 · the winners whose accounts carry a credited deposit the payment provider has since contradicted — a reversal,
+ * or another amount, which the webhook marks for review and leaves in the wallet (`settlePaymentWebhook`). Their shares
+ * are credited in full and HELD for Compliance (OD-07: frozen, then released or forfeited to the jackpot), never paid free:
+ * the contradicted money may be what bought the ticket, and money is not traced shilling by shilling.
+ * ONE read for every winner, never one per winner (R9's settlement budget), answered as a lookup. ⛔ Fails CLOSED, as the
+ * desk check does (R10b): a read that fails holds every winner's share in its own words, and Compliance releases them.
+ * The ticket's grade, the commitment and the sales are untouched: the ticket stays in the week (MB-74).
+ */
+async function depositHolds(userIds: readonly string[]): Promise<(userId: string) => HoldReason | null> {
+  const unique = [...new Set(userIds)];
+  if (unique.length === 0) return () => null;
+  try {
+    const { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } = await import("../wallet/deposit-review");
+    const flagged = new Set<string>();
+    const c = hasDatabase() && process.env.USE_PRISMA_DAL !== "false" ? prisma() : null;
+    if (c) {
+      for (let i = 0; i < unique.length; i += 5_000) {
+        const rows = await c.transaction.findMany({
+          where: { userId: { in: unique.slice(i, i + 5_000) }, type: "DEPOSIT", status: "CONFIRMED", providerStatus: DEPOSIT_STATUS_REVIEW_MARK },
+          select: { userId: true }, distinct: ["userId"],
+        });
+        for (const r of rows) flagged.add(r.userId);
+      }
+    } else {
+      for (const userId of unique) {
+        const deposits = await db.txn.findByUserTypes(userId, ["DEPOSIT"], 10_000);
+        if (deposits.some((t) => t.status === "CONFIRMED" && hasDepositStatusReview(t))) flagged.add(userId);
+      }
+    }
+    return (userId) => (flagged.has(userId) ? "deposit under review" : null);
+  } catch (err) {
+    console.error("[maswali-settlement] the winners' deposits could not be checked, so every share is held:", (err as Error)?.message ?? err);
+    return () => "deposit check unreadable";
+  }
 }

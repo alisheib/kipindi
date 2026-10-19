@@ -12,6 +12,7 @@ import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { LIST_TAG } from "@/lib/rail-list";
 import { fill, formatNumber } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
+import type { RemainderFate } from "@/lib/maswali-money";
 
 /** The ISO weekday (0 = Monday … 6 = Sunday) and the 24-hour EAT clock of an instant. */
 export function eatParts(atMs: number): { weekday: number; clock: string; midnight: boolean } {
@@ -97,6 +98,15 @@ export function joinList(locale: Locale, items: readonly string[]): string {
 export function millioneaWord(t: Dict, key: string): string {
   const v = (t.millionea as unknown as Record<string, unknown>)[key];
   return typeof v === "string" ? v : key;
+}
+
+/** The rounding remainder's note (MR-25): where it went, as `remainderFate` reads the settled week — one wording for the
+ *  register and the win receipt. ⛔ Never "house" (D19): what the week's money did not cover stays with the guarantee.
+ *  ⛔ A FINAL week has no next jackpot (MR-30): what its money carried stays in the jackpot account. */
+export function remainderNoteOf(t: Dict, fate: RemainderFate, finalWeek = false): string {
+  if (fate === "kept") return t.millionea.remainderNoteKept;
+  if (fate === "carried") return finalWeek ? t.millionea.remainderNoteFinal : t.millionea.remainderNote;
+  return finalWeek ? t.millionea.remainderNoteFinalPart : t.millionea.remainderNotePart;
 }
 
 /** The singular or the counted form of a string pair (`…One` when there is exactly one). */

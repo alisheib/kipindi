@@ -202,6 +202,8 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
     // stands on main (the commit before this pin).
     const W4B = "2aab5f0ec";
+    // S7's final-week, rounding-remainder and stale-slip wording is present in the merged dictionary. Re-pin its
+    // approved blob at this integration's committed source before running D19a green; the S5 pin below predates S7.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", W4B],
       ["src/app/legal/rules/page.tsx", W4],

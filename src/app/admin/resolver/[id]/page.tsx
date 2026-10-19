@@ -11,7 +11,7 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, listPositionsForMarket } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
-import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { readRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { getAuditPage } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
@@ -73,7 +73,15 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
   // how many officers a resolution needs. OFF ⇒ single admin seals in one action —
   // no second officer, no self-countersign block. ON ⇒ stage-2 must be a DIFFERENT
   // officer, so a same-officer countersign is blocked.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ MASWALI-BUILD S7-F4 · read FAIL-CLOSED, as the actions read it (S7-F3): null is UNKNOWN, named as unknown in the
+  //    status chip; the action refuses on its own read.
+  //    S7-F7 6 (the lead's ruling) · and an unknown names NO ceremony: neither card says two-officer or single-officer
+  //    while the market is open — they say resolution waits until the setting can be read. A sealed market's attestation
+  //    shows what its RECORD says instead (`attestTwo`): two distinct officers attested, or one resolved it.
+  const twoOfficerRead = await readRequireTwoOfficerResolution().catch(() => null);
+  const requireTwoOfficer = twoOfficerRead !== false;
+  const unknownOpen = twoOfficerRead === null && !settled;
+  const attestTwo = twoOfficerRead === null ? !!stage1By && !!stage2By && stage1By !== stage2By : requireTwoOfficer;
   // The window in force, read once and passed down — never restated as a literal in copy.
   const { objectionWindowHours } = await getGlobalConfig();
   const isSelfCountersign = requireTwoOfficer && stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
@@ -121,6 +129,8 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                   <Chip size="sm" variant={m.status === "VOIDED" ? "claret" : "resolved"}>
                     {m.status === "VOIDED" ? "VOIDED" : `SEALED · ${m.resolvedOutcome}`}
                   </Chip>
+                ) : twoOfficerRead === null ? (
+                  <Chip size="sm" variant="warning">TWO-OFFICER SETTING UNREADABLE</Chip>
                 ) : requireTwoOfficer && stage === "stage2" ? (
                   <Chip size="sm" variant="warning">{CEREMONY.awaitingSecondOfficer.en.toUpperCase()}</Chip>
                 ) : requireTwoOfficer ? (
@@ -242,10 +252,12 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
           {/* ── Verdict rail (right) ─────────────────────────────────────── */}
           <div className="space-y-4 lg:sticky lg:top-4">
             <AdminCard
-              title={requireTwoOfficer ? CEREMONY.twoOfficerAttestation.en : "Resolving officer"}
-              sw={requireTwoOfficer ? CEREMONY.twoOfficerAttestation.sw : "Afisa mtatuzi"}
+              title={unknownOpen ? CEREMONY.officers.en : attestTwo ? CEREMONY.twoOfficerAttestation.en : "Resolving officer"}
+              sw={unknownOpen ? CEREMONY.officers.sw : attestTwo ? CEREMONY.twoOfficerAttestation.sw : "Afisa mtatuzi"}
             >
-              {requireTwoOfficer ? (
+              {unknownOpen ? (
+                <p className="text-body-sm text-text-muted" data-ceremony="unknown">{CEREMONY.waitsForSetting.en}</p>
+              ) : attestTwo ? (
                 <div className="grid grid-cols-2 gap-2">
                   <AttestSlot
                     label={`Officer A · ${CEREMONY.stage1.en}`}
@@ -300,7 +312,7 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
 
             {/* Verdict controls (or a sealed banner when done). */}
             <AdminCard
-              title={settled ? "Sealed" : requireTwoOfficer ? (stage === "stage2" ? "Countersign & seal" : "Stage-1 attestation") : "Resolve & seal"}
+              title={settled ? "Sealed" : unknownOpen ? CEREMONY.resolution.en : requireTwoOfficer ? (stage === "stage2" ? "Countersign & seal" : "Stage-1 attestation") : "Resolve & seal"}
               sw={settled ? undefined : "Hatua ya utatuzi"}
             >
               {settled ? (
@@ -317,6 +329,9 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                     </p>
                   </div>
                 </div>
+              ) : canResolve && twoOfficerRead === null ? (
+                // S7-F5 · an unknown setting offers no ceremony: either one drawn could be the wrong one.
+                <p className="text-body-sm text-warning">The two-officer setting could not be read, so this market cannot be resolved now. Reload the page.</p>
               ) : canResolve ? (
                 <ResolutionCeremony
                   marketId={m.id}

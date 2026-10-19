@@ -44,7 +44,7 @@ export type HomeCardState =
   /** The last week was voided whole: every refund landed, or they are on their way. */
   | { kind: "voided"; refundsPending: boolean };
 
-export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
+export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, finalWeek, finalAhead = null, atLeast = false, pendingWeek = null, href = "/millionea", className }: {
   t: Dict;
   /** The reader's language: the fact lines keep its phrases whole (`keepFact`). */
   locale: Locale;
@@ -60,8 +60,10 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
   /** The weekly cap, from the week's snapshot. */
   cap: number;
   state: HomeCardState;
-  /** The final week of a sunset (announced in advance). */
+  /** The final week of a sunset: this card's own week. */
   finalWeek?: boolean;
+  /** The final week's number while it is still to open (MR-30, OD-03): the card names it, whatever week it shows. */
+  finalAhead?: number | null;
   href?: string;
   className?: string;
 }) {
@@ -140,6 +142,7 @@ export function MaswaliHomeCard({ t, locale, week, jackpot, pct, cap, state, fin
         <span className="text-body-sm text-text-subtle xl:shrink-0">
           <MaswaliFacts layout="phone" facts={meta} />
         </span>
+        {!finalWeek && finalAhead !== null && <span className="text-body-sm text-text">{fill(t.millionea.finalAheadShort, { week: finalAhead })}</span>}
       </span>
       <I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle xl:mt-0" />
     </Link>

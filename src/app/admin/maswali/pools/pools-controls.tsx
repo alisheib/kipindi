@@ -144,14 +144,20 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
   );
 }
 
-export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: string }> }) {
+/**
+ * The Owner's stop. `nextAct` is the console's reading of the Owner's next act (`consoleStanding().stopNextAct`): with no
+ * week to offer — none on sale, a week being decided, no draft — the control names it (S7-F4), or says it is unknown.
+ */
+export function SunsetCeremony({ weeks, nextAct }: { weeks: Array<{ id: string; label: string }>; nextAct: string | null }) {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
   const [weekId, setWeekId] = useState(weeks[0]?.id ?? "");
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
-  if (weeks.length === 0) return <p className="text-body-sm text-text-secondary">No public week can be made final now.</p>;
+  if (weeks.length === 0) {
+    return <p className="text-body-sm text-text-secondary">{nextAct ?? "No week can be made final now, and the next step could not be read. Reload the page."}</p>;
+  }
   return (
     <div className="space-y-3">
       <Field label="The final week"><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week" options={weeks.map((w) => ({ value: w.id, label: w.label }))} /></Field>
@@ -161,7 +167,7 @@ export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: st
       <UnsavedChangesGuard dirty={reason.trim() !== ""} body="A reason for the final week has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}
         title="Stop Millionea after this week?" confirmLabel="Make it final"
-        body="A drafted week becomes final only a full week before it opens (OD-03); the current week becomes final at once. After a final week that ran, no week opens again."
+        body="The week on sale becomes final at once; a drafted week only a full week before it opens (OD-03) — or, while a closed week's results are being decided, the next week to open, at shorter notice. A week whose sales have closed settles under its own rules. After a final week that ran, no week opens again."
         onConfirm={() => run(() => sunsetMaswaliAction(fd({ weekId, reason, typed: SUNSET_WORD })), () => { setOpen(false); setReason(""); })} />
     </div>
   );

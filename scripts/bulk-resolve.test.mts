@@ -37,6 +37,7 @@ import { decideAutoResolve } from "../src/lib/server/market-service.ts";
 import { sourceMatchesAny, type TrustedSource } from "../src/lib/server/source-registry.ts";
 import { BULK_REASON, composeOverrideJustification } from "../src/app/admin/resolver-queue/bulk-verdict-copy.ts";
 import { compareBy, parseSort, SORT_OPTIONS } from "../src/app/admin/resolver-queue/queue-order.ts";
+import { CEREMONY } from "../src/lib/admin-status-lexicon.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -70,8 +71,12 @@ const read = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
  * proved it on this very suite — removing the payload bound outright left the check that
  * guards it passing. So presence is asserted before order.
  */
-const before = (hay: string, x: string, y: string) => {
-  const i = hay.indexOf(x), j = hay.indexOf(y);
+const indexIn = (hay: string, n: string | RegExp) => (typeof n === "string" ? hay.indexOf(n) : hay.search(n));
+/** ⚠️ A RegExp needle (MASWALI-BUILD S7-F7 1) is for a JSX tag that is the prefix of another name: `"<ResolutionCeremony"`
+ *  also matches `<ResolutionCeremonyContent` (the page's gate wrapper, above everything), so only `/<ResolutionCeremony\b/`
+ *  finds the ceremony itself. */
+const before = (hay: string, x: string | RegExp, y: string | RegExp) => {
+  const i = indexIn(hay, x), j = indexIn(hay, y);
   return i >= 0 && j >= 0 && i < j;
 };
 
@@ -430,7 +435,7 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // evidence", attributed to the person this action names — and this officer typed neither
   // of them. The excerpt survives on the market row and in the audit payload.
   ok("10.9 NOTHING is written as the officer's player-facing evidence",
-     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId \}\)/.test(a)
+     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId, twoOfficerNow: async \(\) => requireTwoOfficer \}\)/.test(a)
      && !/evidence: (override|typed|m\.sentinelEvidence)/.test(a));
   ok("10.10 a tampered payload naming an unselected market is refused",
      /is not selected/.test(a));
@@ -492,6 +497,12 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
      before(a, "const resolved: BulkResolveOutcome[] = []", "  try {"));
   ok("10.24 an aborted batch still writes its run-boundary row", /aborted: true/.test(a));
   ok("10.18 the settle timer is armed per market", /armMarket\(id\)/.test(a));
+  // ⛔ MASWALI-BUILD S7-F3 · the plain getter answered the code default (one officer) while its read failed, so a batch
+  //    drew every verdict and made every seal single-officer with the two-officer setting ON (fail open).
+  ok("10.25 the two-officer setting is READ (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
+     /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(a) && !/getRequireTwoOfficerResolution/.test(a));
+  ok("10.26 …and an unread setting refuses the whole batch BEFORE any market is attempted",
+     before(a, "if (twoOfficerRead === null)", "for (const id of unique)") && /const requireTwoOfficer: boolean = twoOfficerRead;/.test(a));
 
   // ⛔ A "use server" module may export ONLY async functions — a type exported from it
   // typechecks clean and fails the BUILD.
@@ -509,6 +520,65 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.4 the bar is gated on canBulk with a locked alternative",
      /canBulk \?/.test(p) && /<ControlLocked/.test(p));
   ok("11.5 the override gate is passed down separately", /canOverride=\{canOverride\}/.test(p));
+  // ⛔ MASWALI-BUILD S7-F4 · the queue, the market page and the ops census read the two-officer setting as the actions do
+  //    (10.25): the getter answered the code default (one officer) while unread, shown and drawn as single-officer.
+  const marketPage = read("src/app/admin/resolver/[id]/page.tsx");
+  const census = read("scripts/ops-verdict-census.mts");
+  ok("11.5b the queue, the market page and the ops census read the setting FAIL-CLOSED (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
+     [p, marketPage, census].every((s) => /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(s) && !/getRequireTwoOfficerResolution/.test(s)));
+  // ⛔ MASWALI-BUILD S7-F7 6 · RE-PINNED, AND WHY (the lead's ruling, 2026-10-19). 11.5c used to hold that an unknown setting
+  //    is "drawn as the stricter ceremony and named as unknown": the queue's rows kept their "Two-officer rule" stages and
+  //    the market page its "Two-officer attestation" slots and "Stage-1 attestation" title — words naming a ceremony that
+  //    may not be in force. Ruled: an unknown names NO ceremony. Each page draws the neutral words FIRST
+  //    (CEREMONY.officers, .waitsForSetting, .resolution, with en, sw and zh all present), the header counts nobody as
+  //    awaiting a second officer, and a sealed market's attestation follows its own record; the two-officer and
+  //    single-officer words are reached only on a read that answered. The controls stay withheld (11.5d, 11.5g); the
+  //    census still draws nothing.
+  const neutralWords = [CEREMONY.officers, CEREMONY.resolution, CEREMONY.waitsForSetting];
+  ok("11.5c …an unknown names no ceremony on either page: each draws the neutral words before any two-officer or single-officer word, in en, sw and zh, and the census draws nothing",
+     neutralWords.every((l) => !!l.en && !!l.sw && !!l.zh)
+       && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
+       && /\{twoOfficerRead === null \? \(\s*<div className="px-4 py-3 border-b border-border" data-ceremony="unknown">[\s\S]{0,300}\{CEREMONY\.officers\.en\}[\s\S]{0,200}\{CEREMONY\.waitsForSetting\.en\}[\s\S]{0,200}\) : requireTwoOfficer \? \(/.test(p)
+       && /twoOfficerRead === true && awaitingStage2 > 0/.test(p) && !/requireTwoOfficer && awaitingStage2/.test(p)
+       && /const unknownOpen = twoOfficerRead === null && !settled;/.test(marketPage)
+       && /const attestTwo = twoOfficerRead === null \? !!stage1By && !!stage2By && stage1By !== stage2By : requireTwoOfficer;/.test(marketPage)
+       && /title=\{unknownOpen \? CEREMONY\.officers\.en : attestTwo \? CEREMONY\.twoOfficerAttestation\.en : "Resolving officer"\}/.test(marketPage)
+       && /\{unknownOpen \? \(\s*<p className="[^"]*" data-ceremony="unknown">\{CEREMONY\.waitsForSetting\.en\}<\/p>\s*\) : attestTwo \? \(/.test(marketPage)
+       && /title=\{settled \? "Sealed" : unknownOpen \? CEREMONY\.resolution\.en : requireTwoOfficer \?/.test(marketPage)
+       && /twoOfficerRead === null \? \(/.test(marketPage)
+       && /if \(twoOfficerRead === null\) \{[^}]*process\.exit\(2\)/.test(census));
+  // ⛔ MASWALI-BUILD S7-F5 · an unknown setting drawn strict removed the seal's confirmation: the controls posted only the
+  //    market and the outcome, and the action re-read the setting (OFF once it answered) — a one-click seal with no typed
+  //    word. Now no control is offered while it is unknown, and the action runs only the ceremony the page drew.
+  const controls = read("src/app/admin/resolver-queue/resolve-controls.tsx");
+  const ceremony = read("src/app/admin/resolver/[id]/resolution-ceremony.tsx");
+  const actions = read("src/app/markets/actions.ts");
+  // ⛔ S7-F7 1 · EACH PAGE'S OWN BRANCH. The queue's first `twoOfficerRead === null ? (` is the BULK area's (S7-F6), so a
+  //    first-occurrence order passed with the row's branch deleted: the row is asserted as one span — the unknown branch,
+  //    its words, then the controls it replaces. The market page's `"<ResolutionCeremony"` first matched
+  //    `<ResolutionCeremonyContent` (its gate wrapper, line 33), so the case was red on the code it was written for.
+  ok("11.5d while the setting is unknown neither page offers a resolve control: the queue and the market page say it is unreadable instead",
+     /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<ResolveControls\b/.test(p)
+       && before(marketPage, "canResolve && twoOfficerRead === null ? (", /<ResolutionCeremony\b/));
+  ok("11.5e both controls post the ceremony they drew, and the action refuses an unread, missing or changed setting BEFORE resolveMarket",
+     [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
+       && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")
+       && /if \(twoOfficerNow === null\)/.test(actions) && /if \(drawn !== \(twoOfficerNow \? "1" : "0"\)\)/.test(actions));
+  // ⛔ MASWALI-BUILD S7-F6 · the bulk bar, the same kind: drawn strict while the setting was unknown, its confirm read as
+  //    staging while the action re-read the setting, so a read that recovered OFF sealed N markets confirmed as staging.
+  const bulkBar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
+  const bulkAction = read("src/app/admin/resolver-queue/bulk-resolve-action.ts");
+  ok("11.5g while the setting is unknown the queue draws no bulk bar: it says the setting is unreadable instead",
+     before(p, "{canBulk ? (", "twoOfficerRead === null ? (") && /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<BulkResolveBar\b/.test(p));
+  ok("11.5h the bar posts the batch it drew, and the bulk action refuses a missing or changed ceremony BEFORE any market is attempted",
+     bulkBar.includes('fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");')
+       && /if \(String\(formData\.get\("drawnTwoAdmin"\) \?\? ""\) !== \(twoOfficerRead \? "1" : "0"\)\) \{/.test(bulkAction)
+       && before(bulkAction, 'formData.get("drawnTwoAdmin")', "for (const id of unique)"));
+  ok("11.5i one read decides the ceremony: both actions hand resolveMarket the read that checked the drawn ceremony, so it never reads again",
+     actions.includes("twoOfficerNow: async () => twoOfficerNow") && bulkAction.includes("twoOfficerNow: async () => requireTwoOfficer"));
+  const toggle = read("src/app/admin/resolver-queue/two-admin-toggle.tsx");
+  ok("11.5f the two-admin switch names an unread setting as unknown, with no switch — never drawn ON (it is handed the read, null included)",
+     /enabled: boolean \| null/.test(toggle) && /if \(enabled === null\) \{/.test(toggle) && /<TwoAdminToggle enabled=\{twoOfficerRead\} \/>/.test(p));
 
   const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
   ok("11.6 the bar reads the ACT gate", /useMayAct\(\)/.test(bar));
@@ -562,6 +632,16 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.24 selection is reset when the page changes", /setSelected\(new Set\(\)\)/.test(sel) && /\[key\]/.test(sel));
   ok("11.25 shift-click extends a range", /extendTo/.test(sel));
   ok("11.26 the selection module imports no server action", !/bulk-resolve-action/.test(sel));
+  // ⛔ MASWALI-BUILD S7-F7 8 · the ceremony's verdict cards take the platform's one answer to a three-way choice at a phone's
+  //    width — the queue's resolve controls' (G-6): one per row below `sm`. Three across, BATILISHA ran to its card's edge.
+  ok("11.27 the ceremony's verdict cards go one per row below sm, as the queue's resolve controls do — at 360 no sublabel reaches its card's edge",
+     /function VerdictCards[\s\S]{0,700}<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">/.test(ceremony)
+       && !/<div className="grid grid-cols-3 gap-2">/.test(ceremony) && /grid grid-cols-1 sm:grid-cols-3/.test(controls));
+  // ⛔ MASWALI-BUILD S7-F7 7 · the bar's label block has a sentence's minimum width, so at 360 the wrapping row breaks between
+  //    its groups instead of squeezing the label one word per line beside the buttons.
+  ok("11.28 at 360 the bar's label keeps a sentence's width — the row wraps its buttons below instead of squeezing the words one per line",
+     /<div className="min-w-\[220px\] flex-1">[\s\S]{0,60}<p className="font-mono text-body-sm text-text-muted">\s*\{chosen\.length > 0/.test(bar)
+       && !/<div className="min-w-0 flex-1">[\s\S]{0,60}<p className="font-mono text-body-sm text-text-muted">\s*\{chosen\.length > 0/.test(bar));
 }
 
 // ── 12 · THE PRODUCTION POPULATION, AS FIXTURES ─────────────────────────────

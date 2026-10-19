@@ -237,10 +237,24 @@ console.log("\n§7 · a voided week refunds every ticket");
   const a = await W.user({ balance: 50_000 }), b = await W.user({ balance: 50_000 });
   // `a` holds a bonus with progress made on other bets: a ticket accrues no turnover (OD-27), so its refund must remove none.
   const bonus = await import("../../src/lib/server/bonus-service.ts");
-  await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+  // ⛔ MASWALI-BUILD S7-F7 2 · THE BONUS IS THIS CASE'S FIXTURE, SO ITS FEATURE IS ON FOR THE GRANT ALONE. The bonus wallet is
+  //    WITHDRAWN from the product (`feature-state.ts`) and `creditBonus` refuses while it sleeps, so `a` held no bonus: 7.0b
+  //    and 7.3b compared 0 with 0, and red:maswali-money-path's (6b) — a void refund that reverses turnover — stayed green.
+  //    The switch is the server-side one an operator would set, scoped as `withdrawn-features` §4 scopes it and put back
+  //    after; the accrual, the summary and a reversal never read it. 7.0a refuses to go on without the premise.
+  const bonusWas = process.env.FEATURE_BONUS;
+  process.env.FEATURE_BONUS = "ACTIVE";
+  let granted: Awaited<ReturnType<typeof bonus.creditBonus>>;
+  try {
+    granted = await bonus.creditBonus(a, { amountTzs: 10_000, source: "ADMIN", sourceRef: `mln-wager-${a}`, wagerMultiplier: 10, notifyPlayer: false });
+  } finally {
+    if (bonusWas === undefined) delete process.env.FEATURE_BONUS; else process.env.FEATURE_BONUS = bonusWas;
+  }
   await bonus.recordWagering(a, 5_000);
   const wagerLeft = async () => (await bonus.getBonusSummary(a)).activeWagerRemainingTzs;
   const leftBefore = await wagerLeft();
+  ok("7.0a · the premise: `a` holds a bonus with turnover both made and still to make (10,000 at ×10, 5,000 played: 95,000 left) — without it 7.0b and 7.3b compare nothing",
+    granted.ok && leftBefore === 95_000, `${granted.ok ? "granted" : granted.error} · ${leftBefore} left`);
   await W.buy(a, v.id, [W.WIN, W.LOSE]);
   ok("7.0b · buying tickets accrues no turnover against the bonus", (await wagerLeft()) === leftBefore, `${leftBefore} → ${await wagerLeft()}`);
   await W.buy(b, v.id, [W.WIN]);
@@ -450,6 +464,94 @@ console.log(`${String.fromCharCode(10)}§8 · the review's findings: the receipt
   ok("R5.3 · ⭐ …so the panel's headroom is exactly what the gate admits: one shilling more is refused", inside.allowed && !past.allowed, J({ room, inside, past }));
   const raw = await W.db.txn.sumGamblingNetSince(u, Date.now() - 86_400_000);
   ok("R5.4 · …while the raw gambling net, which the panel read before, counts the win and the refund as money back", raw > 0, `${raw}`);
+}
+
+// ── §9 · the stale slip (S7, MR-30) ─────────────────────────────────────────
+console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop never sells a final-week ticket`);
+{
+  // A PUBLIC week after every other (the last to open), made the final week while it is ON SALE by the Owner's own act.
+  // `shownFinal` is what the player's slip posts: whether it stated the final week's rule when it opened.
+  const { week: Z } = await W.openWeek({ weeksAhead: 6 });
+  const buyAs = (u: string, shownFinal: boolean, key: string) =>
+    W.svc.purchaseMaswaliTickets({ userId: u, weekId: Z.id, slips: [W.LOSE], idempotencyKey: key, shownFinal, stateNow: async () => "ACTIVE" });
+  const count = async () => (await dal.weekStore.get(Z.id)).ticketCount;
+  const early = await W.user({ balance: 50_000 });
+  const plain = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.1 · a week never final sells to a slip that stated no final week, as before (control)", plain.ok && !plain.data.replayed && (await count()) === 1, why(plain));
+  // S7-F5 · the control first: with no lock held, the same stop finishes inside the same wait, so SF.2a's wait is the
+  // lock's, never a slow store's. ⚠️ A FIXTURE, DECLARED: the Owner's order is then withdrawn (no act can do that), so the
+  // held stop below meets the week as it was.
+  let freeDone = false;
+  const freeStop = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite: the unheld control" })
+    .then((r: any) => { freeDone = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const freeInTime = freeDone;
+  const freeR = await freeStop;
+  ok("SF.2b · control: with no lock held, the same stop finishes inside the same wait (the wait SF.2a meets is the lock's)",
+    freeInTime && freeR.ok && freeR.week.isFinal === true, `${freeInTime ? "in time" : "late"} · ${why(freeR)}`);
+  await dal.weekStore.patch(Z.id, { isFinal: false });
+  // S7-F4 · the stop waits for a purchase in flight on the week's market: the market lock is held here, as a purchase holds
+  // it from its in-lock finality read to its commit, while the Owner's stop runs.
+  const { withLock } = await import("../../src/lib/server/locks.ts");
+  let letGo!: () => void;
+  const held = new Promise<void>((r) => { letGo = r; });
+  let entered!: () => void;
+  const holding = new Promise<void>((r) => { entered = r; });
+  const flight = withLock(`market:${Z.marketId}`, async () => { entered(); await held; });
+  await holding;
+  let stopped = false;
+  const stopping = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite stops Millionea" })
+    .then((r: any) => { stopped = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const finalWhileHeld = (await dal.weekStore.get(Z.id)).isFinal;
+  const waited = !stopped && finalWhileHeld === false;
+  letGo();
+  await flight;
+  const stop = await stopping;
+  ok("SF.2a · ⛔ S7-F4 · the Owner's stop waits for a purchase in flight on the week's market: the week is not final while that lock is held",
+    waited, J({ stopped, finalWhileHeld }));
+  ok("SF.2 · the Owner makes the week on sale the final week (the fixture)", stop.ok && stop.week.isFinal === true && stop.week.state === "OPEN", why(stop));
+  const stale = await W.user({ balance: 50_000 });
+  const refused = await buyAs(stale, false, "s7-stale-slip-0001");
+  ok("SF.3 · ⛔ a slip opened before the stop is refused: the week is final now and the slip did not say so",
+    !refused.ok && refused.reason === "millionea_week_final" && refused.code === "INVALID", why(refused));
+  ok("SF.4 · …and nothing moved: no debit, no ticket, the week's count unchanged",
+    (await W.bal(stale)).balance === 50_000 && (await dal.ticketStore.listForUser(stale)).length === 0 && (await count()) === 1, J({ bal: await W.bal(stale), count: await count() }));
+  const fresh = await buyAs(stale, true, "s7-fresh-slip-0001");
+  ok("SF.5 · a slip opened after the stop (it states the final week) is sold (control)",
+    fresh.ok && !fresh.data.replayed && (await W.bal(stale)).balance === 50_000 - price && (await count()) === 2, why(fresh));
+  const replay = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.6 · ⭐ L2 · the same key of a purchase that landed before the stop answers its own receipt, never the refusal, and charges nothing",
+    replay.ok && replay.data.replayed === true && J(replay.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replay));
+
+  // S7-F4 · a stop landing between the slip's check and the money transaction: such a purchase passed
+  // `purchaseMaswaliTickets`' check while the week was not final, so it reaches the ticket arm with its slip's answer —
+  // the path taken here directly, after the stop.
+  const midFlight = (u: string, key: string) => market.buyPosition(u, {
+    marketId: Z.marketId, side: "YES", stake: price, idempotencyKey: key, maswali: { weekId: Z.id, slips: [W.LOSE], shownFinal: false } });
+  const mid = await W.user({ balance: 50_000 });
+  const inFlight = await midFlight(mid, "s7f4-mid-flight-0001");
+  ok("SF.6a · ⛔ S7-F4 · a stop landing between the slip's check and the money transaction refuses inside the locks, and nothing moves",
+    !inFlight.ok && inFlight.reason === "millionea_week_final" && (await W.bal(mid)).balance === 50_000
+      && (await dal.ticketStore.listForUser(mid)).length === 0 && (await count()) === 2, why(inFlight));
+  const landedMid = await midFlight(early, "s7-stale-before-0001");
+  ok("SF.6b · ⭐ …while a key that landed before the stop still answers its own receipt from the wallet lock, charging nothing (control)",
+    landedMid.ok && landedMid.data.replayed === true && J(landedMid.data.maswali?.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(landedMid));
+
+  // S7-F4 · the refusal is the OPEN week's: once the final week has CLOSED, a stale slip gets the closed week's own answer.
+  const shut = await W.svc.closeWeek({ weekId: Z.id, now: new Date(Date.parse(Z.closesAt) + 60_000) });
+  const late = await W.user({ balance: 50_000 });
+  const staleShut = await buyAs(late, false, "s7-stale-shut-0001");
+  const freshShut = await buyAs(late, true, "s7-fresh-shut-0001");
+  ok("SF.7 · ⛔ a stale slip on the final week once it has CLOSED gets the closed week's own answer, never the stale-slip refusal: the one a slip that stated the rule gets",
+    shut.ok && !staleShut.ok && !freshShut.ok && staleShut.reason !== "millionea_week_final" && staleShut.reason === freshShut.reason
+      && (await W.bal(late)).balance === 50_000 && (await count()) === 2, `${shut.ok ? "closed" : shut.error} · ${why(staleShut)} · ${why(freshShut)}`);
+  const replayShut = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.8 · …and the same key of a purchase that landed still answers its own receipt on the closed week, charging nothing (control)",
+    replayShut.ok && replayShut.data.replayed === true && J(replayShut.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replayShut));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

@@ -48,14 +48,17 @@ async function Content({ searchParams }: PoolsPageProps) {
   ]);
   const [canRelease, canFund, canReturn, canSunset, canLicence, canRollout] = can;
   // Every public week by its state, never the newest few: a drafted week far ahead can still be made the final one.
-  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => [])).filter((w) => !w.isFinal && w.state !== "SETTLED" && w.state !== "VOIDED");
+  // ⛔ S7 · never a week whose sales have closed: its results are being decided, and the stop refuses it (`sunsetMaswali`).
+  const sunsetCandidates = (await weekStore.list({ visibility: "PUBLIC" }).catch(() => []))
+    .filter((w) => !w.isFinal && (w.state === "DRAFT" || w.state === "OPEN"));
 
   if (!v) {
     return (<><AdminPageHead title="Millionea · Pools" sw="Mifuko" /><AdminBody><p className="text-body-sm text-danger-fg">The pools could not be read.</p></AdminBody></>);
   }
   const trailPage = parsePage(sp.tpage, v.trail.length, CONSOLE_PER_PAGE);
   const trailRows = v.trail.slice((trailPage - 1) * CONSOLE_PER_PAGE, trailPage * CONSOLE_PER_PAGE);
-  const short = v.guarantee !== null && v.guarantee < v.requirement;
+  // S7-F2 · a requirement that cannot be read (a week's frozen rules unreadable) is unknown, shown so, never as covered.
+  const short = v.guarantee !== null && v.requirement !== null && v.guarantee < v.requirement;
   const floatShort = v.float !== null && v.pendingPayout > v.float;
   return (
     <>
@@ -63,7 +66,7 @@ async function Content({ searchParams }: PoolsPageProps) {
       <AdminBody>
         <KpiGrid cols="1-sm2-xl4">
           <AdminKpi label="Jackpot carried" sw="Jackpot" value={money(v.jackpotPublic)} note="Players' money, for the next winning week" {...(v.jackpotPublic === null ? { tone: "danger" as const } : {})} />
-          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${formatTzs(v.requirement)} (OD-02)`} {...(v.guarantee === null || short ? { tone: "danger" as const } : {})} />
+          <AdminKpi label="Guarantee" sw="Dhamana" value={money(v.guarantee)} note={`Needed now: ${money(v.requirement)} (OD-02)`} {...(v.guarantee === null || v.requirement === null || short ? { tone: "danger" as const } : {})} />
           <AdminKpi label="Payout float" sw="Akiba ya malipo" value={money(v.float)} note={`Prepared payouts: ${formatTzs(v.pendingPayout)}`} {...(floatShort ? { tone: "warning" as const } : {})} />
           <AdminKpi label="Drive jackpot" sw="Jackpot ya majaribio" value={money(v.jackpotDrive)} note="The private drive's own (OD-21)" />
         </KpiGrid>
@@ -82,10 +85,11 @@ async function Content({ searchParams }: PoolsPageProps) {
                         <tr key={w.row.id}>
                           <td className="text-left tabular">{w.row.code}{w.row.visibility === "DRIVE" ? " · drive" : ""}</td>
                           <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
-                          <td className="text-right tabular">{formatTzs(w.sales)}</td>
+                          {/* S7-F3 · a figure the week's frozen rules cannot give is said so, never shown as 0. */}
+                          <td className="text-right tabular">{w.sales === null ? "Cannot be read" : formatTzs(w.sales)}</td>
                           <td className="text-right tabular">{w.rolloverIn === null ? "Not yet" : formatTzs(w.rolloverIn)}</td>
                           <td className="text-right tabular">{w.distinctCombos.toLocaleString("en")} of 1,024 · {(w.coverage * 100).toFixed(1)}%</td>
-                          <td className="text-right tabular">{formatTzs(w.worstTopUp)}</td>
+                          <td className="text-right tabular">{w.worstTopUp === null ? "Cannot be read" : formatTzs(w.worstTopUp)}</td>
                           <td className="text-left align-top min-w-[280px]">
                             {w.preview ? (
                               <div className="space-y-1">
@@ -156,7 +160,7 @@ async function Content({ searchParams }: PoolsPageProps) {
             <section className="space-y-2">
               <h3 className="font-semibold text-body">Stop the product</h3>
               <p className="text-body-sm text-text-secondary">{standing?.sunset.kind === "ENDING" ? `Week ${standing.sunset.week.code} is the final week.` : standing?.sunset.kind === "RETIRED" ? "Millionea has ended." : "The final week runs normally; if no ticket gets 10 of 10, the top score shares the jackpot (MR-30)."}</p>
-              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, label: `${w.code} · ${w.state.toLowerCase()}` }))} />
+              {canSunset ? <SunsetCeremony weeks={sunsetCandidates.map((w) => ({ id: w.id, label: `${w.code} · ${w.state.toLowerCase()}` }))} nextAct={standing?.stopNextAct ?? null} />
                 : <ControlLocked what="Make a week the final week" need={CONTROL_DOMAIN.sunsetMaswali} block />}
             </section>
           </div>

@@ -19,14 +19,15 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { withLock } from "./locks";
-import { buyPosition, createMarket } from "./market-service";
+import { buyPosition, createMarket, isFencedMaswali } from "./market-service";
+import { dbNowMs, landedMaswaliAnswer } from "./maswali-money-service";
 import { refundVoidedWeek } from "./maswali-void";
 import { millioneaStateNow } from "./millionea-switch";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { marketStore } from "./market-dal";
 import { isSourceTrusted, seedDefaultSources } from "./source-registry";
-import { getRequireTwoOfficerResolution } from "./resolution-policy";
-import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, type MaswaliRulesSnapshot } from "./maswali-config";
+import { readRequireTwoOfficerResolution } from "./resolution-policy";
+import { getMaswaliConfig, readMaswaliConfigFresh, readMaswaliRulesSnapshot, snapshotMaswaliRules, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { licenceBasisAllowsOpen, readLicenceBasisFresh } from "./maswali-licence";
 import { questionStore, ticketStore, weekStore, type DraftQuestionFields, type EventKind, type StoredQuestion, type StoredWeek, type WeekVisibility } from "./maswali-dal";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
@@ -37,7 +38,7 @@ import { MAIN_COUNT, RESERVE_COUNT, settlementGate, slotLabel, slotOf, weekVoidC
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import { DEFAULT_FREE_EXIT_GRACE_MINUTES } from "@/lib/payout";
 import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-commitment";
-import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
+import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
 import { formatTzs } from "@/lib/utils";
 
@@ -223,13 +224,16 @@ export const NO_LICENCE_BASIS = "No licence basis is recorded. The Owner records
 /**
  * OD-02: the guarantee must cover every unsettled week, this one included, before it opens — each at its OWN frozen floor
  * (this one at the floor it would freeze), across both lines of weeks: there is one guarantee. `null` when it does.
+ * ⛔ S7-F2 · an unsettled week whose frozen rules cannot be read has an unknown floor, so the requirement is unknown and
+ *    no week opens — it was counted at this week's floor, a stand-in that understates a week frozen with a higher one.
  */
 export async function guaranteeProblem(week: StoredWeek, rules: MaswaliRulesSnapshot, guarantee: GuaranteeReader): Promise<string | null> {
   const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
-  const need = guaranteeRequirement([
-    ...unsettled.map((w) => ({ floor: frozenRules(w)?.floorTzs ?? rules.floorTzs, confirmedCarryIn: w.rolloverIn })),
-    { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn },
-  ]);
+  const floors = unsettledFloors(unsettled);
+  if (!floors.ok) {
+    return `Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the guarantee must cover is unknown; no week opens until they can be (OD-02).`;
+  }
+  const need = guaranteeRequirement([...floors.weeks, { floor: rules.floorTzs, confirmedCarryIn: week.rolloverIn }]);
   const held = await guarantee.balance().catch(() => null);
   if (held === null) return "The guarantee balance could not be read; no week opens until it can be (OD-02).";
   return held < need ? `The guarantee holds ${formatTzs(held)}; ${formatTzs(need)} is needed to open (OD-02).` : null;
@@ -287,10 +291,26 @@ export async function openProblems(week: StoredWeek, questions: StoredQuestion[]
 }
 
 /**
+ * ⭐ S7 · A WEEK'S DEADLINES UNDER THE RULES IT FREEZES (lane L's review, finding 8). The draft stamps its final deadline
+ * and each question's void deadline from the config of the day it was drafted or edited, but the rules freeze at the
+ * open: a config edit in between left a week running on deadlines its own snapshot does not state. So the open
+ * recomputes both from the snapshot — the final deadline at the snapshot's weekday and time of the results week, each
+ * void deadline the snapshot's hours after its event, capped at that final deadline (OD-09b) — and the builder's
+ * checklist reads the same recompute, so it never judges a deadline the open would not keep. Pure.
+ */
+export function deadlinesUnderRules(week: StoredWeek, questions: StoredQuestion[], rules: MaswaliRulesSnapshot): { week: StoredWeek; questions: StoredQuestion[] } {
+  const finalMs = eatWeekAt(calendarStartMs(week) + 7 * DAY_MS, rules.finalDeadlineWeekday, rules.finalDeadlineAt);
+  return {
+    week: { ...week, finalDeadlineAt: new Date(finalMs).toISOString() },
+    questions: questions.map((q) => ({ ...q, voidDeadlineAt: new Date(Math.min(Date.parse(q.eventStartsAt) + rules.voidDeadlineHours * 3_600_000, finalMs)).toISOString() })),
+  };
+}
+
+/**
  * ⭐ OPEN A WEEK. Fresh reads, every check, then ONE claim: the market is created and the rules, the question-set hash and
  * the market are stamped WHERE the week is still DRAFT, and the state becomes OPEN. All of it runs inside the chain lock,
  * so no second open can race it. A ticket can only be bought against an OPEN week's own market (S3), so even a lost claim
- * could leave nothing on sale.
+ * could leave nothing on sale. The week's deadlines are re-frozen from its rules first (`deadlinesUnderRules`).
  */
 export async function openWeek(input: { weekId: string; officerId: string; guarantee: GuaranteeReader; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
   const nowMs = (input.now ?? new Date()).getTime();
@@ -317,12 +337,20 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     if (life.kind === "ENDING" && life.week.id !== week.id && calendarStartMs(week) > calendarStartMs(life.week)) {
       return refuse(`Week ${life.week.code} is the final week; nothing opens after it.`);
     }
+    // ⛔ MR-30 · OD-03 · A FINAL WEEK OPENS NO EARLIER THAN ANNOUNCED. The hub and the home card name it, with its drafted
+    //    open, from the moment it is made final: that is the time its buyers were told, and an early press would cut the
+    //    notice the rules promise (the S6 legal review, round 2). An ordinary week may still open early.
+    if (week.isFinal && nowMs < Date.parse(week.opensAt)) {
+      return refuse(`Week ${week.code} is the final week, announced to open at ${week.opensAt}; it cannot open before then.`);
+    }
     const rules = snapshotMaswaliRules(fresh.config, new Date(nowMs));
     // The trusted-source registry seeds its defaults on first use, as every publish path does before it asks.
     await seedDefaultSources();
-    const questions = await questionStore.listForWeek(week.id);
-    const problems = await openProblems(week, questions, rules, nowMs);
-    const short = await guaranteeProblem(week, rules, input.guarantee);
+    // ⭐ S7 · the week runs on its frozen rules' deadlines: every check, the commitment and the market below read them.
+    const drafted = await questionStore.listForWeek(week.id);
+    const { week: due, questions } = deadlinesUnderRules(week, drafted, rules);
+    const problems = await openProblems(due, questions, rules, nowMs);
+    const short = await guaranteeProblem(due, rules, input.guarantee);
     if (short) problems.push(short);
     if (problems.length) return refuse(problems.join(" "));
 
@@ -331,19 +359,31 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
       criterionEn: q.criterionEn, criterionSw: q.criterionSw, criterionZh: q.criterionZh, sourceUrl: q.sourceUrl,
       fallbackSourceUrl: q.fallbackSourceUrl, eventStartsAt: q.eventStartsAt, eventZone: q.eventZone, voidDeadlineAt: q.voidDeadlineAt,
     })));
+    // The draft's rows take the deadlines the commitment covers before the market exists — each moved void deadline here
+    // (the week is still DRAFT, under the chain lock), the final deadline in the open's one claim — audited when one moved.
+    const movedVoids = questions.filter((q, i) => q.voidDeadlineAt !== drafted[i].voidDeadlineAt);
+    for (const q of movedVoids) await questionStore.editDraftQuestion(q.id, { voidDeadlineAt: q.voidDeadlineAt });
+    const finalMoved = due.finalDeadlineAt !== week.finalDeadlineAt;
+    if (finalMoved || movedVoids.length > 0) {
+      audit({ category: "ADMIN", action: "maswali.week.deadlines_refrozen", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
+        payload: {
+          code: week.code, finalDeadlineAt: finalMoved ? { from: week.finalDeadlineAt, to: due.finalDeadlineAt } : null,
+          voidDeadlines: movedVoids.map((q) => ({ slot: q.slot, from: drafted.find((d) => d.id === q.id)?.voidDeadlineAt ?? null, to: q.voidDeadlineAt })),
+        } });
+    }
     const market = await createMarket({
       titleEn: `Maswali Millionea · ${week.code}`, titleSw: `Maswali Millionea · ${week.code}`, titleZh: `Maswali Millionea · ${week.code}`,
       category: (questions[0]?.category as MarketCategory) ?? "other",
       sourceUrl: questions[0]?.sourceUrl ?? "https://50pick.tz/millionea",
       resolutionCriterion: `Maswali Millionea week ${week.code}: fifteen questions graded by the published rules; question set ${qHash}.`,
-      resolutionAt: week.finalDeadlineAt,
+      resolutionAt: due.finalDeadlineAt,
       selectionClosedAt: week.closesAt,
       proposedBy: input.officerId,
       productLine: "MASWALI",
       // The week freezes the jackpot model and its rate beside the global levies, and NO paid exit (MB-50).
       rateOverrides: { feeModel: "jackpot-payout", jackpotFeeRate: fresh.config.jackpotFeeRate, paidExitWindowMinutes: 0 },
     });
-    const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, opensAt: new Date(nowMs).toISOString() });
+    const won = await weekStore.stampOpen(week.id, { marketId: market.id, rulesSnapshot: rules, questionSetHash: qHash, opensAt: new Date(nowMs).toISOString(), finalDeadlineAt: due.finalDeadlineAt });
     if (!won) return refuse(`Week ${week.code} changed while it was being opened; nothing was opened. Refresh and try again.`);
     if (life.kind === "PASSES_ON" && !week.isFinal) {
       await weekStore.patch(week.id, { isFinal: true });
@@ -352,7 +392,7 @@ export async function openWeek(input: { weekId: string; officerId: string; guara
     }
     const opened = (await weekStore.get(week.id))!;
     audit({ category: "ADMIN", action: "maswali.week.opened", actorId: input.officerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, rules, isFinal: opened.isFinal } });
+      payload: { code: week.code, marketId: market.id, questionSetHash: qHash, closesAt: week.closesAt, finalDeadlineAt: due.finalDeadlineAt, rules, isFinal: opened.isFinal } });
     // S5 · a week on sale has a pool figure now (the frame is derived after the open commits).
     noteMaswaliPoolChanged(week.id);
     return { ok: true, week: opened };
@@ -386,26 +426,68 @@ export async function purchaseMaswaliTickets(input: {
   slips: ReadonlyArray<ReadonlyArray<MaswaliPick>>;
   idempotencyKey?: string;
   playStartedAt?: number;
+  /**
+   * MR-30 · whether the buyer's slip stated the final week's rule when it was opened. The player's form always says
+   * (`buyMillioneaFromForm`: a form that is silent did not state it); a server caller with no slip leaves it out.
+   */
+  shownFinal?: boolean;
   /** Tests only: the rollout read. */
   stateNow?: () => Promise<RolloutState>;
 }): Promise<PurchaseResult> {
   const notOpen = { ok: false as const, error: "This Millionea week is not open for tickets.", code: "INVALID" as const, reason: "millionea_week_not_open" as const };
+  // ⛔ S7 (L6) · A READ THAT FAILS REFUSES, NEVER THROWS. Nothing has moved before `buyPosition`, so the buyer is told
+  //    exactly that and may retry with the same key: the platform's busy answer (`system_busy`, the stake never moved),
+  //    the one the ticket arm gives when its own desk read fails (R10b). Calling a week on sale shut, or Millionea
+  //    unavailable, would send its buyer away.
+  const busy = (what: string, err: unknown) => {
+    console.error(`[maswali] ${what} could not be read, so the purchase is refused:`, (err as Error)?.message ?? err);
+    return { ok: false as const, error: "We're busy right now — your stake hasn't moved. Try again in a moment.", code: "BUSY" as const, reason: "system_busy" as const, retryAfterSec: 1 };
+  };
   let state: RolloutState = "WITHDRAWN";
   try { state = await (input.stateNow ?? millioneaStateNow)(); } catch { state = "WITHDRAWN"; }
-  const week = await weekStore.get(input.weekId);
+  let week: StoredWeek | null;
+  try { week = await weekStore.get(input.weekId); } catch (err) { return busy(`week ${input.weekId}`, err); }
   if (!week || !week.marketId) return notOpen;
   if (!rolloutSells(state, week.visibility)) {
     return { ok: false, error: "Millionea is not available yet.", code: "INVALID", reason: "millionea_not_available" };
   }
   const rules = frozenRules(week);
   if (!rules) return notOpen;
+  // ⛔ S7 · THE WEEK'S MARKET MUST STILL BE A MILLIONEA MARKET (the fence, MB-01). The bet path routes a stake by its market's
+  //    product line, so a week whose row was reclassified would be sold as a one-sided Yes/No stake on the week's own pool:
+  //    a position with no ticket, and sales that never again agree three ways. Nothing is sold, and the server log says why.
+  let market: Awaited<ReturnType<typeof marketStore.get>>;
+  try { market = await marketStore.get(week.marketId); } catch (err) { return busy(`week ${week.code}'s market`, err); }
+  if (!isFencedMaswali(market)) {
+    console.error(`[maswali] ALARM · week ${week.code}'s market ${week.marketId} is not a Millionea market; nothing was sold`);
+    return notOpen;
+  }
+  // ⛔ S7 · A SLIP OPENED BEFORE THE STOP NEVER SELLS A FINAL-WEEK TICKET (MR-30; the lead's decision from the S6 legal
+  //    review). The Owner may make the week on sale its final week, and a slip reads the week's finality once, when it
+  //    opens: a slip opened before the stop never stated the final week's rule. Its purchase is refused before anything
+  //    moves, and the buyer is sent back to the slip, which now states the rule. ⭐ A key that already bought answers with
+  //    its own receipt (L2: a gate guards a new purchase; a replay places nothing), as `buyPosition`'s refusals do.
+  //    ⛔ S7-F4 · An OPEN week's refusal only: a final week that has CLOSED or been VOIDED sells to no slip, so its own
+  //    answer stands (sales closed, not open), the one a slip that stated the rule gets, and a landed key still replays.
+  if (week.isFinal && input.shownFinal === false && week.state === "OPEN") {
+    const stale = {
+      ok: false as const, code: "INVALID" as const, reason: "millionea_week_final" as const,
+      error: "This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.",
+    };
+    if (!input.idempotencyKey) return stale;
+    const landed = await landedMaswaliAnswer(input.userId, {
+      marketId: week.marketId, stake: rules.ticketPriceTzs * input.slips.length, idempotencyKey: input.idempotencyKey,
+      buy: { weekId: week.id, slips: input.slips },
+    }, stale, false);
+    return (landed as PurchaseResult | null) ?? stale;
+  }
   const r = await buyPosition(input.userId, {
     marketId: week.marketId,
     side: "YES",
     stake: rules.ticketPriceTzs * input.slips.length,
     idempotencyKey: input.idempotencyKey,
     playStartedAt: input.playStartedAt,
-    maswali: { weekId: week.id, slips: input.slips },
+    maswali: { weekId: week.id, slips: input.slips, shownFinal: input.shownFinal },
   });
   // S5 · a sale moved the week's pool: the live hub hears it, coalesced, after the purchase committed (MB-31). A replay
   // moved nothing.
@@ -420,12 +502,17 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
   const nowMs = (input.now ?? new Date()).getTime();
   const toMs = Date.parse(input.toCloseAt);
   if (!Number.isFinite(toMs)) return refuse("The new close is not a time.");
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return refuse(`Week ${week.code} is ${week.state}; only an open week's close can move.`);
     const fromMs = Date.parse(week.closesAt);
-    if (fromMs <= nowMs) return refuse("The close has already passed; it can never move back (MR-13).");
+    // ⛔ S7 · THE CLOSE HAS PASSED ONCE EITHER CLOCK SAYS SO (MB-84: the close is the database's instant). A purchase and a
+    //    cancel stop on the database clock, so a container whose own clock runs slow still read the week as before its
+    //    close, moved it later and reopened sales the database had already closed. The later of the two clocks decides,
+    //    and it measures the earlier close's lead too.
+    const atMs = Math.max(nowMs, await dbNowMs(lockTx));
+    if (fromMs <= atMs) return refuse("The close has already passed; it can never move back (MR-13).");
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // Every sold ticket keeps its free-cancel window (RULES §2.6, frozen in the week's feeSnapshot): an earlier close must
@@ -433,10 +520,15 @@ export async function moveClose(input: { weekId: string; toCloseAt: string; offi
     const market = week.marketId ? await marketStore.get(week.marketId) : null;
     const graceMin = (market?.feeSnapshot as { freeExitGraceMinutes?: number } | undefined)?.freeExitGraceMinutes ?? DEFAULT_FREE_EXIT_GRACE_MINUTES;
     const minLeadMs = (graceMin + 1) * 60_000;
-    if (toMs < nowMs + minLeadMs) return refuse(`An earlier close must still be at least ${graceMin + 1} minutes away, so every ticket keeps its free-cancel window.`);
+    if (toMs < atMs + minLeadMs) return refuse(`An earlier close must still be at least ${graceMin + 1} minutes away, so every ticket keeps its free-cancel window.`);
     const questions = await questionStore.listForWeek(week.id);
-    const earliest = Math.min(...questions.map((q) => Date.parse(q.eventStartsAt)));
-    if (toMs > earliest - rules.minLockBufferMinutes * 60_000) return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event.`);
+    if (questions.length === 0) return refuse(`Week ${week.code}'s questions could not be read.`);
+    // MR-4 · the refusal names the question whose event the close would run into.
+    const first = questions.reduce((a, q) => (Date.parse(q.eventStartsAt) < Date.parse(a.eventStartsAt) ? q : a));
+    const earliest = Date.parse(first.eventStartsAt);
+    if (toMs > earliest - rules.minLockBufferMinutes * 60_000) {
+      return refuse(`The close must stay at least ${rules.minLockBufferMinutes} minutes before the first event. ${slotLabel(first.slot)} starts at ${first.eventStartsAt}.`);
+    }
     if (toMs === fromMs) return refuse("That is already the close.");
     const won = await weekStore.moveClose(week.id, week.closesAt, new Date(toMs).toISOString());
     if (!won) return refuse("The close changed while it was being moved; refresh and try again.");
@@ -454,16 +546,38 @@ export function frozenRules(week: StoredWeek): MaswaliRulesSnapshot | null {
 }
 
 /**
+ * ⚠️ TEST SEAM ONLY (MB-84) · the database clock a sales close is checked on. Every suite runs its weeks on an injected week
+ * clock, weeks ahead of the real one, while a purchase and a cancel read the real database clock (before every close), so
+ * a close checked on that clock could never be stamped there: the suites' worlds hand the close its week clock as the
+ * database's (`loadMaswaliWorld`), and the dev seed does the same around its own weeks. Null — production, and
+ * `test:maswali-adversarial` §1, which puts a container's clock against the real database's — reads the database.
+ */
+let closeClockForTests: ((weekClockMs: number) => number) | null = null;
+export function __setMaswaliCloseClockForTests(clock: ((weekClockMs: number) => number) | null): void {
+  if (process.env.NODE_ENV === "production") throw new Error("__setMaswaliCloseClockForTests is a test seam and refuses to run in production.");
+  closeClockForTests = clock;
+}
+
+/** A close refused because the database's clock is short of it, and by how much (S7-F2, L1: the scheduler waits that long). */
+export type CloseNotYet = Refused & { dbShortMs: number };
+
+/**
  * ⭐ CLOSE THE SALES, EXACTLY ONCE: the commitment over every live ticket (MR-13), its count and its sales, stamped in
  * one claim WHERE the week is still OPEN. `early` closes now (a certain week void stops sales at once, MR-18).
  */
-export async function closeWeek(input: { weekId: string; actorId?: string; early?: boolean; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean }>> {
+export async function closeWeek(input: { weekId: string; actorId?: string; early?: boolean; now?: Date }): Promise<Result<{ week: StoredWeek; already?: boolean }> | CloseNotYet> {
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
     if (week.state !== "OPEN") return week.closedAt ? { ok: true, week, already: true } : refuse(`Week ${week.code} is ${week.state}.`);
-    if (!input.early && Date.parse(week.closesAt) > nowMs) return refuse("The close has not arrived.");
+    // ⛔ S7 · A CLOSE THAT IS NOT EARLY WAITS FOR THE DATABASE'S CLOCK (MB-84: the close is the database's instant, the one a
+    //    purchase and a cancel stop on). A container whose clock ran fast read its own clock as past the close and stamped
+    //    the commitment while the database still sold: the sales ended before their advertised close. It is refused until
+    //    the database's clock reaches the close, and stamped at the database's instant. ⭐ S7-F2 (L1) · the refusal says how
+    //    far that clock is short, so the scheduler asks again the moment it arrives, never at the 5-minute reconcile.
+    const atMs = input.early ? nowMs : closeClockForTests ? closeClockForTests(nowMs) : await dbNowMs(lockTx);
+    if (!input.early && Date.parse(week.closesAt) > atMs) return { ...refuse("The close has not arrived on the database's clock (MB-84)."), dbShortMs: Date.parse(week.closesAt) - atMs };
     const rules = frozenRules(week);
     if (!rules) return refuse(`Week ${week.code}'s frozen rules cannot be read.`);
     // ⭐ R2 (adversarial review, 2026-10-17) · THE CLOSE WAITS FOR EVERY PURCHASE AND CANCEL IN FLIGHT. Both commit inside
@@ -475,7 +589,7 @@ export async function closeWeek(input: { weekId: string; actorId?: string; early
     const seal = async (): Promise<Result<{ week: StoredWeek; already?: boolean }>> => {
       const live = await ticketStore.listForWeek(week.id, { status: "LIVE" });
       const root = merkleRoot(live.map((t) => ({ ticketId: t.id, leaf: t.selectionsHash })));
-      const won = await weekStore.stampClose(week.id, { closedAt: new Date(nowMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
+      const won = await weekStore.stampClose(week.id, { closedAt: new Date(atMs).toISOString(), ticketCount: live.length, salesAtClose: live.length * rules.ticketPriceTzs, ticketMerkleRoot: root });
       if (!won) return { ok: true, week: (await weekStore.get(week.id))!, already: true };
       if (week.marketId && input.early) await marketStore.stamp(week.marketId, { selectionClosedAt: new Date(nowMs).toISOString(), updatedAt: new Date(nowMs).toISOString() } as never);
       audit({ category: "ADMIN", action: "maswali.week.closed", actorId: input.actorId ?? SYSTEM, targetType: "MaswaliCycle", targetId: week.id,
@@ -514,6 +628,8 @@ export function objectionWindowEnd(openedMs: number, hours: number, notBefore: s
  */
 export async function sealQuestion(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
+  /** Tests only: the two-officer setting's read. */
+  twoOfficerNow?: () => Promise<boolean | null>;
 }): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> {
   const nowMs = (input.now ?? new Date()).getTime();
   const evidence = input.evidence.trim();
@@ -521,7 +637,12 @@ export async function sealQuestion(input: {
   if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
   if (input.outcome !== "VOID" && input.voidReason) return refuse("Only a VOID carries a void ground.");
-  const twoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ S7-F2 · THE TWO-OFFICER SETTING IS READ, OR THE SEAL REFUSES (MR-14; MB-82: its value at stage 1 is the seal's own).
+  //    A read that could not ask answered the code default, one officer, so a seal made while it failed was single-officer
+  //    with the setting ON — fail open. Asked before the lock and before any write, so a refusal leaves nothing behind.
+  //    `confirmSeal` and `correctSeal` read no setting: each reads the seal's own stage-1 marker.
+  const twoOfficer = await (input.twoOfficerNow ?? readRequireTwoOfficerResolution)().catch(() => null);
+  if (twoOfficer === null) return refuse("The two-officer setting could not be read, so nothing was sealed. Try again in a moment.");
   const res = await withLock(MASWALI_CHAIN_LOCK, async (): Promise<Result<{ gate: ReturnType<typeof settlementGate>; weekVoidCertain: boolean }>> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -533,6 +654,11 @@ export async function sealQuestion(input: {
     if (q.outcome !== null) return refuse(`${slotLabel(q.slot)} is already sealed; correct it through its own correction (OD-09).`);
     if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
       return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+    }
+    // ⛔ MR-15 · MR-16 · an objection is upheld only after the sales close, so its ground cannot be sealed on a week still on
+    //    sale: there, a criterion found wrong voids on `criterion_wrong` (the closed list's own definitions).
+    if (input.outcome === "VOID" && input.voidReason === "criterion_objection" && week.state === "OPEN") {
+      return refuse(`"${MASWALI_VOID_REASON_LABEL.criterion_objection}" is a ground only after the sales close; while week ${week.code} is on sale, void ${slotLabel(q.slot)} on "${MASWALI_VOID_REASON_LABEL.criterion_wrong}".`);
     }
     const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
     if (holds) return refuse("An officer who holds a ticket in this week cannot seal its questions.");
@@ -565,6 +691,10 @@ export async function confirmSeal(input: { weekId: string; slot: number; officer
     if (q.twoOfficerAtStage1 !== true) return refuse("This seal needs no second officer.");
     if (q.stage2By) return refuse("Already confirmed.");
     if (q.sealedBy === input.officerId) return refuse("The officer who sealed it cannot confirm it — a second officer must.");
+    // ⛔ S7 · the seal's own bar (MR-14): the second signature on a result is a seal too, so no officer holding a ticket in
+    //    the week gives it — an account made staff mid-week while its ticket runs included.
+    const holds = (await ticketStore.listForUser(input.officerId, { cycleId: week.id })).some((t) => t.status !== "CANCELLED");
+    if (holds) return refuse("An officer who holds a ticket in this week cannot confirm its seals.");
     await questionStore.patch(q.id, { stage2By: input.officerId, stage2At: new Date(nowMs).toISOString() });
     audit({ category: "ADMIN", action: "maswali.question.confirmed", actorId: input.officerId, targetType: "MaswaliQuestion", targetId: q.id, payload: { week: week.code, slot: slotLabel(q.slot) } });
     const r = await recomputeGateLocked(week.id, nowMs);
@@ -580,7 +710,13 @@ export async function correctSeal(input: {
   weekId: string; slot: number; outcome: MaswaliOutcome; evidence: string; voidReason?: string | null; officerId: string; now?: Date;
 }): Promise<Result> {
   const nowMs = (input.now ?? new Date()).getTime();
+  if (input.outcome !== "YES" && input.outcome !== "NO" && input.outcome !== "VOID") return refuse("A result is YES, NO or VOID.");
   if (input.outcome === "VOID" && !isMaswaliVoidReason(input.voidReason)) return refuse("A void names its ground from the closed list (MR-15).");
+  // ⛔ S7 · A CORRECTION IS A SEAL, AND MEETS A SEAL'S RULES (MR-14, MR-15): it records its evidence, and it voids only on a
+  //    ground available now. Without them an officer could seal YES and correct it to "not played" inside the very deadline
+  //    a seal refuses, or replace a result with no evidence at all.
+  const evidence = input.evidence.trim();
+  if (evidence.length < 10) return refuse("A correction records its evidence (at least 10 characters).");
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -589,9 +725,12 @@ export async function correctSeal(input: {
     const q = (await questionStore.listForWeek(week.id)).find((x) => x.slot === input.slot);
     if (!q || q.outcome === null) return refuse("Nothing sealed to correct.");
     if (q.sealedBy !== input.officerId) return refuse("Only the officer who sealed a question may correct it; anyone else files an objection.");
+    if (input.outcome === "VOID" && !voidGroundAvailable(input.voidReason as MaswaliVoidReason, Date.parse(q.voidDeadlineAt), nowMs)) {
+      return refuse(`${slotLabel(q.slot)} cannot void on that ground before its void deadline (${q.voidDeadlineAt}).`);
+    }
     await questionStore.patch(q.id, {
       outcome: input.outcome, voidReason: input.outcome === "VOID" ? (input.voidReason as MaswaliVoidReason) : null,
-      evidence: input.evidence.trim(), sealedAt: new Date(nowMs).toISOString(), stage2By: null, stage2At: null,
+      evidence, sealedAt: new Date(nowMs).toISOString(), stage2By: null, stage2At: null,
     });
     // The graded set may have changed: the window restarts from the corrected record (OD-09).
     await weekStore.patch(week.id, { gradedSetFinalAt: null, objectionsCloseAt: null });
@@ -679,9 +818,10 @@ export async function voidWeek(input: { weekId: string; actorId?: string; now?: 
 
 /**
  * ⭐ R3 · A WEEK'S PLACE IN THE CHAIN IS ITS CALENDAR WEEK (MR-3), never the order it was drafted in (`seq`): the Monday
- * 00:00 EAT its ISO week starts. Read from `finalDeadlineAt`, which the draft stamps inside the following week and nothing
- * ever moves — `opensAt` becomes the real open instant at the open, and the close may move. One line never holds two
- * weeks of one ISO week (the code is unique), so this orders a line strictly.
+ * 00:00 EAT its ISO week starts. Read from `finalDeadlineAt`, which the draft stamps inside the following week and which
+ * stays inside it — the open re-stamps it from the frozen rules at a weekday of that same week (`deadlinesUnderRules`),
+ * and nothing else moves it; `opensAt` becomes the real open instant at the open, and the close may move. One line never
+ * holds two weeks of one ISO week (the code is unique), so this orders a line strictly.
  */
 export function calendarStartMs(week: Pick<StoredWeek, "finalDeadlineAt">): number {
   return eatWeekStartMs(Date.parse(week.finalDeadlineAt)) - 7 * DAY_MS;
@@ -743,13 +883,91 @@ export async function sunsetState(): Promise<{ kind: "LIVE" } | { kind: "ENDING"
   return { kind: "ENDING", week: last };
 }
 
+/** A week's sales have closed, on the clock a stop is read at: stamped CLOSED or RESOLVING, or still OPEN past its close. */
+const salesClosed = (w: StoredWeek, atMs: number): boolean =>
+  w.state === "CLOSED" || w.state === "RESOLVING" || (w.state === "OPEN" && Date.parse(w.closesAt) <= atMs);
+
+/**
+ * The PUBLIC line as a stop reads it: the week on sale, the newest week whose results are being decided, and the next
+ * draft to open — the first in the calendar after the newest week that has opened (R3: an earlier draft never opens).
+ */
+function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | null; deciding: StoredWeek | null; next: StoredWeek | null } {
+  const newestFirst = (ws: StoredWeek[]) => [...ws].sort((a, b) => calendarStartMs(b) - calendarStartMs(a));
+  const opened = newestFirst(line.filter((w) => w.state !== "DRAFT"))[0] ?? null;
+  return {
+    onSale: line.find((w) => w.state === "OPEN" && !salesClosed(w, atMs)) ?? null,
+    deciding: newestFirst(line.filter((w) => salesClosed(w, atMs)))[0] ?? null,
+    next: line.filter((w) => w.state === "DRAFT" && (!opened || calendarStartMs(w) > calendarStartMs(opened)))
+      .sort((a, b) => calendarStartMs(a) - calendarStartMs(b))[0] ?? null,
+  };
+}
+
+/**
+ * ⭐ S7-F2 · THE OWNER'S NEXT ACT (the S7 review, round 2): every refusal of a stop ends with what the Owner can do
+ * instead, read from the line as the stop reads it. The week on sale may be made final at once; while a week's results
+ * are decided, the next week to open may be made final at shorter notice; otherwise a draft is made final a full week
+ * before it opens, or the next week once it is on sale. A refusal that ended on an empty sentence left the Owner, once
+ * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale;
+ * null when no week was asked (the console's stop control, `stopNextActNow`).
+ */
+function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek | null, clockMs: number): string {
+  const { onSale, deciding, next } = s;
+  if (onSale && onSale.id !== asked?.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
+  if (deciding) {
+    return next
+      ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`
+      : `To stop Millionea, draft the next week and make it the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`;
+  }
+  if (!next) return "To stop Millionea, draft the next week and make it the final week, a full week before it opens or once it is on sale (OD-03).";
+  if (Date.parse(next.opensAt) - clockMs >= SUNSET_NOTICE_MS) {
+    return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now (OD-03).`;
+  }
+  return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
+}
+
+/**
+ * A final week standing, in the Owner's words — answered before any rule a later act could meet — or null when none stands.
+ * ⭐ S7-F5 · PASSES_ON is a stop still standing: the final week voided or sold nothing, so the next week to open becomes the
+ * final week by itself at its open (`openWeek`). The Owner is never told to draft a week and make it final then.
+ */
+function finalStandingWords(life: Awaited<ReturnType<typeof sunsetState>>): string | null {
+  if (life.kind === "ENDING") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;
+  if (life.kind === "RETIRED") return `Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`;
+  if (life.kind === "PASSES_ON") {
+    return `Week ${life.week.code} was the final week and ${life.week.state === "VOIDED" ? "was voided" : "sold no ticket"}, so the stop passes on: the next week to open becomes the final week by itself, and nothing more is needed.`;
+  }
+  return null;
+}
+
+/**
+ * ⭐ S7-F4 · THE OWNER'S NEXT ACT WITH NO WEEK ASKED (the S6 legal review): what the console's stop control names when it
+ * offers no week — none on sale, a week's results being decided, no draft — read as the stop reads it: a final week
+ * standing first, then the PUBLIC line on the later of the two clocks (MB-84). A control that said only that no week can
+ * be made final now left the Owner with no act named. ⛔ A read that fails throws: the console shows the act as unknown.
+ */
+export async function stopNextActNow(now?: Date): Promise<string> {
+  const standingFinal = finalStandingWords(await sunsetState());
+  if (standingFinal) return standingFinal;
+  const clockMs = Math.max((now ?? new Date()).getTime(), await dbNowMs(null));
+  return stopNextAct(stopStanding(await weekStore.list({ visibility: "PUBLIC" }), clockMs), null, clockMs);
+}
+
 /**
  * ⭐ THE OWNER STOPS THE PRODUCT (MR-30, OD-03) — by making one week the FINAL week. It runs normally; if no ticket gets
  * 10 of 10, the highest score shares the whole jackpot (`maswali-settlement.ts`). ⛔ The caller is the Owner's ceremony
  * (S4, `requireOwner`); this checks the typed words and the rules:
- *   · the current week (open, closed or being graded) may be made final at once — an Owner-ordered stop mid-week;
- *   · a drafted week may be made final only if its sales open at least a full week from now (the announcement);
+ *   · the week ON SALE (no result known) may be made final at once — an Owner-ordered stop mid-week;
+ *   · ⛔ a week whose sales have closed — CLOSED, RESOLVING, or OPEN past its close on either clock — is REFUSED (the
+ *     lead's decision of 2026-10-18): the 13% fee is taken from a sunset payout and never from a rollover, so a stop
+ *     ordered while a week's results are being decided could choose who is paid with those results in view. That week
+ *     settles under its own rules (with no 10 of 10 its jackpot rolls over as always), and the refusal says what to do;
+ *   · a drafted week may be made final only if its sales open at least a full week from now (OD-03's announcement) —
+ *     except the ONE next week to open while no week is on sale and a week's results are being decided: the Owner's stop,
+ *     ordered after a close, takes effect from that next week, and its buyers are told at purchase (the slip names the
+ *     final week). Any other draft keeps the full week of notice;
  *   · no week after it may already have opened, and no other final week may still be running.
+ * A final week already standing is answered first, before any rule a later act could meet; every other refusal ends
+ * with the Owner's next act (`stopNextAct`).
  * A regulator-ordered stop (refund the current week; the pool to the last fully graded week's top tickets) is NOT this
  * act — it is S4's own ceremony.
  */
@@ -758,22 +976,62 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
   const reason = input.reason.trim();
   if (reason.length < 5 || reason.length > 300) return refuse("Write why Millionea is being stopped (5–300 characters).");
   const nowMs = (input.now ?? new Date()).getTime();
-  return withLock(MASWALI_CHAIN_LOCK, async () => {
+  return withLock(MASWALI_CHAIN_LOCK, async (lockTx) => {
     const week = await weekStore.get(input.weekId);
-    if (!week) return refuse("No such week.");
-    if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week.");
+    if (!week) return refuse("No such week: reload the page and choose the final week again.");
+    if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week: make a public week the final week.");
     if (week.isFinal) return { ok: true, week };
-    if (week.state === "SETTLED" || week.state === "VOIDED") return refuse(`Week ${week.code} is already ${week.state}.`);
-    if (week.state === "DRAFT" && Date.parse(week.opensAt) - nowMs < SUNSET_NOTICE_MS) {
-      return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). To stop now, make the current week final.`);
+    const standingFinal = finalStandingWords(await sunsetState());
+    if (standingFinal) return refuse(standingFinal);
+    // The later of the two clocks decides (MB-84), as a move of the close reads it: a container whose clock runs slow
+    // never reads a closed week as on sale, nor a draft as further off than it is.
+    const clockMs = Math.max(nowMs, await dbNowMs(lockTx));
+    const line = await weekStore.list({ visibility: "PUBLIC" });
+    const standing = stopStanding(line, clockMs);
+    const { onSale, deciding, next } = standing;
+    if (week.state === "SETTLED" || week.state === "VOIDED") return refuse(`Week ${week.code} is already ${week.state}. ${stopNextAct(standing, week, clockMs)}`);
+    if (salesClosed(week, clockMs)) {
+      return refuse(`Week ${week.code}'s sales have closed, so its results are being decided: a stop now could choose who is paid with those results in view. It settles under its own rules (with no 10 of 10, its jackpot rolls over as always). ${stopNextAct(standing, week, clockMs)}`);
     }
-    const life = await sunsetState();
-    if (life.kind === "ENDING" || life.kind === "RETIRED") return refuse(`Week ${life.week.code} is already the final week.`);
-    const later = (await weekStore.list({ visibility: "PUBLIC" })).find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
-    if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open.`);
-    await weekStore.patch(week.id, { isFinal: true });
+    const later = line.find((w) => w.state !== "DRAFT" && calendarStartMs(w) > calendarStartMs(week));
+    if (later) return refuse(`Week ${later.code} has already opened after week ${week.code}; the final week is the last one to open. ${stopNextAct(standing, week, clockMs)}`);
+    let basis: "ON_SALE" | "FULL_NOTICE" | "NEXT_AFTER_CLOSE" = "ON_SALE";
+    if (week.state === "DRAFT") {
+      basis = "FULL_NOTICE";
+      if (Date.parse(week.opensAt) - clockMs < SUNSET_NOTICE_MS) {
+        if (onSale || !deciding || next?.id !== week.id) {
+          return refuse(`Week ${week.code} opens in less than a week; a final week is announced a full week ahead (OD-03). ${stopNextAct(standing, week, clockMs)}`);
+        }
+        basis = "NEXT_AFTER_CLOSE";
+      }
+    }
+    // ⛔ S7-F4 · AN OPEN WEEK IS MADE FINAL UNDER ITS MARKET'S LOCK (MR-30): a purchase asks the week's finality again
+    //    inside `market:` (`buyMaswaliTickets`), so the stop waits for a purchase in flight on this week's market, and a
+    //    purchase that waits for the stop reads it. `maswali:chain` → `market:` is a permitted order (`locks.ts`).
+    //    S7-F5 · the mark joins the lock's transaction: it commits with the lock's release, never before it. The week is
+    //    answered as marked (a read outside the transaction would not see the mark yet).
+    const markFinal = async (tx?: Parameters<typeof weekStore.patch>[2] | null) => { await weekStore.patch(week.id, { isFinal: true }, tx ?? undefined); };
+    if (week.state === "OPEN" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);
+    else await markFinal(lockTx);
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
-      payload: { code: week.code, state: week.state, reason } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+      payload: { code: week.code, state: week.state, reason, basis } });
+    return { ok: true, week: { ...week, isFinal: true } };
   });
+}
+
+// ── OD-12 · NO INSIDER HOLDS A TICKET ───────────────────────────────────────────────────────────────
+
+/**
+ * ⭐ OD-12 · MAY THIS ACCOUNT BE MADE STAFF NOW? Not while it holds a ticket in a week that has not settled: an insider never
+ * holds a live ticket (MR-10, R-INSIDERS), and a promotion mid-week would hand one to a person who may then read the week's
+ * console. The Owner makes the change once the week settles. The refusal in the Owner's words, or null when nothing stands.
+ * ⛔ No override is built: OD-12's "the Owner refunds the tickets first" would refund single tickets out of a committed
+ *    week, which nothing may do (MR-13). ⛔ A read that fails throws, so the promotion fails closed (the action reports it).
+ */
+export async function millioneaPromotionBlock(userId: string): Promise<string | null> {
+  const live = (await ticketStore.listForUser(userId)).filter((t) => t.status === "LIVE");
+  if (live.length === 0) return null;
+  const codes: string[] = [];
+  for (const cycleId of new Set(live.map((t) => t.cycleId))) codes.push((await weekStore.get(cycleId))?.code ?? cycleId);
+  return `This account holds ${live.length} Millionea ticket(s) in a week that has not settled (${codes.join(", ")}). An insider never holds a ticket (OD-12): make the change once that week has settled.`;
 }

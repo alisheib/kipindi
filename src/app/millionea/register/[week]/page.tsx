@@ -38,7 +38,8 @@ import { ReceiptRow } from "@/components/ui/receipt-row";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { MaswaliOutcomeStamp } from "@/components/maswali/maswali-outcome-stamp";
-import { counted, millioneaWord, reserveLabel, sourceLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { counted, millioneaWord, remainderNoteOf, reserveLabel, sourceLabel, weekNumberOf, weekWord } from "@/components/maswali/maswali-format";
+import { remainderFate } from "@/lib/maswali-money";
 import { millioneaGate } from "@/lib/server/millionea-gate";
 import { millioneaRegisterWeek, type MillioneaRegisterQuestion, type MillioneaRegisterWeek } from "@/lib/server/maswali-player";
 import { getServerT } from "@/lib/i18n-server";
@@ -269,12 +270,13 @@ function Ledger({ t, w }: { t: Dict; w: MillioneaRegisterWeek }) {
     const perTicket = counted(w.winners ?? 0, t.millionea.perTicketOne, t.millionea.perTicket);
     rows.push({ key: "share", node: <ReceiptRow className={ROW} label={kept(perTicket, perTicket.match(/^÷ \S+/) ?? [])} value={fig(w.share)} /> });
     rows.push({ key: "paid", node: <ReceiptRow className={ROW} label={t.millionea.toWinners} value={fig(w.paid)} /> });
-    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={noted(t.millionea.remainder, t.millionea.remainderNote)} value={fig(w.remainder)} /> });
-    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
+    if ((w.remainder ?? 0) > 0) rows.push({ key: "dust", node: <ReceiptRow className={ROW} label={noted(t.millionea.remainder, remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal))} value={fig(w.remainder)} /> });
+    // ⛔ A final week that paid has no next week (MR-30): what it carried stays in the jackpot account, never "Week N+1".
+    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={w.isFinal ? t.millionea.keptInJackpot : kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
   } else {
     // A week nobody won takes no fee (MR-21): the settlement's own fee column, "TZS 0", in the ledger's one money format.
     rows.push({ key: "fee", node: <ReceiptRow className={ROW} label={t.millionea.fee} value={fig(w.fee === null ? null : -w.fee)} /> });
-    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
+    rows.push({ key: "out", node: <ReceiptRow className={ROW} label={w.isFinal ? t.millionea.keptInJackpot : kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])} value={fig(w.carriedForward)} /> });
   }
   return (
     <section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3">

@@ -190,7 +190,7 @@ The State paragraph below is the last push's.)**
      two-officer setting; the close retry is measured from the refusal; `/pools` shows unreadable figures as unknown;
      the holiday-save plant. ✅ **On the merged tree (`1b8744e8`, 18:24 UTC) the twelve derived checks that need no
      Postgres are green:** `test:house-bot-disclosure` (the D19a re-pin), `test:failure-reasons`, `test:i18n`,
-     the maswali-i18n suite (S5's, its npm entry lands with S5), `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
+     `test:maswali-i18n`, `test:red-anchors`, `test:control-gates`, `test:privacy-notice`, `test:popup-fit`,
      `test:maswali-design`, `test:maswali-ui`, `test:two-admin`, `test:bulk-resolve`.
      **Still owed on the merged tree:** `tsc`; the derived suites that need Postgres or a server — `test:maswali-purchase`
      (103/106), `test:maswali-player` (182/182), `test:maswali-adversarial` (185/193), `-config`, `-engine`, `-void`,
@@ -232,7 +232,7 @@ The State paragraph below is the last push's.)**
      `test:maswali-void`, `test:maswali-engine`, `test:maswali-player`, `test:house-bot-reports`,
      `red:maswali-money-path`, `test:failure-reasons`, `test:predictor-shown`, `test:bulk-resolve`, `test:one-sided`,
      `test:unsaved-changes`, `test:house-bot-console` (each with its red twin where one exists), `test:control-gates`,
-     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, the maswali-i18n suite (lands with S5),
+     `test:labels`, `test:overdue-format`, `test:house-bot-surfaces`, `test:i18n`, `test:maswali-i18n`,
      `test:criterion-i18n`, `test:red-anchors`, `test:eyebrow-roles`, `test:maswali-settle`, `test:betting-ink`,
      `test:admin-action-gate`, `test:two-admin`, `tsc`, and a render of `/admin/resolver-queue` and `/admin/resolver/[id]`
      (the setting unknown and known) and `/admin/maswali/pools`. Then merge it into `mln-sf` (D19a re-pinned at the merge).
@@ -1345,6 +1345,10 @@ R-LAUNCH means "launch once built and the drive passes". Real money enters at th
     - the Owner switch to WITHDRAWN hides surfaces and never deletes tickets;
     - a sales pause never blocks settlement, refunds or withdrawals;
     - a product stop is the sunset.
+14. ☐ **S7's three KNOWN-RED cases closed or accepted in writing** (the S7 review, 2026-10-18; `FAILURE-INVENTORY.md`
+    §9): OB.0 — the per-question objection door MR-16 promises (MB-23); RD.5 — a deposit reversed after its winner was
+    paid (MB-74): the wallet lane's trigger, or the Owner's recorded acceptance of the risk; TK.2 — account-takeover
+    alerting (MB-96): a dated deferral, the preventive control (E-215) holding.
 
 ### 6.2 Weekly runbook (all times EAT; week N, with N+1 overlapping)
 
@@ -1582,9 +1586,15 @@ differ, these win.
     `maswali_settle_<weekId>`, the week's mirrored columns, the market stamped RESOLVED. A k = 0 week claims its carry
     too, so the line of weeks always advances in `seq` order.
   - *The sunset (MR-30, OD-03).* A final week with no 10 of 10 pays its highest score: J = R + S, no floor, no top-up,
-    R moved by `MASWALI_SUNSET`. `sunsetMaswali` (the Owner, typed `SUNSET MILLIONEA`) makes the current week final at
-    once, or a drafted week only a full week ahead. After a final week that ran nothing opens; a final week that voided
-    or sold nothing hands the role to the next week to open. The regulator-ordered stop is S4's own ceremony.
+    R moved by `MASWALI_SUNSET`. `sunsetMaswali` (the Owner, typed `SUNSET MILLIONEA`) makes the week on sale final at
+    once, or a drafted week only a full week ahead. ⛔ A week whose sales have closed (CLOSED, RESOLVING, or OPEN past
+    its close) is refused, the lead's decision of 2026-10-18 (S7-F): the 13% fee is taken from a sunset payout and never
+    from a rollover, so a stop ordered while a week's results are being decided could choose who is paid with them in
+    view. That week settles under its own rules, and the stop takes effect from the next week to open, which may then be
+    made final although it opens in less than a full week (only that one draft, only while no week is on sale and a
+    week's results are being decided; its buyers are told at purchase). After a final week that ran nothing opens; a
+    final week that voided or sold nothing hands the role to the next week to open. The regulator-ordered stop is S4's
+    own ceremony.
   - *Held shares (MB-43, MB-74, OD-07).* Roles and status are re-checked at settlement. A winner with a staff role, a
     live desk designation, or a suspended or closed account is credited the full share, the ticket carries the reason,
     and the wallet is held BEFORE the credit by a new freeze reason, `MILLIONEA_SHARE`; account closure is refused while
@@ -2133,7 +2143,8 @@ ready.
      - settlement preview and release;
      - the rollover trail; "levy on own top-up".
    - `/admin/maswali/integrity` (compliance):
-     - the cluster report at close (device, IP, payout number, deposit source, complementary picks);
+     - the cluster report at close: accounts that act as one are shown as one group, each with its tickets and what
+       its picks cover (the repository is public: the report's own rules are in its code, never listed here);
      - pick-shift alerts;
      - the counterfactual seal log, visible only after the fact (MB-34);
      - insider and winner screening;
@@ -2314,7 +2325,44 @@ ready.
 
 **Acceptance:** every finding is fixed or recorded in `FAILURE-INVENTORY.md`. Latency targets for the rush are set at the start of S7 from measured baselines and recorded with their results.
 
-**Closes:** MB-31 (load), MB-35 (alerting), MB-96, MB-97, and re-verification of MB-06, MB-16, MB-40, MB-94 and MB-95.
+**Closes:** MB-31 (load), MB-35 (alerting), MB-97, and re-verification of MB-06, MB-16, MB-40, MB-94 and MB-95. MB-96
+stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B line 14, `FAILURE-INVENTORY.md` §9.
+
+- **S7 · as built (2026-10-18), decided under Ali's delegation.** The independent review of `mln-s7-adv` + `mln-s7-fix`
+  found no BLOCKER; its one HIGH and the lead's own follow-ups are on `mln-sf`:
+  - *The fence migration* (`20261018130000_maswali_product_line_fence`) runs at container boot beside a live container:
+    its trigger's create retries its 3 s lock wait up to 20 times, 1.5 s apart, holding no lock between attempts (the
+    shape S2-BOOT-1 ruled for this table), and is skipped once the trigger stands; its header carries the P3009 recovery.
+  - *A final week never opens before the time it was announced with* (MR-30, OD-03; `openWeek`, SU.5c), and a draft's
+    open time cannot be patched, so the announcement holds.
+  - *"Objection upheld" is no void ground while a week is on sale* (MR-15, MR-16; `sealQuestion`, VG.1–VG.3): there a
+    criterion found wrong voids on "criterion wrong". A correction already needs a closed or resolving week.
+  - *The announcement is seen* (F1): the hub's read model names the public final week while it is still a draft
+    (`finalAhead`), the hub prints it with its open time while that is ahead, and the home card names it whatever week
+    it shows — the final week's presale when nothing else can be shown. *Its rule is told at purchase* (F3): the slip's
+    first rule and the confirm sheet's line beside the fee rule.
+  - *The rounding remainder's note follows the settled figures* (F4, MR-25; `remainderFate`): the next jackpot as far as
+    the week's own money covered it, the guarantee for the rest — all of it in a week the guarantee topped up. The
+    register and the win receipt say it through one helper, the receipt in every paying week; no note names the house.
+  - *Recorded, no change* (the review's L2, L3): the deadlines' re-freeze autocommits before the open's claim (a failed
+    open leaves moved void deadlines on a draft, which the next open recomputes); OD-12's check before a staff promotion
+    can be raced and the bootstrap admin-on-login path skips it — the purchase's staff bar, the seal and confirm bars and
+    the settlement's hold all still hold — and its "no override" departs from OD-12's refund-first text.
+  - *The review's smaller items* (`mln-s7-f2`, merged at `9088c5a5`):
+    - **Admins can change everything:** `/admin/maswali` carries the rules form (every `maswali.config` field, read
+      fresh, validated by the config's own validator, a confirm listing each change, MB-75's sentence) and the holiday
+      list. Both are the Owner's (`ops`: trading never touches money config, and accounting on a trading page would
+      break E-23); everyone else sees the values read-only. The licence basis is not on the form.
+    - A close refused on the database clock re-arms at `closesAt − dbNow + 1 s`, never waiting for the reconcile; every
+      sunset refusal names the Owner's next act; a purchase whose reads fail refuses `system_busy` (never "the week is
+      shut"); a seal made while the two-officer setting cannot be read is refused (the platform's poll resolution reads
+      the same flag fail-open, matching its ruled single-admin default, `test:two-admin` — recorded, not changed).
+    - **Unreadable floors fail closed everywhere:** one helper, `unsettledFloors`, serves the console's requirement
+      ("Needed now: Unreadable" and a critical alert naming the week), the guarantee's return and the open (both
+      refused) and the invariants. The short-float alert is judged on the live float, and an unreadable float is its
+      own critical alert — so dev and staging, which read no Selcom float, show it on every paying week.
+    - The role change moved to `staff-role-change.ts`: an export of a "use server" file is a callable action, and that
+      core has no Owner check of its own. PL.3/PL.4/IN.1b now fail on the old code.
 
 #### S8 · Live drive and public launch
 
@@ -2403,7 +2451,7 @@ ready.
 | MB-32 | H | `selectionsHash` over 15 binary picks has only 2^15 possible inputs, so publishing it reveals every ticket. One SHA over all tickets cannot prove inclusion to a player. The cited precedent `test:lock-hash` tests advisory-lock hashing, not a commitment. | A 128-bit salt per ticket, held server-side and shown only to its owner. A Merkle root, the ticket count and the close time published at the close. An owner-only inclusion proof. An anonymised graded table after settlement. Write the spec into the door before S2. **This corrects MR-9 and MR-13.** | Eng | S2 (spec), S6 (publish) | B23 |
 | MB-33 | M | `/fairness` has no record per week, and `listTerminalMarkets` defaults to MARKET. | A permalink per week: the 15 questions with criteria and sources, seals with evidence, voids and their replacements, the close time, the ticket count and root, pool, fee, top-up and paid amounts, k and the share. No names. A "verify my ticket" explainer. | Eng, Design | S6, D2 | C31 |
 | MB-34 | H | The single sealing officer could see the projected winners before a seal or void. A void moves the employer's money (it can avoid a top-up). | The seal/void console shows no ticket data, and no pre-settlement view shows pick splits, alive counts or winners. The counterfactual (winners and top-up with and without the void) is computed at each seal, audited, and visible to Compliance only after the fact. Alert when a void changes the winner set or avoids a top-up, or comes after the named source has already published a result. | Eng | S4 | B17, A21 |
-| MB-35 | H | Groups of accounts, each under the cap, can cover the board. Identity is checked only at withdrawal. The same pattern is a laundering route. | A cluster report at close (device, IP, payout number, deposit source, complementary picks). Compliance is alerted before settlement when a cluster holds a winner. Weekly coverage report. A fair-play clause in the Millionea rules. SAR provenance on withdrawals. Cap definition: OD-16. | Eng, Ali | S6, S7 | A16, B28, C8 |
+| MB-35 | H | Groups of accounts, each under the cap, can cover the board. Identity is checked only at withdrawal. The same pattern is a laundering route. | A cluster report at close: accounts that act as one are shown to Compliance as one group, with what its picks cover. Compliance is alerted before settlement when a cluster holds a winner. Weekly coverage report. A fair-play clause in the Millionea rules. SAR provenance on withdrawals. Cap definition: OD-16. | Eng, Ali | S6, S7 | A16, B28, C8 |
 | MB-36 | H | How predictable the questions are is a solvency parameter. If favourites win 70% of the time and players follow them, P(≥1 winner) at 300 tickets doubles to about 50%. | Each question records an estimated probability with its source. The modelled exposure is shown at the close. The band and override: OD-14. | Ali, Eng | S4 | A14 |
 | MB-37 | M | A jackpot rewards fixing one low-tier match. `buildMatchIntegrity` does not know these questions. | Alert on unusual pick-distribution shifts before the close (Compliance only). Feed the questions into the integrity report. Restricting competitions: OD-14. | Eng | S4, S6 | C23p |
 | MB-38 | H | The "still alive" status flips both ways, and a jackpot figure next to it reads as a promised return (C3, SJ-4). | Provisional wording ("X of Y settled questions match · final when all 10 counted questions settle"). Never "eliminated" or "winner" before the result is final. No figure on a held ticket. `potentialPayout` is null everywhere. Public alive count: OD-24. | Design, Ali | S5, D1 | B25 |

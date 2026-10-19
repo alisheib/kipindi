@@ -71,7 +71,11 @@ export async function runFenceCases(ok: Ok): Promise<{ onPostgres: boolean }> {
   const before = Number((await w.bal(player))?.balance ?? NaN);
   const buy: Any = await svc.buyPosition(player, { marketId: wk.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
   const after = Number((await w.bal(player))?.balance ?? NaN);
-  ok("2.1 · buyPosition refuses a week as a closed market, and no shilling moves", !buy.ok && buy.code === "INVALID" && after === before
+  // ⛔ MASWALI-BUILD S7-F7 5 · IN THE FENCE'S OWN WORDS. Any INVALID passed this case, and with the fence's refusal planted
+  //    away the generic door still refused on a week's stake bounds ("Stake must be a whole number between TZS 1 and TZS
+  //    0."): red:maswali-fence's (2) stayed green. The fence answers a slip-less purchase as a closed market, and so must this.
+  ok("2.1 · buyPosition refuses a week as a closed market, and no shilling moves", !buy.ok && buy.code === "INVALID"
+    && buy.error === "Market is not accepting predictions." && after === before
     && (await w.positionsOf(wk.id)).length === 0, `${show(buy)} · balance ${before} → ${after}`);
   const ctl: Any = await svc.buyPosition(player, { marketId: poll.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
   ok("2.1c · CONTROL: the same door sells a poll ticket", ctl.ok === true, show(ctl));

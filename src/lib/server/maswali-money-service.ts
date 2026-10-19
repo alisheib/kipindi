@@ -26,7 +26,7 @@ import {
 } from "./ledger";
 import { ticketStore, weekStore, type StoredWeek } from "./maswali-dal";
 import { guaranteeRequirement } from "@/lib/maswali-money";
-import { readMaswaliRulesSnapshot, type MaswaliRulesSnapshot } from "./maswali-config";
+import { readMaswaliRulesSnapshot, unsettledFloors, type MaswaliRulesSnapshot } from "./maswali-config";
 import { randomId } from "./crypto";
 import { db } from "./store";
 import { marketStore, positionStore } from "./market-dal";
@@ -198,10 +198,10 @@ export async function returnMaswaliGuarantee(input: { amount: number; reference:
     const held = await maswaliAccountBalance(acct.maswaliGuarantee, lockTx);
     if (held === null) return refuse("The guarantee balance could not be read, so nothing was returned.");
     const unsettled = await weekStore.list({ states: ["OPEN", "CLOSED", "RESOLVING"] });
-    const need = guaranteeRequirement(unsettled.map((w) => {
-      const r = readMaswaliRulesSnapshot(w.rulesSnapshot);
-      return { floor: r.ok ? r.rules.floorTzs : 0, confirmedCarryIn: w.rolloverIn };
-    }));
+    // ⛔ S7-F2 · FAIL CLOSED: a week whose frozen rules cannot be read has an unknown floor, so nothing is returned.
+    const floors = unsettledFloors(unsettled);
+    if (!floors.ok) return refuse(`Week ${floors.unreadable.map((w) => w.code).join(", ")}: its frozen rules cannot be read, so what the open weeks need is unknown and nothing was returned (OD-02).`);
+    const need = guaranteeRequirement(floors.weeks);
     if (held - input.amount < need) {
       return refuse(`The guarantee holds ${formatTzs(held)} and the open weeks need ${formatTzs(need)}; at most ${formatTzs(Math.max(0, held - need))} can be returned.`);
     }
@@ -233,8 +233,8 @@ export async function dbNowMs(tx: Prisma.TransactionClient | null): Promise<numb
 
 // ── BUYING TICKETS (MR-8…MR-12, MB-31) ───────────────────────────────────────────────────────────────
 
-/** A purchase: one or more slips of fifteen answers, for one week. */
-export type MaswaliBuy = { weekId: string; slips: ReadonlyArray<ReadonlyArray<MaswaliPick>> };
+/** A purchase: one or more slips of fifteen answers, for one week; `shownFinal`, whether its slip stated the final week's rule (MR-30). */
+export type MaswaliBuy = { weekId: string; slips: ReadonlyArray<ReadonlyArray<MaswaliPick>>; shownFinal?: boolean };
 
 export type MaswaliTicketReceipt = { ticketId: string; positionId: string; serial: string; selectionsHash: string };
 
@@ -420,6 +420,12 @@ export async function buyMaswaliTickets(input: {
         const nowMs = await dbNowMs(mTx);
         if (!fresh || fresh.state !== "OPEN" || nowMs >= Date.parse(fresh.closesAt)) {
           return refuse("Sales for this Millionea week have closed.", { code: "SELECTION_CLOSED", reason: "millionea_sales_closed" });
+        }
+        // ⛔ S7-F4 · THE STALE SLIP, asked again INSIDE the market lock (MR-30): `sunsetMaswali` makes an OPEN week final under
+        //    this lock, so a stop that commits while this purchase is in flight is read here, before any money moves: after
+        //    the replay (a landed key keeps its receipt), before `withMoneyTx` (the memory store has nothing to undo).
+        if (fresh.isFinal && buy.shownFinal === false) {
+          return refuse("This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.", { code: "INVALID", reason: "millionea_week_final" });
         }
         const placedAt = new Date(nowMs).toISOString();
         const receipts: MaswaliTicketReceipt[] = [];

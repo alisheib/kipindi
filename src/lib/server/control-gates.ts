@@ -236,6 +236,18 @@ export const CONTROL_DOMAIN = {
   sunsetMaswali: "ops",
   setMaswaliLicenceBasis: "ops",
   setMillioneaRollout: "ops",
+  /**
+   * ⭐ MASWALI-BUILD S7-F2 · THE RULES OF THE NEXT WEEK (`maswali.config`) AND THE PUBLIC-HOLIDAY LIST, on the trading page
+   * (`/admin/maswali`) beside the weeks they shape — the Owner's, `ops`, and this is the only domain both platform laws
+   * allow there. "Trading never touches money/PII/config" (`DEFAULT_GRANTS`, Ali-approved), and the price, the floor
+   * and the fee are money-grade config; and a control sits only where its acting role can open its page (E-23,
+   * `test:maswali-rbac` §4) — FINANCE, the one non-Owner `accounting` actor, cannot open a trading page, so the platform
+   * rates' own `accounting` would leave the form Owner-only anyway, with a bounce instead of a lock. The holiday list is
+   * the Owner's record already (`maswali-holidays.ts`). A trading officer reads both, read-only, on the same page.
+   * ⛔ The licence basis is NOT this form: it stays the Owner's own ceremony on /pools (`setMaswaliLicenceBasis`).
+   */
+  saveMaswaliConfig: "ops",
+  saveMaswaliHolidays: "ops",
 } as const satisfies Record<string, AdminDomain>;
 
 export type ControlId = keyof typeof CONTROL_DOMAIN;

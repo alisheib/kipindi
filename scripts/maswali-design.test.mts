@@ -30,6 +30,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import NodeModule from "node:module";
+import * as ts from "typescript";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs, formatTzsSigned } from "../src/lib/utils.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
@@ -37,7 +38,8 @@ import { sealLineOf } from "../src/components/maswali/maswali-seal-line.tsx";
 import { poolLedgerRows, poolRule, type PoolView } from "../src/components/maswali/maswali-pool-figure.tsx";
 import { homeCardOf, nextWeekOpen } from "../src/components/maswali/maswali-card-model.ts";
 import { outcomeStampText } from "../src/components/maswali/maswali-outcome-stamp.tsx";
-import { counted, eatWeekday } from "../src/components/maswali/maswali-format.ts";
+import { counted, eatWeekday, remainderNoteOf } from "../src/components/maswali/maswali-format.ts";
+import { remainderFate, settleArithmetic } from "../src/lib/maswali-money.ts";
 import { eatIsoWeek } from "../src/lib/eat-day.ts";
 import { resultDoorSerial, resultLine } from "../src/app/millionea/millionea-view.ts";
 import { TICKET_SHOWN_KEY } from "../src/lib/maswali-week-label.ts";
@@ -462,6 +464,72 @@ const heldGuardDefects = (hubSrc: string) => {
     hubSrc.includes("nextOpen === null ? fill(t.millionea.capReachedOnly, { cap: w.ticketCap })")
       && hubSrc.includes("nextOpen={nextWeekOpen(hub, millioneaOpenTemplate(), nowMs)}")
       && !/7 \* 86_400_000/.test(hubSrc) && !/opened \+ 7 \* DAY_MS/.test(model));
+
+  // F1 · MR-30, OD-03 · a final week still to open is ANNOUNCED where the product is entered: the hub and the card.
+  const ahead = { code: "2026-W44", opensAt: "2026-10-25T21:00:00.000Z" }; // Monday 26 October, 00:00 EAT
+  const announced = homeCardOf(en, { ...hubOf(sellingWeek(), "ENDING"), finalAhead: ahead } as never, 0.13, NOW, null);
+  const unannounced = homeCardOf(en, live as never, 0.13, NOW, next);
+  ok("2.F1a · ⛔ a final week still to open is named on the card whatever week the card shows; CONTROL: with none announced, nothing is",
+    announced?.finalAhead === 44 && announced.finalWeek === false && unannounced?.finalAhead === null, j({ announced, unannounced: unannounced?.finalAhead }));
+  const own = homeCardOf(en, { ...hubOf(sellingWeek({ isFinal: true }), "ENDING"), finalAhead: ahead } as never, 0.13, NOW, null);
+  ok("2.F1b · the final week's own card says \"final week\" once, never names itself again as the week to come",
+    own?.finalWeek === true && own.finalAhead === null, j(own));
+  const presale = homeCardOf(en, { ...hubOf(null, "ENDING"), finalAhead: ahead } as never, 0.13, NOW, null);
+  const pastDue = homeCardOf(en, { ...hubOf(null, "ENDING"), finalAhead: { code: "2026-W44", opensAt: "2026-10-12T21:00:00.000Z" } } as never, 0.13, NOW, null);
+  ok("2.F1c · with no week and no last week the card is the final week's presale, on the day it was announced to open; CONTROL: an announced time already past is never drawn as one to come",
+    presale?.state.kind === "presale" && presale.week === 44 && presale.finalWeek === true
+      && (presale.state as { opensOn?: string }).opensOn === eatWeekday(en, Date.parse(ahead.opensAt)) && pastDue === null, j({ presale, pastDue }));
+  const cardF = squash(code(read(CARD)));
+  const doorF = squash(code(read("src/components/maswali/maswali-home-card-door.tsx")));
+  ok("2.F1d · the card draws the announcement, the door hands it the model's, and the hub draws its callout from the read model in both forms (with the time while it is ahead)",
+    cardF.includes('{!finalWeek && finalAhead !== null && <span className="text-body-sm text-text">{fill(t.millionea.finalAheadShort, { week: finalAhead })}</span>}')
+      && cardF.indexOf('finalAheadShort, { week: finalAhead }') > cardF.indexOf('<MaswaliFacts layout="phone" facts={meta} />')
+      && doorF.includes("finalAhead={model.finalAhead}")
+      && hubSrc.includes('{hub.finalAhead && <Callout tone="info" glyph="flag" role="status">{finalAheadLine(t, hub.finalAhead, nowMs)}</Callout>}')
+      && hubSrc.includes("return at !== null && at > nowMs ? fill(t.millionea.finalAheadAt, { week, when: eatWeekdayClock(t, at) }) : fill(t.millionea.finalAhead, { week });")
+      && LOCALES.every((l) => /\{week\}/.test(dict[l].millionea.finalAheadAt) && /\{when\}/.test(dict[l].millionea.finalAheadAt)
+        && /\{week\}/.test(dict[l].millionea.finalAhead) && !/\{when\}/.test(dict[l].millionea.finalAhead) && /\{week\}/.test(dict[l].millionea.finalAheadShort)));
+
+  // F3 · MR-30 · the buyer of a final week is told its rule at purchase: on the slip, first, and on the confirm sheet.
+  const slipF = squash(code(read(SLIP)));
+  const clientF = squash(code(read(SLIP_CLIENT)));
+  const slipPage = squash(code(read("src/app/millionea/slip/page.tsx")));
+  ok("2.F3a · ⛔ a final week's rule is on the slip (its first rule) and on the confirm sheet (beside the fee rule), on the week's own flag",
+    slipF.includes('...(finalWeek ? [{ key: "final", node: keepFact(locale, t.millionea.finalRule) }] : []), { key: "reserve"')
+      && slipF.includes("fill(t.millionea.ruleShared, { pct }), finalWeek ? t.millionea.finalRule : null, ]")
+      && count(clientF, "finalWeek={finalWeek}") === 2 && slipPage.includes("finalWeek={slip.week.isFinal}")
+      && LOCALES.every((l) => dict[l].millionea.finalRule.includes("10/10")));
+}
+
+// F4 · MR-25 · where the rounding remainder went, read off the week's own arithmetic, said one way on the register and the
+// receipt — and never as "house money" (D19)
+{
+  const RATES = { traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05 };
+  const week = (sales: number, winners: number) => settleArithmetic({ rolloverIn: 0, sales, winners, floor: 2_000_000, feeRate: 0.13, rates: RATES });
+  const fateOf = (a: ReturnType<typeof week>) => (a.kind === "PAYOUT" ? remainderFate(a.dust, a.carryOut) : null);
+  const big = week(10_000_000, 7), topped = week(500_000, 7), between = week(1_999_998, 7);
+  ok("2.F4a · ⛔ a week whose own money covers the remainder carries it all; a week the guarantee tops up keeps it all; a floor week whose money covers part carries that part",
+    big.kind === "PAYOUT" && big.dust > 0 && fateOf(big) === "carried"
+      && topped.kind === "PAYOUT" && topped.U > 0 && topped.dust > 0 && fateOf(topped) === "kept"
+      && between.kind === "PAYOUT" && between.U === 0 && between.carryOut > 0 && between.carryOut < between.dust && fateOf(between) === "part",
+    j({ big, topped, between }));
+  const notes = (l: (typeof LOCALES)[number]) => [dict[l].millionea.remainderNote, dict[l].millionea.remainderNoteKept, dict[l].millionea.remainderNotePart];
+  const register = squash(code(read(REGISTER_WEEK)));
+  const view = squash(code(read("src/app/millionea/millionea-view.ts")));
+  ok("2.F4b · the register and the receipt say it through one helper, the receipt in every paying week; no note names the house's money",
+    register.includes("remainderNoteOf(t, remainderFate(w.remainder ?? 0, w.carriedForward ?? 0), w.isFinal)")
+      && squash(code(read(LEDGER))).includes('remainderNoteOf(t, L.remainderFate ?? "carried", L.finalWeek === true)')
+      && view.includes("remainderFate: win.remainder > 0 ? remainderFate(win.remainder, win.carriedOut) : undefined,")
+      && remainderNoteOf(en, "carried") === en.millionea.remainderNote && remainderNoteOf(en, "kept") === en.millionea.remainderNoteKept
+      && remainderNoteOf(en, "part") === en.millionea.remainderNotePart
+      && LOCALES.every((l) => notes(l).every((n) => n.length > 0 && !/house|nyumba|平台资金/i.test(n))), j(LOCALES.map(notes)));
+  const finals = (l: (typeof LOCALES)[number]) => [dict[l].millionea.remainderNoteFinal, dict[l].millionea.remainderNoteFinalPart, dict[l].millionea.keptInJackpot];
+  ok("2.F4c · ⛔ a final week has no next jackpot (MR-30): what its money carried stays in the jackpot account on the register and the receipt, never \"Week N+1\" — while a topped-up final week's remainder still stays with the guarantee",
+    remainderNoteOf(en, "carried", true) === en.millionea.remainderNoteFinal && remainderNoteOf(en, "part", true) === en.millionea.remainderNoteFinalPart
+      && remainderNoteOf(en, "kept", true) === en.millionea.remainderNoteKept
+      && count(register, "label={w.isFinal ? t.millionea.keptInJackpot : kept(fill(t.millionea.carriedOut, { week: next }), [weekWord(t, next)])}") === 2
+      && view.includes("finalWeek: finalWeek || undefined,") && squash(code(read(TICKET_PAGE))).includes("winLinesOf(view.win, view.week.isFinal)")
+      && LOCALES.every((l) => finals(l).every((n) => n.length > 0 && !/house|nyumba|平台资金/i.test(n))), j(LOCALES.map(finals)));
 }
 
 // R5 · the review of 24ec0d33, LOW 14: Millionea's Chinese breaks as the platform's does — every page root and each part
@@ -624,6 +692,27 @@ const factLineDefects = (m: string, n: number, joined: string) => {
   ok("4.A1d · no Millionea drawing joins visible facts into one string with \" · \" any more — every such line is a fact line", joins.length === 0, joins.join(" | "));
   ok("4.A1d′ PLANT · the card's old joined meta put back is reported",
     joinDefects(plantIn(CARD, "let meta: ReactNode[] = [];", 'let meta: ReactNode[] = []; const old = ["a", "b"].join(" · ");')).includes(CARD));
+  // A source census of `.join` misses template labels and JSX text. The receipt's narrow rows once let a literal dot
+  // lead a line at 320, so inspect parsed TSX nodes and prove an old label makes this check fail.
+  const ledgerLiteralSeparators = (src: string) => {
+    const found: string[] = [];
+    const tree = ts.createSourceFile(LEDGER, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const visit = (node: ts.Node) => {
+      if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node)
+        || ts.isTemplateMiddle(node) || ts.isTemplateTail(node) || ts.isJsxText(node)) && node.text.includes(" · ")) {
+        found.push(`${tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1}: ${node.text.trim()}`);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(tree);
+    return found;
+  };
+  const receiptDots = ledgerLiteralSeparators(read(LEDGER));
+  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and narrow money-row labels draw separate facts",
+    receiptDots.length === 0, receiptDots.join(" | "));
+  const oldTopUp = read(LEDGER).replace('label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />}', 'label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}');
+  ok("4.A1e′ PLANT · putting the old top-up template label back is reported",
+    oldTopUp !== read(LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
 }
 
 // P1 · the cut: the sheet leaves first, then the stamp
@@ -977,7 +1066,7 @@ const listDefects = (page: string, ticketSrc: string, bar: string) => {
 }
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI DESIGN: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
-/** The floor is the count a green run prints; VIS-P's fact, example and word plants bring it to 110. */
-const MIN_ASSERTIONS = 110;
+/** The floor is the count this merged tree printed: VIS-P's facts and S7's final-week and receipt proofs. */
+const MIN_ASSERTIONS = 120;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

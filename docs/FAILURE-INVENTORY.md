@@ -1263,3 +1263,30 @@ reads the leftover boundary as a stall.
 production's logs per 29 hours. That is `observationStore.ensure`'s **intended** P2002 handler:
 two chains sharing a boundary race to create one row, the loser catches the violation and
 re-reads. It is the write-once guarantee working, logged by Prisma rather than by us.
+
+---
+
+## §9 · MASWALI MILLIONEA — what S7 left open, recorded (2026-10-18)
+
+S7's acceptance (`docs/MASWALI-PLAN.md` §7b S7): every finding is fixed or recorded here. These three are booked as
+KNOWN-RED cases in `test:maswali-adversarial` (a case that reports, never fails the suite, until the work lands) and
+stand on the launch gate as Gate B line 14 (`MASWALI-PLAN.md` §6.1). None blocks the S8 drive; each blocks rollout
+ACTIVE until it is closed, or accepted in writing as that line says. Millionea is dark on production (`WITHDRAWN`).
+
+#### ⏳ OB.0 · MB-23 · a player cannot object to one question
+
+MR-16 promises a per-question objection in Millionea's own window, and no objection door exists for a Millionea week
+yet. What holds today: the settlement refuses to release while any objection is open, failing closed (OB.1–OB.5), and
+the sealing officer may correct a seal while the window is open. Before ACTIVE: the objection door (MB-23), or the
+rules' promise withdrawn by a dated ruling.
+
+#### ⏳ RD.5 · MB-74 · a deposit reversed after its winner was paid
+
+A deposit the provider reverses after the week has paid its winner can leave a share, already paid free, withdrawable
+before the reversal lands. What holds today: a winner whose deposit the provider has already contradicted is held at
+the settlement (RD.1). Before ACTIVE: the wallet lane's trigger, or the Owner's recorded acceptance of the risk.
+
+#### ⏳ TK.2 · MB-96 · account-takeover alerting
+
+The takeover alert MB-96 asks for is not built. What holds today: the preventive control (E-215, TK.1). Before
+ACTIVE: the alert, or a dated deferral recorded by the Owner.
