@@ -193,8 +193,10 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // the legal pages' header glyphs (privacy → privacyNotice, responsible gambling → limits, the Up & Down rules → trade,
     // the rules page's Up & Down card → trade) and the Up & Down rulebook's ⚠️ in three locales → the family's warning
     // glyph; and the dictionary's seven link labels per locale lose their typed "→" (the component draws the family's
-    // arrow). No word of a policy moves. Pinned at the W4 commit that holds them (re-pointed at the release's own rebase).
-    const W4 = "ada2d3a7e";
+    // arrow). No word of a policy moves. Pinned at the release's own commit as it stands on main (the commit before this
+    // pin), whose dictionary also holds MOBILE-VISUAL U43 release A's (9393dcb53, Ali's ruling 4: the card choices'
+    // figures and their aria words leave, `udLockedOneSided` joins), which landed under the 1c210f39e pin.
+    const W4 = "7a0b819fd";
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", "c3e28b473"],
       ["src/app/legal/rules/page.tsx", W4],
