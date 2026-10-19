@@ -7469,9 +7469,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    unlit sibling label's `--text-subtle` at 6.93 and 6.67. `--no-400` would fall to 6.85, under its siblings.
    The halo is faint gold drawn by `filter: drop-shadow`, which follows the letters' own edges and never muddies the fill
    (a text-shadow under a transparent fill paints over it). A hover brightens the word one tint (the -200s), where its
-   siblings' ink steps up to `--text`; the lit weight is the label's own rule. Forced colours draw plain system text, no
-   gradient and no halo. This app has no light theme (dark only), so no darker variant is owed. The transparent fill sits
-   behind `@supports`, so an engine that cannot clip a background to text keeps a gold word, never a blank one.
+   siblings' ink steps up to `--text`; so does a lit tab, link or row (`[aria-current]`, which every lit Millionea door
+   carries: the journey's tab and link, the classic core link, a More row), where its siblings' ink is `--text` — and on
+   the destination pill the -200s are the contrast call (6.85:1, the lead's ruling, 2026-10-19). The lit weight is the
+   label's own rule. Forced colours draw plain system text, no gradient and no halo. This app has no light theme (dark
+   only), so no darker variant is owed. The transparent fill sits behind `@supports`, so an engine that cannot clip a
+   background to text keeps a gold word, never a blank one. A not-found page's first paint puts the -300s back on the
+   journey's lit tab and link, with the rest of their lit values (the journey shell's not-found rules).
    ⛔ Tokens only: no colour is written here. */
 .kp-millionea-ink { color: var(--gold-300); }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
@@ -7482,12 +7486,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 2px color-mix(in oklab, var(--gold-400) 35%, transparent));
   }
-  :is(a, button):hover .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-200), var(--gold-200), var(--no-200)); }
+  :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-200), var(--gold-200), var(--no-200)); }
 }
-/* Millionea's own mark beside the ink, in gold and drawn crisp (no halo); a lit tab keeps the siblings' Fill-on-pill. */
+/* Millionea's own mark: on the journey rail's pip and beside a More row's words, in gold and drawn crisp (no halo). A lit
+   tab keeps the siblings' treatment, its Fill glyph in their ink on the pill. */
 .kp-millionea-glyph { color: var(--gold-300); }
+.kp-rail__item[data-on] .kp-millionea-glyph { color: inherit; }
 @media (forced-colors: active) {
-  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink { background-image: none; color: inherit; -webkit-text-fill-color: currentColor; filter: none; }
+  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: none; color: inherit; -webkit-text-fill-color: currentColor; filter: none; }
   .kp-millionea-glyph { color: inherit; }
 }
 
@@ -7651,6 +7657,25 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 280px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
 @media (min-width: 332.8px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
+/* ⭐ FIVE TABS WHILE MASWALI MILLIONEA SHOWS (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11). The rail draws Millionea's
+   tab right after Juu/Chini (`journeyTabsFor`) and says so on the nav, `data-tabs="5"`: five equal tracks on the list, and
+   the five labels' own centring widths. ⛔ The four-track rules above are not edited — a reader who is not shown
+   Millionea is drawn today's rail, its markup and its boxes — and these come after them, so at equal specificity the
+   five-track answer wins where both match.
+   The widths are R9-C's rule with five slots: a label wraps where it needs more than a fifth of the phone, so each
+   language centres its slots from five times its longest label (the rail's 11px mono at 0.6em a letter and 1em a Chinese
+   character, plus the label's 2 × 2px). With the tickets tab's short rail label (`journey.tabTicketsShort`, the lead's
+   ruling: Swahili "Tiketi"), Swahili's longest are "Juu/Chini" and "Millionea", 59.4 + 4 = 63.4px × 5 = 317; English's
+   "My tickets" 66 + 4 = 70px × 5 = 350, so it alone takes two lines from 320 to 349 (its slots stack from the top
+   there, for the reason given above); Chinese's "Millionea" (Latin in every language) 317. From 360, a fifth is 72px and
+   every label fits one line. `test:visual-pass-r9c` §4b derives the three widths from the dictionary and holds these
+   rules to them. */
+.kp-rail--journey[data-tabs="5"] > ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: flex-start; }
+@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(zh) .kp-rail__item { justify-content: center; } }
+@media (min-width: 350px) { .kp-rail--journey[data-tabs="5"]:lang(en) .kp-rail__item { justify-content: center; } }
+@media (min-width: 317px) { .kp-rail--journey[data-tabs="5"]:lang(sw) .kp-rail__item { justify-content: center; } }
+@media (min-width: 360px) { .kp-rail--journey[data-tabs="5"] .kp-rail__item { justify-content: center; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router
    commits the new page the pill is half on the tab being left and half on the new one, beside the new label already bold
@@ -7692,6 +7717,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-navglyph__line { display: none; }
 :root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__fill { display: none; }
 :root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-navglyph__line { display: block; }
+/* ⭐ …AND MILLIONEA'S LIT TAB AND LINK (MASWALI-BUILD S5-TAB): its two lit values put back to its unlit ones — the word on
+   the ink's -300s (lit, `[aria-current]` brightens it to the -200s) and the rail's glyph in gold (lit, it takes the
+   siblings' ink). Both are the ink's own rules, beside the rail rules; the fill keeps behind `@supports`, as there. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  :root:is([data-not-found], #kp-not-found) :is(.kp-rail--journey, .kp-jnav) [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-300), var(--gold-300), var(--no-300)); }
+}
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph { color: var(--gold-300); }
 /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one

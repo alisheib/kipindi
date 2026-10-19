@@ -308,19 +308,26 @@ const proxyDefects = (proxy: string) => {
 
 
 // ── §5 · the doors on other pages ──────────────────────────────────────────────────────────────────────────────────
-console.log("\n§5 · the doors: the card, More's first row, the /positions row — and none but these");
+console.log("\n§5 · the doors: the card, the bar's core link and the rail's More row, the journey's tab, the /positions row — and none but these");
 const doorDefects = (src: (rel: string) => string) => {
   const d: string[] = [];
   const bar = squash(code(src("src/components/layout/top-app-bar.tsx")));
   const rail = squash(code(src("src/components/layout/bottom-nav.tsx")));
   const shell = squash(code(src("src/components/layout/app-shell.tsx")));
-  if (!/const MORE_ITEMS: NavItem\[\] = user\.isAuthed \? \[ \.\.\.MILLIONEA_ROW,/.test(bar) || !bar.includes(": MILLIONEA_ROW;")) d.push("the bar's More: Millionea is not the first row for a player and the whole list for a guest");
-  if (!bar.includes('const MILLIONEA_ROW: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel,')) d.push("the bar's row is not drawn on the shell's answer alone");
+  // ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11): the bar's door is a CORE LINK right after Up & Down, for a
+  // player and a guest alike, on the shell's answer alone — no longer More's first row — and it pays with Results, which
+  // folds into More at 1024–1279 only while Millionea shows: one More per band, so each one's lit state is its own rows'.
+  if (!bar.includes('const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];')) d.push("the bar's core link is not drawn on the shell's answer alone");
+  if (count(bar, 'accent: true }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
+  if (count(bar, '{ href: "/results", label: t.common.results, fromXl: millionea }') !== 2
+    || !bar.includes('const MORE_BELOW_XL: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }, ...MORE_ITEMS] : [];')
+    || !bar.includes('className={`kp-navlink ${it.fromXl ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap`}')) d.push("the bar's Results does not fold into More at 1024–1279 while Millionea shows");
+  if (!bar.includes('{millionea ? ( <> <div className="xl:hidden"><NavMore items={MORE_BELOW_XL} label={t.common.more} /></div> {MORE_ITEMS.length > 0 && <div className="hidden xl:block"><NavMore items={MORE_ITEMS} label={t.common.more} /></div>} </> ) : ( <NavMore items={MORE_ITEMS} label={t.common.more} /> )}')) d.push("the bar's More is not one per band while Millionea shows (and today's one otherwise)");
   if (count(rail, "...millioneaRow,") !== 2 || !rail.includes('millionea ? [{ href: "/millionea", label: t.millionea.productLabel,')) d.push("the rail's More: Millionea is not the first row for a player and a guest, on the shell's answer");
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   if (items.includes("/millionea")) d.push("⛔ Millionea took a rail slot");
   if (count(shell, "const millioneaRow = !promoSuppressed && (await resolveMillionea()).visible;") !== 1) d.push("the shell does not answer the row from the rollout and the break, once");
-  if (count(shell, "millionea={millioneaRow}") !== 2 || /<LazyJourney[A-Za-z]+ [^>]*millionea/.test(shell)) d.push("the row's answer is not handed to the two classic bars alone");
+  if (count(shell, "millionea={millioneaRow}") !== 4 || !/<LazyJourneyTopBar [^>]*millionea=\{millioneaRow\}/.test(shell) || !/<LazyJourneyTabs [^>]*millionea=\{millioneaRow\}/.test(shell)) d.push("the shell's one answer is not handed to all four navs (both bars, both rails)");
   const card = squash(code(src("src/components/maswali/maswali-home-card-door.tsx")));
   const steps = ["if (!door.visible) return null;", "if (onBreak) return null;", "if (!hub) return null;", "if (!model) return null;", 'data-testid="millionea-home-card"'].map((x) => card.indexOf(x));
   if (steps.some((n, i) => n < 0 || (i > 0 && n < steps[i - 1]))) d.push(`the card's door: hidden, on a break, unread or unmodelled must draw nothing, in that order: ${j(steps)}`);
@@ -338,7 +345,11 @@ const doorDefects = (src: (rel: string) => string) => {
 };
 {
   const d = doorDefects(read);
-  ok("5.1 · More's first row in the bar and the rail (a player and a guest alike), on the shell's one answer — the rollout and the break — and handed to the classic bars alone; no rail slot", d.filter((x) => /bar|rail|shell|row's answer/.test(x)).length === 0, d.join(" | "));
+  // ⭐ RE-PINNED OPENLY, S5-TAB (Ali, 2026-10-19): was "More's first row in the bar and the rail … handed to the classic bars
+  // alone". The bar's door is now its core link after Up & Down (Results folding into More at 1024–1279 meanwhile), the
+  // classic phone rail keeps More's first row, and the one answer reaches all four navs — the journey's tab and link too.
+  ok("5.1 · the classic bar's core link right after Up & Down (Results folding into More, one More per band, at 1024–1279) and the classic phone rail's first More row, for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs; no classic rail slot",
+    d.filter((x) => /bar|rail|shell|row's answer/.test(x)).length === 0, d.join(" | "));
   ok("5.2 · the card's door draws nothing when hidden, on a break, unread or unmodelled, and carries the test id qa:live's dark section looks for; the board draws it once above its search",
     d.filter((x) => /card/.test(x)).length === 0, d.join(" | "));
   ok("5.3 · /positions' row: read only in the classic arm, drawn only while the reader holds this week's tickets, linking Tiketi zangu's Millionea list",
@@ -387,7 +398,14 @@ console.log("\n§5b · the ink: one class of tokens alone, a still gradient that
 const INK_WEARERS: ReadonlyArray<{ rel: string; at: string; n: number }> = [
   { rel: "src/components/layout/nav-more.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 2 },
   { rel: "src/components/layout/bottom-nav.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
-  { rel: "src/components/layout/top-app-bar.tsx", at: 'millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]', n: 1 },
+  // S5-TAB B: the classic bar's core link (no mark: its siblings carry none), its words in the ink.
+  { rel: "src/components/layout/top-app-bar.tsx", at: 'const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];', n: 1 },
+  { rel: "src/components/layout/top-app-bar.tsx", at: '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', n: 1 },
+  // S5-TAB A: the journey rail's tab (the word in the ink, the pip's glyph resting in gold) and the journey's desktop link.
+  { rel: "src/components/journey/journey-tabs.tsx", at: 'const ink = d.key === "millionea";', n: 1 },
+  { rel: "src/components/journey/journey-tabs.tsx", at: '<span className="kp-rail__label kp-jtab__label">{ink ? <span className="kp-millionea-ink">{label}</span> : label}</span>', n: 1 },
+  { rel: "src/components/journey/journey-tabs.tsx", at: '<span className={ink ? "kp-rail__pip kp-millionea-glyph" : "kp-rail__pip"}>', n: 1 },
+  { rel: "src/components/journey/journey-top-bar.tsx", at: '{d.key === "millionea" ? <span className="kp-millionea-ink">{tabLabel(t, d.label)}</span> : tabLabel(t, d.label)}', n: 1 },
 ];
 const cssCode = (s: string) => squash(s.replace(/\/\*[\s\S]*?\*\//g, ""));
 const RAW_COLOUR = /#[0-9a-f]{3,8}\b|\b(?:oklch|oklab|rgba?|hsla?|lab|lch|hwb)\(|\b(?:red|green|gold|yellow|orange|white|black)\b/i;
@@ -410,7 +428,13 @@ const inkDefects = (src: (rel: string) => string) => {
   if (!sup || !/background-image: linear-gradient\(90deg, var\(--yes-\d+\), var\(--gold-\d+\), var\(--no-\d+\)\);/.test(fill)
     || !fill.includes("background-clip: text;") || !fill.includes("-webkit-text-fill-color: transparent;")) d.push("the ink: the fill is not green to gold to red clipped to the word, behind @supports");
   if (!/filter: drop-shadow\(0 0 \dpx color-mix\(in oklab, var\(--gold-\d+\) \d+%, transparent\)\);/.test(fill) || /text-shadow/.test(sup.slice(0, sup.indexOf("} }")))) d.push("the ink: the halo is not a faint gold drop-shadow (and never a text-shadow)");
-  if (!css.includes("@media (forced-colors: active) { .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink { background-image: none; color: inherit; -webkit-text-fill-color: currentColor; filter: none; }")) d.push("the ink: forced colours do not draw it as plain system text");
+  if (!css.includes("@media (forced-colors: active) { .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: none; color: inherit; -webkit-text-fill-color: currentColor; filter: none; }")) d.push("the ink: forced colours do not draw it as plain system text");
+  // S5-TAB · lit, the word steps up one tint as its siblings' ink steps up to --text (the -200s, 6.85:1 on the destination
+  // pill) and the rail's glyph takes the siblings' Fill-on-pill ink; a not-found page's first paint puts both back.
+  if (!sup.slice(0, sup.indexOf("} }") + 1).includes(":is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-200), var(--gold-200), var(--no-200)); }")) d.push("the ink: a lit door (aria-current) and a hover do not brighten the word to the -200s, behind @supports");
+  if (!css.includes(".kp-millionea-glyph { color: var(--gold-300); } .kp-rail__item[data-on] .kp-millionea-glyph { color: inherit; }")) d.push("the ink: the glyph does not rest in gold and take the siblings' ink when its tab is lit");
+  if (!css.includes('@supports ((-webkit-background-clip: text) or (background-clip: text)) { :root:is([data-not-found], #kp-not-found) :is(.kp-rail--journey, .kp-jnav) [aria-current] .kp-millionea-ink { background-image: linear-gradient(90deg, var(--yes-300), var(--gold-300), var(--no-300)); } }')
+    || !css.includes(":root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph { color: var(--gold-300); }")) d.push("the ink: a not-found page's first paint does not put the lit tab's word and glyph back (the -300s, the gold)");
   for (const w of INK_WEARERS) {
     const n = count(squash(code(src(w.rel))), w.at);
     if (n !== w.n) d.push(`the ink: ${w.rel} wears it ${n} times, not ${w.n}`);
@@ -420,17 +444,27 @@ const inkDefects = (src: (rel: string) => string) => {
 {
   const plant = (rel: string, from: string, to: string) => (r: string) => (r === rel ? read(r).replace(from, to) : read(r));
   const d = inkDefects(read);
-  ok("5b.1 · one ink class: green to gold to red clipped to the word, a faint gold drop-shadow — tokens alone", d.filter((x) => !/moves|motion rule|forced|wears/.test(x)).length === 0, d.join(" | "));
+  ok("5b.1 · one ink class: green to gold to red clipped to the word, a faint gold drop-shadow — tokens alone", d.filter((x) => !/moves|motion rule|forced|wears|lit|not-found/.test(x)).length === 0, d.join(" | "));
   ok("5b.2 · the ink never moves (no animation, no transition, no keyframe); forced colours draw plain system text", d.filter((x) => /moves|motion rule|forced/.test(x)).length === 0, d.join(" | "));
-  ok("5b.3 · every nav that draws Millionea wears the one class (More's rows: the classic rail's and the top bar's)", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
+  // ⭐ RE-PINNED OPENLY, S5-TAB (2026-10-19): was "More's rows: the classic rail's and the top bar's". Every nav that draws
+  // Millionea now: the classic rail's More row, the classic bar's core link, the journey's tab and its desktop link.
+  ok("5b.3 · every nav that draws Millionea wears the one class — the classic rail's More row, the classic bar's core link, the journey rail's tab (its glyph resting in gold) and the journey's desktop link", d.filter((x) => /wears/.test(x)).length === 0, d.join(" | "));
+  ok("5b.8 · lit, a door's word steps up to the -200s (aria-current, as a hover does; 6.85:1 on the destination pill) and the rail tab's glyph takes the siblings' Fill-on-pill ink; a not-found page's first paint puts both back, the -300s and the gold",
+    d.filter((x) => /lit|not-found/.test(x)).length === 0, d.join(" | "));
   const rawColour = inkDefects(plant("src/app/globals.css", "var(--yes-300), var(--gold-300), var(--no-300));", "var(--yes-300), var(--gold-300), oklch(70% 0.2 22));"));
   ok("5b.4 · CONTROL · a raw colour in the class is reported", rawColour.some((x) => x.includes("raw colour")), j(rawColour));
   const moving = inkDefects(plant("src/app/globals.css", "    -webkit-text-fill-color: transparent;\n", "    -webkit-text-fill-color: transparent;\n    animation: kp-millionea-drift 9s ease-in-out infinite alternate;\n"));
   ok("5b.5 · CONTROL · an animation planted in the class is reported", moving.some((x) => x.includes("moves")), j(moving));
-  const plainGone = inkDefects(plant("src/app/globals.css", "  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink { background-image: none; color: inherit;", "  .kp-millionea-x { background-image: none; color: inherit;"));
+  const plainGone = inkDefects(plant("src/app/globals.css", "  .kp-millionea-ink, :is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image: none; color: inherit;", "  .kp-millionea-x { background-image: none; color: inherit;"));
   ok("5b.6 · CONTROL · the forced-colours rule removed is reported", plainGone.some((x) => x.includes("forced colours")), j(plainGone));
   const inkDropped = inkDefects(plant("src/components/layout/nav-more.tsx", '{it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}', "{it.label}"));
   ok("5b.7 · CONTROL · the ink dropped from one nav is reported", inkDropped.some((x) => x.includes("nav-more.tsx wears it 1 times")), j(inkDropped));
+  const tabBare = inkDefects(plant("src/components/journey/journey-tabs.tsx", '{ink ? <span className="kp-millionea-ink">{label}</span> : label}', "{label}"));
+  ok("5b.7′ · CONTROL · the journey tab's word without the ink is reported", tabBare.some((x) => x.includes("journey-tabs.tsx wears it 0 times")), j(tabBare));
+  const litFlat = inkDefects(plant("src/app/globals.css", ":is(a, button):hover .kp-millionea-ink, [aria-current] .kp-millionea-ink { background-image:", ":is(a, button):hover .kp-millionea-ink { background-image:"));
+  ok("5b.9 · CONTROL · a lit door that keeps the resting -300s is reported", litFlat.some((x) => x.includes("lit door")), j(litFlat));
+  const nfLit = inkDefects(plant("src/app/globals.css", ":root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-millionea-glyph { color: var(--gold-300); }", ""));
+  ok("5b.10 · CONTROL · a not-found page's first paint that leaves the lit tab's glyph in the siblings' ink is reported", nfLit.some((x) => x.includes("not-found")), j(nfLit));
 }
 
 // ── §6 · the slip ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -512,7 +546,16 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   const unbelted = proxyDefects(read("src/proxy.ts").replace("if (millioneaEdgeAsks(pathname)) {", "if (false) {"));
   ok("8.4 · a proxy whose belt never runs is reported", unbelted.length > 0);
   const railSlot = doorDefects(plant("src/components/layout/bottom-nav.tsx", "const items = [", 'const items = [{ href: "/millionea", label: "M", icon: null },'));
-  ok("8.5 · Millionea in a rail slot is reported", railSlot.some((x) => x.includes("rail slot")));
+  ok("8.5 · Millionea in a classic rail slot is reported (the classic phone rail keeps it as More's first row)", railSlot.some((x) => x.includes("rail slot")));
+  // S5-TAB B's controls: the bar's core link never drawn; Results kept inline beside it at 1024–1279; the From-1280 More
+  // carrying the folded Results row (it would light on /results beside the lit Results link).
+  const BAR = "src/components/layout/top-app-bar.tsx";
+  const noLink = doorDefects(plant(BAR, 'const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];', "const MILLIONEA_LINK: NavItem[] = [];"));
+  ok("8.5′ · the bar's core link never drawn is reported", noLink.some((x) => x.includes("core link is not drawn")), j(noLink));
+  const resultsStays = doorDefects(plant(BAR, '{ href: "/results",   label: t.common.results, fromXl: millionea },', '{ href: "/results",   label: t.common.results },'));
+  ok("8.5″ · Results kept inline at 1024–1279 beside Millionea's link is reported", resultsStays.some((x) => x.includes("does not fold")), j(resultsStays));
+  const xlCarries = doorDefects(plant(BAR, '<div className="hidden xl:block"><NavMore items={MORE_ITEMS}', '<div className="hidden xl:block"><NavMore items={MORE_BELOW_XL}'));
+  ok("8.5‴ · the More from 1280 carrying the folded Results row is reported", xlCarries.some((x) => x.includes("one per band")), j(xlCarries));
   const cardOnBreak = doorDefects(plant("src/components/maswali/maswali-home-card-door.tsx", "if (onBreak) return null;", ""));
   ok("8.6 · a card drawn on a break is reported", cardOnBreak.some((x) => x.includes("card's door")));
   const autoBuy = slipDefects(read(`${APP}/slip/slip-client.tsx`).replace("  useEffect(() => {\n    const kept = readKept(weekId);", "  useEffect(() => {\n    commit();\n    const kept = readKept(weekId);"));
@@ -636,6 +679,6 @@ const perfDefects = (readAt: (rel: string) => string) => {
 console.log(`\n${"═".repeat(70)}\n  MASWALI UI: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTS; it only rises, to a printed number. ⏳ The STATIC count, until the first green
  *  run prints it (the S5 review of 24ec0d33, MEDIUM 8): 67 call sites, two of them in loops that run 6 (§3.1) and 9 (§4.3). */
-const MIN_ASSERTIONS = 87; // 80 + S5-TAB's seven (§5b, 2026-10-19)
+const MIN_ASSERTIONS = 94; // 80 + S5-TAB's seven (§5b, 2026-10-19) + S5-TAB A and B's seven (5b.7′, 5b.8–5b.10, 8.5′–8.5‴): 94 printed
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

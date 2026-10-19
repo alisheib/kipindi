@@ -55,7 +55,8 @@ The owner answered every item below on 2026-10-17. Each answer was applied to th
 - ⭐ **Superseded in part, 2026-10-19 (Ali; `docs/DESIGN_AUTHORITY.md` §M8a item 11 is the authority).** Millionea now has
   its own tab right after Up & Down in every nav that has tabs, while it is visible: D-13 (b)'s "no inline link" and the
   journey's "no tab" are struck, and D-15 becomes: Millionea's tab on every /millionea page, Tiketi zangu on
-  /millionea/tickets and on a ticket. D-13 (a), (c) and (d) stand.
+  /millionea/tickets and on a ticket (and for a reader drawn the four tabs, Maswali on the other /millionea pages, as
+  D-15 had it). D-13 (a), (c) and (d) stand.
 
 ## Hub and How (U)
 

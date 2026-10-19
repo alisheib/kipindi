@@ -148,8 +148,9 @@ export const MUTATIONS = [
        + "is on: the shape `the-crumbs-component-trusts-its-prop` names one row up, in the journey's chrome. The rail "
        + "would light Maswali on every page after a soft navigation, and nothing would look wrong in the source.",
     file: "src/components/journey/journey-tabs.tsx",
-    from: `  const active = activeTabFor(pathname);`,
-    to: `  const active = activeTabFor("/");`,
+    // RE-ANCHORED, MASWALI-BUILD S5-TAB (2026-10-19): the resolver also takes the drawn list (`tabs`); the defect is the same.
+    from: `  const active = activeTabFor(pathname, tabs);`,
+    to: `  const active = activeTabFor("/", tabs);`,
     check: "3.1b the journey tab rail — the pathname is what DECIDES",
   },
 ];

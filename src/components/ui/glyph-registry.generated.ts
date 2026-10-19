@@ -4,7 +4,7 @@
  * scripts/glyphs/extras.ts. PHOSPHOR-MIGRATION: what every glyph of the family `I` draws, and where its drawings live.
  */
 export const GLYPH_SOURCE = { package: "@phosphor-icons/core", version: "2.1.1" } as const;
-export const GLYPH_SPRITES = { app: "/icons/g/app.9032012a.svg", admin: "/icons/g/admin.86ca5167.svg" } as const;
+export const GLYPH_SPRITES = { app: "/icons/g/app.a9e58194.svg", admin: "/icons/g/admin.86ca5167.svg" } as const;
 export type GlyphVariant = "regular" | "bold" | "fill" | "duo";
 export type GlyphInk = readonly [x0: number, x1: number];
 /**
@@ -122,7 +122,7 @@ export const GLYPH_REGISTRY = {
   "markets": { s: "p-squares-four", g: "shell", i: { bold: [36, 220], fill: [40, 216] } },
   "megaphone": { s: "p-megaphone", g: "app", i: { bold: [28, 252], fill: [32, 248.42] } },
   "menu": { s: "p-list", g: "shell", i: { bold: [28, 228], fill: [32, 224] } },
-  "millionea": { s: "p-diamond", g: "app", i: { bold: [12.06, 243.98] } },
+  "millionea": { s: "p-diamond", g: "shell", i: { bold: [12.06, 243.98], fill: [16.07, 240] } },
   "mobileMoney": { s: "x-mobileMoney", g: "app", i: { bold: [52, 204], fill: [56, 200] } },
   "needle": { s: "x-needle", g: "app", i: { bold: [20, 236] } },
   "pause": { s: "p-pause", g: "app", i: { bold: [36, 220], fill: [40, 216] } },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { FiftyLockup, FiftyMark } from "@/components/brand";
@@ -8,7 +8,6 @@ import { LanguageMenu } from "@/components/ui/language-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { AvatarMenu } from "@/components/layout/avatar-menu";
 import { NavMore } from "@/components/layout/nav-more";
-import { MillioneaGlyph } from "@/components/maswali/maswali-glyph";
 import { WalletBalancePill, useLiveBalance } from "@/components/layout/wallet-balance-pill";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { I } from "@/components/ui/glyphs";
@@ -30,7 +29,7 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * device this product is built for.
  *
  * ── THE NAVIGATION MODEL: THREE TIERS, ONE MEANING EACH (the round's largest correction) ──────
- *   destination      no border, `--r-sm`, 44px           Markets · Up & Down · Live · Results · Top
+ *   destination      no border, `--r-sm`, 44px           Markets · Up & Down · (Millionea) · Live · Results · Top
  *   utility control  BORDERED, `--r-sm`, 44×44           Language
  *   action           `--r-pill`                          Sign in (ghost) · Sign up (filled)
  *
@@ -53,10 +52,13 @@ type NavItem = {
   href: string;
   label: string;
   proposalsBadge?: ProposalsState;
-  /** More's rows only (`NavMore`): Maswali Millionea's mark before its name (MASWALI-BUILD S5). */
-  glyph?: ReactNode;
-  /** More's rows only (`NavMore`): the words in Millionea's ink, the one class every nav gives it (Ali, 2026-10-19). */
+  /** The words in Millionea's ink (`kp-millionea-ink`), the one class every nav gives it (Ali, 2026-10-19): its core link's. */
   ink?: boolean;
+  /**
+   * A core link drawn inline only from 1280 (`xl`): below it the band is full, so More carries the same destination as a
+   * row of its own (`MORE_BELOW_XL`). Results', while Millionea's core link takes its room (MASWALI-BUILD S5-TAB).
+   */
+  fromXl?: boolean;
   /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
      destination that is not part of the product is dropped from the list entirely (see
      MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
@@ -105,12 +107,23 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
   // destination is hidden on tablets/small laptops).
   // Up & Down sits directly after Markets in BOTH navs — it is a peer product line, not
   // a sub-page of Markets, and a player must be able to reach it from any width.
+  /* ⭐ MASWALI-BUILD S5-TAB · MASWALI MILLIONEA'S CORE LINK, RIGHT AFTER UP & DOWN (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a
+     item 11), for a player and a guest alike: a destination like its siblings — a peer product line, as Up & Down is — the
+     same link, with only its words in Millionea's ink (`kp-millionea-ink`): no gilt dot, no mark. It replaces S5's first
+     row of More (D-13 (b)'s "no inline link", struck). ⛔ Drawn only on the shell's own answer (`millionea`: the rollout
+     admits the request and the reader is not on a break), resolved on the server and handed down as `inviteVisible` is;
+     for everybody else the bar is today's, byte for byte.
+     ⚠️ IT PAYS FOR ITS ROOM WITH RESULTS, AT 1024–1279 ONLY. That band is where this bar runs short (E-190), so while the
+     link shows, Results folds into More there (`fromXl` on its link; More's own row, `MORE_BELOW_XL`) and stands inline
+     again from 1280. */
+  const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
         { href: "/updown",    label: t.market.udTitle, accent: true },
+        ...MILLIONEA_LINK,
         { href: "/live",      label: t.nav.live },
-        { href: "/results",   label: t.common.results },
+        { href: "/results",   label: t.common.results, fromXl: millionea },
         { href: "/positions", label: t.common.positions },
         /* ⛔ `/wallet` LEFT THE INLINE NAV ON 2026-08-25 — it is a DUPLICATE now, not a
            loss. The balance capsule in the right cluster is itself a `<Link href="/wallet">`
@@ -126,24 +139,15 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
     : [
         { href: "/markets",     label: t.common.markets },
         { href: "/updown",      label: t.market.udTitle, accent: true },
+        ...MILLIONEA_LINK,
         { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: t.common.results },
+        { href: "/results",     label: t.common.results, fromXl: millionea },
         { href: "/leaderboard", label: t.nav.leaderboard },
       ];
-  /* MASWALI-BUILD S5 · MASWALI MILLIONEA IS MORE'S FIRST ROW, for a player and a guest alike (§10 §3.2 (b)–(c), D-13;
-     DESIGN_AUTHORITY §M8a item 11) — never an inline link (the 1024–1279 band already overflows) and never a rail slot.
-     ⛔ Drawn only on the shell's own answer (`millionea`: the rollout admits the request and the reader is not on a break),
-     resolved on the server and handed down as `inviteVisible` is; for everybody else the menu is today's, byte for byte.
-     ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11) · the row wears the tab's ink and a gold mark, as the
-     phone rail's row does. His ruling makes it a core link right after Up & Down; that move is S5-TAB's next item. */
-  const MILLIONEA_ROW: NavItem[] = millionea
-    ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true, glyph: <MillioneaGlyph name="millionea" s={16} className="mr-1.5 shrink-0 kp-millionea-glyph" /> }]
-    : [];
   // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
   // the current state flag (gilt coming-soon / amber maintenance / none active).
   const MORE_ITEMS: NavItem[] = user.isAuthed
     ? [
-        ...MILLIONEA_ROW,
         ...(proposalsState !== "DISABLED"
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
@@ -162,7 +166,15 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
-    : MILLIONEA_ROW;
+    : [];
+  /* ⭐ S5-TAB · WHILE MILLIONEA SHOWS, ONE MORE PER BAND, so each one's lit state and its words for a screen reader are its
+     own rows' truth. At 1024–1279 Results is behind More (its core link folds, above), so that band's More carries it
+     first and is current on /results; from 1280 Results stands inline again, and that band's More neither carries it nor
+     lights for it. One menu that kept a row hidden from 1280 would light on /results beside the lit Results link — two
+     "you are here" marks on one bar, and a "current section" spoken for a menu that holds no current page. Each wrapper
+     shows in its band alone, so the bar and the accessibility tree hold one More at every width. Without Millionea there
+     is one More, today's. */
+  const MORE_BELOW_XL: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }, ...MORE_ITEMS] : [];
 
   return (
     <header
@@ -237,7 +249,14 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               over its own container with the links inline and no pill at all.
               **The money wins the room.** Nothing is hidden that was not already
               hidden at 1024–1535, where these same three have always lived in `More`. */}
-          <NavMore items={MORE_ITEMS} label={t.common.more} />
+          {millionea ? (
+            <>
+              <div className="xl:hidden"><NavMore items={MORE_BELOW_XL} label={t.common.more} /></div>
+              {MORE_ITEMS.length > 0 && <div className="hidden xl:block"><NavMore items={MORE_ITEMS} label={t.common.more} /></div>}
+            </>
+          ) : (
+            <NavMore items={MORE_ITEMS} label={t.common.more} />
+          )}
         </nav>
 
         <div className="flex-1" />
@@ -512,6 +531,9 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
     : it.href === "/results" ? pathname.startsWith("/results")
     : it.href === "/positions" ? pathname.startsWith("/positions")
     : it.href === "/updown" ? pathname.startsWith("/updown")
+    // S5-TAB: Millionea's link is current on the product's every page, as Up & Down's is on its history — its own path or
+    // one below it, never a path that only shares its letters (`/millioneas`).
+    : it.href === "/millionea" ? pathname === "/millionea" || pathname.startsWith("/millionea/")
     : pathname === it.href;
   const accent = it.accent === true;
   return (
@@ -524,7 +546,8 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
       // beside them had nothing to animate. Accent and active are now `data-accent` /
       // `aria-current`, read by that rule. Putting either back inline re-kills the hover.
       data-accent={accent ? "" : undefined}
-      className="kp-navlink inline-flex items-center gap-1.5 whitespace-nowrap"
+      // S5-TAB: a link drawn from 1280 only (`fromXl`) is hidden below it, where More's own row carries it.
+      className={`kp-navlink ${it.fromXl ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap`}
       style={{
         // 44px is the tap floor and the kit's destination height. The nav used to be 34px —
         // under the floor on the primary navigation of a money product.
@@ -549,7 +572,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
           }}
         />
       )}
-      {it.label}
+      {it.ink ? <span className="kp-millionea-ink">{it.label}</span> : it.label}
       {it.proposalsBadge && (
         <ProposalsStateBadge state={it.proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
       )}
