@@ -202,13 +202,13 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
     // stands on main (the commit before this pin).
     const W4B = "2aab5f0ec";
-    // S7's final-week, rounding-remainder and stale-slip wording is present in the merged dictionary. Re-pin its
-    // approved blob at this integration's committed source before running D19a green; the S5 pin below predates S7.
+    // S7's final-week, rounding-remainder and stale-slip wording joins S5's published words at the reviewed merge.
+    // This pins that committed dictionary; the S5-only pin predates S7's three-language copy.
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", W4B],
       ["src/app/legal/rules/page.tsx", W4],
       // The S5 player and register merge carries the reviewed Millionea words; the privacy wrapper is our W4/S5 merge.
-      ["src/lib/i18n-dict.ts", "7d09235e6"],
+      ["src/lib/i18n-dict.ts", "f28803da1"],
       ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       ["src/app/legal/rules/_content-up-down.tsx", W4B],
