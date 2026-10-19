@@ -112,6 +112,16 @@ Nothing here blocks betting. §0c's build order is DONE; **the one build in deve
 (§0d, approved 2026-09-28)**. What was found and fixed on
 2026-09-26 is `docs/HOUSE-BOTS.md` §12.5; (a)–(e) of the old list are done or decided (§0c, §5).
 
+- **✅ 2026-10-18 · "Counts as" BY HAND — LIVE `50cfe630` (18:03 EAT, read back: migration applied, 56/56 open markets
+  carry exactly what the rule owes; the four-account poll shows 41) (Ali: "make the by hand place also count please") — §12.22.** Officers stake polls
+  by hand from desk accounts; those stakes carry no marker and were not counted. Now the holder's FIRST stake on a market
+  counts the account, whoever places it; the shift moves every open market the holder is on; migration
+  `20261018150000_counts_as_by_hand` catches up the open markets staked only by hand (a no-op without the house tables).
+  Ruling: `docs/COMPLIANCE-DECISIONS.md` § "2026-10-18 · Counts as: a desk account's own stakes placed by hand count too".
+  Guards: `test:house-bot-seam` §6 (s) by hand, `test:house-bot-money` §13b/§13c, `test:house-bot-console` 2.ca (byHand),
+  mutations `ca-hand-*`, `ca-removed-counted`, `ca-shift-marker-only(-sql)`, `ca-shift-any-holder`. The same day's first
+  finding stands for two accounts at 15: stake limits raised above their opener stake range = no bet at all (no save rule
+  catches it yet — not built). The live read-back is recorded in §12.22.
 - **✅ 2026-10-11 · "Counts as" — LIVE `b1d0bbf8` (20:33 EAT, read back on both hosts, §12.18) with its docs (Ali's ruling, the Gaming Board's verbal view).** Each desk
   account's Rules tab has **Counts as** (1–10,000, default 1): the account's first stake on a market makes the count
   PLAYERS see count it as that many predictors; a change moves the count on its open markets at once; no money moves.

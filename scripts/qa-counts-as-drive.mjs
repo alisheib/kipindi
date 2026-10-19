@@ -100,7 +100,7 @@ try {
   };
   ok("2.1 · the box sits under Market cards and holds 1", (await box().inputValue()) === "1"
     && (await page.locator("text=Market cards").count()) > 0, await box().inputValue());
-  ok("2.2 · its help sentence is the server's", (await page.locator('[data-field="counts-as"]').textContent()).includes("How many predictors this account adds to the count players see on a market it stakes on."));
+  ok("2.2 · its help sentence is the server's", (await page.locator('[data-field="counts-as"]').textContent()).includes("How many predictors this account adds to the count players see on a market it stakes on, by the desk or by hand."));
   ok("2.3 · nothing is said before anything is typed", ((await status().textContent()) ?? "").trim() === "");
   const field = () => page.locator('[data-field="counts-as"]');
   for (const w of [1280, 1024, 360]) await tile(page, "02-rules-box", w, field());

@@ -225,7 +225,7 @@ A house stake is `placeHouseBet(botUserId, {marketId, side, stake, idempotencyKe
 | — | Funding | A house stake is cash only by construction: the whole stake is real money, the bonus part is 0. |
 | H3 | Inside `market:<id>`, after the closed re-check | The raw product line not in `HOUSE_PRODUCTS` → `house_product_not_allowed`. An Up & Down market whose round lock (open + duration, or the market close) has passed, or that has no round → `house_round_locked`. Staff-chosen rows on a blacked-out market → `house_info_blackout`. Another bot holds an OPEN position here → `OTHER_BOT`. All bots' open stake + this > `gCapPerMarketTzs` → GLOBAL_PER_MARKET. **Mode condition** (from the claimed row): COUNTER — trigger no longer OPEN → `house_trigger_gone`; trigger account on the bot's side → `TRIGGER_BOTH_SIDES`; `rawPool(botSide) + stake` > locked opposite money (`lockedA15` untargeted, `locked` targeted) → `house_condition_gone{COUNTER}`. FILL — against `locked`. OPENER and MANUAL OPENER — both pools must be 0. MANUAL THIN — against `locked`, then counterparty concentration: share limit not set, or the top account's share above it → `house_counterparty_concentration`. A share limit that is not set also refuses a MANUAL OPENER (`house_counterparty_concentration`): clearing it turns Enter now off for both entry conditions (MON-14). |
 | H4 | Inside `house:control`, the innermost lock, wrapping the money writes | Control re-read: switch off → `house_disabled`. GLOBAL_DAILY_STAKE, GLOBAL_LOSS_PROJECTED, GLOBAL_EXPOSURE, GLOBAL_BETS_PER_MINUTE, GLOBAL_BETS_PER_DAY. COUNTERPARTY_COUNT / COUNTERPARTY_TZS — a COUNTER is charged to its trigger account; a MANUAL THIN is attributed pro rata to every opposite account holding ≥ 25% of the locked money. GLOBAL_STAFF_CHOSEN_PER_DAY / _DAILY_STAKE. Then `staleAt` on the database clock (`clock_timestamp()`): a CLAIMED row past it → `house_intent_stale`. |
-| H5–H9 | The money writes | `markPlaced` is the first money statement: no CLAIMED row → the writes roll back → `house_intent_superseded`. The Position and the BET_PLACED transaction carry `houseBotId`. No wagering is recorded. The one `market.position.opened` audit row gains `houseBotId` and `intentId`. No bet receipt, push or email. No recruiter prize. Pools, odds, `predictorCount` (the TRUE count) and the live balance event are unchanged (D6). ⚠️ Since 2026-10-11 (sanctioned change (s), § "2026-10-11 · A desk account may count as more than one predictor in the count players see"): the account's FIRST stake on a market also adds its **Counts as − 1** to `predictorExtra`, in the same pool increment — read at `SEAM:shownCount`, straight after H2, inside `wallet:<botUser>` (§12.18). |
+| H5–H9 | The money writes | `markPlaced` is the first money statement: no CLAIMED row → the writes roll back → `house_intent_superseded`. The Position and the BET_PLACED transaction carry `houseBotId`. No wagering is recorded. The one `market.position.opened` audit row gains `houseBotId` and `intentId`. No bet receipt, push or email. No recruiter prize. Pools, odds, `predictorCount` (the TRUE count) and the live balance event are unchanged (D6). ⚠️ Since 2026-10-11 (sanctioned change (s), § "2026-10-11 · A desk account may count as more than one predictor in the count players see"): the account's FIRST stake on a market also adds its **Counts as − 1** to `predictorExtra`, in the same pool increment — read at `SEAM:shownCount`, straight after H2, inside `wallet:<botUser>` (§12.18). ⚠️ Since 2026-10-18 the seam reads every stake's bettor, so the holder's own FIRST stake BY HAND counts the account the same way and a desk stake after it adds nothing (§12.22). |
 
 Every cap that is **not set refuses** (§5.1). Every read in H2–H4 is a plain SELECT with no row lock a player's bet could queue behind (04 A9). All but two run on the lock's transaction: H2's **standing** group reads `isLockedOut(userId)` and `db.user.findById(userId)` on the pool, as the player path does, because neither takes a transaction today. Each is one indexed primary-key read; an exhausted pool would make that bet wait while it holds `wallet:<botUser>` (only the bot's own wallet), not `market:<id>`.
 
@@ -2870,6 +2870,72 @@ The same run passed backup-schema, the server suites, build and public bundle ve
 **Off-state proof.** After the first live deployment, a verified read-only, repeatable-read session found one control row with **both pair budgets NULL**; **4/4** designated accounts had the pair share, pair count and other-side settings disabled. Since that deployment, PAIR intents created/placed were **0/0**, marked second-leg COUNTER intents created/placed **0/0**, PAIR positions **0**, and newly two-sided desk markets **0**. The off-state probe passed. After final code `311fddfdc4f40745547ea6cbb756b91ff6182029` deployed, the repeat read-only probe covering activity since **18:32:19 UTC** passed: one control row, both pair budgets NULL, pair sharing disabled on **4/4** designated accounts, and zero PAIR or marked two-sided COUNTER intents, positions or newly two-sided desk markets. These are aggregate counts only; no production account, holder, player or market identifier is in this public record.
 
 **Owner action.** The corrected `docs/50pick-house-bots-desk-guide.pdf` was linked in the Codex chat for Ali. Ali can set both Two-sided desk daily limits and save Limits; on selected accounts he can enable Answer on the other side, set the Pair rounds share and per-day count, and save Rules. He decides whether to use the desk master switch.
+
+### 12.22 "Counts as" by hand — a desk account's own stakes placed by hand count too — built 2026-10-18
+
+**The ruling.** Ali, 2026-10-18: *"make the by hand place also count please"* — `docs/COMPLIANCE-DECISIONS.md`
+§ "2026-10-18 · Counts as: a desk account's own stakes placed by hand count too" (amends the 2026-10-11 entry's item 2).
+
+**The finding that led to it** (production, read-only, 2026-10-18 ≈14:30 EAT). Management saw "Counts as" move nothing on
+polls the accounts were in. The accounts WERE in them — by hand: officers sign in to desk accounts and stake polls like
+players (34 stakes on 13 open polls). A stake placed by hand carries no `houseBotId`, and §12.18's stamp read only the
+desk's own stakes (`ctx.kind === "house"`) and the shift's predicate only marked positions, so those markets read the
+true count. Every desk-placed (marked) open market carried exactly `countsAs − 1` per account — the mechanism was right
+for what it was told to count. (The same day's first answer — two accounts at 15 had placed nothing since their stake
+limits were raised above their opener's stake — was true and still stands; it was not the polls' cause.)
+
+**What changed.**
+- **The stamp** (`house-bot/shown-count.ts`, `SEAM:shownCount`) now runs for EVERY stake and reads the BETTOR: an empty
+  `mine` (the holder's first position on the market — the same test as the true count's +1) and a live (non-REMOVED)
+  desk account held by the bettor (`findLiveByUserId`) → `countsAs − 1`; anything else → 0. So an ordinary player reads
+  0 as before, the desk's first stake reads its weight as before, a holder's first stake BY HAND now reads it too, and
+  a later stake — by hand or by the desk — reads 0 (before, a desk stake after a hand stake stamped; now the account is
+  already counted). A REMOVED account's holder reads 0.
+- **The shift's population** (`shownMarketsWhere` / `memShownMarkets`): open markets holding a position of the account's
+  HOLDER (joined through `HouseBot.userId`), marked or not — exactly the markets the stamp has counted.
+- **The catch-up** (`prisma/migrations/20261018150000_counts_as_by_hand`, run once by `prisma migrate deploy`): for each
+  live account, every LIVE/CLOSED market its holder holds a position on with no position carrying this account's marker
+  gets `countsAs − 1` (weight read RAW as `countsAsOf` reads it). Dry-run read-only on production before the push: **13
+  open polls**, the largest +32 and one with four accounts 15 → 37.
+- **The help sentence** reads "…on a market it stakes on, by the desk or by hand. …" (console, officers' guide).
+
+**Unchanged.** No money: the stake, pools, odds, fees and every ledger row; the house marker and every money rule that
+reads it (wagering, the opposite-side rule, refunds) — a hand stake stays the holder's own. `predictorCount` and every
+report, admin page and audit row (D20a/D20d). D19.
+
+**Guards and proofs (measured on `e4af4ebb`, over `origin/main` `83c815f3`).**
+- `typecheck` 0 errors · `next build` complete (76/76 static pages, route table, `BUILD_ID`) · `verify:house-bot-bundle`
+  ALL PASS (402 client files, prerendered documents, `public/`) · `verify:backup-schema` 13/13.
+- `test:all` (every `test:*`, DB suites included, `--jobs 2`): **600/614**. The 14: eight red on `origin/main` `0e2beeca`
+  with the same failure counts (`guards-exist` — the `test:maswali-i18n` citation; `visual-pass-r5a/r5j/r6c/r7c/r5h`,
+  `presence-class`, `rate-copy` — the Millionea lane's); five that need a dev server (`responsive`, `motion`,
+  `revoked-deadend`, `admin-section-gate`, `needle-rest`, none of them reading a changed file); and ONE of this change:
+  `test:house-bot-migrations` a2.1 — the catch-up named `HouseBot` on a database migrated WITHOUT the house folders. It
+  now runs inside a `DO` block behind `to_regclass` + the marker column (`e4af4ebb`); re-run green, and
+  `test:house-bot-money` re-run green on both stores with §13c executing that very block.
+- Planted defects: `red:house-bot-money --only ca-` 6/6 caught (the seam's (s), three new: hand stake ignored, a REMOVED
+  holder counted, a second hand stake counted); `red:house-bot-console --only ca-` 11/11 caught on memory and Postgres
+  (three new: the shift by marker only — both twins — and the shift over every holder); `red:predictor-shown` 40/40. 0
+  files left dirty.
+- `verify:house-bot-migrations-old-build` NOT MEASURED (exit 3: it needs a separate checkout of `origin/main` with its own
+  `npm ci`). The migration is data only — no DDL — so the old build reads no schema it does not know.
+
+**LIVE `50cfe630` — read back 2026-10-18 18:03 EAT** (the release `?dpl=` from 15:03:40 UTC; health 200). `_prisma_migrations`
+records `20261018150000_counts_as_by_hand` finished 15:03:15 UTC, 1 step, no rollback, empty logs. Every one of the **56
+open markets** carries exactly the extra the rule owes (Σ over live accounts whose holder is on it of `countsAs − 1`,
+weight read raw): **0 mismatches** — so no market fell in the deploy window. 18 open markets carry desk accounts; the
+open markets' extra summed 16 before the release and 150 after. The four-account poll (true count 15) shows **41** on
+its page ("Watabiri 41") and in `/live`'s payload. (The weights moved twice during the day — officers re-saved — so the
+catch-up's own sums are not those of the morning's dry run; the read-back compares against the weights stored at the read.)
+The production gauntlet (`BASE=https://50pick.tz`, read-only, on `d09fd050` — this release plus its docs): **360 passed, 0
+failed**; [E3] NOT MEASURED by design (no QA sign-in on this machine). The LOCAL gauntlet before the push passed [A]–[E3];
+its [F]/[M] were not measured — the machine guard stopped the in-memory `next dev` at 781 MB free (14:58 UTC), and
+production's [M] covers Millionea's dark checks.
+
+⚠️ **The deploy window.** `prisma migrate deploy` runs at the new container's boot while the previous build still serves
+(`railway.json`: 60 s overlap, 30 s draining). A holder's FIRST hand stake on a market placed by the OLD build after the
+catch-up ran would carry nothing for that account; the post-deploy read compares every open market's extra with the sum
+the rule owes and names any such market.
 
 ---
 

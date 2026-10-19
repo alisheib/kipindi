@@ -2262,7 +2262,7 @@ export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "enterNow.thinStakeTzs": "The amount used when an officer acts by hand on a poll whose two sides are uneven.",
   "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
   /* Owner ruling 2026-10-11 ("a desk account may count as more than one predictor"). Display only: no money moves. */
-  "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change.",
+  "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on, by the desk or by hand. 1 = counted like any player. Money and odds never change.",
   "share.matchPct": "A second account may take the other side of an Up & Down round with no player stakes, at this share of the first account's total open stake on one side. Zero turns this off.",
   "share.matchPerDay": "The most pair rounds this account may place in one EAT day. Zero turns pairing off for this account even when the desk budget is set.",
 };

@@ -743,6 +743,69 @@ section("§6 · sanctioned changes");
     ok("6.s.p · population · the desk stake really moved the extra, so 6.s2's 99 is a measured change and not a default", (m2.predictorExtra ?? 0) !== (m1.predictorExtra ?? 0));
   }
 
+  /* (s) BY HAND (owner ruling 2026-10-18 — "make the by hand place also count"). An officer signed in to a desk
+   * account stakes like a player; that stake carries no house marker, and it still counts the account as its weight —
+   * once per market, at the holder's FIRST stake there, whoever places it. A later stake, by hand or by the desk, adds
+   * nothing; an ordinary player still adds nothing; a REMOVED account's holder is an ordinary player again. */
+  {
+    const market = await w.poll({ graceMin: 0 });
+    const desk = await w.bot();
+    await w.setCaps(desk.botId, { rules: { schemaVersion: 1, display: { countsAs: 50 } } });
+    await w.limits({ gStaffChosenMaxCounterpartyShare: 100 });
+    const m0: Any = { ...(await w.svc.getMarket(market.id)) };
+    const walletBefore = Number((await w.bal(desk.userId)).balance);
+    const h1: Any = await w.svc.buyPosition(desk.userId, { marketId: market.id, side: "NO", stake: 2_000, idempotencyKey: crypto.randomUUID() });
+    const m1: Any = { ...(await w.svc.getMarket(market.id)) };
+    const walletAfter = Number((await w.bal(desk.userId)).balance);
+    const hp: Any = h1.ok ? await w.mdal.positionStore.get(h1.data.positionId) : null;
+    ok("6.s4 · BY HAND · a desk account counted as 50: its holder's own first stake adds 1 to the true count and 49 on top, carries no marker, and moves only its own stake",
+      h1.ok === true && hp !== null && (hp.houseBotId ?? null) === null
+        && m1.predictorCount === m0.predictorCount + 1 && m1.predictorExtra === 49
+        && m1.noPool === m0.noPool + 2_000 && m1.yesPool === m0.yesPool && walletBefore - walletAfter === 2_000,
+      canon({ ok: h1.ok, reason: h1.reason, marker: hp?.houseBotId ?? null, count: m1.predictorCount, extra: m1.predictorExtra, debit: walletBefore - walletAfter }));
+    if (h1.ok) await w.backdate(h1.data.positionId, 10_000);
+    const h2: Any = await w.svc.buyPosition(desk.userId, { marketId: market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const m2: Any = { ...(await w.svc.getMarket(market.id)) };
+    ok("6.s5 · BY HAND · its second stake by hand adds nothing to either count",
+      h2.ok === true && m2.predictorCount === m1.predictorCount && m2.predictorExtra === 49,
+      canon({ ok: h2.ok, reason: h2.reason, count: m2.predictorCount, extra: m2.predictorExtra }));
+    const player = await w.user({ balance: 100_000 });
+    const r4: Any = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const m4: Any = { ...(await w.svc.getMarket(market.id)) };
+    ok("6.s7 · BY HAND · an ordinary player on the same market adds 1 to the true count and nothing on top",
+      r4.ok === true && m4.predictorCount === m2.predictorCount + 1 && m4.predictorExtra === 49,
+      canon({ ok: r4.ok, count: m4.predictorCount, extra: m4.predictorExtra }));
+    /* The other order: the DESK stakes first, then the holder by hand. (A desk stake AFTER the holder's own position is
+       refused by H2 as a market conflict, so that order never reaches the seam.) */
+    const marketD = await w.poll({ graceMin: 0 });
+    const opener = await w.user({ balance: 100_000 });
+    const d0: Any = await w.svc.buyPosition(opener, { marketId: marketD.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+    if (d0.ok) await w.backdate(d0.data.positionId, 10_000);
+    const d1: Any = await w.place(desk, await w.intent(desk, marketD.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    const md1: Any = { ...(await w.svc.getMarket(marketD.id)) };
+    if (d1.ok && d1.data?.positionId) await w.backdate(d1.data.positionId, 10_000);
+    const d2: Any = await w.svc.buyPosition(desk.userId, { marketId: marketD.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const md2: Any = { ...(await w.svc.getMarket(marketD.id)) };
+    ok("6.s6 · BY HAND · after the desk's stake from the account, its holder's stake by hand adds nothing — the account is already counted there",
+      d0.ok === true && d1.ok === true && md1.predictorCount === 2 && md1.predictorExtra === 49
+        && d2.ok === true && md2.predictorCount === 2 && md2.predictorExtra === 49,
+      canon({ desk: { ok: d1.ok, reason: d1.reason, count: md1.predictorCount, extra: md1.predictorExtra },
+        hand: { ok: d2.ok, reason: d2.reason, count: md2.predictorCount, extra: md2.predictorExtra } }));
+
+    const gone = await w.bot();
+    await w.setCaps(gone.botId, { rules: { schemaVersion: 1, display: { countsAs: 50 } } });
+    const removed = await w.dal.houseBotStore.setStatus(gone.botId, {
+      from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "6.s8 fixture", cause: "MANUAL" },
+    });
+    const market2 = await w.poll({ graceMin: 0 });
+    const r5: Any = await w.svc.buyPosition(gone.userId, { marketId: market2.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const m5: Any = { ...(await w.svc.getMarket(market2.id)) };
+    ok("6.s8 · BY HAND · the holder of a REMOVED account counted as 50 is an ordinary player again: 1 on the true count, nothing on top",
+      removed !== null && r5.ok === true && m5.predictorCount === 1 && (m5.predictorExtra ?? 0) === 0,
+      canon({ removed: removed?.status ?? null, ok: r5.ok, reason: r5.reason, count: m5.predictorCount, extra: m5.predictorExtra }));
+    ok("6.s.p2 · population · the hand stake really moved the extra, so 6.s4's 49 is a measured change and not a default", (m1.predictorExtra ?? 0) !== (m0.predictorExtra ?? 0));
+  }
+
   // (n)/(f) objection standing.
   {
     const { objectionEligibility } = await import("../src/lib/server/objections-service.ts");

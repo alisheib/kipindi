@@ -8837,20 +8837,22 @@ try {
        and after, records before → after in the COMPLIANCE row, and refuses every bad box ON ITS FIELD with nothing moved ━━
        ⛔ The markets carry positions with the account's marker written as fixtures, so no global limit is moved for a
        placement: two OPEN markets (LIVE, CLOSED) that must move, two FINISHED ones (RESOLVED, VOIDED) that must not, a
-       LIVE market the account is not on, and a LIVE market only ANOTHER account is on. */
+       LIVE market the account is not on, and a LIVE market only ANOTHER account is on. Since the owner ruling of
+       2026-10-18 ("make the by hand place also count") a third OPEN market must move too: one where the account's holder
+       staked BY HAND only — a position of the holder with NO marker. */
     {
       /* The caps the live platform accepts on a SAVE (§2i's recipe, as 2.fs09.4 builds it): a min gap at the bet-place
          floor and a stake max inside the live bounds — or every good save below is refused on a field it never moved. */
       const acct = await fixtureJ({ freqMinGapSec: 20 });
       const other = await fixtureJ();
       const KEY = "counts-as";
-      const marketIn = async (status: string | null, by: { botId: string; userId: string } | null): Promise<string> => {
+      const marketIn = async (status: string | null, by: { botId: string; userId: string } | null, byHand = false): Promise<string> => {
         const m: Any = await w.poll();
         if (by) {
           await w.mdal.positionStore.set({
             id: w.uid("pos"), userId: by.userId, marketId: m.id, side: "YES", stake: 1_000, bonusStakeTzs: 0,
             potentialPayout: 2_000, status: "OPEN", finalPayout: null, placedAt: w.iso(), settledAt: null,
-            idempotencyKey: null, houseBotId: by.botId,
+            idempotencyKey: null, houseBotId: byHand ? null : by.botId,
           });
         }
         if (status) await w.mdal.marketStore.stamp(m.id, { status });
@@ -8860,6 +8862,7 @@ try {
         live: await marketIn(null, acct), closed: await marketIn("CLOSED", acct),
         resolved: await marketIn("RESOLVED", acct), voided: await marketIn("VOIDED", acct),
         notOn: await marketIn(null, null), othersOnly: await marketIn(null, other),
+        byHand: await marketIn(null, acct, true), othersByHand: await marketIn(null, other, true),
       };
       const extras = async (): Promise<Record<string, number>> => Object.fromEntries(await Promise.all(Object.entries(MK).map(
         async ([k, id]) => [k, Number(((await w.svc.getMarket(id)) as Any)?.predictorExtra ?? 0)] as const)));
@@ -8899,11 +8902,11 @@ try {
 
       /* the form, before anything moves */
       const r0: Any = ((await formK()).rules as Any[]).find((r: Any) => r.key === KEY) ?? null;
-      ok("2.ca.1 · the Rules form draws Counts as under Market cards — value 1, its range, its help — and says what a change does to the 2 open markets the account is on",
+      ok("2.ca.1 · the Rules form draws Counts as under Market cards — value 1, its range, its help — and says what a change does to the 3 open markets the account is on (one of them by hand)",
         r0 !== null && r0.section === "Market cards" && r0.label === "Counts as" && r0.value === "1" && r0.range === "Between 1 and 10,000."
-          && r0.help === "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change."
-          && r0.change?.up === "Saving raises the count players see on the 2 open markets this account is on, at once. Finished markets keep their number."
-          && r0.change?.down === "Saving lowers the count players see on the 2 open markets this account is on, at once — players can see that count go down. Finished markets keep their number.",
+          && r0.help === "How many predictors this account adds to the count players see on a market it stakes on, by the desk or by hand. 1 = counted like any player. Money and odds never change."
+          && r0.change?.up === "Saving raises the count players see on the 3 open markets this account is on, at once. Finished markets keep their number."
+          && r0.change?.down === "Saving lowers the count players see on the 3 open markets this account is on, at once — players can see that count go down. Finished markets keep their number.",
         j({ row: r0 }));
       ok("2.ca.1b · no other row carries a consequence line", ((await formK()).rules as Any[]).filter((r: Any) => r.key !== KEY).every((r: Any) => r.change === null));
 
@@ -8928,11 +8931,12 @@ try {
       const e1 = await extras();
       const ev1 = await eventOfJ(acct.botId, "RULES_SAVED");
       const a1: Any = await auditK(await versionK());
-      ok("2.ca.3 · 1 → 100: LIVE and CLOSED move by 99; RESOLVED and VOIDED keep theirs; a market the account is not on, or only another account is on, is untouched",
-        up.r?.ok === true && e1.live === 99 && e1.closed === 99 && e1.resolved === 0 && e1.voided === 0 && e1.notOn === 0 && e1.othersOnly === 0,
+      ok("2.ca.3 · 1 → 100: LIVE and CLOSED move by 99, and so does the LIVE market staked by hand; RESOLVED and VOIDED keep theirs; a market the account is not on, or only another account is on (by the desk or by hand), is untouched",
+        up.r?.ok === true && e1.live === 99 && e1.closed === 99 && e1.byHand === 99 && e1.resolved === 0 && e1.voided === 0 && e1.notOn === 0
+          && e1.othersOnly === 0 && e1.othersByHand === 0,
         j({ result: up.r, extras: e1 }));
       ok("2.ca.3b · …and the save says what it moved, in the server's own sentence",
-        up.r?.shownNotice === "Counts as is now 100 — 2 open markets updated.", j({ notice: up.r?.shownNotice ?? null }));
+        up.r?.shownNotice === "Counts as is now 100 — 3 open markets updated.", j({ notice: up.r?.shownNotice ?? null }));
       ok("2.ca.3c · …every admin is told once, naming the officer, with Counts as before → after in the sentence",
         ev1 !== null && landedOnce(up.fan, `/admin/desk/${acct.botId}?tab=history&event=${ev1.id}`)
           && String(up.fan.officer[0]?.bodyEn ?? "").includes("Counts as: 1 → 100"), j({ fan: fanOf(up.fan) }));
@@ -8946,9 +8950,10 @@ try {
       /* 100 → 40 */
       const down: Any = await saveK(await postK("40"));
       const e2 = await extras();
-      ok("2.ca.4 · 100 → 40: the two open markets move down by 60 (99 → 39) and nothing else moves",
-        down?.ok === true && e2.live === 39 && e2.closed === 39 && e2.resolved === 0 && e2.voided === 0 && e2.notOn === 0 && e2.othersOnly === 0
-          && down.shownNotice === "Counts as is now 40 — 2 open markets updated.", j({ result: down, extras: e2 }));
+      ok("2.ca.4 · 100 → 40: the three open markets move down by 60 (99 → 39) and nothing else moves",
+        down?.ok === true && e2.live === 39 && e2.closed === 39 && e2.byHand === 39 && e2.resolved === 0 && e2.voided === 0 && e2.notOn === 0
+          && e2.othersOnly === 0 && e2.othersByHand === 0
+          && down.shownNotice === "Counts as is now 40 — 3 open markets updated.", j({ result: down, extras: e2 }));
 
       /* a save that leaves it at 40 */
       const same: Any = await saveK(await postK("40"));
@@ -8963,8 +8968,8 @@ try {
       else ((await w.mdal.marketStore.get(MK.live)) as Any).predictorExtra = 5;
       const toOne: Any = await saveK(await postK("1"));
       const e3 = await extras();
-      ok("2.ca.6 · 40 → 1 after the LIVE market drifted to 5: it is held at 0 — never negative — and the CLOSED one returns to 0",
-        toOne?.ok === true && e3.live === 0 && e3.closed === 0 && e3.resolved === 0 && e3.voided === 0, j({ result: toOne, extras: e3 }));
+      ok("2.ca.6 · 40 → 1 after the LIVE market drifted to 5: it is held at 0 — never negative — and the CLOSED one and the one staked by hand return to 0",
+        toOne?.ok === true && e3.live === 0 && e3.closed === 0 && e3.byHand === 0 && e3.resolved === 0 && e3.voided === 0, j({ result: toOne, extras: e3 }));
       ok("2.ca.p · population · the extras really moved between saves, so 2.ca.3–2.ca.6 measured changes and not defaults", e1.live !== e2.live && e2.live !== e3.live);
     }
 
