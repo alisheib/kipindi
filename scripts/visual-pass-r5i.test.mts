@@ -377,7 +377,7 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
   const W = read("src/app/wallet/wallet-client.tsx");
   const txn = W.includes("function TxnRow") ? W.slice(W.indexOf("function TxnRow")) : ""; // the file's last function
   ok("2.12 · /wallet's history row: a ledger-type identity glyph or neutral fallback, with an independent neutral amount",
-    /const ledgerGlyph = LEDGER_GLYPH\[tx\.type as TxnTypeValue\] \?\? null;/.test(txn)
+    /const ledgerGlyph = tx\.storedType \? LEDGER_GLYPH\[tx\.storedType\] : null;/.test(txn)
       && /<IconPlate size=\{32\} variant=\{ledgerGlyph \? "identity" : "quiet"\}/.test(txn)
       && /<LedgerGlyph s=\{plateGlyph\(32\)\} tier=\{ledgerGlyph \? "duo" : "line"\}/.test(txn)
       && /\$\{movedNothing \? "text-text-muted" : "text-text"\}/.test(txn) && !/yes-|no-\d/.test(txn), txn.slice(0, 80));

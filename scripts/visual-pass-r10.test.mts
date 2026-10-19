@@ -399,8 +399,9 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
   const doorFiles = PLAYER_TSX.filter((f) => [...code(f).matchAll(NAMES_DOOR)].length > [...code(f).matchAll(MARK)].filter((m) => new RegExp("^<I[.]arrow(?:DownToLine|UpFromLine)").test(m[0])).length);
   ok(`3.3′ · every other naming of the two money arrows on a player surface is one of 3.3's — ${doorFiles.join(", ")}`,
     j([...doorFiles].sort()) === j(["src/app/help/page.tsx", "src/components/wallet/receipt-list-row.tsx"]), j(doorFiles));
-  // PHOSPHOR-MIGRATION release 2a part 2: a sign-based arrow mislabels payouts, refunds and fees. Read the actual
-  // typed mapping the row uses, and prove a returned stake mislabeled as a deposit makes this check fail.
+  // PHOSPHOR-MIGRATION release 2a part 2: a sign-based arrow mislabels payouts, refunds and fees. A filled wallet tile
+  // then caught the display fold feeding this map instead of the stored enum. Pin the adapter as well as the row, and
+  // prove both a wrong mapping and a dropped stored type fail this check.
   const ledgerSource = code("src/app/wallet/wallet-client.tsx");
   const ledgerMapping = (src: string) => {
     const block = src.match(/const LEDGER_GLYPH: Record<TxnTypeValue, DuoGlyphKey \| null> = \{([\s\S]*?)\};/)?.[1] ?? "";
@@ -413,14 +414,23 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ADJUSTMENT_DEBIT: null, ADJUSTMENT_CREDIT: null, HOUSE_FEE: null,
   };
   const sameLedger = (src: string) => j(ledgerMapping(src)) === j(expectedLedger);
-  ok("3.3″ · each stored ledger type has its glyph, internal adjustments stay neutral, and the row reads type rather than amount sign",
-    sameLedger(ledgerSource)
-      && ledgerSource.includes("const ledgerGlyph = LEDGER_GLYPH[tx.type as TxnTypeValue] ?? null;")
-      && ledgerSource.includes("const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;")
-      && ledgerSource.includes('<IconPlate size={32} variant={ledgerGlyph ? "identity" : "quiet"} aria-hidden>'));
+  const adapterSource = code("src/app/wallet/page.tsx");
+  const transactionTypeSource = code("src/lib/ui-stubs.ts");
+  const ledgerPathWorks = (row: string, adapter: string, shape: string) =>
+    sameLedger(row)
+      && row.includes("const ledgerGlyph = tx.storedType ? LEDGER_GLYPH[tx.storedType] : null;")
+      && row.includes("const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;")
+      && row.includes('<IconPlate size={32} variant={ledgerGlyph ? "identity" : "quiet"} aria-hidden>')
+      && adapter.includes("storedType: t.type,")
+      && shape.includes("storedType?: TxnTypeValue;");
+  ok("3.3″ · each stored ledger type has its glyph, internal adjustments stay neutral, and the adapter carries the unfurled type into the row",
+    ledgerPathWorks(ledgerSource, adapterSource, transactionTypeSource));
   const mislabelRefund = ledgerSource.replace('BET_REFUND: "refund",', 'BET_REFUND: "arrowDownToLine",');
   ok("3.3″ PLANT · a returned stake mislabeled as a deposit fails the same ledger check",
     mislabelRefund !== ledgerSource && !sameLedger(mislabelRefund));
+  const dropStoredType = adapterSource.replace("storedType: t.type,", "storedType: undefined,");
+  ok("3.3″ PLANT · folding the stored event away before rendering fails the same ledger check",
+    dropStoredType !== adapterSource && !ledgerPathWorks(ledgerSource, dropStoredType, transactionTypeSource));
   // ⭐ RE-PINNED IN THE OPEN 2026-10-19 (PHOSPHOR-MIGRATION W4, §8a): the Select's field caret and DateSelect's month title
   // drew their own 12-unit caret, pulled by a derived FIELD_CARET_PULL. They are the family's chevronDown now, at 12px
   // (Phosphor's Bold caret carries the hand-drawn one's weight there; at 10px it read faint), and the edge rule reads its

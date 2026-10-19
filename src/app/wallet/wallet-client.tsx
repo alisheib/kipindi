@@ -521,7 +521,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
     reversed: t.wallet.txnStatusReversed,
     cancelled: t.wallet.txnStatusCancelled,
   };
-  const ledgerGlyph = LEDGER_GLYPH[tx.type as TxnTypeValue] ?? null;
+  const ledgerGlyph = tx.storedType ? LEDGER_GLYPH[tx.storedType] : null;
   const LedgerGlyph = ledgerGlyph ? I[ledgerGlyph] : I.receipt;
   return (
     /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
