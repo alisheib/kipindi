@@ -29,6 +29,26 @@
 
 ## §0 · RESUME AT
 
+**⏳ IN FLIGHT (2026-10-19 from 07:00 UTC, OMEGA-COMPILE01 — the lead session; Ali: "this machine has good compute
+power, it's ok to parallelize").** The LIVE STATE below is still the plan; this block says who is on what right now.
+- **Item 3 is DONE in this push:** `mln-redfix`'s commit cherry-picked onto `main` `04b24a44` — on that tree `tsc` 0,
+  the four green suites (`enter-where-pressed`, `journey-tickets` 51, `journey-updown` 54, `root-has` 12) and the four
+  reds (120/120, 115/115, 16/16, 19 plants) all green, `next build` ✅, local `qa:live` 386/386. `mln-redfix` can be
+  deleted on origin after the read-back.
+- **Item 1 (S5):** `maswali-s4` = `6bb91bfd` = S5 + `main` `04b24a44` merged (one conflict, COMPLIANCE-DECISIONS: both
+  top entries kept, newest first); `prisma generate` done; `house-bot-disclosure` 122, `journey-tickets` 51,
+  `visual-pass-r4i` 129, `house-bot-seam` 149, `predictor-shown` 27, `migration-ownership` 13, `maswali-ui` 80,
+  `maswali-design` 62 green on it; `tsc`, `maswali-fence`, `house-bot-migrations`, `verify:backup-schema` and
+  `house-bot-reports` running. The tab (`mln-s5-tab`): a helper lane is building the journey tab and the top bar's core
+  link; it merges into `maswali-s4` before the four render jobs.
+- **Item 2 (S7):** a helper lane merges `mln-s7-f4` into `mln-sf` (the code is identical: `mln-s7-f4`'s base is
+  `mln-sf`'s code head), re-pins D19a at the merge, then runs the round's whole derived list once, on the merged tree.
+- **Item 4 (S6):** `mln-s6-reports` round 15 (the figure rule) in a helper lane; `mln-s6-notices` rounds 13–16 under an
+  independent review, with its runs.
+- **Worktrees (OMEGA, SSD, each with its own `npm ci`):** `C:\50pick-ssd\kipindi-mln-s4` (`maswali-s4`), `-mln-tab`
+  (`mln-s5-tab`), `-mln-f4` (`mln-s7-f4` → `mln-sf`), `-mln-rep` (`mln-s6-reports`), `-mln-not` (`mln-s6-notices`),
+  `-mln-redfix` (the item-3 release). Every lane pushes its branch after each commit; nothing lives only on OMEGA.
+
 **⏩ LIVE STATE (2026-10-18 22:44 UTC, Ali-Blade15 — STOPPED for the day, resumable from any machine; read this first.
 The State paragraph below is the last push's.)**
 - **`main` = `32eb5084` + this docs commit:** S1–S4 and S5's foundations, dark (`WITHDRAWN`; every Millionea route
