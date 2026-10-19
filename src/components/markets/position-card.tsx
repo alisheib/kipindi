@@ -11,7 +11,7 @@ import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { keepFigures } from "@/components/ui/keep-words";
-import { sideWord, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
+import { sideWord, positionStatusGlyph, positionStatusWord, type LabelProductLine } from "@/lib/side-label";
 // ⭐ THE STATUS-COLOUR DICTIONARY (stage 5.3). The word comes from `side-label`, the COLOUR from
 // here — two definition sites for two different facts, neither typed at this call site. Since S6 WP9 the
 // chip's whole rule is `positionStatusChip`, which the journey's ticket card calls too: one rule, two cards.
@@ -66,6 +66,9 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
   // §L2 — this local map was the second definition site for the position-status family;
   // `notify-poller` had no map at all and printed the enum. One lexicon now serves both.
   const statusLabel = positionStatusWord(t, status, productLine);
+  // Its glyph beside the word and the ink (PHOSPHOR-MIGRATION W4): one rule, the journey's ticket card's too.
+  const state = positionStatusGlyph(status);
+  const StateGlyph = I[state.key];
   return (
     <Link
       /**
@@ -124,7 +127,7 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
             * 18px side pill, so its card's content sat 2px below a settled neighbour's. Every state now
             * takes the side pill's size; the colour rule above is untouched.
             */}
-          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}>{statusLabel}</Chip>
+          <Chip size="sm" metrics="base" variant={positionStatusChip(status)}><StateGlyph s={12} tier={state.tier} aria-hidden />{statusLabel}</Chip>
         </div>
         <span className="font-mono text-[14px] font-bold tabular-nums text-text">
           <Cash>{formatTzs(stake)}</Cash>

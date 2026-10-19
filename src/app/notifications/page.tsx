@@ -51,7 +51,7 @@ import { pageForUser } from "@/lib/server/notification-service";
 import { getServerT } from "@/lib/i18n-server";
 import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { iconFor, tintFor } from "@/lib/notification-appearance";
+import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
 import {
   parseFilter, parseSort,
@@ -180,7 +180,7 @@ export default async function NotificationsPage({
     <PageContainer tier="reading" className="space-y-5" emptyStateOwner={items.length === 0 ? "collection" : undefined}>
       <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.profile.title} />
       <PageHeader
-        icon={<I.bellRing s={22} />}
+        icon={<I.bell s={22} />}
         eyebrow={t.notif.eyebrow}
         title={t.notif.title}
       />
@@ -283,7 +283,7 @@ export default async function NotificationsPage({
                       A row is one object; it must not be 32px in the panel and 36px here,
                       or the page reads as a different product than the bell that opened it. */}
                   <IconPlate size={32} className={cn("mt-0.5 border", tintFor(n.kind))}>
-                    <Icon s={16} />
+                    <Icon s={16} tier={tierFor(n.kind)} />
                   </IconPlate>
                   <div className="min-w-0 flex-1">
                     {/* ⛔ A REAL ANCHOR, not a click handler. The bell must close its panel

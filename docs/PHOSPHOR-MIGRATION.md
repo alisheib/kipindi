@@ -38,7 +38,17 @@ Fill is drawn in four places only (§8c holds the law for Fill, Duotone and Line
   - whoever lands on `main` second re-runs `npm run glyphs:gen` on the merged `map.ts`, and sets `PREVIOUS_SPRITES` to
     what production serves;
   - each side messages the other before opening a release window and when it closes.
-- Proven so far: nothing yet. The audit census is reproducible from §8's commands.
+- **Built** (the branch's second commit):
+  - the map: new keys `more`, `privacyNotice`, `net`, `send`, `staffConsole`; `vibrate` revived; `trendingUp` and
+    `trendingDown` retired; `agent` an app key; the W4 Fills;
+  - `CHROME_FILLS`: a chrome key's Fill is inlined only where the chrome draws it (the registry's `fa`);
+  - every §8a release-1 row and every §8b meaning; status in Fill through the kit's doors; the position and ticket chips'
+    glyph + ink + word (`positionStatusGlyph`); `EmptyStateLink`;
+  - §8c written into DESIGN_AUTHORITY §K3 item 3; the typed-character census as `test:glyph-source` §7.
+- **Proven so far:** `test:glyph-map` 0 failures, its red twin 35/35; `test:glyph-sync` 0, red 13/13; `test:glyph-source` 0,
+  red 19/19; `test:chart-one-home` 30/30; all 158 red-harness anchors in changed files still match (3 re-anchored).
+  Typecheck found 3 errors (the hub's `HubGlyph` list), fixed; its re-run, the derived battery (319 suites), the build,
+  the parity entries, `qa:live`, the tiles and the review are next.
 
 W3, the selected states, went live at **`ee62451c`**, pushed at
 11:22 UTC on Ali's *"push now please then do any chekcs needed"*:

@@ -21,6 +21,7 @@ import { notFound } from "next/navigation";
 import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { BackLink } from "@/components/ui/back-link";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
@@ -349,7 +350,9 @@ export default async function UpDownRoundPage({
   // string and would not compile — the collision was the tell that there were two of one thing.
   const outcomeLabel = outcomeWord(t, round.outcome ?? "VOID", "UPDOWN");
   const outcomeInk = round.outcome === "UP" ? "var(--yes-300)" : round.outcome === "DOWN" ? "var(--no-300)" : "var(--text-muted)";
-  const outcomeArrow = round.outcome === "UP" ? "M5 15l7-7 7 7" : round.outcome === "DOWN" ? "M5 9l7 7 7-7" : null;
+  // The side that won, as its glyph (PHOSPHOR-MIGRATION §8b: Up & Down's sides are the two halves of its ⇅, `arrowUp` and
+  // `arrowDown`, everywhere). It was a hand-drawn caret.
+  const OutcomeGlyph = round.outcome === "UP" ? I.arrowUp : round.outcome === "DOWN" ? I.arrowDown : null;
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
   // The shell's own cached answer: a journey reader's door to the round's tickets names the journey's page (round 6, C14).
   const { journey } = await resolveSimpleJourney();
@@ -682,7 +685,7 @@ export default async function UpDownRoundPage({
                         >
                           <span className="flex min-w-0 items-center gap-1.5">
                             <Chip className="tabular-nums" variant={p.side === "UP" ? "yes" : "no"}>
-                              {p.side === "UP" ? "↑" : "↓"} {formatTzs(p.stake)}
+                              {p.side === "UP" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}{formatTzs(p.stake)}
                             </Chip>
                             <span className="font-mono text-[10px] text-text-faint">{POSITION_STATUS_LABEL(t, p.status)}</span>
                           </span>
@@ -784,7 +787,7 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /></svg>
+                    <I.users s={12} className="text-text-muted" />
                     {formatNumber(round.players)}
                   </p>
                   {/* Under its right-aligned count it ends on the count's edge (F19, round 6 · C11). */}
@@ -863,7 +866,7 @@ export default async function UpDownRoundPage({
               <div style={{ ...inset, padding: "12px 14px 13px" }}>
                 <p className={eyebrow}>{t.market.udOutcome}</p>
                 <p className="mt-[7px] m-0 flex items-center gap-1.5 font-mono text-[19px] font-bold leading-none" style={{ letterSpacing: "0.04em", color: outcomeInk }}>
-                  {outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>}
+                  {OutcomeGlyph && <OutcomeGlyph s={16} />}
                   {outcomeLabel}
                 </p>
                 <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">

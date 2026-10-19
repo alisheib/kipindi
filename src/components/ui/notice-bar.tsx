@@ -98,8 +98,10 @@ export function NoticeBar({
           session-ended notice, the offline notice, the operator's announcement and maintenance bars, the away summary
           and the preview marker all render through here, in both shells. */}
       <div className="mx-auto flex max-w-board flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 lg:px-6">
+        {/* The bar's glyph is its standing condition, so it is drawn in Fill (PHOSPHOR-MIGRATION §8c); an action's glyph
+            (NoticeBarAction, below) is something to press, and stays Line. */}
         {Glyph
-          ? <Glyph s={15} className="shrink-0" aria-hidden />
+          ? <Glyph s={15} tier="fill" className="shrink-0" aria-hidden />
           : <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: t.accent }} aria-hidden />}
         {/* 2026-09-13: a 14rem BASIS, not a zero one. With a zero basis the row could never wrap:
             the text shrank to fit the action beside it and ran to five lines at 360 in Swahili.

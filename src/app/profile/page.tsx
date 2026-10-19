@@ -382,7 +382,7 @@ export default async function ProfilePage() {
               opens at its address, with its statement). Both shells (a page body). */}
           {inviteIsLiveFor(inviteViewer) && (
             breakEnd ? null : inviteViewer.agentInGoodStanding ? (
-              <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
+              <SettingRow icon={I.agent} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
                 badge={t.common.newBadge} />
             ) : (
               <SettingRow icon={I.users} title={inviteName(t, { agent: false, paid: invitePayable })} subtitle={inviteLine(t, { agent: false, paid: invitePayable })} href="/profile/invite" />
@@ -414,7 +414,7 @@ export default async function ProfilePage() {
                the convention every page of that shape follows (the leaderboard's "Bingwa", /help's "Msaada", /fairness's
                "Uthibitisho wa utatuzi": the door says the tab and the eyebrow, the h1 is the page's headline). The hub's
                row and the journey menu say the same. */
-            <SettingRow icon={I.shieldcheck}   title={t.profile.kycIdentityVerification} subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+            <SettingRow icon={I.idCard}        title={t.profile.kycIdentityVerification} subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
           )}
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />

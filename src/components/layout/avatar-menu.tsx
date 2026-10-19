@@ -333,7 +333,7 @@ export function AvatarMenu({
                     : { border: "1px solid color-mix(in oklab, var(--gold-400) 22%, transparent)", background: "color-mix(in oklab, var(--gold-500) 6%, transparent)" }}
                 >
                   <span className={cn("inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md", journey ? "text-brand-300" : "text-gold-300")} style={{ background: journey ? "color-mix(in oklab, var(--brand-500) 12%, transparent)" : "color-mix(in oklab, var(--gold-500) 12%, transparent)" }}>
-                    <I.shieldcheck s={15} aria-hidden />
+                    <I.staffConsole s={15} aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-display text-body-sm font-semibold text-text leading-tight">{t.common.staffConsole}</span>
@@ -434,15 +434,18 @@ type MenuRow = {
  * ⚠️ The order below is the shipped order, unchanged: Profile · Wallet · Invite · Proposals ·
  * Positions · Results · Leaderboard · Verify ID.
  */
+// Each row wears its destination's own glyph, the one the journey's hub and the page itself draw (PHOSPHOR-MIGRATION §8b):
+// the friends programme is `users` (the gift means bonuses), the leaderboard `podium`, identity verification `idCard`
+// (`shieldcheck` means verified).
 const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile",        icon: I.profile,     en: "Profile",        sw: "Wasifu",                    zh: "个人资料" },
   { href: "/wallet",         icon: I.wallet,      en: "Wallet",         sw: "Pochi",                     zh: "钱包" },
-  { href: "/profile/invite", icon: I.gift,        en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true, invite: true },
+  { href: "/profile/invite", icon: I.users,       en: "Invite & Earn",  sw: "Alika na upate zawadi",     zh: "邀请赚钱", accent: true, invite: true },
   { href: "/proposals",      icon: I.idea,        en: "Propose & earn", sw: "Pendekeza na upate zawadi", zh: "提议赚钱", accent: true, proposals: true },
   { href: "/positions",      icon: I.portfolio,   en: "Positions",      sw: "Nafasi",                    zh: "持仓" },
   { href: "/results",        icon: I.resolved,    en: "Results",        sw: "Matokeo",                   zh: "结果" },
-  { href: "/leaderboard",    icon: I.crown,       en: "Leaderboard",    sw: "Jedwali la Washindi",       zh: "排行榜" },
-  { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
+  { href: "/leaderboard",    icon: I.podium,      en: "Leaderboard",    sw: "Jedwali la Washindi",       zh: "排行榜" },
+  { href: "/profile/kyc",    icon: I.idCard,      en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
 ];
 
 function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, journey = false }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState; journey?: boolean }) {

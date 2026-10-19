@@ -16,6 +16,9 @@
  *      ones named in DATA_SVG with their reason — an icon by another door
  *   §6 every image file under public/ is named in PUBLIC_IMAGES with what it is (the brand, the app's icons, vendors'
  *      marks, share images): an icon is a family key, never an image file — so no icon set arrives with a design
+ *   §7 a typed character used as an icon (▲ ▼ ★ ✓ ✗ ⚠ ⛔ ↑ ↓ ● ☰ ⓘ, an arrow, an emoji) is a ratchet too (W4): each
+ *      remaining one is named in TEXT_ICONS with its reason (an arrow that is punctuation, text that is not an
+ *      interface), the console's and the server's are two frozen totals, and every count may only fall
  *
  * ⭐ ONE SOURCE (Ali, 2026-10-17, R-ONE-SOURCE: "we need to have 1 source of glyphs and icons so mark tsi as rule and let
  * na fuutre deins gor pages tkae fomr our new souerce clenaly perfclet loically"). An icon a page needs and the family
@@ -45,7 +48,6 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/app/api/og/market/[id]/route.tsx": [2, "the share image, rendered to PNG on the server"],
   "src/app/api/og/page/route.tsx": [1, "the share image, rendered to PNG on the server"],
   "src/app/global-error.tsx": [1, "the brand mark on the last-resort error page, which cannot import components"],
-  "src/app/updown/[roundId]/page.tsx": [2, "W7: hand-drawn user and arrow icons"],
   "src/components/admin/admin-charts.tsx": [4, "charts"],
   "src/components/badges/Badge.tsx": [1, "the badge medallion's ring (R-BADGES: identity art)"],
   "src/components/badges/icons.tsx": [1, "the badge medallion art (R-BADGES: identity art)"],
@@ -56,32 +58,25 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/charts/ring.tsx": [1, "a chart"],
   "src/components/charts/updown-match-track.tsx": [2, "a chart"],
   "src/components/charts/volume-spark.tsx": [1, "a chart"],
-  "src/components/chat/ChatPanel.tsx": [1, "W7: a hand-drawn arrow icon"],
   "src/components/chat/HelpMark.tsx": [1, "the chat bubble's own mark"],
-  "src/components/layout/bottom-nav.tsx": [1, "the deposit coin's plus (a drawn control, W3 reviews it)"],
-  "src/components/layout/needle-drawer.tsx": [5, "the Needle's mark and W7: hand-drawn chevron and check icons"],
+  "src/components/layout/needle-drawer.tsx": [2, "the Needle's mark: the theme swatches' disc and its two-tone mark in miniature (brand object, round 4 of 2026-10-09)"],
   "src/components/layout/needle.tsx": [1, "the Needle (brand object)"],
-  "src/components/layout/notifications-panel.tsx": [1, "W7: empty-state art outside the family"],
+  "src/components/layout/notifications-panel.tsx": [1, "W6 (release 2): empty-state art outside the family"],
   "src/components/maswali/maswali-unbroken-line.tsx": [1, "Millionea's hairline (MASWALI-BUILD S5): M5's Unbroken Line and M6's closing rule, drawn on by `.m-draw` — a rule, not an icon"],
   "src/components/markets/conviction-dial.tsx": [1, "the conviction dial (an instrument)"],
-  "src/components/markets/share-button.tsx": [1, "W7: a hand-drawn link icon"],
-  "src/components/onboarding/first-visit-primer.tsx": [1, "W7: primer art outside the family"],
+  "src/components/onboarding/first-visit-primer.tsx": [1, "W7 (release 3): primer art outside the family"],
   "src/components/positions/countdown-ring.tsx": [1, "the countdown ring (an instrument)"],
   "src/components/positions/pnl-summary-strip.tsx": [1, "a chart"],
-  "src/components/rg/self-care-art.tsx": [1, "W7: responsible-gambling art outside the family"],
-  "src/components/settings/feedback-settings.tsx": [1, "W7: a copy of the Needle's mark"],
+  "src/components/rg/self-care-art.tsx": [1, "W7 (release 3): responsible-gambling art outside the family"],
   "src/components/ui/button.tsx": [1, "the button's pending spinner"],
-  "src/components/ui/date-select.tsx": [1, "W7: a hand-drawn chevron"],
-  "src/components/ui/duration-input.tsx": [1, "W7: a hand-drawn chevron"],
-  "src/components/ui/empty-state.tsx": [13, "W6: the private empty-state drawings, retired for Duotone glyphs on plates"],
+  "src/components/ui/duration-input.tsx": [1, "W7 (release 3): a hand-drawn chevron, on one console page only"],
+  "src/components/ui/empty-state.tsx": [13, "W6 (release 2): the private empty-state drawings, retired for Duotone glyphs on plates"],
   "src/components/ui/glyph-shell-sprite.tsx": [1, "the glyph family's inline chrome symbols"],
   "src/components/ui/glyphs.tsx": [2, "the glyph family itself"],
   "src/components/ui/identity-avatar.tsx": [4, "the player's heraldic crest (a second system, DESIGN_AUTHORITY B1a)"],
-  "src/components/ui/select.tsx": [2, "W7: hand-drawn chevron and check icons"],
   "src/components/ui/social-marks.tsx": [3, "vendor marks (Instagram, TikTok, WhatsApp) in their own colours"],
   "src/components/ui/spinner.tsx": [1, "the spinner"],
   "src/components/updown/price-hero.tsx": [1, "a chart"],
-  "src/components/updown/round-stake-panel.tsx": [1, "W7: a hand-drawn icon"],
   "src/lib/brand-mark.ts": [3, "the brand mark's source drawings"],
   "src/lib/offline-document.ts": [3, "the offline page, which cannot load the app's components"],
 };
@@ -94,6 +89,49 @@ const DATA_SVG: Record<string, [count: number, why: string]> = {
   "src/components/layout/needle.css": [1, "the Needle's drag cursor: a CSS cursor takes an image, never an element (W7 draws it from the family's rotateCcw)"],
 };
 const DATA_SVG_RE = new RegExp("data:image[/]svg[+]xml", "g");
+
+/**
+ * §7 · A TYPED CHARACTER USED AS AN ICON (PHOSPHOR-MIGRATION W4; the audit of 2026-10-19, §8a) — the fourth door. A typed
+ * ▲ ▼ ★ ✓ ✗ ⚠ ⛔ ↑ ↓ ↗ ● ☰ ⓘ, an arrow, or an emoji in code is an icon the family does not draw. Counted per file with the
+ * comments out; a count may only fall, and a file that reaches 0 leaves the list (so the progress stays won). Two kinds stay,
+ * each named: an arrow that is punctuation, read "to" ("Wallet → Withdraw", open → close), and text that is not an
+ * interface (a prompt to the model). The console's typed marks and the server's own text are counted as two totals until
+ * release 3 replaces the console's (`×` the multiplier and `•` the mask are not icons, and are not counted).
+ */
+const TEXT_ICON_RE = /[▲▼△▽▶◀►◄▸▾▴◂★☆✓✔✗✘✕✖⚠⛔↑↓↗↘↖↙→←●○◉☰ⓘℹ]|\p{Extended_Pictographic}/gu;
+const NOT_ICON = new Set(["©", "®", "™"]);
+const TYPOGRAPHY = "a → that reads \"to\": a path in a sentence, or between two values — punctuation, not an icon";
+const TEMPLATE_COMMENT = "inside a CSS comment in a template literal (the comment stripper keeps literals whole) — not text a player reads";
+const CONSOLE_TEXT = "the console's own text (its typed marks go in release 3)";
+const TEXT_ICONS: Record<string, [count: number, why: string]> = {
+  "src/app/_actions/chat.ts": [3, "the support chatbot's instructions to the model — not an interface"],
+  "src/app/legal/privacy/page.tsx": [3, TYPOGRAPHY],
+  "src/app/s/optout-refusal.tsx": [1, TYPOGRAPHY],
+  "src/app/updown/history/page.tsx": [3, TYPOGRAPHY],
+  "src/components/brand.tsx": [3, TEMPLATE_COMMENT],
+  "src/components/layout/wallet-balance-pill.tsx": [1, TEMPLATE_COMMENT],
+  "src/components/updown/updown-card.tsx": [1, TYPOGRAPHY],
+  "src/lib/affiliate-rules.ts": [1, TYPOGRAPHY],
+  "src/lib/ai-cycle-rules.ts": [2, `${TYPOGRAPHY} ("USD→TZS", a rate's two currencies)`],
+  "src/lib/chat/send-message.ts": [10, "the support chatbot's instructions and answers about paths — not an interface"],
+  "src/lib/house-bot/alert-copy.ts": [1, CONSOLE_TEXT],
+  "src/lib/house-bot/pause-reasons.ts": [3, CONSOLE_TEXT],
+  "src/lib/house-bot/rules.ts": [7, CONSOLE_TEXT],
+  "src/lib/i18n-dict.ts": [20, `${TYPOGRAPHY}: the FAQ's and the failure messages' paths ("Wallet → Withdraw"), in three languages`],
+  "src/lib/i18n.tsx": [1, TEMPLATE_COMMENT],
+  "src/lib/journey/measures.ts": [10, `${TYPOGRAPHY}: a funnel step's name ("Home → bet sheet"), read on the console`],
+  "src/lib/legal/policy-lines.ts": [6, TYPOGRAPHY],
+  "src/lib/marketing/campaign-status.ts": [7, CONSOLE_TEXT],
+  "src/lib/marketing/consent-basis.ts": [2, TYPOGRAPHY],
+  "src/lib/marketing/outreach-open-checks.ts": [2, CONSOLE_TEXT],
+  "src/lib/operator-refusal.ts": [3, `${TYPOGRAPHY} ("Admin → AI usage")`],
+  "src/lib/tax-report.ts": [1, TYPOGRAPHY],
+};
+/** The console's files (`src/app/admin/`, `src/components/admin/`) and the server's (`src/lib/server/`, `src/app/api/`). */
+const CONSOLE_SRC = /^src\/(?:app|components)\/admin\//;
+const SERVER_SRC = /^src\/(?:lib\/server|app\/api)\//;
+const CONSOLE_TEXT_ICONS = 127; // release 3 brings it to the console's punctuation alone
+const SERVER_TEXT_ICONS = 140; // log lines, alerts and the console's messages built on the server
 
 /** Every image file under public/ (the family's sprites, public/icons/g/, are test:glyph-sync's) — what each one is. */
 const BRAND = "the brand mark or lockup (DESIGN_AUTHORITY §B1a) — the brand, not an icon";
@@ -141,11 +179,20 @@ function walk(dir: string, out: string[] = [], keep: RegExp = CODE): string[] {
 function check(w: World): string[] {
   const f: string[] = [];
   const counts = new Map<string, number>();
+  const typed = new Map<string, number>();
+  let consoleTyped = 0, serverTyped = 0;
   for (const [rel, text] of w.files) {
     const code = decomment(text);
     // §1
     if (IMPORTS_PHOSPHOR.test(code) && !rel.startsWith("scripts/glyphs/")) f.push(`§1 ${rel} imports @phosphor-icons — icons come from the glyph family (src/components/ui/glyphs)`);
     if (!rel.startsWith("src/")) continue;
+    // §7 (counted here, judged below)
+    if (!/\.generated\./.test(rel)) {
+      const t = [...code.matchAll(TEXT_ICON_RE)].filter((m) => !NOT_ICON.has(m[0])).length;
+      if (t && CONSOLE_SRC.test(rel)) consoleTyped += t;
+      else if (t && SERVER_SRC.test(rel)) serverTyped += t;
+      else if (t) typed.set(rel, t);
+    }
     // §3
     const n = (code.match(/<svg[\s>]/g) ?? []).length;
     if (n) counts.set(rel, n);
@@ -187,6 +234,18 @@ function check(w: World): string[] {
     if (!(rel in PUBLIC_IMAGES)) f.push(`§6 ${rel} is an image under public/ that is not named — an icon is a family key (AGENTS.md §7, R-ONE-SOURCE); any other image is named in PUBLIC_IMAGES with what it is`);
   }
   for (const rel of Object.keys(PUBLIC_IMAGES)) if (!w.images.includes(rel)) f.push(`§6 ${rel} is gone — remove it from PUBLIC_IMAGES`);
+  // §7 — the typed-character door.
+  for (const [rel, n] of typed) {
+    const listed = TEXT_ICONS[rel];
+    if (!listed) f.push(`§7 ${rel} types ${n} icon character(s) — draw the icon with the glyph family (AGENTS.md §7); an arrow that is punctuation is named in TEXT_ICONS with its reason`);
+    else if (n > listed[0]) f.push(`§7 ${rel} types ${n} icon character(s), more than its ${listed[0]}`);
+    else if (n < listed[0]) f.push(`§7 ${rel} now types ${n} icon character(s) — lower its count from ${listed[0]} in TEXT_ICONS so the progress stays won`);
+  }
+  for (const rel of Object.keys(TEXT_ICONS)) if (!typed.has(rel)) f.push(`§7 ${rel} no longer types an icon character — remove it from TEXT_ICONS`);
+  for (const [area, n, frozen] of [["the console", consoleTyped, CONSOLE_TEXT_ICONS], ["the server", serverTyped, SERVER_TEXT_ICONS]] as const) {
+    if (n > frozen) f.push(`§7 ${area} types ${n} icon character(s), more than its ${frozen} — a new typed mark is a family glyph`);
+    else if (n < frozen) f.push(`§7 ${area} now types ${n} icon character(s) — lower its total from ${frozen} so the progress stays won`);
+  }
   return f;
 }
 
@@ -203,7 +262,8 @@ if (!process.argv.includes("--prove-red")) {
   const fails = check(world);
   for (const x of fails) console.log(`FAIL ${x}`);
   const svg = Object.values(SVG_RATCHET).reduce((a, [n]) => a + n, 0);
-  console.log(`\n${files.size} files read · ${Object.keys(SVG_RATCHET).length} files may draw ${svg} inline <svg> · ${Object.keys(DATA_SVG).length} file a data-URI SVG · ${images.length} images under public/, each named · ${fails.length} failure(s)`);
+  const typedN = Object.values(TEXT_ICONS).reduce((a, [n]) => a + n, 0);
+  console.log(`\n${files.size} files read · ${Object.keys(SVG_RATCHET).length} files may draw ${svg} inline <svg> · ${Object.keys(DATA_SVG).length} file a data-URI SVG · ${images.length} images under public/, each named · typed marks: ${Object.keys(TEXT_ICONS).length} named files (${typedN}), the console ${CONSOLE_TEXT_ICONS}, the server ${SERVER_TEXT_ICONS} · ${fails.length} failure(s)`);
   process.exit(fails.length ? 1 : 0);
 }
 
@@ -217,7 +277,7 @@ const plants: [string, RegExp, World][] = [
   ["an icon library joins the dependencies", /§2 dependencies carries the icon package lucide-react/, { ...world, pkg: { ...world.pkg, dependencies: { ...world.pkg.dependencies, "lucide-react": "1.0.0" } } }],
   ["the codegen source becomes a runtime dependency", /§2 dependencies carries the icon package @phosphor-icons\/core/, { ...world, pkg: { ...world.pkg, dependencies: { ...world.pkg.dependencies, [PHOSPHOR_PACKAGE]: "2.1.1" } } }],
   ["a new page hand-draws an icon", /§3 src\/app\/zz-new\/page\.tsx draws 1 inline <svg>/, withFile("src/app/zz-new/page.tsx", "export default function P() { return <svg viewBox=\"0 0 24 24\"><path d=\"M1 1\"/></svg>; }\n")],
-  ["a listed file draws one more", /§3 src\/components\/ui\/select\.tsx draws 3 inline <svg>, more than its 2/, edit("src/components/ui/select.tsx", (t) => t + "\nexport const Z = () => <svg><path d=\"M1 1\"/></svg>;\n")],
+  ["a listed file draws one more", /§3 src\/components\/ui\/button\.tsx draws 2 inline <svg>, more than its 1/, edit("src/components/ui/button.tsx", (t) => t + "\nexport const Z = () => <svg><path d=\"M1 1\"/></svg>;\n")],
   ["a listed file draws fewer and the list is not lowered", /§3 src\/components\/ui\/spinner\.tsx no longer draws/, edit("src/components/ui/spinner.tsx", (t) => t.split("<svg").join("<span"))],
   ["a hand-drawn 256-grid glyph", /§4 src\/app\/zz-new\/icon\.tsx draws on the 256 grid by hand/, withFile("src/app/zz-new/icon.tsx", 'export const V = "x"; const a = <path />; const vb = <g viewBox="0 0 256 256" />;\n')],
   ["a stylesheet draws an icon as a data URI", new RegExp("§5 src/app/zz-new/page[.]css draws 1 SVG as a data URI"),
@@ -230,6 +290,19 @@ const plants: [string, RegExp, World][] = [
     { ...world, images: [...world.images, "public/icons/zz-bell.svg"] }],
   ["a named image is removed and the census keeps it", new RegExp("§6 public/pay/mixx[.]png is gone"),
     { ...world, images: world.images.filter((r) => r !== "public/pay/mixx.png") }],
+  // §7 (W4) — the typed-character door.
+  ["a new page types a ▲ as an icon", new RegExp("§7 src/app/zz-new/page[.]tsx types 1 icon character"),
+    withFile("src/app/zz-new/page.tsx", "export default function P() { return <span>▲ 5</span>; }\n")],
+  ["an emoji in a player string", new RegExp("§7 src/components/zz[.]tsx types 1 icon character"),
+    withFile("src/components/zz.tsx", 'export const HOT = "\u{1F525} hot";\n')],
+  ["a named file types one more", new RegExp("§7 src/app/updown/history/page[.]tsx types 4 icon character[(]s[)], more than its 3"),
+    edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
+  ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
+    edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],
+  ["the console gains a typed mark", new RegExp("§7 the console types 128 icon character[(]s[)], more than its 127"),
+    withFile("src/app/admin/zz/page.tsx", "export default function P() { return <span>✓</span>; }\n")],
+  ["the server's text loses its marks and the total is not lowered", new RegExp("§7 the server now types 1[0-3][0-9] icon character"),
+    edit("src/lib/server/marketing/owner-save.ts", (t) => t.split("✓").join("ok"))],
 ];
 const clean = check(world);
 if (clean.length) {

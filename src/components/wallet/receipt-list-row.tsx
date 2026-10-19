@@ -33,8 +33,9 @@ import type { StatusChipVariant } from "@/lib/status-tone";
 import type { ReceiptType } from "@/lib/wallet/receipts";
 import type { TxnStatusValue } from "@/lib/wallet/ledger";
 
-/** The glyph beside the status word — colour is never the only signal (§A4). */
-const STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock" | "alertCircle" | "rotateCcw" | "xCircle"> = {
+/** The glyph beside the status word — colour is never the only signal (§A4). ONE map: the receipt's own page reads it
+ *  too. Drawn in Fill: a payment's status, stated by its chip (PHOSPHOR-MIGRATION §8c). */
+export const RECEIPT_STATUS_GLYPH: Record<TxnStatusValue, "checkCircle" | "clock" | "alertCircle" | "rotateCcw" | "xCircle"> = {
   CONFIRMED: "checkCircle",
   PENDING: "clock",
   PROCESSING: "clock",
@@ -68,7 +69,7 @@ export function ReceiptListRow({
   chip: StatusChipVariant;
 }) {
   const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;
-  const Glyph = I[STATUS_GLYPH[status]];
+  const Glyph = I[RECEIPT_STATUS_GLYPH[status]];
   return (
     <li data-row-id={id} data-type={type} data-status={status} className="border-b border-border last:border-b-0">
       {/* The ring sits INSIDE the row: the list is an `overflow-hidden` panel, which clipped the outset ring's sides. */}
@@ -94,7 +95,7 @@ export function ReceiptListRow({
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <p className="whitespace-nowrap font-mono text-body-sm tabular-nums text-text-subtle">{when}</p>
             <Chip variant={chip} size="sm">
-              <Glyph s={12} aria-hidden /> {statusWord}
+              <Glyph s={12} tier="fill" aria-hidden /> {statusWord}
             </Chip>
           </div>
         </div>

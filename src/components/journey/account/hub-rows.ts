@@ -100,7 +100,7 @@ export type HubWord = (typeof HUB_WORDS)[number];
 export type HubGlyph =
   | "wallet" | "arrowUpFromLine" | "resolved" | "live" | "podium" | "limits" | "pause" | "circleStop"
   | "users" | "idea" | "user" | "idCard" | "attestation" | "headset" | "search" | "shieldcheck"
-  | "fileText" | "tippingScales" | "info";
+  | "privacyNotice" | "scrollText" | "tippingScales" | "agent";
 
 export type HubLinkId =
   | "wallet" | "withdraw" | "results" | "live" | "leaderboard" | "limits" | "break" | "exclude" | "invite"
@@ -203,10 +203,12 @@ function guestGroups(): HubGroup[] {
       key: "legal",
       label: "journey.hubGroupLegal",
       rows: [
-        { id: "privacy", kind: "link", href: "/legal/privacy", label: "common.consentMore", glyph: "fileText" },
+        // Each document wears its own page's glyph (PHOSPHOR-MIGRATION §8b, the audit of 2026-10-19): Terms carried the
+        // rules' scales and the rules an info mark, and the privacy notice a plain document where its page drew a lock.
+        { id: "privacy", kind: "link", href: "/legal/privacy", label: "common.consentMore", glyph: "privacyNotice" },
         { id: "aml", kind: "link", href: "/legal/aml", label: "footer.amlKyc", glyph: "shieldcheck" },
-        { id: "terms", kind: "link", href: "/legal/terms", label: "footer.terms", glyph: "tippingScales" },
-        { id: "rules", kind: "link", href: "/legal/rules", label: "footer.gameRtp", glyph: "info" },
+        { id: "terms", kind: "link", href: "/legal/terms", label: "footer.terms", glyph: "scrollText" },
+        { id: "rules", kind: "link", href: "/legal/rules", label: "footer.gameRtp", glyph: "tippingScales" },
       ],
     },
   ];
@@ -239,7 +241,7 @@ function memberGroups(v: HubMember): HubGroup[] {
 
   // Kuwa wakala under the footer's own rule: the programme open, or the reader already inside it (§0h point 9).
   const agent: HubRow[] = [];
-  if (v.doors.agentDoorVisible) agent.push({ id: "agent", kind: "link", href: "/agent", label: "agent.footerLink", glyph: "shieldcheck" });
+  if (v.doors.agentDoorVisible) agent.push({ id: "agent", kind: "link", href: "/agent", label: "agent.footerLink", glyph: "agent" });
 
   const groups: HubGroup[] = [
     { key: "money", label: "journey.hubGroupMoney", rows: money },

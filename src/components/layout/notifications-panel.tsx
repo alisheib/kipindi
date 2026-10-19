@@ -16,7 +16,7 @@ import { useT } from "@/lib/i18n";
 import { useModalLock } from "@/lib/use-modal-lock";
 // ⛔ ONE HOME for how a kind looks (§0a). The page renders the same rows; a second map here
 // would let a win be gold in the bell and grey on the page, and nothing would say so.
-import { iconFor, tintFor } from "@/lib/notification-appearance";
+import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";
 import { readableNotificationBody } from "@/lib/notification-text";
 import { DotSeq } from "@/components/ui/dot-seq";
 import { moneyRuns, moneySentence } from "@/lib/fill-nodes";
@@ -513,7 +513,9 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
         )}
       >
         <span key={ringSeq} aria-hidden className={cn("inline-flex", ringSeq > 0 && "g-ring")}>
-          <I.bell s={20} />
+          {/* Fill while the panel is open: a toggle that is on (PHOSPHOR-MIGRATION §8c), as the tab bars' current
+              destination. The bell's Fill is inlined with the chrome's symbols (map.ts CHROME_FILLS). */}
+          <I.bell s={20} tier={open ? "fill" : undefined} />
         </span>
         {/* ⭐ STAGE 9b — the kit <CountBadge>. `md` is this pip's own box (min-width 18,
             height 18, 0 4px, 10px/700) and `rose`/`ring`/`glow` are its own gradient,
@@ -666,7 +668,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                           ⚠️ The size stays an inline literal inside the atom: `theme.spacing`
                           is overridden, so `h-8` would render 48px, not 32. */}
                       <IconPlate size={32} className={cn("border", tintFor(n.kind))}>
-                        <Icon s={16} />
+                        <Icon s={16} tier={tierFor(n.kind)} />
                       </IconPlate>
                       <div className="flex-1 min-w-0">
                         {/* ⭐ IN THE JOURNEY A NOTICE READS AS IT DOES ON /notifications (round 6, 2026-10-09, review C10): its

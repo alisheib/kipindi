@@ -46,6 +46,7 @@
  */
 import { dict, type Locale, type Dict } from "@/lib/i18n-dict";
 import { assertNeverLine, storedProductLine, type ProductLine } from "@/lib/product-line";
+import type { GlyphKey } from "@/components/ui/glyphs";
 
 /**
  * The product lines, as `PredictionMarket.productLine` stores them. MASWALI (Maswali Millionea) joined at S0.5: its
@@ -215,5 +216,23 @@ export function positionStatusWord(t: Dict, status: PositionStatusValue, product
     case "LOSS": return t.market.resolvedLoss;
     case "VOID": return t.common.voided;
     case "CASHED_OUT": return t.common.cashedOut;
+  }
+}
+
+/**
+ * THE GLYPH OF A POSITION'S STATE — glyph + ink + word, so shape alone tells the states apart (DESIGN_AUTHORITY §A4;
+ * PHOSPHOR-MIGRATION W4 and §8c). The ink is `positionStatusChip`'s and the word `positionStatusWord`'s.
+ * ⭐ A WIN IS THE SEAL'S FILL — earned money (§M3), the seal results wear (R-LEXICON 5.5A), solid. Every other state is a
+ * quiet Line mark, as a loss is bookkeeping (§M7): open is the countdown, lost the circled cross, void the prohibit sign,
+ * cashed out the hand of coins. The same for every product: Up & Down's words differ, its states do not. (A Millionea
+ * ticket draws its own chip, `maswali-ticket.tsx`.)
+ */
+export function positionStatusGlyph(status: PositionStatusValue): { key: GlyphKey; tier?: "fill" } {
+  switch (status) {
+    case "OPEN": return { key: "clockPending" };
+    case "WIN": return { key: "resolved", tier: "fill" };
+    case "LOSS": return { key: "xCircle" };
+    case "VOID": return { key: "void" };
+    case "CASHED_OUT": return { key: "cashOut" };
   }
 }

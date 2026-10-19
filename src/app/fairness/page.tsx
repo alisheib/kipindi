@@ -8,6 +8,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { Chip } from "@/components/ui/chip";
@@ -317,11 +318,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
               : cause === "lens-empty" ? t.common.noVoidedSettlementsBody
               : t.market.filterMissBody
             }
-            action={
-              <Link href={"/markets" as never} className="btn btn-primary btn-sm">
-                {t.positions.browseMarkets}
-              </Link>
-            }
+            action={<EmptyStateLink href="/markets">{t.positions.browseMarkets}</EmptyStateLink>}
           />
         ) : (
           <ScrollX label="Resolved markets" className="glass-panel">

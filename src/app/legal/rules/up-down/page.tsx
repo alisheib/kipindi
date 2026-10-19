@@ -59,7 +59,7 @@ export default async function UpDownRulesPage() {
         title={TITLE[locale]}
         subtitle={SUBTITLE[locale]}
         meta={META[locale]}
-        glyph="trendingUp"
+        glyph="trade"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>
       {upDownContent(r)[locale]}

@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { GlyphKey } from "@/components/ui/glyphs";
+import { I, type GlyphKey } from "@/components/ui/glyphs";
 import { NavGlyph } from "@/components/ui/nav-glyph";
 import { useT } from "@/lib/i18n";
 import { NavMore } from "@/components/layout/nav-more";
@@ -232,24 +232,12 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                 {walletHeld ? (
                   <span className="kp-coin__hub" />
                 ) : (
-                  /* A BARE "+", DRAWN HERE RATHER THAN TAKEN FROM THE GLYPH SET. `I.plus` is a
-                     plus inside a CIRCLE, and the coin is already the disc — two rings would
-                     read as a button on a button. 24px at stroke 2.8 is the coin's own geometry
-                     (SPEC-VALUES §7), like the ring and the needle, so it lives beside them.
-                     ⚠️ `currentColor` is the point: `.kp-coin__plus` sets the mark's navy. */
-                  <svg
-                    className="kp-coin__plus"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.8}
-                    strokeLinecap="round"
-                    aria-hidden
-                  >
-                    <path d="M12 6v12M6 12h12" />
-                  </svg>
+                  /* The deposit's own glyph, as on every other money-in door (R-LEXICON 5.3A; the audit of
+                     2026-10-19 §8a). It was a hand-drawn "+": `I.plus` is a plus inside a circle, and a
+                     second ring on the disc reads as a button on a button. The arrow has no ring, and at
+                     24px it is the size of the rail's other glyphs (R-RAIL 4B).
+                     ⚠️ `currentColor` is the point: `.kp-coin__verb` sets the mark's navy. */
+                  <I.arrowDownToLine s={24} className="kp-coin__verb" />
                 )}
               </span>
             </span>

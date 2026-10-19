@@ -90,7 +90,7 @@ export default async function AccountHubPage() {
               <ul className="kp-hub__card kp-hub__card--staff" aria-label={t.journey.hubGroupStaff}>
                 <li>
                   <a href="/admin" className="kp-hub__row">
-                    <span className="kp-hub__glyph" aria-hidden><I.server s={20} /></span>
+                    <span className="kp-hub__glyph" aria-hidden><I.staffConsole s={20} /></span>
                     <span className="kp-hub__text">
                       <span className="kp-hub__label">{keepConnectives(t.common.staffConsole)}</span>
                       <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>

@@ -86,7 +86,6 @@ const EXEMPT = new Map<string, string>([
   // in a constant beside its gradient id; nothing reads a series. ⛔ §3.2 keeps this honest: if
   // the file ever stops matching a detector this entry fails and must be deleted.
   ["components/ui/social-marks.tsx", "Instagram/TikTok vendor logos — a static brand outline in a `d={}` constant, the marks half of brand.tsx's documented exception; no data series"],
-  ["app/updown/[roundId]/page.tsx", "a glyph chosen by variable (outcomeArrow constant), not computed from a series"],
   // PHOSPHOR-MIGRATION W2: the family's marks among words draw Phosphor's centreline from the generated registry —
   // `<path d={m.d}>`, a `d=` EXPRESSION, the detector's signature — but every value is a static vendored drawing read by
   // key, never a series. ⛔ §3.2 keeps it honest: if the file stops matching a detector, this entry fails and goes.

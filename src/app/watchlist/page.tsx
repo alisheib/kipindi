@@ -23,6 +23,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterPill } from "@/components/ui/filter-pill";
@@ -233,7 +234,7 @@ export default async function WatchlistPage({
           body={emptyBody}
           action={
             cause === "no-rows" ? (
-              <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.watchlist.browseMarkets}</Link>
+              <EmptyStateLink href="/markets">{t.watchlist.browseMarkets}</EmptyStateLink>
             ) : (
               <Link href={buildFollowHref(state, { lens: "all", cat: "all", q: "" })} className="btn btn-ghost btn-sm">
                 {t.common.clearAll}

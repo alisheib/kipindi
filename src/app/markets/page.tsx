@@ -2,6 +2,7 @@ import { Suspense, cache } from "react";
 import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import Link from "next/link";
+import { I } from "@/components/ui/glyphs";
 import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import { shownYesPct } from "@/lib/markets/price-state";
@@ -449,6 +450,9 @@ lastLabel={t.common.lastPage}
               className="inline-flex min-h-[var(--tap-min)] items-center whitespace-nowrap font-mono text-body-sm font-semibold text-brand-300 transition-colors hover:text-brand-200"
             >
               {t.market.allResults}
+              {/* The see-all mark, as the home's see-all links end (§B4c) — the family's chevron among words, where the
+                  words carried a typed "→" (PHOSPHOR-MIGRATION §8a). */}
+              <I.chevronRight s={14} edge="end" text="mono-600" />
             </Link>
           </div>
           <div className="market-grid">

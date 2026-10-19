@@ -142,7 +142,7 @@ export default async function GameRulesIndexPage() {
         />
         <RuleCard
           href="/legal/rules/up-down"
-          icon={<I.trendingUp s={20} />}
+          icon={<I.trade s={20} />}
           title={c.upDown[0]}
           sub={c.upDown[1]}
           tone="aqua"

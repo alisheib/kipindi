@@ -496,7 +496,7 @@ export function useDeferredToast(pending: boolean) {
 const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; surface: string; rail: string }> = {
   default: {
     bar: "bg-brand-300",
-    icon: <span className="text-brand-300"><I.checkCircle s={18} /></span>,
+    icon: <span className="text-brand-300"><I.checkCircle s={18} tier="fill" /></span>,
     surface: "mat-tint-brand",
     rail: "bg-brand-300",
   },
@@ -521,7 +521,7 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
    */
   success: {
     bar: "bg-success",
-    icon: <span className="text-success-fg"><I.checkCircle s={18} /></span>,
+    icon: <span className="text-success-fg"><I.checkCircle s={18} tier="fill" /></span>,
     surface: "mat-tint-success",
     rail: "bg-success",
   },
@@ -532,7 +532,7 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
      variant: a slip the player can fix is the `factual` toast (DESIGN_AUTHORITY F2, F3). */
   warning: {
     bar: "bg-warning",
-    icon: <span className="text-warning-fg"><I.warning s={18} /></span>,
+    icon: <span className="text-warning-fg"><I.warning s={18} tier="fill" /></span>,
     surface: "mat-tint-warn",
     rail: "bg-warning",
   },
@@ -542,13 +542,14 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
      lost bet, so a retune of the betting ramp repainted every error in the product. */
   danger: {
     bar: "bg-danger",
-    icon: <span className="text-danger-fg"><I.alertCircle s={18} /></span>,
+    icon: <span className="text-danger-fg"><I.alertCircle s={18} tier="fill" /></span>,
     surface: "mat-tint-danger",
     rail: "bg-danger",
   },
   gold: {
     bar: "bg-gold-500",
-    icon: <span className="text-gold-300"><I.trophy s={18} /></span>,
+    // A money moment: the won seal, solid, as a won ticket and a WIN notification draw it (PHOSPHOR-MIGRATION §8c).
+    icon: <span className="text-gold-300"><I.resolved s={18} tier="fill" /></span>,
     surface: "mat-tint-gilt",
     rail: "bg-gold-500",
   },
@@ -569,6 +570,8 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
    */
   factual: {
     bar: "bg-text-muted",
+    // ⛔ LINE, NOT FILL: every other toast states its status in Fill (PHOSPHOR-MIGRATION §8c), and this one carries a
+    // settled loss — quiet, as a loss is bookkeeping (§M7).
     icon: <span className="text-text-secondary"><I.info s={18} /></span>,
     // Deliberately NO tint — the plain rung IS the material distinction between
     // "here is information" and a coloured state (M7: losses get the receipt).

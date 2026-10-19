@@ -15,7 +15,8 @@
  *      the registry `origin/main` holds (production's, as this repo releases) is read from git, and every sprite it names
  *      must be one this tree keeps: current, or named in PREVIOUS_SPRITES. With no git or no origin/main, "not measured".
  *   §2 every shipped (key, variant) of the registry has its symbol where the engine will look: the chrome's Bold and Fill
- *      in the inline symbols, everything else in the app or the admin sprite that GLYPH_SPRITES names
+ *      in the inline symbols (a shell key's Fill the chrome does not draw, marked `fa`, in the app sprite — W4), everything
+ *      else in the app or the admin sprite that GLYPH_SPRITES names; and no registry row escapes the reading
  *   §3 the notice: THIRD_PARTY_NOTICES.md carries the package's LICENSE verbatim; both sprites and the inline symbols open
  *      with the package, its version, the licence and the copyright; the registry's header names all three
  */
@@ -67,16 +68,20 @@ function check(disk: Disk, previous: readonly string[] = PREVIOUS_SPRITES, live:
   }
   const ids = (text: string | null) => new Set([...(text ?? "").matchAll(/<symbol id=\\?"([^"\\]+)\\?"/g)].map((m) => m[1]));
   const inline = ids(shell), app = ids(sprites.app ?? null), admin = ids(sprites.admin ?? null);
-  for (const m of reg.matchAll(/^ {2}"([^"]+)": \{ s: "([^"]+)", g: "([a-z]+)", i: \{ ([^}]*) \}/gm)) {
-    const [, key, stem, group, inks] = m;
+  const rows = [...reg.matchAll(/^ {2}"[^"]+": \{ s: /gm)].length;
+  let read = 0;
+  for (const m of reg.matchAll(/^ {2}"([^"]+)": \{ s: "([^"]+)", g: "([a-z]+)"(, fa: 1)?, i: \{ ([^}]*) \}/gm)) {
+    const [, key, stem, group, fa, inks] = m;
+    read++;
     for (const v of VARIANTS) {
       if (!new RegExp(`(^|, )${v}: \\[`).test(inks)) continue;
       const id = `${stem}-${v}`;
-      const where = group === "shell" && (v === "bold" || v === "fill") ? inline : group === "admin" ? admin : app;
+      const where = group === "shell" && (v === "bold" || (v === "fill" && !fa)) ? inline : group === "admin" ? admin : app;
       const place = where === inline ? "the inline chrome symbols" : where === admin ? "the admin sprite" : "the app sprite";
       if (!where.has(id)) f.push(`§2 ${key} draws ${v}, but ${id} is not in ${place}`);
     }
   }
+  if (read !== rows) f.push(`§2 ${rows - read} registry row(s) are not in the shape this guard reads — a placement nobody checks`);
   if (!SHELL_NOTICE.test(shell)) f.push("§3 the inline chrome symbols do not open with Phosphor's notice");
   if (!(disk.read(NOTICES_PATH) ?? "").includes(LICENCE)) f.push(`§3 ${NOTICES_PATH} does not carry the package's LICENSE verbatim`);
   if (!REGISTRY_NOTICE.test(reg)) f.push("§3 the registry's header does not name the package, its version and its licence");
@@ -114,6 +119,11 @@ const plants: [string, RegExp, Disk, (readonly string[])?, Live?][] = [
   ["the notices lose the licence", /§3 THIRD_PARTY_NOTICES\.md does not carry/, overlay((rel, t) => (rel === NOTICES_PATH && t ? t.replace("MIT License", "Licence") : t))],
   ["the registry loses its notice", /§3 the registry's header/, overlay((rel, t) => (rel === REGISTRY_PATH && t ? t.replace("(MIT License", "(licence") : t))],
   ["the registry points at no sprite", /§2 GLYPH_SPRITES\.app names no sprite/, overlay((rel, t) => (rel === REGISTRY_PATH && t ? t.replace(/app: "\/[^"]+"/, 'app: "/icons/g/none.svg"') : t))],
+  // W4 (CHROME_FILLS): a shell key's Fill the chrome does not draw rides in the app sprite, and the engine asks it there.
+  ["an app-riding chrome Fill gone from the app sprite", /§2 lock draws fill, but p-lock-fill is not in the app sprite/,
+    overlay((rel, t) => (rel === app && t ? t.replace(/<symbol id="p-lock-fill"[^]*?<\/symbol>/, "") : t))],
+  ["a registry row the guard cannot read", /§2 1 registry row\(s\) are not in the shape this guard reads/,
+    overlay((rel, t) => (rel === REGISTRY_PATH && t ? t.replace(/("lock": \{ s: "[^"]+", g: "shell"), fa: 1/, "$1, fa: 2") : t))],
 ];
 const clean = check(realDisk);
 if (clean.length) {

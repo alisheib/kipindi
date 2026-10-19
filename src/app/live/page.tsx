@@ -12,6 +12,7 @@
  */
 import { Suspense } from "react";
 import Link from "next/link";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
@@ -251,11 +252,11 @@ export default async function LivePage({
             kind="markets"
             title={q ? `${t.market.noLiveMatch} "${q}"` : t.market.noLiveNow}
             body={q ? t.results.tryDifferentKeywords : t.market.noLiveBody}
-            action={
-              <Link href={(q ? "/live" : "/markets") as never} className="btn btn-primary btn-md">
-                {q ? t.common.clearSearch : t.common.browseAll}
-              </Link>
-            }
+            action={q ? (
+              <Link href={"/live" as never} className="btn btn-primary btn-md">{t.common.clearSearch}</Link>
+            ) : (
+              <EmptyStateLink href="/markets" size="md">{t.common.browseAll}</EmptyStateLink>
+            )}
           />
         ) : (
           <>

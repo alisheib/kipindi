@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { MarketCard } from "@/components/markets/market-card";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
 import { Chip } from "@/components/ui/chip";
@@ -599,7 +600,7 @@ async function ResultsContent({
                 searching ? (
                   <Link href="/results" className="btn btn-ghost btn-sm">{t.market.clearSearchLabel}</Link>
                 ) : (
-                  <Link href="/markets" className="btn btn-primary btn-sm">{t.results.browseLive}</Link>
+                  <EmptyStateLink href="/markets">{t.results.browseLive}</EmptyStateLink>
                 )
               }
             />

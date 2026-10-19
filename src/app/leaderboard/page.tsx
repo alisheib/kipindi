@@ -13,6 +13,7 @@ import { db } from "@/lib/server/store";
 import { keepConnectives } from "@/components/ui/keep-run";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { listPositionsForUser } from "@/lib/server/market-service";
 import { positionStore, roiOf } from "@/lib/server/market-dal";
 import { VolumeSparkline } from "@/components/charts/volume-spark";
@@ -349,7 +350,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           kind="leaderboard"
           title={t.leaderboard.emptyTitle}
           body={breakBody ?? t.leaderboard.emptyBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          action={breakBody ? null : <EmptyStateLink href="/markets">{t.positions.browseMarkets}</EmptyStateLink>}
         />
       ) : (
         <>

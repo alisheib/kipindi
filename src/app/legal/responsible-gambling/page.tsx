@@ -231,7 +231,7 @@ export default async function ResponsibleGamblingPolicyPage() {
         eyebrow={EYEBROW[locale]}
         title={TITLE[locale]}
         meta={policyMeta(META[locale], "rg")}
-        glyph="shield"
+        glyph="limits"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>
       {content()[locale]}

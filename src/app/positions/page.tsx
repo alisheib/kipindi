@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
 import { PageHeader } from "@/components/ui/page-header";
@@ -566,9 +567,7 @@ function Empty({
       body={body}
       action={
         browseLabel ? (
-          <Link href={"/markets" as never} className="btn btn-primary btn-sm">
-            {browseLabel}
-          </Link>
+          <EmptyStateLink href="/markets">{browseLabel}</EmptyStateLink>
         ) : exits && exits.length > 0 ? (
           <div className="flex flex-wrap items-center justify-center gap-2">
             {exits.map((e) => (

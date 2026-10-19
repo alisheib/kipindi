@@ -124,7 +124,9 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
   const menuTail = (overhang: boolean) => (
     <>
       <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>
-      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className={overhang ? "-mr-1 text-text-subtle" : "text-text-subtle"}><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      {/* The family's chevron (PHOSPHOR-MIGRATION W4, §8a: it was hand-drawn). The journey's row ends on the row's edge by
+          the edge rule, read from the ink table, where `-mr-1` approximated the hand-drawn one's 4.6px bearing. */}
+      <I.chevronRight s={14} edge={overhang ? "end" : undefined} className="text-text-subtle" />
     </>
   );
 
@@ -298,7 +300,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                     >
                       <span className="flex items-center gap-1.5 font-display text-body-sm font-semibold">
                         {label}
-                        {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
+                        {active && <span className="text-brand-300" aria-hidden><I.check s={12} /></span>}
                       </span>
                       <span className="mt-0.5 block text-body-sm leading-snug text-text-subtle">{hint}</span>
                     </button>
@@ -331,7 +333,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 font-display text-body-sm font-semibold">
                           {th.name}
-                          {active && <span className="text-brand-300" aria-hidden><svg width="12" height="12" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg></span>}
+                          {active && <span className="text-brand-300" aria-hidden><I.check s={12} /></span>}
                         </span>
                         <span className="mt-0.5 block text-body-sm leading-snug text-text-subtle">{th.hint}</span>
                       </span>

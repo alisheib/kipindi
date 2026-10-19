@@ -23,8 +23,8 @@ import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, unlink
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import {
-  ADMIN_KEYS, ALIASES, DUO_KEYS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, PREVIOUS_SPRITES, REGULAR_KEYS,
-  SHELL_KEYS, type MapEntry,
+  ADMIN_KEYS, ALIASES, CHROME_FILLS, DUO_KEYS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, PREVIOUS_SPRITES,
+  REGULAR_KEYS, SHELL_KEYS, type MapEntry,
 } from "./map.ts";
 import { EXTRAS, type Drawing, type Variant } from "./extras.ts";
 import { TEXT_MARKS } from "./marks.ts";
@@ -107,12 +107,16 @@ export function shippedOf(key: string): Variant[] {
     v === "bold" || (v === "regular" && REGULAR_KEYS.includes(key)) || (v === "fill" && FILL_KEYS.includes(key)) || (v === "duo" && DUO_KEYS.includes(key)),
   );
 }
-/** Where one shipped (key, variant) lives: the chrome's Bold and Fill are inlined; everything else is in a sprite file. */
+/** Where one shipped (key, variant) lives: the chrome's Bold, and the Fills the chrome draws (map.ts CHROME_FILLS), are
+ *  inlined; everything else is in a sprite file — a shell key's other variants in the app sprite. */
 export const placeOf = (key: string, v: Variant): Group => {
   const g = groupOf(key);
-  if (g === "shell") return v === "bold" || v === "fill" ? "shell" : "app";
+  if (g === "shell") return v === "bold" || (v === "fill" && CHROME_FILLS.includes(key)) ? "shell" : "app";
   return g;
 };
+/** A shell key that ships a Fill the chrome does not draw: the registry says so (`fa`), so the runtime asks the app sprite. */
+export const fillInAppOf = (key: string): boolean =>
+  groupOf(key) === "shell" && FILL_KEYS.includes(key) && !CHROME_FILLS.includes(key);
 
 const NOTICE =
   `Phosphor Icons (${PHOSPHOR_PACKAGE} ${PHOSPHOR_VERSION}), MIT License, Copyright (c) 2023 Phosphor Icons. ` +
@@ -145,7 +149,8 @@ export function build(): Built {
       ? `, m: { d: ${JSON.stringify(mark.stroke)}, x: [${markBox(mark.stroke).join(", ")}]` +
         (mark.fill ? `, f: ${JSON.stringify(mark.fill)}, fx: [${markBox(mark.fill).join(", ")}]` : "") + " }"
       : "";
-    rows.push(`  ${JSON.stringify(key)}: { s: ${JSON.stringify(stem)}, g: ${JSON.stringify(groupOf(key))}, i: { ${ink.join(", ")} }${m} },`);
+    const fa = fillInAppOf(key) ? ", fa: 1" : "";
+    rows.push(`  ${JSON.stringify(key)}: { s: ${JSON.stringify(stem)}, g: ${JSON.stringify(groupOf(key))}${fa}, i: { ${ink.join(", ")} }${m} },`);
   }
   const file = (g: "app" | "admin") => `<svg xmlns="http://www.w3.org/2000/svg"><!-- ${NOTICE} -->` + NL + sortedJoin(places[g]) + NL + "</svg>" + NL;
   const appSvg = file("app"), adminSvg = file("admin");
@@ -166,7 +171,8 @@ export function build(): Built {
     "export type GlyphInk = readonly [x0: number, x1: number];",
     "/**",
     " * Per key: `s` its symbol stem (`<stem>-<variant>`), `g` its group (shell keys' Bold and Fill are inlined by the root",
-    " * layout; the rest live in GLYPH_SPRITES), `i` the inline reach of each shipped variant's ink on the 256 grid (what",
+    " * layout, unless `fa` says the Fill rides in the app sprite; the rest live in GLYPH_SPRITES), `i` the inline reach of",
+    " * each shipped variant's ink on the 256 grid (what",
     " * `edge` and `glyphInkGaps` read; the box's height is not needed at runtime), and for a mark that",
     " * stands among words `m`: its centreline `d` and that geometry's x-reach `x`, plus any solid part `f` and its reach `fx`.",
     " */",

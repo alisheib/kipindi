@@ -29,12 +29,14 @@ export type GlyphEntry = {
   /** The symbol stem: the drawing of variant v is the symbol `${stem}-${v}`. */
   stem: string;
   group: "shell" | "app" | "admin";
+  /** A shell key whose Fill the chrome does not draw: that Fill ships in the app sprite (map.ts CHROME_FILLS, W4). */
+  fillInApp: boolean;
   /** The inline reach of each shipped variant's ink on the 256 grid — the numbers the engine's `edge` reads. */
   ink: Partial<Record<GlyphVariant, Ink>>;
   /** A mark that stands among words: its centreline, stroked at the words' stem (`text`). */
   mark?: GlyphMark;
 };
-type RawEntry = { s: string; g: GlyphEntry["group"]; i: GlyphEntry["ink"]; m?: GlyphMark };
+type RawEntry = { s: string; g: GlyphEntry["group"]; fa?: 1; i: GlyphEntry["ink"]; m?: GlyphMark };
 
 /** The Line tier draws Phosphor Bold up to 26 px and Regular from 27 px — Ali's R-WEIGHT 1B (2026-10-17), stated here for
  *  the guards apart from the engine, so a guard can hold `glyphs.tsx` to the ruling rather than to itself. */
@@ -42,7 +44,7 @@ export const LINE_BOLD_UP_TO = 26;
 export const lineVariant = (size: number): GlyphVariant => (size <= LINE_BOLD_UP_TO ? "bold" : "regular");
 
 export const GLYPH_ENTRIES: ReadonlyMap<string, GlyphEntry> = new Map(
-  Object.entries(GLYPH_REGISTRY as unknown as Record<string, RawEntry>).map(([key, e]) => [key, { key, stem: e.s, group: e.g, ink: e.i, ...(e.m ? { mark: e.m } : {}) }]),
+  Object.entries(GLYPH_REGISTRY as unknown as Record<string, RawEntry>).map(([key, e]) => [key, { key, stem: e.s, group: e.g, fillInApp: e.fa === 1, ink: e.i, ...(e.m ? { mark: e.m } : {}) }]),
 );
 
 /** A text's symbols: id → the symbol's inner markup. */
@@ -60,10 +62,10 @@ export const SHIPPED = {
   admin: symbolsOf(read(`public${GLYPH_SPRITES.admin}`)),
 } as const;
 
-/** Where a key's variant ships: a shell key's Bold and Fill inline, the console's keys in the admin sprite, the rest in the
- *  app sprite — the placement `test:glyph-sync` §2 holds. */
+/** Where a key's variant ships: a shell key's Bold inline, and its Fill too unless the chrome does not draw it (`fillInApp`);
+ *  the console's keys in the admin sprite; the rest in the app sprite — the placement `test:glyph-sync` §2 holds. */
 export function shipsIn(e: GlyphEntry, v: GlyphVariant): keyof typeof SHIPPED {
-  if (e.group === "shell" && (v === "bold" || v === "fill")) return "inline";
+  if (e.group === "shell" && (v === "bold" || (v === "fill" && !e.fillInApp))) return "inline";
   return e.group === "admin" ? "admin" : "app";
 }
 

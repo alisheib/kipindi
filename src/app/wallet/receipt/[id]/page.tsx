@@ -57,6 +57,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { Callout } from "@/components/ui/callout";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { parseSavedDepositBet } from "@/lib/journey/deposit-state";
+import { RECEIPT_STATUS_GLYPH } from "@/components/wallet/receipt-list-row";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
@@ -92,7 +93,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   // confirms within ~15s); a settled receipt registers nothing (E-102).
   const inFlight = txn.status === "PENDING" || txn.status === "PROCESSING";
   const nowMs = Date.now();
-  const StatusGlyph = settled ? I.checkCircle : moving ? I.clock : status === "FAILED" ? I.alertCircle : status === "REVERSED" ? I.rotateCcw : I.xCircle;
+  // The list's own map (one definition of a status's glyph), drawn in Fill as the list's chip draws it.
+  const StatusGlyph = I[RECEIPT_STATUS_GLYPH[status]];
 
   return (
     <PageContainer tier="receipt" className="space-y-5">
@@ -112,7 +114,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <div className="flex justify-center">
         <Chip variant={playerStatusChip(status) ?? "neutral"} size="md" style={{ whiteSpace: "nowrap" }}>
-          <StatusGlyph s={12} aria-hidden /> {statusWord}
+          <StatusGlyph s={12} tier="fill" aria-hidden /> {statusWord}
         </Chip>
       </div>
 

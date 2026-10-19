@@ -22,6 +22,7 @@ import { Sources, renderBlocks, renderPlainText } from "./messages/Primitives";
 import type { Lang, Message } from "./types";
 import { useT } from "@/lib/i18n";
 import { CloseX } from "@/components/ui/modal";
+import { I } from "@/components/ui/glyphs";
 
 type Props = {
   lang: Lang;
@@ -139,10 +140,8 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, supportEma
             onInput={handleInput}
           />
           <button type="submit" className="cm-send" aria-label={i18n.common.sendMessage} disabled={pending}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12 L19 12" />
-              <path d="M13 6 L19 12 L13 18" />
-            </svg>
+            {/* Send's own glyph, the family's paper plane (PHOSPHOR-MIGRATION §8a); it was a hand-drawn arrow. */}
+            <I.send s={16} />
           </button>
         </div>
       </form>

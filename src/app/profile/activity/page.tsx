@@ -9,6 +9,7 @@
  */
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 // A limit meter's label never ends a line on a connective (round 9, R9-B): it shares its row with the figures, which
 // squeeze it ("Amana za" / "kila siku" where they run long).
 import { keepConnectives } from "@/components/ui/keep-run";
@@ -158,7 +159,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           kind="positions"
           title={t.activity.emptyTitle}
           body={breakBody ?? t.activity.emptyBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
+          action={breakBody ? null : <EmptyStateLink href="/markets">{t.activity.browseMarkets}</EmptyStateLink>}
         />
       )}
       {!summary.empty && (
@@ -178,8 +179,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                   loss to be stated as calmly as a win. The figures carry their own sign. `money` keeps the <Cash> mask this tile was
                   the ONE fork that never dropped — and pins the face to mono, which
                   fixes the one thing it got wrong: it painted TZS in Sora (§M4/§T5). */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDown s={14} />} />
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUp s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDownToLine s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUpFromLine s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} />
               {/* ⭐ REFUNDS ARE THEIR OWN TILE SINCE 2026-09-09, and they used to be inside Won.
@@ -189,11 +190,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                   to tell won from lost from voided-and-refunded, and folding two of those three
                   into one number is this surface answering its own question wrongly.
                   ⚠️ NO `labelTone` — a refund is not a win and must not borrow the yes-green. */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<I.rotateCcw s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<I.refund s={14} />} />
               {/* The signed net keeps its explicit "+" — <Cash> masks from the first
                   DIGIT, so the sign and the TZS prefix survive the blur exactly as they
                   did in the fork. */}
-              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.net s={14} />} />
             </div>
             <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>

@@ -23,9 +23,24 @@ export const MUTATIONS = [
   },
   {
     name: "an exemption whose site vanished must be pruned, not left as a hole",
-    file: "src/app/updown/[roundId]/page.tsx",
-    from: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={outcomeArrow} /></svg>',
-    to: "null",
+    // The round page's hand-drawn outcome arrow was this plant's site until PHOSPHOR-MIGRATION W4 drew it from the family
+    // and pruned its exemption. The countdown ring's two circles are the whole of its chart shape (its label matches no
+    // detector), so taking them out leaves the ring's exemption standing on nothing — the hole §3.2 must catch.
+    file: "src/components/positions/countdown-ring.tsx",
+    from: `      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--bg-overlay)" strokeWidth={sw} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={sw}
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - frac)}
+        style={{ transform: "rotate(-90deg)", transformOrigin: "center", transition: "stroke-dashoffset 0.5s linear" }}
+      />`,
+    to: "",
     expect: "3.2 every exemption still matches a detector",
   },
   {

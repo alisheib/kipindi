@@ -415,8 +415,8 @@ export function QuerySort({
             href={o.href}
             on={o.on}
             trailing={
-              <span className="font-mono text-[11px] text-text-faint">
-                {o.naturalDir === "asc" ? "↑" : "↓"}
+              <span aria-hidden className="inline-flex text-text-faint">
+                {o.naturalDir === "asc" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}
               </span>
             }
           >
@@ -433,12 +433,13 @@ export function QuerySort({
         title={dir === "asc" ? ascLabel : descLabel}
         className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"
       >
+        {/* The family's arrow (it was a typed ↑); `.kp-sortdir` turns it for a descending sort. */}
         <span
           aria-hidden
-          className="kp-sortdir inline-block font-mono text-[13px] leading-none"
+          className="kp-sortdir inline-flex"
           data-dir={dir}
         >
-          ↑
+          <I.arrowUp s={14} />
         </span>
       </Link>
     </div>

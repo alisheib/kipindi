@@ -72,6 +72,8 @@ type Ink = readonly [number, number];
 type Entry = {
   s: string;
   g: "shell" | "app" | "admin";
+  /** A shell key whose Fill the chrome does not draw: that Fill rides in the app sprite (map.ts CHROME_FILLS). */
+  fa?: 1;
   i: Partial<Record<GlyphVariant, Ink>>;
   m?: { d: string; x: Ink; f?: string; fx?: Ink };
 };
@@ -84,10 +86,11 @@ function variantOf(e: Entry, size: number, tier: GlyphTier | undefined): GlyphVa
   return e.i[want] ? want : "bold";
 }
 
-/** Where a drawing lives: the chrome's Bold and Fill in the page's own inline symbols, everything else in a sprite file. */
+/** Where a drawing lives: the chrome's Bold, and the Fills the chrome draws, in the page's own inline symbols; everything
+ *  else in a sprite file. */
 function hrefOf(e: Entry, v: GlyphVariant): string {
   const id = `${e.s}-${v}`;
-  if (e.g === "shell" && (v === "bold" || v === "fill")) return `#${id}`;
+  if (e.g === "shell" && (v === "bold" || (v === "fill" && !e.fa))) return `#${id}`;
   return `${e.g === "admin" ? GLYPH_SPRITES.admin : GLYPH_SPRITES.app}#${id}`;
 }
 

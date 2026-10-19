@@ -155,9 +155,9 @@ export const MUTATIONS = [
     // thing standing between a mutation that did not apply and a false green. Re-shaped so
     // the page stops IMPORTING the shared map and declares its own, which is the real defect.
     from: `import { cn } from "@/lib/utils";
-import { iconFor, tintFor } from "@/lib/notification-appearance";`,
+import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";`,
     to: `import { cn } from "@/lib/utils";
-import { iconFor } from "@/lib/notification-appearance";
+import { iconFor, tierFor } from "@/lib/notification-appearance";
 const tintFor = (_k: unknown) => "border-border";`,
   },
 ];

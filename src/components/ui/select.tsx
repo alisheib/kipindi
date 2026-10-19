@@ -18,13 +18,9 @@ import { useState, useEffect, useRef, useCallback, useId } from "react";
 import { createPortal } from "react-dom";
 import { useExitPhase } from "@/components/ui/modal";
 import { useFieldWiring } from "@/components/ui/input";
+import { I } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
-
-/** The field caret's pull onto its end padding (round 10, R10-A3): its 12-unit drawing ("M3 4.5l3 3 3-3", stroke 2, round
- *  caps) inks x2–10, so at its 10px its ink stands 2/12 × 10 = 1.667px inside each side. DateSelect's month-title caret is
- *  the same drawing at the same size and takes the same pull. */
-export const FIELD_CARET_PULL = `${-Math.round((2 / 12) * 10 * 1000) / 1000}px`;
 
 type Option = {
   value: string;
@@ -458,12 +454,10 @@ export function Select({
           {selectedOption?.label ?? placeholder ?? t.common.selectPlaceholder}
         </span>
         {/* ⭐ Round 10 (R10-A3): the caret ends the field, so its ink stands on the field's end padding, as the filter
-            field's and every row end's does (glyphs.tsx's edge rule). This caret is the field's own 12-unit drawing, not
-            the family's: its path spans x3–9 and its round caps reach 1 unit beyond, so its ink stands 2 units — 1/6 of its
-            10px box, 1.667px — inside each side, and it is pulled by exactly that (`FIELD_CARET_PULL`). */}
-        <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-text-subtle" style={{ marginInlineEnd: FIELD_CARET_PULL }} aria-hidden>
-          <path d="M3 4.5l3 3 3-3" />
-        </svg>
+            field's and every row end's does — the family's edge rule, read from the ink table (glyphs.tsx). It is the
+            family's caret since PHOSPHOR-MIGRATION W4 (§8a), where it was the field's own hand-drawn 10px drawing: at 12px
+            Phosphor's Bold caret carries the hand-drawn one's weight; at 10px it read faint. */}
+        <I.chevronDown s={12} edge="end" className="shrink-0 text-text-subtle" aria-hidden />
       </button>
 
       {name && <input ref={hiddenRef} type="hidden" name={name} value={selected} />}
@@ -533,7 +527,7 @@ export function Select({
                 )}
               </span>
               {!o.disabled && o.value === selected && (
-                <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="mt-1 shrink-0"><path d="M20 6 9 17l-5-5" /></svg>
+                <I.check s={14} className="mt-1 shrink-0" aria-hidden />
               )}
             </button>
           ))}

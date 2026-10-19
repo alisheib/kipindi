@@ -25,7 +25,7 @@ export default function Loading() {
       lead={
         <>
           <BackLinkGhost />
-          <PageHeader icon={<I.bellRing s={22} />} eyebrow={t.notif.eyebrow} title={t.notif.title} />
+          <PageHeader icon={<I.bell s={22} />} eyebrow={t.notif.eyebrow} title={t.notif.title} />
         </>
       }
     />

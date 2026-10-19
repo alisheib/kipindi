@@ -2135,7 +2135,8 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    (`npm run glyphs:gen`; `test:glyph-sync` fails on any drift) — never `@phosphor-icons/react`, whose every component
    carries all six weights. What a key draws is decided once, in `scripts/glyphs/map.ts`; `test:glyph-source`
    (predeploy) fails an icon package, a Phosphor import outside the codegen, a new inline `<svg>` icon, an SVG drawn as a
-   data URI, or an image under `public/` that is not named for what it is.
+   data URI, an image under `public/` that is not named for what it is, or a typed character used as an icon (▲ ▼ ★ ✓ ✗
+   ⚠ ↑ ↓, an emoji, an arrow ending a label — an arrow that is punctuation, read "to", is named there with its reason).
    ⭐ **ONE SOURCE OF GLYPHS AND ICONS — and every design takes from it (Ali, 2026-10-17, R-ONE-SOURCE:** *"we need to
    have 1 source of glyphs and icons so mark tsi as rule and let na fuutre deins gor pages tkae fomr our new souerce
    clenaly perfclet loically"***).** A design delivered for a page — by Claude Design or anyone, a canvas, a kit, a
@@ -2152,6 +2153,29 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    (R-RAIL 4B), in a 56×32 pip; a tab's focus ring is drawn around its pill. ⛔ `--pill-active` is not a destination's
    mark: it stays the see-through selection of filters, menus and a page's section tabs (§K 7c), whose language inside a
    page is still the underline.
+   ⭐ **FILL MEANS A STATE; DUOTONE IS IDENTITY ON A PLATE; LINE IS EVERYTHING ELSE (PHOSPHOR-MIGRATION W4, §8c; Ali,
+   2026-10-19: "nothing should be plain … everything visually perfect, logically perfect").** A glyph's tier says what it
+   is, so the tier is never chosen for looks:
+   - **Fill** — a state that is on or earned: the current destination (above); a toggle that is on (a followed market's
+     star, "notify me", the bell while its panel is open); the status a status container states (Callout, NoticeBar,
+     StatusFlag, a toast, a receipt's chip, the KYC panel's plate, a proposal's chip); a win (the seal, solid, in gold —
+     §M3, §M7); a media control (play, pause); a direction that is itself the data (a card's 24h move: the solid caret).
+     A tick or a cross in Fill is always the circled one: Phosphor fills a bare check or ✕ into a square, which reads as a
+     checkbox.
+   - **Duotone** — identity on a plate (W5 and W6): hub rows, notification plates, help and trust cells, category sigils,
+     empty states. Life without claiming a state.
+   - **Line** (Bold up to 26px, Regular from 27) — what is acted on or read past: actions, chevrons and arrows, marks among
+     words, meta beside data (a time, a count), inactive destinations, form adornments, and the quiet outcomes — lost,
+     void, pending — because a loss is bookkeeping (§M7). A resolved market keeps the seal's Line: only a win is solid.
+   ⛔ Fill is not decoration. A filled glyph beside every timestamp spends the one signal that says "this is on" or "this
+   is yours"; a surface that wants more life asks for Duotone on a plate.
+   ⭐ **ONE MEANING, ONE GLYPH — the door wears the page's glyph (W4, §8b).** A hub row, a menu row, a notification and
+   the page they open draw the same key: identity verification is `idCard` (`shieldcheck` means verified), the
+   leaderboard `podium`, Terms `scrollText`, the rules `tippingScales`, the privacy notice `privacyNotice`, the friends
+   programme `users`, the agent programme `agent`, deposit and withdraw `arrowDownToLine` / `arrowUpFromLine`, proposals
+   `idea`, limits `limits`. Up & Down is `trade` (⇅) and its two sides are its two halves, `arrowUp` and `arrowDown`.
+   An outcome is glyph + ink + word (`positionStatusGlyph`, `side-label.ts`): open the countdown, won the seal in Fill,
+   lost the circled cross, void the prohibit sign, cashed out the hand of coins.
    ⚖️ **Ruled 2026-10-17 (Ali): "Switch to Phosphor"** — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) §
    "2026-10-17 · Icons — every icon and glyph moves to Phosphor, in waves, live as each is proven (owner)"; the work and
    its rulings (weight, tone, the selected state, the lexicon) are [`PHOSPHOR-MIGRATION.md`](PHOSPHOR-MIGRATION.md).

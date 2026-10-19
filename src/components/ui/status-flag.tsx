@@ -63,7 +63,8 @@ export function StatusFlag({
       style={{ fontSize: d.fontSize, padding: d.padding, letterSpacing: d.tracking, ...style }}
     >
       <span className="inline-flex items-center" style={{ gap: d.gap }}>
-        <Glyph s={d.icon} aria-hidden />
+        {/* A flag states a status, so its glyph is the Fill (PHOSPHOR-MIGRATION §8c). */}
+        <Glyph s={d.icon} tier="fill" aria-hidden />
         {label}
       </span>
     </span>

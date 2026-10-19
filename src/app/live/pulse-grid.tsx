@@ -252,7 +252,7 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
             // The game tag — so a mixed wall reads as two games at a glance.
             <span className={`inline-flex items-center gap-1 rounded-sm px-1.5 ${TAG_BOX_Y} font-bold tracking-[0.10em]`}
                   style={{ background: "var(--pill-active)", border: "1px solid var(--brand-500)", color: "var(--brand-200)" }}>
-              <I.trendingUp s={11} /> {t.market.udTitle}
+              <I.trade s={11} /> {t.market.udTitle}
             </span>
           ) : (
             // The translated category, never the stored id (that printed CRYPTO / SPORTS on sw and zh pages).

@@ -198,7 +198,7 @@ export function RoundStakePanel(props: {
             stated a second time, and the ruling takes every multiple off Up & Down. */}
         {projected != null && (
           <span className="flex shrink-0 items-center gap-1.5" title={t.market.udRcProjected}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <I.arrowRight s={11} className="text-text-muted" />
             {/* DG-A-12 · §M4 + §T1 — `.amount` replaces `font-mono … tabular-nums`; 12.5 →
                 `text-body-sm` (13), the +0.5 already ruled for `.admin-tbl`. The muted ink and
                 the semibold stay: §M3 keeps projected money quieter than earned money. */}

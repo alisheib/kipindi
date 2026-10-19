@@ -548,7 +548,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                     </span>
                     {g.bets.map((b) => (
                       <Chip key={b.positionId} className="tabular-nums" variant={b.side === "UP" ? "yes" : "no"}>
-                        {b.side === "UP" ? "↑" : "↓"} {formatTzs(b.stake)}
+                        {b.side === "UP" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}{formatTzs(b.stake)}
                       </Chip>
                     ))}
                   </div>

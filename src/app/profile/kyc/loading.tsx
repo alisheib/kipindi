@@ -32,7 +32,7 @@ export default function Loading() {
         <>
           <BackLinkGhost />
           <PageHero glow="info">
-            <PageHeader icon={<I.shieldcheck s={14} />} eyebrow={t.profile.kycIdentityVerification} eyebrowTight={locale === "sw"} title={<GhostText>{t.profile.verifyIdentity}</GhostText>} />
+            <PageHeader icon={<I.idCard s={14} />} eyebrow={t.profile.kycIdentityVerification} eyebrowTight={locale === "sw"} title={<GhostText>{t.profile.verifyIdentity}</GhostText>} />
             <p className={`mt-2 text-[13px] leading-snug max-w-prose text-balance ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`} aria-hidden>
               <GhostText>{t.profile.verifyBody}</GhostText>
             </p>

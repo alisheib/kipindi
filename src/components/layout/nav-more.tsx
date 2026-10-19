@@ -139,7 +139,7 @@ export function NavMore({
           {/* The rail's own pip and glyph (PHOSPHOR-MIGRATION W3): Fill on the pill while a destination behind it is
               the current page, as every rail slot says "you are here". */}
           <span className="kp-rail__pip">
-            <NavGlyph glyph="menu" on={anyActive} s={24} />
+            <NavGlyph glyph="more" on={anyActive} s={24} />
           </span>
           {/* Capitalised by class, like the bar trigger below: `common.more` stays lowercase for its mid-sentence use. */}
           <span className="kp-rail__label capitalize">{label}</span>

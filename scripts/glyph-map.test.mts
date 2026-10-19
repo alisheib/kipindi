@@ -19,7 +19,10 @@
  *      (inlined in the root layout); a key drawn only once a tap opens a menu or panel is named, with where, as `tap`;
  *      every chrome file exists, every `tap` key is one its file draws, and every shell key is drawn by the chrome
  *  §9b every destination the two tab bars hand to NavGlyph ships a Fill (FILL_KEYS): the current one is drawn in it, and
- *      without one the engine would fall back to Bold in silence (W3's review)
+ *      without one the engine would fall back to Bold in silence (W3's review). And the Fills inlined beside the chrome's
+ *      Bold are exactly the ones the chrome draws (map.ts CHROME_FILLS, W4): each a shell key that ships a Fill; every
+ *      tab-bar destination among them (else the current tab's Fill would wait for the sprite file); each drawn in Fill by
+ *      a chrome file (else every page inlines it for nothing)
  *  §10 the console's own keys stay in the console (W3, when the admin sidebar's destinations joined ADMIN_KEYS): the admin
  *      sprite is the one a player never downloads, so every admin key is drawn by a console file (src/app/admin/,
  *      src/components/admin/) and by no other file, is drawn somewhere (or it ships for nothing), and is not a shell key
@@ -27,7 +30,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ADMIN_KEYS, ALIASES, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, SHELL_KEYS, type MapEntry } from "./glyphs/map.ts";
+import {
+  ADMIN_KEYS, ALIASES, CHROME_FILLS, FILL_KEYS, GLYPH_MAP, NEW_KEYS, PHOSPHOR_PACKAGE, PHOSPHOR_VERSION, SHELL_KEYS, type MapEntry,
+} from "./glyphs/map.ts";
 import { EXTRAS, type Variant } from "./glyphs/extras.ts";
 import { TEXT_MARKS, type Mark } from "./glyphs/marks.ts";
 import { pathBounds, type Box } from "./glyphs/reach.mts";
@@ -51,9 +56,9 @@ const CHROME: Record<string, { tap?: Record<string, string> }> = {
   "src/components/layout/notifications-panel.tsx": { tap: { x: "the open panel's close and a row's dismiss", chevronRight: "a row's door, in the open panel" } },
   "src/components/ui/language-menu.tsx": { tap: { check: "the chosen language, in the open menu" } },
   "src/components/layout/avatar-menu.tsx": { tap: {
-    shieldcheck: "a menu row", arrowRight: "a menu row's door", logOut: "the menu's sign-out row",
-    portfolio: "a menu row", profile: "a menu row", resolved: "a menu row", wallet: "a menu row", crown: "a menu row",
-    idea: "a menu row (Propose & earn)", gift: "a menu row (Invite & Earn)",
+    staffConsole: "the staff console's row", arrowRight: "a menu row's door", logOut: "the menu's sign-out row",
+    portfolio: "a menu row", profile: "a menu row", resolved: "a menu row", wallet: "a menu row", podium: "a menu row",
+    idea: "a menu row (Propose & earn)", users: "a menu row (Invite & Earn)", idCard: "a menu row (Verify ID)",
   } },
   "src/components/journey/journey-top-bar.tsx": {},
   "src/components/journey/journey-tabs.tsx": {},
@@ -77,6 +82,7 @@ type World = {
   chrome: typeof CHROME;
   admin: readonly string[];
   fill: readonly string[];
+  chromeFills: readonly string[];
 };
 
 /** The console's own files (§10): a key drawn here, and nowhere else, belongs in the admin sprite. */
@@ -206,7 +212,16 @@ function check(w: World): string[] {
     if (text === undefined) { f.push(`§9b the tab-bar file ${rel} is not a source file — the list is stale`); continue; }
     const named = namedKeys(text, keys);
     if (!named.length) f.push(`§9b ${rel} names no destination glyph — the list is stale`);
-    for (const k of named) if (!w.fill.includes(k)) f.push(`§9b ${rel} hands ${k} to NavGlyph, and ${k} ships no Fill — the current tab would draw Line`);
+    for (const k of named) {
+      if (!w.fill.includes(k)) f.push(`§9b ${rel} hands ${k} to NavGlyph, and ${k} ships no Fill — the current tab would draw Line`);
+      else if (!w.chromeFills.includes(k)) f.push(`§9b ${rel} hands ${k} to NavGlyph, and ${k}'s Fill is not in CHROME_FILLS — the current tab would wait for the sprite file`);
+    }
+  }
+  for (const k of w.chromeFills) {
+    if (!w.shell.includes(k) || !w.fill.includes(k)) { f.push(`§9b CHROME_FILLS names ${k}, which is not a shell key that ships a Fill`); continue; }
+    const tab = NAV_GLYPH_FILES.some((rel) => namedKeys(w.srcFiles.get(rel) ?? "", [k]).length > 0);
+    const filled = Object.keys(w.chrome).some((rel) => new RegExp(`<I\\.${k}\\b[^>]*\\btier=[^>]*fill`).test(codeOf(w.srcFiles.get(rel) ?? "")));
+    if (!tab && !filled) f.push(`§9b CHROME_FILLS names ${k}, which no chrome file draws in Fill — every page inlines it for nothing`);
   }
   // §10
   const byConsole = new Set<string>();
@@ -251,6 +266,7 @@ const world: World = {
   chrome: CHROME,
   admin: ADMIN_KEYS,
   fill: FILL_KEYS,
+  chromeFills: CHROME_FILLS,
 };
 
 if (!process.argv.includes("--prove-red")) {
@@ -296,6 +312,10 @@ const plants: [string, RegExp, World][] = [
   ["a shell key nothing in the chrome draws", /§9 shell key coins is drawn by no chrome file/, W({ shell: [...world.shell, "coins"] })],
   ["a tab-bar destination that ships no Fill", /§9b src\/components\/layout\/bottom-nav\.tsx hands live to NavGlyph, and live ships no Fill/, W({ fill: world.fill.filter((k) => k !== "live") })],
   ["the journey's tab table loses a Fill", /§9b src\/lib\/nav\/active-tab\.ts hands ticket to NavGlyph, and ticket ships no Fill/, W({ fill: world.fill.filter((k) => k !== "ticket") })],
+  ["a tab-bar destination's Fill leaves the inline symbols", /§9b src\/components\/layout\/bottom-nav\.tsx hands live to NavGlyph, and live's Fill is not in CHROME_FILLS/,
+    W({ chromeFills: world.chromeFills.filter((k) => k !== "live") })],
+  ["an inlined Fill the chrome never draws", /§9b CHROME_FILLS names lock, which no chrome file draws in Fill/, W({ chromeFills: [...world.chromeFills, "lock"] })],
+  ["an inlined Fill that is no shell key", /§9b CHROME_FILLS names coins, which is not a shell key that ships a Fill/, W({ chromeFills: [...world.chromeFills, "coins"] })],
   ["a player page draws an admin key", /§10 src\/app\/zz\/page\.tsx draws the admin key brain/, withSrc("src/app/zz/page.tsx", "export const P = () => <I.brain s={14} />;")],
   ["a player table names an admin key", /§10 src\/lib\/zz\.ts draws the admin key dashboard/, withSrc("src/lib/zz.ts", 'export const ROW = { glyph: "dashboard" };')],
   ["an admin key no console file draws", /§10 admin key wifiOff is drawn by no console file/, W({ admin: [...world.admin, "wifiOff"] })],

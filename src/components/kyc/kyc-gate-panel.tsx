@@ -120,7 +120,9 @@ const BY_STATE: Record<KycGatePanelState, {
    *  `email` draws its own controls (resend / change, or add) below. */
   cta: "verify" | "support" | "email" | null;
 }> = {
-  not_started:    { tone: "neutral", glyph: "shieldcheck", cta: "verify" },
+  // Identity verification's own key, as its hub row and its page wear (PHOSPHOR-MIGRATION §8b): `shieldcheck` means
+  // verified, which a check not yet started is not.
+  not_started:    { tone: "neutral", glyph: "idCard",      cta: "verify" },
   // ⛔ NO UPLOAD GLYPH (2026-10-10, typed-only identity): a player verifies with typed details, so an arrow-into-a-tray
   // on the withdraw screen would ask for a file nobody wants. `uploaded` is an unfinished case (an agent applicant's
   // photos, or one left from before 2026-10-10) — the document; `more_info` is an officer's note to read — info.
@@ -254,7 +256,8 @@ export function KycGatePanel({
            (tailwind.config.ts), so `h-10 w-10` renders 80×80px. 40px = --tap-min. */
         className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-full ${tone.wash} ${tone.ink}`}
       >
-        <Glyph s={18} />
+        {/* The plate states where the check stands, so its glyph is the Fill (PHOSPHOR-MIGRATION §8c). */}
+        <Glyph s={18} tier="fill" />
       </span>
       <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${copy.stateWord ? tone.ink : "text-text-subtle"}`}>{copy.eyebrow}</p>
       {/* 2026-09-14 — the title is balanced like the lines under it: "We're checking your / documents" left one word

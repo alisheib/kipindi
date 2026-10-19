@@ -58,7 +58,7 @@ import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { SellButton } from "@/components/markets/sell-button";
 import { cardTitle } from "@/lib/markets/short-title";
-import { positionStatusWord, sideWord } from "@/lib/side-label";
+import { positionStatusGlyph, positionStatusWord, sideWord } from "@/lib/side-label";
 import { positionStatusChip } from "@/lib/status-tone";
 import { formatClock, formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
@@ -98,6 +98,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
   // read here on the server, is the time the journey's line names.
   const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);
   const [placedBefore, placedAfter] = t.journey.ticketPlacedAt.split("{date}");
+  // The state's glyph beside its word and ink (PHOSPHOR-MIGRATION W4): the classic position card draws the same.
+  const state = positionStatusGlyph(p.status);
+  const StateGlyph = I[state.key];
   return (
     <article
       id={p.id}
@@ -108,7 +111,7 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
         <Chip size="sm" variant={p.side === "YES" ? "yes" : "no"}>{sideWord(t, p.side, "MARKET")}</Chip>
         {/* `metrics="base"` (2026-10-08 · G1 [167 168]): every state the side pill's 18px, 9.5px size — an
             open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
-        <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
+        <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}><StateGlyph s={12} tier={state.tier} aria-hidden />{positionStatusWord(t, p.status, "MARKET")}</Chip>
       </div>
       {/* `keepFigures` (2026-10-08 · G1; round 4, edges 197 255): "200毫米", "2026-27" and "dakika 28:00" never break inside. */}
       <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">

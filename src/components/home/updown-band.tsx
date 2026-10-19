@@ -95,7 +95,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 style={{ whiteSpace: "normal" }}
               >
                 {/* Both marks on the button's padding (round 10, R10-A6: a centred control frames its ink). */}
-                <I.trendingUp s={16} edge="start" />
+                <I.trade s={16} edge="start" />
                 {t.home.updownCta}
                 <I.chevronRight s={14} edge="end" text="body-600" />
               </Link>

@@ -166,7 +166,7 @@ export function ShareButton({
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
                 <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-md bg-bg-overlay text-text-muted">
-                  {copied ? <I.check s={16} /> : <LinkMark />}
+                  {copied ? <I.check s={16} /> : <I.link s={16} />}
                 </span>
                 {/* ⚠️ `min-w-0` — a flex child defaults to `min-width: auto`, so an unbreakable
                     URL sets the FLOOR for this column and pushes the tile wider than the
@@ -187,15 +187,5 @@ export function ShareButton({
         </div>
       </Modal>
     </>
-  );
-}
-
-
-function LinkMark() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 15l6-6" />
-      <path d="M10 6h2a4 4 0 0 1 4 4M14 18h-2a4 4 0 0 1-4-4" />
-    </svg>
   );
 }

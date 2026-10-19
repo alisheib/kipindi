@@ -8058,12 +8058,13 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   box-shadow: var(--gilt-metal-edge), inset 0 -3px 0 oklch(6% 0.06 268 / 0.18);
   color: var(--gold-fg);
 }
-/* The "+" is the mark's navy, so the money-in verb is painted in the mark's own ink. */
-.kp-coin__plus {
+/* The deposit arrow (`I.arrowDownToLine`, the lexicon's money-in) is the mark's navy, so the verb is painted in the
+   mark's own ink. */
+.kp-coin__verb {
   display: block;
   color: var(--kp-coin-pivot);
 }
-/* A HELD wallet gets the mark's HUB instead of a "+": `/wallet/deposit` refuses a held wallet, so
+/* A HELD wallet gets the mark's HUB instead of the deposit arrow: `/wallet/deposit` refuses a held wallet, so
    the coin stops offering money-in and the slot becomes the Wallet door. Same disc, different
    verb — and the hub is the mark's own, a gilt disc with a navy pivot. */
 .kp-coin__hub {

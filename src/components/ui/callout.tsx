@@ -247,6 +247,8 @@ export function Callout({
   live?: boolean;
 }) {
   const tk = TONE[tone];
+  // A callout's glyph is its status, so it is drawn in Fill (PHOSPHOR-MIGRATION §8c: Fill means a state); every key a
+  // callout may draw ships one (map.ts FILL_KEYS, W4).
   const Glyph = I[glyph ?? tk.glyph];
   const strong = emphasis === "strong";
   const sz = SIZE[size];
@@ -279,7 +281,7 @@ export function Callout({
           border={`1px solid ${panel ? tk.panel.border : "currentColor"}`}
           aria-hidden
         >
-          <Glyph s={26} />
+          <Glyph s={26} tier="fill" />
         </IconPlate>
         {badge ? <div className="mt-3.5">{badge}</div> : null}
         {title ? (
@@ -307,7 +309,7 @@ export function Callout({
       style={panelStyle}
     >
       <span aria-hidden className={cn("shrink-0", size === "md" ? "mt-0.5" : "mt-[1px]", tk.icon)}>
-        <Glyph s={strong ? 18 : sz.icon} />
+        <Glyph s={strong ? 18 : sz.icon} tier="fill" />
       </span>
       <div className={cn(sz.body, size === "md" && "min-w-0")}>
         {title

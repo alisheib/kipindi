@@ -47,18 +47,23 @@ export function StatusBadge({ status, isHot }: { status: ProposalStatus; isHot?:
   } else if (status === "APPROVED") {
     variant = TONE_CHIP[STATUS_TONE.APPROVED.proposals]; icon = "checkCircle"; label = t.common.approved;
   } else if (status === "LISTED") {
-    // Royal — `active` is the royal variant this chip has always worn. See the header.
-    variant = "active"; icon = "check"; label = t.common.live;
+    // Royal — `active` is the royal variant this chip has always worn. See the header. Its word is "Live", so its glyph
+    // is the Live mark (R-LEXICON 5.2A), where it was a tick.
+    variant = "active"; icon = "live"; label = t.common.live;
   } else if (status === "RESOLVED") {
-    variant = TONE_CHIP[STATUS_TONE.RESOLVED.proposals]; icon = "trophy"; label = t.market.statusResolved;
+    // The results seal (R-LEXICON 5.5A), where it was a trophy. In Line: the solid seal is a win's alone (§8c).
+    variant = TONE_CHIP[STATUS_TONE.RESOLVED.proposals]; icon = "resolved"; label = t.market.statusResolved;
   } else if (status === "DECLINED") {
-    variant = TONE_CHIP[STATUS_TONE.REJECTED.proposals]; icon = "x"; label = t.common.declined;
+    // A circled cross: Phosphor fills a bare `x` into a solid square, which reads as a close box.
+    variant = TONE_CHIP[STATUS_TONE.REJECTED.proposals]; icon = "xCircle"; label = t.common.declined;
   }
 
   const Icon = I[icon];
   return (
     <Chip variant={variant} aria-label={label}>
-      <Icon s={12} />
+      {/* The chip states a status, so its glyph is the Fill (PHOSPHOR-MIGRATION §8c) — but a resolved one keeps the
+          seal's Line, so it never reads as a win. */}
+      <Icon s={12} tier={status === "RESOLVED" ? undefined : "fill"} />
       {label}
     </Chip>
   );

@@ -120,8 +120,9 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
       className="btn btn-ghost btn-md w-full"
       style={watching ? { background: "var(--pill-active)", borderColor: "var(--brand-400)", color: "var(--text)" } : undefined}
     >
-      {/* M5 state morph — bell→ringing swaps through the kit primitive. */}
-      <GlyphSwap state={watching}>{watching ? <I.bellRing s={14} /> : <I.bell s={14} />}</GlyphSwap>
+      {/* M5 state morph through the kit primitive. On is the bell's Fill (PHOSPHOR-MIGRATION §8c: a toggle that is on is
+          its Fill, as the followed star); `bellRing` keeps its one meaning, the notification settings. */}
+      <GlyphSwap state={watching}>{watching ? <I.bell s={14} tier="fill" /> : <I.bell s={14} />}</GlyphSwap>
       {watching ? `${t.common.watching} · ${t.common.watchingHint}` : t.common.notifyOnResolve}
     </button>
   );

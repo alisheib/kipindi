@@ -54,7 +54,7 @@ export function FeedbackSettings() {
 
       <div className="divide-y divide-border/60">
         <Row
-          icon={<I.activity s={16} />}
+          icon={<I.vibrate s={16} />}
           title={t.common.hapticFeedback}
           subtitle={t.common.hapticSubtitle}
           on={hapticsOn}
@@ -76,7 +76,9 @@ export function FeedbackSettings() {
               (tailwind.config.ts:200-215) and that pair is 64×64px, taller on its own than
               the py-3.5 row it sits in. 40px = --tap-min, the kit's glyph-tile size. */}
           <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
-            <NeedleGlyph />
+            {/* The family's Needle (`I.needle`, a house extra in Phosphor's grammar): in a list of row glyphs the Needle is
+                one of them, as the hub's row draws it (round 4, 2026-10-09); this was a copy of the drawer's two-tone mark. */}
+            <I.needle s={16} className="text-brand-300" />
           </span>
           <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
             <div className="min-w-0 flex-1">
@@ -98,16 +100,6 @@ export function FeedbackSettings() {
         </div>
       </div>
     </section>
-  );
-}
-
-/** The 50pick mark in miniature — a disc with the needle on its pivot. */
-function NeedleGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 100 100" aria-hidden="true" className="text-brand-300">
-      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.5" />
-      <line x1="38" y1="8" x2="62" y2="92" stroke="currentColor" strokeWidth="8" strokeLinecap="round" />
-    </svg>
   );
 }
 

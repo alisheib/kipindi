@@ -95,8 +95,10 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   checkCircle: { ph: "check-circle" },
   bellRing: { ph: "bell-ringing" },
   bellOff: { ph: "bell-slash" },
-  trendingUp: { ph: "trend-up" },
-  trendingDown: { ph: "trend-down" },
+  // W4 (§8b): drawn nowhere once Up & Down's sides became the halves of its ⇅ (arrowUp / arrowDown), the product's own
+  // mentions its `trade`, and a lost bet's notification the quiet xCircle.
+  trendingUp: { retire: "drawn nowhere after W4: Up & Down's sides are arrowUp / arrowDown and the product is trade (§8b)" },
+  trendingDown: { retire: "drawn nowhere after W4: Up & Down's DOWN is arrowDown and a loss is xCircle (§8b)" },
   clock: { ph: "clock" },
   arrowDown: { ph: "arrow-down" },
   arrowUp: { ph: "arrow-up" },
@@ -128,7 +130,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   mail: { ph: "envelope-simple" },
   calendar: { ph: "calendar-blank" },
   device: { ph: "devices" },
-  vibrate: { retire: UNUSED },
+  vibrate: { ph: "vibrate" }, // W4 (§8b): haptic feedback's own glyph — the settings row wore the activity log's pulse
   smartphone: { ph: "device-mobile" },
   shieldQuestion: { ph: "seal-question" },
   fileSignature: { ph: "signature" },
@@ -253,15 +255,27 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
  * has to download. `test:glyph-map` §9 holds the chrome to it: every key a chrome file draws before a tap is a shell key.
  */
 export const SHELL_KEYS: readonly string[] = [
-  "markets", "trade", "live", "menu", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
+  // W4 (the audit of 2026-10-19, §8b): the classic rail's More draws its own key, `more`. `menu` (≡) is the console
+  // drawer's button, drawn after a tap, so it left the shell.
+  "markets", "trade", "live", "more", "ticket", "user", "bell", "arrowDownToLine", "chevronDown",
   "eye", "eyeOff", "lock", // the balance pill: its eye (CashEye) shows or hides the balance; the lock marks a held wallet
 ];
+/**
+ * The shell keys whose FILL the chrome itself draws, so it is inlined beside their Bold (W4). The rest of a shell key's
+ * Fill ships in the app sprite: a page never inlines a drawing its chrome does not draw. Today:
+ * - the tab bars' destinations, the current one drawn in Fill on the pill (NavGlyph, W3);
+ * - the header bell, drawn in Fill while its panel is open (a toggle that is on, §8c).
+ * The balance pill's lock and eye, and the header's caret, draw their Fill only in a page's body (a callout, the preview
+ * notice, a card's 24h move), so those Fills ride in the app sprite. `test:glyph-map` §9b holds the list to the chrome.
+ */
+export const CHROME_FILLS: readonly string[] = ["markets", "trade", "live", "more", "ticket", "user", "bell"];
 export const ADMIN_KEYS: readonly string[] = [
   "upload", "fileSpreadsheet", "brain", "shieldAlert", "shieldOff", "archive", "gauge", "reconcile",
   // W3 (R-ADMIN, R-INDICATOR 3B): the console's own destinations (NEW_KEYS below), drawn only by its sidebar and drawer.
   // A destination that reuses a player key (live, the board, results, KYC…) leaves that key in its own group.
+  // `agent` left in W4: the player's own doors to the agent programme (the hub's and the profile's) wear it too.
   "dashboard", "journey", "insights", "settlement", "finance", "house", "desk", "reports", "tax", "aiUsage",
-  "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic", "agent",
+  "roster", "cohorts", "sources", "rounds", "weeks", "pools", "integrity", "contacts", "invites", "traffic",
   "privacy", "audit", "approvals", "staff", "roles",
 ];
 
@@ -285,8 +299,8 @@ export const FILL_KEYS: readonly string[] = [
   "star", // W2: a followed market's star is solid (WatchStar `on`), as the hand-drawn star filled by `fill-current` was
   "pause", // W2: the LIVE strip's pause (and its play, playBare) are solid, as a player's are: outlined at 14px they read "00"
   // W3 (R-INDICATOR 3B): the two tab bars' destinations — the current one draws its Fill on the pill (NavGlyph). Shell
-  // keys, so their Fill is inlined beside their Bold.
-  "markets", "trade", "live", "menu", "ticket", "user",
+  // keys in CHROME_FILLS, so their Fill is inlined beside their Bold. (W4: the classic rail's More is `more`.)
+  "markets", "trade", "live", "more", "ticket", "user",
   // W3 (R-INDICATOR 3B): the admin sidebar's destinations — the current one draws its Fill (NavGlyph).
   // In the sidebar's order (admin-nav-groups.ts NAV_GROUPS); `live`, `markets` and `trade` are listed above. The console's
   // own keys ship it in the admin sprite; a reused player key ships it in its own group's file.
@@ -295,6 +309,14 @@ export const FILL_KEYS: readonly string[] = [
   "rounds", "weeks", "pools", "integrity", "users", "gift", "contacts", "invites", "megaphone", "traffic", "agent",
   "tippingScales", "idCard", "flag", "comment", "shieldAlert", "circleStop", "privacy", "archive", "audit", "server",
   "aiUsage", "approvals", "keyRound", "staff", "roles",
+  // W4 (docs/PHOSPHOR-MIGRATION.md §8c: Fill means a state) — `idCard`, `resolved`, `live` and `pause` ship it above.
+  // A status in a status container: the doors Callout, NoticeBar, StatusFlag, Toast, a receipt's status, the KYC panel's
+  // plate and the proposal's chip draw their glyph in Fill. Circled keys only for a tick or a cross: Phosphor fills a
+  // bare `check` or `x` into a solid square, which reads as a checkbox.
+  "info", "warning", "alertCircle", "checkCircle", "xCircle", "clock", "lock", "shieldcheck", "bellOff", "eye",
+  "rotateCcw", "mail", "camera", "flame2", "edit",
+  "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
+  "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
 ];
 export const DUO_KEYS: readonly string[] = [];
 
@@ -305,7 +327,7 @@ export const DUO_KEYS: readonly string[] = [];
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.a7babf1a.svg", "admin.d4427285.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.9032012a.svg", "admin.86ca5167.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [
@@ -337,6 +359,19 @@ export const NEW_KEYS: Record<string, MapEntry> = {
   // W2 (W2's review): the category "Other" — and any category the map does not know — took the board's key, which the
   // lexicon redrew as squares-four, so it read as "All" (grid-four) and as the board tab. Assorted topics: shapes.
   assorted: { ph: "shapes" },
+
+  // ── W4 (the audit of 2026-10-19, docs/PHOSPHOR-MIGRATION.md §8): meanings that had no key of their own ──
+  // The classic rail's More: hollow dots, solid on the pill. `menu` (≡) stays the console drawer's button; its Fill was a
+  // solid tile with lines cut out, which read as a card (W3's open call).
+  more: { ph: "dots-three-outline" },
+  // The privacy notice: a protected document. It wore a lock on its page (the lock also means a held wallet, a closed
+  // market and a locked round) and a plain document on the hub.
+  privacyNotice: { ph: "file-lock" },
+  net: { ph: "plus-minus" }, // a net figure — what came in less what went out (the activity page's Net tile)
+  send: { ph: "paper-plane-right" }, // send a message (the chat's send button, which drew its own arrow)
+  // The staff console's door, shown to staff in the account menu and the journey's Akaunti: a staff badge. It wore the
+  // shield (verified) in one door and the System section's drives in the other (W3 left it for later; §8b).
+  staffConsole: { ph: "identification-badge" },
 
   // ── W3 (R-ADMIN "Yes, sidebar + cards"; R-INDICATOR 3B): the admin console's destinations, one glyph each, drawn by its
   // sidebar and drawer (admin-nav-groups.ts NAV_GROUPS; docs/PHOSPHOR-MIGRATION.md §3 "Admin destinations (W3)"). A

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
+import { EmptyStateLink } from "@/components/ui/empty-state-link";
 import { GiltCorner } from "@/components/brand";
 import { formatNumber, formatReturnRate, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
@@ -250,7 +251,7 @@ export default async function PerformancePage({
           kind="positions"
           title={journey ? t.journey.ticketsEmptySettled : t.performance.noPerformance}
           body={breakBody ?? t.performance.noPerformanceBody}
-          action={breakBody ? null : <Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.positions.browseMarkets}</Link>}
+          action={breakBody ? null : <EmptyStateLink href="/markets">{t.positions.browseMarkets}</EmptyStateLink>}
         />
       ) : (
         <>

@@ -24,30 +24,35 @@ import type { StoredNotification } from "@/lib/server/store";
 type Kind = StoredNotification["kind"];
 
 /**
- * The glyph for a kind.
+ * The glyph for a kind — the meaning's own key, the one every other door to it wears (PHOSPHOR-MIGRATION §8b, the audit of
+ * 2026-10-19: deposit and withdraw were the plain arrows, a proposal a certificate, the friends programme a megaphone,
+ * a loss Up & Down's DOWN, a round's result a pulse, limits a heartbeat, betting closed a date).
  *
- * ⚠️ Returns the component, not an element, so a caller controls the size — the bell renders
- * at 13px inside a 28px plate, the page at 15px inside a 40px one.
+ * ⚠️ Returns the component, not an element, so a caller controls the size: the bell and `/notifications` both render it
+ * at 16px inside a 32px plate, and draw it in `tierFor`'s tier.
  */
 export const iconFor = (k: Kind) => {
   switch (k) {
-    case "WIN":          return I.trophy;
-    case "LOSS":         return I.trendingDown;
+    case "WIN":          return I.resolved; // the seal, in Fill (tierFor): a win is earned (§M3, §M7)
+    case "LOSS":         return I.xCircle; // quiet, in Line: a loss is bookkeeping (§M7)
     case "BET_PLACED":   return I.ticket;
-    case "SELECTION_CLOSED": return I.calendarClock;
-    case "DEPOSIT":      return I.arrowDown;
-    case "WITHDRAW":     return I.arrowUp;
-    case "KYC":          return I.shieldcheck;
-    case "ROUND_RESULT": return I.activity;
-    case "MATCH_START":  return I.coins;
-    case "RG":           return I.heartPulse;
+    case "SELECTION_CLOSED": return I.hourglassOff; // betting closed, as the cards and the question page draw it
+    case "DEPOSIT":      return I.arrowDownToLine; // R-LEXICON 5.3A
+    case "WITHDRAW":     return I.arrowUpFromLine; // R-LEXICON 5.3A
+    case "KYC":          return I.idCard; // identity verification, as its hub row; `shieldcheck` means verified
+    case "ROUND_RESULT": return I.resolved; // a result recorded (§3), in Line
+    case "MATCH_START":  return I.live; // nothing writes this kind today; a start is the Live mark
+    case "RG":           return I.limits; // R-LEXICON 5.7A
     case "SECURITY":     return I.keyRound;
-    case "AFFILIATE":    return I.megaphone;
-    case "PROPOSAL":     return I.fileCheck;
+    case "AFFILIATE":    return I.users; // the friends programme, as the hub's Alika row
+    case "PROPOSAL":     return I.idea; // R-LEXICON 5.6A
     case "WATCHLIST":    return I.star;
-    default:             return I.coins;
+    default:             return I.bell;
   }
 };
+
+/** The tier a kind's glyph draws in: a win's seal is solid, everything else is Line (PHOSPHOR-MIGRATION §8c). */
+export const tierFor = (k: Kind): "fill" | undefined => (k === "WIN" ? "fill" : undefined);
 
 /**
  * Kit-tinted swatch per notification kind (OKLCH-tuned for dark + light).

@@ -6,6 +6,7 @@
  * Royal Monogram (calmest + most legible in dense lists).
  */
 import { cn } from "@/lib/utils";
+import { I } from "@/components/ui/glyphs";
 import { IdentityAvatar, type CrestKind } from "@/components/ui/identity-avatar";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
@@ -48,11 +49,12 @@ export function TierBadge({ tier, className }: { tier: Tier; className?: string 
   // Kit class names — let globals.css drive the actual look so badges
   // automatically match the rest of the heraldic chord.
   const cls = `tier-${tier}`;
-  // Sovereign gets a star, not "S" — otherwise it collides with Silver's "S".
-  const letter = { sovereign: "★", diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
+  // Sovereign gets a star, not "S" — otherwise it collides with Silver's "S". The family's star in Fill (PHOSPHOR-MIGRATION
+  // §8a: it was a typed ★), at the badge letters' 11px.
+  const letter = { sovereign: null, diamond: "D", gold: "G", silver: "S", bronze: "B" }[tier];
   return (
     <span title={tier} className={cn("tier-badge", cls, className)}>
-      {letter}
+      {letter ?? <I.star s={11} tier="fill" aria-hidden />}
     </span>
   );
 }

@@ -51,7 +51,9 @@ export function OutcomeCubes({
             className="inline-flex items-center justify-center rounded-sm"
             style={{ width: 18, height: 18, ...CUBE_STYLE[o] }}
           >
-            {o === "UP" ? <I.trendingUp s={9} /> : o === "DOWN" ? <I.trendingDown s={9} /> : <I.arrowRight s={9} />}
+            {/* The side that won, as its arrow, and a voided round as the void sign (PHOSPHOR-MIGRATION §8b) — a voided
+                round drew a → before. */}
+            {o === "UP" ? <I.arrowUp s={9} /> : o === "DOWN" ? <I.arrowDown s={9} /> : <I.void s={9} />}
           </span>
         ))}
       </span>
