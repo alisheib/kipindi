@@ -32,22 +32,27 @@ const only = (name, all) => {
 // register's week switches from cards to its table — the five platform widths alone never shot that switch.
 const WIDTHS = only("MASWALI_SHOTS_WIDTHS", [320, 360, 768, 1024, 1280, 1920]);
 /** ⭐ THE WHOLE PAGE, NOT ITS FIRST SCREEN (the lead, 2026-10-19, after the tile read): a page longer than the viewport is
- *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 120px of overlap between steps so nothing
- *  falls between two tiles — viewport tiles, never a full-page capture (the fixed bars stay where a reader sees them).
+ *  shot again at each scroll step (`<name>-<locale>-<width>-s2.png`, -s3 …), 240px of overlap between steps so fixed top
+ *  and bottom bars cannot hide a strip between tiles — viewport tiles, never a full-page capture.
  *  The two card doors (`markets-card`, `journey-home`) are about the card at their head, so they keep one screen.
  *  MASWALI_SHOTS_SCROLL=0 turns it off for a quick focused run. */
 const SCROLL = process.env.MASWALI_SHOTS_SCROLL !== "0";
 const SCROLL_PAGES = new Set(["hub", "slip", "how", "register", "register-week", "tickets", "ticket"]);
-const MAX_STEPS = 14;
+const OVERLAP = 240;
+const MAX_STEPS = 24;
 async function shootScrolled(page, name, locale, width) {
   if (!SCROLL || !SCROLL_PAGES.has(name)) return;
   const total = await page.evaluate(() => document.documentElement.scrollHeight);
-  for (let n = 2, y = HEIGHT - 120; n <= MAX_STEPS && y < total - 40; n++, y += HEIGHT - 120) {
-    await page.evaluate((top) => window.scrollTo(0, top), y);
+  let coveredBottom = HEIGHT;
+  for (let n = 2; n <= MAX_STEPS && coveredBottom < total - 1; n++) {
+    const top = Math.min((n - 1) * (HEIGHT - OVERLAP), Math.max(0, total - HEIGHT));
+    await page.evaluate((y) => window.scrollTo(0, y), top);
     await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true)))));
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}-s${n}.png`, fullPage: false });
+    coveredBottom = (await page.evaluate(() => window.scrollY)) + HEIGHT;
   }
+  if (coveredBottom < total - 1) throw new Error(`${name} · ${locale} @${width}: full page was not covered by ${MAX_STEPS} viewport tiles`);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 const LOCALES = only("MASWALI_SHOTS_LOCALES", ["en", "sw", "zh"]);
@@ -76,18 +81,22 @@ async function contextWith(cookies, locale) {
   return ctx;
 }
 /** Opens a page and lets it settle before it is measured and shot: the load event, the network quiet for a beat (a
- *  signed-in page polls, so "networkidle" may never come — it is waited for 8s at most, never the 60s that made one
+ *  signed-in page polls, so "networkidle" may never come — it is waited for 2s at most, never the 60s that made one
  *  run of 135 tiles take hours on OMEGA, 2026-10-19), the webfonts, two frames, and a short beat for the effects that
  *  commit after hydration (the balance capsule's mask lifts in its first render after hydration — journey-header-fit). */
 async function open(page, path) {
   const res = await page.goto(`${BASE}${path}`, { waitUntil: "load", timeout: 180_000 });
-  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+  await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))));
   }).catch(() => {});
   await page.waitForTimeout(500);
   return res;
+}
+async function verifyLocale(page, locale, name, width) {
+  const rendered = await page.locator("html").getAttribute("lang");
+  ok(`${name} · ${locale} @${width} · html language matches the cookie`, rendered === locale, `lang=${rendered}`);
 }
 
 // The weeks: seeded here on a fresh server, or a drive's already there (the seed answers 409 then).
@@ -161,6 +170,7 @@ for (const locale of LOCALES) {
       // page draws the ticket — a tile of the wrong page must fail here, not reach the reader.
       ok(`${name} · ${locale} @${width} · not the not-found page`, (await page.getByText(/^404 · /).count()) === 0);
       if (name === "ticket") ok(`ticket · ${locale} @${width} · the page draws the ticket`, (await page.getByTestId("millionea-ticket").count()) === 1);
+      await verifyLocale(page, locale, name, width);
       await page.screenshot({ path: `${OUT}/${name}-${locale}-${width}.png`, fullPage: false });
       await shootScrolled(page, name, locale, width);
     }
@@ -181,6 +191,7 @@ for (const locale of passCookie ? LOCALES : []) {
     ok(`journey home · ${locale} @${width} · the card stands after the head`, (await page.getByTestId("millionea-home-card").count()) === 1);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(`journey home · ${locale} @${width} · no horizontal overflow`, over <= 1, `overflow=${over}px`);
+    await verifyLocale(page, locale, "journey home", width);
     await page.screenshot({ path: `${OUT}/journey-home-${locale}-${width}.png`, fullPage: false });
   }
   await ctx.close();

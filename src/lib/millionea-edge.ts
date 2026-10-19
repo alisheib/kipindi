@@ -11,9 +11,8 @@
  *    view: a request it lets through still meets the page's gate, which re-reads the stored role and the stored switch.
  * ⭐ HOW A HIDDEN ADDRESS ANSWERS: rewritten to `MILLIONEA_DARK_PATH`, a private segment (`_` — never a route), so the
  *    router's own 404 answers it, the same document any unknown address gets, under the same request headers.
- * ⛔ L5 (the lead's decision): a kill hides the PRODUCT, never a player's own tickets — `/millionea/tickets…` passes for
- *    any verified session, and the page's holder-aware gate answers a non-holder with the same not-found body. A
- *    signed-out reader gets the 404 at every state below ACTIVE.
+ * ⛔ L5 (the lead's decision): a kill hides the PRODUCT, never a player's own tickets — the proxy checks ticket
+ *    ownership before rendering. A non-holder and an unknown serial get the same real 404, including when signed in.
  * ⏳ The STAFF_PREVIEW pass for non-staff readers (`server/millionea-preview.ts`) has no reader yet; when it lands, this
  *    belt admits its holders too, in the same commit, or they meet a 404 here before the page that would admit them.
  * Pure and isomorphic: it imports the rollout's own pure module and nothing else.
@@ -40,13 +39,13 @@ export function millioneaEdgeAsks(pathname: string, ceiling: RolloutState = mill
 export const MILLIONEA_DARK_PATH = "/_millionea-dark";
 
 /** The request as the edge can know it: a verified session cookie, and whether its role claim is a staff role. */
-export type MillioneaEdgeViewer = { signedIn: boolean; staff: boolean };
+export type MillioneaEdgeViewer = { signedIn: boolean; staff: boolean; holder: boolean };
 
 /**
  * ⭐ THE EDGE'S ANSWER: true when the ceiling hides this Millionea address from this request, so it answers 404.
  *   · ACTIVE — never (the stored switch may still hide it: the page's gate answers that).
- *   · STAFF_PREVIEW — hidden but to a staff session (the page re-reads the STORED role) and, on the tickets, a session.
- *   · WITHDRAWN — hidden but the tickets, to a session (L5).
+ *   · STAFF_PREVIEW — hidden but to a staff session (the page re-reads the STORED role) or a ticket owner.
+ *   · WITHDRAWN — hidden but the owner's own tickets (L5).
  * ⛔ An unknown ceiling hides, as `composeMillionea` does.
  */
 export function millioneaDarkAtEdge(
@@ -56,7 +55,7 @@ export function millioneaDarkAtEdge(
 ): boolean {
   if (!isMillioneaPath(pathname)) return false;
   if (ceiling === "ACTIVE") return false;
-  if (viewer.signedIn && isMillioneaTicketsPath(pathname)) return false;
+  if (viewer.signedIn && viewer.holder && isMillioneaTicketsPath(pathname)) return false;
   if (ceiling === "STAFF_PREVIEW" && viewer.signedIn && viewer.staff) return false;
   return true;
 }

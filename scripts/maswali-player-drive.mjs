@@ -7,7 +7,7 @@
  * ⭐ RUN IT TWICE — production's configuration and the product's (the S5 review of 24ec0d33, LOW 13):
  *   · against a server with NO FEATURE_MILLIONEA (the shipped WITHDRAWN ceiling, production today) it runs step W alone:
  *     the edge's real 404 for a guest on every route, no door on the home, the board, /positions or More, and a signed-in
- *     player who holds no ticket meeting the plain not-found on the tickets — no word of the product, ghost included;
+ *     player who holds no ticket meeting the real 404 on the tickets — no word of the product, ghost included;
  *   · against a server with FEATURE_MILLIONEA=ACTIVE it runs steps 1–6 below.
  * ⚠️ PREMISE — a FRESH in-memory `next dev` (`rm -rf .next` first; no DATABASE_URL), and, for steps 1–6,
  *    FEATURE_MILLIONEA=ACTIVE (the seed sells, and the ticket arm reads the real rollout), DISABLE_ADMIN_TOTP=true (the
@@ -74,7 +74,9 @@ async function contextWith(cookies, viewport = { width: 360, height: 780 }) {
 }
 async function open(page, path) {
   const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 180_000 });
-  await page.waitForLoadState("networkidle", { timeout: 60_000 }).catch(() => {});
+  // The signed-in shell's long poll can hold a request open for a minute. The drive reads page state and settles each
+  // screenshot explicitly below; an eight-second quiet attempt catches ordinary loading without stalling every step.
+  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
   return res;
 }
 /** A tile of the page AT REST (S5 VIS, the lead's ruling of 2026-10-19): the webfonts, every running animation and
@@ -130,16 +132,16 @@ async function darkPass() {
   ok("W.4 the top bar draws no Millionea link and its More holds no Millionea row (≥1024)",
     rows.length > 0 && !rows.some((r) => r.includes("Millionea")) && !darkLinks.includes("/millionea") && darkLinks.includes("/results"), JSON.stringify({ rows, darkLinks }));
   await rp.keyboard.press("Escape");
-  // W.5 a signed-in player who holds no ticket passes the edge to the tickets' gate (L5): the plain not-found — no word of
-  // the product in what they see, and none of the ghosts' old words anywhere in the document.
+  // W.5 a signed-in player who holds no ticket is stopped before streaming (L5): the real 404, no word of the product
+  // in what they see, and none of the ghosts' old words anywhere in the document.
   await rp.setViewportSize({ width: 360, height: 780 });
   for (const route of ["/millionea/tickets", "/millionea/tickets/NO-SUCH-SERIAL"]) {
     const res = await open(rp, route);
     const html = (await res?.text().catch(() => "")) ?? "";
     const seen = await rp.locator("body").innerText().catch(() => "");
     const words = GHOST_WORDS.filter((w) => html.includes(w));
-    ok(`W.5 a signed-in non-holder meets the plain not-found on ${route} (status ${res?.status()}): no word of the product on screen or in the document`,
-      (await notFoundShown(rp)) && !/Millionea/.test(seen) && words.length === 0, JSON.stringify({ words, seen: seen.slice(0, 120) }));
+    ok(`W.5 a signed-in non-holder meets a real 404 on ${route} (status ${res?.status()}): no word of the product on screen or in the document`,
+      res?.status() === 404 && (await notFoundShown(rp)) && !/Millionea/.test(seen) && words.length === 0, JSON.stringify({ words, seen: seen.slice(0, 120) }));
   }
   await tile(rp, "W-nonholder-tickets-360");
   await reader.close();

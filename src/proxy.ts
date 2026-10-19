@@ -30,6 +30,9 @@ import { isStaffRole } from "@/lib/server/roles";
 import { PROD_HEADERS, SECURITY_HEADERS } from "@/lib/security-headers";
 // Pure and isomorphic (the rollout's own pure module and nothing else): Millionea's dark addresses answer a real 404 here.
 import { MILLIONEA_DARK_PATH, millioneaDarkAtEdge, millioneaEdgeAsks } from "@/lib/millionea-edge";
+import { isMillioneaTicketsPath } from "@/lib/millionea-edge";
+import { millioneaTicketEntitledAtEdge } from "@/lib/server/millionea-edge-entitlement";
+import { readVerifiedSession } from "@/lib/proxy-session";
 
 // Must match COOKIE_NAME in src/lib/server/session.ts
 const SESSION_COOKIE = "kp_session";
@@ -66,21 +69,6 @@ function isProtected(pathname: string): boolean {
 //
 // Verifying here, BEFORE the page render starts, lets us issue a
 // clean 307 with no Suspense interference.
-function b64uToBytes(s: string): Uint8Array {
-  // Restore base64 padding + alphabet — base64url uses - _ instead of + /.
-  const std = s.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = std.length % 4 === 0 ? std : std + "=".repeat(4 - (std.length % 4));
-  const bin = atob(pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-function timingSafeEq(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let r = 0;
-  for (let i = 0; i < a.length; i++) r |= a[i] ^ b[i];
-  return r === 0;
-}
 /**
  * W25 BELT 1 — the verified payload, not just a yes/no.
  *
@@ -94,45 +82,9 @@ function timingSafeEq(a: Uint8Array, b: Uint8Array): boolean {
  * `kycStatus`, and it is just as true of `role`: a demotion never reaches an already-minted cookie. So this belt is
  * deliberately COARSE and SUBTRACTIVE — it refuses an account whose own cookie admits it is not staff, and it is not,
  * and must never be described as, a replacement for the live-row check. Belt 2 (the per-page stored-row gate) answers
- * the demoted-cookie question; the proxy reads no database (it runs in front of every request), so it does not answer it here.
+ * the demoted-cookie question; this admin belt reads no database, so it does not answer it here. The narrow dark
+ * Millionea ticket belt below does read ticket ownership before a response can stream.
  */
-async function readVerifiedSession(token: string | undefined): Promise<{ role?: string } | null> {
-  if (!token) return null;
-  const dot = token.indexOf(".");
-  if (dot <= 0 || dot >= token.length - 1) return null;
-  const b64 = token.slice(0, dot);
-  const mac = token.slice(dot + 1);
-  // Web Crypto HMAC. Same key as src/lib/server/crypto.ts's
-  // sessionSecret() — dev fallback string + prod env var.
-  // Production: SESSION_SECRET MUST be set. Dev: deterministic fallback
-  // so `npm run dev` works without .env.local (same value as crypto.ts).
-  const secret = process.env.SESSION_SECRET
-    || (process.env.NODE_ENV === "production"
-        ? (() => { throw new Error("FATAL: SESSION_SECRET not set in production"); })()
-        : "dev-only-secret-replace-in-prod-32chars-minimum");
-  try {
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(b64));
-    const expected = new Uint8Array(sig);
-    let actual: Uint8Array;
-    try { actual = b64uToBytes(mac); } catch { return null; }
-    if (!timingSafeEq(expected, actual)) return null;
-    // Also check exp claim — best-effort base64 decode.
-    try {
-      const payload = JSON.parse(new TextDecoder().decode(b64uToBytes(b64))) as { exp?: number; role?: string };
-      if (payload.exp && Date.now() > payload.exp) return null;
-      return { role: payload.role };
-    } catch { return null; }
-  } catch {
-    return null;
-  }
-}
 
 // The static security headers (`SECURITY_HEADERS`, `PROD_HEADERS`) live in `@/lib/security-headers`, their one
 // definition: next.config.ts sends the same list on every response, so what this proxy's matcher skips carries them too
@@ -280,7 +232,10 @@ export async function proxy(req: NextRequest) {
   // page's own gate (the stored switch, the stored role, and — on the tickets, L5 — whether this account holds one).
   if (millioneaEdgeAsks(pathname)) {
     const session = await readVerifiedSession(cookie);
-    if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role) })) {
+    const holder = isMillioneaTicketsPath(pathname)
+      ? await millioneaTicketEntitledAtEdge(pathname, session)
+      : false;
+    if (millioneaDarkAtEdge(pathname, { signedIn: session !== null, staff: !!session && isStaffRole(session.role), holder })) {
       const url = req.nextUrl.clone();
       url.pathname = MILLIONEA_DARK_PATH;
       url.search = "";
