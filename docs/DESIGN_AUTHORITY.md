@@ -2986,8 +2986,11 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     Millionea gets its OWN tab, right after Up & Down / Juu/Chini, in every nav that has tabs, and only while Millionea
     is visible to the viewer (the shell's own answer; while WITHDRAWN every nav is byte-identical to before): the journey
     rail's fifth tab (five equal tracks while it shows, four when it does not), the journey's desktop link, and a core
-    link of the classic top bar (at 1024–1279, while it shows, Results folds into More; inline again from 1280). The
-    classic phone rail keeps its five tracks around the centre coin, so there Millionea stays More's first row.
+    link of the classic top bar (while it shows, Results moves into More, as its first row, at every width — measured
+    2026-10-19: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in
+    player at TZS 999,999 needs 12px more and loses its account menu, E-190's failure; ~~"inline again from 1280"~~,
+    struck the same day). The classic phone rail keeps its five tracks around the centre coin, so there Millionea stays
+    More's first row, beside Results, which has lived in that More since the coin.
     `/millionea` and its pages light Millionea's tab; `/millionea/tickets` and a ticket light Tiketi zangu. Where the
     four tabs are drawn (Millionea not visible to the reader), Millionea's pages light Maswali, the tab whose home carries
     its card. While five tabs show, the journey rail's tickets tab says its short rail label, Swahili "Tiketi" (the lead's
@@ -3011,12 +3014,12 @@ Millionea's own surfaces ONLY; everywhere else the laws above stand unchanged.*
     there deviates from the sponsor deck's home (recorded in `docs/COMPLIANCE-DECISIONS.md`, 2026-10-17).
     ~~"Millionea takes no rail slot … the first row of More", never an inline link~~ (O-7, 2026-10-17): struck on
     2026-10-19 by the ruling above.
-    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row; S5-TAB 4 the rest. The journey's tab and
-    desktop link are one drawn list, `journeyTabsFor(millionea)` (`src/lib/nav/active-tab.ts`), lit from that same list
+    *Build, 2026-10-19: S5-TAB 1 built the ink and the classic rail's More row; S5-TAB 4 and 6 the rest. The journey's
+    tab and desktop link are one drawn list, `journeyTabsFor(millionea)` (`src/lib/nav/active-tab.ts`), lit from that list
     (the `/millionea` row's `fallback` lights Maswali where the four are drawn); the rail draws five tracks while five show
     (§K 8b), the tab's glyph a shell key with its Fill (`scripts/glyphs/map.ts`), so the rail never waits for a sprite
-    file. The classic bar's core link stands after Up & Down, and at 1024–1279 Results folds into More — one More per band,
-    so each one's lit state and screen-reader words are its own rows'. A journey not-found page's first paint puts the lit
+    file. The classic bar's core link stands after Up & Down, and Results is More's first row at every width while it
+    shows (one More, current on /results). A journey not-found page's first paint puts the lit
     Millionea tab's word and glyph back to their resting values with the rest of R4-J's (`test:visual-pass-r4j` 5.12).
     One answer drives all four navs: AppShell's `millioneaRow` (the rollout, and no break).*
 12. **Icons are Phosphor (§0 item 7 of the plan, Ali 2026-10-17).** No hand-drawn glyph: the delivery's `sealNil`, `sealX`

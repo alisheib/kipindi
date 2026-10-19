@@ -2497,7 +2497,7 @@ three money colours (`.kp-millionea-ink`; no animation, by the lead's reading of
 
 - **(a) The same card at the head of the classic `/markets` board,** above the filters, at every width. Record it as a change to the accepted v3 discovery layer.
 - **(b) "Millionea" as the first row of the phone rail's `NavMore`,** for signed-in players and guests, wearing the tab's ink (S5-TAB 1). Guests reach the hub, and buying asks them to sign in.
-- **(c) At 1024 and above, a core link of the top bar right after Up & Down** (Ali, 2026-10-19). While it shows, Results folds into More at 1024–1279 and returns inline from 1280, paying for the link in the band that already runs short in Swahili (E-190). ~~A row in the top bar's overflow menu; no inline link~~ (struck 2026-10-19).
+- **(c) At 1024 and above, a core link of the top bar right after Up & Down** (Ali, 2026-10-19). While it shows, Results moves into More as its first row, at every width — the link's room. ~~Results folds into More at 1024–1279 and returns inline from 1280~~ (struck the same day, measured in S5-TAB: the bar's room is capped at `--w-board`, 1280px, and with both inline the Swahili bar of a signed-in player at TZS 999,999 needs 12px more at every width from 1280 and pushes the account menu off the screen — E-190's failure). ~~A row in the top bar's overflow menu; no inline link~~ (struck 2026-10-19).
 - **(d) No bottom-rail slot on the classic phone rail.** It is five equal tracks with the centre coin, so Millionea stays More's first row there.
 - **(e) Classic `/positions`:** one NoticeBar-style row, "Tiketi za Millionea wiki hii: 2 →", only when the player holds tickets.
 

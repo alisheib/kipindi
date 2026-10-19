@@ -9,7 +9,8 @@
  *   §2 the gates: every page asks its gate before anything else; every title asks the door and never throws
  *   §3 L5: the tickets' gate admits the product's viewers and, while it is hidden, a HOLDER alone
  *   §4 the edge: a dark address answers the router's own 404 while the ceiling hides it — qa:live's routes included
- *   §5 the doors on other pages: the home and board card, More's first row, the /positions row
+ *   §5 the doors on other pages: the home and board card, the classic bar's core link after Up & Down (Results folding into
+ *      More at 1024–1279) and the classic phone rail's first More row, the journey's tab (S5-TAB), the /positions row
  *   §6 the slip: kept in the tab by week, bought only from the confirm's own press; the Needle and the chat stand down
  *   §7 a ticket's address: the pages name it exactly as the permalink does
  *   §8 its own controls: each source check below is seen to fail on a planted copy
@@ -315,14 +316,16 @@ const doorDefects = (src: (rel: string) => string) => {
   const rail = squash(code(src("src/components/layout/bottom-nav.tsx")));
   const shell = squash(code(src("src/components/layout/app-shell.tsx")));
   // ⭐ S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11): the bar's door is a CORE LINK right after Up & Down, for a
-  // player and a guest alike, on the shell's answer alone — no longer More's first row — and it pays with Results, which
-  // folds into More at 1024–1279 only while Millionea shows: one More per band, so each one's lit state is its own rows'.
+  // player and a guest alike, on the shell's answer alone — no longer More's first row — and it pays with Results, which is
+  // More's first row instead of a core link while Millionea shows, at every width (measured: the bar's room is capped at
+  // `--w-board`, and with both inline the Swahili bar loses its account menu at 1280). Withdrawn, both lists are today's.
   if (!bar.includes('const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];')) d.push("the bar's core link is not drawn on the shell's answer alone");
   if (count(bar, 'accent: true }, ...MILLIONEA_LINK, { href: "/live",') !== 2 || count(bar, 'href: "/millionea"') !== 1) d.push("the bar's core link does not stand right after Up & Down for a player and a guest, or the bar draws Millionea elsewhere too");
-  if (count(bar, '{ href: "/results", label: t.common.results, fromXl: millionea }') !== 2
-    || !bar.includes('const MORE_BELOW_XL: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }, ...MORE_ITEMS] : [];')
-    || !bar.includes('className={`kp-navlink ${it.fromXl ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap`}')) d.push("the bar's Results does not fold into More at 1024–1279 while Millionea shows");
-  if (!bar.includes('{millionea ? ( <> <div className="xl:hidden"><NavMore items={MORE_BELOW_XL} label={t.common.more} /></div> {MORE_ITEMS.length > 0 && <div className="hidden xl:block"><NavMore items={MORE_ITEMS} label={t.common.more} /></div>} </> ) : ( <NavMore items={MORE_ITEMS} label={t.common.more} /> )}')) d.push("the bar's More is not one per band while Millionea shows (and today's one otherwise)");
+  if (!bar.includes('const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];')
+    || !bar.includes('const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];')
+    || count(bar, "...RESULTS_LINK,") !== 2 || !/const MORE_ITEMS: NavItem\[\] = user\.isAuthed \? \[ \.\.\.RESULTS_ROW,/.test(bar) || !bar.includes(": RESULTS_ROW;")
+    || count(bar, 'href: "/results"') !== 2) d.push("the bar's Results does not move into More (its first row, player and guest) while Millionea shows, and back while it does not");
+  if (count(bar, "<NavMore items={MORE_ITEMS} label={t.common.more} />") !== 1 || count(bar, "<NavMore") !== 1) d.push("the bar's More is not one menu over MORE_ITEMS");
   if (count(rail, "...millioneaRow,") !== 2 || !rail.includes('millionea ? [{ href: "/millionea", label: t.millionea.productLabel,')) d.push("the rail's More: Millionea is not the first row for a player and a guest, on the shell's answer");
   const items = rail.slice(rail.indexOf("const items = ["), rail.indexOf("];", rail.indexOf("const items = [")));
   if (items.includes("/millionea")) d.push("⛔ Millionea took a rail slot");
@@ -348,7 +351,7 @@ const doorDefects = (src: (rel: string) => string) => {
   // ⭐ RE-PINNED OPENLY, S5-TAB (Ali, 2026-10-19): was "More's first row in the bar and the rail … handed to the classic bars
   // alone". The bar's door is now its core link after Up & Down (Results folding into More at 1024–1279 meanwhile), the
   // classic phone rail keeps More's first row, and the one answer reaches all four navs — the journey's tab and link too.
-  ok("5.1 · the classic bar's core link right after Up & Down (Results folding into More, one More per band, at 1024–1279) and the classic phone rail's first More row, for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs; no classic rail slot",
+  ok("5.1 · the classic bar's core link right after Up & Down (Results moving into More's first row while it shows) and the classic phone rail's first More row, for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs; no classic rail slot",
     d.filter((x) => /bar|rail|shell|row's answer/.test(x)).length === 0, d.join(" | "));
   ok("5.2 · the card's door draws nothing when hidden, on a break, unread or unmodelled, and carries the test id qa:live's dark section looks for; the board draws it once above its search",
     d.filter((x) => /card/.test(x)).length === 0, d.join(" | "));
@@ -547,15 +550,15 @@ console.log("\n§8 · controls — each check above fails on a planted copy");
   ok("8.4 · a proxy whose belt never runs is reported", unbelted.length > 0);
   const railSlot = doorDefects(plant("src/components/layout/bottom-nav.tsx", "const items = [", 'const items = [{ href: "/millionea", label: "M", icon: null },'));
   ok("8.5 · Millionea in a classic rail slot is reported (the classic phone rail keeps it as More's first row)", railSlot.some((x) => x.includes("rail slot")));
-  // S5-TAB B's controls: the bar's core link never drawn; Results kept inline beside it at 1024–1279; the From-1280 More
-  // carrying the folded Results row (it would light on /results beside the lit Results link).
+  // S5-TAB B's controls: the bar's core link never drawn; Results kept inline beside it (the Swahili bar then loses its
+  // account menu at 1280); Results dropped from More instead of moved there (a destination unreachable from the bar).
   const BAR = "src/components/layout/top-app-bar.tsx";
   const noLink = doorDefects(plant(BAR, 'const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];', "const MILLIONEA_LINK: NavItem[] = [];"));
   ok("8.5′ · the bar's core link never drawn is reported", noLink.some((x) => x.includes("core link is not drawn")), j(noLink));
-  const resultsStays = doorDefects(plant(BAR, '{ href: "/results",   label: t.common.results, fromXl: millionea },', '{ href: "/results",   label: t.common.results },'));
-  ok("8.5″ · Results kept inline at 1024–1279 beside Millionea's link is reported", resultsStays.some((x) => x.includes("does not fold")), j(resultsStays));
-  const xlCarries = doorDefects(plant(BAR, '<div className="hidden xl:block"><NavMore items={MORE_ITEMS}', '<div className="hidden xl:block"><NavMore items={MORE_BELOW_XL}'));
-  ok("8.5‴ · the More from 1280 carrying the folded Results row is reported", xlCarries.some((x) => x.includes("one per band")), j(xlCarries));
+  const resultsStays = doorDefects(plant(BAR, 'const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];', 'const RESULTS_LINK: NavItem[] = [{ href: "/results", label: t.common.results }];'));
+  ok("8.5″ · Results kept inline beside Millionea's link is reported", resultsStays.some((x) => x.includes("does not move into More")), j(resultsStays));
+  const resultsGone = doorDefects(plant(BAR, 'const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];', "const RESULTS_ROW: NavItem[] = [];"));
+  ok("8.5‴ · Results dropped from More instead of moved there is reported", resultsGone.some((x) => x.includes("does not move into More")), j(resultsGone));
   const cardOnBreak = doorDefects(plant("src/components/maswali/maswali-home-card-door.tsx", "if (onBreak) return null;", ""));
   ok("8.6 · a card drawn on a break is reported", cardOnBreak.some((x) => x.includes("card's door")));
   const autoBuy = slipDefects(read(`${APP}/slip/slip-client.tsx`).replace("  useEffect(() => {\n    const kept = readKept(weekId);", "  useEffect(() => {\n    commit();\n    const kept = readKept(weekId);"));

@@ -308,7 +308,7 @@ export const DUO_KEYS: readonly string[] = [];
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
  * MASWALI-BUILD S5-TAB (2026-10-19): `millionea` moved into the shell, so the app sprite changed; production (`main`
- * 04b24a44) serves app.9032012a.svg, kept here for its release. The admin sprite did not change: nothing previous to keep.
+ * 13299425d) serves app.9032012a.svg, kept here for its release. The admin sprite did not change: nothing previous to keep.
  * ⚠️ If `main` serves another app sprite by the time this ships, the merge names that one instead (and re-runs glyphs:gen).
  */
 export const PREVIOUS_SPRITES: readonly string[] = ["app.9032012a.svg"];

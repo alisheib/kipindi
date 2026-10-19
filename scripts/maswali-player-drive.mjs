@@ -16,7 +16,9 @@
  *
  *   1 · the Owner seeds a week in every state (`/api/dev-test/seed-maswali`, the S4 seed);
  *   2 · CLASSIC ENTRY: the demo player (a classic reader: no pass) finds the card at the head of /markets, follows it to
- *       the hub, and finds "Millionea" as the first row of the top bar's More;
+ *       the hub, and finds "Millionea" as the top bar's core link right after Up & Down, in Millionea's ink (Ali's tab
+ *       ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11 — it was More's first row in S5), with Results moved into
+ *       More's first row at every width while it shows;
  *   3 · THE TICKET: hub → slip → fifteen answers (each a radio group) → the confirm → "Cut ticket" → the stamp → the
  *       ticket page; the free cancel inside its window → the neutral result → the ticket reads cancelled; then a second
  *       ticket bought the same way;
@@ -102,9 +104,12 @@ async function darkPass() {
     ok(`W.3 ${page} carries no Millionea door for a signed-in player`, html.length > 0 && !traceOf(html));
   }
   await open(rp, "/results");
+  // S5-TAB (2026-10-19): while Millionea is dark the bar draws no core link to it either — today's five links.
+  const darkLinks = await rp.locator("header.app-topbar nav a.kp-navlink").filter({ visible: true }).evaluateAll((els) => els.map((e) => e.getAttribute("href")));
   await rp.getByRole("button", { name: "More" }).first().click();
   const rows = await rp.getByRole("menuitem").allTextContents();
-  ok("W.4 the top bar's More holds no Millionea row (≥1024)", rows.length > 0 && !rows.some((r) => r.includes("Millionea")), JSON.stringify(rows));
+  ok("W.4 the top bar draws no Millionea link and its More holds no Millionea row (≥1024)",
+    rows.length > 0 && !rows.some((r) => r.includes("Millionea")) && !darkLinks.includes("/millionea") && darkLinks.includes("/results"), JSON.stringify({ rows, darkLinks }));
   await rp.keyboard.press("Escape");
   // W.5 a signed-in player who holds no ticket passes the edge to the tickets' gate (L5): the plain not-found — no word of
   // the product in what they see, and none of the ghosts' old words anywhere in the document.
@@ -152,11 +157,29 @@ await Promise.all([p.waitForURL(`${BASE}/millionea`, { timeout: 120_000 }), card
 ok("2.2 the card opens the hub", p.url() === `${BASE}/millionea` && (await p.getByRole("heading", { level: 1 }).first().textContent())?.includes("Millionea") === true);
 await p.setViewportSize({ width: 1280, height: 900 });
 await open(p, "/results");
-await p.getByRole("button", { name: "More" }).first().click();
-const firstRow = p.getByRole("menuitem").first();
-ok("2.3 \"Millionea\" is the first row of the top bar's More (≥1024)", ((await firstRow.textContent()) ?? "").includes("Millionea"));
-await tile(p, "2-more-row-1280");
-await p.keyboard.press("Escape");
+// ⭐ RE-PINNED, MASWALI-BUILD S5-TAB (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11): Millionea's own tab in the classic bar
+// is a core link right after Up & Down, its words in the ink — no longer More's first row (S5's "no inline link", struck).
+// It pays with Results, which is More's first row at every width while Millionea shows (the bar's room is capped at
+// `--w-board`); More is then current on /results, at 1280 as at 1024.
+const barLinks = () => p.locator("header.app-topbar nav a.kp-navlink").filter({ visible: true });
+for (const width of [1280, 1024]) {
+  await p.setViewportSize({ width, height: 900 });
+  await open(p, "/results");
+  const hrefs = await barLinks().evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+  const millioneaLink = barLinks().filter({ has: p.locator(".kp-millionea-ink") });
+  ok(`2.3 at ${width} "Millionea" is the top bar's core link right after Up & Down, its words in the ink, and Results is not a core link`,
+    hrefs.indexOf("/millionea") === hrefs.indexOf("/updown") + 1 && !hrefs.includes("/results") && (await millioneaLink.count()) === 1
+      && ((await millioneaLink.textContent()) ?? "").includes("Millionea"), JSON.stringify(hrefs));
+  const more = p.getByRole("button", { name: "More" }).first();
+  const lit = await more.getAttribute("data-active");
+  await more.click();
+  const rows = p.getByRole("menuitem");
+  const texts = await rows.allTextContents();
+  ok(`2.3′ at ${width} Results is More's first row, More is current on /results, and More holds no Millionea row`,
+    (await rows.first().getAttribute("href")) === "/results" && lit !== null && !texts.some((r) => r.includes("Millionea")), JSON.stringify({ texts, lit }));
+  await tile(p, `2-core-link-more-${width}`);
+  await p.keyboard.press("Escape");
+}
 await p.setViewportSize({ width: 360, height: 780 });
 
 // ── 3 · the ticket ────────────────────────────────────────────────────────────────────────────────────────────────

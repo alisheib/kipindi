@@ -54,11 +54,6 @@ type NavItem = {
   proposalsBadge?: ProposalsState;
   /** The words in Millionea's ink (`kp-millionea-ink`), the one class every nav gives it (Ali, 2026-10-19): its core link's. */
   ink?: boolean;
-  /**
-   * A core link drawn inline only from 1280 (`xl`): below it the band is full, so More carries the same destination as a
-   * row of its own (`MORE_BELOW_XL`). Results', while Millionea's core link takes its room (MASWALI-BUILD S5-TAB).
-   */
-  fromXl?: boolean;
   /* ⛔ A generic `comingSoon?: boolean` used to live here. Invite was its ONLY producer, and a
      destination that is not part of the product is dropped from the list entirely (see
      MORE_ITEMS below), never badged. The field is deleted rather than left unused because it was
@@ -113,17 +108,24 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
      row of More (D-13 (b)'s "no inline link", struck). ⛔ Drawn only on the shell's own answer (`millionea`: the rollout
      admits the request and the reader is not on a break), resolved on the server and handed down as `inviteVisible` is;
      for everybody else the bar is today's, byte for byte.
-     ⚠️ IT PAYS FOR ITS ROOM WITH RESULTS, AT 1024–1279 ONLY. That band is where this bar runs short (E-190), so while the
-     link shows, Results folds into More there (`fromXl` on its link; More's own row, `MORE_BELOW_XL`) and stands inline
-     again from 1280. */
+     ⚠️ IT PAYS FOR ITS ROOM WITH RESULTS, AT EVERY WIDTH: while the link shows, Results is More's first row instead of a
+     core link (`RESULTS_LINK` empty, `RESULTS_ROW` full) — the classic phone rail's own arrangement (Results has lived in
+     its More since the centre coin). Measured 2026-10-19 (Chromium, the real fonts, signed in at TZS 999,999, the widest
+     capsule): with Results inline beside Millionea the Swahili bar needs 12px more than 1280 and pushes the account menu
+     off the screen — E-190's failure — and this bar never gains room past 1280 (`max-w-board`, `--w-board`), so no
+     width holds the two side by side. At 1024–1279 the band was short before Millionea came (E-190); folding Results pays
+     for the link there too, and one rule at every width keeps More's lit state its own rows' truth (current on /results,
+     at any width, while Results is behind it). */
   const MILLIONEA_LINK: NavItem[] = millionea ? [{ href: "/millionea", label: t.millionea.productLabel, ink: true }] : [];
+  const RESULTS_LINK: NavItem[] = millionea ? [] : [{ href: "/results", label: t.common.results }];
+  const RESULTS_ROW: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }] : [];
   const CORE_ITEMS: NavItem[] = user.isAuthed
     ? [
         { href: "/markets",   label: t.common.markets },
         { href: "/updown",    label: t.market.udTitle, accent: true },
         ...MILLIONEA_LINK,
         { href: "/live",      label: t.nav.live },
-        { href: "/results",   label: t.common.results, fromXl: millionea },
+        ...RESULTS_LINK,
         { href: "/positions", label: t.common.positions },
         /* ⛔ `/wallet` LEFT THE INLINE NAV ON 2026-08-25 — it is a DUPLICATE now, not a
            loss. The balance capsule in the right cluster is itself a `<Link href="/wallet">`
@@ -141,13 +143,14 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
         { href: "/updown",      label: t.market.udTitle, accent: true },
         ...MILLIONEA_LINK,
         { href: "/live",        label: t.nav.live },
-        { href: "/results",     label: t.common.results, fromXl: millionea },
+        ...RESULTS_LINK,
         { href: "/leaderboard", label: t.nav.leaderboard },
       ];
   // Proposals is dropped from the nav entirely when DISABLED; otherwise it rides
   // the current state flag (gilt coming-soon / amber maintenance / none active).
   const MORE_ITEMS: NavItem[] = user.isAuthed
     ? [
+        ...RESULTS_ROW,
         ...(proposalsState !== "DISABLED"
           ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState } as NavItem]
           : []),
@@ -166,15 +169,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
           : []),
         { href: "/leaderboard",    label: t.nav.leaderboard },
       ]
-    : [];
-  /* ⭐ S5-TAB · WHILE MILLIONEA SHOWS, ONE MORE PER BAND, so each one's lit state and its words for a screen reader are its
-     own rows' truth. At 1024–1279 Results is behind More (its core link folds, above), so that band's More carries it
-     first and is current on /results; from 1280 Results stands inline again, and that band's More neither carries it nor
-     lights for it. One menu that kept a row hidden from 1280 would light on /results beside the lit Results link — two
-     "you are here" marks on one bar, and a "current section" spoken for a menu that holds no current page. Each wrapper
-     shows in its band alone, so the bar and the accessibility tree hold one More at every width. Without Millionea there
-     is one More, today's. */
-  const MORE_BELOW_XL: NavItem[] = millionea ? [{ href: "/results", label: t.common.results }, ...MORE_ITEMS] : [];
+    : RESULTS_ROW;
 
   return (
     <header
@@ -249,14 +244,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false, inviteP
               over its own container with the links inline and no pill at all.
               **The money wins the room.** Nothing is hidden that was not already
               hidden at 1024–1535, where these same three have always lived in `More`. */}
-          {millionea ? (
-            <>
-              <div className="xl:hidden"><NavMore items={MORE_BELOW_XL} label={t.common.more} /></div>
-              {MORE_ITEMS.length > 0 && <div className="hidden xl:block"><NavMore items={MORE_ITEMS} label={t.common.more} /></div>}
-            </>
-          ) : (
-            <NavMore items={MORE_ITEMS} label={t.common.more} />
-          )}
+          <NavMore items={MORE_ITEMS} label={t.common.more} />
         </nav>
 
         <div className="flex-1" />
@@ -546,8 +534,7 @@ function NavLink({ it, pathname }: { it: NavItem; pathname: string }) {
       // beside them had nothing to animate. Accent and active are now `data-accent` /
       // `aria-current`, read by that rule. Putting either back inline re-kills the hover.
       data-accent={accent ? "" : undefined}
-      // S5-TAB: a link drawn from 1280 only (`fromXl`) is hidden below it, where More's own row carries it.
-      className={`kp-navlink ${it.fromXl ? "hidden xl:inline-flex" : "inline-flex"} items-center gap-1.5 whitespace-nowrap`}
+      className="kp-navlink inline-flex items-center gap-1.5 whitespace-nowrap"
       style={{
         // 44px is the tap floor and the kit's destination height. The nav used to be 34px —
         // under the floor on the primary navigation of a money product.
