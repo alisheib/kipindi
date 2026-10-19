@@ -218,6 +218,8 @@ console.log(`\n${"═".repeat(70)}\n  MASWALI CONFIG: ${pass} passed, ${fail} fa
 /** The floor is the count a green run PRINTED (MASWALI-BUILD S1, the first run); it only rises, to a printed number. */
 // S7-F5 (2026-10-18, the lead): the static count of its ok call sites, 56 (one runs in a loop, so a green run prints more):
 // a case that silently stops running fails the floor.
-const MIN_ASSERTIONS = 56;
+// S7 (2026-10-19, rounds 4–6 merged into mln-sf): raised to what the merged tree's green run PRINTED, 77 — the loop walks a
+// fixed table of refusals, so the count is the same every run, and a refusal that stops running now fails the floor too.
+const MIN_ASSERTIONS = 77;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

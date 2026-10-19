@@ -36,13 +36,15 @@
  * not yet withdrawn returns once other withdrawals drain the shared float — on each: 188 on memory, 196 on Postgres.
  * ⭐ S7-F5: SC runs before SU (§14d), and SU.7/SU.7b — the stop passes on in the console's words and the stop's — on each:
  * 190 on memory, 198 on Postgres.
+ * ⭐ Rounds 4–6 merged into mln-sf (2026-10-19): the merged tree's green runs printed 194 on memory and 202 on Postgres
+ * (at 3f6af84e1, and again at 76a8d4780 after S7-F7 2 made PL.4 record a throw as its own failure) — raised to them.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 190, postgres: 198 },
+  minPass: { memory: 194, postgres: 202 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });
