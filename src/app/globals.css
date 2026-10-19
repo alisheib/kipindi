@@ -4753,6 +4753,18 @@ html[data-sheet-open] .route-enter { animation: none; }
    of a cancelled or refunded ticket — the open ring at the disabled control's own opacity, so it never reads as the live
    "awaiting" ring beside it (`maswali-seal-line.tsx`, `SocketGlyph`). */
 .kp-mln-rest { opacity: var(--state-disabled-opacity); }
+/* MASWALI-BUILD S5 · How-to's example Button keeps its full approved Swahili instruction. At 320px
+   its unwrapped text ran past the card's right edge (how-sw-320-s2); let this one kit control grow
+   to two lines while keeping the md control's minimum tap height and the card's content width. */
+.btn.kp-mln-example-button {
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: var(--h-control-md);
+  padding-block: var(--sp-2);
+  white-space: normal;
+  text-align: center;
+}
 /* MASWALI-BUILD S5 · MILLIONEA'S CHINESE, AS THE PLATFORM SETS IT (the S5 review of 24ec0d33, LOW 14): every Millionea page
    root and each Millionea part drawn on another page (the home card, the /positions row) carries `.kp-mln-zh`, so its
    Chinese runs break only at their spaces and punctuation — a word kept whole — and a run longer than its line still

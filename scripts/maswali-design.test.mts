@@ -818,6 +818,21 @@ const exampleDefects = (seal: string, how: string, example: string) => {
     m.includes('<s class="decoration-border-strong">4</s><span>A1</span>') && count(m, "<s ") === 1 && d.filter((x) => x.includes("struck")).length === 0, d.join(" | "));
   ok("4.P6b · each worked ledger says which week it works through (\"Example · a week with winners\", never \"EXAMPLE · 1\"), and the button says what it plays (\"Show A1 replacing question 4\", in all three languages)",
     d.length === 0 && templated.length === 0 && fill(en.millionea.seeExample, { r: "A1", n: 4 }) === "Show A1 replacing question 4", j({ d, templated }));
+  const fitRule = /\.btn\.kp-mln-example-button\s*\{([^}]*)\}/.exec(read("src/app/globals.css"))?.[1] ?? "";
+  const exampleFitDefects = (button: string, rule: string) => {
+    const problems: string[] = [];
+    if (!squash(code(button)).includes('className="border-border-control kp-mln-example-button"')) problems.push("the kit Button lacks its scoped fit class");
+    for (const [name, value] of [["max-width", "100%"], ["min-width", "0"], ["height", "auto"],
+      ["min-height", "var(--h-control-md)"], ["padding-block", "var(--sp-2)"], ["white-space", "normal"]] as const) {
+      if (!rule.split(";").some((line) => line.trim() === `${name}: ${value}`)) problems.push(`${name} is not ${value}`);
+    }
+    return problems;
+  };
+  ok("4.P6c · How's example keeps the approved Swahili wording inside its 320px card and a md-height kit Button",
+    exampleFitDefects(read(EXAMPLE), fitRule).length === 0, j(exampleFitDefects(read(EXAMPLE), fitRule)));
+  ok("4.P6c′ PLANT · the old nowrap and a removed md-height floor both fail the same fit guard",
+    exampleFitDefects(read(EXAMPLE), fitRule.replace("white-space: normal", "white-space: nowrap")).some((x) => x.includes("white-space"))
+      && exampleFitDefects(read(EXAMPLE), fitRule.replace("min-height: var(--h-control-md)", "min-height: 0")).some((x) => x.includes("min-height")));
   ok("4.P6′ PLANT · a stood-in number drawn plain, and the old \"Example · 1\" label, are reported",
     exampleDefects(read(SEAL).replace("{m.standIn && !inert ? (", "{false ? ("), read(HOW), read(EXAMPLE)).some((x) => x.includes("struck"))
       && exampleDefects(read(SEAL), read(HOW).replace("label={`${t.millionea.exampleLabel} · ${t.millionea.exampleWinnersWeek}`}", "label={`${t.millionea.exampleLabel} · 1`}"), read(EXAMPLE)).some((x) => x.includes("noun")));
