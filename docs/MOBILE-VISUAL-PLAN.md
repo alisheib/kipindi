@@ -304,10 +304,20 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
       `test:needle-rest`;
     - not mine, and identical on `adb3551e6` (main before the push), all in Maswali files (handed to asheib-bf):
       `test:guards-exist`, `test:visual-pass-r5a`/`r5j`/`r6c`/`r7c`/`r5h`, `test:rate-copy`, `test:presence-class`.
-- ⏳ **A.1** (the follow-up, rebased onto W4): the fixes above, a fourth hidden-estimate plant in `red:journey-estimate`
-  (no rates), `red:updown-hedge-quote` 13/13, and the capture tools' choice-text and pulse readings.
-- Next: **Release B** — the slim card, the live line in the card, the visible filter chips, the board order, the market
-  card's cleanup, the system fixes → the verify loop (10/10 twice) → release (this session pushes, rebased onto `main`).
+- ✅ **A.1 — LIVE, `ee76c9489`** (on PHOSPHOR W4 + Maswali's platform fix): the fixes above, a fourth hidden-estimate
+  plant in `red:journey-estimate` (no rates), `red:updown-hedge-quote` 13/13, and the capture tools' choice-text and
+  pulse readings. Before the push, at the exact commit: tsc 0 in source, `next build` green, local `qa:live` 386/0;
+  the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
+  `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
+  `qa:live` 363/0.
+- ⏳ **Release B — specifying** (workflow `wf_cef82fe2-70d`, read-only): five area build specs (the round card in every
+  state; the live line and the big chart made to agree with it; the board and the two chip rows; the market card; system,
+  motion, palette and copy), each adversarially reviewed, then a completeness critic against Round 0's 135 findings.
+  ⚠️ Found while specifying: the big chart's line plots each minute bar's CLOSE at its label time, while settlement reads
+  the OPEN of the bar labelled T (`updown-feed.ts`) — one minute apart, $0.29–$0.87 on gold — which is why Round 0 saw
+  the chart and the card disagree. Release B's line and the fixed chart both plot opens.
+- Then: build (one worktree per area, rebased onto PHOSPHOR 1b if it lands first) → integrate → the verify loop (10/10
+  twice) → release (this session pushes, rebased onto `main`).
 
 ▶ NEXT: **U35** (13 settled rounds in one run, then close it), then **U11**, **U27**, **U31**, **U9** — money truth first.
   Ranked by (player harm × confidence it is real × cheapness to verify), NOT by unit number.
