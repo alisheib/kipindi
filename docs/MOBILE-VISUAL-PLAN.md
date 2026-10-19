@@ -351,14 +351,17 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   warmed quick drive photographed all 14 phases with zero readiness problems through p12; p13's two failures came from
   a guard incorrectly demanding a live Gold card when the true Gold board was closed. That guard now accepts a
   real resolved Gold card without inventing a running clock; its focused test and red mutation passed.
-  Exact R10 frame review found two product blockers: a held bet at 320px pushes the side buttons under the fixed nav,
-  and a one-sided refunded result still says “Up wins.” The round-line fallback also needs to distinguish its interval
-  from the big historical chart. Those fixes are in progress, with guards and red plants. Placed-bet receipts, blocked
-  attempts and returned-stake panels are being made neutral; only earned wins retain gold. No after score has been
-  awarded. The final matrix is being widened to capture a real local bet receipt at every signed-in width; the
-  stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct, not a data
-  change in this release. Next: repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and
-  release. Release B is not on production.
+  R11's warmed local drive photographed all 14 phases with **0 capture errors**, including a real signed-in bet,
+  the last 30 seconds, lock, one-sided refund, successor and market cards. The R10 false “Up wins” refund heading
+  and generic missing-line wording are corrected in those frames. Independent reviewers reopened the cited full
+  frames and crops and found six further presentation issues: the 320px held card's helper line met the fixed nav;
+  the desktop chart footer was crowded; the receipt's Continue button wore the UP side green and its second action
+  fell below the 360px first viewport; the closed card and a settled detail pod showed a placeholder dash clock;
+  and the round detail called a returned stake “Paid out.” Source fixes and a browser rectangle guard are in progress;
+  **no after score has been awarded**. The final state matrix now captures a real local bet receipt at every signed-in
+  width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
+  not a production-data change in this release. Next: retest the six findings in browser frames, then run the
+  seven-width, three-language matrix twice, build and release. Release B is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
