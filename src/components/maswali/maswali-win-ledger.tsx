@@ -59,7 +59,7 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
   return (
     <article className={cn("mat-raised flex flex-col gap-3 rounded-card px-3 py-4", className)}>
       <header className="flex flex-col gap-1">
-        <span className="font-mono text-label uppercase eyebrow text-text-subtle">{`${t.millionea.productTitle} · ${weekWord(t, week)}`}</span>
+        <span className="font-mono text-label uppercase eyebrow text-text-subtle"><MaswaliFacts facts={[t.millionea.productTitle, weekWord(t, week)]} /></span>
         <Heading className="font-display text-title-md font-bold text-text">{heading}</Heading>
         <span className="font-mono text-body-sm text-text-muted break-all"><MaswaliFacts facts={serials} /></span>
       </header>
@@ -68,10 +68,10 @@ function ReceiptCard({ t, week, heading, serials, headingLevel, legal, play, chi
         <p className="text-body-sm text-text-muted">{t.millionea.finality}</p>
         {legal && (
           <p className="text-body-sm text-text-subtle text-pretty">
-            {legal.twoOfficer ? t.market.resTwoOfficer : t.market.resSingleOfficer}
-            {" · "}
-            {t.common.resolutionAttestation}{" "}
-            <span className="font-mono break-all">{legal.hash}</span>
+            <MaswaliFacts facts={[
+              legal.twoOfficer ? t.market.resTwoOfficer : t.market.resSingleOfficer,
+              <>{t.common.resolutionAttestation}{" "}<span className="font-mono break-all">{legal.hash}</span></>,
+            ]} />
           </p>
         )}
         <MaswaliClosingRule draw={play?.draw} />
@@ -159,15 +159,15 @@ export function MaswaliWinLedger({ t, week, serials, lines, sunset, legal, headi
         <ReceiptRow className={ROW} label={t.millionea.forYourTicket} value={gilt(L.perTicket, !many)} />
         {many && (
           <>
-            <ReceiptRow className={ROW} label={`× ${formatNumber(L.yours)} · ${fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })}`} value="" />
+            <ReceiptRow className={ROW} label={<MaswaliFacts facts={[`× ${formatNumber(L.yours)}`, fill(t.millionea.wonTickets, { n: formatNumber(L.yours) })]} layout="phone" />} value="" />
             <ReceiptRow className={ROW} label={t.millionea.yourTotal} value={gilt(L.yourTotal, true)} />
           </>
         )}
         {L.topUp !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`} value={quiet(L.topUp)} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />} value={quiet(L.topUp)} />
         )}
         {L.remainder !== undefined && (
-          <ReceiptRow className={cn(ROW, "text-text-muted")} label={`${t.millionea.remainder} · ${t.millionea.remainderNote}`} value={quiet(L.remainder)} />
+          <ReceiptRow className={cn(ROW, "text-text-muted")} label={<MaswaliFacts facts={[t.millionea.remainder, t.millionea.remainderNote]} layout="phone" />} value={quiet(L.remainder)} />
         )}
         {L.sunsetNoTopUp && (
           <ReceiptRow className={ROW} label={t.millionea.noTopUp} value={<span className="text-text-muted">—</span>} />

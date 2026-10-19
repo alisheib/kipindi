@@ -30,6 +30,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import NodeModule from "node:module";
+import * as ts from "typescript";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { fill, formatTzs, formatTzsSigned } from "../src/lib/utils.ts";
 import { outcomeWord } from "../src/lib/side-label.ts";
@@ -624,6 +625,27 @@ const factLineDefects = (m: string, n: number, joined: string) => {
   ok("4.A1d · no Millionea drawing joins visible facts into one string with \" · \" any more — every such line is a fact line", joins.length === 0, joins.join(" | "));
   ok("4.A1d′ PLANT · the card's old joined meta put back is reported",
     joinDefects(plantIn(CARD, "let meta: ReactNode[] = [];", 'let meta: ReactNode[] = []; const old = ["a", "b"].join(" · ");')).includes(CARD));
+  // The win receipt also had template literals and JSX text with the same visible separator. A `.join` census alone
+  // missed them: at 320, its top-up and remainder labels share a narrow row with a figure, so the dot could lead a line.
+  const ledgerLiteralSeparators = (src: string) => {
+    const found: string[] = [];
+    const tree = ts.createSourceFile(LEDGER, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const visit = (node: ts.Node) => {
+      if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node)
+        || ts.isTemplateMiddle(node) || ts.isTemplateTail(node) || ts.isJsxText(node)) && node.text.includes(" · ")) {
+        found.push(`${tree.getLineAndCharacterOfPosition(node.getStart(tree)).line + 1}: ${node.text.trim()}`);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(tree);
+    return found;
+  };
+  const receiptDots = ledgerLiteralSeparators(read(LEDGER));
+  ok("4.A1e · the win receipt has no literal joined fact: its eyebrow, legal line and three narrow money-row labels draw separate facts",
+    receiptDots.length === 0, receiptDots.join(" | "));
+  const oldTopUp = read(LEDGER).replace('label={<MaswaliFacts facts={[t.millionea.topUp, t.millionea.topUpNote]} layout="phone" />}', 'label={`${t.millionea.topUp} · ${t.millionea.topUpNote}`}');
+  ok("4.A1e′ PLANT · putting the old top-up template label back is reported",
+    oldTopUp !== read(LEDGER) && ledgerLiteralSeparators(oldTopUp).length > 0);
 }
 
 // P1 · the cut: the sheet leaves first, then the stamp
