@@ -7670,7 +7670,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
 /* ⭐ FIVE TABS WHILE MASWALI MILLIONEA SHOWS (Ali, 2026-10-19; DESIGN_AUTHORITY §M8a item 11). The rail draws Millionea's
    tab right after Juu/Chini (`journeyTabsFor`) and says so on the nav, `data-tabs="5"`: five equal tracks on the list, and
-   the five labels' own centring widths. ⛔ The four-track rules above are not edited — a reader who is not shown
+   the five labels' own centring width. ⛔ The four-track rules above are not edited — a reader who is not shown
    Millionea is drawn today's rail, its markup and its boxes — and these come after them, so at equal specificity the
    five-track answer wins where both match.
    The width is R9-C's rule with five slots: a label wraps where it needs more than a fifth of the phone, so the slots

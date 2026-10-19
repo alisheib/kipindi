@@ -34,8 +34,9 @@
  * money colours as one still gradient) and its glyph rests in gold (`kp-millionea-glyph` on the pip), while a lit
  * Millionea tab takes the siblings' treatment, its Fill glyph on the pill (both in globals.css). Shown on the shell's own
  * answer (`millionea`, the one the classic chrome's Millionea doors take). While five tabs show, the nav says so
- * (`data-tabs`): five equal tracks with their own centring widths, and the tickets tab says its short rail label
- * (`railLabel`). Without Millionea the rail is today's, byte for byte.
+ * (`data-tabs`): five equal tracks centred from one width of their own (317: every five-tab label fits one line there,
+ * in every language), and the tickets tab says its short rail label (`railLabel`). Without Millionea the rail is
+ * today's, byte for byte.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";

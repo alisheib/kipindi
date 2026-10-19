@@ -10,7 +10,9 @@
  *   §3 L5: the tickets' gate admits the product's viewers and, while it is hidden, a HOLDER alone
  *   §4 the edge: a dark address answers the router's own 404 while the ceiling hides it — qa:live's routes included
  *   §5 the doors on other pages: the home and board card, the classic bar's core link after Up & Down (Results folding into
- *      More at 1024–1279) and the classic phone rail's first More row, the journey's tab (S5-TAB), the /positions row
+ *      More at every width while it shows) and the classic phone rail's first More row, the journey's tab (S5-TAB), the
+ *      /positions row
+ *   §5b the ink worn by every nav that draws Millionea; §5c More's panels: every row's words at one x, both panels opaque
  *   §6 the slip: kept in the tab by week, bought only from the confirm's own press; the Needle and the chat stand down
  *   §7 a ticket's address: the pages name it exactly as the permalink does
  *   §8 its own controls: each source check below is seen to fail on a planted copy
@@ -349,7 +351,7 @@ const doorDefects = (src: (rel: string) => string) => {
 {
   const d = doorDefects(read);
   // ⭐ RE-PINNED OPENLY, S5-TAB (Ali, 2026-10-19): was "More's first row in the bar and the rail … handed to the classic bars
-  // alone". The bar's door is now its core link after Up & Down (Results folding into More at 1024–1279 meanwhile), the
+  // alone". The bar's door is now its core link after Up & Down (Results folding into More meanwhile, at every width), the
   // classic phone rail keeps More's first row, and the one answer reaches all four navs — the journey's tab and link too.
   ok("5.1 · the classic bar's core link right after Up & Down (Results moving into More's first row while it shows) and the classic phone rail's first More row, for a player and a guest alike, on the shell's one answer — the rollout and the break — handed to all four navs; no classic rail slot",
     d.filter((x) => /bar|rail|shell|row's answer/.test(x)).length === 0, d.join(" | "));
