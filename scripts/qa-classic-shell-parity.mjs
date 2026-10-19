@@ -169,7 +169,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE, BOOK_WATCHLIST_DATE } from "./lib/question-time-mask.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -367,6 +367,10 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  *   · home-close-date-leaves  only the home featured card's and board rows' validated complete locale dates are
  *                  canonicalized before geometry, retaining their prefixes, source words, elements and every paint
  *                  attribute. B.9 requires the source's one featured plus QUESTION_BOARD_SIZE leaves, zero elsewhere.
+ *   · watchlist-date-leaves  only the seeded player's /watchlist card time leaves' complete locale EAT moments are
+ *                  canonicalized before geometry. The 870772af same-head null found their HTML already read as ~date
+ *                  under eat-dates, while their digit glyph widths and right-aligned margin still differed in 9–10
+ *                  layout lines at en/sw × 360/1280. B.9 requires one validated leaf per captured card, zero elsewhere.
  * The pair that showed it is 090bbf76's (BOOK_NORMALISE_ON's eat-dates records it): its ninth differing field, the
  * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
  * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
@@ -375,7 +379,7 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  * read as the browser left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's
  * reach: 0x0 in a capture without the settle, drawn in one with it, and the markup of the two the same.
  */
-const BOOK_SETTLE = ["lazy-images", "home-close-date-leaves"];
+const BOOK_SETTLE = ["lazy-images", "home-close-date-leaves", "watchlist-date-leaves"];
 /** How long a book cell's settle waits, in all, for its lazy images to load. */
 const LAZY_SETTLE_MS = 10_000;
 /**
@@ -547,6 +551,7 @@ const BOOK = {
   /** How a book cell is read (BOOK_SETTLE): a baseline records it, and a compare must read the same way. */
   settle: BOOK_SETTLE,
   homeCloseDates: { ...BOOK_HOME_CLOSE_DATE, population: HOME_CLOSE_POPULATION },
+  watchlistDates: BOOK_WATCHLIST_DATE,
 };
 /** The book's text normalisers switched on for this run, in BOOK_NORMALISERS' order. */
 const BOOK_TEXT = BOOK_NORMALISERS.filter((n) => n.kind === "text" && BOOK.normalise.includes(n.id));
@@ -1823,6 +1828,9 @@ function bookChecks(book, seed, store) {
   const tally = cardTally(book);
   const head = (c) => (c.head ? store[c.head] ?? "" : null);
   const headless = (c) => head(c) === null || !/^canonical \S/m.test(head(c)) || !/^og:url \S/m.test(head(c));
+  const watchLens = seed?.watchlist?.reply?.byLens ?? {};
+  const watchSlots = watchLens.all;
+  const watchMoments = watchLens.open + watchLens.progress;
   return [
     { id: "B.0", name: `the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: ${BOOK.markets} }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (${size})`,
       fails: [...verdict.problems, ...(all.length === size && keys.every(([k]) => k in (book ?? {})) ? [] : [`the book holds ${all.length} cells`]),
@@ -1843,9 +1851,11 @@ function bookChecks(book, seed, store) {
       fails: CARD_STATES.filter((s) => !((tally.get(s) ?? 0) > 0)).map((s) => `no ${CARD_LABELS[s]} card in any book cell`) },
     { id: "B.8", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared",
       fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
-    { id: "B.9", name: `only home's complete locale close-date leaves were canonicalized before geometry: one featured and ${HOME_BOARD_SIZE} board rows in every seeded home cell, zero elsewhere`,
+    { id: "B.9", name: `only complete locale date leaves were canonicalized before geometry: one home featured and ${HOME_BOARD_SIZE} board rows, /watchlist's open and progress moments, zero elsewhere`,
       fails: bad((r, c) => ['featured', 'rows'].some((kind) => c.homeCloseDates?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0)
-        || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))) },
+        || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))
+        || c.watchlistDates?.slots !== (r === '/watchlist' ? watchSlots : 0)
+        || c.watchlistDates?.canonicalized !== (r === '/watchlist' ? watchMoments : 0)) },
   ];
 }
 
@@ -1870,6 +1880,7 @@ function syntheticBook() {
     "/watchlist": [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(7, "resolved-no"), card(11, "void")],
     [BOOK.similar]: [card(1, "priced"), card(5, "one-sided")],
   };
+  const WATCH_LENS = { all: 9, open: 3, progress: 2, done: 3, void: 1 };
   const book = {};
   for (const [k, , , , r] of bookCellKeys()) {
     book[k] = {
@@ -1878,6 +1889,8 @@ function syntheticBook() {
       cards: CARDS[r].map((c) => ({ ...c })),
       ...(r === BOOK.head ? { head: "head" } : {}),
       homeCloseDates: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }), leaves: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }) } },
+      watchlistDates: { slots: r === '/watchlist' ? WATCH_LENS.all : 0,
+        canonicalized: r === '/watchlist' ? WATCH_LENS.open + WATCH_LENS.progress : 0 },
     };
   }
   const seed = {
@@ -1889,7 +1902,7 @@ function syntheticBook() {
       refusals: ["updown udr_planted0000000000000: CLOSED the round's window closed between listing and buying"],
       marketIds: ids,
     } },
-    watchlist: { status: 200, reply: { ok: true, starred: 9, watching: 9, byLens: { all: 9, open: 3, progress: 2, done: 3, void: 1 }, forcedProgress: [ids[3], ids[4]], refusals: [] } },
+    watchlist: { status: 200, reply: { ok: true, starred: 9, watching: 9, byLens: WATCH_LENS, forcedProgress: [ids[3], ids[4]], refusals: [] } },
     probe: {
       results: [card(6, "resolved-yes"), card(7, "resolved-no"), card(9, "resolved-yes"), card(10, "resolved-no"), card(11, "void")],
       watchlist: [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(11, "void")],
@@ -2524,10 +2537,17 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     }
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
     const homeDateMask = route === '/' ? { ...BOOK_HOME_CLOSE_DATE, locale } : null;
+    const watchlistDateMask = route === '/watchlist' ? { ...BOOK_WATCHLIST_DATE, locale } : null;
     let homeCloseDates = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
+    let watchlistDates = { slots: 0, canonicalized: 0 };
     const read = async () => {
       if (untie) await page.evaluate(UNTIE_CARDS, untie);
       if (homeDateMask) homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, homeDateMask);
+      if (watchlistDateMask) {
+        const slots = await page.evaluate((selector) => document.querySelectorAll(selector).length, watchlistDateMask.selector);
+        const canonicalized = await page.evaluate(normaliseQuestionBreakClocks, watchlistDateMask);
+        watchlistDates = { slots, canonicalized };
+      }
       return page.evaluate(SNAPSHOT, args);
     };
     const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.cards]);
@@ -2539,7 +2559,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toBookCell(snap, { status, stable, homeCloseDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toBookCell(snap, { status, stable, homeCloseDates, watchlistDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -3013,7 +3033,7 @@ async function proveHomeDateCalibration() {
       <p class="ordinary">${o.ordinary ?? 'Other words'}</p></main></body></html>`);
     const homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, { ...BOOK_HOME_CLOSE_DATE, locale });
     const snap = await page.evaluate(SNAPSHOT, bookArgsOf('/'));
-    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates, watchlistDates: { slots: 0, canonicalized: 0 }, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
     cell.landed = '/';
     return cell;
   };
@@ -3055,9 +3075,74 @@ async function proveHomeDateCalibration() {
   finally { await page.close().catch(() => {}); }
 }
 
+/** The four same-head /watchlist failures: EAT text must be canonical before its right-aligned box is read. */
+async function proveWatchlistDateCalibration() {
+  const page = await b.newPage({ viewport: { width: 360, height: HEIGHT } });
+  const key = keyOf('book-player', 'en', 360, '/watchlist');
+  const zeroHome = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
+  const take = async (locale, o = {}) => {
+    const month = locale === 'sw' ? 'Okt' : 'Oct';
+    const date = o.date ?? `14 ${month}, 13:43`;
+    const statuses = ['Voided', 'Resolved YES', 'Resolved NO', 'Resolved YES'];
+    const cards = Array.from({ length: 9 }, (_, i) => {
+      const time = i < statuses.length ? (i === 0 && o.status ? o.status : statuses[i]) : (i === 4 && o.dateOne ? o.dateOne : date);
+      const part = i === 4 && o.wrongSelector ? '' : ' data-market-part="time"';
+      const info = i >= 6 ? `<button type="button" aria-label="${o.buttonLabel ?? 'How it works'}">i</button>` : '';
+      return `<article class="mcardp" data-row-id="mkt_calibration${i}"><a class="mcardp-open" aria-label="Question ${i}"></a><div class="mcardp-meta"><span>Pool TZS 1,234</span><span class="mcardp-meta-right"><span class="mcardp-timeleft"${part}>${time}${info}</span></span></div></article>`;
+    });
+    await page.setContent(`<!doctype html><html lang="${locale}"><head><style>
+      article.mcardp{width:300px;margin-bottom:8px;padding:4px} .mcardp-meta{display:flex;width:100%}
+      .mcardp-meta-right{margin-left:auto} .mcardp-timeleft{font:13px Arial;color:rgb(80,80,80)}
+      ${o.css ?? ''}</style></head><body><main id="main-content">${cards.join('')}${o.extra ? cards[4] : ''}
+      <p class="ordinary">${o.outside ?? 'Other words'}</p></main></body></html>`);
+    const mask = { ...BOOK_WATCHLIST_DATE, locale };
+    const slots = await page.evaluate((selector) => document.querySelectorAll(selector).length, mask.selector);
+    const canonicalized = o.skipMask ? 0 : await page.evaluate(normaliseQuestionBreakClocks, mask);
+    const snap = await page.evaluate(SNAPSHOT, bookArgsOf('/watchlist'));
+    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates: zeroHome, watchlistDates: { slots, canonicalized }, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    cell.landed = '/watchlist';
+    return cell;
+  };
+  const b9 = (cell) => { const sample = syntheticBook(); sample.book[key] = cell; return bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails; };
+  const fields = (a, c) => diffCells('/watchlist', a, c, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+  try {
+    for (const locale of ['en', 'sw']) {
+      const clean = await take(locale);
+      ok(`P.8y ${locale} nine watchlist time slots include exactly five valid open/progress EAT moments under B.9`, b9(clean).length === 0, JSON.stringify(clean.watchlistDates));
+      const shifted = await take(locale, {date: locale === 'sw' ? '23 Okt, 14:44' : '23 Oct, 14:44'});
+      ok(`P.8y ${locale} date glyph and minute changes leave markup and geometry equal after the pre-geometry mask`, fields(clean, shifted).length === 0 && b9(shifted).length === 0);
+      const unmasked = await take(locale, {date: locale === 'sw' ? '23 Okt, 14:44' : '23 Oct, 14:44', skipMask: true});
+      const unmaskedFields = fields(clean, unmasked).map((d) => d.field);
+      ok(`P.8y ${locale} removing the pre-geometry mask changes layout even though eat-dates already masks HTML`,
+        unmaskedFields.includes('regions.main.layout') && !unmaskedFields.includes('regions.main.html'), unmaskedFields.join(', '));
+      for (const [name, change, need] of [
+        ['date ink', {css: '.mcardp-timeleft{color:rgb(255,0,0)}'}, 'regions.main.layout'],
+        ['date font', {css: '.mcardp-timeleft{font-family:monospace}'}, 'regions.main.layout'],
+        ['info button', {buttonLabel: 'Different help'}, 'regions.main.html'],
+        ['settled status', {status: 'Wrong status'}, 'regions.main.html'],
+        ['outside words', {outside: 'Changed outside date'}, 'regions.main.html'],
+      ]) {
+        const changed = await take(locale, change), diff = fields(clean, changed);
+        ok(`P.8y ${locale} ${name} remains detected (${need})`, diff.some((d) => d.field === need), diff.map((d) => d.field).join(', '));
+      }
+      for (const [name, change] of [
+        ['impossible date', {dateOne: '31 Feb, 13:43'}],
+        ['wrong locale month', {dateOne: locale === 'sw' ? '14 Oct, 13:43' : '14 Okt, 13:43'}],
+        ['missing time selector', {wrongSelector: true}],
+        ['extra time slot', {extra: true}],
+      ]) {
+        const changed = await take(locale, change);
+        ok(`P.8y ${locale} ${name} fails B.9 and stays visible to the book diff`, b9(changed).length > 0 && fields(clean, changed).length > 0, JSON.stringify(changed.watchlistDates));
+      }
+    }
+  } catch(e) { ok('P.8y rendered watchlist-date calibration completes', false, msg(e)); }
+  finally { await page.close().catch(() => {}); }
+}
+
 async function proveRed() {
   await proveQuestionCalibration();
   await proveHomeDateCalibration();
+  await proveWatchlistDateCalibration();
   console.log(`\n§P · the control — first on synthetic captures, then planted in the browser`);
   // ① The EXPECTED_DIFFS matcher: it must pass what it names and nothing beside it.
   const store = { f1: '<footer class="pad-old">x</footer>', f2: '<footer class="pad-new">x</footer>', f3: '<footer class="pad-new">y</footer>' };
@@ -3799,6 +3884,9 @@ async function proveRed() {
     ["B.9", "a home featured close date not canonicalized", (m) => { atBook(m, "guest", "en", 360, "/").homeCloseDates.featured = 0; }],
     ["B.9", "an extra home board close-date leaf", (m) => { atBook(m, "player", "sw", 1280, "/").homeCloseDates.leaves.rows++; }],
     ["B.9", "a close-date leaf canonicalized outside home", (m) => { atBook(m, "guest", "en", 360, "/markets").homeCloseDates.rows = 1; }],
+    ["B.9", "a watchlist moment with an invalid locale date", (m) => { atBook(m, "player", "en", 360, "/watchlist").watchlistDates.canonicalized--; }],
+    ["B.9", "an extra watchlist time slot", (m) => { atBook(m, "player", "sw", 1280, "/watchlist").watchlistDates.slots++; }],
+    ["B.9", "a watchlist moment canonicalized outside watchlist", (m) => { atBook(m, "guest", "en", 360, "/markets").watchlistDates.canonicalized = 1; }],
   ];
   for (const [id, what, plant] of BOOK_FLOOR_PLANTS) {
     const m = structuredClone(SB);
