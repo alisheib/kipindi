@@ -205,10 +205,9 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", W4B],
       ["src/app/legal/rules/page.tsx", W4],
-      // The S5 merge joins W4's legal presentation to Millionea's published words and privacy wrapper.
-      // Re-pin both to this merge commit in a follow-up once the exact merged bytes exist in Git.
-      ["src/lib/i18n-dict.ts", "f0a64d032"],
-      ["src/app/legal/privacy/page.tsx", "f0a64d032"],
+      // The S5 player and register merge carries the reviewed Millionea words; the privacy wrapper is our W4/S5 merge.
+      ["src/lib/i18n-dict.ts", "7d09235e6"],
+      ["src/app/legal/privacy/page.tsx", "8d126b819"],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
       ["src/app/legal/rules/_content-up-down.tsx", W4B],
       ["src/app/legal/rules/up-down/page.tsx", W4],
