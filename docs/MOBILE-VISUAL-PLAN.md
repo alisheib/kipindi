@@ -358,12 +358,17 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   the desktop chart footer was crowded; the receipt's Continue button wore the UP side green and its second action
   fell below the 360px first viewport; the closed card and a settled detail pod showed a placeholder dash clock;
   and the round detail called a returned stake “Paid out.” The six source fixes now pass their focused guards and
-  red mutations; the browser clearance guard and fresh frame review are pending;
+  red mutations. R12 then photographed all 14 phases; its one browser failure measured the held 360px Swahili
+  buttons only 18px above the fixed navigation (24px required), while the new 320px browser guard measured 29px
+  and its red reversal failed. Reopened full frames closed the receipt colour/fit, closed-clock and returned-stake
+  label findings. The 320px ready helper still meets the navigation, the desktop sparse-chart footer remains too
+  dense, a vendor line arriving after load can move live bet buttons, and the settled detail leaves a large empty
+  outlined pod around “NEXT ROUND LIVE.” Those presentation fixes are in progress;
   **no after score has been awarded**. The final state matrix now captures a real local bet receipt at every signed-in
   width. The stored Swahili market-title errors named in the Round 0 register remain content for Ali to correct,
   not a production-data change in this release. `/updown/history` remains Maswali-owned and still orders Swahili
   durations as `5 dakika`; U43 board/detail/receipt use `dakika 5`, so cross-surface wording is not yet 10/10.
-  Next: retest the six findings in browser frames, then run the
+  Next: retest these remaining findings in browser frames, then run the
   seven-width, three-language matrix twice, build and release. Release B is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
