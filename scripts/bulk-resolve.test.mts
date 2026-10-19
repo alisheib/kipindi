@@ -430,7 +430,7 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   // evidence", attributed to the person this action names — and this officer typed neither
   // of them. The excerpt survives on the market row and in the audit payload.
   ok("10.9 NOTHING is written as the officer's player-facing evidence",
-     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId \}\)/.test(a)
+     /await resolveMarket\(\{ marketId: id, outcome, officerId: g\.userId, twoOfficerNow: async \(\) => requireTwoOfficer \}\)/.test(a)
      && !/evidence: (override|typed|m\.sentinelEvidence)/.test(a));
   ok("10.10 a tampered payload naming an unselected market is refused",
      /is not selected/.test(a));
@@ -515,6 +515,43 @@ const V = (m: VerdictMarket, over: Partial<Parameters<typeof bulkVerdictFor>[0]>
   ok("11.4 the bar is gated on canBulk with a locked alternative",
      /canBulk \?/.test(p) && /<ControlLocked/.test(p));
   ok("11.5 the override gate is passed down separately", /canOverride=\{canOverride\}/.test(p));
+  // ⛔ MASWALI-BUILD S7-F4 · the queue, the market page and the ops census read the two-officer setting as the actions do
+  //    (10.25): the getter answered the code default (one officer) while unread, shown and drawn as single-officer.
+  const marketPage = read("src/app/admin/resolver/[id]/page.tsx");
+  const census = read("scripts/ops-verdict-census.mts");
+  ok("11.5b the queue, the market page and the ops census read the setting FAIL-CLOSED (readRequireTwoOfficerResolution), never the getter that answers a default while unread",
+     [p, marketPage, census].every((s) => /readRequireTwoOfficerResolution\(\)\.catch\(\(\) => null\)/.test(s) && !/getRequireTwoOfficerResolution/.test(s)));
+  ok("11.5c …an unknown is drawn as the stricter ceremony and named as unknown on both pages, and the census draws nothing",
+     /const requireTwoOfficer = twoOfficerRead !== false;/.test(p) && /twoOfficerRead === null \? "Setting unreadable"/.test(p)
+       && /const requireTwoOfficer = twoOfficerRead !== false;/.test(marketPage) && /twoOfficerRead === null \? \(/.test(marketPage)
+       && /if \(twoOfficerRead === null\) \{[^}]*process\.exit\(2\)/.test(census));
+  // ⛔ MASWALI-BUILD S7-F5 · an unknown setting drawn strict removed the seal's confirmation: the controls posted only the
+  //    market and the outcome, and the action re-read the setting (OFF once it answered) — a one-click seal with no typed
+  //    word. Now no control is offered while it is unknown, and the action runs only the ceremony the page drew.
+  const controls = read("src/app/admin/resolver-queue/resolve-controls.tsx");
+  const ceremony = read("src/app/admin/resolver/[id]/resolution-ceremony.tsx");
+  const actions = read("src/app/markets/actions.ts");
+  ok("11.5d while the setting is unknown neither page offers a resolve control: the queue and the market page say it is unreadable instead",
+     before(p, "twoOfficerRead === null ? (", "<ResolveControls") && before(marketPage, "canResolve && twoOfficerRead === null ? (", "<ResolutionCeremony"));
+  ok("11.5e both controls post the ceremony they drew, and the action refuses an unread, missing or changed setting BEFORE resolveMarket",
+     [controls, ceremony].every((s) => s.includes('fd.set("drawnTwoAdmin", twoAdmin ? "1" : "0");'))
+       && before(actions, 'formData.get("drawnTwoAdmin")', "await resolveMarket({ marketId, outcome")
+       && /if \(twoOfficerNow === null\)/.test(actions) && /if \(drawn !== \(twoOfficerNow \? "1" : "0"\)\)/.test(actions));
+  // ⛔ MASWALI-BUILD S7-F6 · the bulk bar, the same kind: drawn strict while the setting was unknown, its confirm read as
+  //    staging while the action re-read the setting, so a read that recovered OFF sealed N markets confirmed as staging.
+  const bulkBar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
+  const bulkAction = read("src/app/admin/resolver-queue/bulk-resolve-action.ts");
+  ok("11.5g while the setting is unknown the queue draws no bulk bar: it says the setting is unreadable instead",
+     before(p, "{canBulk ? (", "twoOfficerRead === null ? (") && /twoOfficerRead === null \? \([\s\S]{0,200}could not be read[\s\S]{0,200}<BulkResolveBar\b/.test(p));
+  ok("11.5h the bar posts the batch it drew, and the bulk action refuses a missing or changed ceremony BEFORE any market is attempted",
+     bulkBar.includes('fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");')
+       && /if \(String\(formData\.get\("drawnTwoAdmin"\) \?\? ""\) !== \(twoOfficerRead \? "1" : "0"\)\) \{/.test(bulkAction)
+       && before(bulkAction, 'formData.get("drawnTwoAdmin")', "for (const id of unique)"));
+  ok("11.5i one read decides the ceremony: both actions hand resolveMarket the read that checked the drawn ceremony, so it never reads again",
+     actions.includes("twoOfficerNow: async () => twoOfficerNow") && bulkAction.includes("twoOfficerNow: async () => requireTwoOfficer"));
+  const toggle = read("src/app/admin/resolver-queue/two-admin-toggle.tsx");
+  ok("11.5f the two-admin switch names an unread setting as unknown, with no switch — never drawn ON (it is handed the read, null included)",
+     /enabled: boolean \| null/.test(toggle) && /if \(enabled === null\) \{/.test(toggle) && /<TwoAdminToggle enabled=\{twoOfficerRead\} \/>/.test(p));
 
   const bar = read("src/app/admin/resolver-queue/bulk-resolve-bar.tsx");
   ok("11.6 the bar reads the ACT gate", /useMayAct\(\)/.test(bar));

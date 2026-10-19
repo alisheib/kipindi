@@ -23,7 +23,8 @@ import { setTwoAdminAuthAction } from "./resolution-policy-action";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
-export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
+/** `enabled` is the setting as read; null when it could not be read (S7-F5: named unknown, never drawn as ON or OFF). */
+export function TwoAdminToggle({ enabled }: { enabled: boolean | null }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
@@ -39,6 +40,11 @@ export function TwoAdminToggle({ enabled }: { enabled: boolean }) {
   // Revoking an ACT grant mid-session flips `mayAct` on the next router.refresh(); an early
   // return above these hooks would render fewer hooks than the last pass and crash the page.
   if (!mayAct) return <ActReadOnly />;
+  // ⛔ S7-F5 · an unread setting is shown as unknown, with no switch: a switch drawn ON or OFF would state a setting
+  //    nobody read, and its press would flip a value the officer never saw.
+  if (enabled === null) {
+    return <span className="text-body-sm text-warning">The two-officer setting could not be read. Reload the page.</span>;
+  }
 
   const apply = (next: boolean) => {
     start(async () => {

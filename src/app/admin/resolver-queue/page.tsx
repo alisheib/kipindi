@@ -18,7 +18,7 @@ import { CircularProgress } from "@/components/markets/circular-progress";
 import { ResolveControls } from "./resolve-controls";
 import { TwoAdminToggle } from "./two-admin-toggle";
 import { RecheckButton } from "./recheck-button";
-import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { readRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { getEffectiveConfig, getEffectiveResolutionMode } from "@/lib/server/market-config";
@@ -161,7 +161,11 @@ async function ResolverQueueContent({
   const windowLabel = (WINDOW_OPTIONS.find((o) => o.value === windowFilter)?.label ?? "").toLowerCase();
   // Two-admin authorization: OFF (default) = single admin resolves in one action;
   // ON = two-officer ceremony. This is the ONE place it is controlled.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ MASWALI-BUILD S7-F4 · read FAIL-CLOSED, as the actions read it (S7-F3): null is UNKNOWN, never the code default (one
+  //    officer) while the setting may be ON. An unknown is drawn as the stricter two-officer ceremony and named as unknown;
+  //    every action refuses on its own read.
+  const twoOfficerRead = await readRequireTwoOfficerResolution().catch(() => null);
+  const requireTwoOfficer = twoOfficerRead !== false;
 
   // E-18: this page is the `trading` domain, but two of its three controls demand
   // `compliance` — disjoint sets under DEFAULT_GRANTS. Ask the SAME question the
@@ -279,13 +283,13 @@ async function ResolverQueueContent({
         actions={
           <div className="flex items-center gap-2.5 flex-wrap">
             {canSetPolicy ? (
-              <TwoAdminToggle enabled={requireTwoOfficer} />
+              <TwoAdminToggle enabled={twoOfficerRead} />
             ) : (
               // Still shows WHICH mode is live — a trading officer needs to know
               // whether a resolution will take one officer or two — but does not
               // offer the switch, which is a compliance decision (POCA §16).
               <ControlLocked
-                what={requireTwoOfficer ? "Two-admin auth" : "Single-admin"}
+                what={twoOfficerRead === null ? "Setting unreadable" : requireTwoOfficer ? "Two-admin auth" : "Single-admin"}
                 need={CONTROL_DOMAIN.setTwoAdminAuth}
               />
             )}
@@ -354,13 +358,17 @@ async function ResolverQueueContent({
               sibling of all three. */}
           <AdminCard>
             {canBulk ? (
-              <BulkResolveBar
-                rows={bulkRows}
-                totalPending={pending.length}
-                requireTwoOfficer={requireTwoOfficer}
-                canOverride={canOverride}
-                objectionWindowHours={objectionWindowHours}
-              />
+              twoOfficerRead === null ? (
+                <p className="text-body-sm text-warning">The two-officer setting could not be read. Reload the page to resolve.</p>
+              ) : (
+                <BulkResolveBar
+                  rows={bulkRows}
+                  totalPending={pending.length}
+                  requireTwoOfficer={requireTwoOfficer}
+                  canOverride={canOverride}
+                  objectionWindowHours={objectionWindowHours}
+                />
+              )
             ) : (
               <ControlLocked what="Resolve selected markets" need={CONTROL_DOMAIN.bulkResolveMarkets} block />
             )}
@@ -599,8 +607,13 @@ async function ResolverQueueContent({
                   )}
 
                   <div className="p-4 space-y-3">
+                    {/* S7-F5 · an unknown setting offers no resolve control: either ceremony drawn could be the wrong one. */}
                     {canResolve ? (
-                      <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                      twoOfficerRead === null ? (
+                        <p className="text-body-sm text-warning">The two-officer setting could not be read. Reload the page to resolve.</p>
+                      ) : (
+                        <ResolveControls marketId={m.id} stage={stage1 ? "stage2" : "stage1"} stagedOutcome={m.resolvedOutcome} twoAdmin={requireTwoOfficer} />
+                      )
                     ) : (
                       <ControlLocked what="Resolve YES / NO / VOID" need={CONTROL_DOMAIN.resolveMarket} block />
                     )}

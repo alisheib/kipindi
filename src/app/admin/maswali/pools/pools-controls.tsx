@@ -144,14 +144,20 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
   );
 }
 
-export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: string }> }) {
+/**
+ * The Owner's stop. `nextAct` is the console's reading of the Owner's next act (`consoleStanding().stopNextAct`): with no
+ * week to offer — none on sale, a week being decided, no draft — the control names it (S7-F4), or says it is unknown.
+ */
+export function SunsetCeremony({ weeks, nextAct }: { weeks: Array<{ id: string; label: string }>; nextAct: string | null }) {
   const mayAct = useMayAct();
   const { pending, error, note, run } = useAct();
   const [weekId, setWeekId] = useState(weeks[0]?.id ?? "");
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
   if (!mayAct) return <ActReadOnly />;
-  if (weeks.length === 0) return <p className="text-body-sm text-text-secondary">No public week can be made final now.</p>;
+  if (weeks.length === 0) {
+    return <p className="text-body-sm text-text-secondary">{nextAct ?? "No week can be made final now, and the next step could not be read. Reload the page."}</p>;
+  }
   return (
     <div className="space-y-3">
       <Field label="The final week"><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week" options={weeks.map((w) => ({ value: w.id, label: w.label }))} /></Field>

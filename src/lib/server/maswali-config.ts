@@ -251,6 +251,16 @@ export function snapshotMaswaliRules(c: MaswaliConfig, frozenAt: Date): MaswaliR
 }
 
 /**
+ * ⛔ S7-F4 · VERSION 1'S MONEY CEILING: 10^12 TZS. A frozen ticket price, a floor, or one purchase at the cap (the price
+ * times the cap) above it is not a v1 week's money. Under it every sum the engine makes of them stays exact: 9,007 such
+ * amounts still sum below 2^53 (`Number.MAX_SAFE_INTEGER` + 1), and the engine adds far fewer — a purchase is one price
+ * times at most the cap, a top-up is a floor less a jackpot, the guarantee's requirement one floor per unsettled week. It
+ * is also the range the platform prints money in (`formatTzs`, `test:money-format` §3). A bound of the shape, never a
+ * public value: the config's own ranges (`maswaliConfigProblem`) sit far inside it.
+ */
+const V1_MONEY_CEILING_TZS = 1_000_000_000_000;
+
+/**
  * ⛔ VERSION 1'S OWN SHAPE, FROZEN WITH THE VERSION (MASWALI-BUILD S7-F3; the review's LOW-3, taken as MEDIUM). A week's
  * rules are read against the version they froze, never against today's validator: `maswaliConfigProblem` decides what
  * the NEXT week may freeze, and a later change to its ranges (a lower cap, a narrower price range, a longer buffer) must
@@ -265,6 +275,10 @@ function rulesV1Problem(s: Record<string, unknown>): string | null {
   if (!isWhole(s.ticketPriceTzs, 1, ANY)) return "the ticket price is not a whole number of shillings";
   if (!isWhole(s.floorTzs, 0, ANY)) return "the floor is not a whole number of shillings";
   if (!isWhole(s.ticketCapPerWeek, 1, ANY)) return "the ticket cap is not a whole number of tickets";
+  const price = s.ticketPriceTzs as number, floor = s.floorTzs as number, cap = s.ticketCapPerWeek as number;
+  if (price > V1_MONEY_CEILING_TZS || floor > V1_MONEY_CEILING_TZS || price * cap > V1_MONEY_CEILING_TZS) {
+    return `its money passes version 1's ceiling of ${formatTzs(V1_MONEY_CEILING_TZS)} (the price, the floor, or one purchase at the cap), under which every sum stays exact`;
+  }
   if (!isWeekday(s.openWeekday) || !isClock(s.openAt) || !isWeekday(s.closeWeekday) || !isClock(s.closeAt)) return "the open or the close is not a weekday and a time";
   if (weekMinute(s.closeWeekday as IsoWeekday, s.closeAt as EatClock) <= weekMinute(s.openWeekday as IsoWeekday, s.openAt as EatClock)) return "the close does not come after the open";
   if (!isWhole(s.minLockBufferMinutes, 0, ANY)) return "the close buffer is not a whole number of minutes";

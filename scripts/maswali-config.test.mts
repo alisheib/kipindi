@@ -144,6 +144,20 @@ console.log("\n§4 · the week's frozen rules");
   ];
   const readable = malformed.filter(([, over]) => readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ...over }).ok).map(([name]) => name);
   ok("4.12 · ⛔ …and a snapshot that is not version 1's shape is still refused, each malformation on its own (control)", readable.length === 0, readable.join(", "));
+  // S7-F4 · VERSION 1'S MONEY CEILING (10^12 TZS): its money fields were bounded only by MAX_SAFE_INTEGER, under which a
+  // price times a cap, or a few floors added, leave the exact integers. Above the ceiling a snapshot is refused; at it, read.
+  const CEIL = 1_000_000_000_000;
+  const over: Array<[string, Record<string, unknown>]> = [
+    ["a price one shilling above it", { ticketPriceTzs: CEIL + 1 }], ["a floor one shilling above it", { floorTzs: CEIL + 1 }],
+    ["one purchase at the cap above it", { ticketPriceTzs: 100_000_000_000, ticketCapPerWeek: 11 }],
+    ["a price near MAX_SAFE_INTEGER", { ticketPriceTzs: Number.MAX_SAFE_INTEGER }],
+  ];
+  const overRead = over.map(([name, o]) => [name, readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ...o })] as const);
+  ok("4.13 · ⛔ S7-F4 · a v1 snapshot whose money passes version 1's ceiling is refused, each on its own: a price, a floor, one purchase at the cap",
+    overRead.every(([, r]) => !r.ok && /ceiling/.test(r.error)), JSON.stringify(overRead.map(([name, r]) => [name, r.ok ? "read" : r.error])));
+  const atCeiling = readMaswaliRulesSnapshot({ ...JSON.parse(JSON.stringify(snap)), ticketPriceTzs: 10_000_000_000, ticketCapPerWeek: 100, floorTzs: CEIL });
+  ok("4.14 · control: …while money AT the ceiling still reads — a floor of exactly 10^12, and one purchase at the cap of exactly 10^12",
+    atCeiling.ok && atCeiling.rules.floorTzs === CEIL && atCeiling.rules.ticketPriceTzs * atCeiling.rules.ticketCapPerWeek === CEIL, atCeiling.ok ? "" : atCeiling.error);
 }
 
 // ── §5 · the licence basis ──────────────────────────────────────────────────
@@ -202,6 +216,8 @@ console.log("\n§7 · ⚠️ POSITIVE CONTROLS");
 
 console.log(`\n${"═".repeat(70)}\n  MASWALI CONFIG: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 /** The floor is the count a green run PRINTED (MASWALI-BUILD S1, the first run); it only rises, to a printed number. */
-const MIN_ASSERTIONS = 1;
+// S7-F5 (2026-10-18, the lead): the static count of its ok call sites, 56 (one runs in a loop, so a green run prints more):
+// a case that silently stops running fails the floor.
+const MIN_ASSERTIONS = 56;
 if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
 process.exit(fail === 0 ? 0 : 1);

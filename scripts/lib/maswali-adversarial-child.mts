@@ -27,6 +27,7 @@
  *   §14a GR · a week whose frozen rules cannot be read: the requirement is unknown, every reader fails closed (OD-02)
  *   §14b SN · a refused stop names the Owner's next act, in every branch (MR-30, OD-03; the S7 review, round 2)
  *   §14c RF · the console's rules form and holiday list: the save, the refusal, the frozen week, the Owner's list (MB-75)
+ *   §14d SC · the stop control names the Owner's next act when it offers no week (MR-30, OD-03; the S6 legal review)
  *   §15 SU · the sunset after a close (MR-30, OD-03; the lead's decision of 2026-10-18)
  *   §16    · the invariants and the books over everything above
  * ⏱ THE WEEK'S CLOCK IS INJECTED, MONEY'S IS REAL (`maswali-money-world.mts`). A container whose clock disagrees with the
@@ -738,7 +739,7 @@ if (runs("GU")) {
   ok("FL.4 · ⭐ the console's alerts carry the short float after the release, beside its week, with the payout and the amount short (MB-11: alert the Owner and Finance; MB-63's 'float short')",
     !!floatB && floatB.level === "critical" && floatB.text.includes(formatTzs(869_995)) && /short of the payout/.test(floatB.text), J(floatB ?? "no float alert"));
   // ⭐ S7-F2 · THE FINDING IS JUDGED ON THE FLOAT AS IT STANDS (the S7 review, round 2): Finance's top-up clears it.
-  //    S7-F3 · the reading that covers it is recorded and ends it for good, so the readings that keep it come first.
+  //    S7-F4 · against what the winners can still withdraw of the payout — all of it here, nobody has withdrawn yet.
   const headroom = Number(floatRows[0]?.payload?.buffer ?? Number.NaN);
   const almost = await floatAlertFor(b.id, atB, 869_995 + headroom - 1);
   ok("FL.4d · control: a top-up one shilling short of the headroom keeps it — a warning now, the payout itself covered — naming the shilling",
@@ -748,12 +749,35 @@ if (runs("GU")) {
     !!blind && blind.level === "critical" && /cannot be read/.test(blind.text), J(blind ?? "no float alert"));
   ok("FL.4b · ⭐ …and it clears once the float covers the payout and its headroom — a top-up ends it, never the next week alone",
     Number.isFinite(headroom) && !(await floatAlertFor(b.id, atB, 869_995 + headroom)), `headroom ${headroom}`);
-  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED (the review of S7-F2, MEDIUM): the float is there for the winners to withdraw,
-  //    and their withdrawals take it back down by the very payout it covered.
-  const latched = await weekAudit(b.id, "maswali.settlement.float_covered");
-  const drained = await floatAlertFor(b.id, atB, 0);
-  ok("FL.4g · ⭐ S7-F3 · …and once covered it stays ended: the winners withdraw, the float falls back to 0, and no alert returns (the covering reading is recorded on the week)",
-    latched.length === 1 && Number(latched[0].payload?.paid) === 869_995 && !drained, J({ latched: latched.map((e: any) => e.payload), drained: drained ?? "no float alert" }));
+  // ⭐ S7-F3 · THE COVERED FINDING STAYS ENDED BY THE WINNERS' OWN WITHDRAWALS (the review of S7-F2, MEDIUM): the float is
+  //    there for them to withdraw, and their withdrawals take it back down by what they withdrew. ⚠️ A FIXTURE, DECLARED:
+  //    the six free winners' completed withdrawals of their shares are CONFIRMED rows on their accounts (the held one
+  //    cannot withdraw; no wallet or ledger is touched), and the float reads as the covering top-up less the same. Marked
+  //    FAILED below, so nothing after this section counts them.
+  const shareB = Number(ab?.share ?? 0);
+  const free = wB.slice(1);
+  const settledB = Date.parse((await dal.weekStore.get(b.id)).settledAt ?? "");
+  const outIso = new Date(Math.max(Date.now(), (Number.isFinite(settledB) ? settledB : 0) + 1_000)).toISOString();
+  const outs: string[] = [];
+  for (const u of free) {
+    const wl = (await W.db.wallet.findByUserId(u))!;
+    const id = `txn_fl4g_${process.pid}_${outs.length}`;
+    await W.db.txn.create({ id, walletId: wl.id, userId: u, type: "WITHDRAWAL", status: "CONFIRMED", amount: -shareB, fee: 0, taxWithheld: 0,
+      balanceAfter: wl.balance, currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null,
+      description: "FL.4g fixture: a winner withdraws the share", positionId: null, amlReason: null,
+      createdAt: outIso, updatedAt: outIso, completedAt: outIso });
+    outs.push(id);
+  }
+  const covering = 869_995 + headroom;
+  const afterWinners = await floatAlertFor(b.id, atB, covering - free.length * shareB);
+  ok("FL.4g · ⭐ S7-F3 · …and once covered, the winners' own withdrawals never bring it back: the float falls by what they withdrew, and what is left — the held share — is still covered with its headroom",
+    shareB === 124_285 && !afterWinners, J({ shareB, afterWinners: afterWinners ?? "no float alert" }));
+  // ⭐ S7-F4 · THE FLOAT IS EVERY PLATFORM WITHDRAWAL'S (the review of S7-F3, LOW): S7-F3's latch ended the finding on one
+  //    covering reading, so other players' withdrawals draining the float before the winners had theirs left silence.
+  const byOthers = await floatAlertFor(b.id, atB, 0);
+  ok("FL.4i · ⭐ S7-F4 · …but once other withdrawals drain the shared float, the alert returns: the held share is still owed, and nothing covers it — critical, below what is owed",
+    !!byOthers && byOthers.level === "critical" && byOthers.text.includes(formatTzs(shareB)) && /short of the payout/.test(byOthers.text), J(byOthers ?? "no float alert"));
+  for (const id of outs) await W.db.txn.update(id, { status: "FAILED" });
   const rC = pc.ok ? await settle.settleMaswaliWeek({ weekId: c.id, releasedBy: RELEASER, digest: pc.preview.digest, now: atC }) : pc;
   ok("GU.7 · ⭐ …and the second, one shilling short, refuses whole: nothing paid, no carry claimed, the guarantee untouched",
     !rC.ok && /guarantee holds less/.test(errOf(rC)) && (await dal.weekStore.get(c.id)).rolloverIn === null && (await guarantee()) === (ac?.U ?? 0) - 1, errOf(rC));
@@ -1534,6 +1558,35 @@ if (runs("RF")) {
   }
 }
 
+// ═══ §14d · SC · the stop control names the Owner's next act when it offers no week ═════════════════════════════════
+if (runs("SC")) section("§14d · SC · with no week on sale, a week's results being decided and no draft, the console names the Owner's next act — never a stop control that names none (MR-30, OD-03; the S6 legal review)");
+if (runs("SC")) {
+  // ⭐ Run BEFORE §15 SU: SU ends with its final week voided, so the line passes on (PASSES_ON) and the next week to open
+  //    becomes final by itself. Here the line is LIVE (SN and RF leave it so), and SC leaves it LIVE for SU.0.
+  // X is the newest week to open and its sales have closed; no draft follows it. The pools page offers only drafts and
+  // weeks on sale, so its stop control has no week to offer, and shows the console's next act instead (S7-F4).
+  const sX = W.weekStartAhead(ahead++), sY = sX + 7 * DAY;
+  ahead += 1;
+  const X = await openWeekAt(sX);
+  await closed(X.id);
+  const atX = new Date(Date.parse(X.closesAt) + HOUR);
+  const bare = await consoleRead.consoleStanding(atX);
+  const act0 = bare.stopNextAct ?? "";
+  ok("SC.1 · ⭐ none on sale, X's results decided, no draft: the console names the Owner's next act — draft the next week and make it final, at shorter notice while X is decided",
+    /^To stop Millionea, draft the next week and make it the final week: while week /.test(act0) && act0.includes(X.code), J(bare.stopNextAct));
+  const Y = await drafted(sY);
+  const act1 = (await consoleRead.consoleStanding(atX)).stopNextAct ?? "";
+  ok("SC.2 · control: with the next week drafted, the act named is to make that week final, as a refused stop names it",
+    /^To stop Millionea, make the next week to open, /.test(act1) && act1.includes(Y.code), J(act1));
+  // The books close behind the cases: X sold nothing and voids whole; Y opens, sells nothing and voids whole too.
+  await sealRest(X.id, sX, ALL_VOID);
+  await voided(X.id);
+  await opened(Y, sY);
+  await closed(Y.id);
+  await sealRest(Y.id, sY, ALL_VOID);
+  await voided(Y.id);
+}
+
 // ═══ §15 · SU · the sunset after a close ═══════════════════════════════════════════════════════════════════════════
 if (runs("SU")) section("§15 · SU · the sunset after a close: a week whose results are being decided is never made final; the next week may be, inside its week (MR-30, OD-03)");
 if (runs("SU")) {
@@ -1592,6 +1645,16 @@ if (runs("SU")) {
   await closed(B.id);
   await sealRest(B.id, sB, ALL_VOID);
   await voided(B.id);
+  // ⭐ S7-F5 · THE STOP PASSES ON: B, the final week, voided, so the next week to open becomes final by itself. The console
+  //    names that, never "draft the next week and make it final", and a stop asked now is answered the same way.
+  const atPass = new Date(Date.parse(B.closesAt) + 10 * DAY);
+  const passAct = (await consoleRead.consoleStanding(atPass)).stopNextAct ?? "";
+  ok("SU.7 · ⭐ S7-F5 · once the final week has voided, the console's next act says the stop passes on — the next week to open becomes final by itself — never to draft one and make it final",
+    (await W.svc.sunsetState()).kind === "PASSES_ON" && /passes on/.test(passAct) && /becomes the final week by itself/.test(passAct) && passAct.includes(B.code)
+      && !/draft the next week/.test(passAct), J(passAct));
+  const againC = await stop(C.id, atPass);
+  ok("SU.7b · …and a stop asked while it passes on is answered with those words: nothing more is needed, and no week is made final",
+    !againC.ok && /becomes the final week by itself/.test(errOf(againC)) && !(await isFinal(C.id)), errOf(againC));
 }
 
 // ═══ §16 · the invariants and the books ═════════════════════════════════════════════════════════════════════════════

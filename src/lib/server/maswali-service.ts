@@ -467,7 +467,9 @@ export async function purchaseMaswaliTickets(input: {
   //    opens: a slip opened before the stop never stated the final week's rule. Its purchase is refused before anything
   //    moves, and the buyer is sent back to the slip, which now states the rule. ⭐ A key that already bought answers with
   //    its own receipt (L2: a gate guards a new purchase; a replay places nothing), as `buyPosition`'s refusals do.
-  if (week.isFinal && input.shownFinal === false) {
+  //    ⛔ S7-F4 · An OPEN week's refusal only: a final week that has CLOSED or been VOIDED sells to no slip, so its own
+  //    answer stands (sales closed, not open), the one a slip that stated the rule gets, and a landed key still replays.
+  if (week.isFinal && input.shownFinal === false && week.state === "OPEN") {
     const stale = {
       ok: false as const, code: "INVALID" as const, reason: "millionea_week_final" as const,
       error: "This week became the final week of Millionea after the slip was opened. Nothing was charged: open the slip again to read the final week's rules.",
@@ -485,7 +487,7 @@ export async function purchaseMaswaliTickets(input: {
     stake: rules.ticketPriceTzs * input.slips.length,
     idempotencyKey: input.idempotencyKey,
     playStartedAt: input.playStartedAt,
-    maswali: { weekId: week.id, slips: input.slips },
+    maswali: { weekId: week.id, slips: input.slips, shownFinal: input.shownFinal },
   });
   // S5 · a sale moved the week's pool: the live hub hears it, coalesced, after the purchase committed (MB-31). A replay
   // moved nothing.
@@ -905,11 +907,12 @@ function stopStanding(line: StoredWeek[], atMs: number): { onSale: StoredWeek | 
  * instead, read from the line as the stop reads it. The week on sale may be made final at once; while a week's results
  * are decided, the next week to open may be made final at shorter notice; otherwise a draft is made final a full week
  * before it opens, or the next week once it is on sale. A refusal that ended on an empty sentence left the Owner, once
- * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale.
+ * the week deciding the stop had settled, with no act named at all. `asked` is never offered back as the week on sale;
+ * null when no week was asked (the console's stop control, `stopNextActNow`).
  */
-function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek, clockMs: number): string {
+function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek | null, clockMs: number): string {
   const { onSale, deciding, next } = s;
-  if (onSale && onSale.id !== asked.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
+  if (onSale && onSale.id !== asked?.id) return `To stop Millionea, make the week on sale, ${onSale.code}, the final week: it may be made final at once.`;
   if (deciding) {
     return next
       ? `To stop Millionea, make the next week to open, ${next.code}, the final week: while week ${deciding.code}'s results are decided, it may be made final although it opens in less than a full week (OD-03).`
@@ -920,6 +923,33 @@ function stopNextAct(s: ReturnType<typeof stopStanding>, asked: StoredWeek, cloc
     return `To stop Millionea, make the next week to open, ${next.code}, the final week: it opens a full week or more from now (OD-03).`;
   }
   return `To stop Millionea, make week ${next.code} the final week once it opens (a week on sale may be made final at once), or make a week that opens a full week or more from now the final week (OD-03).`;
+}
+
+/**
+ * A final week standing, in the Owner's words — answered before any rule a later act could meet — or null when none stands.
+ * ⭐ S7-F5 · PASSES_ON is a stop still standing: the final week voided or sold nothing, so the next week to open becomes the
+ * final week by itself at its open (`openWeek`). The Owner is never told to draft a week and make it final then.
+ */
+function finalStandingWords(life: Awaited<ReturnType<typeof sunsetState>>): string | null {
+  if (life.kind === "ENDING") return `Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`;
+  if (life.kind === "RETIRED") return `Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`;
+  if (life.kind === "PASSES_ON") {
+    return `Week ${life.week.code} was the final week and ${life.week.state === "VOIDED" ? "was voided" : "sold no ticket"}, so the stop passes on: the next week to open becomes the final week by itself, and nothing more is needed.`;
+  }
+  return null;
+}
+
+/**
+ * ⭐ S7-F4 · THE OWNER'S NEXT ACT WITH NO WEEK ASKED (the S6 legal review): what the console's stop control names when it
+ * offers no week — none on sale, a week's results being decided, no draft — read as the stop reads it: a final week
+ * standing first, then the PUBLIC line on the later of the two clocks (MB-84). A control that said only that no week can
+ * be made final now left the Owner with no act named. ⛔ A read that fails throws: the console shows the act as unknown.
+ */
+export async function stopNextActNow(now?: Date): Promise<string> {
+  const standingFinal = finalStandingWords(await sunsetState());
+  if (standingFinal) return standingFinal;
+  const clockMs = Math.max((now ?? new Date()).getTime(), await dbNowMs(null));
+  return stopNextAct(stopStanding(await weekStore.list({ visibility: "PUBLIC" }), clockMs), null, clockMs);
 }
 
 /**
@@ -951,9 +981,8 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
     if (!week) return refuse("No such week: reload the page and choose the final week again.");
     if (week.visibility !== "PUBLIC") return refuse("A drive week is never the final week: make a public week the final week.");
     if (week.isFinal) return { ok: true, week };
-    const life = await sunsetState();
-    if (life.kind === "ENDING") return refuse(`Week ${life.week.code} is already the final week: Millionea stops after it, and nothing more is needed.`);
-    if (life.kind === "RETIRED") return refuse(`Millionea has ended: week ${life.week.code} was the final week, and no week opens again.`);
+    const standingFinal = finalStandingWords(await sunsetState());
+    if (standingFinal) return refuse(standingFinal);
     // The later of the two clocks decides (MB-84), as a move of the close reads it: a container whose clock runs slow
     // never reads a closed week as on sale, nor a draft as further off than it is.
     const clockMs = Math.max(nowMs, await dbNowMs(lockTx));
@@ -976,10 +1005,17 @@ export async function sunsetMaswali(input: { weekId: string; ownerId: string; ty
         basis = "NEXT_AFTER_CLOSE";
       }
     }
-    await weekStore.patch(week.id, { isFinal: true });
+    // ⛔ S7-F4 · AN OPEN WEEK IS MADE FINAL UNDER ITS MARKET'S LOCK (MR-30): a purchase asks the week's finality again
+    //    inside `market:` (`buyMaswaliTickets`), so the stop waits for a purchase in flight on this week's market, and a
+    //    purchase that waits for the stop reads it. `maswali:chain` → `market:` is a permitted order (`locks.ts`).
+    //    S7-F5 · the mark joins the lock's transaction: it commits with the lock's release, never before it. The week is
+    //    answered as marked (a read outside the transaction would not see the mark yet).
+    const markFinal = async (tx?: Parameters<typeof weekStore.patch>[2] | null) => { await weekStore.patch(week.id, { isFinal: true }, tx ?? undefined); };
+    if (week.state === "OPEN" && week.marketId) await withLock(`market:${week.marketId}`, markFinal);
+    else await markFinal(lockTx);
     audit({ category: "COMPLIANCE", action: "maswali.sunset.ordered", actorId: input.ownerId, targetType: "MaswaliCycle", targetId: week.id,
       payload: { code: week.code, state: week.state, reason, basis } });
-    return { ok: true, week: (await weekStore.get(week.id))! };
+    return { ok: true, week: { ...week, isFinal: true } };
   });
 }
 

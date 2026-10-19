@@ -117,6 +117,8 @@ export function BulkResolveBar({
     startTransition(async () => {
       const fd = new FormData();
       for (const r of chosen) fd.append("marketIds", r.marketId);
+      // S7-F6 · the batch this bar drew: the action refuses if the setting reads otherwise now.
+      fd.set("drawnTwoAdmin", requireTwoOfficer ? "1" : "0");
       // ⛔ FANNED OUT OVER `overridden` ONLY — never over `chosen`. The wire format is
       // unchanged (`override:<marketId>`, one entry per overridden market), and the server
       // still refuses an override naming a row it did not refuse. Sending the shared string

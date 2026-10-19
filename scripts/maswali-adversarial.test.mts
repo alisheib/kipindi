@@ -31,13 +31,18 @@
  * GR.1b with its control GR.6b, an unreadable week's sales and worst top-up null on /pools: 185 on memory, 193 on Postgres.
  * Merged into mln-sf (2026-10-18), where S7-F2's first green run had printed 184 and 192: the floor is S7-F3's, the
  * higher, until the merged tree's first green run prints its own counts — then it rises to them.
+ * ⭐ S7-F4 (2026-10-18): SC.1 — with no week to offer, the stop control names the Owner's next act — and its control
+ * SC.2, on each store: 187 on memory, 195 on Postgres. And FL.4i — the float finding judged against the week's shares
+ * not yet withdrawn returns once other withdrawals drain the shared float — on each: 188 on memory, 196 on Postgres.
+ * ⭐ S7-F5: SC runs before SU (§14d), and SU.7/SU.7b — the stop passes on in the console's words and the stop's — on each:
+ * 190 on memory, 198 on Postgres.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
 await runTwoStores({
   suite: "test:maswali-adversarial",
   casesFile: "scripts/lib/maswali-adversarial-child.mts",
-  minPass: { memory: 185, postgres: 193 },
+  minPass: { memory: 190, postgres: 198 },
   dbPrefix: "mlw_adv",
   timeoutMs: 45 * 60_000,
 });

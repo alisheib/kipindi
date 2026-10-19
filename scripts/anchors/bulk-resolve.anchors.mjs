@@ -209,8 +209,8 @@ export const MUTATIONS = [
     name: "🔴 the AI's excerpt is written as the OFFICER's player-facing evidence",
     file: ACTION,
     expect: "10.9 NOTHING is written as the officer's player-facing evidence",
-    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });`,
-    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, evidence: m.sentinelEvidence ?? undefined });`,
+    from: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer });`,
+    to: `        const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId, twoOfficerNow: async () => requireTwoOfficer, evidence: m.sentinelEvidence ?? undefined });`,
   },
   {
     name: "🔴 the override audit is written for a row the floor never refused",
@@ -343,5 +343,12 @@ export const MUTATIONS = [
     to: `  type MarketRows = Awaited<ReturnType<typeof listMarkets>>;
   const everyMarketEver = await listMarkets();
   void everyMarketEver;`,
+  },
+  {
+    name: "S7-F6 · the bulk action runs whatever ceremony the setting reads now, never the one the bar drew",
+    file: ACTION,
+    expect: "11.5h the bar posts the batch it drew",
+    from: `    if (String(formData.get("drawnTwoAdmin") ?? "") !== (twoOfficerRead ? "1" : "0")) {`,
+    to: `    if (false) {`,
   },
 ];

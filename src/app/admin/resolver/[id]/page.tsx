@@ -11,7 +11,7 @@ import { ProbabilityBar } from "@/components/markets/probability-bar";
 import { CountdownRing } from "@/components/positions/countdown-ring";
 import { getMarket, listPositionsForMarket } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
-import { getRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
+import { readRequireTwoOfficerResolution } from "@/lib/server/resolution-policy";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { getAuditPage } from "@/lib/server/audit";
 import { officerLabel } from "@/lib/server/actor-label";
@@ -73,7 +73,10 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
   // how many officers a resolution needs. OFF ⇒ single admin seals in one action —
   // no second officer, no self-countersign block. ON ⇒ stage-2 must be a DIFFERENT
   // officer, so a same-officer countersign is blocked.
-  const requireTwoOfficer = await getRequireTwoOfficerResolution().catch(() => false);
+  // ⛔ MASWALI-BUILD S7-F4 · read FAIL-CLOSED, as the actions read it (S7-F3): null is UNKNOWN, drawn as the stricter
+  //    two-officer ceremony and named as unknown in the status chip; the action refuses on its own read.
+  const twoOfficerRead = await readRequireTwoOfficerResolution().catch(() => null);
+  const requireTwoOfficer = twoOfficerRead !== false;
   // The window in force, read once and passed down — never restated as a literal in copy.
   const { objectionWindowHours } = await getGlobalConfig();
   const isSelfCountersign = requireTwoOfficer && stage === "stage2" && !!currentOfficerId && currentOfficerId === stage1By;
@@ -121,6 +124,8 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                   <Chip size="sm" variant={m.status === "VOIDED" ? "claret" : "resolved"}>
                     {m.status === "VOIDED" ? "VOIDED" : `SEALED · ${m.resolvedOutcome}`}
                   </Chip>
+                ) : twoOfficerRead === null ? (
+                  <Chip size="sm" variant="warning">TWO-OFFICER SETTING UNREADABLE</Chip>
                 ) : requireTwoOfficer && stage === "stage2" ? (
                   <Chip size="sm" variant="warning">{CEREMONY.awaitingSecondOfficer.en.toUpperCase()}</Chip>
                 ) : requireTwoOfficer ? (
@@ -317,6 +322,9 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                     </p>
                   </div>
                 </div>
+              ) : canResolve && twoOfficerRead === null ? (
+                // S7-F5 · an unknown setting offers no ceremony: either one drawn could be the wrong one.
+                <p className="text-body-sm text-warning">The two-officer setting could not be read, so this market cannot be resolved now. Reload the page.</p>
               ) : canResolve ? (
                 <ResolutionCeremony
                   marketId={m.id}

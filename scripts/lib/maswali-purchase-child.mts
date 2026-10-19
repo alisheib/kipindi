@@ -464,7 +464,38 @@ console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop neve
   const early = await W.user({ balance: 50_000 });
   const plain = await buyAs(early, false, "s7-stale-before-0001");
   ok("SF.1 · a week never final sells to a slip that stated no final week, as before (control)", plain.ok && !plain.data.replayed && (await count()) === 1, why(plain));
-  const stop = await W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite stops Millionea" });
+  // S7-F5 · the control first: with no lock held, the same stop finishes inside the same wait, so SF.2a's wait is the
+  // lock's, never a slow store's. ⚠️ A FIXTURE, DECLARED: the Owner's order is then withdrawn (no act can do that), so the
+  // held stop below meets the week as it was.
+  let freeDone = false;
+  const freeStop = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite: the unheld control" })
+    .then((r: any) => { freeDone = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const freeInTime = freeDone;
+  const freeR = await freeStop;
+  ok("SF.2b · control: with no lock held, the same stop finishes inside the same wait (the wait SF.2a meets is the lock's)",
+    freeInTime && freeR.ok && freeR.week.isFinal === true, `${freeInTime ? "in time" : "late"} · ${why(freeR)}`);
+  await dal.weekStore.patch(Z.id, { isFinal: false });
+  // S7-F4 · the stop waits for a purchase in flight on the week's market: the market lock is held here, as a purchase holds
+  // it from its in-lock finality read to its commit, while the Owner's stop runs.
+  const { withLock } = await import("../../src/lib/server/locks.ts");
+  let letGo!: () => void;
+  const held = new Promise<void>((r) => { letGo = r; });
+  let entered!: () => void;
+  const holding = new Promise<void>((r) => { entered = r; });
+  const flight = withLock(`market:${Z.marketId}`, async () => { entered(); await held; });
+  await holding;
+  let stopped = false;
+  const stopping = W.svc.sunsetMaswali({ weekId: Z.id, ownerId: OWNER, typed: W.svc.SUNSET_WORD, reason: "purchase suite stops Millionea" })
+    .then((r: any) => { stopped = true; return r; });
+  await new Promise((r) => setTimeout(r, 400));
+  const finalWhileHeld = (await dal.weekStore.get(Z.id)).isFinal;
+  const waited = !stopped && finalWhileHeld === false;
+  letGo();
+  await flight;
+  const stop = await stopping;
+  ok("SF.2a · ⛔ S7-F4 · the Owner's stop waits for a purchase in flight on the week's market: the week is not final while that lock is held",
+    waited, J({ stopped, finalWhileHeld }));
   ok("SF.2 · the Owner makes the week on sale the final week (the fixture)", stop.ok && stop.week.isFinal === true && stop.week.state === "OPEN", why(stop));
   const stale = await W.user({ balance: 50_000 });
   const refused = await buyAs(stale, false, "s7-stale-slip-0001");
@@ -479,6 +510,34 @@ console.log(`${String.fromCharCode(10)}§9 · a slip opened before the stop neve
   ok("SF.6 · ⭐ L2 · the same key of a purchase that landed before the stop answers its own receipt, never the refusal, and charges nothing",
     replay.ok && replay.data.replayed === true && J(replay.data.maswali.tickets) === J(plain.data.maswali.tickets)
       && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replay));
+
+  // S7-F4 · a stop landing between the slip's check and the money transaction: such a purchase passed
+  // `purchaseMaswaliTickets`' check while the week was not final, so it reaches the ticket arm with its slip's answer —
+  // the path taken here directly, after the stop.
+  const midFlight = (u: string, key: string) => market.buyPosition(u, {
+    marketId: Z.marketId, side: "YES", stake: price, idempotencyKey: key, maswali: { weekId: Z.id, slips: [W.LOSE], shownFinal: false } });
+  const mid = await W.user({ balance: 50_000 });
+  const inFlight = await midFlight(mid, "s7f4-mid-flight-0001");
+  ok("SF.6a · ⛔ S7-F4 · a stop landing between the slip's check and the money transaction refuses inside the locks, and nothing moves",
+    !inFlight.ok && inFlight.reason === "millionea_week_final" && (await W.bal(mid)).balance === 50_000
+      && (await dal.ticketStore.listForUser(mid)).length === 0 && (await count()) === 2, why(inFlight));
+  const landedMid = await midFlight(early, "s7-stale-before-0001");
+  ok("SF.6b · ⭐ …while a key that landed before the stop still answers its own receipt from the wallet lock, charging nothing (control)",
+    landedMid.ok && landedMid.data.replayed === true && J(landedMid.data.maswali?.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(landedMid));
+
+  // S7-F4 · the refusal is the OPEN week's: once the final week has CLOSED, a stale slip gets the closed week's own answer.
+  const shut = await W.svc.closeWeek({ weekId: Z.id, now: new Date(Date.parse(Z.closesAt) + 60_000) });
+  const late = await W.user({ balance: 50_000 });
+  const staleShut = await buyAs(late, false, "s7-stale-shut-0001");
+  const freshShut = await buyAs(late, true, "s7-fresh-shut-0001");
+  ok("SF.7 · ⛔ a stale slip on the final week once it has CLOSED gets the closed week's own answer, never the stale-slip refusal: the one a slip that stated the rule gets",
+    shut.ok && !staleShut.ok && !freshShut.ok && staleShut.reason !== "millionea_week_final" && staleShut.reason === freshShut.reason
+      && (await W.bal(late)).balance === 50_000 && (await count()) === 2, `${shut.ok ? "closed" : shut.error} · ${why(staleShut)} · ${why(freshShut)}`);
+  const replayShut = await buyAs(early, false, "s7-stale-before-0001");
+  ok("SF.8 · …and the same key of a purchase that landed still answers its own receipt on the closed week, charging nothing (control)",
+    replayShut.ok && replayShut.data.replayed === true && J(replayShut.data.maswali.tickets) === J(plain.data.maswali.tickets)
+      && (await W.bal(early)).balance === 50_000 - price && (await count()) === 2, why(replayShut));
 }
 
 console.log(`${String.fromCharCode(10)}@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
