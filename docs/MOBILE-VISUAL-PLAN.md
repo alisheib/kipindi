@@ -343,12 +343,19 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   driver now bounds simultaneous loads, with a guard and red proof. R9 completed 14 phases, including the bet receipt,
   lock, real one-sided refund and handover, but 12 readiness failures in its cold/open, moved-up and successor frames
   still invalidate the run. Frame reopening also caught a race: a full frame can show a placeholder clock even if its
-  crop is live. The driver is gaining a warm-up and a post-shot check before evidence is accepted. At 768px, an explicit
+  crop is live. The driver now warms every browser context before opening the timed round and verifies page and card
+  pixels on both sides of each screenshot; its mutation proof passed. At 768px, an explicit
   shared-card height had still stretched the settled neighbor; its card-specific correction passed guard and red and the
   measured settled card is now 133px slimmer. R9 review found another B2 gap: when vendor history is unavailable, the
-  round card needs a visible translated explanation. That fix is in progress. No after score has been awarded. Next:
-  repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and release. Release B
-  is not on production.
+  round card needs a visible translated explanation; that line now exists and passed its guards and red proofs. R10's
+  warmed quick drive photographed all 14 phases with zero readiness problems through p12; p13's two failures came from
+  a guard incorrectly demanding a live Gold card when the true Gold board was closed. The guard is being corrected.
+  Exact R10 frame review found two product blockers: a held bet at 320px pushes the side buttons under the fixed nav,
+  and a one-sided refunded result still says “Up wins.” The round-line fallback also needs to distinguish its interval
+  from the big historical chart. Those fixes are in progress, with guards and red plants. Placed-bet receipts, blocked
+  attempts and returned-stake panels are being made neutral; only earned wins retain gold. No after score has been
+  awarded. Next: repeat a fully valid local state drive, then the seven-width, three-language matrix twice, build and
+  release. Release B is not on production.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;
