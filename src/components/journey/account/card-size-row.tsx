@@ -13,7 +13,7 @@
  * ⚠️ The words are the journey's corrected name ("Ukubwa wa kadi"); the rail's own key keeps its word until S15.
  */
 import { useId, useSyncExternalStore } from "react";
-import { I } from "@/components/ui/glyphs";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { Toggle } from "@/components/ui/toggle";
 import { keepSentences } from "@/components/ui/keep-words";
 import { keepConnectives } from "@/components/ui/keep-run";
@@ -51,7 +51,7 @@ export function CardSizeRow() {
             The value rides the label as the rail menu's row has it (`nav-more.tsx`: label and value in one column, the
             switch beside them); at sw 320 the pair is 171px against 166, so the value drops under the label rather than
             split "Ukubwa wa / kadi". */}
-        <span className="kp-hub__glyph" aria-hidden><I.layoutGrid s={20} /></span>
+        <HubPlate glyph="layoutGrid" />
         <span className="kp-hub__text">
           <span className="kp-hub__pair">
             <span className="kp-hub__label">{keepConnectives(t.journey.hubCardSize)}</span>

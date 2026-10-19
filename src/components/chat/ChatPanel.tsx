@@ -7,9 +7,9 @@
  * send handler from ChatRoot. Mobile sheet adds a scrim and
  * `aria-modal`; desktop card is non-modal.
  *
- * Header wears the chat-companion <HelpMark /> for brand presence
- * inside the popup. Per-message AI avatars also use <HelpMark /> at
- * a smaller 22 px size — consistent identity across the surface.
+ * The header wears the brand's coin (`FiftyMark`) for brand presence inside the popup, and the AI's answers wear it at
+ * 22px — one identity across the surface. (This note said HelpMark; the FAB alone wore that, and since PHOSPHOR-MIGRATION
+ * release 2 the FAB wears the family's chat bubble.)
  */
 
 import { useEffect, useRef } from "react";

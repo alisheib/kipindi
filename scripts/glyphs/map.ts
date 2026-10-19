@@ -323,7 +323,28 @@ export const FILL_KEYS: readonly string[] = [
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
 ];
-export const DUO_KEYS: readonly string[] = [];
+/**
+ * Release 2 (W5, R-TONE 2B; DESIGN_AUTHORITY §K3 item 3: Duotone is identity on a plate) — the keys that stand on an
+ * identity or a status plate (`IconPlate`), each drawn in Duotone there: Phosphor's Regular outline over its tone layer at
+ * `--glyph-tone`. In the order the surfaces draw them.
+ */
+export const DUO_KEYS: readonly string[] = [
+  // the journey's Akaunti hub, row by row (hub-rows.ts), its live rows (Arifa, Lugha, card size, the Needle) and Toka
+  "wallet", "arrowUpFromLine", "resolved", "live", "podium", "attestation", "headset", "search", "limits", "pause",
+  "circleStop", "privacyNotice", "shieldcheck", "scrollText", "tippingScales", "users", "idea", "user", "idCard", "agent",
+  "bell", "globe", "layoutGrid", "needle", "logOut", "staffConsole",
+  // the notification plates (notification-appearance.ts iconFor) — a win's seal stays in Fill
+  "xCircle", "ticket", "hourglassOff", "arrowDownToLine", "keyRound", "star", "flag", "gift",
+  // /help's topics, its contact and quick-link cards, and the home's trust band; the chat's help button (`comment`)
+  "percent", "activity", "cashOut", "void", "phone", "mail", "comment", "portfolio",
+  // /profile's rows and the settings pages' plates
+  "chart", "receipt", "bellRing", "fileSignature", "device", "megaphone", "vibrate", "sparkle", "clock",
+  "devicePhone", "deviceDesktop", "deviceTablet",
+  // the legal header and the rules' cards; /fairness' steps
+  "trade", "listChecks", "coins",
+  // the KYC page's document plates, the 404's doors
+  "camera", "info", "markets",
+];
 
 /**
  * DEPLOY SKEW (W3): a page a player opened before a release still asks for the sprite its HTML named. Each release that
@@ -331,10 +352,10 @@ export const DUO_KEYS: readonly string[] = [];
  * load; `npm run glyphs:gen` keeps these files and deletes every other stale one, and `test:glyph-sync` §1 allows exactly
  * these. The next release that changes a sprite names the then-live files instead (one release each, never a pile).
  * File names inside `public/icons/g/`.
- * MASWALI-BUILD S5 (2026-10-19): the merge base on origin/main da35b826b serves app.7606b117.svg and
- * admin.b27adee4.svg. Keep both for the release's open pages; recheck the live pair before pushing main.
+ * MASWALI-BUILD S5 (2026-10-19): the merged main e4b148a05 serves app.8fd1796c.svg and
+ * admin.b27adee4.svg (both returned HTTP 200 on www). Keep both for the release's open pages.
  */
-export const PREVIOUS_SPRITES: readonly string[] = ["app.7606b117.svg", "admin.b27adee4.svg"];
+export const PREVIOUS_SPRITES: readonly string[] = ["app.8fd1796c.svg", "admin.b27adee4.svg"];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */
 export const ALIASES: Array<[string, string]> = [

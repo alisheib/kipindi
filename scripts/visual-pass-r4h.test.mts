@@ -374,7 +374,8 @@ section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 
     tw(c, "px") !== tw(item, "px") && "inset differs",
     tw(c, "py") !== tw(item, "py") && "height differs",
     tw(c, "gap") !== tw(item, "gap") && "gap differs",
-    !/<NeedleMark size=\{15\} \/>/.test(b) && "the mark is not in the rows' 15px glyph box",
+    // PHOSPHOR-MIGRATION release 2: the mark is the family's needle in Duotone, in the same 15px box.
+    !/<I\.needle s=\{15\} tier="duo" \/>/.test(b) && "the mark is not in the rows' 15px glyph box",
     !/role="menuitem"/.test(b) && "not a menuitem",
   ].filter(Boolean) as string[];
   ok("6.3 · the `menu-item` row: Item's 16px inset, 12px padding and 10px gap (gap-[10px] = gap-2.5), the 15px glyph box, a menuitem — in a `py-1` wrapper with no side padding",

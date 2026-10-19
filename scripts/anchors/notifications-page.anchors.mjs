@@ -154,10 +154,10 @@ export const MUTATIONS = [
     // with "anchor still present after write" — correctly, because that check is the only
     // thing standing between a mutation that did not apply and a false green. Re-shaped so
     // the page stops IMPORTING the shared map and declares its own, which is the real defect.
-    from: `import { cn } from "@/lib/utils";
-import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";`,
-    to: `import { cn } from "@/lib/utils";
-import { iconFor, tierFor } from "@/lib/notification-appearance";
-const tintFor = (_k: unknown) => "border-border";`,
+    // PHOSPHOR-MIGRATION release 2: the page imports the shared plate variant without the retired cn helper. A local
+    // variant map must still be rejected, or this page and the bell can disagree on a notice's meaning.
+    from: `import { iconFor, tierFor, tintFor } from "@/lib/notification-appearance";`,
+    to: `import { iconFor, tierFor } from "@/lib/notification-appearance";
+const tintFor = (_k: unknown) => "quiet" as const;`,
   },
 ];

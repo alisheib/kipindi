@@ -294,7 +294,8 @@ function warnHits(file: string, src: string): Hit[] {
 }
 const WARN_REGISTRY: Record<string, [number, string]> = {
   // ── the kit's definitions of the family ───────────────────────────────────────────────────────────────────────────
-  "src/app/globals.css": [3, "the family's tokens — `--warning`, `--warning-bg`, `--warning-border` read the one stop"],
+  "src/app/globals.css": [6, "the family's tokens — `--warning`, `--warning-bg`, `--warning-border` read the one stop · PHOSPHOR-MIGRATION release 2 (+3): `.kp-plate--warning`, the warning family's plate (a status that asks the player to act, in its edge, wash and ink)"],
+  "src/components/ui/icon-plate.tsx": [1, "the plate's `warning` variant — a status plate in the warning family (§B11: somebody must act); PHOSPHOR-MIGRATION release 2"],
   "src/app/motion.css": [2, "the warning toast's ring, `.mat-tint-warn` (its class and its mix of the stop)"],
   "src/components/ui/toast.tsx": [6, "the `warning` variant — amber stop bar and rail, amber glyph, the amber ring; never a fixable refusal's (F3)"],
   "src/components/ui/chip.tsx": [7, "the amber `warning` and `paused` chips — the stop's fill and edge, the family's ink — and the variant's name"],

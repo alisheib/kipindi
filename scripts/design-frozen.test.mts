@@ -102,7 +102,6 @@ const BY_DESIGN = new Set<string>([
   "src/components/layout/needle.tsx",          // vendored physics object
   "src/components/layout/needle.css",          // …and its stylesheet, same object
   "src/components/brand-topo.tsx",             // topographic brand pattern
-  "src/components/chat/HelpMark.tsx",          // the chat mark
   "src/components/ui/identity-avatar.tsx",     // generative identicon palette
 ]);
 

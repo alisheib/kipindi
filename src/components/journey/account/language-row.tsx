@@ -11,6 +11,7 @@
  */
 import { useRef } from "react";
 import { I } from "@/components/ui/glyphs";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { LANGS, NAMES } from "@/components/ui/language-menu";
 import { useT } from "@/lib/i18n";
 
@@ -21,7 +22,7 @@ export function LanguageRow() {
     <li className="lg:hidden">
       <details ref={ref} className="kp-hub__lang">
         <summary className="kp-hub__row">
-          <span className="kp-hub__glyph" aria-hidden><I.globe s={20} /></span>
+          <HubPlate glyph="globe" />
           <span className="kp-hub__text"><span className="kp-hub__label">{t.common.language}</span></span>
           <span className="kp-hub__value">{NAMES[locale]}</span>
           <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />

@@ -244,6 +244,10 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // the plus over the minus, 12 units high) and the chat's send (the paper plane, 12 units right).
     "lock.fill": [0, -12, PHOSPHOR_PLACED], "shieldcheck.fill": [0, 12, PHOSPHOR_PLACED],
     "net.bold": [0, -11.99, PHOSPHOR_PLACED], "send.bold": [12.03, 0.01, PHOSPHOR_PLACED],
+    // PHOSPHOR-MIGRATION release 2 (W5): the Duotone drawings on the plates — the bubble's tail, the bow's loops, the megaphone's
+    // mouth and the shield's point sit where Phosphor placed them, as their Regular, Bold and Fill do.
+    "comment.duo": [0, 16, PHOSPHOR_PLACED], "gift.duo": [0, -12.01, PHOSPHOR_PLACED], "megaphone.duo": [12, -3.98, PHOSPHOR_PLACED],
+    "shieldcheck.duo": [0, 12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
@@ -329,7 +333,8 @@ function doorArrow(pts: Pt[]) {
     !GLYPH_ENTRIES.has("logIn") && GLYPH_ENTRIES.get("logOut")?.stem === "p-sign-out" && glyph.includes('data-g="logOut.bold"') && glyph.includes('#p-sign-out-bold"'), glyph);
   const SIGN_OUTS = ["src/components/journey/account/sign-out-row.tsx", "src/components/layout/avatar-menu.tsx", "src/app/profile/page.tsx", "src/app/profile/sessions/page.tsx"];
   ok("2.3 · every sign-out draws it — the hub's Toka, the account menu (classic and journey), /profile and /profile/sessions — and nothing draws logIn",
-    SIGN_OUTS.every((f) => code(f).includes("<I.logOut")) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
+    // PHOSPHOR-MIGRATION release 2: the hub's Toka draws it on the hub plate (`HubPlate glyph="logOut"`, the danger plate).
+    SIGN_OUTS.every((f) => code(f).includes("<I.logOut") || code(f).includes('<HubPlate glyph="logOut"')) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
 }
 
 /* ══ §3 · A3 · THE TOKA BOX IS A CARD'S HEIGHT ══════════════════════════════════════════════════════════════════════════ */

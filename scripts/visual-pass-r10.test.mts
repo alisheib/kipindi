@@ -387,7 +387,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
   // the two money arrows' — the receipts' plates and /help's FAQ column.
   ok("3.3 · the arrows named through a variable are classified too: the Up & Down verdict's (`Arrow`, words' stroke, its pull in em — §6) and the notification plates' (`notification-appearance.ts`, alone in their plates); the receipts' `Dir` (arrowDownToLine / arrowUpFromLine, alone in its 40px plate) and /help's withdraw FAQ (faq3's arrowUpFromLine, the FAQ's centred icon column — 2.3)",
     has("src/components/home/updown-match-words.tsx", '<Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />')
-      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return I.arrowDownToLine;') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return I.arrowUpFromLine;')
+      && code("src/lib/notification-appearance.ts").includes('case "DEPOSIT":      return "arrowDownToLine";') && code("src/lib/notification-appearance.ts").includes('case "WITHDRAW":     return "arrowUpFromLine";')
       && has("src/components/wallet/receipt-list-row.tsx", 'const Dir = type === "DEPOSIT" ? I.arrowDownToLine : I.arrowUpFromLine;')
       && has("src/components/wallet/receipt-list-row.tsx", '<IconPlate size={40} className="bg-brand-500/10 text-brand-300"> <Dir s={20} /> </IconPlate>')
       && has("src/app/help/page.tsx", '{ key: "faq3", glyph: "arrowUpFromLine" },'));

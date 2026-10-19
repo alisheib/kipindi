@@ -188,7 +188,10 @@ const REGISTRY: Record<string, [number, string]> = {
   // 2026-10-18 (S5 integration): the slip page's door to deposit is a DEPOSIT DOOR (§M3a), as the wallet's and the bet
   // sheet's are — not Millionea's own gold, which stays the two files above (§M8a item 7 rules on unearned figures).
   "src/app/millionea/slip/slip-client.tsx": [2, "the deposit door when the balance is short of the ticket (§M3a: deposit doors are gold, `btn-gold` + `.gilt-metal`, as the Wallet's)"],
-  "src/lib/notification-appearance.ts": [3, "WIN — 'the only money outcome that is gold'"],
+  // PHOSPHOR-MIGRATION release 2 (W5): 3 → 1 — the WIN tint's three classes became the plate's `gold` variant (its recipe is
+  // `.kp-plate--gold` in globals.css, +3 there), so this file names the variant once.
+  "src/lib/notification-appearance.ts": [1, "WIN — 'the only money outcome that is gold': its plate is the `gold` variant"],
+  "src/components/ui/icon-plate.tsx": [1, "the plate's `gold` variant — a win's plate and nothing else (§Q5; PHOSPHOR-MIGRATION release 2)"],
   // R8-A (2026-10-10): −1 — TONE_INK.amber (`text-warning-fg`) is amber, not gold (Ali's ruling (1)).
   "src/lib/status-tone.ts": [2, "the dictionary's struck gilt: RESOLVED, WIN (§B11)"],
   "src/components/home/landing-hero.tsx": [2, "the pool and paid-out totals — money (Q5); OWNER question: D5's 'inducement' clause on a landing figure"],
@@ -213,11 +216,12 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  // MASWALI-BUILD S5-TAB (+7, 94 → 101; Ali's ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11): Maswali Millionea's
+  // MASWALI-BUILD S5-TAB (+7; Ali's ruling of 2026-10-19, DESIGN_AUTHORITY §M8a item 11): Maswali Millionea's
   // ink — the gold stop of its still green → gold → red label gradient (resting, lit or hovered, and the journey's
   // not-found restore), its gold fallback word and faint gold halo, and its mark's resting gold (and that restore). The
   // Owner's label for a destination, not money (§M8a item 7 untouched); `test:maswali-ui` §5b holds the class to tokens.
-  "src/app/globals.css": [101, "S8 deposit rails use the dark --gold-fg ink on the whole gilt-metal deposit door (S8 §WP6 and pick-3 canvas row); the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); OWNER (Ali, 2026-10-19, §M8a item 11): Millionea's ink (`.kp-millionea-ink`, `.kp-millionea-glyph`) — its gradient's gold stop, gold fallback word, faint halo and resting mark, a destination's label, not money; dead: `.bg-damask`; admin: `poll-flash`"],
+  // PHOSPHOR-MIGRATION release 2 (+3) moves the notification WIN tint to `.kp-plate--gold`.
+  "src/app/globals.css": [104, "S8 deposit rails use the dark --gold-fg ink on the whole gilt-metal deposit door (S8 §WP6 and pick-3 canvas row); the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); OWNER (Ali, 2026-10-19, §M8a item 11): Millionea's ink (`.kp-millionea-ink`, `.kp-millionea-glyph`) — its gradient's gold stop, gold fallback word, faint halo and resting mark, a destination's label, not money; PHOSPHOR-MIGRATION release 2: `.kp-plate--gold`, the win's plate; dead: `.bg-damask`; admin: `poll-flash`"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -385,7 +389,9 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
 
   // 2.10 · the WIN pills: M3, a resolved win is money earned — allowed.
   ok("2.10 · CONTROL · WIN is struck gilt in the dictionary and gold in the notification tints (allowed: money earned)",
-    /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")) && /case "WIN":\s*return "border-gold-700 bg-gold-500\/10 text-gold-300";/.test(read("src/lib/notification-appearance.ts")));
+    /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")) && /case "WIN":\s*return "gold";/.test(read("src/lib/notification-appearance.ts"))
+      // PHOSPHOR-MIGRATION release 2: the WIN plate is the `gold` variant, whose one recipe paints the stops the tint's classes did
+      && /var\(--gold-500\) 10%/.test(rule(CSS, ".kp-plate--gold")) && /var\(--gold-700\)/.test(rule(CSS, ".kp-plate--gold")) && /color: var\(--gold-300\)/.test(rule(CSS, ".kp-plate--gold")));
 
   // 2.11 · the RG page's pending-increase box — the sibling R4-I's neutral notices missed.
   const RGP = read("src/app/profile/responsible-gambling/page.tsx");
@@ -399,7 +405,8 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
 
   // 2.12 · the reality check — an RG intervention — wore a gold rail, a gold clock and gold minutes.
   ok("2.12 · the reality check carries no gold: the sheet's own edge, the clock in the subtle ink, the minutes in the heading's",
-    !/gold|gilt/.test(read("src/components/rg/reality-check.tsx")) && /text-text-subtle">\s*<I\.clock s=\{18\} \/>/.test(read("src/components/rg/reality-check.tsx")));
+    // PHOSPHOR-MIGRATION release 2: the clock stands on the identity plate, in its ink — never gold still.
+    !/gold|gilt/.test(read("src/components/rg/reality-check.tsx")) && /<IconPlate size=\{40\} variant="identity" aria-hidden>\s*<I\.clock s=\{plateGlyph\(40\)\} tier="duo" \/>/.test(read("src/components/rg/reality-check.tsx")));
 }
 
 /* ══ §3 · THE ONE NON-MONEY ACCENT ════════════════════════════════════════════════════════════════════════════════════ */
@@ -425,7 +432,10 @@ section("3 · the one non-money accent — the brand family, wherever a highligh
   ];
   for (const [what, f, re] of SITES) ok(`3 · ${what} — the brand family`, re.test(read(f)), f);
   ok("3′ · the CSS accents: the landing eyebrow tick, the trust facts' glyphs, a selection, the nav bar's glow",
-    /background:\s*var\(--brand-400\)/.test(rule(CSS, ".kp-hero__tick")) && /color:\s*var\(--brand-300\)/.test(rule(CSS, ".kp-trust__glyph"))
+    /background:\s*var\(--brand-400\)/.test(rule(CSS, ".kp-hero__tick"))
+      // PHOSPHOR-MIGRATION release 2 (W5): the trust facts' glyphs stand on the identity plate, in its ink — never gold still.
+      && /<IconPlate size=\{48\} variant="identity" className="kp-trust__glyph"/.test(read("src/components/home/trust-band.tsx"))
+      && /color: var\(--text-muted\)/.test(rule(CSS, ".kp-plate--identity")) && !/gold|gilt/.test(rule(CSS, ".kp-trust__glyph"))
       && /color-mix\(in oklab, var\(--brand-500\) 40%, transparent\)/.test(rule(CSS, "::selection"))
       && /color-mix\(in oklab, var\(--brand-500\) 50%, transparent\)/.test(read("src/components/ui/nav-progress.tsx")));
   ok("3″ · TONE_INK.royal IS the brand ink (the dictionary's royal word ink the CLOSED words read)", /royal: "text-brand-300"/.test(read("src/lib/status-tone.ts")));

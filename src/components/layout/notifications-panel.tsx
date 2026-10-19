@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Dot } from "@/components/ui/dot";
 import { IconPlate } from "@/components/ui/icon-plate";
@@ -667,8 +667,8 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                           `/notifications` now render one plate, at one size, from one place.
                           ⚠️ The size stays an inline literal inside the atom: `theme.spacing`
                           is overridden, so `h-8` would render 48px, not 32. */}
-                      <IconPlate size={32} className={cn("border", tintFor(n.kind))}>
-                        <Icon s={16} tier={tierFor(n.kind)} />
+                      <IconPlate size={32} variant={tintFor(n.kind)}>
+                        <Icon s={plateGlyph(32)} tier={tierFor(n.kind)} />
                       </IconPlate>
                       <div className="flex-1 min-w-0">
                         {/* ⭐ IN THE JOURNEY A NOTICE READS AS IT DOES ON /notifications (round 6, 2026-10-09, review C10): its

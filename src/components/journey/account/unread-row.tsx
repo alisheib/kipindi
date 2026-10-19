@@ -12,6 +12,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { HubPlate } from "@/components/ui/hub-plate";
 import { CountBadge } from "@/components/ui/count-badge";
 import { useT } from "@/lib/i18n";
 import { useUnreadCount } from "@/lib/journey/use-unread-count";
@@ -25,7 +26,7 @@ export function UnreadRow({ userId, href, label }: { userId: string | null; href
   return (
     <li>
       <Link href={href as never} className="kp-hub__row">
-        <span className="kp-hub__glyph" aria-hidden><I.bell s={20} /></span>
+        <HubPlate glyph="bell" />
         <span className="kp-hub__text">
           <span className="kp-hub__label">
             {keepConnectives(label)}

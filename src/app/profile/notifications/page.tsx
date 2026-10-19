@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { BackLink } from "@/components/ui/back-link";
 import { formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -95,11 +96,11 @@ export default async function NotificationSettingsPage({
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
-                and `h-10` renders 80px. */}
-            <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
-              <I.star s={17} />
-            </span>
+            {/* The watchlist's identity plate (PHOSPHOR-MIGRATION release 2), its glyph in Duotone: the brand tint and the
+                8px corner typed here are the variant's now. */}
+            <IconPlate size={40} variant="identity" aria-hidden>
+              <I.star s={plateGlyph(40)} tier="duo" />
+            </IconPlate>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-semibold text-text leading-tight">{t.watchlist.title}</p>
               <p className="mt-0.5 text-body-sm text-text-subtle leading-snug text-pretty break-keep [overflow-wrap:anywhere]">{t.watchlist.alertsHint}</p>
@@ -128,9 +129,10 @@ function MarketingConsentUnavailable({ t }: { t: Dict }) {
   return (
     <section className="rounded-xl glass-panel p-5" data-testid="marketing-consent-unavailable">
       <div className="flex items-start gap-3 min-w-0">
-        <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
-          <I.megaphone s={17} />
-        </span>
+        {/* The channel's identity plate (PHOSPHOR-MIGRATION release 2), the consent card's own (marketing-consent.tsx). */}
+        <IconPlate size={40} variant="identity" aria-hidden>
+          <I.megaphone s={plateGlyph(40)} tier="duo" />
+        </IconPlate>
         <div className="min-w-0">
           <MarketingTitle text={t.push.marketingTitle} />
           {/* break-keep: zh breaks only at the phrase hints its string carries (consent-02 split 联系|我们). */}

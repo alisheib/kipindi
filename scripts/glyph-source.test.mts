@@ -58,8 +58,8 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/charts/ring.tsx": [1, "a chart"],
   "src/components/charts/updown-match-track.tsx": [2, "a chart"],
   "src/components/charts/volume-spark.tsx": [1, "a chart"],
-  "src/components/chat/HelpMark.tsx": [1, "the chat bubble's own mark"],
-  "src/components/layout/needle-drawer.tsx": [2, "the Needle's mark: the theme swatches' disc and its two-tone mark in miniature (brand object, round 4 of 2026-10-09)"],
+  // PHOSPHOR-MIGRATION release 2: 2 → 1 — the two-tone `NeedleMark` is the family's `needle` in Duotone (§8a).
+  "src/components/layout/needle-drawer.tsx": [1, "the Needle's theme swatches' disc (brand object, round 4 of 2026-10-09)"],
   "src/components/layout/needle.tsx": [1, "the Needle (brand object)"],
   "src/components/layout/notifications-panel.tsx": [1, "W6 (release 2): empty-state art outside the family"],
   "src/components/maswali/maswali-unbroken-line.tsx": [1, "Millionea's hairline (MASWALI-BUILD S5): M5's Unbroken Line and M6's closing rule, drawn on by `.m-draw` — a rule, not an icon"],

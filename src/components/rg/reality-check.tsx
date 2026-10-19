@@ -19,7 +19,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { useT } from "@/lib/i18n";
 import { isModalDialogOpen } from "@/lib/modal-open";
 
@@ -135,8 +136,9 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
       {/* ⛔ NO GOLD ON THE REALITY CHECK (R5-C, the second gold audit, 2026-10-09). It wore a gold rail across its top, a
           gold clock and the minutes in gold: the ink of money earned (DESIGN_AUTHORITY §M3; Q5 "gold is money, and nothing
           else") on the one prompt whose job is to make a player stop and think. It is an RG notice, and R4-I gave every RG
-          notice the neutral treatment: the sheet's own edge, the clock in the subtle ink of the disc it sits on, and the
-          minutes in the heading's own ink (mono, §T5). The words and the four doors are unchanged. */}
+          notice the neutral treatment: the sheet's own edge, the clock in the subtle ink of the disc it sits on (since
+          PHOSPHOR-MIGRATION release 2 the identity plate's muted ink, below), and the minutes in the heading's own ink (mono,
+          §T5). The words and the four doors are unchanged. */}
       <div className="space-y-4">
         {/* ⭐ THE TITLE'S FIRST LINE ON THE CORNER ✕ (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
             `CloseX` in modal.tsx; a position only, no word of this RG notice changes). Modal pins the ✕ 40px under the
@@ -147,12 +149,14 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             put those capitals — 20 − 0.025em = 19.6px down it — on the ✕. The row keeps 48px clear of the ✕ on its right,
             as every dialog title does (`.kp-modal-title`), so a long title wraps before it instead of running under it. */}
         <div className="-mt-[3.6px] lg:-mt-[11.6px] flex items-start gap-2.5 pr-8">
-          {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
-              (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
-              badge disc every other section heading in the product uses. */}
-          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-text-subtle">
-            <I.clock s={18} />
-          </span>
+          {/* The prompt's identity plate (PHOSPHOR-MIGRATION release 2): the clock — time on the platform, what this notice
+              IS — in Duotone, at the 40px (--tap-min) the title hangs from. Not `quiet`, which is a quiet outcome or an
+              inactive state, and this is neither; still R4-I's neutral treatment: no gold, no status family, the plate the
+              hub's own RG rows (limits, a break, self-exclusion) stand on. The sunken fill, its border and the 8px corner
+              typed here are the variant's now; its edge is an inset ring, so the badge's 40px and the title's hang hold. */}
+          <IconPlate size={40} variant="identity" aria-hidden>
+            <I.clock s={plateGlyph(40)} tier="duo" />
+          </IconPlate>
           <h2
             id="reality-check-title"
             className="mt-[calc(20px-0.625em)] font-display text-[15.5px] font-bold leading-tight text-text"

@@ -90,7 +90,8 @@ section("1 · the hub's card-size row is a two-line hub row (tile 259)");
   const btn = /<button[\s\S]*?<\/button>/.exec(row)?.[0] ?? "";
   const shape = (s: string) => {
     const at = (needle: string) => s.indexOf(needle);
-    const glyph = at('className="kp-hub__glyph"'), text = at('className="kp-hub__text"'), pair = at('className="kp-hub__pair"');
+    // PHOSPHOR-MIGRATION release 2: the row's glyph stands on the hub plate (`HubPlate`), as every hub row's does.
+    const glyph = at("<HubPlate glyph="), text = at('className="kp-hub__text"'), pair = at('className="kp-hub__pair"');
     const label = at('className="kp-hub__label"'), value = at('className="kp-hub__value"'), hint = at('className="kp-hub__sub"');
     const toggle = at("<Toggle on={compact} decorative />"), textEnd = s.indexOf("</span>\n        <Toggle");
     return [
@@ -105,7 +106,7 @@ section("1 · the hub's card-size row is a two-line hub row (tile 259)");
     btn !== "" && shape(btn).length === 0, shape(btn).join(" · "));
   const r3 = btn.replace('className="kp-hub__row"', 'className="kp-hub__row kp-hub__row--switch"');
   ok("1.1′ PLANT · round 3's grid hook put back is reported", shape(r3).length > 0);
-  const switchAfter = btn.replace("<Toggle on={compact} decorative />", "").replace('<span className="kp-hub__glyph"', '<Toggle on={compact} decorative />\n<span className="kp-hub__glyph"');
+  const switchAfter = btn.replace("<Toggle on={compact} decorative />", "").replace("<HubPlate glyph=", "<Toggle on={compact} decorative />\n<HubPlate glyph=");
   ok("1.1″ PLANT · the switch moved before the words is reported", shape(switchAfter).length > 0);
 
   // The stylesheet: no grid survives, the pair wraps on its baseline, and the row is the rung's.
@@ -166,9 +167,11 @@ section("2 · the hub's Needle row draws a glyph of the row family (tiles 122–
 {
   const drawer = read("src/components/layout/needle-drawer.tsx");
   const branch = (s: string) => /variant === "hub-row" \? \(([\s\S]*?)\) : \(/.exec(s)?.[1] ?? "";
-  const family = (s: string) => /<span className="kp-hub__glyph" aria-hidden><I\.needle s=\{20\} \/><\/span>/.test(branch(s)) && !/NeedleMark/.test(branch(s));
-  ok("2.1 · the hub row's glyph slot holds `I.needle` at 20, not the two-tone NeedleMark", family(drawer), branch(drawer).slice(0, 200));
-  ok("2.1′ PLANT · NeedleMark put back in the slot is reported", !family(drawer.replace("<I.needle s={20} />", "<NeedleMark size={20} />")));
+  // Re-pinned (PHOSPHOR-MIGRATION release 2): the slot is the hub's plate with the family's needle on it (`HubPlate`,
+  // Duotone) — still the row family's glyph, never a mark of its own. (The branch's comment names the retired NeedleMark.)
+  const family = (s: string) => /<HubPlate glyph="needle" \/>/.test(branch(s)) && !/<NeedleMark/.test(branch(s));
+  ok("2.1 · the hub row's glyph slot holds the hub plate with `needle`, not the two-tone NeedleMark", family(drawer), branch(drawer).slice(0, 200));
+  ok("2.1′ PLANT · NeedleMark put back in the slot is reported", !family(drawer.replace('<HubPlate glyph="needle" />', "<NeedleMark size={20} />")));
   // ⚠️ RE-POINTED 2026-10-17 (PHOSPHOR-MIGRATION W2): the needle is a house extra drawn in Phosphor's grammar
   // (scripts/glyphs/extras.ts) — the hand-drawn mark scaled from the 24 grid by 32/3, its ring r9 → r96, stroked at
   // Phosphor Bold's 24 units, the weight the hub's 20px draws — and read here from the app sprite, as it ships.
@@ -188,8 +191,10 @@ section("2 · the hub's Needle row draws a glyph of the row family (tiles 122–
   ok("2.3 · the needle crosses the pivot at the mark's tilt and ends on the ring's stroke at both ends",
     Math.abs(tilt - markTilt) < 0.005 && reach.every((d) => Math.abs(d - radius) <= 12) && Math.abs((x1 + x2) / 2 - 128) < 0.01 && Math.abs((y1 + y2) / 2 - 128) < 0.01,
     `tilt ${tilt.toFixed(4)} vs ${markTilt.toFixed(4)} · reach ${reach.map((d) => d.toFixed(2)).join("/")}`);
-  ok("2.4 CONTROL · NeedleMark keeps its two tones where it is the mark (the account menu's row)",
-    /<circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" opacity="0\.5" \/>/.test(drawer) && /variant === "menu-row" \?[\s\S]{0,900}<NeedleMark \/>/.test(drawer));
+  // Re-pinned (PHOSPHOR-MIGRATION release 2, §8a): where the Needle is the MARK it keeps its two tones as the family's
+  // needle in Duotone (the disc in the tone, the ring and the needle in full ink); the hand-drawn copy is gone.
+  ok("2.4 CONTROL · the mark keeps its two tones where it is the mark (the account menu's row): `I.needle` in Duotone",
+    /variant === "menu-row" \?[\s\S]{0,900}<I\.needle s=\{16\} tier="duo" \/>/.test(drawer) && !/<NeedleMark|function NeedleMark/.test(drawer));
 }
 
 /* ══ §3 · THE GUEST SHEET'S × ON THE TITLE'S CAPITALS ════════════════════════════════════════════════════════════ */

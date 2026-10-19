@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Toggle } from "@/components/ui/toggle";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -127,10 +128,11 @@ export function MarketingConsent({
     <section className="rounded-xl glass-panel p-5" data-testid="marketing-consent">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
-          {/* 40px literals: the spacing scale is overridden (see push-settings.tsx). */}
-          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-brand-500/10 text-brand-300">
-            <I.megaphone s={17} />
-          </span>
+          {/* The channel's identity plate (PHOSPHOR-MIGRATION release 2), its glyph in Duotone, as the push setting's above
+              it: the brand tint and the 8px corner typed here are the variant's now, and the switch says the state. */}
+          <IconPlate size={40} variant="identity" aria-hidden>
+            <I.megaphone s={plateGlyph(40)} tier="duo" />
+          </IconPlate>
           <div className="min-w-0">
             <MarketingTitle text={t.push.marketingTitle} />
             <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.push.marketingBody}</p>

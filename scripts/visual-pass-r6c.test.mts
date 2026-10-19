@@ -402,7 +402,8 @@ section("6 · C14 the journey's doors and pages call /positions \"Tiketi zangu\"
     !/^\s*["']use client["']/m.test(loading) && loading.includes("const { journey } = await resolveSimpleJourney();") && loading.includes("return <PerformanceGhost journey={journey} />;")
       && /^\s*["']use client["']/m.test(code("src/app/positions/performance/performance-ghost.tsx")));
   ok("6.4 · /help's card to /positions says Tiketi zangu with the tab's ticket glyph in the journey; everybody else's is today's",
-    has("src/app/help/page.tsx", "icon={journey ? <I.ticket s={15} /> : <I.portfolio s={15} />}") && has("src/app/help/page.tsx", "title={journey ? t.journey.tabTickets : t.help.myPositions}"));
+    // PHOSPHOR-MIGRATION release 2: the card names its glyph by key; the help cells draw it on the identity plate (`HelpPlate`).
+    has("src/app/help/page.tsx", "glyph={journey ? \"ticket\" : \"portfolio\"}") && has("src/app/help/page.tsx", "title={journey ? t.journey.tabTickets : t.help.myPositions}"));
   ok("6.5 · a settled round's door to its tickets says Tiketi zangu in the journey (it said \"Fungua kwenye Nafasi\")",
     has("src/app/updown/[roundId]/page.tsx", "{journey ? t.journey.tabTickets : t.market.udOpenInPositions}</Link>"));
   // Every journey door that names the tickets page, census: no positions word left in a journey arm.
