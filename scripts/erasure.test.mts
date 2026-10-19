@@ -1641,9 +1641,10 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
   /* ⭐ S6 review R2-14c · THE RELATIONS ARE READ FROM THE SCHEMA, MODEL BY MODEL — never picked out by a constraint's NAME,
      which a rename would move out from under a name filter while the cascade stayed. Every relation field a model owns
      (`@relation(fields: …)`), with its declared `onDelete`; Prisma's own default for a field with none is not RESTRICT for
-     an optional relation, so a Millionea relation must say RESTRICT itself. */
+     an optional relation, so a Millionea relation must say RESTRICT itself. The model's comments go through the one shared
+     helper (`decomment`, which keeps every line where it was), never a private stripper (`test:decomment` 2.1). */
   const schemaRels = [...readFileSync("prisma/schema.prisma", "utf8").matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)].flatMap((m) =>
-    m[2].split(/\r?\n/).map((line) => line.replace(/\/\/.*$/, "").trim()).filter((l) => /@relation\(/.test(l) && /\bfields:\s*\[/.test(l)).map((l) => {
+    decomment(m[2]).split(/\r?\n/).map((line) => line.trim()).filter((l) => /@relation\(/.test(l) && /\bfields:\s*\[/.test(l)).map((l) => {
       const [field, type] = l.split(/\s+/);
       return { model: m[1], field, type: (type ?? "").replace(/[?[\]]/g, ""), onDelete: (l.match(/\bonDelete:\s*(\w+)/) ?? [])[1] ?? null };
     }));
