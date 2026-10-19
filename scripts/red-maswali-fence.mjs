@@ -30,6 +30,10 @@ const CR = String.fromCharCode(13);
 const onlyArg = process.argv.find((a, i) => process.argv[i - 1] === "--only");
 const ONLY = onlyArg ? onlyArg.split(",").map((x) => x.trim()).filter(Boolean) : [];
 const DEFECTS = ONLY.length ? MUTATIONS.filter((d) => ONLY.some((o) => d.name.startsWith(o))) : MUTATIONS;
+if (!DEFECTS.length) {
+  console.error(`REFUSING TO RUN — --only matched no fence mutations (${ONLY.join(", ") || "none"}).`);
+  process.exit(2);
+}
 const CHILD = "npx tsx scripts/lib/maswali-fence-child.mts";
 const MEM_ENV = { ...process.env, DATABASE_URL: "", USE_PRISMA_DAL: "false", HB_MONEY_STORE: "memory" };
 const lf = (s) => s.split(CR + LF).join(LF);
