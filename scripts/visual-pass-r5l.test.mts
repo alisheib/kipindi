@@ -204,7 +204,7 @@ function ruleCheck(src: Src): string[] {
     now.length === 0, now.slice(0, 4).join(" | "));
   const plants: Array<[string, string, string, string]> = [
     ["no back link", "src/app/profile/security/loading.tsx", "          <BackLinkGhost />\n", ""],
-    ["a header's icon a size smaller", "src/app/notifications/loading.tsx", "icon={<I.bellRing s={22} />}", "icon={<I.bellRing s={14} />}"],
+    ["a header's icon a size smaller", "src/app/notifications/loading.tsx", "icon={<I.bell s={22} />}", "icon={<I.bell s={14} />}"],
     ["the rung of another page", "src/app/proposals/loading.tsx", 'rhythm="space-y-6"', 'rhythm="space-y-5"'],
     ["the hero dropped", "src/app/help/loading.tsx", '<PageHero glow="info">', "<>"],
     ["a lead over the data-first page", "src/app/proposals/[id]/loading.tsx", "<PageLoader ", "<PageLoader lead={null} "],

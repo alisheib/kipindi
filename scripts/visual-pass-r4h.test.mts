@@ -38,6 +38,7 @@ import {
   QUERY_BAR_ROW2_CLASS,
   QUERY_SEARCH_BAND_CLASS,
 } from "../src/components/ui/query-bar.tsx";
+import { I, glyphInkGaps } from "../src/components/ui/glyphs.tsx";
 import { dict as DICTS } from "../src/lib/i18n-dict.ts";
 
 let pass = 0;
@@ -381,17 +382,20 @@ section("6 · E31 E33 the journey's account menu (tiles 209 213 224 228 239 243 
       && squash(menu).includes(`{journey ? ( <div className="border-t border-border py-1"> <NeedleControlsDrawer variant="menu-item" /> </div> )`),
     `${geometry(branch, btnClass).join(" · ")} | item "${item}" | row "${btnClass}"`);
   ok("6.3′ CONTROL · the classic row stood 24px in (wrapper px-2 + button px-2) against the rows' 16", 2 * SCALE["2"] === 24 && tw(item, "px") === 16);
-  // The chevron: path x 15 of 24 plus half its 2.2 stroke, in a 14px box.
-  // The chevron is drawn once for both menu rows (`menuTail`); the journey's row asks for the overhang.
-  const tail = /<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" className=\{overhang \? "([^"]*)" : "([^"]*)"\}><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2\.2"/.exec(drawer);
-  const svg = tail && /\{menuTail\(true\)\}/.test(branch) ? [tail[0], tail[1]] : null;
-  ok("6.4.locate · both menu rows end with `menuTail`, the classic one without the overhang, its chevron's class exactly as before",
-    !!tail && tail[2] === "text-text-subtle" && /variant === "menu-row" \? \([\s\S]*?\{menuTail\(false\)\}[\s\S]*?\) : variant === "menu-item"/.test(drawer));
-  const ink = (15 + 2.2 / 2) / 24 * 14, bearing = 14 - ink;
-  const residual = (cls: string) => bearing + (/(^|\s)-mr-1(\s|$)/.test(cls) ? -SCALE["1"] : 0);
-  ok("6.4 · the chevron's ink ends 0.6px from the rows' right edge (its 4.6px side bearing, overhung by -mr-1's 4px) — INAKUJA's pill ends on that edge",
-    svg !== null && residual(svg[1]) >= 0 && residual(svg[1]) < 1, `bearing ${bearing.toFixed(2)} · residual ${svg ? residual(svg[1]).toFixed(2) : "no svg"}`);
-  ok("6.4′ PLANT · without the overhang the ink stands 4.6px short", residual("text-text-subtle") > 4);
+  // The chevron is drawn once for both menu rows (`menuTail`); the journey's row asks for its edge. It is the family's
+  // chevronRight since PHOSPHOR-MIGRATION W4 (§8a): the hand-drawn one (path x 15 of 24 plus half its 2.2 stroke, in a 14px
+  // box) stood 4.6px short of its box, and `-mr-1`'s 4px left 0.6. The edge rule pulls the family's by its own ink gap, read
+  // from the ink table — here measured on the rendered glyph.
+  const tail = /<I\.chevronRight s=\{14\} edge=\{overhang \? "end" : undefined\} className="([^"]*)" \/>/.exec(drawer);
+  const svg = tail && /\{menuTail\(true\)\}/.test(branch) ? tail : null;
+  ok("6.4.locate · both menu rows end with `menuTail`, the classic one without the edge, its chevron's class exactly as before",
+    !!tail && tail[1] === "text-text-subtle" && /variant === "menu-row" \? \([\s\S]*?\{menuTail\(false\)\}[\s\S]*?\) : variant === "menu-item"/.test(drawer));
+  const bearing = glyphInkGaps(h(I.chevronRight, { s: 14 }))?.end ?? Number.NaN;
+  const pullOf = (edge?: "end") => Number.parseFloat(/margin-inline-end:(-?[0-9.]+)px/.exec(renderToStaticMarkup(h(I.chevronRight, { s: 14, edge })))?.[1] ?? "0");
+  const residual = (edge?: "end") => bearing + pullOf(edge);
+  ok("6.4 · the chevron's ink ends on the rows' right edge (its 3.7px side bearing, pulled by the edge rule) — INAKUJA's pill ends on that edge",
+    svg !== null && bearing > 3 && Math.abs(residual("end")) < 0.01, `bearing ${bearing.toFixed(2)} · residual ${svg ? residual("end").toFixed(2) : "no svg"}`);
+  ok("6.4′ PLANT · without the edge the ink stands 3.7px short", residual() > 3);
   // E33 · /positions by the tab's name and glyph.
   const tickets = JOURNEY_TABS.find((d) => d.key === "tickets");
   ok("6.5 · in the journey the /positions row reads the tab's own key and glyph (journey.tabTickets · ticket), as JOURNEY_TABS names that tab",

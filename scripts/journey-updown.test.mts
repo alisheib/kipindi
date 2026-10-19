@@ -403,6 +403,12 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+<dd className="m-0 tabular-nums text-text-muted">\{fmtEAT\((quotedAt|observedAt)\)/,
       /^\s+<dd className="m-0 tabular-nums text-text-muted">\{pMove(Pct)?/,
       /^\s+<dd className="m-0 tabular-nums" style=\{\{ color: "var\(--(yes|no)-300\)"/,
+      // PHOSPHOR-MIGRATION W4 (§8a, §8b): the hand-drawn outcome arrow and person mark and the typed ↑/↓ are the family's
+      // arrowUp/arrowDown and users; test:visual-pass-r10 §3 pins each new mark's role.
+      /^\s+const outcomeArrow = round\.outcome === "UP" \? "M5 15l7-7 7 7" : round\.outcome === "DOWN" \? "M5 9l7 7 7-7" : null;$/,
+      /^\s+\{p\.side === "UP" \? "↑" : "↓"\} \{formatTzs\(p\.stake\)\}$/,
+      /^\s+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var\(--text-muted\)" .*<circle cx="12" cy="8" r="3\.4" \/>.*<\/svg>$/,
+      /^\s+\{outcomeArrow && <svg width="16" height="16" viewBox="0 0 24 24" .*<path d=\{outcomeArrow\} \/><\/svg>\}$/,
     ],
     [CARD]: [
       /^\s+expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,$/,
@@ -425,8 +431,19 @@ console.log("\n§6 · the classic files keep every base line, in order, except t
       /^\s+className=\{cn\("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse"\)\}$/,
       /^\s+\{digits \?\? mmss\(left\)\}$/,
       /^\s+\{ifUp != null && ifDown != null && \($/,
+      // PHOSPHOR-MIGRATION W4 (§8b): the sides are the family's arrowUp/arrowDown wherever the trend zigzags stood, each set
+      // by its role (test:visual-pass-r10 §3).
+      /^\s+\{tone === "(up|down)" && <I\.trending(Up|Down) s=\{11\} \/>\}$/,
+      /^\s+<I\.trendingUp s=\{10\} edge="start" \/>\{t\.market\.udUp\}$/,
+      /^\s+\{t\.market\.udDown\}<I\.trendingDown s=\{10\} edge="end" \/>$/,
+      /^\s+\{\/\* The trend pictogram leads the centred pick, so its ink stands on the start padding \(round 10, R10-A6\)\. \*\/\}$/,
+      /^\s+<I\.trending(Up|Down) s=\{14\} edge="start" className=\{GLYPH_NO_SHRINK\} \/> \{t\.market\.ud(Up|Down)\}$/,
+      /^\s+\{outcome === "UP" \? <I\.trendingUp s=\{14\} className=\{GLYPH_NO_SHRINK\} \/> : <I\.trendingDown s=\{14\} className=\{GLYPH_NO_SHRINK\} \/>\}$/,
     ],
-    [PANEL]: [],
+    [PANEL]: [
+      // PHOSPHOR-MIGRATION W4 (§8a): the projected return's hand-drawn arrow is the family's arrowRight.
+      /^\s+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var\(--text-muted\)" .*<path d="M5 12h14M13 6l6 6-6 6" \/><\/svg>$/,
+    ],
     [ACTION]: [
       // F55: the locked round panel names the same EAT clock as its board card.
       /^\s+const lockClock = selectionClosesAtMs != null$/,

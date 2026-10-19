@@ -198,7 +198,9 @@ export function RoundStakePanel(props: {
             stated a second time, and the ruling takes every multiple off Up & Down. */}
         {projected != null && (
           <span className="flex shrink-0 items-center gap-1.5" title={t.market.udRcProjected}>
-            <I.arrowRight s={11} className="text-text-muted" />
+            {/* The family's arrow beside the figure (PHOSPHOR-MIGRATION W4: it was hand-drawn), stroked at the figure's
+                mono 600 stem; it carries the figure's size, so that stem is read at the figure's 13px. */}
+            <I.arrowRight s={11} text="mono-600" className="text-body-sm text-text-muted" />
             {/* DG-A-12 · §M4 + §T1 — `.amount` replaces `font-mono … tabular-nums`; 12.5 →
                 `text-body-sm` (13), the +0.5 already ruled for `.admin-tbl`. The muted ink and
                 the semibold stay: §M3 keeps projected money quieter than earned money. */}

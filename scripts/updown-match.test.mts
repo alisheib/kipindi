@@ -412,7 +412,8 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
     if (!s.includes("const tone = valueTone(livePrice, openPrice, upTarget, downTarget);")) d.push("the card does not take its tone from `valueTone` over the targets");
     if (!s.includes("const priceColor = tone ? `var(${READ_TONE_TOKEN[tone]})` : \"var(--text-muted)\";")) d.push("the card's ink is not the tone's token");
     if (/movePct > 0 \? "up"/.test(s) || /dir === "up" \? "var\(--yes-300\)"/.test(s)) d.push("the card still reads the sign of the move for its ink");
-    if (!/\{tone === "up" && <I\.trendingUp/.test(s) || !/\{tone === "down" && <I\.trendingDown/.test(s)) d.push("the arrow does not follow the tone");
+    // The side's arrow (PHOSPHOR-MIGRATION W4, §8b: arrowUp/arrowDown, where the trend zigzags stood).
+    if (!/\{tone === "up" && <I\.arrowUp/.test(s) || !/\{tone === "down" && <I\.arrowDown/.test(s)) d.push("the arrow does not follow the tone");
     return d;
   };
   const cardSrc = src("src/components/updown/updown-card.tsx");

@@ -41,11 +41,15 @@ const ROUND_VERSION = "2026-10-15.2";
 export type S8Published = { legacy: string; accepted: boolean; hashes: Record<string, string>; count: number };
 export const S8_PUBLICATION_FILES = ["src/app/legal/privacy/page.tsx", "src/lib/i18n-dict.ts"] as const;
 
+/** The privacy page's approved publications, each the whole file's hash. The combined S8–S12 publication is recorded at
+ *  8ce376ca0: S11 changed §7's display-choice sentence and S12 added the round paragraph, so the old pre-S8 main comparison
+ *  alone cannot describe the published page. Then PHOSPHOR-MIGRATION W4 (2026-10-19, release 1): the header's glyph only,
+ *  `lock` → `privacyNotice` (§8b: the lock also means a held wallet, a closed market and a locked round) — not one word. */
+const APPROVED_PRIVACY: readonly string[] = ["e9bd4698fa6b", "8dbbe9d0d132"];
+
 export function sameS8PublishedWords(rel: string, source: string, golden: string): boolean {
   const current = s8PublishedWords(rel, source);
-  // The combined S8–S12 publication is recorded at 8ce376ca0. S11 changed §7's display-choice sentence and S12
-  // added the round paragraph, so the old pre-S8 main comparison alone cannot describe the published page.
-  const approvedPrivacy = rel === "src/app/legal/privacy/page.tsx" && sha(source.replace(/\r\n/g, "\n")) === "e9bd4698fa6b";
+  const approvedPrivacy = rel === "src/app/legal/privacy/page.tsx" && APPROVED_PRIVACY.includes(sha(source.replace(/\r\n/g, "\n")));
   return current.accepted && (current.legacy === s8PublishedWords(rel, golden, false).legacy || approvedPrivacy);
 }
 

@@ -3156,7 +3156,9 @@ async function proveRed() {
         && runs.markupPlus.unexpected.length === 1 && runs.boxesPlus.every((d) => d.unexpected.length === 1) && runs.crossed.unexpected.length === 1
         && runs.markupElsewhere.unexpected.length === 1 && runs.boxesElsewhere.every((d) => d.unexpected.length === 1),
       JSON.stringify(runs).slice(0, 400));
-    const along = EXPECTED_DIFFS.filter((e) => e.alongside);
+    // The /positions pair alone: the generated glyph-swap entries (PHOSPHOR-MIGRATION W3's rail layout, beside its markup)
+    // carry `alongside` too, and are held by the same §4.2b rule in the run itself.
+    const along = EXPECTED_DIFFS.filter((e) => e.alongside === "positions-empty-state");
     const seen = (k) => new Map([...along.map((e) => [e.alongside, 1]), ...along.slice(0, k).map((e) => [e.id, e.cells])]);
     ok("P.6p a measured /positions layout missing beside the markup that draws it is reported (§4.2b), each one, and neither, or both in all of their cells, is not",
       along.length === 2 && missingAlongside(seen(0), EXPECTED_DIFFS).length === 2 && missingAlongside(seen(1), EXPECTED_DIFFS).length === 1

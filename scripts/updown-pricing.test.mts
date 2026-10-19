@@ -316,7 +316,8 @@ function sideButtonBodies(code: string): Array<{ side: "yes" | "no"; body: strin
   }
   return out;
 }
-const GLYPH_OR_SPINNER = /\{bet\.pendingSide === "(?:UP|DOWN)" \? <Spinner size=\{12\} \/> : <I\.trending(?:Up|Down) [^}]*\}[^}]*\} \/>\}|<I\.trending(?:Up|Down) [^>]*\/>/g;
+// The side's arrow is the family's arrowUp/arrowDown (PHOSPHOR-MIGRATION W4, §8b; the trend zigzags before).
+const GLYPH_OR_SPINNER = /\{bet\.pendingSide === "(?:UP|DOWN)" \? <Spinner size=\{12\} \/> : <I\.arrow(?:Up|Down) [^}]*\}[^}]*\} \/>\}|<I\.arrow(?:Up|Down) [^>]*\/>/g;
 // `{ }` is what a stripped JSX comment (`{/* … */}`) leaves behind; `{" "}` is an explicit space.
 const wordOnly = (b: { side: "yes" | "no"; body: string }) =>
   b.body.replace(GLYPH_OR_SPINNER, "").replace(/\{\s*\}/g, "").replace(/\{"\s*"\}/g, "").replace(/\s+/g, "") ===
@@ -332,7 +333,7 @@ const wordOnly = (b: { side: "yes" | "no"; body: string }) =>
   ok("5.7c CONTROL · the reader finds exactly the four side buttons (2 on the card, 2 in the controls)",
      cardButtons.length === 2 && controlButtons.length === 2, `${cardButtons.length} + ${controlButtons.length}`);
   ok("5.7d CONTROL · a button carrying a multiple is NOT word-only (the reader can fail)",
-     !wordOnly({ side: "yes", body: ` <I.trendingUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n<span className="font-mono text-[12.5px]">× 1.26</span>` }));
+     !wordOnly({ side: "yes", body: ` <I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n<span className="font-mono text-[12.5px]">× 1.26</span>` }));
 }
 ok("5.8 the round page's confirm panel projects the return from the POOL, not a rate",
    /projectedReturn\(/.test(panelCode) && !/bet\.stake\s*\*\s*est/.test(panelCode));

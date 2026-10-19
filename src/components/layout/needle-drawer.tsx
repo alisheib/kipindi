@@ -120,7 +120,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
 
   /* The account menu's two rows end alike — the state word, then the chevron — so they are drawn once (round 4 of the
      visual pass, 2026-10-09): the recipe is not written twice. `overhang` is the journey's row (`menu-item`), whose
-     chevron hangs its 4.6px side bearing past the row's edge (-mr-1); the classic row's is exactly as it was. */
+     chevron's ink ends on the row's edge; the classic row's chevron keeps its box, as it did. */
   const menuTail = (overhang: boolean) => (
     <>
       <span className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle">{shownLabel}</span>

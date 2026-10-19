@@ -65,7 +65,8 @@ section("0 · A1's proof stays registered beside this one (it is cherry-picked o
 
 /* ══ §1 · THE NOTICE ══════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("1 · BetBreakNotice — the approved sentence with its end, the neutral box, the lock, a status (rendered, 3 locales × 2)");
-const LOCK = renderToStaticMarkup(h(I.lock, { s: 17 }));
+// In Fill: a status in its status container (PHOSPHOR-MIGRATION W4 §8c — the Callout draws its glyph in Fill).
+const LOCK = renderToStaticMarkup(h(I.lock, { s: 17, tier: "fill" }));
 const noticeDefects = (markup: string, l: L, exclusion: boolean): string[] => {
   const d: string[] = [];
   const s = sentenceOf(l, exclusion), date = dateOf(l);
@@ -274,15 +275,15 @@ const historyOk = (src: string) =>
 const perfOk = (src: string) =>
   /const breakEnd = totalBets === 0\s*\? await Promise\.resolve\(\)\.then\(\(\) => isLockedOut\(session\.userId\)\)\.then\(breakStateOf\)\.catch\(\(\) => null\)\s*: null;/.test(src)
   && new RegExp(bodyOf("")).test(src)
-  && /body=\{breakBody \?\? t\.performance\.noPerformanceBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.positions\.browseMarkets\}<\/Link>\}/.test(src);
+  && /body=\{breakBody \?\? t\.performance\.noPerformanceBody\}\s*action=\{breakBody \? null : <EmptyStateLink href="\/markets">\{t\.positions\.browseMarkets\}<\/EmptyStateLink>\}/.test(src);
 const leaderOk = (src: string) =>
   /const breakEnd = rows\.length === 0\s*\? await currentSession\(\)\s*\.then\(\(s\) => \(s \? isLockedOut\(s\.userId\)\.then\(breakStateOf\) : null\)\)\s*\.catch\(\(\) => null\)\s*: null;/.test(src)
   && new RegExp(bodyOf("")).test(src)
-  && /body=\{breakBody \?\? t\.leaderboard\.emptyBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.positions\.browseMarkets\}<\/Link>\}/.test(src);
+  && /body=\{breakBody \?\? t\.leaderboard\.emptyBody\}\s*action=\{breakBody \? null : <EmptyStateLink href="\/markets">\{t\.positions\.browseMarkets\}<\/EmptyStateLink>\}/.test(src);
 const activityOk = (src: string) =>
   /const breakEnd = summary\.empty \? breakStateFromTimers\(rg\.selfExclusionUntil, rg\.coolingOffUntil, Date\.now\(\)\) : null;/.test(src)
   && new RegExp(bodyOf("")).test(src)
-  && /body=\{breakBody \?\? t\.activity\.emptyBody\}\s*action=\{breakBody \? null : <Link href=\{"\/markets" as never\} className="btn btn-primary btn-sm">\{t\.activity\.browseMarkets\}<\/Link>\}/.test(src);
+  && /body=\{breakBody \?\? t\.activity\.emptyBody\}\s*action=\{breakBody \? null : <EmptyStateLink href="\/markets">\{t\.activity\.browseMarkets\}<\/EmptyStateLink>\}/.test(src);
 {
   ok("6.1 · Tiketi zangu's Juu/Chini tab (/updown/history): on a break the no-rows state says the break and offers no 'Juu na Chini' button (read only for that state, failing open)", historyOk(HISTORY));
   ok("6.1′ PLANT · the board door kept during a break is reported", !historyOk(HISTORY.replace("breakBody ? null : <Link href=\"/updown\"", "<Link href=\"/updown\"")));
@@ -291,7 +292,7 @@ const activityOk = (src: string) =>
   ok("6.3 · the sweep · the empty leaderboard ('Place a prediction to get on the board.'): a signed-in reader on a break reads the break, no button; a guest's board unchanged", leaderOk(LEADER));
   ok("6.3′ PLANT · a session read that can throw past the page is reported", !leaderOk(LEADER.replace(".then(breakStateOf) : null))\n        .catch(() => null)", ".then(breakStateOf) : null))")));
   ok("6.4 · the sweep · the empty activity page (its own note: 'invited to go and bet'): the break from the usage row's own timers, no button", activityOk(ACTIVITY));
-  ok("6.4′ PLANT · the Browse door kept during a break is reported", !activityOk(ACTIVITY.replace("action={breakBody ? null : <Link", "action={<Link")));
+  ok("6.4′ PLANT · the Browse door kept during a break is reported", !activityOk(ACTIVITY.replace("action={breakBody ? null : <EmptyStateLink", "action={<EmptyStateLink")));
   // Rendered: the body the pages hand EmptyState, and its control.
   const bad: string[] = [];
   for (const l of LOCALES) for (const exclusion of [false, true]) {

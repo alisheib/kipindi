@@ -209,8 +209,9 @@ section("2 · every warning paint reads the family — toast, chip, Callout, bad
   const TOAST = read("src/components/ui/toast.tsx");
   const at = TOAST.indexOf("  warning: {");
   const warn = at < 0 ? "" : TOAST.slice(at, TOAST.indexOf("\n  },", at));
+  // The glyph in Fill since PHOSPHOR-MIGRATION W4 (§8c: a status in its status container).
   ok("2.1 · the warning TOAST: the amber stop for its bar and rail, the amber ink for its glyph, the amber ring (`.mat-tint-warn`) — no gold",
-    /bar: "bg-warning",/.test(warn) && /rail: "bg-warning",/.test(warn) && /icon: <span className="text-warning-fg"><I\.warning s=\{18\} \/><\/span>,/.test(warn)
+    /bar: "bg-warning",/.test(warn) && /rail: "bg-warning",/.test(warn) && /icon: <span className="text-warning-fg"><I\.warning s=\{18\} tier="fill" \/><\/span>,/.test(warn)
       && /surface: "mat-tint-warn",/.test(warn) && !/gold|gilt/.test(warn), warn.slice(0, 160));
   ok("2.1′ · …and `.mat-tint-warn` mixes the warning stop (the ring every rung's box-shadow opens with)",
     /--mat-tint:\s*inset 0 0 0 1px color-mix\(in oklab, var\(--warning-500\) 32%, transparent\)/.test(rule(MOTION, ".mat-tint-warn")) && !/gilt|gold/.test(rule(MOTION, ".mat-tint-warn")));
@@ -331,6 +332,8 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/comments-thread.tsx": [2, "the character counter's last 40 · the report link's hover — cautions"],
   "src/components/markets/house-lean-warning.tsx": [1, "'the upside is thin' — the Callout's own documented warning"],
   "src/components/markets/objection-dialog.tsx": [5, "the dispute route's caution"],
+  // PHOSPHOR-MIGRATION W4 (§8a): the ⚠️ emoji that opened this caution in each language is the family's warning, in Fill.
+  "src/app/legal/rules/_content-up-down.tsx": [3, "the shortest rounds' caution (en, sw, zh) — the free exit can never apply there; the player weighs it before betting on one"],
   "src/components/ui/offline-banner.tsx": [1, "the offline notice"],
   "src/components/ui/password-input.tsx": [5, "'OK, could be stronger' — a caution"],
   "src/components/ui/unsaved-changes.tsx": [2, "unsaved changes — act"],

@@ -163,7 +163,9 @@ function bellTwin(bar: string, panel: string, tw: string): { ok: boolean; why: s
   // ⚠️ `<NotificationsPanel journey />` since R5-C's gold audit (2026-10-09): the journey bell's unread signs are the brand ink.
   const slot = bar.includes('<span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}</span>');
   return {
-    ok: JSON.stringify(want) === JSON.stringify(got) && still[1] === wrapper && slot && panel.includes("<I.bell s={20} />"),
+    // Closed, the live trigger draws the Line bell its twin draws; it fills only while its panel is open (a toggle that is
+    // on, PHOSPHOR-MIGRATION W4 §8c), which the still twin never is.
+    ok: JSON.stringify(want) === JSON.stringify(got) && still[1] === wrapper && slot && panel.includes('<I.bell s={20} tier={open ? "fill" : undefined} />'),
     why: JSON.stringify({ want, got, wrapper, stillWrapper: still[1], slot }),
   };
 }

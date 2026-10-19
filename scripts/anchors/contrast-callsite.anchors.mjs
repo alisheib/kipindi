@@ -37,14 +37,14 @@ export const MUTATIONS = [
   {
     name: "updown-card.tsx — a faded opacity-85 Up label inside the signed-out Up button (where the ×N suffix stood)",
     file: "src/components/updown/updown-card.tsx",
-    from: `<I.arrowUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
-    to: `<I.arrowUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> <span className="opacity-85">{t.market.udUp}</span>`,
+    from: `<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
+    to: `<I.arrowUp s={14} edge="start" text="body-600" className={GLYPH_NO_SHRINK} /> <span className="opacity-85">{t.market.udUp}</span>`,
   },
   {
     name: "updown-stake-controls.tsx — a faded opacity-85 Up label inside the quick-bet Up button (where the ×N suffix stood)",
     file: "src/components/updown/updown-stake-controls.tsx",
-    from: `<I.arrowUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
-    to: `<I.arrowUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} <span className="opacity-85">{t.market.udUp}</span>`,
+    from: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
+    to: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-600" className={GLYPH_NO_SHRINK} />} <span className="opacity-85">{t.market.udUp}</span>`,
   },
   {
     name: "conviction-dial.tsx — restore the commit button's stake opacity-90 (the site §P-u2 itself found)",

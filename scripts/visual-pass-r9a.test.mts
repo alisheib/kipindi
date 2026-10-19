@@ -239,6 +239,11 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     "bot.fill": [0, -12, PHOSPHOR_PLACED], "comment.fill": [0, 16, PHOSPHOR_PLACED], "gift.fill": [0, -12.01, PHOSPHOR_PLACED],
     "megaphone.fill": [12.21, -3.98, PHOSPHOR_PLACED], "shieldAlert.fill": [0, 12, PHOSPHOR_PLACED],
     "journey.bold": [0, 12, PHOSPHOR_PLACED], "roles.bold": [0, -12, PHOSPHOR_PLACED], "roles.fill": [0, -12, PHOSPHOR_PLACED],
+    // PHOSPHOR-MIGRATION W4 (release 1): status in Fill ships the lock's and the shield-check's solid drawings (a break's
+    // notice, a verified flag), each at its Bold's offset; and two new player keys — the activity page's net (plus-minus:
+    // the plus over the minus, 12 units high) and the chat's send (the paper plane, 12 units right).
+    "lock.fill": [0, -12, PHOSPHOR_PLACED], "shieldcheck.fill": [0, 12, PHOSPHOR_PLACED],
+    "net.bold": [0, -11.99, PHOSPHOR_PLACED], "send.bold": [12.03, 0.01, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
@@ -284,11 +289,14 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
   const OLD_COINS = '<circle cx="10" cy="10" r="6" /><path d="M14.5 13.5a6 6 0 1 0 0-7" /><path d="M10 8v4M8.5 10.5h3" />';
   const oc = inkBox(partsOfMarkup(OLD_COINS));
   ok(`1.4′ CONTROL · the old coins reached x${oc.x1.toFixed(2)} of 24 — past the box — and Phosphor's ends at x${inkBox(partsOf("coins", 16)).x1.toFixed(2)} of 256`, oc.x1 > 26.3 && inkBox(partsOf("coins", 16)).x1 < GRID);
-  // Where the podium is drawn: the hub's Leaderboard row, and nowhere else.
+  // Where the podium is drawn: the leaderboard's two doors — the hub's Leaderboard row, and since PHOSPHOR-MIGRATION W4
+  // (§8b, one meaning one glyph) the classic account menu's Leaderboard, which drew a crown — and nowhere else.
   const podiumUses = PLAYER_TSX.concat(walk("src", new RegExp("[.]ts$")).filter((f) => !OUT.test(f))).filter((f) => f !== "src/components/ui/glyphs.tsx")
-    .filter((f) => new RegExp('I[.]podium[^A-Za-z]|glyph: "podium"').test(code(f)));
-  ok(`1.5 · the podium has one use — the hub's Bingwa / Leaderboard / 排行榜 row (${podiumUses.join(", ")}), every reader's hub, guest and member`,
-    podiumUses.length === 1 && podiumUses[0] === "src/components/journey/account/hub-rows.ts" && code(podiumUses[0]).includes('label: "leaderboard.title", glyph: "podium"'));
+    .filter((f) => new RegExp('I[.]podium[^A-Za-z]|glyph: "podium"').test(code(f))).sort();
+  const PODIUM_DOORS = ["src/components/journey/account/hub-rows.ts", "src/components/layout/avatar-menu.tsx"];
+  ok(`1.5 · the podium means the leaderboard — the hub's Bingwa / Leaderboard / 排行榜 row and the account menu's (${podiumUses.join(", ")}), every reader's, guest and member — and nothing else`,
+    JSON.stringify(podiumUses) === JSON.stringify(PODIUM_DOORS) && code(PODIUM_DOORS[0]).includes('label: "leaderboard.title", glyph: "podium"')
+      && (code(PODIUM_DOORS[1]).match(/I[.]podium[^A-Za-z]/g) ?? []).length === 1 && code(PODIUM_DOORS[1]).includes('{ href: "/leaderboard",    icon: I.podium,'));
 }
 
 /* ══ §2 · A2 · logOut IS A LOG-OUT ══════════════════════════════════════════════════════════════════════════════════════ */
@@ -519,6 +527,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/legal/rules/page.tsx', '<I.chevronRight s={14} className="shrink-0 text-text-subtle" />', 1, "frozen", "a rules card's row end — the file is in the published-words population D19a pins byte for byte (test:house-bot-disclosure 5.1) — named for the integrator"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={11} edge="start" text="mono-400" />', 1, "text", "the source address line's start"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={12} edge="end" text="mono-400" />', 1, "text", "the source link's end"],
+    ['src/app/markets/page.tsx', '<I.chevronRight s={14} edge="end" text="mono-600" />', 1, "text", "the search's All results link's end — PHOSPHOR W4: its words ended in a typed →"],
     ['src/app/profile/activity/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a text link's end"],
     ['src/app/profile/kyc/page.tsx', '<I.arrowRight s={13} edge="end" text="display-600" />', 1, "text", "the footer's wallet link's end — round 10 (R10-A6): its typed arrow became the family's"],
     ['src/app/profile/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-transparent" />', 2, "ghost", "the ghost of /profile's row ends, pulled as the page's are"],
@@ -533,7 +542,6 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/wallet/receipts/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 rounded bg-bg-overlay/60 text-transparent" />', 1, "ghost", "the ghost of the receipt row's end"],
     ['src/app/wallet/wallet-client.tsx', '<I.chevronRight s={14} edge="end" text="body-600" aria-hidden />', 1, "text", "“Risiti zote ›”"],
     ['src/app/wallet/wallet-client.tsx', '<I.chevronRight s={16} edge="end" className="text-text-subtle" />', 1, "row", "the limits row's end"],
-    ['src/components/charts/outcome-cubes.tsx', '<I.arrowRight s={9} />', 1, "alone", "alone in a cube: centred by its box"],
     ['src/components/home/landing-hero.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 2, "text", "the home block's two text links"],
     ['src/components/home/landing-hero.tsx', '<I.arrowRight s={16} edge="end" text="body-600" />', 1, "text", "the hero CTA's end: a centred control frames its ink (R10-A6)"],
     ['src/components/home/landing-hero.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
@@ -548,6 +556,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/journey/home/howto-card.tsx', '<I.chevronRight s={20} edge="end" className="kp-jhowto__chev" />', 1, "row", "the journey home's How-to card's end: a door's end mark on its content edge (the Vodacom plan S7, WP6)"],
     ['src/components/layout/avatar-menu.tsx', '<I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />', 1, "frozen", "the account menu is classic chrome, frozen until the flip — named for the integrator"],
     ['src/components/layout/needle-drawer.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's Needle row end"],
+    ['src/components/layout/needle-drawer.tsx', '<I.chevronRight s={14} edge={overhang ? "end" : undefined} className="text-text-subtle" />', 1, "row", "the account menu's Needle row end (PHOSPHOR W4: it was hand-drawn): on the row's edge in the journey's menu, in its box in the classic menu's padded row (test:visual-pass-r4h 6.4)"],
     ['src/components/layout/notifications-panel.tsx', '<I.chevronRight s={11} />', 1, "frozen", "the bell is frozen (qa:bell-untouched) — named for the integrator"],
     ['src/components/markets/market-card.tsx', '<I.chevronRight s={11} edge="end" text="display-600" />', 1, "text", "“Maelezo ›”"],
     ['src/components/markets/market-card.tsx', '<I.chevronRight s={12} edge="end" text="body-400" />', 1, "text", "the rules link's end"],
@@ -558,6 +567,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/proposals/proposals-state-views.tsx', '<I.chevronLeft s={15} text="body-600" />', 1, "button", B],
     ['src/components/ui/back-link.tsx', '<I.chevronLeft s={11} edge="start" text="mono-400" />', 1, "text", "the back link's start"],
     ['src/components/ui/date-select.tsx', '<I.chevronLeft s={16} />', 1, "alone", "alone in a control: centred by its box"],
+    ['src/components/ui/empty-state-link.tsx', '<I.arrowRight s={size === "sm" ? 13 : 14} edge="end" text="body-600" />', 1, "text", "an empty state's way onward (PHOSPHOR W4: three ways before, one typed →): a centred control frames its ink (R10-A6)"],
     ['src/components/ui/date-select.tsx', '<I.chevronRight s={16} />', 1, "alone", "alone in a control: centred by its box"],
     ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a centred link's end (centred by its ink)"],
     ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />', 1, "alone", "alone on a plate: centred by its box"],
@@ -567,6 +577,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/ui/pagination.tsx', '<I.chevronsRight s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/propose-promo.tsx', '<I.arrowRight s={18} edge="end" />', 1, "row", "the promo card's row end"],
     ['src/components/ui/route-error.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 1, "text", "the error view's way-back button's end: a centred control frames its ink (R10-A6)"],
+    ['src/components/updown/round-stake-panel.tsx', '<I.arrowRight s={11} text="mono-600" className="text-body-sm text-text-muted" />', 1, "float-text", "it leads the projected return, the figure at the stake row's end (PHOSPHOR W4: it was hand-drawn): no edge to land on, the figure's stroke"],
     ['src/components/updown/updown-card.tsx', '<I.chevronRight s={10} text="mono-600" />', 1, "button", B],
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
     ['src/components/maswali/maswali-home-card.tsx', '<I.chevronRight s={18} edge="end" className="mt-2 shrink-0 text-text-subtle md:mt-0" />', 1, "row", "the Millionea card's end (MASWALI-BUILD S5): a door's end mark on its content edge, as the How-to card's"],
