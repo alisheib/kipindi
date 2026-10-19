@@ -36,11 +36,11 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { gunzipSync } from "node:zlib";
+import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { join, resolve } from "node:path";
 import pgLib from "pg";
-import { isLocalHost, sqlObjectNames } from "../src/lib/server/backup/core.ts";
+import { isLocalHost, readManifest, sqlObjectNames } from "../src/lib/server/backup/core.ts";
 
 const { Client } = pgLib;
 const REPO = resolve(process.cwd());
@@ -211,6 +211,39 @@ async function main(): Promise<void> {
         ? "the file replays on this schema"
         : `exit ${v.code} — ${(v.out.match(/^!! [\s\S]*?(?:\n\n|$)/m)?.[0] ?? "").trim().split("\n").slice(0, 6).join(" ") || "see output below"}`);
     if (v.code !== 0) console.log("\n──── db:verify-backup said ────\n" + v.out.split("\n").slice(-40).join("\n"));
+  }
+
+  // The artifact carries _prisma_migrations. If a trigger/function is omitted,
+  // Prisma will consider its migration applied on recovery and never restore it.
+  // Plant that precise omission in a COPY of the plain scratch artifact. The
+  // verifier must reject the restored catalog via its executable-schema check;
+  // a gzip failure or a missing manifest would prove nothing about this boundary.
+  if (file) {
+    const original = gunzipSync(readFileSync(file)).toString("utf8");
+    const manifest = readManifest(original);
+    ok("the artifact records source database logic", !!manifest?.databaseLogic);
+    if (manifest?.databaseLogic?.triggers) {
+      const startMark = "-- ============ DATABASE TRIGGERS ============";
+      const start = original.indexOf(startMark);
+      const end = start < 0 ? -1 : original.indexOf("\nCOMMIT;", start);
+      ok("the artifact has a trigger section to plant", start >= 0 && end > start);
+      if (start >= 0 && end > start) {
+        const holed = original.slice(0, start) + `${startMark}\n-- red plant: trigger definitions omitted\n` + original.slice(end);
+        const plantedFile = join(BACKUPS_DIR, `_backup-schema-gate-no-triggers-${process.pid}.sql.gz`);
+        writeFileSync(plantedFile, gzipSync(Buffer.from(holed, "utf8")));
+        try {
+          const redLogic = runNode([join(REPO, "scripts", "db-verify-backup.mts"), "--file", plantedFile], {
+            DATABASE_URL: url, VERIFY_DATABASE_URL: url,
+          });
+          ok("🔴 restoring an artifact without its trigger is REFUSED by catalog comparison",
+            redLogic.code !== 0 && /FAIL\s+database triggers/.test(redLogic.out)
+              && /FAIL\s+🔴 database logic fingerprint/.test(redLogic.out),
+            `exit ${redLogic.code}`);
+        } finally {
+          rmSync(plantedFile, { force: true });
+        }
+      }
+    }
   }
 
   console.log("\n── 4 · RED CONTROLS — the gate can still fail ───────────────────\n");

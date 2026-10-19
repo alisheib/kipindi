@@ -264,6 +264,7 @@ now **step 4 of the migration protocol**:
 | Compares applied migrations **name-by-name** with `prisma/migrations/` | a scratch cluster is long-lived and `db:scratch` does **not** migrate it; a gate that passes against last week's schema proves nothing |
 | **Control A** — plants a serial column outside `SERIAL_COLUMNS`, requires the dump to **abort naming it** | standards §5b — a gate never seen red is a rumour |
 | **Control B** — takes the real artifact, deletes the statement creating one unique index (preferring a **bare lowercase** name), and requires the product's own matcher to report exactly that one missing | ⛔ **control A certifies the wrong refusal.** The three nights were the unique-index check, not sequences; a control aimed at a different mechanism buys reassurance that is real and coverage that is imaginary. B mutates the one thing the guard reads — the bytes — so it cannot pass by moving both sides of the comparison together |
+| **Executable-schema control** — removes the trigger section from a copy of the artifact, restores that copy, and requires the verifier's catalog comparison to fail | Prisma's schema diff omits functions and triggers, but `_prisma_migrations` is restored with the data. Without this check, a recovered database could record the Millionea product-line fence as applied while lacking the fence itself. The backup exports public user functions and triggers after the data; the manifest fingerprints source definitions and enabled state, and the verifier compares the restored catalog independently. |
 
 ⛔ **It is `verify:`, not `test:`, and that is deliberate — do not rename it back.**
 `scripts/test-all.mjs` auto-discovers **every** `test:*` key in `package.json`, and this gate
@@ -344,7 +345,7 @@ one does, and spends the alarm's credibility as well.
 
 | Command | Does | Safe? |
 |---|---|---|
-| `npm run db:backup` | Dumps schema + extensions + data + indexes + constraints + foreign keys + sequence resets into one replayable, sealed file | ✅ read-only, one snapshot |
+| `npm run db:backup` | Dumps schema + extensions + data + indexes + constraints + foreign keys + sequence resets + public user functions and triggers into one replayable, sealed file | ✅ read-only, one snapshot |
 | `npm run verify:backup-schema` | ⛔ **Step 4 of the migration protocol.** Throwaway cluster → **every** migration → the **real** `db:backup` → a red control. The only thing that runs the dump against a schema **before** it ships; see "THE THREE NIGHTS" | ✅ local only, cleans up after itself |
 | `npm run db:scratch` | Boots a throwaway PostgreSQL 18.3 on `127.0.0.1:5433` for the verifier to restore into. ⚠️ `KP_SCRATCH_PORT=5443` when a parallel worktree already holds the port | ✅ local only |
 | `npm run db:verify-backup -- --file <f>` | Restores into a **throwaway** database and re-checks everything. **Refuses production, no override.** The only thing allowed to record backup health | ✅ never touches the source |

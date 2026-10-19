@@ -22,8 +22,9 @@
 --    inside the 300 s health check), holding no lock between attempts: a failed attempt rolls back its own subtransaction.
 --    If it ever gives up: confirm the trigger is absent, run
 --    `npx prisma migrate resolve --rolled-back 20261018130000_maswali_product_line_fence` against production, and redeploy.
--- ⚠️ `db:backup` rebuilds the schema from `prisma migrate diff` and the catalog's indexes and constraints, which do not
---    include functions or triggers: a database restored from it lacks this fence until this file is applied to it again.
+-- Recovery: `db:backup` exports public user functions and triggers from the catalog after the data. Its manifest
+-- fingerprints their definitions and enabled state; `db:verify-backup` compares the restored catalog and refuses
+-- an artifact missing this fence. `verify:backup-schema` plants a trigger omission to prove that refusal.
 BEGIN;
 SET LOCAL lock_timeout = '3s';
 

@@ -30,6 +30,7 @@ import {
   MANIFEST_MARKER,
   MANIFEST_VERSION,
   backupKey,
+  databaseLogicFingerprint,
   readManifest,
   recordTargetFor,
   tableOrder,
@@ -41,6 +42,7 @@ import {
   sealBackup,
   sqlObjectNames,
   openBackup,
+  type DatabaseLogicRow,
 } from "../src/lib/server/backup/core.ts";
 import { backupHealth, BACKUP_STALE_AFTER_MS, type BackupRun } from "../src/lib/server/backup/state.ts";
 
@@ -87,6 +89,7 @@ const manifest = {
   server: "PostgreSQL 16",
   source: "postgresql://user:***@host:5432/db",
   schemaSha256: "abc123",
+  databaseLogic: { functions: 1, triggers: 1, sha256: "f".repeat(64) },
   extensions: [{ name: "pg_trgm", schema: "public", version: "1.6" }],
   tables: { Wallet: 41, LedgerEntry: 1200 },
   undeclaredTables: ["UpDownProposal"],
@@ -103,6 +106,7 @@ ok("a manifest is recovered from a dump", parsed !== null);
 ok("row counts survive", parsed?.tables.Wallet === 41);
 ok("money invariants survive", parsed?.money.walletBalanceSum === "1000.00");
 ok("the audit head survives", parsed?.audit.headEntryHash === "deadbeef");
+ok("executable database schema fingerprint survives", parsed?.databaseLogic?.sha256 === "f".repeat(64));
 ok("extensions survive", parsed?.extensions[0]?.name === "pg_trgm",
   "the first restore drill died because CREATE EXTENSION was missing");
 ok("undeclared tables are named in the manifest",
@@ -111,6 +115,26 @@ ok("undeclared tables are named in the manifest",
 ok("a dump with no manifest returns null", readManifest("BEGIN;\nCOMMIT;\n") === null);
 ok("a corrupt manifest returns null rather than throwing",
   readManifest(`${MANIFEST_MARKER}{not json\n`) === null);
+
+const logicFunction: DatabaseLogicRow = {
+  kind: "function", name: "public.maswali_product_line_fence()", definition: "CREATE FUNCTION f() RETURNS trigger ...",
+  relation: null, trigger_name: null, enabled: null,
+};
+const logicTrigger: DatabaseLogicRow = {
+  kind: "trigger", name: "public.PredictionMarket.PredictionMarket_productLine_maswali_fence",
+  definition: "CREATE TRIGGER t BEFORE UPDATE OF productLine ON PredictionMarket ...",
+  relation: 'public."PredictionMarket"', trigger_name: "PredictionMarket_productLine_maswali_fence", enabled: "O",
+};
+const logicShape = databaseLogicFingerprint([logicTrigger, logicFunction]);
+ok("the executable schema counts functions and triggers", logicShape.functions === 1 && logicShape.triggers === 1);
+ok("catalog order does not change the fingerprint",
+  logicShape.sha256 === databaseLogicFingerprint([logicFunction, logicTrigger]).sha256);
+ok("🔴 a restored database missing the money trigger has a different fingerprint",
+  logicShape.sha256 !== databaseLogicFingerprint([logicFunction]).sha256);
+ok("🔴 a trigger with different logic is detected even when the count matches",
+  logicShape.sha256 !== databaseLogicFingerprint([{ ...logicTrigger, definition: "CREATE TRIGGER t AFTER UPDATE ..." }, logicFunction]).sha256);
+ok("🔴 a disabled trigger is detected even when its definition is unchanged",
+  logicShape.sha256 !== databaseLogicFingerprint([{ ...logicTrigger, enabled: "D" }, logicFunction]).sha256);
 
 console.log("\n── 4 · Sealing is real encryption, not obfuscation ─────────────");
 
