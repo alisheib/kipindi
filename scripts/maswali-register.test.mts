@@ -27,6 +27,8 @@
  *      table from 1024, the index rows' chip
  *   §13 A2 · no Chinese run in the register's body text is longer than its narrowest column holds without a phrase break
  *      (U+200B), so keep-all never has to split a word (the zh 320 tile split 备选/题)
+ *   §14 the resting Needle and chat control cannot sit over right-aligned ledger money or survivor counts at phone/tablet
+ *      widths: only the register week's ledger and standing reserve a right lane until the 1280 reading measure
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect in an IN-MEMORY copy — a source string, a dictionary
  *    value or a helper — and requires the check it targets to fail; a plant whose text is not in its file exactly once is
@@ -416,6 +418,21 @@ check("12.2", "the index's ghost rows carry the week, its chip and its facts as 
   return [g.includes('<GhostBar className="h-[23px] w-[88px] rounded-pill" />') && g.includes('<div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-6">'), "the row's shape"];
 });
 
+// ── §14 · the register week's right-aligned facts clear the resting fixed controls ──────────────────────────────────
+check("14.1", "the week ledger reserves a scoped right lane through 1024 for its money values, restoring normal padding at 1280", (w) => {
+  const s = code(w, "week");
+  const lane = s.includes('<section aria-labelledby="mln-reg-ledger" className="mat-flat flex flex-col gap-2 rounded-card p-3 pr-14 xl:pr-3">');
+  const values = s.includes('<div className="flex flex-col border-t border-border">{rows.map((r) => <div key={r.key}>{r.node}</div>)}</div>');
+  return [lane && values, j({ lane, values })];
+});
+check("14.2", "the survivor list reserves the same scoped right lane through 1024 so its counts stay visible beside the Needle", (w) => {
+  const s = code(w, "week");
+  const heading = s.includes('<h2 id="mln-reg-standing"');
+  const lane = s.includes('<ol className="flex flex-col pr-14 xl:pr-0">');
+  const counts = s.includes('{formatNumber(s.ticketsWithoutAMiss)}');
+  return [heading && lane && counts, j({ heading, lane, counts })];
+});
+
 // ── the run ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 function runAll(w: World, quiet: boolean): { pass: number; fail: number; failed: string[] } {
   let pass = 0, fail = 0;
@@ -433,7 +450,7 @@ if (!PROVE_RED) {
   const { pass, fail } = runAll(REAL, false);
   console.log(`\n${"═".repeat(70)}\n  MASWALI REGISTER: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
   /** The floor is the count a green run PRINTS; it only rises, to a printed number. */
-  const MIN_ASSERTIONS = 39;
+  const MIN_ASSERTIONS = 41;
   if (pass < MIN_ASSERTIONS) { console.error(`!! FLOOR — ran ${pass}, fewer than ${MIN_ASSERTIONS}.`); process.exit(4); }
   process.exit(fail === 0 ? 0 : 1);
 }
@@ -525,6 +542,9 @@ const PLANTS: Array<[string, string, World | null]> = [
   // §12
   ["the week's ghost without the table's bands from 1024", "12.1", plantSrc("weekGhost", '<div className="hidden flex-col lg:flex">', '<div className="hidden">')],
   ["the index ghost's rows without the chip", "12.2", plantSrc("indexGhost", '<GhostBar className="h-[23px] w-[88px] rounded-pill" />', "")],
+  // §14
+  ["the ledger's right lane removed, exposing the fee to the resting chat control", "14.1", plantSrc("week", 'rounded-card p-3 pr-14 xl:pr-3', 'rounded-card p-3')],
+  ["the survivor list's right lane removed, exposing counts to the resting Needle", "14.2", plantSrc("week", '<ol className="flex flex-col pr-14 xl:pr-0">', '<ol className="flex flex-col">')],
 ];
 let caught = 0;
 for (const [name, target, world] of PLANTS) {
