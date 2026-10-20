@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MUTATIONS } from "./anchors/maswali-admin-pools-query.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
 import { openState, poolsLine, poolsSearchParams, queryOpenWeeks, queryRolloverTrail } from "../src/lib/maswali-admin-pools-query.ts";
 import type { PoolsTrailRow, PoolsWeek } from "../src/lib/server/maswali-console.ts";
 
@@ -12,10 +13,8 @@ if (process.argv.includes("--prove-red")) {
   for (const plant of MUTATIONS) {
     const source = resolve(root, plant.file);
     const before = readFileSync(source, "utf8");
-    const normalized = before.replace(/\r\n/g, "\n");
-    assert.equal(normalized.split(plant.from).length - 1, 1, `${plant.name} anchor must be unique`);
     try {
-      writeFileSync(source, normalized.replace(plant.from, plant.to));
+      writeFileSync(source, injectDefect(before, plant.from, plant.to));
       const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-pools-query.test.mts"],
         { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
       assert.notEqual(run.status, 0, `removing ${plant.name} must fail the behavior guard`);

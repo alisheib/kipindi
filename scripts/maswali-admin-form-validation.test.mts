@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MUTATIONS } from "./anchors/maswali-admin-form-validation.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
 import { validGuaranteeDraft, validShareDecision } from "../src/lib/maswali-admin-form-validation.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -14,9 +15,8 @@ if (process.argv.includes("--prove-red")) {
   for (const plant of MUTATIONS) {
     const target = resolve(root, plant.file);
     const before = readFileSync(target, "utf8");
-    assert.equal(before.split(plant.from).length - 1, 1, `${plant.name} plant must have one target`);
     try {
-      writeFileSync(target, before.replace(plant.from, plant.to));
+      writeFileSync(target, injectDefect(before, plant.from, plant.to));
       const run = spawnSync(process.execPath, ["--import", "tsx", "scripts/maswali-admin-form-validation.test.mts"],
         { cwd: root, encoding: "utf8", env: { ...process.env, NODE_ENV: "test" } });
       assert.notEqual(run.status, 0, `${plant.name} must turn the guard red`);
