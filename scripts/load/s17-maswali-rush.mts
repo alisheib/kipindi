@@ -4,14 +4,14 @@
  * latency targets are set from what it measures.
  *
  *   npm run load:maswali-rush                                         (boots the on-box Postgres through db-scratch)
- *   RUSH_EXPECTED_PER_MIN=120 RUSH_MINUTES=15 RUSH_INSTANCES=3 npm run load:maswali-rush
+ *   RUSH_TEST_REFERENCE_PER_MIN=40 RUSH_MINUTES=15 RUSH_INSTANCES=3 npm run load:maswali-rush
  *
  * WHAT IT DOES. One scratch database and RUSH_INSTANCES OS processes, each a container: its own Prisma pool (RUSH_POOL),
  * its own admission gate and in-process rate limits, and the week timer armed as a container's boot arms it — so the
  * close is stamped by whichever instance's tick wins, exactly as on two Railway replicas. A Millionea week opens and its
  * close is moved to RUSH_MINUTES (plus a boot margin) from the database's now (MB-28's move), so the rush meets the close
  * on the REAL clock, the one a purchase reads. The weekday is not what is measured; the close is.
- *   · Until the close the instances buy tickets as Poisson arrivals at RUSH_MULTIPLIER × RUSH_EXPECTED_PER_MIN purchases a
+ *   · Until the close the instances buy tickets as Poisson arrivals at RUSH_MULTIPLIER × RUSH_TEST_REFERENCE_PER_MIN purchases a
  *     minute between them (the minute before the close RUSH_LAST_MINUTE_FACTOR times denser), each purchase 1 to 10
  *     tickets of fifteen random answers on an account with room under the cap, a BUSY retried with the same key as the
  *     slip retries it (RUSH_RETRIES).
@@ -35,7 +35,7 @@
  * the lead measures with this script, and records them beside their results (MASWALI-PLAN §7b S7). Until a constant is a
  * number its line prints the measurement and judges nothing.
  *
- * Knobs (environment): RUSH_EXPECTED_PER_MIN (60 — ⚠️ a placeholder until the business forecast replaces it),
+ * Knobs (environment): RUSH_TEST_REFERENCE_PER_MIN (30 — synthetic test reference, not measured production traffic),
  * RUSH_MULTIPLIER (10), RUSH_MINUTES (10), RUSH_LAST_MINUTE_FACTOR (3), RUSH_AFTER_CLOSE_SEC (60), RUSH_INSTANCES (2),
  * RUSH_POOL (20), RUSH_PLAYERS (sized from the rate), RUSH_UPDOWN_PER_MIN (300), RUSH_UPDOWN_PLAYERS (300),
  * RUSH_RETRIES (3), RUSH_RETRY_SAMPLE (50), RUSH_BOOT_MARGIN_SEC (120).
@@ -50,6 +50,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
+import { arrivalFloor, DEFAULT_RUSH, rushShape, rushTargetLabel } from "./s17-maswali-rush-target.mts";
 
 // ⏱ THE TARGETS — TBD-BASELINE until the lead's measured baseline sets them (S7 acceptance). Lower is better for each.
 type Target = number | "TBD-BASELINE";
@@ -81,11 +82,11 @@ const num = (name: string, dflt: number): number => {
   return v;
 };
 
-const EXPECTED_PER_MIN = num("RUSH_EXPECTED_PER_MIN", 60);
-const MULTIPLIER = num("RUSH_MULTIPLIER", 10);
-const MINUTES = num("RUSH_MINUTES", 10);
-const LAST_MINUTE_FACTOR = num("RUSH_LAST_MINUTE_FACTOR", 3);
-const AFTER_CLOSE_SEC = num("RUSH_AFTER_CLOSE_SEC", 60);
+const TEST_REFERENCE_PER_MIN = num("RUSH_TEST_REFERENCE_PER_MIN", DEFAULT_RUSH.testReferencePerMin);
+const MULTIPLIER = num("RUSH_MULTIPLIER", DEFAULT_RUSH.multiplier);
+const MINUTES = num("RUSH_MINUTES", DEFAULT_RUSH.minutes);
+const LAST_MINUTE_FACTOR = num("RUSH_LAST_MINUTE_FACTOR", DEFAULT_RUSH.lastMinuteFactor);
+const AFTER_CLOSE_SEC = num("RUSH_AFTER_CLOSE_SEC", DEFAULT_RUSH.afterCloseSec);
 const INSTANCES = Math.round(num("RUSH_INSTANCES", 2));
 const POOL = Math.round(num("RUSH_POOL", 20));
 const UPDOWN_PER_MIN = num("RUSH_UPDOWN_PER_MIN", 300);
@@ -93,10 +94,8 @@ const UPDOWN_PLAYERS = Math.round(num("RUSH_UPDOWN_PLAYERS", 300));
 const RETRIES = Math.round(num("RUSH_RETRIES", 3));
 const RETRY_SAMPLE = Math.round(num("RUSH_RETRY_SAMPLE", 50));
 const BOOT_MARGIN_SEC = num("RUSH_BOOT_MARGIN_SEC", 120);
-const RATE = EXPECTED_PER_MIN * MULTIPLIER;
-/** The purchases the plan sends before the close (the last minute denser), and after it. */
-const PLANNED_BEFORE = RATE * (Math.max(0, MINUTES - 1) + Math.min(1, MINUTES) * LAST_MINUTE_FACTOR);
-const PLANNED_AFTER = RATE * (AFTER_CLOSE_SEC / 60);
+const target = { testReferencePerMin: TEST_REFERENCE_PER_MIN, multiplier: MULTIPLIER, minutes: MINUTES, lastMinuteFactor: LAST_MINUTE_FACTOR, afterCloseSec: AFTER_CLOSE_SEC };
+const { rate: RATE, plannedBefore: PLANNED_BEFORE, plannedAfter: PLANNED_AFTER } = rushShape(target);
 /** Accounts enough that the cap is never what refuses (about three tickets a purchase, half the cap an account). */
 const PLAYERS = Math.round(num("RUSH_PLAYERS", Math.max(200, Math.ceil(((PLANNED_BEFORE + PLANNED_AFTER) * 3) / 5))));
 const PLAYER_BALANCE = 100_000, BETTOR_BALANCE = 1_000_000;
@@ -104,8 +103,9 @@ const PLAYER_BALANCE = 100_000, BETTOR_BALANCE = 1_000_000;
 const UD_STAKE = 1_000;
 /** The edge of the close: a purchase sent within this of it may land or be refused, by the database clock against the instance's. */
 const EDGE_MS = 2_000;
-if (INSTANCES < 1 || POOL < 6 || MINUTES < 1 || UPDOWN_PLAYERS < Math.max(2, INSTANCES) || PLAYERS < INSTANCES) {
-  console.error("!! RUSH_INSTANCES ≥ 1, RUSH_POOL ≥ 6, RUSH_MINUTES ≥ 1, and at least one Millionea account and one Up & Down bettor an instance.");
+if (INSTANCES < 1 || POOL < 6 || MINUTES < 1 || TEST_REFERENCE_PER_MIN <= 0 || MULTIPLIER <= 0 || LAST_MINUTE_FACTOR <= 0
+  || AFTER_CLOSE_SEC <= 0 || UPDOWN_PER_MIN <= 0 || UPDOWN_PLAYERS < Math.max(2, INSTANCES) || PLAYERS < INSTANCES) {
+  console.error("!! the rush rates, multiplier, burst and after-close window must be positive; RUSH_INSTANCES ≥ 1, RUSH_POOL ≥ 6, RUSH_MINUTES ≥ 1, with accounts and Up & Down bettors for every instance.");
   process.exit(2);
 }
 // The Up & Down round takes bets for its first 48 minutes (a 60-minute chain closes its selections in the last 20%).
@@ -179,7 +179,7 @@ function judge(label: string, measured: number | null, target: Target): void {
   ok(`TARGET ${label}: at most ${target}`, measured !== null && measured <= target, `measured ${measured ?? "—"}`);
 }
 
-console.log(`${NL}S17 — the Friday 18:00 rush on ${DB}: ${RATE}/min Millionea purchases (${EXPECTED_PER_MIN} expected × ${MULTIPLIER}), `
+console.log(`${NL}S17 — the Friday 18:00 rush on ${DB}: ${rushTargetLabel(target)}, `
   + `the last minute ×${LAST_MINUTE_FACTOR}, ${MINUTES} min to the close and ${AFTER_CLOSE_SEC} s after it, ${INSTANCES} instance(s) of pool ${POOL}, `
   + `Up & Down at ${UPDOWN_PER_MIN}/min`);
 const admin = new pg.Client({ connectionString: RAW });
@@ -233,6 +233,15 @@ try {
   const buys: any[] = outs.flatMap((o) => o.buys ?? []), bets: any[] = outs.flatMap((o) => o.bets ?? []), retries: any[] = outs.flatMap((o) => o.retries ?? []);
   const phase = (b: any) => (b.toClose < -EDGE_MS ? "before" : b.toClose > EDGE_MS ? "after" : "edge");
   const landed = buys.filter((b) => b.ok), refused = buys.filter((b) => !b.ok);
+  const preCloseSent = buys.filter((b) => b.at >= rushStartAt && b.at < closeMs).length;
+  const lastMinuteSent = buys.filter((b) => b.at >= closeMs - 60_000 && b.at < closeMs).length;
+  const updownSent = bets.filter((b) => b.at >= rushStartAt && b.at < closeMs).length;
+  ok("1.5 · the planned Millionea load actually reached the purchase path before the close",
+    preCloseSent >= arrivalFloor(PLANNED_BEFORE), `${preCloseSent} sent; ${Math.round(PLANNED_BEFORE)} planned; floor ${arrivalFloor(PLANNED_BEFORE)}`);
+  ok("1.6 · the final-minute burst actually reached the purchase path",
+    lastMinuteSent >= arrivalFloor(RATE * LAST_MINUTE_FACTOR), `${lastMinuteSent} sent; ${Math.round(RATE * LAST_MINUTE_FACTOR)} planned; floor ${arrivalFloor(RATE * LAST_MINUTE_FACTOR)}`);
+  ok("1.7 · Up & Down ran on the same database throughout the pre-close rush",
+    updownSent >= arrivalFloor(UPDOWN_PER_MIN * MINUTES), `${updownSent} sent; ${Math.round(UPDOWN_PER_MIN * MINUTES)} planned; floor ${arrivalFloor(UPDOWN_PER_MIN * MINUTES)}`);
   console.log(`${NL}LATENCY (ms) — every purchase from its first send to its answer, BUSY retries included`);
   console.log(row("Millionea · landed", dist(landed.map((b) => b.totalMs))));
   console.log(row("Millionea · refused", dist(refused.map((b) => b.totalMs))));

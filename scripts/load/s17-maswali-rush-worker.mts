@@ -22,6 +22,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { RUSH_SLIP_SIZES } from "./s17-maswali-rush-target.mts";
 
 process.env.SESSION_SECRET ??= "maswali-s17-session-secret-0123456789abcdef";
 const job: any = JSON.parse(readFileSync(process.env.RUSH_JOB ?? "", "utf8"));
@@ -72,7 +73,6 @@ async function arrivals(from: number, to: number, maxPerMin: number, rateAt: (t:
 
 const randomSlip = () => Array.from({ length: 15 }, () => (Math.random() < 0.5 ? "YES" : "NO"));
 /** Tickets in one purchase: mostly one or two, sometimes a full slip of ten. */
-const SIZES = [1, 1, 1, 1, 2, 2, 3, 5, 10];
 
 try {
   if (job.role === "prep") {
@@ -150,7 +150,7 @@ try {
     const purchase = async (t: number) => {
       const userId = pick();
       if (!userId) { noRoom++; return; }
-      const size = Math.min(SIZES[Math.floor(Math.random() * SIZES.length)], room(userId));
+      const size = Math.min(RUSH_SLIP_SIZES[Math.floor(Math.random() * RUSH_SLIP_SIZES.length)], room(userId));
       reserved.set(userId, (reserved.get(userId) ?? 0) + size);
       const slips = Array.from({ length: size }, randomSlip);
       const key = randomUUID();

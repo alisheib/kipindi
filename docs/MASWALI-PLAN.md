@@ -2315,13 +2315,15 @@ ready.
 - a source domain disabled mid-week;
 - an under-funded guarantee at k ≥ 1; a short float;
 - 10,000-ticket settlement;
-- **the Friday 18:00 rush at 10× the expected rate with Up & Down running** (cross-instance on real PostgreSQL, `scripts/load`);
+- **the Friday 18:00 rush at 10× the S7 test reference with Up & Down running** (cross-instance on real PostgreSQL, `scripts/load`);
 - clock skew past the close; an attempt to reclassify `productLine`;
 - an insider promoted mid-week; a reversed deposit funding a winner;
 - the winner-takeover pattern; ticket-id enumeration; OG images leaking picks;
 - a 1,024-ticket covering cluster; both clock-change weekends; a holiday Friday.
 
 **Suites:** `test:maswali-adversarial`, and a `red:maswali-*` for every guard added.
+
+**S7 rush test target:** engineering sets a synthetic reference of **30 Millionea purchases/minute**, so the 10× run sends **300/minute** before the close and **900/minute** in its final-minute burst, from two instances, while Up & Down also sends bets. The ten-minute fixture plans 3,600 purchases before close; its requested ticket-size mix averages 26/9 tickets per purchase, about 10,400 planned tickets, exercising the separate 10,000-ticket settlement shape. These are planned test inputs, **not a measured production peak, a demand forecast or a claim that the database lands that rate**. S17 checks that the scheduled arrivals actually reach the purchase path, then reports the landed throughput and ledger results. Revisit the test reference when measured demand becomes available.
 
 **Acceptance:** every finding is fixed or recorded in `FAILURE-INVENTORY.md`. Latency targets for the rush are set at the start of S7 from measured baselines and recorded with their results.
 
@@ -2442,7 +2444,7 @@ stays open as KNOWN-RED TK.2, with MB-23 (OB.0) and MB-74 (RD.5): §6.1 Gate B l
 | MB-28 | M | Moving the close after open changes the cancellation runway after the fact. Re-opening after the close would undo the commitment. | R-WEEK allows moves in both directions. B7's "never later" narrows the ruling and is NOT adopted. Instead:<br>• Earlier: only to at least now + 5 min + grace, so every sold ticket keeps its full window.<br>• Later: only up to the earliest start minus the buffer (OD-15).<br>• Never after the close has passed (MR-13 makes the hash write-once).<br>• Re-run the 15-question check, notify holders, audit, and stamp `closeAtPurchase` on each ticket. With the runway rule, every cancellation window ends at or before the close, so the hash can be taken at the close. | Eng | S2 | A22p, B7 |
 | MB-29 | M | A close equal to the first event leaves no time to publish the hash, no allowance for clock skew, and no margin for kickoff drift. | Freeze `minLockBufferMinutes` in the snapshot. Show `hashComputedAt` on `/fairness`. Raise a CRITICAL alert and flag the attestation if the hash is not out before the earliest start. Buffer value: OD-15. | Ali, Eng | S2, S6 | B8 |
 | MB-30 | M | Officer-typed times across the UK (25 Oct 2026) and US (1 Nov 2026) clock changes can let in a question that has already started. | Enter times in the source's local time with an IANA zone. Convert and compare in UTC. Show both local and EAT absolute times. Red test over both weekends. | Eng | S4 | B10 |
-| MB-31 | H | The Friday 18:00 rush lands on one shared admission queue and one market lock. Ten tickets mean ten lock acquisitions. A retry after the close must return the receipt. A deposit can confirm after the close. The ticker would cause a broadcast storm. | • Buy N tickets in one transaction: one admission slot, one lock, one group, the cap counted once.<br>• The close is enforced on the database clock inside the lock.<br>• Extend the L2 replay to Millionea keys.<br>• In the last 15 minutes, the slip warns that a deposit may not confirm in time.<br>• Coalesce ticker updates.<br>• Load-test at 10× the expected rate with Up & Down running. | Eng | S3, S7 | C25, A32 |
+| MB-31 | H | The Friday 18:00 rush lands on one shared admission queue and one market lock. Ten tickets mean ten lock acquisitions. A retry after the close must return the receipt. A deposit can confirm after the close. The ticker would cause a broadcast storm. | • Buy N tickets in one transaction: one admission slot, one lock, one group, the cap counted once.<br>• The close is enforced on the database clock inside the lock.<br>• Extend the L2 replay to Millionea keys.<br>• In the last 15 minutes, the slip warns that a deposit may not confirm in time.<br>• Coalesce ticker updates.<br>• Load-test at 10× the S7 test reference with Up & Down running; compare against measured demand when available. | Eng | S3, S7 | C25, A32 |
 
 #### Fairness
 
