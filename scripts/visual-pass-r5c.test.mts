@@ -113,7 +113,7 @@ function goldHits(file: string, src: string): Hit[] {
     // The leaderboard's tier type names the established identity medal. A type union
     // cannot paint a pixel; keep this exact declaration out of the paint census.
     if (file === "src/app/leaderboard/tier-hint.tsx" && /^type Tier = "bronze" \| "silver" \| "gold" \| "diamond" \| "sovereign";$/.test(ln)) return;
-    if (file === "src/components/ui/icon-plate.tsx" && ln === 'export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";') return;
+    if (file === "src/components/ui/icon-plate.tsx" && ln === 'export type PlateVariant = "identity" | "empty" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";') return;
     const push = (kind: string, re: RegExp, keep: (m: RegExpMatchArray) => boolean = () => true) => {
       for (const m of ln.matchAll(re)) if (keep(m)) out.push({ kind, match: m[0], line: i + 1 });
     };
@@ -199,7 +199,6 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/layout/needle.css": [10, "the shared house needle's gilt seam, hub, rim and aura (§B1a)"],
   "src/components/charts/terminal-chart.tsx": [1, "the round opening-reference chart label (§B12)"],
   "src/components/charts/pnl-chart.tsx": [4, "the break-even reference line (§B12: gilt marks the line a chart is READ AGAINST)"],
-  "src/components/ui/empty-state.tsx": [1, "the illustrations' single gold accent (§C7)"],
   "src/app/leaderboard/page.tsx": [9, "rank and standing in the tier ladder's METAL (Q5) · the tier names"],
   "src/components/badges/icons.tsx": [1, "the achievement coins' METAL (Q5)"],
   "src/components/ui/identity-avatar.tsx": [17, "the heraldic crest's own raw metal and TIER_RING (Q5's letter: no money token)"],
@@ -301,7 +300,7 @@ const census = new Map<string, Hit[]>();
       && n(tierFile, tierSource.replace(tierType, `${tierType} const unearnedTier = <Chip variant="gold" />;`)) === 2);
   const plateFile = "src/components/ui/icon-plate.tsx";
   const plateSource = raw(plateFile);
-  const plateType = 'export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";';
+  const plateType = 'export type PlateVariant = "identity" | "empty" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";';
   ok("1.4 · CONTROL · only the exact PlateVariant type declaration is exempt from the gold paint census",
     plateSource.split("\n").filter((line) => line === plateType).length === 1 && n(plateFile, plateSource) === 0);
   ok("1.4 · PLANT · a runtime gold variant in the same plate file is still counted",
