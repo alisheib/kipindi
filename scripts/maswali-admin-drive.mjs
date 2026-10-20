@@ -255,7 +255,8 @@ async function typeTime(group, hhmm) {
 /**
  * Drive one kit ConfirmModal to its end. `fields` fills the dialog's own body; a hard tier then types its word — its
  * confirm must be dead until then (`gated`) — and the confirm is pressed. The controls close their dialog only when the
- * act went through (`closed`); a refusal leaves it open and prints the service's sentence behind it, read from `alert`.
+ * act went through (`closed`); a refusal leaves it open and prints the service's sentence in `alert`.
+ * `alert` can be a locator for a page alert or a function that scopes an alert to the open dialog.
  */
 async function confirmDialog(p, title, { word, confirm, alert, fields }) {
   const dlg = p.getByRole("alertdialog", { name: title, exact: true });
@@ -271,7 +272,7 @@ async function confirmDialog(p, title, { word, confirm, alert, fields }) {
   const end = await until(async () => {
     if ((await dlg.count()) === 0) return { closed: true };
     const busy = (await dlg.getAttribute("aria-busy", { timeout: 1_000 }).catch(() => null)) === "true";
-    const said = alert ? await alertText(alert) : "";
+    const said = alert ? await alertText(typeof alert === "function" ? alert(dlg) : alert) : "";
     return said && !busy ? { closed: false, refusal: said } : null;
   }, 120_000);
   const cancel = async () => {
@@ -452,8 +453,12 @@ await part("4 · attest and open", async () => {
   if (!weekPath) { ok("4 · a drafted week to attest and open", false, "step 3 left no week"); return; }
   const own = card(page, "Before it can open");
   await own.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
-  const refused = await until(() => alertText(own.getByRole("alert")), 30_000);
-  ok("4.1 the drafter's own attestation is refused: a second reader must attest (MB-79)", /cannot attest its translations/.test(refused ?? ""), refused ?? "no answer on the page");
+  const ownReview = await confirmDialog(page, `Attest ${driveCode}'s three languages?`, {
+    word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
+  });
+  ok("4.1 the drafter's own attestation is refused after the hard confirm: a second reader must attest (MB-79)",
+    ownReview.gated && !ownReview.closed && /cannot attest its translations/.test(ownReview.refusal), ownReview.refusal);
+  await ownReview.cancel();
   ok("4.1b …and the week stays an unattested draft", (await chipOf(page)) === "Draft" && (await own.getByText("The three languages are attested.", { exact: true }).count()) === 0);
   await checkpoint(page, "4.1", "05-attest-refused");
 
@@ -466,8 +471,12 @@ await part("4 · attest and open", async () => {
     await go(reader, weekPath);
     const theirs = card(reader, "Before it can open");
     await theirs.getByRole("button", { name: "I read all three languages: they agree", exact: true }).click();
-    const attested = await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
-    ok("4.2b the second reader attests: the page says the three languages are attested", !!attested, await alertText(theirs.getByRole("alert")));
+    const secondReview = await confirmDialog(reader, `Attest ${driveCode}'s three languages?`, {
+      word: "ATTEST", confirm: "Record the attestation", alert: (dlg) => dlg.getByRole("alert"),
+    });
+    const attested = secondReview.closed && await until(async () => (await theirs.getByText("The three languages are attested.", { exact: true }).count()) > 0, 30_000);
+    ok("4.2b the second reader attests after the hard confirm: the page says the three languages are attested",
+      secondReview.gated && !!attested, secondReview.refusal || await alertText(theirs.getByRole("alert")));
     await checkpoint(reader, "4.2", "06-attested-by-second-reader");
   } finally {
     await readerCtx.close();
@@ -514,8 +523,16 @@ await part("5 · move the close", async () => {
   await typeDate(mv, SAT);
   await typeTime(time, "12:00");
   await mv.getByRole("button", { name: "Move the close", exact: true }).click();
-  const refused = await until(() => alertText(mv.getByRole("alert")), 30_000);
-  ok("5.1 a close after the first event is refused, in the service's words", /The close must stay at least \d+ minutes before the first event[.]/.test(refused ?? ""), refused ?? "no answer on the page");
+  const lateReview = await confirmDialog(page, `Move ${driveCode}'s sales close?`, {
+    word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert"),
+    fields: async (dlg) => {
+      const text = clip(await dlg.textContent());
+      ok("5.1a the late-move dialog shows both EAT close values", text.includes(`Current close: ${was} (EAT)`) && text.includes(`New close: ${SAT} 12:00 (EAT)`), text);
+    },
+  });
+  ok("5.1 a close after the first event is refused after the hard confirm, in the service's words",
+    lateReview.gated && !lateReview.closed && /The close must stay at least \d+ minutes before the first event[.]/.test(lateReview.refusal), lateReview.refusal);
+  await lateReview.cancel();
   ok("5.1b …and the close did not move", (await nowCloses()) === was && was !== null && (await chipOf(page)) === "Selling", `${await nowCloses()} (was ${was})`);
   await checkpoint(page, "5.1", "09-close-refused");
 
@@ -523,8 +540,16 @@ await part("5 · move the close", async () => {
   await typeDate(mv, THU);
   await typeTime(time, "17:00");
   await mv.getByRole("button", { name: "Move the close", exact: true }).click();
-  const moved = await until(async () => (await nowCloses()) === want, 30_000);
-  ok(`5.2 an earlier close is accepted: the page now says it closes ${want} (EAT)`, !!moved && (await mv.getByRole("alert").count()) === 0, `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
+  const earlyReview = await confirmDialog(page, `Move ${driveCode}'s sales close?`, {
+    word: "MOVE CLOSE", confirm: "Move the close", alert: (dlg) => dlg.getByRole("alert"),
+    fields: async (dlg) => {
+      const text = clip(await dlg.textContent());
+      ok("5.2a the earlier-move dialog shows both EAT close values", text.includes(`Current close: ${was} (EAT)`) && text.includes(`New close: ${THU} 17:00 (EAT)`), text);
+    },
+  });
+  const moved = earlyReview.closed && await until(async () => (await nowCloses()) === want, 30_000);
+  ok(`5.2 an earlier close is accepted after the hard confirm: the page now says it closes ${want} (EAT)`,
+    earlyReview.gated && !!moved && (await mv.getByRole("alert").count()) === 0, earlyReview.refusal || `${await nowCloses()} ${await alertText(mv.getByRole("alert"))}`);
   ok("5.2b …and the week still sells", (await chipOf(page)) === "Selling", await chipOf(page));
   await checkpoint(page, "5.2", "10-close-moved");
 });
@@ -552,7 +577,7 @@ await part("6.1 · seal", async () => {
     const combo = sc.getByRole("combobox", { name: `${s.label} result`, exact: true });
     // ⚠️ A `has` locator is re-run inside each candidate row, so it is rooted at the page, never at the card.
     const row = sc.getByRole("row").filter({ has: page.getByRole("combobox", { name: `${s.label} result`, exact: true }) });
-    await row.getByPlaceholder("What the source says", { exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
+    await row.getByRole("textbox", { name: `${s.label} seal evidence`, exact: true }).fill(`The source's official result for ${s.label}: ${s.outcome}.`);
     await choose(page, combo, s.outcome);
   }
   await shot(page, "11-seal-console-filled");

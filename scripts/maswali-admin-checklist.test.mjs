@@ -17,6 +17,22 @@ const hasFreshRequirementRead = (source) => {
   const back = afterSave.indexOf("await go(page, weekPath);");
   return pools >= 0 && pools < needed && needed < back;
 };
+const hasHardWeekReviews = (source) => {
+  const attest = source.split('await part("4 · attest and open"')[1]?.split('await part("5 · move the close"')[0] ?? "";
+  const move = source.split('await part("5 · move the close"')[1]?.split('await part("6.0 · seed"')[0] ?? "";
+  const seal = source.split('await part("6.1 · seal"')[1]?.split('await part("6.2 · preview and release"')[0] ?? "";
+  return (attest.match(/confirmDialog\([^,]+, `Attest \$\{driveCode\}'s three languages\?`/g) ?? []).length === 2
+    && (attest.match(/word: "ATTEST", confirm: "Record the attestation", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 2
+    && attest.includes('ownReview.gated && !ownReview.closed') && attest.includes('await ownReview.cancel();')
+    && attest.includes('secondReview.gated && !!attested')
+    && (move.match(/confirmDialog\([^,]+, `Move \$\{driveCode\}'s sales close\?`/g) ?? []).length === 2
+    && (move.match(/word: "MOVE CLOSE", confirm: "Move the close", alert: \(dlg\) => dlg\.getByRole\("alert"\)/g) ?? []).length === 2
+    && move.includes('Current close: ${was} (EAT)') && move.includes('New close: ${SAT} 12:00 (EAT)')
+    && move.includes('New close: ${THU} 17:00 (EAT)')
+    && move.includes('lateReview.gated && !lateReview.closed') && move.includes('await lateReview.cancel();')
+    && move.includes('earlyReview.gated && !!moved')
+    && seal.includes('getByRole("textbox", { name: `${s.label} seal evidence`, exact: true })');
+};
 
 assert.equal(checkOpenChecklist(seeded, [attestation]).ok, true, "seeded standing needs only the second reader");
 assert.equal(checkOpenChecklist(fresh, [licence, attestation, guarantee]).ok, true, "fresh standing names all three blockers");
@@ -28,6 +44,8 @@ assert.equal(checkOpenChecklist({ ...fresh, guarantee: "TZS 750,000", requiremen
   "the prospective open requirement must not be below the existing open-weeks requirement");
 assert.equal(checkOpenChecklist(seeded, [attestation, "Unknown blocker"]).ok, false, "an unexpected blocker must fail");
 assert.equal(hasFreshRequirementRead(driveSource), true, "drive must reread the pools requirement after the draft saves and before comparing the checklist");
+assert.equal(hasHardWeekReviews(driveSource), true,
+  "drive must gate and read both attestation and close reviews, cancel refused modals, and use the labelled evidence input");
 console.log("maswali admin checklist: seeded, fresh, missing and wrong-amount states PASS");
 
 if (process.argv.includes("--prove-red")) {
@@ -42,5 +60,14 @@ if (process.argv.includes("--prove-red")) {
   assert.ok(plantAt > driveSource.indexOf("driveCode = clip(await h1.textContent());"), "stale standing mutation must plant after the draft");
   const stale = driveSource.slice(0, plantAt) + 'standing.requirement = "TZS 0";' + driveSource.slice(plantAt + requirementLine.length);
   assert.equal(hasFreshRequirementRead(stale), false, "keeping the pre-draft requirement must turn the timing guard red");
-  console.log("maswali admin checklist RED: omitted guarantee and stale requirement are caught");
+  const noAttestGate = driveSource.replace('word: "ATTEST", confirm: "Record the attestation"', 'word: "", confirm: "Record the attestation"');
+  assert.notEqual(noAttestGate, driveSource, "attest-gate mutation must plant");
+  assert.equal(hasHardWeekReviews(noAttestGate), false, "losing a typed attestation gate must turn the drive guard red");
+  const noCancel = driveSource.replace('await lateReview.cancel();', 'void lateReview;');
+  assert.notEqual(noCancel, driveSource, "refused-modal mutation must plant");
+  assert.equal(hasHardWeekReviews(noCancel), false, "leaving a refused close modal open must turn the drive guard red");
+  const noEvidenceLabel = driveSource.replace('getByRole("textbox", { name: `${s.label} seal evidence`, exact: true })', 'getByPlaceholder("What the source says", { exact: true })');
+  assert.notEqual(noEvidenceLabel, driveSource, "evidence-label mutation must plant");
+  assert.equal(hasHardWeekReviews(noEvidenceLabel), false, "losing the accessible evidence selector must turn the drive guard red");
+  console.log("maswali admin checklist RED: omitted guarantee, stale requirement, lost dialog gates and evidence label are caught");
 }
