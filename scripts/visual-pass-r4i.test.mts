@@ -645,7 +645,7 @@ section("7 · the refusal: one of eyebrow and title, and its reason announced (E
     /\{eyebrow && \(\s*<p\s+className="orm-eyebrow mt-4 font-mono text-micro uppercase eyebrow font-bold"/.test(ORM)
       && /<h2 className="mt-1 font-display text-\[22px\] font-bold text-text leading-tight tracking-\[-0\.018em\]">/.test(ORM)
       && holdCls.split(" ").includes("[&>div+h2]:mt-4") && twStep("4") === 20
-      && /aria-hidden\s*>\s*<CrestIcon variant=\{variant\} color=\{tone\.fg\} \/>\s*<\/div>\s*\{eyebrow && \(/.test(ORM), holdCls);
+      && /aria-hidden\s*>\s*<CrestIcon variant=\{variant\} color=\{tone\.fg\} drawCheck=\{drawCheck\} \/>\s*<\/div>\s*\{eyebrow && \(/.test(ORM), holdCls);
   const eyebrowWithoutGap = ORM.replace("orm-eyebrow mt-4 font-mono", "orm-eyebrow mt-1 font-mono");
   ok("7.3′ PLANT · an eyebrow pulled to 4px from the crest fails the result-dialog spacing rule",
     eyebrowWithoutGap !== ORM && !/\{eyebrow && \(\s*<p\s+className="orm-eyebrow mt-4 font-mono text-micro uppercase eyebrow font-bold"/.test(eyebrowWithoutGap));

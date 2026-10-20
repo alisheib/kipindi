@@ -57,6 +57,8 @@ export const GLYPH = {
   row: 16,
   /** The lead glyph of a CARD or section head. */
   card: 18,
+  /** The existing 36px mark inside the shared result modal's 64px crest. */
+  resultCrest: 36,
 } as const;
 
 /** The glyph that sits centred on an `IconPlate` of the given edge, derived — never hand-picked. Release 2 (W5) put every

@@ -21,7 +21,9 @@ function claims(w: World): string[] {
   hold("draw uses the family key", /if \(draw && key === "check" && e\.m\)/.test(w.glyphs)
     && /<path d=\{e\.m\.d\}[^>]*className="m-draw"/.test(w.glyphs));
   hold("draw has the full stroke at rest", /pathLength=\{100\} className="m-draw" style=\{\{ strokeDasharray: 100, strokeDashoffset: 100 \}\}/.test(w.glyphs));
-  hold("only success may draw in result modal", /if \(variant === "success"\) return <span[^>]*><I\.check s=\{36\} draw=\{drawCheck\} \/><\/span>/.test(w.modal)
+  hold("only success may draw in result modal", /resultCrest: 36/.test(w.glyphs)
+    && /if \(variant === "success"\) return <span[^>]*><I\.check s=\{GLYPH\.resultCrest\} draw=\{drawCheck\} \/><\/span>/.test(w.modal)
+    && /glyph\(\{ s: GLYPH\.resultCrest \}\)/.test(w.modal)
     && /<CrestIcon variant=\{variant\} color=\{tone\.fg\} drawCheck=\{drawCheck\} \/>/.test(w.modal));
   hold("placed bet asks for draw", /drawCheck=\{resultData\.variant === "success"\}/.test(w.dial));
   hold("placed Up and Down bet asks for draw", /<OperationResultModal\s+drawCheck\s+open\s+variant="success"/.test(w.updown));
@@ -40,6 +42,7 @@ if (!process.argv.includes("--prove-red")) {
 
 const plants: Array<[string, keyof World, string, string]> = [
   ["source mark changed", "marks", "M40 144L96 200L224 72", "M40 144L96 200L200 72"],
+  ["result crest size drifts", "glyphs", "resultCrest: 36", "resultCrest: 34"],
   ["drawing bypasses the key", "glyphs", 'key === "check"', 'key === "x"'],
   ["check appears before drawing", "glyphs", "strokeDashoffset: 100", "strokeDashoffset: 0"],
   ["failure draws as success", "modal", 'variant === "success") return', 'variant === "danger") return'],

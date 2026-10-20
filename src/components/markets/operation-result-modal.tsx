@@ -49,7 +49,7 @@
 
 import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
-import { I } from "@/components/ui/glyphs";
+import { GLYPH, I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { moneyRuns } from "@/lib/fill-nodes";
 import { useResultModalPresence } from "@/lib/result-modal-presence";
@@ -179,11 +179,11 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
 };
 
 function CrestIcon({ variant, color, drawCheck }: { variant: OperationVariant; color: string; drawCheck?: boolean }) {
-  if (variant === "success") return <span style={{ color }}><I.check s={36} draw={drawCheck} /></span>;
+  if (variant === "success") return <span style={{ color }}><I.check s={GLYPH.resultCrest} draw={drawCheck} /></span>;
   const glyph = variant === "danger"  ? I.x
               : variant === "warning" ? I.warning
               :                         I.info;
-  return <span style={{ color }}>{glyph({ s: 36 })}</span>;
+  return <span style={{ color }}>{glyph({ s: GLYPH.resultCrest })}</span>;
 }
 
 const STRIP_GRADIENTS: Record<string, string> = {
