@@ -118,7 +118,9 @@ export function SealConsole({ weekId, rows, voidReasons, windowOpen, can, need }
     <div>
       <UnsavedChangesGuard dirty={Object.values(picks).some((p) => p.outcome !== "" || p.evidence.trim() !== "")}
         body="Results have been entered but not sealed. Leaving now discards them." />
-      <ScrollX label="Millionea results to seal">
+      {/* The 1,040px result table stays horizontally scrollable. Paint containment keeps its offscreen columns out of
+          the document's own scroll width on narrow screens; the named, focusable ScrollX still reaches every column. */}
+      <ScrollX label="Millionea results to seal" style={{ contain: "paint" }}>
         <table className="admin-tbl min-w-[1040px]">
           <thead>
             <tr><th className="text-left">Slot</th><th className="text-left">Question and how it resolves</th><th className="text-left">Event (EAT)</th><th className="text-left">Result</th><th className="text-left">Evidence</th><th className="text-left">Act</th></tr>
