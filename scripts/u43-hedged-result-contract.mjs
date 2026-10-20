@@ -77,7 +77,9 @@ export function hedgedResultIssues({ detail, card, boardPage, announcer, countdo
       || pendingCopy[1] !== "Matokeo ya raundi yamerekodiwa. Malipo yanasubiri."
       || pendingCopy[2] !== "本轮结果已记录，款项仍待结算。")
     issues.push("unpaid outcome copy is neutral when a VOID has no confirmed price");
-  if (!cardResult || !/cardPayoutTotal == null \? t\.market\.udPayoutUnavailable : formatTzs\(cardPayoutTotal\)/.test(cardResult)
+  if (!cardResult || !/cardPayoutTotal == null \? t\.market\.udPayoutUnavailable/.test(cardResult)
+      || !/cardPayoutTotal != null && \(/.test(cardResult)
+      || !/\{formatTzs\(cardPayoutTotal\)\}/.test(cardResult)
       || !/cardResults\.some\(\(result\) => result\.side === "UP"\)/.test(cardResult)
       || !/cardResults\.some\(\(result\) => result\.side === "DOWN"\)/.test(cardResult)
       || !/cardResults\[0\]\.payout == null \? t\.market\.udPayoutUnavailable/.test(cardResult)

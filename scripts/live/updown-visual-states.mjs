@@ -157,12 +157,18 @@ const seededMarkets = await post("/api/dev-test/seed-markets");
 if (!seededMarkets.ok || !Array.isArray(seededMarkets.ids) || seededMarkets.ids.length < 15) {
   die("generic market catalogue seed did not return enough live market IDs");
 }
-const resolvedSeeds = await post("/api/dev-test/resolve-seed-markets", { markets: 2, bettors: 4, stake: 2000, outcome: "YES", settle: true });
-const oneSidedSeed = await post("/api/dev-test/resolve-seed-markets", { markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", settle: true });
+// The fixture defaults to cycling bets → stage1 → complete; `settle: true`
+// cannot settle a row left at bets or stage1. Complete the first two so they
+// leave the LIVE book before seeding the one-sided case from the next market.
+const resolvedSeeds = await post("/api/dev-test/resolve-seed-markets", { markets: 2, bettors: 4, stake: 2000, outcome: "YES", stage: "complete", settle: true });
+const oneSidedSeed = await post("/api/dev-test/resolve-seed-markets", { markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", stage: "complete", settle: true });
 if (!resolvedSeeds.ok || resolvedSeeds.resolved !== 2 || resolvedSeeds.markets?.length !== 2
   || !oneSidedSeed.ok || oneSidedSeed.resolved !== 1 || oneSidedSeed.markets?.length !== 1
   || resolvedSeeds.markets.some((m) => m.stakes <= 0)
-  || oneSidedSeed.markets.some((m) => m.stakes <= 0)) {
+  || oneSidedSeed.markets.some((m) => m.stakes <= 0)
+  || resolvedSeeds.markets.some((m) => m.state !== "complete")
+  || oneSidedSeed.markets.some((m) => m.state !== "complete")
+  || new Set([...resolvedSeeds.markets.map((m) => m.id), ...oneSidedSeed.markets.map((m) => m.id)]).size !== 3) {
   die("resolved and one-sided market seed premises did not read back");
 }
 index.marketSeeds = { resolved: resolvedSeeds.markets, oneSided: oneSidedSeed.markets };
@@ -199,8 +205,8 @@ const liveId = seededMarkets.ids.find((m) => !occupiedIds.has(m.id))?.id;
 if (!liveId) die("no separate live generic market remains after the resolved and VOID fixtures");
 const marketCases = {
   "p12-market-live": { id: liveId, surface: "markets", kind: "live" },
-  "p12-market-resolved": { id: resolvedSeeds.markets[0].id, surface: "markets", kind: "resolved" },
-  "p12-market-one-sided": { id: oneSidedSeed.markets[0].id, surface: "markets", kind: "one-sided" },
+  "p12-market-resolved": { id: resolvedSeeds.markets[0].id, surface: "results", kind: "resolved" },
+  "p12-market-one-sided": { id: oneSidedSeed.markets[0].id, surface: "results", kind: "one-sided" },
   "p12-market-void": { id: portfolio.marketIds[11], surface: "results", kind: "void" },
 };
 index.marketSeeds = { ...index.marketSeeds, portfolio: { placed: portfolio.placed, intended: portfolio.intended,
@@ -360,8 +366,8 @@ function exactMarketReady(sample, requirement) {
   if (!card) return false;
   switch (requirement.marketCase.kind) {
     case "live": return card.choices === "open" && card.buttons === 2;
-    case "resolved": return card.result === "final" && card.choices === "closed";
-    case "one-sided": return card.result === "final" && card.oneSided === true;
+    case "resolved": return card.result === "final" && card.choices === "closed" && card.settledDate === true && card.oneSided === false;
+    case "one-sided": return card.result === "final" && card.choices === "closed" && card.settledDate === true && card.oneSided === true;
     case "void": return card.result === "final" && card.choices === "closed"
       && card.text.includes(voidWord[requirement.locale]);
     default: return false;
@@ -469,6 +475,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
             id: card.getAttribute("data-row-id"), choices: card.getAttribute("data-market-choices"),
             result: card.getAttribute("data-market-result"),
             oneSided: !!card.querySelector(".mcardp-oneside"),
+            settledDate: !!card.querySelector('time[data-market-part="settled-date"][datetime]'),
             buttons: card.querySelectorAll("button.btn-yes,button.btn-no").length,
             text: card.innerText.slice(0, 600),
           })),

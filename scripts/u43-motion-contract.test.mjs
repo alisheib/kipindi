@@ -38,6 +38,8 @@ function check(id, name, passed) {
 const urgent = ruleFor(motion, ".m-urgent");
 const urgentReduced = ruleFor(motion, '[data-motion="reduced"] .m-urgent');
 const urgentOs = ruleFor(motion, ".m-urgent", "prefers-reduced-motion: reduce");
+const urgentMinimal = ruleFor(motion, '[data-motion="minimal"] .m-urgent');
+const urgentUserSwitch = ruleFor(motion, "html.kp-reduce-motion .m-urgent");
 check("1", "last-30 digit pulse is full-motion only",
   declaration(urgent, "animation")?.value.includes("m-breathe 1000ms")
   && declaration(urgent, "animation")?.value.includes("infinite")
@@ -45,7 +47,6 @@ check("1", "last-30 digit pulse is full-motion only",
   && declaration(urgentReduced, "animation")?.important === true
   && declaration(urgentReduced, "opacity")?.value === "1"
   && declaration(urgentOs, "animation")?.value === "none");
-
 const liveDot = ruleFor(globals, ".live-dot");
 const liveDotReduced = ruleFor(globals, '[data-motion="reduced"] .live-dot');
 check("2", "reduced live dot keeps the full 2600ms cadence without shadow",
@@ -68,5 +69,14 @@ check("4", "market trend is visible without drawing motion in reduced tiers",
     && declaration(rule, "stroke-dasharray")?.value === "none"
     && declaration(rule, "stroke-dashoffset")?.value === "0"));
 
-console.log(`U43 MOTION CONTRACT: ${4 - failures} passed, ${failures} failed; CSS root ${root}`);
+check("5", "minimal tier stops the last-30 pulse",
+  declaration(urgentMinimal, "animation")?.value === "none"
+  && declaration(urgentMinimal, "animation")?.important === true
+  && declaration(urgentMinimal, "opacity")?.value === "1");
+check("6", "in-app reduce-motion switch stops the last-30 pulse",
+  declaration(urgentUserSwitch, "animation")?.value === "none"
+  && declaration(urgentUserSwitch, "animation")?.important === true
+  && declaration(urgentUserSwitch, "opacity")?.value === "1");
+
+console.log(`U43 MOTION CONTRACT: ${6 - failures} passed, ${failures} failed; CSS root ${root}`);
 process.exit(failures ? 1 : 0);

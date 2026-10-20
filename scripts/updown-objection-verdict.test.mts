@@ -146,7 +146,7 @@ const upPlayer = await user("up", "PLAYER", 20_000);
 const downPlayer = await user("down", "PLAYER", 20_000);
 
 async function decidedButUnpaid(label: string, stampVerdict = true) {
-  const key = `${tag}${label === "reverse" ? "R" : label === "void" ? "V" : label === "fault" ? "F" : label === "objection-fault" ? "O" : label === "emergency" ? "E" : label === "emergency-fault" ? "G" : label === "emergency-commit-fault" ? "H" : label === "emergency-memory-fault" ? "J" : label === "two-step" ? "T" : label === "close-race" ? "Q" : label === "close-fault" ? "W" : label === "legacy-race" ? "Z" : label === "unpaid-mismatch" ? "U" : "C"}`;
+  const key = `${tag}${label === "reverse" ? "R" : label === "void" ? "V" : label === "fault" ? "F" : label === "objection-fault" ? "O" : label === "emergency" ? "E" : label === "emergency-fault" ? "G" : label === "emergency-commit-fault" ? "H" : label === "emergency-memory-fault" ? "J" : label === "two-step" ? "T" : label === "close-race" ? "Q" : label === "close-fault" ? "W" : label === "legacy-race" ? "Z" : label === "unpaid-mismatch" ? "U" : label === "source-mismatch" ? "S" : "C"}`;
   const asset = await UC.createAsset({ key, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", nameZh: "比特币",
     iconKey: "crypto", priceSourceUrl: "https://www.kitco.com/price/crypto", category: "crypto",
     decimals: 2, minMoveTicks: 2 }, reviewer);
@@ -813,6 +813,47 @@ if (scratchDb) {
     upheld.ok
       ? caseRow?.status === "UPHELD" && market?.resolvedOutcome === "NO" && round?.outcome === "DOWN"
       : caseRow?.status === "REJECTED" && market?.resolvedOutcome === "YES" && round?.outcome === "UP");
+}
+
+// A source-mismatch VOID is a different refund reason from an officer VOID. A
+// process can commit the market refund and die before mirroring settledAt onto
+// the round. The healer must preserve the already-recorded source failure while
+// recovering that last stamp, in both the memory twin and PostgreSQL.
+{
+  const f = await decidedButUnpaid("source-mismatch");
+  const before = [await balance(upPlayer), await balance(downPlayer)];
+  const decidedAt = new Date().toISOString();
+  await marketStore.stamp(f.round.marketId, {
+    status: "VOIDED", resolvedOutcome: "VOID", settledAt: null,
+    objectionsClosedAt: new Date(Date.now() - 1000).toISOString(),
+    resolutionEvidence: "Round voided (source-mismatch): close source did not match the captured source.",
+  });
+  await UD.roundStore.patch(f.round.id, { outcome: "VOID", voidReason: "source-mismatch", resolvedAt: decidedAt });
+  const paid = await settleMarket(f.round.marketId);
+  const moneyMarket = await marketStore.get(f.round.marketId);
+  const unpaidRound = await UD.roundStore.get(f.round.id);
+  const positions = await positionStore.listForMarket(f.round.marketId);
+  check("SOURCE MISMATCH: two held stakes return exactly once and the round stamp remains recoverable",
+    paid.ok && !!moneyMarket?.settledAt && !unpaidRound?.settledAt &&
+    (await balance(upPlayer)) === before[0] + 2_000 && (await balance(downPlayer)) === before[1] + 2_000 &&
+    positions.length === 2 && positions.every((p) => p.status === "VOID" && p.finalPayout === p.stake));
+  const wasEnabled = process.env.UPDOWN_HEALER;
+  process.env.UPDOWN_HEALER = "true";
+  let healed;
+  try { healed = await healStuckRounds({ limit: 1000 }); }
+  finally { process.env.UPDOWN_HEALER = wasEnabled; }
+  const finalMarket = await marketStore.get(f.round.marketId);
+  const finalRound = await UD.roundStore.get(f.round.id);
+  const detail = await getRoundDetail(f.round.id, upPlayer);
+  check("SOURCE MISMATCH: healer keeps the recorded source-mismatch refund reason",
+    healed.settled > 0 && finalRound?.outcome === "VOID" &&
+    finalRound.voidReason === "source-mismatch" && finalRound.settledAt === finalMarket?.settledAt &&
+    detail?.round.voidReason === "source-mismatch" && detail.round.correctionKind === null &&
+    finalMarket?.resolutionEvidence?.startsWith("Round voided (source-mismatch):"));
+  const replay = await settleMarket(f.round.marketId);
+  check("SOURCE MISMATCH: a settlement replay cannot return either stake twice",
+    !replay.ok && replay.code === "INVALID" &&
+    (await positionStore.listForMarket(f.round.marketId)).every((p) => p.status === "VOID" && p.finalPayout === p.stake));
 }
 
 if (scratchDb) check("POSTCOMMIT DRAIN: objection notices and audit writes finish before scratch teardown",

@@ -1101,11 +1101,12 @@ export function UpDownCard(props: UpDownCardProps) {
                 <p className="m-0 flex flex-wrap items-baseline gap-x-1.5">
                   <span>{cardResults.some((result) => result.side === "UP") && cardResults.some((result) => result.side === "DOWN")
                     ? t.market.udBothSidesHeld : t.market.udYourResult}</span><span aria-hidden>·</span>
-                  <span>{cardResults.every((result) => result.status === "VOID" && result.payout === result.stake)
-                    ? t.market.udRefundTitle : t.market.udPaidOut}</span>
-                  <span className="amount font-semibold text-text">
-                    {cardPayoutTotal == null ? t.market.udPayoutUnavailable : formatTzs(cardPayoutTotal)}
-                  </span>
+                  <span>{cardPayoutTotal == null ? t.market.udPayoutUnavailable
+                    : cardResults.every((result) => result.status === "VOID" && result.payout === result.stake)
+                      ? t.market.udRefundTitle : t.market.udPaidOut}</span>
+                  {cardPayoutTotal != null && (
+                    <span className="amount font-semibold text-text">{formatTzs(cardPayoutTotal)}</span>
+                  )}
                 </p>
                 {cardResults.map((result) => (
                   <p key={`${result.side}-${result.status}`} className="m-0 flex flex-wrap items-baseline gap-x-1.5">

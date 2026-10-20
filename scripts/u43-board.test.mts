@@ -18,6 +18,7 @@ const viz = read("src/components/charts/board-viz.tsx");
 const ghost = read("src/app/updown/updown-ghost.tsx");
 const capture = read("scripts/live/updown-visual-capture.mjs");
 const states = read("scripts/live/updown-visual-states.mjs");
+const heldProbe = read("scripts/u43-held-clearance-probe.mjs");
 const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const locked320 = [...css.matchAll(/@media \(max-width: 359px\) \{([\s\S]*?)\n\}/g)]
   .map((match) => match[1]).find((body) => body.includes('data-phase="locked"')) ?? "";
@@ -79,6 +80,15 @@ ok("320 held card keeps a measured action reserve above the fixed rail",
   css.includes('.ud-card[data-ud-layout="held"][data-phase="open"] { gap: 3px; }')
   && states.includes('if (action.clearance < 24) throw new Error(`held action clearance ${action.clearance.toFixed(1)}px below 24px`);')
   && states.includes('process.env.HELD_CAPTION_RED === "1"'));
+ok("320 open and held cards keep the timed no-new-price line to one row without hiding it",
+  dict.en.home.udMatchNoNewPrice === "No new price since {time}"
+  && dict.sw.home.udMatchNoNewPrice === "Hakuna bei mpya tangu {time}"
+  && dict.zh.home.udMatchNoNewPrice === "自 {time} 开盘暂无新价格"
+  && card.includes('t.home.udMatchNoNewPrice.replace("{time}", openClock)')
+  && heldProbe.includes('open.heldAction.minButtonHeight < 40 || open.heldAction.clearance < 24')
+  && heldProbe.includes('shot.heldAction.minButtonHeight < 40 || shot.heldAction.clearance < 24')
+  && heldProbe.includes('open?.heldAction?.layout !== "player"')
+  && heldProbe.includes('shot?.heldAction?.layout !== "held"'));
 ok("320 and 360 keep ready actions clear and remove only the duplicate prompt",
   css.includes('@media (max-width: 390px) {')
   && css.includes('.ud-board-page .ud-board-header > p:last-child { display: none; }')

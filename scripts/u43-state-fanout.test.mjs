@@ -26,7 +26,7 @@ ok("shot bytes are saved only after the page and every card crop pass post-shot 
   driver.includes("const accepted = await verifiedScreenshot({")
   && driver.includes("const cropped = await verifiedScreenshot({")
   && driver.indexOf("for (const card of cardImages) writeFileSync") > driver.indexOf("const cropped = await verifiedScreenshot({")
-  && (driver.match(/valid: \(sample\) => frameReady\(sample, requirement\)/g) ?? []).length === 2);
+  && (driver.match(/valid: \(sample\) => exactMarketReady\(sample, requirement\)/g) ?? []).length === 2);
 ok("last-30 capture starts with the full window and names the tested round",
   driver.includes('await waitUntil(lockMs - 30_000, "betting\'s last 30 seconds");')
   && driver.includes('last30LockMs: phase === "p6-last30" ? lockMs : null')

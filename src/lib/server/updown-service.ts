@@ -1258,7 +1258,8 @@ export async function healStuckRounds(opts?: { now?: number; limit?: number }): 
             }
             const voidReason = outcome === "VOID"
               ? previousOutcome === "VOID" &&
-                (currentRound.voidReason === "operator" || currentRound.voidReason === "source-failed" || currentRound.voidReason === "no-move")
+                (currentRound.voidReason === "operator" || currentRound.voidReason === "source-failed" ||
+                 currentRound.voidReason === "source-mismatch" || currentRound.voidReason === "no-move")
                 ? currentRound.voidReason : "operator"
               : null;
             if (lockTx) {

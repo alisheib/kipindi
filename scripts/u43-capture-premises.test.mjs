@@ -60,6 +60,12 @@ check("market seeds fail on missing real resolved or one-sided money",
   && states.includes('resolvedSeeds.resolved !== 2')
   && states.includes('oneSidedSeed.resolved !== 1')
   && states.includes('oneSidedSeed.markets.some((m) => m.stakes <= 0)'));
+check("terminal market fixtures complete settlement on distinct market IDs",
+  states.includes('markets: 2, bettors: 4, stake: 2000, outcome: "YES", stage: "complete", settle: true')
+  && states.includes('markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", stage: "complete", settle: true')
+  && states.includes('resolvedSeeds.markets.some((m) => m.state !== "complete")')
+  && states.includes('oneSidedSeed.markets.some((m) => m.state !== "complete")')
+  && states.includes('new Set([...resolvedSeeds.markets.map((m) => m.id), ...oneSidedSeed.markets.map((m) => m.id)]).size !== 3'));
 check("VOID comes from genuine local service path with a returned holder row",
   states.includes('authCtx.request.post(`${BASE}/api/dev-test/seed-player-portfolio`')
   && states.includes('portfolio.byStatus?.VOID !== 1')
@@ -71,9 +77,15 @@ check("four market states have exact ID searches and observed card identity",
   && states.includes('row.id === requirement.marketCase.id')
   && states.includes('encodeURIComponent(`id:${marketCase.id}`)')
   && states.includes('marketCase: requirement.marketCase, marketCards: final.marketCards'));
+check("settled market states read from the results archive and show a settlement date",
+  states.includes('"p12-market-resolved": { id: resolvedSeeds.markets[0].id, surface: "results", kind: "resolved" }')
+  && states.includes('"p12-market-one-sided": { id: oneSidedSeed.markets[0].id, surface: "results", kind: "one-sided" }')
+  && states.includes('settledDate: !!card.querySelector(\'time[data-market-part="settled-date"][datetime]\')')
+  && states.includes('card.result === "final" && card.choices === "closed" && card.settledDate === true && card.oneSided === false')
+  && states.includes('card.result === "final" && card.choices === "closed" && card.settledDate === true && card.oneSided === true'));
 check("market result, one-sided and VOID visual states are required",
   states.includes('card.result === "final" && card.choices === "closed"')
-  && states.includes('card.result === "final" && card.oneSided === true')
+  && states.includes('card.settledDate === true && card.oneSided === true')
   && states.includes('card.text.includes(voidWord[requirement.locale])'));
 check("Gold stop goes through service and requires selected XAU readback",
   states.includes('const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "stop" })')

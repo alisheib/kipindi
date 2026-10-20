@@ -10,9 +10,9 @@ type State = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 type Feed = { sourceTier: "vendor" | "confirmed"; series: { mode: "line"; points: OpenPoint[] } | { mode: "candles" } };
 
 const WORDS = {
-  en: { openReference: "Opening reference", minuteOpen: "Minute open", unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price shown above", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
-  sw: { openReference: "Bei ya ufunguzi", minuteOpen: "Ufunguzi wa dakika", unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa iko juu", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
-  zh: { openReference: "开盘参考价", minuteOpen: "分钟开盘价", unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 上方显示已确认价格", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
+  en: { openReference: "Opening reference", minuteOpen: "Minute open", unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price on card", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
+  sw: { openReference: "Bei ya ufunguzi", minuteOpen: "Ufunguzi wa dakika", unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa kwenye kadi", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
+  zh: { openReference: "开盘参考价", minuteOpen: "分钟开盘价", unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 卡片显示已确认价格", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
 } as const;
 
 /** Match the price row above the line: a decided card shows its close, while an

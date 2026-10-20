@@ -56,11 +56,12 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     && card.includes('state === "resolved" && price.kind === "none" ? (')
     && card.includes('players > 0 ? t.market.udNoActiveStakes : t.market.udNoBetsPlaced'),
     "settled guest card explains an unmatched refund or an empty pool without claiming a viewer refund");
-  need(card.includes('cardResults[0].status !== "VOID" && (')
-    && card.includes('cardResults[0].payout == null ? t.market.udPaidOut')
+  need(card.includes('cardResults[0].status === "LOSS" ? t.market.udLost')
     && card.includes('cardResults[0].payout == null ? t.market.udPayoutUnavailable')
-    && card.includes('formatTzs(cardResults[0].status === "LOSS" ? cardResults[0].stake : cardResults[0].payout)'),
-    "single result labels lost stake and total winner payout distinctly");
+    && card.includes('cardResults[0].payout != null && <>')
+    && card.includes('cardResults[0].status !== "VOID" && <span>{t.market.udPaidOut}</span>')
+    && card.includes('formatTzs(cardResults[0].payout)'),
+    "single result labels the actual realized payout, including zero for a loss, or withholds an unknown amount");
   need(!card.includes('btn btn-ghost btn-lg pointer-events-none'), "no fake awaiting-result button");
   need(card.includes('<UpDownSidePair assetName={assetName} onPick={go} />'), "signed-out choices use shared pair");
   need(!card.includes('ml-auto whitespace-nowrap">{t.market.udOpenPrice}'), "no repeated open-price footer");

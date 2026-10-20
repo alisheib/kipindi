@@ -19,7 +19,7 @@ const cases = [
   ["source omits exact instant", "card", 'dateTime={displayedQuotedAt ?? undefined}', 'dateTime={undefined}'],
   ["refund chip returns", "card", '!refundCopy?.claimsRefund && (', 'refundCopy?.claimsRefund && ('],
   ["refund repeats full promise above amount", "card", '{cardRefundCopyText}</p>', '{refundCopyText}</p>'],
-  ["two returned sides called paid out", "card", 'myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut', 't.market.udPaidOut'],
+  ["two returned sides called paid out", "card", 'cardResults.every((result) => result.status === "VOID" && result.payout === result.stake)', 'false'],
   ["newer confirmed price loses its missing-line explanation", "line", 'if (confirmedAbove)', 'if (false && confirmedAbove)'],
 ];
 for (const [name, file, from, to] of cases) {

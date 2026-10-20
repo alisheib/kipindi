@@ -35,7 +35,7 @@ const checks = [
   ["empty DOWN round called a win", card.replace('settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown', 'price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins')],
   ["one-sided guest refund explanation removed", card.replace('settled && state === "resolved" && price.kind === "oneSided" ? (', 'false && price.kind === "oneSided" ? (')],
   ["empty settled round explanation removed", card.replace('state === "resolved" && price.kind === "none" ? (', 'false && price.kind === "none" ? (')],
-  ["single result omits what its amount means", card.replace('cardResults[0].payout == null ? t.market.udPaidOut', 'cardResults[0].payout == null ? ""')],
+  ["single result omits what its amount means", card.replace('cardResults[0].status !== "VOID" && <span>{t.market.udPaidOut}</span>', 'false && <span>{t.market.udPaidOut}</span>')],
   ["latest asset price impersonates round read", card.replace('readQuotedAt, openPrice, readPrice });', 'sourceQuotedAt: readQuotedAt, openPrice, livePrice: readPrice });')],
   ["closing price stamped with opening quote", card.replace('closePrice != null ? closeQuotedAt : openPrice != null ? openQuotedAt : null', 'closePrice != null ? openQuotedAt : openPrice != null ? openQuotedAt : null')],
   ["failed observation called no newer price", card.replace('readUnavailable ? t.market.udReadUnavailable', 'readUnavailable ? t.home.udMatchNoNewPrice')],

@@ -12,4 +12,10 @@ export const MUTATIONS = [
   { name: "4 reduced spark remains still", file: "src/app/globals.css",
     from: '[data-motion="reduced"] .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }',
     to: '[data-motion="reduced"] .mcardp-spark-line { animation:m-draw var(--t-stage) var(--m-glide) forwards; stroke-dasharray:1; stroke-dashoffset:1; }' },
+  { name: "5 minimal urgency pulse", file: "src/app/motion.css",
+    from: '[data-motion="minimal"] .m-urgent { animation: none !important; opacity: 1; }',
+    to: '[data-motion="minimal"] .m-urgent { animation: m-breathe 1000ms var(--m-breathe) infinite; opacity: 1; }' },
+  { name: "6 in-app urgency pulse", file: "src/app/motion.css",
+    from: 'html.kp-reduce-motion .m-urgent,',
+    to: 'html.kp-reduce-motion .m-urgency, ' },
 ].map((item, index) => ({ id: String(index + 1), ...item }));

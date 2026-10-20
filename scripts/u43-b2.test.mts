@@ -201,9 +201,13 @@ ok("missing minute history names a price only when the card shows a confirmed re
   && card.includes('return closePrice != null && Number.isFinite(closePrice) && closePrice > 0;')
   && (card.match(/data-testid="round-live-line-unavailable">\{words\.confirmedFallback\}<\/p>/g) ?? []).length === 2
   && (card.match(/data-testid="round-live-line-empty">\{words\.unavailable\}<\/span>/g) ?? []).length === 2
-  && card.includes('unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price shown above"')
-  && card.includes('unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa iko juu"')
-  && card.includes('unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 上方显示已确认价格"'));
+  && card.includes('unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price on card"')
+  && card.includes('unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa kwenye kadi"')
+  && card.includes('unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 卡片显示已确认价格"'));
+const fallbackCopy = [...card.matchAll(/confirmedFallback: "([^"]+)"/g)].map((match) => match[1]);
+ok("the fallback stays compact and never describes price direction",
+  fallbackCopy.length === 3 && fallbackCopy.every((copy) => [...copy].length <= 70)
+  && fallbackCopy.every((copy) => !/\b(?:up|down|above|below|rising|falling)\b|iko juu|imepanda|imeshuka|上涨|下跌|上方/u.test(copy)));
 ok("the chart names the plotted point's own time and distinguishes vendor OPEN from a confirmed-read fallback",
   terminal.includes('guardedFeed?.series.mode === "line"')
   && terminal.includes('const chartPointWord = guardedFeed?.sourceTier === "vendor"')

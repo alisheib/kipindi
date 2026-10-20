@@ -647,7 +647,20 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   plant. A read-only production census found no round verdict mismatch. The
   first clean-source 320px state sweep stopped before any scored frame: its
   driver asked for Gold 5-minute rounds that the current movement gate refuses.
-  That driver premise is being corrected; the run provides no after evidence.
+  The corrected Gold 15-minute premise passed its guard and red proof. A later
+  exact-source 320px Swahili diagnostic captured 18 phases but reported six
+  problems: the signed-in open and held choices cleared the fixed rail by only
+  7.5px and 9.5px, the minimal-motion urgency digit still animated, and four
+  resolved/one-sided market cells did not find their settled cards. The
+  minimal-motion and market-fixture repairs passed focused guards and physical
+  red proofs, but the full browser matrix is not recaptured yet. After shortening the truthful
+  no-new-price sentence in three languages, a fresh local browser probe measured
+  two 48px actions with 30px clearance before a bet and 32px after a real bet,
+  above the 24px floor. The complete state matrix must still be recaptured
+  from one committed clean source; this diagnostic provides no after score.
+  A delayed healer had also replaced a recorded source-mismatch VOID reason
+  with an operator reason. Its focused repair passed 74/74 in memory and on
+  disposable PostgreSQL, with 18/18 physical red mutations caught and restored.
   The Gold weekend closure fixture has a guard and mutation proof, and must be
   labelled as a QA clock simulation in browser evidence. The Maswali-owned
   `/updown/history` still needs pending and cash-out money truth after handoff.

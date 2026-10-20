@@ -60,7 +60,7 @@ const lf = (s: string) => s.replace(/\r\n/g, "\n");
  * The path is part of the pin. A fresh clone always has its current HEAD blob,
  * but need not have the pre-rebase commit that originally introduced it. */
 export const U43_REVIEWED_BLOBS: Readonly<Record<string, string>> = {
-  "src/lib/i18n-dict.ts": "066ad9a62dc081e53d99e9fb5165051c9254b545",
+  "src/lib/i18n-dict.ts": "7e494ee0f6d204696bafcb11d76c9058f2decf8c",
   "src/app/legal/rules/_content-up-down.tsx": "a2ee86a3f3fd39cba34ddfdfd8ef316f7961cdf9",
   "src/app/legal/rules/up-down/page.tsx": "d6ab15942ad15e0812abf22fe236e27f91e586f5",
 };

@@ -16,4 +16,8 @@ export const MUTATIONS = [
     from: 'formatTzs(result.payout)',
     to: 'formatTzs(result.status === "LOSS" ? result.stake : result.payout)',
     failure: "each realized leg uses its actual payout, including zero for a loss" },
+  { name: "an unknown two-leg total claims payment",
+    from: 'cardPayoutTotal == null ? t.market.udPayoutUnavailable',
+    to: 'false ? t.market.udPayoutUnavailable',
+    failure: "en partial VOID result leaves total payment unclaimed" },
 ].map((item) => ({ file: "src/components/updown/updown-card.tsx", ...item }));
