@@ -103,7 +103,7 @@ async function Content({ searchParams }: PoolsPageProps) {
               {Object.entries(sp).filter(([key, value]) => key !== "ocode" && key !== "opage" && value).map(([key, value]) =>
                 <input key={key} type="hidden" name={key} value={value} />)}
               <label className="min-w-[180px] flex-1 text-body-sm">Find an open week by code
-                <Input className="mt-1" size="md" name="ocode" defaultValue={openCode} maxLength={32} placeholder="MLN-2026-W01" />
+                <Input containerClassName="mt-1" size="md" name="ocode" defaultValue={openCode} maxLength={32} placeholder="MLN-2026-W01" />
               </label>
               <Button type="submit" size="sm">Find week</Button>
             </form>
@@ -173,7 +173,7 @@ async function Content({ searchParams }: PoolsPageProps) {
               {Object.entries(sp).filter(([key, value]) => key !== "tcode" && key !== "tpage" && value).map(([key, value]) =>
                 <input key={key} type="hidden" name={key} value={value} />)}
               <label className="min-w-[180px] flex-1 text-body-sm">Find a week by code
-                <Input className="mt-1" size="md" name="tcode" defaultValue={trailCode} maxLength={32} placeholder="MLN-2026-W01" />
+                <Input containerClassName="mt-1" size="md" name="tcode" defaultValue={trailCode} maxLength={32} placeholder="MLN-2026-W01" />
               </label>
               <Button type="submit" size="sm">Find week</Button>
             </form>

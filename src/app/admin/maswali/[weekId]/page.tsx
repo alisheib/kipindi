@@ -83,7 +83,7 @@ async function Content({ params }: Props) {
                 {problems.map((p, i) => <li key={i} className="flex gap-2"><span aria-hidden className="text-warning">•</span><span>{p}</span></li>)}
               </ul>
             ) : <p className="text-body-sm text-success">Every check passes: the week can open.</p>}
-            <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
+            <p className="mt-3 text-body-sm"><Link href={`/admin/maswali/${week.id}/edit` as Route} className="link inline-flex min-h-[44px] items-center">Edit the questions</Link> <span className="text-text-tertiary">· an edit clears the attestation</span></p>
             <div className="mt-3">
               <AttestOpenControls weekId={week.id} weekCode={week.code} attestedBy={week.parityAttestedBy} canAttest={canAttest} canOpen={canOpen} openReady={!!problems && problems.length === 0}
                 attestNeed={CONTROL_DOMAIN.attestMaswaliParity} openNeed={CONTROL_DOMAIN.openMaswaliWeek} />

@@ -78,7 +78,7 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
                   <li key={i} className="flex items-start gap-2 text-body-sm">
                     <Chip variant={a.level === "critical" ? "danger" : "warning"} size="sm">{a.level === "critical" ? "Act now" : "Soon"}</Chip>
                     <span className="min-w-0">
-                      {a.weekId ? <Link href={`/admin/maswali/${a.weekId}` as Route} className="link">{a.text}</Link> : a.text}
+                      {a.weekId ? <Link href={`/admin/maswali/${a.weekId}` as Route} className="link inline-flex min-h-[44px] items-center">{a.text}</Link> : a.text}
                     </span>
                   </li>
                 ))}
@@ -142,7 +142,7 @@ function WeekRow({ w }: { w: ConsoleWeekRow }) {
   const chip = weekStateChip(w.state);
   return (
     <tr>
-      <td className="text-left"><Link href={`/admin/maswali/${w.id}` as Route} className="link tabular">{w.code}</Link>{w.isFinal && <Chip variant="claret" size="sm" className="ml-2">Final</Chip>}</td>
+      <td className="text-left"><Link href={`/admin/maswali/${w.id}` as Route} className="link tabular inline-flex min-h-[44px] items-center">{w.code}</Link>{w.isFinal && <Chip variant="claret" size="sm" className="ml-2">Final</Chip>}</td>
       <td className="text-left">{w.visibility === "DRIVE" ? "Drive" : "Public"}</td>
       <td className="text-left"><Chip variant={chip.variant} size="sm">{chip.label}</Chip></td>
       <td className="text-left tabular">{fmtEat(w.closesAt)}</td>

@@ -11,14 +11,18 @@ import { decomment } from "./lib/decomment.mts";
 const root = new URL("..", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 const files = [
+  "src/app/admin/maswali/page.tsx",
   "src/app/admin/maswali/new/week-builder.tsx",
   "src/app/admin/maswali/pools/page.tsx",
   "src/app/admin/maswali/pools/pools-controls.tsx",
   "src/app/admin/maswali/integrity/integrity-controls.tsx",
+  "src/app/admin/maswali/[weekId]/week-controls.tsx",
 ] as const;
 const sources = Object.fromEntries(files.map((path) => [path, read(path)]));
+const detailPage = read("src/app/admin/maswali/[weekId]/page.tsx");
 const dateKit = read("src/components/ui/date-select.tsx");
 const timeKit = read("src/components/ui/time-select.tsx");
+const sortKit = read("src/components/admin/admin-sort.tsx");
 const css = read("src/app/globals.css");
 const px = (token: string) => {
   const match = new RegExp(`--${token}:\\s*(\\d+)px`).exec(css);
@@ -48,7 +52,7 @@ const tags = (source: string, names: string) => {
   return result;
 };
 
-function audit(routeSources: Sources, calendar: string, time: string) {
+function audit(routeSources: Sources, detail: string, calendar: string, time: string, sort: string) {
   const problems: string[] = [];
   let controls = 0;
   for (const path of files) {
@@ -64,6 +68,34 @@ function audit(routeSources: Sources, calendar: string, time: string) {
     }
   }
   if (controls < 30) problems.push(`Only ${controls} kit controls found; route inspection may be incomplete`);
+
+  const overview = tags(decomment(routeSources[files[0]]), "Link");
+  const weekLink = overview.find((tag) => tag.text.includes("${w.id}"));
+  const alertLink = overview.find((tag) => tag.text.includes("${a.weekId}"));
+  for (const [name, link] of [["week row", weekLink], ["attention alert", alertLink]] as const) {
+    if (!link?.text.includes("inline-flex") || !link.text.includes("min-h-[44px]"))
+      problems.push(`Maswali overview ${name} link has no 44px direct hit height`);
+  }
+  const sortControls = tags(decomment(sort), "button|Link").filter((tag) =>
+    tag.text.includes("onSort(field)") || tag.text.includes("params.toString()"));
+  if (sortControls.length !== 2) problems.push(`Expected SortBtn and SortTh direct targets; found ${sortControls.length}`);
+  for (const control of sortControls)
+    if (!control.text.includes("min-h-[44px]") || !control.text.includes("min-w-[44px]"))
+      problems.push(`${control.name === "Link" ? "SortTh" : "SortBtn"} direct target has no 44px box`);
+
+  const poolInputs = tags(decomment(routeSources[files[2]]), "Input").filter((tag) =>
+    /\bname="(?:ocode|tcode)"/.test(tag.text));
+  if (poolInputs.length !== 2) problems.push(`Expected both pools lookup inputs; found ${poolInputs.length}`);
+  for (const field of poolInputs)
+    if (!field.text.includes('containerClassName="mt-1"') || field.text.includes('className="mt-1"'))
+      problems.push("Pools lookup margin reduces the direct input below 40px");
+
+  const editLink = tags(decomment(detail), "Link").find((tag) => tag.text.includes("${week.id}/edit"));
+  if (!editLink?.text.includes("inline-flex min-h-[44px] items-center"))
+    problems.push("Draft detail edit link has no 44px direct hit height");
+  const sourceLink = tags(decomment(routeSources[files[5]]), "a").find((tag) => tag.text.includes("r.sourceUrl"));
+  if (!sourceLink?.text.includes("inline-flex min-h-[44px] min-w-[44px] items-center"))
+    problems.push("Result source link has no 44px direct hit box");
 
   // The calendar is a portal, so a closed-field screenshot cannot inspect these buttons.
   const cleanCalendar = decomment(calendar);
@@ -93,7 +125,7 @@ function audit(routeSources: Sources, calendar: string, time: string) {
   return problems;
 }
 
-const problems = audit(sources, dateKit, timeKit);
+const problems = audit(sources, detailPage, dateKit, timeKit, sortKit);
 if (problems.length) {
   for (const problem of problems) console.error(`FAIL ${problem}`);
   process.exit(1);
@@ -101,17 +133,33 @@ if (problems.length) {
 console.log(`PASS S5 admin touch floor: ${files.length} routes, calendar portal and TimeSelect subfields (>=${floor}px)`);
 
 if (process.argv.includes("--prove-red")) {
-  const builder = files[0];
+  const builder = files[1];
   const mutatedBuilder = sources[builder].replace('size="md" />', 'size="sm" />');
   const mutatedDate = dateKit.replace('"h-[var(--tap-min)] rounded-md font-mono', '"h-[32px] rounded-md font-mono');
   const mutatedTime = timeKit.replace('minWidth: "var(--tap-min)"', 'minWidth: "20px"');
+  const overview = files[0];
+  const shrunkRow = sources[overview].replace('className="link tabular inline-flex min-h-[44px]', 'className="link tabular inline-flex min-h-[32px]');
+  const shrunkSort = sortKit.replace('min-w-[44px]', 'min-w-[32px]');
+  const pools = files[2];
+  const badMargin = sources[pools].replace('containerClassName="mt-1" size="md" name="ocode"', 'className="mt-1" size="md" name="ocode"');
+  const shrunkEdit = detailPage.replace('className="link inline-flex min-h-[44px]', 'className="link inline-flex min-h-[32px]');
+  const controls = files[5];
+  const shrunkSource = sources[controls].replace('className="link inline-flex min-h-[44px] min-w-[44px]', 'className="link inline-flex min-h-[32px] min-w-[32px]');
+  const shrunkClose = sources[controls].replace('<DateSelect value={date} onChange={setDate} size="md"', '<DateSelect value={date} onChange={setDate} size="sm"');
   const cases = [
-    ["route DateSelect", audit({ ...sources, [builder]: mutatedBuilder }, dateKit, timeKit)],
-    ["calendar day", audit(sources, mutatedDate, timeKit)],
-    ["time segment", audit(sources, dateKit, mutatedTime)],
+    ["route DateSelect", "<DateSelect size=\"sm\">", audit({ ...sources, [builder]: mutatedBuilder }, detailPage, dateKit, timeKit, sortKit)],
+    ["calendar day", "DateSelect calendar button", audit(sources, detailPage, mutatedDate, timeKit, sortKit)],
+    ["time segment", "TimeSelect hour/minute", audit(sources, detailPage, dateKit, mutatedTime, sortKit)],
+    ["week row", "Maswali overview week row", audit({ ...sources, [overview]: shrunkRow }, detailPage, dateKit, timeKit, sortKit)],
+    ["sort header", "SortBtn direct target", audit(sources, detailPage, dateKit, timeKit, shrunkSort)],
+    ["pools lookup margin", "Pools lookup margin", audit({ ...sources, [pools]: badMargin }, detailPage, dateKit, timeKit, sortKit)],
+    ["draft edit link", "Draft detail edit link", audit(sources, shrunkEdit, dateKit, timeKit, sortKit)],
+    ["source link", "Result source link", audit({ ...sources, [controls]: shrunkSource }, detailPage, dateKit, timeKit, sortKit)],
+    ["detail close DateSelect", "<DateSelect size=\"sm\">", audit({ ...sources, [controls]: shrunkClose }, detailPage, dateKit, timeKit, sortKit)],
   ] as const;
-  for (const [name, failures] of cases) {
-    if (failures.length === 0) throw new Error(`RED failed: shrinking ${name} was accepted`);
-    console.log(`PASS RED ${name}: ${failures[0]}`);
+  for (const [name, ownFailure, failures] of cases) {
+    const caught = failures.find((failure) => failure.includes(ownFailure));
+    if (!caught) throw new Error(`RED failed: shrinking ${name} did not trip its own assertion: ${failures.join("; ")}`);
+    console.log(`PASS RED ${name}: ${caught}`);
   }
 }

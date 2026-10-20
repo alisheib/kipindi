@@ -91,8 +91,8 @@ export function MoveCloseForm({ weekId, weekCode, currentEat }: { weekId: string
     <div className="space-y-3 max-w-form">
       <p className="text-body-sm text-text-secondary">Now closes {currentEat} (EAT). Earlier, never inside the next notice period; later, never past the first event less its buffer (MB-28).</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="sm" /></Field>
-        <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="sm" aria-label="New close time" /></Field>
+        <Field label="New close date (EAT)"><DateSelect value={date} onChange={setDate} size="md" /></Field>
+        <Field label="New close time (EAT)"><TimeSelect value={time} onChange={setTime} size="md" aria-label="New close time" /></Field>
       </div>
       {mayAct ? <Button size="sm" disabled={pending || !date || !time} onClick={() => { setError(null); setReview({ fromEat: currentEat, toEat: `${date} ${time}`, closeAt: `${date}T${time}` }); }}>Move the close</Button> : <ActReadOnly />}
       {!review && error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
@@ -178,7 +178,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                   <td className="text-left align-top max-w-[360px]">
                     <span className="block">{r.textEn}</span>
                     <span className="block text-body-sm text-text-tertiary">{r.criterionEn}</span>
-                    <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="link text-body-sm">Source</a>
+                    <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="link inline-flex min-h-[44px] min-w-[44px] items-center text-body-sm">Source</a>
                     {r.aiSuggestion && <span className="block text-body-sm text-text-tertiary">AI suggests (never seals): {r.aiSuggestion}</span>}
                   </td>
                   <td className="text-left tabular align-top">{r.eventEat}<span className="block text-body-sm text-text-tertiary">void deadline {r.voidDeadlineEat}</span></td>
@@ -186,13 +186,13 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
                     {r.outcome
                       ? <span>{r.outcome}{r.voidReason ? ` · ${isMaswaliVoidReason(r.voidReason) ? MASWALI_VOID_REASON_LABEL[r.voidReason] : r.voidReason}` : ""}<span className="block text-body-sm text-text-tertiary">{r.sealedAt}{r.awaitingSecond ? " · awaits a second officer" : ""}</span></span>
                       : can.seal && mayAct
-                        ? <Select size="xs" className="min-w-[100px] min-h-[40px]" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
+                        ? <Select size="md" className="min-w-[100px]" value={p.outcome} onChange={(v) => setPicks((s) => ({ ...s, [r.slot]: { ...p, outcome: v } }))} ariaLabel={`${r.label} result`}
                             options={[{ value: "", label: "Not yet" }, { value: "YES", label: "YES" }, { value: "NO", label: "NO" }]} />
                         : "—"}
                   </td>
                   <td className="text-left align-top min-w-[220px]">
                     {!r.outcome && can.seal && mayAct
-                      ? <Input size="sm" value={p.evidence} aria-label={`${r.label} seal evidence`} placeholder="What the source says" onChange={(e) => setPicks((s) => ({ ...s, [r.slot]: { ...p, evidence: e.target.value } }))} />
+                      ? <Input size="md" value={p.evidence} aria-label={`${r.label} seal evidence`} placeholder="What the source says" onChange={(e) => setPicks((s) => ({ ...s, [r.slot]: { ...p, evidence: e.target.value } }))} />
                       : null}
                   </td>
                   <td className="text-left align-top">
@@ -241,8 +241,8 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         body={
           <div className="space-y-3 text-left">
             <p>A voided main is replaced by the next usable reserve; a voided reserve is skipped (MR-17).</p>
-            <Field label="Ground"><Select size="sm" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
-            <Field label="Evidence"><Input size="sm" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
+            <Field label="Ground"><Select size="md" value={voidReason} onChange={setVoidReason} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>
+            <Field label="Evidence"><Input size="md" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
           </div>
         }
         onConfirm={() => voidRow && run(() => voidMaswaliQuestionAction(fd({ weekId, slot: String(voidRow.slot), voidReason, evidence: voidEvidence })), () => setVoidRow(null), setSealAuditWarning)} />
@@ -252,9 +252,9 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         body={
           <div className="space-y-3 text-left">
             <p>Only the officer who sealed it may correct it, and only inside the objection window; the window starts again (OD-09).</p>
-            <Field label="Correct result"><Select size="sm" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
-            {correction.outcome === "VOID" && <Field label="Ground"><Select size="sm" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
-            <Field label="Evidence"><Input size="sm" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
+            <Field label="Correct result"><Select size="md" value={correction.outcome} onChange={(v) => setCorrection((c) => ({ ...c, outcome: v }))} ariaLabel="Correct result" options={[{ value: "YES", label: "YES" }, { value: "NO", label: "NO" }, { value: "VOID", label: "VOID" }]} /></Field>
+            {correction.outcome === "VOID" && <Field label="Ground"><Select size="md" value={correction.voidReason} onChange={(v) => setCorrection((c) => ({ ...c, voidReason: v }))} ariaLabel="Void ground" options={[{ value: "", label: "Choose the ground" }, ...voidReasons.map((v) => ({ value: v, label: isMaswaliVoidReason(v) ? MASWALI_VOID_REASON_LABEL[v] : v }))]} /></Field>}
+            <Field label="Evidence"><Input size="md" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
           </div>
         }
         onConfirm={() => correctRow && run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome, evidence: correction.evidence, voidReason: correction.voidReason })), () => setCorrectRow(null), setSealAuditWarning)} />
