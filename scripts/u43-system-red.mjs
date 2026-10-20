@@ -11,9 +11,12 @@ if (gate().code !== 0) throw new Error("System guard is red before mutation");
 let caught = 0;
 for (const item of cases) {
   const original = readFileSync(item.file, "utf8");
-  if (original.split(item.from).length !== 2) throw new Error(`Anchor invalid: ${item.file} ${item.expect}`);
+  const positions = [...original.matchAll(new RegExp(item.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))]
+    .map((match) => match.index)
+    .filter((index) => !item.lineStart || index === 0 || original[index - 1] === "\n");
+  if (positions.length !== 1) throw new Error(`Anchor invalid: ${item.file} ${item.expect}`);
   let result;
-  try { writeFileSync(item.file, original.replace(item.from, item.to)); result = gate(); }
+  try { writeFileSync(item.file, original.slice(0, positions[0]) + item.to + original.slice(positions[0] + item.from.length)); result = gate(); }
   finally { writeFileSync(item.file, original); }
   const pass = result.code !== 0 && result.out.includes(`FAIL ${item.expect}`);
   console.log(`${pass ? "CAUGHT" : "MISSED"} ${item.expect}`);

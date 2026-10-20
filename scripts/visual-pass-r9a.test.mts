@@ -244,6 +244,10 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
     // the plus over the minus, 12 units high) and the chat's send (the paper plane, 12 units right).
     "lock.fill": [0, -12, PHOSPHOR_PLACED], "shieldcheck.fill": [0, 12, PHOSPHOR_PLACED],
     "net.bold": [0, -11.99, PHOSPHOR_PLACED], "send.bold": [12.03, 0.01, PHOSPHOR_PLACED],
+    // PHOSPHOR-MIGRATION release 2: Duotone plates keep the same optical placements as Phosphor's Bold/Fill drawings.
+    // These four are measured from the shipped Duotone paths, including each secondary-tone shape.
+    "comment.duo": [0, 16, PHOSPHOR_PLACED], "gift.duo": [0, -12.01, PHOSPHOR_PLACED],
+    "megaphone.duo": [12, -3.98, PHOSPHOR_PLACED], "shieldcheck.duo": [0, 12, PHOSPHOR_PLACED],
   };
   type Drawn = { key: string; variant: GlyphVariant; body: string | null };
   const census = (list: Drawn[]) => {
@@ -281,6 +285,10 @@ const centreOff = (body: string, grid: number, base = 1.9) => { const b = inkBox
   const planted = census(shifted);
   ok("1.3‴ PLANT · a shipped drawing 20 units off its centre and not named, and a named one moved from its offset, are each reported",
     planted.off.some(([id]) => id === "checkCircle.bold") && planted.drift.includes("lock.bold"), j(planted));
+  const shiftedDuo = drawings.map((d) => d.key === "gift" && d.variant === "duo"
+    ? { ...d, body: '<path d="M28 0H228V220H28Z" fill="currentColor"/>' } : d);
+  ok("1.3⁗ PLANT · a named Duotone drawing moved from its optical offset is reported",
+    census(shiftedDuo).drift.includes("gift.duo"));
 
   // Inside the box: the svg clips at its box, so a drawing past it is cut.
   const outside = drawings.filter(({ body }) => { const b = inkBox(partsOfMarkup(body ?? "", 0)); return b.x0 < -1e-9 || b.y0 < -1e-9 || b.x1 > GRID + 1e-9 || b.y1 > GRID + 1e-9; }).map((d) => `${d.key}.${d.variant}`);
@@ -328,8 +336,13 @@ function doorArrow(pts: Pt[]) {
   ok("2.2 · the family has no sign-in to draw by mistake: logIn is retired (nothing drew it), and logOut draws the sprite's sign-out in Bold at 20px",
     !GLYPH_ENTRIES.has("logIn") && GLYPH_ENTRIES.get("logOut")?.stem === "p-sign-out" && glyph.includes('data-g="logOut.bold"') && glyph.includes('#p-sign-out-bold"'), glyph);
   const SIGN_OUTS = ["src/components/journey/account/sign-out-row.tsx", "src/components/layout/avatar-menu.tsx", "src/app/profile/page.tsx", "src/app/profile/sessions/page.tsx"];
+  const signOutAt = (f: string, src: string) => f === "src/components/journey/account/sign-out-row.tsx"
+    ? /<HubPlate glyph="logOut" variant="danger" \/>/.test(src) && /const Glyph = I\[glyph\];/.test(code("src/components/ui/hub-plate.tsx"))
+    : src.includes("<I.logOut");
   ok("2.3 · every sign-out draws it — the hub's Toka, the account menu (classic and journey), /profile and /profile/sessions — and nothing draws logIn",
-    SIGN_OUTS.every((f) => code(f).includes("<I.logOut")) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
+    SIGN_OUTS.every((f) => signOutAt(f, code(f))) && PLAYER_TSX.every((f) => !code(f).includes("I.logIn")));
+  const oldHubSignIn = code(SIGN_OUTS[0]).replace('glyph="logOut"', 'glyph="logIn"');
+  ok("2.3′ PLANT · a hub sign-in glyph in the sign-out row fails", oldHubSignIn !== code(SIGN_OUTS[0]) && !signOutAt(SIGN_OUTS[0], oldHubSignIn));
 }
 
 /* ══ §3 · A3 · THE TOKA BOX IS A CARD'S HEIGHT ══════════════════════════════════════════════════════════════════════════ */
@@ -569,7 +582,6 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/ui/empty-state-link.tsx', '<I.arrowRight s={size === "sm" ? 13 : 14} edge="end" text="body-600" />', 1, "text", "an empty state's way onward (PHOSPHOR W4: three ways before, one typed →): a centred control frames its ink (R10-A6)"],
     ['src/components/ui/date-select.tsx', '<I.chevronRight s={16} />', 1, "alone", "alone in a control: centred by its box"],
     ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={12} edge="end" text="mono-400" />', 1, "text", "a centred link's end (centred by its ink)"],
-    ['src/components/ui/not-found-view.tsx', '<I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />', 1, "alone", "alone on a plate: centred by its box"],
     ['src/components/ui/pagination.tsx', '<I.chevronLeft s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/pagination.tsx', '<I.chevronRight s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/pagination.tsx', '<I.chevronsLeft s={14} />', 1, "alone", "alone in a control"],
@@ -618,6 +630,12 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     : code(f));
   ok("4.10⁗ PLANT · restoring the removed board history-pill chevron is an unclassified mark",
     !seen.has(oldBoardMark) && boardMarkBack.get(oldBoardMark) === 1 && !listed.has(oldBoardMark));
+  const oldNotFoundMark = 'src/components/ui/not-found-view.tsx <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />';
+  const notFoundMarkBack = marksSeen(f => f === "src/components/ui/not-found-view.tsx"
+    ? `${code(f)}${NL}const oldPlate = <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />;`
+    : code(f));
+  ok("4.10⁵ PLANT · restoring the removed not-found plate arrow is unclassified",
+    !seen.has(oldNotFoundMark) && notFoundMarkBack.get(oldNotFoundMark) === 1 && !listed.has(oldNotFoundMark));
 
   // 4.12 · eyebrow glyphs: a glyph that leads an eyebrow line stands on the column's edge.
   const EYEBROW_FIRST = new RegExp(`className="[^"]*eyebrow[^"]*"[^>]*>${WS}*<I[.]([A-Za-z]+)((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)/>`, "g");

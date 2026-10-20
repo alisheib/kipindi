@@ -763,6 +763,11 @@ export function UpDownCard(props: UpDownCardProps) {
   // Every visitor reads the same brief refund condition before the two choices. The empty side
   // comes from the raw pools, and the detail page keeps its fuller side-aware explanation.
   const refundBrief = cardRefundBrief(t, emptySideOf(pricing));
+  // A two-sided pool may still void when the closing read lands between the two frozen
+  // targets. The open is only a reference; show this before the choices on a banded round.
+  const bandBrief = price.kind === "priced" && upTarget != null && downTarget != null
+    && Number.isFinite(upTarget) && Number.isFinite(downTarget) && upTarget > downTarget
+    ? t.market.udBandBeforeBet : null;
 
   // Signed-out / display-only cards keep the old behaviour: open the round detail
   // (where the sign-in gate lives) rather than trying to place from the card.
@@ -821,8 +826,8 @@ export function UpDownCard(props: UpDownCardProps) {
         {settledNow ? (
           <span className="ud-card-result m-tick inline-flex items-center gap-1.5 font-semibold"
                 style={{ color: state === "void" ? "var(--text-muted)" : outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
-            {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins}</>
-              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins}</> : t.market.statusResolved}
+            {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>
+              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}
           </span>
         ) : (
           <CardCountdownDigits
@@ -837,10 +842,10 @@ export function UpDownCard(props: UpDownCardProps) {
         )}
       </div>
 
-      {/* The open is the price to beat, stated once. The exact boundaries remain on the round page. */}
+      {/* The open is a reference, not either winning boundary. The exact targets remain on the round page. */}
       <div className="ud-beat flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <span className="text-body-sm text-text-subtle">
-          {settledNow ? t.market.udOpenPrice : t.market.udWinTarget}
+          {t.market.udOpenPrice}
         </span>
         <span className="ud-figure whitespace-nowrap font-mono font-semibold tabular-nums text-text">
           {priceText.open ?? "—"}
@@ -934,6 +939,11 @@ export function UpDownCard(props: UpDownCardProps) {
       {bettable && refundBrief && (
         <p className="ud-refund-brief m-0 text-body-sm text-text-subtle">
           {refundBrief}
+        </p>
+      )}
+      {bettable && bandBrief && (
+        <p className="ud-refund-brief m-0 text-body-sm text-text-subtle">
+          {bandBrief}
         </p>
       )}
 
@@ -1032,6 +1042,10 @@ export function UpDownCard(props: UpDownCardProps) {
               <p className="mt-0 text-body-sm leading-[1.5] text-text-muted text-balance">{cardRefundCopyText}</p>
             )}
           </div>
+        ) : state === "resolved" && price.kind === "oneSided" ? (
+          <p className="m-0 text-body-sm text-text-muted">{t.market.udRefundUnmatchedReason}</p>
+        ) : state === "resolved" && price.kind === "none" ? (
+          <p className="m-0 text-body-sm text-text-muted">{t.market.udNoBetsPlaced}</p>
         ) : state === "resolved" ? null : (
           <p className="m-0 text-body-sm text-text-muted">{t.market.udAwaitingResult}</p>
         )}

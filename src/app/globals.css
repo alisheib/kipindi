@@ -3780,6 +3780,14 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
   grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
 
+  /* U43 · At 320×640 a real 32px live ticker strip can push the first market's NO
+   choice into the raised centre rail. Recover one 8px rung only when that strip
+   exists on a short phone. The grid and its loading ghost share `mt-5`, so both
+   move together; wider phones and an empty ticker keep the original rhythm. */
+@media (max-width: 359.98px) and (max-height: 700px) {
+  .ticker-strip ~ main .market-grid.mt-5 { margin-top: var(--sp-4); }
+}
+
 /* ─────────────────────────── the ONE filter-pill language ───────────────────────────
    The round-2 kit's filter surface (2026-08-13), replacing the 13-pill vertical rail — and
    since batch 5 (2026-08-14) the language EVERY player filter rail speaks, through the single

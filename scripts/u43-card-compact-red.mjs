@@ -20,7 +20,7 @@ const cases = [
   ["refund chip returns", "card", '!refundCopy?.claimsRefund && (', 'refundCopy?.claimsRefund && ('],
   ["refund repeats full promise above amount", "card", '{cardRefundCopyText}</p>', '{refundCopyText}</p>'],
   ["two returned sides called paid out", "card", 'myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut', 't.market.udPaidOut'],
-  ["newer confirmed price loses its missing-line explanation", "line", 'if (active && readPrice != null && Number.isFinite(readPrice))', 'if (false && readPrice != null && Number.isFinite(readPrice))'],
+  ["newer confirmed price loses its missing-line explanation", "line", 'if (confirmedAbove)', 'if (false && confirmedAbove)'],
 ];
 for (const [name, file, from, to] of cases) {
   if (!original[file].includes(from)) throw new Error(`Mutation anchor missing: ${name}`);

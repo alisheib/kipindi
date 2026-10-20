@@ -6,6 +6,7 @@ import { BackLinkGhost } from "@/components/ui/back-link";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS, QUERY_STRIP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
 import { CountGhost, FiltersGhost, GroupGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
 import { PageHeader } from "@/components/ui/page-header";
+import { roundDuration } from "@/lib/updown-round-name";
 
 /**
  * /updown/history loading skeleton, for both shells — today's two head lines, or the head it is handed in their place
@@ -64,7 +65,7 @@ export function UpDownHistoryGhost({ journeyHead }: { journeyHead?: ReactNode })
           <QueryGroupDivider />
           <GroupGhost label={t.market.udAssets}><PillGhost label={t.common.all} /><PillGhost label={asset} /></GroupGhost>
           <QueryGroupDivider />
-          <GroupGhost label={t.market.udDurations}><PillGhost label={t.common.all} /><PillGhost label={`5 ${t.market.udMin}`} /></GroupGhost>
+          <GroupGhost label={t.market.udDurations}><PillGhost label={t.common.all} /><PillGhost label={roundDuration(t, 5)} /></GroupGhost>
           <QueryGroupDivider />
           <GroupGhost label={t.common.when}>{windows.map((label) => <PillGhost key={label} label={label} />)}</GroupGhost>
         </div>

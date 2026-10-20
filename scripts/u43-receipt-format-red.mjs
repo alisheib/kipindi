@@ -1,6 +1,6 @@
 /** U43 B5 receipt in-memory mutation proof; no source file is written. */
 import { readFileSync } from "node:fs";
-import { receiptCommitTruthIssues, receiptFormatIssues } from "./u43-receipt-format-contract.mjs";
+import { bandBeforeBetIssues, receiptCommitTruthIssues, receiptEstimateTruthIssues, receiptFormatIssues, receiptResultTimeIssues } from "./u43-receipt-format-contract.mjs";
 
 const original = readFileSync("src/components/updown/updown-bet-receipt-modal.tsx", "utf8");
 if (receiptFormatIssues(original).length) throw new Error("Baseline receipt format guard failed");
@@ -16,6 +16,83 @@ for (const [name, from, to] of cases) {
   if (!receiptFormatIssues(original.replace(from, to)).length) throw new Error(`RED MISSED: ${name}`);
 }
 console.log(`U43 receipt format red proof: ${cases.length} reversions caught`);
+
+const dictionary = readFileSync("src/lib/i18n-dict.ts", "utf8");
+if (receiptResultTimeIssues(dictionary, original).length) throw new Error("Baseline expected-result guard failed");
+const dueCases = [
+  ["English promises a due result", "dict", 'udRcResultDue: "Result expected"', 'udRcResultDue: "Result due"'],
+  ["Swahili promises a due result", "dict", 'udRcResultDue: "Matokeo yanatarajiwa"', 'udRcResultDue: "Matokeo yanatolewa"'],
+  ["Chinese promises a published result", "dict", 'udRcResultDue: "预计结果时间"', 'udRcResultDue: "结果公布"'],
+  ["receipt borrows the betting-close label", "modal", 'if (resultDue) details.push({ label: t.market.udRcResultDue, value: resultDue });', 'if (resultDue) details.push({ label: t.market.udRcBetsClose, value: resultDue });'],
+];
+for (const [name, target, from, to] of dueCases) {
+  const source = target === "dict" ? dictionary : original;
+  if (source.split(from).length !== 2) throw new Error(`Mutation anchor not unique: ${name}`);
+  const mutated = source.replace(from, to);
+  const issues = receiptResultTimeIssues(target === "dict" ? mutated : dictionary, target === "modal" ? mutated : original);
+  if (!issues.length) throw new Error(`RED MISSED: ${name}`);
+}
+console.log(`U43 receipt expected-result red proof: ${dueCases.length} reversions caught`);
+
+const legal = readFileSync("src/app/legal/rules/_content-up-down.tsx", "utf8");
+const meta = readFileSync("src/app/legal/rules/up-down/page.tsx", "utf8");
+const panel = readFileSync("src/components/updown/round-stake-panel.tsx", "utf8");
+const estimateSources = { dict: dictionary, legal, meta, modal: original, panel };
+if (receiptEstimateTruthIssues(dictionary, legal, meta, original, panel).length) {
+  throw new Error("Baseline conditional-return guard failed");
+}
+const estimateCases = [
+  ["English promises payout merely at lock", "dict", "Winning return then fixes; paid only if you win. A void refunds your stake.", "Then it becomes your exact payout."],
+  ["Swahili promises payout merely at lock", "dict", "Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu. Dau hurudi raundi ikiwa batili.", "Yanakuwa malipo yako kamili."],
+  ["Chinese promises payout merely at lock", "dict", "届时获胜金额固定，仅在押中时支付。回合无效则退还本金。", "投注截止时，它将变为您的确切派彩。"],
+  ["English Rules imply a promise at lock", "legal", "Betting close fixes the return for a winning pick; you receive it only if your pick wins. A voided round returns your stake.", "It is not a promise until betting closes."],
+  ["Swahili Rules imply a promise at lock", "legal", "Madau yakifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda. Raundi ikibatilishwa, dau linarudishwa.", "Si ahadi hadi madau yatakapofungwa."],
+  ["Chinese Rules imply a promise at lock", "legal", "下注截止时，获胜可得的金额固定；只有您的选择获胜才会收到。回合无效则退还本金。", "在下注截止前它不构成承诺。"],
+  ["Rules version hides the correction", "meta", "Version 2026-10-20", "Version 2026-10-14"],
+];
+for (const [name, target, from, to] of estimateCases) {
+  const source = estimateSources[target];
+  if (source.split(from).length !== 2) throw new Error(`Mutation anchor not unique: ${name}`);
+  const changed = { ...estimateSources, [target]: source.replace(from, to) };
+  if (!receiptEstimateTruthIssues(changed.dict, changed.legal, changed.meta, changed.modal, changed.panel).length) {
+    throw new Error(`RED MISSED: ${name}`);
+  }
+}
+console.log(`U43 receipt conditional-return red proof: ${estimateCases.length} reversions caught`);
+
+const timerMutant = original.replace("      compactOnPhone", "      compactOnPhone\n      autoCloseMs={15_000}");
+if (timerMutant === original || !receiptEstimateTruthIssues(dictionary, legal, meta, timerMutant, panel).length) {
+  throw new Error("RED MISSED: receipt overrides the shared success timer");
+}
+console.log("U43 shared receipt timer red proof: 1 override caught");
+
+const roundPage = readFileSync("src/app/updown/[roundId]/page.tsx", "utf8");
+const actionPanel = readFileSync("src/components/updown/round-action-panel.tsx", "utf8");
+const stakePanel = readFileSync("src/components/updown/round-stake-panel.tsx", "utf8");
+const bandSources = { dict: dictionary, page: roundPage, action: actionPanel, panel: stakePanel };
+if (bandBeforeBetIssues(dictionary, roundPage, actionPanel, stakePanel).length) {
+  throw new Error("Baseline before-bet band guard failed");
+}
+const bandCases = [
+  ["English claims every small move wins", "dict", "Small moves may refund", "Any small move wins"],
+  ["Swahili claims every small move wins", "dict", "Mabadiliko madogo yanaweza kurudisha dau", "Mabadiliko madogo hushinda"],
+  ["Chinese claims every small move wins", "dict", "小幅变动可退还本金", "小幅变动即可获胜"],
+  ["false one-tick rule returns", "dict", 'udBandBeforeBet: "Small moves may refund', 'udTickNote: "Any one tick wins",\n      udBandBeforeBet: "Small moves may refund'],
+  ["one-sided pool gets the band note", "panel", "pricing.upPool > 0 && pricing.downPool > 0", "pricing.upPool >= 0 && pricing.downPool >= 0"],
+  ["unpriced round gets the band note", "panel", 'typeof props.upTarget === "number" && Number.isFinite(props.upTarget)', 'props.upTarget != null'],
+  ["reversed targets get the band note", "panel", "props.upTarget > props.downTarget", "props.upTarget < props.downTarget"],
+  ["detail page drops the down target", "page", "downTarget: round.downTarget,", "downTarget: null,"],
+  ["locked confirm hides the note", "panel", '{bandBeforeBet && <p className="mt-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}', ""],
+];
+for (const [name, target, from, to] of bandCases) {
+  const source = bandSources[target];
+  if (source.split(from).length !== 2) throw new Error(`Mutation anchor not unique: ${name}`);
+  const changed = { ...bandSources, [target]: source.replace(from, to) };
+  if (!bandBeforeBetIssues(changed.dict, changed.page, changed.action, changed.panel).length) {
+    throw new Error(`RED MISSED: ${name}`);
+  }
+}
+console.log(`U43 before-bet void-band red proof: ${bandCases.length} reversions caught`);
 
 const hook = readFileSync("src/components/updown/use-quick-bet.ts", "utf8");
 const receipt = readFileSync("src/lib/updown-receipt.ts", "utf8");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { fmtEATClock } from "@/lib/updown-source-label";
+import { cardPriceRead } from "@/lib/updown-card-view";
 import { hasLaterConfirmedRead, roundLineHistoryUrl, roundOpenPoints, shouldDisplayRoundLine, type OpenPoint } from "@/lib/updown-vendor-opens";
 import { usd } from "@/lib/usd-price";
 
@@ -9,10 +10,25 @@ type State = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 type Feed = { sourceTier: "vendor" | "confirmed"; series: { mode: "line"; points: OpenPoint[] } | { mode: "candles" } };
 
 const WORDS = {
-  en: { beat: "Price to beat", minuteOpen: "Minute open", unavailable: "Round line unavailable", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
-  sw: { beat: "Bei ya kushinda", minuteOpen: "Ufunguzi wa dakika", unavailable: "Mstari wa raundi haupatikani", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
-  zh: { beat: "目标价格", minuteOpen: "分钟开盘价", unavailable: "本回合走势暂不可用", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
+  en: { openReference: "Opening reference", minuteOpen: "Minute open", unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price shown above", noNewer: "No newer price since the open at", delayed: "Price feed delayed" },
+  sw: { openReference: "Bei ya ufunguzi", minuteOpen: "Ufunguzi wa dakika", unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa iko juu", noNewer: "Hakuna bei mpya tangu ufunguzi saa", delayed: "Bei imechelewa" },
+  zh: { openReference: "开盘参考价", minuteOpen: "分钟开盘价", unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 上方显示已确认价格", noNewer: "开盘后暂无新价格，开盘时间", delayed: "价格更新延迟" },
 } as const;
+
+/** Match the price row above the line: a decided card shows its close, while an
+ * active card shows only a newer, timed read from this round. */
+export function roundLineConfirmedAbove(input: {
+  state: State; opensAtMs: number; closesAtMs: number; openPrice: number | null;
+  closePrice?: number | null; readPrice?: number | null; readQuotedAt?: string | null;
+}): boolean {
+  const { state, opensAtMs, closesAtMs, openPrice, closePrice, readPrice, readQuotedAt } = input;
+  if (state === "resolved" || state === "void") {
+    return closePrice != null && Number.isFinite(closePrice) && closePrice > 0;
+  }
+  if (state !== "open" && state !== "locked") return false;
+  return readPrice != null && Number.isFinite(readPrice) && readPrice > 0
+    && cardPriceRead({ opensAtMs, closesAtMs, readQuotedAt: readQuotedAt ?? null, openPrice, readPrice }) === "newer";
+}
 
 /** One cached minute-bar request covers the longest round and also serves the large chart. No per-duration call. */
 export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, closePrice, readPrice, readQuotedAt, decimals, locale, state, serverNowMs }: {
@@ -109,22 +125,30 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
   const openClock = `${fmtEATClock(opensAtMs) ?? "--:--"} EAT`;
   const lastClock = last ? `${fmtEATClock(last.t) ?? "--:--"} EAT` : null;
   const stale = !settled && last != null && nowMs - last.t > 3 * 60_000;
+  // The fallback may name the confirmed price only when the price row above it
+  // actually shows that price, including a decided card's close.
+  const confirmedAbove = roundLineConfirmedAbove({
+    state, opensAtMs, closesAtMs, openPrice, closePrice, readPrice, readQuotedAt,
+  });
 
   if (!points || !last) {
     // The price row already says when no newer confirmed read exists. If a newer
     // read is visible there but minute bars are unavailable, explain the missing
     // drawing in one small line instead of leaving an unexplained blank slot.
     if (status === "loading") return null;
-    if (active && readPrice != null && Number.isFinite(readPrice)) {
-      return <p className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable">{words.unavailable}</p>;
+    if (confirmedAbove) {
+      return <p className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable">{words.confirmedFallback}</p>;
     }
     return <span className="sr-only" role="status" data-testid="round-live-line-empty">{words.unavailable}</span>;
   }
 
   // The card's confirmed read can be newer than the only vendor bar on this line.
   // Hide that one-point drawing instead of falsely saying no newer price exists.
-  if (real.length === 1 && hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)) {
-    return <p className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable">{words.unavailable}</p>;
+  if (real.length === 1 && (hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)
+    || (settled && confirmedAbove))) {
+    return confirmedAbove
+      ? <p className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable">{words.confirmedFallback}</p>
+      : <span className="sr-only" role="status" data-testid="round-live-line-empty">{words.unavailable}</span>;
   }
 
   const prices = real.map((point) => point.price).concat(openPrice);
@@ -149,7 +173,7 @@ export function RoundLiveLine({ assetKey, opensAtMs, closesAtMs, openPrice, clos
   return (
     <div data-testid="round-live-line">
       <svg viewBox="0 0 320 56" preserveAspectRatio="none" className="block w-full" style={{ height: 56 }} role="img"
-        aria-label={`${words.beat} ${usd(openPrice, decimals)}. ${real.map((point) => `${fmtEATClock(point.t)} EAT ${usd(point.price, decimals)}`).join("; ")}.`}>
+        aria-label={`${words.openReference} ${usd(openPrice, decimals)}. ${real.map((point) => `${fmtEATClock(point.t)} EAT ${usd(point.price, decimals)}`).join("; ")}.`}>
         <line x1="0" x2="320" y1={y(openPrice)} y2={y(openPrice)} stroke="var(--text-faint)" strokeWidth="1" strokeDasharray="3 4" />
         {runs.filter((run) => run.length > 1).map((run, index) => (
           <path key={index} d={run.map((point, i) => `${i ? "L" : "M"}${x(point.t).toFixed(2)} ${y(point.price).toFixed(2)}`).join(" ")}

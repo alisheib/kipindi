@@ -59,6 +59,7 @@ export async function generateMetadata() {
 // "12/10, 00:10 EAT" in every language.
 import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
 import { roundPnl } from "@/lib/updown-history-pnl";
+import { roundDuration } from "@/lib/updown-round-name";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
 
@@ -522,7 +523,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                         {/* PV-13c (2026-09-03) — was a raw `<span className="chip">`; the
                             legacy CSS family <Chip> exists to replace. `variant` defaults to
                             "neutral", the same SLATE ink/fill `.chip`'s own base rule painted. */}
-                        {name} <Chip className="align-middle">{r.durationMinutes} {t.market.udMin}</Chip>
+                        {name} <Chip className="align-middle">{roundDuration(t, r.durationMinutes)}</Chip>
                       </div>
                       <div className="mt-0.5 font-mono text-[10px] text-text-subtle">{r.assetKey} · {placedLine(r.placedAt)}</div>
                     </div>

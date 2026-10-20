@@ -57,6 +57,9 @@ export function RoundActionPanel(props: {
     myUpStake: number;
     myDownStake: number;
     pricing: UpDownPricing;
+    /** Frozen winning boundaries, so the pre-bet void-band note is shown only for a priced two-sided round. */
+    upTarget: number | null;
+    downTarget: number | null;
     assetName: string;
     signInHref: string;
     lockedSide: "UP" | "DOWN" | null;

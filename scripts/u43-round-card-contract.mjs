@@ -21,8 +21,9 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
   need(card.includes('urgent ? t.market.udLastSeconds'), "last seconds named in words");
   need(card.includes('urgent ? "m-urgent" : undefined') && !card.includes('ud-count-pulse'),
     "urgent digits use the kit motion tier");
-  need(card.includes('className="ud-beat') && (card.match(/t\.market\.udWinTarget/g) ?? []).length === 1,
-    "price to beat once");
+  need(card.includes('className="ud-beat') && (card.match(/t\.market\.udOpenPrice/g) ?? []).length === 1
+    && !card.includes('t.market.udWinTarget'),
+    "the opening price is named once as a reference, never as either winning boundary");
   const beat = card.slice(card.indexOf('className="ud-beat'), card.indexOf('{openPrice == null', card.indexOf('className="ud-beat')));
   need(beat.length > 0 && !beat.includes("±") && !card.includes("priceText.margin"),
     "price to beat has no unexplained margin");
@@ -47,9 +48,14 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
   need(card.includes('const quoteVisible = locked || awaitingResult || state === "confirming"'),
     "frozen payout rows survive confirming");
   need(card.includes('settledNow && myResults && myResults.length > 0'), "viewer result from settled rows");
-  need(card.includes('outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins}</>')
-    && card.includes('outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins}</>'),
-    "a refunded one-sided result names its direction without claiming a win");
+  need(card.includes('outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>')
+    && card.includes('outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</>'),
+    "only a two-sided result claims a win; one-sided and empty results name direction");
+  need(card.includes('state === "resolved" && price.kind === "oneSided" ? (')
+    && card.includes('<p className="m-0 text-body-sm text-text-muted">{t.market.udRefundUnmatchedReason}</p>')
+    && card.includes('state === "resolved" && price.kind === "none" ? (')
+    && card.includes('<p className="m-0 text-body-sm text-text-muted">{t.market.udNoBetsPlaced}</p>'),
+    "settled guest card explains an unmatched refund or an empty pool without claiming a viewer refund");
   need(card.includes('myResults[0].status !== "VOID" && (')
     && card.includes('myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake')
     && card.includes('formatTzs(myResults[0].status === "LOSS" ? myResults[0].stake : myResults[0].payout)'),
@@ -76,6 +82,20 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     && detailPage.includes('round.closePrice != null ? round.closeQuotedAt : round.openQuotedAt')
     && detailPage.includes('heroLive != null ? round.readQuotedAt : round.openQuotedAt'),
     "detail price and source time belong to this round, not the asset's latest quote");
+  need(detailPage.includes('const openClock = fmtEATClock(Date.parse(round.opensAt));')
+    && detailPage.includes('round.readUnavailable ? t.market.udReadUnavailable')
+    && detailPage.includes('(round.state === "open" || round.state === "locked") && round.openPrice != null && openClock')
+    && detailPage.includes('t.home.udMatchNoNewPrice.replace("{time}", openClock)')
+    && detailPage.includes(': t.market.udAwaitingRead,'),
+    "detail names no newer price since the verified open, and separates a failed read from an absent open");
+  need(detailPage.includes('{usd(Math.abs(move), dec)}')
+    && detailPage.includes('`${sgn(pMove)}${usd(Math.abs(pMove), dec)}`')
+    && !detailPage.includes('${Math.abs(move).toFixed(dec)}')
+    && !detailPage.includes('${Math.abs(pMove).toFixed(dec)}'),
+    "hero and proof both group a four-digit USD move through the shared formatter");
+  need(detailPage.includes('round.state === "resolved" && price.kind !== "priced" && (')
+    && detailPage.includes('price.kind === "oneSided" ? t.market.udRefundUnmatchedReason : t.market.udNoBetsPlaced'),
+    "settlement proof explains a resolved round without a two-sided pool");
   need(detailPage.includes('{isOpen || locked || awaitingResult ? (')
     && action.includes('if (locked || confirming)')
     && action.includes('const payoutIfUp = myPayoutIfUp ?? null;')
@@ -91,6 +111,10 @@ export function roundCardIssues(card, controls, mark, detailPage, action, countd
     && dictionary.includes('udNextAfterResult: "Raundi ijayo itaonekana ikipangwa."')
     && dictionary.includes('udNextAfterResult: "下一回合安排好后会显示。"'),
     "next-round wording makes no unscheduled opening promise");
+  need(dictionary.includes('udNoBetsPlaced: "No bets were placed."')
+    && dictionary.includes('udNoBetsPlaced: "Hakuna dau lililowekwa."')
+    && dictionary.includes('udNoBetsPlaced: "本轮无人投注。"'),
+    "settled empty-round explanation exists in all three languages");
   return issues;
 }
 

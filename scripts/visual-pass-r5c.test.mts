@@ -1,8 +1,8 @@
 /**
  * ROUND 5 OF THE VISUAL PASS, HELPER C (2026-10-09) — THE SECOND GOLD AUDIT. Every gold paint in the player's code was
- * found, ruled in DESIGN_AUTHORITY's own words — allowed (money won, earned commissions, identity metal, the live balance, a deposit
- * door, the brand mark's needle, a chart's reference line, an illustration's single accent, identity
- * METAL) or a defect — and every defect in a shared page body or the journey was fixed. Classic chrome (frozen) and the
+ * found, ruled in DESIGN_AUTHORITY's own words — allowed (money won, earned commissions, identity metal, the live balance,
+ * the brand mark's needle, an illustration's single accent) or a defect — and every defect in a shared page body or the
+ * journey was fixed. U43 moved deposit doors to brand and the Up & Down opening reference to neutral. Classic chrome (frozen) and the
  * `--warning-fg: var(--gilt)` token are the owner's, and are pinned here as they stand so a change to them is deliberate.
  * ⭐ THE TOKEN WAS RULED ON 2026-10-10 — Ali's ruling (1): WARNINGS ARE AMBER, NOT GOLD. R8-A re-hued the whole warning
  * family to hue 64 (`globals.css`), which this census's own hue rule (70–100) does not call gold, so the family LEFT the
@@ -26,7 +26,7 @@
  *   §1  THE GOLD CENSUS — every gold paint in the player's code, counted per file, each file registered with its ruling;
  *       a new gold use anywhere fails until it is ruled and registered (with plants proving the scanner sees each form)
  *   §2  the items the readers raised (tiles r5-4, r5-6) and the RG page's last warning box
- *   §3  the one non-money accent — the brand family, everywhere a highlight was gold (or aqua)
+ *   §3  non-money accents use brand; the Phosphor identity plate owns its glyph ink
  *   §4  money that was not EARNED is not gold (D1 commits, D5 inducements, §B12 projections, zero)
  *   §5  the warning family keeps its one meaning (F3 toasts, §B11 words, RG notices, clocks, one limit ramp)
  *   §6  the sanctioned gold that must STAY — the controls that keep §1 from passing because gold was deleted
@@ -111,6 +111,7 @@ function goldHits(file: string, src: string): Hit[] {
     // The leaderboard's tier type names the established identity medal. A type union
     // cannot paint a pixel; keep this exact declaration out of the paint census.
     if (file === "src/app/leaderboard/tier-hint.tsx" && /^type Tier = "bronze" \| "silver" \| "gold" \| "diamond" \| "sovereign";$/.test(ln)) return;
+    if (file === "src/components/ui/icon-plate.tsx" && ln === 'export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";') return;
     const push = (kind: string, re: RegExp, keep: (m: RegExpMatchArray) => boolean = () => true) => {
       for (const m of ln.matchAll(re)) if (keep(m)) out.push({ kind, match: m[0], line: i + 1 });
     };
@@ -207,7 +208,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  "src/app/globals.css": [69, "the gold ramp and aliases, `--metal-gold` identity, the win seal and paid money (`.kp-settled__amt`, `.kp-mine__n--gold`), and the earned-money celebration; dead CSS and admin definitions remain. U43 B5 moved deposit rails to pearl ink and the disabled question-sheet commit to brand, removing both unearned gold uses."],
+  "src/app/globals.css": [72, "the gold ramp and aliases, `--metal-gold` identity, the win seal and paid money (`.kp-settled__amt`, `.kp-mine__n--gold`), the earned-money celebration and Phosphor's win-only `.kp-plate--gold` recipe; dead CSS and admin definitions remain. U43 B5 moved deposit rails to pearl ink and the disabled question-sheet commit to brand, removing both unearned gold uses."],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -268,6 +269,14 @@ const census = new Map<string, Hit[]>();
 
   // ⭐ PLANTS — each spelling of gold the census promises to see, planted in memory, is seen; decoys are not.
   const n = (f: string, s: string) => goldHits(f, s).length;
+  const plateFile = "src/components/ui/icon-plate.tsx";
+  const plateSource = raw(plateFile);
+  const plateType = 'export type PlateVariant = "identity" | "quiet" | "info" | "success" | "warning" | "danger" | "gold";';
+  ok("1.4 · CONTROL · only the exact PlateVariant type declaration is exempt from the gold paint census",
+    plateSource.split("\n").filter((line) => line === plateType).length === 1 && n(plateFile, plateSource) === 0);
+  ok("1.4 · PLANT · a runtime gold variant in the same plate file is still counted",
+    n(plateFile, `${plateSource}\nconst unearnedPlate = <IconPlate variant="gold" />;`) === 1
+      && n(plateFile, plateSource.replace(plateType, `${plateType} const unearnedPlate = <IconPlate variant="gold" />;`)) === 2);
   ok("1.4′ PLANT · a Tailwind gold ink on a non-money file is seen", n("x.tsx", '<span className="font-mono text-gold-300">3</span>') === 1);
   ok("1.4″ PLANT · a gold tone asked for by name is seen (`<Dot tone=\"gold\" />`, `tone={x ? \"gold\" : \"brand\"}`)",
     n("x.tsx", '<Dot tone="gold" /><Chip tone={x ? "gold" : "brand"} />') === 2);
@@ -336,8 +345,12 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
 
   // 2.5 · fairness: the chain's highlighted step and the list's numerals.
   const FAIR = read("src/app/fairness/page.tsx");
-  ok("2.5 · the fairness chain's highlighted node is the brand ring the KYC rail's current step wears — not gilt",
-    /\? "border-2 border-brand-500 bg-brand-500\/10 text-brand-300"/.test(FAIR) && /highlight: true/.test(FAIR) && !/gold|gilt/.test(FAIR));
+  const fairnessBrand = (src: string) => /<IconPlate size=\{44\} variant="identity" aria-hidden\s+style=\{s\.highlight \? \{ boxShadow: "inset 0 0 0 2px var\(--brand-500\)" \} : undefined\}>/.test(src)
+    && /s\.highlight \? "text-brand-300" : "text-text-subtle"/.test(src) && /highlight: true/.test(src) && !/gold|gilt/.test(src);
+  ok("2.5 · the fairness chain's highlighted node is the identity plate with a brand ring and label — not gilt",
+    fairnessBrand(FAIR));
+  const fairnessGold = FAIR.replace('boxShadow: "inset 0 0 0 2px var(--brand-500)"', 'boxShadow: "inset 0 0 0 2px var(--gold-500)"');
+  ok("2.5″ PLANT · restoring a gold ring to the highlighted fairness node fails", fairnessGold !== FAIR && !fairnessBrand(fairnessGold));
   ok("2.5′ · the numerals are the list's own ink — never gold — in R4-E's measured proportional Inter Bold (not tabular, §7 of r4e)",
     !/gold|gilt|color:/.test(rule(CSS, ".fairness-steps > li::before")) && !/tabular-nums|font-mono/.test(rule(CSS, ".fairness-steps > li::before"))
     && !/gilt|gold/.test(rule(CSS, ".kp-step__n")));
@@ -375,8 +388,15 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
   ok("2.9′ PLANT · a second gold accent in one scene is reported", scenesOf(twice).some((s) => (s.match(/\{g\}/g) ?? []).length !== 1));
 
   // 2.10 · the WIN pills: M3, a resolved win is money earned — allowed.
-  ok("2.10 · CONTROL · WIN is struck gilt in the dictionary and gold in the notification tints (allowed: money earned)",
-    /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")) && /case "WIN":\s*return "border-gold-700 bg-gold-500\/10 text-gold-300";/.test(read("src/lib/notification-appearance.ts")));
+  const notificationTone = read("src/lib/notification-appearance.ts");
+  const winGold = (src: string) => /case "WIN":\s*return "gold";/.test(src)
+    && /<IconPlate size=\{32\} variant=\{tintFor\(kind\)\}/.test(read("src/app/notifications/page.tsx"))
+    && /<IconPlate size=\{32\} variant=\{tintFor\(kind\)\}/.test(read("src/components/layout/notifications-panel.tsx"))
+    && /color:\s*var\(--gold-300\)/.test(rule(CSS, ".kp-plate--gold"));
+  ok("2.10 · CONTROL · WIN is struck gilt in the dictionary and the notifications' shared gold plate (allowed: money earned)",
+    /WIN:\s*\{ player: "gilt" \}/.test(read("src/lib/status-tone.ts")) && winGold(notificationTone));
+  const noWinGold = notificationTone.replace('case "WIN":          return "gold";', 'case "WIN":          return "info";');
+  ok("2.10′ PLANT · demoting a paid WIN to the info plate fails", noWinGold !== notificationTone && !winGold(noWinGold));
 
   // 2.11 · the RG page's pending-increase box — the sibling R4-I's neutral notices missed.
   const RGP = read("src/app/profile/responsible-gambling/page.tsx");
@@ -389,12 +409,18 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
   ok("2.11″ EXECUTED · the neutral md notice: dashed edge, the subtle glyph, the 13px body", /border-dashed border-border/.test(neutral) && /text-text-subtle/.test(neutral) && /text-body-sm/.test(neutral));
 
   // 2.12 · the reality check — an RG intervention — wore a gold rail, a gold clock and gold minutes.
-  ok("2.12 · the reality check carries no gold: the sheet's own edge, the clock in the subtle ink, the minutes in the heading's",
-    !/gold|gilt/.test(read("src/components/rg/reality-check.tsx")) && /text-text-subtle">\s*<I\.clock s=\{18\} \/>/.test(read("src/components/rg/reality-check.tsx")));
+  const reality = read("src/components/rg/reality-check.tsx");
+  const neutralReality = (src: string) => !/gold|gilt/.test(src)
+    && /<IconPlate size=\{40\} variant="identity" aria-hidden>\s*<I\.clock s=\{plateGlyph\(40\)\} tier="duo" \/>\s*<\/IconPlate>/.test(src)
+    && /<span className="font-mono">\{elapsedMin\}<\/span>/.test(src);
+  ok("2.12 · the reality check carries no gold: its clock uses the identity plate and its elapsed minutes use neutral text",
+    neutralReality(reality));
+  const gildedReality = reality.replace('variant="identity" aria-hidden>\n            <I.clock', 'variant="gold" aria-hidden>\n            <I.clock');
+  ok("2.12′ PLANT · a gold reality-check clock plate fails", gildedReality !== reality && !neutralReality(gildedReality));
 }
 
-/* ══ §3 · THE ONE NON-MONEY ACCENT ════════════════════════════════════════════════════════════════════════════════════ */
-section("3 · the one non-money accent — the brand family, wherever a highlight was gold (or aqua)");
+/* ══ §3 · NON-MONEY ACCENTS AND IDENTITY PLATES ════════════════════════════════════════════════════════════════════════ */
+section("3 · non-money accents use brand; Phosphor glyphs use the identity plate where the plate owns their ink");
 {
   const SITES: Array<[string, string, RegExp]> = [
     ["the /results carousel's current pip", "src/app/results/notable-carousel.tsx", /background: i === current \? "var\(--brand-400\)"/],
@@ -410,15 +436,24 @@ section("3 · the one non-money accent — the brand family, wherever a highligh
     ["the consent and install cards' glyph", "src/components/analytics/consent-prompt.tsx", /text-brand-300" aria-hidden><I\.chart/],
     ["the KYC upload tile's hover and working state", "src/components/profile/kyc-doc-uploader.tsx", /: working \? "border-brand-400 bg-brand-500\/\[0\.06\] cursor-wait"/],
     ["the avatar camera's hover edge", "src/components/profile/avatar-uploader.tsx", /group-hover:border-brand-400 group-hover:text-text/],
-    ["the invite plate on each promise", "src/app/profile/invite/page.tsx", /className="bg-brand-500\/10 text-brand-300"/],
+    ["the invite plate on each promise (identity, never money)", "src/app/profile/invite/page.tsx", /<IconPlate\s+size=\{26\}\s+variant="identity"\s+aria-hidden\s*>\s*<PIcon s=\{plateGlyph\(26\)\} tier="duo" \/>/],
     ["the propose promo's plate and hover", "src/components/ui/propose-promo.tsx", /hover:border-brand-400/],
     ["the market page's CLOSED words (the dictionary's royal ink, `TONE_INK.royal`)", "src/app/markets/[id]/page.tsx", /text-brand-300">\s*\{t\.market\.closedAwaitingSettlement\}/],
   ];
-  for (const [what, f, re] of SITES) ok(`3 · ${what} — the brand family`, re.test(read(f)), f);
+  for (const [what, f, re] of SITES) ok(`3 · ${what} — the ruled non-money treatment`, re.test(read(f)), f);
+  const invite = read("src/app/profile/invite/page.tsx");
+  const giltPromise = invite.replace('size={26}\n                      variant="identity"', 'size={26}\n                      variant="gold"');
+  ok("3 · PLANT · turning a promise's identity plate gold fails", giltPromise !== invite && !SITES.find(([, f]) => f === "src/app/profile/invite/page.tsx")![2].test(giltPromise));
+  const trust = read("src/components/home/trust-band.tsx");
+  const brandAccents = (trustSource: string) => /background:\s*var\(--brand-400\)/.test(rule(CSS, ".kp-hero__tick"))
+    && /<IconPlate size=\{48\} variant="identity" className="kp-trust__glyph" aria-hidden>/.test(trustSource)
+    && !/gold|gilt/.test(rule(CSS, ".kp-trust__glyph"))
+    && /color-mix\(in oklab, var\(--brand-500\) 40%, transparent\)/.test(rule(CSS, "::selection"))
+    && /color-mix\(in oklab, var\(--brand-500\) 50%, transparent\)/.test(read("src/components/ui/nav-progress.tsx"));
   ok("3′ · the CSS accents: the landing eyebrow tick, the trust facts' glyphs, a selection, the nav bar's glow",
-    /background:\s*var\(--brand-400\)/.test(rule(CSS, ".kp-hero__tick")) && /color:\s*var\(--brand-300\)/.test(rule(CSS, ".kp-trust__glyph"))
-      && /color-mix\(in oklab, var\(--brand-500\) 40%, transparent\)/.test(rule(CSS, "::selection"))
-      && /color-mix\(in oklab, var\(--brand-500\) 50%, transparent\)/.test(read("src/components/ui/nav-progress.tsx")));
+    brandAccents(trust));
+  const giltTrust = trust.replace('variant="identity" className="kp-trust__glyph"', 'variant="gold" className="kp-trust__glyph"');
+  ok("3′ PLANT · turning a trust fact's identity plate gold fails", giltTrust !== trust && !brandAccents(giltTrust));
   ok("3″ · TONE_INK.royal IS the brand ink (the dictionary's royal word ink the CLOSED words read)", /royal: "text-brand-300"/.test(read("src/lib/status-tone.ts")));
   const brandBox = html(h(Callout, { tone: "brand" }, "x"));
   ok("3‴ EXECUTED · the Callout's `brand` (a promise) is the royal `info` box with the shield — there is no gilt box", /border-info-border bg-info-bg/.test(brandBox) && !/gold/.test(brandBox)
@@ -492,8 +527,13 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
   ok("5.1′ PLANT · a `toast({ title: err, variant: \"warning\" })` is reported", toastWarning('toast({ title: err, variant: "warning" });') === 1);
   // R8-A (2026-10-10): re-pinned. The premise was "the warning toast IS gold"; Ali's ruling (1) made it AMBER, and the
   // routing stands on F2's table (DESIGN_AUTHORITY F3's note) — feedback-law §2 pins the new premise too.
+  const toast = read("src/components/ui/toast.tsx");
+  const warningToast = (src: string) => /warning:\s*\{\s*bar: "bg-warning",\s*icon: <I\.warning s=\{plateGlyph\(40\)\} tier="fill" \/>,\s*plate: "warning",\s*surface: "mat-tint-warn",\s*rail: "bg-warning"/.test(src)
+    && !/warning:\s*\{\s*bar: "bg-gold/.test(src);
   ok("5.1″ · CONTROL · the warning toast is the AMBER family, never gold (Ali's ruling (1), 2026-10-10) — and still never a fixable refusal's",
-    /warning: \{\s*bar: "bg-warning",\s*icon: <span className="text-warning-fg">/.test(read("src/components/ui/toast.tsx")) && !/warning: \{\s*bar: "bg-gold/.test(read("src/components/ui/toast.tsx")));
+    warningToast(toast));
+  const goldWarningToast = toast.replace('warning: {\n    bar: "bg-warning",', 'warning: {\n    bar: "bg-gold-500",');
+  ok("5.1‴ PLANT · turning the warning toast's bar gold fails", goldWarningToast !== toast && !warningToast(goldWarningToast));
 
   // 5.2 · §B11 — one word, one tone.
   const WRM = read("src/app/wallet/wallet-result-modal.tsx");
@@ -509,9 +549,13 @@ section("5 · the warning family keeps its one meaning — F3 toasts, §B11 word
   ok("5.2″ · 'under review' (source of funds) is royal, a hidden comment slate, a paused agent slate, a running break neutral",
     /: "pending";/.test(read("src/app/profile/source-of-funds/page.tsx")) && /<Chip variant="neutral" size="sm">\{t\.market\.commentHidden\}/.test(read("src/components/markets/comments-thread.tsx"))
       && /playerStatusChip\("DEACTIVATED"\)/.test(read("src/app/profile/invite/agent-dashboard.tsx")) && !/COOLED_OFF" \? "warning"/.test(read("src/app/profile/account/page.tsx")));
-  ok("5.2‴ · 'more information needed' and the KYC gate's 'your move' are AMBER — the warning family, never the gold ramp (§B11)",
-    /action:\s*\{ ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" \}/.test(read("src/components/kyc/kyc-gate-panel.tsx"))
-      && /border-warning-border bg-warning-bg p-4 lg:p-5/.test(read("src/app/profile/kyc/page.tsx")));
+  const kycGate = read("src/components/kyc/kyc-gate-panel.tsx");
+  const amberAction = (src: string) => /action:\s*\{ ring: "border-warning-border", ink: "text-warning-fg", plate: "warning" \}/.test(src)
+    && /<IconPlate[^>]*variant=\{tone\.plate\}/.test(src)
+    && /border-warning-border bg-warning-bg p-4 lg:p-5/.test(read("src/app/profile/kyc/page.tsx"));
+  ok("5.2‴ · 'more information needed' and the KYC gate's 'your move' are AMBER — the warning family, never the gold ramp (§B11)", amberAction(kycGate));
+  const goldAction = kycGate.replace('ink: "text-warning-fg", plate: "warning"', 'ink: "text-warning-fg", plate: "gold"');
+  ok("5.2⁗ PLANT · turning the KYC action plate gold fails", goldAction !== kycGate && !amberAction(goldAction));
 
   // 5.3 · a clock's last stretch keeps its ink (§B2a; R4-K moved the market clock's labels).
   ok("5.3 · clocks keep their ink: the OTP's last minute, the position ring's last hour, the countdown pill's figure, the closing-soon pill",

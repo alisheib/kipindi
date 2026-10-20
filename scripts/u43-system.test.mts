@@ -13,6 +13,10 @@ const css = read("src/app/globals.css").replace(/\r\n/g, "\n");
 const states = read("scripts/live/updown-visual-states.mjs");
 const tabs = read("src/components/updown/updown-board-tabs.tsx");
 const receipt = read("src/components/updown/updown-bet-receipt-modal.tsx");
+const historyBar = read("src/app/updown/history/history-bar.tsx");
+const historyPage = read("src/app/updown/history/page.tsx");
+const historyGhost = read("src/app/updown/history/history-ghost.tsx");
+const releaseBrief = read("docs/design-brief/u43-2026-10/BRIEF.md");
 
 ok("Swahili duration places the numeral after dakika", roundDuration(dict.sw, 5) === "dakika 5" && roundName(dict.sw, "Bitcoin", 5) === "Bitcoin Juu na Chini · dakika 5");
 const classicRail = '.kp-rail:not(.kp-rail--journey):lang(sw) .kp-rail__item:not(.kp-rail__item--coin)';
@@ -33,6 +37,14 @@ ok("board chip, filter sheet and active summary all use the shared locale-aware 
 ok("bet receipt uses that same duration grammar beside the market source",
   receipt.includes('subtitle={`${roundDuration(t, info.durationMinutes)} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}')
   && !receipt.includes('`${info.durationMinutes} ${t.market.udMin}'));
+ok("history filters, result rows and loading ghost use the same locale-aware duration",
+  (historyBar.match(/label=\{d === "all" \? t\.common\.all : roundDuration\(t, Number\(d\)\)\}/g) ?? []).length === 2
+  && historyPage.includes('{roundDuration(t, r.durationMinutes)}</Chip>')
+  && historyGhost.includes('<PillGhost label={roundDuration(t, 5)} />')
+  && !historyBar.includes('`${d} ${t.market.udMin}`')
+  && !historyPage.includes('{r.durationMinutes} {t.market.udMin}</Chip>')
+  && !historyGhost.includes('`5 ${t.market.udMin}`')
+  && [dict.en, dict.sw, dict.zh].every((d) => roundDuration(d, 5) === (d === dict.sw ? "dakika 5" : d === dict.en ? "5 min" : "5 分钟")));
 ok("one round word in the handover labels", [dict.en.market.udNextMatchIn, dict.en.market.udNextMatchLive, dict.en.market.udNextMatchSoon, dict.en.market.udNextMatchNone, dict.en.market.udNextMatchLiveBody].every((v) => v.toLowerCase().includes("round")) && [dict.sw.market.udNextMatchIn, dict.sw.market.udNextMatchLive, dict.sw.market.udNextMatchSoon, dict.sw.market.udNextMatchNone, dict.sw.market.udNextMatchLiveBody].every((v) => v.toLowerCase().includes("raundi")) && [dict.zh.market.udNextMatchIn, dict.zh.market.udNextMatchLive, dict.zh.market.udNextMatchSoon, dict.zh.market.udNextMatchNone, dict.zh.market.udNextMatchLiveBody].every((v) => v.includes("回合")));
 ok("empty-side explanation stays short and truthful in three languages", dict.en.market.udNobodyBackedEither.length <= 78 && dict.sw.market.udNobodyBackedEither.length <= 84 && dict.zh.market.udNobodyBackedEither.length <= 40 && /only one side.*every stake returns/i.test(dict.en.market.udNobodyBackedEither) && /upande mmoja tu.*kila dau litarudi/i.test(dict.sw.market.udNobodyBackedEither) && /只有一方.*所有本金退回/.test(dict.zh.market.udNobodyBackedEither));
 ok("locked card explains the wait and guaranteed one-sided refund briefly in every language",
@@ -48,6 +60,11 @@ ok("source names state market kind without a second live label", ["udSourceCrypt
 ok("market sort and close-call filter use one idea per language", [dict.en, dict.sw, dict.zh].every((d) => d.market.sortClose === d.market.oddsCall));
 ok("watchlist empty state does not promise a notice", [dict.en, dict.sw, dict.zh].every((d) => !/tell|notify|julisha|通知/i.test(d.watchlist.emptyBody)));
 ok("urgency uses kit motion and captures the actual animation", !css.includes(".ud-count-pulse") && states.includes('querySelectorAll(".m-urgent")') && states.includes('x.animationName === "m-breathe"'));
+ok("release brief points to its actual five specs and names the opening reference and refund band",
+  releaseBrief.includes("The five area specs are in §5 below.")
+  && !releaseBrief.includes("RELEASE-B-SPECS.md")
+  && releaseBrief.includes("a dashed opening-price reference")
+  && releaseBrief.includes("a small-move refund note when both sides hold bets"));
 
 console.log(`U43 SYSTEM: ${failures} failed`);
 process.exit(failures ? 1 : 0);

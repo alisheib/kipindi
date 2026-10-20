@@ -507,6 +507,7 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/components/updown/updown-handover.tsx": "reads the busy gate and the scroll lock; writes no mark",
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
     "src/lib/press-feedback.ts": "normal and journey pick handlers call this shared event-phase helper: a synchronous temporary press-pop class probes stylesheet frames/timing, is removed before returning to React, and plays via WAAPI; no retained hydration mark",
+    "src/components/maswali/maswali-carry.tsx": "Maswali's carried token gains its own temporary animation class in a layout effect only when the caller requests motion; animation end, cancellation and cleanup remove it, and reduced motion never adds it",
     "src/components/layout/needle.tsx": "the Needle's own engine (its root's suppressed and wake classes), run from its own gate; R4-J's and R5-D's notes hold its first frame (the shell's mark in the server's HTML)",
     "src/components/ui/route-transition.tsx": "the route entrance (route-enter): restarted in the layout phase of a route change, before the new route's first paint, and never at mount — FIXED (R5-H's patch, proven in a browser 2026-10-09; 3.7, 3.8)",
     "src/components/ui/not-found-mark.tsx": "lowers the load-time not-found flag (data-not-found, raised by the root layout's watcher before any script ran — A21, 2026-10-14) in the same LAYOUT effect that announces the mark, so the chrome's own answer and the flag's going are painted together",
@@ -726,6 +727,7 @@ const sweep = (text: (p: string) => string) => {
   const tg = t("src/components/journey/tickets/tickets-ghost.tsx"), css = decommentCss(raw("src/app/globals.css"));
   const hPage = t("src/app/updown/history/page.tsx"), hGhost = t("src/app/updown/history/history-ghost.tsx");
   const header = (s: string) => /<PageHeader eyebrow=\{[^}]+\} title=\{[^}]+\} subtitle=\{[^}]+\}/.exec(s)?.[0] ?? "";
+  const boardHeader = (s: string) => /<PageHeader className="ud-board-header" title=\{[^}]+\} subtitle=\{[^}]+\}/.exec(s)?.[0] ?? "";
   const pageGrid = (s: string) => /className="grid grid-cols-1 items-start gap-4 (lg|xl):\[grid-template-columns:minmax\(0,1\.55fr\)_minmax\(300px,1fr\)\]"/.exec(s)?.[1] ?? "";
   return {
     // (the page holds an emptied JSX note between its two wrappers — `{}` once decommented)
@@ -747,12 +749,18 @@ const sweep = (text: (p: string) => string) => {
       && rcGhost.includes('<div className="h-[18px] w-[88px] rounded-pill bg-bg-overlay/60 kp-shimmer-track" />'),
     "5.6 profile": classOf(pfPage, "grid grid-cols-1 gap-") !== "" && classOf(pfPage, "grid grid-cols-1 gap-") === classOf(pfGhost, "grid grid-cols-1 gap-"),
     "5.7 agent": header(agPage) !== "" && header(agPage) === header(agGhost) && !agGhost.includes("max-w-[46ch]"),
-    "5.8 updown": header(udGhost) !== "" && udPage.includes(`${header(udGhost).replace(/ \/?$/, "")} actions=`)
-      && udTabs.includes('<div className="mt-4 sm:hidden">') && udTabs.includes('className="mt-4 hidden flex-wrap gap-2 sm:flex"') && udTabs.includes('className="mt-2 hidden flex-wrap gap-1.5 sm:flex"')
-      && udGhost.includes('<div className="mt-4 sm:hidden" aria-hidden> <div className="h-[var(--h-control-lg)] w-full rounded-control bg-bg-inset kp-shimmer-track" />')
-      && udGhost.includes('<div className="mt-4 hidden gap-2 sm:flex" aria-hidden>') && udGhost.includes('<div className="mt-2 hidden gap-1.5 sm:flex" aria-hidden>')
-      && udGhost.includes('className="h-[44px] w-[64px] rounded-md bg-bg-inset kp-shimmer-track"') && !udGhost.includes("h-7 w-[64px]")
-      && udPage.includes("<BoardViz") && udGhost.includes('<div className="h-[50px] w-[136px] rounded-pill bg-bg-elevated kp-shimmer-track" />') && udGhost.includes('<div className="mt-2 h-[18px] w-[240px] max-w-full rounded-sm bg-bg-inset kp-shimmer-track" />'),
+    "5.8 updown": boardHeader(udGhost) !== "" && boardHeader(udPage) === boardHeader(udGhost)
+      && udPage.includes('actions={') && udGhost.includes('actions={<div className="flex gap-1" aria-hidden>')
+      && udTabs.includes('data-filter-rail className="ud-filter-rail mt-4 flex gap-2"')
+      && udTabs.includes('data-filter-rail className="ud-filter-rail mt-2 flex gap-0.5"')
+      && udGhost.includes('<div className="ud-filter-rail mt-4 flex gap-2" aria-hidden>')
+      && udGhost.includes('<div className="ud-filter-rail mt-2 flex gap-0.5" aria-hidden>')
+      && udGhost.includes('className="h-[44px] w-[64px] shrink-0 rounded-control bg-bg-inset kp-shimmer-track"')
+      && !udGhost.includes("h-7 w-[64px]")
+      && udPage.includes("<BoardViz")
+      && udGhost.includes('<div className="h-[13px] w-[96px] rounded bg-bg-elevated kp-shimmer-track" />')
+      && udGhost.includes('<div className="mt-2 h-[18px] w-[240px] max-w-full rounded-sm bg-bg-inset kp-shimmer-track" />')
+      && udGhost.includes('<div className="ud-chart-trigger h-[44px] w-[154px] kp-shimmer-track" />'),
     "5.9 round": pageGrid(rdPage) === "lg" && pageGrid(rdGhost) === "lg"
       && rdPage.indexOf("<RoundActionPanel") > 0 && rdPage.indexOf("<RoundActionPanel") < rdPage.indexOf("<section aria-label={t.market.udPool}")
       && rdGhost.indexOf('<div className="h-56 rounded-xl') > 0 && rdGhost.indexOf('<div className="h-56 rounded-xl') < rdGhost.indexOf('<div className="h-40 rounded-xl'),
@@ -774,7 +782,7 @@ const sweep = (text: (p: string) => string) => {
     "5.5 receipts": "/wallet/receipts: each row on the row's own lines — the amount's 20px `text-body` line, 8px, the 18px date and `sm` chip line: 79px, not 83",
     "5.6 profile": "/profile: the settings grid on the page's own gap",
     "5.7 agent": "/agent: the page's own PageHeader, same eyebrow, title and subtitle (the two bars stood on the 32px rung, 28px low at 1280)",
-    "5.8 updown": "/updown (and the journey's Juu/Chini tab): the page's own header with its tagline; a phone's one 48px field trigger, the pill rows from `sm`; 44px durations; the BoardViz band (50px toggle row, 12, 18px cubes)",
+    "5.8 updown": "/updown (and the journey's Juu/Chini tab): the page's own header with its tagline, two 44px chip rows, the recent-round heading and chart trigger at their real heights",
     "5.9 round": "/updown/[roundId]: two columns from `lg` as the page (`xl` stacked them from 1024 to 1279), the action panel before the pool",
     "5.10 question": "/markets/[id]: the header's own bands — the 40px row of chips and buttons, the 1px hairline (neutral), the question's 35/45px line — and no subtitle the page does not have",
     "5.11 tickets rail": "Tiketi zangu's rail ghost carries R5-B's `data-rail-ghost`, so the journey's rail rule draws it as the page's rail (12px into the gutter)",
@@ -789,7 +797,7 @@ const sweep = (text: (p: string) => string) => {
     ["5.5 receipts", "src/app/wallet/receipts/loading.tsx", '<div className="h-[18px] w-[88px] rounded-pill', '<div className="h-[22px] w-[88px] rounded-pill'],
     ["5.6 profile", "src/app/profile/loading.tsx", '<div className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<div className="grid grid-cols-1 gap-2 md:grid-cols-2">'],
     ["5.7 agent", "src/app/agent/loading.tsx", " subtitle={t.agent.heroSub} />", " />"],
-    ["5.8 updown", "src/app/updown/updown-ghost.tsx", '<div className="h-[50px] w-[136px] rounded-pill bg-bg-elevated kp-shimmer-track" />', ""],
+    ["5.8 updown", "src/app/updown/updown-ghost.tsx", '<div className="ud-chart-trigger h-[44px] w-[154px] kp-shimmer-track" />', ""],
     ["5.9 round", "src/app/updown/[roundId]/loading.tsx", "items-start gap-4 lg:[grid-template-columns", "items-start gap-4 xl:[grid-template-columns"],
     ["5.10 question", "src/app/markets/[id]/market-detail-ghost.tsx", '<div className="mb-3 h-px w-full bg-border" />', ""],
     ["5.11 tickets rail", "src/components/journey/tickets/tickets-ghost.tsx", ' data-rail-ghost=""', ""],

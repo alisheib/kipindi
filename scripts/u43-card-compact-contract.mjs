@@ -36,12 +36,14 @@ export function compactCardIssues({ card, css, line, controls, dict }) {
   need(card.includes('myResults.every((result) => result.status === "VOID") ? t.market.udRefundTitle : t.market.udPaidOut'),
     "two refunded sides are named returned, not paid out");
   need(absentLine.includes('if (status === "loading") return null;')
-    && absentLine.includes('if (active && readPrice != null && Number.isFinite(readPrice))')
-    && absentLine.includes('className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable"')
-    && absentLine.includes('className="sr-only" role="status" data-testid="round-live-line-empty"')
-    && line.includes('en: { beat: "Price to beat", unavailable: "Round line unavailable"')
-    && line.includes('sw: { beat: "Bei ya kushinda", unavailable: "Mstari wa raundi haupatikani"')
-    && line.includes('zh: { beat: "目标价格", unavailable: "本回合走势暂不可用"'),
-    "missing vendor drawing is explained visibly only beside a confirmed price in all languages");
+    && absentLine.includes('if (confirmedAbove)')
+    && line.includes('|| (settled && confirmedAbove)))')
+    && line.includes('cardPriceRead({ opensAtMs, closesAtMs, readQuotedAt: readQuotedAt ?? null, openPrice, readPrice }) === "newer"')
+    && (absentLine.match(/data-testid="round-live-line-unavailable">\{words\.confirmedFallback\}<\/p>/g) ?? []).length === 2
+    && (absentLine.match(/data-testid="round-live-line-empty">\{words\.unavailable\}<\/span>/g) ?? []).length === 2
+    && line.includes('unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price shown above"')
+    && line.includes('unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa iko juu"')
+    && line.includes('unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 上方显示已确认价格"'),
+    "missing minute history is explained beside a confirmed read in all languages");
   return issues;
 }

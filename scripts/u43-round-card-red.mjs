@@ -31,8 +31,10 @@ const checks = [
   ["kit urgency removed", card.replace('urgent ? "m-urgent" : undefined', 'urgent ? undefined : undefined')],
   ["confirming payout removed", card.replace('locked || awaitingResult || state === "confirming"', "locked")],
   ["viewer result removed", card.replace("settledNow && myResults && myResults.length > 0", "false && myResults && myResults.length > 0")],
-  ["one-sided UP refund called a win", card.replace('price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins', 't.market.udUpWins')],
-  ["one-sided DOWN refund called a win", card.replace('price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins', 't.market.udDownWins')],
+  ["empty UP round called a win", card.replace('price.kind === "priced" ? t.market.udUpWins : t.market.udUp', 'price.kind === "oneSided" ? t.market.udUp : t.market.udUpWins')],
+  ["empty DOWN round called a win", card.replace('price.kind === "priced" ? t.market.udDownWins : t.market.udDown', 'price.kind === "oneSided" ? t.market.udDown : t.market.udDownWins')],
+  ["one-sided guest refund explanation removed", card.replace('state === "resolved" && price.kind === "oneSided" ? (', 'false && price.kind === "oneSided" ? (')],
+  ["empty settled round explanation removed", card.replace('state === "resolved" && price.kind === "none" ? (', 'false && price.kind === "none" ? (')],
   ["single result omits what its amount means", card.replace('myResults[0].status === "WIN" ? t.market.udPaidOut : t.market.udStake', 'myResults[0].status === "WIN" ? "" : ""')],
   ["latest asset price impersonates round read", card.replace('readQuotedAt, openPrice, readPrice });', 'sourceQuotedAt: readQuotedAt, openPrice, livePrice: readPrice });')],
   ["closing price stamped with opening quote", card.replace('closePrice != null ? closeQuotedAt : openPrice != null ? openQuotedAt : null', 'closePrice != null ? openQuotedAt : openPrice != null ? openQuotedAt : null')],
@@ -40,7 +42,8 @@ const checks = [
   ["price painted as an UP side", card.replace('const priceColor = "var(--text)";', 'const priceColor = "var(--yes-300)";')],
   ["price painted as winnings", card.replace('const priceColor = "var(--text)";', 'const priceColor = "var(--gilt)";')],
   ["price row bypasses neutral ink", card.replace('style={{ color: priceColor }}', 'style={{ color: "var(--no-300)" }}')],
-  ["target tiles returned", card.replace("{/* The open is the price to beat, stated once.", '<div className="ud-prices" />\n      {/* The open is the price to beat, stated once.')],
+  ["target tiles returned", card.replace("{/* The open is a reference, not either winning boundary.", '<div className="ud-prices" />\n      {/* The open is a reference, not either winning boundary.')],
+  ["opening price misnamed the winning threshold", card.replace('{t.market.udOpenPrice}', '{t.market.udWinTarget}')],
   ["unexplained margin beside price to beat", card.replace('{priceText.open ?? "—"}', '{priceText.open ?? "—"}±')],
   ["unlabeled moved-price difference beside confirmed price", unlabeledMove],
   ["card Swahili grammar reverted", card.replace('const durationWords = roundDuration(t, durationMinutes);', 'const durationWords = `${durationMinutes} ${t.market.udMin}`;')],
@@ -58,6 +61,12 @@ const detailMutants = [
   ["detail pool reverts to volume", detailPage.replace('className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPool}</p>', 'className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume}</p>')],
   ["detail Swahili grammar reverted", detailPage.replace('<Chip>{roundDuration(t, round.durationMinutes)}</Chip>', '<Chip>{round.durationMinutes} {t.market.udMin}</Chip>')],
   ["detail borrows asset latest quote", detailPage.replace('livePrice: round.readPrice', 'livePrice: asset.livePrice')],
+  ["detail says awaiting price despite a verified open", detailPage.replace('t.home.udMatchNoNewPrice.replace("{time}", openClock)', 't.market.udAwaitingRead')],
+  ["detail invents a no-newer-price state after a failed read", detailPage.replace('round.readUnavailable ? t.market.udReadUnavailable', 'round.readUnavailable ? t.home.udMatchNoNewPrice')],
+  ["detail assigns open-time words without a verified open", detailPage.replace('round.openPrice != null && openClock', 'openClock')],
+  ["four-digit hero move loses grouping", detailPage.replace('{usd(Math.abs(move), dec)}', '${Math.abs(move).toFixed(dec)}')],
+  ["four-digit proof move loses grouping", detailPage.replace('`${sgn(pMove)}${usd(Math.abs(pMove), dec)}`', '`${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}`')],
+  ["uncontested outcome explanation removed from proof", detailPage.replace('round.state === "resolved" && price.kind !== "priced" && (', 'false && price.kind !== "priced" && (')],
 ];
 for (const [name, mutant] of detailMutants) {
   if (mutant === detailPage || roundCardIssues(card, controls, mark, mutant, action, countdown, dictionary).length === 0)
@@ -67,6 +76,15 @@ const promise = dictionary.replace('udNextAfterResult: "The next round appears w
   'udNextAfterResult: "The next round opens when this result arrives."');
 if (promise === dictionary || roundCardIssues(card, controls, mark, detailPage, action, countdown, promise).length === 0)
   throw new Error("RED MISSED: unscheduled opening promise");
+for (const [name, before] of [
+  ["English", 'udNoBetsPlaced: "No bets were placed."'],
+  ["Swahili", 'udNoBetsPlaced: "Hakuna dau lililowekwa."'],
+  ["Chinese", 'udNoBetsPlaced: "本轮无人投注。"'],
+]) {
+  const mutant = dictionary.replace(before, "");
+  if (mutant === dictionary || roundCardIssues(card, controls, mark, detailPage, action, countdown, mutant).length === 0)
+    throw new Error(`RED MISSED: ${name} settled-empty copy`);
+}
 
 const podMutants = [
   ["settled hold mislabelled as unavailable", countdown.replace('&& hand.phase !== "hold";', ';'), css],

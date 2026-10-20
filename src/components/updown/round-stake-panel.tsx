@@ -43,6 +43,8 @@ export function RoundStakePanel(props: {
   myDownStake: number;
   /** ⭐ D2 · the round's real pool + frozen rates. Required — see `UpDownStakeControls`. */
   pricing: UpDownPricing;
+  upTarget: number | null;
+  downTarget: number | null;
   assetName: string;
   signInHref: string;
   lockedSide: "UP" | "DOWN" | null;
@@ -113,13 +115,21 @@ export function RoundStakePanel(props: {
     marketId, roundId: props.journey.roundId, pricing, min: minStake, max: maxStake, selectionClosesAtMs: props.selectionClosesAtMs ?? null,
     open: props.selectionClosesAtMs == null || props.serverNowMs < props.selectionClosesAtMs, serverNowMs: props.serverNowMs, myUpStake, myDownStake,
   } : null;
+  const bandBeforeBet = pricing.upPool > 0 && pricing.downPool > 0
+    && typeof props.upTarget === "number" && Number.isFinite(props.upTarget)
+    && typeof props.downTarget === "number" && Number.isFinite(props.downTarget)
+    && props.upTarget > props.downTarget;
 
   // No side chosen (direct nav) → the safe two-way control, so betting is never blocked.
   if (!lockedSide) {
-    if (jud && props.journey) return <LazyJudTwoWay bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} size="detail" />;
+    if (jud && props.journey) return <>
+      {bandBeforeBet && <p className="mb-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}
+      <LazyJudTwoWay bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} size="detail" />
+    </>;
     return (
       <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
         <p className="mb-3 text-body-sm leading-[1.55] text-text-muted">{t.market.udTagline}</p>
+        {bandBeforeBet && <p className="mb-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}
         {/* UD-22 · no `onWatchRound`: the player is already on the round, and a ghost CTA
             that navigates to the page you are standing on is the dead-end this session's
             brief names. The receipt keeps its single primary action. */}
@@ -129,7 +139,10 @@ export function RoundStakePanel(props: {
   }
 
   // ── Locked pick — the D3 single-direction confirm panel ────────────────────
-  if (jud && props.journey) return <LazyJudConfirm bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} side={lockedSide} />;
+  if (jud && props.journey) return <>
+    {bandBeforeBet && <p className="mb-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}
+    <LazyJudConfirm bet={bet} round={jud} viewer={props.journey.viewer} assetName={assetName} receipt={props.receipt} side={lockedSide} />
+  </>;
   const isUp = lockedSide === "UP";
   const pickWord = isUp ? t.market.udUp : t.market.udDown;
   // ⭐ D2 · THE PROJECTION IS THE POOL'S, NOT A RATE'S.
@@ -285,6 +298,7 @@ export function RoundStakePanel(props: {
           pending label + aria-busy) on a programmatic action. Under load a bet may
           legitimately queue up to 15s in admission — 15s of a dead-looking button
           was the defect. The pending affordance stays while the colour follows U43. */}
+      {bandBeforeBet && <p className="mt-2 text-body-sm text-text-faint">{noticeBody(t.market.udBandBeforeBet)}</p>}
       <button
         type="button" onClick={() => bet.place(lockedSide)}
         disabled={!bet.stakeReady || bet.pending || bet.insufficient || bet.locallyLocked}

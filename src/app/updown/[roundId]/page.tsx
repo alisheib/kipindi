@@ -47,7 +47,7 @@ import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
 import { AssetMark } from "@/components/updown/updown-card";
-import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEAT, fmtEATClock } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
@@ -216,8 +216,9 @@ export default async function UpDownRoundPage({
     ? round.closePrice != null ? round.closeQuotedAt : round.openQuotedAt
     : heroLive != null ? round.readQuotedAt : round.openQuotedAt;
   const quotedAt = fmtEAT(shownQuotedAt);
+  const openClock = fmtEATClock(Date.parse(round.opensAt));
   const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} <span className="font-mono tabular-nums">{quotedAt}</span></span> : null;
-  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">${Math.abs(move).toFixed(dec)}</span>;
+  const deltaFigure = move == null ? null : <span className="font-mono tabular-nums whitespace-nowrap">{usd(Math.abs(move), dec)}</span>;
   const moveText = move == null || move === 0 ? null
     : !decided && tone === "level" ? fillNodes(t.market.udLevelBy, { amount: deltaFigure })
       : <>{move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy}{" "}{deltaFigure}</>;
@@ -584,7 +585,10 @@ export default async function UpDownRoundPage({
               openLabel: t.market.udOpenPrice,
               upLabel: t.market.udUp,
               downLabel: t.market.udDown,
-              awaitingRead: round.readUnavailable ? t.market.udReadUnavailable : t.market.udAwaitingRead,
+              awaitingRead: round.readUnavailable ? t.market.udReadUnavailable
+                : (round.state === "open" || round.state === "locked") && round.openPrice != null && openClock
+                  ? t.home.udMatchNoNewPrice.replace("{time}", openClock)
+                  : t.market.udAwaitingRead,
               aboveBelow,
               source,
               chartAlt: `${name} ${t.market.udTitle}`,
@@ -619,6 +623,8 @@ export default async function UpDownRoundPage({
                   myUpStake: round.myUpStake,
                   myDownStake: round.myDownStake,
                   pricing: round.pricing,
+                  upTarget: round.upTarget,
+                  downTarget: round.downTarget,
                   assetName: name,
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
                   lockedSide: judSide ?? lockedSide,
@@ -874,9 +880,14 @@ export default async function UpDownRoundPage({
                   {OutcomeGlyph && <OutcomeGlyph s={16} edge="start" text="mono-700" />}
                   {outcomeLabel}
                 </p>
+                {round.state === "resolved" && price.kind !== "priced" && (
+                  <p className="mt-2 mb-0 text-body-sm text-text-muted">
+                    {price.kind === "oneSided" ? t.market.udRefundUnmatchedReason : t.market.udNoBetsPlaced}
+                  </p>
+                )}
                 <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-sans text-body-sm">
                   <dt className="text-text-faint">{t.market.udMove}</dt>
-                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}$${Math.abs(pMove).toFixed(dec)}` : "—"}</dd>
+                  <dd className="m-0 font-mono tabular-nums text-text-muted">{pMove != null ? `${sgn(pMove)}${usd(Math.abs(pMove), dec)}` : "—"}</dd>
                   <dt className="text-text-faint">{t.market.udPercent}</dt>
                   <dd className="m-0 font-mono tabular-nums text-text-muted">{pMovePct != null ? `${sgn(pMovePct)}${Math.abs(pMovePct).toFixed(3)}%` : "—"}</dd>
                   {round.upTarget != null && round.downTarget != null && (

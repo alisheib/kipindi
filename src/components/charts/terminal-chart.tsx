@@ -495,7 +495,7 @@ export function TerminalChart({
       // tags carrying one number is the candle-mode duplication again.
     }
 
-    // The frozen opening price is the round's price to beat. It is independent
+    // The frozen opening price is a reference, not either winning boundary. It is independent
     // of the latest confirmed quote and stays put when the feed is delayed.
     if (lastSeries && priceToBeatRef.current != null) {
       priceLineRef.current = lastSeries.createPriceLine({
@@ -531,7 +531,7 @@ export function TerminalChart({
       ? (() => { const bar = guardedFeed.series.candles.at(-1); return bar ? { t: bar.t, price: bar.o } : null; })()
       : null;
   const chartPointClock = lastChartPoint ? fmtEATClock(lastChartPoint.t) : null;
-  // The card and axis already state the target. A fallback chart point is the
+  // The card and axis already state the opening reference. A fallback chart point is the
   // confirmed read itself, so repeating the same figure as "current" adds noise.
   // Vendor minute OPENs can differ from the later confirmed quote; show both then.
   const showConfirmedAside = showLine && (guardedFeed?.sourceTier === "vendor" || lastChartPoint?.price !== guardedFeed?.livePrice);
@@ -545,10 +545,10 @@ export function TerminalChart({
   // the last two-state residue in the chart system, green-at-flat on the legend's own window.
   const legendInk = legend ? "var(--text-muted)" : undefined;
   const words = locale === "sw"
-    ? { beat: "Bei ya kushinda", o: "Ufunguzi", h: "Kilele", l: "Chini", c: "Kufunga", minuteOpen: "Ufunguzi wa dakika", barOpen: "Ufunguzi wa kipindi", chartRead: "Bei ya chati" }
+    ? { o: "Ufunguzi", h: "Kilele", l: "Chini", c: "Kufunga", minuteOpen: "Ufunguzi wa dakika", barOpen: "Ufunguzi wa kipindi", chartRead: "Bei ya chati" }
     : locale === "zh"
-      ? { beat: "目标价格", o: "开盘", h: "最高", l: "最低", c: "收盘", minuteOpen: "分钟开盘价", barOpen: "时段开盘价", chartRead: "图表读数" }
-      : { beat: "Price to beat", o: "Open", h: "High", l: "Low", c: "Close", minuteOpen: "Minute open", barOpen: "Bar open", chartRead: "Chart read" };
+      ? { o: "开盘", h: "最高", l: "最低", c: "收盘", minuteOpen: "分钟开盘价", barOpen: "时段开盘价", chartRead: "图表读数" }
+      : { o: "Open", h: "High", l: "Low", c: "Close", minuteOpen: "Minute open", barOpen: "Bar open", chartRead: "Chart read" };
   const chartPointWord = guardedFeed?.sourceTier === "vendor"
     ? range === "15M" || range === "30M" || range === "1H" ? words.minuteOpen : words.barOpen
     : words.chartRead;

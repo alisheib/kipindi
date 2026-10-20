@@ -517,6 +517,41 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   measures the next visible row (plot, unavailable sentence or footer); its focused guard passed and its
   targeted red fleet caught **5/5** reversals. The state driver still needs a fresh browser run; its failed
   cell is not counted as a pass. Production capture and the two full eight-lens reviews are also owed.
+  On 2026-10-20 the rebased Release B worktree was verified at `8090999e9` over `origin/main` `a504ad280`; the
+  remote U43 branch still held its older pre-rebase commit. The unfinished type-only gold exemption was retained.
+  After the Phosphor and Maswali integration, `test:visual-pass-r5c` initially reported 91 passed / 7 failed and
+  `test:visual-pass-r9a` 55 / 3; both were green on clean main. Their scoped repairs now pass 105 / 0 and 61 / 0,
+  with in-process reversals; the dependent R8a reader passes 89 / 0 and spacing 10 / 0. A fresh small-width state
+  batch, `.qa-shots/u43/r16-320/index.json`, captured all 14 phases and six 320px guest/player × language cells
+  with zero capture errors, including real local receipts, a one-sided refund and handover. These are evidence for
+  review, not after scores. Its adversarial read found a resolved zero-bet Gold card falsely saying “Down wins”, a
+  guest one-sided card with no refund explanation, ungrouped four-digit USD moves on the round detail, a fallback
+  line that described a missing minute history as “Round line unavailable” despite a confirmed price, and receipt
+  copy in English and Chinese that promised a result at the closing boundary. Focused source, copy and guard fixes
+  are being verified before the remaining width batches. A browser-only 32px ticker-height simulation on the branch
+  reproduced the first 320px `/markets` NO button touching the raised bottom rail; a real production ticker-on
+  probe also found the live A Chat bubble could briefly intercept its right edge. Release B suppresses Chat on
+  `/markets`. The scoped 320px ticker layout rule now has two in-memory reversals and a real-browser reversal:
+  the old 24px grid gap hits the raised rail; the new 16px gap hits NO, while 360px keeps its 24px gap.
+  The 320px batch alone cannot meet the brief's two independent 24-cell reviews; no after score or Release B
+  production state is claimed. [Twelve Data's published Grow terms](https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage)
+  exclude public commercial display, while the current public history API serves its bars; settlement permission is
+  also unconfirmed. [Gold-API.com's public terms](https://gold-api.com/terms) mention commercial website use, but its
+  [published API shape](https://gold-api.com/llms.txt) does not establish the raw-history rights, minute OPEN behaviour,
+  settlement use or source quality needed here. Those have not been verified with a key or agreement; no feed switch
+  follows from that observation.
+  A second 320px local state batch (`.qa-shots/u43/r17-320/index.json`) captured all 14 phases and six guest/player
+  language cells with no capture errors, but it spans source changes and is **not** a valid after-score set. Its review
+  found the receipt's unconditional payout promise, the opening price mislabeled as the winning threshold, and a
+  Swahili receipt qualifier cut off at 320px. The current branch now explains the two-target refund band before a
+  two-sided bet, distinguishes a confirmed open from a failed read, and makes the receipt payout conditional on a
+  win; the shared five-second receipt timer remains the owner-approved rule. Focused guard/red restoration and a
+  source-frozen seven-width state matrix are next. `test:u43-board` is 39/0, `test:u43-system` is 15/0,
+  `test:visual-pass-r5h` is 60/0, and `test:mobile-visual-plan` is 718/0 with 19/19 red plants; the dictionary pin
+  in `test:visual-pass-r10` still fails 1/90 while the dictionary is uncommitted. No after score is recorded.
+  A second vendor review found no replacement cleared for this public minute-history API and real-money settlement:
+  Gold-API.com's aggregate minute endpoints and public terms leave exact minute OPEN, raw-history redistribution and
+  settlement rights unresolved. No existing round or feed has been changed. Release B remains local and not live.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

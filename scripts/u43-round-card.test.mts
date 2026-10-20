@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cardPriceRead } from "../src/lib/updown-card-view";
+import { usd } from "../src/lib/usd-price";
 import { handoverPodIssues, roundCardIssues } from "./u43-round-card-contract.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,6 +24,7 @@ assert.equal(read(close + 60_000), "unknown", "a later round's read cannot enter
 assert.equal(read(null), "unknown", "a missing source time cannot be called current");
 assert.equal(cardPriceRead({ opensAtMs: NaN, closesAtMs: close, readQuotedAt: new Date(start).toISOString(),
   openPrice: 100, readPrice: 100 }), "unknown", "invalid instants do not crash or invent a read");
+assert.equal(usd(Math.abs(1746.76 - 23.45), 2), "$1,723.31", "a four-digit hero/proof move keeps its thousands separator");
 
 const issues = roundCardIssues(
   source("src/components/updown/updown-card.tsx"),

@@ -6,6 +6,7 @@ const panel = read("src/components/updown/round-stake-panel.tsx");
 const journey = read("src/components/journey/updown/jud-arm.tsx");
 const hook = read("src/components/updown/use-quick-bet.ts");
 const kit = read("src/components/ui/toast.tsx");
+const glyphs = read("src/components/ui/glyphs.tsx");
 const sharedSheet = read("src/components/journey/bet-sheet/bet-sheet.tsx");
 const css = read("src/app/globals.css");
 const authority = read("docs/DESIGN_AUTHORITY.md");
@@ -28,7 +29,7 @@ function fragments(p, j, h, k) {
   return { button, journeyButton, toast, factual };
 }
 
-function issues(p, j, h, k) {
+function issues(p, j, h, k, g = glyphs) {
   const { button, journeyButton, toast, factual } = fragments(p, j, h, k);
   const found = [];
   const need = (ok, description) => { if (!ok) found.push(description); };
@@ -44,9 +45,13 @@ function issues(p, j, h, k) {
     "placed-bet toast names the actual side and formatted stake");
   need(toast.includes('variant: "factual"') && !/variant: "(?:success|danger|gold|default)"/.test(toast),
     "placed-bet toast selects the neutral factual variant");
-  need(factual.includes('bar: "bg-text-muted"') && factual.includes('<I.info s={18} />')
-    && factual.includes('rail: "bg-text-muted"') && factual.includes('surface: ""'),
-    "factual toast draws a neutral bar and information glyph without coloured tint");
+  const plateGlyphBody = g.match(/export function plateGlyph\([^)]*\): number \{\s*return \{([^}]+)\}\[plateEdge\];/)?.[1] ?? "";
+  need(factual.includes('bar: "bg-text-muted"') && factual.includes('icon: <I.info s={plateGlyph(40)} />')
+    && factual.includes('plate: "quiet"') && factual.includes('rail: "bg-text-muted"')
+    && factual.includes('surface: ""')
+    && /<IconPlate size=\{40\} variant=\{v\.plate\}[^>]*>\s*\{v\.icon\}\s*<\/IconPlate>/.test(k)
+    && /(?:^|,)\s*40:\s*20\s*(?:,|$)/.test(plateGlyphBody),
+    "factual toast renders a neutral, untinted quiet plate with its 20px information glyph");
   return found;
 }
 
@@ -66,11 +71,16 @@ const mutants = [
   ["green placed-bet toast", panel, journey, hook.replace(original.toast, original.toast.replace('variant: "factual"', 'variant: "success"')), kit],
   ["brand placed-bet toast", panel, journey, hook.replace(original.toast, original.toast.replace('variant: "factual"', 'variant: "default"')), kit],
   ["green factual kit tint", panel, journey, hook, kit.replace(original.factual, original.factual.replace('bar: "bg-text-muted"', 'bar: "bg-success"'))],
+  ["congratulatory factual glyph", panel, journey, hook, kit.replace(original.factual, original.factual.replace('icon: <I.info s={plateGlyph(40)} />', 'icon: <I.checkCircle s={plateGlyph(40)} />'))],
+  ["wrong factual glyph size", panel, journey, hook, kit.replace(original.factual, original.factual.replace('plateGlyph(40)', 'plateGlyph(36)'))],
+  ["coloured factual plate", panel, journey, hook, kit.replace(original.factual, original.factual.replace('plate: "quiet"', 'plate: "success"'))],
+  ["factual glyph not rendered", panel, journey, hook, kit.replace('{v.icon}\n        </IconPlate>', '{null}\n        </IconPlate>')],
+  ["wrong shared 40px plate glyph size", panel, journey, hook, kit, glyphs.replace('40: 20', '40: 18')],
 ];
 let rejected = 0;
-for (const [label, p, j, h, k] of mutants) {
-  if (p === panel && j === journey && h === hook && k === kit) throw new Error(`mutation did not alter source: ${label}`);
-  if (issues(p, j, h, k).length === 0) throw new Error(`guard missed mutation: ${label}`);
+for (const [label, p, j, h, k, g = glyphs] of mutants) {
+  if (p === panel && j === journey && h === hook && k === kit && g === glyphs) throw new Error(`mutation did not alter source: ${label}`);
+  if (issues(p, j, h, k, g).length === 0) throw new Error(`guard missed mutation: ${label}`);
   rejected++;
   console.log(`RED caught ${label}`);
 }

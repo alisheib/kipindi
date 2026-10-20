@@ -108,7 +108,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
               never move the line under money already staked.
             </li>
             <li><strong className="text-text">Two pools.</strong> You stake into the Up pool or the Down pool. Pool totals are visible live.</li>
-            <li><strong className="text-text">The projected return moves.</strong> The projected return shown when you place a stake reflects the live pools, not fixed odds. It is not a promise until betting closes.</li>
+            <li><strong className="text-text">The projected return moves.</strong> The projected return shown when you place a stake reflects the live pools, not fixed odds. Betting close fixes the return for a winning pick; you receive it only if your pick wins. A voided round returns your stake.</li>
             <li><strong className="text-text">Round lock.</strong> Betting closes at the published lock time. No stake is accepted afterwards.</li>
             <li><strong className="text-text">Settlement.</strong> At expiry the closing value is read from the named public source and compared against the frozen targets.</li>
           </ul>
@@ -288,7 +288,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
               ya pesa zilizokwisha wekwa.
             </li>
             <li><strong className="text-text">Mabwawa mawili.</strong> Unaweka dau kwenye bwawa la Juu au la Chini. Jumla za mabwawa huonekana moja kwa moja.</li>
-            <li><strong className="text-text">Marejesho yanayotarajiwa hubadilika.</strong> Marejesho yanayotarajiwa yanayoonyeshwa unapoweka dau hutokana na mabwawa yaliyopo, si odds zisizobadilika. Si ahadi hadi madau yatakapofungwa.</li>
+            <li><strong className="text-text">Marejesho yanayotarajiwa hubadilika.</strong> Marejesho yanayotarajiwa yanayoonyeshwa unapoweka dau hutokana na mabwawa yaliyopo, si odds zisizobadilika. Madau yakifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda. Raundi ikibatilishwa, dau linarudishwa.</li>
             <li><strong className="text-text">Kufunga raundi.</strong> Dau hufungwa kwa muda uliochapishwa. Hakuna dau linalokubaliwa baadaye.</li>
             <li><strong className="text-text">Utatuzi.</strong> Mwisho wa raundi, thamani ya kufunga husomwa kutoka chanzo rasmi kilichotajwa na kulinganishwa na malengo yaliyofungwa.</li>
           </ul>
@@ -459,7 +459,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
               <strong className="text-text">两个目标价，开盘即冻结。</strong>系统在参考值上施加一个幅度，确定该回合的上下目标价。两者在回合开盘时即冻结并向您展示；结算时以收盘值与之比较。此后运营人员即便修改标的，也绝无法移动已投入资金所依据的界线。
             </li>
             <li><strong className="text-text">两个奖池。</strong>您将赌注投入涨池或跌池，池内总额实时可见。</li>
-            <li><strong className="text-text">预计回报会变动。</strong>下注时显示的预计回报反映当前奖池状况，而非按固定赔率计算；在下注截止前它不构成承诺。</li>
+            <li><strong className="text-text">预计回报会变动。</strong>下注时显示的预计回报反映当前奖池状况，而非按固定赔率计算。下注截止时，获胜可得的金额固定；只有您的选择获胜才会收到。回合无效则退还本金。</li>
             <li><strong className="text-text">回合锁定。</strong>下注在公布的锁定时间关闭，其后不再接受任何下注。</li>
             <li><strong className="text-text">结算。</strong>到期时从具名公开来源读取收盘值，并与冻结的目标价比较。</li>
           </ul>

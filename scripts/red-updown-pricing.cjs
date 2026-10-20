@@ -79,16 +79,16 @@ const MUTATIONS = [
   },
   {
     // ⚠️ REPLACES `both buttons share ONE multiplier` (2026-10-14): the buttons hold no multiplier to share.
-    name: "⭐ the board card's signed-out Up button prints a multiple again (the owner's ruling of 2026-10-14)",
+    name: "⭐ the board card prints a multiple beside the choices again (the owner's ruling of 2026-10-14)",
     file: CARD,
-    find: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
-    with: `<I.arrowUp s={14} edge="start" text="body-700" className={GLYPH_NO_SHRINK} /> {t.market.udUp}\n                  <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `<UpDownSidePair assetName={assetName} onPick={go} />`,
+    with: `<UpDownSidePair assetName={assetName} onPick={go} /><span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
   },
   {
     name: "⭐ the shared controls' Up button prints a multiple again (the authed card and the round page's two-way control)",
     file: CONTROLS,
-    find: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
-    with: `<I.arrowUp s={compact ? 14 : 15} edge="start" text="body-700" className={GLYPH_NO_SHRINK} />} {t.market.udUp}\n          <span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>`,
+    find: `          {sideWord(t, side, "UPDOWN")}\n        </button>`,
+    with: `          {sideWord(t, side, "UPDOWN")}<span className="font-mono text-[12.5px]">× {(1.26).toFixed(2)}</span>\n        </button>`,
   },
   {
     name: "⭐ the confirm panel prints the card's multiple again beside its projection",
@@ -153,21 +153,21 @@ const MUTATIONS = [
   {
     name: "the qualifier opens on × again — naming a multiple no surface prints",
     file: DICT,
-    find: `      udEstimateNote: "The projected return moves with every bet — it is priced from this pool right now, not from fixed odds. When betting closes it becomes your exact payout.",`,
-    with: `      udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",`,
+    find: `      udEstimateNote: "Projected return changes until betting closes. Winning return then fixes; paid only if you win. A void refunds your stake.",`,
+    with: `      udEstimateNote: "× changes until betting closes. Winning return then fixes; paid only if you win. A void refunds your stake.",`,
   },
   {
     // 2026-10-14, the same day: the ruling's Swahili shipped S4-COPY-AUDIT's class-10 agreement error ("Dau zikifungwa").
     name: "the Swahili qualifier goes back to the class-10 \"Dau zikifungwa\" (the reviewed form is \"Madau yakifungwa\")",
     file: DICT,
-    find: `si odds zisizobadilika. Madau yakifungwa, yanakuwa malipo yako kamili.",`,
-    with: `si odds zisizobadilika. Dau zikifungwa, yanakuwa malipo yako kamili.",`,
+    find: `hadi madau yafungwe. Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu.`,
+    with: `hadi dau zifungwe. Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu.`,
   },
   {
-    name: "the binding Rules §2 in Swahili goes back to \"dau zitakapofungwa\" (the reviewed form is \"madau yatakapofungwa\")",
+    name: "the binding Rules §2 in Swahili goes back to singular \"dau zikifungwa\"",
     file: RULES,
-    find: `Si ahadi hadi madau yatakapofungwa.</li>`,
-    with: `Si ahadi hadi dau zitakapofungwa.</li>`,
+    find: `Madau yakifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda.`,
+    with: `Dau zikifungwa, kiasi utakachopata ukishinda kinakuwa thabiti; utakipata tu ukishinda.`,
   },
   {
     // S12 WP9 step 6: the journey arm's side buttons are their own components; the ruling holds them too.

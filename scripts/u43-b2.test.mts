@@ -7,7 +7,8 @@ import { vendorBarsFor, VENDOR_PLAN, __clearVendorCacheForTests } from "../src/l
 import { ALLOWED_DURATIONS, roundSpanMinutes } from "../src/lib/updown-durations";
 import { assetStore } from "../src/lib/server/updown-dal";
 import { getAssetTerminalSeries } from "../src/lib/server/updown-board";
-import { RoundLiveLine } from "../src/components/charts/round-live-line";
+import { RoundLiveLine, roundLineConfirmedAbove } from "../src/components/charts/round-live-line";
+import { cardPriceRead } from "../src/lib/updown-card-view";
 
 let failed = 0;
 function ok(name: string, passed: boolean) {
@@ -103,8 +104,9 @@ ok("the rendered round line applies the tested phase rule",
   card.includes('const visible = typeof assetKey === "string" && assetKey.length > 0')
   && card.includes("&& shouldDisplayRoundLine(state, opensAtMs, closesAtMs, nowMs, openPrice);"));
 ok("the sparse vendor line hides rather than contradicts a newer confirmed card read",
-  card.includes("real.length === 1 && hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)")
-  && card.includes('data-testid="round-live-line-unavailable">{words.unavailable}</p>'));
+  card.includes("real.length === 1 && (hasLaterConfirmedRead(opensAtMs, readPrice ?? null, readQuotedAt ?? null)")
+  && card.includes("|| (settled && confirmedAbove)))")
+  && card.includes('data-testid="round-live-line-unavailable">{words.confirmedFallback}</p>'));
 ok("the real history path uses the tested OPEN mapper", board.includes("vendorOpenPoints(inWindow, plan.intervalMs, asset.decimals)"));
 ok("the round component uses the shared range, not a duration-specific request", card.includes("fetch(roundLineHistoryUrl(assetKey)"));
 const roundCard = readFileSync(new URL("../src/components/updown/updown-card.tsx", import.meta.url), "utf8");
@@ -119,9 +121,11 @@ ok("a later unequal minute OPEN is named as a minute OPEN, not the frozen target
   distinctBars?.length === 2 && distinctBars[0]?.price === 100.12
   && distinctBars.at(-1)?.price === 100.25 && distinctBars.at(-1)?.price !== distinctBars[0]?.price
   && card.includes('real.length === 1 ? `${words.noNewer} ${openClock}` : words.minuteOpen')
-  && card.includes('en: { beat: "Price to beat", minuteOpen: "Minute open"')
-  && card.includes('sw: { beat: "Bei ya kushinda", minuteOpen: "Ufunguzi wa dakika"')
-  && card.includes('zh: { beat: "目标价格", minuteOpen: "分钟开盘价"')
+  && card.includes('en: { openReference: "Opening reference", minuteOpen: "Minute open"')
+  && card.includes('sw: { openReference: "Bei ya ufunguzi", minuteOpen: "Ufunguzi wa dakika"')
+  && card.includes('zh: { openReference: "开盘参考价", minuteOpen: "分钟开盘价"')
+  && card.includes('aria-label={`${words.openReference} ${usd(openPrice, decimals)}.')
+  && !card.includes('Price to beat') && !card.includes('Bei ya kushinda') && !card.includes('目标价格')
   && terminal.includes('minuteOpen: "Minute open"')
   && terminal.includes('minuteOpen: "Ufunguzi wa dakika"')
   && terminal.includes('minuteOpen: "分钟开盘价"'));
@@ -165,13 +169,31 @@ ok("a backgrounded first request has a bounded timeout and a truthful unavailabl
   && card.includes("clearTimeout(watchdog)")
   && card.includes('if (status === "loading") return null;')
   && card.includes("{words.unavailable}"));
-ok("a missing vendor line is explained beside a confirmed read in all three languages",
-  card.includes('if (active && readPrice != null && Number.isFinite(readPrice))')
-  && card.includes('className="m-0 font-mono text-micro text-text-subtle" role="status" data-testid="round-live-line-unavailable"')
-  && card.includes('className="sr-only" role="status" data-testid="round-live-line-empty"')
-  && card.includes('minuteOpen: "Minute open", unavailable: "Round line unavailable"')
-  && card.includes('minuteOpen: "Ufunguzi wa dakika", unavailable: "Mstari wa raundi haupatikani"')
-  && card.includes('minuteOpen: "分钟开盘价", unavailable: "本回合走势暂不可用"'));
+const linePriceEvidence = { opensAtMs: open, closesAtMs: close, openPrice: 100.12,
+  readPrice: 100.25, readQuotedAt: new Date(open + minute).toISOString(), closePrice: 99.95 };
+ok("missing minute history names a price only when the card shows a confirmed read or close",
+  roundLineConfirmedAbove({ ...linePriceEvidence, state: "open" })
+  && roundLineConfirmedAbove({ ...linePriceEvidence, state: "locked" })
+  && roundLineConfirmedAbove({ ...linePriceEvidence, state: "resolved", readPrice: null })
+  && roundLineConfirmedAbove({ ...linePriceEvidence, state: "void", readPrice: null })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "closing" })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "confirming" })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "resolved", closePrice: null })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "void", closePrice: Number.NaN })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "open", readQuotedAt: null })
+  && !roundLineConfirmedAbove({ ...linePriceEvidence, state: "locked", readQuotedAt: new Date(close + minute).toISOString() })
+  && card.includes('if (confirmedAbove)')
+  && card.includes('|| (settled && confirmedAbove)))')
+  && card.includes('cardPriceRead({ opensAtMs, closesAtMs, readQuotedAt: readQuotedAt ?? null, openPrice, readPrice }) === "newer"')
+  && cardPriceRead({ opensAtMs: open, closesAtMs: close, readQuotedAt: new Date(open + minute).toISOString(), openPrice: 100.12, readPrice: 100.25 }) === "newer"
+  && cardPriceRead({ opensAtMs: open, closesAtMs: close, readQuotedAt: null, openPrice: 100.12, readPrice: 100.25 }) !== "newer"
+  && cardPriceRead({ opensAtMs: open, closesAtMs: close, readQuotedAt: new Date(close + minute).toISOString(), openPrice: 100.12, readPrice: 100.25 }) !== "newer"
+  && card.includes('return closePrice != null && Number.isFinite(closePrice) && closePrice > 0;')
+  && (card.match(/data-testid="round-live-line-unavailable">\{words\.confirmedFallback\}<\/p>/g) ?? []).length === 2
+  && (card.match(/data-testid="round-live-line-empty">\{words\.unavailable\}<\/span>/g) ?? []).length === 2
+  && card.includes('unavailable: "Minute price history unavailable for this round", confirmedFallback: "Minute history unavailable · confirmed price shown above"')
+  && card.includes('unavailable: "Historia ya bei za dakika haipatikani kwa raundi hii", confirmedFallback: "Historia ya dakika haipatikani · bei iliyothibitishwa iko juu"')
+  && card.includes('unavailable: "本回合分钟价格历史暂不可用", confirmedFallback: "分钟历史暂不可用 · 上方显示已确认价格"'));
 ok("the chart names the plotted point's own time and distinguishes vendor OPEN from a confirmed-read fallback",
   terminal.includes('guardedFeed?.series.mode === "line"')
   && terminal.includes('const chartPointWord = guardedFeed?.sourceTier === "vendor"')
@@ -184,7 +206,8 @@ ok("the chart names the plotted point's own time and distinguishes vendor OPEN f
 ok("the chart footer gives the plotted point room and repeats a quote only when vendor OPEN can differ",
   terminal.includes('const showConfirmedAside = showLine && (guardedFeed?.sourceTier === "vendor" || lastChartPoint?.price !== guardedFeed?.livePrice);')
   && terminal.includes('{showConfirmedAside && (')
-  && !terminal.includes('{words.beat} <span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>'));
+  && !terminal.includes('{words.beat} <span className="tabular-nums">{usd(priceToBeat, guardedFeed.decimals)}</span>')
+  && !terminal.includes('Price to beat') && !terminal.includes('Bei ya kushinda') && !terminal.includes('目标价格'));
 ok("chart footer separates plotted point from source and time in readable rows",
   terminal.includes('flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-left text-body-sm')
   && terminal.includes('<span className="tabular-nums text-text-subtle">{receipt}</span>')

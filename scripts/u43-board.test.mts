@@ -99,10 +99,22 @@ ok("refund condition names the actually empty side in all three languages",
   cardRefundBrief(dict.en, "UP") === "If Up stays empty, stakes return."
   && cardRefundBrief(dict.sw, "DOWN") === "Chini ikibaki tupu, dau hurudi."
   && cardRefundBrief(dict.zh, "DOWN") === "若跌方仍无人投注，本金退还。"
-  && cardRefundBrief(dict.en, "BOTH") === "One side at close: stakes return."
-  && cardRefundBrief(dict.sw, "BOTH") === "Upande mmoja hadi mwisho: dau hurudi."
-  && cardRefundBrief(dict.zh, "BOTH") === "截止时仅一方投注：本金退还。"
+  && cardRefundBrief(dict.en, "BOTH") === "No bets yet. If only one side has bets at close, every stake returns."
+  && cardRefundBrief(dict.sw, "BOTH") === "Hakuna dau bado. Madau yakifungwa na upande mmoja tu, kila dau litarudi."
+  && cardRefundBrief(dict.zh, "BOTH") === "暂无投注。投注截止时若只有一方有投注，所有本金退回。"
   && cardRefundBrief(dict.en, null) === null);
+ok("a zero-pool card says no bets exist before giving the conditional refund rule",
+  [dict.en, dict.sw, dict.zh].every((t) => cardRefundBrief(t, "BOTH") === t.market.udNobodyBackedEither)
+  && ![dict.en, dict.sw, dict.zh].some((t) => cardRefundBrief(t, "BOTH") === t.market.udOneSideRefundBrief));
+ok("two-sided banded card warns of small-move refunds before the choices in every language",
+  card.includes('const bandBrief = price.kind === "priced" && upTarget != null && downTarget != null')
+  && card.includes('&& Number.isFinite(upTarget) && Number.isFinite(downTarget) && upTarget > downTarget')
+  && card.includes('? t.market.udBandBeforeBet : null;')
+  && card.includes('bettable && bandBrief && (')
+  && card.includes('{bandBrief}')
+  && card.indexOf('{bandBrief}') > card.indexOf('className="ud-split"')
+  && card.indexOf('{bandBrief}') < card.indexOf('className="ud-act"')
+  && [dict.en, dict.sw, dict.zh].every((t) => t.market.udBandBeforeBet.length > 0));
 ok("320 locked card follows its content instead of reserving empty live space",
   card.includes('data-ud-layout={isAuthed === true && marketId ? (myUpStake > 0 || myDownStake > 0 ? "held" : "player") : "guest"}')
   && css.includes('.ud-card[data-phase="locked"] .ud-act { flex: 0 0 auto; margin-top: 0; }')

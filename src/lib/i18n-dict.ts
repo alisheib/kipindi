@@ -1030,6 +1030,7 @@ export const dict = {
       udRefundOperator: "This round was cancelled by our team. Your stake is back in full.",
       udRefundUnmatched: "Nobody backed the other side, so there was nothing to win and nothing to lose. Your stake is back in full.",
       udRefundUnmatchedReason: "Nobody backed the other side, so there was nothing to win or lose.",
+      udNoBetsPlaced: "No bets were placed.",
       udRefundUnexplained: "This round was refunded and we are checking why. Your stake is back in full — nothing is at risk.",
       // 2026-09-13 · WHY a round voided, for a viewer with nothing returned — never a word about money (viewerRefundCopy).
       udVoidNoteNoMove: "The price did not move far enough either way, so this round could not be called.",
@@ -1041,10 +1042,9 @@ export const dict = {
       udVoidedSource: "The closing price could not be confirmed. Every stake is returned in full.",
       udVolume: "Vol", udPlayers: "players",
       udOpenPrice: "Open", udClosePrice: "Close",
-      udWinTarget: "Higher or lower than",
+      udBandBeforeBet: "Small moves may refund · winning targets in round details",
       udHigherThan: "Higher",
       udLowerThan: "Lower",
-      udTickNote: "The price only has to move one step either way.",
       udAwaitingRead: "Awaiting price",
       // ⛔ D2/G3 · THIS SENTENCE USED TO BE FALSE ABOUT ITS OWN NUMBER. It said "pool
       // estimates" while the × beside it was a fixed config constant. Now that the figure IS
@@ -1054,7 +1054,7 @@ export const dict = {
       // multiple the buttons printed; no Up & Down surface prints one now, so it names the figure it
       // qualifies — the projected return (`udRcProjected`, word for word) on the confirm panel and
       // the receipt, the commit-time disclosures the ruling keeps.
-      udEstimateNote: "The projected return moves with every bet — it is priced from this pool right now, not from fixed odds. When betting closes it becomes your exact payout.",
+      udEstimateNote: "Projected return changes until betting closes. Winning return then fixes; paid only if you win. A void refunds your stake.",
       // 🔴 UD-13b · the phone filter sheet. ⚠️ The trigger NAMES THE ACTIVE SELECTION
       // rather than saying "Filters": a collapsed filter whose trigger does
       // not say what is selected is WORSE than visible chips, because the player loses the
@@ -1179,7 +1179,7 @@ export const dict = {
       // it is `udEstimateNote`, which already exists and already says exactly this — it is
       // reused rather than restated so the round page's confirm panel and this receipt cannot drift.
       udRcProjected: "Projected return", udRcOpenPrice: "Open price",
-      udRcBetsClose: "Betting closes", udRcResultDue: "Result due",
+      udRcBetsClose: "Betting closes", udRcResultDue: "Result expected",
       // ⛔ The exit row is COMPUTED per bet, never stated as a constant. Cash-out needs
       // `freeExitGraceMinutes` of betting time still left when the bet lands (the RUNWAY rule
       // in market-service.cashOutValue), and an Up & Down round's betting window IS its
@@ -4402,6 +4402,7 @@ export const dict = {
       udRefundOperator: "Raundi hii ilifutwa na timu yetu. Dau lako limerudi kikamilifu.",
       udRefundUnmatched: "Hakuna aliyeweka dau upande mwingine, hivyo hakukuwa na cha kushinda wala kupoteza. Dau lako limerudi kikamilifu.",
       udRefundUnmatchedReason: "Hakuna aliyeweka dau upande mwingine, hivyo hakukuwa na cha kushinda wala kupoteza.",
+      udNoBetsPlaced: "Hakuna dau lililowekwa.",
       udRefundUnexplained: "Raundi hii imerudishiwa dau na tunachunguza sababu. Dau lako limerudi kikamilifu — hakuna hatari.",
       // 2026-09-13 · WHY a round voided, for a viewer with nothing returned — never a word about money (viewerRefundCopy).
       udVoidNoteNoMove: "Bei haikusogea vya kutosha upande wowote, hivyo raundi hii haikuweza kuamuliwa.",
@@ -4413,12 +4414,11 @@ export const dict = {
       udVoidedSource: "Bei ya kufunga haikuthibitishwa. Kila dau limerudishwa kikamilifu.",
       udVolume: "Jumla", udPlayers: "wachezaji",
       udOpenPrice: "Ufunguzi", udClosePrice: "Kufunga",
-      udWinTarget: "Juu au chini ya",
+      udBandBeforeBet: "Mabadiliko madogo yanaweza kurudisha dau · malengo ya ushindi kwenye maelezo",
       udHigherThan: "Juu",
       udLowerThan: "Chini",
-      udTickNote: "Bei inahitaji kusogea hatua moja tu upande wowote.",
       udAwaitingRead: "Inasubiri bei",
-      udEstimateNote: "Marejesho yanayotarajiwa hubadilika kwa kila dau jipya — hutokana na bwawa la sasa hivi, si odds zisizobadilika. Madau yakifungwa, yanakuwa malipo yako kamili.",
+      udEstimateNote: "Makisio hubadilika hadi madau yafungwe. Kiasi cha ushindi huwa thabiti; hulipwa ukishinda tu. Dau hurudi raundi ikiwa batili.",
       udFilterTitle: "Chuja ubao",
       udFilterAria: "Vichujio — inaonyesha {asset}, {duration}",
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
@@ -7163,6 +7163,7 @@ export const dict = {
       udRefundOperator: "本轮已由我们的团队取消。您的投注已全额退回。",
       udRefundUnmatched: "没有人投注另一方，因此既无可赢也无可输。您的投注已全额退回。",
       udRefundUnmatchedReason: "没有人投注另一方，因此既无可赢也无可输。",
+      udNoBetsPlaced: "本轮无人投注。",
       udRefundUnexplained: "本轮已退款，我们正在核实原因。您的投注已全额退回——没有任何风险。",
       // 2026-09-13 · WHY a round voided, for a viewer with nothing returned — never a word about money (viewerRefundCopy).
       udVoidNoteNoMove: "价格向任一方向的变动都不足以判定本轮结果。",
@@ -7174,12 +7175,11 @@ export const dict = {
       udVoidedSource: "收盘价无法确认。所有投注已全额退回。",
       udVolume: "总额", udPlayers: "玩家",
       udOpenPrice: "开盘", udClosePrice: "收盘",
-      udWinTarget: "高于或低于",
+      udBandBeforeBet: "小幅变动可退还本金 · 获胜目标价见回合详情",
       udHigherThan: "高于",
       udLowerThan: "低于",
-      udTickNote: "价格只需向任一方向变动一档即可。",
       udAwaitingRead: "等待价格",
-      udEstimateNote: "预计回报会随每一笔新投注变动——它按此刻的奖池计算，而非按固定赔率计算。投注截止时，它将变为您的确切派彩。",
+      udEstimateNote: "预计回报在下注截止前会变动。届时获胜金额固定，仅在押中时支付。回合无效则退还本金。",
       udFilterTitle: "筛选看板",
       udFilterAria: "筛选——正在显示 {asset}、{duration}",
       udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",
@@ -7259,7 +7259,7 @@ export const dict = {
       udPosCashedOut: "已取消",
       udHistoryCapped: "仅显示最近 {n} 笔下注——上方合计也只涵盖这些。",
       udRcProjected: "预计回报", udRcOpenPrice: "开盘价",
-      udRcBetsClose: "投注截止", udRcResultDue: "结果公布",
+      udRcBetsClose: "投注截止", udRcResultDue: "预计结果时间",
       udRcExitLabel: "免费取消", udRcExitValue: "{mins} 分钟",
       udRcNoExitLabel: "不可提前退出", udRcNoExitValue: "将持有至结果公布",
       udRcKeepPlaying: "继续游戏", udRcWatchRound: "观看本轮",
