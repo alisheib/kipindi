@@ -20,12 +20,13 @@ import { isRolloutState, lowerRollout } from "@/lib/feature-state";
 import { signSession, verifySession } from "./crypto";
 import { loadConfigResult, saveConfig } from "./config-store";
 import { hasDatabase } from "./prisma";
+import { MASWALI_REASON_MIN, MASWALI_REASON_MAX } from "@/lib/maswali-ceremony-bounds";
 
 export const MILLIONEA_SWITCH_KEY = "millionea.rollout.switch";
 export const MILLIONEA_SWITCH_PURPOSE = "millionea.rollout.switch";
 export const MILLIONEA_SWITCH_VERSION = 1;
-export const MILLIONEA_REASON_MIN = 5;
-export const MILLIONEA_REASON_MAX = 300;
+export const MILLIONEA_REASON_MIN = MASWALI_REASON_MIN;
+export const MILLIONEA_REASON_MAX = MASWALI_REASON_MAX;
 /** How stale any reader's answer may be — the kill reaches every container within this. */
 export const MILLIONEA_SWITCH_MAX_AGE_MS = 10_000;
 

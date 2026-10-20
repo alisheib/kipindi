@@ -16,6 +16,7 @@ import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { validShareDecision } from "@/lib/maswali-admin-form-validation";
+import { MASWALI_REASON_MIN, MASWALI_REASON_MAX, pauseReasonLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
 import {
   forfeitMaswaliShareAction, holdMaswaliShareAction, pauseMaswaliSalesAction, releaseMaswaliShareAction, resumeMaswaliSalesAction,
   voidMaswaliWeekAction,
@@ -50,8 +51,10 @@ export function PauseControl({ paused }: { paused: boolean }) {
   if (!mayAct) return <ActReadOnly />;
   return (
     <div className="space-y-3 max-w-form">
-      <Field label={paused ? "Why sales resume" : "Why sales pause"}><Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} /></Field>
-      <Button size="sm" variant={paused ? "primary" : "claret"} disabled={pending || text.trim().length < 5} onClick={() => setOpen(true)}>{paused ? "Resume sales" : "Pause sales"}</Button>
+      <Field label={paused ? "Why sales resume" : "Why sales pause"} hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}>
+        <Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={text} onChange={(e) => setText(e.target.value)} />
+      </Field>
+      <Button size="sm" variant={paused ? "primary" : "claret"} disabled={pending || !(paused ? reasonLengthOk(text) : pauseReasonLengthOk(text))} onClick={() => setOpen(true)}>{paused ? "Resume sales" : "Pause sales"}</Button>
       {error && <p role="alert" className="text-body-sm text-danger-fg">{error}</p>}
       {note && <p role="status" className="text-body-sm text-success">{note}</p>}
       <UnsavedChangesGuard dirty={text.trim() !== ""} body={`A reason to ${paused ? "resume" : "pause"} sales has been typed but not recorded. Leaving now discards it.`} />

@@ -16,6 +16,8 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { validGuaranteeDraft } from "@/lib/maswali-admin-form-validation";
+import { MASWALI_LICENCE_REF_MIN, MASWALI_LICENCE_REF_MAX, MASWALI_REASON_MIN, MASWALI_REASON_MAX,
+  licenceRefLengthOk, reasonLengthOk } from "@/lib/maswali-ceremony-bounds";
 import {
   fundMaswaliGuaranteeAction, releaseMaswaliSettlementAction, returnMaswaliGuaranteeAction, setMaswaliLicenceBasisAction,
   setMillioneaRolloutAction, sunsetMaswaliAction,
@@ -111,8 +113,10 @@ export function LicenceCeremony() {
     <div className="space-y-3">
       <Field label="Basis"><Select size="sm" value={kind} onChange={setKind} ariaLabel="Licence basis"
         options={[{ value: "OWNER_RULING", label: "The Owner's dated ruling" }, { value: "GBT_WRITTEN", label: "The Gaming Board's letter" }, { value: "NONE", label: "None (withdraw it)" }]} /></Field>
-      {kind !== "NONE" && <Field label="Where it is kept"><Textarea rows={2} value={ref} onChange={(e) => setRef(e.target.value)} /></Field>}
-      <Button size="sm" disabled={pending || (kind !== "NONE" && ref.trim().length < 5)} onClick={() => setOpen(true)}>Record</Button>
+      {kind !== "NONE" && <Field label="Where it is kept" hint={`${MASWALI_LICENCE_REF_MIN}–${MASWALI_LICENCE_REF_MAX} characters after spaces are folded.`}>
+        <Textarea rows={2} maxLength={MASWALI_LICENCE_REF_MAX} value={ref} onChange={(e) => setRef(e.target.value)} />
+      </Field>}
+      <Button size="sm" disabled={pending || (kind !== "NONE" && !licenceRefLengthOk(ref))} onClick={() => setOpen(true)}>Record</Button>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={ref.trim() !== ""} body="A licence basis has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="RECORD"
@@ -134,8 +138,8 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
     <div className="space-y-3">
       <Field label="Visible to"><Select size="sm" value={cap} onChange={setCap} ariaLabel="Rollout"
         options={[{ value: "WITHDRAWN", label: "Nobody (withdrawn)" }, { value: "STAFF_PREVIEW", label: "Staff preview" }, { value: "ACTIVE", label: "Everyone" }]} /></Field>
-      <Field label="Why"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-      <Button size="sm" disabled={pending || cap === current || reason.trim().length < 5} onClick={() => setOpen(true)}>Move the switch</Button>
+      <Field label="Why" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+      <Button size="sm" disabled={pending || cap === current || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Move the switch</Button>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={cap !== current || reason.trim() !== ""} body="A rollout change has been chosen but not made. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="warning" tier="hard" typedWord={cap}
@@ -157,8 +161,8 @@ export function SunsetCeremony({ weeks }: { weeks: Array<{ id: string; label: st
   return (
     <div className="space-y-3">
       <Field label="The final week"><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week" options={weeks.map((w) => ({ value: w.id, label: w.label }))} /></Field>
-      <Field label="Why Millionea is stopping"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-      <Button size="sm" variant="claret" disabled={pending || reason.trim().length < 5} onClick={() => setOpen(true)}>Make it the final week</Button>
+      <Field label="Why Millionea is stopping" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+      <Button size="sm" variant="claret" disabled={pending || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Make it the final week</Button>
       <Feedback error={error} note={note} />
       <UnsavedChangesGuard dirty={reason.trim() !== ""} body="A reason for the final week has been typed but not recorded. Leaving now discards it." />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord={SUNSET_WORD}

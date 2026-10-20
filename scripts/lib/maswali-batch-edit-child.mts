@@ -7,6 +7,7 @@ const { eatWeekStartMs } = await import("../../src/lib/eat-day.ts");
 const { utcToZonedLocal } = await import("../../src/lib/maswali-time.ts");
 const svc = await import("../../src/lib/server/maswali-service.ts");
 const { weekStore, questionStore, __resetMaswaliMemoryStores } = await import("../../src/lib/server/maswali-dal.ts");
+const { auditFlush } = await import("../../src/lib/server/audit.ts");
 
 let pass = 0, fail = 0;
 const failedNames: string[] = [];
@@ -74,13 +75,30 @@ const saved = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", e
 ] });
 questionStore.editDraftQuestions = originalBatch;
 const afterSave = await questionStore.listForWeek(weekId);
-ok("one accepted save updates both changed slots", saved.ok && afterSave[0]?.textEn === "Edited question one" && afterSave[1]?.textEn === "Edited question two", errorOf(saved));
+ok("one accepted save updates both changed slots", saved.ok && saved.recorded && afterSave[0]?.textEn === "Edited question one" && afterSave[1]?.textEn === "Edited question two", errorOf(saved));
 ok("accepted batch clears parity once", (await weekStore.get(weekId))?.parityAttestedBy === null);
+
+// An audit append can fail after commit. The officer must hear that the edits landed, without a false rollback claim.
+await auditFlush();
+const oldNodeEnv = process.env.NODE_ENV;
+const oldAuditSecret = process.env.AUDIT_CHAIN_SECRET;
+process.env.NODE_ENV = "production";
+delete process.env.AUDIT_CHAIN_SECRET;
+const unrecordedSave = await svc.editDraftQuestions({ weekId, officerId: "usr_builder", edits: [
+  { slot: 3, changes: { textEn: "Saved despite audit refusal" } },
+] });
+if (oldNodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = oldNodeEnv;
+if (oldAuditSecret === undefined) delete process.env.AUDIT_CHAIN_SECRET; else process.env.AUDIT_CHAIN_SECRET = oldAuditSecret;
+ok("an unrecorded audit reports saved, not rolled back", unrecordedSave.ok && !unrecordedSave.recorded
+  && (await questionStore.listForWeek(weekId))[2]?.textEn === "Saved despite audit refusal");
 
 const builder = readFileSync("src/app/admin/maswali/new/week-builder.tsx", "utf8");
 const action = readFileSync("src/app/admin/maswali/actions.ts", "utf8");
 ok("builder submits one batch action instead of a per-slot loop", builder.includes("editMaswaliQuestionsAction(form)") && !builder.includes("editMaswaliQuestionAction(f)"));
 ok("batch action calls the atomic service", action.includes("editDraftQuestions({ weekId, edits, officerId: session.userId })"));
+ok("batch action returns the measured audit outcome", action.includes("recorded: r.recorded"));
+ok("builder warns that an unrecorded save still landed", builder.includes("Questions saved, but the audit record was not written")
+  && builder.includes("The edits are already saved; do not repeat them."));
 
 console.log(`@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 if (process.argv.includes("--prove-red")) {

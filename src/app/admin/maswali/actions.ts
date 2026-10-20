@@ -23,7 +23,7 @@ import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
 
-type ActionResult = { ok: true; weekId?: string } | { ok: false; error: string };
+type ActionResult = { ok: true; weekId?: string; recorded?: boolean } | { ok: false; error: string };
 
 const refresh = (weekId?: string) => {
   revalidatePath("/admin/maswali");
@@ -96,7 +96,7 @@ export async function editMaswaliQuestionsAction(formData: FormData): Promise<Ac
     const r = await editDraftQuestions({ weekId, edits, officerId: session.userId });
     if (!r.ok) return { ok: false, error: r.error };
     refresh(weekId);
-    return { ok: true, weekId };
+    return { ok: true, weekId, recorded: r.recorded };
   } catch (err) {
     return { ok: false, error: safeError(err, "The questions could not be saved") };
   }

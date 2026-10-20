@@ -23,6 +23,7 @@ import { DateSelect } from "@/components/ui/date-select";
 import { TimeSelect } from "@/components/ui/time-select";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
+import { useDeferredToast } from "@/components/ui/toast";
 import { utcToZonedLocal } from "@/lib/maswali-time";
 import type { DraftSuggestion } from "@/lib/server/maswali-console";
 import { createMaswaliWeekAction, editMaswaliQuestionsAction } from "../actions";
@@ -80,6 +81,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
   const [rows, setRows] = useState<Row[]>(() => edit ? edit.rows.map((r) => ({ ...r })) : Array.from({ length: 15 }, (_, i) => emptyRow(i)));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const { deferToast } = useDeferredToast(pending);
   // The draft as it was first drawn: any change since is work the officer would lose by leaving (test:unsaved-changes).
   const [baseline] = useState(() => JSON.stringify([weekStart, visibility, rows]));
   const dirty = JSON.stringify([weekStart, visibility, rows]) !== baseline;
@@ -110,6 +112,9 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
       start(async () => {
         const res = await editMaswaliQuestionsAction(form);
         if (!res.ok) { setError(res.error); return; }
+        deferToast(res.recorded === false
+          ? { title: "Questions saved, but the audit record was not written", description: "Tell an administrator. The edits are already saved; do not repeat them.", variant: "warning", durationMs: 0 }
+          : { title: "Questions saved", variant: "success" });
         router.push(`/admin/maswali/${edit.weekId}` as Route);
       });
       return;

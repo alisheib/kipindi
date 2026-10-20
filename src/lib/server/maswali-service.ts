@@ -40,6 +40,7 @@ import { merkleRoot, questionSetHash, type FrozenQuestion } from "@/lib/maswali-
 import { isMaswaliVoidReason, voidGroundAvailable, type MaswaliVoidReason } from "@/lib/maswali-void-reason";
 import { noteMaswaliPoolChanged } from "./maswali-pool-feed";
 import { formatTzs } from "@/lib/utils";
+import { MASWALI_REASON_MIN, MASWALI_REASON_MAX } from "@/lib/maswali-ceremony-bounds";
 
 type Ok<T> = { ok: true } & T;
 type Refused = { ok: false; error: string };
@@ -194,7 +195,7 @@ export async function editDraftQuestion(input: { weekId: string; slot: number; c
 /** Save the builder's changed slots together. A later refusal cannot leave an earlier slot saved. */
 export async function editDraftQuestions(input: {
   weekId: string; edits: Array<{ slot: number; changes: Partial<DraftQuestionInput> }>; officerId: string;
-}): Promise<Result> {
+}): Promise<Result<{ recorded: boolean }>> {
   const result = await withLock(MASWALI_CHAIN_LOCK, async (tx): Promise<Result> => {
     const week = await weekStore.get(input.weekId);
     if (!week) return refuse("No such week.");
@@ -225,9 +226,11 @@ export async function editDraftQuestions(input: {
     if (week.parityAttestedBy) await weekStore.patch(week.id, { parityAttestedBy: null, parityAttestedAt: null }, tx ?? undefined);
     return { ok: true };
   });
-  if (result.ok) audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+  if (!result.ok) return result;
+  // The questions and attestation have committed. An audit failure cannot roll them back, so report both facts.
+  const recorded = await audit({ category: "ADMIN", action: "maswali.week.draft_edited", actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
     payload: { slots: input.edits.map((edit) => edit.slot), fields: input.edits.map((edit) => Object.keys(edit.changes)) } });
-  return result;
+  return { ok: true, recorded: recorded.recorded };
 }
 
 /** The officer's view of a stored start: the local "YYYY-MM-DDTHH:MM" in its own zone. */
@@ -800,7 +803,7 @@ export async function sunsetState(): Promise<{ kind: "LIVE" } | { kind: "ENDING"
 export async function sunsetMaswali(input: { weekId: string; ownerId: string; typed: string; reason: string; now?: Date }): Promise<Result<{ week: StoredWeek }>> {
   if (input.typed.trim() !== SUNSET_WORD) return refuse(`Type ${SUNSET_WORD} to make this the final week.`);
   const reason = input.reason.trim();
-  if (reason.length < 5 || reason.length > 300) return refuse("Write why Millionea is being stopped (5–300 characters).");
+  if (reason.length < MASWALI_REASON_MIN || reason.length > MASWALI_REASON_MAX) return refuse(`Write why Millionea is being stopped (${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters).`);
   const nowMs = (input.now ?? new Date()).getTime();
   return withLock(MASWALI_CHAIN_LOCK, async () => {
     const week = await weekStore.get(input.weekId);
