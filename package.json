@@ -699,6 +699,8 @@
     "test:maswali-player": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-player.test.mts",
     "test:maswali-sitemap": "tsx scripts/maswali-sitemap.test.mts",
     "red:maswali-sitemap": "tsx scripts/maswali-sitemap.test.mts --prove-red",
+    "test:maswali-week-cache": "tsx scripts/maswali-week-cache.test.mts",
+    "red:maswali-week-cache": "tsx scripts/maswali-week-cache.test.mts --prove-red",
     "test:maswali-i18n": "tsx scripts/maswali-i18n.test.mts",
     "test:maswali-design": "tsx scripts/maswali-design.test.mts",
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",

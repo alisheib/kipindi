@@ -46,10 +46,14 @@ import { FORFEITED_SHARE_MARK, ticketShown, type TicketShown, type WeekState } f
 import { exitWindowFacts } from "@/lib/exit-window";
 import { eatNextWeekAt } from "@/lib/eat-day";
 import { normalizeMillioneaSerial } from "@/lib/millionea-serial";
+import { unstable_cache } from "next/cache";
 
 const UNSETTLED: WeekState[] = ["OPEN", "CLOSED", "RESOLVING"];
 const GRADING: WeekState[] = ["CLOSED", "RESOLVING"];
 const TERMINAL: WeekState[] = ["SETTLED", "VOIDED"];
+
+/** An officer's successful week action expires the shared PUBLIC question projection immediately. */
+export const MASWALI_PUBLIC_WEEK_QUESTIONS_TAG = "millionea-public-week-questions";
 
 /**
  * ⭐ R3 · WEEKS NEWEST FIRST IN THE CALENDAR — the chain's own order (`calendarStartMs`, MR-3; S5 re-review 1). ⛔ Never the
@@ -128,7 +132,7 @@ async function termsOf(week: StoredWeek): Promise<WeekTerms | null> {
 }
 
 /** The earliest of the fifteen events — "Tukio la kwanza" printed under the close (MR-4). */
-function firstEventOf(qs: StoredQuestion[]): string | null {
+function firstEventOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[]): string | null {
   return qs.map((q) => q.eventStartsAt).sort()[0] ?? null;
 }
 
@@ -239,8 +243,43 @@ function questionsOf(qs: StoredQuestion[], gq: GradableQuestion[]): MillioneaQue
   }));
 }
 
+/**
+ * The only shape the shared cache may hold: published question copy and confirmed outcomes. `StoredQuestion` also has
+ * officer ids, evidence, source fallbacks, probability estimates and AI suggestions; none of those enter this result.
+ * The three translations are kept together so the cache key never depends on a reader's locale cookie.
+ */
+export function publicHubQuestionsOf(qs: StoredQuestion[]): { questions: MillioneaQuestion[]; graded: GradableQuestion[] } {
+  const graded = gradable(qs);
+  return { questions: questionsOf(qs, graded), graded };
+}
+
+async function readHubQuestions(weekId: string) {
+  return publicHubQuestionsOf(await questionStore.listForWeek(weekId));
+}
+
+/**
+ * Next 16.4's legacy data cache (`cacheComponents` is off in this app). Keep the route dynamic: the gate, week state,
+ * owner's tickets/notices, pause, buying decision and ledger-derived pool are all read for each request. The open's
+ * question-set hash is an immutable version of the published copy; a two-second TTL bounds seals from non-action callers
+ * such as the scheduler, while officer actions also expire the tag. DRIVE and DRAFT rows never enter a shared cache.
+ */
+const cachedPublicHubQuestions = unstable_cache(
+  async (weekId: string, _questionSetHash: string) => readHubQuestions(weekId),
+  ["millionea-public-hub-questions-v1"],
+  { tags: [MASWALI_PUBLIC_WEEK_QUESTIONS_TAG], revalidate: 2 },
+);
+
+async function hubQuestionsOf(week: StoredWeek) {
+  // The two-store CLI harness has no Next request or Incremental Cache; it exercises the same pure projection directly.
+  // A deployed request never sets this harness-only marker and uses Next's cache for a published PUBLIC week.
+  if (process.env.HB_MONEY_STORE === "memory" || process.env.HB_MONEY_STORE === "postgres") return readHubQuestions(week.id);
+  return week.visibility === "PUBLIC" && week.state !== "DRAFT" && !!week.questionSetHash
+    ? cachedPublicHubQuestions(week.id, week.questionSetHash)
+    : readHubQuestions(week.id);
+}
+
 /** How far the week's results have come: "Matokeo 6 kati ya 15 yametolewa · linalofuata Jumamosi 16:00" (§10 3.10). */
-function resultsOf(qs: StoredQuestion[], gq: GradableQuestion[], nowMs: number) {
+function resultsOf(qs: readonly Pick<MillioneaQuestion, "eventStartsAt">[], gq: GradableQuestion[], nowMs: number) {
   const waiting = qs.filter((_, i) => gq[i]?.outcome == null).map((q) => q.eventStartsAt).sort();
   return {
     resultsOut: gq.filter((g) => g.outcome !== null).length,
@@ -290,7 +329,7 @@ export type MillioneaSlot = {
  * final a voided main is "void" with no reserve named, and a reserve stands by whatever its own event did — never an
  * "un-carry" (§M8a item 1).
  */
-function slotsFor(selections: readonly string[], qs: StoredQuestion[], gq: GradableQuestion[], rec: WeekRecord): MillioneaSlot[] {
+function slotsFor(selections: readonly string[], qs: readonly Pick<MillioneaQuestion, "slot" | "role">[], gq: GradableQuestion[], rec: WeekRecord): MillioneaSlot[] {
   const replaced = new Map<number, number>();
   for (const r of rec.map ?? []) if (r.state === "REPLACED_BY") replaced.set(r.slot, r.reserve);
   const standsIn = new Map([...replaced].map(([main, reserve]) => [reserve, main] as const));
@@ -390,7 +429,7 @@ export type MillioneaTicketRow = {
 };
 
 function rowsFor(
-  tickets: StoredTicket[], week: StoredWeek, qs: StoredQuestion[], gq: GradableQuestion[], rec: WeekRecord,
+  tickets: StoredTicket[], week: StoredWeek, qs: readonly Pick<MillioneaQuestion, "slot" | "role">[], gq: GradableQuestion[], rec: WeekRecord,
   refunds: ReadonlyMap<string, MillioneaRefund>,
 ): MillioneaTicketRow[] {
   const first = new Map<string, string>();
@@ -522,23 +561,22 @@ export type MillioneaHub = {
 async function hubWeekOf(week: StoredWeek, viewer: MillioneaViewer, nowMs: number, paused: boolean): Promise<MillioneaHubWeek | null> {
   const terms = await termsOf(week);
   if (!terms) return null;
-  const qs = await questionStore.listForWeek(week.id);
-  const gq = gradable(qs);
+  const { questions, graded: gq } = await hubQuestionsOf(week);
   let mine: MillioneaHubWeek["mine"] = null;
   if (viewer.userId) {
     const tickets = await ticketStore.listForUser(viewer.userId, { cycleId: week.id });
     mine = {
       held: tickets.filter((t) => t.status !== "CANCELLED").length, cap: terms.rules.ticketCapPerWeek,
-      tickets: rowsFor(tickets, week, qs, gq, recordOf(gq), await refundsOf(tickets, week)),
+      tickets: rowsFor(tickets, week, questions, gq, recordOf(gq), await refundsOf(tickets, week)),
     };
   }
   return {
     id: week.id, code: week.code, visibility: week.visibility, state: week.state, isFinal: week.isFinal,
-    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, firstEventAt: firstEventOf(qs),
+    opensAt: week.opensAt, closesAt: week.closesAt, closedAt: week.closedAt, firstEventAt: firstEventOf(questions),
     ticketPrice: terms.rules.ticketPriceTzs, ticketCap: terms.rules.ticketCapPerWeek,
     selling: week.state === "OPEN" && Date.parse(week.closesAt) > nowMs && !paused && rolloutSells(viewer.state, week.visibility),
     pool: await maswaliPoolFigure(week.id).catch(() => null),
-    questions: questionsOf(qs, gq), ...resultsOf(qs, gq, nowMs), mine,
+    questions, ...resultsOf(questions, gq, nowMs), mine,
   };
 }
 

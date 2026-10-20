@@ -9,7 +9,7 @@
  * ⛔ The services decide; these only parse the form, call one service and report its words. A refusal is the service's
  *    own sentence, never a generic failure.
  */
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
@@ -22,11 +22,14 @@ import { noteSealDevice } from "@/lib/server/maswali-integrity";
 import { applySealBatch, parseSealRows, SEAL_DEVICE_AUDIT_WARNING, type SealBatchResult } from "@/lib/maswali-seal-batch";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
+import { MASWALI_PUBLIC_WEEK_QUESTIONS_TAG } from "@/lib/server/maswali-player";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
 
 type ActionResult = { ok: true; weekId?: string; recorded?: boolean; auditWarning?: string | null } | { ok: false; error: string };
 
 const refresh = (weekId?: string) => {
+  // A newly opened set or a seal must be visible on the next read, including across different readers' requests.
+  revalidateTag(MASWALI_PUBLIC_WEEK_QUESTIONS_TAG, { expire: 0 });
   revalidatePath("/admin/maswali");
   if (weekId) revalidatePath(`/admin/maswali/${weekId}`);
   // MASWALI-BUILD S5 · an open, a moved close or a seal changes what the hub, a ticket and the register state (MB-97).
