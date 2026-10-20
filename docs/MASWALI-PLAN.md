@@ -29,27 +29,29 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD integration branch
+**State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD release branch
 `codex/maswali-coord-20261019` includes the last fetched `main` at `a504ad280`.
 The player and admin surfaces, global admin search/filter/sort/paging, bounded integrity
-report coverage, reviewed consequential actions, and partial-seal and device-audit feedback
-are integrated. Their focused guards, mutation proofs and two-store checks have passed.
-The earlier ACTIVE player drive, WITHDRAWN-route drive and three-language player tile read
-passed on source whose player paths have not since changed. A fresh current-`main` classic
-browser comparison and the final admin interaction/tile read are running. A diagnostic
-`test:all` was interrupted by two jobs using this checkout's same disposable Postgres;
-it is not release evidence. The exclusive full rerun, final money battery, exact-commit
-build and local `qa:live`, deployment and production read-back remain open. S5 owns the
-shared heavy-job lock; no `main` push is under way. The rollout remains `WITHDRAWN`.
+report coverage, reviewed consequential actions, partial-seal and device-audit feedback,
+multi-ticket slip, separate Results section, public settled-week sitemap and share image,
+and bounded public week and register caches are integrated. Focused guards, mutation proofs,
+two-store action checks and the disposable-PostgreSQL money battery passed; the battery's
+three suites passed 198/198 on the integrated source. The earlier ACTIVE player drive,
+WITHDRAWN-route drive and three-language player tile read passed. Classic parity against
+the then-current `main` passed 67/67, and the results filter's mutation proof was repaired
+and passed after the archive refactor. The final exact-commit browser and tile reads,
+exclusive two-store `test:all`, build and local `qa:live`, deployment and production
+read-back remain open. S5 owns the shared heavy-job lock; no `main` push is under way.
+The rollout remains `WITHDRAWN`.
 
-**Next:** Finish the fresh classic comparison and final admin/browser tile read. Complete
-every changed-file guard and mutation proof, clean-environment two-store `test:all`, the
-disposable-PostgreSQL money battery, typecheck, exact-commit production build, bundle
-verification and local live QA. Recheck current `main` and the shared release lock before
-any push. Deploy S5 dark only after all gates pass, then perform AGENTS.md §4's three-host,
-health, chunk, live-QA and browser read-back. S7 follows with its wide-winner transaction-
-timeout repair on its own branch; S6 follows in L → D → R → N order. S8 remains at its owner
-and regulatory gates in §6. Do not flip the rollout as part of a dark release.
+**Next:** Run every remaining changed-file reader and mutation proof, fresh current-`main`
+classic parity, admin and player browser/tile reads, clean-environment two-store `test:all`,
+typecheck, exact-commit production build, bundle verification and local live QA. Recheck
+current `main` and the shared release lock before any push. Deploy S5 dark only after all
+gates pass, then perform AGENTS.md §4's three-host, health, chunk, live-QA and browser
+read-back. S7 follows with its wide-winner transaction-timeout repair on its own branch;
+S6 follows in L → D → R → N order. S8 remains at its owner and regulatory gates in §6.
+Do not flip the rollout as part of a dark release.
 
 ## §0a · Historical handovers (superseded by §0 above)
 
@@ -647,7 +649,7 @@ never build there. The repository is public: describe anti-abuse controls by wha
 | D2 | Design R2: received and inherited | ✅ | 2b335451f (2026-10-17): filed raw at `design-system/v6-2026-10-17-millionea/` with its INHERIT-MANIFEST; no gate failed |
 | S4 | Admin console and operations | ✅ | on `main` dark at `f312d652` (2026-10-18); the milestone battery closes its deferred `test:all` gate, and the console's shots were read tile by tile at 360/768/1280/1920 |
 | D3 | Ali's N1–N4 rulings, filed in DESIGN_AUTHORITY and motion.css | ✅ | 2b6bf5bf (2026-10-17): DESIGN_AUTHORITY §M8a, COMPLIANCE-DECISIONS, the manifests, the agency note; the N-block lands in `motion.css` with its first consumer in S5 (`test:dead-css`) |
-| S5 | Player surfaces | 🔨 | integrated at `431948cc5` on its release branch; source, disposable-database, ACTIVE/WITHDRAWN browser checks, exact-source tile read, build and local live QA green; parity, dark deploy and production read-back remain |
+| S5 | Player surfaces | 🔨 | integrated on `codex/maswali-coord-20261019`; focused source and two-store action checks, the 198/198 disposable-PostgreSQL money battery, earlier player tiles and classic parity are green; final exact-commit suite, render, build, local live QA, dark deploy and production read-back remain |
 | S6 | Fairness, notices, reports, legal, data | 🔨 | legal + data squash-merged on `mln-s6-int` `81c60f0f`; reports round 15 accepted on `mln-s6-reports` `57624a2f`; notices round 17 in progress on `mln-s6-notices` `d6e4544d` (both BLOCKERs fixed) — §0 ⏹ |
 | S7 | Adversarial hardening | 🔨 | F7 integrated on `codex/maswali-s7-integration-20261019` at `5c0cc5e388`; the S16 10,000-ticket load found a 7,000-winner release timeout with a clean rollback, now being repaired before its two-store and load rerun; lands after S5 |
 | S8 | Live drive and public launch | ⬜ | never before every §6 line is ticked |
