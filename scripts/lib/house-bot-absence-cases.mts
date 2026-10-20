@@ -197,24 +197,22 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     // pin), whose dictionary also holds MOBILE-VISUAL U43 release A's (9393dcb53, Ali's ruling 4: the card choices'
     // figures and their aria words leave, `udLockedOneSided` joins), which landed under the 1c210f39e pin.
     const W4 = "7a0b819fd";
-    // PHOSPHOR-MIGRATION 1b (W4's review, 2026-10-19), presentation only: the Up & Down rulebook's caution sign gains its
-    // word for a screen reader in each language ("Warning: ", "Onyo: ", "警告：", sr-only — the ⚠️ it replaced was read
-    // aloud), and the legal shell's note on its sigils is brought up to date (a comment). Pinned at 1b's commit as it
-    // stands on main (the commit before this pin).
-    const W4B = "2aab5f0ec";
     // PHOSPHOR-MIGRATION release 2a part 2: these two legal files changed only their icon plates. Pin the exact
     // committed source while D19a continues to refuse any unreviewed change to their published words.
     const PHOS_R2A_PART2 = "a843ff73fcaa919298a4f056008c7ee560ca84f7";
-    // U43's reviewed player copy is pinned to the rebased commit that last changed the dictionary.
-    const U43_B = "7e3a06ea0f916de4a21e3f1eec545cf97998d2dc";
+    // U43 Release B's rules pages last changed in the first source commit;
+    // the reviewed dictionary changed again with the settled-money and pending-result copy.
+    // Recheck the dictionary pin after any rebase that rewrites this source commit.
+    const U43_B_RULES = "85be2888a59bbcddc12f2199b2cfe35263ed69e8";
+    const U43_B_COPY = "4e9d9bcbe7f571e60b05f2caf05bc4d79112a1fe";
     const APPROVED_EXTRA = new Map([
       ["src/app/legal/_components.tsx", PHOS_R2A_PART2],
       ["src/app/legal/rules/page.tsx", PHOS_R2A_PART2],
-      ["src/lib/i18n-dict.ts", U43_B],
+      ["src/lib/i18n-dict.ts", U43_B_COPY],
       ["src/app/legal/privacy/page.tsx", W4],
       ["src/app/legal/responsible-gambling/page.tsx", W4],
-      ["src/app/legal/rules/_content-up-down.tsx", W4B],
-      ["src/app/legal/rules/up-down/page.tsx", W4],
+      ["src/app/legal/rules/_content-up-down.tsx", U43_B_RULES],
+      ["src/app/legal/rules/up-down/page.tsx", U43_B_RULES],
     ]);
     const approvedBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_REF}:${rel}`)); } catch { return null; } };
     const extraBlob = (rel: string) => { try { return lf(git("cat-file", "blob", `${APPROVED_EXTRA.get(rel)}:${rel}`)); } catch { return null; } };
