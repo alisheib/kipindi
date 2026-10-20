@@ -1,6 +1,7 @@
 /** R-ADMIN: every console KPI and the shared status badges use family glyphs. */
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
+import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -25,7 +26,25 @@ const files = {
   pollActions: read("src/app/admin/ai-polls/poll-actions.tsx"),
   pollDetail: read("src/app/admin/ai-polls/[id]/page.tsx"),
   pollMissing: read("src/app/admin/ai-polls/[id]/not-found.tsx"),
+  desk: read("src/lib/server/house-console-read.ts"),
 };
+
+const DESK_SUBJECTS = [
+  ["Stake today", "coins"],
+  ["Loss today", "coins"],
+  ["Open exposure", "coins"],
+  ["Accounts", "users"],
+] as const;
+
+function mapperFromSource(source: string): (label: string) => string {
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const exports: Record<string, unknown> = {};
+  runInNewContext(compiled, { exports });
+  if (typeof exports.adminKpiGlyph !== "function") throw new Error("adminKpiGlyph export missing");
+  return exports.adminKpiGlyph as (label: string) => string;
+}
 
 function kpiLabels(dir: string): string[] {
   const labels: string[] = [];
@@ -52,6 +71,11 @@ function kpiLabels(dir: string): string[] {
 
 function defects(s: typeof files): string[] {
   const bad: string[] = [];
+  const subject = mapperFromSource(s.subject);
+  for (const [label, glyph] of DESK_SUBJECTS) {
+    if (!s.desk.includes(`"${label}"`)) bad.push(`desk no longer supplies ${label}`);
+    if (subject(label) !== glyph) bad.push(`desk ${label} must use ${glyph}, got ${subject(label)}`);
+  }
   if ((s.kpi.match(/\{subject\}/g) ?? []).length !== 2 || !s.kpi.includes('variant="identity"') ||
       !s.kpi.includes('tier="duo"') || !s.kpi.includes("plateGlyph(26)"))
     bad.push("KPI normal and unavailable paths need one derived Duotone identity plate");
@@ -95,6 +119,8 @@ check("admin card and status contracts", defects(files).length === 0, defects(fi
 const labels = kpiLabels(join(root, "src/app/admin"));
 const generic = [...new Set(labels.filter((label) => adminKpiGlyph(label) === "chart"))];
 check(`semantic subjects for ${labels.length} literal KPI labels`, labels.length >= 200 && generic.length === 0, generic.join(", "));
+check("semantic subjects for dynamic desk KPI labels",
+  DESK_SUBJECTS.every(([label, glyph]) => adminKpiGlyph(label) === glyph));
 const html = renderToStaticMarkup(createElement(Chip, { size: "sm", variant: "success", glyph: "checkCircle" }, "Approved"));
 check("status chip renders its Fill glyph and the word", html.includes('data-g="checkCircle.fill"') && html.includes("Approved"));
 const live = renderToStaticMarkup(createElement(MarketStatusBadge, { status: "LIVE" }));
@@ -113,6 +139,8 @@ if (process.argv.includes("--prove-red")) {
     ["payout error loses its glyph", "payout", '<I.xCircle s={11} tier="fill"', '<I.alertCircle s={11} tier="fill"'],
     ["generation result regains a private tile", "pollActions", '<IconPlate size={36} variant="success"', '<span className="private-tile"'],
     ["missing poll loses the empty plate", "pollMissing", '<IconPlate size={48} variant="empty"', '<span className="private-tile"'],
+    ["desk money label becomes generic", "subject", '[/^Stake today$|^Loss today$/i, "coins"]', '[/^Stake today$|^Loss today$/i, "chart"]'],
+    ["desk account label becomes generic", "subject", '[/^Accounts$/i, "users"]', '[/^Accounts$/i, "chart"]'],
   ];
   for (const [name, key, from, to] of plants) {
     if (!files[key].includes(from)) { check(name, false, "plant anchor absent"); continue; }

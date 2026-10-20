@@ -9,10 +9,13 @@ const SUBJECTS: readonly [RegExp, DuoGlyphKey][] = [
   [/wallet|liability|held for unverified/i, "wallet"],
   [/bonus|grant|jackpot|guarantee/i, "gift"],
   [/tax|levies|TRA \+ GBT/i, "tax"],
+  // The desk builds these labels in its server reader rather than JSX literals.
+  [/^Stake today$|^Loss today$/i, "coins"],
   [/fee|commission|GGR|NGR|margin|spend|cost|sales|staked|turnover|handle|pool|float|money frozen|exposure|loss limit|payable|free cash/i, "coins"],
   [/agent|affiliate|referrer|referral|partner/i, "agent"],
   [/invite|invited|conversion/i, "invites"],
   [/staff|owner|officer|auditor|support|trading|growth/i, "staff"],
+  [/^Accounts$/i, "users"],
   [/players|users|predictors|registered|have bet|self.excluded|closed accounts|^Active$|top proposer/i, "users"],
   [/KYC|identity|SOF|review target|none sent|declaration/i, "idCard"],
   [/AML|suspicious|flag|compliance|blocked|refused/i, "shieldAlert"],
