@@ -1,0 +1,10 @@
+/** Physical mutations exercised by u43-scratch-e2e-runner-red.mjs. */
+export const MUTATIONS = [
+  { name: "alternate localhost target accepted", file: "scripts/lib/u43-scratch-e2e-plan.mjs", from: 'url.hostname !== "127.0.0.1"', to: '!["127.0.0.1", "localhost"].includes(url.hostname)', failure: "remote and alternate local database endpoints are refused" },
+  { name: "card shares the money database", file: "scripts/lib/u43-scratch-e2e-plan.mjs", from: '{ label: "e2e-card", file: "scripts/card-flow-e2e.test.mts", database: names.card }', to: '{ label: "e2e-card", file: "scripts/card-flow-e2e.test.mts", database: names.money }', failure: "three E2E suites use three separate databases" },
+  { name: "child silently uses the memory DAL", file: "scripts/lib/u43-scratch-e2e-plan.mjs", from: 'USE_PRISMA_DAL: "true",', to: 'USE_PRISMA_DAL: "false",', failure: "DAL and target database are set before a child imports services" },
+  { name: "scratch databases are not migrated", file: "scripts/u43-scratch-e2e-runner.mjs", from: '["node_modules/prisma/build/index.js", "migrate", "deploy"]', to: '["node_modules/prisma/build/index.js", "migrate", "status"]', failure: "runner migrates each newly created database and tracks cleanup ownership" },
+  { name: "disposable marker lands in the money database", file: "scripts/u43-scratch-e2e-runner.mjs", from: 'runChild("plant-fault-disposable-marker", ["scripts/load/ci-plant-marker.mjs"], names.fault', to: 'runChild("plant-fault-disposable-marker", ["scripts/load/ci-plant-marker.mjs"], names.money', failure: "fault disposable marker is planted only in the fault database" },
+  { name: "cleanup can drop uncreated names", file: "scripts/u43-scratch-e2e-runner.mjs", from: 'for (const name of created.reverse())', to: 'for (const name of Object.values(names).reverse())', failure: "runner migrates each newly created database and tracks cleanup ownership" },
+  { name: "created database is not tracked for cleanup", file: "scripts/u43-scratch-e2e-runner.mjs", from: "    created.push(name);", to: "    // created.push(name);", failure: "runner migrates each newly created database and tracks cleanup ownership" },
+];

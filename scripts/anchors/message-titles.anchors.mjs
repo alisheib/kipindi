@@ -56,8 +56,8 @@ export const MUTATIONS = [
   {
     name: "an Up & Down round's result row switched too — a round quotes short titles forced onto its row",
     file: SVC,
-    from: `          notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: upDownResultTitle(m),`,
-    to: `          notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: messageTitles(shortTitles, upDownResultTitle(m), m),`,
+    from: `          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: upDownResultTitle(m),`,
+    to: `          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {\n            payout,\n            stake: p.stake,\n            marketTitle: messageTitles(shortTitles, upDownResultTitle(m), m),`,
     expect: "C.ACTIVE.round",
   },
   {

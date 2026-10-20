@@ -317,7 +317,7 @@ export interface RoundStore {
    */
   deleteMany(ids: string[]): Promise<number>;
   create(r: StoredRound): Promise<void>;
-  patch(id: string, fields: Partial<StoredRound>): Promise<void>;
+  patch(id: string, fields: Partial<StoredRound>, tx?: Prisma.TransactionClient | null): Promise<void>;
   /**
    * ⭐ E-63 · CLAIM-THE-ROW open backfill — the ONE sanctioned write to the frozen line.
    *
@@ -485,7 +485,7 @@ const memoryRounds: RoundStore = {
       .slice(0, limit);
   },
   async create(r) { memRounds.set(r.id, { ...r }); },
-  async patch(id, fields) {
+  async patch(id, fields, _tx) {
     // ⛔ THE SAME ALLOWLIST THE PRISMA STORE ENFORCES. This used to spread `fields`
     // blindly, so the create-only columns — the frozen line (`marginBps`, `upTarget`,
     // `downTarget`) and the pinned source — were write-once in production and freely
@@ -754,7 +754,7 @@ const prismaRounds: RoundStore = {
       },
     });
   },
-  async patch(id, fields) {
+  async patch(id, fields, tx) {
     const data: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(fields)) {
       const coerce = ROUND_PATCHABLE[k];
@@ -762,7 +762,7 @@ const prismaRounds: RoundStore = {
       data[k] = coerce(v);
     }
     if (Object.keys(data).length === 0) return;
-    await pc().upDownRound.update({ where: { id }, data });
+    await (tx ?? pc()).upDownRound.update({ where: { id }, data });
   },
   async backfillOpen(id, fields) {
     // Conditional on the row still being priceless — the same claim-the-row shape every

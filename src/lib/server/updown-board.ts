@@ -42,6 +42,7 @@ import { latestNonOverlappingResult } from "@/lib/updown-board-order";
 import { isRefundedPosition } from "@/lib/updown-refund-reason";
 import { shownPredictors } from "@/lib/markets/predictors";
 import { isMarketOpenAt, nextOpenAfter } from "./market-calendar";
+import { deadHoursFor } from "./updown-playbook-store";
 
 /**
  * ⭐ E-99 · How many seconds after its boundary this asset's reading TYPICALLY arrives — or
@@ -107,8 +108,8 @@ export type BoardRound = {
   marginBps: number | null;
   outcome: "UP" | "DOWN" | "VOID" | null;
   voidReason: string | null;
-  /** A final verdict was changed after review; price observations remain the original record. */
-  correctionKind: "objection" | "record" | null;
+  /** A final verdict was changed; price observations remain the original record. */
+  correctionKind: "objection" | "operator" | "record" | null;
   volumeTzs: number;
   players: number;
   /**
@@ -477,7 +478,10 @@ async function toBoardRound(
   const outcome = marketOutcomeForRound(m);
   const correctionKind = m.resolutionEvidence?.startsWith("UPDOWN_OFFICER_CORRECTION:")
     ? "objection" as const
-    : r.outcome && outcome && r.outcome !== outcome ? "record" as const : null;
+    : m.resolutionEvidence?.startsWith("UPDOWN_OPERATOR_VOID:")
+      ? "operator" as const
+    : m.resolutionEvidence?.startsWith("UPDOWN_RECORD_CORRECTION:") ||
+      (r.outcome && outcome && r.outcome !== outcome) ? "record" as const : null;
   const state = roundState({ ...r, outcome }, closesAtMs, nowMs, m.selectionClosedAt);
   const myUpStake = mine?.up ?? 0;
   const myDownStake = mine?.down ?? 0;
@@ -796,7 +800,23 @@ async function walletBalanceOf(userId: string | undefined): Promise<number | nul
   }
 }
 
-export async function getBoard(opts?: { assetKey?: string; durationMinutes?: number; userId?: string }): Promise<{
+/** Fixed QA clock for the weekend Gold empty state. This is never a price or round timestamp. */
+export const U43_DEV_CALENDAR_AT = "2026-10-24T12:00:00Z";
+
+export function u43BoardCalendarNow(qaCalendarAt: string | undefined, activeAssetKey: string, actualNow = new Date()): Date {
+  return process.env.NODE_ENV === "development"
+    && process.env.U43_DEV_CALENDAR_CLOCK === "1"
+    && !process.env.DATABASE_URL
+    && activeAssetKey === "XAU"
+    && qaCalendarAt === U43_DEV_CALENDAR_AT
+    ? new Date(U43_DEV_CALENDAR_AT) : actualNow;
+}
+
+export async function getBoard(opts?: { assetKey?: string; durationMinutes?: number; userId?: string;
+  /** Dev-only error-boundary probe. Never accepted on a production server. */
+  qaReadAssetFault?: boolean;
+  /** Dev-only, request-scoped calendar input for an explicitly labelled QA screenshot. */
+  qaCalendarAt?: string }): Promise<{
   assets: BoardAsset[];
   activeAsset: BoardAsset | null;
   activeDuration: number | null;
@@ -818,7 +838,9 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   const [enabled, allChains, walletBalance] = await Promise.all([
     // A failed catalog read is not an empty market. Let the page's retry boundary
     // show the fault for guests and players alike.
-    assetStore.list({ enabledOnly: true }),
+    opts?.qaReadAssetFault && process.env.NODE_ENV === "development"
+      ? Promise.reject(new Error("U43 QA-INJECTED asset catalogue read failure"))
+      : assetStore.list({ enabledOnly: true }),
     chainStore.list(),
     walletBalanceOf(opts?.userId),
   ]);
@@ -915,10 +937,14 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // from the row rather than by widening what crosses to the browser.
   const activeAssetRow = enabled.find((a) => a.id === activeAsset.id);
   if (!activeAssetRow) return { assets, activeAsset, activeDuration: null, rounds: [], recent: [], chainPaused: true, nextMarketOpenAtMs: null, stakeBounds: defaultBounds, walletBalance };
-  const calendarNow = new Date();
-  const nextMarketOpenAtMs = isMarketOpenAt(activeAssetRow.category, calendarNow)
+  const calendarNow = u43BoardCalendarNow(opts?.qaCalendarAt, activeAsset.key);
+  // The open path already consults this asset's measured daily dead hours. The
+  // board must use that same profile for both the closure and its next opening;
+  // an empty/failed profile read keeps the established weekly calendar only.
+  const deadHours = await deadHoursFor(activeAssetRow.symbol);
+  const nextMarketOpenAtMs = isMarketOpenAt(activeAssetRow.category, calendarNow, deadHours)
     ? null
-    : Date.parse(nextOpenAfter(activeAssetRow.category, calendarNow));
+    : Date.parse(nextOpenAfter(activeAssetRow.category, calendarNow, deadHours));
 
   const activeDuration =
     (opts?.durationMinutes && activeAsset.durations.includes(opts.durationMinutes) ? opts.durationMinutes : undefined)

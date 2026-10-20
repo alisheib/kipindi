@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { roundAnnouncementFor } from "@/lib/updown-result-truth";
 import { I } from "@/components/ui/glyphs";
-import { getBoard } from "@/lib/server/updown-board";
+import { getBoard, U43_DEV_CALENDAR_AT } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
@@ -53,9 +53,18 @@ const HEADER_PILL =
 export default async function UpDownPage({
   searchParams,
 }: {
-  searchParams: Promise<{ asset?: string; d?: string }>;
+  searchParams: Promise<{ asset?: string; d?: string; __u43ReadFault?: string; __u43CalendarAt?: string }>;
 }) {
   const sp = await searchParams;
+  // Request-scoped QA clock for the real metals weekend calendar. It is accepted
+  // only on an in-memory dev server, for the exact Gold URL and named instant.
+  // It changes no round, price, settlement, or persisted market data.
+  const qaCalendarAt = process.env.NODE_ENV === "development"
+    && process.env.U43_DEV_CALENDAR_CLOCK === "1"
+    && !process.env.DATABASE_URL
+    && sp.asset === "XAU"
+    && sp.__u43CalendarAt === U43_DEV_CALENDAR_AT
+    ? U43_DEV_CALENDAR_AT : undefined;
   const { t, locale } = await getServerT();
   const session = await currentSession();
   /* ⭐ R6-A (2026-10-09, reviewer A's A2) · THE READER'S OWN BREAK. A bettable card offered its one-tap stakes to a player who
@@ -78,6 +87,13 @@ export default async function UpDownPage({
        which is the same thing as "no duration filter" and the branch below already handles it. */
     durationMinutes: Number.isInteger(Number(sp.d)) && Number(sp.d) > 0 ? Number(sp.d) : undefined,
     userId: session?.userId,
+    // Only a local development server with an explicit QA switch may inject a
+    // rejected catalogue read. This exercises the real route error boundary
+    // without changing production behaviour or inventing a market state.
+    qaReadAssetFault: process.env.NODE_ENV === "development"
+      && process.env.U43_DEV_BOARD_READ_FAULT === "1"
+      && sp.__u43ReadFault === "asset-list",
+    qaCalendarAt,
   });
 
   if (board.assets.length === 0) {
@@ -92,7 +108,7 @@ export default async function UpDownPage({
   }
 
   const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, nextMarketOpenAtMs, stakeBounds, walletBalance } = board;
-  const marketReopensAt = nextMarketOpenAtMs != null && nextMarketOpenAtMs > Date.now()
+  const marketReopensAt = nextMarketOpenAtMs != null && nextMarketOpenAtMs > (qaCalendarAt ? Date.parse(qaCalendarAt) : Date.now())
     ? fmtEATClock(nextMarketOpenAtMs)
     : null;
   const displayedRounds = bettableFirst(rounds, Date.now());
@@ -126,7 +142,10 @@ export default async function UpDownPage({
     : null;
 
   return (
-    <div className="ud-board-page mx-auto w-full max-w-board px-3 lg:px-6 py-6">
+    <div className="ud-board-page mx-auto w-full max-w-board px-3 lg:px-6 py-6"
+         data-u43-qa-calendar-at={qaCalendarAt}
+         data-u43-qa-calendar-next-open={qaCalendarAt && nextMarketOpenAtMs != null
+           ? new Date(nextMarketOpenAtMs).toISOString() : undefined}>
       {/* Rounds turn over in minutes, so the board refreshes itself. */}
       <RefreshPoller intervalMs={20_000} />
 

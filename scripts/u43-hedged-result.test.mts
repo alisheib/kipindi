@@ -104,19 +104,23 @@ assert.equal(asset.ok, true, "test asset must be created");
 if (!asset.ok) throw new Error(asset.error);
 await setAssetEnabled(asset.data.id, true, "off");
 
-async function round(durationMinutes: number, opening: string, roundAsset: typeof asset.data = asset.data) {
+async function round(durationMinutes: number, opening: string, roundAsset: typeof asset.data = asset.data, openingPrice: number | null = 2400) {
   const created = await createChain({ assetId: roundAsset.id, durationMinutes }, "off");
   assert.equal(created.ok, true, "test chain must be created");
   if (!created.ok) throw new Error(created.error);
   await setChainState(created.data.id, "RUNNING", "off");
   const chain = await chainStore.get(created.data.id);
   assert.ok(chain, "test chain must be readable");
-  const observation = await observationStore.ensure(roundAsset.id, opening);
-  await observationStore.confirm(observation.id, {
-    price: 2400, sourceUrl: roundAsset.priceSourceUrl, sourceQuotedAt: opening,
-    evidence: "open", confidence: 95, model: "t", rawHash: `hr-open-${durationMinutes}`,
-  });
-  const made = await openRound(chain, opening, observation.id, 2400);
+  let observationId: string | null = null;
+  if (openingPrice != null) {
+    const observation = await observationStore.ensure(roundAsset.id, opening);
+    await observationStore.confirm(observation.id, {
+      price: openingPrice, sourceUrl: roundAsset.priceSourceUrl, sourceQuotedAt: opening,
+      evidence: "open", confidence: 95, model: "t", rawHash: `hr-open-${durationMinutes}`,
+    });
+    observationId = observation.id;
+  }
+  const made = await openRound(chain, opening, observationId, openingPrice);
   assert.equal(made.ok, true, "test round must open");
   if (!made.ok) throw new Error(made.error);
   return made.data;
@@ -376,6 +380,17 @@ assert.ok(noPoolVoidMarket.resolutionEvidence?.includes(dueTerms),
 assert.ok(settlementNote("VOID", "no-move", noPoolVoidRound.openObservationId, noPoolVoidRead.id).includes(dueTerms),
   "append-only compliance note must describe remaining stakes and the payment gate");
 assert.ok(noPoolVoidMarket.resolutionCriterion.includes("Stakes still held are returned in full when settlement completes; earlier cash-outs keep their paid amount."),
+  "the round's stored player terms must describe the same cash-out exception");
+
+// A missing opening observation uses the simple comparison terms instead of
+// frozen targets. Both stored-term branches must preserve already-paid exits.
+const noOpenPriceRound = await round(10, new Date(Date.now() - 1 * 60_000).toISOString(), oneSideAsset.data, null);
+assert.equal(noOpenPriceRound.openPrice, null, "simple terms require a genuinely unconfirmed opening price");
+const noOpenPriceMarket = await marketStore.get(noOpenPriceRound.marketId);
+assert.ok(noOpenPriceMarket, "simple-terms market must be readable");
+assert.ok(noOpenPriceMarket.resolutionCriterion.includes("compared with the price at"),
+  "the no-opening-price market must use the simple comparison terms");
+assert.ok(noOpenPriceMarket.resolutionCriterion.includes("Stakes still held are returned in full when settlement completes; earlier cash-outs keep their paid amount."),
   "the round's stored player terms must describe the same cash-out exception");
 
 const voidPendingRound = await round(60, new Date(Date.now() - 1 * 60_000).toISOString(), oneSideAsset.data);

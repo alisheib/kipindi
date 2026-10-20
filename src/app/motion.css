@@ -349,6 +349,9 @@ html.kp-reduce-motion *, html.kp-reduce-motion *::before, html.kp-reduce-motion 
   .m-live-pip,
   .m-urgent           { animation: none !important; opacity: 1; }
 }
+/* Low-end Android's reduced tier keeps entrances but removes the last-30 digit
+   pulse. The words remain the urgency cue at every motion setting. */
+[data-motion="reduced"] .m-urgent { animation: none !important; opacity: 1; }
 
 /* ── THE TOAST COUNTDOWN — the one calm branch that corrects a FALSE STATEMENT ──
    The hairline under a toast drains left-to-right over the toast's own dwell. The

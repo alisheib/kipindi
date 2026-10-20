@@ -1,0 +1,25 @@
+/** Physical reversals consumed by u43-capture-premises-red.mjs. */
+const FILES = { capture: "scripts/live/updown-visual-capture.mjs", states: "scripts/live/updown-visual-states.mjs" };
+export const MUTATIONS = [
+  ["local SHA", "capture", 'sourceHead: localBase ? checkoutHead : null', 'sourceHead: null', "local capture records"],
+  ["clean source", "capture", 'process.env.REQUIRE_CLEAN === "1" && (trackedDirty || untrackedRunnable)', 'process.env.REQUIRE_CLEAN === "0" && trackedDirty', "local capture records"],
+  ["untracked source", "capture", '"--untracked-files=all", "--", "src", "scripts"', '"--untracked-files=no", "--", "src", "scripts"', "local capture records"],
+  ["sheet overflow premise", "capture", 'if (sheetPresent !== sheetOverflow)', 'if (false)', "phone filter sheet is required"],
+  ["both chip rails measured", "capture", 'if (rails.length !== 2 || rails.some((rail) => !rail.visible || rail.clientWidth === 0))', 'if (false)', "phone filter sheet is required"],
+  ["Journey card readback", "capture", 'document.querySelectorAll(\'[data-testid="journey-card"]\')', 'document.querySelectorAll(\'[data-testid="journey-card-missing"]\')', "home and live record actual Journey"],
+  ["resolved market premise", "states", 'resolvedSeeds.resolved !== 2', 'false', "market seeds fail"],
+  ["one-sided premise", "states", 'oneSidedSeed.resolved !== 1', 'false', "market seeds fail"],
+  ["VOID holder premise", "states", 'portfolio.byStatus?.VOID !== 1', 'false', "VOID comes"],
+  ["exact market ID", "states", 'row.id === requirement.marketCase.id', 'true', "four market states"],
+  ["Gold stop", "states", 'const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "stop" })', 'const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "arm" })', "Gold stop"],
+  ["Gold chip", "states", 'sample.signedIn === requirement.signedIn && sample.goldSelected', 'sample.signedIn === requirement.signedIn', "Gold stop"],
+  ["Gold no cards", "states", 'sample.cards === 0 && sample.emptyState && sample.bettableChoiceCount === 0', 'sample.cards > 0 && sample.emptyState', "Gold stop"],
+  ["Gold visible copy", "states", 'stoppedGoldWords[requirement.locale].some((words) => sample.emptyStateText?.includes(words))', 'true', "Gold stop"],
+  ["Gold index readback", "states", 'emptyStateText: requirement.stoppedGold ? final.emptyStateText : null', 'emptyStateText: null', "Gold stop"],
+  ["Gold full matrix", "states", 'await photograph("p13-gold-board", "/updown?asset=XAU");', 'await photograph("p13-gold-board", "/updown?asset=XAU", (p) => p.width === 360 && p.locale === "sw");', "stopped Gold is photographed"],
+  ["Gold zero-card hydration", "states", 'if (stoppedGold) return !!document.querySelector(\'[data-empty-state]\')', 'if (stoppedGold) return false && !!document.querySelector(\'[data-empty-state]\')', "stopped Gold is photographed"],
+  ["motion tier coverage", "states", '["full-a", "full-b", "reduced", "minimal", "os-reduce"]', '["full-a", "full-b"]', "p6 moving frames precede"],
+  ["motion pulse premise", "states", 'before.urgentName !== "m-breathe" || !before.urgentRunning', 'false', "p6 moving frames precede"],
+  ["reduced live-dot cadence", "states", 'before.dotName !== "m-breathe" || before.dotDuration !== "2.6s"', 'false', "p6 moving frames precede"],
+  ["frame premise", "states", 'return p.page.screenshot({ fullPage: true });\n        },\n        valid: (sample) => exactMarketReady(sample, requirement)', 'return p.page.screenshot({ fullPage: true });\n        },\n        valid: (sample) => frameReady(sample, requirement)', "accepted frames"],
+].map(([name, key, from, to, expected]) => ({ name, file: FILES[key], from, to, expected }));

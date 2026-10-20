@@ -1,0 +1,21 @@
+/** Physical reversals used by red:u43-lock-budget. Copied source is mutated. */
+export const MUTATIONS = [
+  { file: "src/lib/server/locks.ts", name: "override ignored", from: "options?.timeoutMs ?? 30000", to: "30000",
+    failure: "FAIL a bounded holder budget reaches the advisory lock unchanged" },
+  { file: "src/lib/server/locks.ts", name: "bound widened past ten minutes", from: "timeoutMs > 600000", to: "timeoutMs > 900000",
+    failure: "FAIL invalid timeout 600001 is refused before a transaction" },
+  { file: "src/lib/server/locks.ts", name: "transaction timeout pinned to the old 30 seconds", from: "timeout: timeoutMs,", to: "timeout: 30000,",
+    failure: "FAIL advisory transaction receives the override and its callback receives that same client" },
+  { file: "src/lib/server/market-service.ts", name: "settlement budget no longer grows with open positions", from: "plannedOpen.length * 50", to: "plannedOpen.length * 0",
+    failure: "FAIL settlement budget for 1 open positions is 30050ms" },
+  { file: "src/lib/server/market-service.ts", name: "emergency void budget no longer grows with open positions", from: "observedOpenCount * 50", to: "observedOpenCount * 0",
+    failure: "FAIL emergency void budget for 1 open positions is 30050ms" },
+  { file: "src/lib/server/market-service.ts", name: "settlement outer wallet loses its budget", from: "index === 0 ? { timeoutMs } : undefined", to: "index === 0 ? undefined : undefined",
+    failure: "FAIL ordinary settlement passes the budget on its outer wallet or zero-holder market lock" },
+  { file: "src/lib/server/market-service.ts", name: "settlement zero-holder market loses its budget", from: "sortedHolders.length === 0 ? { timeoutMs } : undefined", to: "sortedHolders.length === 0 ? undefined : undefined",
+    failure: "FAIL ordinary settlement passes the budget on its outer wallet or zero-holder market lock" },
+  { file: "src/lib/server/market-service.ts", name: "emergency outer wallet loses its budget", from: "i === 0 ? { timeoutMs } : undefined", to: "i === 0 ? undefined : undefined",
+    failure: "FAIL emergency void passes the budget on its outer wallet or zero-holder market lock" },
+  { file: "src/lib/server/market-service.ts", name: "emergency zero-holder market loses its budget", from: "ids.length === 0 ? withLock(`market:${opts.marketId}`, () => fn(), { timeoutMs })", to: "ids.length === 0 ? withLock(`market:${opts.marketId}`, () => fn())",
+    failure: "FAIL emergency void passes the budget on its outer wallet or zero-holder market lock" },
+];

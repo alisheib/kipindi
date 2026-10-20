@@ -17,18 +17,21 @@ export function BoardViz({
   chart: React.ReactNode | null;
   labels: { chart: string; cubesEyebrow: string };
 }) {
-  const [open, setOpen] = useState(false);
+  // Storage and viewport are client facts. While they are unresolved, reserve
+  // the desktop chart's CSS height so its usual open state does not push the
+  // recent rounds or the page below after hydration. Phones stay collapsed.
+  const [open, setOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORE_KEY);
       if (stored === "open" || stored === "closed") {
-        setOpen(stored === "open");
+        setOpen((current) => current ?? (stored === "open"));
       } else {
-        setOpen(window.matchMedia("(min-width: 1024px)").matches);
+        setOpen((current) => current ?? window.matchMedia("(min-width: 1024px)").matches);
       }
     } catch {
-      setOpen(window.matchMedia("(min-width: 1024px)").matches);
+      setOpen((current) => current ?? window.matchMedia("(min-width: 1024px)").matches);
     }
   }, []);
 
@@ -52,14 +55,18 @@ export function BoardViz({
       )}
       {chart && (
         <section className="ud-board-chart">
-          <button type="button" className="ud-chart-trigger" aria-expanded={open} onClick={toggle}>
+          <button type="button" className="ud-chart-trigger" aria-expanded={open === true} onClick={toggle}>
             <I.chart s={16} />
             <span>{labels.chart}</span>
             <I.chevronDown s={14} edge="end" />
           </button>
-          <div className="ud-chart-slot" hidden={!open}>
-            {open ? chart : null}
-          </div>
+          {open === null ? (
+            <div className="ud-chart-slot hidden rounded-lg bg-bg-elevated kp-shimmer-track lg:block" aria-hidden="true" />
+          ) : (
+            <div className="ud-chart-slot" hidden={!open}>
+              {open ? chart : null}
+            </div>
+          )}
         </section>
       )}
     </div>

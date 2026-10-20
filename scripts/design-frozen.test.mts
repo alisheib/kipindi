@@ -496,7 +496,7 @@ function judge(files: string[], ratchet: Map<string, number>, scan: (s: string) 
     const allowed = ratchet.get(rel) ?? 0;
     if (hits.length > allowed) {
       over.push(`${rel} — ${hits.length} > ${allowed}`);
-      for (const h of hits.slice(0, 6)) over.push(`      :${h.line}  ${h.what}`);
+      for (const h of hits.slice(0, 12)) over.push(`      :${h.line}  ${h.what}`);
     }
   }
   for (const [rel, n] of ratchet) {

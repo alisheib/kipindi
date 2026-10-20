@@ -140,8 +140,8 @@ export const MUTATIONS = [
     name: "settled-card-says-Closed-again",
     file: CARD,
     suite: "updown-handover",
-    from: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}`,
-    to: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusClosed}`,
+    from: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}`,
+    to: `              : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusClosed}`,
   },
   {
     // `push` builds a back-stack of dead rounds; Back then walks the player backwards one at a time.

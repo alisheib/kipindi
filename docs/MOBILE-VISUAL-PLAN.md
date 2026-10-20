@@ -631,11 +631,28 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   the officer transaction, healer and their separate money proof remain under test.
   The history page's decided-but-unpaid chip, VOID wording, terminal-null payout and
   cash-out P&L handling remain open until the Maswali-owned history files are handed off.
-  The Phosphor r9b dictionary commit pin also needs its final committed SHA. Ali's
+  The Phosphor r9b dictionary commit pin was committed at `7d4db9095` and passed its
+  guard; a later rebase that changes the dictionary bytes requires a fresh pin. Ali's
   recorded Twelve Data licence attestation closes this release's feed-rights decision;
   earlier rights-open notes above are dated history. Source-frozen captures, two
   independent 24-cell reviews, full money and release gates, and any after score are
   still outstanding. **Release B is not live.**
+  **Latest local checkpoint, 2026-10-20:** Winner payout, refund/VOID and officer
+  objection passed focused memory and disposable-PostgreSQL fault controls,
+  including restored physical red mutations. The two-grant bonus restitution
+  provenance correction passed its focused tests. The three required money,
+  fault and card E2E suites passed on separate migrated disposable databases;
+  typecheck passed after narrow integration repairs. A capture-premise guard
+  now distinguishes a fitting chip rail from one that genuinely needs a sheet.
+  A read-only production census found no round outcome that disagrees with its
+  market verdict; the terminal-round recovery guard is still being sealed.
+  The BoardViz first-paint and B5 motion guards and red proofs pass. The
+  Maswali-owned `/updown/history` still needs pending and cash-out money truth
+  after that lane's handoff. Gold calendar closure and the actual Up & Down
+  error boundary are being prepared as separately labelled browser evidence.
+  The full `test:all`, final seven-width state matrix, two independent 24-cell
+  reviews, exact-commit build, local `qa:live` and production read-back have not
+  run. No after score or Release B production state is claimed.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

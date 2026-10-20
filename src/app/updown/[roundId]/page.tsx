@@ -941,7 +941,9 @@ export default async function UpDownRoundPage({
                 </p>
                 {round.correctionKind && (
                   <p className="mt-2 mb-0 text-body-sm text-text-muted">
-                    {round.correctionKind === "objection" ? t.market.resCorrectedOnObjection : t.market.udVerdictChanged}
+                    {round.correctionKind === "objection" ? t.market.resCorrectedOnObjection
+                      : round.correctionKind === "operator" ? t.market.udOfficerCancelledAfterPrice
+                      : t.market.udVerdictChanged}
                     {" "}{t.market.udPriceRecordOriginal}
                   </p>
                 )}
@@ -997,7 +999,7 @@ export default async function UpDownRoundPage({
                 </p>
                 {/* The quote's rule is the market page's own (`border-l-2 border-border/60`), not gilt: a source excerpt is
                     not money (R5-C, the second gold audit, 2026-10-09; Q5) — the resolution panel's evidence reads the same. */}
-                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
+                <pre className="m-0 p-3 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
               </div>
             )}
 

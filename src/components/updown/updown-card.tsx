@@ -152,7 +152,7 @@ export type UpDownCardProps = {
   /** Actual market payout state, separate from the price verdict in `state`. */
   settled: boolean;
   settledAtMs: number | null;
-  correctionKind: "objection" | "record" | null;
+  correctionKind: "objection" | "operator" | "record" | null;
   outcome?: "UP" | "DOWN" | null;
   closePrice?: number | null;
   voidReason?: "no-move" | "source-failed" | "operator" | null;
@@ -840,7 +840,7 @@ export function UpDownCard(props: UpDownCardProps) {
         </div>
         {settledNow ? (
           <span className="ud-card-result m-tick inline-flex items-center gap-1.5 font-semibold"
-                style={{ color: state === "void" ? "var(--text-muted)" : outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
+                style={{ color: !settled || state === "void" ? "var(--text-muted)" : outcome === "UP" ? "var(--yes-300)" : "var(--no-300)" }}>
             {state === "void" ? t.market.statusVoid : outcome === "UP" ? <><I.arrowUp s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udUpWins : t.market.udUp}</>
               : outcome === "DOWN" ? <><I.arrowDown s={14} edge="start" text="body-700" />{settled && price.kind === "priced" ? t.market.udDownWins : t.market.udDown}</> : t.market.statusResolved}
           </span>
@@ -1072,7 +1072,9 @@ export function UpDownCard(props: UpDownCardProps) {
         )}
         {correctionKind && (
           <p className="mt-2.5 mb-0 text-body-sm leading-[1.45] text-text-muted">
-            {correctionKind === "objection" ? t.market.resCorrectedOnObjection : t.market.udVerdictChanged}
+            {correctionKind === "objection" ? t.market.resCorrectedOnObjection
+              : correctionKind === "operator" ? t.market.udOfficerCancelledAfterPrice
+              : t.market.udVerdictChanged}
           </p>
         )}
 
@@ -1085,16 +1087,14 @@ export function UpDownCard(props: UpDownCardProps) {
                   : cardResults[0].status === "WIN" ? t.market.udWon
                   : cardResults[0].status === "LOSS" ? t.market.udLost
                   : cardResults[0].status === "CASHED_OUT" ? t.market.udPosCashedOut : t.market.udRefundTitle}</span>
-                <span aria-hidden>·</span>
-                {cardResults[0].status !== "VOID" && (
-                  <span>{cardResults[0].payout == null ? t.market.udPaidOut
-                    : cardResults[0].status === "LOSS" ? t.market.udStake : t.market.udPaidOut}</span>
-                )}
-                <span className="amount font-semibold"
-                      style={{ color: cardResults[0].status === "WIN" && cardResults[0].payout != null ? "var(--gold-300)" : "var(--text)" }}>
-                  {cardResults[0].payout == null ? t.market.udPayoutUnavailable
-                    : formatTzs(cardResults[0].status === "LOSS" ? cardResults[0].stake : cardResults[0].payout)}
-                </span>
+                {cardResults[0].payout != null && <>
+                  <span aria-hidden>·</span>
+                  {cardResults[0].status !== "VOID" && <span>{t.market.udPaidOut}</span>}
+                  <span className="amount font-semibold"
+                        style={{ color: cardResults[0].status === "WIN" ? "var(--gold-300)" : "var(--text)" }}>
+                    {formatTzs(cardResults[0].payout)}
+                  </span>
+                </>}
               </p>
             ) : (
               <>
@@ -1114,12 +1114,10 @@ export function UpDownCard(props: UpDownCardProps) {
                       : result.status === "WIN" ? t.market.udWon
                       : result.status === "LOSS" ? t.market.udLost
                       : result.status === "CASHED_OUT" ? t.market.udPosCashedOut : t.market.udRefundTitle}</span><span aria-hidden>·</span>
-                    {result.status !== "VOID" && <span>{result.payout == null ? t.market.udPaidOut
-                      : result.status === "LOSS" ? t.market.udStake : t.market.udPaidOut}</span>}
-                    <span className="amount font-semibold text-text">
-                      {result.payout == null ? t.market.udPayoutUnavailable
-                        : formatTzs(result.status === "LOSS" ? result.stake : result.payout)}
-                    </span>
+                    {result.payout != null && <>
+                      {result.status !== "VOID" && <span>{t.market.udPaidOut}</span>}
+                      <span className="amount font-semibold text-text">{formatTzs(result.payout)}</span>
+                    </>}
                   </p>
                 ))}
               </>

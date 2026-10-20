@@ -392,8 +392,10 @@ log("\n── 8 · the detail page reads the card's rule (C1)");
   check("8.6-control an ungated figure IS detected",
     !/\{yesPct !== null && <span className="font-mono text-\[12\.5px\]">@ \{yesPct\}%<\/span>\}/.test('{hasPool && <span className="font-mono text-[12.5px]">@ {yesPct}%</span>}'));
   const en = dict.en.market as Record<string, string>;
-  check("8.7 the panel's pending refund sentence says the refund is in full and carries no fee",
-    /refunded in full/.test(en.resOneSidedPending ?? "") && /no fee/.test(en.resOneSidedPending ?? ""), en.resOneSidedPending);
+  check("8.7 the panel promises only still-held stakes back, keeps earlier cash-outs, and charges no settlement fee",
+    /remaining held stakes will be refunded in full/.test(en.resOneSidedPending ?? "") &&
+    /Earlier cash-outs keep their paid amount/.test(en.resOneSidedPending ?? "") &&
+    /No settlement fee will be taken/.test(en.resOneSidedPending ?? ""), en.resOneSidedPending);
   // The panel: a refund (void, or one side only) shows no fee row and no fee-capped callout.
   const panel = decomment(read("src/components/markets/resolution-panel.tsx"));
   check("8.8 the resolution panel treats a one-sided pool as the refund it is (no fee row, no capped callout, no payout note)",

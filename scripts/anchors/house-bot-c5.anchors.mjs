@@ -233,8 +233,8 @@ export const MUTATIONS = [
   {
     name: "c5-5b:M7 · the ADMIN twin beside the player's notice carries ruling 195's house clause again.",
     file: NOTIFICATION_SERVICE,
-    from: "    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,",
-    to: "    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa, ikiwemo dau la nyumba.`,",
+    from: '    bodySw: `"${clipQuote(opts.title, 60)}" limefutwa kwa dharura — madau ${opts.refundedCount} yaliyokuwa wazi yamerejeshwa kikamilifu, jumla ${formatTzs(opts.refundedTzs)}. Sababu: ${clipQuote(opts.reason, 100)}`,',
+    to: '    bodySw: `"${clipQuote(opts.title, 60)}" limefutwa kwa dharura — madau ${opts.refundedCount} yaliyokuwa wazi yamerejeshwa kikamilifu, jumla ${formatTzs(opts.refundedTzs)}, ikiwemo dau la nyumba. Sababu: ${clipQuote(opts.reason, 100)} · ikiwemo dau la nyumba`,',
     expect: "0.198.2 · ⛔ the player's cancellation notice, the objector's decision notice, both verdict notices and the player's refund letter name no house reader, carry no house word and keep the bodies measured before step 5 — and, since owner ruling D20 un-built ruling 195's clause, neither does the ADMIN twin beside them",
     suite: "reports-mem",
   },
@@ -277,8 +277,8 @@ export const MUTATIONS = [
     // RE-ANCHORED 2026-10-14 (the Vodacom plan's S12 WP12): the notice's title now goes through `messageTitles`, the switch
     // that carries the approved short title from the S15 flip. The defect planted is unchanged: the reason, conditioned on
     // the house stake.
-    from: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id });",
-    to: "      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, positionId: p.id });",
+    from: "        void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: bonusPart, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id }).catch(() => {});",
+    to: "        void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: bonusPart, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, positionId: p.id }).catch(() => {});",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
@@ -286,8 +286,8 @@ export const MUTATIONS = [
     name: "c5-s4:S4-M44 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read,…",
     file: MARKET_SERVICE,
     // RE-ANCHORED 2026-10-14 (S12 WP12): the letter's title goes through `messageTitle` (English, the switch). Same plant.
-    from: "        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason, amount: p.stake, reference: p.id }),",
-    to: "        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, amount: p.stake, reference: p.id }),",
+    from: "          html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason, amount: p.stake, bonusStakeTzs: bonusPart, reference: p.id }),",
+    to: "          html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, \"en\", m.titleEn, m), reason: houseStake && houseStake.yes + houseStake.no > 0 ? `${reason}.` : reason, amount: p.stake, bonusStakeTzs: bonusPart, reference: p.id }),",
     expect: "0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
     suite: "reports-mem",
   },
@@ -421,8 +421,8 @@ export const MUTATIONS = [
   {
     name: "c5-s5:S5-M50 · ⛔ the player's cancellation notice, the objector's decision notice, both verdict notices and the player's refund letter name no…",
     file: EMAIL,
-    from: "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },",
-    to: "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },\n      { label: \"Of which house stakes\", value: formatTzs(amount) },",
+    from: "      ...(destination.real > 0 ? [{ label: \"Credited to main at refund\", value: formatTzs(destination.real), tone: \"good\" as const }] : []),",
+    to: "      ...(destination.real > 0 ? [{ label: \"Credited to main at refund\", value: formatTzs(destination.real), tone: \"good\" as const }] : []),\n      { label: \"Of which house stakes\", value: formatTzs(amount) },",
     expect: "0.198.2 · ⛔ the player's cancellation notice, the objector's decision notice, both verdict notices and the player's refund letter name no house reader, carry no house word and keep the bodies measured before step 5 — and, since owner ruling D20 un-built ruling 195's clause, neither does the ADMIN twin beside them",
     suite: "reports-mem",
   },
@@ -860,11 +860,11 @@ export const MUTATIONS = [
     suite: "reports-mem",
   },
   {
-    name: "c5-s5:S5-M52 · RE-POINTED · the same read inside a TERNARY CONDITION — 4.196.2 is gone; 0.191.1 names the condition shape by rule and 0.191.0 counts the call",
+    name: "c5-s5:S5-M52 · the objector's notice gains a conditional house-stake clause",
     file: OBJECTIONS_SERVICE,
-    from: "note: `The market was voided and your stake was refunded in full. ${reason}` }",
-    to: "note: `The market was voided and your stake was refunded in full. ${reason}${(await houseStakeForAudit(marketId, \"market.emergency_void\"))?.no ? \" · house stake\" : \"\"}` }",
-    expect: "0.191.0 · ⛔ D20's un-build, measured: all 21 decision files are read, and NOT ONE names a house-stake reader or carries a single allowed requester occurrence — so every problem the scan can report below is a new one",
+    from: "note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}` }).catch(() => {});",
+    to: "note: `The market was voided. Stakes still held were refunded; earlier cash-outs kept their paid amount. ${reason}${reason ? \" · house stake held\" : \"\"}` }).catch(() => {});",
+    expect: "0.198.2 · ⛔ the objector's decision notice must carry no house-stake clause",
     suite: "reports-mem",
   },
   {
@@ -994,17 +994,17 @@ export const MUTATIONS = [
   {
     name: "c5-s4:S4-M61 · 🔴 UNGUARDED UNTIL NOW · ⚠️ `main`'s OWN behaviour · the emergency-void confirmation stops reaching COMPLIANCE. 4.195.* went out with ruling 195's strike; no file under scripts/ names the role triple and emergency-void.test.mts contains no occurrence of COMPLIANCE at all",
     file: MARKET_SERVICE,
-    from: "    const officers = await db.user.listByRoles([\"ADMIN\", \"COMPLIANCE\", \"MODERATOR\"]); // audit M5",
-    to: "    const officers = await db.user.listByRoles([\"ADMIN\", \"MODERATOR\"]); // audit M5",
+    from: "  const officers = await db.user.listByRoles([\"ADMIN\", \"COMPLIANCE\", \"MODERATOR\"]);\n  // Snapshot holder IDs before taking locks, then acquire wallet locks in stable",
+    to: "  const officers = await db.user.listByRoles([\"ADMIN\", \"MODERATOR\"]);\n  // Snapshot holder IDs before taking locks, then acquire wallet locks in stable",
     expect: "0.m5.1 · ⛔ BOTH officer fan-outs in market-service.ts are addressed to ADMIN, COMPLIANCE and MODERATOR",
     suite: "reports-mem",
   },
   {
     name: "c5-s4:S4-M67 · 🔴 UNGUARDED UNTIL NOW · ⚠️ `main`'s OWN behaviour · REWRITTEN · the officer's letter gains a label conditional on a money figure. 4.195.6 is gone; PLAYER_NOTIFIERS cover marketCancelledRefundHtml, not the ADMIN letter. ⛔ the register's `to` named `houseRow`, which occurs 0× in email.ts — an undefined identifier is a crash, not a defect, so the condition is re-written onto `refundedTzs`, which the function really takes",
     file: EMAIL,
-    from: "      { label: \"Players refunded\", value: String(refundedCount) },",
-    to: "      { label: refundedTzs > 0 ? \"Players refunded (incl. positions held)\" : \"Players refunded\", value: String(refundedCount) },",
-    expect: "0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Players refunded, Total refunded, and every label is a PLAIN string literal",
+    from: "      { label: \"Stakes refunded\", value: String(refundedCount) },",
+    to: "      { label: refundedTzs > 0 ? \"Stakes refunded (incl. house stakes)\" : \"Stakes refunded\", value: String(refundedCount) },",
+    expect: "0.m5.2 · ⛔ the officer's cancellation confirmation states the same four things whatever the house held: marketCancelledAdminHtml's rows are exactly Market, Reason, Stakes refunded, Total refunded, and every label is a PLAIN string literal",
     suite: "reports-mem",
   },
   /* ══ c5-step8 · accepted risks 8–12 in the two registers (2026-09-26) ════════════════════════════════════

@@ -845,7 +845,9 @@ console.log("\n── 13 · E-29 · the settlement note states only what is true
     const n = settlementNote("VOID", reason, null, null);
     ok(`13.2 · VOID/${reason} · ⛔ claims NO observations it does not have`, !claimsObs(n), n.slice(0, 66));
     ok(`13.2 · VOID/${reason} · says what actually happened`, must.test(n), n.slice(0, 66));
-    ok(`13.2 · VOID/${reason} · still promises the refund`, /refunded in full/.test(n));
+    ok(`13.2 · VOID/${reason} · names pending return only for held stakes and preserves cash-outs`,
+       /Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount/.test(n)
+       && !/every stake.*refunded|all stakes.*refunded/i.test(n));
   }
 
   // The exact live row that exposed it: operator void, both observation ids null.

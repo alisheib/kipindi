@@ -39,7 +39,7 @@
 import { db, type StoredBonusGrant, type BonusSource } from "./store";
 import type { Prisma } from "@prisma/client";
 import { randomId } from "./crypto";
-import { withLock } from "./locks";
+import { withLock, afterCommit } from "./locks";
 import { audit } from "./audit";
 import { getBonusConfig } from "./bonus-config";
 // The PRODUCT state (a constant), which outranks the operator config above it — see `creditBonus`.
@@ -457,13 +457,17 @@ export async function reverseWagering(userId: string, stakeTzs: number): Promise
  * rolls back with the lock while the payout stood — a worse asymmetry than the one it fixes.
  * The parameter exists for a caller that IS inside a money transaction.
  */
-export async function reverseWageringLocked(userId: string, stakeTzs: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+export async function reverseWageringLocked(userId: string, stakeTzs: number, tx?: Prisma.TransactionClient | null, deferAudit?: (fn: () => void) => void): Promise<number> {
   const amount = tzs(stakeTzs);
   if (!(amount > 0)) return 0;
-  return reverseWageringCore(userId, amount, tx);
+  return reverseWageringCore(userId, amount, tx, deferAudit);
 }
 
-async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.TransactionClient | null): Promise<number> {
+async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.TransactionClient | null, deferAudit?: (fn: () => void) => void): Promise<number> {
+  const emitAudit = (fn: () => void) => {
+    if (deferAudit) deferAudit(fn);
+    else afterCommit(tx, fn);
+  };
   let toReverse = amount;
   let reversed = 0;
   let relockedGrants = 0;
@@ -478,7 +482,7 @@ async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.T
   // ⭐ ACTIVE grants are reversed FIRST — same set, same newest-first order, behaviour identical
   // to before — so an ordinary refund against a running grant is unchanged, and only leftover
   // turnover can ever reach the re-lock path below.
-  const reversible = await db.bonusGrant.listReversibleByUser(userId);
+  const reversible = await db.bonusGrant.listReversibleByUser(userId, tx);
   const running = reversible.filter((g) => g.status === "ACTIVE").reverse();    // newest-first
   const cleared = reversible.filter((g) => g.status === "FULFILLED").reverse(); // newest-first
   for (const g of [...running, ...cleared]) {
@@ -493,7 +497,9 @@ async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.T
     // whose turnover is STILL at or above the requirement stays fulfilled: the obligation is met
     // even after the reversal, so nothing re-locks.
     if (g.status === "ACTIVE" || newWagered >= g.wagerRequiredTzs) {
-      await db.bonusGrant.update(g.id, { wageredTzs: newWagered }, tx);
+      if (!await db.bonusGrant.update(g.id, { wageredTzs: newWagered }, tx)) {
+        throw new Error(`bonus wagering reversal: grant ${g.id} disappeared`);
+      }
       continue;
     }
 
@@ -529,7 +535,8 @@ async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.T
         // Guard miss — a concurrent debit landed between the read and the atomic adjust. Leave
         // the grant FULFILLED and the money untouched rather than half-applying it. The turnover
         // reversal above still stands, so a later refund re-attempts this.
-        audit({ category: "WALLET", action: "bonus.relock_aborted_guard", actorId: userId, targetType: "BonusGrant", targetId: g.id, payload: { userId, owedTzs: owed, attemptedTzs: relock, reason: "balance<relock" } });
+        if (deferAudit || tx) throw new Error(`bonus wagering reversal: relock guard missed for grant ${g.id}`);
+        emitAudit(() => audit({ category: "WALLET", action: "bonus.relock_aborted_guard", actorId: userId, targetType: "BonusGrant", targetId: g.id, payload: { userId, owedTzs: owed, attemptedTzs: relock, reason: "balance<relock" } }));
         continue;
       }
       const nowIso = new Date().toISOString();
@@ -588,11 +595,13 @@ async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.T
     // `remainingTzs: relock`, NOT `owed` — the invariant is bonusBalance == the SUM of
     // remainingTzs over ACTIVE grants, and only `relock` actually reached bonusBalance. Setting
     // `owed` here would break the reconciler by exactly the shortfall.
-    await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: relock, status: "ACTIVE", fulfilledAt: null, expiresAt: relockExpiresAt }, tx);
+    if (!await db.bonusGrant.update(g.id, { wageredTzs: newWagered, remainingTzs: relock, status: "ACTIVE", fulfilledAt: null, expiresAt: relockExpiresAt }, tx)) {
+      throw new Error(`bonus wagering reversal: grant ${g.id} disappeared`);
+    }
     relockedGrants++;
     relockedTzs += relock;
     shortfallTzs += shortfall;
-    audit({
+    emitAudit(() => audit({
       category: "WALLET",
       action: "bonus.relocked",
       actorId: userId,
@@ -613,9 +622,9 @@ async function reverseWageringCore(userId: string, amount: number, tx?: Prisma.T
         expiresAtNow: relockExpiresAt,
         note: "re-locked, not taken: total holdings unchanged, only the withdrawable portion moved",
       },
-    });
+    }));
   }
-  if (reversed > 0) audit({ category: "WALLET", action: "bonus.wagering_reversed", actorId: userId, targetType: "Wallet", targetId: userId, payload: { requested: amount, reversed, relockedGrants, relockedTzs, shortfallTzs } });
+  if (reversed > 0) emitAudit(() => audit({ category: "WALLET", action: "bonus.wagering_reversed", actorId: userId, targetType: "Wallet", targetId: userId, payload: { requested: amount, reversed, relockedGrants, relockedTzs, shortfallTzs } }));
   return reversed;
 }
 
@@ -696,55 +705,107 @@ async function spendBonusCore(userId: string, amount: number, tx?: Prisma.Transa
 /**
  * Refund `amountTzs` of bonus stake back into the bonus wallet on a market void
  * (the bonus portion of a refunded bet returns to bonus, not real). Adds it to
- * the player's oldest ACTIVE grant and bumps bonusBalance, under the wallet lock.
- * Wagering progress is NOT reversed. Returns how much landed in the bonus wallet;
- * if the player has no ACTIVE grant left to hold it, returns 0 so the caller can
- * refund that remainder to real balance instead (player never loses money).
+ * a dedicated no-expiry restitution grant for that refunded position, and bumps
+ * bonusBalance under the wallet lock's transaction. The original grant may have
+ * expired or another grant may now be oldest; neither is evidence of the grant
+ * that paid this position. The memory twin restores both rows on a fault.
+ * Wagering progress is NOT reversed here. This legacy helper returns the
+ * bonus amount actually credited. Callers must check its return value. The
+ * market-wide transaction calls refundEmergencyBonusLocked under its own lock.
  */
 export async function refundBonusToActive(userId: string, amountTzs: number): Promise<{ refundedToBonus: number }> {
   const amount = tzs(amountTzs);
   if (!(amount > 0)) return { refundedToBonus: 0 };
-  return withLock(`wallet:${userId}`, async () => {
-    const active = await db.bonusGrant.listActiveByUser(userId); // oldest first
-    let target = active[0];
-    if (!target) {
-      // Money must never evaporate (audit C2). A voided bet means the player took
-      // no risk, so the bonus stake must come back. If no ACTIVE grant remains to
-      // hold it (the original was fulfilled or expired), mint a zero-wagering
-      // restitution grant — zero is correct because the original turnover was
-      // already served — so the refund lands in the bonus wallet instead of being
-      // silently forfeited. This is restitution of the player's own stake, NOT a
-      // promotional incentive, so it deliberately does NOT route through
-      // creditBonus (whose RG-lockout suppression must never block a refund).
-      const wallet = await db.wallet.findByUserId(userId);
-      if (!wallet) return { refundedToBonus: 0 }; // no wallet — nothing safe to do
-      const nowIso = new Date().toISOString();
-      target = {
-        id: `bg_${randomId(12)}`,
-        userId,
-        walletId: wallet.id,
-        amountTzs: amount,
-        remainingTzs: 0, // the update below adds `amount`
-        wagerMultiplier: 1,
-        wagerRequiredTzs: 0, // zero wagering — turnover already served
-        wageredTzs: 0,
-        source: "ADMIN",
-        sourceRef: `void-restitution:${randomId(8)}`,
-        status: "ACTIVE",
-        expiresAt: null,
-        fulfilledAt: null,
-        note: "Void restitution — bonus stake returned after market void",
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
-      await db.bonusGrant.create(target);
-      audit({ category: "WALLET", action: "bonus.void_restitution_grant", actorId: userId, targetType: "BonusGrant", targetId: target.id, payload: { amount, reason: "no active grant to hold voided bonus refund" } });
+  return withLock(`wallet:${userId}`, async (tx) => {
+    const pendingAudits: Array<() => void> = [];
+    // The standalone legacy caller still needs an all-or-nothing memory twin.
+    // Restore only this user's wallet and grants while its wallet lock is held.
+    const core = tx ? null : globalThis.__50PICK_STORE;
+    const walletBefore = core
+      ? [...core.wallets].filter(([, row]) => row.userId === userId).map(([id, row]) => [id, structuredClone(row)] as const)
+      : [];
+    const grantsBefore = core
+      ? [...core.bonusGrants].filter(([, row]) => row.userId === userId).map(([id, row]) => [id, structuredClone(row)] as const)
+      : [];
+    try {
+      await refundEmergencyBonusLocked(userId, `legacy-${randomId(8)}`, amount, tx,
+        (fn) => { pendingAudits.push(fn); });
+      afterCommit(tx, () => { for (const fn of pendingAudits) fn(); });
+      return { refundedToBonus: amount };
+    } catch (error) {
+      if (core) {
+        for (const [id, row] of core.wallets) if (row.userId === userId) core.wallets.delete(id);
+        for (const [id, row] of walletBefore) core.wallets.set(id, row);
+        for (const [id, row] of core.bonusGrants) if (row.userId === userId) core.bonusGrants.delete(id);
+        for (const [id, row] of grantsBefore) core.bonusGrants.set(id, row);
+      }
+      throw error;
     }
-    await db.bonusGrant.update(target.id, { remainingTzs: target.remainingTzs + amount });
-    await db.wallet.adjust(target.walletId, { bonusBalance: amount });
-    audit({ category: "WALLET", action: "bonus.refund_to_active", actorId: userId, targetType: "BonusGrant", targetId: target.id, payload: { amount } });
-    return { refundedToBonus: amount };
   });
+}
+
+/**
+ * Emergency-void restitution while the caller holds this user's wallet lock.
+ * Every read and write joins the caller's PostgreSQL transaction. The
+ * standalone refundBonusToActive wrapper opens its own wallet transaction;
+ * market-wide refunds call this core under their already-open shared one.
+ */
+export async function refundEmergencyBonusLocked(
+  userId: string,
+  positionId: string,
+  amountTzs: number,
+  tx: Prisma.TransactionClient | null,
+  deferAudit: (fn: () => void) => void,
+): Promise<void> {
+  const amount = tzs(amountTzs);
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount !== amountTzs) {
+    throw new Error("emergency bonus refund requires a positive whole-TZS amount");
+  }
+  const wallet = await db.wallet.findByUserId(userId, tx);
+  if (!wallet) throw new Error(`emergency bonus refund: wallet missing for user ${userId}`);
+  const sourceRef = `void-restitution:${positionId}`;
+  const previous = tx
+    ? await tx.bonusGrant.findUnique({ where: { sourceRef } })
+    : await db.bonusGrant.findBySourceRef(sourceRef);
+  if (previous) throw new Error(`emergency bonus refund: position ${positionId} already has restitution`);
+  const nowIso = new Date().toISOString();
+  const grant: StoredBonusGrant = {
+    id: `bg_${randomId(12)}`,
+    userId,
+    walletId: wallet.id,
+    amountTzs: amount,
+    remainingTzs: amount,
+    wagerMultiplier: 1,
+    wagerRequiredTzs: 0,
+    wageredTzs: 0,
+    source: "ADMIN",
+    sourceRef,
+    status: "ACTIVE",
+    expiresAt: null,
+    fulfilledAt: null,
+    note: "Void restitution — bonus stake returned for one position",
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+  if (tx) {
+    await tx.bonusGrant.create({ data: {
+      id: grant.id, userId, walletId: wallet.id,
+      amountTzs: amount, remainingTzs: amount,
+      wagerMultiplier: 1, wagerRequiredTzs: 0, wageredTzs: 0,
+      source: "ADMIN", sourceRef, status: "ACTIVE",
+      expiresAt: null, fulfilledAt: null, note: grant.note,
+      createdAt: new Date(nowIso),
+    } });
+  } else {
+    await db.bonusGrant.create(grant);
+  }
+  const updatedWallet = await db.wallet.adjust(wallet.id, { bonusBalance: amount }, undefined, tx);
+  if (!updatedWallet) throw new Error(`emergency bonus refund: wallet ${wallet.id} disappeared`);
+  deferAudit(() => audit({ category: "WALLET", action: "bonus.void_restitution_grant", actorId: userId,
+    targetType: "BonusGrant", targetId: grant.id,
+    payload: { amount, positionId } }));
+  deferAudit(() => audit({ category: "WALLET", action: "bonus.refund_to_active", actorId: userId,
+    targetType: "BonusGrant", targetId: grant.id, payload: { amount, positionId } }));
 }
 
 /**

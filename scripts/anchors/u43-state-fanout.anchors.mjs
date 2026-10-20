@@ -116,7 +116,7 @@ export const MUTATIONS = [
     name: "card-crop-bypasses-post-shot-check",
     file: "scripts/live/updown-visual-states.mjs",
     suite: "u43-state-fanout",
-    from: "const cropped = await verifiedScreenshot({\r\n            sample: sampleFrame,\r\n            capture: () => cards.nth(i).screenshot(),\r\n            valid: (sample) => frameReady(sample, requirement),",
+    from: "const cropped = await verifiedScreenshot({\r\n            sample: sampleFrame,\r\n            capture: () => cards.nth(i).screenshot(),\r\n            valid: (sample) => exactMarketReady(sample, requirement),",
     to: "const cropped = await verifiedScreenshot({\r\n            sample: sampleFrame,\r\n            capture: () => cards.nth(i).screenshot(),\r\n            valid: () => true,",
     expect: "FAIL shot bytes are saved only after the page and every card crop pass post-shot checks",
   },

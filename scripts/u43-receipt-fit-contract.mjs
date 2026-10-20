@@ -4,6 +4,7 @@ export function receiptFitIssues(receipt, modal, css) {
   const need = (ok, label) => { if (!ok) issues.push(label); };
   need(receipt.includes('compactOnPhone')
     && receipt.includes('details={details}')
+    && receipt.includes('footnote={projected != null ? t.market.udEstimateNote : undefined}')
     && receipt.includes('primaryLabel={t.market.udRcKeepPlaying}')
     && receipt.includes('secondaryLabel={onWatchRound ? t.market.udRcWatchRound : undefined}'),
     "placed-bet receipt keeps every disclosure and both follow-up actions");
@@ -24,5 +25,15 @@ export function receiptFitIssues(receipt, modal, css) {
     && css.includes('.orm-phone-compact .orm-actions { margin-top: var(--sp-3); }')
     && !css.includes('.orm-phone-compact .orm-detail { display: none; }'),
     "phone density reduces only whitespace, preserving every detail row");
+  const shortPhoneCss = css.match(/@media \(max-width: 639px\) and \(max-height: 679px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  need(shortPhoneCss.includes('.orm-phone-compact { padding-block: var(--sp-2); }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-crest { width: var(--sp-10); height: var(--sp-10); }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-eyebrow { margin-top: var(--sp-1); }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-details { margin-top: var(--sp-1); gap: 2px; }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-detail { padding-block: 2px; }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-actions { margin-top: var(--sp-2); gap: var(--sp-1); }')
+    && shortPhoneCss.includes('.orm-phone-compact .orm-actions + p { margin-top: var(--sp-1); }')
+    && !/display\s*:\s*none|font-size\s*:|min-height\s*:/.test(shortPhoneCss),
+    "short phone receipt compresses vertical whitespace and shows its qualifier with full-size text and actions");
   return issues;
 }

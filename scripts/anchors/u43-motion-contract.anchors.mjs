@@ -1,0 +1,15 @@
+/** CSS reversals planted in copies by red:u43-motion-contract. */
+export const MUTATIONS = [
+  { name: "1 reduced urgency pulse", file: "src/app/motion.css",
+    from: '[data-motion="reduced"] .m-urgent { animation: none !important; opacity: 1; }',
+    to: '[data-motion="reduced"] .m-urgent { animation: m-breathe 1000ms var(--m-breathe) infinite; opacity: 1; }' },
+  { name: "2 reduced live-dot cadence", file: "src/app/globals.css",
+    from: '[data-motion="reduced"] .cm-status-dot { animation: m-breathe 2600ms var(--m-breathe) infinite !important; box-shadow: none !important; }',
+    to: '[data-motion="reduced"] .cm-status-dot { animation: m-breathe 1.6s var(--m-breathe) infinite !important; box-shadow: none !important; }' },
+  { name: "3 spark timing rung", file: "src/app/globals.css",
+    from: '.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--t-stage) var(--m-glide) forwards; }',
+    to: '.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--dur-arrive) var(--ease-glide) forwards; }' },
+  { name: "4 reduced spark remains still", file: "src/app/globals.css",
+    from: '[data-motion="reduced"] .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }',
+    to: '[data-motion="reduced"] .mcardp-spark-line { animation:m-draw var(--t-stage) var(--m-glide) forwards; stroke-dasharray:1; stroke-dashoffset:1; }' },
+].map((item, index) => ({ id: String(index + 1), ...item }));

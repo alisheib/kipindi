@@ -20,6 +20,12 @@ const FEED = new URL("../src/lib/server/updown-feed.ts", import.meta.url);
 
 const MUTATIONS = [
   {
+    name: "void audit says every stake was already refunded, including prior cash-outs",
+    file: SERVICE,
+    from: `  const refunded = " Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount.";`,
+    to: `  const refunded = " Every stake was refunded in full.";`,
+  },
+  {
     // ⭐ E-63 · THE SEAL ITSELF. Deleting the open-side backfill reverts the healer to
     // voiding a round whose confirmed open observation sits in the ledger — SOL's
     // 199-of-201, the defect this seal exists to make impossible to reintroduce.

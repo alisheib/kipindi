@@ -38,6 +38,7 @@
  * Frames + index.json go to .qa-shots/u43/<TAG>/ (gitignored, DESIGN_AUTHORITY §0b).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { mapLimited, PHOTOGRAPH_CONCURRENCY, verifiedScreenshot, frameReady, receiptParticipants, receiptReady, RECEIPT_EYEBROWS } from "../lib/u43-state-fanout.mjs";
@@ -112,15 +113,38 @@ const waitUntil = async (ms, label) => {
   if (left > 0) { console.log(`  … waiting ${(left / 1000).toFixed(0)}s for ${label}`); await new Promise((r) => setTimeout(r, left)); }
 };
 
-const index = { base: BASE, tag: TAG, dur: DUR, startedAt: new Date().toISOString(), phases: [] };
+const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO }).toString().trim();
+const trackedDirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=no"], { cwd: REPO }).toString().trim() !== "";
+const untrackedRunnable = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", "src", "scripts"],
+  { cwd: REPO }).toString().split(/\r?\n/).some((line) => line.startsWith("?? "));
+if (process.env.REQUIRE_CLEAN === "1" && (trackedDirty || untrackedRunnable)) {
+  throw new Error("exact-source state capture requires committed source and scripts");
+}
+const index = { base: BASE, tag: TAG, dur: DUR, sourceHead, trackedDirty, untrackedRunnable,
+  sourceClaim: "local checkout; require clean tree and fresh dev server for exact-source evidence",
+  startedAt: new Date().toISOString(), phases: [] };
 
 // ── Seed ──────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log("=== seed");
 const seed = await post("/api/dev-test/updown-seed", { durations: [5, 10, 15], assets: ["BTC", "XAU"], feedProvider: "mock-bars" });
-if (!seed.ok) die(`updown-seed: ${JSON.stringify(seed).slice(0, 200)}`);
-await post("/api/dev-test/seed-markets");
-await fetch(`${BASE}/api/dev-test/resolve-seed-markets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ markets: 2, bettors: 4, stake: 2000, outcome: "YES", settle: true }) }).catch(() => {});
-await fetch(`${BASE}/api/dev-test/resolve-seed-markets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", settle: true }) }).catch(() => {});
+if (!seed.ok || !seed.assets?.some((asset) => asset.key === "XAU" && asset.enabled)
+  || !seed.assets?.some((asset) => asset.key === "BTC" && asset.enabled)
+  || seed.chains?.filter((chain) => chain.durationMinutes === DUR && chain.state === "RUNNING").length < 2
+  || seed.notes?.length) die(`BTC/XAU chain seed premise failed: ${JSON.stringify(seed).slice(0, 220)}`);
+index.chainSeed = { assets: seed.assets, chainCount: seed.chains.length, notes: seed.notes };
+const seededMarkets = await post("/api/dev-test/seed-markets");
+if (!seededMarkets.ok || !Array.isArray(seededMarkets.ids) || seededMarkets.ids.length < 15) {
+  die("generic market catalogue seed did not return enough live market IDs");
+}
+const resolvedSeeds = await post("/api/dev-test/resolve-seed-markets", { markets: 2, bettors: 4, stake: 2000, outcome: "YES", settle: true });
+const oneSidedSeed = await post("/api/dev-test/resolve-seed-markets", { markets: 1, bettors: 2, stake: 1000, side: "YES", outcome: "NO", settle: true });
+if (!resolvedSeeds.ok || resolvedSeeds.resolved !== 2 || resolvedSeeds.markets?.length !== 2
+  || !oneSidedSeed.ok || oneSidedSeed.resolved !== 1 || oneSidedSeed.markets?.length !== 1
+  || resolvedSeeds.markets.some((m) => m.stakes <= 0)
+  || oneSidedSeed.markets.some((m) => m.stakes <= 0)) {
+  die("resolved and one-sided market seed premises did not read back");
+}
+index.marketSeeds = { resolved: resolvedSeeds.markets, oneSided: oneSidedSeed.markets };
 
 // ── Pages ─────────────────────────────────────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
@@ -136,8 +160,31 @@ const authPage = await authCtx.newPage();
 await authPage.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded", timeout: 120000 });
 for (let i = 0; i < 60 && !(await authCtx.cookies()).some((c) => c.name === "kp_session"); i++) await authPage.waitForTimeout(500);
 const playerState = await authCtx.storageState();
+if (!playerState.cookies.some((c) => c.name === "kp_session")) die("the demo sign-in set no session cookie");
+// This existing dev-only fixture uses real service paths on the disposable memory
+// store. Its twelfth market is operator-VOID with a real refund; the state drive
+// refuses a generic result card in place of that exact market.
+const portfolioResponse = await authCtx.request.post(`${BASE}/api/dev-test/seed-player-portfolio`, {
+  data: { markets: 12, stake: 1500 }, timeout: 120000,
+});
+const portfolio = await portfolioResponse.json().catch(() => null);
+if (!portfolioResponse.ok() || !portfolio?.ok || portfolio.placed < 12
+  || portfolio.intended?.VOID !== 1 || portfolio.byStatus?.VOID !== 1
+  || portfolio.marketIds?.length < 12 || portfolio.refusals?.length) {
+  die(`real local VOID market seed premise failed: ${JSON.stringify(portfolio).slice(0, 200)}`);
+}
+const occupiedIds = new Set([...resolvedSeeds.markets.map((m) => m.id), ...oneSidedSeed.markets.map((m) => m.id), ...portfolio.marketIds]);
+const liveId = seededMarkets.ids.find((m) => !occupiedIds.has(m.id))?.id;
+if (!liveId) die("no separate live generic market remains after the resolved and VOID fixtures");
+const marketCases = {
+  "p12-market-live": { id: liveId, surface: "markets", kind: "live" },
+  "p12-market-resolved": { id: resolvedSeeds.markets[0].id, surface: "markets", kind: "resolved" },
+  "p12-market-one-sided": { id: oneSidedSeed.markets[0].id, surface: "markets", kind: "one-sided" },
+  "p12-market-void": { id: portfolio.marketIds[11], surface: "results", kind: "void" },
+};
+index.marketSeeds = { ...index.marketSeeds, portfolio: { placed: portfolio.placed, intended: portfolio.intended,
+  byStatus: portfolio.byStatus, refusals: portfolio.refusals }, marketCases };
 await authCtx.close();
-if (!playerState.cookies.some((c) => c.name === "kp_session")) die(`the demo sign-in set no session cookie: ${playerState.cookies.map((c) => c.name).join(", ")}`);
 
 const pages = [];
 for (const c of CELLS) {
@@ -198,6 +245,105 @@ async function withoutChrome(page, fn) {
   finally { await style.evaluate((el) => el.remove()).catch(() => {}); }
 }
 
+// Photograph the actual timed p6 card before the ordinary still-frame style is
+// installed. The tier changes below are browser-only CSS-gate probes, explicitly
+// recorded as such; the round, clock words and price still come from the server.
+async function captureUrgencyMotion(p, roundId) {
+  const original = await p.page.evaluate(() => ({
+    tier: document.documentElement.getAttribute("data-motion"),
+    userOff: document.documentElement.classList.contains("kp-reduce-motion"),
+  }));
+  const frames = [];
+  const observe = () => p.page.evaluate((id) => {
+    const card = [...document.querySelectorAll("article.mcardp")]
+      .find((node) => node.querySelector(`a[href="/updown/${id}"]`));
+    const clock = card?.querySelector(".ud-clock");
+    const urgent = clock?.querySelector(".m-urgent");
+    const dot = clock?.querySelector(".ud-clock-caption .live-dot");
+    const style = urgent ? getComputedStyle(urgent) : null;
+    const dotStyle = dot ? getComputedStyle(dot) : null;
+    return {
+      now: Date.now(), lang: document.documentElement.lang,
+      phase: card?.getAttribute("data-phase") ?? null,
+      caption: clock?.querySelector(".ud-clock-caption")?.textContent?.trim() ?? "",
+      digits: urgent?.textContent?.trim() ?? "",
+      urgentPresent: !!urgent, dotPresent: !!dot,
+      urgentName: style?.animationName ?? null, urgentDuration: style?.animationDuration ?? null,
+      urgentRunning: urgent?.getAnimations().some((animation) => animation.playState === "running") ?? false,
+      dotName: dotStyle?.animationName ?? null, dotDuration: dotStyle?.animationDuration ?? null,
+      tier: document.documentElement.getAttribute("data-motion"),
+      userOff: document.documentElement.classList.contains("kp-reduce-motion"),
+      osReduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    };
+  }, roundId);
+  try {
+    for (const mode of ["full-a", "full-b", "reduced", "minimal", "os-reduce"]) {
+      const osReduced = mode === "os-reduce";
+      await p.page.emulateMedia({ reducedMotion: osReduced ? "reduce" : "no-preference" });
+      await p.page.evaluate((tier) => {
+        document.documentElement.setAttribute("data-motion", tier === "minimal" ? "minimal" : tier === "reduced" ? "reduced" : "full");
+        document.documentElement.classList.toggle("kp-reduce-motion", tier === "minimal");
+      }, mode);
+      await p.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      if (mode === "full-b") await p.page.waitForTimeout(420);
+      const before = await observe();
+      if (before.lang !== p.locale || before.phase !== "open" || !before.urgentPresent || !before.dotPresent
+        || !before.caption || !/^\d+:\d\d$/.test(before.digits)) {
+        throw new Error(`p6 urgency premise missing for ${p.id} ${mode}: ${JSON.stringify(before).slice(0, 250)}`);
+      }
+      if (mode.startsWith("full") && (before.urgentName !== "m-breathe" || !before.urgentRunning)) {
+        throw new Error(`p6 full-motion digit pulse absent for ${p.id}: ${JSON.stringify(before).slice(0, 250)}`);
+      }
+      if (!mode.startsWith("full") && before.urgentName !== "none") {
+        throw new Error(`p6 reduced-motion digit pulse still runs for ${p.id} ${mode}`);
+      }
+      if (mode === "reduced" && (before.dotName !== "m-breathe" || before.dotDuration !== "2.6s")) {
+        throw new Error(`p6 reduced-tier live dot has wrong cadence for ${p.id}: ${JSON.stringify(before).slice(0, 250)}`);
+      }
+      const file = `p6-last30__${p.id}__motion-${mode}.png`;
+      const image = await p.page.screenshot({ fullPage: true });
+      const after = await observe();
+      if (after.phase !== "open" || !after.urgentPresent || !after.caption) {
+        throw new Error(`p6 motion frame crossed the lock for ${p.id} ${mode}`);
+      }
+      frames.push({ file, image, before, after, gate: mode === "minimal" ? "in-app user switch" : mode === "os-reduce" ? "OS emulation" : mode === "reduced" ? "low-end tier override" : "full tier override" });
+    }
+  } finally {
+    await p.page.emulateMedia({ reducedMotion: "no-preference" });
+    await p.page.evaluate(({ tier, userOff }) => {
+      if (tier == null) document.documentElement.removeAttribute("data-motion");
+      else document.documentElement.setAttribute("data-motion", tier);
+      document.documentElement.classList.toggle("kp-reduce-motion", userOff);
+    }, original).catch(() => {});
+  }
+  return frames;
+}
+
+const voidWord = { en: "Void", sw: "Batili", zh: "已作废" };
+const stoppedGoldWords = {
+  en: ["No further rounds are scheduled here right now.", "Market reopens at"],
+  sw: ["Hakuna raundi nyingine iliyopangwa hapa kwa sasa.", "Soko litafunguliwa tena saa"],
+  zh: ["此处暂无后续回合安排。", "市场于"],
+};
+function exactMarketReady(sample, requirement) {
+  if (requirement.stoppedGold) return sample?.lang === requirement.locale
+    && sample.signedIn === requirement.signedIn && sample.goldSelected
+    && sample.cards === 0 && sample.emptyState && sample.bettableChoiceCount === 0
+    && stoppedGoldWords[requirement.locale].some((words) => sample.emptyStateText?.includes(words));
+  if (!frameReady(sample, requirement)) return false;
+  if (!requirement.marketCase) return true;
+  const card = sample.marketCards?.find((row) => row.id === requirement.marketCase.id);
+  if (!card) return false;
+  switch (requirement.marketCase.kind) {
+    case "live": return card.choices === "open" && card.buttons === 2;
+    case "resolved": return card.result === "final" && card.choices === "closed";
+    case "one-sided": return card.result === "final" && card.oneSided === true;
+    case "void": return card.result === "final" && card.choices === "closed"
+      && card.text.includes(voidWord[requirement.locale]);
+    default: return false;
+  }
+}
+
 async function photograph(phase, path = BOARD, filter = () => true) {
   // Dev bundlers compile route chunks lazily. Unbounded page.goto() caused the 13-cell R8
   // sweep to reload /updown repeatedly before its clock effects could run. Keep all cells,
@@ -209,7 +355,8 @@ async function photograph(phase, path = BOARD, filter = () => true) {
       const roundPhase = ["p1-open", "p3-youre-in", "p4-moved-up", "p5-moved-down", "p6-last30"].includes(phase) ? "open"
         : phase === "p7-locked" ? "locked" : null;
       const requirement = {
-        detailPage, marketPage: path === "/markets", needsLive, roundPhase,
+        detailPage, marketPage: path.startsWith("/markets") || path.startsWith("/results"),
+        marketCase: marketCases[phase] ?? null, stoppedGold: phase === "p13-gold-board", needsLive, roundPhase,
         roundId: path === BOARD && roundPhase ? round.id : null,
         last30LockMs: phase === "p6-last30" ? lockMs : null,
         heldActionClearance: phase === "p3-youre-in" && p.who === "player" && p.width <= 390
@@ -254,10 +401,12 @@ async function photograph(phase, path = BOARD, filter = () => true) {
       }
       // Hydrated before the frame: the card clocks paint "--:--" until the client ticks, and the signed-in controls are
       // interactive only after hydration. Wait for a live clock (or give up after 12 s and say so in the index).
-      const hydrated = await p.page.waitForFunction(({ detailPage, needsLive }) => {
+      const hydrated = await p.page.waitForFunction(({ detailPage, needsLive, stoppedGold }) => {
         // A round detail has no board card. Its title and settlement panel are
         // the premise; the board's ticking-card check cannot apply there.
         if (detailPage) return !!document.querySelector("main h1") && !!document.querySelector("main section");
+        if (stoppedGold) return !!document.querySelector('[data-empty-state]')
+          && document.querySelectorAll('article.mcardp').length === 0;
         const cards = document.querySelectorAll("article.mcardp");
         const running = [...document.querySelectorAll('article.mcardp[data-phase="open"],article.mcardp[data-phase="locked"]')];
         // Settled cards may truthfully say "awaiting result", and a stopped chain
@@ -267,7 +416,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           const tick = card.querySelector(".ud-clock > .m-tick.tabular-nums")?.textContent || "";
           return /\d/.test(tick) && !tick.includes("--:--") && !tick.includes("—:—");
         });
-      }, { detailPage, needsLive }, { timeout: 12000 }).then(() => true).catch(() => false);
+      }, { detailPage, needsLive, stoppedGold: requirement.stoppedGold }, { timeout: 12000 }).then(() => true).catch(() => false);
       const marksReady = await p.page.waitForFunction(() => [...document.querySelectorAll("article.mcardp svg")]
         .filter((el) => el.querySelector("use") && el.getClientRects().length > 0).every((el) => {
         try { return el.getBBox().width > 0; } catch { return false; }
@@ -275,7 +424,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
       // On a fresh desktop load the chart is open, but its JS chunk and history
       // fetch finish after the card clock hydrates. Judge a painted canvas, not
       // the large temporary "Loading" rectangle beside the round.
-      const chartReady = await p.page.waitForFunction(() =>
+      const chartReady = requirement.stoppedGold || await p.page.waitForFunction(() =>
         !document.querySelector('.ud-chart-trigger[aria-expanded="true"]')
           || !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'),
       null, { timeout: 15000 }).then(() => true).catch(() => false);
@@ -292,6 +441,17 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           now: Date.now(), cards: cards.length, roundPhase: selected?.getAttribute("data-phase") ?? null,
           runningTicks: running.map((card) => card.querySelector(".ud-clock > .m-tick.tabular-nums")?.textContent || ""),
           detailReady: !!document.querySelector("main h1") && !!document.querySelector("main section"),
+          marketCards: cards.filter((card) => card.hasAttribute("data-row-id")).map((card) => ({
+            id: card.getAttribute("data-row-id"), choices: card.getAttribute("data-market-choices"),
+            result: card.getAttribute("data-market-result"),
+            oneSided: !!card.querySelector(".mcardp-oneside"),
+            buttons: card.querySelectorAll("button.btn-yes,button.btn-no").length,
+            text: card.innerText.slice(0, 600),
+          })),
+          goldSelected: !!document.querySelector('nav[data-filter-rail] a[href*="asset=XAU"][aria-current="page"]'),
+          emptyState: !!document.querySelector("[data-empty-state]"),
+          emptyStateText: document.querySelector("[data-empty-state]")?.textContent?.trim().slice(0, 400) ?? null,
+          bettableChoiceCount: document.querySelectorAll('article.mcardp[data-phase="open"] .ud-act button.btn-yes:not([disabled]),article.mcardp[data-phase="open"] .ud-act button.btn-no:not([disabled])').length,
           marksReady,
           chartReady: !document.querySelector('.ud-chart-trigger[aria-expanded="true"]')
             || !!document.querySelector('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas'),
@@ -405,6 +565,8 @@ async function photograph(phase, path = BOARD, filter = () => true) {
         if (!Number.isFinite(gap)) throw new Error("320px locked card/action-to-next-row gap could not be measured");
         if (gap > 24) throw new Error(`320px locked card leaves ${gap.toFixed(1)}px of blank space before its next visible row`);
       }
+      const motionFrames = phase === "p6-last30" && p.who === "guest" && [320, 360].includes(p.width)
+        ? await captureUrgencyMotion(p, round.id) : [];
       const file = `${phase}__${p.id}.png`;
       const accepted = await verifiedScreenshot({
         sample: sampleFrame,
@@ -412,7 +574,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           await p.page.addStyleTag({ content: STILL });
           return p.page.screenshot({ fullPage: true });
         },
-        valid: (sample) => frameReady(sample, requirement),
+        valid: (sample) => exactMarketReady(sample, requirement),
         retry: async () => {
           await p.page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
           await injectNoBetHeightRed();
@@ -432,7 +594,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           // browser paint frames; a visible live choice must also have both words.
           await cards.nth(i).scrollIntoViewIfNeeded();
           await p.page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-          if (path === "/markets") {
+          if (requirement.marketPage) {
             const choices = cards.nth(i).locator("button.btn-yes, button.btn-no");
             if (await choices.count()) {
               if (await choices.count() !== 2 || !(await choices.nth(0).isVisible()) || !(await choices.nth(1).isVisible())
@@ -446,7 +608,7 @@ async function photograph(phase, path = BOARD, filter = () => true) {
           const cropped = await verifiedScreenshot({
             sample: sampleFrame,
             capture: () => cards.nth(i).screenshot(),
-            valid: (sample) => frameReady(sample, requirement),
+            valid: (sample) => exactMarketReady(sample, requirement),
             retry: async () => {
               await p.page.waitForTimeout(300);
               await cards.nth(i).scrollIntoViewIfNeeded();
@@ -461,14 +623,20 @@ async function photograph(phase, path = BOARD, filter = () => true) {
       // survive its own before/after check before any file for this cell is written.
       writeFileSync(join(OUT, file), accepted.image);
       for (const card of cardImages) writeFileSync(join(OUT, card.file), card.image);
+      for (const frame of motionFrames) writeFileSync(join(OUT, frame.file), frame.image);
       const final = accepted.after;
       return { cell: p.id, lang: final.lang, langOk: final.lang === p.locale,
-        hydrated: hydrated || frameReady(final, requirement), marksReady: final.marksReady, chartReady: final.chartReady,
+        hydrated: hydrated || exactMarketReady(final, requirement), marksReady: final.marksReady,
+        chartReady: requirement.stoppedGold || final.chartReady,
         signedIn: final.signedIn, signedInOk: (p.who === "player") === final.signedIn,
         file, beforeMs: accepted.before.now, afterMs: final.now, attempts: accepted.attempt,
+        marketCase: requirement.marketCase, marketCards: final.marketCards,
+        goldSelected: final.goldSelected, emptyStateText: requirement.stoppedGold ? final.emptyStateText : null,
+        bettableChoiceCount: requirement.stoppedGold ? final.bettableChoiceCount : null,
         cards: cardFiles, heldAction: final.heldAction, oneSideCaption: final.oneSideCaption,
         cardGeometry: final.cardGeometry,
-        lineShift, pulses: accepted.before.pulses };
+        lineShift, pulses: accepted.before.pulses,
+        motionFrames: motionFrames.map(({ file, before, after, gate }) => ({ file, before, after, gate })) };
     } catch (e) {
       return { cell: p.id, error: String(e).slice(0, 200) };
     }
@@ -655,7 +823,18 @@ const succ = await fetch(`${BASE}/api/dev-test/updown-observe`, { method: "POST"
 if (succ?.round?.roundId) await photograph("p11-round-successor", `/updown/${succ.round.roundId}`, inFullMatrix((p) => p.width === 360 || p.width === 1280));
 
 await photograph("p12-markets", "/markets", inFullMatrix((p) => p.who === "guest" || p.width === 1280));
-await photograph("p13-gold-board", "/updown?asset=XAU", inFullMatrix((p) => p.width === 360 && p.locale === "sw"));
+for (const [phase, marketCase] of Object.entries(marketCases)) {
+  const path = `/${marketCase.surface}?q=${encodeURIComponent(`id:${marketCase.id}`)}`;
+  await photograph(phase, path, inFullMatrix((p) => p.who === "guest" || p.width === 1280));
+}
+const stoppedChains = await post("/api/dev-test/updown-handover", { phase: "stop" });
+if (!stoppedChains.ok || stoppedChains.phase !== "stop" || stoppedChains.chains < 1
+  || !stoppedChains.out?.some((row) => row.durationMinutes === DUR && row.ok)
+  || stoppedChains.out.some((row) => !row.ok)) {
+  die(`Gold stopped-chain premise did not read back: ${JSON.stringify(stoppedChains).slice(0, 220)}`);
+}
+index.goldStopped = { chains: stoppedChains.chains, out: stoppedChains.out };
+await photograph("p13-gold-board", "/updown?asset=XAU");
 
 await finishCapture();
 

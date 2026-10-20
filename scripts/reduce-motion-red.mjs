@@ -206,14 +206,13 @@ const MUTATIONS = [
     to: `.ud-point,`,
   },
   {
-    // ⛔ A STALE EXEMPTION. If .m-urgent stops looping, its KEPT entry is a licence
-    // nobody is using — and a ratchet with dead entries reads as "still to do" when
-    // the work is done.
-    name: "make .m-urgent finite — its KEPT exemption goes stale",
-    check: "2.3",
+    // The low-end tier now stops the urgent digit pulse. A forgotten override
+    // must fail the loop inventory, since this is no longer a KEPT exception.
+    name: "restore the .m-urgent pulse in the low-end tier",
+    check: "2.1",
     file: "src/app/motion.css",
-    from: `.m-urgent           { animation: m-breathe 1000ms var(--m-breathe) infinite; }`,
-    to: `.m-urgent           { animation: m-breathe 1000ms var(--m-breathe) 1; }`,
+    from: `[data-motion="reduced"] .m-urgent { animation: none !important; opacity: 1; }`,
+    to: ``,
   },
 ];
 

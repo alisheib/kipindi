@@ -23,7 +23,7 @@ import { withLock, runOutsideLock, afterCommit } from "./locks";
 import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
-import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
+import { spendBonusLocked, recordWageringLocked, reverseWageringLocked, refundEmergencyBonusLocked, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { spendableOf } from "@/lib/spendable";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
@@ -2475,7 +2475,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         thinProfitRatio: rates.thinProfitRatio,
         triggers: { oneSided, thinUpside, lopsidedBook },
         reason: oneSided
-          ? "ONE-SIDED — no opposing pool. Every stake will be refunded in full; this market earns nothing."
+          ? "ONE-SIDED — no opposing pool. Stakes still held are due full return when settlement commits; earlier cash-outs keep their paid amount. The remaining pool incurs no settlement fee."
           : thinUpside
             ? "THIN UPSIDE — a real position would be paid under the thin-profit ratio if its side wins. Winners are protected (never below stake) but there is little in it for them."
             : "LOPSIDED BOOK — the smaller side is a small fraction of the pool. Winners on the big side share a thin losing pool.",
@@ -3135,60 +3135,77 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
   // filter is the database's job. Measured: 790 rows no longer streamed and hydrated per
   // boot, and the shape that once exhausted the connection pool on /leaderboard is gone from
   // the boot path.
-  for (const p of await positionStore.listOpen()) {
-    if (await marketStore.has(p.marketId)) continue; // market still exists → nothing to repair
-    // Orphaned — refund the stake, mark VOID, audit. Split: real portion → real
-    // balance, bonus portion → bonus wallet (no market lock held here, so the
-    // wallet-locked bonus refund is safe to call directly).
-    const w = await db.wallet.findByUserId(p.userId);
-    if (!w) continue;
-    const bonusPart = p.bonusStakeTzs ?? 0;
-    const realRefund = p.stake - bonusPart;
-    // Reverse this bet's turnover (it never settled) and return the bonus portion
-    // to the bonus wallet — never to real (no active grant → bonus is forfeit).
-    // SEAM:reverseWageringOrphan (04 A17) — never for a house-marked position.
-    if (p.houseBotId == null) await reverseWagering(p.userId, p.stake);
-    touchedWallets.add(p.userId);
-    if (bonusPart > 0) {
-      const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
-      if (refundedToBonus < bonusPart) {
-        audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { requested: bonusPart, refundedToBonus, forfeited: bonusPart - refundedToBonus, reason: "orphan refund, no active grant" } });
-      }
+  for (const candidate of await positionStore.listOpen()) {
+    if (await marketStore.has(candidate.marketId)) continue; // indexed fast path
+    // Healthy PostgreSQL enforces Position.marketId → PredictionMarket; only a
+    // damaged legacy store can hold this shape. Lock and reread anyway: memory
+    // boot repair used to credit first, then mark VOID, so a process fault could
+    // replay the OPEN row and credit the same principal again.
+    const result = await withLock(`wallet:${candidate.userId}`, () =>
+      withLock(`market:${candidate.marketId}`, async (lockTx) => {
+        const p = await positionStore.get(candidate.id, lockTx);
+        if (!p || p.status !== "OPEN" || await marketStore.get(p.marketId, lockTx)) return null;
+        const w = await db.wallet.findByUserId(p.userId, lockTx);
+        if (!w) throw new Error(`orphan refund ${p.id}: wallet missing`);
+        const bonusPart = p.bonusStakeTzs ?? 0;
+        if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+            !Number.isSafeInteger(bonusPart) || bonusPart < 0 || bonusPart > p.stake) {
+          throw new Error(`orphan refund ${p.id}: invalid funding split`);
+        }
+        const realRefund = p.stake - bonusPart;
+        const restoreMemory = lockTx ? null : snapshotEmergencyMemoryRows(p.marketId, new Set([p.userId]));
+        const effects: Array<() => void> = [];
+        try {
+          const settledAt = new Date().toISOString();
+          const refundTxnId = `txn_${randomId(12)}`;
+          await withMoneyTx(async (tx) => {
+            let newBal = w.balance;
+            if (realRefund > 0) {
+              const updated = await db.wallet.adjust(w.id, { balance: realRefund }, undefined, tx);
+              if (!updated) throw new Error(`orphan refund ${p.id}: wallet disappeared`);
+              newBal = updated.balance;
+            }
+            p.status = "VOID"; p.finalPayout = p.stake; p.settledAt = settledAt;
+            await positionStore.set(p, tx);
+            if (realRefund > 0) await db.txn.create({
+              id: refundTxnId, walletId: w.id, userId: p.userId,
+              type: "BET_REFUND", status: "CONFIRMED", amount: realRefund,
+              fee: 0, taxWithheld: 0, balanceAfter: newBal, currency: "TZS",
+              provider: "INTERNAL", providerRef: null, msisdn: null,
+              description: "Refund · orphaned position (market record missing)", positionId: p.id,
+              // SEAM:markerOrphan — the house marker remains on the refund txn.
+              ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
+              amlReason: null, createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
+            }, tx);
+            if (realRefund > 0 || bonusPart > 0) await postLedgerEntries(`refund_${refundTxnId}`,
+              refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: p.marketId, realPart: realRefund, bonusPart }), tx);
+            // SEAM:reverseWageringOrphan (04 A17) — never for house-marked money.
+            if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+              (fn) => { effects.push(fn); });
+            if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+              (fn) => { effects.push(fn); });
+          });
+          afterCommit(lockTx, () => { effects.push(() => { void notifyRefund(p.userId, {
+            stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id,
+          }); }); });
+          afterCommit(lockTx, () => { effects.push(() => { audit({
+            category: "WALLET", action: "position.orphan_refund", actorId: p.userId,
+            targetType: "Position", targetId: p.id,
+            payload: { marketId: p.marketId, refunded: p.stake, reason: "market record missing" },
+          }); }); });
+          return { stake: p.stake, userId: p.userId, effects };
+        } catch (error) {
+          if (restoreMemory) await restoreMemory();
+          throw error;
+        }
+      }));
+    if (!result) continue;
+    touchedWallets.add(result.userId);
+    for (const effect of result.effects) {
+      try { effect(); } catch { /* committed refund remains final */ }
     }
-    let newBal = w.balance;
-    if (realRefund > 0) {
-      const updated = await db.wallet.adjust(w.id, { balance: realRefund });
-      newBal = updated?.balance ?? w.balance + realRefund;
-    }
-    p.status = "VOID";
-    p.finalPayout = p.stake;
-    p.settledAt = new Date().toISOString();
-    await positionStore.set(p);
-    if (realRefund > 0) await db.txn.create({
-      id: `txn_${randomId(12)}`,
-      walletId: w.id, userId: p.userId,
-      type: "BET_REFUND", status: "CONFIRMED",
-      amount: realRefund, fee: 0, taxWithheld: 0,
-      balanceAfter: newBal, currency: "TZS",
-      provider: "INTERNAL", providerRef: null, msisdn: null,
-      description: `Refund · orphaned position (market record missing)`,
-      positionId: p.id,
-      // SEAM:markerOrphan — the house marker travels to every txn of a marked position (PLAN §3 propagation).
-      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
-      amlReason: null,
-      createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
-    });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id });
-    audit({
-      category: "WALLET",
-      action: "position.orphan_refund",
-      actorId: p.userId,
-      targetType: "Position",
-      targetId: p.id,
-      payload: { marketId: p.marketId, refunded: p.stake, reason: "market record missing" },
-    });
     repaired++;
-    refundedTzs += p.stake;
+    refundedTzs += result.stake;
   }
   await emitWalletBalances(touchedWallets);
   return { repaired, refundedTzs };
@@ -3929,12 +3946,10 @@ export async function settleMarket(
   marketId: string,
   settleOpts: { actorId?: string; force?: boolean } = {},
 ): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> {
-  // Bonus refunds + wagering reversals take the WALLET lock, and taking it while
-  // holding the market lock would invert buyPosition's wallet→market order and
-  // could deadlock. Collected inside the lock, applied after it releases.
-  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
-  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
+  // A settlement's money, terminal stamp and outward claims must agree. Queue
+  // every outcome's notices, audit, history and proposal work until commit.
+  const committedSettlementEffects: Array<() => void> = [];
+  const refundedUserIds = new Set<string>();
   // Referral commission — a share of the fee we ACTUALLY KEPT. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
   // `positionId` travels with it: it is the idempotency key's second half, so a resumed
@@ -3945,7 +3960,7 @@ export async function settleMarket(
   let settledOutcome: Side | "VOID" | null = null;
   /**
    * ⭐ Whose top-bar balance this settlement changed. WINNERS are collected below; REFUNDED
-   * players are already enumerated by `pendingWagerReversals`, so they are not collected twice.
+   * players are already enumerated by `refundedUserIds`, so they are not collected twice.
    * ⛔ LOSERS are deliberately absent: their balance did not move at settlement (the stake left
    * at PLACEMENT), so an emit for them would be a wallet read per losing position on every
    * settlement to tell a player a number he already has.
@@ -3959,8 +3974,30 @@ export async function settleMarket(
   // `persistResolution` below so the settledAt stamp commits WITH the payouts —
   // see the block comment there. Null on the in-memory store, where there is no
   // transaction to join and `set()` writes straight to the map.
-  const result = await withLock(`market:${marketId}`, async (lockTx): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }>> => {
-  const m = await marketStore.get(marketId);
+  type SettleRetry = { retryRefundPlan: true };
+  const refundMode = (market: StoredMarket) => market.resolvedOutcome === "VOID" ||
+    (market.resolvedOutcome != null &&
+      ((market.yesPool > 0 && market.noPool === 0) || (market.yesPool === 0 && market.noPool > 0)));
+  let result: ServiceResult<{ winnersPaid: number; positionsSettled: number }> | SettleRetry = { retryRefundPlan: true };
+  for (let attempt = 0; attempt < 3; attempt++) {
+  // A bet can arrive between planning and the market lock. Snapshot the holders,
+  // acquire their wallets in stable order, then reread under the market lock.
+  // A changed holder set or verdict returns a retry token before ANY money move.
+  const plannedMarket = await marketStore.get(marketId);
+  if (!plannedMarket) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
+  const plannedRefund = plannedMarket != null && refundMode(plannedMarket);
+  const plannedOpen = plannedMarket
+    ? (await positionStore.listForMarket(marketId)).filter((p) => p.status === "OPEN")
+    : [];
+  const holderIds = new Set(plannedOpen.map((p) => p.userId));
+  const sortedHolders = [...holderIds].sort();
+  const timeoutMs = Math.min(600_000, Math.max(30_000, 30_000 + plannedOpen.length * 50));
+  const visitHolder = async <T>(index: number, fn: () => Promise<T>): Promise<T> => index === sortedHolders.length
+    ? fn()
+    : withLock(`wallet:${sortedHolders[index]}`, () => visitHolder(index + 1, fn),
+      index === 0 ? { timeoutMs } : undefined);
+  result = await visitHolder(0, () => withLock(`market:${marketId}`, async (lockTx): Promise<ServiceResult<{ winnersPaid: number; positionsSettled: number }> | SettleRetry> => {
+  const m = await marketStore.get(marketId, lockTx);
   if (!m) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
   if (m.status !== "RESOLVED" && m.status !== "VOIDED") {
     return { ok: false, error: "Market has not been adjudicated yet.", code: "INVALID" };
@@ -3971,6 +4008,28 @@ export async function settleMarket(
   // week void refunds in bulk with the market's settled stamp in the same transaction (`maswali-void.ts`, MR-18) — the
   // one exactly-once truth. This one-sided branch would refund every ticket at zero fee; this VOID arm timed a week out.
   if (isFencedMaswali(m)) return { ok: false, code: "INVALID", error: MASWALI_FENCE_ERROR };
+
+  const allMarketPositions = await positionStore.listForMarket(m.id, lockTx);
+  const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
+  const currentRefund = refundMode(m);
+  if (currentRefund !== plannedRefund ||
+      myPositions.some((p) => !holderIds.has(p.userId))) {
+    return { retryRefundPlan: true };
+  }
+  if (currentRefund) for (const p of myPositions) {
+    const bonus = p.bonusStakeTzs ?? 0;
+    if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+        !Number.isSafeInteger(bonus) || bonus < 0 || bonus > p.stake) {
+      throw new Error(`settle ${m.id}: invalid funding split on position ${p.id}`);
+    }
+  }
+  const restoreMemory = !lockTx
+    ? snapshotEmergencyMemoryRows(m.id, holderIds)
+    : null;
+  const queueSettlementEffect = (fn: () => void) => {
+    afterCommit(lockTx, () => { committedSettlementEffects.push(fn); });
+  };
+  try {
 
   // ── The deep link carried by every Up & Down result row (owner decision 2026-08-22).
   //
@@ -4046,7 +4105,7 @@ export async function settleMarket(
     await marketStore.set(m, lockTx ?? undefined);
     // The chart may only describe a settlement every reader can see. A failed
     // lock transaction rolls its stamp and payouts back, so it drops this too.
-    afterCommit(lockTx, () => { void recordSnapshot(m.id, m.yesPool, m.noPool); });
+    queueSettlementEffect(() => { void recordSnapshot(m.id, m.yesPool, m.noPool); });
   };
 
   // THE POLL'S OWN RATES — frozen at creation, not whatever admin has set today.
@@ -4091,8 +4150,6 @@ export async function settleMarket(
   // ⚠️ E-200: this note was already correct on 2026-08-24 while the allocation
   // below filtered on `side` alone and counted the CASHED_OUT row anyway. A
   // comment is not a control; the rule is a function now so a suite can drive it.
-  const allMarketPositions = await listPositionsForMarket(m.id);
-  const myPositions = allMarketPositions.filter((p) => p.status === "OPEN");
 
   // One-sided win: all bets went to the same side, so there is no
   // opposing pool to pay winnings from. Per the platform rules, all
@@ -4102,7 +4159,7 @@ export async function settleMarket(
 
   if (isOneSided) {
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4112,16 +4169,14 @@ export async function settleMarket(
       // commits with the money — so the market stays unsettled, visible in the queue,
       // and retryable. Refusal is the safe direction (see this function's docstring).
       if (!w) throw new Error(`settle ${m.id}: wallet row missing for user ${p.userId} — refusing to settle and strand position ${p.id}`);
-      // Split: real portion → real balance now; bonus portion → bonus wallet
-      // after the lock (queued in pendingBonusRefunds).
+      // The real and bonus portions land before the terminal stamp commits.
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
       const oneSidedTxnId = `txn_${randomId(12)}`;
       // ATOMIC (audit C3): the real-money refund credit, the position → VOID mark,
       // the BET_REFUND txn, and the ledger refund group commit together. A ledger
       // failure rolls the credit back and the position stays OPEN for a clean
-      // resume. (The bonus part is refunded after the lock via pendingBonusRefunds
-      // → a zero-wagering restitution grant, per C2.)
+      // resume, including the bonus principal and wagering reversal.
       await withMoneyTx(async (tx) => {
         // L4/C2: finalPayout = the FULL stake, honest — real → balance, bonus →
         // a zero-wagering restitution grant (refundBonusToActive never forfeits).
@@ -4148,9 +4203,12 @@ export async function settleMarket(
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
+        if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      refundedUserIds.add(p.userId);
       // E-43. The refund half of the SAME 2026-07-24 decision that already
       // suppresses wins and losses for Up & Down. Leaving it ungated made the
       // policy inverted rather than incomplete: measured on production
@@ -4159,14 +4217,14 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+        queueSettlementEffect(() => { void notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
         // SEAM:emailOneSided — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-        if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+        if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
           html: oneSidedRefundHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
           tag: "one-sided-refund",
-        }), { confirmedOnly: true }).catch(() => {});
+        }), { confirmedOnly: true }).catch(() => {}); });
       } else {
         // E-57 · ⛔ THE REFUND IS ANNOUNCED TOO, AND THIS BRANCH IS THE WHOLE POINT OF E-43.
         // Announcing wins and losses while staying silent on refunds would rebuild the
@@ -4176,16 +4234,16 @@ export async function settleMarket(
         // ⭐ 2026-08-22 — this now writes a BELL ROW as well as pushing (owner decision;
         // see the block above `notifyUpDownWin`). The push is derived from the row, so the
         // two channels carry identical words and the per-round collapse key is preserved.
-        notifyUpDownOneSidedRefund(p.userId, {
+        queueSettlementEffect(() => { void notifyUpDownOneSidedRefund(p.userId, {
           stake: p.stake,
           marketTitle: upDownResultTitle(m),
           roundHref: updownRoundHref,
           pushTag: updownResultPushTag(m.id),
           positionId: p.id,
-        });
+        }); });
       }
     }
-    audit({
+    queueSettlementEffect(() => { audit({
       category: "ADMIN",
       action: "market.resolved.one_sided_refund",
       actorId: opts.officerId,
@@ -4200,20 +4258,19 @@ export async function settleMarket(
         evidence,
         reason: "One-sided win — all bets on same side, full refund issued at 0% fee",
       },
-    });
-    try {
-      const { onMarketResolved } = await import("./proposals-service");
-      await onMarketResolved(m.id, { voided: false });
-    } catch { /* proposal prize must never break settlement */ }
+    }); });
+    queueSettlementEffect(() => { void import("./proposals-service")
+      .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: false }))
+      .catch(() => {}); });
     await persistResolution(); // all one-sided refunds done → now stamp settledAt
-    audit({
+    queueSettlementEffect(() => { audit({
       category: "WALLET",
       action: "market.settled",
       actorId: opts.officerId,
       targetType: "Market",
       targetId: m.id,
       payload: { outcome: opts.outcome, settledAt, winnersPaid: 0, positionsSettled: myPositions.length, reason: "one-sided refund" },
-    });
+    }); });
     return { ok: true, data: { winnersPaid: 0, positionsSettled: myPositions.length } };
   }
 
@@ -4230,7 +4287,9 @@ export async function settleMarket(
     // ⚠️ ONE lookup, before the loop — not one per position. And only for Up & Down: a
     // long-form poll that voids has no per-round reason to name, so its wording is unchanged.
     const udReason = m.productLine === "UPDOWN"
-      ? await roundStore.getByMarketId(m.id).then((r) => r?.voidReason ?? null).catch(() => null)
+      ? await (lockTx
+        ? lockTx.upDownRound.findUnique({ where: { marketId: m.id } })
+        : roundStore.getByMarketId(m.id)).then((r) => r?.voidReason ?? null).catch(() => null)
       : null;
     // A Millionea week never reaches this arm (the fence above, R1): its whole-week void refunds in bulk, in its own
     // words (`MASWALI_VOID_REFUND`, maswali-void.ts). A long-form poll has no per-round reason to name, so its wording
@@ -4239,7 +4298,7 @@ export async function settleMarket(
 
     // Refund everyone
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4253,9 +4312,8 @@ export async function settleMarket(
       const realPart = p.stake - bonusPart;
       const refundTxnId = `txn_${randomId(12)}`;
       // ATOMIC (audit C3): real refund credit + position → VOID + BET_REFUND txn +
-      // ledger refund group commit together; a failure rolls back and the position
-      // stays OPEN for a clean resume. (Bonus part → restitution grant after the
-      // lock via pendingBonusRefunds, per C2.)
+      // ledger refund group, bonus principal and wagering reversal commit together;
+      // a failure rolls back and the position stays OPEN for a clean resume.
       await withMoneyTx(async (tx) => {
         p.status = "VOID";
         // L4/C2: full-stake refund is honest — real → balance, bonus → restitution grant.
@@ -4283,29 +4341,30 @@ export async function settleMarket(
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
+        const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
+        if (accruedTurnover && p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedSettlementEffects.push(fn); });
       });
-      // MASWALI-BUILD S3 · a Millionea ticket recorded no turnover (OD-20), so its void refund removes none — reversing
-      // it would take progress the player earned on their other bets.
-      const accruedTurnover = switchLine(m.productLine, { MARKET: () => true, UPDOWN: () => true, MASWALI: () => false });
-      if (accruedTurnover) pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
+      refundedUserIds.add(p.userId);
       // E-43 — see the one-sided branch above. Same decision, same predicate.
       // E-57 / 2026-08-22 — and the same announcement, for the same reason: every terminal
       // outcome reaches the player or none does. The Up & Down arm writes a bell row and
       // pushes it from one copy; the long-form arm keeps its own emitter and its email.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+        queueSettlementEffect(() => { void notifyRefund(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
       } else {
         // MASWALI-BUILD S3 · a voided Millionea week is announced by its own notice (S6), which names the week and the
         // carried jackpot — never the Up & Down round's "the round was voided". Exhaustive: a new line must choose.
         if (switchLine(m.productLine, { MARKET: () => false, UPDOWN: () => true, MASWALI: () => false })) {
-          notifyUpDownRefund(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownRefund(p.userId, {
             stake: p.stake,
             marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       }
     }
@@ -4383,7 +4442,7 @@ export async function settleMarket(
     const traByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.traLevy);
     const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);
     for (const p of myPositions) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
       // the position, left it OPEN, and then settlement stamped settledAt anyway, so
       // the stake was stranded permanently with nothing able to detect it (every
@@ -4443,7 +4502,7 @@ export async function settleMarket(
         });
         // Tamper-evident chain entry for the payout credit (txn row is the
         // ledger; this anchors it in the HMAC audit chain too).
-        audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } });
+        queueSettlementEffect(() => { audit({ category: "WALLET", action: "bet.payout", actorId: p.userId, targetType: "Position", targetId: p.id, payload: { marketId: m.id, outcome: opts.outcome, payout, balanceAfter } }); });
         // Win receipt — opens the position so they can see the payout. Suppressed for
         // Up & Down (see perEventNotificationsSuppressed): the money above is already
         // credited, booked and audited; only the message is digested.
@@ -4451,30 +4510,30 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id));
+          queueSettlementEffect(() => { void notifyWin(p.userId, payout, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), positionPermalinkHref(p.id)); });
           // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
           // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
           // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
           // from it for the `perEventNotificationsSuppressed` gate, and a note above would push the gate out of reach.)
           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-          if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+          if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
             html: winNotificationHtml({ reference: p.id, payout, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "win",
-          }), { confirmedOnly: true }).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {}); });
         } else {
           // E-57 / 2026-08-22 · the win now lands in the BELL and pushes, from one copy.
           // ⛔ `payout` is the REALISED amount, not the place-time projection — E-105's rule,
           // and the reason the long-form celebration is still filed as a separate finding.
-          notifyUpDownWin(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownWin(p.userId, {
             payout,
             stake: p.stake,
             marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       } else {
         p.status = "LOSS"; p.finalPayout = 0; p.settledAt = settledAt;
@@ -4496,14 +4555,14 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id });
+          queueSettlementEffect(() => { void notifyLoss(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, positionId: p.id }); });
           // SEAM:emailLoss — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-          if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+          if (p.houseBotId == null) queueSettlementEffect(() => { void sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
             html: lossNotificationHtml({ reference: p.id, stake: p.stake, marketTitle: messageTitle(shortTitles, "en", m.titleEn, m), settledAt }),
             tag: "loss",
-          }), { confirmedOnly: true }).catch(() => {});
+          }), { confirmedOnly: true }).catch(() => {}); });
         } else {
           // E-57 / 2026-08-22 · the loss is announced too, and it stays DIRECT. ⛔ Announcing
           // only wins would be the E-43 failure wearing a new channel — the player would hear
@@ -4517,13 +4576,13 @@ export async function settleMarket(
           // lost. The fix had been applied to `notifyLoss` and never propagated to this
           // hand-written copy. Routing through the emitter makes that class of drift
           // impossible — there is now one source for the words.
-          notifyUpDownLoss(p.userId, {
+          queueSettlementEffect(() => { void notifyUpDownLoss(p.userId, {
             stake: p.stake,
             marketTitle: upDownResultTitle(m),
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-          });
+          }); });
         }
       }
 
@@ -4570,7 +4629,7 @@ export async function settleMarket(
   const totalWinnersPaid = settledNow.reduce((s, p) => s + (p.status === "WIN" ? (p.finalPayout ?? 0) : 0), 0);
   const totalPositionsSettled = settledNow.filter((p) => p.status !== "OPEN").length;
 
-  audit({
+  const resolutionAudit = () => audit({
     category: "ADMIN",
     action: "market.resolved",
     actorId: opts.officerId,
@@ -4604,27 +4663,27 @@ export async function settleMarket(
       evidence,
     },
   });
+  queueSettlementEffect(resolutionAudit);
 
   // Feature 2 — if this market came from a player proposal, pay the proposer
   // their prize now that it is listed AND resolved. Best-effort; never blocks
   // settlement. VOID outcomes mark the proposal resolved without a prize.
-  try {
-    const { onMarketResolved } = await import("./proposals-service");
-    await onMarketResolved(m.id, { voided: opts.outcome === "VOID" });
-  } catch { /* proposal prize must never break settlement */ }
+  queueSettlementEffect(() => { void import("./proposals-service")
+    .then(({ onMarketResolved }) => onMarketResolved(m.id, { voided: opts.outcome === "VOID" }))
+    .catch(() => {}); });
 
   await persistResolution(); // all winners paid / refunds issued → now flip status
 
   // F3 — tell WATCHERS the market they follow has settled. Bettors are EXCLUDED:
   // they already receive their own win/loss receipt (which carries the money), so
   // alerting them again would duplicate. Best-effort — never breaks settlement.
-  try {
-    const { alertWatchersSettled } = await import("./watchlist-service");
-    const bettorIds = new Set((await listPositionsForMarket(m.id)).map((p) => p.userId));
-    await alertWatchersSettled(m.id, messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome, bettorIds);
-  } catch { /* watcher alerts must never break settlement */ }
+  queueSettlementEffect(() => { void import("./watchlist-service")
+    .then(({ alertWatchersSettled }) => alertWatchersSettled(m.id,
+      messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), opts.outcome,
+      new Set(allMarketPositions.map((p) => p.userId))))
+    .catch(() => {}); });
 
-  audit({
+  const settledAudit = () => audit({
     category: "WALLET",
     action: "market.settled",
     actorId: opts.officerId,
@@ -4638,34 +4697,30 @@ export async function settleMarket(
       forced: settleOpts.force === true,
     },
   });
+  queueSettlementEffect(settledAudit);
 
   return { ok: true, data: { winnersPaid: totalWinnersPaid, positionsSettled: totalPositionsSettled } };
-  }); // end withLock market
-
-  // Apply, now the market lock is released (refund helpers take the wallet lock —
-  // taking it inside the market lock would invert buyPosition's wallet→market
-  // order and could deadlock). Reverse each refunded bet's turnover first, then
-  // return the bonus principal to the bonus wallet. If the source grant is gone,
-  // refundBonusToActive mints a zero-wagering restitution grant so the principal
-  // is never forfeited (audit C2) — the money the ledger already recorded as a
-  // BONUS_REFUND (refundEntries, above) now always lands in the wallet too, so
-  // ledger and wallet cannot diverge on a void.
-  // SEAM:reverseWagering (04 A17) — a house stake recorded no turnover, so its refund removes none from
-  // the holder's personal bonus requirement.
-  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
-  for (const r of pendingBonusRefunds) {
-    if (r.amount <= 0) continue;
-    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
-    if (refundedToBonus < r.amount) {
-      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "no active grant to hold refunded bonus" } });
-    }
+  } catch (error) {
+    if (restoreMemory) await restoreMemory();
+    throw error;
+  }
+  }, sortedHolders.length === 0 ? { timeoutMs } : undefined)); // end withLock market and ordered wallet locks
+  if (!("retryRefundPlan" in result)) break;
+  }
+  if ("retryRefundPlan" in result) {
+    return { ok: false, error: "Market holders or verdict changed during settlement; please retry. No money moved.", code: "BUSY" };
   }
 
-  // ⭐ NOW the top-bar balance, and only now: AFTER the wagering reversals and the bonus
-  // principal have been applied above. Emitting inside the lock would push a figure that the
-  // very next line changes — a re-locked bonus moves cash out of `balance` — so the pill would
-  // land on an intermediate and stay there. One emit per player, from the committed wallet.
-  await emitWalletBalances([...paidWallets, ...pendingWagerReversals.map((r) => r.userId)]);
+  // All money has committed before any balance event or notice. A failed balance
+  // event must not suppress the committed settlement's player or audit claims.
+  try { await emitWalletBalances([...paidWallets, ...refundedUserIds]); }
+  catch (error) {
+    audit({ category: "SYSTEM", action: "market.settlement.balance_emit_failed", actorId: settleOpts.actorId ?? "system",
+      targetType: "Market", targetId: marketId, payload: { users: paidWallets.size + refundedUserIds.size, error: String(error) } });
+  }
+  if (result.ok) for (const effect of committedSettlementEffects) {
+    try { effect(); } catch { /* committed money cannot be undone by an outward effect */ }
+  }
 
   // Referral commission, on the fee we ACTUALLY KEPT. Outside the market lock
   // for the same reason as the bonus work above: onRecruitSettlement takes the
@@ -4927,6 +4982,41 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
  * already RESOLVED/VOIDED is rejected, so stakes can never be double-refunded.
  * Already CASHED_OUT positions are skipped (their stake already left the pool).
  */
+function snapshotEmergencyMemoryRows(marketId: string, holderIds: ReadonlySet<string>): () => Promise<void> {
+  const core = globalThis.__50PICK_STORE;
+  const markets = globalThis.__50PICK_MARKETS;
+  const positions = globalThis.__50PICK_POSITIONS;
+  const rounds = globalThis.__50PICK_UD_ROUNDS;
+  if (!core || !markets || !positions || !rounds) throw new Error("emergency void memory store unavailable");
+  // The caller holds every named wallet lock and this market lock. Restore only
+  // these rows, so a different market/user cannot be rolled back by our fault.
+  const capture = <V>(rows: Map<string, V>, belongs: (row: V) => boolean) => {
+    const before = [...rows].filter(([, row]) => belongs(row)).map(([id, row]) => [id, structuredClone(row)] as const);
+    return () => {
+      for (const [id, row] of rows) if (belongs(row)) rows.delete(id);
+      for (const [id, row] of before) rows.set(id, row);
+    };
+  };
+  const restoreWallets = capture(core.wallets, (row) => holderIds.has(row.userId));
+  const restoreGrants = capture(core.bonusGrants, (row) => holderIds.has(row.userId));
+  const restoreTxns = capture(core.txns, (row) => holderIds.has(row.userId));
+  const restorePositions = capture(positions, (row) => row.marketId === marketId);
+  const restoreMarket = capture(markets, (row) => row.id === marketId);
+  const restoreRound = capture(rounds, (row) => row.marketId === marketId);
+  const restoreObjections = capture(core.objections, (row) => row.marketId === marketId);
+  return async () => {
+    restoreObjections();
+    restoreRound();
+    restoreMarket();
+    restorePositions();
+    restoreTxns();
+    restoreGrants();
+    restoreWallets();
+    const original = markets.get(marketId);
+    if (original) await marketStore.set(original); // invalidate board/history memos after restoration
+  };
+}
+
 export async function emergencyVoidMarket(opts: { marketId: string; officerId: string; reason: string }): Promise<ServiceResult<{ refundedCount: number; refundedTzs: number }>> {
   const reason = (opts.reason ?? "").trim();
   if (reason.length < 5) return { ok: false, error: "A reason (≥ 5 characters) is required for an emergency void.", code: "INVALID" };
@@ -4950,21 +5040,40 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   }
 
   // Officer-conflict block removed (owner decision 2026-07-24) — an admin may void a
-  // market they hold a position in. An emergency void only REFUNDS every stake at 0
-  // fee (nobody wins or loses), so there is no self-interest to guard against; and
-  // the whole conflict-of-interest posture was retired with two-admin authorization
-  // (see resolution-policy.ts + docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
+  // market they hold a position in. An emergency void REFUNDS still-held stakes at 0
+  // fee; earlier cash-outs keep their sell value. The conflict-of-interest posture
+  // was retired with two-admin authorization (see resolution-policy.ts and
+  // docs/COMPLIANCE-DECISIONS.md). The ADMIN/COMPLIANCE
   // role gate + 2FA above still stand.
 
-  const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
-  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
+  // Outward claims are queued only after the complete money transaction commits.
+  const committedNotices: Array<() => void> = [];
+  const refundedUserIds = new Set<string>();
   // S12 WP12 · the title switch, read once for every player notice and letter this cancellation sends — and BEFORE the
   // market lock, so the refunds' transaction never waits on it (`message-titles.ts`). The officers' copies keep the full
   // English question: the console is English by design.
   const shortTitles = await shortTitlesInMessagesNow();
-  const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
-    const m = await marketStore.get(opts.marketId);
+  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+  // Snapshot holder IDs before taking locks, then acquire wallet locks in stable
+  // order BEFORE the market lock. A newly arrived holder is detected by the
+  // in-transaction reread and retried from outside every lock. No money moves
+  // on an incomplete holder set. The outer transaction's timeout grows with
+  // the book; a timeout rolls every refund back and the officer can retry.
+  const initialOpen = (await positionStore.listForMarket(opts.marketId)).filter((p) => p.status === "OPEN");
+  const holderIds = new Set(initialOpen.map((p) => p.userId));
+  let observedOpenCount = initialOpen.length;
+  const withHolderLocks = async <T>(ids: string[], timeoutMs: number, fn: () => Promise<T>): Promise<T> => {
+    const visit = (i: number): Promise<T> => i === ids.length
+      ? ids.length === 0 ? withLock(`market:${opts.marketId}`, () => fn(), { timeoutMs }) : fn()
+      : withLock(`wallet:${ids[i]}`, () => visit(i + 1), i === 0 ? { timeoutMs } : undefined);
+    return visit(0);
+  };
+  type Retry = { retryHolderIds: string[]; openCount: number };
+  let result: ServiceResult<{ refundedCount: number; refundedTzs: number }> | Retry = { retryHolderIds: [], openCount: observedOpenCount };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const timeoutMs = Math.min(600_000, Math.max(30_000, 30_000 + observedOpenCount * 50));
+    result = await withHolderLocks([...holderIds].sort(), timeoutMs, () => withLock(`market:${opts.marketId}`, async (lockTx) => {
+    const m = await marketStore.get(opts.marketId, lockTx);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
     // S0.5 · the fence: a whole Millionea week is voided by its own Compliance control (OD-26), which also keeps the
     // carried-in jackpot whole (MR-18). Never through this generic door.
@@ -4980,23 +5089,44 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       return { ok: false as const, error: "Market is already settled — its money has moved. Nothing to void.", code: "INVALID" as const };
     }
 
+    const open = (await positionStore.listForMarket(m.id, lockTx)).filter((p) => p.status === "OPEN");
+    const newlySeen = [...new Set(open.map((p) => p.userId))].filter((id) => !holderIds.has(id));
+    if (newlySeen.length) return { retryHolderIds: newlySeen, openCount: open.length };
+    for (const p of open) {
+      const bonus = p.bonusStakeTzs ?? 0;
+      if (!Number.isSafeInteger(p.stake) || p.stake <= 0 ||
+          !Number.isSafeInteger(bonus) || bonus < 0 || bonus > p.stake) {
+        throw new Error(`emergency void ${m.id}: invalid funding split on position ${p.id}`);
+      }
+    }
+    const linkedRound = m.productLine === "UPDOWN"
+      ? lockTx
+        ? await lockTx.upDownRound.findUnique({ where: { marketId: m.id } })
+        : await roundStore.getByMarketId(m.id)
+      : null;
+    if (m.productLine === "UPDOWN" && !linkedRound) {
+      throw new Error(`emergency void ${m.id}: linked UpDownRound missing`);
+    }
+    const restoreMemory = lockTx ? null : snapshotEmergencyMemoryRows(m.id, holderIds);
+    try {
     const now = new Date().toISOString();
     const grossPool = m.yesPool + m.noPool;
+    const previousVerdict = m.resolvedOutcome;
 
-    // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
-    // (like the resolveMarket VOID path) no nested wallet lock is needed.
-    const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
+    // Refund every OPEN position its full stake. Prior cash-outs retain their
+    // paid amounts and are not refunded again. Every holder's wallet lock and
+    // the market lock are held until all real/bonus money and the verdict commit.
     let refundedCount = 0;
     let refundedTzs = 0;
     for (const p of open) {
-      const w = await db.wallet.findByUserId(p.userId);
+      const w = await db.wallet.findByUserId(p.userId, lockTx);
       // ⛔ REFUSE, NEVER SKIP. `if (!w) continue;` stepped over the position, left it
       // OPEN, and let the void complete anyway — the player's stake silently excluded
       // from an emergency refund every other holder received. Refusing aborts the void
       // (now transactional, below), so nothing is half-done and the officer can retry.
       if (!w) throw new Error(`emergency void ${m.id}: wallet row missing for user ${p.userId} — refusing to void and skip position ${p.id}`);
-      // Split: real portion → real now; bonus portion → bonus wallet after the
-      // lock; reverse the bet's turnover (it never settled).
+      // Split: real portion → real wallet; bonus portion → bonus grant/wallet
+      // inside this same transaction. Reverse turnover before stamping VOID.
       const bonusPart = p.bonusStakeTzs ?? 0;
       const realPart = p.stake - bonusPart;
       const emergTxnId = `txn_${randomId(12)}`;
@@ -5041,24 +5171,30 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
         if (realPart > 0 || bonusPart > 0) {
           await postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
+        // House-marked stakes never accrued player wagering turnover (04 A17).
+        if (p.houseBotId == null) await reverseWageringLocked(p.userId, p.stake, tx,
+          (fn) => { committedNotices.push(fn); });
+        if (bonusPart > 0) await refundEmergencyBonusLocked(p.userId, p.id, bonusPart, tx,
+          (fn) => { committedNotices.push(fn); });
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
-      if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
-      // Player notice — BOTH channels, and both carry the admin's reason so the
-      // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id });
-      // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
-      if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
-        to: email,
-        subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
-        html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, "en", m.titleEn, m), reason, amount: p.stake, reference: p.id }),
-        tag: "market-cancelled-refund",
-      }), { confirmedOnly: true }).catch(() => {});
+      refundedUserIds.add(p.userId);
+      // Outward refund claims wait for the market transaction to commit. A later
+      // objection-closure failure can still roll all money back on PostgreSQL.
+      afterCommit(lockTx, () => { committedNotices.push(() => {
+        void notifyMarketCancelled(p.userId, { stake: p.stake, bonusStakeTzs: bonusPart, marketTitle: messageTitles(shortTitles, localizedText(m.titleEn, m.titleSw, m.titleZh), m), marketId: m.id, reason, positionId: p.id }).catch(() => {});
+        // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
+        if (p.houseBotId == null) void sendEmailToUser(p.userId, (email) => ({
+          to: email,
+          subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,
+          html: marketCancelledRefundHtml({ title: messageTitle(shortTitles, "en", m.titleEn, m), reason, amount: p.stake, bonusStakeTzs: bonusPart, reference: p.id }),
+          tag: "market-cancelled-refund",
+        }), { confirmedOnly: true }).catch(() => {});
+      }); });
       refundedCount++;
       refundedTzs += p.stake;
     }
 
-    // Pools are now empty (all stakes refunded, seeds returned). Mark VOIDED and
+    // Pools are now empty (all still-held stakes refunded, seeds returned). Mark VOIDED and
     // stamp both resolution officers as this single emergency operator for the trail.
     m.yesPool = 0;
     m.noPool = 0;
@@ -5075,69 +5211,103 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     // refunds are still uncommitted is a market every readout calls "done" over
     // players who were never paid.
     m.settledAt = now;
-    // Surface the recorded cancellation reason as the settlement-proof evidence so
-    // a voided market tells players WHY it was pulled (same value already sent in
-    // the cancellation notice; capped for parity with the ceremony path).
-    m.resolutionEvidence = reason ? String(reason).trim().slice(0, 2000) || null : null;
+    // Surface the recorded cancellation reason and complete prior public price
+    // evidence. PostgreSQL stores this as Text; truncation would erase the only
+    // surviving observation record after an officer changed the payable verdict.
+    const priorEvidence = m.resolutionEvidence?.trim() || "none recorded";
+    const priorDirectionalVerdict = previousVerdict === "YES" || previousVerdict === "NO" ||
+      linkedRound?.outcome === "UP" || linkedRound?.outcome === "DOWN";
+    m.resolutionEvidence = m.productLine === "UPDOWN" &&
+      (priorEvidence.startsWith("UPDOWN_OFFICER_CORRECTION:") ||
+       priorEvidence.startsWith("UPDOWN_RECORD_CORRECTION:"))
+      ? `${priorEvidence} Emergency cancellation reason: ${reason}`
+      : m.productLine === "UPDOWN" && priorDirectionalVerdict
+      ? (`UPDOWN_OPERATOR_VOID: A recorded price verdict was cancelled by an officer. ` +
+            `Reason: ${reason}. Prior resolution record: ${priorEvidence}`)
+      : reason;
     m.updatedAt = now;
     await marketStore.set(m, lockTx ?? undefined);
-    afterCommit(lockTx, () => { void recordSnapshot(m.id, 0, 0); });
+    // The linked game round records the payable verdict in the same transaction.
+    // Prices and frozen targets remain observed facts, even when the officer
+    // voids after a prior price verdict. A round still awaiting its price keeps
+    // its null observations and gains only the administrative resolution time.
+    if (m.productLine === "UPDOWN" && linkedRound) {
+      if (lockTx) {
+        await lockTx.upDownRound.update({ where: { id: linkedRound.id }, data: {
+          outcome: "VOID", voidReason: "operator", settledAt: new Date(now),
+          resolvedAt: linkedRound.resolvedAt ? new Date(linkedRound.resolvedAt) : new Date(now),
+        } });
+      } else {
+        await roundStore.patch(linkedRound.id, {
+          outcome: "VOID", voidReason: "operator", settledAt: now,
+          resolvedAt: linkedRound.resolvedAt instanceof Date
+            ? linkedRound.resolvedAt.toISOString() : linkedRound.resolvedAt ?? now,
+        });
+      }
+    }
 
-    audit({
-      category: "COMPLIANCE",
-      action: "market.emergency_void",
-      actorId: opts.officerId,
-      targetType: "Market",
-      targetId: m.id,
-      payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
-    });
+    afterCommit(lockTx, () => { committedNotices.push(() => {
+      audit({
+        category: "COMPLIANCE", action: "market.emergency_void", actorId: opts.officerId,
+        targetType: "Market", targetId: m.id,
+        payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
+      });
+    }); });
 
     // An emergency void does not wait for objections — it is the kill switch. But
     // it has just SETTLED the market, so any objection still open against it would
     // be stranded: un-actionable in the officer queue, and unanswered for the
-    // player who filed it. A void refunds every stake in full, which is precisely
-    // the VOID remedy, so close them out as that and notify the objectors.
-    try {
-      const { closeObjectionsForVoidedMarket } = await import("./objections-service");
-      await closeObjectionsForVoidedMarket(m.id, opts.officerId, reason);
-    } catch (e) {
-      // Never let this break the refund path — the money is already back.
-      console.error("[emergency-void] could not close objections:", e);
-    }
+    // player who filed it. A void refunds stakes still held in full, which is
+    // precisely the VOID remedy. The objector notice waits for bonus restitution.
+    const { closeObjectionsForVoidedMarket } = await import("./objections-service");
+    await closeObjectionsForVoidedMarket(m.id, opts.officerId, reason,
+      (notice) => { committedNotices.push(notice); });
 
     // Confirm to EVERY admin/officer that the cancellation succeeded — in-app +
     // email — so the whole team has an awareness/audit trail (and the acting
     // officer gets a definitive "done" beyond the result modal). Best-effort.
-    const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
-    for (const o of officers) {
-      notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
-      sendEmailToUser(o.id, (email) => ({
-        to: email,
-        subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
-        html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
-        tag: "market-cancelled-admin",
-        trackLinks: false,
-      })).catch(() => {});
-    }
+    afterCommit(lockTx, () => { committedNotices.push(() => {
+      for (const o of officers) {
+        void notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+        void sendEmailToUser(o.id, (email) => ({
+          to: email,
+          subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
+          html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+          tag: "market-cancelled-admin",
+          trackLinks: false,
+        })).catch(() => {});
+      }
+    }); });
 
+    afterCommit(lockTx, () => { committedNotices.push(() => { void recordSnapshot(m.id, 0, 0); }); });
     return { ok: true as const, data: { refundedCount, refundedTzs } };
-  });
-
-  // After the market lock: reverse turnover + return bonus principal to bonus
-  // (never to real — forfeit if no active grant). See resolveMarket for rationale.
-  // SEAM:reverseWageringEmergency (04 A17) — a house stake recorded no turnover, so its refund removes none from
-  // the holder's personal bonus requirement.
-  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
-  for (const r of pendingBonusRefunds) {
-    if (r.amount <= 0) continue;
-    const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
-    if (refundedToBonus < r.amount) {
-      audit({ category: "WALLET", action: "bonus.refund_forfeited", actorId: r.userId, targetType: "User", targetId: r.userId, payload: { requested: r.amount, refundedToBonus, forfeited: r.amount - refundedToBonus, reason: "emergency void, no active grant" } });
+    } catch (error) {
+      if (restoreMemory) await restoreMemory();
+      throw error;
     }
+  }));
+    if (!("retryHolderIds" in result)) break;
+    for (const id of result.retryHolderIds) holderIds.add(id);
+    observedOpenCount = Math.max(observedOpenCount, result.openCount);
   }
-  // An emergency void refunds EVERY position, so `pendingWagerReversals` already names every
-  // player whose balance moved — there is no winner set to collect here.
-  await emitWalletBalances(pendingWagerReversals.map((r) => r.userId));
+  if ("retryHolderIds" in result) {
+    return { ok: false, error: "Market holders changed during emergency void; please retry. No money moved.", code: "BUSY" };
+  }
+
+  // An emergency void refunds every OPEN position; earlier cash-outs retain
+  // their paid amount. A balance-event failure cannot suppress notices about
+  // money that is already committed.
+  if (result.ok) {
+    try { await emitWalletBalances([...refundedUserIds]); }
+    catch { audit({ category: "SYSTEM", action: "market.emergency_void.balance_emit_failed", actorId: opts.officerId,
+      targetType: "Market", targetId: opts.marketId, payload: { refundedUsers: refundedUserIds.size } }); }
+  }
+  // On PostgreSQL this list is populated only after commit. In memory it is
+  // populated during the operation but discarded if the scoped rollback throws.
+  // Bonus principal already has its final home before any notice is dispatched.
+  for (const notice of committedNotices) {
+    try { notice(); } catch { /* the committed refund cannot be undone by a notice failure */ }
+  }
   // ⭐ CLAWBACK — the one reversal this platform can actually reach. There is no "un-settle";
   // the void IS the reversal, so any agent commission that accrued against this market is
   // taken back here. Outside the market lock for the same reason as every other wallet

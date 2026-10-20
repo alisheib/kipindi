@@ -97,14 +97,27 @@ for (const f of IDENTITY_SURFACES) {
 // status stay neutral. Keep this mixed surface explicit rather than exempting it.
 {
   const card = strip(read("src/components/updown/updown-card.tsx"));
-  const earnedGold = /cardResults\[0\]\.status === "WIN" && cardResults\[0\]\.payout != null \? "var\(--gold-300\)" : "var\(--text\)"/;
-  const scoped = card.includes("settledNow && settled && cardResults.length > 0") && earnedGold.test(card);
+  // 2026-10-20: the valid-payout gate wraps the amount fragment; inside it,
+  // WIN alone may choose gold. A LOSS or a missing payout stays neutral.
+  const earnedGold = /cardResults\[0\]\.status === "WIN" \? "var\(--gold-300\)" : "var\(--text\)"/;
+  const earnedScope = (source: string) => {
+    const single = source.split("{cardResults.length === 1 ? (")[1]?.split(") : (")[0] ?? "";
+    const gatedAmount = single.match(/\{cardResults\[0\]\.payout != null && <>([\s\S]*?)<\/>\}/)?.[1] ?? "";
+    return source.includes("settledNow && settled && cardResults.length > 0")
+      && /payout: validRealizedPayout\(r\) \? r\.payout : null/.test(source)
+      && gatedAmount.includes('<span className="amount font-semibold"')
+      && gatedAmount.includes("{formatTzs(cardResults[0].payout)}")
+      && earnedGold.test(gatedAmount);
+  };
   ok("1.card · Up & Down's only gold is the viewer's earned WIN payout",
-    scoped && [...card.matchAll(MONEY_INK)].length === 1 && [...card.matchAll(MONEY_CLASS)].length === 0);
-  const mutant = card.replace('cardResults[0].status === "WIN" && cardResults[0].payout != null ? "var(--gold-300)"',
-    'cardResults[0].status === "LOSS" && cardResults[0].payout != null ? "var(--gold-300)"');
+    earnedScope(card) && [...card.matchAll(MONEY_INK)].length === 1 && [...card.matchAll(MONEY_CLASS)].length === 0);
+  const mutant = card.replace('cardResults[0].status === "WIN" ? "var(--gold-300)"',
+    'cardResults[0].status === "LOSS" ? "var(--gold-300)"');
   ok("1.card.control · a LOSS painted gold fails the earned-money gate",
-    mutant !== card && !earnedGold.test(mutant));
+    mutant !== card && !earnedScope(mutant));
+  const ungated = card.replace("cardResults[0].payout != null && <>", "true && <>");
+  ok("1.card.control · removing the valid-payout gate fails the earned-money gate",
+    ungated !== card && !earnedScope(ungated));
 }
 // ⭐ CONTROLS for 1b — the class form of the defect, planted, must be caught; neighbouring non-money classes must not be.
 {

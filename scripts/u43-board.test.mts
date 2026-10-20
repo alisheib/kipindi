@@ -47,7 +47,9 @@ ok("a future round is never called bettable", bettableFirst([locked, round("open
 ok("render uses bettable-first order", page.includes("const displayedRounds = bettableFirst(rounds, Date.now())") && page.includes("{displayedRounds.map((r) => ("));
 ok("board header names both phone actions", page.includes("{t.market.udRulesShort}") && page.includes("{t.common.myBets}"));
 ok("price tape, duplicate live eyebrow and view switch are removed", !/<PriceTape|<AssetTicker|udViewCubes|udViewChart|udStreaming/.test(page));
-ok("recent outcomes remain before the inline chart", viz.indexOf('className="ud-board-cubes"') > 0 && viz.indexOf('className="ud-board-cubes"') < viz.indexOf('className="ud-board-chart"') && viz.includes("aria-expanded={open}"));
+// 2026-10-20: first paint leaves the client-only chart choice unresolved; the
+// control must report collapsed until a real chart is mounted after hydration.
+ok("recent outcomes remain before the inline chart", viz.indexOf('className="ud-board-cubes"') > 0 && viz.indexOf('className="ud-board-cubes"') < viz.indexOf('className="ud-board-chart"') && viz.includes("aria-expanded={open === true}"));
 ok("phone card precedes the chart; desktop puts chart beside it", /\.ud-board-rounds\s*\{\s*order:\s*1/.test(css) && /\.ud-board-lab\s*\{\s*order:\s*2/.test(css) && /grid-template-columns:\s*minmax\(0, 1fr\) 392px/.test(css));
 ok("tablet result card stays slim beside the live round",
   page.includes('<div className="grid items-start gap-4"')
@@ -166,8 +168,18 @@ ok("dev review frames hide Next's tool overlay after hydration", capture.include
 ok("state capture reads the numeric clock leaf without rejecting settled words", states.includes("cards.length > 0") && states.includes('const running = [...document.querySelectorAll(\'article.mcardp[data-phase="open"],article.mcardp[data-phase="locked"]\')]') && (states.match(/card\.querySelector\("\.ud-clock > \.m-tick\.tabular-nums"\)/g) ?? []).length === 2 && states.includes("/\\d/.test(tick)") && states.includes('!tick.includes("—:—")'));
 ok("state capture accepts a real round detail without demanding board cards", states.includes('if (detailPage) return !!document.querySelector("main h1") && !!document.querySelector("main section")') && states.includes('/^\\/updown\\/[^/?]+/.test(path)'));
 ok("capture waits for card glyphs to paint", capture.includes('querySelectorAll("article.mcardp svg")') && states.includes('querySelectorAll("article.mcardp svg")') && capture.includes("el.getBBox().width > 0") && (states.match(/el\.getBBox\(\)\.width > 0/g) ?? []).length === 2);
-ok("market card capture waits for side words to paint after scrolling", /await cards\.nth\(i\)\.scrollIntoViewIfNeeded\(\);\r?\n          await p\.page\.evaluate/.test(states) && states.includes("requestAnimationFrame(() => requestAnimationFrame(resolve))") && states.includes('path === "/markets"') && states.includes('choices.count() !== 2') && states.includes("unreadable side choice") && capture.includes("await cards.nth(i).scrollIntoViewIfNeeded()") && capture.includes('sideButtons.count() !== 2'));
-ok("desktop chart frames wait for a painted plot", states.includes('chartReady = await p.page.waitForFunction') && states.includes('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas') && (states.match(/s\.chartReady === false/g) ?? []).length === 2 && capture.includes('await p2.waitForFunction(() => !!document.querySelector(\'.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas\')'));
+// 2026-10-20: the exact-phase state manifest now owns the market-page premise.
+// Check its scoped choice readback, not the removed path-string shortcut.
+ok("market card capture waits for side words to paint after scrolling", /await cards\.nth\(i\)\.scrollIntoViewIfNeeded\(\);\r?\n          await p\.page\.evaluate/.test(states) && states.includes("requestAnimationFrame(() => requestAnimationFrame(resolve))") && states.includes("if (requirement.marketPage)") && states.includes("if (await choices.count())") && states.includes('choices.count() !== 2') && states.includes("unreadable side choice") && capture.includes("await cards.nth(i).scrollIntoViewIfNeeded()") && capture.includes('sideButtons.count() !== 2'));
+// A stopped Gold board has no round and therefore no chart canvas. Only that
+// state may bypass the wait; ordinary desktop frames still need painted pixels.
+ok("desktop chart frames wait for a painted plot",
+  states.includes('const chartReady = requirement.stoppedGold || await p.page.waitForFunction')
+  && states.includes('chartReady: requirement.stoppedGold || final.chartReady')
+  && states.includes('sample.cards === 0 && sample.emptyState && sample.bettableChoiceCount === 0')
+  && states.includes('.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas')
+  && (states.match(/s\.chartReady === false/g) ?? []).length === 2
+  && capture.includes('await p2.waitForFunction(() => !!document.querySelector(\'.ud-chart-slot [role="img"] > div[style*="opacity: 1"] canvas\')'));
 ok("final state capture covers both viewers at seven widths in three languages",
   states.includes('process.env.MATRIX === "full"')
   && states.includes('"320,360,390,768,1024,1280,1920"')

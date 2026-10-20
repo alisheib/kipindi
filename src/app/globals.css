@@ -3458,7 +3458,7 @@ textarea::placeholder { color: var(--text-subtle); }
    Uses the kit's `m-breathe`; the local `dot-pulse-soft` keyframe this used to
    name was byte-identical to it and has been retired. */
 [data-motion="reduced"] .live-dot,
-[data-motion="reduced"] .cm-status-dot { animation: m-breathe 1.6s var(--m-breathe) infinite !important; box-shadow: none !important; }
+[data-motion="reduced"] .cm-status-dot { animation: m-breathe 2600ms var(--m-breathe) infinite !important; box-shadow: none !important; }
 
 /* 🔴 THE STICKY TOP-BAR FROSTED BLUR IS DELETED — batch 3, 2026-08-13 (kit §2 / SPEC §3.1).
    It was `color-mix(in oklab, var(--panel) 78%, transparent) !important` plus a 12px backdrop
@@ -5494,10 +5494,11 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-spark-row { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 .mcardp-spark-label { font-family: var(--font-mono); font-size: var(--type-micro); color: var(--text-subtle); }
 .mcardp-spark { margin-top: 0; height: var(--mcard-spark-h); }
-.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--dur-arrive) var(--ease-glide) forwards; }
+.mcardp-spark-line { stroke-dasharray:1; stroke-dashoffset:1; animation:m-draw var(--t-stage) var(--m-glide) forwards; }
 @media (prefers-reduced-motion: reduce) {
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
+[data-motion="reduced"] .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 /* The action margins use the spacing scale in both card densities. The md control
    below is 44px, matching the landing question rows; the skeleton base includes
    that extra 4px and the 3px increase in bottom padding.
@@ -8483,6 +8484,18 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .orm-phone-compact .orm-details { margin-top: var(--sp-2); gap: var(--sp-1); }
   .orm-phone-compact .orm-detail { padding: var(--sp-1) var(--sp-3); }
   .orm-phone-compact .orm-actions { margin-top: var(--sp-3); }
+}
+/* A 320 × 640 receipt has to show the projection qualifier before its short
+   auto-close window. Keep all six rows, full-size actions and 13px body copy;
+   remove vertical whitespace only, within this receipt's compact opt-in. */
+@media (max-width: 639px) and (max-height: 679px) {
+  .orm-phone-compact { padding-block: var(--sp-2); }
+  .orm-phone-compact .orm-crest { width: var(--sp-10); height: var(--sp-10); }
+  .orm-phone-compact .orm-eyebrow { margin-top: var(--sp-1); }
+  .orm-phone-compact .orm-details { margin-top: var(--sp-1); gap: 2px; }
+  .orm-phone-compact .orm-detail { padding-block: 2px; }
+  .orm-phone-compact .orm-actions { margin-top: var(--sp-2); gap: var(--sp-1); }
+  .orm-phone-compact .orm-actions + p { margin-top: var(--sp-1); }
 }
 .ud-identity { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; min-height: var(--sp-8); }
 .ud-title { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-display); font-size: 15px; font-weight: 600; }

@@ -170,6 +170,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
+import { retryNavigationCapture } from "./lib/classic-shell-navigation.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -2169,8 +2170,8 @@ async function open(page, route, plant) {
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
-/** One cell, in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
-async function capture(jar, locale, width, route, plant = null) {
+/** One attempt in a FRESH context — a context carried across cells accumulates visits, and the overlays count visits. */
+async function captureOnce(jar, locale, width, route, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
   const pageErrors = [], devOnly = [];
   try {
@@ -2195,10 +2196,20 @@ async function capture(jar, locale, width, route, plant = null) {
     }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
     return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle]) });
-  } catch (e) {
-    return { error: msg(e) };
   } finally {
     await ctx.close().catch(() => {});
+  }
+}
+
+/** A late navigation invalidates an evaluation. Retry only that interruption, once, from a new context. */
+async function capture(jar, locale, width, route, plant = null) {
+  try {
+    return await retryNavigationCapture(
+      () => captureOnce(jar, locale, width, route, plant),
+      () => console.log(`  ↻ ${locale}|${width}|${route} navigation interrupted; retrying the whole cell`),
+    );
+  } catch (e) {
+    return { error: msg(e) };
   }
 }
 
