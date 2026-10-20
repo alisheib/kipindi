@@ -19,12 +19,12 @@ import {
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
 import { noteSealDevice } from "@/lib/server/maswali-integrity";
-import { applySealBatch, parseSealRows, type SealBatchResult } from "@/lib/maswali-seal-batch";
+import { applySealBatch, parseSealRows, SEAL_DEVICE_AUDIT_WARNING, type SealBatchResult } from "@/lib/maswali-seal-batch";
 import { clientMeta } from "@/lib/server/auth-service";
 import { eatWeekStartMs } from "@/lib/eat-day";
 import type { MaswaliOutcome } from "@/lib/maswali-score";
 
-type ActionResult = { ok: true; weekId?: string; recorded?: boolean } | { ok: false; error: string };
+type ActionResult = { ok: true; weekId?: string; recorded?: boolean; auditWarning?: string | null } | { ok: false; error: string };
 
 const refresh = (weekId?: string) => {
   revalidatePath("/admin/maswali");
@@ -34,9 +34,11 @@ const refresh = (weekId?: string) => {
 };
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 /** MB-94 · where a seal came from, noted after it landed (never blocking it). */
-const noteDevice = async (officerId: string, weekId: string, slots: number[]) => {
-  const meta = await clientMeta();
-  await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });
+const noteDevice = async (officerId: string, weekId: string, slots: number[]): Promise<boolean> => {
+  try {
+    const meta = await clientMeta();
+    return await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });
+  } catch { return false; }
 };
 
 /** The builder posts its fifteen rows as one JSON field; anything that is not that shape is refused, never coerced. */
@@ -174,9 +176,9 @@ export async function voidMaswaliQuestionAction(formData: FormData): Promise<Act
       evidence: str(formData, "evidence"), officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
-    await noteDevice(session.userId, weekId, [slot]);
-    refresh(weekId);
-    return { ok: true, weekId };
+    const audited = await noteDevice(session.userId, weekId, [slot]);
+    try { refresh(weekId); } catch { /* The seal already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: audited ? null : SEAL_DEVICE_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The void could not be recorded") };
   }
@@ -211,9 +213,9 @@ export async function correctMaswaliSealAction(formData: FormData): Promise<Acti
       voidReason: outcome === "VOID" ? str(formData, "voidReason") : null, officerId: session.userId,
     });
     if (!r.ok) return { ok: false, error: r.error };
-    await noteDevice(session.userId, weekId, [slot]);
-    refresh(weekId);
-    return { ok: true, weekId };
+    const audited = await noteDevice(session.userId, weekId, [slot]);
+    try { refresh(weekId); } catch { /* The correction already landed; the client refreshes too. */ }
+    return { ok: true, weekId, auditWarning: audited ? null : SEAL_DEVICE_AUDIT_WARNING };
   } catch (err) {
     return { ok: false, error: safeError(err, "The correction could not be recorded") };
   }

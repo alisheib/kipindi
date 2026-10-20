@@ -7,6 +7,8 @@ export type SealBatchResult =
   | { ok: true; sealed: number[]; auditWarning: string | null }
   | { ok: false; error: string; sealed: number[]; auditWarning: string | null };
 
+export const SEAL_DEVICE_AUDIT_WARNING = "The seal landed, but its device audit could not be fully recorded or checked. Tell an administrator; do not repeat the seal.";
+
 export type SealBatchRow = { slot: number; outcome: "YES" | "NO" | "VOID"; evidence: string };
 
 /** Reject the whole submitted batch before its first irreversible seal. */
@@ -33,7 +35,7 @@ export function parseSealRows(raw: string): SealBatchRow[] | string {
 export async function applySealBatch<T extends { slot: number }>(
   rows: readonly T[],
   seal: (row: T) => Promise<{ ok: boolean; error?: string }>,
-  noteDevice: (sealed: number[]) => Promise<void>,
+  noteDevice: (sealed: number[]) => Promise<boolean>,
   safeFailure: (error: unknown) => string,
 ): Promise<SealBatchResult> {
   const sealed: number[] = [];
@@ -55,9 +57,10 @@ export async function applySealBatch<T extends { slot: number }>(
   let auditWarning: string | null = null;
   if (sealed.length) {
     try {
-      await noteDevice([...sealed]);
+      const audited = await noteDevice([...sealed]);
+      if (!audited) auditWarning = SEAL_DEVICE_AUDIT_WARNING;
     } catch {
-      auditWarning = "The device record could not be checked after these seals landed. Tell an administrator; do not repeat those seals.";
+      auditWarning = SEAL_DEVICE_AUDIT_WARNING;
     }
   }
   return failure ? { ok: false, error: failure, sealed, auditWarning } : { ok: true, sealed, auditWarning };

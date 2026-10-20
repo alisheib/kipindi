@@ -346,6 +346,39 @@ console.log("\n§7 · the two-officer flag");
   ok("7.18 · the real admin action validates rows before the first irreversible seal",
     actionSource.includes('const rows = parseSealRows(str(formData, "seals"));')
       && actionSource.indexOf('const rows = parseSealRows(str(formData, "seals"));') < actionSource.indexOf("const result = await applySealBatch(rows,"));
+  const unrecorded = await applySealBatch([{ slot: 100 }], async () => ({ ok: true }), async () => false, () => "Seal failed");
+  ok("7.19 · ⛔ a resolved but unrecorded device audit leaves the landed seal successful and warns",
+    unrecorded.ok && unrecorded.sealed[0] === 100 && !!unrecorded.auditWarning);
+  const auditInput = { officerId: SEALER, weekId: w1.id, slots: [13], ip: "198.51.100.222", userAgent: "injected-device" };
+  const written: string[] = [];
+  const adminFailed = await noteSealDevice(auditInput, {
+    read: async () => ({ entries: [], truncated: false }),
+    write: async (entry) => { written.push(entry.action); return { recorded: entry.action !== SEAL_DEVICE_ACTION }; },
+  });
+  ok("7.20 · ⛔ an ADMIN audit that resolves unrecorded cannot be reported as complete",
+    !adminFailed && written.join(",") === `${SEAL_DEVICE_ACTION},${SEAL_NEW_DEVICE_ACTION}`);
+  const complianceFailed = await noteSealDevice(auditInput, {
+    read: async () => ({ entries: [], truncated: false }),
+    write: async (entry) => ({ recorded: entry.action !== SEAL_NEW_DEVICE_ACTION }),
+  });
+  ok("7.21 · ⛔ an unrecorded new-device COMPLIANCE row is a nonblocking incomplete audit", !complianceFailed);
+  const truncatedActions: string[] = [];
+  const incompleteHistory = await noteSealDevice(auditInput, {
+    read: async () => ({ entries: [], truncated: true }),
+    write: async (entry) => { truncatedActions.push(entry.action); return { recorded: true }; },
+  });
+  ok("7.22 · ⛔ truncated seal history never invents a new device",
+    !incompleteHistory && truncatedActions.join(",") === SEAL_DEVICE_ACTION);
+  const thrownAudit = await noteSealDevice(auditInput, {
+    read: async () => ({ entries: [], truncated: false }),
+    write: async () => { throw new Error("injected audit outage"); },
+  });
+  ok("7.23 · an audit write throw is contained after the irreversible seal", !thrownAudit);
+  ok("7.24 · successful void and correction actions return the nonblocking audit warning",
+    actionSource.includes("return await noteSealDevice({ officerId, weekId, slots, ip: meta.ip, userAgent: meta.ua });")
+      && actionSource.match(/auditWarning: audited \? null : SEAL_DEVICE_AUDIT_WARNING/g)?.length === 2
+      && consoleSource.includes("onWarning?.(r.auditWarning ?? null)")
+      && consoleSource.match(/setVoidRow\(null\), setSealAuditWarning|setCorrectRow\(null\), setSealAuditWarning/g)?.length === 2);
 }
 
 // ── §8 · the week void ──────────────────────────────────────────────────────

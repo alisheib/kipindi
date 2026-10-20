@@ -118,18 +118,33 @@ export const SEAL_NEW_DEVICE_ACTION = "maswali.seal.new_device";
  * never sealed from there before. ⛔ Never blocks the seal (it has already landed) and never throws: an unreadable history
  * is recorded as such, not as "new".
  */
-export async function noteSealDevice(input: { officerId: string; weekId: string; slots: number[]; ip: string | null; userAgent: string | null }): Promise<void> {
+type SealDeviceAuditPort = {
+  read: (actorId: string, opts: { limit: number }) => Promise<{ entries: Array<{ action: string; ip?: string | null; userAgent?: string | null }>; truncated: boolean }>;
+  write: (entry: Parameters<typeof import("./audit").audit>[0]) => Promise<{ recorded: boolean }>;
+};
+
+/** True only when the history was sufficient and every required audit row was recorded. Never throws. */
+export async function noteSealDevice(
+  input: { officerId: string; weekId: string; slots: number[]; ip: string | null; userAgent: string | null },
+  injected?: SealDeviceAuditPort,
+): Promise<boolean> {
   try {
-    const { getAuditForActorDurable, audit } = await import("./audit");
-    const past = await getAuditForActorDurable(input.officerId, { limit: 500 }).catch(() => null);
-    const seen = past === null ? null : past.entries.some((e) => e.action === SEAL_DEVICE_ACTION && e.ip === input.ip && e.userAgent === input.userAgent);
-    audit({ category: "ADMIN", action: SEAL_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+    const port: SealDeviceAuditPort = injected ?? await import("./audit").then(({ getAuditForActorDurable, audit }) => ({ read: getAuditForActorDurable, write: audit }));
+    const past = await port.read(input.officerId, { limit: 500 }).catch(() => null);
+    const matched = past?.entries.some((e) => e.action === SEAL_DEVICE_ACTION && e.ip === input.ip && e.userAgent === input.userAgent) ?? false;
+    // A bounded or failed history cannot establish that a device is new. An observed match is still enough.
+    const historyReadable = past !== null && (matched || !past.truncated);
+    const seen = historyReadable ? matched : null;
+    const device = await port.write({ category: "ADMIN", action: SEAL_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
       payload: { slots: input.slots }, ip: input.ip, userAgent: input.userAgent });
+    let newDeviceRecorded = true;
     if (seen === false) {
-      audit({ category: "COMPLIANCE", action: SEAL_NEW_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
+      const newDevice = await port.write({ category: "COMPLIANCE", action: SEAL_NEW_DEVICE_ACTION, actorId: input.officerId, targetType: "MaswaliCycle", targetId: input.weekId,
         payload: { slots: input.slots, firstSeal: !past?.entries.some((e) => e.action === SEAL_DEVICE_ACTION) }, ip: input.ip, userAgent: input.userAgent });
+      newDeviceRecorded = newDevice.recorded;
     }
-  } catch { /* a note about a seal that already landed never surfaces as the seal failing */ }
+    return historyReadable && device.recorded && newDeviceRecorded;
+  } catch { return false; /* a note about a seal that already landed never surfaces as the seal failing */ }
 }
 
 /** The recent new-device seal records, newest first, for the integrity page. */

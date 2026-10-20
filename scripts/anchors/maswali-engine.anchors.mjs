@@ -12,6 +12,7 @@
 const DAL = "src/lib/server/maswali-dal.ts";
 const SVC = "src/lib/server/maswali-service.ts";
 const BATCH = "src/lib/maswali-seal-batch.ts";
+const INTEGRITY = "src/lib/server/maswali-integrity.ts";
 
 export const MUTATIONS = [
   {
@@ -132,6 +133,46 @@ export const MUTATIONS = [
     from: "    if (seen.has(row.slot)) return `Slot ${row.slot} appears more than once.`;",
     to: "    if (false) return `Slot ${row.slot} appears more than once.`;",
     expect: "7.17 · ⛔ duplicate slots cannot partially seal",
+    suite: "engine",
+  },
+  {
+    name: "(16) a resolved but unrecorded device audit is treated as complete",
+    file: BATCH,
+    from: "      if (!audited) auditWarning = SEAL_DEVICE_AUDIT_WARNING;",
+    to: "      if (false) auditWarning = SEAL_DEVICE_AUDIT_WARNING;",
+    expect: "7.19 · ⛔ a resolved but unrecorded device audit",
+    suite: "engine",
+  },
+  {
+    name: "(17) the note ignores a durable ADMIN or COMPLIANCE audit failure",
+    file: INTEGRITY,
+    from: "    return historyReadable && device.recorded && newDeviceRecorded;",
+    to: "    return historyReadable;",
+    expect: "7.20 · ⛔ an ADMIN audit that resolves unrecorded",
+    suite: "engine",
+  },
+  {
+    name: "(18) an incomplete device history is called a new device",
+    file: INTEGRITY,
+    from: "    const historyReadable = past !== null && (matched || !past.truncated);",
+    to: "    const historyReadable = past !== null;",
+    expect: "7.22 · ⛔ truncated seal history never invents",
+    suite: "engine",
+  },
+  {
+    name: "(19) a void action drops its landed-seal audit warning",
+    file: "src/app/admin/maswali/actions.ts",
+    from: "    try { refresh(weekId); } catch { /* The seal already landed; the client refreshes too. */ }\n    return { ok: true, weekId, auditWarning: audited ? null : SEAL_DEVICE_AUDIT_WARNING };",
+    to: "    try { refresh(weekId); } catch { /* The seal already landed; the client refreshes too. */ }\n    return { ok: true, weekId, auditWarning: null };",
+    expect: "7.24 · successful void and correction actions",
+    suite: "engine",
+  },
+  {
+    name: "(20) the seal form drops a successful action's audit warning",
+    file: "src/app/admin/maswali/[weekId]/week-controls.tsx",
+    from: "      onWarning?.(r.auditWarning ?? null);",
+    to: "      void r.auditWarning;",
+    expect: "7.24 · successful void and correction actions",
     suite: "engine",
   },
 ];

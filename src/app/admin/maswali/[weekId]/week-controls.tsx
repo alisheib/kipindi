@@ -34,11 +34,12 @@ function useAct() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
+  const run = (fn: () => Promise<{ ok: boolean; error?: string; auditWarning?: string | null }>, after?: () => void, onWarning?: (warning: string | null) => void) => {
     setError(null);
     start(async () => {
       const r = await fn();
       if (!r.ok) { setError(r.error ?? "That did not go through."); return; }
+      onWarning?.(r.auditWarning ?? null);
       after?.();
       router.refresh();
     });
@@ -244,7 +245,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             <Field label="Evidence"><Input size="sm" value={voidEvidence} onChange={(e) => setVoidEvidence(e.target.value)} placeholder="What happened, as the source records it" /></Field>
           </div>
         }
-        onConfirm={() => voidRow && run(() => voidMaswaliQuestionAction(fd({ weekId, slot: String(voidRow.slot), voidReason, evidence: voidEvidence })), () => setVoidRow(null))} />
+        onConfirm={() => voidRow && run(() => voidMaswaliQuestionAction(fd({ weekId, slot: String(voidRow.slot), voidReason, evidence: voidEvidence })), () => setVoidRow(null), setSealAuditWarning)} />
 
       <ConfirmModal open={!!correctRow} onClose={() => setCorrectRow(null)} loading={pending} tone="warning" tier="hard" typedWord="CORRECT"
         title={`Correct ${correctRow?.label ?? ""}?`} confirmLabel="Record the correction"
@@ -256,7 +257,7 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
             <Field label="Evidence"><Input size="sm" value={correction.evidence} onChange={(e) => setCorrection((c) => ({ ...c, evidence: e.target.value }))} /></Field>
           </div>
         }
-        onConfirm={() => correctRow && run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome, evidence: correction.evidence, voidReason: correction.voidReason })), () => setCorrectRow(null))} />
+        onConfirm={() => correctRow && run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome, evidence: correction.evidence, voidReason: correction.voidReason })), () => setCorrectRow(null), setSealAuditWarning)} />
     </div>
   );
 }
