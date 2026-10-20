@@ -8,7 +8,7 @@ export type TrailSort = "week" | "settled" | "sales" | "winners" | "paid" | "car
 
 /** Only scalar, known URL controls are allowed into the two tables' links and readers. */
 export function poolsSearchParams(raw: Record<string, string | string[] | undefined>): Record<string, string | undefined> {
-  const keys = ["tpage", "tcode", "tline", "tsort", "tdir", "oline", "ostate", "osort", "odir"] as const;
+  const keys = ["tpage", "tcode", "tline", "tsort", "tdir", "opage", "ocode", "oline", "ostate", "osort", "odir"] as const;
   const safe: Record<string, string | undefined> = {};
   for (const key of keys) safe[key] = typeof raw[key] === "string" ? raw[key] : undefined;
   return safe;
@@ -23,11 +23,13 @@ export const openState = (value?: string): OpenState =>
 /** Filter and sort the complete collection before the view selects any page. */
 export function queryOpenWeeks(
   rows: PoolsWeek[],
-  query: { line: PoolsLine; state: OpenState; sort: OpenSort; dir: SortDir },
+  query: { code: string; line: PoolsLine; state: OpenState; sort: OpenSort; dir: SortDir },
 ): PoolsWeek[] {
+  const code = query.code.trim().toLocaleUpperCase("en");
   const filtered = rows.filter((w) =>
     (query.line === "ALL" || w.row.visibility === query.line) &&
-    (query.state === "ALL" || w.row.state === query.state),
+    (query.state === "ALL" || w.row.state === query.state) &&
+    (!code || w.row.code.toLocaleUpperCase("en").includes(code)),
   );
   return applySort(filtered, query.sort, query.dir, {
     week: (w) => w.row.code,

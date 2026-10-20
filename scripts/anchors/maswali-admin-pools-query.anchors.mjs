@@ -2,6 +2,13 @@
 // The red runner imports these exact anchors, so the audit certifies what it injects.
 export const MUTATIONS = [
   {
+    name: "open-week code lookup",
+    file: "src/lib/maswali-admin-pools-query.ts",
+    from: '(!code || w.row.code.toLocaleUpperCase("en").includes(code))',
+    to: 'true',
+    failure: /open code lookup searches all weeks before paging/,
+  },
+  {
     name: "trail line filter",
     file: "src/lib/maswali-admin-pools-query.ts",
     from: '(query.line === "ALL" || w.visibility === query.line) &&\n    (!code || w.code.toLocaleUpperCase("en").includes(code))',

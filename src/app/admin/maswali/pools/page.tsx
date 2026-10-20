@@ -73,8 +73,11 @@ async function Content({ searchParams }: PoolsPageProps) {
   }
   const openLine = poolsLine(sp.oline);
   const state = openState(sp.ostate);
+  const openCode = (sp.ocode ?? "").trim();
   const openSort = parseSort<OpenSort>(sp, ["week", "state", "sales", "coverage", "topUp"], "week", "desc", "o");
-  const openRows = queryOpenWeeks(v.weeks, { line: openLine, state, ...openSort });
+  const openRows = queryOpenWeeks(v.weeks, { code: openCode, line: openLine, state, ...openSort });
+  const openPage = parsePage(sp.opage, openRows.length, CONSOLE_PER_PAGE);
+  const openPageRows = openRows.slice((openPage - 1) * CONSOLE_PER_PAGE, openPage * CONSOLE_PER_PAGE);
   const trailLine = poolsLine(sp.tline);
   const trailCode = (sp.tcode ?? "").trim();
   const trailSort = parseSort<TrailSort>(sp, ["week", "settled", "sales", "winners", "paid", "carried"], "settled", "desc", "t");
@@ -96,18 +99,26 @@ async function Content({ searchParams }: PoolsPageProps) {
 
         <AdminCard title="Open weeks" sw="Wiki zilizo wazi" padding="p-0">
           {v.weeks.length > 0 && <div className="space-y-2 border-b border-border-subtle p-4">
+            <form action="/admin/maswali/pools" method="get" role="search" className="flex flex-wrap items-end gap-2">
+              {Object.entries(sp).filter(([key, value]) => key !== "ocode" && key !== "opage" && value).map(([key, value]) =>
+                <input key={key} type="hidden" name={key} value={value} />)}
+              <label className="min-w-[180px] flex-1 text-body-sm">Find an open week by code
+                <Input className="mt-1" size="sm" name="ocode" defaultValue={openCode} maxLength={32} placeholder="MLN-2026-W01" />
+              </label>
+              <Button type="submit" size="sm">Find week</Button>
+            </form>
             <div className="flex flex-wrap gap-1" aria-label="Open week line">
               {([ ["ALL", "All lines"], ["PUBLIC", "Public"], ["DRIVE", "Drive"] ] as const).map(([value, label]) =>
-                <FilterPill key={value} href={withQuery(sp, { oline: value === "ALL" ? null : value })} label={label} on={openLine === value} replace scroll={false} />)}
+                <FilterPill key={value} href={withQuery(sp, { oline: value === "ALL" ? null : value }, "opage")} label={label} on={openLine === value} replace scroll={false} />)}
             </div>
             <div className="flex flex-wrap gap-1" aria-label="Open week state">
               {([ ["ALL", "All states"], ["OPEN", "Selling"], ["CLOSED", "Closed"], ["RESOLVING", "Sealing"] ] as const).map(([value, label]) =>
-                <FilterPill key={value} href={withQuery(sp, { ostate: value === "ALL" ? null : value })} label={label} on={state === value} replace scroll={false} />)}
+                <FilterPill key={value} href={withQuery(sp, { ostate: value === "ALL" ? null : value }, "opage")} label={label} on={state === value} replace scroll={false} />)}
             </div>
             <p className="text-body-sm text-text-secondary" data-result-count={openRows.length}>{openRows.length} matching open week{openRows.length === 1 ? "" : "s"}</p>
           </div>}
           {v.weeks.length === 0 ? <EmptyState title="No open week" body="A week appears here from its open until it settles." />
-            : openRows.length === 0 ? <div className="space-y-2 p-4 text-body-sm"><p>No open week matches these filters.</p><Link className="link" href={withQuery(sp, { oline: null, ostate: null })}>Clear open-week filters</Link></div>
+            : openRows.length === 0 ? <div className="space-y-2 p-4 text-body-sm"><p>No open week matches this code and filters.</p><Link className="link" href={withQuery(sp, { ocode: null, oline: null, ostate: null }, "opage")}>Clear open-week filters</Link></div>
             : (
               <ScrollX label="Millionea open weeks">
                 <table className="admin-tbl min-w-[1000px]">
@@ -121,7 +132,7 @@ async function Content({ searchParams }: PoolsPageProps) {
                     <th className="text-left">Settlement</th>
                   </tr></thead>
                   <tbody>
-                    {openRows.map((w) => {
+                    {openPageRows.map((w) => {
                       const chip = weekStateChip(w.row.state);
                       const a = w.preview?.arithmetic;
                       return (
@@ -150,6 +161,10 @@ async function Content({ searchParams }: PoolsPageProps) {
                 </table>
               </ScrollX>
             )}
+          {openRows.length > CONSOLE_PER_PAGE && (
+            <AdminPagination page={openPage} total={openRows.length} perPage={CONSOLE_PER_PAGE}
+              baseHref={buildBaseHref("/admin/maswali/pools", sp, "opage")} param="opage" />
+          )}
         </AdminCard>
 
         <AdminCard title="Rollover trail" sw="Historia ya jackpot" padding="p-0">
