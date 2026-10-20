@@ -137,10 +137,10 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
       {!edit && (
         <div className="glass-panel p-4 grid gap-3 sm:grid-cols-2">
           <Field label="The Monday the week starts" hint="Sales open and close on the rules' template days, in East Africa Time.">
-            <DateSelect value={weekStart} onChange={setWeekStart} size="sm" />
+            <DateSelect value={weekStart} onChange={setWeekStart} size="md" />
           </Field>
           <Field label="Line" hint="A drive week is private and never seeds a public week (OD-21).">
-            <Select size="sm" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
+            <Select size="md" value={visibility} onChange={(v) => setVisibility(v === "DRIVE" ? "DRIVE" : "PUBLIC")} ariaLabel="Line"
               options={[{ value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive (private)" }]} />
           </Field>
         </div>
@@ -156,7 +156,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
                 <span className="text-body-sm text-text-tertiary tabular min-w-[120px]">{utcToZonedLocal(Date.parse(sg.startsAt), "Africa/Dar_es_Salaam").replace("T", " ")} EAT</span>
                 <span className="text-body-sm text-text-tertiary">{sg.kind === "ai" ? "AI draft" : "Fixture"} · {sg.category}</span>
                 <span className="min-w-0 flex-1">{sg.textEn}</span>
-                <Select size="xs" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
+                <Select size="md" value="" ariaLabel={`Fill a slot with ${sg.textEn}`} onChange={(v) => { if (v !== "") fillFrom(Number(v), sg); }}
                   options={[{ value: "", label: "Fill slot…" }, ...rows.map((r, j) => ({ value: String(j), label: label(r) }))]} />
               </li>
             ))}
@@ -170,8 +170,8 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             <h2 className="font-display font-semibold text-title-sm">{label(r)} <span className="text-text-tertiary text-body-sm">{r.role === "MAIN" ? "main" : "reserve · Akiba"}</span></h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Category"><Select size="sm" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
-            <Field label="Kind of event"><Select size="sm" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: k.toLowerCase() }))} /></Field>
+            <Field label="Category"><Select size="md" value={r.category} onChange={(v) => set(i, { category: v })} ariaLabel={`${label(r)} category`} options={CATEGORIES.map((c) => ({ value: c, label: c }))} /></Field>
+            <Field label="Kind of event"><Select size="md" value={r.eventKind} onChange={(v) => set(i, { eventKind: v })} ariaLabel={`${label(r)} kind`} options={KINDS.map((k) => ({ value: k, label: k.toLowerCase() }))} /></Field>
           </div>
           {([["textEn", "Question · English"], ["textSw", "Question · Kiswahili"], ["textZh", "Question · 中文"]] as const).map(([k, l]) => (
             <Field key={k} label={l} hint={`${r[k].length} / ${TEXT_GUIDE}${r[k].length > TEXT_GUIDE ? " · long for the slip" : ""}`}>
@@ -179,7 +179,7 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             </Field>
           ))}
           <div className="flex items-center gap-2 flex-wrap">
-            <Button size="xs" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
+            <Button size="sm" variant="ghost" onClick={() => set(i, { criterionEn: CRITERION_TEMPLATES[r.eventKind] ?? CRITERION_TEMPLATES.ANNOUNCEMENT })}>Use the {r.eventKind.toLowerCase()} template</Button>
             {/[{}]/.test(r.criterionEn) && <span className="text-body-sm text-warning">Fill every {"{…}"} before saving.</span>}
           </div>
           {([["criterionEn", "How it resolves · English"], ["criterionSw", "How it resolves · Kiswahili"], ["criterionZh", "How it resolves · 中文"]] as const).map(([k, l]) => (
@@ -188,22 +188,22 @@ export function WeekBuilder({ defaultMonday, edit, suggestions = [] }: { default
             </Field>
           ))}
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Event date (source's zone)"><DateSelect value={r.eventDate} onChange={(v) => set(i, { eventDate: v })} size="sm" /></Field>
-            <Field label="Start time"><TimeSelect value={r.eventTime} onChange={(v) => set(i, { eventTime: v })} size="sm" aria-label={`${label(r)} start time`} /></Field>
-            <Field label="The source's zone"><Select size="sm" value={r.eventZone} onChange={(v) => set(i, { eventZone: v })} ariaLabel={`${label(r)} zone`} options={ZONES.map((z) => ({ value: z, label: z }))} /></Field>
+            <Field label="Event date (source's zone)"><DateSelect value={r.eventDate} onChange={(v) => set(i, { eventDate: v })} size="md" /></Field>
+            <Field label="Start time"><TimeSelect value={r.eventTime} onChange={(v) => set(i, { eventTime: v })} size="md" aria-label={`${label(r)} start time`} /></Field>
+            <Field label="The source's zone"><Select size="md" value={r.eventZone} onChange={(v) => set(i, { eventZone: v })} ariaLabel={`${label(r)} zone`} options={ZONES.map((z) => ({ value: z, label: z }))} /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Source (the official result)"><Input size="sm" value={r.sourceUrl} onChange={(e) => set(i, { sourceUrl: e.target.value })} placeholder="https://" /></Field>
-            <Field label="Fallback source" optional><Input size="sm" value={r.fallbackSourceUrl} onChange={(e) => set(i, { fallbackSourceUrl: e.target.value })} placeholder="https://" /></Field>
+            <Field label="Source (the official result)"><Input size="md" value={r.sourceUrl} onChange={(e) => set(i, { sourceUrl: e.target.value })} placeholder="https://" /></Field>
+            <Field label="Fallback source" optional><Input size="md" value={r.fallbackSourceUrl} onChange={(e) => set(i, { fallbackSourceUrl: e.target.value })} placeholder="https://" /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Estimated chance of YES (%)" hint="OD-14: inside the rules' band">
-              <Input size="sm" inputMode="numeric" value={r.probabilityPct} onChange={(e) => set(i, { probabilityPct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} />
+              <Input size="md" inputMode="numeric" value={r.probabilityPct} onChange={(e) => set(i, { probabilityPct: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} />
             </Field>
-            <Field label="Where the estimate comes from" className="sm:col-span-2"><Input size="sm" value={r.probabilitySource} onChange={(e) => set(i, { probabilitySource: e.target.value })} /></Field>
+            <Field label="Where the estimate comes from" className="sm:col-span-2"><Input size="md" value={r.probabilitySource} onChange={(e) => set(i, { probabilitySource: e.target.value })} /></Field>
           </div>
           <Field label="Reading tolerance" optional hint="For a price or a reading: how close counts (e.g. two decimals as published)">
-            <Input size="sm" value={r.readingTolerance} onChange={(e) => set(i, { readingTolerance: e.target.value })} />
+            <Input size="md" value={r.readingTolerance} onChange={(e) => set(i, { readingTolerance: e.target.value })} />
           </Field>
         </section>
       ))}

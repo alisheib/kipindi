@@ -63,7 +63,7 @@ export function ReleaseControl({ weekId, code, digest }: { weekId: string; code:
   if (!mayAct) return <ActReadOnly />;
   return (
     <div className="space-y-1">
-      <Button size="xs" disabled={pending} onClick={() => setOpen(true)}>Release {code}</Button>
+      <Button size="sm" disabled={pending} onClick={() => setOpen(true)}>Release {code}</Button>
       <Feedback error={error} note={note} />
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="brand" tier="hard" typedWord="RELEASE"
         title={`Release ${code}?`} confirmLabel="Release the settlement"
@@ -85,8 +85,8 @@ export function GuaranteeCeremony({ canFund, canReturn }: { canFund: boolean; ca
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Amount (TZS)" required hint="A whole number above zero"><Input size="sm" inputMode="numeric" grouped value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} /></Field>
-        <Field label="Bank or rail reference" required hint="5–120 characters from the bank or payment rail"><Input size="sm" maxLength={120} value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
+        <Field label="Amount (TZS)" required hint="A whole number above zero"><Input size="md" inputMode="numeric" grouped value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} /></Field>
+        <Field label="Bank or rail reference" required hint="5–120 characters from the bank or payment rail"><Input size="md" maxLength={120} value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
       </div>
       <div className="flex gap-2 flex-wrap">
         {canFund && <Button size="sm" disabled={pending || !ready} onClick={() => setReview(guaranteeReviewDraft("fund", amount, reference))}>Pay in</Button>}
@@ -123,7 +123,7 @@ export function LicenceCeremony() {
   if (!mayAct) return <ActReadOnly />;
   return (
     <div className="space-y-3">
-      <Field label="Basis"><Select size="sm" value={kind} onChange={setKind} ariaLabel="Licence basis"
+      <Field label="Basis"><Select size="md" value={kind} onChange={setKind} ariaLabel="Licence basis"
         options={[{ value: "OWNER_RULING", label: "The Owner's dated ruling" }, { value: "GBT_WRITTEN", label: "The Gaming Board's letter" }, { value: "NONE", label: "None (withdraw it)" }]} /></Field>
       {kind !== "NONE" && <Field label="Where it is kept" hint={`${MASWALI_LICENCE_REF_MIN}–${MASWALI_LICENCE_REF_MAX} characters after spaces are folded.`}>
         <Textarea rows={2} maxLength={MASWALI_LICENCE_REF_MAX} value={ref} onChange={(e) => setRef(e.target.value)} />
@@ -155,7 +155,7 @@ export function RolloutCeremony({ expectSeq, current }: { expectSeq: number; cur
   if (!mayAct) return <ActReadOnly />;
   return (
     <div className="space-y-3">
-      <Field label="Visible to"><Select size="sm" value={cap} onChange={setCap} ariaLabel="Rollout"
+      <Field label="Visible to"><Select size="md" value={cap} onChange={setCap} ariaLabel="Rollout"
         options={[{ value: "WITHDRAWN", label: "Nobody (withdrawn)" }, { value: "STAFF_PREVIEW", label: "Staff preview" }, { value: "ACTIVE", label: "Everyone" }]} /></Field>
       <Field label="Why" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       <Button size="sm" disabled={pending || cap === current || !reasonLengthOk(reason)} onClick={() => setOpen(true)}>Move the switch</Button>
@@ -184,14 +184,14 @@ export function SunsetCeremony({ weeks }: { weeks: SunsetCandidate[] }) {
   return (
     <div className="space-y-3">
       {choices.needsLookup && <Field label="Find the final week by code" hint={`Search all ${weeks.length} eligible public weeks before choosing.`}>
-        <Input size="sm" value={lookup} maxLength={32} onChange={(event) => { setLookup(event.target.value); setWeekId(""); setOpen(false); }} placeholder="MLN-2026-W01" />
+        <Input size="md" value={lookup} maxLength={32} onChange={(event) => { setLookup(event.target.value); setWeekId(""); setOpen(false); }} placeholder="MLN-2026-W01" />
       </Field>}
       {choices.needsLookup && lookup.trim() && <p role="status" className="text-body-sm text-text-secondary">
         {choices.total === 0 ? "No eligible week matches that code." : choices.total > choices.rows.length
           ? `${choices.total} matching weeks; showing the first ${choices.rows.length}. Refine the code to find the right week.`
           : `${choices.total} matching ${choices.total === 1 ? "week" : "weeks"}.`}
       </p>}
-      <Field label="The final week" hint="Choose the exact week before confirming."><Select size="sm" value={weekId} onChange={setWeekId} ariaLabel="Final week"
+      <Field label="The final week" hint="Choose the exact week before confirming."><Select size="md" value={weekId} onChange={setWeekId} ariaLabel="Final week"
         placeholder="Choose an eligible week" disabled={choices.rows.length === 0}
         options={choices.rows.map((week) => ({ value: week.id, label: `${week.code} · ${week.state.toLowerCase()}` }))} /></Field>
       <Field label="Why Millionea is stopping" hint={`${MASWALI_REASON_MIN}–${MASWALI_REASON_MAX} characters.`}><Textarea rows={2} maxLength={MASWALI_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>

@@ -73,7 +73,7 @@ export function VoidWeekControl({ weekId, code }: { weekId: string; code: string
   if (!mayAct) return <ActReadOnly />;
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="claret" disabled={pending} onClick={() => setOpen(true)}>Void {code}</Button>
+      <Button size="sm" variant="claret" disabled={pending} onClick={() => setOpen(true)}>Void {code}</Button>
       {error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => setOpen(false)} loading={pending} tone="claret" tier="hard" typedWord="VOID"
@@ -93,7 +93,7 @@ export function HoldShareControl({ ticketId, serial }: { ticketId: string; seria
   if (!mayAct) return <ActReadOnly />;
   return (
     <span className="inline-flex flex-col gap-1">
-      <Button size="xs" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Hold…</Button>
+      <Button size="sm" variant="ghost" disabled={pending} onClick={() => setOpen(true)}>Hold…</Button>
       {!open && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}
       <ConfirmModal open={open} onClose={() => { setOpen(false); setTried(false); }} loading={pending} tone="warning" tier="hard" typedWord="HOLD"
@@ -123,8 +123,8 @@ export function HeldShareControls({ ticketId, serial, canRelease, canForfeit, re
   return (
     <span className="inline-flex flex-col gap-1.5 items-start">
       <span className="inline-flex gap-2">
-        {canRelease ? <Button size="xs" variant="ghost" disabled={pending} onClick={() => setMode("release")}>Release…</Button> : <ControlLocked what="Release" need={releaseNeed} />}
-        {canForfeit ? <Button size="xs" variant="claret" disabled={pending} onClick={() => setMode("forfeit")}>Forfeit…</Button> : <ControlLocked what="Forfeit" need={forfeitNeed} />}
+        {canRelease ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => setMode("release")}>Release…</Button> : <ControlLocked what="Release" need={releaseNeed} />}
+        {canForfeit ? <Button size="sm" variant="claret" disabled={pending} onClick={() => setMode("forfeit")}>Forfeit…</Button> : <ControlLocked what="Forfeit" need={forfeitNeed} />}
       </span>
       {mode === null && error && <span role="alert" className="text-body-sm text-danger-fg">{error}</span>}
       {note && <span role="status" className="text-body-sm text-success">{note}</span>}

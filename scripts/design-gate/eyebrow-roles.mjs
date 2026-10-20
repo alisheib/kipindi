@@ -360,7 +360,7 @@ export const NOT_EYEBROW = new Map([
   ["components/ui/cashback-promo.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
   ["components/ui/chip.tsx :: \"inline-flex items-center rounded-pill font-bold border uppercase max-w-full\", ↵ selected && \"ring-1 ring-[var(--brand-400)] ring-offset-1 ring-offset-bg-elevated\",", "STATUS_CHIP"],
   ["components/ui/countdown-pill.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.14em] text-text-muted\" aria-hidden> ↵ {t.common.ready}", "OTHER"],
-  ["components/ui/date-select.tsx :: className=\"font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors\"> ↵ {t.common.cancel}", "CONTROL_LABEL"],
+  ["components/ui/date-select.tsx :: className=\"min-h-[var(--tap-min)] font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors\"> ↵ {t.common.cancel}", "CONTROL_LABEL"],
   // ⛔ DELETED 2026-08-30 (DG-A-06): the window filter's hand-rolled preset chip — 54 of them
   // over 7 admin call sites. The presets are `FilterPill`s now and the non-navigating "Custom"
   // chip wears `filterPillClass`; neither is uppercase or tracked.

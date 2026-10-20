@@ -427,10 +427,10 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
               {calView === "days" ? (<>
                 <button type="button" onClick={prevMonth} disabled={!canPrev}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
+                  className="inline-flex h-[var(--tap-min)] w-[var(--tap-min)] items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
                   aria-label={t.common.prevMonth}><I.chevronLeft s={16} /></button>
                 <button type="button" onClick={() => setCalView("years")}
-                  className="inline-flex items-center font-display text-[15px] font-semibold text-text hover:text-brand-300 transition-colors"
+                  className="inline-flex min-h-[var(--tap-min)] items-center justify-center px-2 font-display text-[15px] font-semibold text-text hover:text-brand-300 transition-colors"
                   aria-label={t.common.pickYear}>
                   {MONTH_NAMES[viewMonth - 1]} {viewYear}
                   {/* The caret ends the centred title control, so its ink stands on the control's end (round 10, R10-A3/A6: a
@@ -439,12 +439,12 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                   <I.chevronDown s={12} edge="end" className="ml-1.5" aria-hidden />
                 </button>
                 <button type="button" onClick={nextMonth} disabled={!canNext}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
+                  className="inline-flex h-[var(--tap-min)] w-[var(--tap-min)] items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"
                   aria-label={t.common.nextMonth}><I.chevronRight s={16} /></button>
               </>) : (<>
                 <span className="font-display text-[15px] font-semibold text-text">{t.common.pickYear}</span>
                 <button type="button" onClick={() => setCalView("days")}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
+                  className="inline-flex h-[var(--tap-min)] w-[var(--tap-min)] items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors"
                   aria-label={t.common.backToCalendar}><I.x s={16} /></button>
               </>)}
             </div>
@@ -455,7 +455,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                   <span key={l} className="text-center font-mono text-micro uppercase eyebrow text-text-subtle font-bold">{l}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-0.5 px-2.5 pb-3">
+              <div className="grid grid-cols-7 gap-0 px-1 pb-3">
                 {grid.map((cell, i) => {
                   if (!cell) return <span key={`e-${i}`} />;
                   const isSel = parsed && parsed.y === viewYear && parsed.m === viewMonth && parsed.d === cell.day;
@@ -464,10 +464,9 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                     <button key={cell.day} type="button" disabled={cell.disabled}
                       onClick={() => pickDay(viewYear, viewMonth, cell.day)}
                       className={cn(
-                        // 36px day cell — arbitrary literal; `h-9` is 64px on this repo's
-                        // overridden spacing scale, which made six rows 384px of day grid
-                        // inside a max-w-[320px] popover. ⛔ Never a scale token here.
-                        "h-[36px] rounded-md font-mono text-[13px] tabular-nums transition-all",
+                        // The 40px tap floor fits seven columns even at 320px viewport width.
+                        // Use the token: this repo's overridden spacing scale makes `h-10` much larger.
+                        "h-[var(--tap-min)] rounded-md font-mono text-[13px] tabular-nums transition-all",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
                         isSel ? "bg-brand-500 text-white font-bold shadow-glow-selected"
                           : cell.disabled ? "text-text-subtle/30 cursor-not-allowed"
@@ -486,7 +485,7 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
 
             <div className="border-t border-border px-3 py-2.5 flex items-center justify-between">
               <button type="button" onClick={() => setCalOpen(false)}
-                className="font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
+                className="min-h-[var(--tap-min)] font-mono text-label uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors">
                 {t.common.cancel}
               </button>
               {parsed && (
@@ -514,10 +513,9 @@ function YearGrid({ years, viewYear, selectedYear, onPick }: {
         <button key={y} ref={y === viewYear ? activeRef : undefined} type="button"
           onClick={() => onPick(y)}
           className={cn(
-            // 32px year cell — arbitrary literal; `h-8` is 48px on this repo's overridden
-            // spacing scale, which showed ~4.5 rows in the max-h-[240px] scroller instead
-            // of the ~7 intended. ⛔ Never a scale token here.
-            "h-[32px] rounded-md font-mono text-[13px] tabular-nums transition-all",
+            // Year choices are touch targets too. The 40px token keeps six rows visible
+            // in the 240px scroller without relying on the overridden spacing scale.
+            "h-[var(--tap-min)] rounded-md font-mono text-[13px] tabular-nums transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500",
             y === viewYear ? "bg-brand-500 text-white font-bold shadow-glow-selected"
               : y === selectedYear ? "ring-1 ring-brand-500/50 text-brand-300"
