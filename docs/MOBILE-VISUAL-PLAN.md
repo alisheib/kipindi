@@ -506,7 +506,10 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   recorded. The public history API exposes exact vendor bars, and the
   [vendor's public-display attribution guide](https://support.twelvedata.com/en/articles/12647398-attribution-guidelines-for-using-twelve-data)
   also requires visible attribution unless a contract waives it; no such waiver is recorded. No U43 closure or
-  live Release B is claimed.
+  live Release B is claimed. The handover brief's older "HOT only rose chip" line was corrected to the
+  neutral/slate HOT rule Ali recorded in DESIGN_AUTHORITY §B2a; the current card already follows that rule.
+  The design-frozen ceiling for U43's edited last-resort error page was lowered from 23 to 22; adding one
+  raw inline colour to a copy failed at 23/22, and the restored guard passed.
   ▶ **WORKING BRIEF:**
   `docs/design-brief/u43-2026-10/BRIEF.md` — where it stands, Ali's rulings, the fixed points, the data facts, five work
   packages (the round card; the live line and the chart made to agree; the board and the two chip rows; the market card;

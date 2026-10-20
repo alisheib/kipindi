@@ -124,7 +124,7 @@ the 320 title fits.
 One statement of where the money is (the big percentage in a neutral ink with the side caption in its own ink — check
 §B2/§B2a, and the case where NO leads); the 24h move and the 7-day trend labelled ("7 days" / "siku 7" / "7天"), legible,
 with a minimum scale, aqua; ONE word per state for void / resolved / closed; one status chip, ordered (SOON before HOT,
-HOT the only rose chip, CLOSED royal); a one-row footer; "Close call" vs "Closest call" made one word; the Watching empty
+HOT neutral/slate as DESIGN_AUTHORITY §B2a's U43 amendment requires, CLOSED royal); a one-row footer; "Close call" vs "Closest call" made one word; the Watching empty
 state's star promise removed; glyphs, not ▲▼↑↓→; every size on the ladder; the press scale token; the skeleton at the
 card's radius and height (`PANEL-SYNTHESIS.md` marketCardSpec).
 
