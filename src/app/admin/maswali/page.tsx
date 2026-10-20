@@ -5,12 +5,18 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { Chip } from "@/components/ui/chip";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SearchBox } from "@/components/ui/search-box";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { currentSession } from "@/lib/server/auth-service";
 import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
-import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminPagination, buildBaseHref } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
 import { CONSOLE_PER_PAGE, consoleAlerts, consoleStanding, pageConsoleWeeks, type ConsoleWeekRow } from "@/lib/server/maswali-console";
+import { parseWeekListQuery, weekListParams } from "@/lib/maswali-week-list";
+import { WEEK_STATES } from "@/lib/maswali-week-label";
 import { maswaliAccountBalance } from "@/lib/server/maswali-money-service";
 import { acct } from "@/lib/server/ledger";
 import { formatTzs } from "@/lib/utils";
@@ -26,7 +32,7 @@ export const dynamic = "force-dynamic";
  * need), the alerts that ask someone to act, and every week with where its results stand. ⛔ No ticket data beyond the
  * count: picks, holders and the exposure are accounting's and compliance's pages.
  */
-type MaswaliPageProps = { searchParams: Promise<{ page?: string }> };
+type MaswaliPageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function AdminMaswaliPage(props: MaswaliPageProps) {
   return <AdminPageGate title="Millionea"><AdminMaswaliContent {...props} /></AdminPageGate>;
@@ -34,10 +40,13 @@ export default async function AdminMaswaliPage(props: MaswaliPageProps) {
 
 async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
   const sp = await searchParams;
+  const query = parseWeekListQuery(sp);
+  const listParams = weekListParams(query);
+  const hasFilter = !!(query.q || query.state || query.line);
   const session = await currentSession();
   const canDraft = await canUseControl(session?.role, "createMaswaliWeek");
   const [weeks, alerts, standing, guarantee] = await Promise.all([
-    pageConsoleWeeks(Number(sp.page ?? "1"), CONSOLE_PER_PAGE).catch(() => null),
+    pageConsoleWeeks(typeof sp.page === "string" ? Number(sp.page) : 1, CONSOLE_PER_PAGE, query).catch(() => null),
     consoleAlerts().catch(() => null),
     consoleStanding().catch(() => null),
     maswaliAccountBalance(acct.maswaliGuarantee).catch(() => null),
@@ -78,16 +87,41 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
         </AdminCard>
 
         <AdminCard title="Weeks" sw="Wiki" padding="p-0">
+          <div className="border-b border-border-subtle p-4">
+            <span className="mb-1 block text-body-sm text-text-secondary">Week code</span>
+            <SearchBox placeholder="Search week code" ariaLabel="Search week codes" helpFields={["code"]} />
+          </div>
+          <form method="get" action="/admin/maswali" className="flex flex-wrap items-end gap-3 border-b border-border-subtle p-4">
+            {query.q && <input type="hidden" name="q" value={query.q} />}
+            <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
+              <span id="maswali-week-state-label">State</span>
+              <Select key={query.state} name="state" ariaLabel="Week state" defaultValue={query.state} className="mt-1" options={[{ value: "", label: "All states" }, ...WEEK_STATES.map((state) => ({ value: state, label: state }))]} />
+            </div>
+            <div className="min-w-[145px] flex-1 text-body-sm text-text-secondary">
+              <span id="maswali-week-line-label">Line</span>
+              <Select key={query.line} name="line" ariaLabel="Week line" defaultValue={query.line} className="mt-1" options={[{ value: "", label: "Both lines" }, { value: "PUBLIC", label: "Public" }, { value: "DRIVE", label: "Drive" }]} />
+            </div>
+            <input type="hidden" name="sort" value={query.sort} />
+            <input type="hidden" name="dir" value={query.dir} />
+            <Button type="submit" variant="primary" size="sm">Apply</Button>
+            {hasFilter && <Link href="/admin/maswali" className="btn btn-ghost btn-sm">Clear</Link>}
+          </form>
           {weeks === null ? <p className="p-4 text-body-sm text-danger-fg">The weeks could not be read.</p>
-            : weeks.total === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
+            : weeks.allTotal === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
+            : weeks.total === 0 ? <EmptyState title="No weeks match these filters" body="Try another week code, state or line." action={<Link href="/admin/maswali" className="btn btn-ghost btn-sm">Clear filters</Link>} />
             : (<>
+              <p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{weeks.total} of {weeks.allTotal} {weeks.allTotal === 1 ? "week" : "weeks"}</p>
               <ScrollX label="Millionea weeks">
                 <table className="admin-tbl min-w-[860px]">
                   <thead>
                     <tr>
-                      <th className="text-left">Week</th><th className="text-left">Line</th><th className="text-left">State</th>
-                      <th className="text-left">Sales close (EAT)</th><th className="text-right">Tickets</th>
-                      <th className="text-left">Results</th><th className="text-left">Settled</th>
+                      <SortTh field="week" label="Week" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" />
+                      <SortTh field="line" label="Line" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" />
+                      <SortTh field="state" label="State" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" />
+                      <SortTh field="closes" label="Sales close (EAT)" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" />
+                      <SortTh field="tickets" label="Tickets" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" align="right" />
+                      <th scope="col" className="text-left">Results</th>
+                      <SortTh field="settled" label="Settled" current={query.sort} dir={query.dir} sp={listParams} baseHref="/admin/maswali" />
                     </tr>
                   </thead>
                   <tbody>{weeks.rows.map((w) => <WeekRow key={w.id} w={w} />)}</tbody>
@@ -95,7 +129,7 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
               </ScrollX>
               {weeks.total > CONSOLE_PER_PAGE && (
                 <div className="border-t border-border-subtle px-4 py-2">
-                  <AdminPagination page={weeks.page} total={weeks.total} perPage={CONSOLE_PER_PAGE} baseHref="/admin/maswali" />
+                  <AdminPagination page={weeks.page} total={weeks.total} perPage={CONSOLE_PER_PAGE} baseHref={buildBaseHref("/admin/maswali", listParams)} />
                 </div>
               )}
             </>)}

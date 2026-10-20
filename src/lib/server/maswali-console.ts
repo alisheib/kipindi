@@ -29,6 +29,7 @@ import { MAIN_COUNT, settlementGate, weekVoidCertain } from "@/lib/maswali-score
 import { guaranteeRequirement } from "@/lib/maswali-money";
 import type { RolloutState } from "@/lib/millionea-rollout";
 import { formatTzs } from "@/lib/utils";
+import { parseWeekListQuery, selectWeekPage, type WeekListQuery } from "@/lib/maswali-week-list";
 
 const HOUR = 3_600_000;
 
@@ -68,10 +69,10 @@ export async function listConsoleWeeks(limit?: number): Promise<ConsoleWeekRow[]
  * One page of the week list (`test:grid-paging`: it grows a week at a time). Every week is COUNTED, so none falls off the
  * console; rows are built only for the page asked, clamped into range.
  */
-export async function pageConsoleWeeks(askedPage: number, perPage: number): Promise<{ rows: ConsoleWeekRow[]; total: number; page: number }> {
+export async function pageConsoleWeeks(askedPage: number, perPage: number, query: WeekListQuery = parseWeekListQuery({})): Promise<{ rows: ConsoleWeekRow[]; total: number; allTotal: number; page: number }> {
   const weeks = await weekStore.list({});
-  const page = clampPage(askedPage, weeks.length, perPage);
-  return { rows: await Promise.all(weeks.slice((page - 1) * perPage, page * perPage).map(rowOf)), total: weeks.length, page };
+  const selected = selectWeekPage(weeks, askedPage, perPage, query);
+  return { rows: await Promise.all(selected.weeks.map(rowOf)), total: selected.total, allTotal: selected.allTotal, page: selected.page };
 }
 
 /** A 1-based page inside [1, last], the pager's own rule. */
