@@ -267,10 +267,12 @@ export function SealConsole({ weekId, weekCode, rows, voidReasons, windowOpen, c
         onConfirm={() => {
           setCorrectTried(true);
           if (!correctRow || correction.evidence.trim().length < 10 || (correction.outcome === "VOID" && !isMaswaliVoidReason(correction.voidReason))) return;
-          if (!correctRow.outcome || !correctRow.sealedAtIso) { setError("Reload the week and review the sealed result before correcting it."); return; }
+          const expectedOutcome = correctRow.outcome;
+          const expectedSealedAt = correctRow.sealedAtIso;
+          if (!expectedOutcome || !expectedSealedAt) { setError("Reload the week and review the sealed result before correcting it."); return; }
           run(() => correctMaswaliSealAction(fd({ weekId, slot: String(correctRow.slot), outcome: correction.outcome,
             evidence: correction.evidence, voidReason: correction.voidReason,
-            expectedOutcome: correctRow.outcome, expectedSealedAt: correctRow.sealedAtIso })), () => setCorrectRow(null), setSealAuditWarning);
+            expectedOutcome, expectedSealedAt })), () => setCorrectRow(null), setSealAuditWarning);
         }} />
     </div>
   );

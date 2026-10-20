@@ -64,8 +64,10 @@ function correctionReviewed(source: string, actionSource: string) {
   const s = seal(source);
   const correction = s.slice(s.indexOf('<ConfirmModal open={!!correctRow}'));
   const action = actionSource.slice(actionSource.indexOf('export async function correctMaswaliSealAction'));
-  return s.includes('correctRow.outcome, expectedSealedAt: correctRow.sealedAtIso')
-    && s.includes('if (!correctRow.outcome || !correctRow.sealedAtIso)')
+  return s.includes('const expectedOutcome = correctRow.outcome;')
+    && s.includes('const expectedSealedAt = correctRow.sealedAtIso;')
+    && s.includes('if (!expectedOutcome || !expectedSealedAt)')
+    && s.includes('expectedOutcome, expectedSealedAt }')
     && correction.includes('error={correctTried && correction.evidence.trim().length < 10')
     && correction.includes('correction.outcome === "VOID" && !isMaswaliVoidReason(correction.voidReason)')
     && correction.includes('if (!correctRow || correction.evidence.trim().length < 10')
@@ -125,7 +127,7 @@ if (process.argv.includes("--prove-red")) {
   const shortCorrect = controls.replace('<Button size="sm" variant="ghost" disabled={!r.sealedAtIso} onClick={() => { setError(null); setCorrectRow(r)', '<Button size="xs" variant="ghost" disabled={!r.sealedAtIso} onClick={() => { setError(null); setCorrectRow(r)');
   if (shortCorrect === controls) throw new Error("Correct target size plant missing");
   ok("red: shrinking the consequential Correct target to 32px turns the guard red", !pendingResultReadable(shortCorrect));
-  const staleCorrection = controls.replace('expectedSealedAt: correctRow.sealedAtIso', 'expectedSealedAt: ""');
+  const staleCorrection = controls.replace('const expectedSealedAt = correctRow.sealedAtIso;', 'const expectedSealedAt = "";');
   if (staleCorrection === controls) throw new Error("Correction seal-version plant target missing");
   ok("red: a correction without the reviewed seal version is reported", !correctionReviewed(staleCorrection, actions));
   const blankCorrection = controls.replace('if (!correctRow || correction.evidence.trim().length < 10', 'if (!correctRow || false');
