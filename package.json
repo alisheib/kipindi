@@ -691,6 +691,8 @@
     "test:maswali-settle": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-settle.test.mts",
     "test:maswali-void": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-void.test.mts",
     "red:maswali-money-path": "node scripts/red-maswali-money-path.mjs",
+    "e2e:maswali-money": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-money-action.test.mts",
+    "red:maswali-money-action": "node scripts/red-maswali-money-action.mjs",
     "e2e:maswali-fault": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-fault.test.mts",
     "test:maswali-rbac": "tsx scripts/maswali-rbac.test.mts",
     "test:maswali-shared-paths": "tsx scripts/db-scratch.mts --run npx tsx scripts/maswali-shared-paths.test.mts",
