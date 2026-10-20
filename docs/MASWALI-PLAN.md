@@ -31,26 +31,25 @@
 
 **State (2026-10-20):** S1–S4 are on `main` dark. S5's SSD integration branch
 `codex/maswali-coord-20261019` includes the last fetched `main` at `a504ad280`.
-Current-`main` classic parity has completed: every difference was named and the replay and
-overmask control passed. An earlier source and disposable-database battery, the ACTIVE player
-drive, WITHDRAWN-route drive, full three-language player tile read, and admin screenshot
-read passed. The admin review found list and form gaps: week and pools lookup, filters,
-sorting and money/share input gates are committed with guards and mutation proofs. The
-integrity lists' global selectors and final admin interaction drive are in progress. One
-combined-tree `test:all` attempt had a mixed memory/PostgreSQL environment and stopped;
-it is not release evidence. The clean-environment full rerun, source-red battery, exact-commit
-build and local `qa:live`, deployment and production read-back remain open. The shared
-heavy-job lock now belongs to S5, and no `main` push is under way. The rollout remains
-`WITHDRAWN`; the public product is not open.
+The player and admin surfaces, global admin search/filter/sort/paging, bounded integrity
+report coverage, reviewed consequential actions, and partial-seal and device-audit feedback
+are integrated. Their focused guards, mutation proofs and two-store checks have passed.
+The earlier ACTIVE player drive, WITHDRAWN-route drive and three-language player tile read
+passed on source whose player paths have not since changed. A fresh current-`main` classic
+browser comparison and the final admin interaction/tile read are running. A diagnostic
+`test:all` was interrupted by two jobs using this checkout's same disposable Postgres;
+it is not release evidence. The exclusive full rerun, final money battery, exact-commit
+build and local `qa:live`, deployment and production read-back remain open. S5 owns the
+shared heavy-job lock; no `main` push is under way. The rollout remains `WITHDRAWN`.
 
-**Next:** Finish the admin integrity selectors and final browser interaction/tile read on
-the integrated source. Complete every changed-file guard and mutation proof, clean-environment
-two-store `test:all`, disposable-PostgreSQL money battery, typecheck, exact-commit production
-build, bundle verification and local live QA. Recheck current `main` and the shared release
-lock before any push. Deploy S5 dark only after all gates pass, then perform AGENTS.md §4's
-three-host, health, chunk, live-QA and browser read-back. S7 follows with its wide-winner
-transaction-timeout repair on its own branch; S6 follows in L → D → R → N order. S8 remains
-at its owner and regulatory gates in §6. Do not flip the rollout as part of a dark release.
+**Next:** Finish the fresh classic comparison and final admin/browser tile read. Complete
+every changed-file guard and mutation proof, clean-environment two-store `test:all`, the
+disposable-PostgreSQL money battery, typecheck, exact-commit production build, bundle
+verification and local live QA. Recheck current `main` and the shared release lock before
+any push. Deploy S5 dark only after all gates pass, then perform AGENTS.md §4's three-host,
+health, chunk, live-QA and browser read-back. S7 follows with its wide-winner transaction-
+timeout repair on its own branch; S6 follows in L → D → R → N order. S8 remains at its owner
+and regulatory gates in §6. Do not flip the rollout as part of a dark release.
 
 ## §0a · Historical handovers (superseded by §0 above)
 
