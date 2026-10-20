@@ -911,6 +911,11 @@ an `I` component, and an image cursor would open a second icon door. The source 
 | Live | the existing calm breathe dot |
 Each has its reduced-motion branches (§M6). DA's drift that `.m-draw` runs 820 ms is corrected (it runs `--t-max`).
 
+The opt-in motion candidate puts `.g-settle` on the watch star only after the server confirms the shared watch event;
+an optimistic Fill that may roll back stays still. The notification bell settles only after permission and the local
+watchlist write. Both start static on page load, and both remove the class on opt-out. The W8 opt-in guard plants each
+timing reversal in memory.
+
 ### W9 — Close
 An adversarial audit (refute by mutation), `test:all` with the database suites, full tiles (360 / 768 / 1280 / 1920 + 320
 × sw / en / zh, both shells, admin) read one by one, the production read-back. DESIGN_AUTHORITY final; §1 all ✅; the

@@ -33,6 +33,7 @@ export function WatchStar({
   const pathname = usePathname();
   const { toast } = useToast();
   const [on, setOn] = useState(initial);
+  const [settledOn, setSettledOn] = useState(false);
   const [pending, start] = useTransition();
 
   // B-24 — one market can render several stars on one page (card + detail
@@ -42,7 +43,12 @@ export function WatchStar({
   useEffect(() => {
     const sync = (e: Event) => {
       const d = (e as CustomEvent<{ marketId: string; watching: boolean }>).detail;
-      if (d?.marketId === marketId) setOn(d.watching);
+      if (d?.marketId === marketId) {
+        setOn(d.watching);
+        // The shared star settles only after a confirmed follow, never on the
+        // initial server value or on an optimistic state that may roll back.
+        setSettledOn(d.watching);
+      }
     };
     window.addEventListener("50pick:watch", sync);
     return () => window.removeEventListener("50pick:watch", sync);
@@ -57,6 +63,7 @@ export function WatchStar({
       return;
     }
     const prev = on;
+    setSettledOn(false);
     setOn(!prev); // optimistic
     // No haptic. Watching a market is a preference, not a physical event — the kit's
     // haptic rule is contact / passing true / coming to rest, NEVER encouragement or
@@ -115,7 +122,7 @@ export function WatchStar({
     >
       {/* Followed = solid: the star's Fill (PHOSPHOR-MIGRATION W2). A class cannot fill a Phosphor drawing — its paths
           carry their own fill — so the state picks the drawing. */}
-      <I.star s={size} tier={on ? "fill" : undefined} />
+      <I.star s={size} tier={on ? "fill" : undefined} className={on && settledOn ? "g-settle" : undefined} />
     </button>
   );
 }

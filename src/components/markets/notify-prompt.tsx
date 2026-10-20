@@ -45,6 +45,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
   const [supported, setSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [watching, setWatching] = useState(false);
+  const [settledOn, setSettledOn] = useState(false);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -81,12 +82,14 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
         const next = Array.from(new Set([...readWatchlist(), marketId]));
         writeWatchlist(next);
         setWatching(true);
+        setSettledOn(true);
         // Confirmation chirp so the user sees it works
         new Notification(t.market.watchingTitle, { body: marketTitle.slice(0, 80), tag: `50pick-${marketId}` });
       } else {
         const next = readWatchlist().filter((x) => x !== marketId);
         writeWatchlist(next);
         setWatching(false);
+        setSettledOn(false);
       }
     } finally {
       setPending(false);
@@ -122,7 +125,7 @@ export function NotifyPrompt({ marketId, marketTitle }: { marketId: string; mark
     >
       {/* M5 state morph through the kit primitive. On is the bell's Fill (PHOSPHOR-MIGRATION §8c: a toggle that is on is
           its Fill, as the followed star); `bellRing` keeps its one meaning, the notification settings. */}
-      <GlyphSwap state={watching}>{watching ? <I.bell s={14} tier="fill" /> : <I.bell s={14} />}</GlyphSwap>
+      <GlyphSwap state={watching}>{watching ? <I.bell s={14} tier="fill" className={settledOn ? "g-settle" : undefined} /> : <I.bell s={14} />}</GlyphSwap>
       {watching ? `${t.common.watching} · ${t.common.watchingHint}` : t.common.notifyOnResolve}
     </button>
   );
