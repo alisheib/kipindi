@@ -50,34 +50,24 @@ www, apex and Railway served its SHA, health was reachable and migrated, both pu
 `qa:live` passed. **Resume:** complete the owed release-1 checks, then releases 2b–2d and 3 (§8d and the hand-over).
 W5 is partly landed; its remaining sites belong to release 2c.
 
-⏳ **Release 2b (W6) in flight:** the twelve private empty-state drawings and the bell panel's private drawing now use
-family Duotone glyphs on the shared empty plate; error states use the filled danger glyph. The served W6 code passed
-typecheck, a build, local `qa:live`, motion, and the full three-language responsive sweep; the final-commit build remains
-before push. The database battery has seven failures already present on live `main`. Classic parity's same-code null
-comparison passed 68/68. Its W6 comparison found only the empty `/positions` card in 24 signed-in cells; the exact
-main-region HTML and layout pairs are generated into the parity register, preserving W3's entries. The book's four
-time-label width changes now compare equal in the saved null pair only when the label stays aligned to its card row's
-right edge. The open-ticket ring masks its changing number but keeps its accessible status words. The lightweight
-`test:classic-parity-noise` and `red:classic-parity-noise` catch both retired broad masks; a fresh browser comparison
-is still owed. The new generator selection and preservation guard passes, and its two dropped-flag mutations are
-caught. The long campaign red proof,
-classic parity red proof and final comparison remain before the live push. Release 2c follows with category plates,
-money doors and stat tiles.
+✅ **Release 2b (W6) LIVE at `d268ef919` (2026-10-20):** the twelve private empty-state drawings and the bell panel's
+private drawing use family Duotone glyphs on a shared plate; error states use the filled danger glyph. The release
+descends from U43's restored house-gold commit `dd1386f06`; its classic bell keeps its gold marks while its empty art
+comes from the one glyph family. Before the push, `test:visual-pass-r5c` passed 111/111, `test:red-anchors` 7412/7412,
+and the focused glyph-source, U43 palette and Phosphor-plan guards passed. The inherited U43 red harnesses gained
+audited plants at `135ccb2ac`; their three mutation proofs passed. Railway built the pushed commit and reports SUCCESS.
+The www, apex and Railway hosts each served `d268ef919` with HTTP 200; `/api/health` reported the database reachable
+and migrated. Ali explicitly asked to push now and do the remaining W6 release checks on the next machine.
 
-**2026-10-20 handoff checkpoint:** release 2b's branch is pushed as `codex/phosphor-2b-w6`. After U43's
-`3ec111a83` hotfix, W6 was rebased locally on `origin/main` and the focused palette, empty-state, glyph-source,
-glyph-sync, plan and parity-entry guards passed. Mutation proofs passed for the palette, glyph-sync, plan, parity
-entries and classic-parity noise. This is not a release proof:
-U43 holds the `main` push lock while preparing Ali's later house-gold restoration, and Maswali S5 holds the shared
-heavy-test lock for its database release checks. Fetch `origin/main` again, rebase W6 on both lanes' final live commits,
-and keep U43's latest gold ruling while preserving W6's one-source Duotone empty plates. The classic empty bell is the
-overlap: replace its private SVG with `I.bell` on the shared plate, with its ruled classic gold accent. Then run the
-long campaign and classic-parity reds, a fresh classic parity browser comparison, the changed-file readers, the
-database battery, exact-commit typecheck/build/local `qa:live`, and visual tiles before pushing `main`; finish the
-production read-back required by AGENTS.md §4. No Phosphor 2b–3 code is live at this checkpoint.
-The inherited U43 red-anchor gap is repaired on this branch at `135ccb2ac`: the three red harnesses now declare their
-exact plants, `test:red-anchors` passes 7,299/7,299 with the unanchored ceiling still 64, and all three mutation
-proofs pass. Recheck after U43's final live commit before the Phosphor push.
+**Resume W6 verification from GitHub:** `codex/phosphor-2b-w6` contains the live release. Run the exact-commit local
+typecheck, build and `qa:live`; the long `red:campaign-visuals` and classic-parity red proof; a fresh classic browser
+comparison; the changed-file readers, database `test:all`, responsive and visual tiles; production `qa:chunks-prod`
+on both public origins, production `qa:live`, and changed-page browser inspection. The earlier same-code classic null
+comparison passed 68/68, and its W6 comparison found only the empty `/positions` card in 24 signed-in cells; its
+generated entries preserve W3's. These earlier measurements do not substitute for the deferred final-commit run.
+Release 2c follows with category plates, money doors and stat tiles. The downstream W5, admin and W7/W8 branches are
+on GitHub but still descend from W6's old pre-rebase commit; restack each branch's own commits onto live `main` before
+its separate release. The next machine can derive the exact old bases from the branch graph in §8d.
 
 ⏳ **Owed — checks not run because Ali asked to ship (2026-10-19); run them on live `main` first (AGENTS.md §4):**
 - before/after tiles of every changed surface (phones at 390px and 2x, desktop at 1280px), read one by one;
@@ -262,7 +252,7 @@ written with `I` today moves to Phosphor automatically at W2, with no edit. From
 | W3 | Selected states: Fill + one indicator; admin sidebar icons | ✅ | ee62451c — live 2026-10-18 11:22 UTC: every bar of destinations marks the current one with its Fill glyph on one opaque royal pill (both tab bars at 24px, both desktop bars, the admin sidebar with 50 new glyphs); production read back |
 | W4 | Outcomes and status: glyph + ink + word | ✅ | 70c069cb — live 2026-10-19 11:51 UTC: release 1 of §8d — status in Fill, outcomes as glyph + ink + word, every notification its glyph, §8b's meanings, the player front's old icons; its remainder, release 1b, live at d6f0b3ec (12:43 UTC): the review's other 17 findings; the stopped checks are §0's Owed |
 | W5 | Plates, money, hub, categories, stats, admin cards | 🔨 | Release 2a parts 1 and 2 live at `e4b148a05` and `e30d599cb`; the remainder is release 2c and 2d (§8d) |
-| W6 | Empty states: one family | 🔨 | Release 2b candidate: one shared Duotone plate for the twelve empty kinds and the bell panel; parity and release checks in progress |
+| W6 | Empty states: one family | ✅ | Release 2b live at d268ef919: one shared Duotone plate for the twelve empty kinds and the bell panel; Ali deferred final-commit checks to the next machine (§0) |
 | W7 | Consolidation: inline svgs, text-character icons, PWA, Maswali | ⬜ | |
 | W8 | Motion on the existing primitives | ⬜ | |
 | W9 | Close: adversarial audit, test:all, full tiles, the law final | ⬜ | |
