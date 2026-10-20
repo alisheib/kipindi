@@ -255,7 +255,7 @@ export function SlipClient({
       {!closed && (allowed > 1 || count > 1) && (
         <section aria-label={t.millionea.draftTickets} data-testid="millionea-ticket-drafts" className="mat-flat flex min-w-0 flex-col gap-2 rounded-card px-3 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-mono text-label uppercase eyebrow text-text-muted">{t.millionea.draftTickets}</h2>
+            <h2 className="font-mono text-label uppercase eyebrow text-text-subtle">{t.millionea.draftTickets}</h2>
             <div className="flex flex-wrap items-center gap-2">
               {count > 1 && <Button type="button" variant="ghost" size="md" onClick={() => updateDraft(removeActiveSlip(draftRef.current), true)}>{fill(t.millionea.removeTicket, { n: formatNumber(held + draft.active + 1) })}</Button>}
               {count < allowed && <Button type="button" variant="ghost" size="md" onClick={() => updateDraft(addSlip(draftRef.current, hiddenSlots, VOIDED_ROW_FILL, allowed), true)}>{t.millionea.addTicket}</Button>}

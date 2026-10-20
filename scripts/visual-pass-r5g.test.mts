@@ -306,6 +306,7 @@ const FILES = {
   switch: "src/components/journey/tickets/ticket-switch.tsx", udStake: "src/components/updown/updown-stake-controls.tsx",
   udPanel: "src/components/updown/round-stake-panel.tsx", apply: "src/app/agent/apply/apply-client.tsx", kyc: "src/app/profile/kyc/page.tsx",
   cashback: "src/components/ui/cashback-promo.tsx", menu: "src/components/layout/avatar-menu.tsx",
+  mlnSlip: "src/app/millionea/slip/slip-client.tsx",
 };
 const DOORS: Door[] = [
   // The journey header (SJ-15) and the Wallet sheet.
@@ -323,6 +324,8 @@ const DOORS: Door[] = [
   { at: "/wallet · the empty book's door", proof: [FILES.wallet, "{journey ? t.journey.depositAction : t.common.depositCta}"], words: "journey.depositAction", to: "/wallet/deposit", verdict: "name" },
   { at: "/wallet · Risiti zote", proof: [FILES.wallet, "{t.receipts.allReceipts}"], words: "receipts.allReceipts", to: "/wallet/receipts", verdict: "action", why: "\"all\" + the page's name (Risiti)" },
   { at: "/wallet/receipts · the empty book's door", proof: [FILES.receipts, "{journey ? t.journey.depositAction : t.common.depositCta}"], words: "journey.depositAction", to: "/wallet/deposit", verdict: "name" },
+  { at: "Millionea slip · shortfall deposit", proof: [FILES.mlnSlip, "fillNodes(t.journey.lowDeposit, { amount:"], words: "journey.lowDeposit", to: "/wallet/deposit", verdict: "action",
+    why: "The slip names the amount to add before its one reviewed ticket purchase; the deposit page names itself in its own heading." },
   { at: "/wallet/deposit · back", proof: [FILES.deposit, '<BackLink fallbackHref="/wallet" label={t.wallet.title} />'], words: "wallet.title", to: "/wallet", verdict: "name" },
   { at: "/wallet/deposit · the break's Toa pesa", proof: [FILES.deposit, "{journey ? t.journey.withdrawAction : t.common.withdraw}"], words: "journey.withdrawAction", to: "/wallet/withdraw", verdict: "name" },
   { at: "/wallet/withdraw · back", proof: [FILES.withdraw, '<BackLink fallbackHref="/wallet" label={t.wallet.title} />'], words: "wallet.title", to: "/wallet", verdict: "name" },
