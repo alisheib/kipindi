@@ -807,7 +807,7 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "403-gloss · an invented Swahili gloss is passed where no shipped word exists",
+    name: "403-gloss · the Desk head takes the shipped Events gloss instead of its own",
     file: PAGE,
     from: `        sw="Dawati"`,
     to: `        sw="Matukio"`,
