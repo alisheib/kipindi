@@ -14,7 +14,7 @@ import { safeError } from "@/lib/server/safe-error";
 import { requireStaff } from "@/lib/server/rbac-guard";
 import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import {
-  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestion, editDraftQuestions, moveClose, openWeek, sealQuestion,
+  attestParity, confirmSeal, correctSeal, createWeek, editDraftQuestions, moveClose, openWeek, sealQuestion,
   type DraftQuestionInput,
 } from "@/lib/server/maswali-service";
 import { guaranteeReader } from "@/lib/server/maswali-money-service";
@@ -66,22 +66,6 @@ export async function createMaswaliWeekAction(formData: FormData): Promise<Actio
     return { ok: true, weekId: r.week.id };
   } catch (err) {
     return { ok: false, error: safeError(err, "The week could not be drafted") };
-  }
-}
-
-export async function editMaswaliQuestionAction(formData: FormData): Promise<ActionResult> {
-  const session = await requireStaff(CONTROL_DOMAIN.editMaswaliQuestion, "editMaswaliQuestion");
-  const weekId = str(formData, "weekId");
-  try {
-    const slot = Number(str(formData, "slot"));
-    let changes: Partial<DraftQuestionInput>;
-    try { changes = JSON.parse(str(formData, "changes")) as Partial<DraftQuestionInput>; } catch { return { ok: false, error: "The change could not be read." }; }
-    const r = await editDraftQuestion({ weekId, slot, changes, officerId: session.userId });
-    if (!r.ok) return { ok: false, error: r.error };
-    refresh(weekId);
-    return { ok: true, weekId };
-  } catch (err) {
-    return { ok: false, error: safeError(err, "The question could not be saved") };
   }
 }
 
