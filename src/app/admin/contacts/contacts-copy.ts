@@ -272,7 +272,7 @@ export const CONTACT_CHECKING = "Checking the book…";
  *  (`?edit=<contact id>`, a cuid — never the number), and it is drawn only when the answer carries that id. A viewer who
  *  may not read a number is handed no id, and a number the book BLOCKS (an erasure) has no row to open, so for either the
  *  duplicate sentence stands alone (`contactLookupReply`, `contactAddReply`). */
-export const CONTACT_OPEN_EXISTING = "Open the existing contact →";
+export const CONTACT_OPEN_EXISTING = "Open the existing contact";
 
 /** A field's one-line hint, from the ONE field list (`contact-fields.ts`) — never retyped here. */
 function fieldHint(key: "email" | "tags"): string {
@@ -497,7 +497,7 @@ export const CONTACTS_BULK = {
   retry: "Review it again",
   unsavedBody: "A tag or a list name has been typed but nothing has been applied. Leaving now discards it.",
   noName: "No name",
-  editLink: "edit →",
+  editLink: "edit",
   actionsLabel: "Bulk actions",
 } as const;
 

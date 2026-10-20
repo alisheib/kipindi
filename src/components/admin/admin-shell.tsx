@@ -640,7 +640,7 @@ export function AdminKpi({
                   : "bg-bg-sunken text-text-tertiary",
               ].join(" ")}
             >
-              {deltaDir === "up" ? "▲" : deltaDir === "down" ? "▼" : "·"} {delta}
+              {deltaDir === "up" ? <I.arrowUp s={12} aria-hidden /> : deltaDir === "down" ? <I.arrowDown s={12} aria-hidden /> : "·"} {delta}
             </span>
           )}
         </div>

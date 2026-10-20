@@ -23,6 +23,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { markSvg, lockupSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
+import { drawingOf } from "./glyphs/codegen.mts";
+import { GLYPH_MAP } from "./glyphs/map.ts";
 
 const ROOT = process.cwd();
 const BRAND = resolve(ROOT, "public/brand");
@@ -65,6 +67,17 @@ function ico(entries: Array<{ size: number; bytes: Buffer }>): Buffer {
   return Buffer.concat([table, ...entries.map(({ bytes }) => bytes)]);
 }
 
+/** Installed-app shortcuts use the same Fill drawings as the house glyph family. */
+function shortcutSvg(key: "markets" | "wallet" | "arrowDownToLine", ink: string): string {
+  const entry = GLYPH_MAP[key];
+  if (!entry || "retire" in entry) throw new Error(`shortcut glyph ${key} is not live`);
+  const paths = drawingOf(key, entry, "fill")
+    .map((part) => `<path d="${part.d}"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">` +
+    `<rect width="96" height="96" fill="#141a3d"/>` +
+    `<svg x="24" y="24" width="48" height="48" viewBox="0 0 256 256" fill="${ink}">${paths}</svg></svg>`;
+}
+
 async function main() {
   // 1) Flat SVGs — the master vectors.
   const svgs: Array<[string, string]> = [
@@ -103,6 +116,9 @@ async function main() {
   }
   writeFileSync(resolve(ROOT, "public/favicon.ico"), ico(faviconPngs));
   console.log("  favicon.ico");
+  await png(shortcutSvg("markets", "#ffffff"), 96, "shortcut-markets.png");
+  await png(shortcutSvg("wallet", "#ffffff"), 96, "shortcut-wallet.png");
+  await png(shortcutSvg("arrowDownToLine", "#e3bc66"), 96, "shortcut-deposit.png");
 
   // 3) The X card: the centred 1200×600 cut of the held 1200×630 share picture, lossless (PNG to PNG, no resize).
   await sharp(readFileSync(resolve(OG, "og-1200x630.png")))

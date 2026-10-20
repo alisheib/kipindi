@@ -2180,6 +2180,8 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    Phosphor name (house extras only where Phosphor has nothing, each with its reason), and the build adds the key to
    `map.ts` before any page draws it. ⛔ A design's own SVGs, sprites, icon fonts or icon images are never imported, and
    a design is never asked to draw, redraw or "audit the strokes of" an icon: Phosphor draws them; a design chooses.
+   A CSS pointer cannot host an `I` component, so the Needle's drag surface uses the browser's native `grab` cursor;
+   it never embeds a drawn icon as a cursor image.
    ⭐ **ONE "YOU ARE HERE" FOR A DESTINATION (PHOSPHOR-MIGRATION W3; R-INDICATOR 3B, Ali 2026-10-17).** Every bar of
    destinations — the classic rail, the journey's tabs, both desktop bars, the admin sidebar and its drawer — marks the
    current one on the opaque royal pill `--nav-pill` with its lit edge `--nav-pill-edge`, in `--text`. Where the bar

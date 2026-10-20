@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
+import { I } from "@/components/ui/glyphs";
 import { AdminAreaChart, AdminStackedBars, AdminBarList } from "@/components/admin/admin-charts";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -556,7 +557,7 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
             className={tb.ok ? undefined : "border-danger-border bg-danger-bg"}
             action={
               <span className={["font-mono text-micro tracking-[0.10em] uppercase", !tbMeasured ? "text-text-tertiary" : tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
-                {!tbMeasured ? "not measured" : tb.ok ? "✓ reconciles" : "✗ drift detected"}
+                {!tbMeasured ? "not measured" : tb.ok ? <span className="inline-flex items-center gap-1"><I.checkCircle s={12} tier="fill" aria-hidden /> reconciles</span> : <span className="inline-flex items-center gap-1"><I.xCircle s={12} tier="fill" aria-hidden /> drift detected</span>}
               </span>
             }
           >

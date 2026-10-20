@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
+import type { ReactNode } from "react";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
@@ -267,7 +268,7 @@ async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
                 <div className="mt-3 grid grid-cols-3 gap-2 border-t border-dashed border-border-subtle pt-2.5 text-[11px]">
                   <Metric label="p50" value={ms(h.p50Ms)} />
                   <Metric label="p95" value={ms(h.p95Ms)} />
-                  <Metric label="txns" value={`${h.confirmed}✓ ${h.failed}✕`} />
+                  <Metric label="txns" value={<span className="inline-flex items-center gap-1" role="img" aria-label={`${h.confirmed} confirmed, ${h.failed} failed`}><span aria-hidden>{h.confirmed}</span><I.checkCircle s={12} tier="fill" aria-hidden /><span aria-hidden>{h.failed}</span><I.xCircle s={12} tier="fill" aria-hidden /></span>} />
                 </div>
                 {h.lastFailure && (
                   <p className="mt-1.5 font-mono text-[10px] text-no-300 truncate" title={h.lastFailure.reason}>
@@ -435,7 +436,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok
     </div>
   );
 }
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{label}</span>

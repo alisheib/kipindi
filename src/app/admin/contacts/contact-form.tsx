@@ -279,9 +279,9 @@ function NumberVerdictLine({
             replace
             scroll={false}
             data-open-existing
-            className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline"
+            className="inline-flex items-center gap-1 min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline"
           >
-            {CONTACT_OPEN_EXISTING}
+            {CONTACT_OPEN_EXISTING} <I.arrowRight s={12} aria-hidden />
             <LinkPending />
           </Link>
         )}

@@ -25,6 +25,7 @@ import { Input, Field } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { I } from "@/components/ui/glyphs";
 import { ConfirmModal } from "@/components/ui/modal";
 import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -114,8 +115,8 @@ function Consequence({ info, isRevoke }: { info: RoleInfo | undefined; isRevoke:
           </p>
         </div>
         {info.sensitive && (
-          <p className="text-micro" style={{ color: MONEY }}>
-            ⚠ This role can move money or handle player PII. Grant it deliberately.
+          <p className="text-micro flex items-start gap-1.5" style={{ color: MONEY }}>
+            <I.warning s={13} className="shrink-0" aria-hidden /> This role can move money or handle player PII. Grant it deliberately.
           </p>
         )}
       </div>

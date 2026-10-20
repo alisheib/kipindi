@@ -342,7 +342,7 @@ export const DECIDE = {
   dropped: (n: number): Part[] => [
     fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "changes", "change")} under any choice, so ${plural(n, "it follows", "they follow")} the choice above.`,
   ],
-  name: (from: string, to: string): string => `Name: ${from} → ${to}`,
+  name: (from: string, to: string): string => `Name: ${from} to ${to}`,
   nameNew: (to: string): string => `Name: ${to}`,
   emailReplaced: "Email replaced",
   notesReplaced: "Notes replaced",

@@ -344,7 +344,7 @@ async function ResolutionCeremonyContent({ params }: ResolutionCeremonyPageProps
                       <span className="shrink-0 text-text-subtle tabular-nums">{formatDateTime(e.createdAt)}</span>
                       <span className="text-text-muted">
                         {e.action.replace("market.resolve.", "").replace("market.resolved", "sealed")}
-                        {(e.payload?.outcome as string | undefined) ? ` → ${e.payload!.outcome as string}` : ""}
+                        {(e.payload?.outcome as string | undefined) ? ` to ${e.payload!.outcome as string}` : ""}
                       </span>
                     </li>
                   ))}

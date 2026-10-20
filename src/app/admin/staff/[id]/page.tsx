@@ -113,7 +113,7 @@ async function StaffDetailContent({ params }: StaffDetailProps) {
                       return (
                         <tr key={e.id}>
                           <td className="font-mono whitespace-nowrap text-micro">{formatDate(e.createdAt)}</td>
-                          <td className="whitespace-nowrap">{roleLabel(p.prevRole)} → <strong className="text-text">{roleLabel(p.newRole)}</strong></td>
+                          <td className="whitespace-nowrap">{roleLabel(p.prevRole)} to <strong className="text-text">{roleLabel(p.newRole)}</strong></td>
                           <td className="font-mono text-micro truncate">{(e.actorId ?? "—").slice(0, 14)}…</td>
                           <td className="text-caption">{p.reason ?? "—"}</td>
                         </tr>

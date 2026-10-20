@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { I } from "@/components/ui/glyphs";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeferredToast } from "@/components/ui/toast";
 import { DESK_HOLD_EVENT, DESK_RELEASE_EVENT } from "../desk-live";
@@ -310,8 +311,8 @@ export function DeskAccountActions({
                 {wayOut !== null && (
                   <>
                     {" "}
-                    <Link href={wayOut.href as Route} onClick={close} className="inline-flex items-center min-h-[var(--tap-min)] underline text-text">
-                      {wayOut.label} →
+                    <Link href={wayOut.href as Route} onClick={close} className="inline-flex items-center gap-1 min-h-[var(--tap-min)] underline text-text">
+                      {wayOut.label} <I.arrowRight s={12} aria-hidden />
                     </Link>
                   </>
                 )}

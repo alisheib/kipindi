@@ -44,6 +44,7 @@ import { SortTh } from "@/components/admin/admin-sort";
 import { CardSortControl } from "@/components/admin/card-sort-control";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { FormColumn } from "@/components/ui/form-column";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
@@ -178,8 +179,8 @@ function WhyNotBettingCard({ model, linked }: { model: NonNullable<ConsoleDetail
             </ul>
             {linked && (
               <p className="mt-3">
-                <Link href={model.href as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
-                  {model.hrefLabel} →
+                <Link href={model.href as Route} className="inline-flex items-center gap-1 min-h-[var(--tap-min)] text-body-sm text-royal-300 hover:underline">
+                  {model.hrefLabel} <I.arrowRight s={12} aria-hidden />
                 </Link>
               </p>
             )}

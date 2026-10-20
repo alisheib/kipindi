@@ -12,6 +12,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Toggle } from "@/components/ui/toggle";
+import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/modal";
 import { setRoleGrantAction, resetRoleGrantsAction } from "./actions";
@@ -119,7 +120,7 @@ export function RolesMatrix({ matrix: initial }: { matrix: Matrix }) {
                     </label>
                     <label className="flex items-center gap-1.5">
                       <span className="font-mono text-micro uppercase eyebrow" style={{ color: sensitive && g.canAct ? MONEY : "var(--text-subtle)" }}>
-                        Do{sensitive ? " ⚠" : ""}
+                        Do{sensitive && <>{" "}<I.warning s={12} aria-hidden /></>}
                       </span>
                       <Toggle on={g.canAct} onClick={() => toggleAct(role, d)} aria-label={`${ROLE_LABEL[role as Role]} can act on ${DOMAIN_LABEL[d]}`} />
                     </label>

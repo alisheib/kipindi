@@ -170,9 +170,9 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                   programme. ⛔ Keep it in step with docs/PLAYER-INVITE-UNPAID.md §2, the one list of doors. */}
               <p className="mt-2">
                 <span className="font-bold text-text">Where players find it · Wanapoipata:</span> on a phone,{" "}
-                <strong className="text-text">☰ Zaidi</strong> (bottom-right) → <strong className="text-text">Alika marafiki</strong>;
+                <strong className="text-text"><I.menu s={12} className="inline-block align-[-1px]" aria-hidden /> Zaidi</strong> (bottom-right), then <strong className="text-text">Alika marafiki</strong>;
                 also the avatar menu, the site footer and the Profile page, every one named “Alika marafiki · Invite friends”
-                for a player. None of them shows inside this console — tap the ‹ at the top left (“Back to app” on a
+                for a player. None of them shows inside this console — tap the <I.chevronLeft s={12} className="inline-block align-[-1px]" aria-hidden /> at the top left (“Back to app” on a
                 wider screen) to see the player’s view.
               </p>
             </div>

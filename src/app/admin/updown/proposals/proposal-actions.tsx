@@ -20,6 +20,7 @@ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useDeferredToast } from "@/components/ui/toast";
 import { AiProgress, AiOverlayShell, useAiPhases, type AiPhase } from "@/components/ui/ai-progress";
 import { Button } from "@/components/ui/button";
+import { I } from "@/components/ui/glyphs";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -129,7 +130,7 @@ export function EvidencePanel({
         quoted {human(ageSec)} before we read it
       </div>
       {stale && (
-        <div className="text-warning-fg">⚠ older than the {maxStalenessSeconds}s round window</div>
+        <div className="flex items-center gap-1 text-warning-fg"><I.warning s={13} aria-hidden /> older than the {maxStalenessSeconds}s round window</div>
       )}
     </div>
   );
@@ -462,7 +463,7 @@ export function ReviewActions({
               place" rule this platform is built on. So: show it, name where it lives. */}
           <Field
             label="Source link"
-            hint="Set on the asset, not here — every round on this chain captures the asset's link at open and resolves against that captured copy. Change it under Up & Down → Overview → Edit asset, where it is re-checked against the trusted-source allowlist, then regenerate this proposal."
+            hint="Set on the asset, not here — every round on this chain captures the asset's link at open and resolves against that captured copy. Change it with Edit asset under Overview in Up & Down, where it is re-checked against the trusted-source allowlist, then regenerate this proposal."
           >
             <p className="m-0 break-all rounded-md border border-border bg-bg-inset px-2.5 py-2 font-mono text-[11px] text-text-muted">
               {sourceUrl || "—"}

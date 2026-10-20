@@ -896,7 +896,8 @@ desktop widths in all three languages.
 The 63 inline `<svg>` → family glyphs, or kept with a recorded reason (charts, brand, spinner). Text-character icons
 (`→` in buttons, `▲▼`, `↑↓`, `★`, admin `✓ ✗ ⚠ ⛔ ↗ ●`) → glyphs (× as the multiplier stays). The `test:glyph-source`
 ratchets reach 0. PWA shortcut icons regenerated from Fill glyphs via `build:brand` (DA §B1a). Maswali's glyphs move to
-Phosphor's grammar.
+Phosphor's grammar. The Needle's custom data-URI cursor retires in favour of native `grab`: a CSS cursor cannot render
+an `I` component, and an image cursor would open a second icon door. The source guard plants both forms.
 
 ### W8 — Motion: no new keyframes; every moment uses a primitive that already exists (DA §M5)
 | Moment | Primitive (`src/app/motion.css`) |
@@ -1017,8 +1018,8 @@ Its own guard and red twin; every suite that reads a changed file (grep `scripts
 category watermark (drawn at 24 and scaled to 140 by CSS, W5); the chat's `HelpMark` (the help button on every page, its
 panel's head and its answers: a two-tone bubble, hand-drawn — the family's chat bubble in Duotone; W4's review) and the
 Needle drawer's `NeedleMark` (`needle` in Duotone).
-**Release 3:** the first-visit primer's art; the self-care art; the PWA's three shortcut PNGs; the Needle's drag cursor (a
-data URI); the console's typed marks (✓ ✗ ⚠ ⛔ ▲ ▼ ↑ ↓ ● ↗, and a → closing a link; the census finds a symbol in 65
+**Release 3:** the first-visit primer's art; the self-care art; the PWA's three shortcut PNGs; the Needle's drag cursor (its
+data URI retires; native `grab` remains); the console's typed marks (✓ ✗ ⚠ ⛔ ▲ ▼ ↑ ↓ ● ↗, and a → closing a link; the census finds a symbol in 65
 console files, multiplication signs and arrows inside sentences included).
 **Kept, with their reasons (not icons):** × as the multiplier; • in masks and as separators; a → inside a sentence that
 names a path ("Wallet → Withdraw", the FAQ, the policies), or between two figures or words it joins, read "to" (Up & Down

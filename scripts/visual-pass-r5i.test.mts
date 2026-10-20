@@ -33,6 +33,7 @@ import { join, relative } from "node:path";
 import { createElement as h, Fragment, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { decomment, decommentCss } from "./lib/decomment.mts";
+import { drawingOf } from "./lib/glyph-drawings.mts";
 import { REASONS, refusalReason, refusalVariant } from "../src/lib/failure-reasons.ts";
 import { grantStatusChip, STATUS_TONE, TONE_CHIP } from "../src/lib/status-tone.ts";
 import { AuthHeader } from "../src/components/auth/auth-panel.tsx";
@@ -351,9 +352,10 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
     !/"yes"|yes-300|"rose"|\b152\b|\b22 \//.test(read("src/components/ui/page-header.tsx") + read("src/components/ui/page-hero.tsx")));
   ok("2.7″ EXECUTED · the hero's info glow is hue 240 and the eyebrow `text-text-subtle` (R7-B: the page heads' one ink)",
     /oklch\(45% 0\.10 240 \/ 0\.18\)/.test(html(h(PageHero, { glow: "info" } as never, "x"))) && /text-text-subtle/.test(html(h(PageHeader, { eyebrow: "E", title: "T" }))));
-  ok("2.7‴ · the support panel's art takes the panel's own ink (`currentColor`), the panel the success family",
-    /fill="currentColor" stroke="none"/.test(read("src/components/rg/self-care-art.tsx")) && !/yes-300/.test(read("src/components/rg/self-care-art.tsx"))
-      && /<RgSunriseArt size=\{44\} className="-ml-1 shrink-0 text-success-fg" \/>/.test(RGP)
+  ok("2.7‴ · the support panel's shared sunrise takes the panel's own ink (`currentColor`), the panel the success family",
+    /<I\.sunHorizon s=\{size\} tier="duo"/.test(read("src/components/rg/self-care-art.tsx"))
+      && /fill="currentColor"/.test(drawingOf("sunHorizon", "duo") ?? "")
+      && /<RgSunriseArt size=\{44\} className="-ml-px shrink-0 text-success-fg" \/>/.test(RGP)
       && !/yes-|no-/.test(html(h(RgSunriseArt, { size: 44 } as never))));
 
   // 2.8 · /profile: its hero is the /profile pages' hero, its three facts one treatment.

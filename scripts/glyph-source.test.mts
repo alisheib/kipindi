@@ -62,12 +62,10 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/layout/needle.tsx": [1, "the Needle (brand object)"],
   "src/components/maswali/maswali-unbroken-line.tsx": [1, "Millionea's hairline (MASWALI-BUILD S5): M5's Unbroken Line and M6's closing rule, drawn on by `.m-draw` — a rule, not an icon"],
   "src/components/markets/conviction-dial.tsx": [1, "the conviction dial (an instrument)"],
-  "src/components/onboarding/first-visit-primer.tsx": [1, "W7 (release 3): primer art outside the family"],
+  "src/components/onboarding/first-visit-primer.tsx": [1, "the primer's labelled conviction dial: a measurement instrument, not an icon"],
   "src/components/positions/countdown-ring.tsx": [1, "the countdown ring (an instrument)"],
   "src/components/positions/pnl-summary-strip.tsx": [1, "a chart"],
-  "src/components/rg/self-care-art.tsx": [1, "W7 (release 3): responsible-gambling art outside the family"],
   "src/components/ui/button.tsx": [1, "the button's pending spinner"],
-  "src/components/ui/duration-input.tsx": [1, "W7 (release 3): a hand-drawn chevron, on one console page only"],
   "src/components/ui/glyph-shell-sprite.tsx": [1, "the glyph family's inline chrome symbols"],
   "src/components/ui/glyphs.tsx": [2, "the glyph family itself"],
   "src/components/ui/identity-avatar.tsx": [4, "the player's heraldic crest (a second system, DESIGN_AUTHORITY B1a)"],
@@ -85,7 +83,6 @@ const FRAMES_256 = new Set(["src/components/ui/glyphs.tsx", "src/lib/offline-doc
 const DATA_SVG: Record<string, [count: number, why: string]> = {
   "src/app/api/og/market/[id]/route.tsx": [1, "the one-source brand mark embedded in the PNG share image"],
   "src/app/api/og/page/route.tsx": [1, "the one-source brand mark embedded in the PNG share image"],
-  "src/components/layout/needle.css": [1, "the Needle's drag cursor: a CSS cursor takes an image, never an element (W7 draws it from the family's rotateCcw)"],
 };
 const DATA_SVG_RE = new RegExp("data:image[/]svg[+]xml", "g");
 
@@ -143,7 +140,7 @@ const TEXT_ICONS: Record<string, [count: number, why: string]> = {
 /** The console's files (`src/app/admin/`, `src/components/admin/`) and the server's (`src/lib/server/`, `src/app/api/`). */
 const CONSOLE_SRC = /^src\/(?:app|components)\/admin\//;
 const SERVER_SRC = /^src\/(?:lib\/server|app\/api)\//;
-const CONSOLE_TEXT_ICONS = 123; // R-ADMIN: the status roundels and player-account chip no longer type five icon characters.
+const CONSOLE_TEXT_ICONS = 0; // W7: all console icons and typed arrows now use glyphs or words.
 const SERVER_TEXT_ICONS = 140; // log lines, alerts and the console's messages built on the server
 
 /** Every image file under public/ (the family's sprites, public/icons/g/, are test:glyph-sync's) — what each one is. */
@@ -247,6 +244,13 @@ function check(w: World): string[] {
     else if (n !== listed[0]) f.push(`§5 ${rel} draws ${n} SVG as a data URI where DATA_SVG names ${listed[0]}`);
   }
   for (const rel of Object.keys(DATA_SVG)) if (!uris.has(rel)) f.push(`§5 ${rel} no longer draws an SVG data URI — remove it from DATA_SVG`);
+  // §5b — CSS cursors cannot host a family component. The Needle uses the browser's native grab affordance;
+  // an image cursor (even a rasterised family drawing) would open a second icon-image door.
+  const needleCursor = [...decommentCss(w.css.get("src/components/layout/needle.css") ?? "")
+    .matchAll(/#needle-root\s+#hit\s*\{[^}]*\bcursor:\s*([^;]+);/g)].map((m) => m[1].trim());
+  if (needleCursor.length !== 1 || needleCursor[0] !== "grab") {
+    f.push(`§5b the Needle's drag cursor must use native grab, never an icon image — found ${needleCursor.join(" | ") || "none"}`);
+  }
   // §6 — the image-file door: every image under public/ is named.
   for (const rel of w.images) {
     if (!(rel in PUBLIC_IMAGES)) f.push(`§6 ${rel} is an image under public/ that is not named — an icon is a family key (AGENTS.md §7, R-ONE-SOURCE); any other image is named in PUBLIC_IMAGES with what it is`);
@@ -306,8 +310,10 @@ const plants: [string, RegExp, World][] = [
     { ...world, css: new Map([...world.css, ["src/app/zz-new/page.css", ".x { background: url(\"data:image/svg+xml;utf8,<svg/>\"); }"]]) }],
   ["a page's code draws an icon as a data URI", new RegExp("§5 src/app/zz-new/page[.]tsx draws 1 SVG as a data URI"),
     withFile("src/app/zz-new/page.tsx", 'export const ICON = "data:image/svg+xml;utf8,<svg/>";\n')],
-  ["the Needle's cursor gains a second data URI", new RegExp("§5 src/components/layout/needle[.]css draws 2 SVG"),
+  ["the Needle's cursor reintroduces a data URI", new RegExp("§5 src/components/layout/needle[.]css draws 1 SVG as a data URI"),
     { ...world, css: new Map([...world.css].map(([r, t]): [string, string] => [r, r === "src/components/layout/needle.css" ? `${t}\n.y { cursor: url("data:image/svg+xml;utf8,<svg/>"); }` : t])) }],
+  ["the Needle's cursor uses an existing icon image", new RegExp("§5b the Needle's drag cursor must use native grab"),
+    { ...world, css: new Map([...world.css].map(([r, t]): [string, string] => [r, r === "src/components/layout/needle.css" ? t.replace("cursor: grab;", 'cursor: url("/icons/shortcut-wallet.png") 12 12, grab;') : t])) }],
   ["a design drops an icon file into public/", new RegExp("§6 public/icons/zz-bell[.]svg is an image under public/ that is not named"),
     { ...world, images: [...world.images, "public/icons/zz-bell.svg"] }],
   ["a named image is removed and the census keeps it", new RegExp("§6 public/pay/mixx[.]png is gone"),
@@ -321,7 +327,7 @@ const plants: [string, RegExp, World][] = [
     edit("src/app/updown/history/page.tsx", (t) => t + '\nexport const Z = "↑";\n')],
   ["a named file reaches zero and stays named", new RegExp("§7 src/app/s/optout-refusal[.]tsx no longer types an icon character"),
     edit("src/app/s/optout-refusal.tsx", (t) => t.split("→").join("-"))],
-  ["the console gains a typed mark", new RegExp("§7 the console types 124 icon character[(]s[)], more than its 123"),
+  ["the console gains a typed mark", new RegExp("§7 the console types 1 icon character[(]s[)], more than its 0"),
     withFile("src/app/admin/zz/page.tsx", "export default function P() { return <span>✓</span>; }\n")],
   ["the server's text loses its marks and the total is not lowered", new RegExp("§7 the server now types 1[0-3][0-9] icon character"),
     edit("src/lib/server/marketing/owner-save.ts", (t) => t.split("✓").join("ok"))],

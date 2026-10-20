@@ -673,12 +673,12 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       ...Array.from({ length: 8 }, (_, i): Shape => ({ status: "SENT", sentAt: iso(T - MIN), smsReference: `ref_u48a_${h.run}_r8_${i}` })),
       ...h.many(4, { status: "DELIVERED", sentAt: iso(T - 5 * MIN) }), ...h.many(2, { status: "SKIPPED", skipReason: "suppressed" }), ...h.many(6, { status: "PENDING" }),
     ]);
-    const spec = "Estimated spend: TZS 72 (handed over × TZS 6 per SMS, configured, not yet measured) — the SMS credit on Admin → System is the true figure.";
+    const spec = "Estimated spend: TZS 72 (handed over × TZS 6 per SMS, configured, not yet measured) — the SMS credit under Admin, then System is the true figure.";
     const money = await results(c.id, READER);
     const mHtml = card(money, READER);
     const line = money.results?.spend ?? null;
     const exact = line !== null && line.tzs === 72 && line.handedOver === 12 && line.perSmsTzs === 6 && money.kpis.handedOver === 12
-      && textOf(mHtml).includes(spec) && COPY.resultsSpendLine({ tzs: 8412, perSmsTzs: 6 }) === "Estimated spend: TZS 8,412 (handed over × TZS 6 per SMS, configured, not yet measured) — the SMS credit on Admin → System is the true figure.";
+      && textOf(mHtml).includes(spec) && COPY.resultsSpendLine({ tzs: 8412, perSmsTzs: 6 }) === "Estimated spend: TZS 8,412 (handed over × TZS 6 per SMS, configured, not yet measured) — the SMS credit under Admin, then System is the true figure.";
     const pence = await results(c.id, READER, { priceTzs: async () => 6.5 });
     const penceHtml = card(pence, READER);
     const half = pence.results?.spend?.tzs === 78 && textOf(penceHtml).includes("handed over × TZS 6.50 per SMS");

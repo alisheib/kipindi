@@ -138,7 +138,7 @@ export function FulfillDsarButton({ id, type, status }: { id: string; type?: str
             + "number (not the number), kept so the same document cannot open another account. "
             + "Money, ledger, positions and the audit chain are NOT touched. The account must "
             + "already be CLOSED. "
-            + "⚠️ Answer the player FIRST — this destroys the email address and phone number you "
+            + "Answer the player FIRST — this destroys the email address and phone number you "
             + "would reply to. This cannot be undone."
           : "This records the completion date and closes this data subject access request. "
             + "It does not message the player — reply to them through the channel they used. "

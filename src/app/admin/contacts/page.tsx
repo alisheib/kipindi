@@ -66,6 +66,7 @@
  * Growth domain (`roles.ts`), the same people who run affiliate, bonuses and invites.
  */
 import Link from "next/link";
+import { I } from "@/components/ui/glyphs";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
@@ -462,11 +463,11 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
                               href={contactsHref(sp, { edit: c.id })}
                               replace
                               scroll={false}
-                              className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline"
+                              className="row-link inline-flex items-center gap-1 whitespace-nowrap font-mono text-micro text-royal-300 hover:underline"
                               aria-label={CONTACTS_BULK.editRow(pageRows[i].name ?? pageRows[i].masked)}
                               data-edit-contact={c.id}
                             >
-                              {CONTACTS_BULK.editLink}
+                              {CONTACTS_BULK.editLink} <I.arrowRight s={12} aria-hidden />
                             </Link>
                           </div>
                         </td>

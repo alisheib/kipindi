@@ -41,7 +41,7 @@ const SCHEDULE: Row[] = [
   // (`erasure.ts` tier ②). The trigger says so, because an officer reading this row is the one who runs the erasure.
   { category: "Account + KYC documents", swahili: "Akaunti na vitambulisho", retentionYears: 7, legalBasis: "POCA Cap 423 §16; FATF R.11", trigger: "From account closure — an erasure request does not shorten it for the identity record (name, date of birth, document number, photos); once the 7 years have run, an officer completes the request and only the document type, its expiry and a coded form of the number are kept", storage: "Encrypted S3 + Postgres" },
   { category: "Transactions (deposit/withdraw/bet)", swahili: "Miamala", retentionYears: 7, legalBasis: "POCA Cap 423 §16; TRA Income Tax Act §80", trigger: "From transaction date", storage: "Postgres + signed daily snapshot" },
-  { category: "Audit log (HMAC-chained)", swahili: "Kumbukumbu", retentionYears: 7, legalBasis: "ISO 27001 A.12.4; GLI-19 §11", trigger: "From event date", storage: "In-memory ring → Postgres → cold archive" },
+  { category: "Audit log (HMAC-chained)", swahili: "Kumbukumbu", retentionYears: 7, legalBasis: "ISO 27001 A.12.4; GLI-19 §11", trigger: "From event date", storage: "In-memory ring, then Postgres, then cold archive" },
   { category: "Self-exclusion register entries", swahili: "Kujizuia", retentionYears: 5, legalBasis: "LCCP SR Code 3.4.4", trigger: "From end of exclusion", storage: "Postgres + cross-operator SFTP daily" },
   // ⭐ CORRECTED 2026-08-21 (Ali's decision, audit F-01). This row said "3 years · From
   // withdrawal of consent" while /legal/privacy §5 told the PLAYER "until withdrawn or 2 years
@@ -241,7 +241,7 @@ async function AdminRetentionContent({ searchParams }: RetentionProps) {
                   permanent no-op dressed as a control. Support tickets are still policy-only.
                 </p>
                 <p className="text-text-tertiary">
-                  ⛔ It cannot reach money, identity or audit records: it names the two classes it deletes.
+                  <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> It cannot reach money, identity or audit records: it names the two classes it deletes.
                   <code className="font-mono"> docs/DATA-RETENTION.md</code> is the authority for the full schedule
                   and marks which rows are enforced by code and which remain policy.
                 </p>
@@ -269,7 +269,7 @@ async function AdminRetentionContent({ searchParams }: RetentionProps) {
                   its own. An account that never verified its identity holds nothing, and its request is fulfilled at once.
                 </p>
                 <p className="text-text-tertiary">
-                  ⛔ The routine refuses an account that is not CLOSED, and it cannot reach a wallet, a transaction,
+                  <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> The routine refuses an account that is not CLOSED, and it cannot reach a wallet, a transaction,
                   a ledger entry, a position or the audit chain — it names what it writes.
                   <code className="font-mono"> npm run test:erasure</code> proves the identity document is still spent
                   after erasure; <code className="font-mono">npm run red:erasure</code> puts each defect back and

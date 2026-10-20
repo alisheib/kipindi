@@ -366,7 +366,7 @@ function CostPanel({ cost, dense = false }: { cost: PurgeCost; dense?: boolean }
       <p className="font-mono text-micro uppercase eyebrow text-claret-300 font-bold mb-1">
         What this deletes
       </p>
-      <Row k="Rounds" v={cost.rounds.toLocaleString()} note={cost.firstAt && cost.lastAt ? `${cost.firstAt.slice(0, 10)} → ${cost.lastAt.slice(0, 10)}` : undefined} />
+            <Row k="Rounds" v={cost.rounds.toLocaleString()} note={cost.firstAt && cost.lastAt ? `${cost.firstAt.slice(0, 10)} to ${cost.lastAt.slice(0, 10)}` : undefined} />
       <Row k="Comments" v={cost.comments.toLocaleString()} />
       <Row k="Watchlist entries" v={cost.watchlists.toLocaleString()} />
       <Row k="Price snapshots" v={cost.snapshots.toLocaleString()} />

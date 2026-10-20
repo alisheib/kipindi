@@ -21,6 +21,8 @@ import sharp from "sharp";
 import { markSvg, lockupSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
 import { ogLines, renderOgPicture } from "./build-og-picture.mts";
 import { dict } from "../src/lib/i18n-dict.ts";
+import { GLYPH_MAP } from "./glyphs/map.ts";
+import { phosphorFile } from "./glyphs/codegen.mts";
 
 const ROOT = process.cwd();
 let bad = 0;
@@ -111,6 +113,32 @@ for (const [svg, size, out] of [
   }
   if (!ok) bad++;
   console.log(`  ${ok ? "IN SYNC " : "DRIFTED "} public/favicon.ico = 16px + 32px generated PNG payloads`);
+}
+
+console.log("\n== 2a. installed-app shortcuts: the family's Fill drawings ==");
+for (const [key, ink, out] of [
+  ["markets", "#ffffff", "shortcut-markets.png"],
+  ["wallet", "#ffffff", "shortcut-wallet.png"],
+  ["arrowDownToLine", "#e3bc66", "shortcut-deposit.png"],
+] as const) {
+  const entry = GLYPH_MAP[key];
+  if (!("ph" in entry)) throw new Error(`shortcut ${key} needs a Phosphor source`);
+  // Read the pinned Phosphor Fill asset itself; the builder uses drawingOf.
+  const source = readFileSync(phosphorFile(entry.ph, "fill"), "utf8");
+  const paths = [...source.matchAll(/<path d="([^"]+)"\s*\/>/g)].map((m) => `<path d="${m[1]}"/>`);
+  if (!paths.length) throw new Error(`shortcut ${key} has no Fill path`);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">` +
+    `<rect width="96" height="96" fill="#141a3d"/>` +
+    `<svg x="24" y="24" width="48" height="48" viewBox="0 0 256 256" fill="${ink}">${paths.join("")}</svg></svg>`;
+  const fresh = await sharp(Buffer.from(svg), { density: 384 }).resize(96, 96).raw().toBuffer();
+  const committed = await sharp(readFileSync(resolve(ROOT, "public/icons", out))).raw().toBuffer();
+  const ok = fresh.equals(committed);
+  if (!ok) bad++;
+  console.log(`  ${ok ? "IN SYNC " : "DRIFTED "} public/icons/${out} = ${key} Fill`);
+  // Mutation control: a single changed pixel must be seen by the same equality used above.
+  const planted = Buffer.from(committed);
+  planted[0] ^= 1;
+  if (fresh.equals(planted)) { bad++; console.log(`  ACCEPTED control: ${out} changed by one channel value`); }
 }
 
 console.log("\n== 3. the X card: the share picture's middle 1200×600, pixel for pixel ==");

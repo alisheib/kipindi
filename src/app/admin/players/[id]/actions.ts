@@ -271,7 +271,7 @@ export async function setPlayerEmailAction(formData: FormData) {
   // This console line is only a convenience duplicate of that entry, and it goes to
   // Railway's log stream, whose retention is not ours to control — so it gets the mask
   // (audit F-06). Nothing is lost: the full values are one lookup away in /admin/audit.
-  console.log(`[admin] officer ${officerId.slice(0, 14)}… set email for ${userId.slice(0, 14)}…: ${prev ? maskEmail(prev) : "null"} → ${maskEmail(email)}`);
+  console.log(`[admin] officer ${officerId.slice(0, 14)}… set email for ${userId.slice(0, 14)}…: ${prev ? maskEmail(prev) : "null"} to ${maskEmail(email)}`);
   revalidatePath(`/admin/players/${userId}`);
   return { ok: true as const };
 }

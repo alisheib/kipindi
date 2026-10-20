@@ -53,7 +53,7 @@ export function RecategoriseControl({
         router.refresh();
         deferToast({
           title: `Re-categorised`,
-          description: `${titleEn.slice(0, 60)} — ${current} → ${next}. Pools, stakes and resolution are untouched.`,
+          description: `${titleEn.slice(0, 60)} — ${current} to ${next}. Pools, stakes and resolution are untouched.`,
           variant: "success",
         });
       } catch {

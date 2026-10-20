@@ -565,7 +565,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                           {moneyKnown && <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(r.heldTzs ?? 0)}</td>}
                           <td className="py-2 pr-3 text-right font-mono tabular-nums">{attemptsCell(r)}</td>
                           <td className="py-2 pl-3 text-right">
-                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           </td>
                         </tr>
                       );
@@ -636,7 +636,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                         <td className="py-2 pr-3 text-body-sm">{r.idType && isIdDocType(r.idType) ? ID_TYPE_SHORT[r.idType] : "—"}</td>
                         {postCheckMoney && <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(r.withdrawnTzs ?? 0)}</td>}
                         <td className="py-2 pl-3 text-right">
-                          <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                          <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                         </td>
                       </tr>
                     ))}
@@ -684,9 +684,9 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                               still reject, refuse or escalate it (2026-10-10). Photos never sent are not a case yet: the
                               workstation draws no rail for them. */}
                           {r.stage === "more_needed" ? (
-                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           ) : (
-                            <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">player →</Link>
+                            <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">player <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           )}
                         </td>
                       </tr>
@@ -741,7 +741,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                             {attemptsCell({ attempts: attemptsByUser ? (a?.count ?? 0) : null, lastAttemptAt: a?.lastAt ?? null })}
                           </td>
                           <td className="py-2 pl-3 text-right">
-                            <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">player →</Link>
+                            <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">player <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           </td>
                         </tr>
                       );

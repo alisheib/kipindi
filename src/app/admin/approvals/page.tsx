@@ -210,7 +210,7 @@ async function AdminApprovalsContent({
         <AdminCard
           title="KYC · with us, awaiting an officer"
           sw="Vitambulisho vinasubiri"
-          action={<Link href={"/admin/kyc" as Route} className="row-link font-mono text-micro text-royal-300">KYC queue →</Link>}
+          action={<Link href={"/admin/kyc" as Route} className="row-link font-mono text-micro text-royal-300">KYC queue <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>}
         >
           {kycFailed ? (
             <AdminLoadError what="the KYC queue" />
@@ -302,7 +302,7 @@ async function AdminApprovalsContent({
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
                       <td className="py-2 pr-3 font-mono tabular">{photoCase ? (slots ? `${k.documents.length}/${slots}` : k.documents.length) : <span className="font-sans text-text-tertiary">Typed</span>}</td>
                       {moneyKnown && <td className="py-2 pr-3 font-mono tabular-nums text-right text-text">{formatTzs(heldOf(k))}</td>}
-                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</a></td>
+                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a></td>
                     </tr>
                     );
                   })}
@@ -329,7 +329,7 @@ async function AdminApprovalsContent({
         <AdminCard
           title="AML queue · held before 2026-09-13 or refunds due"
           sw="Foleni ya AML"
-          action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">go to AML →</a>}
+          action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">go to AML <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>}
         >
           {amlFailed ? (
             <AdminLoadError what="the AML queue" />
@@ -440,7 +440,7 @@ async function AdminApprovalsContent({
                 ts={formatDateTime(e.createdAt)}
                 category="ADMIN"
                 variant="warning"
-                body={`${e.action} · ${e.actorId?.slice(0, 12) ?? "system"} → ${e.targetType ?? ""}#${e.targetId?.slice(0, 12) ?? ""}`}
+                body={`${e.action} · ${e.actorId?.slice(0, 12) ?? "system"} to ${e.targetType ?? ""}#${e.targetId?.slice(0, 12) ?? ""}`}
               />
             ))}
             {recentApprovals.length === 0 && <p className="text-caption text-text-tertiary py-4 text-center">No approval activity yet.</p>}

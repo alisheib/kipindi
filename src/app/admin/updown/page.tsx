@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -382,7 +383,7 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
             <AdminKpi label="AI oracle cost" sw="Gharama ya AI" value={usd(aiCost.last30)} delta={`${aiCost.calls.toLocaleString()} calls · 90d ${usd(aiCost.all)}`} spark={false} />
           </KpiGrid>
           <p className="mt-3 text-body-sm leading-[1.55] text-text-subtle max-w-[80ch]">
-            This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Money → Reports.
+            This is <strong>Up &amp; Down alone</strong> — long-form polls are reported separately under Reports in Money.
             GGR is the commission kept on this game (TZS); AI cost is what its price oracle spent (USD). The platform&rsquo;s
             combined figures, and the TRA/GBT levy on total commission, are unchanged.
           </p>
@@ -866,8 +867,8 @@ async function AdminUpDownContent({ searchParams }: UpDownProps) {
                   operator on the retention SCHEDULE — a reference table — while the sentence they
                   just clicked says "Purge a chain". §K rule 7d ③: nothing load-bearing behind a
                   click, and a cross-page link is the easiest kind to forget. */}
-              <a href="/admin/retention?tab=purge" className="text-royal-300 underline underline-offset-2">
-                Purge a chain on /admin/retention →
+              <a href="/admin/retention?tab=purge" className="inline-flex items-center gap-1 text-royal-300 underline underline-offset-2">
+                Purge a chain on /admin/retention <I.arrowRight s={12} aria-hidden />
               </a>{" "}
               — a two-officer compliance ceremony, not a trading control.
             </p>

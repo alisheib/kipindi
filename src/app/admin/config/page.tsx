@@ -102,7 +102,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
             label="Worst winner ratio"
             sw="Kiwango cha chini"
             value={`${worst.ratio.toFixed(3)}×`}
-            delta={worst.ratio >= 1 ? "never below 1.00× — a correct call cannot lose" : "⚠ BELOW STAKE — winners lose money"}
+            delta={worst.ratio >= 1 ? "never below 1.00× — a correct call cannot lose" : "BELOW STAKE — winners lose money"}
             deltaDir={worst.ratio >= 1 ? "up" : "down"}
           />
           <AdminKpi label="Cash-out fee"      sw="Ada ya kuuza" value={`${(config.cashOutFeeRate * 100).toFixed(1)}%`} delta={`free for ${config.freeExitGraceMinutes} min`} />
@@ -150,7 +150,7 @@ async function AdminConfigContent({ searchParams }: ConfigProps) {
                   needs to know before they read it that it prices NO new market. */}
               {config.feeModel === "loser-share" && (
                 <p className="text-warning-fg">
-                  ⚠️ <strong className="text-text">This model prices no new market.</strong> New polls freeze
+                  <I.warning s={13} className="inline-block align-[-2px]" aria-hidden /> <strong className="text-text">This model prices no new market.</strong> New polls freeze
                   loser-share (above). Everything below describes how the {" "}
                   <strong className="text-text">already-frozen</strong> markets settle, and is kept because they
                   settle by it forever.

@@ -130,9 +130,9 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
           label="Fee ceiling (% of the smaller side)"
           hint={
             config.feeCeilingRate === 0
-              ? `⚠ Current 0.0%. A 0% ceiling zeroes the fee on EVERY poll (fee = min(commission×pool, 0) = 0) — the house collects NO commission and winners keep the entire pool. Set 0 only for a deliberate free / goodwill period; otherwise raise it (e.g. 33.3%). Your commission rate above has no effect while this is 0.`
+              ? `Warning: Current 0.0%. A 0% ceiling zeroes the fee on EVERY poll (fee = min(commission×pool, 0) = 0) — the house collects NO commission and winners keep the entire pool. Set 0 only for a deliberate free / goodwill period; otherwise raise it (e.g. 33.3%). Your commission rate above has no effect while this is 0.`
               : config.feeCeilingRate > 0.5
-              ? `⚠ Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
+              ? `Warning: Current ${ceilPct}%. Above 50% the house takes MORE than all the winners combined. Winners still never lose money, but check this is what you mean.`
               : `Current ${ceilPct}%. The fee can never exceed this share of the SMALLER side. The smaller side is the prize — cap the fee below it and a winning bet can never be paid less than it staked. At 33.3% winners always keep at least twice what we take.`
           }
         >
@@ -213,7 +213,7 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
           label="Objection window (hours)"
           hint={
             config.objectionWindowHours === 0
-              ? "⚠ 0 = NO objection window. Resolved markets pay out on the next sweep, and players cannot dispute a verdict before the money moves. Do not ship real money like this."
+              ? "Warning: 0 = NO objection window. Resolved markets pay out on the next sweep, and players cannot dispute a verdict before the money moves. Do not ship real money like this."
               : `Currently ${config.objectionWindowHours}h. A resolved market's money is HELD this long before payout, so players can object while the pool is still intact. An open objection freezes it further.`
           }
         >
@@ -308,7 +308,7 @@ export function GlobalConfigForm({ config, storedStake = null }: { config: RateC
             </Field>
             <Field
               label="Estimated-winnings bonus (%)"
-              hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% → 1.5×).`}
+              hint={`Current ${estPct}%. The fixed pre-bet “possible winnings” a player sees = stake × ${(1 + config.estimatedWinningsRate).toFixed(2)}. A marketing ESTIMATE, not the real payout — the disclaimer says so (default 50% gives 1.5×).`}
             >
               <Input name="estimatedWinningsRate" type="number" step="1" min="0" max="500" defaultValue={estPct} mono />
             </Field>

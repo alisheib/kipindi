@@ -194,7 +194,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
           />
         </div>
         <p className="text-body-sm text-text-tertiary" data-testid="tax-window">
-          {eatDateTimeLabel(period.startMs)} → {eatDateTimeLabel(cut.notStarted || !cut.inProgress ? period.endMs : cut.cutoffMs)} EAT
+          {eatDateTimeLabel(period.startMs)} to {eatDateTimeLabel(cut.notStarted || !cut.inProgress ? period.endMs : cut.cutoffMs)} EAT
           {cut.notStarted ? " · not started yet" : cut.inProgress ? " (period in progress)" : ""} · <span className="whitespace-nowrap">{PRODUCT_LABEL[product]}</span>
         </p>
       </div>
@@ -324,7 +324,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
                         <span className="block text-body-sm font-normal text-text-tertiary">{r.basis}</span>
                       </td>
                       <td className={["tabular text-right align-top", r.kind === "difference" ? (rec.balanced ? "text-success" : "text-danger") : ""].join(" ")}>
-                        {r.kind === "difference" && <span className="mr-1.5" aria-label={rec.balanced ? "balanced" : "out of balance"}>{rec.balanced ? "✓" : "✗"}</span>}
+                        {r.kind === "difference" && <span className="mr-1.5 inline-flex" aria-label={rec.balanced ? "balanced" : "out of balance"}>{rec.balanced ? <I.checkCircle s={12} tier="fill" aria-hidden /> : <I.xCircle s={12} tier="fill" aria-hidden />}</span>}
                         <Amt cents={r.cents} />
                       </td>
                     </tr>
@@ -349,7 +349,7 @@ async function AdminTaxContent({ searchParams }: { searchParams: Promise<TaxSear
                         {r.tickets && <span className="block font-mono text-micro font-normal uppercase eyebrow text-text-tertiary" data-testid="tax-tickets">{ticketsLabel(r.tickets.net)}</span>}
                         {r.segment && (
                           <span className="block text-body-sm font-normal text-text-subtle">
-                            <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.startMs)}</span> → <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.endMs)}</span>
+                            <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.startMs)}</span> to <span className="whitespace-nowrap">{eatDateTimeLabel(r.segment.endMs)}</span>
                           </span>
                         )}
                         <span className="block text-body-sm font-normal text-text-tertiary">{r.basis}</span>
@@ -613,8 +613,8 @@ function DayByDayCard({ data, days, total, product, recorded, drifted, page, bas
     };
   };
   const check = (balanced: boolean, cents: number) => (balanced
-    ? <span className="text-success" aria-label="balanced">✓</span>
-    : <span className="whitespace-nowrap text-danger"><span className="mr-1.5" aria-label="out of balance">✗</span><Amt cents={cents} /></span>);
+    ? <span className="text-success inline-flex" aria-label="balanced"><I.checkCircle s={12} tier="fill" aria-hidden /></span>
+    : <span className="whitespace-nowrap text-danger"><span className="mr-1.5 inline-flex" aria-label="out of balance"><I.xCircle s={12} tier="fill" aria-hidden /></span><Amt cents={cents} /></span>);
   const figures = (r1: ProductFigures["report1"], taxTotal: number) => [
     { label: "Sales", node: <Amt cents={r1.salesCents} /> },
     { label: "Payout", node: <Amt cents={r1.payoutCents} /> },
@@ -761,7 +761,7 @@ function LockSummary({ lock, history, drift, who }: {
               <span className="text-text">{d.line}</span>
               <span className="flex flex-wrap justify-end gap-x-2 text-text-subtle">
                 <span className="whitespace-nowrap">locked <span className="amount text-text">{fmt(d.locked, d.unit)}</span></span>
-                <span className="whitespace-nowrap">→ live <span className="amount font-semibold text-text">{fmt(d.live, d.unit)}</span></span>
+                <span className="whitespace-nowrap">live: <span className="amount font-semibold text-text">{fmt(d.live, d.unit)}</span></span>
               </span>
             </li>
           ))}

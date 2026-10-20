@@ -86,7 +86,7 @@ type ServerProblems = Partial<Record<PolicyLineKey, Partial<Record<PolicyLocale,
 const LINE_COPY: Readonly<Record<PolicyLineKey, { label: string; hint: string }>> = {
   "rg.marketing": {
     label: "Responsible Gambling · §4, the marketing promise",
-    hint: "The first bullet of §4 on /legal/responsible-gambling. Every language is checked against what the platform does: a promise it does not keep (such as a limit on how many messages a person receives, or no messages in the evening) is refused, a time it names must be the send window's opening or closing time (Admin → System → Marketing SMS), and dropping a promise it still keeps gets a note.",
+    hint: "The first bullet of §4 on /legal/responsible-gambling. Every language is checked against what the platform does: a promise it does not keep (such as a limit on how many messages a person receives, or no messages in the evening) is refused, a time it names must be the send window's opening or closing time (Marketing SMS under Admin, then System), and dropping a promise it still keeps gets a note.",
   },
   "privacy.lawfulConsent": {
     label: "Privacy · §3, the Consent bullet",

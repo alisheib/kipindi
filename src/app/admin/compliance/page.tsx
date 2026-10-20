@@ -117,7 +117,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
             href="/admin/reports"
             className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border border-brand-500 bg-brand-500/10 text-brand-300 hover:bg-brand-500/20 transition-colors"
           >
-            <I.download s={12} /> Generate reports →
+            <I.download s={12} /> Generate reports
           </Link>
         }
       />
@@ -189,7 +189,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
                 href="/admin/system?tab=diagnostics"
                 className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-elevated text-royal-300"
               >
-                verify now →
+                verify now <I.arrowRight s={12} className="inline-block align-middle" aria-hidden />
               </a>
             </div>
           </AdminCard>
@@ -326,7 +326,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
                   <span>End-to-end approval: <span className="font-semibold text-text">{kycConv.toFixed(1)}%</span></span>
                   {/* ⛔ Was `/admin/players?status=PENDING_KYC` — a status that gated nothing, retired
                       2026-09-13 and no longer a filter option, so the link opened "All statuses". */}
-                  <a href="/admin/kyc" className="text-royal-300 hover:underline font-medium">Open the KYC queue →</a>
+                  <a href="/admin/kyc" className="text-royal-300 hover:underline font-medium">Open the KYC queue <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>
                 </div>
               </>
             )}
@@ -502,7 +502,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
                         <td className="py-2 pr-3"><span className="font-mono text-micro tracking-wider uppercase">{a.action.replace("integrity.alert.", "")}</span></td>
                         <td className="py-2 pl-3 font-mono text-micro">
                           {a.targetId ? (
-                            <Link href={`/admin/markets/${a.targetId}`} className="text-royal-300 hover:underline">open →</Link>
+                            <Link href={`/admin/markets/${a.targetId}`} className="text-royal-300 hover:underline">open <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           ) : (
                             <span className="text-text-tertiary">—</span>
                           )}
@@ -530,7 +530,7 @@ async function AdminComplianceContent({ searchParams }: AdminComplianceProps) {
                     r.tone === "royal"   ? "bg-royal/15 text-royal-300" :
                     r.tone === "danger"  ? "bg-danger/15 text-danger-fg" :
                                            "bg-bg-sunken text-text-tertiary",
-                  ].join(" ")}>↓</span>
+                  ].join(" ")}><I.arrowDownToLine s={14} aria-hidden /></span>
                   <span className="flex-1 min-w-0 flex items-center justify-between gap-2">
                     {/* ⛔ `title` ON BOTH — `qa:fit` measured these at 39px/107px holding 93px/256px,
                         and two truncating siblings in one flex row compete for the same space, so

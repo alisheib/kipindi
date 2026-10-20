@@ -147,7 +147,7 @@ async function AdminSelfExclusionsContent({ searchParams }: SelfExclusionsProps)
                     <td className="font-mono whitespace-nowrap">{formatDateTime(r.until)}</td>
                     <td className="font-mono tabular text-right">{r.daysLeft}</td>
                     <td>
-                      <a href={`/admin/players/${r.userId}`} className="row-link font-mono text-micro text-royal-300 hover:underline">profile →</a>
+                      <a href={`/admin/players/${r.userId}`} className="row-link font-mono text-micro text-royal-300 hover:underline">profile <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>
                     </td>
                   </tr>
                 ))}

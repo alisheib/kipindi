@@ -287,7 +287,7 @@ async function AdminAIPollsContent({ searchParams }: AIPollsPageProps) {
               </p>
               <p className="text-caption text-text-tertiary mt-0.5">
                 The AI model &amp; spend limits live in{" "}
-                <Link href={"/admin/ai-usage" as Route} className="text-royal-300 underline-offset-2 hover:underline">AI usage &amp; credits →</Link>
+                <Link href={"/admin/ai-usage" as Route} className="text-royal-300 underline-offset-2 hover:underline">AI usage &amp; credits <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
               </p>
             </div>
           </div>

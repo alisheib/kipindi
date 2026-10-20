@@ -241,7 +241,7 @@ async function MarketPredictorsContent({
                 {SELECTION.betsClose.en} {formatDateTime(m.selectionClosedAt ?? m.resolutionAt)} · Resolves {formatDateTime(m.resolutionAt)}
                 {m.resolvedOutcome && (
                   <span className={`ml-3 font-bold ${m.resolvedOutcome === "YES" ? "text-yes-300" : m.resolvedOutcome === "NO" ? "text-no-300" : "text-text-muted"}`}>
-                    → {m.resolvedOutcome}
+                    Outcome: {m.resolvedOutcome}
                   </span>
                 )}
               </p>
@@ -501,8 +501,8 @@ async function MarketPredictorsContent({
                         {formatDateTime(p.placedAt)}
                       </td>
                       <td>
-                        <a href={`/admin/players/${p.userId}`} className="row-link text-royal-300 hover:underline font-mono text-micro">
-                          profile →
+                        <a href={`/admin/players/${p.userId}`} className="row-link inline-flex items-center gap-1 text-royal-300 hover:underline font-mono text-micro">
+                          profile <I.arrowRight s={12} aria-hidden />
                         </a>
                       </td>
                     </tr>

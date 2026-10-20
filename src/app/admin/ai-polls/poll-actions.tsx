@@ -787,7 +787,7 @@ export function BatchGenerateForm({ maxBatch, remaining, generatable }: { maxBat
       <span className="text-[11px] text-text-subtle font-mono">
         {generatable.length === 0
           ? "No trusted sources — add one under Sources & categories first."
-          : `Two-tier across ${generatable.join(", ")}. Brainstorm → free filter → enrich keepers.`}
+          : `Two-tier across ${generatable.join(", ")}. Brainstorm, then free filter, then enrich keepers.`}
       </span>
 
       {/* Simulated per-poll progress overlay */}

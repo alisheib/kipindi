@@ -34,6 +34,7 @@ import { Fragment } from "react";
 import { WayOutLink } from "./way-out-link";
 import type { Route } from "next";
 import Link from "next/link";
+import { I } from "@/components/ui/glyphs";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
@@ -198,7 +199,7 @@ export function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: 
           {row.unsetLinked ? (
             <>
               {" "}
-              <Link href={unsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:underline">Set it below →</Link>
+              <Link href={unsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] gap-1 hover:underline">Set it below <I.arrowRight s={12} aria-hidden /></Link>
             </>
           ) : null}
         </p>
@@ -673,7 +674,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                             {r.products.map((line) => <div key={line}>{line}</div>)}
                           </td>
                           <td className="p-3 text-right">
-                            <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open →</Link>
+                            <Link href={r.href as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">open <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></Link>
                           </td>
                         </tr>
                       ))

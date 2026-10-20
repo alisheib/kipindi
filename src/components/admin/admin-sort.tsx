@@ -12,6 +12,7 @@
  */
 import Link from "next/link";
 import { LinkPending } from "@/components/ui/link-pending";
+import { I } from "@/components/ui/glyphs";
 
 export type SortDir = "asc" | "desc";
 
@@ -95,7 +96,7 @@ export function SortBtn<K extends string>({
   return (
     <button type="button" onClick={() => onSort(field)} className={`inline-flex min-h-[44px] items-center gap-1 font-mono text-micro uppercase tracking-[0.1em] hover:text-text transition-colors ${isActive ? "text-text" : "text-text-subtle"}`}>
       {label}
-      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>
+      <span className={`text-brand-300 ${isActive ? "" : "opacity-0"}`} aria-hidden>{dir === "asc" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}</span>
     </button>
   );
 }
@@ -184,7 +185,7 @@ export function SortTh({
         <span
           className={`text-brand-300 transition-opacity ${isActive ? "" : "opacity-0 group-hover:opacity-60"}`}
           aria-hidden
-        >{dir === "asc" ? "↑" : "↓"}</span>
+        >{dir === "asc" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}</span>
         {/* ⭐ A pressed header whose sorted rows are still on their way says so — `link-pending.tsx`. */}
         <LinkPending />
       </Link>

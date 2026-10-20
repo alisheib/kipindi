@@ -283,7 +283,7 @@ async function HouseGameContent({
                 <p className="mt-3 text-body-sm text-danger-fg">
                   The books and the formula disagree by <Amt v={Math.abs(rec.variance)} />. The
                   booked figure is what actually moved and is the one every total on this platform
-                  uses; the recompute is only a check. ⛔ No epsilon absorbs this — an
+                  uses; the recompute is only a check. <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> No epsilon absorbs this — an
                   &ldquo;a shilling is fine&rdquo; tolerance is exactly how seven production pools
                   finished negative unnoticed.
                 </p>
@@ -326,7 +326,7 @@ async function HouseGameContent({
                     This game has <strong>no frozen rates of its own</strong>{" "}— it predates rate
                     snapshotting. It was therefore priced by the legacy reconstruction,{" "}
                     <span className="font-mono">{caption}</span>, which is what those players were
-                    quoted. ⚠️ This is a reconstruction, not a record: it is what the rules say
+                    quoted. <I.warning s={13} className="inline-block align-[-2px]" aria-hidden /> This is a reconstruction, not a record: it is what the rules say
                     applied, not a rate anyone wrote down at the time.
                   </>
                 )}

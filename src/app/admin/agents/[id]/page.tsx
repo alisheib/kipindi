@@ -195,7 +195,7 @@ async function AgentApplicationContent({ params }: AgentApplicationProps) {
         actions={<>
           <Chip variant={TONE_CHIP[tone]}>{AGENT_STATUS[app.status].en}</Chip>
           <Chip variant="neutral">{app.source === "OFFICER_INVITED" ? "Officer-invited" : "Self-service"}</Chip>
-          <Link href={"/admin/agents" as never} className="text-body-sm text-brand-300 underline-offset-2 hover:underline">← Queue</Link>
+          <Link href={"/admin/agents" as never} className="text-body-sm text-brand-300 underline-offset-2 hover:underline"><I.arrowLeft s={12} className="inline-block align-middle" aria-hidden /> Queue</Link>
         </>}
       />
       <AdminBody>

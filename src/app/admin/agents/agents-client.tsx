@@ -124,9 +124,9 @@ export function InviteComposer({ expiryDays }: { expiryDays: number }) {
               const head = `Invitation issued · expires in ${expiryDays} days.`;
               switch (d?.delivery) {
                 case "sent": return `${head} The invitation email has been sent. The link is below if they need it another way.`;
-                case "suppressed": return `${head} ⛔ The email was NOT sent: that address has hard-bounced before and is suppressed. Send them the link below directly, or invite a different address.`;
-                case "stub": return `${head} ⚠️ No mail provider is configured on this deployment, so nothing was sent. Send them the link below directly.`;
-                case "failed": return `${head} ⚠️ The email could not be delivered. Send them the link below directly, or try again.`;
+                case "suppressed": return `${head} The email was NOT sent: that address has hard-bounced before and is suppressed. Send them the link below directly, or invite a different address.`;
+                case "stub": return `${head} No mail provider is configured on this deployment, so nothing was sent. Send them the link below directly.`;
+                case "failed": return `${head} The email could not be delivered. Send them the link below directly, or try again.`;
                 default: return `${head} Delivery could not be confirmed — send them the link below directly.`;
               }
             })}>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { I } from "@/components/ui/glyphs";
 import type { Route } from "next";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
@@ -91,7 +92,7 @@ const REASON_ADVICE: Record<string, string> = {
   source_unreadable:
     "The platform read this asset's own price feed — the same way a live round does — and got " +
     "nothing back. That is worth knowing: a chain armed on it would void and refund every " +
-    "round. Check the asset's symbol and source under Up & Down → Overview, use Check symbol " +
+    "round. Check the asset's symbol and source under Overview in Up & Down, use Check symbol " +
     "to see what the feed answers, then regenerate.",
   duplicate_chain:
     "Nothing to fix — you already run this asset at this duration. Edit the existing chain " +
@@ -103,7 +104,7 @@ const REASON_ADVICE: Record<string, string> = {
   framing_unclear: "Edit the framing — all three languages must be present.",
   asset_disabled: "Enable the asset on the Overview page first.",
   provider_error:
-    "The AI call itself failed — usually a timeout or a credit limit. Check Admin → AI usage; " +
+    "The AI call itself failed — usually a timeout or a credit limit. Check AI usage under Admin; " +
     "no proposal was produced and nothing is stuck.",
   officer_judgement: "",
 };
@@ -215,7 +216,7 @@ async function UpDownProposalsContent({ searchParams }: UpDownProposalsProps) {
             <EmptyState
               kind="default"
               title="No enabled assets yet"
-              body="A proposal is always for an asset you have already registered and enabled, so the AI can only choose within your approved sources. Add one under Up & Down → Overview first."
+              body="A proposal is always for an asset you have already registered and enabled, so the AI can only choose within your approved sources. Add one under Overview in Up & Down first."
             />
           ) : (
             <ProposeForm
@@ -462,7 +463,7 @@ async function UpDownProposalsContent({ searchParams }: UpDownProposalsProps) {
             <p>
               <strong>3 · You review, and may edit anything.</strong> The AI&rsquo;s suggestion is a
               draft. Change the duration, the margin or the framing — every edit is re-checked.
-              ⚠️ Changing the <em>link</em> clears the price, because the reading was taken from the
+              <I.warning s={13} className="inline-block align-[-2px]" aria-hidden /> Changing the <em>link</em> clears the price, because the reading was taken from the
               asset&rsquo;s own source and no longer belongs to the new one — and nothing can take a
               fresh reading for a link the asset does not point at, so the proposal cannot then be
               armed. To move an asset&rsquo;s source, do it on the Overview page and regenerate.

@@ -174,7 +174,7 @@ export function waitSentence(reason: string, until: string | null): string {
       return t === null ? "Waiting for the send window — sending resumes when it opens." : `Waiting for the send window — sending resumes at ${t} EAT.`;
     }
     case "window_unreadable":
-      return "Waiting — the sending hours couldn't be read, so nothing is sent until they can be. It tries again by itself; if this stays, check Admin → System → Marketing SMS.";
+      return "Waiting — the sending hours couldn't be read, so nothing is sent until they can be. It tries again by itself; if this stays, check Marketing SMS under Admin, then System.";
     case "money_busy":
       return "Waiting a moment — the platform is paying out or taking bets, and money always goes first. Sending resumes by itself.";
     case "otp_failing": {
@@ -375,7 +375,7 @@ export const LIVE_REQUEUE_FAILED = "Some people held back earlier could not be p
 export const LIVE_REQUEUE_FAILED_HIDDEN = "If anyone was held back earlier, they could not be put back on the list — if the campaign pauses for them, press Resume again.";
 
 /** ⭐ ruling 543 · the act landed and its audit row did not — said beside the act's own sentence, never instead of it. */
-export const LIVE_NOT_RECORDED = "⚠️ Its record could not be written to the audit log — tell whoever keeps the records.";
+export const LIVE_NOT_RECORDED = "Its record could not be written to the audit log — tell whoever keeps the records.";
 
 /** An act that lost its race to another officer's (the conditional move found the campaign elsewhere). */
 export const LIVE_CHANGED = {
@@ -598,5 +598,5 @@ export const RESULTS_UNREAD = "Couldn't be counted just now.";
 /** ⛔ OD24 · the price line — for a viewer who may read money ONLY (the view hands the figure to no one else). An estimate, and
  *  it says so: handed over × the owner's configured price, not measured; the SMS credit is the true figure. */
 export function resultsSpendLine(o: { tzs: number; perSmsTzs: number }): string {
-  return `Estimated spend: ${formatTzs(o.tzs)} (handed over × ${formatPriceTzs(o.perSmsTzs)} per SMS, configured, not yet measured) — the SMS credit on Admin → System is the true figure.`;
+  return `Estimated spend: ${formatTzs(o.tzs)} (handed over × ${formatPriceTzs(o.perSmsTzs)} per SMS, configured, not yet measured) — the SMS credit under Admin, then System is the true figure.`;
 }

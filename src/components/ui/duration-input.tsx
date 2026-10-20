@@ -20,6 +20,7 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { sanitizeNumericInput } from "@/components/ui/input";
 import { useT } from "@/lib/i18n";
+import { I } from "@/components/ui/glyphs";
 
 type Unit = "d" | "h" | "m";
 
@@ -142,13 +143,6 @@ export function DurationInput({
   const totalMin = clampMinutes(Math.round(Number(display) * UNIT_TO_MINUTES[unit]), min, max);
   const preview = formatDuration(totalMin);
 
-  /* Tiny chevron SVG — 8×5 arrow, currentColor. */
-  const Chev = ({ up }: { up?: boolean }) => (
-    <svg width="8" height="5" viewBox="0 0 8 5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {up ? <path d="M1 4l3-3 3 3" /> : <path d="M1 1l3 3 3-3" />}
-    </svg>
-  );
-
   return (
     <div className={cn("inline-flex flex-col", className)}>
       <div
@@ -196,14 +190,14 @@ export function DurationInput({
           )}
           aria-label={t.common.unitCycle.replace("{unit}", unitLabels[unit])}
         >
-          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><Chev up /></span>
+          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><I.chevronUp s={12} aria-hidden /></span>
           <span className={cn(
             "font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none",
             size === "sm" ? "text-[9px]" : "text-[10px]",
           )}>
             {unitLabels[unit]}
           </span>
-          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><Chev /></span>
+          <span className="text-text-subtle group-hover:text-text-subtle transition-colors leading-none"><I.chevronDown s={12} aria-hidden /></span>
         </button>
       </div>
       {totalMin > 0 && (

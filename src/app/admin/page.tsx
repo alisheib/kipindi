@@ -145,7 +145,7 @@ async function AdminOverviewContent() {
           <AdminCard
             title="Live activity feed"
             sw="Shughuli za moja kwa moja"
-            action={<a href="/admin/audit" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">audit →</a>}
+            action={<a href="/admin/audit" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">audit <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>}
           >
             <div
               className="max-h-[360px] overflow-y-auto -mx-1 px-1 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--brand-400)]"
@@ -243,7 +243,7 @@ async function AdminOverviewContent() {
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono font-bold text-title-md tabular text-text">{rg.selfExcluded}</span>
                   {rg.expiringThisWeek > 0 && (
-                    <span className="font-mono text-micro text-text-tertiary tracking-wider">▼ {rg.expiringThisWeek} expiring</span>
+                    <span className="inline-flex items-center gap-1 font-mono text-micro text-text-tertiary tracking-wider"><I.arrowDown s={12} aria-hidden /> {rg.expiringThisWeek} expiring</span>
                   )}
                 </div>
                 <p className="text-caption text-text-tertiary">active roster · {rg.cooledOff} cooling-off</p>

@@ -154,7 +154,6 @@
 #needle-root #hit    { position: absolute; inset: 0; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; display: block; }
 /* The rim spins and the hub carries. Different jobs deserve different cursors. */
 #needle-root #hub    { position: absolute; left: 33%; top: 33%; width: 34%; height: 34%; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; }
-#needle-root #hit    { cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M5 12a7 7 0 1 1 3 5.8' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/><path d='M4.4 8.2 5 12l3.8-.6' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round'/></svg>") 12 12, grab; }
 /* Tucked, the circle's tappable chord tapers to nothing toward the viewport
    interior. These pads cover the visible half edge-to-edge instead: a uniform
    ~42x80 target. Note the mirroring — parked on the RIGHT edge, it is the box's

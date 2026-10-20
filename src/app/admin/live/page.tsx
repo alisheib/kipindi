@@ -2,6 +2,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow } from "@/components/admin/admin-shell";
 import { AdminAreaChart } from "@/components/admin/admin-charts";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
@@ -137,12 +138,12 @@ async function AdminLiveContent() {
                             className="inline-flex items-center rounded-pill font-bold uppercase border"
                             style={{ height: 20, padding: "0 7px", fontSize: 10, letterSpacing: "0.06em", lineHeight: 1, borderColor: "oklch(70% 0.12 195 / 0.5)", background: "oklch(70% 0.12 195 / 0.18)", color: "var(--aqua-400)" }}
                           >
-                            ●&nbsp;{m.minute}&apos;
+                            <I.live s={12} tier="fill" aria-hidden />&nbsp;{m.minute}&apos;
                           </span>
                         </td>
                         <td className="py-2 pr-3 font-mono tabular text-right text-text">{formatTzs(totalPool)}</td>
                         <td className="py-2 pl-3 text-right">
-                          <a href={`/markets/${m.id}`} className="row-link font-mono text-micro text-royal-300 hover:underline">view →</a>
+                          <a href={`/markets/${m.id}`} className="row-link font-mono text-micro text-royal-300 hover:underline">view <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>
                         </td>
                       </tr>
                     );
@@ -160,7 +161,7 @@ async function AdminLiveContent() {
         <AdminCard title={`24-hour money flow · TZS net per ${flowGrain.grain.replace(/^1-/, "").replace("-", " ")}`} sw="Mtiririko">
             <AdminAreaChart series={flow} xLabels={flow.map((p) => p.label)} height={240} fillVar="var(--royal)" strokeVar="var(--royal)" />
           </AdminCard>
-          <AdminCard title={`Live bet feed · last ${BET_FEED}`} sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
+          <AdminCard title={`Live bet feed · last ${BET_FEED}`} sw="Madau ya moja kwa moja" action={<a href="/admin/audit?category=BET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>}>
             <div className="max-h-[300px] overflow-y-auto">
               {betEvents.length === 0 ? (
                 <p className="text-caption text-text-tertiary py-3 text-center">No bet activity.</p>
@@ -178,7 +179,7 @@ async function AdminLiveContent() {
         </div>
 
         {/* Wallet activity */}
-        <AdminCard title={`Wallet activity · last ${WALLET_FEED}`} sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all →</a>}>
+        <AdminCard title={`Wallet activity · last ${WALLET_FEED}`} sw="Shughuli za pochi" action={<a href="/admin/audit?category=WALLET" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">all <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>}>
           <div className="max-h-[300px] overflow-y-auto">
             {walletEvents.length === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No wallet activity.</p>

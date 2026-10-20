@@ -320,7 +320,7 @@ async function PollDetailContent({ params }: PollDetailProps) {
                 href={`/markets/${poll.publishedMarketId}` as never}
                 className="font-mono text-[11px] text-brand-300 hover:underline"
               >
-                View public market →
+                View public market <I.arrowRight s={12} className="inline-block align-middle" aria-hidden />
               </Link>
               <Link
                 href={`/admin/markets/${poll.publishedMarketId}` as never}

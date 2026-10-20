@@ -44,6 +44,7 @@
  */
 import { FilterPill, type FilterPillRank } from "@/components/ui/filter-pill";
 import type { SortDir } from "@/components/admin/admin-sort";
+import { I } from "@/components/ui/glyphs";
 
 export function CardSortControl({
   basePath,
@@ -111,7 +112,7 @@ export function CardSortControl({
             label={
               <>
                 {o.label}
-                {isActive && <span className="ml-1" aria-hidden>{dir === "asc" ? "↑" : "↓"}</span>}
+                {isActive && <span className="ml-1" aria-hidden>{dir === "asc" ? <I.arrowUp s={12} /> : <I.arrowDown s={12} />}</span>}
                 {isActive && <span className="sr-only">{dir === "asc" ? " ascending" : " descending"}</span>}
               </>
             }

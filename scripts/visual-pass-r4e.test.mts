@@ -264,18 +264,18 @@ section("5 · one content edge per column (tiles 182 185 186 187 188)");
   ok("5.1.locate · the scale's 5 and 6 are 24 and 32, and --sp-6 and --sp-8 agree", twStep("5") === 24 && twStep("6") === 32 && px("--sp-6") === 24 && px("--sp-8") === 32);
 
   const rg = read("src/app/profile/responsible-gambling/page.tsx");
-  const card = /<section className="flex items-start gap-3\.5 rounded-xl border border-success-border bg-success\/\[0\.08\] ([^"]+)">\s*<RgSunriseArt size=\{44\} className="-ml-([0-9.]+) shrink-0 text-success-fg" \/>/.exec(rg);
-  // The art's first ink, from its own geometry: the leftmost line end less half the round-capped stroke, at 44 of 56.
+  const cardRe = /<section className="flex items-start gap-3\.5 rounded-xl border border-success-border bg-success\/\[0\.08\] ([^"]+)">\s*<RgSunriseArt size=\{44\} className="-ml-px shrink-0 text-success-fg" \/>/;
+  const card = cardRe.exec(rg);
+  // The shared glyph's shipped Duotone ink is measured on Phosphor's 256 grid, at 44px.
   const art = raw("src/components/rg/self-care-art.tsx");
-  const stroke = Number(/strokeWidth=\{([0-9.]+)\}/.exec(art)?.[1] ?? NaN);
-  const xs = [...art.matchAll(/<line x1="([0-9.]+)" y1="[0-9.]+" x2="([0-9.]+)"/g)].flatMap((m) => [Number(m[1]), Number(m[2])]);
-  const inkLeft = (Math.min(...xs) - stroke / 2) * 44 / 56;
-  // The step back is the inset's whole pixels (a fractional margin is snapped with the svg's box), so the ink's first,
-  // partly covered pixel is the column's edge pixel — x41 at 390, x165 at 1280.
-  const stepBack = twStep(card?.[2] ?? "");
-  ok("5.2 · RG: the help card pads sideways like the hero (px-5 lg:px-6) and its art steps back by the whole pixels of its own ink inset (4 of 4.75)",
-    !!card && /(^| )px-5( |$)/.test(card[1]) && /(^| )lg:px-6( |$)/.test(card[1]) && stepBack === Math.floor(inkLeft) && inkLeft - stepBack < 1,
-    `${card?.[1]} · -ml-${card?.[2]} = ${stepBack}px vs ink ${inkLeft.toFixed(3)}`);
+  const inkLeft = (GLYPH_ENTRIES.get("sunHorizon")?.ink.duo?.[0] ?? NaN) * 44 / 256;
+  ok("5.2 · RG: the help card pads sideways like the hero (px-5 lg:px-6) and the shared glyph's first ink meets that edge",
+    !!card && /<I\.sunHorizon s=\{size\} tier="duo"/.test(art)
+      && /(^| )px-5( |$)/.test(card[1]) && /(^| )lg:px-6( |$)/.test(card[1])
+      && inkLeft >= 1 && inkLeft < 2,
+    `${card?.[1]} · -ml-px = 1px vs ink ${inkLeft.toFixed(3)}`);
+  ok("5.2″ PLANT · restoring the old 4px art margin would put the family glyph outside the content edge",
+    !cardRe.test(rg.replace("-ml-px shrink-0 text-success-fg", "-ml-1 shrink-0 text-success-fg")) && inkLeft - 4 < 0);
   ok("5.2′ CONTROL · the card keeps its height: its block padding is unchanged (py-4 lg:py-5, round 3's p-4 lg:p-5)", !!card && /(^| )py-4( |$)/.test(card[1]) && /(^| )lg:py-5( |$)/.test(card[1]));
   ok("5.3 · RG: the sound-and-touch card pads p-5 lg:p-6 like every card in the column", /<section className="rounded-xl border border-border bg-bg-elevated p-5 lg:p-6">/.test(read("src/components/settings/feedback-settings.tsx"))
     && /<FeedbackSettings \/>/.test(rg) && /contentClassName = "relative z-10 p-5 lg:p-6"/.test(read("src/components/ui/page-hero.tsx")));

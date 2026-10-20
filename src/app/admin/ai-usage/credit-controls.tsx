@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { I } from "@/components/ui/glyphs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -64,7 +65,7 @@ export function CreditControls({ limitUsd }: { limitUsd: number }) {
         body={
           <div className="space-y-2">
             <p>Use this right after you top up Anthropic credit — it resets &lsquo;spent this window&rsquo; to $0 and re-arms the 80% / 100% alerts.</p>
-            <p>⛔ This is <strong>not</strong> a spend cycle. It does not touch the cycle ledger, and cycle numbering carries straight on.</p>
+            <p><I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> This is <strong>not</strong> a spend cycle. It does not touch the cycle ledger, and cycle numbering carries straight on.</p>
           </div>
         }
         confirmLabel="Start new window"

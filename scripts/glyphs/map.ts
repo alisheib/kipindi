@@ -27,6 +27,7 @@ export const GLYPH_MAP: Record<string, MapEntry> = {
   politics: { ph: "flag-banner" },
   forex: { ph: "currency-circle-dollar" },
   weather: { ph: "cloud-sun" }, // W2 review: cloud-rain at 11–13px read as a speech balloon (its rain stroke joins the cloud)
+  sunHorizon: { ph: "sun-horizon" }, // RG self-care sunrise; care, never a reward
   economy: { ph: "chart-line-up" },
   crypto: { ph: "currency-btc" },
   entertainment: { ph: "film-slate" },
@@ -318,6 +319,7 @@ export const FILL_KEYS: readonly string[] = [
   "rotateCcw", "mail", "camera", "flame2", "edit",
   "bell", // a toggle on: "notify me" on a market, and the header bell while its panel is open (CHROME_FILLS)
   "chevronUp", "chevronDown", // the 24h move on every market card: the solid caret is the direction, where ▲▼ were typed
+  "wallet", "arrowDownToLine", // W7 installed-app Wallet and Deposit shortcuts rasterise these Fill drawings
 ];
 /**
  * Release 2 (W5, R-TONE 2B; DESIGN_AUTHORITY §K3 item 3: Duotone is identity on a plate) — the keys that stand on an
@@ -326,7 +328,7 @@ export const FILL_KEYS: readonly string[] = [
  */
 export const DUO_KEYS: readonly string[] = [
   // PHOSPHOR-MIGRATION 2c: every category sigil is an identity mark on a royal plate.
-  "football", "politics", "forex", "weather", "economy", "crypto", "entertainment", "tech",
+  "football", "politics", "forex", "weather", "sunHorizon", "economy", "crypto", "entertainment", "tech",
   "shuffle", "landmark", "assorted",
   // the journey's Akaunti hub, row by row (hub-rows.ts), its live rows (Arifa, Lugha, card size, the Needle) and Toka
   "wallet", "arrowUpFromLine", "resolved", "live", "podium", "attestation", "headset", "search", "limits", "pause",
@@ -363,7 +365,7 @@ export const DUO_KEYS: readonly string[] = [
  * File names inside `public/icons/g/`.
  */
 export const PREVIOUS_SPRITES: readonly string[] = [
-  "app.438dde1d.svg", "admin.75aeb290.svg",
+  "app.778e8e94.svg", "admin.5c185f72.svg",
 ];
 
 /** Keys that share one Phosphor drawing because they mean the same thing; the swap collapses each pair. */

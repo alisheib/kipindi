@@ -57,14 +57,14 @@ function MeasuresCard({ view, downloads }: { view: JourneyMeasuresView; download
         <tbody>{five.map((row) => <tr key={row.def.key} className="align-top"><td><span className="block font-semibold text-text">{row.def.no}. {row.def.name}</span><span className="block text-body-sm text-text-subtle">{row.def.nameSw}</span></td><td><MeasureCell row={row} where="before" /></td>{AFTER.map((n) => <td key={n}><MeasureCell row={row} where={n} /></td>)}</tr>)}</tbody>
       </table>
     </ScrollX></div>
-    {comparison && <p className="mt-3 text-body-sm text-text-subtle">Comparison (4b), deposit → any bet in 30 minutes: before {comparison.before.text}; after 7 days {comparison.after[7].text}. This is separate from the agency&apos;s five measures.</p>}
+    {comparison && <p className="mt-3 text-body-sm text-text-subtle">Comparison (4b), deposit to any bet in 30 minutes: before {comparison.before.text}; after 7 days {comparison.after[7].text}. This is separate from the agency&apos;s five measures.</p>}
     <div className="mt-3 border-t border-border/60 pt-3">
       <p className="font-semibold text-text">Reference · {REFERENCE_ROW.name}</p><p className="text-body-sm text-text-subtle">Counts only; these deposits and notices are not a nested pair.</p>
       <div className="mt-1 grid grid-cols-1 gap-1 text-body-sm sm:grid-cols-2"><p>Before: <Reference cell={view.reference.before} /></p>{AFTER.map((n) => <p key={n}>After {n}: <Reference cell={view.reference.after[n]} /></p>)}</div>
     </div>
     {view.campaigns.table.length > 0 && <div className="mt-4 border-t border-border/60 pt-3">
       <h3 className="font-semibold text-text">By campaign <span className="font-normal text-text-subtle">· Kwa kampeni</span></h3>
-      <p className="text-body-sm text-text-subtle">Only bet sheet → bet placed has both halves tagged. Landing visits are context, not its denominator.</p>
+      <p className="text-body-sm text-text-subtle">Only bet sheet to bet placed has both halves tagged. Landing visits are context, not its denominator.</p>
       <ScrollX label="Journey measure by campaign"><table className="admin-tbl min-w-[640px]"><thead><tr><th>Campaign</th><th>Sheet opens</th><th>Bets</th><th>Share</th><th>Landing visits</th></tr></thead>
         <tbody>{view.campaigns.table.map((c) => <tr key={c.campaign}><td className="font-mono text-text">{c.campaign}{c.visitOnly ? " · visit only" : ""}</td><td className="font-mono tabular-nums">{c.sheetOpens === null ? "Could not be read" : countText(c.sheetOpens)}</td><td className="font-mono tabular-nums">{c.bets === null ? "Could not be read" : countText(c.bets)}</td><td className="font-mono tabular-nums">{c.sheetToBet.text}{c.sheetToBet.note ? ` · ${c.sheetToBet.note}` : ""}</td><td className="font-mono tabular-nums">{c.landingVisits === null ? "Could not be read" : countText(c.landingVisits)}</td></tr>)}</tbody>
       </table></ScrollX>

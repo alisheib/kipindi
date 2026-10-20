@@ -112,7 +112,7 @@ export function ListsCard({ view }: { view: ListsCardView }) {
         <I.alertCircle s={14} className="mt-0.5 shrink-0" />
         <span>
           The licence outreach wording or its 18+ confirmation hasn&apos;t been saved yet, so no basis can be recorded —
-          an admin saves them in Admin → System → Marketing wordings.
+          an admin saves them in Marketing wordings under Admin, then System.
         </span>
       </p>
     );

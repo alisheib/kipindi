@@ -3,6 +3,7 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminRestricted } from "@/components/admin/admin-restricted";
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Avatar } from "@/components/ui/avatar";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -100,7 +101,7 @@ async function AdminStaffContent() {
                       <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
-                        <a href={`/admin/staff/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">manage →</a>
+                        <a href={`/admin/staff/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">manage <I.arrowRight s={12} className="inline-block align-middle" aria-hidden /></a>
                       </td>
                     </tr>
                   );

@@ -165,7 +165,7 @@ async function AdminMarketsContent({
                   <SortTh field="closes" label={`${SELECTION.betsClose.en} · Resolves`} current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <SortTh field="status" label="Status" current={sort} dir={dir} sp={sp} baseHref="/admin/markets" />
                   <th className="text-left">Source</th>
-                  <th className="text-left">Predictors ↗</th>
+                  <th className="text-left">Predictors</th>
                   <th className="text-left">Action</th>
                 </tr>
               </thead>

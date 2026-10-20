@@ -256,7 +256,7 @@ async function AdminUpDownRoundsContent({ searchParams }: UpDownRoundsProps) {
                   <tr className="text-left font-mono text-micro uppercase eyebrow text-text-subtle border-b border-border-subtle">
                     <th className="px-4 py-2.5 font-semibold">Round</th>
                     <th className="px-4 py-2.5 font-semibold">Window (UTC)</th>
-                    <th className="px-4 py-2.5 font-semibold text-right">Open → Close</th>
+                    <th className="px-4 py-2.5 font-semibold text-right">Open to close</th>
                     <th className="px-4 py-2.5 font-semibold">Outcome</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Volume</th>
                     <th className="px-4 py-2.5 font-semibold text-right">Players</th>
@@ -278,11 +278,11 @@ async function AdminUpDownRoundsContent({ searchParams }: UpDownRoundsProps) {
                           <div className="font-mono text-[10.5px] text-text-subtle">{asset?.nameEn ?? "unknown"}</div>
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] text-text-muted whitespace-nowrap">
-                          {fmt(r.opensAt)} → {fmt(r.closesAt)}
+                          {fmt(r.opensAt)} to {fmt(r.closesAt)}
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-[11.5px] tabular-nums whitespace-nowrap"
                             style={{ color: moved == null ? "var(--text-muted)" : moved > 0 ? "var(--yes-300)" : moved < 0 ? "var(--no-300)" : "var(--text-muted)" }}>
-                          {usd(r.openPrice as number, decimals)} → {usd(r.closePrice as number, decimals)}
+                          {usd(r.openPrice as number, decimals)} to {usd(r.closePrice as number, decimals)}
                         </td>
                         <td className="px-4 py-3">
                           {/* 🔴 THE REASON A ROUND REFUNDED IS DECIDED IN ONE PLACE, AND

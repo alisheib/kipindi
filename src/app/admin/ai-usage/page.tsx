@@ -516,7 +516,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
         <AdminCard title="Cost per resolution, and what to charge" sw="Gharama kwa kila soko">
           <p className="text-caption text-text-secondary mb-3">
             Each product line&rsquo;s AI spend divided by the markets that line actually <strong>settled</strong>.
-            {" "}⛔ Settled, not merely resolved: a resolved market still inside its objection window has an intact pool and has not
+            {" "}<I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> Settled, not merely resolved: a resolved market still inside its objection window has an intact pool and has not
             been delivered, so counting it would understate the cost.
           </p>
           <ScrollX label="Cost per resolution by product line">
@@ -561,7 +561,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
             <p>
               {/* ⚠️ `{" "}` after </strong> — see the note above the Spend-cycles copy. Without it
                   this rendered "not a flat fee.The". */}
-              ⛔ <strong>What 50pick actually charges is a pool commission, not a flat fee.</strong>{" "}The &ldquo;suggested&rdquo; column is
+              <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> <strong>What 50pick actually charges is a pool commission, not a flat fee.</strong>{" "}The &ldquo;suggested&rdquo; column is
               what this AI cost plus a {cyc.config.targetMarginPct}% margin would come to per market — it is a cost floor to compare
               against real commission earned, not a price we charge. {formatTzs(PLATFORM_MIN_STAKE)} is the <em>minimum stake</em>, not a price.
             </p>
@@ -570,11 +570,11 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
                 <>Shillings converted at <strong>{cyc.fx.rate.toLocaleString()} TZS / USD</strong>, rate taken {cyc.fx.asOfIso.slice(0, 10)}
                   {cyc.fx.stale ? <span className="text-warning-fg"> — {adminCount(Math.round(cyc.fx.ageDays ?? 0), "day")} old; refresh it before pricing from this.</span> : null}.</>
               ) : (
-                <>No USD→TZS rate is set, so every shilling figure reads &ldquo;—&rdquo;. Set the rate and its date in <strong>Cycle settings</strong> below. A converted figure with no visible rate is a claim nobody can check.</>
+                <>No USD to TZS rate is set, so every shilling figure reads &ldquo;—&rdquo;. Set the rate and its date in <strong>Cycle settings</strong> below. A converted figure with no visible rate is a claim nobody can check.</>
               )}
             </p>
             <p>
-              ⚠️ <strong>Up &amp; Down AI spend is not the whole cost of an Up &amp; Down round.</strong> One oracle call serves an
+              <I.warning s={13} className="inline-block align-[-2px]" aria-hidden /> <strong>Up &amp; Down AI spend is not the whole cost of an Up &amp; Down round.</strong> One oracle call serves an
               <em> observation</em>, which is shared by every round on that boundary — measured at 2.353 rounds per observation.
               Rounds settled by the price feed instead of the AI cost nothing in this table at all.
             </p>
@@ -689,7 +689,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
             perPage={CYCLES_PER_PAGE}
           />
           <p className="px-4 py-3 text-caption text-text-tertiary leading-snug border-t border-border">
-            ⛔ This ledger is <strong>never pruned</strong>. The per-call ledger below is kept 180 days; a cycle carries its own total so
+            <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> This ledger is <strong>never pruned</strong>. The per-call ledger below is kept 180 days; a cycle carries its own total so
             the count stays true long after the calls behind it are gone. &ldquo;Used&rdquo; above 100% means the final call crossed the
             boundary — real, bounded by one call, and shown rather than smoothed away.
           </p>
@@ -716,7 +716,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
             Admins are emailed at <strong>~80%</strong> and again at <strong>100%</strong>. After you top up credit on the
             Anthropic console, click <strong>New top-up window</strong> to zero the counter and re-arm the alerts. Set up
             <strong> Auto Reload</strong> on Anthropic too, so the balance never actually hits zero.
-            {" "}⛔ A <strong>top-up window</strong> is not a <strong>spend cycle</strong> — the window is how much credit you have bought,
+            {" "}<I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> A <strong>top-up window</strong> is not a <strong>spend cycle</strong> — the window is how much credit you have bought,
             the cycle is the $-denomination it is counted in. They are different sections on this page.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

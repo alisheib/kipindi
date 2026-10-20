@@ -28,6 +28,7 @@ import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
+import { I } from "@/components/ui/glyphs";
 import { Sensitive } from "@/components/ui/sensitive";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -287,7 +288,7 @@ async function AdminTransactionsContent({ searchParams }: { searchParams: Promis
                       <td className="whitespace-nowrap font-mono text-xs">
                         {t.providerRef
                           ? <span className="text-text-secondary" title={t.providerStatus ?? undefined}>
-                              {t.providerRef}{t.providerStatus ? " ⓘ" : ""}
+                              {t.providerRef}{t.providerStatus && <I.info s={12} className="ml-1 inline-block" aria-hidden />}
                               {/* Which rail carried it. Shown only when it is NOT the
                                   default mobile-money rail, so ordinary rows stay quiet
                                   and the exceptions stand out — an officer reconciling a

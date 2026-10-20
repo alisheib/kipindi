@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Input, Field } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
@@ -189,7 +190,7 @@ export function CycleSettings(p: Props) {
         </Field>
 
         <Field
-          label="USD → TZS rate"
+          label="USD to TZS rate"
           hint={`${CYCLE_BOUNDS.fxTzsPerUsd.min.toLocaleString()}–${CYCLE_BOUNDS.fxTzsPerUsd.max.toLocaleString()}. Leave blank and shilling figures show “—”.`}
           error={fieldErr("fxTzsPerUsd")}
           dataField="fxTzsPerUsd"
@@ -210,7 +211,7 @@ export function CycleSettings(p: Props) {
             beside five real ones is a drift nobody would notice until the two disagreed. */}
         <Field
           label="When a cycle ends"
-          hint={pauseOnEnd ? "Recommended — this is the checkpoint." : "⚠️ The AI will never pause."}
+          hint={pauseOnEnd ? "Recommended — this is the checkpoint." : "The AI will never pause."}
         >
           <span className="flex items-center gap-3 rounded-lg border border-border bg-bg-overlay px-3 min-h-[44px]">
             <Toggle
@@ -261,7 +262,7 @@ export function CycleSettings(p: Props) {
             <div className="space-y-2">
               <p>Changing the cycle size changes what &ldquo;a cycle&rdquo; means from here on.</p>
               <p>
-                ⛔ It is <strong>not retroactive</strong>. Every cycle already closed keeps the size it was
+                <I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> It is <strong>not retroactive</strong>. Every cycle already closed keeps the size it was
                 opened with, so past counts and &ldquo;cycles per year&rdquo; do not move. The new size is
                 stamped on the <strong>next</strong> cycle opened.
               </p>
@@ -361,7 +362,7 @@ export function CloseCycleControl({ index, costUsd, sizeUsd }: { index: number; 
             Cycle {index} has spent <strong>${costUsd.toFixed(2)}</strong> of its ${sizeUsd.toLocaleString()}.
             Closing it now records that as its final cost and its full duration.
           </p>
-          <p>⛔ <strong>The AI pauses immediately.</strong> Poll posting and AI resolving stop until you start the next cycle.</p>
+          <p><I.alertOctagon s={13} className="inline-block align-[-2px]" aria-hidden /> <strong>The AI pauses immediately.</strong> Poll posting and AI resolving stop until you start the next cycle.</p>
         </div>
       }
       confirmLabel="Close and pause AI"
