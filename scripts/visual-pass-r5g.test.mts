@@ -356,7 +356,8 @@ const DOORS: Door[] = [
 const { JOURNEY_TABS } = req("../src/lib/nav/active-tab.ts") as { JOURNEY_TABS: Array<{ key: string; href: string; label: string }> };
 const TAB_VERDICT: Record<string, [Verdict, string?]> = {
   questions: ["home", "the front page carries the brand's name in its tab (an absolute title) and the hero's question as its h1; the tab names the board it holds"],
-  updown: ["s12", "sw \"Juu/Chini\" (the tab, the nav, the switch) against the page's \"Juu na Chini\" — triage r5-5's S12 item, a native speaker's word"],
+  // U43 gave the rail the page's full name in Swahili; the old S12 exception must now be measured as a normal name.
+  updown: ["name"],
   tickets: ["name"], account: ["name"],
 };
 for (const tab of JOURNEY_TABS) DOORS.push({ at: `tab · ${tab.key}`, proof: ["src/lib/nav/active-tab.ts", `label: "${tab.label}"`], words: tab.label, to: tab.href, verdict: TAB_VERDICT[tab.key]?.[0] ?? ("?" as Verdict), why: TAB_VERDICT[tab.key]?.[1] });
@@ -484,6 +485,10 @@ for (const [viewer, rows] of [["guest", hubRowsFor({ signedIn: false })], ["memb
   // PLANTS: a door that says another page's word, and a census that loses a door.
   const planted: Door = { at: "PLANT", proof: ["", ""], words: "common.deposit", to: "/wallet/deposit", verdict: "name" };
   ok("2.4′ PLANT · the deposit screen's old Swahili name on a journey door (\"Amana\" → a page named \"Weka pesa\") is reported", !named(planted, "sw"));
+  const updownTab = DOORS.find((d) => d.at === "tab · updown");
+  const oldShortUpdown: Words = { sw: "Juu/Chini", en: words(updownTab?.words ?? "nav.updown", "en"), zh: words(updownTab?.words ?? "nav.updown", "zh") };
+  ok("2.4′b PLANT · restoring the old short Swahili Up & Down tab fails the page-name rule",
+    updownTab?.verdict === "name" && named(updownTab, "sw") && !named({ ...updownTab, words: oldShortUpdown }, "sw"));
   const plantedPage = { ...PAGES, "/wallet/deposit": { ...PAGES["/wallet/deposit"], title: "common.deposit", h1: "common.deposit" } };
   ok("2.4″ PLANT · the page's old name with the doors' new words (the defect this item fixed) is reported", fold(words("journey.depositAction", "sw")) !== fold(words(plantedPage["/wallet/deposit"].title, "sw")));
   // ONE NAME, ONE PAGE — the other half: two pages a journey reader can open must not share a name, or say why they do.
