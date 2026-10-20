@@ -171,6 +171,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE, BOOK_WATCHLIST_DATE } from "./lib/question-time-mask.mjs";
 import { recycleParityBrowser } from "./lib/parity-browser-cycle.mjs";
+import { CLASSIC_NOT_FOUND_EXPECTED } from "./lib/classic-not-found-expected.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -676,6 +677,10 @@ const EXPECTED_DIFFS = [
     reason: "S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).",
   },
 ];
+// S5 VIS-P P14 changed only the shared 404 hint. The exact whole-text entries
+// cover both classic not-found controls in English and Swahili; every other
+// field and route still passes through diffCells unchanged.
+EXPECTED_DIFFS.push(...CLASSIC_NOT_FOUND_EXPECTED);
 /**
  * ⭐ THE VISUAL PASS (VODACOM-PLAN, 2026-10-08 and 09) — AND THE CLASSIC /positions EMPTY STATE, NAMED. Pushed after the
  * list's literal, as A8f's Sell entries are. The pass fixes the shared EmptyState for every player, so the one page body
