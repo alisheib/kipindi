@@ -120,7 +120,7 @@ export function SidePicker({
           maxStake={maxStake}
           boardHref={boardHref}
         />
-        <NotifyPrompt marketId={marketId} marketTitle={marketTitle} />
+        <NotifyPrompt key={marketId} marketId={marketId} marketTitle={marketTitle} />
       </div>
     );
   }

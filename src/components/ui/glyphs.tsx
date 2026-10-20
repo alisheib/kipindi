@@ -44,7 +44,7 @@ export type FillGlyphKey = {
 export type DuoGlyphKey = {
   [K in RegistryKey]: (typeof GLYPH_REGISTRY)[K]["i"] extends { readonly duo: unknown } ? K : never;
 }[RegistryKey];
-type GlyphProps ={ s?: number; edge?: GlyphEdge; text?: GlyphText; tier?: GlyphTier } & Omit<SVGProps<SVGSVGElement>, "ref">;
+type GlyphProps ={ s?: number; edge?: GlyphEdge; text?: GlyphText; tier?: GlyphTier; draw?: boolean } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
 /* ⭐ DG-A-19 — THE SIZE CONSTANTS DESCRIBE WHAT IS THERE. `s` is the size prop (the lucide-compatible `size` alias is gone
    and a reintroduction is a compile error). These are the pixels the call sites already render; a constant names a
@@ -68,7 +68,7 @@ export function plateGlyph(plateEdge: 26 | 32 | 36 | 40 | 42 | 44 | 48 | 56): nu
 /* ⭐ R9-A4 · THE EDGE RULE — A GLYPH AT A RUN'S START OR END PUTS ITS INK ON THAT EDGE. Every drawing pads itself inside
    its box, so a glyph that starts or ends a link, a row or a control is pulled past its run's edge by exactly the gap
    between its box and its ink — read from the generated ink table, so a redrawn glyph cannot leave a stale number behind.
-   ⭐ `text` IS THE OTHER HALF — A MARK AMONG WORDS STROKES AT THE WORDS' OWN STEM. The ten marks that stand inside a run of
+   ⭐ `text` IS THE OTHER HALF — A MARK AMONG WORDS STROKES AT THE WORDS' OWN STEM. The marks that stand inside a run of
    words (chevrons, arrows, the external-link mark, info, the wallet) are drawn as strokes on Phosphor's own centrelines
    (`scripts/glyphs/marks.ts`; their bounds equal Phosphor's Regular outlines, checked by `test:glyph-map`), so their
    weight follows the font, not the box: `.kp-gtext` strokes them at `--g-stem`, the stem of the run's face and weight in
@@ -118,9 +118,21 @@ const KEY_OF = new Map<unknown, string>();
 
 function make(key: string) {
   const e = REG[key];
-  function Glyph({ s, edge, text, tier, style, className, ...rest }: GlyphProps): ReactElement {
+  function Glyph({ s, edge, text, tier, draw, style, className, ...rest }: GlyphProps): ReactElement {
     const size = s ?? 24;
     const k = size / 256;
+    if (draw && key === "check" && e.m) {
+      // The success receipt draws Phosphor's own check centreline once on mount.
+      // `e.m` is generated from marks.ts and shape-checked against the pinned
+      // Regular asset. The path is still rendered only through I.check.
+      return (
+        <svg viewBox="0 0 256 256" width={size} height={size} aria-hidden data-g="check.draw" {...rest}
+          className={className} style={style}>
+          <path d={e.m.d} fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round"
+            pathLength={100} className="m-draw" style={{ strokeDasharray: 100, strokeDashoffset: 100 }} />
+        </svg>
+      );
+    }
     if (text && e.m) {
       // A mark among words: Phosphor's centreline, stroked at the words' stem (`.kp-gtext`, a non-scaling stroke).
       const m = e.m;
@@ -154,9 +166,11 @@ function make(key: string) {
 
 type MarkKey = { [K in RegistryKey]: (typeof GLYPH_REGISTRY)[K] extends { m: unknown } ? K : never }[RegistryKey];
 type Family = {
-  readonly [K in RegistryKey]: K extends MarkKey ? (p: GlyphProps) => ReactElement : (p: Omit<GlyphProps, "text">) => ReactElement;
+  readonly [K in RegistryKey]: K extends "check" ? (p: GlyphProps) => ReactElement
+    : K extends MarkKey ? (p: Omit<GlyphProps, "draw">) => ReactElement
+    : (p: Omit<GlyphProps, "draw" | "text">) => ReactElement;
 };
-/** The family: one component per key. `text` is accepted only by the ten marks that stand among words. */
+/** The family: one component per key. `text` is accepted only by keys with a source centreline. */
 export const I = Object.fromEntries(Object.keys(REG).map((k) => [k, make(k)])) as unknown as Family;
 
 /** Is this node one of the family's glyphs? A slot that leads or ends a run (PageHeader's and AuthHeader's eyebrow) pulls

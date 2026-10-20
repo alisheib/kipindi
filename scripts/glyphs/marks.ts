@@ -1,6 +1,6 @@
 /**
- * THE TEXT MARKS — the ten glyphs that stand among words (`text` prop, 68 sites), drawn as STROKES on Phosphor's own
- * centrelines (PHOSPHOR-MIGRATION §5 W1/W2; R9-A4 / R10-A6).
+ * THE MARK CENTRELINES — glyphs that stand among words (`text` prop) and the receipt check that draws on,
+ * all drawn as STROKES on Phosphor's own centrelines (PHOSPHOR-MIGRATION §5 W1/W2/W8; R9-A4 / R10-A6).
  *
  * A mark inside a run of words strokes at the words' own stem (`.kp-gtext` + `--g-stem`, a non-scaling stroke), so it
  * cannot be one of Phosphor's filled outlines: its weight must follow the font, not the box. Phosphor's Regular and Bold
@@ -16,6 +16,9 @@ export type Mark = { ph: string; stroke: string; fill?: string };
 const ring = (cx: number, cy: number, r: number) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0Z`;
 
 export const TEXT_MARKS: Record<string, Mark> = {
+  // The receipt's check draws along Phosphor Regular's own centreline (W8).
+  // The stroke at 16 units reconstructs the shipped Regular outline.
+  check: { ph: "check", stroke: "M40 144L96 200L224 72" },
   chevronRight: { ph: "caret-right", stroke: "M96 48L176 128L96 208" },
   chevronLeft: { ph: "caret-left", stroke: "M160 208L80 128L160 48" },
   arrowRight: { ph: "arrow-right", stroke: "M40 128H216M144 56L216 128L144 200" },

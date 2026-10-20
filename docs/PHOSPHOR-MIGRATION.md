@@ -913,8 +913,15 @@ Each has its reduced-motion branches (§M6). DA's drift that `.m-draw` runs 820 
 
 The opt-in motion candidate puts `.g-settle` on the watch star only after the server confirms the shared watch event;
 an optimistic Fill that may roll back stays still. The notification bell settles only after permission and the local
-watchlist write. Both start static on page load, reset if a component takes another market, and remove the class on opt-out. The W8 opt-in guard plants each
+watchlist write. Both start static on page load, remount on market identity changes, and remove the class on opt-out. The W8 opt-in guard plants each
 timing reversal in memory.
+
+The receipt-motion candidate draws the success check only for a confirmed poll or Up & Down bet, or a confirmed deposit. The family key `I.check`
+uses Phosphor's Regular centreline from `scripts/glyphs/marks.ts`; `.m-draw` runs on that path when the shared result modal
+mounts after the confirmed event. A withdrawal or a failed/pending deposit retains the static result glyph. Its guard
+plants the source, trigger and timing reversals in memory.
+The same wallet result eyebrow gives the confirmed deposit arrow one downward nudge, and a requested withdrawal
+(`PENDING` or `PROCESSING`) one upward nudge; review, held, failed and the ordinary wallet page stay still.
 
 ### W9 — Close
 An adversarial audit (refute by mutation), `test:all` with the database suites, full tiles (360 / 768 / 1280 / 1920 + 320

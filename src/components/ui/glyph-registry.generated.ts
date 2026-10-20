@@ -46,7 +46,7 @@ export const GLYPH_REGISTRY = {
   "carry": { s: "p-arrow-bend-double-up-right", g: "app", i: { bold: [20, 236.03] } },
   "cashOut": { s: "p-hand-coins", g: "app", i: { bold: [0, 244.02], duo: [0, 240.04] } },
   "chart": { s: "p-chart-bar", g: "app", i: { bold: [20, 236], duo: [24, 232] } },
-  "check": { s: "p-check", g: "app", i: { regular: [32, 232], bold: [27.97, 236.03] } },
+  "check": { s: "p-check", g: "app", i: { regular: [32, 232], bold: [27.97, 236.03] }, m: { d: "M40 144L96 200L224 72", x: [40, 224] } },
   "checkCircle": { s: "p-check-circle", g: "app", i: { bold: [20, 236], fill: [24, 232], duo: [24, 232] } },
   "chevronDown": { s: "p-caret-down", g: "shell", fa: 1, i: { bold: [35.97, 220.03], fill: [39.99, 216.01] } },
   "chevronLeft": { s: "p-caret-left", g: "app", i: { bold: [67.96, 172.01] }, m: { d: "M160 208L80 128L160 48", x: [80, 160] } },

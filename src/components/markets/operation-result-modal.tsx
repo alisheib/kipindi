@@ -66,7 +66,7 @@ type Props = {
   variant: OperationVariant;
   /** Big eyebrow line — e.g. "Bet placed · Dau lipo". R4-I (2026-10-09): optional — a caller whose heading already says
    *  what the eyebrow would ("无法下注" over "无法下注") passes none, and no empty line is drawn. */
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   /** Hero headline — e.g. "Position open" or "Withdrawal failed". */
   title: string;
   /** Bilingual subhead, optional — e.g. "Inakaguliwa · Ufanye baadaye". R4-I: a node, so a sentence can keep a run whole
@@ -108,6 +108,8 @@ type Props = {
    *  crest as the micro-seal (`.seal-commit`, `seal-place`), as a staked side's does, on the brand strip. Omitted, only a
    *  yes/no strip takes the seal, exactly as before. Ignored for non-success variants. */
   stamp?: boolean;
+  /** Draw Phosphor's check centreline once when a bet or deposit is confirmed (W8). */
+  drawCheck?: boolean;
 };
 /* `celebrate`/`celebrateGlyph` (the A5 reward-burst swap) were DELETED 2026-08-08:
    zero call sites ever passed them, and the win moment they anticipated is the
@@ -176,9 +178,9 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
   },
 };
 
-function CrestIcon({ variant, color }: { variant: OperationVariant; color: string }) {
-  const glyph = variant === "success" ? I.check
-              : variant === "danger"  ? I.x
+function CrestIcon({ variant, color, drawCheck }: { variant: OperationVariant; color: string; drawCheck?: boolean }) {
+  if (variant === "success") return <span style={{ color }}><I.check s={36} draw={drawCheck} /></span>;
+  const glyph = variant === "danger"  ? I.x
               : variant === "warning" ? I.warning
               :                         I.info;
   return <span style={{ color }}>{glyph({ s: 36 })}</span>;
@@ -205,7 +207,7 @@ const STRIP_GRADIENTS: Record<string, string> = {
 export function OperationResultModal({
   open, variant, eyebrow, title, subtitle, details, footnote, compactOnPhone = false,
   primaryLabel, secondaryLabel, onPrimary, onSecondary, onClose,
-  autoCloseMs, stripTone = "brand", successCrestTone, stamp,
+  autoCloseMs, stripTone = "brand", successCrestTone, stamp, drawCheck,
 }: Props) {
   const { t } = useT();
   const closeRef = useRef(onClose);
@@ -496,7 +498,7 @@ export function OperationResultModal({
           }}
           aria-hidden
         >
-          <CrestIcon variant={variant} color={tone.fg} />
+          <CrestIcon variant={variant} color={tone.fg} drawCheck={drawCheck} />
         </div>
 
         {eyebrow && (

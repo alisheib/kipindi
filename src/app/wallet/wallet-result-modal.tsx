@@ -21,6 +21,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
+import { I } from "@/components/ui/glyphs";
 import { formatTzs } from "@/lib/utils";
 import { walletResultCopy } from "@/lib/wallet/result-copy";
 import type { DepositResultKind } from "@/lib/wallet/receipts";
@@ -52,14 +53,20 @@ export function WalletResultModal({
   const txnId = deposited || withdrawal || "";
   const amt = amount ? formatTzs(Number(amount)) : undefined;
   const { eyebrow, title, subtitle, variant } = walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind });
+  const flowGlyph = !!deposited && status === "CONFIRMED" && variant === "success"
+    ? <I.arrowDownToLine s={14} text="mono-700" className="g-nudge-down" />
+    : !!withdrawal && (status === "PENDING" || status === "PROCESSING") && variant === "info"
+      ? <I.arrowUpFromLine s={14} text="mono-700" className="g-nudge-up" />
+      : null;
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
 
   return (
     <OperationResultModal
+      drawCheck={!!deposited && status === "CONFIRMED" && variant === "success"}
       open={open}
       variant={variant}
-      eyebrow={eyebrow}
+      eyebrow={flowGlyph ? <span className="inline-flex flex-wrap items-center justify-center gap-1">{flowGlyph}{eyebrow}</span> : eyebrow}
       title={title}
       subtitle={subtitle}
       details={[

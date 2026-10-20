@@ -8,7 +8,7 @@
  * Reads the exact-pinned devDependency @phosphor-icons/core (never @phosphor-icons/react, whose modules each carry all
  * six weights) and scripts/glyphs/map.ts, extras.ts and marks.ts, and writes:
  *   src/components/ui/glyph-registry.generated.ts      per key: symbol stem, group, the ink box of each shipped variant,
- *                                                      and — for the ten marks that stand among words — the centreline
+ *                                                      and — for marks used among words or drawn on — the centreline
  *   src/components/ui/glyph-shell-sprite.generated.ts  the chrome's symbols, inlined by the root layout
  *   public/icons/g/app.<hash8>.svg · admin.<hash8>.svg every other shipped symbol, content-hashed, MIT notice inside;
  *                                                      the ones production served before stay one release (map.ts

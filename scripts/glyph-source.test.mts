@@ -67,7 +67,7 @@ const SVG_RATCHET: Record<string, [count: number, why: string]> = {
   "src/components/positions/pnl-summary-strip.tsx": [1, "a chart"],
   "src/components/ui/button.tsx": [1, "the button's pending spinner"],
   "src/components/ui/glyph-shell-sprite.tsx": [1, "the glyph family's inline chrome symbols"],
-  "src/components/ui/glyphs.tsx": [2, "the glyph family itself"],
+  "src/components/ui/glyphs.tsx": [3, "the glyph family itself, including Phosphor's draw-on check centreline"],
   "src/components/ui/identity-avatar.tsx": [4, "the player's heraldic crest (a second system, DESIGN_AUTHORITY B1a)"],
   "src/components/ui/social-marks.tsx": [3, "vendor marks (Instagram, TikTok, WhatsApp) in their own colours"],
   "src/components/ui/spinner.tsx": [1, "the spinner"],

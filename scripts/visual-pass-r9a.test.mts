@@ -811,12 +811,16 @@ section("6 · A6 a dashed track starts and ends on a whole dash at every width �
   ok("6.5′ PLANT · the round card's opening reference ending on a broken dash is caught",
     roundBadSource !== roundLine && !!roundBad && !wholeEnd(Number(roundBad[1]), Number(roundBad[2]), Number(roundBad[3])));
   const circlePeriods = (src: string) => [...src.matchAll(new RegExp('<circle[^>]*pathLength=[{"]?([0-9.]+)[}"]?[^>]*strokeDasharray="([0-9.]+) ([0-9.]+)"', "g"))].map((m) => Number(m[1]) / (Number(m[2]) + Number(m[3])));
-  const DASH_IN_GLYPHS = new RegExp("strokeDasharray|stroke-dasharray");
+  const glyphSource = code("src/components/ui/glyphs.tsx");
+  const DASHED_RING_IN_GLYPHS = new RegExp("<circle[^>]*(?:strokeDasharray|stroke-dasharray)");
+  const glyphDashes = [...glyphSource.matchAll(new RegExp("strokeDasharray|stroke-dasharray", "g"))];
   // PHOSPHOR-MIGRATION W2: the hand-drawn clockPending's dashed ring went with its family — Phosphor's clock-countdown is a
   // filled outline, no dash — so the dial's empty ring is the one dashed ring left, and the glyph file holds none.
   const rings = circlePeriods(code("src/components/brand.tsx"));
-  ok(`6.6 · every dashed ring closes on whole dashes by pathLength — the dial's empty ring: ${rings.map((p) => `${p} periods`).join(", ")}; the glyph family draws none`,
-    rings.length === 1 && rings.every((p) => near(p, Math.round(p), 1e-9)) && !DASH_IN_GLYPHS.test(raw("src/components/ui/glyphs.tsx")));
+  ok(`6.6 · every dashed ring closes on whole dashes by pathLength — the dial's empty ring: ${rings.map((p) => `${p} periods`).join(", ")}; the glyph family draws no dashed ring`,
+    rings.length === 1 && rings.every((p) => near(p, Math.round(p), 1e-9))
+      && !DASHED_RING_IN_GLYPHS.test(glyphSource) && glyphDashes.length === 1
+      && glyphSource.includes('className="m-draw" style={{ strokeDasharray: 100, strokeDashoffset: 100 }}'));
   ok("6.6′ PLANT · the hand-drawn clockPending's ring as it was before R9-A6 — 3.4 + 3 on its 54.04-unit ring, no pathLength — is 8.44 periods", !near((2 * Math.PI * 8.6) / 6.4, Math.round((2 * Math.PI * 8.6) / 6.4), 1e-3));
   // The census: every dash pattern on a player surface is one of these, or not a pattern at all (a ring's progress arc, a
   // draw-on), or a texture.
@@ -828,6 +832,7 @@ section("6 · A6 a dashed track starts and ends on a whole dash at every width �
     "src/components/badges/Badge.tsx": "a progress arc (dasharray = its circumference), not a pattern", "src/components/charts/ring.tsx": "donut segments, not a pattern",
     "src/components/positions/countdown-ring.tsx": "a progress arc, not a pattern",
     "src/components/maswali/maswali-unbroken-line.tsx": "a draw-on (`.m-draw`: the dasharray is the path's own length, set only while it draws), not a pattern",
+    "src/components/ui/glyphs.tsx": "Phosphor's check centreline drawing on once in a confirmed result; its dasharray is the whole path, not a repeating pattern",
   };
   const found = PLAYER_TSX.filter((f) => DASHES.test(code(f)));
   DASHES.lastIndex = 0;

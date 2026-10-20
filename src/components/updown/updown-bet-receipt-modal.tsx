@@ -116,6 +116,7 @@ export function UpDownBetReceiptModal({
 
   return (
     <OperationResultModal
+      drawCheck
       open
       variant="success"
       compactOnPhone

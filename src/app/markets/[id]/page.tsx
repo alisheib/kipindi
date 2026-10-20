@@ -651,7 +651,7 @@ export default async function MarketDetail({
                   (the gap the mark's box padding left, 2.03px at 12px), now measured from the drawing and its text stroke. */}
               <I.ext s={12} edge="end" text="mono-400" />
             </a>
-            <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
+            <WatchStar key={m.id} marketId={m.id} initial={watching} signedIn={!!session} />
             <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
           </div>
         </div>

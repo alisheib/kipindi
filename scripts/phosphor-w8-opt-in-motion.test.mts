@@ -8,8 +8,10 @@ import { decomment } from "./lib/decomment.mts";
 
 const watch = decomment(readFileSync("src/components/markets/watch-star.tsx", "utf8")).replace(/\r\n/g, "\n");
 const notify = decomment(readFileSync("src/components/markets/notify-prompt.tsx", "utf8")).replace(/\r\n/g, "\n");
+const sidePicker = decomment(readFileSync("src/components/markets/side-picker.tsx", "utf8")).replace(/\r\n/g, "\n");
+const detailPage = decomment(readFileSync("src/app/markets/[id]/page.tsx", "utf8")).replace(/\r\n/g, "\n");
 
-function claims(star: string, bell: string): string[] {
+function claims(star: string, bell: string, side = sidePicker, detail = detailPage): string[] {
   const missing: string[] = [];
   const hold = (name: string, ok: boolean) => { if (!ok) missing.push(name); };
 
@@ -28,6 +30,8 @@ function claims(star: string, bell: string): string[] {
     && /localStorage\.setItem\(KEY, JSON\.stringify\(ids\.slice\(0, 50\)\)\);\s*return true;\s*\} catch \{[\s\S]*?return false;/.test(bell));
   hold("bell resets on opt-out", /if \(!writeWatchlist\(next\)\) return;\s*setWatching\(false\);\s*setSettledOn\(false\);/.test(bell));
   hold("bell settles only its Fill", /watching \? <I\.bell s=\{14\} tier="fill" className=\{settledOn \? "g-settle" : undefined\} \/> : <I\.bell s=\{14\} \/>/.test(bell));
+  hold("bell remounts for another market", /<NotifyPrompt key=\{marketId\} marketId=\{marketId\} marketTitle=\{marketTitle\} \/>/.test(side));
+  hold("star remounts for another market", /<WatchStar key=\{m\.id\} marketId=\{m\.id\} initial=\{watching\} signedIn=\{!!session\} \/>/.test(detail));
   return missing;
 }
 
@@ -38,7 +42,7 @@ if (baseline.length) {
 }
 
 if (!process.argv.includes("--prove-red")) {
-  console.log("W8 opt-in motion: 11/11 claims pass");
+  console.log("W8 opt-in motion: 13/13 claims pass");
   process.exit(0);
 }
 
@@ -62,4 +66,12 @@ for (const [name, target, star, bell] of plants) {
   if (!failures.includes(target)) throw new Error(`${name}: expected ${target}; got ${failures.join("; ")}`);
   caught++;
 }
-console.log(`W8 opt-in motion: ${caught}/${plants.length} red plants caught`);
+const remountPlants: Array<[string, string[], string]> = [
+  ["bell keeps the old market's motion", claims(watch, notify, sidePicker.replace("<NotifyPrompt key={marketId}", "<NotifyPrompt"), detailPage), "bell remounts for another market"],
+  ["star keeps the old market's motion", claims(watch, notify, sidePicker, detailPage.replace("<WatchStar key={m.id}", "<WatchStar")), "star remounts for another market"],
+];
+for (const [name, failures, target] of remountPlants) {
+  if (!failures.includes(target)) throw new Error(`${name}: expected ${target}; got ${failures.join("; ")}`);
+  caught++;
+}
+console.log(`W8 opt-in motion: ${caught}/${plants.length + remountPlants.length} red plants caught`);

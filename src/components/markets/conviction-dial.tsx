@@ -1820,6 +1820,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
 
       {resultData && (
         <OperationResultModal
+          drawCheck={resultData.variant === "success"}
           open={resultOpen}
           variant={resultData.variant}
           /* ⭐ ONE OF THE TWO, NOT BOTH (R4-I, 2026-10-09, tiles 036 040 044 102 106 110). A refusal titled "Could not place"
