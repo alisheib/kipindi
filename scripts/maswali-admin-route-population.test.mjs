@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ADMIN_ROUTES } from "./design-gate/routes.mjs";
+import { MUTATIONS } from "./anchors/maswali-admin-route-population.anchors.mjs";
 
 const root = resolve("src/app/admin/maswali");
 const routeFile = resolve("scripts/design-gate/routes.mjs");
@@ -49,12 +50,12 @@ if (process.argv.includes("--prove-red")) {
   // guard must report the omitted page (and the typo replacing it), proving it
   // reads the value whose presence is meant to protect the design instruments.
   const source = readFileSync(routeFile, "utf8");
-  const anchor = '"/admin/maswali/pools"';
-  assert.equal(source.split(anchor).length - 1, 1, "The route mutation anchor must occur exactly once.");
+  const [plant] = MUTATIONS;
+  assert.equal(source.split(plant.from).length - 1, 1, "The route mutation anchor must occur exactly once.");
   const folder = mkdtempSync(join(tmpdir(), "s5-route-red-"));
   const file = join(folder, "routes.mjs");
   try {
-    writeFileSync(file, source.replace(anchor, '"/admin/maswali/pools-removed"'));
+    writeFileSync(file, source.replace(plant.from, plant.to));
     const mutated = await import(pathToFileURL(file).href);
     const red = verdict(mutated.ADMIN_ROUTES, pages);
     assert(red.missing.includes("/admin/maswali/pools"), "The guard missed a removed static console page.");
