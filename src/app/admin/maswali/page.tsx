@@ -110,7 +110,7 @@ async function AdminMaswaliContent({ searchParams }: MaswaliPageProps) {
             : weeks.allTotal === 0 ? <EmptyState title="No week yet" body="Draft the first week: fifteen questions, ten mains and five reserves." />
             : weeks.total === 0 ? <EmptyState title="No weeks match these filters" body="Try another week code, state or line." action={<Link href="/admin/maswali" className="btn btn-ghost btn-sm">Clear filters</Link>} />
             : (<>
-              <p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{weeks.total} of {weeks.allTotal} {weeks.allTotal === 1 ? "week" : "weeks"}</p>
+              <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{weeks.total} of {weeks.allTotal} {weeks.allTotal === 1 ? "week" : "weeks"}</p>
               <ScrollX label="Millionea weeks">
                 <table className="admin-tbl min-w-[860px]">
                   <thead>

@@ -174,7 +174,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.heldPage.allTotal === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." />
             : v.heldPage.total === 0 ? <EmptyState title="No held shares match these filters" body="Try another week, ticket, holder or decision." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.heldPage.total} of {v.heldPage.allTotal} held shares</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.heldPage.total} of {v.heldPage.allTotal} held shares</p>
             <ScrollX label="Millionea held shares">
               <table className="admin-tbl min-w-[900px]">
                 <thead><tr>
@@ -224,7 +224,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.winnersPage.allTotal === 0 ? <EmptyState title="No winner yet" body="Every paid ticket appears here with its account, to screen." />
             : v.winnersPage.total === 0 ? <EmptyState title="No winners match these filters" body="Try another week, ticket or screening state." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.winnersPage.total} of {v.winnersPage.allTotal} winners</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.winnersPage.total} of {v.winnersPage.allTotal} winners</p>
             <ScrollX label="Millionea winners">
               <table className="admin-tbl min-w-[960px]">
                 <thead><tr>
@@ -276,7 +276,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." />
             : v.sealWeeks.total === 0 ? <EmptyState title="No sealed weeks match these filters" body="Try another week code or state." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-[0.14em] text-text-subtle">{v.sealWeeks.total} of {v.sealWeeks.allTotal} sealed weeks</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.sealWeeks.total} of {v.sealWeeks.allTotal} sealed weeks</p>
             <ScrollX label="Millionea seal log">
               <table className="admin-tbl min-w-[960px]">
                 <thead><tr>
