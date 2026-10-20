@@ -698,6 +698,8 @@
     "test:maswali-ui": "tsx scripts/maswali-ui.test.mts",
     "test:maswali-week-list": "tsx scripts/maswali-week-list.test.mts",
     "red:maswali-week-list": "tsx scripts/maswali-week-list.test.mts --prove-red",
+    "test:maswali-integrity-list": "tsx scripts/maswali-integrity-list.test.mts",
+    "red:maswali-integrity-list": "tsx scripts/maswali-integrity-list.test.mts --prove-red",
     "test:maswali-register": "tsx scripts/maswali-register.test.mts",
     "red:maswali-register": "tsx scripts/maswali-register.test.mts --prove-red",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",

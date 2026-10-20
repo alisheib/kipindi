@@ -15,9 +15,9 @@
  *   - 250ms debounce into the URL, Enter flushes, × clears immediately
  *   - `router.replace(..., {scroll:false})` so keystrokes neither pile up in
  *     history nor jump the viewport
- *   - ALWAYS `sp.delete("page")` — markets/market-search.tsx was the one clone
- *     that forgot, so typing while on page 3 of a filtered list searched the whole
- *     set but kept showing page 3 of it
+ *   - ALWAYS reset the owned page param (default `page`; independent admin tables
+ *     pass their own name) — markets/market-search.tsx was the one clone that
+ *     forgot, so typing while on page 3 of a filtered list kept showing page 3
  *   - `usePathname()` instead of a hardcoded route. That single change is what
  *     lets one component serve every surface; the old clones each hardcoded their
  *     own path, which is most of why they were copied in the first place.
@@ -53,6 +53,8 @@ const GLASS_GAPS = glyphInkGaps(<I.search s={16} />);
 type Props = {
   /** URL param. Defaults to `q`. */
   param?: string;
+  /** Page param this search resets. Independent admin tables use hpage/wpage/spage. */
+  pageParam?: string;
   placeholder: string;
   ariaLabel: string;
   /** `url` (default) writes to the query string; `controlled` is for client-only
@@ -73,6 +75,7 @@ type Props = {
 
 export function SearchBox({
   param = "q",
+  pageParam = "page",
   placeholder,
   ariaLabel,
   mode = "url",
@@ -116,7 +119,7 @@ export function SearchBox({
     else sp.delete(param);
     // A new query always restarts at page 1 — otherwise the result set changes
     // under a page number that no longer refers to anything.
-    sp.delete("page");
+    sp.delete(pageParam);
     const qs = sp.toString();
     startTransition(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
   };
