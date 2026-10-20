@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import * as search from "../src/lib/search/index.ts";
+import { adminCount } from "../src/lib/utils.ts";
 import { integrityListParams, parseIntegrityListQuery, selectHeldShares, selectSealWeeks, selectVoidableWeeks, selectWinnerTickets } from "../src/lib/maswali-integrity-list.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,6 +70,21 @@ ok("all four filter forms retain sibling controls and omit their own page", ["h"
 ok("read model selects complete winner, held, seal and voidable sets before page-only hydration", consoleRead.includes("selectHeldShares(allHeld") && consoleRead.includes("selectWinnerTickets(won") && consoleRead.includes("for (const { ticket: t, code } of selectedWinners.rows)") && consoleRead.includes("selectSealWeeks(sealed") && consoleRead.includes("for (const w of selectedSeals.rows)") && consoleRead.includes("selectVoidableWeeks(voidable") && consoleRead.includes("selectedVoidable.rows.map(rowOf)"));
 ok("all four empty states distinguish no records from no matches", page.includes("v.heldPage.allTotal === 0") && page.includes("No held shares match these filters") && page.includes("v.winnersPage.allTotal === 0") && page.includes("No winners match these filters") && page.includes("v.sealWeeks.allTotal === 0") && page.includes("No sealed weeks match these filters") && page.includes("v.voidablePage.allTotal === 0") && page.includes("No voidable weeks match these filters"));
 
+function countLabelsAreSingularSafe(source: string) {
+  return [
+    'adminCount(v.voidablePage.allTotal, "week")',
+    'adminCount(w.ticketCount, "ticket")',
+    'adminCount(v.heldPage.allTotal, "held share")',
+    'adminCount(v.winnersPage.allTotal, "winner")',
+    'adminCount(v.sealWeeks.allTotal, "sealed week")',
+  ].every((expression) => source.includes(expression));
+}
+ok("Integrity counts show one week, ticket, held share, winner and sealed week without clipping the search hint",
+  countLabelsAreSingularSafe(page) && page.includes('placeholder="Search week code"')
+  && adminCount(1, "week") === "1 week" && adminCount(1, "ticket") === "1 ticket"
+  && adminCount(1, "held share") === "1 held share" && adminCount(1, "winner") === "1 winner"
+  && adminCount(1, "sealed week") === "1 sealed week" && adminCount(1000, "week") === "1,000 weeks");
+
 function mutated(source: string) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const mod = { exports: {} as Record<string, unknown> };
@@ -79,6 +95,9 @@ function mutated(source: string) {
   return mod.exports as { selectHeldShares: typeof selectHeldShares; selectWinnerTickets: typeof selectWinnerTickets; selectSealWeeks: typeof selectSealWeeks; selectVoidableWeeks: typeof selectVoidableWeeks };
 }
 if (process.argv.includes("--prove-red")) {
+  const brokenCount = page.replace('adminCount(v.voidablePage.allTotal, "week")', 'v.voidablePage.allTotal');
+  if (brokenCount === page) throw new Error("Integrity singular count plant target missing");
+  ok("red: a raw voidable count loses the singular count guard", !countLabelsAreSingularSafe(brokenCount));
   const unsorted = helper.replace("return pageRows(all, ordered, query.page, perPage);", "return pageRows(all, filtered, query.page, perPage);");
   if (unsorted === helper) throw new Error("Held global-sort plant target missing");
   ok("red: a held page sliced without sorting fails the highest-share assertion", mutated(unsorted).selectHeldShares(held, query({ hsort: "share", hdir: "desc" }).held, 20).rows[0]?.weekSeq !== 1);

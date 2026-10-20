@@ -20,7 +20,7 @@ import { isMaswaliVoidReason, MASWALI_VOID_REASON_LABEL } from "@/lib/maswali-vo
 import { clusterReport, pickShifts, recentNewDeviceSeals } from "@/lib/server/maswali-integrity";
 import { weekStore } from "@/lib/server/maswali-dal";
 import { slotLabel } from "@/lib/maswali-score";
-import { formatTzs } from "@/lib/utils";
+import { adminCount, formatNumber, formatTzs } from "@/lib/utils";
 import { fmtEat } from "@/lib/maswali-admin-format";
 import { HeldShareControls, HoldShareControl, PauseControl, VoidWeekControl } from "./integrity-controls";
 
@@ -146,7 +146,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
 
         <AdminCard title="Weeks that void whole" sw="Wiki zinazobatilishwa" padding="p-0">
           <div className="border-b border-border-subtle p-4">
-            <SearchBox param="vq" pageParam="vpage" placeholder="Search voidable week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
+            <SearchBox param="vq" pageParam="vpage" placeholder="Search week code" ariaLabel="Search weeks waiting to be voided" helpFields={["week"]} />
             <form method="get" action={INTEGRITY_HREF} className="mt-3 flex flex-wrap items-end gap-3">
               <OtherListState params={listParams} list="v" />
               {query.voidable.q && <input type="hidden" name="vq" value={query.voidable.q} />}
@@ -169,11 +169,11 @@ async function Content({ searchParams }: IntegrityPageProps) {
           </div>
           {v.voidablePage.allTotal === 0 ? <div className="p-4 text-body-sm text-text-secondary">No week is waiting to be voided.</div>
             : v.voidablePage.total === 0 ? <EmptyState title="No voidable weeks match these filters" body="Try another week code or line." /> : (
-            <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.voidablePage.total} of {v.voidablePage.allTotal} weeks waiting</p>
+            <><p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.voidablePage.total)} of {adminCount(v.voidablePage.allTotal, "week")} waiting</p>
             <ul className="space-y-2 p-4">
               {v.voidable.map((w) => (
                 <li key={w.id} className="flex items-center gap-3 flex-wrap">
-                  <span className="tabular">{w.code}</span><span className="text-body-sm text-text-tertiary">{w.ticketCount.toLocaleString("en")} tickets to refund in full</span>
+                  <span className="tabular">{w.code}</span><span className="text-body-sm text-text-tertiary">{adminCount(w.ticketCount, "ticket")} to refund in full</span>
                   {canVoid ? <VoidWeekControl weekId={w.id} code={w.code} /> : <ControlLocked what="Void the week" need={CONTROL_DOMAIN.voidMaswaliWeek} />}
                 </li>
               ))}
@@ -201,7 +201,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.heldPage.allTotal === 0 ? <EmptyState title="No share is held" body="A winner whose account changed, or one found later, is held here for a decision." />
             : v.heldPage.total === 0 ? <EmptyState title="No held shares match these filters" body="Try another week, ticket, holder or decision." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.heldPage.total} of {v.heldPage.allTotal} held shares</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.heldPage.total)} of {adminCount(v.heldPage.allTotal, "held share")}</p>
             <ScrollX label="Millionea held shares">
               <table className="admin-tbl min-w-[900px]">
                 <thead><tr>
@@ -251,7 +251,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.winnersPage.allTotal === 0 ? <EmptyState title="No winner yet" body="Every paid ticket appears here with its account, to screen." />
             : v.winnersPage.total === 0 ? <EmptyState title="No winners match these filters" body="Try another week, ticket or screening state." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.winnersPage.total} of {v.winnersPage.allTotal} winners</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.winnersPage.total)} of {adminCount(v.winnersPage.allTotal, "winner")}</p>
             <ScrollX label="Millionea winners">
               <table className="admin-tbl min-w-[960px]">
                 <thead><tr>
@@ -303,7 +303,7 @@ async function Content({ searchParams }: IntegrityPageProps) {
           {v.sealWeeks.allTotal === 0 ? <EmptyState title="Nothing to show yet" body="A week's seals appear here once its results can no longer change (MB-34)." />
             : v.sealWeeks.total === 0 ? <EmptyState title="No sealed weeks match these filters" body="Try another week code or state." /> : (
             <>
-            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{v.sealWeeks.total} of {v.sealWeeks.allTotal} sealed weeks</p>
+            <p className="px-4 pt-3 font-mono text-micro uppercase tracking-widest text-text-subtle">{formatNumber(v.sealWeeks.total)} of {adminCount(v.sealWeeks.allTotal, "sealed week")}</p>
             <ScrollX label="Millionea seal log">
               <table className="admin-tbl min-w-[960px]">
                 <thead><tr>
