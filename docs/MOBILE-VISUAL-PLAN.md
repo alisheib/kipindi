@@ -24,6 +24,22 @@
 
 ## §0 — RESUME AT
 
+**U43 current release checkpoint, 2026-10-20.** Release B first reached production at
+`a12f7b26d663ebf995088c77aee36e6f711e4db2`. The post-deploy read-back found
+the exact SHA on all three public hosts and a healthy `/api/health`;
+`qa:chunks-prod` passed 6/6 on both www and apex, and signed-out production
+`qa:live` passed 362/0. Ali then showed two live desktop problems: with the chart
+collapsed, the board leaves a large empty left column beside the cards; the
+candles use muted aqua/pearl rather than his requested green/red. He also asked
+for Instagram orange and WhatsApp's recognizable colour to return. The U43
+hotfix commit carries the corrections; its exact production deployment and
+browser read-back must establish when those fixes are live. This checkpoint
+does not claim a verified hotfix deployment. The required
+two independent 24-cell 10/10 reviews have not been measured, so U43 remains
+open and has **no after score**. The long Release B work log below records
+earlier checkpoints; its older “not live” statements are historical, not the
+current production state.
+
 ### ⛔ IS MOBILE VISUALISATION DONE? **NO.** Read this before telling anyone otherwise.
 
 Ali asked on 2026-09-25 whether the programme was finished. It is not, and the honest figure is
@@ -311,7 +327,7 @@ safe areas, large text, the empty/error/offline states, and the 379-item backlog
   the suites that read its files 45/46 (the 46th, `test:guards-exist`, was Maswali's and is green on main since
   `baddd8230`). After: all three origins in ~4 min, `/api/health` OK, `qa:chunks-prod` www + apex green, production
   `qa:live` 363/0.
-- ⏳ **Release B — IN CODE, not released.** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
+- **Release B pre-release work log (historical; live at the SHA in the current checkpoint above).** B1 round card, B2 live line/open-price chart, B3 two visible chip rows and
   board order, B4 market card, B5 system and copy are in this branch. B2 covers the 72-minute span of a 60-minute
   choice through one shared vendor read (brief §4 correction). The price on the card and the detail chart is now
   neutral; the shared pool needle and the separate positions win-rate needle are neutral too. Side outcomes keep their

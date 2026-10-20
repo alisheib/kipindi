@@ -360,8 +360,10 @@ export function TerminalChart({
     const lib = libRef.current;
     if (!chart || !lib) return;
     const ink = makeInkResolver();
-    const curve = ink("--aqua-300");
-    const downCandle = ink("--text-muted");
+    // The expanded history chart answers price direction. Keep the card's
+    // small activity line aqua, but paint each full-size bar by its own OHLC.
+    const upInk = ink("--yes-400");
+    const downInk = ink("--no-400");
     /* ⭐ THE AXIS SPEAKS THE PAGE'S PRICE (2026-10-09, the visual pass's round 4, tiles 164 and 202). The engine's own
        "price" format printed the scale as "2896.04" — no grouping, no currency — beside the band's "$2,896.00" and the
        line's own name below the pane, which `usd()` spells. One spelling (`@/lib/usd-price`), so the scale, the live
@@ -386,9 +388,9 @@ export function TerminalChart({
     let lastSeries: ISeriesApi<"Area"> | ISeriesApi<"Candlestick"> | null = null;
     if (data.series.mode === "candles") {
       const s = chart.addSeries(lib.CandlestickSeries, {
-        upColor: curve, downColor: downCandle,
-        borderUpColor: curve, borderDownColor: downCandle,
-        wickUpColor: curve, wickDownColor: downCandle,
+        upColor: upInk, downColor: downInk,
+        borderUpColor: upInk, borderDownColor: downInk,
+        wickUpColor: upInk, wickDownColor: downInk,
         priceFormat,
         // The gilt line is THE live-price statement; the series' own last-value
         // label duplicated it (two stacked axis tags, production 2026-09-04) and
@@ -396,8 +398,8 @@ export function TerminalChart({
         lastValueVisible: false,
         priceLineVisible: false,
       });
-      const formingUp = ink("--aqua-300", 0.45);
-      const formingDown = ink("--text-muted", 0.45);
+      const formingUp = ink("--yes-400", 0.45);
+      const formingDown = ink("--no-400", 0.45);
       const bars = [
         ...data.series.candles.map((c) => ({
           time: at(c.t), open: c.o, high: c.h, low: c.l, close: c.c,
@@ -445,7 +447,7 @@ export function TerminalChart({
         hv.setData(ascUnique(data.series.candles.map((c) => ({
           time: at(c.t),
           value: c.v ?? 0,
-          color: c.c >= c.o ? ink("--aqua-300", c.forming ? 0.18 : 0.3) : ink("--text-muted", c.forming ? 0.18 : 0.3),
+          color: c.c >= c.o ? ink("--yes-400", c.forming ? 0.18 : 0.3) : ink("--no-400", c.forming ? 0.18 : 0.3),
         }))));
         seriesListRef.current.push(hv as never);
       }
@@ -461,7 +463,11 @@ export function TerminalChart({
       // step must reserve its slot or the outage's width collapses to nothing
       // (the trading-terminal session-break idiom).
       const real = data.series.points.filter((pt) => pt.price != null);
-      const dirInk = curve;
+      const first = real[0]?.price ?? null, last = real[real.length - 1]?.price ?? null;
+      const dirToken = first != null && last != null
+        ? (last > first ? "--yes-400" : last < first ? "--no-400" : "--text-muted")
+        : "--text-muted";
+      const dirInk = ink(dirToken);
       const runs: LinePoint[][] = [[]];
       const gapTimes: number[] = [];
       for (const p of data.series.points) {
@@ -472,8 +478,8 @@ export function TerminalChart({
       liveRuns.forEach((run, idx) => {
         const s = chart.addSeries(lib.AreaSeries, {
           lineColor: dirInk,
-          topColor: ink("--aqua-300", 0.20),
-          bottomColor: ink("--aqua-300", 0.02),
+          topColor: ink(dirToken, dirToken === "--text-muted" ? 0.16 : 0.24),
+          bottomColor: ink(dirToken, 0.02),
           lineWidth: 2,
           priceFormat,
           // A one-read run must still paint — a lone marker, not nothing.

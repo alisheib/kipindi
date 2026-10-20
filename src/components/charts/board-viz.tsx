@@ -46,7 +46,7 @@ export function BoardViz({
 
   if (!cubes && !chart) return null;
   return (
-    <div className="ud-board-viz">
+    <div className="ud-board-viz" data-viz-state={open === null ? "pending" : open ? "open" : "closed"}>
       {cubes && (
         <section className="ud-board-cubes">
           <h2 className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{labels.cubesEyebrow}</h2>

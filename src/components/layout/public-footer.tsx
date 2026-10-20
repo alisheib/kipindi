@@ -359,8 +359,8 @@ function FooterCol({
  * target against the rail pip's 45% — deliberately quieter, because this is chrome.
  * ⛔ Never `h-9 w-9` here: this repo OVERRIDES Tailwind's spacing scale and `9` is 64px.
  *
- * U43: the vendor geometry stays recognizable, while its multicolour ink is neutral on
- * this player surface. Green and red are reserved for the two betting sides.
+ * The vendor marks keep their original colours (Ali, 2026-10-20). Their brand ink
+ * is distinct from the app's UP/DOWN betting-side colours.
  *
  * ⛔ NO HOVER ANIMATION ON THE MARK (§M5 — "icons respond, they do not perform"). The only
  * motion is the colour crossfade the global `:where(a)` rule already applies to the label

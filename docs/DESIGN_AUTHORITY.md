@@ -276,8 +276,9 @@ crowd signals are neutral. Green and red name only the two betting sides and the
 The shared ticker's LIVE pip, word, separators and controls are neutral; keyboard focus uses
 brand. Bell unread signs, menu destinations, active navigation dots and coming-soon flags
 use brand or neutral ink. A balance delta keeps its signed number in neutral ink. The
-language selection tick and footer midpoint use brand. External social marks keep their
-recognizable shapes but use neutral player ink; the 50pick mark keeps YES/NO side halves
+language selection tick and footer midpoint use brand. Ali's 2026-10-20 amendment restores
+the external social marks' original vendor colours; these registered marks are not app-state
+or betting-side ink. The 50pick mark keeps YES/NO side halves
 and uses a pearl needle and hub (§B1a).
 On the Up & Down board, round page and market board, a recoverable page error uses a neutral
 alert mark and explicit retry words. An invalid custom stake keeps `aria-invalid`, a strong
@@ -2863,7 +2864,7 @@ the header and Wallet sheet deposit doors, and the classic rail deposit door now
 ink or brand colour. Bell and avatar controls, LIVE/status chrome, coming-soon flags and
 footer dividers likewise cannot borrow won-money gold or the two sides' colours. The actual
 50pick logo retains its YES/NO geometry with a neutral centre; external social marks
-retain their shape with neutral player ink. The old D1/SJ-12
+retain their original vendor colours under Ali's 2026-10-20 amendment. The old D1/SJ-12
 gold entry exception above records its history; it is no longer permission to paint an
 unearned amount or deposit door gold. The shared shell guard `test:u43-shell-palette`
 pins these surfaces with mutation proof. Other pre-existing gold money commits require a
