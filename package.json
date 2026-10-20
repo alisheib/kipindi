@@ -699,6 +699,8 @@
     "test:maswali-register": "tsx scripts/maswali-register.test.mts",
     "red:maswali-register": "tsx scripts/maswali-register.test.mts --prove-red",
     "qa:maswali-admin-shots": "node scripts/maswali-admin-shots.mjs",
+    "test:maswali-admin-shots-caret": "node scripts/maswali-admin-shots-caret.test.mjs",
+    "red:maswali-admin-shots-caret": "node scripts/maswali-admin-shots-caret.test.mjs --prove-red",
     "qa:maswali-admin-drive": "node scripts/maswali-admin-drive.mjs",
     "qa:maswali-player-shots": "node scripts/maswali-player-shots.mjs",
     "qa:maswali-player-drive": "node scripts/maswali-player-drive.mjs",
